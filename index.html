@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cannakan Grow</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Grow Session Tracker</p>
+        <h1>Cannakan Grow</h1>
+      </div>
+      <nav class="topbar-nav" aria-label="Primary">
+        <a href="#home">Home</a>
+        <a href="#sessions">Sessions</a>
+      </nav>
+      <div id="auth-status" class="auth-status"></div>
+    </header>
+
+    <main id="app" class="app-main"></main>
+  </div>
+
+  <template id="auth-template">
+    <section class="card auth-card">
+      <div>
+        <p class="eyebrow">Secure Access</p>
+        <h2>Sign in to your grow sessions</h2>
+        <p class="muted">Use your email and password to save and manage sessions across devices.</p>
+      </div>
+      <form id="auth-form" class="auth-form">
+        <label>
+          <span>Email</span>
+          <input type="email" name="email" placeholder="you@example.com" required>
+        </label>
+        <label>
+          <span>Password</span>
+          <input type="password" name="password" placeholder="Enter password" minlength="6" required>
+        </label>
+        <label id="confirm-password-field" class="auth-confirm-field" hidden>
+          <span>Confirm Password</span>
+          <input type="password" name="confirmPassword" placeholder="Confirm password" minlength="6">
+        </label>
+        <p id="auth-message" class="form-message" role="alert" aria-live="polite"></p>
+        <div class="form-actions">
+          <button type="submit" name="action" value="login" class="button button-primary">Log In</button>
+          <button type="submit" name="action" value="signup" class="button button-secondary">Sign Up</button>
+        </div>
+      </form>
+    </section>
+  </template>
+
+  <template id="setup-template">
+    <section class="card auth-card">
+      <div>
+        <p class="eyebrow">Supabase Setup</p>
+        <h2>Connect cloud auth and storage</h2>
+        <p class="muted">Add your Supabase project URL and publishable anon key, then run the provided SQL schema so Cannakan Grow can save sessions securely for each user.</p>
+      </div>
+      <div class="setup-list">
+        <p><strong>1.</strong> For Vercel, set <code>CANNAKAN_SUPABASE_URL</code> and <code>CANNAKAN_SUPABASE_ANON_KEY</code>. For local testing, generate or update <code>supabase-config.js</code>.</p>
+        <p><strong>2.</strong> Run <code>supabase-schema.sql</code> in the Supabase SQL editor to create the session table and image storage policies.</p>
+        <p><strong>3.</strong> Enable Email auth in your Supabase project.</p>
+      </div>
+    </section>
+  </template>
+
+  <template id="home-template">
+    <section class="dashboard-bar card">
+      <div>
+        <p class="eyebrow">Session Dashboard</p>
+        <h2>Grow sessions</h2>
+      </div>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#new">New Session</a>
+        <a class="button button-secondary" href="#sessions">All Sessions</a>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <article class="card stat-card">
+        <span class="stat-label">Saved Sessions</span>
+        <strong id="session-count" class="stat-value">0</strong>
+      </article>
+      <article class="card stat-card overall-rate-card">
+        <span class="stat-label">Overall Germination Rate</span>
+        <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
+        <p id="overall-germination-total" class="overall-rate-total">0 / 0 seeds</p>
+        <div class="overall-rate-bar" aria-label="Overall germination rate">
+          <div id="overall-germination-fill" class="overall-rate-fill"></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Active Sessions</p>
+          <h3>Recent grow work</h3>
+        </div>
+        <a class="button button-secondary" href="#sessions">Open List</a>
+      </div>
+      <div id="home-sessions-list" class="sessions-list"></div>
+    </section>
+  </template>
+
+  <template id="session-form-template">
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">New Session</p>
+          <h2>Create a grow session</h2>
+        </div>
+      </div>
+
+      <form id="session-form" class="session-form">
+        <section class="session-top-grid">
+          <div class="session-chart-header">
+            <label>
+              <span>Session Name</span>
+              <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
+            </label>
+            <label>
+              <span>Date</span>
+              <input type="date" name="date" required>
+            </label>
+            <label class="time-format-field">
+              <div class="field-label-row">
+                <span>Time</span>
+                <div class="time-format-toggle" role="group" aria-label="Time format">
+                  <button type="button" class="time-format-button" data-time-format="12h">12h</button>
+                  <button type="button" class="time-format-button" data-time-format="24h">24h</button>
+                </div>
+              </div>
+              <input type="hidden" name="time">
+              <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
+            </label>
+            <label>
+              <span>System Type</span>
+              <select name="systemType" required>
+                <option value="KAN">KAN</option>
+                <option value="TRA">TRA</option>
+              </select>
+            </label>
+            <label>
+              <span>System ID (if using multiple)</span>
+              <input type="text" name="unitId" placeholder="Ex: A, B, C" maxlength="12" required>
+            </label>
+          </div>
+        </section>
+
+        <section class="system-layout-block" aria-labelledby="system-layout-label">
+          <p id="system-layout-label" class="system-layout-label">System Layout</p>
+          <div id="system-layout-reference" class="system-layout-visual"></div>
+        </section>
+
+        <section class="partitions-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Partitions</p>
+              <h3>Partition chart</h3>
+            </div>
+            <div class="session-status-panel">
+              <label class="session-status-label" for="session-status-control">Set Growth Stage</label>
+              <select id="session-status-control" name="sessionStatus" class="session-status-control">
+                <option value="" selected>Select Growth Stage</option>
+                <option value="soaking">Soaking</option>
+                <option value="germinating">Germinating</option>
+                <option value="completed">Completed</option>
+              </select>
+              <p class="session-status-help">You must update this as your seeds progress.</p>
+              <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
+            </div>
+          </div>
+          <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
+          <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
+          <div id="partition-chart-shell" class="chart-shell">
+            <div id="partition-chart-header" class="chart-header chart-row">
+              <span>Partition</span>
+              <span>Seed Variety</span>
+              <span>Type</span>
+              <span>Sex</span>
+              <span># of Seeds</span>
+              <span># Germinated</span>
+              <span>Success %</span>
+            </div>
+            <div id="partition-fields" class="partition-table"></div>
+          </div>
+          <section class="session-notes-section" aria-labelledby="session-notes-label">
+            <label class="session-notes-field" for="session-notes">
+              <span id="session-notes-label">Session Notes</span>
+              <textarea
+                id="session-notes"
+                name="sessionNotes"
+                rows="5"
+                placeholder="Add notes about this run (soak time, conditions, observations...)"
+              ></textarea>
+            </label>
+            <p class="session-notes-help">Notes help you understand results later.</p>
+          </section>
+          <section class="session-images-section" aria-labelledby="session-images-label">
+            <div class="session-images-heading">
+              <div>
+                <p class="eyebrow">Images</p>
+                <h4 id="session-images-label">Session Images</h4>
+              </div>
+              <span class="session-images-limit">Up to 3 images</span>
+            </div>
+            <label class="session-images-upload">
+              <span>Add images</span>
+              <input id="session-images-input" type="file" accept="image/*" multiple>
+            </label>
+            <p id="session-images-message" class="session-images-message" aria-live="polite"></p>
+            <div id="session-images-grid" class="session-images-grid"></div>
+          </section>
+          <section id="share-snapshot-section" class="share-snapshot-section" aria-labelledby="share-snapshot-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Share</p>
+              <h4 id="share-snapshot-title">Share Snapshot</h4>
+            </div>
+            <p class="snapshot-help">Generate a polished square snapshot from this session. If multiple images are available, you'll choose one before it is created.</p>
+            <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
+            <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
+            <div class="snapshot-actions">
+              <button id="generate-snapshot" type="button" class="button button-secondary">Generate Snapshot</button>
+              <button id="download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
+              <button id="reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+              <button id="share-snapshot" type="button" class="button button-primary" disabled>Share</button>
+            </div>
+            <div id="snapshot-preview" class="snapshot-preview" hidden></div>
+          </section>
+          <section id="session-timing-section" class="session-timing-section" aria-labelledby="session-timing-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Timing</p>
+              <h4 id="session-timing-title">Session duration</h4>
+            </div>
+            <div id="session-timing-summary" class="session-timing-summary"></div>
+          </section>
+          <section id="partition-progress-section" class="progress-chart-section" aria-labelledby="partition-progress-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Progress</p>
+              <h4 id="partition-progress-title">Germination progress by partition</h4>
+            </div>
+            <div id="partition-progress-chart" class="progress-chart-list"></div>
+          </section>
+          <section id="run-progress-section" class="run-progress-section" aria-labelledby="run-progress-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Germination Rate</p>
+              <h4 id="run-progress-title">Overall Session Germination %</h4>
+            </div>
+            <div id="run-progress-summary" class="run-progress-summary"></div>
+          </section>
+          <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Timeline</p>
+              <h4 id="session-lifecycle-title">Session Progress</h4>
+            </div>
+            <div id="session-lifecycle-summary" class="session-lifecycle-summary"></div>
+            <details class="timeline-debug-panel">
+              <summary>Timeline Debug Tools</summary>
+              <div class="timeline-debug-actions">
+                <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
+              </div>
+            </details>
+          </section>
+        </section>
+
+        <p id="session-success-summary" class="session-success-summary" aria-live="polite"></p>
+
+        <div class="form-actions">
+          <button type="submit" class="button button-primary">Save Session</button>
+          <a class="button button-secondary" href="#sessions">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </template>
+
+  <template id="sessions-template">
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Session History</p>
+          <h2>Session History</h2>
+        </div>
+        <a class="button button-primary" href="#new">New Session</a>
+      </div>
+      <div id="sessions-list" class="sessions-list"></div>
+    </section>
+  </template>
+
+  <template id="session-detail-template">
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Session Detail</p>
+          <h2 id="detail-title">Session</h2>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#sessions">Back</a>
+          <button id="delete-session" class="button button-danger" type="button">Delete</button>
+        </div>
+      </div>
+
+      <section class="session-top-grid detail-top-grid">
+        <section id="detail-meta" class="session-chart-header detail-header"></section>
+      </section>
+      <section class="system-layout-block" aria-labelledby="detail-system-layout-label">
+        <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>
+        <div id="detail-layout-reference" class="system-layout-visual"></div>
+      </section>
+      <section>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Partitions</p>
+            <h3>Partition chart</h3>
+          </div>
+          <div class="session-status-panel">
+            <label class="session-status-label" for="detail-session-status-control">Set Growth Stage</label>
+            <select id="detail-session-status-control" class="session-status-control">
+              <option value="">Select Growth Stage</option>
+              <option value="soaking">Soaking</option>
+              <option value="germinating">Germinating</option>
+              <option value="completed">Completed</option>
+            </select>
+            <p class="session-status-help">You must update this as your seeds progress.</p>
+          </div>
+        </div>
+        <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
+        <div id="detail-chart-shell" class="chart-shell">
+          <div id="detail-chart-header" class="chart-header chart-row">
+            <span>Partition</span>
+            <span>Seed Variety</span>
+            <span>Type</span>
+            <span>Sex</span>
+            <span># of Seeds</span>
+            <span># Germinated</span>
+            <span>Success %</span>
+          </div>
+          <div id="detail-partitions" class="partition-table"></div>
+        </div>
+        <section id="detail-lifecycle-section" class="session-lifecycle-section" aria-labelledby="detail-lifecycle-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Timeline</p>
+            <h4 id="detail-lifecycle-title">Session Progress</h4>
+          </div>
+          <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
+          <details class="timeline-debug-panel">
+            <summary>Timeline Debug Tools</summary>
+            <div class="timeline-debug-actions">
+              <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
+            </div>
+          </details>
+        </section>
+        <section class="session-notes-section" aria-labelledby="detail-session-notes-label">
+          <label class="session-notes-field" for="detail-session-notes">
+            <span id="detail-session-notes-label">Session Notes</span>
+            <textarea
+              id="detail-session-notes"
+              rows="5"
+              placeholder="Add notes about this run (soak time, conditions, observations...)"
+            ></textarea>
+          </label>
+          <p class="session-notes-help">Notes help you understand results later.</p>
+        </section>
+        <section class="session-images-section" aria-labelledby="detail-session-images-label">
+          <div class="session-images-heading">
+            <div>
+              <p class="eyebrow">Images</p>
+              <h4 id="detail-session-images-label">Session Images</h4>
+            </div>
+            <span class="session-images-limit">Up to 3 images</span>
+          </div>
+          <label class="session-images-upload">
+            <span>Add images</span>
+            <input id="detail-session-images-input" type="file" accept="image/*" multiple>
+          </label>
+          <p id="detail-session-images-message" class="session-images-message" aria-live="polite"></p>
+          <div id="detail-session-images-grid" class="session-images-grid"></div>
+        </section>
+        <section id="detail-share-snapshot-section" class="share-snapshot-section" aria-labelledby="detail-share-snapshot-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Share</p>
+            <h4 id="detail-share-snapshot-title">Share Snapshot</h4>
+          </div>
+          <p class="snapshot-help">Generate a polished square snapshot from this session. If multiple images are available, you'll choose one before it is created.</p>
+          <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
+          <p id="detail-snapshot-message" class="snapshot-message" aria-live="polite"></p>
+          <div class="snapshot-actions">
+            <button id="detail-generate-snapshot" type="button" class="button button-secondary">Generate Snapshot</button>
+            <button id="detail-download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
+            <button id="detail-reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+            <button id="detail-share-snapshot" type="button" class="button button-primary" disabled>Share</button>
+          </div>
+          <div id="detail-snapshot-preview" class="snapshot-preview" hidden></div>
+        </section>
+        <section id="detail-timing-section" class="session-timing-section" aria-labelledby="detail-timing-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Timing</p>
+            <h4 id="detail-timing-title">Session duration</h4>
+          </div>
+          <div id="detail-timing-summary" class="session-timing-summary"></div>
+        </section>
+        <section id="detail-progress-section" class="progress-chart-section" aria-labelledby="detail-progress-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Progress</p>
+            <h4 id="detail-progress-title">Germination progress by partition</h4>
+          </div>
+          <div id="detail-progress-chart" class="progress-chart-list"></div>
+        </section>
+        <section id="detail-run-progress-section" class="run-progress-section" aria-labelledby="detail-run-progress-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Germination Rate</p>
+            <h4 id="detail-run-progress-title">Overall Session Germination %</h4>
+          </div>
+          <div id="detail-run-progress-summary" class="run-progress-summary"></div>
+        </section>
+      </section>
+    </section>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
