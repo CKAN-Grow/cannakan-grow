@@ -74,6 +74,26 @@ select {
   justify-content: flex-end;
 }
 
+.auth-profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.auth-avatar-fallback {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(148, 209, 89, 0.24), rgba(43, 111, 65, 0.22));
+}
+
 .auth-pill {
   padding: 10px 14px;
   border-radius: 999px;
@@ -819,10 +839,41 @@ select {
   gap: 18px;
 }
 
+.profile-card-inline {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
 .auth-form,
 .setup-list {
   display: grid;
   gap: 14px;
+}
+
+.profile-avatar-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-avatar-preview-image {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.profile-avatar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .auth-confirm-field[hidden] {

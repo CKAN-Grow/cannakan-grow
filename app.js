@@ -3,9 +3,11 @@ const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const SESSION_IMAGE_BUCKET = "session-images";
+const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const MAX_SESSION_IMAGES = 3;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
+const MAX_AVATAR_DIMENSION = 512;
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
@@ -44,12 +46,14 @@ const appState = {
   supabase: null,
   authSession: null,
   user: null,
+  profile: null,
   sessions: [],
 };
 let sessionTimerInterval = null;
 const templates = {
   auth: document.querySelector("#auth-template"),
   setup: document.querySelector("#setup-template"),
+  profile: document.querySelector("#profile-template"),
   home: document.querySelector("#home-template"),
   form: document.querySelector("#session-form-template"),
   sessions: document.querySelector("#sessions-template"),
@@ -337,7 +341,14 @@ function initializeSupabaseClient() {
     return;
   }
 
-  appState.supabase = window.supabase.createClient(config.url, config.anonKey);
+  appState.supabase = window.supabase.createClient(config.url, config.anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: "cannakan-grow-auth",
+    },
+  });
 }
 
 function isSupabaseConfigured() {
@@ -360,8 +371,10 @@ function loadLocalSessions() {
 async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.authSession = session || null;
   appState.user = session?.user || null;
+  appState.profile = null;
 
   if (appState.user) {
+    appState.profile = await loadUserProfile();
     const sessions = await loadUserSessions();
     saveSessions(sessions);
   } else if (isSupabaseConfigured()) {
@@ -391,6 +404,48 @@ async function loadUserSessions() {
   }
 
   return data.map(mapRowToSession);
+}
+
+async function loadUserProfile() {
+  if (!appState.supabase || !appState.user) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", appState.user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load profile", error);
+    return null;
+  }
+
+  return normalizeProfileRow(data);
+}
+
+function normalizeProfileRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    username: String(row.username || "").trim(),
+    avatarUrl: String(row.avatar_url || "").trim(),
+    avatarPath: String(row.avatar_path || "").trim(),
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+function hasCompletedProfile(profile = appState.profile) {
+  return Boolean(String(profile?.username || "").trim());
+}
+
+function getProfileDisplayName() {
+  return appState.profile?.username || appState.user?.email || "Signed in";
 }
 
 async function createCloudSession(session) {
@@ -482,6 +537,64 @@ async function uploadSessionImageFile(sessionId, file) {
     filename: file.name,
     name: file.name,
   };
+}
+
+async function uploadProfileAvatar(file) {
+  if (!appState.supabase?.storage || !appState.user) {
+    throw new Error("Profile image uploads are not available until Supabase Storage is ready.");
+  }
+
+  const preparedImage = await prepareImageForUpload(file, MAX_AVATAR_DIMENSION, 0.84);
+  const path = `${appState.user.id}/avatar-${crypto.randomUUID()}.jpg`;
+  const { error } = await appState.supabase.storage
+    .from(PROFILE_AVATAR_BUCKET)
+    .upload(path, preparedImage.blob, {
+      contentType: preparedImage.contentType,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error("Could not upload profile image.");
+  }
+
+  const { data } = appState.supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(path);
+  return {
+    path,
+    url: data.publicUrl,
+  };
+}
+
+async function removeProfileAvatarFromStorage(path) {
+  if (!path || !appState.supabase?.storage) {
+    return;
+  }
+
+  await appState.supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([path]);
+}
+
+async function saveUserProfile(profileInput) {
+  if (!appState.supabase || !appState.user) {
+    throw new Error("You must be signed in to save a profile.");
+  }
+
+  const payload = {
+    id: appState.user.id,
+    username: String(profileInput?.username || "").trim(),
+    avatar_url: String(profileInput?.avatarUrl || "").trim(),
+    avatar_path: String(profileInput?.avatarPath || "").trim(),
+  };
+
+  const { data, error } = await appState.supabase
+    .from("profiles")
+    .upsert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return normalizeProfileRow(data);
 }
 
 async function removeSessionImageFromStorage(image) {
@@ -623,10 +736,17 @@ function updateAuthStatus() {
   }
 
   authStatus.innerHTML = `
-    <span class="auth-pill">${escapeHtml(appState.user.email || "Signed in")}</span>
+    <div class="auth-profile-chip">
+      ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
+      <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
+    </div>
+    <button id="edit-profile-button" class="button button-secondary" type="button">Edit Profile</button>
     <button id="sign-out-button" class="button button-secondary" type="button">Sign Out</button>
   `;
 
+  authStatus.querySelector("#edit-profile-button")?.addEventListener("click", () => {
+    openProfileEditor();
+  });
   authStatus.querySelector("#sign-out-button")?.addEventListener("click", async () => {
     await appState.supabase.auth.signOut();
   });
@@ -802,11 +922,11 @@ async function uploadPendingSessionImages(form, sessionId, scope) {
   return uploadedImages;
 }
 
-async function prepareImageForUpload(file) {
+async function prepareImageForUpload(file, maxDimension = MAX_IMAGE_DIMENSION, quality = 0.82) {
   const objectUrl = URL.createObjectURL(file);
   try {
     const bitmap = await loadImageBitmap(objectUrl);
-    const { width, height } = scaleDimensions(bitmap.width, bitmap.height, MAX_IMAGE_DIMENSION);
+    const { width, height } = scaleDimensions(bitmap.width, bitmap.height, maxDimension);
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
@@ -814,7 +934,7 @@ async function prepareImageForUpload(file) {
     context.drawImage(bitmap, 0, 0, width, height);
 
     const blob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, "image/jpeg", 0.82);
+      canvas.toBlob(resolve, "image/jpeg", quality);
     });
 
     return {
@@ -1630,6 +1750,11 @@ function render() {
     return;
   }
 
+  if (!hasCompletedProfile()) {
+    renderProfileSetupScreen();
+    return;
+  }
+
   const hash = window.location.hash || "#home";
   const [route, id] = hash.replace("#", "").split("/");
 
@@ -1740,6 +1865,242 @@ function renderAuthScreen() {
       message.textContent = error.message || "Authentication failed.";
     }
   });
+}
+
+function renderProfileSetupScreen() {
+  app.replaceChildren(cloneTemplate(templates.profile));
+  const title = document.querySelector("#profile-title");
+  const copy = document.querySelector("#profile-copy");
+  const eyebrow = document.querySelector("#profile-eyebrow");
+  const submit = document.querySelector("#profile-submit");
+
+  if (title) {
+    title.textContent = "Set up your profile";
+  }
+  if (copy) {
+    copy.textContent = "Choose the username you want Cannakan Grow to show in the app. You can also add an optional profile picture.";
+  }
+  if (eyebrow) {
+    eyebrow.textContent = "Profile Setup";
+  }
+  if (submit) {
+    submit.textContent = "Save Profile";
+  }
+
+  bindProfileForm(document.querySelector("#profile-form"), {
+    mode: "setup",
+    initialProfile: appState.profile,
+    onSaved: () => {
+      safeRender();
+    },
+  });
+}
+
+function openProfileEditor() {
+  if (!appState.user) {
+    return;
+  }
+
+  let modal = document.querySelector("#profile-modal");
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "profile-modal";
+    modal.className = "snapshot-modal profile-modal";
+    modal.innerHTML = `
+      <form method="dialog" class="snapshot-modal-card profile-modal-card">
+        <div class="snapshot-modal-copy">
+          <p class="eyebrow">Account</p>
+          <h3>Edit Profile</h3>
+          <p class="muted">Update the name and avatar shown in Cannakan Grow.</p>
+        </div>
+        <div id="profile-modal-body"></div>
+        <div class="snapshot-modal-actions">
+          <button type="button" class="button button-secondary" data-profile-close>Close</button>
+        </div>
+      </form>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const body = modal.querySelector("#profile-modal-body");
+  if (!body) {
+    return;
+  }
+
+  body.replaceChildren(cloneTemplate(templates.profile));
+  body.querySelector(".profile-card")?.classList.add("profile-card-inline");
+  const title = body.querySelector("#profile-title");
+  const copy = body.querySelector("#profile-copy");
+  const eyebrow = body.querySelector("#profile-eyebrow");
+  const submit = body.querySelector("#profile-submit");
+  if (title) {
+    title.textContent = "Edit your profile";
+  }
+  if (copy) {
+    copy.textContent = "Choose the name and avatar you want shown in the app header.";
+  }
+  if (eyebrow) {
+    eyebrow.textContent = "Profile";
+  }
+  if (submit) {
+    submit.textContent = "Update Profile";
+  }
+
+  bindProfileForm(body.querySelector("#profile-form"), {
+    mode: "edit",
+    initialProfile: appState.profile,
+    onSaved: () => {
+      updateAuthStatus();
+      safeRender();
+      if (modal.open) {
+        modal.close();
+      }
+    },
+  });
+
+  modal.querySelector("[data-profile-close]")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  }, { once: true });
+
+  modal.showModal();
+}
+
+function bindProfileForm(form, options = {}) {
+  if (!form) {
+    return;
+  }
+
+  const profile = options.initialProfile || appState.profile || null;
+  const usernameInput = form.elements.username;
+  const avatarInput = form.elements.avatar;
+  const message = form.querySelector("#profile-message");
+  const preview = form.querySelector("#profile-avatar-preview");
+  const removeButton = form.querySelector("#profile-remove-avatar");
+  const submitButton = form.querySelector("#profile-submit");
+  const state = {
+    profile,
+    removeAvatar: false,
+    pendingFile: null,
+    previewUrl: "",
+  };
+
+  usernameInput.value = profile?.username || "";
+  renderProfileAvatarPreview(preview, removeButton, state, profile);
+
+  avatarInput.addEventListener("change", () => {
+    const file = avatarInput.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      message.textContent = "Images only. Please choose a valid profile picture.";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      message.textContent = "Image is too large. Please choose an image under 12 MB.";
+      return;
+    }
+
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+    }
+
+    state.pendingFile = file;
+    state.removeAvatar = false;
+    state.previewUrl = URL.createObjectURL(file);
+    message.textContent = "";
+    renderProfileAvatarPreview(preview, removeButton, state, profile);
+  });
+
+  removeButton?.addEventListener("click", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = "";
+    }
+    state.pendingFile = null;
+    state.removeAvatar = true;
+    avatarInput.value = "";
+    renderProfileAvatarPreview(preview, removeButton, state, profile);
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const username = String(usernameInput.value || "").trim();
+
+    if (!username) {
+      message.textContent = "Please enter a username before saving.";
+      usernameInput.reportValidity();
+      return;
+    }
+
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+    message.textContent = "";
+
+    try {
+      let avatarUrl = profile?.avatarUrl || "";
+      let avatarPath = profile?.avatarPath || "";
+
+      if (state.removeAvatar && avatarPath) {
+        await removeProfileAvatarFromStorage(avatarPath);
+        avatarUrl = "";
+        avatarPath = "";
+      }
+
+      if (state.pendingFile) {
+        if (avatarPath) {
+          await removeProfileAvatarFromStorage(avatarPath);
+        }
+        const uploadedAvatar = await uploadProfileAvatar(state.pendingFile);
+        avatarUrl = uploadedAvatar.url;
+        avatarPath = uploadedAvatar.path;
+      }
+
+      appState.profile = await saveUserProfile({
+        username,
+        avatarUrl,
+        avatarPath,
+      });
+
+      if (state.previewUrl) {
+        URL.revokeObjectURL(state.previewUrl);
+        state.previewUrl = "";
+      }
+
+      options.onSaved?.(appState.profile);
+    } catch (error) {
+      message.textContent = error.message || "Could not save your profile.";
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
+    }
+  });
+}
+
+function renderProfileAvatarPreview(preview, removeButton, state, profile) {
+  if (!preview || !removeButton) {
+    return;
+  }
+
+  const displayUrl = state.previewUrl || (state.removeAvatar ? "" : profile?.avatarUrl || "");
+  if (!displayUrl) {
+    preview.hidden = true;
+    preview.innerHTML = "";
+    removeButton.hidden = true;
+    return;
+  }
+
+  preview.hidden = false;
+  preview.innerHTML = `
+    <img src="${escapeHtml(displayUrl)}" alt="Profile preview" class="profile-avatar-preview-image">
+  `;
+  removeButton.hidden = false;
 }
 
 function renderHome() {
@@ -3480,16 +3841,34 @@ function updateRunProgressSummary(summaryElement, sectionElement, sessionStatus,
   }
 
   const progressPercent = Math.max(0, Math.min(100, Math.round((totals.totalPlanted / totals.totalSeeds) * 100)));
+  const progressGradient = getRunProgressGradient(progressPercent);
+  const progressTextColor = getRunProgressAccentColor(progressPercent);
   sectionElement.hidden = false;
   summaryElement.innerHTML = `
     <div class="run-progress-meta">
       <strong>${totals.totalPlanted} / ${totals.totalSeeds} germinated</strong>
-      <span>${progressPercent}%</span>
+      <span style="color: ${progressTextColor};">${progressPercent}%</span>
     </div>
     <div class="run-progress-track" aria-label="Run progress">
-      <div class="run-progress-fill" style="width: ${progressPercent}%"></div>
+      <div class="run-progress-fill" style="width: ${progressPercent}%; background: ${progressGradient};"></div>
     </div>
   `;
+}
+
+function getRunProgressGradient(progressPercent) {
+  const percent = Math.max(0, Math.min(100, Number(progressPercent) || 0));
+  const hue = 25 + (percent / 100) * (120 - 25);
+  const startHue = Math.max(20, hue - 8);
+  const endHue = Math.min(125, hue + 4);
+  return `linear-gradient(90deg, hsl(${startHue}, 70%, 60%), hsl(${endHue}, 85%, 38%))`;
+}
+
+function getRunProgressAccentColor(progressPercent) {
+  const percent = Math.max(0, Math.min(100, Number(progressPercent) || 0));
+  const hue = 25 + (percent / 100) * (120 - 25);
+  const lightness = percent >= 90 ? 32 : 38;
+  const saturation = percent >= 90 ? 80 : 72;
+  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
 function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {

@@ -69,6 +69,34 @@
     </section>
   </template>
 
+  <template id="profile-template">
+    <section class="card auth-card profile-card">
+      <div>
+        <p id="profile-eyebrow" class="eyebrow">Profile Setup</p>
+        <h2 id="profile-title">Set up your profile</h2>
+        <p id="profile-copy" class="muted">Choose the username you want Cannakan Grow to show in the app.</p>
+      </div>
+      <form id="profile-form" class="auth-form profile-form">
+        <label>
+          <span>Username / Display Name</span>
+          <input type="text" name="username" placeholder="Choose a display name" maxlength="40" required>
+        </label>
+        <label class="profile-avatar-field">
+          <span>Profile Picture (optional)</span>
+          <input type="file" name="avatar" accept="image/*">
+        </label>
+        <div id="profile-avatar-preview" class="profile-avatar-preview" hidden></div>
+        <div class="profile-avatar-actions">
+          <button id="profile-remove-avatar" type="button" class="button button-secondary" hidden>Remove Picture</button>
+        </div>
+        <p id="profile-message" class="form-message" role="alert" aria-live="polite"></p>
+        <div class="form-actions">
+          <button id="profile-submit" type="submit" class="button button-primary">Save Profile</button>
+        </div>
+      </form>
+    </section>
+  </template>
+
   <template id="home-template">
     <section class="dashboard-bar card">
       <div>
