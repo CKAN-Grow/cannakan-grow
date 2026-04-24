@@ -47,6 +47,7 @@ const appState = {
   authSession: null,
   user: null,
   profile: null,
+  profileError: "",
   sessions: [],
 };
 let sessionTimerInterval = null;
@@ -97,35 +98,47 @@ async function safeBootstrapApp() {
 }
 
 async function ensureUserProfile(user) {
-  if (!user?.id) return;
+  if (!appState.supabase || !user?.id) {
+    return null;
+  }
+
+  appState.profileError = "";
 
   const { data: existingProfile, error: selectError } = await appState.supabase
     .from("profiles")
-    .select("id")
+    .select("*")
     .eq("id", user.id)
     .maybeSingle();
 
   if (selectError) {
     console.error("Profile check error:", selectError);
-    return;
+    appState.profileError = selectError.message || "Could not check profile.";
+    return null;
   }
 
-  if (!existingProfile) {
-    const { error: insertError } = await appState.supabase
-      .from("profiles")
-      .insert({
-        id: user.id,
-        username: "",
-        avatar_url: "",
-        avatar_path: ""
-      });
-
-    if (insertError) {
-      console.error("Profile create error:", insertError);
-    } else {
-      console.log("Profile created for user:", user.id);
-    }
+  if (existingProfile) {
+    return normalizeProfileRow(existingProfile);
   }
+
+  const { data: createdProfile, error: insertError } = await appState.supabase
+    .from("profiles")
+    .upsert({
+      id: user.id,
+      username: "",
+      avatar_url: "",
+      avatar_path: "",
+    })
+    .select("*")
+    .single();
+
+  if (insertError) {
+    console.error("Profile create error:", insertError);
+    appState.profileError = insertError.message || "Could not create profile.";
+    return null;
+  }
+
+  console.log("Profile created for user:", user.id);
+  return normalizeProfileRow(createdProfile);
 }
 
 function getSessions() {
@@ -334,16 +347,9 @@ async function bootstrapApp() {
     try {
       const { data } = await withTimeout(appState.supabase.auth.getSession(), 8000, "Supabase session check timed out.");
       await handleAuthSession(data?.session, { shouldRender: false });
-
-      if (data.session?.user) {
-        await ensureUserProfile(data.session.user);
-}
       appState.supabase.auth.onAuthStateChange((event, session) => {
         window.setTimeout(async () => {
-         handleAuthSession(session);
-         if (session?.user) {
-          await ensureUserProfile(session.user);
-          }
+          await handleAuthSession(session);
         }, 0);
       });
     } catch (error) {
@@ -411,9 +417,10 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.authSession = session || null;
   appState.user = session?.user || null;
   appState.profile = null;
+  appState.profileError = "";
 
   if (appState.user) {
-    appState.profile = await loadUserProfile();
+    appState.profile = await ensureUserProfile(appState.user);
     const sessions = await loadUserSessions();
     saveSessions(sessions);
   } else if (isSupabaseConfigured()) {
@@ -1924,6 +1931,11 @@ function renderProfileSetupScreen() {
   }
   if (submit) {
     submit.textContent = "Save Profile";
+  }
+
+  const message = document.querySelector("#profile-message");
+  if (message && appState.profileError) {
+    message.textContent = appState.profileError;
   }
 
   bindProfileForm(document.querySelector("#profile-form"), {
@@ -3881,12 +3893,11 @@ function updateRunProgressSummary(summaryElement, sectionElement, sessionStatus,
 
   const progressPercent = Math.max(0, Math.min(100, Math.round((totals.totalPlanted / totals.totalSeeds) * 100)));
   const progressGradient = getRunProgressGradient(progressPercent);
-  const progressTextColor = getRunProgressAccentColor(progressPercent);
   sectionElement.hidden = false;
   summaryElement.innerHTML = `
     <div class="run-progress-meta">
       <strong>${totals.totalPlanted} / ${totals.totalSeeds} germinated</strong>
-      <span style="color: ${progressTextColor};">${progressPercent}%</span>
+      <span>${progressPercent}%</span>
     </div>
     <div class="run-progress-track" aria-label="Run progress">
       <div class="run-progress-fill" style="width: ${progressPercent}%; background: ${progressGradient};"></div>
@@ -3895,19 +3906,7 @@ function updateRunProgressSummary(summaryElement, sectionElement, sessionStatus,
 }
 
 function getRunProgressGradient(progressPercent) {
-  const percent = Math.max(0, Math.min(100, Number(progressPercent) || 0));
-  const hue = 25 + (percent / 100) * (120 - 25);
-  const startHue = Math.max(20, hue - 8);
-  const endHue = Math.min(125, hue + 4);
-  return `linear-gradient(90deg, hsl(${startHue}, 70%, 60%), hsl(${endHue}, 85%, 38%))`;
-}
-
-function getRunProgressAccentColor(progressPercent) {
-  const percent = Math.max(0, Math.min(100, Number(progressPercent) || 0));
-  const hue = 25 + (percent / 100) * (120 - 25);
-  const lightness = percent >= 90 ? 32 : 38;
-  const saturation = percent >= 90 ? 80 : 72;
-  return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  return "linear-gradient(90deg, #c2410c 0%, #f59e0b 35%, #84cc16 65%, #166534 100%)";
 }
 
 function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
