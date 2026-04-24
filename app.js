@@ -48,6 +48,7 @@ const appState = {
   user: null,
   profile: null,
   profileError: "",
+  authNotice: "",
   sessions: [],
 };
 let sessionTimerInterval = null;
@@ -1877,6 +1878,10 @@ function renderAuthScreen() {
   confirmInput.addEventListener("input", validatePasswordMatch);
   form.elements.password.addEventListener("input", validatePasswordMatch);
   setAuthMode("login");
+  if (appState.authNotice) {
+    message.textContent = appState.authNotice;
+    appState.authNotice = "";
+  }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2029,6 +2034,7 @@ function bindProfileForm(form, options = {}) {
   const message = form.querySelector("#profile-message");
   const preview = form.querySelector("#profile-avatar-preview");
   const removeButton = form.querySelector("#profile-remove-avatar");
+  const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
   const state = {
     profile,
@@ -2076,6 +2082,32 @@ function bindProfileForm(form, options = {}) {
     state.removeAvatar = true;
     avatarInput.value = "";
     renderProfileAvatarPreview(preview, removeButton, state, profile);
+  });
+
+  deleteButton?.addEventListener("click", async () => {
+    const confirmed = await confirmAccountDeletion();
+    if (!confirmed) {
+      return;
+    }
+
+    deleteButton.disabled = true;
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+    message.textContent = "";
+
+    try {
+      await deleteUserAppData();
+      appState.authNotice = "Your Cannakan Grow profile data was removed and you have been signed out. Full Supabase Auth account deletion requires admin or backend handling.";
+      await appState.supabase?.auth.signOut();
+    } catch (error) {
+      message.textContent = error.message || "Could not delete your account data.";
+    } finally {
+      deleteButton.disabled = false;
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
+    }
   });
 
   form.addEventListener("submit", async (event) => {
@@ -2132,6 +2164,162 @@ function bindProfileForm(form, options = {}) {
       }
     }
   });
+}
+
+function ensureDeleteAccountModal() {
+  let modal = document.querySelector("#delete-account-modal");
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "delete-account-modal";
+  modal.className = "snapshot-modal delete-account-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card delete-account-modal-card">
+      <div id="delete-account-step-warning" class="delete-account-step">
+        <div class="snapshot-modal-copy">
+          <p class="eyebrow">Danger Zone</p>
+          <h3>Warning: permanent deletion</h3>
+          <p class="muted">Warning: this will permanently delete your profile, saved sessions, and uploaded images. This cannot be undone.</p>
+        </div>
+        <div class="snapshot-modal-actions">
+          <button type="button" class="button button-secondary" data-delete-account-cancel>Cancel</button>
+          <button type="button" class="button button-danger" data-delete-account-continue>Continue to Permanent Delete</button>
+        </div>
+      </div>
+      <div id="delete-account-step-confirm" class="delete-account-step" hidden>
+        <div class="snapshot-modal-copy">
+          <p class="eyebrow">Final Confirmation</p>
+          <h3>Permanently delete account</h3>
+          <p class="muted">Type DELETE to permanently remove your Cannakan Grow app data. Your login credentials are not removed from Supabase Auth by this frontend action.</p>
+        </div>
+        <label class="auth-form">
+          <span>Type DELETE to confirm</span>
+          <input id="delete-account-confirm-input" type="text" autocomplete="off" placeholder="DELETE">
+        </label>
+        <p id="delete-account-confirm-message" class="form-message" role="alert" aria-live="polite"></p>
+        <div class="snapshot-modal-actions">
+          <button type="button" class="button button-secondary" data-delete-account-back>Back</button>
+          <button type="button" class="button button-danger" data-delete-account-confirm disabled>Permanently Delete Account</button>
+        </div>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function confirmAccountDeletion() {
+  const modal = ensureDeleteAccountModal();
+  const warningStep = modal.querySelector("#delete-account-step-warning");
+  const confirmStep = modal.querySelector("#delete-account-step-confirm");
+  const input = modal.querySelector("#delete-account-confirm-input");
+  const message = modal.querySelector("#delete-account-confirm-message");
+  const cancelButton = modal.querySelector("[data-delete-account-cancel]");
+  const continueButton = modal.querySelector("[data-delete-account-continue]");
+  const backButton = modal.querySelector("[data-delete-account-back]");
+  const confirmButton = modal.querySelector("[data-delete-account-confirm]");
+
+  if (!warningStep || !confirmStep || !input || !message || !cancelButton || !continueButton || !backButton || !confirmButton) {
+    return Promise.resolve(false);
+  }
+
+  warningStep.hidden = false;
+  confirmStep.hidden = true;
+  input.value = "";
+  message.textContent = "";
+  confirmButton.disabled = true;
+
+  return new Promise((resolve) => {
+    const cleanup = (result) => {
+      cancelButton.onclick = null;
+      continueButton.onclick = null;
+      backButton.onclick = null;
+      confirmButton.onclick = null;
+      input.oninput = null;
+      modal.removeEventListener("cancel", onCancel);
+      if (modal.open) {
+        modal.close();
+      }
+      resolve(result);
+    };
+
+    const onCancel = (event) => {
+      event.preventDefault();
+      cleanup(false);
+    };
+
+    cancelButton.onclick = () => cleanup(false);
+    continueButton.onclick = () => {
+      warningStep.hidden = true;
+      confirmStep.hidden = false;
+      input.focus();
+    };
+    backButton.onclick = () => {
+      confirmStep.hidden = true;
+      warningStep.hidden = false;
+      input.value = "";
+      message.textContent = "";
+      confirmButton.disabled = true;
+    };
+    input.oninput = () => {
+      const matches = String(input.value || "").trim() === "DELETE";
+      confirmButton.disabled = !matches;
+      if (matches) {
+        message.textContent = "";
+      }
+    };
+    confirmButton.onclick = () => {
+      cleanup(true);
+    };
+
+    modal.addEventListener("cancel", onCancel, { once: true });
+    modal.showModal();
+    continueButton.focus();
+  });
+}
+
+async function deleteUserAppData() {
+  if (!appState.supabase || !appState.user) {
+    throw new Error("You must be signed in to delete your account data.");
+  }
+
+  const sessions = [...getSessions()];
+  const sessionImagePaths = sessions.flatMap((session) => (
+    (session.sessionImages || [])
+      .map((image) => image.path)
+      .filter(Boolean)
+  ));
+
+  if (sessionImagePaths.length) {
+    await appState.supabase.storage.from(SESSION_IMAGE_BUCKET).remove(sessionImagePaths);
+  }
+
+  if (appState.profile?.avatarPath) {
+    await removeProfileAvatarFromStorage(appState.profile.avatarPath);
+  }
+
+  const { error: deleteSessionsError } = await appState.supabase
+    .from("grow_sessions")
+    .delete()
+    .eq("user_id", appState.user.id);
+
+  if (deleteSessionsError) {
+    throw deleteSessionsError;
+  }
+
+  const { error: deleteProfileError } = await appState.supabase
+    .from("profiles")
+    .delete()
+    .eq("id", appState.user.id);
+
+  if (deleteProfileError) {
+    throw deleteProfileError;
+  }
+
+  appState.profile = null;
+  saveSessions([]);
 }
 
 function renderProfileAvatarPreview(preview, removeButton, state, profile) {

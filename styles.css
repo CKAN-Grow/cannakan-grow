@@ -492,6 +492,7 @@ select {
 .session-image-card {
   display: grid;
   gap: 8px;
+  width: 100%;
   min-width: 0;
   padding: 10px;
   border-radius: 16px;
@@ -521,6 +522,22 @@ select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .session-images-grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 14px;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 10px;
+  }
+
+  .session-image-card {
+    flex: 0 0 85%;
+    max-width: 85%;
+    scroll-snap-align: start;
+  }
 }
 
 .session-image-badge {
@@ -874,6 +891,24 @@ select {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.profile-danger-zone {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(166, 61, 64, 0.16);
+  display: grid;
+  gap: 12px;
+}
+
+.profile-danger-zone h3 {
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 1rem;
+}
+
+.profile-danger-zone .button-danger {
+  justify-self: start;
 }
 
 .auth-confirm-field[hidden] {
