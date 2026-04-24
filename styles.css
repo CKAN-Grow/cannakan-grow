@@ -1078,11 +1078,15 @@ select {
   z-index: 50;
 }
 
+.growth-stage-modal-overlay[hidden] {
+  display: none !important;
+}
+
 .growth-stage-modal {
   position: relative;
   background: #ffffff;
   border-radius: 16px;
-  padding: 20px;
+  padding: 28px;
   width: 90%;
   max-width: 340px;
   margin: auto;
@@ -1095,7 +1099,7 @@ select {
   font-size: 18px;
   font-weight: 600;
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .growth-stage-modal-copy p {
@@ -1111,15 +1115,19 @@ select {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 14px;
-  margin-bottom: 10px;
-  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+  border-radius: 14px;
   border: 1px solid #e3e8e1;
   background: #f6f8f5;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.stage-button:last-child {
+  margin-bottom: 0;
 }
 
 .stage-button:hover {
@@ -1172,13 +1180,20 @@ select {
 
 .modal-close {
   position: absolute;
-  top: 10px;
+  top: 12px;
   right: 12px;
-  font-size: 18px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  line-height: 1;
   background: transparent;
   border: none;
   cursor: pointer;
   color: #6b716d;
+  border-radius: 999px;
 }
 
 .modal-close:hover {
@@ -1676,6 +1691,22 @@ input::placeholder {
   background: var(--surface-dark);
   color: #f3f8f3;
   font-weight: 700;
+}
+
+.partition-btn {
+  background: #1f3a2a;
+  color: white;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.partition-btn--active {
+  background: #e88c2a;
+}
+
+.partition-btn--complete {
+  background: #4b4f4c;
+  box-shadow: 0 0 0 3px rgba(75, 79, 76, 0.12);
+  transform: scale(1.02);
 }
 
 .partition-row label,

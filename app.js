@@ -57,6 +57,9 @@ const appState = {
   deletionPromptShown: false,
   sessions: [],
   growthStage: null,
+  growthStageModalOpen: false,
+  pendingGrowthStageInput: null,
+  growthStageModalSuppressedUntil: 0,
 };
 let sessionTimerInterval = null;
 const templates = {
@@ -2983,7 +2986,7 @@ function buildPartitionFormCard(partition, index) {
   row.dataset.partitionId = String(partition.id);
   row.tabIndex = -1;
   row.innerHTML = `
-    <div class="partition-number" aria-label="Partition ${partition.id}">${partition.id}</div>
+    <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
     <label>
       <span class="mobile-field-label">Seed Variety</span>
         <input type="text" name="seedVariety-${index}" class="partition-input" placeholder="Enter seed variety - breeder" aria-label="Partition ${partition.id} seed variety">
@@ -3074,6 +3077,23 @@ function updateGrowthStageLock(form, sessionStatus) {
   }
 }
 
+function closeGrowthStageModal() {
+  const overlay = document.querySelector("#growth-stage-modal-overlay");
+
+  console.log("Closing growth stage modal");
+  appState.growthStageModalOpen = false;
+  appState.pendingGrowthStageInput = null;
+  document.body.classList.remove("modal-open");
+
+  if (overlay) {
+    overlay.hidden = true;
+    overlay.classList.remove("is-open");
+    overlay.remove();
+  }
+
+  appState.growthStageModalSuppressedUntil = Date.now() + 250;
+}
+
 function ensureGrowthStageModal() {
   let overlay = document.querySelector("#growth-stage-modal-overlay");
   if (overlay) {
@@ -3094,28 +3114,30 @@ function ensureGrowthStageModal() {
     </div>
   `;
 
-  const closeModal = () => {
-    overlay.hidden = true;
-    overlay.classList.remove("is-open");
-    document.body.classList.remove("modal-open");
-    overlay.__stageContext = null;
-  };
-
-  overlay.__closeModal = closeModal;
-
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
-      closeModal();
+      console.log("Overlay clicked");
+      event.preventDefault();
+      event.stopPropagation();
+      closeGrowthStageModal();
     }
   });
 
-  overlay.querySelector(".modal-close")?.addEventListener("click", closeModal);
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && overlay.classList.contains("is-open")) {
-      closeModal();
-    }
+  overlay.querySelector(".modal-close")?.addEventListener("click", (event) => {
+    console.log("X clicked");
+    event.preventDefault();
+    event.stopPropagation();
+    closeGrowthStageModal();
   });
+
+  if (!ensureGrowthStageModal.escapeBound) {
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && appState.growthStageModalOpen) {
+        closeGrowthStageModal();
+      }
+    });
+    ensureGrowthStageModal.escapeBound = true;
+  }
 
   document.body.appendChild(overlay);
   return overlay;
@@ -3128,6 +3150,10 @@ function getSessionStageLabel(value) {
 function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   if (!stageField) {
     return false;
+  }
+
+  if (appState.growthStageModalOpen) {
+    return true;
   }
 
   const overlay = ensureGrowthStageModal();
@@ -3149,16 +3175,19 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   `).join("");
 
   actions.querySelectorAll("[data-growth-stage-value]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const nextValue = button.getAttribute("data-growth-stage-value") || "";
       stageField.value = nextValue;
       stageField.dispatchEvent(new Event("change", { bubbles: true }));
-      stageTrigger?.focus();
-      overlay.__closeModal?.();
+      closeGrowthStageModal();
     });
   });
 
   overlay.__stageContext = { stageField, stageTrigger };
+  appState.growthStageModalOpen = true;
+  appState.pendingGrowthStageInput = stageField.name || stageField.id || "sessionStatus";
   overlay.hidden = false;
   overlay.classList.add("is-open");
   document.body.classList.add("modal-open");
@@ -3168,6 +3197,14 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
 
 function maybePromptGrowthStage(form, stageField, stageTrigger) {
   if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
+    return false;
+  }
+
+  if (appState.growthStageModalOpen) {
+    return true;
+  }
+
+  if (Date.now() < (appState.growthStageModalSuppressedUntil || 0)) {
     return false;
   }
 
@@ -3587,10 +3624,11 @@ function getSessionSortTime(session) {
 function buildPartitionDetailRow(partition) {
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
+  const partitionState = getPartitionRowStateFromPartition(partition);
   const row = document.createElement("article");
   row.className = "chart-row partition-row detail-row";
   row.innerHTML = `
-    <div class="partition-number" aria-label="Partition ${partition.id}">${partition.id}</div>
+    <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="Partition ${partition.id}">${partition.id}</div>
     <div class="detail-cell">
       <span class="mobile-field-label">Seed Variety</span>
       <p>${escapeHtml(formatPartitionSeedVariety(partition) || "Not set")}</p>
@@ -3617,6 +3655,68 @@ function buildPartitionDetailRow(partition) {
     </div>
   `;
   return row;
+}
+
+function getPartitionRowState(values) {
+  const varietyValue = String(values?.varietyValue || "").trim();
+  const typeValue = String(values?.typeValue || "").trim();
+  const sexValue = String(values?.sexValue || "").trim();
+  const seedValue = String(values?.seedValue || "").trim();
+  const plantedValue = String(values?.plantedValue || "").trim();
+  const hasSeedCount = seedValue !== "";
+  const hasPlantedCount = plantedValue !== "";
+  const seedNumber = Number(seedValue);
+
+  const isComplete = Boolean(
+    varietyValue &&
+    typeValue &&
+    sexValue &&
+    hasSeedCount &&
+    Number.isFinite(seedNumber) &&
+    seedNumber > 0
+  );
+
+  if (isComplete) {
+    return "complete";
+  }
+
+  if (varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount) {
+    return "in-progress";
+  }
+
+  return "empty";
+}
+
+function getPartitionRowStateFromPartition(partition) {
+  return getPartitionRowState({
+    varietyValue: formatPartitionSeedVariety(partition),
+    typeValue: partition?.seedType || "",
+    sexValue: partition?.feminized || "",
+    seedValue: partition?.seedCount ?? "",
+    plantedValue: partition?.plantedCount ?? "",
+  });
+}
+
+function getPartitionButtonClassName(state) {
+  if (state === "complete") {
+    return "partition-btn--complete";
+  }
+
+  if (state === "in-progress") {
+    return "partition-btn--active";
+  }
+
+  return "";
+}
+
+function updatePartitionButtonState(row, state) {
+  const button = row.querySelector(".partition-btn");
+  if (!button) {
+    return;
+  }
+
+  button.classList.toggle("partition-btn--active", state === "in-progress");
+  button.classList.toggle("partition-btn--complete", state === "complete");
 }
 
 function isEmptyPartition(partition) {
@@ -4289,9 +4389,17 @@ function validatePartitionRow(row) {
   const rowStarted = Boolean(varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount);
   const rowComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
   const rowInvalid = (rowStarted && !rowComplete) || !plantedCountValid;
+  const rowState = getPartitionRowState({
+    varietyValue,
+    typeValue,
+    sexValue,
+    seedValue,
+    plantedValue,
+  });
 
   row.classList.toggle("row-has-warning", rowInvalid);
   row.classList.toggle("row-complete", rowComplete);
+  updatePartitionButtonState(row, rowState);
 
   varietyLabel.classList.toggle("field-has-warning", rowInvalid && !varietyValue);
   typeLabel.classList.toggle("field-has-warning", rowInvalid && !typeValue);
