@@ -1076,20 +1076,12 @@ function updateSessionImageDotsFromScroll(state) {
     return;
   }
 
-  const gridRect = state.grid.getBoundingClientRect();
-  const gridCenter = gridRect.left + gridRect.width / 2;
-  let activeIndex = 0;
-  let closestDistance = Number.POSITIVE_INFINITY;
-
-  cards.forEach((card, index) => {
-    const rect = card.getBoundingClientRect();
-    const cardCenter = rect.left + rect.width / 2;
-    const distance = Math.abs(cardCenter - gridCenter);
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      activeIndex = index;
-    }
-  });
+  const cardWidth = cards[0].offsetWidth || 1;
+  const gapValue = window.getComputedStyle(state.grid).gap || window.getComputedStyle(state.grid).columnGap || "0";
+  const gap = Number.parseFloat(gapValue) || 0;
+  const stepWidth = cardWidth + gap;
+  const rawIndex = Math.round(state.grid.scrollLeft / stepWidth);
+  const activeIndex = Math.max(0, Math.min(cards.length - 1, rawIndex));
 
   setActiveSessionImageDot(state, activeIndex);
 }

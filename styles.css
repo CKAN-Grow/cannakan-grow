@@ -478,10 +478,18 @@ select {
   font-weight: 700;
 }
 
-.session-images-grid {
+.session-images-grid,
+.session-images {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.session-images-grid::-webkit-scrollbar,
+.session-images::-webkit-scrollbar {
+  display: none;
 }
 
 .session-images-empty {
@@ -525,12 +533,14 @@ select {
 }
 
 @media (max-width: 768px) {
-  .session-images-grid {
+  .session-images-grid,
+  .session-images {
     display: flex;
     overflow-x: auto;
     gap: 14px;
     scroll-snap-type: x mandatory;
     padding-bottom: 10px;
+    scroll-behavior: smooth;
   }
 
   .session-image-card {
@@ -538,6 +548,42 @@ select {
     max-width: 85%;
     scroll-snap-align: start;
   }
+}
+
+.image-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.image-dots[hidden] {
+  display: none;
+}
+
+.image-dot {
+  width: 6px;
+  min-width: 6px;
+  height: 6px;
+  min-height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50% !important;
+  background: #cbd5e1;
+  opacity: 0.6;
+  display: inline-block;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.image-dot.active {
+  background: #94d159;
+  opacity: 1;
+  transform: scale(1.2);
 }
 
 .session-image-badge {
