@@ -1078,6 +1078,99 @@ select {
   animation: pulseGlow 2s infinite;
 }
 
+.growth-stage-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  z-index: 50;
+}
+
+.growth-stage-modal {
+  position: relative;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  width: 90%;
+  max-width: 340px;
+  margin: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  animation: modalFadeIn 0.2s ease;
+}
+
+.growth-stage-modal-copy h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.growth-stage-modal-copy p {
+  margin: 0;
+}
+
+.growth-stage-modal-actions {
+  display: block;
+}
+
+.stage-button {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border: 1px solid #e3e8e1;
+  background: #f6f8f5;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stage-button:hover {
+  background: #e9f3df;
+  border-color: #94d159;
+}
+
+.stage-button.primary {
+  background: #94d159;
+  color: #fff;
+  border: none;
+}
+
+.stage-button.primary:hover {
+  background: #7fb84a;
+}
+
+.modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 18px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #6b716d;
+}
+
+.modal-close:hover {
+  color: #1c1f1d;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .session-status-control.is-invalid {
   border-color: #a63d40;
   box-shadow: 0 0 0 3px rgba(166, 61, 64, 0.12);

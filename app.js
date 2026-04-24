@@ -2747,9 +2747,9 @@ function renderSessionForm() {
       buildFormLifecycleState(form),
     );
   });
-  startSessionTimer(() => {
-    updateSessionStatusReminder(
-      reminder,
+    startSessionTimer(() => {
+      updateSessionStatusReminder(
+        reminder,
       form.elements.date.value,
       form.elements.time.value,
       sessionStatusField.value,
@@ -2761,11 +2761,20 @@ function renderSessionForm() {
       form.elements.date.value,
       form.elements.time.value,
       sessionStatusField.value,
-    );
-  });
-  systemTypeField.addEventListener("change", () => {
-    renderSystemLayoutReference(layoutReference, systemTypeField.value);
-    renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+      );
+    });
+    chartShell.addEventListener("click", (event) => {
+      if (!event.target.closest("#partition-fields")) {
+        return;
+      }
+
+      if (maybePromptGrowthStage(form, sessionStatusField)) {
+        event.preventDefault();
+      }
+    });
+    systemTypeField.addEventListener("change", () => {
+      renderSystemLayoutReference(layoutReference, systemTypeField.value);
+      renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     clearActiveSystemLayout(form);
     updateSessionSuccessSummary(form, sessionSuccessSummary);
@@ -3058,6 +3067,88 @@ function updateGrowthStageLock(form, sessionStatus) {
   if (dropdown) {
     dropdown.classList.toggle("growth-stage-attention", disabled);
   }
+}
+
+function ensureGrowthStageModal() {
+  let overlay = document.querySelector("#growth-stage-modal-overlay");
+  if (overlay) {
+    return overlay;
+  }
+
+  overlay = document.createElement("div");
+  overlay.id = "growth-stage-modal-overlay";
+  overlay.className = "growth-stage-modal-overlay";
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title">
+      <button type="button" class="modal-close" aria-label="Close">×</button>
+      <div class="growth-stage-modal-copy">
+        <h2 id="growth-stage-modal-title">Set Growth Stage</h2>
+      </div>
+      <div class="growth-stage-modal-actions">
+        <button type="button" class="stage-button primary" data-growth-stage-action="start-soaking">Soaking</button>
+        <button type="button" class="stage-button" data-growth-stage-action="start-germinating">Germination</button>
+      </div>
+    </div>
+  `;
+
+  const closeModal = () => {
+    overlay.hidden = true;
+    overlay.classList.remove("is-open");
+    document.body.classList.remove("modal-open");
+    overlay.__stageContext = null;
+  };
+
+  overlay.__closeModal = closeModal;
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeModal();
+    }
+  });
+
+  overlay.querySelector(".modal-close")?.addEventListener("click", closeModal);
+  overlay.querySelector('[data-growth-stage-action="start-soaking"]')?.addEventListener("click", () => {
+    const context = overlay.__stageContext;
+    if (context?.stageField) {
+      context.stageField.value = "soaking";
+      context.stageField.dispatchEvent(new Event("change", { bubbles: true }));
+      context.stageField.focus();
+    }
+    closeModal();
+  });
+  overlay.querySelector('[data-growth-stage-action="start-germinating"]')?.addEventListener("click", () => {
+    const context = overlay.__stageContext;
+    if (context?.stageField) {
+      context.stageField.value = "germinating";
+      context.stageField.dispatchEvent(new Event("change", { bubbles: true }));
+      context.stageField.focus();
+    }
+    closeModal();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && overlay.classList.contains("is-open")) {
+      closeModal();
+    }
+  });
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function maybePromptGrowthStage(form, stageField) {
+  if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
+    return false;
+  }
+
+  const overlay = ensureGrowthStageModal();
+  overlay.__stageContext = { form, stageField };
+  overlay.hidden = false;
+  overlay.classList.add("is-open");
+  document.body.classList.add("modal-open");
+  overlay.querySelector(".modal-close")?.focus();
+  return true;
 }
 
 function renderTraPartitionSections(container, partitions) {
