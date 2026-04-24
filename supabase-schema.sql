@@ -25,9 +25,21 @@ create table if not exists public.profiles (
   username text not null default '',
   avatar_url text default '',
   avatar_path text default '',
+  deletion_requested_at timestamptz,
+  deletion_scheduled_for timestamptz,
+  deletion_status text default '',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.profiles
+  add column if not exists deletion_requested_at timestamptz;
+
+alter table public.profiles
+  add column if not exists deletion_scheduled_for timestamptz;
+
+alter table public.profiles
+  add column if not exists deletion_status text default '';
 
 create index if not exists grow_sessions_user_created_idx
   on public.grow_sessions (user_id, created_at desc);

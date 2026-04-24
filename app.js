@@ -49,6 +49,7 @@ const appState = {
   profile: null,
   profileError: "",
   authNotice: "",
+  deletionPromptShown: false,
   sessions: [],
 };
 let sessionTimerInterval = null;
@@ -419,6 +420,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.user = session?.user || null;
   appState.profile = null;
   appState.profileError = "";
+  appState.deletionPromptShown = false;
 
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
@@ -432,6 +434,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   if (options.shouldRender !== false) {
     appState.loading = false;
     safeRender();
+    maybePromptScheduledDeletion();
   }
 }
 
@@ -482,6 +485,9 @@ function normalizeProfileRow(row) {
     username: String(row.username || "").trim(),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
+    deletionRequestedAt: row.deletion_requested_at || "",
+    deletionScheduledFor: row.deletion_scheduled_for || "",
+    deletionStatus: String(row.deletion_status || "").trim(),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -493,6 +499,19 @@ function hasCompletedProfile(profile = appState.profile) {
 
 function getProfileDisplayName() {
   return appState.profile?.username || appState.user?.email || "Signed in";
+}
+
+function isDeletionScheduled(profile = appState.profile) {
+  if (!profile) {
+    return false;
+  }
+
+  if (String(profile.deletionStatus || "").trim() !== "scheduled") {
+    return false;
+  }
+
+  const scheduledFor = parseCompletedAtValue(profile.deletionScheduledFor);
+  return Boolean(scheduledFor && scheduledFor.getTime() > Date.now());
 }
 
 async function createCloudSession(session) {
@@ -624,11 +643,24 @@ async function saveUserProfile(profileInput) {
     throw new Error("You must be signed in to save a profile.");
   }
 
+  const existingProfile = appState.profile || {};
   const payload = {
     id: appState.user.id,
     username: String(profileInput?.username || "").trim(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
+    deletion_requested_at:
+      profileInput?.deletionRequestedAt !== undefined
+        ? profileInput.deletionRequestedAt
+        : existingProfile.deletionRequestedAt || null,
+    deletion_scheduled_for:
+      profileInput?.deletionScheduledFor !== undefined
+        ? profileInput.deletionScheduledFor
+        : existingProfile.deletionScheduledFor || null,
+    deletion_status:
+      profileInput?.deletionStatus !== undefined
+        ? String(profileInput.deletionStatus || "").trim()
+        : String(existingProfile.deletionStatus || "").trim(),
   };
 
   const { data, error } = await appState.supabase
@@ -642,6 +674,40 @@ async function saveUserProfile(profileInput) {
   }
 
   return normalizeProfileRow(data);
+}
+
+async function scheduleUserDeletion() {
+  if (!appState.profile) {
+    throw new Error("No profile found to schedule for deletion.");
+  }
+
+  const requestedAt = new Date();
+  const scheduledFor = new Date(requestedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  appState.profile = await saveUserProfile({
+    username: appState.profile.username,
+    avatarUrl: appState.profile.avatarUrl,
+    avatarPath: appState.profile.avatarPath,
+    deletionRequestedAt: requestedAt.toISOString(),
+    deletionScheduledFor: scheduledFor.toISOString(),
+    deletionStatus: "scheduled",
+  });
+  return appState.profile;
+}
+
+async function cancelScheduledDeletion() {
+  if (!appState.profile) {
+    throw new Error("No profile found to update.");
+  }
+
+  appState.profile = await saveUserProfile({
+    username: appState.profile.username,
+    avatarUrl: appState.profile.avatarUrl,
+    avatarPath: appState.profile.avatarPath,
+    deletionRequestedAt: null,
+    deletionScheduledFor: null,
+    deletionStatus: "",
+  });
+  return appState.profile;
 }
 
 async function removeSessionImageFromStorage(image) {
@@ -2097,8 +2163,9 @@ function bindProfileForm(form, options = {}) {
     message.textContent = "";
 
     try {
-      await deleteUserAppData();
-      appState.authNotice = "Your Cannakan Grow profile data was removed and you have been signed out. Full Supabase Auth account deletion requires admin or backend handling.";
+      const scheduledProfile = await scheduleUserDeletion();
+      const scheduledForLabel = formatSessionNameDate(scheduledProfile.deletionScheduledFor.slice(0, 10));
+      appState.authNotice = `Account deletion is scheduled for ${scheduledForLabel}. Your app data has not been permanently removed yet. Contact support to fully remove login credentials.`;
       await appState.supabase?.auth.signOut();
     } catch (error) {
       message.textContent = error.message || "Could not delete your account data.";
@@ -2180,8 +2247,8 @@ function ensureDeleteAccountModal() {
       <div id="delete-account-step-warning" class="delete-account-step">
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Danger Zone</p>
-          <h3>Warning: permanent deletion</h3>
-          <p class="muted">Warning: this will permanently delete your profile, saved sessions, and uploaded images. This cannot be undone.</p>
+          <h3>Warning: schedule account deletion</h3>
+          <p class="muted">Warning: this will schedule deletion of your profile, saved sessions, and uploaded images. This cannot be undone once permanent cleanup happens.</p>
         </div>
         <div class="snapshot-modal-actions">
           <button type="button" class="button button-secondary" data-delete-account-cancel>Cancel</button>
@@ -2191,8 +2258,8 @@ function ensureDeleteAccountModal() {
       <div id="delete-account-step-confirm" class="delete-account-step" hidden>
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Final Confirmation</p>
-          <h3>Permanently delete account</h3>
-          <p class="muted">Type DELETE to permanently remove your Cannakan Grow app data. Your login credentials are not removed from Supabase Auth by this frontend action.</p>
+          <h3>Schedule account deletion</h3>
+          <p class="muted">Type DELETE to schedule deletion of your Cannakan Grow app data in 7 days. Your login credentials are not removed from Supabase Auth by this frontend action.</p>
         </div>
         <label class="auth-form">
           <span>Type DELETE to confirm</span>
@@ -2201,7 +2268,7 @@ function ensureDeleteAccountModal() {
         <p id="delete-account-confirm-message" class="form-message" role="alert" aria-live="polite"></p>
         <div class="snapshot-modal-actions">
           <button type="button" class="button button-secondary" data-delete-account-back>Back</button>
-          <button type="button" class="button button-danger" data-delete-account-confirm disabled>Permanently Delete Account</button>
+          <button type="button" class="button button-danger" data-delete-account-confirm disabled>Schedule Account Deletion</button>
         </div>
       </div>
     </form>
@@ -2278,6 +2345,90 @@ function confirmAccountDeletion() {
     modal.showModal();
     continueButton.focus();
   });
+}
+
+function ensureScheduledDeletionModal() {
+  let modal = document.querySelector("#scheduled-deletion-modal");
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "scheduled-deletion-modal";
+  modal.className = "snapshot-modal scheduled-deletion-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Account Status</p>
+        <h3>Account deletion is scheduled</h3>
+        <p id="scheduled-deletion-copy" class="muted">Your Cannakan Grow account data is scheduled for deletion.</p>
+      </div>
+      <p id="scheduled-deletion-message" class="form-message" role="alert" aria-live="polite"></p>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-scheduled-deletion-continue>Continue to Account</button>
+        <button type="button" class="button button-primary" data-scheduled-deletion-cancel>Cancel Deletion</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function maybePromptScheduledDeletion() {
+  if (!appState.user || !isDeletionScheduled() || appState.deletionPromptShown) {
+    return;
+  }
+
+  appState.deletionPromptShown = true;
+  const modal = ensureScheduledDeletionModal();
+  const copy = modal.querySelector("#scheduled-deletion-copy");
+  const message = modal.querySelector("#scheduled-deletion-message");
+  const continueButton = modal.querySelector("[data-scheduled-deletion-continue]");
+  const cancelButton = modal.querySelector("[data-scheduled-deletion-cancel]");
+
+  if (!copy || !message || !continueButton || !cancelButton) {
+    return;
+  }
+
+  const scheduledDate = parseCompletedAtValue(appState.profile?.deletionScheduledFor);
+  const scheduledLabel = scheduledDate
+    ? scheduledDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : "the scheduled date";
+  copy.textContent = `Your account deletion is scheduled for ${scheduledLabel}. You can cancel deletion now or continue into the app.`;
+  message.textContent = "";
+
+  const cleanup = () => {
+    continueButton.onclick = null;
+    cancelButton.onclick = null;
+  };
+
+  continueButton.onclick = () => {
+    cleanup();
+    if (modal.open) {
+      modal.close();
+    }
+  };
+
+  cancelButton.onclick = async () => {
+    cancelButton.disabled = true;
+    continueButton.disabled = true;
+    message.textContent = "";
+    try {
+      await cancelScheduledDeletion();
+      updateAuthStatus();
+      safeRender();
+      cleanup();
+      if (modal.open) {
+        modal.close();
+      }
+    } catch (error) {
+      message.textContent = error.message || "Could not cancel scheduled deletion.";
+      cancelButton.disabled = false;
+      continueButton.disabled = false;
+    }
+  };
+
+  modal.showModal();
 }
 
 async function deleteUserAppData() {
