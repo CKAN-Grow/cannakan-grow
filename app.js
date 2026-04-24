@@ -96,6 +96,38 @@ async function safeBootstrapApp() {
   }
 }
 
+async function ensureUserProfile(user) {
+  if (!user?.id) return;
+
+  const { data: existingProfile, error: selectError } = await appState.supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error("Profile check error:", selectError);
+    return;
+  }
+
+  if (!existingProfile) {
+    const { error: insertError } = await appState.supabase
+      .from("profiles")
+      .insert({
+        id: user.id,
+        username: "",
+        avatar_url: "",
+        avatar_path: ""
+      });
+
+    if (insertError) {
+      console.error("Profile create error:", insertError);
+    } else {
+      console.log("Profile created for user:", user.id);
+    }
+  }
+}
+
 function getSessions() {
   return appState.sessions;
 }
@@ -301,10 +333,17 @@ async function bootstrapApp() {
   if (appState.supabase) {
     try {
       const { data } = await withTimeout(appState.supabase.auth.getSession(), 8000, "Supabase session check timed out.");
-      await handleAuthSession(data.session, { shouldRender: false });
+      await handleAuthSession(data?.session, { shouldRender: false });
+
+      if (data.session?.user) {
+        await ensureUserProfile(data.session.user);
+}
       appState.supabase.auth.onAuthStateChange((event, session) => {
-        window.setTimeout(() => {
-          handleAuthSession(session);
+        window.setTimeout(async () => {
+         handleAuthSession(session);
+         if (session?.user) {
+          await ensureUserProfile(session.user);
+          }
         }, 0);
       });
     } catch (error) {
