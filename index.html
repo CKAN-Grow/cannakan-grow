@@ -200,19 +200,15 @@
               <p class="eyebrow">Partitions</p>
               <h3>Partition chart</h3>
             </div>
-            <div class="session-status-panel">
-              <label class="session-status-label" for="session-status-control">Set Growth Stage</label>
-              <select id="session-status-control" name="sessionStatus" class="session-status-control">
-                <option value="" selected>Select Growth Stage</option>
-                <option value="soaking">Soaking</option>
-                <option value="germinating">Germinating</option>
-                <option value="completed">Completed</option>
-              </select>
-              <p class="session-status-help">You must update this as your seeds progress.</p>
-              <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
+              <div class="session-status-panel">
+                <label class="session-status-label" for="session-status-trigger">Set Growth Stage</label>
+                <input type="hidden" id="session-status-control" name="sessionStatus" value="">
+                <button type="button" id="session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
+                <p class="session-status-help">You must update this as your seeds progress.</p>
+                <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
+              </div>
             </div>
-          </div>
-          <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
+            <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
           <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
           <div id="partition-chart-shell" class="chart-shell">
             <div id="partition-chart-header" class="chart-header chart-row">
@@ -358,13 +354,9 @@
             <h3>Partition chart</h3>
           </div>
           <div class="session-status-panel">
-            <label class="session-status-label" for="detail-session-status-control">Set Growth Stage</label>
-            <select id="detail-session-status-control" class="session-status-control">
-              <option value="">Select Growth Stage</option>
-              <option value="soaking">Soaking</option>
-              <option value="germinating">Germinating</option>
-              <option value="completed">Completed</option>
-            </select>
+            <label class="session-status-label" for="detail-session-status-trigger">Set Growth Stage</label>
+            <input type="hidden" id="detail-session-status-control" value="">
+            <button type="button" id="detail-session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
             <p class="session-status-help">You must update this as your seeds progress.</p>
           </div>
         </div>

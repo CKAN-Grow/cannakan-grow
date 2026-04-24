@@ -1028,7 +1028,7 @@ select {
   color: var(--muted);
 }
 
-.session-status-control {
+.session-status-trigger {
   min-width: 150px;
   width: auto;
   padding: 10px 16px;
@@ -1050,25 +1050,14 @@ select {
   position: relative;
 }
 
-.session-status-panel::after {
-  content: "▼";
-  position: absolute;
-  right: 14px;
-  top: 34px;
-  font-size: 0.72rem;
-  color: currentColor;
-  pointer-events: none;
-  opacity: 0.8;
-}
-
-.session-status-control:hover,
-.session-status-control:focus-visible {
+.session-status-trigger:hover,
+.session-status-trigger:focus-visible {
   border-color: rgba(24, 34, 24, 0.24);
   background-color: #f8fbf6;
   box-shadow: 0 0 0 3px rgba(43, 111, 65, 0.12);
 }
 
-.session-status-control:active {
+.session-status-trigger:active {
   transform: translateY(1px);
   box-shadow: inset 0 1px 2px rgba(24, 34, 24, 0.1);
 }
@@ -1118,6 +1107,9 @@ select {
 }
 
 .stage-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
   padding: 14px;
   margin-bottom: 10px;
@@ -1135,14 +1127,47 @@ select {
   border-color: #94d159;
 }
 
-.stage-button.primary {
-  background: #94d159;
-  color: #fff;
-  border: none;
+.stage-button.is-soaking {
+  background: #edf7ff;
+  border-color: #b9d8ee;
+  color: #19557c;
 }
 
-.stage-button.primary:hover {
-  background: #7fb84a;
+.stage-button.is-soaking:hover {
+  background: #dff0ff;
+  border-color: #7fb7de;
+}
+
+.stage-button.is-germinating {
+  background: #fff1e5;
+  border-color: #f1c7a5;
+  color: #8a4a16;
+}
+
+.stage-button.is-germinating:hover {
+  background: #ffe7d3;
+  border-color: #e7a56e;
+}
+
+.stage-button.is-completed {
+  background: #eef7ec;
+  border-color: #cce1c4;
+  color: #2f6a3a;
+}
+
+.stage-button.is-completed:hover {
+  background: #e5f3e0;
+  border-color: #94d159;
+}
+
+.stage-button.is-active {
+  border-color: #94d159;
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.18);
+}
+
+.stage-option-check {
+  color: #94d159;
+  font-weight: 800;
 }
 
 .modal-close {
@@ -1171,27 +1196,27 @@ select {
   }
 }
 
-.session-status-control.is-invalid {
+.session-status-trigger.is-invalid {
   border-color: #a63d40;
   box-shadow: 0 0 0 3px rgba(166, 61, 64, 0.12);
 }
 
-.session-status-control[data-session-status="soaking"] {
+.session-status-trigger[data-session-status="soaking"] {
   background: #d8ecff;
   color: #18496d;
 }
 
-.session-status-control[data-session-status="unselected"] {
+.session-status-trigger[data-session-status="unselected"] {
   background: #fffef9;
   color: var(--ink);
 }
 
-.session-status-control[data-session-status="germinating"] {
+.session-status-trigger[data-session-status="germinating"] {
   background: #f9d9d9;
   color: #7b2b2b;
 }
 
-.session-status-control[data-session-status="completed"] {
+.session-status-trigger[data-session-status="completed"] {
   background: #e6e8e6;
   color: #465146;
 }
@@ -1664,23 +1689,6 @@ input::placeholder {
   border-radius: 10px;
 }
 
-.partition-row.is-locked {
-  opacity: 0.56;
-}
-
-.partition-row.is-locked label,
-.partition-row.is-locked .partition-number,
-.partition-row.is-locked .mobile-field-label {
-  cursor: not-allowed;
-}
-
-.partition-input.disabled,
-.partition-input:disabled {
-  opacity: 0.5;
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
 .partition-row input[name^="seedCount-"],
 .partition-row input[name="plantedCount"] {
   width: 100%;
@@ -1848,7 +1856,7 @@ input::placeholder {
     justify-items: stretch;
   }
 
-  .session-status-control {
+  .session-status-trigger {
     width: 100%;
   }
 

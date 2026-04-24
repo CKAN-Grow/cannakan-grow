@@ -12,6 +12,11 @@ const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
 };
+const SESSION_STAGE_OPTIONS = [
+  { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
+  { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
+  { value: "completed", label: "Completed", modalLabel: "Complete", tone: "is-completed" },
+];
 const inlineSvgCache = {};
 const ACTIVE_PARTITION_STYLE = {
   fill: "#f2ff4d",
@@ -2622,7 +2627,8 @@ function renderSessionForm() {
   const partitionFields = document.querySelector("#partition-fields");
   const formMessage = document.querySelector("#form-message");
   const systemTypeField = form.elements.systemType;
-  const sessionStatusField = form.elements.sessionStatus;
+    const sessionStatusField = form.elements.sessionStatus;
+    const sessionStatusTrigger = document.querySelector("#session-status-trigger");
   const sessionStatusError = document.querySelector("#session-status-error");
   const layoutReference = document.querySelector("#system-layout-reference");
   const reminder = document.querySelector("#session-status-reminder");
@@ -2685,7 +2691,7 @@ function renderSessionForm() {
     appState.growthStage = sessionStatusField.value || null;
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
-  updateSessionStatusAppearance(sessionStatusField);
+    updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
   updateSessionStatusReminder(
@@ -2727,7 +2733,7 @@ function renderSessionForm() {
       progressChart,
       progressSection,
     );
-    updateSessionStatusAppearance(sessionStatusField);
+    updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
     updateSessionStatusReminder(
       reminder,
       form.elements.date.value,
@@ -2763,13 +2769,25 @@ function renderSessionForm() {
       sessionStatusField.value,
       );
     });
+    sessionStatusTrigger?.addEventListener("click", () => {
+      openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
+    });
     chartShell.addEventListener("click", (event) => {
       if (!event.target.closest("#partition-fields")) {
         return;
       }
 
-      if (maybePromptGrowthStage(form, sessionStatusField)) {
+      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
         event.preventDefault();
+      }
+    });
+    partitionFields.addEventListener("focusin", (event) => {
+      if (!event.target.closest("input, select, textarea")) {
+        return;
+      }
+
+      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
+        event.target.blur();
       }
     });
     systemTypeField.addEventListener("change", () => {
@@ -2807,7 +2825,7 @@ function renderSessionForm() {
       form.dataset.currentStage = nextStatus;
       appState.growthStage = sessionStatusField.value || null;
       clearSessionStatusError(sessionStatusField, sessionStatusError);
-      updateSessionStatusAppearance(sessionStatusField);
+      updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
       applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
       updateGrowthStageLock(form, sessionStatusField.value);
       updateSessionStatusReminder(
@@ -2889,9 +2907,9 @@ function renderSessionForm() {
     }
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
       formMessage.textContent = "";
-      sessionStatusField.focus();
-      return;
-    }
+        sessionStatusTrigger?.focus();
+        return;
+      }
 
     const validation = validatePartitions(form, { showMessage: true });
     if (!validation.isValid) {
@@ -3047,25 +3065,12 @@ function updateGrowthStageLock(form, sessionStatus) {
   }
 
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
-  const disabled = normalizedStatus === "unselected";
-  const rows = form.querySelectorAll(".partition-row");
-  const inputs = form.querySelectorAll(".partition-input");
-  const dropdown = form.querySelector("#session-status-control, #detail-session-status-control");
+  const trigger = form.querySelector("#session-status-trigger, #detail-session-status-trigger");
 
-  appState.growthStage = disabled ? null : normalizedStatus;
+  appState.growthStage = normalizedStatus === "unselected" ? null : normalizedStatus;
 
-  rows.forEach((row) => {
-    row.classList.toggle("is-locked", disabled);
-    row.setAttribute("aria-disabled", disabled ? "true" : "false");
-  });
-
-  inputs.forEach((input) => {
-    input.disabled = disabled;
-    input.classList.toggle("disabled", disabled);
-  });
-
-  if (dropdown) {
-    dropdown.classList.toggle("growth-stage-attention", disabled);
+  if (trigger) {
+    trigger.classList.toggle("growth-stage-attention", normalizedStatus === "unselected");
   }
 }
 
@@ -3083,12 +3088,9 @@ function ensureGrowthStageModal() {
     <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title">
       <button type="button" class="modal-close" aria-label="Close">×</button>
       <div class="growth-stage-modal-copy">
-        <h2 id="growth-stage-modal-title">Set Growth Stage</h2>
+        <h2 id="growth-stage-modal-title">Choose Growth Stage</h2>
       </div>
-      <div class="growth-stage-modal-actions">
-        <button type="button" class="stage-button primary" data-growth-stage-action="start-soaking">Soaking</button>
-        <button type="button" class="stage-button" data-growth-stage-action="start-germinating">Germination</button>
-      </div>
+      <div class="growth-stage-modal-actions" id="growth-stage-modal-actions"></div>
     </div>
   `;
 
@@ -3108,24 +3110,6 @@ function ensureGrowthStageModal() {
   });
 
   overlay.querySelector(".modal-close")?.addEventListener("click", closeModal);
-  overlay.querySelector('[data-growth-stage-action="start-soaking"]')?.addEventListener("click", () => {
-    const context = overlay.__stageContext;
-    if (context?.stageField) {
-      context.stageField.value = "soaking";
-      context.stageField.dispatchEvent(new Event("change", { bubbles: true }));
-      context.stageField.focus();
-    }
-    closeModal();
-  });
-  overlay.querySelector('[data-growth-stage-action="start-germinating"]')?.addEventListener("click", () => {
-    const context = overlay.__stageContext;
-    if (context?.stageField) {
-      context.stageField.value = "germinating";
-      context.stageField.dispatchEvent(new Event("change", { bubbles: true }));
-      context.stageField.focus();
-    }
-    closeModal();
-  });
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && overlay.classList.contains("is-open")) {
@@ -3137,18 +3121,57 @@ function ensureGrowthStageModal() {
   return overlay;
 }
 
-function maybePromptGrowthStage(form, stageField) {
-  if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
+function getSessionStageLabel(value) {
+  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Select Growth Stage";
+}
+
+function openGrowthStageModal({ stageField, stageTrigger } = {}) {
+  if (!stageField) {
     return false;
   }
 
   const overlay = ensureGrowthStageModal();
-  overlay.__stageContext = { form, stageField };
+  const actions = overlay.querySelector("#growth-stage-modal-actions");
+  const currentStage = normalizeSessionStatus(stageField.value);
+  if (!actions) {
+    return false;
+  }
+
+  actions.innerHTML = SESSION_STAGE_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="stage-button ${option.tone} ${currentStage === option.value ? "is-active" : ""}"
+      data-growth-stage-value="${option.value}"
+    >
+      <span>${escapeHtml(option.modalLabel)}</span>
+      ${currentStage === option.value ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
+    </button>
+  `).join("");
+
+  actions.querySelectorAll("[data-growth-stage-value]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextValue = button.getAttribute("data-growth-stage-value") || "";
+      stageField.value = nextValue;
+      stageField.dispatchEvent(new Event("change", { bubbles: true }));
+      stageTrigger?.focus();
+      overlay.__closeModal?.();
+    });
+  });
+
+  overlay.__stageContext = { stageField, stageTrigger };
   overlay.hidden = false;
   overlay.classList.add("is-open");
   document.body.classList.add("modal-open");
   overlay.querySelector(".modal-close")?.focus();
   return true;
+}
+
+function maybePromptGrowthStage(form, stageField, stageTrigger) {
+  if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
+    return false;
+  }
+
+  return openGrowthStageModal({ stageField, stageTrigger });
 }
 
 function renderTraPartitionSections(container, partitions) {
@@ -3221,7 +3244,8 @@ function renderSessionDetail(sessionId) {
 
   const meta = document.querySelector("#detail-meta");
   const layoutReference = document.querySelector("#detail-layout-reference");
-  const detailStatusField = document.querySelector("#detail-session-status-control");
+    const detailStatusField = document.querySelector("#detail-session-status-control");
+    const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
   const detailReminder = document.querySelector("#detail-session-status-reminder");
   const detailNotesField = document.querySelector("#detail-session-notes");
   const detailImageSection = document.querySelector(".session-images-section");
@@ -3309,7 +3333,7 @@ function renderSessionDetail(sessionId) {
       return imageState ? [...imageState.images, ...imageState.pendingFiles] : [];
     },
   });
-  updateSessionStatusAppearance(detailStatusField);
+    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
   updateSessionStatusReminder(
     detailReminder,
     session.date,
@@ -3353,7 +3377,7 @@ function renderSessionDetail(sessionId) {
   );
   bindSessionTimelineDebugTools(detailLifecycleSection, (action) => {
     applyDebugEventToSession(session, detailStatusField, action);
-    updateSessionStatusAppearance(detailStatusField);
+    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
     updateSessionStatusReminder(
       detailReminder,
       session.date,
@@ -3403,7 +3427,11 @@ function renderSessionDetail(sessionId) {
     );
   });
 
-  detailStatusField.addEventListener("change", async () => {
+    detailStatusTrigger?.addEventListener("click", () => {
+      openGrowthStageModal({ stageField: detailStatusField, stageTrigger: detailStatusTrigger });
+    });
+
+    detailStatusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
     session.sessionStatus = detailStatusField.value;
     if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detailStatusField.value) === "germinating") {
@@ -3412,7 +3440,7 @@ function renderSessionDetail(sessionId) {
     if (detailStatusField.value === "completed" && previousStatus !== "completed") {
       session.completedAt = new Date().toISOString();
     }
-    updateSessionStatusAppearance(detailStatusField);
+      updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
     updateSessionStatusReminder(
       detailReminder,
       session.date,
@@ -3826,15 +3854,25 @@ function normalizeSessionStatus(sessionStatus) {
   return sessionStatus || "unselected";
 }
 
-function updateSessionStatusAppearance(control) {
-  if (!control) {
+function updateSessionStatusAppearance(control, trigger) {
+  if (!control && !trigger) {
     return;
   }
 
-  control.dataset.sessionStatus = control.value || "unselected";
+  const value = control?.value || "";
+  const normalizedStatus = normalizeSessionStatus(value);
+
+  if (control) {
+    control.dataset.sessionStatus = normalizedStatus;
+  }
+
+  if (trigger) {
+    trigger.dataset.sessionStatus = normalizedStatus;
+    trigger.textContent = getSessionStageLabel(value);
+  }
 }
 
-function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
+  function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
   if (!element) {
     return;
   }
@@ -3842,11 +3880,10 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
   element.classList.remove("is-guidance", "is-warning");
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
 
-  if (normalizedStatus === "unselected") {
-    element.textContent = "You must select a growth stage before entering data.";
-    element.classList.add("is-guidance");
-    return;
-  }
+    if (normalizedStatus === "unselected") {
+      element.textContent = "";
+      return;
+    }
 
   if (!["soaking", "germinating"].includes(normalizedStatus)) {
     element.textContent = "";
@@ -3863,26 +3900,28 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
   element.classList.add(reminder.level === "critical" ? "is-warning" : "is-guidance");
 }
 
-function validateSessionStatus(control, errorElement) {
-  const isValid = Boolean(control?.value);
-  if (isValid) {
-    clearSessionStatusError(control, errorElement);
-    return true;
+  function validateSessionStatus(control, errorElement) {
+    const isValid = Boolean(control?.value);
+    if (isValid) {
+      clearSessionStatusError(control, errorElement);
+      return true;
+    }
+
+    const trigger = document.querySelector("#session-status-trigger, #detail-session-status-trigger");
+    trigger?.classList.add("is-invalid");
+    if (errorElement) {
+      errorElement.textContent = "Please select a growth stage before saving.";
+    }
+    return false;
   }
 
-  control.classList.add("is-invalid");
-  if (errorElement) {
-    errorElement.textContent = "Please select a growth stage before saving.";
+  function clearSessionStatusError(control, errorElement) {
+    control?.classList.remove("is-invalid");
+    document.querySelector("#session-status-trigger, #detail-session-status-trigger")?.classList.remove("is-invalid");
+    if (errorElement) {
+      errorElement.textContent = "";
+    }
   }
-  return false;
-}
-
-function clearSessionStatusError(control, errorElement) {
-  control?.classList.remove("is-invalid");
-  if (errorElement) {
-    errorElement.textContent = "";
-  }
-}
 
 function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
   const schedule = STAGE_REMINDER_SCHEDULES[sessionStatus];
