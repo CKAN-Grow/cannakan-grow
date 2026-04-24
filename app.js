@@ -51,6 +51,7 @@ const appState = {
   authNotice: "",
   deletionPromptShown: false,
   sessions: [],
+  growthStage: null,
 };
 let sessionTimerInterval = null;
 const templates = {
@@ -871,6 +872,7 @@ function initializeSessionImageState(scope, options) {
   }
 
   const state = {
+    scope,
     input: options.input,
     grid: options.grid,
     message: options.message,
@@ -880,6 +882,7 @@ function initializeSessionImageState(scope, options) {
     onRender: options.onRender || null,
     images: normalizeSessionImages(normalizePersistedSessionImages(options.images || [])),
     pendingFiles: [],
+    dots: ensureSessionImageDots(scope, options.grid),
   };
 
   scope.__sessionImageState = state;
@@ -892,6 +895,30 @@ function initializeSessionImageState(scope, options) {
     });
     state.input.dataset.bound = "true";
   }
+
+  if (!state.grid.dataset.dotsBound) {
+    state.grid.addEventListener("scroll", () => {
+      updateSessionImageDotsFromScroll(state);
+    });
+    state.grid.dataset.dotsBound = "true";
+  }
+}
+
+function ensureSessionImageDots(scope, grid) {
+  if (!scope || !grid) {
+    return null;
+  }
+
+  let dots = scope.querySelector(".image-dots");
+  if (dots) {
+    return dots;
+  }
+
+  dots = document.createElement("div");
+  dots.className = "image-dots";
+  dots.hidden = true;
+  grid.insertAdjacentElement("afterend", dots);
+  return dots;
 }
 
 function normalizeSessionImages(images) {
@@ -959,6 +986,7 @@ function renderSessionImageGrid(state) {
 
   if (!allImages.length) {
     state.grid.innerHTML = `<p class="session-images-empty">No images added yet.</p>`;
+    renderSessionImageDots(state, 0);
     state.onRender?.(allImages);
     return;
   }
@@ -1004,6 +1032,76 @@ function renderSessionImageGrid(state) {
   });
 
   state.onRender?.(allImages);
+  renderSessionImageDots(state, allImages.length);
+  updateSessionImageDotsFromScroll(state);
+}
+
+function renderSessionImageDots(state, imageCount) {
+  if (!state?.dots) {
+    return;
+  }
+
+  if (imageCount <= 1) {
+    state.dots.hidden = true;
+    state.dots.innerHTML = "";
+    return;
+  }
+
+  state.dots.hidden = false;
+  state.dots.innerHTML = Array.from({ length: imageCount }, (_, index) => `
+    <button type="button" class="image-dot${index === 0 ? " active" : ""}" data-image-dot-index="${index}" aria-label="Go to image ${index + 1}"></button>
+  `).join("");
+
+  state.dots.querySelectorAll(".image-dot").forEach((dot, index) => {
+    dot.addEventListener("click", () => {
+      const cards = [...state.grid.querySelectorAll(".session-image-card")];
+      const targetCard = cards[index];
+      if (!targetCard) {
+        return;
+      }
+
+      targetCard.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+      setActiveSessionImageDot(state, index);
+    });
+  });
+}
+
+function updateSessionImageDotsFromScroll(state) {
+  if (!state?.dots || state.dots.hidden) {
+    return;
+  }
+
+  const cards = [...state.grid.querySelectorAll(".session-image-card")];
+  if (!cards.length) {
+    return;
+  }
+
+  const gridRect = state.grid.getBoundingClientRect();
+  const gridCenter = gridRect.left + gridRect.width / 2;
+  let activeIndex = 0;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  cards.forEach((card, index) => {
+    const rect = card.getBoundingClientRect();
+    const cardCenter = rect.left + rect.width / 2;
+    const distance = Math.abs(cardCenter - gridCenter);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      activeIndex = index;
+    }
+  });
+
+  setActiveSessionImageDot(state, activeIndex);
+}
+
+function setActiveSessionImageDot(state, activeIndex) {
+  if (!state?.dots) {
+    return;
+  }
+
+  state.dots.querySelectorAll(".image-dot").forEach((dot, index) => {
+    dot.classList.toggle("active", index === activeIndex);
+  });
 }
 
 function setSessionImageMessage(state, message) {
@@ -2590,8 +2688,9 @@ function renderSessionForm() {
       const imageState = form.__sessionImageState;
       return imageState ? [...imageState.images, ...imageState.pendingFiles] : [];
     },
-  });
-  form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
+    });
+    form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
+    appState.growthStage = sessionStatusField.value || null;
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
   updateSessionStatusAppearance(sessionStatusField);
@@ -2695,22 +2794,24 @@ function renderSessionForm() {
       buildFormLifecycleState(form),
     );
   });
-  sessionStatusField.addEventListener("change", () => {
-    const previousStatus = form.dataset.currentStage || "unselected";
-    const nextStatus = normalizeSessionStatus(sessionStatusField.value);
+    sessionStatusField.addEventListener("change", () => {
+      const previousStatus = form.dataset.currentStage || "unselected";
+      const nextStatus = normalizeSessionStatus(sessionStatusField.value);
     if (previousStatus !== "germinating" && nextStatus === "germinating") {
       form.dataset.germinationStartedAt = new Date().toISOString();
     }
     if (previousStatus !== "completed" && nextStatus === "completed" && !form.dataset.completedAt) {
       form.dataset.completedAt = new Date().toISOString();
-    }
-    form.dataset.currentStage = nextStatus;
-    clearSessionStatusError(sessionStatusField, sessionStatusError);
-    updateSessionStatusAppearance(sessionStatusField);
-    applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
-    updateSessionStatusReminder(
-      reminder,
-      form.elements.date.value,
+      }
+      form.dataset.currentStage = nextStatus;
+      appState.growthStage = sessionStatusField.value || null;
+      clearSessionStatusError(sessionStatusField, sessionStatusError);
+      updateSessionStatusAppearance(sessionStatusField);
+      applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+      updateGrowthStageLock(form, sessionStatusField.value);
+      updateSessionStatusReminder(
+        reminder,
+        form.elements.date.value,
       form.elements.time.value,
       sessionStatusField.value,
       form.dataset.germinationStartedAt || "",
@@ -2866,12 +2967,12 @@ function buildPartitionFormCard(partition, index) {
     <div class="partition-number" aria-label="Partition ${partition.id}">${partition.id}</div>
     <label>
       <span class="mobile-field-label">Seed Variety</span>
-      <input type="text" name="seedVariety-${index}" placeholder="Enter seed variety - breeder" aria-label="Partition ${partition.id} seed variety">
+        <input type="text" name="seedVariety-${index}" class="partition-input" placeholder="Enter seed variety - breeder" aria-label="Partition ${partition.id} seed variety">
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
     <label>
       <span class="mobile-field-label">Type</span>
-      <select name="seedType-${index}" data-required-choice="true" aria-label="Partition ${partition.id} type">
+        <select name="seedType-${index}" class="partition-input" data-required-choice="true" aria-label="Partition ${partition.id} type">
         <option value="" selected>Select Type</option>
         <option value="auto">Auto</option>
         <option value="fast">Fast</option>
@@ -2882,7 +2983,7 @@ function buildPartitionFormCard(partition, index) {
     </label>
     <label>
       <span class="mobile-field-label">Sex</span>
-      <select name="feminized-${index}" data-required-choice="true" aria-label="Partition ${partition.id} sex">
+        <select name="feminized-${index}" class="partition-input" data-required-choice="true" aria-label="Partition ${partition.id} sex">
         <option value="" selected>Select Sex</option>
         <option value="feminized">Feminized</option>
         <option value="regular">Regular</option>
@@ -2892,12 +2993,12 @@ function buildPartitionFormCard(partition, index) {
     </label>
     <label>
       <span class="mobile-field-label">Seeds</span>
-      <input type="number" name="seedCount-${index}" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number of seeds">
+        <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number of seeds">
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
     <label>
       <span class="mobile-field-label"># Germinated</span>
-      <input type="number" name="plantedCount" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number germinated">
+        <input type="number" name="plantedCount" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number germinated">
       <span class="field-warning" aria-live="polite"># Germinated cannot exceed # Seeds.</span>
     </label>
     <div class="detail-cell success-cell" aria-live="polite">
@@ -2935,7 +3036,36 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitionFields,
     sessionStatus,
   );
+  updateGrowthStageLock(form, sessionStatus);
   clearActiveSystemLayout(form);
+}
+
+function updateGrowthStageLock(form, sessionStatus) {
+  if (!form) {
+    return;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const disabled = normalizedStatus === "unselected";
+  const rows = form.querySelectorAll(".partition-row");
+  const inputs = form.querySelectorAll(".partition-input");
+  const dropdown = form.querySelector("#session-status-control, #detail-session-status-control");
+
+  appState.growthStage = disabled ? null : normalizedStatus;
+
+  rows.forEach((row) => {
+    row.classList.toggle("is-locked", disabled);
+    row.setAttribute("aria-disabled", disabled ? "true" : "false");
+  });
+
+  inputs.forEach((input) => {
+    input.disabled = disabled;
+    input.classList.toggle("disabled", disabled);
+  });
+
+  if (dropdown) {
+    dropdown.classList.toggle("growth-stage-attention", disabled);
+  }
 }
 
 function renderTraPartitionSections(container, partitions) {
@@ -3628,6 +3758,12 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
 
   element.classList.remove("is-guidance", "is-warning");
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
+
+  if (normalizedStatus === "unselected") {
+    element.textContent = "You must select a growth stage before entering data.";
+    element.classList.add("is-guidance");
+    return;
+  }
 
   if (!["soaking", "germinating"].includes(normalizedStatus)) {
     element.textContent = "";
