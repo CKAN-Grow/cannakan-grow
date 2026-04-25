@@ -2617,11 +2617,72 @@ function renderHome() {
   overallFillEl.style.width = `${percentage}%`;
 
   const homeList = document.querySelector("#home-sessions-list");
-  renderSessionCollection(homeList, sessions.slice(0, 6), {
-    emptyMessage: "No grow sessions active yet.",
-    emptyActionLabel: "Create your first session",
-    compact: true,
+  renderRecentSessions(homeList, sessions.slice(0, 3), sessions);
+}
+
+function renderRecentSessions(container, recentSessions, allSessions) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  if (!recentSessions.length) {
+    container.innerHTML = `
+      <div class="empty-state recent-sessions-empty">
+        <p>No sessions yet. Start your first grow session.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const bestSessionId = getBestCompletedSessionId(allSessions);
+
+  recentSessions.forEach((session) => {
+    const totals = getSessionSeedTotals(session);
+    const percentage = totals.totalSeeds > 0
+      ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
+      : 0;
+    const normalizedStage = normalizeSessionStatus(session.sessionStatus);
+    const stageLabel = capitalize(normalizedStage).replace("Unselected", "Not started");
+    const card = document.createElement("a");
+    card.className = `recent-session-card stage-${normalizedStage}`;
+    card.href = `#sessions/${session.id}`;
+    card.innerHTML = `
+      ${session.id === bestSessionId ? '<span class="recent-session-badge">Best</span>' : ""}
+      <div class="recent-session-top">
+        <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+        <span class="recent-session-rate">${percentage}%</span>
+      </div>
+      <div class="recent-session-meta">
+        <p>${escapeHtml(session.date || "")}</p>
+        <p>${escapeHtml(stageLabel)}</p>
+      </div>
+      <p class="recent-session-seeds">${totals.totalPlanted} / ${totals.totalSeeds} seeds</p>
+    `;
+    container.appendChild(card);
   });
+}
+
+function getBestCompletedSessionId(sessions) {
+  const completedSessions = (sessions || [])
+    .filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed")
+    .map((session) => {
+      const totals = getSessionSeedTotals(session);
+      const percentage = totals.totalSeeds > 0
+        ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
+        : -1;
+      return { session, percentage, sortTime: getSessionSortTime(session) };
+    })
+    .filter((item) => item.percentage >= 0)
+    .sort((left, right) => {
+      if (right.percentage !== left.percentage) {
+        return right.percentage - left.percentage;
+      }
+      return right.sortTime - left.sortTime;
+    });
+
+  return completedSessions[0]?.session.id || "";
 }
 
 function renderSessionForm() {
@@ -3091,9 +3152,10 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   }
 
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
-  const allowFullEditing = normalizedStatus === "soaking" || normalizedStatus === "unselected";
+  const allowFullEditing = normalizedStatus === "soaking";
   const allowGerminationOnlyEditing = normalizedStatus === "germinating";
   const isCompleted = normalizedStatus === "completed";
+  const allowAnyEditing = allowFullEditing || allowGerminationOnlyEditing;
 
   const saveButtons = [
     ...scope.querySelectorAll('button[type="submit"]'),
@@ -3110,19 +3172,24 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     button.disabled = false;
   });
 
-  const topEditableFields = scope.querySelectorAll([
+  const textFields = scope.querySelectorAll([
     'input[name="sessionName"]',
     'input[name="date"]',
     'input[name="timeDisplay"]',
-    'select[name="systemType"]',
     'input[name="unitId"]',
-    '#detail-session-notes',
-    '#session-notes',
   ].join(", "));
 
-  topEditableFields.forEach((field) => {
+  textFields.forEach((field) => {
     field.disabled = !allowFullEditing;
-    field.readOnly = field.tagName === "TEXTAREA" ? !allowFullEditing : field.readOnly;
+  });
+
+  scope.querySelectorAll('select[name="systemType"]').forEach((field) => {
+    field.disabled = !allowFullEditing;
+  });
+
+  scope.querySelectorAll('#detail-session-notes, #session-notes').forEach((field) => {
+    field.readOnly = !allowFullEditing;
+    field.disabled = false;
   });
 
   scope.querySelectorAll('.partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
@@ -3130,7 +3197,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   scope.querySelectorAll('.partition-row input[name="plantedCount"]').forEach((field) => {
-    field.disabled = !(allowFullEditing || allowGerminationOnlyEditing);
+    field.disabled = !allowAnyEditing;
   });
 
   const imageInput = scope.querySelector('#session-images-input, #detail-session-images-input');
