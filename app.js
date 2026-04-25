@@ -2615,12 +2615,9 @@ function renderHome() {
   overallRateEl.textContent = `${percentage}%`;
   overallTotalEl.textContent = `${totals.totalPlanted} / ${totals.totalSeeds} seeds`;
   overallFillEl.style.width = `${percentage}%`;
-
-  const homeList = document.querySelector("#home-sessions-list");
-  renderRecentSessions(homeList, sessions.slice(0, 3), sessions);
 }
 
-function renderRecentSessions(container, recentSessions, allSessions) {
+function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
   if (!container) {
     return;
   }
@@ -2630,13 +2627,13 @@ function renderRecentSessions(container, recentSessions, allSessions) {
   if (!recentSessions.length) {
     container.innerHTML = `
       <div class="empty-state recent-sessions-empty">
-        <p>No sessions yet. Start your first grow session.</p>
+        <p>${escapeHtml(options.emptyMessage || "No sessions yet. Start your first grow session.")}</p>
       </div>
     `;
     return;
   }
 
-  const bestSessionId = getBestCompletedSessionId(allSessions);
+  const bestSessionId = options.showBestBadge ? getBestCompletedSessionId(allSessions) : "";
 
   recentSessions.forEach((session) => {
     const totals = getSessionSeedTotals(session);
@@ -3415,9 +3412,25 @@ function getCurrentPartitionValues(form) {
 
 function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
-  const container = document.querySelector("#sessions-list");
   const sessions = sortSessionsNewestFirst(getSessions());
-  renderSessionCollection(container, sessions, {
+  const activeContainer = document.querySelector("#active-sessions-list");
+  const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
+  const historyContainer = document.querySelector("#sessions-list");
+
+  const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
+  const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
+
+  renderRecentSessions(activeContainer, activeSessions, sessions, {
+    emptyMessage: "No active sessions.",
+    showBestBadge: false,
+  });
+
+  renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 3), sessions, {
+    emptyMessage: "No completed sessions yet.",
+    showBestBadge: true,
+  });
+
+  renderSessionCollection(historyContainer, sessions, {
     emptyMessage: "No grow sessions yet.",
     emptyActionLabel: "Create your first session",
     compact: false,
