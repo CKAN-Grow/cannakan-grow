@@ -393,6 +393,10 @@
             </div>
           </details>
         </section>
+        <div class="timeline-save-shortcut">
+          <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
+          <button id="detail-save-shortcut" type="button" class="button button-primary">Save Session</button>
+        </div>
         <section class="session-notes-section" aria-labelledby="detail-session-notes-label">
           <label class="session-notes-field" for="detail-session-notes">
             <span id="detail-session-notes-label">Session Notes</span>
@@ -456,6 +460,11 @@
           </div>
           <div id="detail-run-progress-summary" class="run-progress-summary"></div>
         </section>
+        <p id="detail-save-message" class="form-message" role="alert" aria-live="polite"></p>
+        <div class="form-actions">
+          <button id="detail-save-session" type="button" class="button button-primary">Save Session</button>
+          <a class="button button-secondary" href="#sessions">Back</a>
+        </div>
       </section>
     </section>
   </template>

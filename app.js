@@ -2698,6 +2698,7 @@ function renderSessionForm() {
     updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+  applyStageEditingMode(form, sessionStatusField.value);
   updateSessionStatusReminder(
     reminder,
     form.elements.date.value,
@@ -2826,16 +2827,20 @@ function renderSessionForm() {
     }
     if (previousStatus !== "completed" && nextStatus === "completed" && !form.dataset.completedAt) {
       form.dataset.completedAt = new Date().toISOString();
-      }
-      form.dataset.currentStage = nextStatus;
-      appState.growthStage = sessionStatusField.value || null;
-      clearSessionStatusError(sessionStatusField, sessionStatusError);
-      updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
-      applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
-      updateGrowthStageLock(form, sessionStatusField.value);
-      updateSessionStatusReminder(
-        reminder,
-        form.elements.date.value,
+    }
+    if (previousStatus === "completed" && nextStatus !== "completed") {
+      delete form.dataset.completedAt;
+    }
+    form.dataset.currentStage = nextStatus;
+    appState.growthStage = sessionStatusField.value || null;
+    clearSessionStatusError(sessionStatusField, sessionStatusError);
+    updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
+    applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+    applyStageEditingMode(form, sessionStatusField.value);
+    updateGrowthStageLock(form, sessionStatusField.value);
+    updateSessionStatusReminder(
+      reminder,
+      form.elements.date.value,
       form.elements.time.value,
       sessionStatusField.value,
       form.dataset.germinationStartedAt || "",
@@ -3080,6 +3085,70 @@ function updateGrowthStageLock(form, sessionStatus) {
   }
 }
 
+function applyStageEditingMode(scope, sessionStatus, options = {}) {
+  if (!scope) {
+    return;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const allowFullEditing = normalizedStatus === "soaking" || normalizedStatus === "unselected";
+  const allowGerminationOnlyEditing = normalizedStatus === "germinating";
+  const isCompleted = normalizedStatus === "completed";
+
+  const saveButtons = [
+    ...scope.querySelectorAll('button[type="submit"]'),
+    ...scope.querySelectorAll('#detail-save-shortcut, #detail-save-session'),
+  ];
+
+  const timelineSaveShortcut = scope.querySelector(".timeline-save-shortcut");
+  if (timelineSaveShortcut) {
+    timelineSaveShortcut.hidden = isCompleted;
+  }
+
+  saveButtons.forEach((button) => {
+    button.hidden = isCompleted;
+    button.disabled = false;
+  });
+
+  const topEditableFields = scope.querySelectorAll([
+    'input[name="sessionName"]',
+    'input[name="date"]',
+    'input[name="timeDisplay"]',
+    'select[name="systemType"]',
+    'input[name="unitId"]',
+    '#detail-session-notes',
+    '#session-notes',
+  ].join(", "));
+
+  topEditableFields.forEach((field) => {
+    field.disabled = !allowFullEditing;
+    field.readOnly = field.tagName === "TEXTAREA" ? !allowFullEditing : field.readOnly;
+  });
+
+  scope.querySelectorAll('.partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
+    field.disabled = !allowFullEditing;
+  });
+
+  scope.querySelectorAll('.partition-row input[name="plantedCount"]').forEach((field) => {
+    field.disabled = !(allowFullEditing || allowGerminationOnlyEditing);
+  });
+
+  const imageInput = scope.querySelector('#session-images-input, #detail-session-images-input');
+  if (imageInput) {
+    imageInput.disabled = !allowFullEditing;
+  }
+
+  scope.querySelectorAll(".session-image-remove").forEach((button) => {
+    button.disabled = !allowFullEditing;
+    button.hidden = !allowFullEditing;
+  });
+
+  const imageUpload = scope.querySelector(".session-images-upload");
+  if (imageUpload) {
+    imageUpload.classList.toggle("is-disabled", !allowFullEditing);
+  }
+}
+
 function closeGrowthStageModal() {
   const overlay = document.querySelector("#growth-stage-modal-overlay");
   const modal = overlay?.querySelector(".growth-stage-modal");
@@ -3306,6 +3375,9 @@ function renderSessionDetail(sessionId) {
     const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
   const detailReminder = document.querySelector("#detail-session-status-reminder");
   const detailNotesField = document.querySelector("#detail-session-notes");
+  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
+  const detailSaveButton = document.querySelector("#detail-save-session");
+  const detailSaveMessage = document.querySelector("#detail-save-message");
   const detailImageSection = document.querySelector(".session-images-section");
   const detailImageInput = document.querySelector("#detail-session-images-input");
   const detailImageGrid = document.querySelector("#detail-session-images-grid");
@@ -3406,6 +3478,7 @@ function renderSessionDetail(sessionId) {
   });
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
   syncPartitionButtonStates(partitions, detailStatusField.value);
+  applyStageEditingMode(app, detailStatusField.value);
   updatePartitionProgressChart(
     session.partitions.map((partition) => ({
       id: partition.id,
@@ -3491,7 +3564,7 @@ function renderSessionDetail(sessionId) {
       openGrowthStageModal({ stageField: detailStatusField, stageTrigger: detailStatusTrigger });
     });
 
-    detailStatusField.addEventListener("change", async () => {
+  detailStatusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
     session.sessionStatus = detailStatusField.value;
     if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detailStatusField.value) === "germinating") {
@@ -3499,6 +3572,9 @@ function renderSessionDetail(sessionId) {
     }
     if (detailStatusField.value === "completed" && previousStatus !== "completed") {
       session.completedAt = new Date().toISOString();
+    }
+    if (previousStatus === "completed" && detailStatusField.value !== "completed") {
+      session.completedAt = "";
     }
       updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
     updateSessionStatusReminder(
@@ -3510,6 +3586,7 @@ function renderSessionDetail(sessionId) {
     );
     applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
     syncPartitionButtonStates(partitions, detailStatusField.value);
+    applyStageEditingMode(app, detailStatusField.value);
     updateSessionTimingSummary(
       detailTimingSummary,
       detailTimingSection,
@@ -3532,6 +3609,16 @@ function renderSessionDetail(sessionId) {
 
     await saveSessionUpdate(session);
   });
+
+  const persistDetailSession = async () => {
+    session.sessionNotes = detailNotesField.value.trim();
+    detailSaveMessage.textContent = "";
+    const savedSession = await saveSessionUpdate(session);
+    detailSaveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
+  };
+
+  detailSaveShortcutButton?.addEventListener("click", persistDetailSession);
+  detailSaveButton?.addEventListener("click", persistDetailSession);
 
   detailNotesField.addEventListener("change", async () => {
     session.sessionNotes = detailNotesField.value.trim();
@@ -4886,8 +4973,10 @@ async function saveSessionUpdate(session) {
   try {
     const savedSession = await updateCloudSession(session);
     Object.assign(session, savedSession);
+    return savedSession;
   } catch (error) {
     console.error("Failed to save session update", error);
+    return null;
   }
 }
 
