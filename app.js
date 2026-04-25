@@ -3060,6 +3060,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     partitionFields,
     sessionStatus,
   );
+  syncPartitionButtonStates(partitionFields, sessionStatus);
   updateGrowthStageLock(form, sessionStatus);
   clearActiveSystemLayout(form);
 }
@@ -3401,9 +3402,10 @@ function renderSessionDetail(sessionId) {
 
   const partitions = document.querySelector("#detail-partitions");
   session.partitions.forEach((partition) => {
-    partitions.appendChild(buildPartitionDetailRow(partition));
+    partitions.appendChild(buildPartitionDetailRow(partition, detailStatusField.value));
   });
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
+  syncPartitionButtonStates(partitions, detailStatusField.value);
   updatePartitionProgressChart(
     session.partitions.map((partition) => ({
       id: partition.id,
@@ -3507,6 +3509,7 @@ function renderSessionDetail(sessionId) {
       session.germinationStartedAt || "",
     );
     applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
+    syncPartitionButtonStates(partitions, detailStatusField.value);
     updateSessionTimingSummary(
       detailTimingSummary,
       detailTimingSection,
@@ -3642,12 +3645,20 @@ function getSessionSortTime(session) {
   return startedAt ? startedAt.getTime() : 0;
 }
 
-function buildPartitionDetailRow(partition) {
+function buildPartitionDetailRow(partition, sessionStatus = "") {
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
-  const partitionState = getPartitionRowStateFromPartition(partition);
+  const basePartitionState = getPartitionBaseRowState({
+    varietyValue: formatPartitionSeedVariety(partition),
+    typeValue: partition?.seedType || "",
+    sexValue: partition?.feminized || "",
+    seedValue: partition?.seedCount ?? "",
+    plantedValue: partition?.plantedCount ?? "",
+  });
+  const partitionState = getPartitionRowStateFromPartition(partition, sessionStatus);
   const row = document.createElement("article");
   row.className = "chart-row partition-row detail-row";
+  row.dataset.partitionBaseState = basePartitionState;
   row.innerHTML = `
     <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="Partition ${partition.id}">${partition.id}</div>
     <div class="detail-cell">
@@ -3678,7 +3689,7 @@ function buildPartitionDetailRow(partition) {
   return row;
 }
 
-function getPartitionRowState(values) {
+function getPartitionBaseRowState(values) {
   const varietyValue = String(values?.varietyValue || "").trim();
   const typeValue = String(values?.typeValue || "").trim();
   const sexValue = String(values?.sexValue || "").trim();
@@ -3686,20 +3697,6 @@ function getPartitionRowState(values) {
   const plantedValue = String(values?.plantedValue || "").trim();
   const hasSeedCount = seedValue !== "";
   const hasPlantedCount = plantedValue !== "";
-  const seedNumber = Number(seedValue);
-
-  const isComplete = Boolean(
-    varietyValue &&
-    typeValue &&
-    sexValue &&
-    hasSeedCount &&
-    Number.isFinite(seedNumber) &&
-    seedNumber > 0
-  );
-
-  if (isComplete) {
-    return "complete";
-  }
 
   if (varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount) {
     return "in-progress";
@@ -3708,14 +3705,28 @@ function getPartitionRowState(values) {
   return "empty";
 }
 
-function getPartitionRowStateFromPartition(partition) {
+function getPartitionRowState(values, sessionStatus = "") {
+  const baseState = getPartitionBaseRowState(values);
+
+  if (baseState === "empty") {
+    return "empty";
+  }
+
+  if (normalizeSessionStatus(sessionStatus) === "completed") {
+    return "complete";
+  }
+
+  return "in-progress";
+}
+
+function getPartitionRowStateFromPartition(partition, sessionStatus = "") {
   return getPartitionRowState({
     varietyValue: formatPartitionSeedVariety(partition),
     typeValue: partition?.seedType || "",
     sexValue: partition?.feminized || "",
     seedValue: partition?.seedCount ?? "",
     plantedValue: partition?.plantedCount ?? "",
-  });
+  }, sessionStatus);
 }
 
 function getPartitionButtonClassName(state) {
@@ -3736,8 +3747,36 @@ function updatePartitionButtonState(row, state) {
     return;
   }
 
+  row.dataset.partitionButtonState = state;
   button.classList.toggle("partition-btn--in-progress", state === "in-progress");
   button.classList.toggle("partition-btn--complete", state === "complete");
+}
+
+function syncPartitionButtonStates(partitionContainer, sessionStatus = "") {
+  if (!partitionContainer) {
+    return;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+
+  partitionContainer.querySelectorAll(".partition-row").forEach((row) => {
+    const varietyInput = row.querySelector('input[name^="seedVariety-"]');
+
+    if (varietyInput) {
+      validatePartitionRow(row);
+      return;
+    }
+
+    const baseState = row.dataset.partitionBaseState || "empty";
+    const nextState = baseState === "empty"
+      ? "empty"
+      : normalizedStatus === "completed"
+        ? "complete"
+        : "in-progress";
+
+    row.classList.toggle("row-complete", normalizedStatus === "completed" && baseState !== "empty");
+    updatePartitionButtonState(row, nextState);
+  });
 }
 
 function isEmptyPartition(partition) {
@@ -4408,18 +4447,19 @@ function validatePartitionRow(row) {
   const plantedCountValid = !hasPlantedCount || (Number.isFinite(plantedNumber) && plantedNumber >= 0 && seedCountValid && plantedNumber <= seedNumber);
 
   const rowStarted = Boolean(varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount);
-  const rowComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
-  const rowInvalid = (rowStarted && !rowComplete) || !plantedCountValid;
+  const fieldsComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
+  const rowInvalid = (rowStarted && !fieldsComplete) || !plantedCountValid;
+  const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
   const rowState = getPartitionRowState({
     varietyValue,
     typeValue,
     sexValue,
     seedValue,
     plantedValue,
-  });
+  }, sessionStatus);
 
   row.classList.toggle("row-has-warning", rowInvalid);
-  row.classList.toggle("row-complete", rowComplete);
+  row.classList.toggle("row-complete", normalizeSessionStatus(sessionStatus) === "completed" && rowStarted);
   updatePartitionButtonState(row, rowState);
 
   varietyLabel.classList.toggle("field-has-warning", rowInvalid && !varietyValue);

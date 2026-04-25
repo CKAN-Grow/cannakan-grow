@@ -1743,6 +1743,14 @@ input::placeholder {
   border-radius: 10px;
 }
 
+.partition-row input:focus-visible,
+.partition-row select:focus-visible {
+  outline: none;
+  border-color: #94d159;
+  background: rgba(148, 209, 89, 0.08);
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.18);
+}
+
 .partition-row input[name^="seedCount-"],
 .partition-row input[name="plantedCount"] {
   width: 100%;
