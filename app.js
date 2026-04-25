@@ -4545,6 +4545,7 @@ function validatePartitionRow(row) {
     plantedValue,
   }, sessionStatus);
 
+  row.classList.toggle("partition-row--filled", rowStarted);
   row.classList.toggle("row-has-warning", rowInvalid);
   row.classList.toggle("row-complete", normalizeSessionStatus(sessionStatus) === "completed" && rowStarted);
   updatePartitionButtonState(row, rowState);
@@ -4767,14 +4768,14 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
     return;
   }
 
-  if (!state.startedAt) {
+  if (!state.startedAt && !state.showEmptyTimeline) {
     summaryElement.innerHTML = "";
     sectionElement.hidden = true;
     return;
   }
 
   const events = [
-    { label: "SOAKING", timestamp: state.startedAt, tone: "soaking", complete: true },
+    { label: "SOAKING", timestamp: state.startedAt, tone: "soaking", complete: Boolean(state.startedAt) },
     { label: "GERMINATION STARTED", timestamp: state.germinationStartedAt, tone: "germination", complete: Boolean(state.germinationStartedAt) },
     { label: "FIRST GERMINATED", timestamp: state.firstPlantedAt, tone: "green", complete: Boolean(state.firstPlantedAt) },
     { label: "COMPLETED", timestamp: state.completedAt, tone: "completed", complete: Boolean(state.completedAt) },
@@ -4799,7 +4800,19 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
 }
 
 function buildFormLifecycleState(form) {
+  const normalizedStatus = normalizeSessionStatus(form.dataset.currentStage || form.elements.sessionStatus?.value || "");
+  if (normalizedStatus === "unselected") {
+    return {
+      showEmptyTimeline: true,
+      startedAt: null,
+      germinationStartedAt: null,
+      firstPlantedAt: null,
+      completedAt: null,
+    };
+  }
+
   return {
+    showEmptyTimeline: false,
     startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value),
     germinationStartedAt: parseCompletedAtValue(form.dataset.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(form.dataset.firstPlantedAt || ""),
@@ -4809,6 +4822,7 @@ function buildFormLifecycleState(form) {
 
 function buildSessionLifecycleState(session) {
   return {
+    showEmptyTimeline: false,
     startedAt: parseSessionStartDateTime(session.date, session.time),
     germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || ""),

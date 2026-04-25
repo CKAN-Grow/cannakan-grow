@@ -1758,6 +1758,10 @@ input::placeholder {
   text-align: center;
 }
 
+.partition-row.partition-row--filled {
+  background-color: #f1f3f2 !important;
+}
+
 .chart-shell[data-session-status="unselected"] .chart-header span:nth-child(6),
 .chart-shell[data-session-status="unselected"] .chart-header span:nth-child(7),
 .chart-shell[data-session-status="soaking"] .chart-header span:nth-child(6),
