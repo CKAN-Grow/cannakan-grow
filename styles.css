@@ -1720,12 +1720,14 @@ input::placeholder {
   transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
-.partition-btn--active {
+.partition-btn--in-progress {
   background: #e88c2a;
+  color: #fff;
 }
 
 .partition-btn--complete {
   background: #4b4f4c;
+  color: #fff;
   box-shadow: 0 0 0 3px rgba(75, 79, 76, 0.12);
   transform: scale(1.02);
 }
@@ -1802,8 +1804,8 @@ input::placeholder {
 }
 
 .partition-row.row-complete {
-  background: #94d159;
-  color: #182218;
+  background: rgba(75, 79, 76, 0.06);
+  color: inherit;
 }
 
 .partition-row input.is-missing,

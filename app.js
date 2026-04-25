@@ -2945,7 +2945,7 @@ function renderSessionForm() {
       date: formData.get("date"),
       time: formData.get("time"),
       systemType: formData.get("systemType"),
-      unitId: String(formData.get("unitId")).trim(),
+      unitId: String(formData.get("unitId") || "").trim() || "A",
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
         partitionEntries[0],
@@ -3724,7 +3724,7 @@ function getPartitionButtonClassName(state) {
   }
 
   if (state === "in-progress") {
-    return "partition-btn--active";
+    return "partition-btn--in-progress";
   }
 
   return "";
@@ -3736,7 +3736,7 @@ function updatePartitionButtonState(row, state) {
     return;
   }
 
-  button.classList.toggle("partition-btn--active", state === "in-progress");
+  button.classList.toggle("partition-btn--in-progress", state === "in-progress");
   button.classList.toggle("partition-btn--complete", state === "complete");
 }
 
