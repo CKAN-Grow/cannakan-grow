@@ -58,6 +58,7 @@ const appState = {
   sessions: [],
   growthStage: null,
   growthStageModalOpen: false,
+  growthStageModalDismissed: false,
   pendingGrowthStageInput: null,
   growthStageModalSuppressedUntil: 0,
 };
@@ -2773,6 +2774,7 @@ function renderSessionForm() {
       );
     });
     sessionStatusTrigger?.addEventListener("click", () => {
+      appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
     chartShell.addEventListener("click", (event) => {
@@ -3079,19 +3081,30 @@ function updateGrowthStageLock(form, sessionStatus) {
 
 function closeGrowthStageModal() {
   const overlay = document.querySelector("#growth-stage-modal-overlay");
+  const modal = overlay?.querySelector(".growth-stage-modal");
 
   console.log("Closing growth stage modal");
-  appState.growthStageModalOpen = false;
-  appState.pendingGrowthStageInput = null;
-  document.body.classList.remove("modal-open");
-
-  if (overlay) {
-    overlay.hidden = true;
-    overlay.classList.remove("is-open");
-    overlay.remove();
+  if (!overlay || overlay.dataset.closing === "true") {
+    return;
   }
 
-  appState.growthStageModalSuppressedUntil = Date.now() + 250;
+  overlay.dataset.closing = "true";
+  overlay.classList.add("closing");
+  modal?.classList.add("closing");
+
+  appState.growthStageModalOpen = false;
+  appState.growthStageModalDismissed = true;
+  appState.pendingGrowthStageInput = null;
+  document.body.classList.remove("modal-open");
+  appState.growthStageModalSuppressedUntil = Date.now() + 180;
+
+  window.setTimeout(() => {
+    overlay.hidden = true;
+    overlay.classList.remove("is-open", "closing");
+    overlay.dataset.closing = "false";
+    modal?.classList.remove("closing");
+    overlay.remove();
+  }, 180);
 }
 
 function ensureGrowthStageModal() {
@@ -3104,6 +3117,7 @@ function ensureGrowthStageModal() {
   overlay.id = "growth-stage-modal-overlay";
   overlay.className = "growth-stage-modal-overlay";
   overlay.hidden = true;
+  overlay.dataset.closing = "false";
   overlay.innerHTML = `
     <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title">
       <button type="button" class="modal-close" aria-label="Close">×</button>
@@ -3179,6 +3193,8 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
       event.preventDefault();
       event.stopPropagation();
       const nextValue = button.getAttribute("data-growth-stage-value") || "";
+      appState.growthStageModalDismissed = false;
+      appState.growthStage = nextValue || null;
       stageField.value = nextValue;
       stageField.dispatchEvent(new Event("change", { bubbles: true }));
       closeGrowthStageModal();
@@ -3197,6 +3213,10 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
 
 function maybePromptGrowthStage(form, stageField, stageTrigger) {
   if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
+    return false;
+  }
+
+  if (appState.growthStageModalDismissed) {
     return false;
   }
 
@@ -3465,6 +3485,7 @@ function renderSessionDetail(sessionId) {
   });
 
     detailStatusTrigger?.addEventListener("click", () => {
+      appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: detailStatusField, stageTrigger: detailStatusTrigger });
     });
 

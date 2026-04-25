@@ -1078,6 +1078,11 @@ select {
   z-index: 50;
 }
 
+.growth-stage-modal-overlay.closing {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
 .growth-stage-modal-overlay[hidden] {
   display: none !important;
 }
@@ -1092,6 +1097,12 @@ select {
   margin: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
   animation: modalFadeIn 0.2s ease;
+}
+
+.growth-stage-modal.closing {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+  transition: opacity 180ms ease, transform 180ms ease;
 }
 
 .growth-stage-modal-copy h2 {
@@ -1158,14 +1169,14 @@ select {
 }
 
 .stage-button.is-completed {
-  background: #eef7ec;
-  border-color: #cce1c4;
-  color: #2f6a3a;
+  background: #8a5a2b;
+  border-color: #8a5a2b;
+  color: #ffffff;
 }
 
 .stage-button.is-completed:hover {
-  background: #e5f3e0;
-  border-color: #94d159;
+  background: #6f4622;
+  border-color: #6f4622;
 }
 
 .stage-button.is-active {
@@ -1232,8 +1243,8 @@ select {
 }
 
 .session-status-trigger[data-session-status="completed"] {
-  background: #e6e8e6;
-  color: #465146;
+  background: #8a5a2b;
+  color: #ffffff;
 }
 
 .session-status-reminder {
