@@ -222,6 +222,22 @@
             </div>
             <div id="partition-fields" class="partition-table"></div>
           </div>
+          <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
+            <div class="progress-chart-heading">
+              <p class="eyebrow">Timeline</p>
+              <h4 id="session-lifecycle-title">Session Progress</h4>
+            </div>
+            <div id="session-lifecycle-summary" class="session-lifecycle-summary"></div>
+            <details class="timeline-debug-panel">
+              <summary>Timeline Debug Tools</summary>
+              <div class="timeline-debug-actions">
+                <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+                <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
+              </div>
+            </details>
+          </section>
           <section class="session-notes-section" aria-labelledby="session-notes-label">
             <label class="session-notes-field" for="session-notes">
               <span id="session-notes-label">Session Notes</span>
@@ -285,22 +301,6 @@
               <h4 id="run-progress-title">Overall Session Germination %</h4>
             </div>
             <div id="run-progress-summary" class="run-progress-summary"></div>
-          </section>
-          <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
-            <div class="progress-chart-heading">
-              <p class="eyebrow">Timeline</p>
-              <h4 id="session-lifecycle-title">Session Progress</h4>
-            </div>
-            <div id="session-lifecycle-summary" class="session-lifecycle-summary"></div>
-            <details class="timeline-debug-panel">
-              <summary>Timeline Debug Tools</summary>
-              <div class="timeline-debug-actions">
-                <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
-                <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
-                <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
-                <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
-              </div>
-            </details>
           </section>
         </section>
 
