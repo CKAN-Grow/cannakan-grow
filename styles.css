@@ -143,6 +143,13 @@ select {
   font-size: clamp(1.4rem, 3vw, 2rem);
 }
 
+.dashboard-subtitle {
+  margin: 8px 0 0;
+  max-width: 640px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -202,8 +209,12 @@ select {
 .spotlight-card {
   display: grid;
   gap: 18px;
-  padding: 22px;
+  padding: 30px;
+  border: 1px solid #e3e8e1;
   border-top: 4px solid rgba(24, 34, 24, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 16px 34px rgba(29, 49, 33, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(247, 250, 245, 0.96) 100%);
 }
 
 .spotlight-card.stage-soaking {
@@ -268,6 +279,13 @@ select {
   font-size: 0.94rem;
 }
 
+.spotlight-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 56ch;
+}
+
 .spotlight-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -275,10 +293,10 @@ select {
 }
 
 .spotlight-stat {
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #e3e8e1;
   display: grid;
   gap: 6px;
 }
@@ -1103,6 +1121,9 @@ select {
   text-decoration: none;
   color: inherit;
   transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  border: 1px solid #e3e8e1;
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(29, 49, 33, 0.05);
 }
 
 .summary-link-card:hover {
@@ -1163,6 +1184,14 @@ select {
 
 #active-sessions-card.has-active-sessions {
   border-top: 4px solid #6ca9d8;
+}
+
+#active-sessions-card.has-germinating-sessions {
+  border-top-color: #DD8045;
+}
+
+#active-sessions-card.has-soaking-sessions {
+  border-top-color: #6ca9d8;
 }
 
 .section-heading {

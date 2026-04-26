@@ -2600,6 +2600,7 @@ function renderHome() {
   const spotlightStage = document.querySelector("#active-session-spotlight-stage");
   const spotlightName = document.querySelector("#active-session-spotlight-name");
   const spotlightDate = document.querySelector("#active-session-spotlight-date");
+  const spotlightDescription = document.querySelector("#active-session-spotlight-description");
   const spotlightTimer = document.querySelector("#active-session-spotlight-timer");
   const spotlightSeeds = document.querySelector("#active-session-spotlight-seeds");
   const spotlightRate = document.querySelector("#active-session-spotlight-rate");
@@ -2618,10 +2619,11 @@ function renderHome() {
   const overallFillEl = document.querySelector("#overall-germination-fill");
   countEl.textContent = String(sessions.length);
   activeCountEl.textContent = String(activeSessions.length);
-  activeSubtextEl.textContent = activeSessions.length
-    ? `${activeSessions.length} in progress`
-    : "No active sessions";
+  activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
+  const hasGerminatingActive = activeSessions.some((session) => normalizeSessionStatus(session.sessionStatus) === "germinating");
   activeCard?.classList.toggle("has-active-sessions", activeSessions.length > 0);
+  activeCard?.classList.toggle("has-germinating-sessions", hasGerminatingActive);
+  activeCard?.classList.toggle("has-soaking-sessions", activeSessions.length > 0 && !hasGerminatingActive);
 
   const totals = sessions.reduce((accumulator, session) => {
     const sessionTotals = getSessionSeedTotals(session);
@@ -2664,8 +2666,9 @@ function renderHome() {
     if (!spotlightSession) {
       spotlightCard?.classList.remove("stage-soaking", "stage-germinating");
       spotlightStage.textContent = "No active session";
-      spotlightName.textContent = "No active sessions";
+      spotlightName.textContent = "No active session";
       spotlightDate.textContent = "";
+      spotlightDescription.textContent = "Start a new grow session to begin tracking.";
       spotlightTimer.textContent = "--";
       spotlightSeeds.textContent = "--";
       spotlightRate.textContent = "--";
@@ -2691,8 +2694,11 @@ function renderHome() {
     spotlightStage.textContent = capitalize(normalizedStage).replace("Unselected", "Not started");
     spotlightName.textContent = formatSessionLabel(spotlightSession);
     spotlightDate.textContent = spotlightSession.date || "";
+    spotlightDescription.textContent = normalizedStage === "soaking"
+      ? "Soaking is underway. Keep this run moving toward germination."
+      : "Germination is active. Review progress and continue this session.";
     spotlightTimer.textContent = formatSpotlightElapsed(stageStart);
-    spotlightSeeds.textContent = `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds}`;
+    spotlightSeeds.textContent = `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds} seeds`;
     spotlightRate.textContent = totalsForSession.totalSeeds > 0 ? `${percentageForSession}%` : "--";
     spotlightAction.textContent = "Continue Session";
     spotlightAction.href = `#sessions/${spotlightSession.id}`;
