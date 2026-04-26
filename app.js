@@ -123,11 +123,27 @@ function getPreferredTheme() {
 function syncThemeToggleButtons() {
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
     const isDark = appState.theme === "dark";
-    button.textContent = isDark ? "Dark" : "Light";
     button.classList.toggle("is-dark", isDark);
     button.classList.toggle("is-light", !isDark);
     button.setAttribute("aria-pressed", isDark ? "true" : "false");
     button.setAttribute("aria-label", `Switch to ${isDark ? "light" : "dark"} mode`);
+    button.setAttribute("title", `Switch to ${isDark ? "light" : "dark"} mode`);
+    button.innerHTML = isDark
+      ? `
+        <span class="theme-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="4.25"></circle>
+            <path d="M12 2.5v2.25M12 19.25v2.25M4.75 12H2.5M21.5 12h-2.25M5.84 5.84 4.25 4.25M19.75 19.75l-1.59-1.59M18.16 5.84l1.59-1.59M5.84 18.16l-1.59 1.59"></path>
+          </svg>
+        </span>
+      `
+      : `
+        <span class="theme-toggle-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"></path>
+          </svg>
+        </span>
+      `;
   });
 }
 
@@ -935,8 +951,28 @@ function updateAuthStatus() {
   }
 
   const themeToggle = `
-    <button id="theme-toggle-button" class="button button-secondary theme-toggle-button ${appState.theme === "dark" ? "is-dark" : "is-light"}" type="button" data-theme-toggle>
-      ${appState.theme === "dark" ? "Dark" : "Light"}
+    <button
+      id="theme-toggle-button"
+      class="button button-secondary theme-toggle-button ${appState.theme === "dark" ? "is-dark" : "is-light"}"
+      type="button"
+      data-theme-toggle
+      aria-label="Switch to ${appState.theme === "dark" ? "light" : "dark"} mode"
+      title="Switch to ${appState.theme === "dark" ? "light" : "dark"} mode"
+    >
+      <span class="theme-toggle-icon" aria-hidden="true">
+        ${appState.theme === "dark"
+          ? `
+            <svg viewBox="0 0 24 24" focusable="false">
+              <circle cx="12" cy="12" r="4.25"></circle>
+              <path d="M12 2.5v2.25M12 19.25v2.25M4.75 12H2.5M21.5 12h-2.25M5.84 5.84 4.25 4.25M19.75 19.75l-1.59-1.59M18.16 5.84l1.59-1.59M5.84 18.16l-1.59 1.59"></path>
+            </svg>
+          `
+          : `
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"></path>
+            </svg>
+          `}
+      </span>
     </button>
   `;
 
