@@ -2665,6 +2665,20 @@ body.theme-dark .partition-row.partition-row--filled {
   background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
+body.theme-dark .partition-row {
+  background: #1E221F;
+  border-bottom-color: #2a2f2b;
+  transition: background 0.2s ease, color 0.18s ease;
+}
+
+body.theme-dark .partition-row:nth-child(even) {
+  background: #1C201D;
+}
+
+body.theme-dark .partition-row:hover {
+  background: #232823;
+}
+
 body.theme-dark .button-secondary,
 body.theme-dark .auth-pill,
 body.theme-dark .summary-link-card,
@@ -2917,7 +2931,9 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
 
 body.theme-dark .partition-row.row--completed {
   background: #1B211D;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.06);
   transition: background 0.2s ease;
 }
 
