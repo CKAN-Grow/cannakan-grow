@@ -2389,6 +2389,17 @@ input::placeholder {
   background: rgba(24, 34, 24, 0.12);
 }
 
+body.theme-dark .chart-header {
+  background: #94d159;
+  color: #151815;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+body.theme-dark .chart-header span:not(:last-child)::after {
+  background: rgba(21, 24, 21, 0.15);
+}
+
 .partition-table {
   display: grid;
 }
