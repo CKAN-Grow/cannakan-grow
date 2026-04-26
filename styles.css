@@ -2665,10 +2665,6 @@ body.theme-dark .partition-row.partition-row--filled {
   background: #2A312B !important;
 }
 
-body.theme-dark .partition-row.partition-row--filled > * {
-  background: #2A312B !important;
-}
-
 body.theme-dark .partition-row {
   background: #1E221F;
   border-bottom-color: #2a2f2b;
@@ -2683,11 +2679,32 @@ body.theme-dark .partition-row:hover {
   background: #232823;
 }
 
+body.theme-dark .partition-row.partition-row--filled .partition-number {
+  background: inherit;
+}
+
+body.theme-dark .partition-row label,
+body.theme-dark .partition-row .detail-cell {
+  background: transparent;
+}
+
+body.theme-dark .partition-row input,
+body.theme-dark .partition-row select,
+body.theme-dark .partition-row .custom-select-trigger {
+  background: #1E221F;
+  border-color: #343a35;
+  color: #f6f8f5;
+}
+
 body.theme-dark .partition-row.partition-row--filled input,
 body.theme-dark .partition-row.partition-row--filled select,
-body.theme-dark .partition-row.partition-row--filled .custom-select-trigger,
+body.theme-dark .partition-row.partition-row--filled .custom-select-trigger {
+  background: #232823;
+  border-color: rgba(148, 209, 89, 0.16);
+}
+
 body.theme-dark .partition-row.partition-row--filled .detail-cell {
-  background: #2A312B !important;
+  background: transparent;
 }
 
 body.theme-dark .button-secondary,
