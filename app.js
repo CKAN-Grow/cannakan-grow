@@ -5044,6 +5044,7 @@ function validatePartitionRow(row) {
   }, sessionStatus);
 
   row.classList.toggle("partition-row--filled", rowStarted);
+  row.classList.toggle("row--completed", fieldsComplete);
   row.classList.toggle("row-has-warning", rowInvalid);
   row.classList.toggle("row-complete", normalizeSessionStatus(sessionStatus) === "completed" && rowStarted);
   updatePartitionButtonState(row, rowState);
