@@ -121,6 +121,28 @@ function getPreferredTheme() {
   return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
 }
 
+function getFileUploadNameLabel(input, files = input?.files) {
+  if (!files || !files.length) {
+    return "No file selected";
+  }
+
+  if (files.length === 1) {
+    return files[0].name;
+  }
+
+  return `${files.length} images selected`;
+}
+
+function updateFileUploadName(input, files = input?.files) {
+  const control = input?.closest(".file-upload-control");
+  const nameElement = control?.querySelector(".file-upload-name");
+  if (!nameElement) {
+    return;
+  }
+
+  nameElement.textContent = getFileUploadNameLabel(input, files);
+}
+
 function syncThemeToggleButtons() {
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
     const isDark = appState.theme === "dark";
@@ -1140,12 +1162,15 @@ function initializeSessionImageState(scope, options) {
   };
 
   scope.__sessionImageState = state;
+  updateFileUploadName(state.input);
   renderSessionImageGrid(state);
 
   if (state.editable && !state.input.dataset.bound) {
     state.input.addEventListener("change", async () => {
+      updateFileUploadName(state.input);
       await handleSessionImageSelection(state, state.input.files);
       state.input.value = "";
+      updateFileUploadName(state.input, state.input.files);
     });
     state.input.dataset.bound = "true";
   }
@@ -2457,10 +2482,12 @@ function bindProfileForm(form, options = {}) {
   };
 
   usernameInput.value = profile?.username || "";
+  updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
 
   avatarInput.addEventListener("change", () => {
     const file = avatarInput.files?.[0];
+    updateFileUploadName(avatarInput);
     if (!file) {
       return;
     }
@@ -2494,6 +2521,7 @@ function bindProfileForm(form, options = {}) {
     state.pendingFile = null;
     state.removeAvatar = true;
     avatarInput.value = "";
+    updateFileUploadName(avatarInput, []);
     renderProfileAvatarPreview(preview, removeButton, state, profile);
   });
 

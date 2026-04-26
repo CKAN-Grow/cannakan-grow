@@ -83,7 +83,11 @@
         </label>
         <label class="profile-avatar-field">
           <span>Profile Picture (optional)</span>
-          <input type="file" name="avatar" accept="image/*">
+          <span class="file-upload-control">
+            <span class="file-upload-button">Choose Image</span>
+            <span class="file-upload-name">No file selected</span>
+            <input class="file-upload-input" type="file" name="avatar" accept="image/*">
+          </span>
         </label>
         <div id="profile-avatar-preview" class="profile-avatar-preview" hidden></div>
         <div class="profile-avatar-actions">
@@ -303,7 +307,11 @@
             </div>
             <label class="session-images-upload">
               <span>Add images</span>
-              <input id="session-images-input" type="file" accept="image/*" multiple>
+              <span class="file-upload-control">
+                <span class="file-upload-button">Choose Image</span>
+                <span class="file-upload-name">No file selected</span>
+                <input id="session-images-input" class="file-upload-input" type="file" accept="image/*" multiple>
+              </span>
             </label>
             <p id="session-images-message" class="session-images-message" aria-live="polite"></p>
             <div id="session-images-grid" class="session-images-grid"></div>
