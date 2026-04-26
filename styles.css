@@ -2662,7 +2662,7 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 }
 
 body.theme-dark .partition-row.partition-row--filled {
-  background-color: rgba(255, 255, 255, 0.04) !important;
+  background-color: #1E221F !important;
 }
 
 body.theme-dark .partition-row {
@@ -2930,10 +2930,10 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
 }
 
 body.theme-dark .partition-row.row--completed {
-  background: #1B211D;
+  background: #242A25;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.06);
+    inset 0 0 0 1px rgba(148, 209, 89, 0.05);
   transition: background 0.2s ease;
 }
 
