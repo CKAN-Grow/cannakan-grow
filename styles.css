@@ -3031,10 +3031,17 @@ body.theme-dark #session-history-section {
 #grow-sessions-header {
   background:
     linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(30, 34, 31, 0.98) 18%, rgba(30, 34, 31, 1) 100%);
-  border-color: #2a332f;
+  border: 1px solid rgba(148, 209, 89, 0.42);
   border-top-width: 3px;
-  border-top-color: #94d159;
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+#grow-sessions-header:hover {
+  border-color: rgba(148, 209, 89, 0.52);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 #grow-sessions-header .eyebrow,
