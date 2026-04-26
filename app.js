@@ -2596,6 +2596,14 @@ function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
   const sessions = sortSessionsNewestFirst(getSessions());
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
+  const spotlightCard = document.querySelector("#active-session-spotlight");
+  const spotlightStage = document.querySelector("#active-session-spotlight-stage");
+  const spotlightName = document.querySelector("#active-session-spotlight-name");
+  const spotlightDate = document.querySelector("#active-session-spotlight-date");
+  const spotlightTimer = document.querySelector("#active-session-spotlight-timer");
+  const spotlightSeeds = document.querySelector("#active-session-spotlight-seeds");
+  const spotlightRate = document.querySelector("#active-session-spotlight-rate");
+  const spotlightAction = document.querySelector("#active-session-spotlight-action");
   const countEl = document.querySelector("#session-count");
   const activeCountEl = document.querySelector("#active-session-count");
   const activeSubtextEl = document.querySelector("#active-session-subtext");
@@ -2650,6 +2658,47 @@ function renderHome() {
     bestSessionDateEl.textContent = "";
     bestSessionResultEl.textContent = "";
   }
+
+  const spotlightSession = activeSessions[0] || null;
+  const updateSpotlight = () => {
+    if (!spotlightSession) {
+      spotlightCard?.classList.remove("stage-soaking", "stage-germinating");
+      spotlightStage.textContent = "No active session";
+      spotlightName.textContent = "No active sessions";
+      spotlightDate.textContent = "";
+      spotlightTimer.textContent = "--";
+      spotlightSeeds.textContent = "--";
+      spotlightRate.textContent = "--";
+      spotlightAction.textContent = "Start New Session";
+      spotlightAction.href = "#new";
+      return;
+    }
+
+    const normalizedStage = normalizeSessionStatus(spotlightSession.sessionStatus);
+    const totalsForSession = getSessionSeedTotals(spotlightSession);
+    const percentageForSession = totalsForSession.totalSeeds > 0
+      ? Math.round((totalsForSession.totalPlanted / totalsForSession.totalSeeds) * 100)
+      : 0;
+    const stageStart = getStageStartDateTime(
+      spotlightSession.date,
+      spotlightSession.time,
+      normalizedStage,
+      spotlightSession.germinationStartedAt || "",
+    );
+
+    spotlightCard?.classList.toggle("stage-soaking", normalizedStage === "soaking");
+    spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
+    spotlightStage.textContent = capitalize(normalizedStage).replace("Unselected", "Not started");
+    spotlightName.textContent = formatSessionLabel(spotlightSession);
+    spotlightDate.textContent = spotlightSession.date || "";
+    spotlightTimer.textContent = formatSpotlightElapsed(stageStart);
+    spotlightSeeds.textContent = `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds}`;
+    spotlightRate.textContent = totalsForSession.totalSeeds > 0 ? `${percentageForSession}%` : "--";
+    spotlightAction.textContent = "Continue Session";
+    spotlightAction.href = `#sessions/${spotlightSession.id}`;
+  };
+
+  startSessionTimer(updateSpotlight);
 }
 
 function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
@@ -5143,6 +5192,28 @@ function formatTimingDateTime(value) {
   const minutes = String(value.getMinutes()).padStart(2, "0");
   const timePart = formatStoredTime(`${hours}:${minutes}`);
   return `${datePart} - ${timePart}`;
+}
+
+function formatSpotlightElapsed(startedAt) {
+  if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
+    return "--";
+  }
+
+  let totalMinutes = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  if (totalMinutes < 60) {
+    return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
+  }
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  totalMinutes -= days * 24 * 60;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+
+  return `${hours}h ${minutes}m`;
 }
 
 function formatDurationBetween(startedAt, endedAt) {

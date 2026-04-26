@@ -199,6 +199,105 @@ select {
   transition: width 0.28s ease;
 }
 
+.spotlight-card {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border-top: 4px solid rgba(24, 34, 24, 0.08);
+}
+
+.spotlight-card.stage-soaking {
+  border-top-color: #6ca9d8;
+}
+
+.spotlight-card.stage-germinating {
+  border-top-color: #DD8045;
+}
+
+.spotlight-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.spotlight-stage-pill {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.spotlight-card.stage-soaking .spotlight-stage-pill {
+  background: rgba(108, 169, 216, 0.14);
+  color: #285f89;
+  border-color: rgba(108, 169, 216, 0.22);
+}
+
+.spotlight-card.stage-germinating .spotlight-stage-pill {
+  background: rgba(221, 128, 69, 0.14);
+  color: #9b5626;
+  border-color: rgba(221, 128, 69, 0.22);
+}
+
+.spotlight-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.spotlight-main {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.spotlight-name {
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem);
+  line-height: 1.15;
+}
+
+.spotlight-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+
+.spotlight-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.spotlight-stat {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  display: grid;
+  gap: 6px;
+}
+
+.spotlight-stat span {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.spotlight-stat strong {
+  font-size: 1rem;
+}
+
+.spotlight-actions {
+  flex: 0 0 auto;
+}
+
 .progress-chart-section {
   margin-top: 18px;
   padding: 16px;
@@ -1078,10 +1177,28 @@ select {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .spotlight-body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .spotlight-actions {
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
   .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .spotlight-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .spotlight-meta {
     grid-template-columns: 1fr;
   }
 }
