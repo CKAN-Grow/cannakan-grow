@@ -61,6 +61,7 @@ const appState = {
   profileError: "",
   authNotice: "",
   deletionPromptShown: false,
+  accountMenuOpen: false,
   sessions: [],
   theme: "light",
   growthStage: null,
@@ -164,6 +165,81 @@ function applyTheme(theme, options = {}) {
 
 function toggleTheme() {
   applyTheme(appState.theme === "dark" ? "light" : "dark");
+}
+
+function closeAccountMenu() {
+  if (!appState.accountMenuOpen) {
+    return;
+  }
+
+  appState.accountMenuOpen = false;
+  updateAuthStatus();
+}
+
+function toggleAccountMenu() {
+  appState.accountMenuOpen = !appState.accountMenuOpen;
+  updateAuthStatus();
+}
+
+function getMenuIconMarkup(icon) {
+  const icons = {
+    menu: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M4 7h16M4 12h16M4 17h16"></path>
+      </svg>
+    `,
+    moon: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"></path>
+      </svg>
+    `,
+    sun: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <circle cx="12" cy="12" r="4.25"></circle>
+        <path d="M12 2.5v2.25M12 19.25v2.25M4.75 12H2.5M21.5 12h-2.25M5.84 5.84 4.25 4.25M19.75 19.75l-1.59-1.59M18.16 5.84l1.59-1.59M5.84 18.16l-1.59 1.59"></path>
+      </svg>
+    `,
+    profile: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+        <path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path>
+      </svg>
+    `,
+    delete: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M4 7h16"></path>
+        <path d="M9 7V4.5h6V7"></path>
+        <path d="M8 7l.8 11h6.4L16 7"></path>
+        <path d="M10 11v4M14 11v4"></path>
+      </svg>
+    `,
+    signout: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path>
+        <path d="M14 16l5-4-5-4"></path>
+        <path d="M19 12H9"></path>
+      </svg>
+    `,
+  };
+
+  return `<span class="account-menu-icon" aria-hidden="true">${icons[icon] || ""}</span>`;
+}
+
+async function handleAccountMenuDelete() {
+  closeAccountMenu();
+  const confirmed = await confirmAccountDeletion();
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const scheduledProfile = await scheduleUserDeletion();
+    const scheduledForLabel = formatSessionNameDate(scheduledProfile.deletionScheduledFor.slice(0, 10));
+    appState.authNotice = `Account deletion is scheduled for ${scheduledForLabel}. Your app data has not been permanently removed yet. Contact support to fully remove login credentials.`;
+    await appState.supabase?.auth.signOut();
+  } catch (error) {
+    alert(error.message || "Could not delete your account data.");
+  }
 }
 
 async function ensureUserProfile(user) {
@@ -533,6 +609,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.profile = null;
   appState.profileError = "";
   appState.deletionPromptShown = false;
+  appState.accountMenuOpen = false;
 
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
@@ -950,59 +1027,95 @@ function updateAuthStatus() {
     return;
   }
 
-  const themeToggle = `
-    <button
-      id="theme-toggle-button"
-      class="button button-secondary theme-toggle-button ${appState.theme === "dark" ? "is-dark" : "is-light"}"
-      type="button"
-      data-theme-toggle
-      aria-label="Switch to ${appState.theme === "dark" ? "light" : "dark"} mode"
-      title="Switch to ${appState.theme === "dark" ? "light" : "dark"} mode"
-    >
-      <span class="theme-toggle-icon" aria-hidden="true">
-        ${appState.theme === "dark"
-          ? `
-            <svg viewBox="0 0 24 24" focusable="false">
-              <circle cx="12" cy="12" r="4.25"></circle>
-              <path d="M12 2.5v2.25M12 19.25v2.25M4.75 12H2.5M21.5 12h-2.25M5.84 5.84 4.25 4.25M19.75 19.75l-1.59-1.59M18.16 5.84l1.59-1.59M5.84 18.16l-1.59 1.59"></path>
-            </svg>
-          `
-          : `
-            <svg viewBox="0 0 24 24" focusable="false">
-              <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"></path>
-            </svg>
-          `}
-      </span>
-    </button>
-  `;
-
   if (!isSupabaseConfigured()) {
-    authStatus.innerHTML = `${themeToggle}<span class="auth-pill">Supabase setup needed</span>`;
-    authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
+    authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
     return;
   }
 
   if (!appState.user) {
-    authStatus.innerHTML = `${themeToggle}<span class="auth-pill">Signed out</span>`;
-    authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
+    authStatus.innerHTML = `<span class="auth-pill">Signed out</span>`;
     return;
   }
 
+  const themeTarget = appState.theme === "dark" ? "light" : "dark";
+  const themeLabel = `Switch to ${themeTarget} mode`;
+  const themeIcon = themeTarget === "dark" ? "moon" : "sun";
+
   authStatus.innerHTML = `
-    ${themeToggle}
-    <div class="auth-profile-chip">
-      ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
-      <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
+    <div class="account-menu-root" data-account-menu-root>
+      <div class="auth-profile-chip">
+        ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
+        <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
+      </div>
+      <button
+        id="account-menu-trigger"
+        class="button button-secondary account-menu-trigger"
+        type="button"
+        aria-label="Open account menu"
+        aria-haspopup="menu"
+        aria-expanded="${appState.accountMenuOpen ? "true" : "false"}"
+      >
+        ${getMenuIconMarkup("menu")}
+      </button>
+      <div class="account-dropdown ${appState.accountMenuOpen ? "is-open" : ""}" ${appState.accountMenuOpen ? "" : "hidden"} role="menu" aria-label="Account menu">
+        <button id="account-theme-toggle" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup(themeIcon)}
+          <span>${themeLabel}</span>
+        </button>
+        <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("profile")}
+          <span>Edit Profile</span>
+        </button>
+        <button id="account-delete-profile" class="account-menu-item is-danger" type="button" role="menuitem">
+          ${getMenuIconMarkup("delete")}
+          <span>Delete Profile</span>
+        </button>
+        <button id="account-sign-out" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("signout")}
+          <span>Sign Out</span>
+        </button>
+      </div>
     </div>
-    <button id="edit-profile-button" class="button button-secondary" type="button">Edit Profile</button>
-    <button id="sign-out-button" class="button button-secondary" type="button">Sign Out</button>
   `;
 
-  authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
-  authStatus.querySelector("#edit-profile-button")?.addEventListener("click", () => {
+  const menuRoot = authStatus.querySelector("[data-account-menu-root]");
+  const trigger = authStatus.querySelector("#account-menu-trigger");
+  const dropdown = authStatus.querySelector(".account-dropdown");
+
+  menuRoot?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  trigger?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleAccountMenu();
+  });
+
+  dropdown?.querySelector("#account-theme-toggle")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    toggleTheme();
+  });
+
+  dropdown?.querySelector("#account-edit-profile")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
     openProfileEditor();
   });
-  authStatus.querySelector("#sign-out-button")?.addEventListener("click", async () => {
+
+  dropdown?.querySelector("#account-delete-profile")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await handleAccountMenuDelete();
+  });
+
+  dropdown?.querySelector("#account-sign-out")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
     await appState.supabase.auth.signOut();
   });
 }
@@ -5609,6 +5722,25 @@ window.addEventListener("error", (event) => {
 
 window.addEventListener("unhandledrejection", (event) => {
   reportAppError(event.reason instanceof Error ? event.reason : new Error(String(event.reason || "Unhandled promise rejection")), "Unhandled Promise Rejection");
+});
+
+document.addEventListener("click", (event) => {
+  if (!appState.accountMenuOpen) {
+    return;
+  }
+
+  const menuRoot = document.querySelector("[data-account-menu-root]");
+  if (menuRoot && event.target instanceof Node && menuRoot.contains(event.target)) {
+    return;
+  }
+
+  closeAccountMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && appState.accountMenuOpen) {
+    closeAccountMenu();
+  }
 });
 
 window.addEventListener("hashchange", safeRender);

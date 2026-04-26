@@ -107,6 +107,13 @@ textarea {
   justify-content: flex-end;
 }
 
+.account-menu-root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .auth-profile-chip {
   display: inline-flex;
   align-items: center;
@@ -133,6 +140,128 @@ textarea {
   background: var(--soft-surface);
   border: 1px solid var(--line);
   color: var(--muted);
+}
+
+.account-menu-trigger {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--soft-surface);
+  box-shadow: 0 6px 14px rgba(29, 49, 33, 0.06);
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+}
+
+.account-menu-trigger:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 8px 18px rgba(29, 49, 33, 0.1),
+    0 0 0 2px rgba(148, 209, 89, 0.16);
+}
+
+.account-menu-trigger:active {
+  transform: translateY(0);
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 220px;
+  padding: 8px 0;
+  border-radius: 12px;
+  border: 1px solid #e3e8e1;
+  background: #ffffff;
+  box-shadow: 0 18px 34px rgba(29, 49, 33, 0.12);
+  z-index: 40;
+  animation: accountMenuIn 0.18s ease;
+}
+
+.account-dropdown[hidden] {
+  display: none !important;
+}
+
+.account-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.account-menu-item:hover {
+  background: rgba(24, 34, 24, 0.05);
+}
+
+.account-menu-item.is-danger {
+  color: var(--danger);
+}
+
+.account-menu-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 18px;
+}
+
+.account-menu-icon svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.theme-dark .account-menu-trigger {
+  background: #252b26;
+  border-color: #343a35;
+  color: var(--ink);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .account-menu-trigger:hover {
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.26),
+    0 0 0 2px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .account-dropdown {
+  background: #252b26;
+  border-color: #343a35;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.3);
+}
+
+body.theme-dark .account-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@keyframes accountMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .topbar-nav a,
