@@ -2959,7 +2959,7 @@ body.theme-dark input:focus-visible,
 body.theme-dark select:focus-visible,
 body.theme-dark .session-notes-field textarea:focus-visible {
   border-color: #94d159;
-  background: var(--field-focus-bg);
+  background: #232823;
   color: #f6f8f5;
   caret-color: #f6f8f5;
   box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.14);
@@ -2975,9 +2975,35 @@ body.theme-dark textarea {
   -webkit-text-fill-color: #f6f8f5;
 }
 
+body.theme-dark input:focus,
+body.theme-dark select:focus,
+body.theme-dark textarea:focus {
+  background: #232823;
+  color: #f6f8f5;
+  caret-color: #f6f8f5;
+  -webkit-text-fill-color: #f6f8f5;
+}
+
 body.theme-dark input::placeholder,
 body.theme-dark textarea::placeholder {
   color: #8f9a91;
+}
+
+body.theme-dark input:-webkit-autofill,
+body.theme-dark input:-webkit-autofill:hover,
+body.theme-dark input:-webkit-autofill:focus,
+body.theme-dark textarea:-webkit-autofill,
+body.theme-dark textarea:-webkit-autofill:hover,
+body.theme-dark textarea:-webkit-autofill:focus,
+body.theme-dark select:-webkit-autofill,
+body.theme-dark select:-webkit-autofill:hover,
+body.theme-dark select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f6f8f5;
+  caret-color: #f6f8f5;
+  -webkit-box-shadow: 0 0 0 1000px #232823 inset;
+  box-shadow: 0 0 0 1000px #232823 inset;
+  border-color: #94d159;
+  transition: background-color 9999s ease-out 0s;
 }
 
 body.theme-dark select,
@@ -3371,10 +3397,13 @@ body.theme-dark .partition-row.row--completed {
 }
 
 body.theme-dark .partition-row.row--completed input,
+body.theme-dark .partition-row.row--completed textarea,
 body.theme-dark .partition-row.row--completed select {
   border-color: rgba(52, 58, 53, 0.4);
-  background: #1B211D;
-  color: #dfe6df;
+  background: #232823;
+  color: #e6efe9;
+  caret-color: #e6efe9;
+  -webkit-text-fill-color: #e6efe9;
 }
 
 body.theme-dark .partition-row.row--completed input::placeholder {
@@ -3382,9 +3411,14 @@ body.theme-dark .partition-row.row--completed input::placeholder {
 }
 
 body.theme-dark .partition-row.row--completed input:focus,
+body.theme-dark .partition-row.row--completed textarea:focus,
 body.theme-dark .partition-row.row--completed select:focus {
   border-color: rgba(148, 209, 89, 0.5);
-  box-shadow: none;
+  background: #232823;
+  color: #f6f8f5;
+  caret-color: #f6f8f5;
+  -webkit-text-fill-color: #f6f8f5;
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.12);
 }
 
 .partition-row input.is-missing,
