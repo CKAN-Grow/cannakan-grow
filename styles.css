@@ -3075,6 +3075,16 @@ body.theme-dark .form-message {
   color: #f1b8ba;
 }
 
+body.theme-dark .session-status-error {
+  color: #ff5c5c;
+}
+
+body.theme-dark .session-status-reminder.is-warning {
+  background: rgba(255, 92, 92, 0.12);
+  border-color: rgba(255, 92, 92, 0.34);
+  color: #ff8b8b;
+}
+
 body.theme-dark .growth-stage-modal-overlay {
   background: rgba(0, 0, 0, 0.48);
 }
