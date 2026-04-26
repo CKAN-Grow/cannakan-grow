@@ -1089,12 +1089,19 @@ body.theme-dark .topbar-nav a.is-active {
 }
 
 .button-primary {
-  background: var(--accent);
-  color: #f7fff8;
+  background: #94d159;
+  color: #1c1f1d;
+  border-color: #94d159;
 }
 
 .button-primary:hover {
-  background: var(--accent-dark);
+  background: #7fc94a;
+  border-color: #7fc94a;
+}
+
+.button-primary:active {
+  background: #6fb63d;
+  border-color: #6fb63d;
 }
 
 .auth-card {
