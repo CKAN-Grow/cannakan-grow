@@ -894,6 +894,14 @@ body.theme-dark .spotlight-stat strong {
   cursor: pointer;
 }
 
+.session-images-upload input[type="file"] {
+  display: none;
+}
+
+.session-images-upload .file-upload-input {
+  display: block;
+}
+
 .file-upload-control:hover .file-upload-button {
   border-color: #94d159;
   box-shadow:
