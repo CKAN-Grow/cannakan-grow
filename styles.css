@@ -312,7 +312,7 @@ body.theme-dark .topbar-nav a.is-active {
 
 .eyebrow {
   margin: 0 0 6px;
-  font-size: 0.78rem;
+  font-size: 0.98rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted);
@@ -1237,7 +1237,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .session-notes-field > span {
-  font-size: 0.92rem;
+  font-size: 1.16rem;
   font-weight: 700;
   color: var(--ink);
 }
@@ -1282,7 +1282,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .progress-chart-heading h4 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.28rem;
 }
 
 .progress-chart-list {
@@ -1681,7 +1681,7 @@ body.theme-dark .theme-toggle-button:hover {
 
 .session-status-label {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.94rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
@@ -3244,6 +3244,16 @@ body.theme-dark .session-status-current-label,
 body.theme-dark .session-status-help,
 body.theme-dark .session-status-label {
   color: #b7c0b7;
+}
+
+body.theme-dark .session-notes-field textarea {
+  background: #262c27;
+  color: #f6f8f5;
+  border-color: #343a35;
+}
+
+body.theme-dark .session-notes-field textarea::placeholder {
+  color: #9aa49c;
 }
 
 body.theme-dark .session-status-current-value {
