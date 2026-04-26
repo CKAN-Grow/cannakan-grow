@@ -148,6 +148,190 @@ function updateFileUploadName(input, files = input?.files) {
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
+function closeAllCustomSelects(except = null) {
+  document.querySelectorAll(".custom-select.is-open").forEach((wrapper) => {
+    if (except && wrapper === except) {
+      return;
+    }
+
+    wrapper.classList.remove("is-open");
+    const trigger = wrapper.querySelector(".custom-select-trigger");
+    const menu = wrapper.querySelector(".custom-select-menu");
+    trigger?.setAttribute("aria-expanded", "false");
+    if (menu) {
+      menu.hidden = true;
+    }
+  });
+}
+
+function syncCustomSelect(select) {
+  const wrapper = select?.closest(".custom-select");
+  if (!wrapper) {
+    return;
+  }
+
+  const trigger = wrapper.querySelector(".custom-select-trigger");
+  const valueLabel = wrapper.querySelector(".custom-select-value");
+  const menu = wrapper.querySelector(".custom-select-menu");
+  const selectedOption = select.options[select.selectedIndex] || select.options[0];
+  const selectedText = selectedOption?.textContent?.trim() || "Select";
+
+  if (valueLabel) {
+    valueLabel.textContent = selectedText;
+  }
+
+  trigger?.toggleAttribute("disabled", Boolean(select.disabled));
+  trigger?.setAttribute("aria-disabled", select.disabled ? "true" : "false");
+  trigger?.classList.toggle("is-missing", select.classList.contains("is-missing"));
+
+  menu?.querySelectorAll(".custom-select-option").forEach((optionButton) => {
+    const isSelected = optionButton.dataset.value === select.value;
+    optionButton.classList.toggle("is-selected", isSelected);
+    optionButton.setAttribute("aria-selected", isSelected ? "true" : "false");
+  });
+}
+
+function openCustomSelect(select) {
+  const wrapper = select?.closest(".custom-select");
+  if (!wrapper || select.disabled) {
+    return;
+  }
+
+  closeAllCustomSelects(wrapper);
+  const trigger = wrapper.querySelector(".custom-select-trigger");
+  const menu = wrapper.querySelector(".custom-select-menu");
+  wrapper.classList.add("is-open");
+  trigger?.setAttribute("aria-expanded", "true");
+  if (menu) {
+    menu.hidden = false;
+    const selectedOption = menu.querySelector(".custom-select-option.is-selected") || menu.querySelector(".custom-select-option");
+    window.setTimeout(() => selectedOption?.focus(), 0);
+  }
+}
+
+function closeCustomSelect(select) {
+  const wrapper = select?.closest(".custom-select");
+  if (!wrapper) {
+    return;
+  }
+
+  wrapper.classList.remove("is-open");
+  const trigger = wrapper.querySelector(".custom-select-trigger");
+  const menu = wrapper.querySelector(".custom-select-menu");
+  trigger?.setAttribute("aria-expanded", "false");
+  if (menu) {
+    menu.hidden = true;
+  }
+}
+
+function buildCustomSelectOptions(select, menu) {
+  if (!select || !menu) {
+    return;
+  }
+
+  menu.innerHTML = "";
+  [...select.options].forEach((option) => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "custom-select-option";
+    optionButton.dataset.value = option.value;
+    optionButton.textContent = option.textContent;
+    optionButton.setAttribute("role", "option");
+    optionButton.setAttribute("aria-selected", option.selected ? "true" : "false");
+    optionButton.classList.toggle("is-selected", option.selected);
+    optionButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      select.value = option.value;
+      syncCustomSelect(select);
+      closeCustomSelect(select);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      select.dispatchEvent(new Event("input", { bubbles: true }));
+      const trigger = select.closest(".custom-select")?.querySelector(".custom-select-trigger");
+      trigger?.focus();
+    });
+    optionButton.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCustomSelect(select);
+        select.closest(".custom-select")?.querySelector(".custom-select-trigger")?.focus();
+      }
+    });
+    menu.appendChild(optionButton);
+  });
+}
+
+function initializeCustomSelects(scope) {
+  if (!scope) {
+    return;
+  }
+
+  scope.querySelectorAll("select[data-custom-select]").forEach((select) => {
+    const wrapper = select.closest(".custom-select");
+    const trigger = wrapper?.querySelector(".custom-select-trigger");
+    const menu = wrapper?.querySelector(".custom-select-menu");
+    if (!wrapper || !trigger || !menu) {
+      return;
+    }
+
+    buildCustomSelectOptions(select, menu);
+    syncCustomSelect(select);
+
+    if (select.dataset.customSelectBound === "true") {
+      return;
+    }
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (select.disabled) {
+        return;
+      }
+
+      if (wrapper.classList.contains("is-open")) {
+        closeCustomSelect(select);
+      } else {
+        openCustomSelect(select);
+      }
+    });
+
+    trigger.addEventListener("keydown", (event) => {
+      if (select.disabled) {
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (wrapper.classList.contains("is-open")) {
+          closeCustomSelect(select);
+        } else {
+          openCustomSelect(select);
+        }
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        openCustomSelect(select);
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeCustomSelect(select);
+      }
+    });
+
+    select.addEventListener("change", () => {
+      syncCustomSelect(select);
+    });
+
+    select.dataset.customSelectBound = "true";
+  });
+}
+
+function getCustomSelectTrigger(select) {
+  return select?.closest(".custom-select")?.querySelector(".custom-select-trigger") || null;
+}
+
 function animateStageBadge(stageBadge) {
   if (!stageBadge) {
     return;
@@ -3470,23 +3654,37 @@ function buildPartitionFormCard(partition, index) {
     </label>
     <label>
       <span class="mobile-field-label">Type</span>
-        <select name="seedType-${index}" class="partition-input" data-required-choice="true" aria-label="Partition ${partition.id} type">
-        <option value="" selected>Select Type</option>
-        <option value="auto">Auto</option>
-        <option value="fast">Fast</option>
-        <option value="photo">Photo</option>
-        <option value="not-applicable">Not applicable</option>
-      </select>
+      <div class="custom-select">
+        <select name="seedType-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} type">
+          <option value="" selected>Select Type</option>
+          <option value="auto">Auto</option>
+          <option value="fast">Fast</option>
+          <option value="photo">Photo</option>
+          <option value="not-applicable">Not applicable</option>
+        </select>
+        <button type="button" class="custom-select-trigger partition-input" aria-haspopup="listbox" aria-expanded="false">
+          <span class="custom-select-value">Select Type</span>
+          <span class="custom-select-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="custom-select-menu" role="listbox" hidden></div>
+      </div>
       <span class="field-warning" aria-live="polite">Choose a type.</span>
     </label>
     <label>
       <span class="mobile-field-label">Sex</span>
-        <select name="feminized-${index}" class="partition-input" data-required-choice="true" aria-label="Partition ${partition.id} sex">
-        <option value="" selected>Select Sex</option>
-        <option value="feminized">Feminized</option>
-        <option value="regular">Regular</option>
-        <option value="not-applicable">Not applicable</option>
-      </select>
+      <div class="custom-select">
+        <select name="feminized-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} sex">
+          <option value="" selected>Select Sex</option>
+          <option value="feminized">Feminized</option>
+          <option value="regular">Regular</option>
+          <option value="not-applicable">Not applicable</option>
+        </select>
+        <button type="button" class="custom-select-trigger partition-input" aria-haspopup="listbox" aria-expanded="false">
+          <span class="custom-select-value">Select Sex</span>
+          <span class="custom-select-chevron" aria-hidden="true"></span>
+        </button>
+        <div class="custom-select-menu" role="listbox" hidden></div>
+      </div>
       <span class="field-warning" aria-live="polite">Choose feminized or regular.</span>
     </label>
     <label>
@@ -3527,6 +3725,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     });
   }
 
+  initializeCustomSelects(partitionFields);
   attachPartitionValidation(form, formMessage);
   applySessionStatusLayout(
     form.querySelector("#partition-chart-shell"),
@@ -3607,6 +3806,10 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
 
   scope.querySelectorAll('.partition-row input[name="plantedCount"]').forEach((field) => {
     field.disabled = isCompleted || isUnselected;
+  });
+
+  scope.querySelectorAll('select[data-custom-select]').forEach((field) => {
+    syncCustomSelect(field);
   });
 
   const imageInput = scope.querySelector('#session-images-input, #detail-session-images-input');
@@ -3966,6 +4169,7 @@ function renderSessionDetail(sessionId) {
     partitions.appendChild(buildPartitionFormCard(partition, index));
     hydratePartitionRow(partitions.lastElementChild, partition);
   });
+  initializeCustomSelects(partitions);
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
   syncPartitionButtonStates(partitions, detailStatusField.value);
   applyStageEditingMode(app, detailStatusField.value);
@@ -5060,6 +5264,8 @@ function validatePartitionRow(row) {
   varietyInput.classList.toggle("is-missing", rowInvalid && !varietyValue);
   seedInput.classList.toggle("is-missing", rowInvalid && !seedCountValid);
   plantedInput.classList.toggle("is-missing", !plantedCountValid);
+  syncCustomSelect(typeSelect);
+  syncCustomSelect(sexSelect);
   if (successOutput) {
     successOutput.textContent = formatSuccessPercent(
       hasSeedCount ? seedNumber : "",
@@ -5071,10 +5277,10 @@ function validatePartitionRow(row) {
   if (rowInvalid) {
     firstInvalidField = varietyValue ? null : varietyInput;
     if (!firstInvalidField && !typeValue) {
-      firstInvalidField = typeSelect;
+      firstInvalidField = getCustomSelectTrigger(typeSelect) || typeSelect;
     }
     if (!firstInvalidField && !sexValue) {
-      firstInvalidField = sexSelect;
+      firstInvalidField = getCustomSelectTrigger(sexSelect) || sexSelect;
     }
     if (!firstInvalidField && !seedCountValid) {
       firstInvalidField = seedInput;
@@ -5786,6 +5992,10 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  if (!(event.target instanceof Node) || !event.target.closest(".custom-select")) {
+    closeAllCustomSelects();
+  }
+
   if (!appState.accountMenuOpen) {
     return;
   }
@@ -5799,6 +6009,10 @@ document.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeAllCustomSelects();
+  }
+
   if (event.key === "Escape" && appState.accountMenuOpen) {
     closeAccountMenu();
   }
