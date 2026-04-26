@@ -2662,7 +2662,11 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 }
 
 body.theme-dark .partition-row.partition-row--filled {
-  background-color: #1E221F !important;
+  background: #2A312B !important;
+}
+
+body.theme-dark .partition-row.partition-row--filled > * {
+  background: #2A312B !important;
 }
 
 body.theme-dark .partition-row {
@@ -2677,6 +2681,13 @@ body.theme-dark .partition-row:nth-child(even) {
 
 body.theme-dark .partition-row:hover {
   background: #232823;
+}
+
+body.theme-dark .partition-row.partition-row--filled input,
+body.theme-dark .partition-row.partition-row--filled select,
+body.theme-dark .partition-row.partition-row--filled .custom-select-trigger,
+body.theme-dark .partition-row.partition-row--filled .detail-cell {
+  background: #2A312B !important;
 }
 
 body.theme-dark .button-secondary,
