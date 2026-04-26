@@ -62,6 +62,7 @@ const appState = {
   authNotice: "",
   deletionPromptShown: false,
   accountMenuOpen: false,
+  customSelectOpenKey: "",
   sessions: [],
   theme: "light",
   growthStage: null,
@@ -148,9 +149,9 @@ function updateFileUploadName(input, files = input?.files) {
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
-function closeAllCustomSelects(except = null) {
+function closeAllCustomSelects(exceptKey = "") {
   document.querySelectorAll(".custom-select.is-open").forEach((wrapper) => {
-    if (except && wrapper === except) {
+    if (exceptKey && wrapper.dataset.dropdownKey === exceptKey) {
       return;
     }
 
@@ -162,6 +163,8 @@ function closeAllCustomSelects(except = null) {
       menu.hidden = true;
     }
   });
+
+  appState.customSelectOpenKey = exceptKey || "";
 }
 
 function syncCustomSelect(select) {
