@@ -3352,12 +3352,17 @@ function renderSessionForm() {
       const imageState = form.__sessionImageState;
       return imageState ? [...imageState.images, ...imageState.pendingFiles] : [];
     },
-    });
-    form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
-    appState.growthStage = sessionStatusField.value || null;
+  });
+  form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
+  appState.growthStage = sessionStatusField.value || null;
+  syncSessionStatusControlDatasets(sessionStatusField, {
+    germinationStartedAt: form.dataset.germinationStartedAt || "",
+    firstPlantedAt: form.dataset.firstPlantedAt || "",
+    completedAt: form.dataset.completedAt || "",
+  });
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
-    updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
+  updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
   applyStageEditingMode(form, sessionStatusField.value);
@@ -3400,6 +3405,11 @@ function renderSessionForm() {
       progressChart,
       progressSection,
     );
+    syncSessionStatusControlDatasets(sessionStatusField, {
+      germinationStartedAt: form.dataset.germinationStartedAt || "",
+      firstPlantedAt: form.dataset.firstPlantedAt || "",
+      completedAt: form.dataset.completedAt || "",
+    });
     updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
     updateSessionStatusReminder(
       reminder,
@@ -3505,6 +3515,11 @@ function renderSessionForm() {
     form.dataset.currentStage = nextStatus;
     appState.growthStage = sessionStatusField.value || null;
     clearSessionStatusError(sessionStatusField, sessionStatusError);
+    syncSessionStatusControlDatasets(sessionStatusField, {
+      germinationStartedAt: form.dataset.germinationStartedAt || "",
+      firstPlantedAt: form.dataset.firstPlantedAt || "",
+      completedAt: form.dataset.completedAt || "",
+    });
     updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyStageEditingMode(form, sessionStatusField.value);
@@ -3529,12 +3544,18 @@ function renderSessionForm() {
       sessionStatusField.value,
       getPartitionProgressDataFromForm(form),
     );
-    updateSessionLifecycleTimeline(
-      lifecycleSummary,
-      lifecycleSection,
-      buildFormLifecycleState(form),
-    );
-  });
+      updateSessionLifecycleTimeline(
+        lifecycleSummary,
+        lifecycleSection,
+        buildFormLifecycleState(form),
+      );
+      syncSessionStatusControlDatasets(sessionStatusField, {
+        germinationStartedAt: form.dataset.germinationStartedAt || "",
+        firstPlantedAt: form.dataset.firstPlantedAt || "",
+        completedAt: form.dataset.completedAt || "",
+      });
+      updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
+    });
   form.elements.date.addEventListener("change", () => {
     updateSessionStatusReminder(
       reminder,
@@ -3928,6 +3949,41 @@ function getSessionStageLabel(value) {
   return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Select Growth Stage";
 }
 
+function getSessionStageDisplayLabel(value) {
+  return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Not Started";
+}
+
+function getSessionStageButtonLabel(value) {
+  return value ? "Update Stage" : "Select Growth Stage";
+}
+
+function getSessionProgressDisplayLabel(progressKey, value) {
+  if (progressKey === "germination") {
+    return "Germination Started";
+  }
+  if (progressKey === "first-germinated") {
+    return "First Germinated";
+  }
+  if (progressKey === "completed") {
+    return "Completed";
+  }
+  if (progressKey === "soaking") {
+    return "Soaking";
+  }
+  return getSessionStageDisplayLabel(value);
+}
+
+function syncSessionStatusControlDatasets(control, source = {}) {
+  if (!control) {
+    return;
+  }
+
+  control.dataset.sessionStatus = normalizeSessionStatus(control.value);
+  control.dataset.germinationStartedAt = source.germinationStartedAt || "";
+  control.dataset.firstPlantedAt = source.firstPlantedAt || "";
+  control.dataset.completedAt = source.completedAt || "";
+}
+
 function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   if (!stageField) {
     return false;
@@ -4135,6 +4191,11 @@ function renderSessionDetail(sessionId) {
 
   renderSystemLayoutReference(layoutReference, session.systemType);
   detailStatusField.value = session.sessionStatus || "soaking";
+  syncSessionStatusControlDatasets(detailStatusField, {
+    germinationStartedAt: session.germinationStartedAt || "",
+    firstPlantedAt: session.firstPlantedAt || "",
+    completedAt: session.completedAt || "",
+  });
   detailNotesField.value = session.sessionNotes || "";
   initializeSessionImageState(detailImageSection, {
     input: detailImageInput,
@@ -4173,7 +4234,7 @@ function renderSessionDetail(sessionId) {
       return imageState ? [...imageState.images, ...imageState.pendingFiles] : [];
     },
   });
-    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+  updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
   updateSessionStatusReminder(
     detailReminder,
     session.date,
@@ -4228,6 +4289,12 @@ function renderSessionDetail(sessionId) {
         validatePartitionRow(row);
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
+        syncSessionStatusControlDatasets(detailStatusField, {
+          germinationStartedAt: session.germinationStartedAt || "",
+          firstPlantedAt: session.firstPlantedAt || "",
+          completedAt: session.completedAt || "",
+        });
+        updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
         refreshDetailDerivedViews();
         detailSaveMessage.textContent = "";
       });
@@ -4235,6 +4302,12 @@ function renderSessionDetail(sessionId) {
         validatePartitionRow(row);
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
+        syncSessionStatusControlDatasets(detailStatusField, {
+          germinationStartedAt: session.germinationStartedAt || "",
+          firstPlantedAt: session.firstPlantedAt || "",
+          completedAt: session.completedAt || "",
+        });
+        updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
         refreshDetailDerivedViews();
       });
     });
@@ -4243,6 +4316,11 @@ function renderSessionDetail(sessionId) {
   refreshDetailDerivedViews();
   bindSessionTimelineDebugTools(detailLifecycleSection, (action) => {
     applyDebugEventToSession(session, detailStatusField, action);
+    syncSessionStatusControlDatasets(detailStatusField, {
+      germinationStartedAt: session.germinationStartedAt || "",
+      firstPlantedAt: session.firstPlantedAt || "",
+      completedAt: session.completedAt || "",
+    });
     updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
     updateSessionStatusReminder(
       detailReminder,
@@ -4310,7 +4388,12 @@ function renderSessionDetail(sessionId) {
     if (previousStatus === "completed" && detailStatusField.value !== "completed") {
       session.completedAt = "";
     }
-      updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+    syncSessionStatusControlDatasets(detailStatusField, {
+      germinationStartedAt: session.germinationStartedAt || "",
+      firstPlantedAt: session.firstPlantedAt || "",
+      completedAt: session.completedAt || "",
+    });
+    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
     updateSessionStatusReminder(
       detailReminder,
       session.date,
@@ -4626,6 +4709,15 @@ function attachPartitionValidation(form, formMessage) {
       const eventName = field.tagName === "SELECT" ? "change" : "input";
       field.addEventListener(eventName, () => {
         captureFirstPlantedEventForForm(form);
+        syncSessionStatusControlDatasets(form.elements.sessionStatus, {
+          germinationStartedAt: form.dataset.germinationStartedAt || "",
+          firstPlantedAt: form.dataset.firstPlantedAt || "",
+          completedAt: form.dataset.completedAt || "",
+        });
+        updateSessionStatusAppearance(
+          form.elements.sessionStatus,
+          form.querySelector("#session-status-trigger"),
+        );
         validatePartitionRow(row);
         updateSessionSuccessSummary(form, form.querySelector("#session-success-summary"));
         updatePartitionProgressChart(
@@ -4653,6 +4745,15 @@ function attachPartitionValidation(form, formMessage) {
       });
       field.addEventListener("blur", () => {
         captureFirstPlantedEventForForm(form);
+        syncSessionStatusControlDatasets(form.elements.sessionStatus, {
+          germinationStartedAt: form.dataset.germinationStartedAt || "",
+          firstPlantedAt: form.dataset.firstPlantedAt || "",
+          completedAt: form.dataset.completedAt || "",
+        });
+        updateSessionStatusAppearance(
+          form.elements.sessionStatus,
+          form.querySelector("#session-status-trigger"),
+        );
         validatePartitionRow(row);
         updateSessionSuccessSummary(form, form.querySelector("#session-success-summary"));
         updatePartitionProgressChart(
@@ -4821,6 +4922,27 @@ function normalizeSessionStatus(sessionStatus) {
   return sessionStatus || "unselected";
 }
 
+function getSessionStatusProgressKey(control) {
+  if (!control) {
+    return "";
+  }
+
+  const normalizedStatus = normalizeSessionStatus(control.value || "");
+  if (normalizedStatus === "completed" || control.dataset.completedAt) {
+    return "completed";
+  }
+  if (control.dataset.firstPlantedAt) {
+    return "first-germinated";
+  }
+  if (normalizedStatus === "germinating" || control.dataset.germinationStartedAt) {
+    return "germination";
+  }
+  if (normalizedStatus === "soaking") {
+    return "soaking";
+  }
+  return "";
+}
+
 function updateSessionStatusAppearance(control, trigger) {
   if (!control && !trigger) {
     return;
@@ -4828,14 +4950,39 @@ function updateSessionStatusAppearance(control, trigger) {
 
   const value = control?.value || "";
   const normalizedStatus = normalizeSessionStatus(value);
+  const progressKey = getSessionStatusProgressKey(control);
+  const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
+  const currentStageIndex = stageOrder.indexOf(progressKey);
+  const nextStageIndex = progressKey ? Math.min(currentStageIndex + 1, stageOrder.length - 1) : 0;
+  const panel = control?.closest(".session-status-panel") || trigger?.closest(".session-status-panel");
+  const currentValueElement = panel?.querySelector(".session-status-current-value");
 
   if (control) {
     control.dataset.sessionStatus = normalizedStatus;
   }
 
+  panel?.setAttribute("data-session-status", normalizedStatus);
+  panel?.setAttribute("data-session-progress", progressKey || "unselected");
+
+  if (currentValueElement) {
+    currentValueElement.textContent = getSessionProgressDisplayLabel(progressKey, value);
+  }
+
+  panel?.querySelectorAll("[data-stage-step]").forEach((stepElement) => {
+    const stepKey = stepElement.dataset.stageStep;
+    const stepIndex = stageOrder.indexOf(stepKey);
+    const isCurrent = Boolean(progressKey) && stepKey === progressKey;
+    const isComplete = currentStageIndex > -1 && stepIndex < currentStageIndex;
+    const isNext = !isCurrent && !isComplete && stepIndex === nextStageIndex;
+
+    stepElement.classList.toggle("is-current", isCurrent);
+    stepElement.classList.toggle("is-complete", isComplete);
+    stepElement.classList.toggle("is-next", isNext);
+  });
+
   if (trigger) {
     trigger.dataset.sessionStatus = normalizedStatus;
-    trigger.textContent = getSessionStageLabel(value);
+    trigger.textContent = getSessionStageButtonLabel(value);
   }
 }
 
