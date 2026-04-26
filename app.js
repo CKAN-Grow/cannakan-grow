@@ -2595,11 +2595,25 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
 function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
   const sessions = sortSessionsNewestFirst(getSessions());
+  const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const countEl = document.querySelector("#session-count");
+  const activeCountEl = document.querySelector("#active-session-count");
+  const activeSubtextEl = document.querySelector("#active-session-subtext");
+  const activeCard = document.querySelector("#active-sessions-card");
+  const bestSessionCard = document.querySelector("#best-session-card");
+  const bestSessionNameEl = document.querySelector("#best-session-name");
+  const bestSessionDateEl = document.querySelector("#best-session-date");
+  const bestSessionResultEl = document.querySelector("#best-session-result");
+  const bestSessionIndicator = bestSessionCard?.querySelector(".best-session-indicator");
   const overallRateEl = document.querySelector("#overall-germination-rate");
   const overallTotalEl = document.querySelector("#overall-germination-total");
   const overallFillEl = document.querySelector("#overall-germination-fill");
   countEl.textContent = String(sessions.length);
+  activeCountEl.textContent = String(activeSessions.length);
+  activeSubtextEl.textContent = activeSessions.length
+    ? `${activeSessions.length} in progress`
+    : "No active sessions";
+  activeCard?.classList.toggle("has-active-sessions", activeSessions.length > 0);
 
   const totals = sessions.reduce((accumulator, session) => {
     const sessionTotals = getSessionSeedTotals(session);
@@ -2615,6 +2629,27 @@ function renderHome() {
   overallRateEl.textContent = `${percentage}%`;
   overallTotalEl.textContent = `${totals.totalPlanted} / ${totals.totalSeeds} seeds`;
   overallFillEl.style.width = `${percentage}%`;
+
+  const bestSession = getBestCompletedSession(sessions);
+  if (bestSession) {
+    const bestTotals = getSessionSeedTotals(bestSession);
+    const bestPercentage = bestTotals.totalSeeds > 0
+      ? Math.round((bestTotals.totalPlanted / bestTotals.totalSeeds) * 100)
+      : 0;
+    bestSessionCard.href = `#sessions/${bestSession.id}`;
+    bestSessionCard.classList.remove("is-empty");
+    bestSessionIndicator.hidden = false;
+    bestSessionNameEl.textContent = formatSessionLabel(bestSession);
+    bestSessionDateEl.textContent = bestSession.date || "";
+    bestSessionResultEl.textContent = `${bestPercentage}%`;
+  } else {
+    bestSessionCard.href = "#sessions";
+    bestSessionCard.classList.add("is-empty");
+    bestSessionIndicator.hidden = true;
+    bestSessionNameEl.textContent = "No completed sessions yet";
+    bestSessionDateEl.textContent = "";
+    bestSessionResultEl.textContent = "";
+  }
 }
 
 function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
@@ -2662,6 +2697,10 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
 }
 
 function getBestCompletedSessionId(sessions) {
+  return getBestCompletedSession(sessions)?.id || "";
+}
+
+function getBestCompletedSession(sessions) {
   const completedSessions = (sessions || [])
     .filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed")
     .map((session) => {
@@ -2679,7 +2718,7 @@ function getBestCompletedSessionId(sessions) {
       return right.sortTime - left.sortTime;
     });
 
-  return completedSessions[0]?.session.id || "";
+  return completedSessions[0]?.session || null;
 }
 
 function renderSessionForm() {

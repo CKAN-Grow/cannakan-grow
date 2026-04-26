@@ -118,10 +118,24 @@
     </section>
 
     <section class="summary-grid">
+      <a id="active-sessions-card" class="card stat-card summary-link-card" href="#sessions">
+        <span class="stat-label">Active Sessions</span>
+        <strong id="active-session-count" class="stat-value">0</strong>
+        <p id="active-session-subtext" class="summary-subtext">No active sessions</p>
+      </a>
       <article class="card stat-card">
         <span class="stat-label">Saved Sessions</span>
         <strong id="session-count" class="stat-value">0</strong>
       </article>
+      <a id="best-session-card" class="card stat-card best-session-card summary-link-card" href="#sessions">
+        <div class="best-session-header">
+          <span class="stat-label">Best Session</span>
+          <span class="best-session-indicator">Best</span>
+        </div>
+        <strong id="best-session-name" class="best-session-name">No completed sessions yet</strong>
+        <p id="best-session-date" class="summary-subtext"></p>
+        <p id="best-session-result" class="best-session-result"></p>
+      </a>
       <article class="card stat-card overall-rate-card">
         <span class="stat-label">All Sessions Germination Rate</span>
         <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
