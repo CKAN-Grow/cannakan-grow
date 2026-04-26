@@ -2799,6 +2799,10 @@ body.theme-dark .overall-rate-bar {
   background: rgba(255, 255, 255, 0.08);
 }
 
+body.theme-dark #detail-run-progress-section + #detail-save-message + .form-actions {
+  margin-top: 20px;
+}
+
 body.theme-dark .summary-link-card:hover,
 body.theme-dark .recent-session-card:hover,
 body.theme-dark .session-row:hover {
