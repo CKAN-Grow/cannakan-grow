@@ -2751,6 +2751,53 @@ body.theme-dark .snapshot-modal-card {
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.2);
 }
 
+body.theme-dark .session-lifecycle-section,
+body.theme-dark .session-timing-section,
+body.theme-dark .progress-chart-section,
+body.theme-dark .run-progress-section {
+  background: #1e2421;
+  border-color: #2a332f;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .session-lifecycle-section h4,
+body.theme-dark .session-timing-section h4,
+body.theme-dark .progress-chart-section h4,
+body.theme-dark .run-progress-section h4,
+body.theme-dark .session-lifecycle-section strong,
+body.theme-dark .session-timing-section strong,
+body.theme-dark .progress-chart-section strong,
+body.theme-dark .run-progress-section strong {
+  color: #f6f8f5;
+}
+
+body.theme-dark .session-lifecycle-section p,
+body.theme-dark .session-timing-section p,
+body.theme-dark .progress-chart-section p,
+body.theme-dark .run-progress-section p,
+body.theme-dark .session-lifecycle-section .muted,
+body.theme-dark .session-timing-section .muted,
+body.theme-dark .progress-chart-section .muted,
+body.theme-dark .run-progress-section .muted,
+body.theme-dark .progress-chart-values,
+body.theme-dark .overall-rate-total,
+body.theme-dark .run-progress-meta span {
+  color: #b7c0b7;
+}
+
+body.theme-dark .lifecycle-event,
+body.theme-dark .timing-card {
+  background: #252b26;
+  border-color: #2a332f;
+}
+
+body.theme-dark .lifecycle-segment,
+body.theme-dark .progress-bar-track,
+body.theme-dark .run-progress-track,
+body.theme-dark .overall-rate-bar {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 body.theme-dark .summary-link-card:hover,
 body.theme-dark .recent-session-card:hover,
 body.theme-dark .session-row:hover {
