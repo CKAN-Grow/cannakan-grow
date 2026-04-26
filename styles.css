@@ -3064,8 +3064,11 @@ body.theme-dark .overall-rate-bar {
   background: rgba(255, 255, 255, 0.08);
 }
 
+#detail-run-progress-section + #detail-save-message + .form-actions {
+  margin-top: 24px;
+}
+
 body.theme-dark #detail-run-progress-section + #detail-save-message + .form-actions {
-  margin-top: 20px;
   margin-bottom: 20px;
 }
 
