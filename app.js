@@ -148,6 +148,21 @@ function updateFileUploadName(input, files = input?.files) {
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
+function animateStageBadge(stageBadge) {
+  if (!stageBadge) {
+    return;
+  }
+
+  stageBadge.classList.remove("stage-badge--animate");
+  void stageBadge.offsetWidth;
+  stageBadge.classList.add("stage-badge--animate");
+
+  window.clearTimeout(stageBadge.__animationTimeoutId);
+  stageBadge.__animationTimeoutId = window.setTimeout(() => {
+    stageBadge.classList.remove("stage-badge--animate");
+  }, 380);
+}
+
 function syncThemeToggleButtons() {
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
     const isDark = appState.theme === "dark";
@@ -2945,7 +2960,10 @@ function renderHome() {
   const spotlightSession = activeSessions[0] || null;
   const updateSpotlight = () => {
     if (!spotlightSession) {
-      spotlightCard?.classList.remove("stage-soaking", "stage-germinating");
+      spotlightCard?.classList.remove("stage-soaking", "stage-germinating", "stage-completed");
+      if (spotlightStage) {
+        spotlightStage.dataset.stage = "";
+      }
       spotlightStage.textContent = "No active session";
       spotlightName.textContent = "No active session";
       spotlightDate.textContent = "";
@@ -2970,9 +2988,18 @@ function renderHome() {
       spotlightSession.germinationStartedAt || "",
     );
 
+    const previousStage = spotlightStage?.dataset.stage || "";
+
     spotlightCard?.classList.toggle("stage-soaking", normalizedStage === "soaking");
     spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
+    spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
     spotlightStage.textContent = capitalize(normalizedStage).replace("Unselected", "Not started");
+    if (spotlightStage) {
+      spotlightStage.dataset.stage = normalizedStage;
+      if (previousStage && previousStage !== normalizedStage) {
+        animateStageBadge(spotlightStage);
+      }
+    }
     spotlightName.textContent = formatSessionLabel(spotlightSession);
     spotlightDate.textContent = spotlightSession.date || "";
     spotlightDescription.textContent = normalizedStage === "soaking"
