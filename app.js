@@ -2893,6 +2893,15 @@ function renderSessionForm() {
         event.target.blur();
       }
     });
+    partitionFields.addEventListener("keydown", (event) => {
+      if (!event.target.closest(".partition-input")) {
+        return;
+      }
+
+      if (maybePromptGrowthStage(form, sessionStatusField, sessionStatusTrigger)) {
+        event.preventDefault();
+      }
+    });
     systemTypeField.addEventListener("change", () => {
       renderSystemLayoutReference(layoutReference, systemTypeField.value);
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
@@ -3188,6 +3197,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   }
 
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const isUnselected = normalizedStatus === "unselected";
   const allowFullEditing = normalizedStatus === "soaking";
   const allowGerminationOnlyEditing = normalizedStatus === "germinating";
   const isCompleted = normalizedStatus === "completed";
@@ -3229,11 +3239,11 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   scope.querySelectorAll('.partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
-    field.disabled = !allowFullEditing;
+    field.disabled = isCompleted || allowGerminationOnlyEditing;
   });
 
   scope.querySelectorAll('.partition-row input[name="plantedCount"]').forEach((field) => {
-    field.disabled = !allowAnyEditing;
+    field.disabled = isCompleted || isUnselected;
   });
 
   const imageInput = scope.querySelector('#session-images-input, #detail-session-images-input');
@@ -3386,10 +3396,6 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
 
 function maybePromptGrowthStage(form, stageField, stageTrigger) {
   if (!form || normalizeSessionStatus(stageField?.value) !== "unselected") {
-    return false;
-  }
-
-  if (appState.growthStageModalDismissed) {
     return false;
   }
 
