@@ -2460,21 +2460,34 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 }
 
 .partition-btn {
-  background: #1f3a2a;
-  color: #ffffff;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  background: #151815;
+  color: #f6f8f5;
+  border: 1px solid #343a35;
+  font-weight: 600;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.partition-btn:hover {
+  transform: translateY(-1px);
+  border-color: #94d159;
 }
 
 .partition-btn--in-progress {
   background: #DD8045;
-  color: #fff;
+  color: #151815;
+  border: none;
 }
 
 .partition-btn--complete {
   background: #4D4C4A;
-  color: #fff;
+  color: #f6f8f5;
+  border: none;
   box-shadow: 0 0 0 3px rgba(77, 76, 74, 0.12);
-  transform: scale(1.02);
+}
+
+.partition-btn--in-progress:hover,
+.partition-btn--complete:hover {
+  border-color: transparent;
 }
 
 .partition-row label,
