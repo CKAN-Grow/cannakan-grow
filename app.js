@@ -3654,40 +3654,63 @@ function renderSessionDetail(sessionId) {
   );
 
   const partitions = document.querySelector("#detail-partitions");
-  session.partitions.forEach((partition) => {
-    partitions.appendChild(buildPartitionDetailRow(partition, detailStatusField.value));
+  session.partitions.forEach((partition, index) => {
+    partitions.appendChild(buildPartitionFormCard(partition, index));
+    hydratePartitionRow(partitions.lastElementChild, partition);
   });
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
   syncPartitionButtonStates(partitions, detailStatusField.value);
   applyStageEditingMode(app, detailStatusField.value);
-  updatePartitionProgressChart(
-    session.partitions.map((partition) => ({
-      id: partition.id,
-      seedCount: Number(partition.seedCount) || 0,
-      plantedCount: Number(partition.plantedCount) || 0,
-    })),
-    detailProgressChart,
-    detailProgressSection,
-  );
-  updateSessionTimingSummary(
-    detailTimingSummary,
-    detailTimingSection,
-    session.date,
-    session.time,
-    detailStatusField.value,
-    session.completedAt,
-  );
-  updateRunProgressSummary(
-    detailRunProgressSummary,
-    detailRunProgressSection,
-    detailStatusField.value,
-    session.partitions,
-  );
-  updateSessionLifecycleTimeline(
-    detailLifecycleSummary,
-    detailLifecycleSection,
-    buildSessionLifecycleState(session),
-  );
+  const refreshDetailDerivedViews = () => {
+    updatePartitionProgressChart(
+      session.partitions.map((partition) => ({
+        id: partition.id,
+        seedCount: Number(partition.seedCount) || 0,
+        plantedCount: Number(partition.plantedCount) || 0,
+      })),
+      detailProgressChart,
+      detailProgressSection,
+    );
+    updateSessionTimingSummary(
+      detailTimingSummary,
+      detailTimingSection,
+      session.date,
+      session.time,
+      detailStatusField.value,
+      session.completedAt,
+    );
+    updateRunProgressSummary(
+      detailRunProgressSummary,
+      detailRunProgressSection,
+      detailStatusField.value,
+      session.partitions,
+    );
+    updateSessionLifecycleTimeline(
+      detailLifecycleSummary,
+      detailLifecycleSection,
+      buildSessionLifecycleState(session),
+    );
+  };
+  partitions.querySelectorAll(".partition-row").forEach((row) => {
+    row.querySelectorAll("input, select").forEach((field) => {
+      const eventName = field.tagName === "SELECT" ? "change" : "input";
+      field.addEventListener(eventName, () => {
+        validatePartitionRow(row);
+        syncSessionPartitionsFromContainer(session, partitions);
+        captureFirstPlantedEventForSession(session);
+        refreshDetailDerivedViews();
+        detailSaveMessage.textContent = "";
+      });
+      field.addEventListener("blur", () => {
+        validatePartitionRow(row);
+        syncSessionPartitionsFromContainer(session, partitions);
+        captureFirstPlantedEventForSession(session);
+        refreshDetailDerivedViews();
+      });
+    });
+    validatePartitionRow(row);
+  });
+  refreshDetailDerivedViews();
   bindSessionTimelineDebugTools(detailLifecycleSection, (action) => {
     applyDebugEventToSession(session, detailStatusField, action);
     updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
@@ -3768,32 +3791,18 @@ function renderSessionDetail(sessionId) {
     applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
     syncPartitionButtonStates(partitions, detailStatusField.value);
     applyStageEditingMode(app, detailStatusField.value);
-    updateSessionTimingSummary(
-      detailTimingSummary,
-      detailTimingSection,
-      session.date,
-      session.time,
-      detailStatusField.value,
-      session.completedAt,
-    );
-    updateRunProgressSummary(
-      detailRunProgressSummary,
-      detailRunProgressSection,
-      detailStatusField.value,
-      session.partitions,
-    );
-    updateSessionLifecycleTimeline(
-      detailLifecycleSummary,
-      detailLifecycleSection,
-      buildSessionLifecycleState(session),
-    );
+    syncSessionPartitionsFromContainer(session, partitions);
+    refreshDetailDerivedViews();
 
     await saveSessionUpdate(session);
   });
 
   const persistDetailSession = async () => {
+    syncSessionPartitionsFromContainer(session, partitions);
+    captureFirstPlantedEventForSession(session);
     session.sessionNotes = detailNotesField.value.trim();
     detailSaveMessage.textContent = "";
+    refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
     detailSaveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
   };
@@ -5021,6 +5030,38 @@ function captureFirstPlantedEventForForm(form) {
   if (hasPlantedValue) {
     form.dataset.firstPlantedAt = new Date().toISOString();
   }
+}
+
+function captureFirstPlantedEventForSession(session) {
+  if (session.firstPlantedAt) {
+    return;
+  }
+
+  const hasPlantedValue = (session.partitions || [])
+    .some((partition) => Number(partition.plantedCount) > 0);
+  if (hasPlantedValue) {
+    session.firstPlantedAt = new Date().toISOString();
+  }
+}
+
+function syncSessionPartitionsFromContainer(session, container) {
+  if (!session || !container) {
+    return;
+  }
+
+  session.partitions = [...container.querySelectorAll(".partition-row")].map((row, index) => {
+    const parsedSeedVariety = parseSeedVarietyInput(row.querySelector('input[name^="seedVariety-"]')?.value || "");
+    const existingPartition = session.partitions?.[index] || {};
+    return {
+      id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
+      seedVariety: parsedSeedVariety.variety,
+      breeder: parsedSeedVariety.breeder,
+      seedType: row.querySelector('select[name^="seedType-"]')?.value || "",
+      feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
+      seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
+      plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
+    };
+  });
 }
 
 function bindFormTimelineDebugTools(form, onUpdate) {
