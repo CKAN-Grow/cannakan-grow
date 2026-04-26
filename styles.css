@@ -2604,14 +2604,26 @@ body.theme-dark option {
 
 body.theme-dark option:hover,
 body.theme-dark option:focus {
-  background: #2a2f2b;
+  background: rgba(148, 209, 89, 0.18);
   color: #94d159;
 }
 
 body.theme-dark option:checked,
 body.theme-dark option[selected] {
-  background: #2f3530;
+  background: #94d159;
+  color: #151815;
+}
+
+option:hover,
+option:focus {
+  background: rgba(148, 209, 89, 0.18);
   color: #94d159;
+}
+
+option:checked,
+option[selected] {
+  background: #94d159;
+  color: #151815;
 }
 
 body.theme-dark .form-message {
