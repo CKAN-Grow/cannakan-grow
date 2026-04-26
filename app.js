@@ -186,6 +186,9 @@ function syncCustomSelect(select) {
   trigger?.toggleAttribute("disabled", Boolean(select.disabled));
   trigger?.setAttribute("aria-disabled", select.disabled ? "true" : "false");
   trigger?.classList.toggle("is-missing", select.classList.contains("is-missing"));
+  if (select.disabled) {
+    closeCustomSelect(select);
+  }
 
   menu?.querySelectorAll(".custom-select-option").forEach((optionButton) => {
     const isSelected = optionButton.dataset.value === select.value;
@@ -200,11 +203,13 @@ function openCustomSelect(select) {
     return;
   }
 
-  closeAllCustomSelects(wrapper);
+  const dropdownKey = wrapper.dataset.dropdownKey || "";
+  closeAllCustomSelects(dropdownKey);
   const trigger = wrapper.querySelector(".custom-select-trigger");
   const menu = wrapper.querySelector(".custom-select-menu");
   wrapper.classList.add("is-open");
   trigger?.setAttribute("aria-expanded", "true");
+  appState.customSelectOpenKey = dropdownKey;
   if (menu) {
     menu.hidden = false;
     const selectedOption = menu.querySelector(".custom-select-option.is-selected") || menu.querySelector(".custom-select-option");
@@ -224,6 +229,10 @@ function closeCustomSelect(select) {
   trigger?.setAttribute("aria-expanded", "false");
   if (menu) {
     menu.hidden = true;
+  }
+
+  if (appState.customSelectOpenKey === (wrapper.dataset.dropdownKey || "")) {
+    appState.customSelectOpenKey = "";
   }
 }
 
@@ -279,6 +288,11 @@ function initializeCustomSelects(scope) {
 
     buildCustomSelectOptions(select, menu);
     syncCustomSelect(select);
+    const dropdownKey = wrapper.dataset.dropdownKey || "";
+    const isOpen = appState.customSelectOpenKey === dropdownKey && Boolean(dropdownKey);
+    wrapper.classList.toggle("is-open", isOpen);
+    menu.hidden = !isOpen;
+    trigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
 
     if (select.dataset.customSelectBound === "true") {
       return;
@@ -291,7 +305,8 @@ function initializeCustomSelects(scope) {
         return;
       }
 
-      if (wrapper.classList.contains("is-open")) {
+      const currentKey = wrapper.dataset.dropdownKey || "";
+      if (appState.customSelectOpenKey === currentKey && wrapper.classList.contains("is-open")) {
         closeCustomSelect(select);
       } else {
         openCustomSelect(select);
@@ -3657,7 +3672,7 @@ function buildPartitionFormCard(partition, index) {
     </label>
     <label>
       <span class="mobile-field-label">Type</span>
-      <div class="custom-select">
+      <div class="custom-select" data-dropdown-key="partition-${partition.id}-type-${index}">
         <select name="seedType-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} type">
           <option value="" selected>Select Type</option>
           <option value="auto">Auto</option>
@@ -3675,7 +3690,7 @@ function buildPartitionFormCard(partition, index) {
     </label>
     <label>
       <span class="mobile-field-label">Sex</span>
-      <div class="custom-select">
+      <div class="custom-select" data-dropdown-key="partition-${partition.id}-sex-${index}">
         <select name="feminized-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} sex">
           <option value="" selected>Select Sex</option>
           <option value="feminized">Feminized</option>
