@@ -518,12 +518,15 @@ body.theme-dark .topbar-nav a.is-active {
 }
 
 body.theme-dark .spotlight-stat {
-  background: #000000;
+  background: #1E221F;
   border-color: #343a35;
   color: #f6f8f5;
 }
 
-body.theme-dark .spotlight-stat span,
+body.theme-dark .spotlight-stat span {
+  color: #b7c0b7;
+}
+
 body.theme-dark .spotlight-stat strong {
   color: #f6f8f5;
 }
