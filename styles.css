@@ -1434,6 +1434,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-color: var(--line);
 }
 
+body.theme-dark .button-secondary {
+  background: transparent;
+  border-color: #343a35;
+  color: #f6f8f5;
+  transition: all 0.2s ease;
+}
+
+body.theme-dark .button-secondary:hover {
+  background: rgba(148, 209, 89, 0.08);
+  border-color: #94d159;
+  color: #94d159;
+  transform: translateY(-1px);
+}
+
 .theme-toggle-button {
   width: 44px;
   min-width: 44px;
