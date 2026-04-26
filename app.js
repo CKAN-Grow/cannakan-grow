@@ -4030,6 +4030,12 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
       appState.growthStageModalDismissed = false;
       appState.growthStage = nextValue || null;
       stageField.value = nextValue;
+      syncSessionStatusControlDatasets(stageField, {
+        germinationStartedAt: stageField.dataset.germinationStartedAt || "",
+        firstPlantedAt: stageField.dataset.firstPlantedAt || "",
+        completedAt: stageField.dataset.completedAt || "",
+      });
+      updateSessionStatusAppearance(stageField, stageTrigger);
       stageField.dispatchEvent(new Event("change", { bubbles: true }));
       closeGrowthStageModal();
     });
