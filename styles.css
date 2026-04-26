@@ -517,6 +517,17 @@ body.theme-dark .topbar-nav a.is-active {
   font-size: 1rem;
 }
 
+body.theme-dark .spotlight-stat {
+  background: #000000;
+  border-color: #343a35;
+  color: #f6f8f5;
+}
+
+body.theme-dark .spotlight-stat span,
+body.theme-dark .spotlight-stat strong {
+  color: #f6f8f5;
+}
+
 .spotlight-actions {
   flex: 0 0 auto;
 }
