@@ -3046,6 +3046,7 @@ body.theme-dark .overall-rate-bar {
 
 body.theme-dark #detail-run-progress-section + #detail-save-message + .form-actions {
   margin-top: 20px;
+  margin-bottom: 20px;
 }
 
 body.theme-dark .summary-link-card:hover,
