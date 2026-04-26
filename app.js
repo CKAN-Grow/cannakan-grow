@@ -4890,6 +4890,7 @@ function applySessionStatusLayout(chartShell, chartHeader, partitionContainer, s
 
 function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionStatus) {
   const isVisible = sessionStatus === "germinating" || sessionStatus === "completed";
+  const isDarkTheme = document.body.classList.contains("theme-dark");
   const headerCell = chartHeader.querySelector("span:nth-child(6)");
   const plantedCells = [...partitionContainer.querySelectorAll('.partition-row label:has(input[name="plantedCount"])')];
   const plantedInputs = [...partitionContainer.querySelectorAll('input[name="plantedCount"]')];
@@ -4906,7 +4907,7 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
 
   plantedCells.forEach((cell) => {
     if (isVisible) {
-      cell.style.setProperty("background", "rgba(148, 209, 89, 0.12)", "important");
+      cell.style.setProperty("background", isDarkTheme ? "rgba(148, 209, 89, 0.08)" : "rgba(148, 209, 89, 0.12)", "important");
       cell.style.borderRadius = "10px";
       cell.style.padding = "6px";
     } else {
@@ -4919,12 +4920,24 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
   plantedInputs.forEach((input) => {
     if (isVisible) {
       input.style.setProperty("border", "1px solid #94d159", "important");
-      input.style.setProperty("background", "rgba(247, 252, 244, 0.96)", "important");
-      input.style.setProperty("box-shadow", "0 0 0 2px rgba(148, 209, 89, 0.18)", "important");
+      input.style.setProperty("background", isDarkTheme ? "#18201c" : "rgba(247, 252, 244, 0.96)", "important");
+      input.style.setProperty("box-shadow", isDarkTheme ? "0 0 0 2px rgba(148, 209, 89, 0.14)" : "0 0 0 2px rgba(148, 209, 89, 0.18)", "important");
+      if (isDarkTheme) {
+        input.style.setProperty("color", "#f3f7f1", "important");
+        input.style.setProperty("-webkit-text-fill-color", "#f3f7f1", "important");
+        input.style.setProperty("caret-color", "#94d159", "important");
+      } else {
+        input.style.removeProperty("color");
+        input.style.removeProperty("-webkit-text-fill-color");
+        input.style.removeProperty("caret-color");
+      }
     } else {
       input.style.removeProperty("border");
       input.style.removeProperty("background");
       input.style.removeProperty("box-shadow");
+      input.style.removeProperty("color");
+      input.style.removeProperty("-webkit-text-fill-color");
+      input.style.removeProperty("caret-color");
     }
   });
 

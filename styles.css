@@ -2886,7 +2886,10 @@ body.theme-dark .partition-row:nth-child(even) {
   background: #1C201D;
 }
 
-body.theme-dark .partition-row:hover {
+body.theme-dark .partition-row:hover,
+body.theme-dark .partition-row.partition-row--filled:hover,
+body.theme-dark .partition-row.row--completed:hover,
+body.theme-dark .partition-row.row-has-warning:hover {
   background: rgba(148, 209, 89, 0.035) !important;
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.10) !important;
 }
@@ -2948,6 +2951,11 @@ body.theme-dark .partition-row.partition-row--filled .custom-select-trigger {
 
 body.theme-dark .partition-row.partition-row--filled .detail-cell {
   background: transparent;
+}
+
+body.theme-dark .partition-row.row-has-warning {
+  background: rgba(221, 128, 69, 0.05) !important;
+  box-shadow: inset 0 0 0 1px rgba(221, 128, 69, 0.12);
 }
 
 body.theme-dark .button-secondary,
@@ -3580,10 +3588,10 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
 
 body.theme-dark .partition-table[data-session-status="germinating"] .partition-row input[name="plantedCount"],
 body.theme-dark .partition-table[data-session-status="completed"] .partition-row input[name="plantedCount"] {
-  background: #232823 !important;
-  color: #e6efe9 !important;
-  caret-color: #e6efe9;
-  -webkit-text-fill-color: #e6efe9;
+  background: #18201c !important;
+  color: #f3f7f1 !important;
+  caret-color: #94d159;
+  -webkit-text-fill-color: #f3f7f1;
   border: 1px solid #94d159 !important;
   box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.14) !important;
 }
@@ -3592,9 +3600,34 @@ body.theme-dark .partition-table input[type="number"],
 body.theme-dark .partition-table input[name="plantedCount"],
 body.theme-dark .partition-table input[name^="seedCount-"],
 body.theme-dark .partition-table input[name^="seedVariety-"] {
-  color: #e6efe9;
-  caret-color: #e6efe9;
-  -webkit-text-fill-color: #e6efe9;
+  color: #f3f7f1;
+  caret-color: #94d159;
+  -webkit-text-fill-color: #f3f7f1;
+}
+
+body.theme-dark .partition-table input[name="plantedCount"] {
+  background: #18201c !important;
+  color: #f3f7f1 !important;
+  caret-color: #94d159 !important;
+  -webkit-text-fill-color: #f3f7f1 !important;
+}
+
+body.theme-dark .partition-table input[name="plantedCount"]::placeholder {
+  color: #a8b5ad !important;
+}
+
+body.theme-dark .partition-table input[name="plantedCount"]:hover,
+body.theme-dark .partition-table input[name="plantedCount"]:focus,
+body.theme-dark .partition-row:hover input[name="plantedCount"],
+body.theme-dark .partition-row.partition-row--filled:hover input[name="plantedCount"],
+body.theme-dark .partition-row.row--completed:hover input[name="plantedCount"],
+body.theme-dark .partition-row.row-has-warning:hover input[name="plantedCount"] {
+  background: #18201c !important;
+  color: #f3f7f1 !important;
+  caret-color: #94d159 !important;
+  -webkit-text-fill-color: #f3f7f1 !important;
+  border-color: #94d159 !important;
+  box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.14) !important;
 }
 
 .success-cell {
