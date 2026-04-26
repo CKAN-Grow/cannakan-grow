@@ -4,6 +4,11 @@ const SAMPLE_SEED_VERSION = "history-preview-v2";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
+const AUTH_NAVIGATION_KEYS = [
+  "cannakan-grow-last-route",
+  "cannakan-grow-last-session-id",
+  "cannakan-grow-last-session-route",
+];
 const MAX_SESSION_IMAGES = 3;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
@@ -347,6 +352,50 @@ function formatSessionLabel(session) {
 
 function cloneTemplate(template) {
   return template.content.cloneNode(true);
+}
+
+function clearStoredNavigationState() {
+  AUTH_NAVIGATION_KEYS.forEach((key) => {
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+
+    try {
+      sessionStorage.removeItem(key);
+    } catch {}
+  });
+}
+
+function redirectToHomeAfterLogin() {
+  clearStoredNavigationState();
+  if (window.location.hash !== "#home") {
+    window.location.hash = "#home";
+    return;
+  }
+
+  safeRender();
+}
+
+function updateNavState() {
+  const navLinks = document.querySelectorAll(".topbar-nav a");
+  if (!navLinks.length) {
+    return;
+  }
+
+  const hash = window.location.hash || "#home";
+  const [route] = hash.replace("#", "").split("/");
+  const activeNav = route === "home" || !route ? "home" : "sessions";
+
+  navLinks.forEach((link) => {
+    const href = link.getAttribute("href") || "";
+    const isActive = href === `#${activeNav}`;
+    link.classList.toggle("is-active", isActive);
+    if (isActive) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
+  });
 }
 
 async function bootstrapApp() {
@@ -1946,6 +1995,7 @@ async function shareSnapshotBlob(blob, fileName, text) {
 function render() {
   clearSessionTimerInterval();
   updateAuthStatus();
+  updateNavState();
 
   if (!appState.initialized || appState.loading) {
     app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
@@ -2077,6 +2127,8 @@ function renderAuthScreen() {
       if (error) {
         throw error;
       }
+
+      redirectToHomeAfterLogin();
     } catch (error) {
       message.textContent = error.message || "Authentication failed.";
     }

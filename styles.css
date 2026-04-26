@@ -110,6 +110,33 @@ select {
   border: 1px solid var(--line);
 }
 
+.topbar-nav a {
+  color: var(--muted);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.topbar-nav a:hover {
+  color: var(--ink);
+  background: rgba(214, 231, 215, 0.76);
+  border-color: rgba(43, 111, 65, 0.22);
+  box-shadow: 0 10px 20px rgba(29, 49, 33, 0.08);
+  transform: translateY(-1px);
+}
+
+.topbar-nav a.is-active {
+  color: var(--accent-dark);
+  background: linear-gradient(180deg, rgba(148, 209, 89, 0.22), rgba(214, 231, 215, 0.9));
+  border-color: rgba(43, 111, 65, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(148, 209, 89, 0.2),
+    0 12px 24px rgba(29, 49, 33, 0.1);
+}
+
 .eyebrow {
   margin: 0 0 6px;
   font-size: 0.78rem;
