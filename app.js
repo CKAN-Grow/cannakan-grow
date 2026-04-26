@@ -3420,9 +3420,10 @@ function renderSessionsList() {
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
-  renderRecentSessions(activeContainer, activeSessions, sessions, {
+  renderSessionCollection(activeContainer, activeSessions, {
     emptyMessage: "No active sessions.",
-    showBestBadge: false,
+    emptyActionLabel: "Create your first session",
+    compact: false,
   });
 
   renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 3), sessions, {
