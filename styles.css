@@ -2441,6 +2441,77 @@ body.theme-dark .session-status-trigger[data-session-status="germinating"] {
   color: #ffd4b8;
 }
 
+body.theme-dark #profile-modal .profile-modal-card,
+body.theme-dark #profile-modal .profile-card,
+body.theme-dark #profile-modal .profile-card-inline {
+  color: #f6f8f5;
+}
+
+body.theme-dark #profile-modal h2,
+body.theme-dark #profile-modal h3,
+body.theme-dark #profile-modal strong {
+  color: #f6f8f5;
+}
+
+body.theme-dark #profile-modal p,
+body.theme-dark #profile-modal .muted,
+body.theme-dark #profile-modal .snapshot-modal-copy p {
+  color: #b7c0b7;
+}
+
+body.theme-dark #profile-modal label span,
+body.theme-dark #profile-modal .profile-avatar-field span,
+body.theme-dark #profile-modal .eyebrow {
+  color: #8f9a91;
+}
+
+body.theme-dark #profile-modal input,
+body.theme-dark #profile-modal select,
+body.theme-dark #profile-modal textarea {
+  background: #252b26;
+  color: #f6f8f5;
+  border-color: #343a35;
+}
+
+body.theme-dark #profile-modal input::placeholder,
+body.theme-dark #profile-modal textarea::placeholder {
+  color: #8f9a91;
+}
+
+body.theme-dark #profile-modal input:focus-visible,
+body.theme-dark #profile-modal select:focus-visible,
+body.theme-dark #profile-modal textarea:focus-visible {
+  border-color: #94d159;
+}
+
+body.theme-dark #profile-modal [data-profile-close],
+body.theme-dark #profile-modal #profile-remove-avatar {
+  background: #252b26;
+  border-color: #343a35;
+  color: #f6f8f5;
+}
+
+body.theme-dark #profile-modal [data-profile-close]:hover,
+body.theme-dark #profile-modal #profile-remove-avatar:hover {
+  background: #2f3530;
+}
+
+body.theme-dark #profile-modal #profile-remove-avatar:hover {
+  border-color: #94d159;
+}
+
+body.theme-dark #profile-modal .profile-danger-zone,
+body.theme-dark #profile-modal .profile-danger-zone h3,
+body.theme-dark #profile-modal .profile-danger-zone p {
+  color: #ff6b6b;
+}
+
+body.theme-dark #profile-modal .profile-danger-zone .button-danger {
+  color: #ff8a8a;
+  border-color: rgba(255, 107, 107, 0.45);
+  background: rgba(255, 107, 107, 0.08);
+}
+
 .chart-shell[data-session-status="unselected"] .chart-header span:nth-child(6),
 .chart-shell[data-session-status="unselected"] .chart-header span:nth-child(7),
 .chart-shell[data-session-status="soaking"] .chart-header span:nth-child(6),
