@@ -747,6 +747,7 @@ body.theme-dark .spotlight-stat strong {
 .run-progress-summary {
   display: grid;
   gap: 10px;
+  margin-bottom: 18px;
 }
 
 .run-progress-meta {
