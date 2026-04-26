@@ -2683,6 +2683,12 @@ body.theme-dark .partition-row.partition-row--filled .partition-number {
   background: inherit;
 }
 
+body.theme-dark .partition-row .partition-number.partition-btn--in-progress {
+  background: #DD8045 !important;
+  color: #151815 !important;
+  border: none !important;
+}
+
 body.theme-dark .partition-row label,
 body.theme-dark .partition-row .detail-cell {
   background: transparent;
