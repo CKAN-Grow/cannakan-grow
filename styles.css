@@ -604,7 +604,7 @@ body.theme-dark .spotlight-stat strong {
 
 .run-progress-section {
   margin-top: 18px;
-  padding: 16px;
+  padding: 16px 16px 24px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
