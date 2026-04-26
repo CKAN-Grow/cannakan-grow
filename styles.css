@@ -2853,6 +2853,7 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 
 body.theme-dark .partition-row.partition-row--filled {
   background: #2A312B !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.05);
 }
 
 body.theme-dark .partition-row {
@@ -2866,7 +2867,8 @@ body.theme-dark .partition-row:nth-child(even) {
 }
 
 body.theme-dark .partition-row:hover {
-  background: #232823;
+  background: linear-gradient(180deg, rgba(148, 209, 89, 0.04) 0%, #232823 100%);
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 body.theme-dark .partition-row.partition-row--filled .partition-number {
@@ -3456,6 +3458,18 @@ body.theme-dark .partition-table input[name^="seedVariety-"] {
 .success-cell p {
   font-weight: 700;
   color: var(--accent-dark);
+}
+
+body.theme-dark .success-cell p {
+  color: #94d159;
+}
+
+body.theme-dark .success-cell p.is-muted {
+  color: #8f9a91;
+}
+
+body.theme-dark .partition-row.row-has-warning .success-cell p {
+  color: #ff8b8b;
 }
 
 .field-warning {
