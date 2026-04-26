@@ -5594,7 +5594,7 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
   const durationTarget = completedDate || new Date();
 
   summaryElement.innerHTML = `
-    <article class="timing-card">
+    <article class="timing-card timing-card-started">
       <strong>Started</strong>
       <p>${formatTimingDateTime(startedAt)}</p>
     </article>
@@ -5608,7 +5608,7 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
         <p>${formatDurationBetween(startedAt, completedDate)}</p>
       </article>
     ` : `
-      <article class="timing-card">
+      <article class="timing-card timing-card-elapsed">
         <strong>Elapsed Time</strong>
         <p>${formatDurationBetween(startedAt, durationTarget)}</p>
       </article>
