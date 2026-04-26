@@ -2775,6 +2775,23 @@ body.theme-dark .partition-row.row--completed {
   transition: background 0.2s ease;
 }
 
+body.theme-dark .partition-row.row--completed input,
+body.theme-dark .partition-row.row--completed select {
+  border-color: rgba(52, 58, 53, 0.4);
+  background: #1B211D;
+  color: #dfe6df;
+}
+
+body.theme-dark .partition-row.row--completed input::placeholder {
+  color: #7f8a80;
+}
+
+body.theme-dark .partition-row.row--completed input:focus,
+body.theme-dark .partition-row.row--completed select:focus {
+  border-color: rgba(148, 209, 89, 0.5);
+  box-shadow: none;
+}
+
 .partition-row input.is-missing,
 .partition-row select.is-missing {
   border-color: #d1a34d;
