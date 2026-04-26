@@ -1092,11 +1092,16 @@ body.theme-dark .topbar-nav a.is-active {
   background: #94d159;
   color: #1c1f1d;
   border-color: #94d159;
+  transition: all 0.2s ease;
 }
 
 .button-primary:hover {
   background: #7fc94a;
   border-color: #7fc94a;
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.1),
+    0 0 0 2px rgba(148, 209, 89, 0.2);
 }
 
 .button-primary:active {
