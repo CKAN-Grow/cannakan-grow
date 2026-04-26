@@ -2,6 +2,7 @@ const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
+const THEME_KEY = "cannakan-grow-theme";
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const AUTH_NAVIGATION_KEYS = [
@@ -61,6 +62,7 @@ const appState = {
   authNotice: "",
   deletionPromptShown: false,
   sessions: [],
+  theme: "light",
   growthStage: null,
   growthStageModalOpen: false,
   growthStageModalDismissed: false,
@@ -112,6 +114,40 @@ async function safeBootstrapApp() {
     appState.loading = false;
     reportAppError(error, "Startup failed");
   }
+}
+
+function getPreferredTheme() {
+  return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+}
+
+function syncThemeToggleButtons() {
+  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+    const isDark = appState.theme === "dark";
+    button.textContent = isDark ? "Dark" : "Light";
+    button.classList.toggle("is-dark", isDark);
+    button.classList.toggle("is-light", !isDark);
+    button.setAttribute("aria-pressed", isDark ? "true" : "false");
+    button.setAttribute("aria-label", `Switch to ${isDark ? "light" : "dark"} mode`);
+  });
+}
+
+function applyTheme(theme, options = {}) {
+  const normalizedTheme = theme === "dark" ? "dark" : "light";
+  const persist = options.persist !== false;
+  appState.theme = normalizedTheme;
+
+  document.body.classList.toggle("theme-dark", normalizedTheme === "dark");
+  document.body.dataset.theme = normalizedTheme;
+
+  if (persist) {
+    localStorage.setItem(THEME_KEY, normalizedTheme);
+  }
+
+  syncThemeToggleButtons();
+}
+
+function toggleTheme() {
+  applyTheme(appState.theme === "dark" ? "light" : "dark");
 }
 
 async function ensureUserProfile(user) {
@@ -400,6 +436,7 @@ function updateNavState() {
 
 async function bootstrapApp() {
   appState.loading = true;
+  applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
   updateAuthStatus();
   safeRender();
@@ -897,17 +934,26 @@ function updateAuthStatus() {
     return;
   }
 
+  const themeToggle = `
+    <button id="theme-toggle-button" class="button button-secondary theme-toggle-button ${appState.theme === "dark" ? "is-dark" : "is-light"}" type="button" data-theme-toggle>
+      ${appState.theme === "dark" ? "Dark" : "Light"}
+    </button>
+  `;
+
   if (!isSupabaseConfigured()) {
-    authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
+    authStatus.innerHTML = `${themeToggle}<span class="auth-pill">Supabase setup needed</span>`;
+    authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
     return;
   }
 
   if (!appState.user) {
-    authStatus.innerHTML = `<span class="auth-pill">Signed out</span>`;
+    authStatus.innerHTML = `${themeToggle}<span class="auth-pill">Signed out</span>`;
+    authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
     return;
   }
 
   authStatus.innerHTML = `
+    ${themeToggle}
     <div class="auth-profile-chip">
       ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
       <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
@@ -916,6 +962,7 @@ function updateAuthStatus() {
     <button id="sign-out-button" class="button button-secondary" type="button">Sign Out</button>
   `;
 
+  authStatus.querySelector("#theme-toggle-button")?.addEventListener("click", toggleTheme);
   authStatus.querySelector("#edit-profile-button")?.addEventListener("click", () => {
     openProfileEditor();
   });
@@ -5514,6 +5561,10 @@ function escapeHtml(value) {
 
 function capitalize(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+if (document.body) {
+  applyTheme(getPreferredTheme(), { persist: false });
 }
 
 window.addEventListener("error", (event) => {
