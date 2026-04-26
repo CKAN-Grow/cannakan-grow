@@ -3661,11 +3661,11 @@ body.theme-dark .partition-row.row-has-warning .success-cell p {
   color: #9a5a10;
 }
 
-.partition-row.row-has-warning {
+body:not(.theme-dark) .partition-row.row-has-warning {
   background: rgba(255, 247, 224, 0.55);
 }
 
-.partition-row.row-complete {
+body:not(.theme-dark) .partition-row.row-complete {
   background: rgba(75, 79, 76, 0.06);
   color: inherit;
 }
@@ -3676,6 +3676,11 @@ body.theme-dark .partition-row.row--completed {
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
     inset 0 0 0 1px rgba(148, 209, 89, 0.06);
   transition: background 0.2s ease;
+}
+
+body.theme-dark .partition-row.row-has-warning {
+  background: rgba(221, 128, 69, 0.05) !important;
+  box-shadow: inset 0 0 0 1px rgba(221, 128, 69, 0.12) !important;
 }
 
 body.theme-dark .partition-row.row--completed input,
