@@ -3301,6 +3301,7 @@ function renderSessionForm() {
   const sessionSuccessSummary = document.querySelector("#session-success-summary");
   const progressSection = document.querySelector("#partition-progress-section");
   const progressChart = document.querySelector("#partition-progress-chart");
+  const partitionWorkTitle = document.querySelector("#partition-work-title");
   const imageSection = document.querySelector(".session-images-section");
   const imageInput = document.querySelector("#session-images-input");
   const imageGrid = document.querySelector("#session-images-grid");
@@ -3362,6 +3363,9 @@ function renderSessionForm() {
   });
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
+  if (partitionWorkTitle) {
+    partitionWorkTitle.textContent = getPartitionChartTitle(systemTypeField.value);
+  }
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
@@ -3479,6 +3483,9 @@ function renderSessionForm() {
     });
     systemTypeField.addEventListener("change", () => {
       renderSystemLayoutReference(layoutReference, systemTypeField.value);
+      if (partitionWorkTitle) {
+        partitionWorkTitle.textContent = getPartitionChartTitle(systemTypeField.value);
+      }
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     clearActiveSystemLayout(form);
@@ -3954,7 +3961,7 @@ function getSessionStageDisplayLabel(value) {
 }
 
 function getSessionStageButtonLabel(value) {
-  return value ? "Update Stage" : "Select Growth Stage";
+  return value ? "Update Growth Stage" : "Select Growth Stage";
 }
 
 function getSessionProgressDisplayLabel(progressKey, value) {
@@ -3982,6 +3989,10 @@ function syncSessionStatusControlDatasets(control, source = {}) {
   control.dataset.germinationStartedAt = source.germinationStartedAt || "";
   control.dataset.firstPlantedAt = source.firstPlantedAt || "";
   control.dataset.completedAt = source.completedAt || "";
+}
+
+function getPartitionChartTitle(systemType) {
+  return systemType === "TRA" ? "TRā™ Partition Chart" : "KAN® Partition Chart";
 }
 
 function openGrowthStageModal({ stageField, stageTrigger } = {}) {

@@ -197,88 +197,47 @@
       </div>
 
       <form id="session-form" class="session-form">
-        <section class="session-top-grid">
-          <div class="session-chart-header">
-            <label>
-              <span>Session Name</span>
-              <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
-            </label>
-            <label>
-              <span>Date</span>
-              <input type="date" name="date" required>
-            </label>
-            <label class="time-format-field">
-              <div class="field-label-row">
-                <span>Time</span>
-                <div class="time-format-toggle" role="group" aria-label="Time format">
-                  <button type="button" class="time-format-button" data-time-format="12h">12h</button>
-                  <button type="button" class="time-format-button" data-time-format="24h">24h</button>
-                </div>
-              </div>
-              <input type="hidden" name="time">
-              <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
-            </label>
-            <label>
-              <span>System Type</span>
-              <select name="systemType" required>
-                <option value="KAN">KAN</option>
-                <option value="TRA">TRA</option>
-              </select>
-            </label>
-            <label>
-              <span>System ID (if using multiple)</span>
-              <input type="text" name="unitId" placeholder="Ex: A, B, C" maxlength="12">
-            </label>
-          </div>
-        </section>
-
-        <section class="system-layout-block" aria-labelledby="system-layout-label">
-          <p id="system-layout-label" class="system-layout-label">System Layout</p>
-          <div id="system-layout-reference" class="system-layout-visual"></div>
-        </section>
-
-        <section class="partitions-panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Partitions</p>
-              <h3>Partition chart</h3>
-            </div>
-              <div class="session-status-panel">
-                <p class="session-status-label">Session Stage</p>
-                <div class="session-status-card">
-                  <div class="session-status-top">
-                    <div class="session-status-current">
-                      <span class="session-status-current-label">Current Stage</span>
-                      <strong class="session-status-current-value">Not Started</strong>
-                    </div>
-                    <input type="hidden" id="session-status-control" name="sessionStatus" value="">
-                    <button type="button" id="session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
+        <section class="session-overview-panel">
+          <section class="session-top-grid">
+            <div class="session-chart-header">
+              <label>
+                <span>Session Name</span>
+                <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
+              </label>
+              <label>
+                <span>Date</span>
+                <input type="date" name="date" required>
+              </label>
+              <label class="time-format-field">
+                <div class="field-label-row">
+                  <span>Time</span>
+                  <div class="time-format-toggle" role="group" aria-label="Time format">
+                    <button type="button" class="time-format-button" data-time-format="12h">12h</button>
+                    <button type="button" class="time-format-button" data-time-format="24h">24h</button>
                   </div>
-                  <div class="session-status-steps" aria-label="Session stage progress">
-                    <span class="session-status-step" data-stage-step="soaking">Soaking</span>
-                    <span class="session-status-step" data-stage-step="germination">Germination Started</span>
-                    <span class="session-status-step" data-stage-step="first-germinated">First Germinated</span>
-                    <span class="session-status-step" data-stage-step="completed">Completed</span>
-                  </div>
-                  <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
-                  <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
                 </div>
-              </div>
+                <input type="hidden" name="time">
+                <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
+              </label>
+              <label>
+                <span>System Type</span>
+                <select name="systemType" required>
+                  <option value="KAN">KAN</option>
+                  <option value="TRA">TRA</option>
+                </select>
+              </label>
+              <label>
+                <span>System ID (if using multiple)</span>
+                <input type="text" name="unitId" placeholder="Ex: A, B, C" maxlength="12">
+              </label>
             </div>
-            <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
-          <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
-          <div id="partition-chart-shell" class="chart-shell">
-            <div id="partition-chart-header" class="chart-header chart-row">
-              <span>Partition</span>
-              <span>Seed Variety</span>
-              <span>Type</span>
-              <span>Sex</span>
-              <span># of Seeds</span>
-              <span># Germinated</span>
-              <span>Success %</span>
-            </div>
-            <div id="partition-fields" class="partition-table"></div>
-          </div>
+          </section>
+
+          <section class="system-layout-block" aria-labelledby="system-layout-label">
+            <p id="system-layout-label" class="system-layout-label">System Layout</p>
+            <div id="system-layout-reference" class="system-layout-visual"></div>
+          </section>
+
           <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timeline</p>
@@ -295,6 +254,39 @@
               </div>
             </details>
           </section>
+        </section>
+
+        <section class="partitions-panel">
+          <div class="partition-work-header">
+            <div class="partition-work-heading">
+              <p class="eyebrow">Partitions</p>
+              <h3 id="partition-work-title">KAN® Partition Chart</h3>
+            </div>
+            <div class="session-status-panel session-status-panel-compact">
+              <p class="session-status-label">Current Stage</p>
+              <input type="hidden" id="session-status-control" name="sessionStatus" value="">
+              <div class="session-status-current">
+                <strong class="session-status-current-value">Not Started</strong>
+              </div>
+              <button type="button" id="session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
+              <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+              <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
+            </div>
+          </div>
+          <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
+          <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
+          <div id="partition-chart-shell" class="chart-shell">
+            <div id="partition-chart-header" class="chart-header chart-row">
+              <span>Partition</span>
+              <span>Seed Variety</span>
+              <span>Type</span>
+              <span>Sex</span>
+              <span># of Seeds</span>
+              <span># Germinated</span>
+              <span>Success %</span>
+            </div>
+            <div id="partition-fields" class="partition-table"></div>
+          </div>
           <div class="timeline-save-shortcut">
             <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
             <button type="submit" class="button button-primary">Save Session</button>
