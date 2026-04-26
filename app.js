@@ -118,7 +118,12 @@ async function safeBootstrapApp() {
 }
 
 function getPreferredTheme() {
-  return localStorage.getItem(THEME_KEY) === "dark" ? "dark" : "light";
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  if (savedTheme === "light" || savedTheme === "dark") {
+    return savedTheme;
+  }
+
+  return "dark";
 }
 
 function getFileUploadNameLabel(input, files = input?.files) {
