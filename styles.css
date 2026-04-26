@@ -3022,6 +3022,54 @@ body.theme-dark .session-row:hover {
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
 }
 
+body.theme-dark #active-sessions-section,
+body.theme-dark #recent-completed-sessions-section,
+body.theme-dark #session-history-section {
+  border-top-width: 3px;
+}
+
+body.theme-dark #active-sessions-section {
+  border-top-color: #d97a4a;
+  background:
+    linear-gradient(180deg, rgba(217, 122, 74, 0.06) 0%, rgba(30, 34, 31, 0.98) 16%, rgba(30, 34, 31, 1) 100%);
+}
+
+body.theme-dark #recent-completed-sessions-section {
+  border-top-color: #94d159;
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.06) 0%, rgba(30, 34, 31, 0.98) 16%, rgba(30, 34, 31, 1) 100%);
+}
+
+body.theme-dark #session-history-section {
+  border-top-color: #8a6748;
+  background:
+    linear-gradient(180deg, rgba(138, 103, 72, 0.06) 0%, rgba(30, 34, 31, 0.98) 16%, rgba(30, 34, 31, 1) 100%);
+}
+
+body.theme-dark #active-sessions-section .session-row:hover {
+  border-color: rgba(217, 122, 74, 0.24);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(217, 122, 74, 0.08);
+  background: rgba(217, 122, 74, 0.04);
+}
+
+body.theme-dark #recent-completed-sessions-section .recent-session-card:hover {
+  border-color: rgba(148, 209, 89, 0.24);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.08);
+  background: rgba(148, 209, 89, 0.04);
+}
+
+body.theme-dark #session-history-section .session-row:hover {
+  border-color: rgba(138, 103, 72, 0.24);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(138, 103, 72, 0.08);
+  background: rgba(138, 103, 72, 0.04);
+}
+
 body.theme-dark .overall-rate-bar {
   background: rgba(255, 255, 255, 0.08);
 }
