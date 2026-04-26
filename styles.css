@@ -3029,33 +3029,36 @@ body.theme-dark #session-history-section {
 }
 
 #grow-sessions-header {
-  background: #94d159;
-  border-color: rgba(148, 209, 89, 0.92);
-  box-shadow: 0 18px 34px rgba(104, 150, 56, 0.18);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(30, 34, 31, 0.98) 18%, rgba(30, 34, 31, 1) 100%);
+  border-color: #2a332f;
+  border-top-width: 3px;
+  border-top-color: #94d159;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
 }
 
 #grow-sessions-header .eyebrow,
 #grow-sessions-header h2 {
-  color: #151815;
+  color: #f6f8f5;
 }
 
 #grow-sessions-header .button-primary {
-  background: #d97a4a;
-  border-color: #d97a4a;
-  color: #f6f8f5;
-  box-shadow: 0 10px 18px rgba(217, 122, 74, 0.2);
+  background: #94d159;
+  border-color: #94d159;
+  color: #151815;
+  box-shadow: 0 10px 18px rgba(148, 209, 89, 0.22);
 }
 
 #grow-sessions-header .button-primary:hover,
 #grow-sessions-header .button-primary:focus-visible {
-  background: #e1895d;
-  border-color: #e1895d;
-  color: #f6f8f5;
+  background: #a4da71;
+  border-color: #a4da71;
+  color: #151815;
 }
 
 #grow-sessions-header .button-primary:active {
-  background: #c96d3f;
-  border-color: #c96d3f;
+  background: #86c451;
+  border-color: #86c451;
 }
 
 body.theme-dark #active-sessions-section {
