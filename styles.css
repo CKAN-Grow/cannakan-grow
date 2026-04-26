@@ -2961,6 +2961,7 @@ body.theme-dark .session-notes-field textarea:focus-visible {
   border-color: #94d159;
   background: var(--field-focus-bg);
   color: #f6f8f5;
+  caret-color: #f6f8f5;
   box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.14);
 }
 
@@ -2970,6 +2971,8 @@ body.theme-dark textarea {
   background: #1E221F;
   color: #f6f8f5;
   border-color: #343a35;
+  caret-color: #f6f8f5;
+  -webkit-text-fill-color: #f6f8f5;
 }
 
 body.theme-dark input::placeholder,
@@ -3191,6 +3194,25 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
   background: rgba(148, 209, 89, 0.12) !important;
   border: 1px solid #94d159 !important;
   box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.18) !important;
+}
+
+body.theme-dark .partition-table[data-session-status="germinating"] .partition-row input[name="plantedCount"],
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row input[name="plantedCount"] {
+  background: #232823 !important;
+  color: #e6efe9 !important;
+  caret-color: #e6efe9;
+  -webkit-text-fill-color: #e6efe9;
+  border: 1px solid #94d159 !important;
+  box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.14) !important;
+}
+
+body.theme-dark .partition-table input[type="number"],
+body.theme-dark .partition-table input[name="plantedCount"],
+body.theme-dark .partition-table input[name^="seedCount-"],
+body.theme-dark .partition-table input[name^="seedVariety-"] {
+  color: #e6efe9;
+  caret-color: #e6efe9;
+  -webkit-text-fill-color: #e6efe9;
 }
 
 .success-cell {
