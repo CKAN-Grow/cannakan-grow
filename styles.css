@@ -2565,21 +2565,49 @@ input::placeholder {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);
   overflow: hidden;
+  padding: 2px;
+  gap: 2px;
 }
 
 .time-format-button {
   border: 0;
   background: transparent;
   color: var(--muted);
+  border-radius: 999px;
   padding: 4px 10px;
+  min-width: 42px;
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .time-format-button.is-active {
   background: rgba(148, 209, 89, 0.18);
   color: var(--accent-dark);
+  box-shadow: 0 1px 2px rgba(24, 34, 24, 0.08);
+}
+
+body.theme-dark .time-format-toggle {
+  background: #1e221f;
+  border-color: #343a35;
+}
+
+body.theme-dark .time-format-button {
+  color: #8f9a91;
+}
+
+body.theme-dark .time-format-button.is-active,
+body.theme-dark .time-format-button[aria-pressed="true"] {
+  background: #94d159;
+  color: #151815;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.15);
+}
+
+body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
+  color: #b7c0b7;
 }
 
 .chart-shell {
