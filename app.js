@@ -4148,8 +4148,9 @@ function renderSessionDetail(sessionId) {
 
   const meta = document.querySelector("#detail-meta");
   const layoutReference = document.querySelector("#detail-layout-reference");
-    const detailStatusField = document.querySelector("#detail-session-status-control");
-    const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
+  const detailPartitionWorkTitle = document.querySelector("#detail-partition-work-title");
+  const detailStatusField = document.querySelector("#detail-session-status-control");
+  const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
   const detailReminder = document.querySelector("#detail-session-status-reminder");
   const detailNotesField = document.querySelector("#detail-session-notes");
   const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
@@ -4201,6 +4202,9 @@ function renderSessionDetail(sessionId) {
   `;
 
   renderSystemLayoutReference(layoutReference, session.systemType);
+  if (detailPartitionWorkTitle) {
+    detailPartitionWorkTitle.textContent = getPartitionChartTitle(session.systemType);
+  }
   detailStatusField.value = session.sessionStatus || "soaking";
   syncSessionStatusControlDatasets(detailStatusField, {
     germinationStartedAt: session.germinationStartedAt || "",

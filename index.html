@@ -262,15 +262,26 @@
               <p class="eyebrow">Partitions</p>
               <h3 id="partition-work-title">KAN® Partition Chart</h3>
             </div>
-            <div class="session-status-panel session-status-panel-compact">
+            <div class="session-status-panel">
               <p class="session-status-label">Current Stage</p>
-              <input type="hidden" id="session-status-control" name="sessionStatus" value="">
-              <div class="session-status-current">
-                <strong class="session-status-current-value">Not Started</strong>
+              <div class="session-status-card">
+                <div class="session-status-top">
+                  <div class="session-status-current">
+                    <span class="session-status-current-label">Current Stage</span>
+                    <strong class="session-status-current-value">Not Started</strong>
+                  </div>
+                  <input type="hidden" id="session-status-control" name="sessionStatus" value="">
+                  <button type="button" id="session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
+                </div>
+                <div class="session-status-steps" aria-label="Session stage progress">
+                  <span class="session-status-step" data-stage-step="soaking">Soaking</span>
+                  <span class="session-status-step" data-stage-step="germination">Germination Started</span>
+                  <span class="session-status-step" data-stage-step="first-germinated">First Germinated</span>
+                  <span class="session-status-step" data-stage-step="completed">Completed</span>
+                </div>
+                <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+                <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
               </div>
-              <button type="button" id="session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
-              <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
-              <p id="session-status-error" class="session-status-error" aria-live="polite"></p>
             </div>
           </div>
           <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
@@ -426,21 +437,39 @@
         </div>
       </div>
 
-      <section class="session-top-grid detail-top-grid">
-        <section id="detail-meta" class="session-chart-header detail-header"></section>
-      </section>
-      <section class="system-layout-block" aria-labelledby="detail-system-layout-label">
-        <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>
-        <div id="detail-layout-reference" class="system-layout-visual"></div>
+      <section class="session-overview-panel">
+        <section class="session-top-grid detail-top-grid">
+          <section id="detail-meta" class="session-chart-header detail-header"></section>
+        </section>
+        <section class="system-layout-block" aria-labelledby="detail-system-layout-label">
+          <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>
+          <div id="detail-layout-reference" class="system-layout-visual"></div>
+        </section>
+        <section id="detail-lifecycle-section" class="session-lifecycle-section" aria-labelledby="detail-lifecycle-title">
+          <div class="progress-chart-heading">
+            <p class="eyebrow">Timeline</p>
+            <h4 id="detail-lifecycle-title">Session Progress</h4>
+          </div>
+          <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
+          <details class="timeline-debug-panel">
+            <summary>Timeline Debug Tools</summary>
+            <div class="timeline-debug-actions">
+              <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
+              <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
+            </div>
+          </details>
+        </section>
       </section>
       <section>
-        <div class="section-heading">
-          <div>
+        <div class="partition-work-header">
+          <div class="partition-work-heading">
             <p class="eyebrow">Partitions</p>
-            <h3>Partition chart</h3>
+            <h3 id="detail-partition-work-title">KAN® Partition Chart</h3>
           </div>
           <div class="session-status-panel">
-            <p class="session-status-label">Session Stage</p>
+            <p class="session-status-label">Current Stage</p>
             <div class="session-status-card">
               <div class="session-status-top">
                 <div class="session-status-current">
@@ -473,22 +502,6 @@
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>
-        <section id="detail-lifecycle-section" class="session-lifecycle-section" aria-labelledby="detail-lifecycle-title">
-          <div class="progress-chart-heading">
-            <p class="eyebrow">Timeline</p>
-            <h4 id="detail-lifecycle-title">Session Progress</h4>
-          </div>
-          <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
-          <details class="timeline-debug-panel">
-            <summary>Timeline Debug Tools</summary>
-            <div class="timeline-debug-actions">
-              <button type="button" class="button button-secondary" data-debug-event="germination">Set Germination Now</button>
-              <button type="button" class="button button-secondary" data-debug-event="first-planted">Set First Germinated Now</button>
-              <button type="button" class="button button-secondary" data-debug-event="completed">Set Completed Now</button>
-              <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
-            </div>
-          </details>
-        </section>
         <div class="timeline-save-shortcut">
           <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
           <button id="detail-save-shortcut" type="button" class="button button-primary">Save Session</button>
