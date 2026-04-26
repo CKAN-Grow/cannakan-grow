@@ -2946,7 +2946,7 @@ function renderHome() {
     bestSessionCard.classList.remove("is-empty");
     bestSessionIndicator.hidden = false;
     bestSessionNameEl.textContent = formatSessionLabel(bestSession);
-    bestSessionDateEl.textContent = bestSession.date || "";
+    bestSessionDateEl.textContent = formatSessionNameDate(bestSession.date);
     bestSessionResultEl.textContent = `${bestPercentage}%`;
   } else {
     bestSessionCard.href = "#sessions";
