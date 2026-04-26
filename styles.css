@@ -1995,7 +1995,7 @@ select {
   border: 1px solid #e3e8e1;
   color: #1f3a2a;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 12px 16px;
   box-shadow: none;
   cursor: pointer;
   text-align: left;
@@ -2023,12 +2023,13 @@ select {
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: rotate(45deg) translateY(-1px);
-  opacity: 0.72;
-  transition: transform 0.18s ease;
+  color: #6b716d;
+  opacity: 0.9;
+  transition: transform 0.2s ease;
 }
 
 .custom-select.is-open .custom-select-chevron {
-  transform: rotate(-135deg) translateY(-1px);
+  transform: rotate(225deg) translateY(1px);
 }
 
 .custom-select-menu {
@@ -2075,6 +2076,10 @@ body.theme-dark .custom-select-trigger {
   background: #1E221F;
   border-color: #343a35;
   color: #f6f8f5;
+}
+
+body.theme-dark .custom-select-chevron {
+  color: #b7c0b7;
 }
 
 body.theme-dark .custom-select-trigger.is-missing {
