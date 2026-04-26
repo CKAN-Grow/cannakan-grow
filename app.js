@@ -149,6 +149,54 @@ function updateFileUploadName(input, files = input?.files) {
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
+function bindFileUploadControl(input) {
+  const control = input?.closest(".file-upload-control");
+  const trigger = control?.querySelector(".file-upload-button");
+  if (!input || !control || !trigger || control.dataset.bound === "true") {
+    return;
+  }
+
+  const openPicker = () => {
+    if (input.disabled) {
+      return;
+    }
+
+    input.click();
+  };
+
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openPicker();
+  });
+
+  control.addEventListener("click", (event) => {
+    if (event.target === input || event.target === trigger) {
+      return;
+    }
+
+    event.preventDefault();
+    openPicker();
+  });
+
+  control.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    openPicker();
+  });
+
+  control.setAttribute("tabindex", input.disabled ? "-1" : "0");
+  control.setAttribute("role", "button");
+  control.setAttribute("aria-disabled", input.disabled ? "true" : "false");
+  if (!control.getAttribute("aria-label")) {
+    control.setAttribute("aria-label", trigger.textContent?.trim() || "Choose file");
+  }
+  control.dataset.bound = "true";
+}
+
 function closeAllCustomSelects(exceptKey = "") {
   document.querySelectorAll(".custom-select.is-open").forEach((wrapper) => {
     if (exceptKey && wrapper.dataset.dropdownKey === exceptKey) {
@@ -1384,6 +1432,7 @@ function initializeSessionImageState(scope, options) {
   };
 
   scope.__sessionImageState = state;
+  bindFileUploadControl(state.input);
   updateFileUploadName(state.input);
   renderSessionImageGrid(state);
 
@@ -2704,6 +2753,7 @@ function bindProfileForm(form, options = {}) {
   };
 
   usernameInput.value = profile?.username || "";
+  bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
 
@@ -3871,6 +3921,11 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   const imageUpload = scope.querySelector(".session-images-upload");
   if (imageUpload) {
     imageUpload.classList.toggle("is-disabled", !allowFullEditing);
+    const fileUploadControl = imageUpload.querySelector(".file-upload-control");
+    if (fileUploadControl) {
+      fileUploadControl.setAttribute("tabindex", allowFullEditing ? "0" : "-1");
+      fileUploadControl.setAttribute("aria-disabled", allowFullEditing ? "false" : "true");
+    }
   }
 }
 
