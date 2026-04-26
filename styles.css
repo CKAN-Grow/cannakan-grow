@@ -1640,15 +1640,15 @@ body.theme-dark .theme-toggle-button:hover {
 }
 
 #active-sessions-card.has-active-sessions {
-  border-top: 4px solid #6ca9d8;
+  border-top: 4px solid #94d159;
 }
 
 #active-sessions-card.has-germinating-sessions {
-  border-top-color: #DD8045;
+  border-top-color: #94d159;
 }
 
 #active-sessions-card.has-soaking-sessions {
-  border-top-color: #6ca9d8;
+  border-top-color: #94d159;
 }
 
 .section-heading {
