@@ -3037,9 +3037,11 @@ body.theme-dark .session-status-trigger[data-session-status="germinating"] {
 }
 
 body.theme-dark .session-status-card {
-  background: linear-gradient(180deg, #1e221f 0%, #232823 100%);
-  border-color: #2a332f;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, #222723 0%, #262c27 100%);
+  border-color: #2f3832;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 body.theme-dark .partition-work-header {
