@@ -2099,13 +2099,24 @@ body.theme-dark .custom-select.is-open .custom-select-trigger {
 }
 
 body.theme-dark .custom-select-menu {
-  background: #1E221F;
-  border-color: #343a35;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  background: #1c2320;
+  border-color: #2a332f;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 body.theme-dark .custom-select-option {
   color: #f6f8f5;
+}
+
+body.theme-dark .custom-select-option:hover,
+body.theme-dark .custom-select-option:focus-visible {
+  background: rgba(148, 209, 89, 0.15);
+  color: #94d159;
+}
+
+body.theme-dark .custom-select-option.is-selected {
+  background: #94d159;
+  color: #0f140f;
 }
 
 input::placeholder {
