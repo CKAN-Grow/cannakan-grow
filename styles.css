@@ -1796,7 +1796,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .progress-chart-row {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 72px;
+  grid-template-columns: 96px minmax(0, 1fr) 72px;
   gap: 12px;
   align-items: center;
 }
@@ -1806,11 +1806,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--accent-dark);
+  white-space: nowrap;
 }
 
 .progress-chart-values {
   text-align: right;
   color: var(--muted);
+}
+
+.progress-chart-percent {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .progress-bar-track {
@@ -4433,7 +4439,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .progress-chart-row {
-    grid-template-columns: 36px minmax(0, 1fr) 64px;
+    grid-template-columns: 88px minmax(0, 1fr) 64px;
     gap: 10px;
   }
 

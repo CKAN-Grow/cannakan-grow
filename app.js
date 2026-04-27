@@ -6401,12 +6401,12 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
 
     return `
       <div class="progress-chart-row">
-        <div class="progress-chart-label">P${partition.id}</div>
+        <div class="progress-chart-label">P${partition.id} <span class="progress-chart-percent">(${plantedPercentageLabel})</span></div>
         <div class="progress-bar-track" aria-label="Partition ${partition.id} planting progress">
           <div class="progress-bar-total" style="width: 100%"></div>
           <div class="progress-bar-fill" style="width: ${plantedPercentage}%"></div>
         </div>
-      <div class="progress-chart-values">${planted} / ${seeds} · ${plantedPercentageLabel}</div>
+      <div class="progress-chart-values">${planted} / ${seeds}</div>
       </div>
     `;
   }).join("");
