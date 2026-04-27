@@ -6393,19 +6393,17 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
   }
 
   sectionElement.hidden = false;
-  const maxSeeds = Math.max(...items.map((partition) => Number(partition.seedCount) || 0), 1);
   chartElement.innerHTML = items.map((partition) => {
     const seeds = Number(partition.seedCount) || 0;
     const planted = Math.min(Number(partition.plantedCount) || 0, seeds || Number(partition.plantedCount) || 0);
-    const totalWidth = maxSeeds > 0 ? (seeds / maxSeeds) * 100 : 0;
-    const plantedWidth = maxSeeds > 0 ? (planted / maxSeeds) * 100 : 0;
+    const plantedPercentage = seeds > 0 ? Math.max(0, Math.min(100, (planted / seeds) * 100)) : 0;
 
     return `
       <div class="progress-chart-row">
         <div class="progress-chart-label">P${partition.id}</div>
         <div class="progress-bar-track" aria-label="Partition ${partition.id} planting progress">
-          <div class="progress-bar-total" style="width: ${totalWidth}%"></div>
-          <div class="progress-bar-fill" style="width: ${plantedWidth}%"></div>
+          <div class="progress-bar-total" style="width: 100%"></div>
+          <div class="progress-bar-fill" style="width: ${plantedPercentage}%"></div>
         </div>
       <div class="progress-chart-values">${planted} / ${seeds}</div>
       </div>
