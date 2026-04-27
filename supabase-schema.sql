@@ -43,6 +43,7 @@ create table if not exists public.grow_gallery_snapshots (
   session_date date,
   system_type text not null default 'KAN',
   success_percent integer not null default 0,
+  submitted_by text default '',
   status text not null default 'private',
   is_published boolean not null default true,
   include_notes boolean not null default false,
@@ -72,6 +73,9 @@ create index if not exists grow_sessions_user_created_idx
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists submitted_by text default '';
 
 alter table public.grow_gallery_snapshots
   add column if not exists status text not null default 'private';

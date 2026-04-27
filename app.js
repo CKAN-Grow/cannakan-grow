@@ -806,11 +806,13 @@ function updateNavState() {
     return;
   }
 
-  const hash = window.location.hash || "#home";
-  const [route] = hash.replace("#", "").split("/");
+  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
-    : ((route === "gallery" || route === "gallery-review") ? "gallery" : "sessions");
+    : ((route === "gallery" || route === "admin") ? "gallery" : "sessions");
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -976,7 +978,6 @@ async function loadGallerySnapshots() {
   const { data, error } = await appState.supabase
     .from("grow_gallery_snapshots")
     .select("*")
-    .eq("is_published", true)
     .order("published_at", { ascending: false });
 
   if (error) {
@@ -1366,6 +1367,7 @@ function mapRowToGallerySnapshot(row) {
     sessionDate: row.session_date || "",
     systemType: String(row.system_type || "KAN").trim() || "KAN",
     successPercent: Number(row.success_percent) || 0,
+    submittedBy: String(row.submitted_by || "").trim(),
     status: String(row.status || (row.is_published ? "approved" : "private")).trim() || "private",
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
@@ -1403,6 +1405,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
     success_percent: Number(snapshotData?.percentage) || 0,
+    submitted_by: String(appState.profile?.username || appState.user?.email || "").trim(),
     status: "pending_review",
     is_published: false,
     include_notes: false,
@@ -2853,8 +2856,10 @@ function render() {
   clearSessionTimerInterval();
   updateAuthStatus();
   updateNavState();
-  const hash = window.location.hash || "#home";
-  const [route, id] = hash.replace("#", "").split("/");
+  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const [route, id, subroute] = rawRoute.split("/");
 
   if (!appState.initialized || appState.loading) {
     app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
@@ -2866,12 +2871,12 @@ function render() {
     return;
   }
 
-  if (route === "gallery") {
+  if (rawRoute === "gallery") {
     renderGallery();
     return;
   }
 
-  if (route === "gallery-review") {
+  if (route === "admin" && id === "gallery-moderation") {
     if (!appState.user) {
       renderAuthScreen();
       return;
@@ -3726,22 +3731,25 @@ function renderGalleryReview() {
   }
 
   app.replaceChildren(cloneTemplate(templates.galleryReview));
-  const reviewList = document.querySelector("#gallery-review-list");
-  if (!reviewList) {
+  const pendingList = document.querySelector("#gallery-review-pending-list");
+  const approvedList = document.querySelector("#gallery-review-approved-list");
+  if (!pendingList || !approvedList) {
     return;
   }
 
   const pendingSnapshots = sortGallerySnapshotsNewestFirst(
     appState.gallerySnapshots.filter((entry) => entry.status === "pending_review"),
   );
+  const approvedSnapshots = sortGallerySnapshotsNewestFirst(
+    appState.gallerySnapshots.filter((entry) => entry.status === "approved"),
+  );
 
   if (!pendingSnapshots.length) {
-    reviewList.innerHTML = `
+    pendingList.innerHTML = `
       <div class="empty-state gallery-empty-state">
         <p>No pending gallery submissions right now.</p>
       </div>
     `;
-    return;
   }
 
   pendingSnapshots.forEach((snapshot) => {
@@ -3761,18 +3769,56 @@ function renderGalleryReview() {
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>Submitted for review</span>
+          <span>${escapeHtml(snapshot.submittedBy || "Submitted by grower")}</span>
         </div>
         <div class="gallery-review-actions">
           <button type="button" class="button button-primary" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
           <button type="button" class="button button-secondary" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
+          <button type="button" class="button button-danger" data-gallery-delete="${escapeHtml(snapshot.id)}">Delete</button>
         </div>
       </div>
     `;
-    reviewList.appendChild(item);
+    pendingList.appendChild(item);
   });
 
-  reviewList.querySelectorAll("[data-gallery-approve]").forEach((button) => {
+  if (!approvedSnapshots.length) {
+    approvedList.innerHTML = `
+      <div class="empty-state gallery-empty-state">
+        <p>No approved gallery snapshots yet.</p>
+      </div>
+    `;
+  }
+
+  approvedSnapshots.forEach((snapshot) => {
+    const item = document.createElement("article");
+    item.className = "gallery-review-card";
+    item.innerHTML = `
+      <div class="gallery-review-media">
+        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+      </div>
+      <div class="gallery-review-body">
+        <div class="gallery-card-top">
+          <div>
+            <strong>${escapeHtml(snapshot.title)}</strong>
+            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+          </div>
+          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+        </div>
+        <div class="gallery-card-meta">
+          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
+          <span>${escapeHtml(snapshot.submittedBy || "Submitted by grower")}</span>
+        </div>
+        <div class="gallery-review-actions">
+          <button type="button" class="button button-secondary" data-gallery-private="${escapeHtml(snapshot.id)}">Make Private</button>
+          <button type="button" class="button button-secondary" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
+          <button type="button" class="button button-danger" data-gallery-delete="${escapeHtml(snapshot.id)}">Delete</button>
+        </div>
+      </div>
+    `;
+    approvedList.appendChild(item);
+  });
+
+  app.querySelectorAll("[data-gallery-approve]").forEach((button) => {
     button.addEventListener("click", async () => {
       try {
         await updateGallerySnapshotModerationStatus(button.dataset.galleryApprove, "approved");
@@ -3783,13 +3829,35 @@ function renderGalleryReview() {
     });
   });
 
-  reviewList.querySelectorAll("[data-gallery-reject]").forEach((button) => {
+  app.querySelectorAll("[data-gallery-reject]").forEach((button) => {
     button.addEventListener("click", async () => {
       try {
         await updateGallerySnapshotModerationStatus(button.dataset.galleryReject, "rejected");
         renderGalleryReview();
       } catch (error) {
         window.alert(error.message || "Could not reject this snapshot.");
+      }
+    });
+  });
+
+  app.querySelectorAll("[data-gallery-private]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await updateGallerySnapshotModerationStatus(button.dataset.galleryPrivate, "private");
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not make this snapshot private.");
+      }
+    });
+  });
+
+  app.querySelectorAll("[data-gallery-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await unpublishGallerySnapshot(button.dataset.galleryDelete);
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not delete this snapshot.");
       }
     });
   });
