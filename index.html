@@ -422,6 +422,7 @@
             </div>
           <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
+            <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
               <label class="snapshot-destination-option">
                 <input id="snapshot-destination-social" type="radio" name="snapshot-destination" value="social" checked>
@@ -436,7 +437,13 @@
                 <span>Grow Gallery only</span>
               </label>
             </div>
-            <a class="button button-secondary snapshot-gallery-link" href="#gallery">Visit Grow Gallery</a>
+            <a class="button button-secondary snapshot-gallery-link" href="#gallery">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M7 17 17 7"></path>
+                <path d="M9 7h8v8"></path>
+              </svg>
+              <span>Visit Grow Gallery</span>
+            </a>
             <p id="snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.</p>
             <button id="snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>
           </div>
@@ -655,6 +662,7 @@
           </div>
           <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
+            <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
               <label class="snapshot-destination-option">
                 <input id="detail-snapshot-destination-social" type="radio" name="detail-snapshot-destination" value="social" checked>
@@ -669,7 +677,13 @@
                 <span>Grow Gallery only</span>
               </label>
             </div>
-            <a class="button button-secondary snapshot-gallery-link" href="#gallery">Visit Grow Gallery</a>
+            <a class="button button-secondary snapshot-gallery-link" href="#gallery">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M7 17 17 7"></path>
+                <path d="M9 7h8v8"></path>
+              </svg>
+              <span>Visit Grow Gallery</span>
+            </a>
             <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in the Grow Gallery. Private notes stay private.</p>
             <button id="detail-snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>
           </div>
