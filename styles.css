@@ -373,6 +373,11 @@ body.theme-dark .topbar-nav a.is-active {
   display: none;
 }
 
+#session-success-summary + .form-actions,
+#detail-save-message + .form-actions {
+  margin-top: 24px;
+}
+
 .overall-rate-card {
   gap: 8px;
   min-height: 112px;
@@ -3276,10 +3281,6 @@ body.theme-dark .progress-bar-track,
 body.theme-dark .run-progress-track,
 body.theme-dark .overall-rate-bar {
   background: rgba(255, 255, 255, 0.08);
-}
-
-#detail-run-progress-section + #detail-save-message + .form-actions {
-  margin-top: 24px;
 }
 
 body.theme-dark #detail-run-progress-section + #detail-save-message + .form-actions {
