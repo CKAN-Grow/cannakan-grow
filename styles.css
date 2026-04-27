@@ -1837,6 +1837,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .progress-chart-percent {
+  margin-left: 6px;
   color: var(--muted);
   font-weight: 700;
 }
