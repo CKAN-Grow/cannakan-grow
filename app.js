@@ -1817,35 +1817,38 @@ function renderSnapshotSourceSummary(state) {
     return;
   }
 
-  if (images.length === 1) {
-    const image = images[0];
-    state.picker.innerHTML = `
-      <div class="snapshot-source-card snapshot-source-card--preview">
+  const previewMessage = images.length === 1
+    ? `${escapeHtml(images[0].name || "Session image")} will be used as the main visual in your polished share snapshot.`
+    : "Your session summary and images are styled into a polished post.";
+
+  const choiceCard = images.length > 1
+    ? `
+      <div class="snapshot-source-card snapshot-source-card--choice">
         <div class="snapshot-source-media" aria-hidden="true">
-          ${getSnapshotFeatureIconMarkup("photo")}
+          ${getSnapshotFeatureIconMarkup("layers")}
         </div>
         <div class="snapshot-source-copy">
-          <strong>Share-ready preview</strong>
-          <small>${escapeHtml(image.name || "Session image")} will be used as the main visual in your polished share snapshot.</small>
+          <strong>Choose image at generation time</strong>
+          <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
+        </div>
+        <div class="snapshot-source-placeholder" aria-hidden="true">
+          ${getSnapshotFeatureIconMarkup("preview")}
         </div>
       </div>
-    `;
-    return;
-  }
+    `
+    : "";
 
   state.picker.innerHTML = `
-    <div class="snapshot-source-card snapshot-source-card--choice">
+    <div class="snapshot-source-card snapshot-source-card--preview">
       <div class="snapshot-source-media" aria-hidden="true">
-        ${getSnapshotFeatureIconMarkup("layers")}
+        ${getSnapshotFeatureIconMarkup("photo")}
       </div>
       <div class="snapshot-source-copy">
-        <strong>Choose image at generation time</strong>
-        <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
-      </div>
-      <div class="snapshot-source-placeholder" aria-hidden="true">
-        ${getSnapshotFeatureIconMarkup("preview")}
+        <strong>Share-ready preview</strong>
+        <small>${previewMessage}</small>
       </div>
     </div>
+    ${choiceCard}
   `;
 }
 
