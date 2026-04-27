@@ -6397,6 +6397,7 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
     const seeds = Number(partition.seedCount) || 0;
     const planted = Math.min(Number(partition.plantedCount) || 0, seeds || Number(partition.plantedCount) || 0);
     const plantedPercentage = seeds > 0 ? Math.max(0, Math.min(100, (planted / seeds) * 100)) : 0;
+    const plantedPercentageLabel = seeds > 0 ? `${Math.round(plantedPercentage)}%` : "0%";
 
     return `
       <div class="progress-chart-row">
@@ -6405,7 +6406,7 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
           <div class="progress-bar-total" style="width: 100%"></div>
           <div class="progress-bar-fill" style="width: ${plantedPercentage}%"></div>
         </div>
-      <div class="progress-chart-values">${planted} / ${seeds}</div>
+      <div class="progress-chart-values">${planted} / ${seeds} · ${plantedPercentageLabel}</div>
       </div>
     `;
   }).join("");
