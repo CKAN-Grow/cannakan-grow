@@ -1545,12 +1545,15 @@ function renderSessionImageGrid(state) {
     const card = document.createElement("article");
     card.className = "session-image-card";
     card.innerHTML = `
-      <img src="${escapeHtml(image.previewUrl || image.url || "")}" alt="${escapeHtml(image.name || "Session image")}" class="session-image-thumb">
-      <div class="session-image-meta">
-        <span>${escapeHtml(image.name || "Session image")}</span>
+      <div class="session-image-frame">
+        <img src="${escapeHtml(image.previewUrl || image.url || "")}" alt="${escapeHtml(image.name || "Session image")}" class="session-image-thumb">
         ${image.pending ? '<span class="session-image-badge">Pending</span>' : ""}
+        <button type="button" class="session-image-remove" aria-label="Remove image">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 4.5h6M5.5 7h13M9.5 10.5v6M14.5 10.5v6M7.5 7l.7 10.1a2 2 0 0 0 2 1.9h3.6a2 2 0 0 0 2-1.9L16.5 7" />
+          </svg>
+        </button>
       </div>
-      <button type="button" class="session-image-remove">Remove</button>
     `;
 
     card.querySelector(".session-image-remove")?.addEventListener("click", async () => {
