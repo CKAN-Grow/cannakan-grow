@@ -50,6 +50,10 @@ const STAGE_REMINDER_SCHEDULES = {
     { hours: 120, message: "This session has been running for several days. Check seeds and complete when ready.", level: "critical" },
   ],
 };
+const TEMP_ADMIN_EMAILS = [
+  ...(Array.isArray(window.CANNAKAN_ADMIN_EMAILS) ? window.CANNAKAN_ADMIN_EMAILS : []),
+  ...(Array.isArray(window.CANNAKAN_SUPABASE_CONFIG?.adminEmails) ? window.CANNAKAN_SUPABASE_CONFIG.adminEmails : []),
+].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
 const appState = {
@@ -1016,7 +1020,8 @@ function getProfileDisplayName() {
 }
 
 function isAdminUser(profile = appState.profile) {
-  return Boolean(profile?.isAdmin);
+  const userEmail = String(appState.user?.email || "").trim().toLowerCase();
+  return Boolean(profile?.isAdmin || (userEmail && TEMP_ADMIN_EMAILS.includes(userEmail)));
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -3761,7 +3766,7 @@ function renderGalleryReview() {
   if (!pendingSnapshots.length) {
     pendingList.innerHTML = `
       <div class="empty-state gallery-empty-state">
-        <p>No pending gallery submissions right now.</p>
+        <p>No snapshots pending review.</p>
       </div>
     `;
   }
@@ -3779,7 +3784,10 @@ function renderGalleryReview() {
             <strong>${escapeHtml(snapshot.title)}</strong>
             <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
           </div>
-          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          <div class="gallery-review-status-stack">
+            <span class="gallery-review-status-badge is-pending">Pending Review</span>
+            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          </div>
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
@@ -3816,7 +3824,10 @@ function renderGalleryReview() {
             <strong>${escapeHtml(snapshot.title)}</strong>
             <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
           </div>
-          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          <div class="gallery-review-status-stack">
+            <span class="gallery-review-status-badge is-approved">Approved</span>
+            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          </div>
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>

@@ -1552,6 +1552,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
+.gallery-review-status-stack {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.gallery-review-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gallery-review-status-badge.is-pending {
+  background: rgba(221, 128, 69, 0.14);
+  color: #9a5d29;
+}
+
+.gallery-review-status-badge.is-approved {
+  background: rgba(148, 209, 89, 0.16);
+  color: #1f3a2a;
+}
+
 .snapshot-preview-card {
   margin: 0;
   width: 33%;
@@ -3443,6 +3472,16 @@ body.theme-dark .gallery-review-media {
 }
 
 body.theme-dark .gallery-card-rate {
+  background: rgba(148, 209, 89, 0.18);
+  color: #f6f8f5;
+}
+
+body.theme-dark .gallery-review-status-badge.is-pending {
+  background: rgba(221, 128, 69, 0.18);
+  color: #ffd2b9;
+}
+
+body.theme-dark .gallery-review-status-badge.is-approved {
   background: rgba(148, 209, 89, 0.18);
   color: #f6f8f5;
 }
