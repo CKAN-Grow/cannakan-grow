@@ -3844,6 +3844,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   }
 
   initializeCustomSelects(partitionFields);
+  bindPartitionRowVisualState(partitionFields);
   attachPartitionValidation(form, formMessage);
   applySessionStatusLayout(
     form.querySelector("#partition-chart-shell"),
@@ -4347,6 +4348,7 @@ function renderSessionDetail(sessionId) {
     hydratePartitionRow(partitions.lastElementChild, partition);
   });
   initializeCustomSelects(partitions);
+  bindPartitionRowVisualState(partitions);
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
   syncPartitionButtonStates(partitions, detailStatusField.value);
   applyStageEditingMode(app, detailStatusField.value);
@@ -4499,6 +4501,7 @@ function renderSessionDetail(sessionId) {
       detailStatusField.value,
       session.germinationStartedAt || "",
     );
+    bindPartitionRowVisualState(partitions);
     applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
     syncPartitionButtonStates(partitions, detailStatusField.value);
     applyStageEditingMode(app, detailStatusField.value);
@@ -4741,6 +4744,119 @@ function updatePartitionButtonState(row, state) {
   button.classList.toggle("partition-btn--complete", state === "complete");
 }
 
+function applyPartitionRowVisualState(row) {
+  if (!row) {
+    return;
+  }
+
+  const isDarkTheme = document.body.classList.contains("theme-dark");
+  const labels = row.querySelectorAll("label, .detail-cell");
+  const fields = row.querySelectorAll('input:not([name="plantedCount"]), select, .custom-select-trigger');
+
+  if (!isDarkTheme) {
+    row.style.removeProperty("background");
+    row.style.removeProperty("background-image");
+    row.style.removeProperty("box-shadow");
+    labels.forEach((node) => {
+      node.style.removeProperty("background");
+      node.style.removeProperty("background-image");
+    });
+    fields.forEach((node) => {
+      node.style.removeProperty("background");
+      node.style.removeProperty("background-image");
+      node.style.removeProperty("color");
+      node.style.removeProperty("-webkit-text-fill-color");
+      node.style.removeProperty("border-color");
+      node.style.removeProperty("box-shadow");
+    });
+    return;
+  }
+
+  const isHovered = row.dataset.hovered === "true";
+  const isWarning = row.classList.contains("row-has-warning");
+  const isCompleted = row.classList.contains("row--completed");
+  const isFilled = row.classList.contains("partition-row--filled");
+
+  let background = "";
+  let boxShadow = "";
+
+  if (isHovered) {
+    background = "rgba(148, 209, 89, 0.035)";
+    boxShadow = "inset 0 0 0 1px rgba(148, 209, 89, 0.10)";
+  } else if (isWarning) {
+    background = "rgba(221, 128, 69, 0.05)";
+    boxShadow = "inset 0 0 0 1px rgba(221, 128, 69, 0.12)";
+  } else if (isCompleted) {
+    background = "#262D27";
+    boxShadow = "inset 0 1px 0 rgba(255, 255, 255, 0.02), inset 0 0 0 1px rgba(148, 209, 89, 0.06)";
+  } else if (isFilled) {
+    background = "#2A312B";
+    boxShadow = "inset 0 0 0 1px rgba(148, 209, 89, 0.05)";
+  }
+
+  if (background) {
+    row.style.setProperty("background", background, "important");
+    row.style.setProperty("background-image", "none", "important");
+    row.style.setProperty("box-shadow", boxShadow, "important");
+  } else {
+    row.style.removeProperty("background");
+    row.style.removeProperty("background-image");
+    row.style.removeProperty("box-shadow");
+  }
+
+  labels.forEach((node) => {
+    node.style.setProperty("background", "transparent", "important");
+    node.style.setProperty("background-image", "none", "important");
+  });
+
+  fields.forEach((node) => {
+    const fieldBackground = isFilled || isCompleted ? "#232823" : "#1E221F";
+    node.style.setProperty("background", fieldBackground, "important");
+    node.style.setProperty("background-image", "none", "important");
+    node.style.setProperty("color", "#f6f8f5", "important");
+    node.style.setProperty("-webkit-text-fill-color", "#f6f8f5", "important");
+    node.style.setProperty("border-color", "#343a35", "important");
+    node.style.setProperty("box-shadow", "none", "important");
+  });
+}
+
+function bindPartitionRowVisualState(partitionContainer) {
+  if (!partitionContainer || partitionContainer.dataset.rowVisualBound === "true") {
+    return;
+  }
+
+  const setHoverState = (target, hovered) => {
+    const row = target instanceof Element ? target.closest(".partition-row") : null;
+    if (!row || !partitionContainer.contains(row)) {
+      return;
+    }
+
+    row.dataset.hovered = hovered ? "true" : "false";
+    applyPartitionRowVisualState(row);
+  };
+
+  partitionContainer.addEventListener("mouseover", (event) => {
+    setHoverState(event.target, true);
+  });
+
+  partitionContainer.addEventListener("mouseout", (event) => {
+    const row = event.target instanceof Element ? event.target.closest(".partition-row") : null;
+    if (!row || !partitionContainer.contains(row)) {
+      return;
+    }
+
+    const relatedRow = event.relatedTarget instanceof Element ? event.relatedTarget.closest(".partition-row") : null;
+    if (relatedRow === row) {
+      return;
+    }
+
+    row.dataset.hovered = "false";
+    applyPartitionRowVisualState(row);
+  });
+
+  partitionContainer.dataset.rowVisualBound = "true";
+}
+
 function syncPartitionButtonStates(partitionContainer, sessionStatus = "") {
   if (!partitionContainer) {
     return;
@@ -4765,6 +4881,7 @@ function syncPartitionButtonStates(partitionContainer, sessionStatus = "") {
 
     row.classList.toggle("row-complete", normalizedStatus === "completed" && baseState !== "empty");
     updatePartitionButtonState(row, nextState);
+    applyPartitionRowVisualState(row);
   });
 }
 
@@ -5529,6 +5646,7 @@ function validatePartitionRow(row) {
   row.classList.toggle("row-has-warning", rowInvalid);
   row.classList.toggle("row-complete", normalizeSessionStatus(sessionStatus) === "completed" && rowStarted);
   updatePartitionButtonState(row, rowState);
+  applyPartitionRowVisualState(row);
 
   varietyLabel.classList.toggle("field-has-warning", rowInvalid && !varietyValue);
   typeLabel.classList.toggle("field-has-warning", rowInvalid && !typeValue);
