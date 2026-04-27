@@ -2133,11 +2133,10 @@ function renderSnapshotSourceSummary(state) {
     return;
   }
 
-  const previewMessage = images.length === 1
-    ? `${escapeHtml(images[0].name || "Session image")} will be used as the main visual in your polished share snapshot.`
-    : "Your session summary and images are styled into a polished post.";
+  const previewMessage = "Your session summary and images are styled into a polished post.";
+  const shouldShowChoiceCard = images.length > 1;
 
-  const choiceCard = images.length > 1
+  const choiceCard = shouldShowChoiceCard
     ? `
       <div class="snapshot-source-card snapshot-source-card--choice">
         <div class="snapshot-source-media" aria-hidden="true">
