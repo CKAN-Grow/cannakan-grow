@@ -1804,15 +1804,13 @@ function renderSnapshotSourceSummary(state) {
 
   if (!images.length) {
     state.picker.innerHTML = `
-      <div class="snapshot-source-card snapshot-source-card--text-only">
-        <div class="snapshot-source-copy">
-          <strong>Text-only snapshot</strong>
-          <small>No uploaded session images yet. The snapshot will use a clean social-ready summary card.</small>
+      <div class="snapshot-source-card snapshot-source-card--preview">
+        <div class="snapshot-source-media" aria-hidden="true">
+          ${getSnapshotFeatureIconMarkup("photo")}
         </div>
-        <div class="snapshot-source-placeholder" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
+        <div class="snapshot-source-copy">
+          <strong>Share-ready preview</strong>
+          <small>Your session summary and images are styled into a polished post.</small>
         </div>
       </div>
     `;
@@ -1822,15 +1820,13 @@ function renderSnapshotSourceSummary(state) {
   if (images.length === 1) {
     const image = images[0];
     state.picker.innerHTML = `
-      <div class="snapshot-source-card snapshot-source-card--image">
-        <div class="snapshot-source-copy">
-          <strong>Using uploaded image automatically</strong>
-          <small>${escapeHtml(image.name || "Session image")} will be used as the main snapshot image.</small>
+      <div class="snapshot-source-card snapshot-source-card--preview">
+        <div class="snapshot-source-media" aria-hidden="true">
+          ${getSnapshotFeatureIconMarkup("photo")}
         </div>
-        <div class="snapshot-source-placeholder" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
+        <div class="snapshot-source-copy">
+          <strong>Share-ready preview</strong>
+          <small>${escapeHtml(image.name || "Session image")} will be used as the main visual in your polished share snapshot.</small>
         </div>
       </div>
     `;
@@ -1839,16 +1835,48 @@ function renderSnapshotSourceSummary(state) {
 
   state.picker.innerHTML = `
     <div class="snapshot-source-card snapshot-source-card--choice">
+      <div class="snapshot-source-media" aria-hidden="true">
+        ${getSnapshotFeatureIconMarkup("layers")}
+      </div>
       <div class="snapshot-source-copy">
         <strong>Choose image at generation time</strong>
         <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
       </div>
       <div class="snapshot-source-placeholder" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
+        ${getSnapshotFeatureIconMarkup("preview")}
       </div>
     </div>
+  `;
+}
+
+function getSnapshotFeatureIconMarkup(kind) {
+  if (kind === "layers") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M12 4l7 4-7 4-7-4 7-4z"></path>
+        <path d="M5 12l7 4 7-4"></path>
+        <path d="M5 16l7 4 7-4"></path>
+      </svg>
+    `;
+  }
+
+  if (kind === "preview") {
+    return `
+      <svg viewBox="0 0 32 24" focusable="false" aria-hidden="true">
+        <path d="M5 6h14"></path>
+        <path d="M5 11h18"></path>
+        <path d="M5 16h10"></path>
+        <path d="M19 19l4-5 4 5 3-3v5H19z"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <rect x="4" y="5" width="16" height="14" rx="2.5"></rect>
+      <circle cx="9" cy="10" r="1.5"></circle>
+      <path d="M6.5 17l4-4 3 3 3.5-4 2.5 5"></path>
+    </svg>
   `;
 }
 
