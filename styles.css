@@ -1069,23 +1069,70 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .share-snapshot-section {
   margin-top: 18px;
   display: grid;
-  gap: 16px;
-  padding: 18px;
+  gap: 20px;
+  padding: 22px;
   border-radius: 18px;
   border: 1px solid rgba(24, 34, 24, 0.1);
-  background: linear-gradient(180deg, rgba(245, 250, 243, 0.9) 0%, rgba(235, 244, 234, 0.72) 100%);
-  box-shadow: 0 12px 24px rgba(24, 34, 24, 0.06);
+  background:
+    linear-gradient(180deg, rgba(214, 236, 198, 0.7) 0%, rgba(243, 249, 241, 0.88) 18%, rgba(235, 244, 234, 0.8) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), transparent 54%);
+  box-shadow:
+    0 16px 28px rgba(24, 34, 24, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .snapshot-help,
 .snapshot-message {
   margin: 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.9rem;
 }
 
 .share-snapshot-section .progress-chart-heading {
-  margin-bottom: 2px;
+  margin-bottom: 4px;
+}
+
+.snapshot-social-cue {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.1), transparent 60%);
+}
+
+.snapshot-social-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--accent-dark);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.snapshot-social-copy strong,
+.snapshot-social-copy span {
+  display: block;
+}
+
+.snapshot-social-copy strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.snapshot-social-copy span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.88rem;
 }
 
 .snapshot-message.is-error {
@@ -1095,40 +1142,86 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-source-summary {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .snapshot-source-card {
-  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 108px;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
   border-radius: 14px;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 251, 247, 0.88) 100%);
+  box-shadow:
+    0 10px 20px rgba(24, 34, 24, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.snapshot-source-card strong,
-.snapshot-source-card small {
+.snapshot-source-copy strong,
+.snapshot-source-copy small {
   display: block;
 }
 
-.snapshot-source-card strong {
+.snapshot-source-copy strong {
   color: var(--ink);
 }
 
-.snapshot-source-card small {
+.snapshot-source-copy small {
   margin-top: 4px;
   color: var(--muted);
+}
+
+.snapshot-source-placeholder {
+  min-height: 78px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.1) 0%, rgba(255, 255, 255, 0.32) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  padding: 14px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.snapshot-source-placeholder span {
+  display: block;
+  border-radius: 999px;
+  background: rgba(31, 58, 42, 0.14);
+}
+
+.snapshot-source-placeholder span:nth-child(1) {
+  width: 74%;
+  height: 10px;
+}
+
+.snapshot-source-placeholder span:nth-child(2) {
+  width: 100%;
+  height: 8px;
+}
+
+.snapshot-source-placeholder span:nth-child(3) {
+  width: 62%;
+  height: 8px;
 }
 
 .snapshot-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .snapshot-actions .button-primary {
   order: -1;
+  min-width: 132px;
+  padding-inline: 22px;
+  box-shadow:
+    0 10px 18px rgba(24, 34, 24, 0.1),
+    0 0 0 1px rgba(148, 209, 89, 0.14);
 }
 
 .snapshot-preview {
@@ -1137,6 +1230,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   justify-content: flex-start;
   padding-inline: 0;
   margin-inline: 0;
+  margin-top: 4px;
 }
 
 .snapshot-preview-card {
@@ -1165,6 +1259,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 @media (max-width: 960px) {
   .snapshot-preview-card {
     width: 50%;
+  }
+
+  .snapshot-source-card {
+    grid-template-columns: 1fr;
+  }
+
+  .snapshot-source-placeholder {
+    min-height: 64px;
   }
 }
 
@@ -2996,20 +3098,55 @@ body.theme-dark .run-progress-section {
 
 body.theme-dark .share-snapshot-section {
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.06) 0%, rgba(37, 43, 38, 0.96) 22%, rgba(37, 43, 38, 0.98) 100%),
-    linear-gradient(135deg, rgba(127, 184, 255, 0.035), transparent 42%);
+    linear-gradient(180deg, rgba(148, 209, 89, 0.11) 0%, rgba(44, 52, 45, 0.96) 18%, rgba(37, 43, 38, 0.99) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.09), transparent 48%);
   border-color: #2a332f;
   box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.18),
+    0 18px 32px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
+body.theme-dark .share-snapshot-section .snapshot-social-cue {
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(37, 43, 38, 0.9) 100%),
+    linear-gradient(135deg, rgba(127, 184, 255, 0.03), transparent 60%);
+  border-color: rgba(148, 209, 89, 0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+body.theme-dark .share-snapshot-section .snapshot-social-icon {
+  background: rgba(20, 26, 22, 0.72);
+  border-color: rgba(148, 209, 89, 0.18);
+  color: #94d159;
+}
+
+body.theme-dark .share-snapshot-section .snapshot-social-copy strong {
+  color: #f6f8f5;
+}
+
+body.theme-dark .share-snapshot-section .snapshot-social-copy span {
+  color: #b7c0b7;
+}
+
 body.theme-dark .share-snapshot-section .snapshot-source-card {
-  background: #252b26;
+  background:
+    linear-gradient(180deg, rgba(43, 49, 44, 0.98) 0%, rgba(37, 43, 38, 0.98) 100%);
   border-color: #343a35;
   box-shadow:
-    0 10px 18px rgba(0, 0, 0, 0.12),
+    0 12px 22px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+body.theme-dark .share-snapshot-section .snapshot-source-placeholder {
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(24, 29, 25, 0.92) 100%);
+  border-color: rgba(148, 209, 89, 0.14);
+}
+
+body.theme-dark .share-snapshot-section .snapshot-source-placeholder span {
+  background: rgba(246, 248, 245, 0.12);
 }
 
 body.theme-dark .share-snapshot-section .snapshot-preview-card {

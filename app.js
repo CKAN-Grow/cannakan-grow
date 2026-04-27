@@ -1804,9 +1804,16 @@ function renderSnapshotSourceSummary(state) {
 
   if (!images.length) {
     state.picker.innerHTML = `
-      <div class="snapshot-source-card">
-        <strong>Text-only snapshot</strong>
-        <small>No uploaded session images yet. The snapshot will use a clean social-ready summary card.</small>
+      <div class="snapshot-source-card snapshot-source-card--text-only">
+        <div class="snapshot-source-copy">
+          <strong>Text-only snapshot</strong>
+          <small>No uploaded session images yet. The snapshot will use a clean social-ready summary card.</small>
+        </div>
+        <div class="snapshot-source-placeholder" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
     `;
     return;
@@ -1815,18 +1822,32 @@ function renderSnapshotSourceSummary(state) {
   if (images.length === 1) {
     const image = images[0];
     state.picker.innerHTML = `
-      <div class="snapshot-source-card">
-        <strong>Using uploaded image automatically</strong>
-        <small>${escapeHtml(image.name || "Session image")} will be used as the main snapshot image.</small>
+      <div class="snapshot-source-card snapshot-source-card--image">
+        <div class="snapshot-source-copy">
+          <strong>Using uploaded image automatically</strong>
+          <small>${escapeHtml(image.name || "Session image")} will be used as the main snapshot image.</small>
+        </div>
+        <div class="snapshot-source-placeholder" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
       </div>
     `;
     return;
   }
 
   state.picker.innerHTML = `
-    <div class="snapshot-source-card">
-      <strong>Choose image at generation time</strong>
-      <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
+    <div class="snapshot-source-card snapshot-source-card--choice">
+      <div class="snapshot-source-copy">
+        <strong>Choose image at generation time</strong>
+        <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
+      </div>
+      <div class="snapshot-source-placeholder" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
     </div>
   `;
 }
