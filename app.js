@@ -2049,10 +2049,7 @@ function syncSnapshotGalleryControls(state) {
   const currentStatus = String(publishedEntry?.status || "private");
 
   if (state.galleryOptIn) {
-    state.galleryOptIn.disabled = !canPublish;
-    if (!canPublish) {
-      state.galleryOptIn.checked = false;
-    } else {
+    if (publishedEntry) {
       state.galleryOptIn.checked = currentStatus === "pending_review" || currentStatus === "approved";
     }
   }

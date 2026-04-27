@@ -1214,10 +1214,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--ink);
 }
 
+.snapshot-gallery-optin label {
+  cursor: pointer;
+}
+
 .snapshot-gallery-optin input {
   width: 18px;
   height: 18px;
   margin: 0;
+  cursor: pointer;
 }
 
 .snapshot-gallery-note {
