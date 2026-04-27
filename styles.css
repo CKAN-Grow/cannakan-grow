@@ -1285,6 +1285,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   justify-items: start;
   gap: 10px;
+  width: 100%;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid rgba(24, 34, 24, 0.1);
 }
 
 .snapshot-gallery-link {
@@ -3488,6 +3492,10 @@ body.theme-dark .gallery-review-status-badge.is-approved {
 
 body.theme-dark .snapshot-gallery-note {
   color: #b7c0b7;
+}
+
+body.theme-dark .snapshot-gallery-actions {
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 body.theme-dark .snapshot-destination-label {
