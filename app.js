@@ -1387,11 +1387,11 @@ function getGallerySnapshotForSession(sessionId) {
 
 async function publishSnapshotToGallery(session, snapshotData, blob) {
   if (!appState.supabase || !appState.user) {
-    throw new Error("You must be signed in to publish to the public gallery.");
+    throw new Error("You must be signed in to publish to the Grow Gallery.");
   }
 
   if (!session?.id) {
-    throw new Error("Save this session before publishing it to the public gallery.");
+    throw new Error("Save this session before publishing it to the Grow Gallery.");
   }
 
   const existing = getGallerySnapshotForSession(session.id);
@@ -1419,7 +1419,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
   const { data, error } = await query;
   if (error) {
     await removeGallerySnapshotImage(upload.path);
-    throw new Error("Could not save this snapshot to the public gallery.");
+    throw new Error("Could not save this snapshot to the Grow Gallery.");
   }
 
   if (existing?.imagePath && existing.imagePath !== upload.path) {
@@ -1476,7 +1476,7 @@ async function unpublishGallerySnapshot(snapshotId) {
     .eq("id", snapshotId);
 
   if (error) {
-    throw new Error("Could not remove this snapshot from the public gallery.");
+    throw new Error("Could not remove this snapshot from the Grow Gallery.");
   }
 
   appState.gallerySnapshots = appState.gallerySnapshots.filter((entry) => entry.id !== snapshotId);
@@ -2033,7 +2033,7 @@ function initializeSnapshotSection(scope, options) {
       syncSnapshotGalleryControls(state);
       setSnapshotMessage(state, "Snapshot removed from the public Grow Gallery.");
     } catch (error) {
-      setSnapshotMessage(state, error.message || "Could not remove this snapshot from the public gallery.", true);
+      setSnapshotMessage(state, error.message || "Could not remove this snapshot from the Grow Gallery.", true);
     }
   });
 }
@@ -2067,7 +2067,7 @@ function syncSnapshotGalleryControls(state) {
     } else if (currentStatus === "rejected") {
       state.galleryNote.textContent = "This snapshot was rejected. Turn the gallery option back on and generate again to resubmit. Private notes stay private.";
     } else {
-      state.galleryNote.textContent = "Snapshots stay private by default. Publish only if you want this session shown in the public gallery. Private notes stay private.";
+      state.galleryNote.textContent = "Snapshots stay private by default. Publish only if you want this session shown in the Grow Gallery. Private notes stay private.";
     }
   }
 
@@ -2089,7 +2089,7 @@ async function maybePublishSnapshotFromState(state, result) {
     setSnapshotMessage(state, "Submitted for review.");
     return published;
   } catch (error) {
-    setSnapshotMessage(state, error.message || "Could not publish this snapshot to the public gallery.", true);
+    setSnapshotMessage(state, error.message || "Could not publish this snapshot to the Grow Gallery.", true);
     return null;
   }
 }
