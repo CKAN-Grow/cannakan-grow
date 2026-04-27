@@ -25,12 +25,18 @@ create table if not exists public.profiles (
   username text not null default '',
   avatar_url text default '',
   avatar_path text default '',
-  is_admin boolean not null default false,
   deletion_requested_at timestamptz,
   deletion_scheduled_for timestamptz,
   deletion_status text default '',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.admin_users (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  email text,
+  created_at timestamptz not null default timezone('utc', now())
 );
 
 create table if not exists public.grow_gallery_snapshots (
@@ -55,9 +61,6 @@ create table if not exists public.grow_gallery_snapshots (
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
-
-alter table public.profiles
-  add column if not exists is_admin boolean not null default false;
 
 alter table public.profiles
   add column if not exists deletion_requested_at timestamptz;
@@ -137,6 +140,7 @@ execute procedure public.set_grow_gallery_snapshots_updated_at();
 
 alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
+alter table public.admin_users enable row level security;
 alter table public.grow_gallery_snapshots enable row level security;
 
 drop policy if exists "Users can view their own grow sessions" on public.grow_sessions;
@@ -183,6 +187,13 @@ for update
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
+drop policy if exists "Users can view their own admin membership" on public.admin_users;
+create policy "Users can view their own admin membership"
+on public.admin_users
+for select
+to authenticated
+using (auth.uid() = user_id);
+
 drop policy if exists "Anyone can view published gallery snapshots" on public.grow_gallery_snapshots;
 create policy "Anyone can view published gallery snapshots"
 on public.grow_gallery_snapshots
@@ -192,9 +203,8 @@ using (
   or auth.uid() = user_id
   or exists (
     select 1
-    from public.profiles
-    where profiles.id = auth.uid()
-      and profiles.is_admin = true
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
   )
 );
 
@@ -214,18 +224,16 @@ using (
   auth.uid() = user_id
   or exists (
     select 1
-    from public.profiles
-    where profiles.id = auth.uid()
-      and profiles.is_admin = true
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
   )
 )
 with check (
   auth.uid() = user_id
   or exists (
     select 1
-    from public.profiles
-    where profiles.id = auth.uid()
-      and profiles.is_admin = true
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
   )
 );
 
@@ -238,11 +246,12 @@ using (
   auth.uid() = user_id
   or exists (
     select 1
-    from public.profiles
-    where profiles.id = auth.uid()
-      and profiles.is_admin = true
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
   )
 );
+
+-- To make yourself an admin, add your Supabase auth user id and email to public.admin_users.
 
 insert into storage.buckets (id, name, public)
 values ('session-images', 'session-images', true)

@@ -50,10 +50,6 @@ const STAGE_REMINDER_SCHEDULES = {
     { hours: 120, message: "This session has been running for several days. Check seeds and complete when ready.", level: "critical" },
   ],
 };
-const TEMP_ADMIN_EMAILS = [
-  ...(Array.isArray(window.CANNAKAN_ADMIN_EMAILS) ? window.CANNAKAN_ADMIN_EMAILS : []),
-  ...(Array.isArray(window.CANNAKAN_SUPABASE_CONFIG?.adminEmails) ? window.CANNAKAN_SUPABASE_CONFIG.adminEmails : []),
-].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
 const appState = {
@@ -62,6 +58,7 @@ const appState = {
   supabase: null,
   authSession: null,
   user: null,
+  isAdmin: false,
   profile: null,
   profileError: "",
   authNotice: "",
@@ -914,6 +911,7 @@ function loadLocalSessions() {
 async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.authSession = session || null;
   appState.user = session?.user || null;
+  appState.isAdmin = false;
   appState.profile = null;
   appState.profileError = "";
   appState.deletionPromptShown = false;
@@ -921,6 +919,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
 
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
+    appState.isAdmin = await loadAdminStatus();
     const sessions = await loadUserSessions();
     saveSessions(sessions);
     appState.gallerySnapshots = await loadGallerySnapshots();
@@ -992,6 +991,25 @@ async function loadGallerySnapshots() {
   return (data || []).map(mapRowToGallerySnapshot);
 }
 
+async function loadAdminStatus() {
+  if (!appState.supabase || !appState.user) {
+    return false;
+  }
+
+  const { data, error } = await appState.supabase
+    .from("admin_users")
+    .select("user_id")
+    .eq("user_id", appState.user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load admin membership", error);
+    return false;
+  }
+
+  return Boolean(data?.user_id);
+}
+
 function normalizeProfileRow(row) {
   if (!row) {
     return null;
@@ -1002,7 +1020,6 @@ function normalizeProfileRow(row) {
     username: String(row.username || "").trim(),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
-    isAdmin: Boolean(row.is_admin),
     deletionRequestedAt: row.deletion_requested_at || "",
     deletionScheduledFor: row.deletion_scheduled_for || "",
     deletionStatus: String(row.deletion_status || "").trim(),
@@ -1020,8 +1037,7 @@ function getProfileDisplayName() {
 }
 
 function isAdminUser(profile = appState.profile) {
-  const userEmail = String(appState.user?.email || "").trim().toLowerCase();
-  return Boolean(profile?.isAdmin || (userEmail && TEMP_ADMIN_EMAILS.includes(userEmail)));
+  return Boolean(appState.isAdmin);
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -1177,10 +1193,6 @@ async function saveUserProfile(profileInput) {
     username: String(profileInput?.username || "").trim(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
-    is_admin:
-      profileInput?.isAdmin !== undefined
-        ? Boolean(profileInput.isAdmin)
-        : Boolean(existingProfile.isAdmin),
     deletion_requested_at:
       profileInput?.deletionRequestedAt !== undefined
         ? profileInput.deletionRequestedAt
@@ -3734,6 +3746,7 @@ function renderGallery() {
 }
 
 function renderGalleryReview() {
+  document.title = "Grow Gallery Moderation";
   if (!isAdminUser()) {
     app.innerHTML = `
       <section class="card">
