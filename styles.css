@@ -3714,6 +3714,16 @@ body.theme-dark .partition-row.row--completed select:focus {
   background: #fff8e8;
 }
 
+body.theme-dark .partition-row input.is-missing,
+body.theme-dark .partition-row select.is-missing,
+body.theme-dark .partition-row .custom-select-trigger.is-missing {
+  background: #1E221F !important;
+  color: #f6f8f5 !important;
+  -webkit-text-fill-color: #f6f8f5 !important;
+  border-color: rgba(221, 128, 69, 0.6) !important;
+  box-shadow: inset 0 0 0 1px rgba(221, 128, 69, 0.12) !important;
+}
+
 .partition-row label.field-has-warning .field-warning {
   display: block;
 }
@@ -3929,7 +3939,9 @@ body.theme-dark .partition-row.row--completed select:focus {
 
 body.theme-dark .partition-table .partition-row:hover,
 body.theme-dark .partition-table tr.partition-row:hover,
-body.theme-dark .partition-table [data-partition-row="true"]:hover {
+body.theme-dark .partition-table [data-partition-row="true"]:hover,
+body.theme-dark .partition-table .partition-row:focus-within,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within {
   background: rgba(148, 209, 89, 0.035) !important;
   background-image: none !important;
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.10) !important;
@@ -3937,14 +3949,20 @@ body.theme-dark .partition-table [data-partition-row="true"]:hover {
 
 body.theme-dark .partition-table .partition-row:hover > *,
 body.theme-dark .partition-table tr.partition-row:hover > *,
-body.theme-dark .partition-table [data-partition-row="true"]:hover > * {
+body.theme-dark .partition-table [data-partition-row="true"]:hover > *,
+body.theme-dark .partition-table .partition-row:focus-within > *,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within > * {
   background-image: none !important;
 }
 
 body.theme-dark .partition-table .partition-row:hover label,
 body.theme-dark .partition-table .partition-row:hover .detail-cell,
 body.theme-dark .partition-table [data-partition-row="true"]:hover label,
-body.theme-dark .partition-table [data-partition-row="true"]:hover .detail-cell {
+body.theme-dark .partition-table [data-partition-row="true"]:hover .detail-cell,
+body.theme-dark .partition-table .partition-row:focus-within label,
+body.theme-dark .partition-table .partition-row:focus-within .detail-cell,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within label,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within .detail-cell {
   background: transparent !important;
   background-image: none !important;
 }
@@ -3956,7 +3974,15 @@ body.theme-dark .partition-table .partition-row:hover .custom-select-trigger,
 body.theme-dark .partition-table [data-partition-row="true"]:hover input,
 body.theme-dark .partition-table [data-partition-row="true"]:hover select,
 body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select,
-body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger {
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger,
+body.theme-dark .partition-table .partition-row:focus-within input,
+body.theme-dark .partition-table .partition-row:focus-within select,
+body.theme-dark .partition-table .partition-row:focus-within .custom-select,
+body.theme-dark .partition-table .partition-row:focus-within .custom-select-trigger,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within input,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within select,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custom-select,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custom-select-trigger {
   background-image: none !important;
 }
 
@@ -3965,7 +3991,13 @@ body.theme-dark .partition-table .partition-row:hover select,
 body.theme-dark .partition-table .partition-row:hover .custom-select-trigger,
 body.theme-dark .partition-table [data-partition-row="true"]:hover input:not([name="plantedCount"]),
 body.theme-dark .partition-table [data-partition-row="true"]:hover select,
-body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger {
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger,
+body.theme-dark .partition-table .partition-row:focus-within input:not([name="plantedCount"]),
+body.theme-dark .partition-table .partition-row:focus-within select,
+body.theme-dark .partition-table .partition-row:focus-within .custom-select-trigger,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within input:not([name="plantedCount"]),
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within select,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custom-select-trigger {
   background: #1E221F !important;
   color: #f6f8f5 !important;
   -webkit-text-fill-color: #f6f8f5 !important;
