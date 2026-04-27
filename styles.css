@@ -3926,3 +3926,48 @@ body.theme-dark .partition-row.row--completed select:focus {
     grid-template-columns: 1fr;
   }
 }
+
+body.theme-dark .partition-table .partition-row:hover,
+body.theme-dark .partition-table tr.partition-row:hover,
+body.theme-dark .partition-table [data-partition-row="true"]:hover {
+  background: rgba(148, 209, 89, 0.035) !important;
+  background-image: none !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.10) !important;
+}
+
+body.theme-dark .partition-table .partition-row:hover > *,
+body.theme-dark .partition-table tr.partition-row:hover > *,
+body.theme-dark .partition-table [data-partition-row="true"]:hover > * {
+  background-image: none !important;
+}
+
+body.theme-dark .partition-table .partition-row:hover label,
+body.theme-dark .partition-table .partition-row:hover .detail-cell,
+body.theme-dark .partition-table [data-partition-row="true"]:hover label,
+body.theme-dark .partition-table [data-partition-row="true"]:hover .detail-cell {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+body.theme-dark .partition-table .partition-row:hover input,
+body.theme-dark .partition-table .partition-row:hover select,
+body.theme-dark .partition-table .partition-row:hover .custom-select,
+body.theme-dark .partition-table .partition-row:hover .custom-select-trigger,
+body.theme-dark .partition-table [data-partition-row="true"]:hover input,
+body.theme-dark .partition-table [data-partition-row="true"]:hover select,
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select,
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger {
+  background-image: none !important;
+}
+
+body.theme-dark .partition-table .partition-row:hover input:not([name="plantedCount"]),
+body.theme-dark .partition-table .partition-row:hover select,
+body.theme-dark .partition-table .partition-row:hover .custom-select-trigger,
+body.theme-dark .partition-table [data-partition-row="true"]:hover input:not([name="plantedCount"]),
+body.theme-dark .partition-table [data-partition-row="true"]:hover select,
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger {
+  background: #1E221F !important;
+  color: #f6f8f5 !important;
+  -webkit-text-fill-color: #f6f8f5 !important;
+  border-color: #343a35 !important;
+}

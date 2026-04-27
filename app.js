@@ -3739,6 +3739,7 @@ function renderSessionForm() {
 function buildPartitionFormCard(partition, index) {
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
+  row.dataset.partitionRow = "true";
   row.dataset.partitionId = String(partition.id);
   row.tabIndex = -1;
   row.innerHTML = `
@@ -4624,6 +4625,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const partitionState = getPartitionRowStateFromPartition(partition, sessionStatus);
   const row = document.createElement("article");
   row.className = "chart-row partition-row detail-row";
+  row.dataset.partitionRow = "true";
   row.dataset.partitionBaseState = basePartitionState;
   row.innerHTML = `
     <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="Partition ${partition.id}">${partition.id}</div>
