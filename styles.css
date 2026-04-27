@@ -852,11 +852,11 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .section-title-icon {
-  width: 19px;
-  height: 19px;
-  flex: 0 0 19px;
-  color: rgba(24, 34, 24, 0.62);
-  opacity: 0.9;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 25px;
+  color: #94d159;
+  opacity: 1;
 }
 
 .section-title-icon * {
@@ -3523,9 +3523,6 @@ body.theme-dark .snapshot-gallery-note {
   color: #b7c0b7;
 }
 
-body.theme-dark .section-title-icon {
-  color: rgba(246, 248, 245, 0.72);
-}
 
 body.theme-dark .snapshot-gallery-actions {
   border-top-color: rgba(255, 255, 255, 0.08);
