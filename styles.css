@@ -1274,6 +1274,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.92rem;
 }
 
+.snapshot-gallery-actions {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
 .snapshot-gallery-link {
   display: inline-flex;
   align-items: center;
