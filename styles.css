@@ -845,6 +845,28 @@ body.theme-dark .spotlight-stat strong {
   font-size: 1rem;
 }
 
+.section-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title-icon {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  color: rgba(24, 34, 24, 0.62);
+  opacity: 0.9;
+}
+
+.section-title-icon * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .session-images-limit {
   color: var(--muted);
   font-size: 0.82rem;
@@ -3498,6 +3520,10 @@ body.theme-dark .gallery-review-status-badge.is-approved {
 
 body.theme-dark .snapshot-gallery-note {
   color: #b7c0b7;
+}
+
+body.theme-dark .section-title-icon {
+  color: rgba(246, 248, 245, 0.72);
 }
 
 body.theme-dark .snapshot-gallery-actions {

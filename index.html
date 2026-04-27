@@ -298,7 +298,13 @@
           <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timeline</p>
-              <h4 id="session-lifecycle-title">Session Progress</h4>
+              <h4 id="session-lifecycle-title" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
+                  <path d="M5 6v12"></path>
+                </svg>
+                <span>Session Progress</span>
+              </h4>
             </div>
             <div id="session-lifecycle-summary" class="session-lifecycle-summary"></div>
             <details class="timeline-debug-panel">
@@ -317,7 +323,15 @@
           <div class="partition-work-header">
             <div class="partition-work-heading">
               <p class="eyebrow">Partitions</p>
-              <h3 id="partition-work-title">KAN® Partition Chart</h3>
+              <h3 id="partition-work-title" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+                  <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+                  <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+                  <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+                </svg>
+                <span>KAN® Partition Chart</span>
+              </h3>
             </div>
             <div class="session-status-panel">
               <p class="session-status-label">Current Stage</p>
@@ -355,27 +369,54 @@
           <section id="session-timing-section" class="session-timing-section" aria-labelledby="session-timing-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timing</p>
-              <h4 id="session-timing-title">Session duration</h4>
+              <h4 id="session-timing-title" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8"></circle>
+                  <path d="M12 8v4l2.5 2.5"></path>
+                </svg>
+                <span>Session duration</span>
+              </h4>
             </div>
             <div id="session-timing-summary" class="session-timing-summary"></div>
           </section>
           <section id="partition-progress-section" class="progress-chart-section" aria-labelledby="partition-progress-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Progress</p>
-              <h4 id="partition-progress-title">Germination progress by partition</h4>
+              <h4 id="partition-progress-title" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M6 18V10"></path>
+                  <path d="M12 18V6"></path>
+                  <path d="M18 18v-4"></path>
+                </svg>
+                <span>Germination progress by partition</span>
+              </h4>
             </div>
             <div id="partition-progress-chart" class="progress-chart-list"></div>
           </section>
           <section id="run-progress-section" class="run-progress-section" aria-labelledby="run-progress-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Germination Rate</p>
-              <h4 id="run-progress-title">Overall Session Germination %</h4>
+              <h4 id="run-progress-title" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M5 16l4-4 3 3 6-7"></path>
+                  <path d="M15 8h3v3"></path>
+                </svg>
+                <span>Overall Session Germination %</span>
+              </h4>
             </div>
             <div id="run-progress-summary" class="run-progress-summary"></div>
           </section>
           <section class="session-notes-section" aria-labelledby="session-notes-label">
             <label class="session-notes-field" for="session-notes">
-              <span id="session-notes-label">Session Notes</span>
+              <span id="session-notes-label" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M7 5.5h7l3 3V18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 18.5v-11A2 2 0 0 1 8 5.5"></path>
+                  <path d="M14 5.5v3h3"></path>
+                  <path d="M9 12h6"></path>
+                  <path d="M9 15h4"></path>
+                </svg>
+                <span>Session Notes</span>
+              </span>
               <textarea
                 id="session-notes"
                 name="sessionNotes"
@@ -389,7 +430,14 @@
             <div class="session-images-heading">
               <div>
                 <p class="eyebrow">Images</p>
-                <h4 id="session-images-label">Session Images</h4>
+                <h4 id="session-images-label" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+                    <circle cx="9" cy="10" r="1.5"></circle>
+                    <path d="m20 15-4.5-4.5L8 18"></path>
+                  </svg>
+                  <span>Session Images</span>
+                </h4>
               </div>
               <span class="session-images-limit">Up to 3 images</span>
             </div>
@@ -416,7 +464,14 @@
               <div class="snapshot-hero-copy">
                 <div class="progress-chart-heading">
                   <p class="eyebrow">Share</p>
-                  <h4 id="share-snapshot-title">Share Your Grow Snapshot</h4>
+                  <h4 id="share-snapshot-title" class="section-title-with-icon">
+                    <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <path d="M12 16V4"></path>
+                      <path d="M7.5 8.5L12 4l4.5 4.5"></path>
+                      <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
+                    </svg>
+                    <span>Share Your Grow Snapshot</span>
+                  </h4>
                 </div>
                 <p class="snapshot-help">Turn your session into a shareable snapshot</p>
               </div>
@@ -545,7 +600,13 @@
         <section id="detail-lifecycle-section" class="session-lifecycle-section" aria-labelledby="detail-lifecycle-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Timeline</p>
-            <h4 id="detail-lifecycle-title">Session Progress</h4>
+            <h4 id="detail-lifecycle-title" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
+                <path d="M5 6v12"></path>
+              </svg>
+              <span>Session Progress</span>
+            </h4>
           </div>
           <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
           <details class="timeline-debug-panel">
@@ -563,7 +624,15 @@
         <div class="partition-work-header">
           <div class="partition-work-heading">
             <p class="eyebrow">Partitions</p>
-            <h3 id="detail-partition-work-title">KAN® Partition Chart</h3>
+            <h3 id="detail-partition-work-title" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <rect x="4" y="4" width="7" height="7" rx="1.5"></rect>
+                <rect x="13" y="4" width="7" height="7" rx="1.5"></rect>
+                <rect x="4" y="13" width="7" height="7" rx="1.5"></rect>
+                <rect x="13" y="13" width="7" height="7" rx="1.5"></rect>
+              </svg>
+              <span>KAN® Partition Chart</span>
+            </h3>
           </div>
           <div class="session-status-panel">
             <p class="session-status-label">Current Stage</p>
@@ -599,27 +668,54 @@
         <section id="detail-timing-section" class="session-timing-section" aria-labelledby="detail-timing-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Timing</p>
-            <h4 id="detail-timing-title">Session duration</h4>
+            <h4 id="detail-timing-title" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M12 8v4l2.5 2.5"></path>
+              </svg>
+              <span>Session duration</span>
+            </h4>
           </div>
           <div id="detail-timing-summary" class="session-timing-summary"></div>
         </section>
         <section id="detail-progress-section" class="progress-chart-section" aria-labelledby="detail-progress-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Progress</p>
-            <h4 id="detail-progress-title">Germination progress by partition</h4>
+            <h4 id="detail-progress-title" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M6 18V10"></path>
+                <path d="M12 18V6"></path>
+                <path d="M18 18v-4"></path>
+              </svg>
+              <span>Germination progress by partition</span>
+            </h4>
           </div>
           <div id="detail-progress-chart" class="progress-chart-list"></div>
         </section>
         <section id="detail-run-progress-section" class="run-progress-section" aria-labelledby="detail-run-progress-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Germination Rate</p>
-            <h4 id="detail-run-progress-title">Overall Session Germination %</h4>
+            <h4 id="detail-run-progress-title" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M5 16l4-4 3 3 6-7"></path>
+                <path d="M15 8h3v3"></path>
+              </svg>
+              <span>Overall Session Germination %</span>
+            </h4>
           </div>
           <div id="detail-run-progress-summary" class="run-progress-summary"></div>
         </section>
         <section class="session-notes-section" aria-labelledby="detail-session-notes-label">
           <label class="session-notes-field" for="detail-session-notes">
-            <span id="detail-session-notes-label">Session Notes</span>
+            <span id="detail-session-notes-label" class="section-title-with-icon">
+              <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M7 5.5h7l3 3V18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 18.5v-11A2 2 0 0 1 8 5.5"></path>
+                <path d="M14 5.5v3h3"></path>
+                <path d="M9 12h6"></path>
+                <path d="M9 15h4"></path>
+              </svg>
+              <span>Session Notes</span>
+            </span>
             <textarea
               id="detail-session-notes"
               rows="5"
@@ -632,7 +728,14 @@
           <div class="session-images-heading">
             <div>
               <p class="eyebrow">Images</p>
-              <h4 id="detail-session-images-label">Session Images</h4>
+              <h4 id="detail-session-images-label" class="section-title-with-icon">
+                <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+                  <circle cx="9" cy="10" r="1.5"></circle>
+                  <path d="m20 15-4.5-4.5L8 18"></path>
+                </svg>
+                <span>Session Images</span>
+              </h4>
             </div>
             <span class="session-images-limit">Up to 3 images</span>
           </div>
@@ -659,7 +762,14 @@
             <div class="snapshot-hero-copy">
               <div class="progress-chart-heading">
                 <p class="eyebrow">Share</p>
-                <h4 id="detail-share-snapshot-title">Share Your Grow Snapshot</h4>
+                <h4 id="detail-share-snapshot-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 16V4"></path>
+                    <path d="M7.5 8.5L12 4l4.5 4.5"></path>
+                    <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
+                  </svg>
+                  <span>Share Your Grow Snapshot</span>
+                </h4>
               </div>
               <p class="snapshot-help">Turn your session into a shareable snapshot</p>
             </div>
