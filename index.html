@@ -422,9 +422,19 @@
             </div>
           <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
-            <div class="snapshot-gallery-optin">
-              <input id="snapshot-gallery-optin" type="checkbox">
-              <label for="snapshot-gallery-optin">Share to public Grow Gallery</label>
+            <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
+              <label class="snapshot-destination-option">
+                <input id="snapshot-destination-social" type="radio" name="snapshot-destination" value="social" checked>
+                <span>Social only</span>
+              </label>
+              <label class="snapshot-destination-option">
+                <input id="snapshot-destination-social-gallery" type="radio" name="snapshot-destination" value="social-gallery">
+                <span>Social + Grow Gallery</span>
+              </label>
+              <label class="snapshot-destination-option">
+                <input id="snapshot-destination-gallery" type="radio" name="snapshot-destination" value="gallery">
+                <span>Grow Gallery only</span>
+              </label>
             </div>
             <p id="snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.</p>
             <button id="snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>
@@ -644,9 +654,19 @@
           </div>
           <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
-            <div class="snapshot-gallery-optin">
-              <input id="detail-snapshot-gallery-optin" type="checkbox">
-              <label for="detail-snapshot-gallery-optin">Share to public Grow Gallery</label>
+            <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
+              <label class="snapshot-destination-option">
+                <input id="detail-snapshot-destination-social" type="radio" name="detail-snapshot-destination" value="social" checked>
+                <span>Social only</span>
+              </label>
+              <label class="snapshot-destination-option">
+                <input id="detail-snapshot-destination-social-gallery" type="radio" name="detail-snapshot-destination" value="social-gallery">
+                <span>Social + Grow Gallery</span>
+              </label>
+              <label class="snapshot-destination-option">
+                <input id="detail-snapshot-destination-gallery" type="radio" name="detail-snapshot-destination" value="gallery">
+                <span>Grow Gallery only</span>
+              </label>
             </div>
             <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in the Grow Gallery. Private notes stay private.</p>
             <button id="detail-snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>

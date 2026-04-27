@@ -1954,7 +1954,7 @@ function initializeSnapshotSection(scope, options) {
     downloadButton: options.downloadButton || null,
     resetButton: options.resetButton || null,
     shareButton: options.shareButton || null,
-    galleryOptIn: options.galleryOptIn || null,
+    destinationInputs: options.destinationInputs || [],
     galleryNote: options.galleryNote || null,
     unpublishButton: options.unpublishButton || null,
     canPublish: options.canPublish !== false,
@@ -1967,8 +1967,13 @@ function initializeSnapshotSection(scope, options) {
   };
 
   scope.__snapshotState = state;
-  if (state.galleryOptIn) {
-    state.galleryOptIn.checked = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
+  if (state.destinationInputs.length) {
+    const hasPublishedEntry = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
+    const defaultDestination = hasPublishedEntry ? "social-gallery" : "social";
+    const defaultInput = state.destinationInputs.find((input) => input.value === defaultDestination) || state.destinationInputs[0];
+    if (defaultInput) {
+      defaultInput.checked = true;
+    }
   }
   renderSnapshotSourceSummary(state);
   syncSnapshotGalleryControls(state);
@@ -1976,10 +1981,7 @@ function initializeSnapshotSection(scope, options) {
   setSnapshotPreview(state, null);
 
   state.generateButton?.addEventListener("click", async () => {
-    const result = await generateSnapshotPreview(state);
-    if (result) {
-      await maybePublishSnapshotFromState(state, result);
-    }
+    await generateSnapshotPreview(state);
   });
 
   state.downloadButton?.addEventListener("click", async () => {
@@ -2001,7 +2003,11 @@ function initializeSnapshotSection(scope, options) {
       return;
     }
 
+    const destination = getSnapshotDestination(state);
     const moderationEntry = await maybePublishSnapshotFromState(state, result);
+    if (destination === "gallery") {
+      return;
+    }
 
     const shared = await shareSnapshotBlob(result.blob, result.fileName, result.summaryText);
     if (!shared) {
@@ -2014,8 +2020,10 @@ function initializeSnapshotSection(scope, options) {
     }
   });
 
-  state.galleryOptIn?.addEventListener("change", () => {
-    syncSnapshotGalleryControls(state);
+  state.destinationInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      syncSnapshotGalleryControls(state);
+    });
   });
 
   state.unpublishButton?.addEventListener("click", async () => {
@@ -2027,15 +2035,21 @@ function initializeSnapshotSection(scope, options) {
 
     try {
       await unpublishGallerySnapshot(existing.id);
-      if (state.galleryOptIn) {
-        state.galleryOptIn.checked = false;
+      const socialInput = state.destinationInputs.find((input) => input.value === "social");
+      if (socialInput) {
+        socialInput.checked = true;
       }
       syncSnapshotGalleryControls(state);
-      setSnapshotMessage(state, "Snapshot removed from the public Grow Gallery.");
+      setSnapshotMessage(state, "Snapshot removed from the Grow Gallery.");
     } catch (error) {
       setSnapshotMessage(state, error.message || "Could not remove this snapshot from the Grow Gallery.", true);
     }
   });
+}
+
+function getSnapshotDestination(state) {
+  const selectedInput = state?.destinationInputs?.find((input) => input.checked);
+  return selectedInput?.value || "social";
 }
 
 function syncSnapshotGalleryControls(state) {
@@ -2047,24 +2061,27 @@ function syncSnapshotGalleryControls(state) {
   const publishedEntry = getGallerySnapshotForSession(session?.id);
   const canPublish = Boolean(state.canPublish && session?.id);
   const currentStatus = String(publishedEntry?.status || "private");
-
-  if (state.galleryOptIn) {
-    if (publishedEntry) {
-      state.galleryOptIn.checked = currentStatus === "pending_review" || currentStatus === "approved";
-    }
-  }
+  const destination = getSnapshotDestination(state);
 
   if (state.galleryNote) {
-    if (!canPublish) {
-      state.galleryNote.textContent = "Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.";
+    if (!canPublish && destination !== "social") {
+      state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
+    } else if (destination === "social") {
+      state.galleryNote.textContent = "Social only keeps this snapshot private to you. Private notes stay private.";
+    } else if (destination === "gallery") {
+      state.galleryNote.textContent = currentStatus === "pending_review"
+        ? "Submitted for review. This snapshot will not be shared socially. Private notes stay private."
+        : "This snapshot will be submitted to the Grow Gallery for review only. Private notes stay private.";
+    } else if (!canPublish) {
+      state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
     } else if (currentStatus === "pending_review") {
-      state.galleryNote.textContent = "Submitted for review. Private notes stay private.";
+      state.galleryNote.textContent = "Submitted for review. Social sharing will still work normally. Private notes stay private.";
     } else if (currentStatus === "approved") {
-      state.galleryNote.textContent = "Approved and visible in the public Grow Gallery. Private notes stay private.";
+      state.galleryNote.textContent = "Approved and visible in the Grow Gallery. Social sharing will still work normally. Private notes stay private.";
     } else if (currentStatus === "rejected") {
-      state.galleryNote.textContent = "This snapshot was rejected. Turn the gallery option back on and generate again to resubmit. Private notes stay private.";
+      state.galleryNote.textContent = "This snapshot was rejected. Use Social + Grow Gallery or Grow Gallery only to resubmit. Private notes stay private.";
     } else {
-      state.galleryNote.textContent = "Snapshots stay private by default. Publish only if you want this session shown in the Grow Gallery. Private notes stay private.";
+      state.galleryNote.textContent = "This snapshot will be shared socially and submitted to the Grow Gallery for review. Private notes stay private.";
     }
   }
 
@@ -2074,7 +2091,8 @@ function syncSnapshotGalleryControls(state) {
 }
 
 async function maybePublishSnapshotFromState(state, result) {
-  if (!state?.galleryOptIn?.checked) {
+  const destination = getSnapshotDestination(state);
+  if (destination === "social") {
     return null;
   }
 
@@ -3956,9 +3974,9 @@ function renderSessionForm() {
   const downloadSnapshotButton = document.querySelector("#download-snapshot");
   const resetSnapshotButton = document.querySelector("#reset-snapshot");
   const shareSnapshotButton = document.querySelector("#share-snapshot");
-  const snapshotGalleryOptIn = document.querySelector("#snapshot-gallery-optin");
   const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
+  const snapshotDestinationInputs = [...document.querySelectorAll('input[name="snapshot-destination"]')];
   const timingSection = document.querySelector("#session-timing-section");
   const timingSummary = document.querySelector("#session-timing-summary");
   const runProgressSection = document.querySelector("#run-progress-section");
@@ -3993,7 +4011,7 @@ function renderSessionForm() {
     downloadButton: downloadSnapshotButton,
     resetButton: resetSnapshotButton,
     shareButton: shareSnapshotButton,
-    galleryOptIn: snapshotGalleryOptIn,
+    destinationInputs: snapshotDestinationInputs,
     galleryNote: snapshotGalleryNote,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
@@ -4831,9 +4849,9 @@ function renderSessionDetail(sessionId) {
   const detailDownloadSnapshotButton = document.querySelector("#detail-download-snapshot");
   const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
   const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
-  const detailSnapshotGalleryOptIn = document.querySelector("#detail-snapshot-gallery-optin");
   const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
+  const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
   const detailChartShell = document.querySelector("#detail-chart-shell");
   const detailChartHeader = document.querySelector("#detail-chart-header");
   const detailProgressSection = document.querySelector("#detail-progress-section");
@@ -4909,7 +4927,7 @@ function renderSessionDetail(sessionId) {
     downloadButton: detailDownloadSnapshotButton,
     resetButton: detailResetSnapshotButton,
     shareButton: detailShareSnapshotButton,
-    galleryOptIn: detailSnapshotGalleryOptIn,
+    destinationInputs: detailSnapshotDestinationInputs,
     galleryNote: detailSnapshotGalleryNote,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,

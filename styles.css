@@ -1206,23 +1206,57 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
-.snapshot-gallery-optin {
+.snapshot-destination-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.snapshot-destination-option {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 600;
+  cursor: pointer;
+}
+
+.snapshot-destination-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.snapshot-destination-option span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
   color: var(--ink);
-}
-
-.snapshot-gallery-optin label {
+  font-weight: 600;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
   cursor: pointer;
 }
 
-.snapshot-gallery-optin input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  cursor: pointer;
+.snapshot-destination-option:hover span {
+  border-color: rgba(148, 209, 89, 0.42);
+  transform: translateY(-1px);
+}
+
+.snapshot-destination-option input:checked + span {
+  border-color: #94d159;
+  background: rgba(148, 209, 89, 0.16);
+  color: #1f3a2a;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.18);
+}
+
+.snapshot-destination-option input:focus-visible + span {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 0 3px rgba(148, 209, 89, 0.16);
 }
 
 .snapshot-gallery-note {
@@ -3365,12 +3399,24 @@ body.theme-dark .gallery-card-rate {
   color: #f6f8f5;
 }
 
-body.theme-dark .snapshot-gallery-optin {
+body.theme-dark .snapshot-gallery-note {
+  color: #b7c0b7;
+}
+
+body.theme-dark .snapshot-destination-option span {
+  background: rgba(30, 34, 31, 0.92);
+  border-color: #343a35;
   color: #f6f8f5;
 }
 
-body.theme-dark .snapshot-gallery-note {
-  color: #b7c0b7;
+body.theme-dark .snapshot-destination-option:hover span {
+  border-color: rgba(148, 209, 89, 0.42);
+}
+
+body.theme-dark .snapshot-destination-option input:checked + span {
+  background: rgba(148, 209, 89, 0.16);
+  border-color: #94d159;
+  color: #f6f8f5;
 }
 
 body.theme-dark .session-lifecycle-section,
