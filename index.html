@@ -18,6 +18,7 @@
       <nav class="topbar-nav" aria-label="Primary">
         <a href="#home">Home</a>
         <a href="#sessions">Sessions</a>
+        <a href="#gallery">Gallery</a>
       </nav>
       <div id="auth-status" class="auth-status"></div>
     </header>
@@ -184,6 +185,28 @@
           <div id="overall-germination-fill" class="overall-rate-fill"></div>
         </div>
       </article>
+    </section>
+  </template>
+
+  <template id="gallery-template">
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Public Gallery</p>
+          <h2>Grow Gallery</h2>
+          <p class="muted">Explore snapshots growers have chosen to publish publicly.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card gallery-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Published Snapshots</p>
+          <h3>Community Grow Gallery</h3>
+        </div>
+      </div>
+      <div id="gallery-grid" class="gallery-grid"></div>
     </section>
   </template>
 
@@ -364,8 +387,16 @@
                 <p class="snapshot-help">Turn your session into a shareable snapshot</p>
               </div>
             </div>
-            <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
-            <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
+          <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
+          <div class="snapshot-gallery-controls">
+            <label class="snapshot-gallery-optin">
+              <input id="snapshot-gallery-optin" type="checkbox">
+              <span>Share to public Grow Gallery</span>
+            </label>
+            <p id="snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.</p>
+            <button id="snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>
+          </div>
+          <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
             <div class="snapshot-actions">
               <button id="generate-snapshot" type="button" class="button button-secondary">Generate Snapshot</button>
               <button id="download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
@@ -579,6 +610,14 @@
             </div>
           </div>
           <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
+          <div class="snapshot-gallery-controls">
+            <label class="snapshot-gallery-optin">
+              <input id="detail-snapshot-gallery-optin" type="checkbox">
+              <span>Share to public Grow Gallery</span>
+            </label>
+            <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in the public gallery. Private notes stay private.</p>
+            <button id="detail-snapshot-unpublish" type="button" class="button button-secondary snapshot-gallery-unpublish" hidden>Remove from Gallery</button>
+          </div>
           <p id="detail-snapshot-message" class="snapshot-message" aria-live="polite"></p>
           <div class="snapshot-actions">
             <button id="detail-generate-snapshot" type="button" class="button button-secondary">Generate Snapshot</button>

@@ -14,6 +14,7 @@ const MAX_SESSION_IMAGES = 3;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
+const GROW_GALLERY_BUCKET = "grow-gallery";
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
@@ -64,6 +65,7 @@ const appState = {
   accountMenuOpen: false,
   customSelectOpenKey: "",
   sessions: [],
+  gallerySnapshots: [],
   theme: "light",
   growthStage: null,
   growthStageModalOpen: false,
@@ -79,6 +81,7 @@ const templates = {
   home: document.querySelector("#home-template"),
   form: document.querySelector("#session-form-template"),
   sessions: document.querySelector("#sessions-template"),
+  gallery: document.querySelector("#gallery-template"),
   detail: document.querySelector("#session-detail-template"),
 };
 
@@ -804,7 +807,9 @@ function updateNavState() {
 
   const hash = window.location.hash || "#home";
   const [route] = hash.replace("#", "").split("/");
-  const activeNav = route === "home" || !route ? "home" : "sessions";
+  const activeNav = route === "home" || !route
+    ? "home"
+    : (route === "gallery" ? "gallery" : "sessions");
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -907,8 +912,10 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
     appState.profile = await ensureUserProfile(appState.user);
     const sessions = await loadUserSessions();
     saveSessions(sessions);
+    appState.gallerySnapshots = await loadGallerySnapshots();
   } else if (isSupabaseConfigured()) {
     saveSessions([]);
+    appState.gallerySnapshots = await loadGallerySnapshots();
   }
 
   updateAuthStatus();
@@ -954,6 +961,25 @@ async function loadUserProfile() {
   }
 
   return normalizeProfileRow(data);
+}
+
+async function loadGallerySnapshots() {
+  if (!appState.supabase) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .select("*")
+    .eq("is_published", true)
+    .order("published_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load gallery snapshots", error);
+    return [];
+  }
+
+  return (data || []).map(mapRowToGallerySnapshot);
 }
 
 function normalizeProfileRow(row) {
@@ -1036,6 +1062,7 @@ async function updateCloudSession(session) {
 
 async function deleteCloudSession(sessionId) {
   const existingSession = getSessions().find((item) => item.id === sessionId);
+  const existingGallerySnapshot = appState.gallerySnapshots.find((item) => item.sessionId === sessionId);
   if (existingSession?.sessionImages?.length) {
     const paths = existingSession.sessionImages
       .map((image) => image.path)
@@ -1054,7 +1081,11 @@ async function deleteCloudSession(sessionId) {
     throw error;
   }
 
+  if (existingGallerySnapshot?.imagePath) {
+    await removeGallerySnapshotImage(existingGallerySnapshot.imagePath);
+  }
   saveSessions(getSessions().filter((item) => item.id !== sessionId));
+  appState.gallerySnapshots = appState.gallerySnapshots.filter((item) => item.sessionId !== sessionId);
 }
 
 async function uploadSessionImageFile(sessionId, file) {
@@ -1271,6 +1302,142 @@ async function persistSessionImages(session, images) {
       : item
   )));
   return nextImages;
+}
+
+async function uploadGallerySnapshotBlob(sessionId, blob) {
+  if (!appState.supabase?.storage || !appState.user) {
+    throw new Error("Public gallery publishing is not available until Supabase Storage is ready.");
+  }
+
+  const scopeId = sessionId || crypto.randomUUID();
+  const path = `${appState.user.id}/${scopeId}/snapshot-${crypto.randomUUID()}.png`;
+  const { error } = await appState.supabase.storage
+    .from(GROW_GALLERY_BUCKET)
+    .upload(path, blob, {
+      contentType: "image/png",
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error("Could not publish this snapshot to the Grow Gallery.");
+  }
+
+  const { data } = appState.supabase.storage.from(GROW_GALLERY_BUCKET).getPublicUrl(path);
+  return {
+    path,
+    url: data?.publicUrl || "",
+  };
+}
+
+async function removeGallerySnapshotImage(path) {
+  if (!path || !appState.supabase?.storage) {
+    return;
+  }
+
+  await appState.supabase.storage.from(GROW_GALLERY_BUCKET).remove([path]);
+}
+
+function mapRowToGallerySnapshot(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    userId: row.user_id,
+    sessionId: row.session_id || "",
+    title: String(row.snapshot_title || "").trim() || "Grow Snapshot",
+    imageUrl: String(row.snapshot_image_url || "").trim(),
+    imagePath: String(row.snapshot_image_path || "").trim(),
+    sessionDate: row.session_date || "",
+    systemType: String(row.system_type || "KAN").trim() || "KAN",
+    successPercent: Number(row.success_percent) || 0,
+    published: Boolean(row.is_published),
+    includeNotes: Boolean(row.include_notes),
+    publishedAt: row.published_at || row.created_at || "",
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+function getGallerySnapshotForSession(sessionId) {
+  if (!sessionId) {
+    return null;
+  }
+
+  return appState.gallerySnapshots.find((entry) => entry.sessionId === sessionId) || null;
+}
+
+async function publishSnapshotToGallery(session, snapshotData, blob) {
+  if (!appState.supabase || !appState.user) {
+    throw new Error("You must be signed in to publish to the public gallery.");
+  }
+
+  if (!session?.id) {
+    throw new Error("Save this session before publishing it to the public gallery.");
+  }
+
+  const existing = getGallerySnapshotForSession(session.id);
+  const upload = await uploadGallerySnapshotBlob(session.id, blob);
+  const payload = {
+    user_id: appState.user.id,
+    session_id: session.id,
+    snapshot_title: String(snapshotData?.sessionName || formatSessionLabel(session) || "Grow Snapshot").trim(),
+    snapshot_image_url: upload.url,
+    snapshot_image_path: upload.path,
+    session_date: session.date || null,
+    system_type: session.systemType || "KAN",
+    success_percent: Number(snapshotData?.percentage) || 0,
+    is_published: true,
+    include_notes: false,
+    published_at: new Date().toISOString(),
+  };
+
+  const query = existing?.id
+    ? appState.supabase.from("grow_gallery_snapshots").update(payload).eq("id", existing.id).select("*").single()
+    : appState.supabase.from("grow_gallery_snapshots").insert(payload).select("*").single();
+
+  const { data, error } = await query;
+  if (error) {
+    await removeGallerySnapshotImage(upload.path);
+    throw new Error("Could not save this snapshot to the public gallery.");
+  }
+
+  if (existing?.imagePath && existing.imagePath !== upload.path) {
+    await removeGallerySnapshotImage(existing.imagePath);
+  }
+
+  const mapped = mapRowToGallerySnapshot(data);
+  appState.gallerySnapshots = sortGallerySnapshotsNewestFirst([
+    mapped,
+    ...appState.gallerySnapshots.filter((entry) => entry.id !== mapped.id),
+  ]);
+  return mapped;
+}
+
+async function unpublishGallerySnapshot(snapshotId) {
+  const existing = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  if (!existing || !appState.supabase) {
+    return;
+  }
+
+  await removeGallerySnapshotImage(existing.imagePath);
+  const { error } = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .delete()
+    .eq("id", snapshotId);
+
+  if (error) {
+    throw new Error("Could not remove this snapshot from the public gallery.");
+  }
+
+  appState.gallerySnapshots = appState.gallerySnapshots.filter((entry) => entry.id !== snapshotId);
+}
+
+function sortGallerySnapshotsNewestFirst(items) {
+  return [...(items || [])]
+    .filter(Boolean)
+    .sort((left, right) => new Date(right.publishedAt || right.createdAt || 0).getTime() - new Date(left.publishedAt || left.createdAt || 0).getTime());
 }
 
 function mapSessionToRecord(session, userId) {
@@ -1739,6 +1906,11 @@ function initializeSnapshotSection(scope, options) {
     downloadButton: options.downloadButton || null,
     resetButton: options.resetButton || null,
     shareButton: options.shareButton || null,
+    galleryOptIn: options.galleryOptIn || null,
+    galleryNote: options.galleryNote || null,
+    unpublishButton: options.unpublishButton || null,
+    canPublish: options.canPublish !== false,
+    getGallerySession: options.getGallerySession || null,
     getSnapshotData: options.getSnapshotData,
     getImageEntries: options.getImageEntries,
     selectedImageKey: "",
@@ -1747,12 +1919,19 @@ function initializeSnapshotSection(scope, options) {
   };
 
   scope.__snapshotState = state;
+  if (state.galleryOptIn) {
+    state.galleryOptIn.checked = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
+  }
   renderSnapshotSourceSummary(state);
+  syncSnapshotGalleryControls(state);
   setSnapshotMessage(state, "");
   setSnapshotPreview(state, null);
 
   state.generateButton?.addEventListener("click", async () => {
-    await generateSnapshotPreview(state);
+    const result = await generateSnapshotPreview(state);
+    if (result) {
+      await maybePublishSnapshotFromState(state, result);
+    }
   });
 
   state.downloadButton?.addEventListener("click", async () => {
@@ -1774,11 +1953,81 @@ function initializeSnapshotSection(scope, options) {
       return;
     }
 
+    await maybePublishSnapshotFromState(state, result);
+
     const shared = await shareSnapshotBlob(result.blob, result.fileName, result.summaryText);
     if (!shared) {
       setSnapshotMessage(state, "Sharing is not available here. Use Download instead.");
     }
   });
+
+  state.galleryOptIn?.addEventListener("change", () => {
+    syncSnapshotGalleryControls(state);
+  });
+
+  state.unpublishButton?.addEventListener("click", async () => {
+    const session = state.getGallerySession?.();
+    const existing = getGallerySnapshotForSession(session?.id);
+    if (!existing) {
+      return;
+    }
+
+    try {
+      await unpublishGallerySnapshot(existing.id);
+      if (state.galleryOptIn) {
+        state.galleryOptIn.checked = false;
+      }
+      syncSnapshotGalleryControls(state);
+      setSnapshotMessage(state, "Snapshot removed from the public Grow Gallery.");
+    } catch (error) {
+      setSnapshotMessage(state, error.message || "Could not remove this snapshot from the public gallery.", true);
+    }
+  });
+}
+
+function syncSnapshotGalleryControls(state) {
+  if (!state) {
+    return;
+  }
+
+  const session = state.getGallerySession?.() || null;
+  const publishedEntry = getGallerySnapshotForSession(session?.id);
+  const canPublish = Boolean(state.canPublish && session?.id);
+
+  if (state.galleryOptIn) {
+    state.galleryOptIn.disabled = !canPublish;
+    if (!canPublish) {
+      state.galleryOptIn.checked = false;
+    }
+  }
+
+  if (state.galleryNote) {
+    state.galleryNote.textContent = canPublish
+      ? "Snapshots stay private by default. Publish only if you want this session shown in the public gallery. Private notes stay private."
+      : "Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.";
+  }
+
+  if (state.unpublishButton) {
+    state.unpublishButton.hidden = !publishedEntry;
+  }
+}
+
+async function maybePublishSnapshotFromState(state, result) {
+  if (!state?.galleryOptIn?.checked) {
+    return null;
+  }
+
+  const session = state.getGallerySession?.();
+  const snapshotData = state.getSnapshotData?.();
+  try {
+    const published = await publishSnapshotToGallery(session, snapshotData, result.blob);
+    syncSnapshotGalleryControls(state);
+    setSnapshotMessage(state, "Snapshot ready and published to the public Grow Gallery.");
+    return published;
+  } catch (error) {
+    setSnapshotMessage(state, error.message || "Could not publish this snapshot to the public gallery.", true);
+    return null;
+  }
 }
 
 function getSnapshotImageEntries(state) {
@@ -2543,6 +2792,8 @@ function render() {
   clearSessionTimerInterval();
   updateAuthStatus();
   updateNavState();
+  const hash = window.location.hash || "#home";
+  const [route, id] = hash.replace("#", "").split("/");
 
   if (!appState.initialized || appState.loading) {
     app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
@@ -2551,6 +2802,11 @@ function render() {
 
   if (!isSupabaseConfigured()) {
     renderSetupScreen();
+    return;
+  }
+
+  if (route === "gallery") {
+    renderGallery();
     return;
   }
 
@@ -2563,9 +2819,6 @@ function render() {
     renderProfileSetupScreen();
     return;
   }
-
-  const hash = window.location.hash || "#home";
-  const [route, id] = hash.replace("#", "").split("/");
 
   if (route === "new") {
     renderSessionForm();
@@ -3322,6 +3575,64 @@ function renderHome() {
   startSessionTimer(updateSpotlight);
 }
 
+function renderGallery() {
+  app.replaceChildren(cloneTemplate(templates.gallery));
+  const galleryGrid = document.querySelector("#gallery-grid");
+  if (!galleryGrid) {
+    return;
+  }
+
+  const publishedSnapshots = sortGallerySnapshotsNewestFirst(appState.gallerySnapshots);
+  if (!publishedSnapshots.length) {
+    galleryGrid.innerHTML = `
+      <div class="empty-state gallery-empty-state">
+        <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
+      </div>
+    `;
+    return;
+  }
+
+  publishedSnapshots.forEach((snapshot) => {
+    const card = document.createElement("article");
+    card.className = "gallery-card";
+    const isOwner = snapshot.userId === appState.user?.id;
+    card.innerHTML = `
+      <div class="gallery-card-media">
+        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+      </div>
+      <div class="gallery-card-body">
+        <div class="gallery-card-top">
+          <div>
+            <strong>${escapeHtml(snapshot.title)}</strong>
+            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+          </div>
+          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+        </div>
+        <div class="gallery-card-meta">
+          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
+          <span>Germination success</span>
+        </div>
+        <div class="gallery-card-actions">
+          ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
+          ${isOwner ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-remove="${escapeHtml(snapshot.id)}">Remove from Gallery</button>` : ""}
+        </div>
+      </div>
+    `;
+    galleryGrid.appendChild(card);
+  });
+
+  galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await unpublishGallerySnapshot(button.dataset.galleryRemove);
+        renderGallery();
+      } catch (error) {
+        window.alert(error.message || "Could not remove this gallery snapshot.");
+      }
+    });
+  });
+}
+
 function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
   if (!container) {
     return;
@@ -3419,6 +3730,9 @@ function renderSessionForm() {
   const downloadSnapshotButton = document.querySelector("#download-snapshot");
   const resetSnapshotButton = document.querySelector("#reset-snapshot");
   const shareSnapshotButton = document.querySelector("#share-snapshot");
+  const snapshotGalleryOptIn = document.querySelector("#snapshot-gallery-optin");
+  const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
+  const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
   const timingSection = document.querySelector("#session-timing-section");
   const timingSummary = document.querySelector("#session-timing-summary");
   const runProgressSection = document.querySelector("#run-progress-section");
@@ -3453,6 +3767,11 @@ function renderSessionForm() {
     downloadButton: downloadSnapshotButton,
     resetButton: resetSnapshotButton,
     shareButton: shareSnapshotButton,
+    galleryOptIn: snapshotGalleryOptIn,
+    galleryNote: snapshotGalleryNote,
+    unpublishButton: snapshotUnpublishButton,
+    canPublish: false,
+    getGallerySession: () => null,
     getSnapshotData: () => getFormSnapshotData(form),
     getImageEntries: () => {
       const imageState = form.__sessionImageState;
@@ -4286,6 +4605,9 @@ function renderSessionDetail(sessionId) {
   const detailDownloadSnapshotButton = document.querySelector("#detail-download-snapshot");
   const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
   const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
+  const detailSnapshotGalleryOptIn = document.querySelector("#detail-snapshot-gallery-optin");
+  const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
+  const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
   const detailChartShell = document.querySelector("#detail-chart-shell");
   const detailChartHeader = document.querySelector("#detail-chart-header");
   const detailProgressSection = document.querySelector("#detail-progress-section");
@@ -4361,6 +4683,11 @@ function renderSessionDetail(sessionId) {
     downloadButton: detailDownloadSnapshotButton,
     resetButton: detailResetSnapshotButton,
     shareButton: detailShareSnapshotButton,
+    galleryOptIn: detailSnapshotGalleryOptIn,
+    galleryNote: detailSnapshotGalleryNote,
+    unpublishButton: detailSnapshotUnpublishButton,
+    canPublish: true,
+    getGallerySession: () => session,
     getSnapshotData: () => getSessionSnapshotData(session),
     getImageEntries: () => {
       const imageState = detailImageSection.__sessionImageState;
