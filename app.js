@@ -82,6 +82,7 @@ const templates = {
   form: document.querySelector("#session-form-template"),
   sessions: document.querySelector("#sessions-template"),
   gallery: document.querySelector("#gallery-template"),
+  galleryReview: document.querySelector("#gallery-review-template"),
   detail: document.querySelector("#session-detail-template"),
 };
 
@@ -809,7 +810,7 @@ function updateNavState() {
   const [route] = hash.replace("#", "").split("/");
   const activeNav = route === "home" || !route
     ? "home"
-    : (route === "gallery" ? "gallery" : "sessions");
+    : ((route === "gallery" || route === "gallery-review") ? "gallery" : "sessions");
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -820,6 +821,10 @@ function updateNavState() {
     } else {
       link.removeAttribute("aria-current");
     }
+  });
+
+  document.querySelectorAll("[data-admin-nav]").forEach((link) => {
+    link.hidden = !isAdminUser();
   });
 }
 
@@ -992,6 +997,7 @@ function normalizeProfileRow(row) {
     username: String(row.username || "").trim(),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
+    isAdmin: Boolean(row.is_admin),
     deletionRequestedAt: row.deletion_requested_at || "",
     deletionScheduledFor: row.deletion_scheduled_for || "",
     deletionStatus: String(row.deletion_status || "").trim(),
@@ -1006,6 +1012,10 @@ function hasCompletedProfile(profile = appState.profile) {
 
 function getProfileDisplayName() {
   return appState.profile?.username || appState.user?.email || "Signed in";
+}
+
+function isAdminUser(profile = appState.profile) {
+  return Boolean(profile?.isAdmin);
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -1161,6 +1171,10 @@ async function saveUserProfile(profileInput) {
     username: String(profileInput?.username || "").trim(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
+    is_admin:
+      profileInput?.isAdmin !== undefined
+        ? Boolean(profileInput.isAdmin)
+        : Boolean(existingProfile.isAdmin),
     deletion_requested_at:
       profileInput?.deletionRequestedAt !== undefined
         ? profileInput.deletionRequestedAt
@@ -1352,6 +1366,7 @@ function mapRowToGallerySnapshot(row) {
     sessionDate: row.session_date || "",
     systemType: String(row.system_type || "KAN").trim() || "KAN",
     successPercent: Number(row.success_percent) || 0,
+    status: String(row.status || (row.is_published ? "approved" : "private")).trim() || "private",
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
     publishedAt: row.published_at || row.created_at || "",
@@ -1388,7 +1403,8 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
     success_percent: Number(snapshotData?.percentage) || 0,
-    is_published: true,
+    status: "pending_review",
+    is_published: false,
     include_notes: false,
     published_at: new Date().toISOString(),
   };
@@ -1405,6 +1421,35 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
 
   if (existing?.imagePath && existing.imagePath !== upload.path) {
     await removeGallerySnapshotImage(existing.imagePath);
+  }
+
+  const mapped = mapRowToGallerySnapshot(data);
+  appState.gallerySnapshots = sortGallerySnapshotsNewestFirst([
+    mapped,
+    ...appState.gallerySnapshots.filter((entry) => entry.id !== mapped.id),
+  ]);
+  return mapped;
+}
+
+async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
+  const allowedStatuses = new Set(["private", "pending_review", "approved", "rejected"]);
+  if (!allowedStatuses.has(nextStatus)) {
+    throw new Error("Invalid moderation status.");
+  }
+
+  const { data, error } = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .update({
+      status: nextStatus,
+      is_published: nextStatus === "approved",
+      published_at: new Date().toISOString(),
+    })
+    .eq("id", snapshotId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error("Could not update moderation status.");
   }
 
   const mapped = mapRowToGallerySnapshot(data);
@@ -1953,11 +1998,16 @@ function initializeSnapshotSection(scope, options) {
       return;
     }
 
-    await maybePublishSnapshotFromState(state, result);
+    const moderationEntry = await maybePublishSnapshotFromState(state, result);
 
     const shared = await shareSnapshotBlob(result.blob, result.fileName, result.summaryText);
     if (!shared) {
-      setSnapshotMessage(state, "Sharing is not available here. Use Download instead.");
+      setSnapshotMessage(
+        state,
+        moderationEntry
+          ? "Submitted for review. Sharing is not available here. Use Download instead."
+          : "Sharing is not available here. Use Download instead.",
+      );
     }
   });
 
@@ -1993,22 +2043,33 @@ function syncSnapshotGalleryControls(state) {
   const session = state.getGallerySession?.() || null;
   const publishedEntry = getGallerySnapshotForSession(session?.id);
   const canPublish = Boolean(state.canPublish && session?.id);
+  const currentStatus = String(publishedEntry?.status || "private");
 
   if (state.galleryOptIn) {
     state.galleryOptIn.disabled = !canPublish;
     if (!canPublish) {
       state.galleryOptIn.checked = false;
+    } else {
+      state.galleryOptIn.checked = currentStatus === "pending_review" || currentStatus === "approved";
     }
   }
 
   if (state.galleryNote) {
-    state.galleryNote.textContent = canPublish
-      ? "Snapshots stay private by default. Publish only if you want this session shown in the public gallery. Private notes stay private."
-      : "Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.";
+    if (!canPublish) {
+      state.galleryNote.textContent = "Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.";
+    } else if (currentStatus === "pending_review") {
+      state.galleryNote.textContent = "Submitted for review. Private notes stay private.";
+    } else if (currentStatus === "approved") {
+      state.galleryNote.textContent = "Approved and visible in the public Grow Gallery. Private notes stay private.";
+    } else if (currentStatus === "rejected") {
+      state.galleryNote.textContent = "This snapshot was rejected. Turn the gallery option back on and generate again to resubmit. Private notes stay private.";
+    } else {
+      state.galleryNote.textContent = "Snapshots stay private by default. Publish only if you want this session shown in the public gallery. Private notes stay private.";
+    }
   }
 
   if (state.unpublishButton) {
-    state.unpublishButton.hidden = !publishedEntry;
+    state.unpublishButton.hidden = !publishedEntry || currentStatus === "private";
   }
 }
 
@@ -2022,7 +2083,7 @@ async function maybePublishSnapshotFromState(state, result) {
   try {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob);
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, "Snapshot ready and published to the public Grow Gallery.");
+    setSnapshotMessage(state, "Submitted for review.");
     return published;
   } catch (error) {
     setSnapshotMessage(state, error.message || "Could not publish this snapshot to the public gallery.", true);
@@ -2810,6 +2871,19 @@ function render() {
     return;
   }
 
+  if (route === "gallery-review") {
+    if (!appState.user) {
+      renderAuthScreen();
+      return;
+    }
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      return;
+    }
+    renderGalleryReview();
+    return;
+  }
+
   if (!appState.user) {
     renderAuthScreen();
     return;
@@ -3582,7 +3656,9 @@ function renderGallery() {
     return;
   }
 
-  const publishedSnapshots = sortGallerySnapshotsNewestFirst(appState.gallerySnapshots);
+  const publishedSnapshots = sortGallerySnapshotsNewestFirst(
+    appState.gallerySnapshots.filter((entry) => entry.status === "approved"),
+  );
   if (!publishedSnapshots.length) {
     galleryGrid.innerHTML = `
       <div class="empty-state gallery-empty-state">
@@ -3628,6 +3704,92 @@ function renderGallery() {
         renderGallery();
       } catch (error) {
         window.alert(error.message || "Could not remove this gallery snapshot.");
+      }
+    });
+  });
+}
+
+function renderGalleryReview() {
+  if (!isAdminUser()) {
+    app.innerHTML = `
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Admin</p>
+            <h2>Gallery Moderation</h2>
+            <p class="muted">You do not have access to review gallery submissions.</p>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  app.replaceChildren(cloneTemplate(templates.galleryReview));
+  const reviewList = document.querySelector("#gallery-review-list");
+  if (!reviewList) {
+    return;
+  }
+
+  const pendingSnapshots = sortGallerySnapshotsNewestFirst(
+    appState.gallerySnapshots.filter((entry) => entry.status === "pending_review"),
+  );
+
+  if (!pendingSnapshots.length) {
+    reviewList.innerHTML = `
+      <div class="empty-state gallery-empty-state">
+        <p>No pending gallery submissions right now.</p>
+      </div>
+    `;
+    return;
+  }
+
+  pendingSnapshots.forEach((snapshot) => {
+    const item = document.createElement("article");
+    item.className = "gallery-review-card";
+    item.innerHTML = `
+      <div class="gallery-review-media">
+        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+      </div>
+      <div class="gallery-review-body">
+        <div class="gallery-card-top">
+          <div>
+            <strong>${escapeHtml(snapshot.title)}</strong>
+            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+          </div>
+          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+        </div>
+        <div class="gallery-card-meta">
+          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
+          <span>Submitted for review</span>
+        </div>
+        <div class="gallery-review-actions">
+          <button type="button" class="button button-primary" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
+          <button type="button" class="button button-secondary" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
+        </div>
+      </div>
+    `;
+    reviewList.appendChild(item);
+  });
+
+  reviewList.querySelectorAll("[data-gallery-approve]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await updateGallerySnapshotModerationStatus(button.dataset.galleryApprove, "approved");
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not approve this snapshot.");
+      }
+    });
+  });
+
+  reviewList.querySelectorAll("[data-gallery-reject]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await updateGallerySnapshotModerationStatus(button.dataset.galleryReject, "rejected");
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not reject this snapshot.");
       }
     });
   });

@@ -1429,6 +1429,42 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border: 1px dashed var(--line);
 }
 
+.gallery-review-section,
+.gallery-review-list {
+  display: grid;
+  gap: 18px;
+}
+
+.gallery-review-card {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 14px 24px rgba(24, 34, 24, 0.08);
+}
+
+.gallery-review-media {
+  overflow: hidden;
+  border-radius: 16px;
+  aspect-ratio: 1 / 1;
+  background: rgba(24, 34, 24, 0.06);
+}
+
+.gallery-review-body {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.gallery-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .snapshot-preview-card {
   margin: 0;
   width: 33%;
@@ -1491,6 +1527,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-review-card {
     grid-template-columns: 1fr;
   }
 }
@@ -3299,6 +3339,7 @@ body.theme-dark .recent-session-card,
 body.theme-dark .session-row,
 body.theme-dark .meta-card,
 body.theme-dark .gallery-card,
+body.theme-dark .gallery-review-card,
 body.theme-dark .snapshot-source-card,
 body.theme-dark .snapshot-preview-card,
 body.theme-dark .snapshot-modal-card {
@@ -3307,6 +3348,10 @@ body.theme-dark .snapshot-modal-card {
 }
 
 body.theme-dark .gallery-card-media {
+  background: rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .gallery-review-media {
   background: rgba(0, 0, 0, 0.16);
 }
 

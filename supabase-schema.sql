@@ -25,6 +25,7 @@ create table if not exists public.profiles (
   username text not null default '',
   avatar_url text default '',
   avatar_path text default '',
+  is_admin boolean not null default false,
   deletion_requested_at timestamptz,
   deletion_scheduled_for timestamptz,
   deletion_status text default '',
@@ -42,6 +43,7 @@ create table if not exists public.grow_gallery_snapshots (
   session_date date,
   system_type text not null default 'KAN',
   success_percent integer not null default 0,
+  status text not null default 'private',
   is_published boolean not null default true,
   include_notes boolean not null default false,
   published_at timestamptz not null default timezone('utc', now()),
@@ -52,6 +54,9 @@ create table if not exists public.grow_gallery_snapshots (
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
+
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
 
 alter table public.profiles
   add column if not exists deletion_requested_at timestamptz;
@@ -67,6 +72,16 @@ create index if not exists grow_sessions_user_created_idx
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists status text not null default 'private';
+
+update public.grow_gallery_snapshots
+set status = case
+  when coalesce(is_published, false) then 'approved'
+  else 'private'
+end
+where status is null or status = '' or status = 'private';
 
 create or replace function public.set_grow_sessions_updated_at()
 returns trigger
@@ -168,7 +183,16 @@ drop policy if exists "Anyone can view published gallery snapshots" on public.gr
 create policy "Anyone can view published gallery snapshots"
 on public.grow_gallery_snapshots
 for select
-using (is_published = true or auth.uid() = user_id);
+using (
+  status = 'approved'
+  or auth.uid() = user_id
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.is_admin = true
+  )
+);
 
 drop policy if exists "Users can create their own gallery snapshots" on public.grow_gallery_snapshots;
 create policy "Users can create their own gallery snapshots"
@@ -182,15 +206,39 @@ create policy "Users can update their own gallery snapshots"
 on public.grow_gallery_snapshots
 for update
 to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.is_admin = true
+  )
+)
+with check (
+  auth.uid() = user_id
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.is_admin = true
+  )
+);
 
 drop policy if exists "Users can delete their own gallery snapshots" on public.grow_gallery_snapshots;
 create policy "Users can delete their own gallery snapshots"
 on public.grow_gallery_snapshots
 for delete
 to authenticated
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or exists (
+    select 1
+    from public.profiles
+    where profiles.id = auth.uid()
+      and profiles.is_admin = true
+  )
+);
 
 insert into storage.buckets (id, name, public)
 values ('session-images', 'session-images', true)
