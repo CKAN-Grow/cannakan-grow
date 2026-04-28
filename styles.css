@@ -365,6 +365,11 @@ body.theme-dark .topbar-nav a.is-active {
   gap: 16px;
 }
 
+.dashboard-bar + .spotlight-card,
+.spotlight-card + .summary-grid {
+  margin-top: 32px;
+}
+
 .dashboard-bar h2 {
   font-size: clamp(1.4rem, 3vw, 2rem);
 }
