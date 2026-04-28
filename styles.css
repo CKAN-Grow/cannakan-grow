@@ -2388,7 +2388,28 @@ body.theme-dark .theme-toggle-button:hover {
   display: grid;
   gap: 8px;
   min-height: 112px;
-  border-top: 4px solid rgba(24, 34, 24, 0.08);
+}
+
+.card-accent {
+  border-top-color: rgba(24, 34, 24, 0.08);
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+
+.card-accent-blue {
+  border-top-color: #7fb8ff;
+}
+
+.card-accent-orange {
+  border-top-color: #d97a4a;
+}
+
+.card-accent-green {
+  border-top-color: #94d159;
+}
+
+.card-accent-brown {
+  border-top-color: #8a6748;
 }
 
 .summary-link-card {
@@ -2457,31 +2478,15 @@ body.theme-dark .theme-toggle-button:hover {
 }
 
 #active-sessions-card.has-active-sessions {
-  border-top: 4px solid #94d159;
-}
-
-#active-sessions-card.has-germinating-sessions {
-  border-top-color: #94d159;
-}
-
-#active-sessions-card.has-soaking-sessions {
-  border-top-color: #94d159;
-}
-
-#active-sessions-card {
   border-top-color: #7fb8ff;
 }
 
-#saved-sessions-card {
-  border-top-color: #d97a4a;
+#active-sessions-card.has-germinating-sessions {
+  border-top-color: #7fb8ff;
 }
 
-#best-session-card {
-  border-top-color: #94d159;
-}
-
-.overall-rate-card {
-  border-top-color: #8a6748;
+#active-sessions-card.has-soaking-sessions {
+  border-top-color: #7fb8ff;
 }
 
 .section-heading {
