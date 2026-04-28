@@ -595,8 +595,17 @@
             <h3>Session History</h3>
           </div>
         </div>
+        <label class="session-history-sort-control" for="session-history-sort">
+          <span>Sort by</span>
+          <select id="session-history-sort" name="sessionHistorySort">
+            <option value="date">Date</option>
+            <option value="name-asc">Name A-Z</option>
+            <option value="name-desc">Name Z-A</option>
+            <option value="rate">Germination Rate</option>
+          </select>
+        </label>
       </div>
-      <div id="sessions-list" class="sessions-list"></div>
+      <div id="sessions-list" class="sessions-list session-history-grid"></div>
     </section>
   </template>
 

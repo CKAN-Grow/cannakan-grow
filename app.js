@@ -73,6 +73,7 @@ const appState = {
   sessions: [],
   gallerySnapshots: [],
   theme: "light",
+  sessionHistorySort: "date",
   growthStage: null,
   growthStageModalOpen: false,
   growthStageModalDismissed: false,
@@ -5109,6 +5110,7 @@ function renderSessionsList() {
   const activeContainer = document.querySelector("#active-sessions-list");
   const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
   const historyContainer = document.querySelector("#sessions-list");
+  const historySortControl = document.querySelector("#session-history-sort");
 
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
@@ -5124,11 +5126,26 @@ function renderSessionsList() {
     showBestBadge: true,
   });
 
-  renderSessionCollection(historyContainer, sessions, {
-    emptyMessage: "No grow sessions yet.",
-    emptyActionLabel: "Create your first session",
-    compact: false,
-  });
+  const renderHistorySessions = () => renderSessionCollection(
+    historyContainer,
+    sortSessionHistorySessions(sessions, appState.sessionHistorySort),
+    {
+      emptyMessage: "No grow sessions yet.",
+      emptyActionLabel: "Create your first session",
+      compact: false,
+      variant: "history-grid",
+    },
+  );
+
+  if (historySortControl) {
+    historySortControl.value = appState.sessionHistorySort || "date";
+    historySortControl.addEventListener("change", () => {
+      appState.sessionHistorySort = historySortControl.value || "date";
+      renderHistorySessions();
+    });
+  }
+
+  renderHistorySessions();
 }
 
 function renderSessionDetail(sessionId) {
@@ -5495,6 +5512,7 @@ function renderSessionDetail(sessionId) {
 function renderSessionCollection(container, sessions, options) {
   container.innerHTML = "";
   container.classList.toggle("compact-list", options.compact);
+  container.classList.toggle("session-history-grid", options.variant === "history-grid");
 
   if (!sessions.length) {
     const empty = document.createElement("div");
@@ -5511,22 +5529,51 @@ function renderSessionCollection(container, sessions, options) {
     const successLabel = formatSessionSuccessLabel(session);
     const stageLabel = capitalize(normalizeSessionStatus(session.sessionStatus)).replace("Unselected", "Not started");
     const row = document.createElement("a");
-    row.className = "session-row";
+    row.className = `session-row${options.variant === "history-grid" ? " session-history-card" : ""}`;
     row.href = `#sessions/${session.id}`;
-    row.innerHTML = `
-      <div class="session-row-top">
-        <strong>${escapeHtml(formatSessionLabel(session))}</strong>
-        <div class="session-row-actions">
-          <span class="session-success-pill">${successLabel}</span>
-          <button type="button" class="session-delete-button" data-session-delete="${session.id}" aria-label="Delete ${escapeHtml(formatSessionLabel(session))}">Delete</button>
+    if (options.variant === "history-grid") {
+      row.innerHTML = `
+        <div class="session-row-top">
+          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <div class="session-row-actions">
+            <button type="button" class="session-delete-button" data-session-delete="${session.id}" aria-label="Delete ${escapeHtml(formatSessionLabel(session))}">Delete</button>
+          </div>
         </div>
-      </div>
-      <div class="session-row-bottom">
-        <p>${escapeHtml(formatSessionNameDate(session.date))}</p>
-        <p>${session.systemType}</p>
-        <p>${escapeHtml(stageLabel)}</p>
-      </div>
-    `;
+        <div class="session-history-meta">
+          <div class="session-history-meta-item">
+            <span>Date</span>
+            <p>${escapeHtml(formatSessionNameDate(session.date))}</p>
+          </div>
+          <div class="session-history-meta-item">
+            <span>System</span>
+            <p>${escapeHtml(getSessionSystemSummary(session))}</p>
+          </div>
+          <div class="session-history-meta-item">
+            <span>Status</span>
+            <p>${escapeHtml(stageLabel)}</p>
+          </div>
+        </div>
+        <div class="session-history-footer">
+          <span class="session-success-pill">${formatSessionRateBadgeLabel(session)}</span>
+          <span class="session-history-view">Open session</span>
+        </div>
+      `;
+    } else {
+      row.innerHTML = `
+        <div class="session-row-top">
+          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <div class="session-row-actions">
+            <span class="session-success-pill">${successLabel}</span>
+            <button type="button" class="session-delete-button" data-session-delete="${session.id}" aria-label="Delete ${escapeHtml(formatSessionLabel(session))}">Delete</button>
+          </div>
+        </div>
+        <div class="session-row-bottom">
+          <p>${escapeHtml(formatSessionNameDate(session.date))}</p>
+          <p>${session.systemType}</p>
+          <p>${escapeHtml(stageLabel)}</p>
+        </div>
+      `;
+    }
     row.querySelector("[data-session-delete]")?.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -5538,13 +5585,66 @@ function renderSessionCollection(container, sessions, options) {
 
       try {
         await deleteCloudSession(session.id);
-        renderSessionCollection(container, sortSessionsNewestFirst(getSessions()), options);
+        renderSessionsList();
       } catch (error) {
         window.alert(error.message || "Could not delete session.");
       }
     });
     container.appendChild(row);
   });
+}
+
+function sortSessionHistorySessions(sessions, sortBy = "date") {
+  const collator = new Intl.Collator("en", {
+    sensitivity: "base",
+    numeric: true,
+  });
+
+  return [...sessions].sort((left, right) => {
+    switch (sortBy) {
+      case "name-asc":
+        return collator.compare(formatSessionLabel(left), formatSessionLabel(right))
+          || (getSessionSortTime(right) - getSessionSortTime(left));
+      case "name-desc":
+        return collator.compare(formatSessionLabel(right), formatSessionLabel(left))
+          || (getSessionSortTime(right) - getSessionSortTime(left));
+      case "rate":
+        return getSessionSuccessRate(right) - getSessionSuccessRate(left)
+          || (getSessionSortTime(right) - getSessionSortTime(left));
+      case "date":
+      default:
+        return getSessionSortTime(right) - getSessionSortTime(left);
+    }
+  });
+}
+
+function getSessionSuccessRate(session) {
+  const totals = getSessionSeedTotals(session);
+  if (totals.totalSeeds <= 0) {
+    return 0;
+  }
+
+  return Math.round((totals.totalPlanted / totals.totalSeeds) * 100);
+}
+
+function getSessionSystemSummary(session) {
+  const systemType = String(session.systemType || "").trim();
+  const unitId = String(session.unitId || "").trim();
+
+  if (systemType && unitId) {
+    return `${systemType} / ${unitId}`;
+  }
+
+  return systemType || unitId || "Not provided";
+}
+
+function formatSessionRateBadgeLabel(session) {
+  const totals = getSessionSeedTotals(session);
+  if (totals.totalSeeds <= 0) {
+    return "Germination --";
+  }
+
+  return `Germination ${getSessionSuccessRate(session)}%`;
 }
 
 function formatSessionSuccessLabel(session) {
