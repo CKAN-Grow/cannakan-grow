@@ -1618,6 +1618,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #1f3a2a;
 }
 
+.gallery-review-status-badge.is-rejected {
+  background: rgba(139, 56, 59, 0.14);
+  color: #8b383b;
+}
+
 .snapshot-preview-card {
   margin: 0;
   width: 33%;
@@ -3662,6 +3667,11 @@ body.theme-dark .gallery-review-status-badge.is-pending {
 body.theme-dark .gallery-review-status-badge.is-approved {
   background: rgba(148, 209, 89, 0.18);
   color: #f6f8f5;
+}
+
+body.theme-dark .gallery-review-status-badge.is-rejected {
+  background: rgba(255, 107, 107, 0.18);
+  color: #ffb3b3;
 }
 
 body.theme-dark .snapshot-gallery-note {

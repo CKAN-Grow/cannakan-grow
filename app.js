@@ -1393,7 +1393,14 @@ async function uploadGallerySnapshotBlob(sessionId, blob) {
     });
 
   if (error) {
-    throw new Error("Could not publish this snapshot to the Grow Gallery.");
+    console.error("Grow Gallery storage upload failed", {
+      bucket: GROW_GALLERY_BUCKET,
+      path,
+      sessionId,
+      userId: appState.user.id,
+      error,
+    });
+    throw new Error(getGalleryPublishErrorMessage(error, "Could not upload this snapshot to the Grow Gallery."));
   }
 
   const { data } = appState.supabase.storage.from(GROW_GALLERY_BUCKET).getPublicUrl(path);
@@ -1444,6 +1451,30 @@ function getGallerySnapshotForSession(sessionId) {
   return appState.gallerySnapshots.find((entry) => entry.sessionId === sessionId) || null;
 }
 
+function getGalleryPublishErrorMessage(error, fallbackMessage) {
+  const normalizedMessage = String(
+    error?.message
+    || error?.error_description
+    || error?.details
+    || "",
+  ).trim().toLowerCase();
+
+  if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
+    return "Grow Gallery storage bucket is missing or not configured.";
+  }
+  if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
+    return "You do not have permission to publish to the Grow Gallery.";
+  }
+  if (normalizedMessage.includes("relation") && normalizedMessage.includes("grow_gallery_snapshots")) {
+    return "Grow Gallery data store is missing. Run the latest schema setup.";
+  }
+  if (normalizedMessage.includes("column") && normalizedMessage.includes("grow_gallery_snapshots")) {
+    return "Grow Gallery schema is out of date. Apply the latest database schema.";
+  }
+
+  return fallbackMessage;
+}
+
 async function publishSnapshotToGallery(session, snapshotData, blob) {
   if (!appState.supabase || !appState.user) {
     throw new Error("You must be signed in to publish to the Grow Gallery.");
@@ -1477,8 +1508,17 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
 
   const { data, error } = await query;
   if (error) {
+    console.error("Grow Gallery snapshot save failed", {
+      bucket: GROW_GALLERY_BUCKET,
+      upload,
+      existingSnapshotId: existing?.id || "",
+      sessionId: session.id,
+      snapshotData,
+      payload,
+      error,
+    });
     await removeGallerySnapshotImage(upload.path);
-    throw new Error("Could not save this snapshot to the Grow Gallery.");
+    throw new Error(getGalleryPublishErrorMessage(error, "Could not save this snapshot to the Grow Gallery."));
   }
 
   if (existing?.imagePath && existing.imagePath !== upload.path) {
@@ -2160,9 +2200,15 @@ async function maybePublishSnapshotFromState(state, result) {
   try {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob);
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, "Submitted for review.");
+    setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
     return published;
   } catch (error) {
+    console.error("Grow Gallery publish flow failed", {
+      sessionId: session?.id || "",
+      destination,
+      snapshotData,
+      error,
+    });
     setSnapshotMessage(state, error.message || "Could not publish this snapshot to the Grow Gallery.", true);
     return null;
   }
@@ -3843,10 +3889,13 @@ function renderGallery() {
     return;
   }
 
-  const publishedSnapshots = sortGallerySnapshotsNewestFirst(
-    appState.gallerySnapshots.filter((entry) => entry.status === "approved"),
+  const visibleSnapshots = sortGallerySnapshotsNewestFirst(
+    appState.gallerySnapshots.filter((entry) => (
+      entry.status === "approved"
+      || (entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(entry.status))
+    )),
   );
-  if (!publishedSnapshots.length) {
+  if (!visibleSnapshots.length) {
     galleryGrid.innerHTML = `
       <div class="empty-state gallery-empty-state">
         <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
@@ -3855,10 +3904,17 @@ function renderGallery() {
     return;
   }
 
-  publishedSnapshots.forEach((snapshot) => {
+  visibleSnapshots.forEach((snapshot) => {
     const card = document.createElement("article");
     card.className = "gallery-card";
     const isOwner = snapshot.userId === appState.user?.id;
+    const isPending = snapshot.status === "pending_review";
+    const isRejected = snapshot.status === "rejected";
+    const statusBadge = isPending
+      ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
+      : isRejected
+        ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
+        : "";
     card.innerHTML = `
       <div class="gallery-card-media">
         <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
@@ -3869,11 +3925,14 @@ function renderGallery() {
             <strong>${escapeHtml(snapshot.title)}</strong>
             <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
           </div>
-          <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          <div class="gallery-review-status-stack">
+            ${statusBadge}
+            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          </div>
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>Germination success</span>
+          <span>${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
         </div>
         <div class="gallery-card-actions">
           ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
