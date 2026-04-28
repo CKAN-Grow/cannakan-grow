@@ -4128,8 +4128,6 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
     return;
   }
 
-  const bestSessionId = options.showBestBadge ? getBestCompletedSessionId(allSessions) : "";
-
   recentSessions.forEach((session) => {
     const totals = getSessionSeedTotals(session);
     const percentage = totals.totalSeeds > 0
@@ -4141,7 +4139,6 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
     card.className = `recent-session-card stage-${normalizedStage}`;
     card.href = `#sessions/${session.id}`;
     card.innerHTML = `
-      ${session.id === bestSessionId ? '<span class="recent-session-badge">Best</span>' : ""}
       <div class="recent-session-top">
         <strong>${escapeHtml(formatSessionLabel(session))}</strong>
         <span class="recent-session-rate">${percentage}%</span>
@@ -4154,10 +4151,6 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
     `;
     container.appendChild(card);
   });
-}
-
-function getBestCompletedSessionId(sessions) {
-  return getBestCompletedSession(sessions)?.id || "";
 }
 
 function getBestCompletedSession(sessions) {
@@ -5123,7 +5116,6 @@ function renderSessionsList() {
 
   renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 3), sessions, {
     emptyMessage: "No completed sessions yet.",
-    showBestBadge: true,
   });
 
   const renderHistorySessions = () => renderSessionCollection(

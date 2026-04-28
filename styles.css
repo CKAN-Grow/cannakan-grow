@@ -3212,18 +3212,6 @@ input::placeholder {
   font-weight: 700;
 }
 
-.recent-session-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #94d159;
-  color: #1c1f1d;
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
 .recent-sessions-empty {
   padding: 18px 12px;
 }
