@@ -20,7 +20,7 @@ const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
 };
-const KAN_PARTITION_HEADER_ICON_ASSET = "src/assets/kan-partition-icon.png";
+const KAN_PARTITION_HEADER_ICON_ASSET = "src/assets/kan-partition-icon.png?v=20260428-083821";
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
   { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
