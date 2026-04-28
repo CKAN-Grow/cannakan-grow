@@ -1434,6 +1434,9 @@ function mapRowToGallerySnapshot(row) {
     imagePath: String(row.snapshot_image_path || "").trim(),
     sessionDate: row.session_date || "",
     systemType: String(row.system_type || "KAN").trim() || "KAN",
+    unitId: String(row.unit_id || "").trim(),
+    totalSeeds: Math.max(0, Number(row.total_seeds) || 0),
+    totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
     submittedBy: String(row.submitted_by || "").trim(),
     status: String(row.status || (row.is_published ? "approved" : "private")).trim() || "private",
@@ -1625,6 +1628,38 @@ function getGallerySnapshotSuccessRate(snapshot) {
 
 function getGallerySnapshotSortTime(snapshot) {
   return new Date(snapshot?.publishedAt || snapshot?.createdAt || 0).getTime();
+}
+
+function getGallerySnapshotSession(snapshot) {
+  if (!snapshot?.sessionId) {
+    return null;
+  }
+
+  return getSessions().find((session) => session.id === snapshot.sessionId) || null;
+}
+
+function getGallerySnapshotFeedDetails(snapshot) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const totalSeeds = snapshot.totalSeeds > 0
+    ? snapshot.totalSeeds
+    : linkedSession
+      ? getSessionSeedTotals(linkedSession).totalSeeds
+      : 0;
+  const totalPlanted = snapshot.totalPlanted > 0
+    ? snapshot.totalPlanted
+    : linkedSession
+      ? getSessionSeedTotals(linkedSession).totalPlanted
+      : 0;
+  const unitId = String(snapshot.unitId || linkedSession?.unitId || "").trim();
+
+  return {
+    totalSeeds,
+    totalPlanted,
+    seedCountLabel: totalSeeds > 0 ? `${totalPlanted} / ${totalSeeds} seeds` : "",
+    systemLabel: unitId
+      ? `${formatSnapshotSystemLabel(snapshot.systemType)} • ${unitId}`
+      : formatSnapshotSystemLabel(snapshot.systemType),
+  };
 }
 
 function mapSessionToRecord(session, userId) {
@@ -3942,6 +3977,13 @@ function renderGallery() {
     if (!visibleSnapshots.length) {
       galleryGrid.innerHTML = `
         <div class="empty-state gallery-empty-state">
+          <div class="gallery-empty-state-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <rect x="3.5" y="5" width="17" height="14" rx="2"></rect>
+              <circle cx="9" cy="10" r="1.25"></circle>
+              <path d="m20.5 15-4.5-4.5L11 16l-2.5-2.5L3.5 18"></path>
+            </svg>
+          </div>
           <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
         </div>
       `;
@@ -3954,6 +3996,7 @@ function renderGallery() {
       const isOwner = snapshot.userId === appState.user?.id;
       const isPending = snapshot.status === "pending_review";
       const isRejected = snapshot.status === "rejected";
+      const details = getGallerySnapshotFeedDetails(snapshot);
       const statusBadge = isPending
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
         : isRejected
@@ -3965,7 +4008,7 @@ function renderGallery() {
         </div>
         <div class="gallery-card-body">
           <div class="gallery-card-top">
-            <div>
+            <div class="gallery-card-copy">
               <strong>${escapeHtml(snapshot.title)}</strong>
               <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
             </div>
@@ -3974,9 +4017,10 @@ function renderGallery() {
               <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
             </div>
           </div>
-          <div class="gallery-card-meta">
-            <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-            <span>${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
+          <div class="gallery-card-feed-meta">
+            <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
+            ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
+            <span class="gallery-card-chip">${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
           </div>
           <div class="gallery-card-actions">
             ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
