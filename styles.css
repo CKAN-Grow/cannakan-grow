@@ -1224,10 +1224,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   stroke-width: 1.9;
 }
 
-.snapshot-hero-copy .eyebrow {
-  color: #94d159;
-}
-
 .snapshot-message.is-error {
   color: #8b383b;
   font-weight: 700;
