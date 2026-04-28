@@ -2664,13 +2664,14 @@ async function buildSessionSnapshotBlob(data, imageSource = "") {
   }
 
   drawSnapshotBackground(context, size);
+  const brandLogo = await loadSnapshotBrandLogo();
 
   if (imageSource) {
     const image = await loadSnapshotImage(imageSource);
     drawSnapshotHeroImage(context, image, size);
-    drawSnapshotImageFooter(context, size, data);
+    drawSnapshotImageFooter(context, size, data, brandLogo);
   } else {
-    drawSnapshotTextLayout(context, size, data);
+    drawSnapshotTextLayout(context, size, data, brandLogo);
   }
 
   return new Promise((resolve, reject) => {
@@ -2704,7 +2705,7 @@ function drawSnapshotHeroImage(context, image, size) {
   context.restore();
 }
 
-function drawSnapshotImageFooter(context, size, data) {
+function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const panelX = 40;
   const panelWidth = size - 80;
   const panelHeight = 326;
@@ -2723,10 +2724,10 @@ function drawSnapshotImageFooter(context, size, data) {
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
   context.stroke();
 
-  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, false);
+  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, false, brandLogo);
 }
 
-function drawSnapshotTextLayout(context, size, data) {
+function drawSnapshotTextLayout(context, size, data, brandLogo = null) {
   const panelX = 40;
   const panelY = 40;
   const panelWidth = size - 80;
@@ -2739,21 +2740,24 @@ function drawSnapshotTextLayout(context, size, data) {
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 42);
   context.stroke();
 
-  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, true);
+  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, true, brandLogo);
 }
 
-function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false) {
+function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null) {
   const inset = roomy ? 80 : 44;
   const brandY = roomy ? y + 58 : y + 42;
-  const percentY = roomy ? y + 256 : y + 134;
-  const rateY = percentY + (roomy ? 48 : 40);
-  const seedsY = rateY + (roomy ? 42 : 36);
+  const percentY = roomy ? y + 294 : y + 168;
+  const rateY = percentY + (roomy ? 64 : 52);
+  const seedsY = rateY + (roomy ? 50 : 42);
   const dividerX = x + (roomy ? width * 0.45 : width * 0.44);
   const infoTopY = roomy ? y + 98 : y + 96;
   const footerDividerY = y + height - (roomy ? 80 : 60);
   const footerTextY = y + height - (roomy ? 42 : 30);
   const brandIconSize = roomy ? 20 : 15;
   const metaIconSize = roomy ? 18 : 14;
+  const logoTopY = infoTopY + (roomy ? 88 : 74);
+  const logoWidth = roomy ? 264 : 228;
+  const logoHeight = roomy ? 74 : 64;
 
   drawSproutIcon(context, x + inset, brandY - (brandIconSize - 3), brandIconSize, "#94d159");
   context.fillStyle = "#f4faef";
@@ -2815,6 +2819,14 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.lineTo(x + width - inset, footerDividerY);
   context.stroke();
 
+  if (brandLogo) {
+    const logoX = x + width - inset - logoWidth;
+    context.save();
+    context.globalAlpha = roomy ? 0.88 : 0.82;
+    context.drawImage(brandLogo, logoX, logoTopY, logoWidth, logoHeight);
+    context.restore();
+  }
+
   const dateText = data.dateLabel;
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const separatorText = " • ";
@@ -2828,6 +2840,21 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const sessionNameWidth = context.measureText(sessionNameText).width;
   context.fillStyle = "#94d159";
   context.fillText(separatorText + dateText, x + inset + sessionNameWidth, footerTextY);
+}
+
+function getSnapshotBrandLogoSource() {
+  const isDarkTheme = document.body.classList.contains("theme-dark");
+  return isDarkTheme
+    ? "src/assets/Cannakan_GROW_darkmode.png"
+    : "src/assets/Cannakan_GROW_lightmode.png";
+}
+
+async function loadSnapshotBrandLogo() {
+  try {
+    return await loadImageElement(getSnapshotBrandLogoSource());
+  } catch {
+    return null;
+  }
 }
 
 function drawSproutIcon(context, x, y, size, color) {
