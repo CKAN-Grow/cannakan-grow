@@ -2460,6 +2460,7 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
             <p class="snapshot-preview-label">Germination Rate</p>
             <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
           </div>
+          <div class="snapshot-preview-divider" aria-hidden="true"></div>
           <div class="snapshot-preview-brand">
             <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
           </div>
@@ -2748,7 +2749,7 @@ function drawSnapshotHeroImage(context, image, size) {
 function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const panelX = 40;
   const panelWidth = size - 80;
-  const panelHeight = 326;
+  const panelHeight = 256;
   const panelY = size - panelHeight - 40;
   context.save();
   context.shadowColor = "rgba(12, 18, 10, 0.18)";
@@ -2785,17 +2786,17 @@ function drawSnapshotTextLayout(context, size, data, brandLogo = null) {
 
 function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null) {
   const inset = roomy ? 80 : 44;
-  const overlayTopY = y + (roomy ? 132 : 94);
-  const overlayHeight = roomy ? 338 : 214;
+  const overlayHeight = roomy ? 338 : Math.max(184, height - 56);
+  const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 156 : 102);
-  const rateY = percentY + (roomy ? 54 : 42);
-  const seedsY = rateY + (roomy ? 42 : 34);
+  const percentY = overlayTopY + (roomy ? 156 : 90);
+  const rateY = percentY + (roomy ? 54 : 34);
+  const seedsY = rateY + (roomy ? 42 : 28);
   const dividerX = x + (roomy ? width * 0.45 : width * 0.44);
-  const footerDividerY = overlayBottomY - (roomy ? 64 : 46);
-  const footerTextY = overlayBottomY - (roomy ? 28 : 20);
+  const footerDividerY = overlayBottomY - (roomy ? 64 : 36);
+  const footerTextY = overlayBottomY - (roomy ? 28 : 16);
   const metaIconSize = roomy ? 18 : 14;
-  const rightRegionX = dividerX + (roomy ? 48 : 42);
+  const rightRegionX = dividerX + (roomy ? 48 : 34);
   const rightRegionWidth = x + width - inset - rightRegionX;
   const badgeTopY = overlayTopY + (roomy ? 18 : 14);
 
@@ -2821,7 +2822,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.lineWidth = 1.2;
   context.beginPath();
   context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 10));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 58));
+  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 46));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -2849,11 +2850,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.stroke();
 
   if (brandLogo) {
-    const maxLogoWidth = roomy ? 280 : 220;
-    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 12));
+    const maxLogoWidth = roomy ? 280 : 218;
+    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 6));
     const logoHeight = logoWidth * (brandLogo.height / brandLogo.width);
-    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 8);
-    const logoY = overlayTopY + (roomy ? 118 : 78);
+    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 18);
+    const logoY = overlayTopY + (roomy ? 118 : 62);
     context.save();
     context.globalAlpha = roomy ? 0.92 : 0.88;
     context.drawImage(brandLogo, logoX, logoY, logoWidth, logoHeight);

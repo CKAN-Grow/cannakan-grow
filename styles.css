@@ -1902,13 +1902,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   left: 5%;
   right: 5%;
-  bottom: 3.6%;
+  bottom: 3.2%;
   display: grid;
   grid-template-rows: auto 1fr auto;
   align-items: stretch;
-  gap: 10px;
-  min-height: 24%;
-  padding: 14px 18px 12px;
+  gap: 8px;
+  min-height: 20.5%;
+  padding: 12px 18px 10px;
   border-radius: 22px;
   background: rgba(15, 19, 14, 0.94);
   border: 1px solid rgba(148, 209, 89, 0.34);
@@ -1922,16 +1922,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-content {
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
+  grid-template-columns: minmax(0, 0.86fr) 1px minmax(0, 1.14fr);
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .snapshot-stat-block {
   display: grid;
   align-content: start;
-  gap: 7px;
-  transform: translateY(10px);
+  gap: 6px;
+  transform: translateY(8px);
 }
 
 .snapshot-preview-percentage {
@@ -1957,7 +1957,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-seeds {
   color: #dce9d2;
-  font-size: 0.85rem;
+  font-size: 0.83rem;
   font-weight: 500;
 }
 
@@ -1976,7 +1976,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-items: start;
   min-width: 0;
-  padding-right: 12px;
+  padding-right: 18px;
+  padding-left: 2px;
+}
+
+.snapshot-preview-divider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(
+    to bottom,
+    rgba(148, 209, 89, 0.04) 0%,
+    rgba(148, 209, 89, 0.42) 16%,
+    rgba(148, 209, 89, 0.42) 84%,
+    rgba(148, 209, 89, 0.04) 100%
+  );
 }
 
 .snapshot-preview-badge {
@@ -1993,13 +2006,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-preview-logo {
-  width: 210px;
+  width: 220px;
   max-width: 100%;
   min-width: 180px;
   height: auto;
   object-fit: contain;
   align-self: center;
   justify-self: start;
+  transform: translateX(-6px);
 }
 
 @media (max-width: 960px) {
@@ -2009,17 +2023,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .snapshot-preview-overlay {
     gap: 10px;
-    min-height: 26%;
+    min-height: 23%;
   }
 
   .snapshot-preview-content {
     grid-template-columns: 1fr;
   }
 
+  .snapshot-preview-divider {
+    display: none;
+  }
+
   .snapshot-preview-logo {
     width: 190px;
     max-width: 58%;
     justify-self: center;
+    transform: none;
   }
 
   .snapshot-source-card {
