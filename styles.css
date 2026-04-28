@@ -1325,14 +1325,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-top: 1px solid rgba(24, 34, 24, 0.1);
 }
 
+.snapshot-gallery-visit-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+}
+
 .snapshot-gallery-icon {
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   background: rgba(24, 34, 24, 0.04);
   color: #94d159;
@@ -1340,8 +1347,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-gallery-icon svg {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   stroke: currentColor;
   stroke-width: 1.85;
   stroke-linecap: round;
@@ -1461,10 +1468,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     0 0 0 1px rgba(148, 209, 89, 0.14);
 }
 
+.snapshot-actions {
+  --snapshot-primary-width: 220px;
+}
+
 .snapshot-generate-button,
 .snapshot-share-button {
-  width: 220px;
-  flex: 0 0 220px;
+  width: var(--snapshot-primary-width);
+  min-width: var(--snapshot-primary-width);
+  flex: 0 0 var(--snapshot-primary-width);
   max-width: 100%;
 }
 
@@ -4689,10 +4701,17 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .snapshot-actions .button,
+  .snapshot-gallery-visit-group,
   .snapshot-share-row,
   .snapshot-share-row .button,
   .snapshot-gallery-actions .button {
     width: 100%;
+  }
+
+  .snapshot-generate-button,
+  .snapshot-share-button {
+    min-width: 0;
+    flex-basis: 100%;
   }
 
   .topbar-nav {
