@@ -1904,9 +1904,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   right: 5%;
   bottom: 5%;
   display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  align-items: center;
-  gap: 18px;
+  grid-template-rows: auto 1fr auto;
+  align-items: stretch;
+  gap: 14px;
   min-height: 31%;
   padding: 18px 18px 16px;
   border-radius: 22px;
@@ -1915,10 +1915,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.28);
 }
 
+.snapshot-preview-badge-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.snapshot-preview-content {
+  display: grid;
+  grid-template-columns: 0.88fr 1.12fr;
+  align-items: center;
+  gap: 18px;
+}
+
 .snapshot-stat-block {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: 10px;
   transform: translateY(12px);
 }
 
@@ -1933,8 +1945,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-label,
 .snapshot-preview-seeds,
-.snapshot-preview-footer,
-.snapshot-preview-date {
+.snapshot-preview-footer {
   margin: 0;
 }
 
@@ -1962,25 +1973,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-brand {
   display: grid;
-  align-content: start;
-  justify-items: end;
-  gap: 18px;
-  min-width: 0;
-}
-
-.snapshot-preview-topline {
-  width: 100%;
-  display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.snapshot-preview-date {
-  color: #f6fbf1;
-  font-size: 0.84rem;
-  font-weight: 500;
+  justify-items: center;
+  min-width: 0;
 }
 
 .snapshot-preview-badge {
@@ -2012,22 +2007,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-overlay {
-    grid-template-columns: 1fr;
     gap: 14px;
   }
 
-  .snapshot-preview-brand {
-    justify-items: start;
-  }
-
-  .snapshot-preview-topline {
-    justify-content: space-between;
+  .snapshot-preview-content {
+    grid-template-columns: 1fr;
   }
 
   .snapshot-preview-logo {
     width: 200px;
     max-width: 62%;
-    justify-self: start;
   }
 
   .snapshot-source-card {
