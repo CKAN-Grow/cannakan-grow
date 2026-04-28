@@ -2520,6 +2520,18 @@ body.theme-dark .theme-toggle-button:hover {
   border-top-color: #7fb8ff;
 }
 
+#saved-sessions-card {
+  border-top-width: 3px;
+  border-top-style: solid;
+  border-top-color: #d97a4a;
+}
+
+#best-session-card {
+  border-top-width: 3px;
+  border-top-style: solid;
+  border-top-color: #94d159;
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
