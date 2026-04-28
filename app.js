@@ -2424,14 +2424,48 @@ function setSnapshotPreview(state, payload) {
 
   state.generatedUrl = URL.createObjectURL(payload.blob);
   state.preview.hidden = false;
-  state.preview.innerHTML = `
-    <article class="snapshot-preview-card">
-      <img src="${state.generatedUrl}" alt="Session snapshot preview" class="snapshot-preview-image">
-    </article>
-  `;
+  state.preview.innerHTML = renderSnapshotPreviewMarkup({
+    previewImageUrl: payload?.imageUrl || state.generatedUrl,
+    fallbackImageUrl: state.generatedUrl,
+    data: payload?.data || null,
+  });
   state.downloadButton?.removeAttribute("disabled");
   state.resetButton?.removeAttribute("disabled");
   state.shareButton?.removeAttribute("disabled");
+}
+
+function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = "", data = null }) {
+  if (!data || !previewImageUrl) {
+    return `
+      <article class="snapshot-preview-card">
+        <img src="${fallbackImageUrl}" alt="Session snapshot preview" class="snapshot-preview-image">
+      </article>
+    `;
+  }
+
+  const seedCountLabel = `${data.totalPlanted} / ${data.totalSeeds} seeds`;
+  return `
+    <article class="snapshot-preview-card">
+      <div class="snapshot-preview-media">
+        <img src="${escapeHtml(previewImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
+      </div>
+      <div class="snapshot-preview-overlay">
+        <div class="snapshot-stat-block">
+          <strong class="snapshot-preview-percentage">${escapeHtml(String(data.percentage))}%</strong>
+          <p class="snapshot-preview-label">Germination Rate</p>
+          <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
+          <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
+        </div>
+        <div class="snapshot-preview-brand">
+          <div class="snapshot-preview-topline">
+            <p class="snapshot-preview-date">${escapeHtml(data.dateLabel)}</p>
+            <span class="snapshot-preview-badge">${escapeHtml(data.systemLabel)}</span>
+          </div>
+          <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 async function resetSnapshotState(state) {
@@ -2477,7 +2511,11 @@ async function generateSnapshotPreview(state) {
       return null;
     }
     const blob = await buildSessionSnapshotBlob(data, selectedImage?.displayUrl || "");
-    setSnapshotPreview(state, { blob });
+    setSnapshotPreview(state, {
+      blob,
+      data,
+      imageUrl: selectedImage?.displayUrl || "",
+    });
     setSnapshotMessage(state, selectedImage ? "Snapshot ready with your selected image." : "Snapshot ready as a text-only share image.");
     return {
       blob,
