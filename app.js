@@ -5099,6 +5099,7 @@ function getCurrentPartitionValues(form) {
 
 function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
+  initializeCustomSelects(app);
   const sessions = sortSessionsNewestFirst(getSessions());
   const activeContainer = document.querySelector("#active-sessions-list");
   const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");

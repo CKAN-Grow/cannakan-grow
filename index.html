@@ -597,12 +597,19 @@
         </div>
         <label class="session-history-sort-control" for="session-history-sort">
           <span>Sort by</span>
-          <select id="session-history-sort" name="sessionHistorySort">
-            <option value="date">Date</option>
-            <option value="name-asc">Name A-Z</option>
-            <option value="name-desc">Name Z-A</option>
-            <option value="rate">Germination Rate</option>
-          </select>
+          <div class="custom-select session-history-sort-select" data-dropdown-key="session-history-sort">
+            <select id="session-history-sort" name="sessionHistorySort" class="custom-select-native" data-custom-select="true">
+              <option value="date">Date</option>
+              <option value="name-asc">Name A-Z</option>
+              <option value="name-desc">Name Z-A</option>
+              <option value="rate">Germination Rate</option>
+            </select>
+            <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+              <span class="custom-select-value">Date</span>
+              <span class="custom-select-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="custom-select-menu" role="listbox" hidden></div>
+          </div>
         </label>
       </div>
       <div id="sessions-list" class="sessions-list session-history-grid"></div>
