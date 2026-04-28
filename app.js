@@ -2842,16 +2842,9 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.fillText(separatorText + dateText, x + inset + sessionNameWidth, footerTextY);
 }
 
-function getSnapshotBrandLogoSource() {
-  const isDarkTheme = document.body.classList.contains("theme-dark");
-  return isDarkTheme
-    ? "src/assets/Cannakan_GROW_darkmode.png"
-    : "src/assets/Cannakan_GROW_lightmode.png";
-}
-
 async function loadSnapshotBrandLogo() {
   try {
-    return await loadImageElement(getSnapshotBrandLogoSource());
+    return await loadImageElement("src/assets/Cannakan_GROW_darkmode.png");
   } catch {
     return null;
   }
