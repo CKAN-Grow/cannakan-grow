@@ -1472,12 +1472,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --snapshot-primary-width: 220px;
 }
 
-.snapshot-generate-button,
-.snapshot-share-button {
+.snapshot-primary-action-button {
   width: var(--snapshot-primary-width);
   min-width: var(--snapshot-primary-width);
+  max-width: var(--snapshot-primary-width);
   flex: 0 0 var(--snapshot-primary-width);
-  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
 }
 
 .snapshot-generate-button {
@@ -4708,9 +4709,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     width: 100%;
   }
 
-  .snapshot-generate-button,
-  .snapshot-share-button {
+  .snapshot-primary-action-button {
+    width: 100%;
     min-width: 0;
+    max-width: none;
     flex-basis: 100%;
   }
 
