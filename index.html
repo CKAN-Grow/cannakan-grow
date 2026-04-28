@@ -502,16 +502,18 @@
           <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
             <div class="snapshot-actions">
               <button id="generate-snapshot" type="button" class="button button-secondary snapshot-generate-button">Generate Snapshot</button>
-              <button id="share-snapshot" type="button" class="button button-primary snapshot-share-button" disabled>
-                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                  <path d="M12 16V4"></path>
-                  <path d="M7.5 8.5L12 4l4.5 4.5"></path>
-                  <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
-                </svg>
-                <span>Share</span>
-              </button>
-              <button id="download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
-              <button id="reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+              <div class="snapshot-share-row">
+                <button id="share-snapshot" type="button" class="button button-primary snapshot-share-button" disabled>
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 16V4"></path>
+                    <path d="M7.5 8.5L12 4l4.5 4.5"></path>
+                    <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
+                  </svg>
+                  <span>Share</span>
+                </button>
+                <button id="download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
+                <button id="reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+              </div>
             </div>
             <div id="snapshot-preview" class="snapshot-preview" hidden></div>
           </section>
@@ -801,16 +803,18 @@
           <p id="detail-snapshot-message" class="snapshot-message" aria-live="polite"></p>
           <div class="snapshot-actions">
             <button id="detail-generate-snapshot" type="button" class="button button-secondary snapshot-generate-button">Generate Snapshot</button>
-            <button id="detail-share-snapshot" type="button" class="button button-primary snapshot-share-button" disabled>
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M12 16V4"></path>
-                <path d="M7.5 8.5L12 4l4.5 4.5"></path>
-                <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
-              </svg>
-              <span>Share</span>
-            </button>
-            <button id="detail-download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
-            <button id="detail-reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+            <div class="snapshot-share-row">
+              <button id="detail-share-snapshot" type="button" class="button button-primary snapshot-share-button" disabled>
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M12 16V4"></path>
+                  <path d="M7.5 8.5L12 4l4.5 4.5"></path>
+                  <path d="M6 13.5v3.25A2.25 2.25 0 0 0 8.25 19h7.5A2.25 2.25 0 0 0 18 16.75V13.5"></path>
+                </svg>
+                <span>Share</span>
+              </button>
+              <button id="detail-download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
+              <button id="detail-reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
+            </div>
           </div>
           <div id="detail-snapshot-preview" class="snapshot-preview" hidden></div>
         </section>
