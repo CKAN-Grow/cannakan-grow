@@ -1804,6 +1804,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin: 8px 0 10px;
 }
 
+#snapshot-image-modal h3 {
+  color: #94d159;
+}
+
 .snapshot-modal-copy p {
   margin: 0;
 }
