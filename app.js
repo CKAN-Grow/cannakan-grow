@@ -2789,6 +2789,12 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const overlayHeight = roomy ? 338 : Math.max(152, height - 20);
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
+  context.save();
+  context.strokeStyle = "#ff2b2b";
+  context.lineWidth = roomy ? 4 : 3;
+  drawRoundedRectPath(context, x, overlayTopY, width, overlayHeight, roomy ? 30 : 24);
+  context.stroke();
+  context.restore();
   const percentY = overlayTopY + (roomy ? 156 : 74);
   const rateY = percentY + (roomy ? 54 : 28);
   const seedsY = rateY + (roomy ? 42 : 24);
