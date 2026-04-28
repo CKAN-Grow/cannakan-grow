@@ -1930,6 +1930,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-color: #6fb63d;
 }
 
+.button-new-session {
+  background: #151815;
+  border-color: #151815;
+  color: #f6f8f5;
+  box-shadow: 0 10px 18px rgba(21, 24, 21, 0.16);
+}
+
+.button-new-session:hover,
+.button-new-session:focus-visible {
+  background: #202520;
+  border-color: #202520;
+  color: #f6f8f5;
+}
+
+.button-new-session:active {
+  background: #0f120f;
+  border-color: #0f120f;
+}
+
 .auth-card {
   max-width: 520px;
   width: 100%;
@@ -2353,6 +2372,88 @@ body.theme-dark .theme-toggle-button:hover {
   background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(6px);
   z-index: 50;
+}
+
+.new-session-system-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(10, 14, 11, 0.72);
+  backdrop-filter: blur(14px);
+  z-index: 50;
+  opacity: 1;
+  transition: opacity 180ms ease;
+}
+
+.new-session-system-modal-overlay.closing {
+  opacity: 0;
+}
+
+.new-session-system-modal {
+  position: relative;
+  width: min(100%, 620px);
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(52, 58, 53, 0.78);
+  background: #1e221f;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.28);
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.new-session-system-modal.closing {
+  opacity: 0;
+  transform: scale(0.96) translateY(6px);
+}
+
+.new-session-system-modal-copy h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #f6f8f5;
+}
+
+.new-session-system-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.new-session-system-option {
+  display: grid;
+  gap: 8px;
+  min-height: 148px;
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid #343a35;
+  background: #252b26;
+  color: #f6f8f5;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.new-session-system-option strong {
+  font-size: 1.2rem;
+  color: #f6f8f5;
+}
+
+.new-session-system-option span {
+  color: #b7c0b7;
+  line-height: 1.45;
+}
+
+.new-session-system-option:hover,
+.new-session-system-option:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(148, 209, 89, 0.44);
+  background: #2a312b;
+  box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.12);
+  outline: none;
 }
 
 .growth-stage-modal-overlay.closing {

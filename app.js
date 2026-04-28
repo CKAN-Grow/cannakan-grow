@@ -73,6 +73,9 @@ const appState = {
   growthStageModalDismissed: false,
   pendingGrowthStageInput: null,
   growthStageModalSuppressedUntil: 0,
+  newSessionSystemType: "",
+  newSessionSystemModalOpen: false,
+  newSessionReturnHash: "#home",
 };
 let sessionTimerInterval = null;
 const templates = {
@@ -2931,7 +2934,15 @@ function render() {
   }
 
   if (route === "new") {
-    renderSessionForm();
+    if (id === "KAN" || id === "TRA") {
+      appState.newSessionSystemType = id;
+      renderSessionForm(id);
+      return;
+    }
+
+    appState.newSessionReturnHash = appState.newSessionReturnHash || "#sessions";
+    renderSessionsList();
+    openNewSessionSystemModal();
     return;
   }
 
@@ -2950,6 +2961,107 @@ function render() {
 
 function renderSetupScreen() {
   app.replaceChildren(cloneTemplate(templates.setup));
+}
+
+function closeNewSessionSystemModal({ navigateBack = false } = {}) {
+  const overlay = document.querySelector("#new-session-system-modal-overlay");
+  if (!overlay || overlay.dataset.closing === "true") {
+    return;
+  }
+
+  overlay.dataset.closing = "true";
+  overlay.classList.add("closing");
+  overlay.querySelector(".new-session-system-modal")?.classList.add("closing");
+  appState.newSessionSystemModalOpen = false;
+  document.body.classList.remove("modal-open");
+
+  window.setTimeout(() => {
+    overlay.remove();
+    if (navigateBack && window.location.hash === "#new") {
+      window.location.hash = appState.newSessionReturnHash || "#sessions";
+    }
+  }, 180);
+}
+
+function selectNewSessionSystemType(systemType) {
+  const normalizedSystemType = systemType === "TRA" ? "TRA" : "KAN";
+  appState.newSessionSystemType = normalizedSystemType;
+  closeNewSessionSystemModal();
+  window.location.hash = `#new/${normalizedSystemType}`;
+}
+
+function ensureNewSessionSystemModal() {
+  let overlay = document.querySelector("#new-session-system-modal-overlay");
+  if (overlay) {
+    return overlay;
+  }
+
+  overlay = document.createElement("div");
+  overlay.id = "new-session-system-modal-overlay";
+  overlay.className = "new-session-system-modal-overlay";
+  overlay.hidden = false;
+  overlay.dataset.closing = "false";
+  overlay.innerHTML = `
+    <div class="new-session-system-modal" role="dialog" aria-modal="true" aria-labelledby="new-session-system-modal-title">
+      <button type="button" class="modal-close" aria-label="Close">×</button>
+      <div class="new-session-system-modal-copy">
+        <h2 id="new-session-system-modal-title">Choose System Type</h2>
+      </div>
+      <div class="new-session-system-options">
+        <button type="button" class="new-session-system-option" data-system-type="KAN">
+          <strong>KAN</strong>
+          <span>8-part radial system</span>
+        </button>
+        <button type="button" class="new-session-system-option" data-system-type="TRA">
+          <strong>TRa</strong>
+          <span>16-part tray system</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeNewSessionSystemModal({ navigateBack: true });
+    }
+  });
+
+  overlay.querySelector(".modal-close")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeNewSessionSystemModal({ navigateBack: true });
+  });
+
+  overlay.querySelectorAll("[data-system-type]").forEach((button) => {
+    button.addEventListener("click", () => {
+      selectNewSessionSystemType(button.dataset.systemType || "KAN");
+    });
+  });
+
+  if (!ensureNewSessionSystemModal.escapeBound) {
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && appState.newSessionSystemModalOpen) {
+        closeNewSessionSystemModal({ navigateBack: window.location.hash === "#new" });
+      }
+    });
+    ensureNewSessionSystemModal.escapeBound = true;
+  }
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function openNewSessionSystemModal() {
+  const overlay = ensureNewSessionSystemModal();
+  overlay.hidden = false;
+  overlay.dataset.closing = "false";
+  overlay.classList.remove("closing");
+  overlay.querySelector(".new-session-system-modal")?.classList.remove("closing");
+  appState.newSessionSystemModalOpen = true;
+  document.body.classList.add("modal-open");
+  overlay.querySelector(".modal-close")?.focus();
 }
 
 function renderAuthScreen() {
@@ -3970,7 +4082,7 @@ function getBestCompletedSession(sessions) {
   return completedSessions[0]?.session || null;
 }
 
-function renderSessionForm() {
+function renderSessionForm(initialSystemType = "KAN") {
   app.replaceChildren(cloneTemplate(templates.form));
 
   const form = document.querySelector("#session-form");
@@ -4010,9 +4122,12 @@ function renderSessionForm() {
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
   const today = new Date();
+  const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
+  appState.newSessionSystemType = normalizedSystemType;
 
   form.elements.date.value = today.toISOString().slice(0, 10);
   initializeTimeFormatField(form, today.toTimeString().slice(0, 5));
+  systemTypeField.value = normalizedSystemType;
   initializeSessionImageState(form, {
     input: imageInput,
     grid: imageGrid,
@@ -7036,6 +7151,17 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const newSessionTrigger = event.target instanceof Element
+    ? event.target.closest('a[href="#new"]')
+    : null;
+
+  if (newSessionTrigger instanceof HTMLAnchorElement) {
+    event.preventDefault();
+    appState.newSessionReturnHash = window.location.hash || "#home";
+    openNewSessionSystemModal();
+    return;
+  }
+
   if (!(event.target instanceof Node) || !event.target.closest(".custom-select")) {
     closeAllCustomSelects();
   }
