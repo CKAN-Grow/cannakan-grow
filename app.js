@@ -2424,6 +2424,12 @@ function setSnapshotPreview(state, payload) {
 
   state.generatedUrl = URL.createObjectURL(payload.blob);
   state.preview.hidden = false;
+  console.log("ACTIVE SNAPSHOT PREVIEW SET", {
+    hasBlob: Boolean(payload?.blob),
+    imageUrl: payload?.imageUrl || "",
+    generatedUrl: state.generatedUrl,
+    hasData: Boolean(payload?.data),
+  });
   state.preview.innerHTML = renderSnapshotPreviewMarkup({
     previewImageUrl: payload?.imageUrl || state.generatedUrl,
     fallbackImageUrl: state.generatedUrl,
@@ -2435,10 +2441,18 @@ function setSnapshotPreview(state, payload) {
 }
 
 function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = "", data = null }) {
+  console.log("ACTIVE SNAPSHOT PREVIEW RENDERER HIT", {
+    previewImageUrl,
+    fallbackImageUrl,
+    hasData: Boolean(data),
+  });
   const baseImageUrl = previewImageUrl || fallbackImageUrl;
   if (!data || !baseImageUrl) {
     return `
       <article class="snapshot-preview-card">
+        <div style="position:absolute;z-index:5;top:12px;left:12px;padding:6px 10px;background:#ff2b2b;color:#fff;font:700 14px/1 Arial,sans-serif;border-radius:8px;box-shadow:0 0 0 2px rgba(0,0,0,0.35);">
+          ACTIVE PREVIEW DEBUG
+        </div>
         <img src="${fallbackImageUrl}" alt="Session snapshot preview" class="snapshot-preview-image">
       </article>
     `;
@@ -2447,6 +2461,9 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
   const seedCountLabel = `${data.totalPlanted} / ${data.totalSeeds} seeds`;
   return `
     <article class="snapshot-preview-card">
+      <div style="position:absolute;z-index:5;top:12px;left:12px;padding:6px 10px;background:#ff2b2b;color:#fff;font:700 14px/1 Arial,sans-serif;border-radius:8px;box-shadow:0 0 0 2px rgba(0,0,0,0.35);">
+        ACTIVE PREVIEW DEBUG
+      </div>
       <div class="snapshot-preview-media">
         <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
       </div>
