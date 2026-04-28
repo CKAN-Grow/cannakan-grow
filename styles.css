@@ -1574,21 +1574,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 4px;
 }
 
-.gallery-hero-section,
-.gallery-feed-section {
+.gallery-hero-section {
   border: none;
   background:
-    linear-gradient(180deg, rgba(245, 250, 243, 0.58) 0%, rgba(236, 243, 234, 0.44) 100%);
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(221, 240, 205, 0.04) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.06), rgba(43, 111, 65, 0.02) 58%);
   box-shadow:
-    0 10px 24px rgba(24, 34, 24, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.26);
-}
-
-.gallery-hero-section {
+    0 12px 26px rgba(24, 34, 24, 0.06),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
   padding: 22px 22px 18px;
 }
 
 .gallery-feed-section {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(244, 248, 243, 0.56) 0%, rgba(234, 241, 233, 0.42) 100%) padding-box,
+    linear-gradient(45deg, rgba(245, 133, 41, 0.56), rgba(221, 42, 123, 0.5), rgba(129, 52, 175, 0.46), rgba(81, 91, 212, 0.48)) border-box;
+  box-shadow:
+    0 12px 26px rgba(24, 34, 24, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   padding: 22px;
   margin-top: 12px;
 }
@@ -1596,6 +1601,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-feed-section .section-heading,
 .gallery-hero-section .section-heading {
   margin-bottom: 6px;
+}
+
+.gallery-hero-section .muted {
+  color: rgba(42, 76, 48, 0.78);
 }
 
 .gallery-section {
@@ -3991,14 +4000,28 @@ body.theme-dark .gallery-review-status-badge.is-rejected {
   color: #ffb3b3;
 }
 
-body.theme-dark .gallery-hero-section,
-body.theme-dark .gallery-feed-section {
+body.theme-dark .gallery-hero-section {
   background:
-    linear-gradient(180deg, rgba(31, 42, 34, 0.9) 0%, rgba(24, 33, 27, 0.78) 100%);
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(31, 42, 34, 0.92) 18%, rgba(24, 33, 27, 0.84) 100%);
   border: none;
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .gallery-feed-section {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(180deg, rgba(31, 42, 34, 0.92) 0%, rgba(24, 33, 27, 0.82) 100%) padding-box,
+    linear-gradient(45deg, rgba(245, 133, 41, 0.56), rgba(221, 42, 123, 0.48), rgba(129, 52, 175, 0.44), rgba(81, 91, 212, 0.46)) border-box;
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .gallery-hero-section .muted {
+  color: rgba(193, 227, 167, 0.86);
 }
 
 body.theme-dark .snapshot-gallery-note {
