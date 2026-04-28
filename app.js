@@ -4921,7 +4921,7 @@ function updatePartitionWorkHeading(titleElement, systemType) {
     if (iconAsset) {
       titleIcon.src = iconAsset;
     }
-    titleIcon.alt = normalizedSystemType === "KAN" ? "KAN partition icon asset" : "";
+    titleIcon.alt = normalizedSystemType === "KAN" ? "KAN partition icon" : "";
     titleIcon.dataset.systemType = normalizedSystemType;
   }
 }
