@@ -20,7 +20,7 @@ const SYSTEM_LAYOUT_ASSETS = {
   TRA: "Icons/TRA%20icon.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
-  KAN: "Icons/KAN%20icon.svg",
+  KAN: "src/assets/kan-partition-icon.svg",
 };
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
