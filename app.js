@@ -2435,7 +2435,8 @@ function setSnapshotPreview(state, payload) {
 }
 
 function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = "", data = null }) {
-  if (!data || !previewImageUrl) {
+  const baseImageUrl = previewImageUrl || fallbackImageUrl;
+  if (!data || !baseImageUrl) {
     return `
       <article class="snapshot-preview-card">
         <img src="${fallbackImageUrl}" alt="Session snapshot preview" class="snapshot-preview-image">
@@ -2447,7 +2448,7 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
   return `
     <article class="snapshot-preview-card">
       <div class="snapshot-preview-media">
-        <img src="${escapeHtml(previewImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
+        <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
       </div>
       <div class="snapshot-preview-overlay">
         <div class="snapshot-preview-badge-row">
