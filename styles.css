@@ -1448,6 +1448,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     0 0 0 1px rgba(148, 209, 89, 0.14);
 }
 
+.snapshot-generate-button,
+.snapshot-share-button {
+  width: 220px;
+  max-width: 100%;
+}
+
 .snapshot-generate-button {
   min-height: 46px;
   padding: 11px 18px;
