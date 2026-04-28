@@ -19,6 +19,9 @@ const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
 };
+const PARTITION_HEADER_ICON_ASSETS = {
+  KAN: "Icons/KAN%20icon.svg",
+};
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
   { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
@@ -4824,8 +4827,11 @@ function updatePartitionWorkHeading(titleElement, systemType) {
     titleElement.textContent = getPartitionChartTitle(normalizedSystemType);
   }
 
-  if (titleIcon && SYSTEM_LAYOUT_ASSETS[normalizedSystemType]) {
-    titleIcon.src = SYSTEM_LAYOUT_ASSETS[normalizedSystemType];
+  if (titleIcon) {
+    const iconAsset = PARTITION_HEADER_ICON_ASSETS[normalizedSystemType] || SYSTEM_LAYOUT_ASSETS[normalizedSystemType] || "";
+    if (iconAsset) {
+      titleIcon.src = iconAsset;
+    }
     titleIcon.dataset.systemType = normalizedSystemType;
   }
 }
