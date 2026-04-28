@@ -375,7 +375,8 @@ body.theme-dark .topbar-nav a.is-active {
 
 #session-success-summary + .form-actions,
 #detail-save-message + .form-actions {
-  margin-top: 24px;
+  margin-top: 32px;
+  margin-bottom: 32px;
 }
 
 .overall-rate-card {
