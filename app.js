@@ -4767,7 +4767,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
 
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
   const isUnselected = normalizedStatus === "unselected";
-  const allowFullEditing = normalizedStatus === "soaking";
+  const allowFullEditing = normalizedStatus === "soaking" || isUnselected;
   const allowGerminationOnlyEditing = normalizedStatus === "germinating";
   const isCompleted = normalizedStatus === "completed";
   const allowAnyEditing = allowFullEditing || allowGerminationOnlyEditing;
