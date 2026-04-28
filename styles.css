@@ -95,6 +95,32 @@ textarea {
   margin: 0;
 }
 
+.app-logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+}
+
+.app-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: min(100%, 260px);
+  object-fit: contain;
+}
+
+.app-logo--dark {
+  display: none;
+}
+
+body.theme-dark .app-logo--light {
+  display: none;
+}
+
+body.theme-dark .app-logo--dark {
+  display: block;
+}
+
 .topbar-nav {
   display: flex;
   gap: 10px;
@@ -1576,6 +1602,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-hero-section {
   border: none;
+  border-top: 4px solid #94d159;
   background:
     linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(221, 240, 205, 0.04) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.06), rgba(43, 111, 65, 0.02) 58%);
@@ -3273,15 +3300,15 @@ input::placeholder {
 
 .recent-sessions-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .recent-session-card {
   position: relative;
   display: grid;
   gap: 12px;
-  padding: 16px 18px;
+  padding: 16px 22px;
   border-radius: 16px;
   background: var(--surface-strong);
   border: 1px solid var(--line);
@@ -3314,7 +3341,7 @@ input::placeholder {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding-right: 6px;
+  padding-right: 10px;
 }
 
 .recent-session-top strong {
