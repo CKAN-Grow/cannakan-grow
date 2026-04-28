@@ -5213,7 +5213,7 @@ function renderSessionsList() {
     compact: false,
   });
 
-  renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 3), sessions, {
+  renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 2), sessions, {
     emptyMessage: "No completed sessions yet.",
   });
 
