@@ -2931,7 +2931,7 @@ input::placeholder {
 
 .partition-work-heading {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   justify-items: start;
 }
 
@@ -2942,7 +2942,7 @@ input::placeholder {
 }
 
 .partition-product-icon {
-  width: 92px;
+  width: 104px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
