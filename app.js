@@ -4056,7 +4056,7 @@ function renderSessionForm() {
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
   if (partitionWorkTitle) {
-    partitionWorkTitle.textContent = getPartitionChartTitle(systemTypeField.value);
+    updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
   }
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
@@ -4176,7 +4176,7 @@ function renderSessionForm() {
     systemTypeField.addEventListener("change", () => {
       renderSystemLayoutReference(layoutReference, systemTypeField.value);
       if (partitionWorkTitle) {
-        partitionWorkTitle.textContent = getPartitionChartTitle(systemTypeField.value);
+        updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
       }
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
@@ -4694,6 +4694,27 @@ function getPartitionChartTitle(systemType) {
   return systemType === "TRA" ? "TRā™ Partition Chart" : "KAN® Partition Chart";
 }
 
+function updatePartitionWorkHeading(titleElement, systemType) {
+  if (!titleElement) {
+    return;
+  }
+
+  const normalizedSystemType = systemType === "TRA" ? "TRA" : "KAN";
+  const titleText = titleElement.querySelector("[data-partition-title-text]");
+  const titleIcon = titleElement.querySelector("[data-partition-title-icon]");
+
+  if (titleText) {
+    titleText.textContent = getPartitionChartTitle(normalizedSystemType);
+  } else {
+    titleElement.textContent = getPartitionChartTitle(normalizedSystemType);
+  }
+
+  if (titleIcon && SYSTEM_LAYOUT_ASSETS[normalizedSystemType]) {
+    titleIcon.src = SYSTEM_LAYOUT_ASSETS[normalizedSystemType];
+    titleIcon.dataset.systemType = normalizedSystemType;
+  }
+}
+
 function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   if (!stageField) {
     return false;
@@ -4911,7 +4932,7 @@ function renderSessionDetail(sessionId) {
 
   renderSystemLayoutReference(layoutReference, session.systemType);
   if (detailPartitionWorkTitle) {
-    detailPartitionWorkTitle.textContent = getPartitionChartTitle(session.systemType);
+    updatePartitionWorkHeading(detailPartitionWorkTitle, session.systemType);
   }
   detailStatusField.value = session.sessionStatus || "soaking";
   syncSessionStatusControlDatasets(detailStatusField, {
