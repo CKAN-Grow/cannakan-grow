@@ -1325,23 +1325,36 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-top: 1px solid rgba(24, 34, 24, 0.1);
 }
 
-.snapshot-gallery-link {
+.snapshot-gallery-icon {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  justify-self: start;
-  border-color: rgba(148, 209, 89, 0.42);
-  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.08);
+  justify-content: center;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(24, 34, 24, 0.04);
+  color: #94d159;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
-.snapshot-gallery-link svg {
-  width: 16px;
-  height: 16px;
+.snapshot-gallery-icon svg {
+  width: 22px;
+  height: 22px;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: 1.85;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
+}
+
+.snapshot-gallery-link {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  border-color: rgba(148, 209, 89, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 .snapshot-gallery-link:hover,
@@ -1451,6 +1464,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-generate-button,
 .snapshot-share-button {
   width: 220px;
+  flex: 0 0 220px;
   max-width: 100%;
 }
 
@@ -3780,6 +3794,15 @@ body.theme-dark .snapshot-gallery-link {
   color: #f6f8f5;
   background: rgba(30, 34, 31, 0.92);
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .snapshot-gallery-icon {
+  border-color: rgba(148, 209, 89, 0.2);
+  background: rgba(30, 34, 31, 0.92);
+  color: #94d159;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
 body.theme-dark .snapshot-gallery-link:hover,
