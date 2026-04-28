@@ -20,7 +20,10 @@ const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
 };
-const KAN_PARTITION_HEADER_ICON_ASSET = "src/assets/kan-partition-icon.png?v=20260428-083821";
+const PARTITION_HEADER_ICON_ASSETS = {
+  KAN: "src/assets/kan-partition-icon-v2.png",
+  TRA: "src/assets/tra-partition-icon.png",
+};
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
   { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
@@ -4915,13 +4918,11 @@ function updatePartitionWorkHeading(titleElement, systemType) {
   }
 
   if (titleIcon) {
-    const iconAsset = normalizedSystemType === "KAN"
-      ? KAN_PARTITION_HEADER_ICON_ASSET
-      : SYSTEM_LAYOUT_ASSETS[normalizedSystemType] || "";
+    const iconAsset = PARTITION_HEADER_ICON_ASSETS[normalizedSystemType] || "";
     if (iconAsset) {
       titleIcon.src = iconAsset;
     }
-    titleIcon.alt = normalizedSystemType === "KAN" ? "KAN partition icon" : "";
+    titleIcon.alt = normalizedSystemType === "TRA" ? "TRA partition icon" : "KAN partition icon";
     titleIcon.dataset.systemType = normalizedSystemType;
   }
 }
