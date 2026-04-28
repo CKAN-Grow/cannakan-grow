@@ -1902,13 +1902,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   left: 5%;
   right: 5%;
-  bottom: 5%;
+  bottom: 3.6%;
   display: grid;
   grid-template-rows: auto 1fr auto;
   align-items: stretch;
-  gap: 14px;
-  min-height: 31%;
-  padding: 18px 18px 16px;
+  gap: 10px;
+  min-height: 24%;
+  padding: 14px 18px 12px;
   border-radius: 22px;
   background: rgba(15, 19, 14, 0.94);
   border: 1px solid rgba(148, 209, 89, 0.34);
@@ -1922,16 +1922,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-content {
   display: grid;
-  grid-template-columns: 0.88fr 1.12fr;
+  grid-template-columns: 0.9fr 1.1fr;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
 .snapshot-stat-block {
   display: grid;
   align-content: start;
-  gap: 10px;
-  transform: translateY(12px);
+  gap: 7px;
+  transform: translateY(10px);
 }
 
 .snapshot-preview-percentage {
@@ -1951,19 +1951,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-label {
   color: #f6f8f5;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .snapshot-preview-seeds {
   color: #dce9d2;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
 }
 
 .snapshot-preview-footer {
   color: #eef7e6;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
@@ -1974,8 +1974,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-preview-brand {
   display: grid;
   align-items: center;
-  justify-items: center;
+  justify-items: start;
   min-width: 0;
+  padding-right: 12px;
 }
 
 .snapshot-preview-badge {
@@ -1992,13 +1993,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-preview-logo {
-  width: 220px;
-  max-width: 45%;
+  width: 210px;
+  max-width: 100%;
   min-width: 180px;
   height: auto;
   object-fit: contain;
   align-self: center;
-  justify-self: center;
+  justify-self: start;
 }
 
 @media (max-width: 960px) {
@@ -2007,7 +2008,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-overlay {
-    gap: 14px;
+    gap: 10px;
+    min-height: 26%;
   }
 
   .snapshot-preview-content {
@@ -2015,8 +2017,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-logo {
-    width: 200px;
-    max-width: 62%;
+    width: 190px;
+    max-width: 58%;
+    justify-self: center;
   }
 
   .snapshot-source-card {
