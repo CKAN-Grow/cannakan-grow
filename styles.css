@@ -870,19 +870,6 @@ body.theme-dark .spotlight-stat strong {
   opacity: 1;
 }
 
-.section-title-icon--product {
-  padding: 0;
-  overflow: hidden;
-}
-
-.section-title-product-image {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  border-radius: inherit;
-}
-
 .section-title-icon * {
   fill: none;
   stroke: currentColor;
@@ -2949,12 +2936,26 @@ input::placeholder {
 .partition-work-heading {
   display: grid;
   gap: 10px;
+  justify-items: start;
 }
 
 .partition-work-heading h3 {
   margin: 0;
   font-size: clamp(2rem, 4vw, 2.4rem);
   line-height: 1.02;
+}
+
+.partition-product-icon {
+  width: 92px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.partition-product-icon-image {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .form-message {
