@@ -72,6 +72,7 @@ const appState = {
   customSelectOpenKey: "",
   sessions: [],
   gallerySnapshots: [],
+  gallerySort: "date",
   theme: "light",
   sessionHistorySort: "date",
   growthStage: null,
@@ -1586,6 +1587,44 @@ function sortGallerySnapshotsNewestFirst(items) {
   return [...(items || [])]
     .filter(Boolean)
     .sort((left, right) => new Date(right.publishedAt || right.createdAt || 0).getTime() - new Date(left.publishedAt || left.createdAt || 0).getTime());
+}
+
+function sortVisibleGallerySnapshots(items, sortBy = "date") {
+  const collator = new Intl.Collator("en", {
+    sensitivity: "base",
+    numeric: true,
+  });
+
+  return [...(items || [])]
+    .filter(Boolean)
+    .sort((left, right) => {
+      switch (sortBy) {
+        case "name-asc":
+          return collator.compare(getGallerySnapshotSortLabel(left), getGallerySnapshotSortLabel(right))
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "name-desc":
+          return collator.compare(getGallerySnapshotSortLabel(right), getGallerySnapshotSortLabel(left))
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "rate":
+          return getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "date":
+        default:
+          return getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left);
+      }
+    });
+}
+
+function getGallerySnapshotSortLabel(snapshot) {
+  return String(snapshot?.title || "").trim();
+}
+
+function getGallerySnapshotSuccessRate(snapshot) {
+  return Math.max(0, Number(snapshot?.successPercent) || 0);
+}
+
+function getGallerySnapshotSortTime(snapshot) {
+  return new Date(snapshot?.publishedAt || snapshot?.createdAt || 0).getTime();
 }
 
 function mapSessionToRecord(session, userId) {
@@ -3885,75 +3924,90 @@ function renderHome() {
 
 function renderGallery() {
   app.replaceChildren(cloneTemplate(templates.gallery));
+  initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
+  const gallerySortControl = document.querySelector("#gallery-sort");
   if (!galleryGrid) {
     return;
   }
 
-  const visibleSnapshots = sortGallerySnapshotsNewestFirst(
-    appState.gallerySnapshots.filter((entry) => (
+  const gallerySnapshots = appState.gallerySnapshots.filter((entry) => (
       entry.status === "approved"
       || (entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(entry.status))
-    )),
-  );
-  if (!visibleSnapshots.length) {
-    galleryGrid.innerHTML = `
-      <div class="empty-state gallery-empty-state">
-        <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
-      </div>
-    `;
-    return;
+    ));
+
+  const renderVisibleGallerySnapshots = () => {
+    galleryGrid.innerHTML = "";
+    const visibleSnapshots = sortVisibleGallerySnapshots(gallerySnapshots, appState.gallerySort);
+    if (!visibleSnapshots.length) {
+      galleryGrid.innerHTML = `
+        <div class="empty-state gallery-empty-state">
+          <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
+        </div>
+      `;
+      return;
+    }
+
+    visibleSnapshots.forEach((snapshot) => {
+      const card = document.createElement("article");
+      card.className = "gallery-card";
+      const isOwner = snapshot.userId === appState.user?.id;
+      const isPending = snapshot.status === "pending_review";
+      const isRejected = snapshot.status === "rejected";
+      const statusBadge = isPending
+        ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
+        : isRejected
+          ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
+          : "";
+      card.innerHTML = `
+        <div class="gallery-card-media">
+          <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+        </div>
+        <div class="gallery-card-body">
+          <div class="gallery-card-top">
+            <div>
+              <strong>${escapeHtml(snapshot.title)}</strong>
+              <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+            </div>
+            <div class="gallery-review-status-stack">
+              ${statusBadge}
+              <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+            </div>
+          </div>
+          <div class="gallery-card-meta">
+            <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
+            <span>${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
+          </div>
+          <div class="gallery-card-actions">
+            ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
+            ${isOwner ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-remove="${escapeHtml(snapshot.id)}">Remove from Gallery</button>` : ""}
+          </div>
+        </div>
+      `;
+      galleryGrid.appendChild(card);
+    });
+
+    galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await unpublishGallerySnapshot(button.dataset.galleryRemove);
+          renderGallery();
+        } catch (error) {
+          window.alert(error.message || "Could not remove this gallery snapshot.");
+        }
+      });
+    });
+  };
+
+  if (gallerySortControl) {
+    gallerySortControl.value = appState.gallerySort || "date";
+    gallerySortControl.addEventListener("change", () => {
+      appState.gallerySort = gallerySortControl.value || "date";
+      renderVisibleGallerySnapshots();
+    });
   }
 
-  visibleSnapshots.forEach((snapshot) => {
-    const card = document.createElement("article");
-    card.className = "gallery-card";
-    const isOwner = snapshot.userId === appState.user?.id;
-    const isPending = snapshot.status === "pending_review";
-    const isRejected = snapshot.status === "rejected";
-    const statusBadge = isPending
-      ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
-      : isRejected
-        ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
-        : "";
-    card.innerHTML = `
-      <div class="gallery-card-media">
-        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
-      </div>
-      <div class="gallery-card-body">
-        <div class="gallery-card-top">
-          <div>
-            <strong>${escapeHtml(snapshot.title)}</strong>
-            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
-          </div>
-          <div class="gallery-review-status-stack">
-            ${statusBadge}
-            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-          </div>
-        </div>
-        <div class="gallery-card-meta">
-          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
-        </div>
-        <div class="gallery-card-actions">
-          ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
-          ${isOwner ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-remove="${escapeHtml(snapshot.id)}">Remove from Gallery</button>` : ""}
-        </div>
-      </div>
-    `;
-    galleryGrid.appendChild(card);
-  });
-
-  galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await unpublishGallerySnapshot(button.dataset.galleryRemove);
-        renderGallery();
-      } catch (error) {
-        window.alert(error.message || "Could not remove this gallery snapshot.");
-      }
-    });
-  });
+  renderVisibleGallerySnapshots();
 }
 
 function renderGalleryReview() {
