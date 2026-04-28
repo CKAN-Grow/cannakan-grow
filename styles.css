@@ -2388,6 +2388,7 @@ body.theme-dark .theme-toggle-button:hover {
   display: grid;
   gap: 8px;
   min-height: 112px;
+  border-top: 4px solid rgba(24, 34, 24, 0.08);
 }
 
 .summary-link-card {
@@ -2465,6 +2466,22 @@ body.theme-dark .theme-toggle-button:hover {
 
 #active-sessions-card.has-soaking-sessions {
   border-top-color: #94d159;
+}
+
+#active-sessions-card {
+  border-top-color: #7fb8ff;
+}
+
+#saved-sessions-card {
+  border-top-color: #d97a4a;
+}
+
+#best-session-card {
+  border-top-color: #94d159;
+}
+
+.overall-rate-card {
+  border-top-color: #8a6748;
 }
 
 .section-heading {
