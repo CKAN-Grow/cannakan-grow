@@ -1333,9 +1333,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-gallery-icon {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1347,10 +1347,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-gallery-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   stroke: currentColor;
-  stroke-width: 1.85;
+  stroke-width: 2.1;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
