@@ -2427,6 +2427,32 @@ body.theme-dark .theme-toggle-button:hover {
   box-shadow: 0 10px 20px rgba(29, 49, 33, 0.06);
 }
 
+.summary-link-card.card-accent,
+.overall-rate-card.card-accent {
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+
+.summary-link-card.card-accent-blue,
+.overall-rate-card.card-accent-blue {
+  border-top-color: #7fb8ff;
+}
+
+.summary-link-card.card-accent-orange,
+.overall-rate-card.card-accent-orange {
+  border-top-color: #d97a4a;
+}
+
+.summary-link-card.card-accent-green,
+.overall-rate-card.card-accent-green {
+  border-top-color: #94d159;
+}
+
+.summary-link-card.card-accent-brown,
+.overall-rate-card.card-accent-brown {
+  border-top-color: #8a6748;
+}
+
 .stat-label {
   color: var(--muted);
   text-transform: uppercase;
