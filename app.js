@@ -15,6 +15,7 @@ const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
 const GROW_GALLERY_BUCKET = "grow-gallery";
+const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
   TRA: "Icons/TRA%20icon.svg",
@@ -600,6 +601,23 @@ function saveSessions(sessions) {
   }
 }
 
+function loadNewSessionNotesDraft() {
+  try {
+    return JSON.parse(localStorage.getItem(NEW_SESSION_NOTES_DRAFT_KEY) || "null");
+  } catch (error) {
+    console.error("Could not load new session notes draft", error);
+    return null;
+  }
+}
+
+function saveNewSessionNotesDraft(draft) {
+  localStorage.setItem(NEW_SESSION_NOTES_DRAFT_KEY, JSON.stringify(draft));
+}
+
+function clearNewSessionNotesDraft() {
+  localStorage.removeItem(NEW_SESSION_NOTES_DRAFT_KEY);
+}
+
 function ensureSampleSessions() {
   if (isSupabaseConfigured()) {
     return;
@@ -1086,6 +1104,23 @@ async function updateCloudSession(session) {
     .from("grow_sessions")
     .update(record)
     .eq("id", session.id)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const savedSession = mapRowToSession(data);
+  saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
+  return savedSession;
+}
+
+async function updateCloudSessionNotes(sessionId, sessionNotes) {
+  const { data, error } = await appState.supabase
+    .from("grow_sessions")
+    .update({ session_notes: String(sessionNotes || "").trim() })
+    .eq("id", sessionId)
     .select()
     .single();
 
@@ -4124,13 +4159,20 @@ function renderSessionForm(initialSystemType = "KAN") {
   const lifecycleSummary = document.querySelector("#session-lifecycle-summary");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
+  const notesField = document.querySelector("#session-notes");
+  const notesSaveButton = document.querySelector("#session-notes-save");
+  const notesMessage = document.querySelector("#session-notes-message");
   const today = new Date();
   const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
+  const notesDraft = loadNewSessionNotesDraft();
   appState.newSessionSystemType = normalizedSystemType;
 
   form.elements.date.value = today.toISOString().slice(0, 10);
   initializeTimeFormatField(form, today.toTimeString().slice(0, 5));
   systemTypeField.value = normalizedSystemType;
+  if (notesField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+    notesField.value = notesDraft.sessionNotes || "";
+  }
   initializeSessionImageState(form, {
     input: imageInput,
     grid: imageGrid,
@@ -4244,6 +4286,41 @@ function renderSessionForm(initialSystemType = "KAN") {
       buildFormLifecycleState(form),
     );
   });
+  const persistNewSessionNoteDraft = () => {
+    if (!notesField) {
+      return false;
+    }
+
+    try {
+      saveNewSessionNotesDraft({
+        systemType: systemTypeField.value,
+        sessionNotes: notesField.value.trim(),
+      });
+      if (notesMessage) {
+        notesMessage.textContent = "Note saved.";
+        notesMessage.classList.remove("is-error");
+      }
+      return true;
+    } catch (error) {
+      console.error("Could not save new session note", error);
+      if (notesMessage) {
+        notesMessage.textContent = "Could not save note.";
+        notesMessage.classList.add("is-error");
+      }
+      return false;
+    }
+  };
+  notesSaveButton?.addEventListener("click", () => {
+    persistNewSessionNoteDraft();
+  });
+  notesField?.addEventListener("input", () => {
+    if (!notesMessage?.textContent) {
+      return;
+    }
+
+    notesMessage.textContent = "";
+    notesMessage.classList.remove("is-error");
+  });
     startSessionTimer(() => {
       updateSessionStatusReminder(
         reminder,
@@ -4292,6 +4369,17 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
     });
     systemTypeField.addEventListener("change", () => {
+      const nextNotesDraft = loadNewSessionNotesDraft();
+      if (notesField) {
+        notesField.value =
+          nextNotesDraft && (nextNotesDraft.systemType || "KAN") === systemTypeField.value
+            ? nextNotesDraft.sessionNotes || ""
+            : "";
+      }
+      if (notesMessage?.textContent) {
+        notesMessage.textContent = "";
+        notesMessage.classList.remove("is-error");
+      }
       renderSystemLayoutReference(layoutReference, systemTypeField.value);
       if (partitionWorkTitle) {
         updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
@@ -4485,6 +4573,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     try {
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
+      clearNewSessionNotesDraft();
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
@@ -4654,7 +4743,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   scope.querySelectorAll('#detail-session-notes, #session-notes').forEach((field) => {
-    field.readOnly = !allowFullEditing;
+    field.readOnly = false;
     field.disabled = false;
   });
 
@@ -5000,6 +5089,8 @@ function renderSessionDetail(sessionId) {
   const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
   const detailReminder = document.querySelector("#detail-session-status-reminder");
   const detailNotesField = document.querySelector("#detail-session-notes");
+  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
+  const detailNotesMessage = document.querySelector("#detail-session-notes-message");
   const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
   const detailSaveButton = document.querySelector("#detail-save-session");
   const detailSaveMessage = document.querySelector("#detail-save-message");
@@ -5295,9 +5386,34 @@ function renderSessionDetail(sessionId) {
   detailSaveShortcutButton?.addEventListener("click", persistDetailSession);
   detailSaveButton?.addEventListener("click", persistDetailSession);
 
-  detailNotesField.addEventListener("change", async () => {
-    session.sessionNotes = detailNotesField.value.trim();
-    await saveSessionUpdate(session);
+  const persistDetailNote = async () => {
+    try {
+      const savedSession = await updateCloudSessionNotes(session.id, detailNotesField.value);
+      Object.assign(session, savedSession);
+      if (detailNotesField) {
+        detailNotesField.value = session.sessionNotes || "";
+      }
+      if (detailNotesMessage) {
+        detailNotesMessage.textContent = "Note saved.";
+        detailNotesMessage.classList.remove("is-error");
+      }
+    } catch (error) {
+      console.error("Failed to save session note", error);
+      if (detailNotesMessage) {
+        detailNotesMessage.textContent = "Could not save note.";
+        detailNotesMessage.classList.add("is-error");
+      }
+    }
+  };
+
+  detailNotesSaveButton?.addEventListener("click", persistDetailNote);
+  detailNotesField.addEventListener("input", () => {
+    if (!detailNotesMessage?.textContent) {
+      return;
+    }
+
+    detailNotesMessage.textContent = "";
+    detailNotesMessage.classList.remove("is-error");
   });
 
   document.querySelector("#delete-session").addEventListener("click", async () => {

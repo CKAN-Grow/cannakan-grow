@@ -1803,6 +1803,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--muted);
 }
 
+.session-notes-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.session-notes-message {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.session-notes-message.is-error {
+  color: #8b383b;
+  font-weight: 700;
+}
+
 .timeline-save-shortcut {
   margin: 18px 0 24px;
 }
@@ -4207,6 +4226,14 @@ body.theme-dark .session-notes-field textarea {
 
 body.theme-dark .session-notes-field textarea::placeholder {
   color: #9aa49c;
+}
+
+body.theme-dark .session-notes-message {
+  color: #b7c0b7;
+}
+
+body.theme-dark .session-notes-message.is-error {
+  color: #ff6b6b;
 }
 
 body.theme-dark .session-status-current-value {

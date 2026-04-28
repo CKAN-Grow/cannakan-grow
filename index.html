@@ -403,6 +403,7 @@
           </section>
           <section class="session-notes-section" aria-labelledby="session-notes-label">
             <label class="session-notes-field" for="session-notes">
+              <p class="eyebrow">Notes</p>
               <span id="session-notes-label" class="section-title-with-icon">
                 <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                   <path d="M7 5.5h7l3 3V18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 18.5v-11A2 2 0 0 1 8 5.5"></path>
@@ -420,6 +421,10 @@
               ></textarea>
             </label>
             <p class="session-notes-help">Notes help you understand results later.</p>
+            <div class="session-notes-actions">
+              <button id="session-notes-save" type="button" class="button button-secondary">Save Note</button>
+              <p id="session-notes-message" class="session-notes-message" aria-live="polite"></p>
+            </div>
           </section>
           <section class="session-images-section" aria-labelledby="session-images-label">
             <div class="session-images-heading">
@@ -698,6 +703,7 @@
         </section>
         <section class="session-notes-section" aria-labelledby="detail-session-notes-label">
           <label class="session-notes-field" for="detail-session-notes">
+            <p class="eyebrow">Notes</p>
             <span id="detail-session-notes-label" class="section-title-with-icon">
               <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                 <path d="M7 5.5h7l3 3V18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 18.5v-11A2 2 0 0 1 8 5.5"></path>
@@ -714,6 +720,10 @@
             ></textarea>
           </label>
           <p class="session-notes-help">Notes help you understand results later.</p>
+          <div class="session-notes-actions">
+            <button id="detail-session-notes-save" type="button" class="button button-secondary">Save Note</button>
+            <p id="detail-session-notes-message" class="session-notes-message" aria-live="polite"></p>
+          </div>
         </section>
         <section class="session-images-section" aria-labelledby="detail-session-images-label">
           <div class="session-images-heading">
