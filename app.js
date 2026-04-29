@@ -1635,6 +1635,16 @@ function sortVisibleGallerySnapshots(items, sortBy = "date") {
         case "name-desc":
           return collator.compare(getGallerySnapshotSortLabel(right), getGallerySnapshotSortLabel(left))
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "grow-member": {
+          const leftHasMember = hasGallerySnapshotGrowMember(left);
+          const rightHasMember = hasGallerySnapshotGrowMember(right);
+          if (leftHasMember !== rightHasMember) {
+            return leftHasMember ? -1 : 1;
+          }
+
+          return collator.compare(getGallerySnapshotGrowMemberLabel(left), getGallerySnapshotGrowMemberLabel(right))
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        }
         case "rate":
           return getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
@@ -1647,6 +1657,18 @@ function sortVisibleGallerySnapshots(items, sortBy = "date") {
 
 function getGallerySnapshotSortLabel(snapshot) {
   return String(snapshot?.title || "").trim();
+}
+
+function getGallerySnapshotGrowMemberLabel(snapshot) {
+  if (!hasGallerySnapshotGrowMember(snapshot)) {
+    return "";
+  }
+
+  return String(snapshot?.profileName || snapshot?.submittedBy || "").trim();
+}
+
+function hasGallerySnapshotGrowMember(snapshot) {
+  return Boolean(String(snapshot?.profileName || snapshot?.submittedBy || "").trim());
 }
 
 function getGallerySnapshotSuccessRate(snapshot) {
