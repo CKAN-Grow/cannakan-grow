@@ -1443,6 +1443,9 @@ function mapRowToGallerySnapshot(row) {
     totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
     submittedBy: String(row.submitted_by || "").trim(),
+    includeProfileInGallery: Boolean(row.include_profile_in_gallery),
+    profileName: String(row.submitted_profile_name || "").trim(),
+    profileImageUrl: String(row.submitted_profile_avatar_url || "").trim(),
     status: String(row.status || (row.is_published ? "approved" : "private")).trim() || "private",
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
@@ -1458,6 +1461,16 @@ function getGallerySnapshotForSession(sessionId) {
   }
 
   return appState.gallerySnapshots.find((entry) => entry.sessionId === sessionId) || null;
+}
+
+function getGallerySnapshotSubmitterLabel(snapshot) {
+  if (!snapshot) {
+    return "Anonymous grower";
+  }
+
+  return snapshot.includeProfileInGallery
+    ? (snapshot.profileName || snapshot.submittedBy || "Submitted by grower")
+    : "Anonymous grower";
 }
 
 function getGalleryPublishErrorMessage(error, fallbackMessage) {
@@ -1484,7 +1497,7 @@ function getGalleryPublishErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
-async function publishSnapshotToGallery(session, snapshotData, blob) {
+async function publishSnapshotToGallery(session, snapshotData, blob, options = {}) {
   if (!appState.supabase || !appState.user) {
     throw new Error("You must be signed in to publish to the Grow Gallery.");
   }
@@ -1495,6 +1508,13 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
 
   const existing = getGallerySnapshotForSession(session.id);
   const upload = await uploadGallerySnapshotBlob(session.id, blob);
+  const includeProfileInGallery = Boolean(options.includeProfileInGallery);
+  const profileName = includeProfileInGallery
+    ? String(appState.profile?.username || appState.user?.email || "").trim()
+    : "";
+  const profileImageUrl = includeProfileInGallery
+    ? String(appState.profile?.avatarUrl || "").trim()
+    : "";
   const payload = {
     user_id: appState.user.id,
     session_id: session.id,
@@ -1504,7 +1524,10 @@ async function publishSnapshotToGallery(session, snapshotData, blob) {
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
     success_percent: Number(snapshotData?.percentage) || 0,
-    submitted_by: String(appState.profile?.username || appState.user?.email || "").trim(),
+    submitted_by: profileName,
+    include_profile_in_gallery: includeProfileInGallery,
+    submitted_profile_name: profileName,
+    submitted_profile_avatar_url: profileImageUrl,
     status: "pending_review",
     is_published: false,
     include_notes: false,
@@ -2186,12 +2209,17 @@ function initializeSnapshotSection(scope, options) {
     getGallerySession: options.getGallerySession || null,
     getSnapshotData: options.getSnapshotData,
     getImageEntries: options.getImageEntries,
+    includeProfileToggle: options.includeProfileToggle || null,
+    includeProfileToggleRow: options.includeProfileToggleRow || null,
     selectedImageKey: "",
     generatedBlob: null,
     generatedUrl: "",
   };
 
   scope.__snapshotState = state;
+  if (state.includeProfileToggle) {
+    state.includeProfileToggle.checked = false;
+  }
   if (state.destinationInputs.length) {
     const hasPublishedEntry = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
     const defaultDestination = hasPublishedEntry ? "social-gallery" : "social";
@@ -2298,6 +2326,14 @@ function syncSnapshotGalleryControls(state) {
   const canPublish = Boolean(state.canPublish && session?.id);
   const currentStatus = String(publishedEntry?.status || "private");
   const destination = getSnapshotDestination(state);
+  const includesGallery = destination === "social-gallery" || destination === "gallery";
+
+  if (state.includeProfileToggleRow) {
+    state.includeProfileToggleRow.hidden = !includesGallery;
+  }
+  if (state.includeProfileToggle && !includesGallery) {
+    state.includeProfileToggle.checked = false;
+  }
 
   if (state.galleryNote) {
     if (!canPublish && destination !== "social") {
@@ -2335,7 +2371,9 @@ async function maybePublishSnapshotFromState(state, result) {
   const session = state.getGallerySession?.();
   const snapshotData = state.getSnapshotData?.();
   try {
-    const published = await publishSnapshotToGallery(session, snapshotData, result.blob);
+    const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
+      includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
+    });
     syncSnapshotGalleryControls(state);
     setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
     return published;
@@ -4281,7 +4319,7 @@ function renderGalleryReview() {
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>${escapeHtml(snapshot.submittedBy || "Submitted by grower")}</span>
+          <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
         </div>
         <div class="gallery-review-actions">
           <button type="button" class="button button-primary" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
@@ -4321,7 +4359,7 @@ function renderGalleryReview() {
         </div>
         <div class="gallery-card-meta">
           <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>${escapeHtml(snapshot.submittedBy || "Submitted by grower")}</span>
+          <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
         </div>
         <div class="gallery-review-actions">
           <button type="button" class="button button-secondary" data-gallery-private="${escapeHtml(snapshot.id)}">Make Private</button>
@@ -4471,6 +4509,8 @@ function renderSessionForm(initialSystemType = "KAN") {
   const shareSnapshotButton = document.querySelector("#share-snapshot");
   const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
+  const snapshotIncludeProfileToggle = document.querySelector("#snapshot-include-profile");
+  const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
   const snapshotDestinationInputs = [...document.querySelectorAll('input[name="snapshot-destination"]')];
   const timingSection = document.querySelector("#session-timing-section");
   const timingSummary = document.querySelector("#session-timing-summary");
@@ -4518,6 +4558,8 @@ function renderSessionForm(initialSystemType = "KAN") {
     resetButton: resetSnapshotButton,
     shareButton: shareSnapshotButton,
     destinationInputs: snapshotDestinationInputs,
+    includeProfileToggle: snapshotIncludeProfileToggle,
+    includeProfileToggleRow: snapshotIncludeProfileToggleRow,
     galleryNote: snapshotGalleryNote,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
@@ -5083,7 +5125,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
 
   const imageInput = scope.querySelector('#session-images-input, #detail-session-images-input');
   if (imageInput) {
-    imageInput.disabled = !allowFullEditing;
+    imageInput.disabled = false;
   }
 
   scope.querySelectorAll(".session-image-remove").forEach((button) => {
@@ -5093,11 +5135,11 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
 
   const imageUpload = scope.querySelector(".session-images-upload");
   if (imageUpload) {
-    imageUpload.classList.toggle("is-disabled", !allowFullEditing);
+    imageUpload.classList.remove("is-disabled");
     const fileUploadControl = imageUpload.querySelector(".file-upload-control");
     if (fileUploadControl) {
-      fileUploadControl.setAttribute("tabindex", allowFullEditing ? "0" : "-1");
-      fileUploadControl.setAttribute("aria-disabled", allowFullEditing ? "false" : "true");
+      fileUploadControl.setAttribute("tabindex", "0");
+      fileUploadControl.setAttribute("aria-disabled", "false");
     }
   }
 }
@@ -5448,6 +5490,8 @@ function renderSessionDetail(sessionId) {
   const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
   const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
+  const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
+  const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
   const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
   const detailChartShell = document.querySelector("#detail-chart-shell");
   const detailChartHeader = document.querySelector("#detail-chart-header");
@@ -5526,6 +5570,8 @@ function renderSessionDetail(sessionId) {
     resetButton: detailResetSnapshotButton,
     shareButton: detailShareSnapshotButton,
     destinationInputs: detailSnapshotDestinationInputs,
+    includeProfileToggle: detailSnapshotIncludeProfileToggle,
+    includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
     galleryNote: detailSnapshotGalleryNote,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,

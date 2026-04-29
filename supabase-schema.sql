@@ -50,6 +50,9 @@ create table if not exists public.grow_gallery_snapshots (
   system_type text not null default 'KAN',
   success_percent integer not null default 0,
   submitted_by text default '',
+  include_profile_in_gallery boolean not null default false,
+  submitted_profile_name text default '',
+  submitted_profile_avatar_url text default '',
   status text not null default 'private',
   is_published boolean not null default true,
   include_notes boolean not null default false,
@@ -79,6 +82,15 @@ alter table public.grow_sessions
 
 alter table public.grow_gallery_snapshots
   add column if not exists submitted_by text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists include_profile_in_gallery boolean not null default false;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists submitted_profile_name text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists submitted_profile_avatar_url text default '';
 
 alter table public.grow_gallery_snapshots
   add column if not exists status text not null default 'private';
