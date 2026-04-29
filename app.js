@@ -73,7 +73,7 @@ const appState = {
   sessions: [],
   gallerySnapshots: [],
   gallerySort: "date",
-  theme: "light",
+  theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   growthStage: null,
   growthStageModalOpen: false,
@@ -460,8 +460,12 @@ function applyTheme(theme, options = {}) {
   const persist = options.persist !== false;
   appState.theme = normalizedTheme;
 
+  document.documentElement.classList.toggle("theme-dark", normalizedTheme === "dark");
+  document.documentElement.dataset.theme = normalizedTheme;
+  document.documentElement.style.colorScheme = normalizedTheme;
   document.body.classList.toggle("theme-dark", normalizedTheme === "dark");
   document.body.dataset.theme = normalizedTheme;
+  document.body.style.colorScheme = normalizedTheme;
 
   if (persist) {
     localStorage.setItem(THEME_KEY, normalizedTheme);

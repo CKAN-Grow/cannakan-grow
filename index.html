@@ -4,11 +4,34 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cannakan Grow</title>
+  <script>
+    (function () {
+      var themeKey = "cannakan-grow-theme";
+      var savedTheme = "dark";
+      try {
+        var storedTheme = localStorage.getItem(themeKey);
+        if (storedTheme === "light" || storedTheme === "dark") {
+          savedTheme = storedTheme;
+        }
+      } catch (error) {}
+      document.documentElement.dataset.theme = savedTheme;
+      document.documentElement.classList.toggle("theme-dark", savedTheme === "dark");
+      document.documentElement.style.colorScheme = savedTheme;
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
 </head>
 <body>
+  <script>
+    (function () {
+      var theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+      document.body.dataset.theme = theme;
+      document.body.classList.toggle("theme-dark", theme === "dark");
+      document.body.style.colorScheme = theme;
+    })();
+  </script>
   <div class="app-shell">
     <header class="topbar">
       <div>
