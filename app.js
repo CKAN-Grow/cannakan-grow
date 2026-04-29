@@ -2736,13 +2736,13 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const frameHeight = size - frameY - frameBottomInset;
   const panelX = frameX + 18;
   const panelWidth = frameWidth - 36;
-  const panelHeight = 186;
+  const panelHeight = 274;
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
-  context.shadowColor = "rgba(0, 0, 0, 0.18)";
-  context.shadowBlur = 14;
-  context.shadowOffsetY = 6;
-  context.fillStyle = "rgba(7, 12, 9, 0.58)";
+  context.shadowColor = "rgba(0, 0, 0, 0.14)";
+  context.shadowBlur = 12;
+  context.shadowOffsetY = 4;
+  context.fillStyle = "rgba(0, 0, 0, 0.30)";
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
   context.fill();
   context.restore();
@@ -2771,18 +2771,18 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const overlayHeight = roomy ? 338 : height;
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 156 : 102);
-  const rateY = percentY + (roomy ? 54 : 26);
-  const seedsY = rateY + (roomy ? 42 : 22);
-  const dividerX = x + (roomy ? width * 0.45 : width * 0.42);
-  const footerDividerY = overlayBottomY - (roomy ? 64 : 30);
-  const footerTextY = overlayBottomY - (roomy ? 28 : 12);
+  const percentY = overlayTopY + (roomy ? 156 : 96);
+  const rateY = percentY + (roomy ? 54 : 24);
+  const seedsY = rateY + (roomy ? 42 : 21);
+  const dividerX = x + (roomy ? width * 0.45 : width * 0.408);
+  const footerDividerY = overlayBottomY - (roomy ? 64 : 38);
+  const footerTextY = overlayBottomY - (roomy ? 28 : 18);
   const metaIconSize = roomy ? 18 : 14;
-  const rightRegionX = dividerX + (roomy ? 48 : 24);
+  const rightRegionX = dividerX + (roomy ? 48 : 20);
   const rightRegionWidth = x + width - inset - rightRegionX;
-  const badgeTopY = overlayTopY + (roomy ? 18 : 12);
+  const badgeTopY = overlayTopY + (roomy ? 18 : 14);
 
-  const percentFontSize = roomy ? 164 : 88;
+  const percentFontSize = roomy ? 164 : 78;
   context.save();
   context.shadowColor = "rgba(148, 209, 89, 0.28)";
   context.shadowBlur = 14;
@@ -2800,11 +2800,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.font = roomy ? "500 25px Arial, sans-serif" : "600 16px Arial, sans-serif";
   context.fillText(`${data.totalPlanted} / ${data.totalSeeds} seeds`, x + inset + metaIconSize + 12, seedsY);
 
-  context.strokeStyle = "rgba(148, 209, 89, 0.35)";
-  context.lineWidth = 1.2;
+  context.strokeStyle = "rgba(148, 209, 89, 0.22)";
+  context.lineWidth = 0.8;
   context.beginPath();
-  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 48));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 42));
+  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 42));
+  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 52));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -2824,21 +2824,23 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.fillStyle = "#f4faef";
   context.fillText(systemPillText, badgeX + 19, badgeY + (roomy ? 26 : 24));
 
-  context.strokeStyle = "rgba(148, 209, 89, 0.42)";
-  context.lineWidth = 1;
+  context.strokeStyle = "rgba(148, 209, 89, 0.26)";
+  context.lineWidth = 0.8;
   context.beginPath();
   context.moveTo(x + inset, footerDividerY);
   context.lineTo(x + width - inset, footerDividerY);
   context.stroke();
 
   if (brandLogo) {
-    const maxLogoWidth = roomy ? 280 : 228;
+    const maxLogoWidth = roomy ? 280 : 340;
     const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 6));
     const logoHeight = logoWidth * (brandLogo.height / brandLogo.width);
-    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 10);
-    const logoY = overlayTopY + (roomy ? 118 : 82);
+    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 44);
+    const logoY = roomy
+      ? overlayTopY + 118
+      : overlayTopY + ((footerDividerY - overlayTopY) - logoHeight) / 2 + 8;
     context.save();
-    context.globalAlpha = roomy ? 0.92 : 0.88;
+    context.globalAlpha = roomy ? 0.92 : 0.96;
     context.drawImage(brandLogo, logoX, logoY, logoWidth, logoHeight);
     context.restore();
   }
