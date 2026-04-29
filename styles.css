@@ -1876,15 +1876,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 33%;
   max-width: 400px;
   min-width: 0;
-  border-radius: 28px;
+  padding: 12px;
+  border-radius: 18px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 20px 48px rgba(24, 34, 24, 0.14);
+  border: none !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
 }
 
 .snapshot-preview-media {
   position: relative;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .snapshot-preview-image {
@@ -1906,15 +1909,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid !important;
   grid-template-columns: 1fr auto 1fr !important;
   align-items: center !important;
-  gap: 12px !important;
-  height: 34% !important;
+  gap: 10px !important;
+  height: 28% !important;
   min-height: 0 !important;
   padding: 12px 16px !important;
-  padding-top: 20px !important;
+  padding-top: 18px !important;
   border-radius: 0 0 28px 28px;
-  background: rgba(15, 19, 14, 0.94);
-  border-top: 1px solid rgba(148, 209, 89, 0.22);
-  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  border: 0;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -1934,7 +1937,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-preview-left {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   justify-content: center;
   align-items: flex-start;
   transform: translateY(4px);
@@ -1952,14 +1955,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-preview-right {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
   min-width: 0;
+  padding-top: 8px;
 }
 
 .snapshot-preview-percent {
   display: block;
   margin: 0;
-  font-size: clamp(3rem, 8vw, 4.35rem);
+  font-size: clamp(2.45rem, 6.6vw, 3.5rem);
   line-height: 0.9;
   color: #94d159;
   text-shadow: 0 0 18px rgba(148, 209, 89, 0.2);
@@ -2013,7 +2017,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   max-width: 96%;
   height: auto;
   object-fit: contain;
-  transform: translateY(-4px) !important;
+  transform: translate(-8px, 8px) !important;
 }
 
 @media (max-width: 960px) {
@@ -2022,10 +2026,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-card .snapshot-preview-overlay {
-    height: 34% !important;
+    height: 29% !important;
     min-height: 140px;
     padding: 12px 15px !important;
-    padding-top: 19px !important;
+    padding-top: 18px !important;
   }
 
   .snapshot-preview-left {
@@ -2033,9 +2037,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-logo {
-    width: 208px !important;
+    width: 196px !important;
     max-width: 88%;
-    transform: translateY(-3px) !important;
+    transform: translate(-6px, 6px) !important;
   }
 
   .snapshot-source-card {
@@ -2072,19 +2076,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-card .snapshot-preview-overlay {
-    height: 35% !important;
+    height: 30% !important;
     min-height: 136px;
     padding: 11px 13px !important;
-    padding-top: 18px !important;
-    gap: 10px !important;
+    padding-top: 17px !important;
+    gap: 8px !important;
   }
 
   .snapshot-preview-percent {
-    font-size: clamp(2.8rem, 16vw, 4rem);
+    font-size: clamp(2.2rem, 13vw, 3.2rem);
   }
 
   .snapshot-preview-logo {
-    width: 184px !important;
+    width: 174px !important;
     max-width: 86%;
   }
 
@@ -4410,9 +4414,9 @@ body.theme-dark .share-snapshot-section .snapshot-source-placeholder {
 }
 
 body.theme-dark .share-snapshot-section .snapshot-preview-card {
-  background: #252b26;
-  border-color: #343a35;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.22);
+  background: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 body.theme-dark .snapshot-generate-button {
