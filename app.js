@@ -2127,6 +2127,7 @@ function initializeSnapshotSection(scope, options) {
     scope,
     picker: options.picker,
     preview: options.preview,
+    postActions: options.postActions || null,
     message: options.message,
     generateButton: options.generateButton || null,
     downloadButton: options.downloadButton || null,
@@ -2420,6 +2421,9 @@ function setSnapshotPreview(state, payload) {
   if (!payload?.blob) {
     state.preview.hidden = true;
     state.preview.innerHTML = "";
+    if (state.postActions) {
+      state.postActions.hidden = true;
+    }
     state.downloadButton?.setAttribute("disabled", "disabled");
     state.resetButton?.setAttribute("disabled", "disabled");
     state.shareButton?.setAttribute("disabled", "disabled");
@@ -2433,6 +2437,9 @@ function setSnapshotPreview(state, payload) {
     fallbackImageUrl: state.generatedUrl,
     data: payload?.data || null,
   });
+  if (state.postActions) {
+    state.postActions.hidden = false;
+  }
   state.downloadButton?.removeAttribute("disabled");
   state.resetButton?.removeAttribute("disabled");
   state.shareButton?.removeAttribute("disabled");
@@ -4334,6 +4341,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const snapshotPicker = document.querySelector("#snapshot-image-picker");
   const snapshotMessage = document.querySelector("#snapshot-message");
   const snapshotPreview = document.querySelector("#snapshot-preview");
+  const snapshotPostActions = document.querySelector("#snapshot-post-actions");
   const generateSnapshotButton = document.querySelector("#generate-snapshot");
   const downloadSnapshotButton = document.querySelector("#download-snapshot");
   const resetSnapshotButton = document.querySelector("#reset-snapshot");
@@ -4380,6 +4388,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   initializeSnapshotSection(snapshotSection, {
     picker: snapshotPicker,
     preview: snapshotPreview,
+    postActions: snapshotPostActions,
     message: snapshotMessage,
     generateButton: generateSnapshotButton,
     downloadButton: downloadSnapshotButton,
@@ -5309,6 +5318,7 @@ function renderSessionDetail(sessionId) {
   const detailSnapshotPicker = document.querySelector("#detail-snapshot-image-picker");
   const detailSnapshotMessage = document.querySelector("#detail-snapshot-message");
   const detailSnapshotPreview = document.querySelector("#detail-snapshot-preview");
+  const detailSnapshotPostActions = document.querySelector("#detail-snapshot-post-actions");
   const detailGenerateSnapshotButton = document.querySelector("#detail-generate-snapshot");
   const detailDownloadSnapshotButton = document.querySelector("#detail-download-snapshot");
   const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
@@ -5386,6 +5396,7 @@ function renderSessionDetail(sessionId) {
   initializeSnapshotSection(detailSnapshotSection, {
     picker: detailSnapshotPicker,
     preview: detailSnapshotPreview,
+    postActions: detailSnapshotPostActions,
     message: detailSnapshotMessage,
     generateButton: detailGenerateSnapshotButton,
     downloadButton: detailDownloadSnapshotButton,
