@@ -1411,6 +1411,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.35;
 }
 
+.snapshot-profile-toggle-text {
+  display: grid;
+  gap: 4px;
+}
+
+.snapshot-profile-toggle-helper {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
 .snapshot-profile-toggle input:checked + .snapshot-profile-toggle-control {
   background: rgba(148, 209, 89, 0.88);
   border-color: rgba(115, 170, 55, 0.8);
@@ -4501,6 +4512,10 @@ body.theme-dark .snapshot-destination-option input:checked + span {
 
 body.theme-dark .snapshot-profile-toggle {
   color: #f6f8f5;
+}
+
+body.theme-dark .snapshot-profile-toggle-helper {
+  color: #b7c0b7;
 }
 
 body.theme-dark .snapshot-profile-toggle-control {
