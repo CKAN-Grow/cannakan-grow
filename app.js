@@ -2233,6 +2233,7 @@ function initializeSnapshotSection(scope, options) {
     getImageEntries: options.getImageEntries,
     includeProfileToggle: options.includeProfileToggle || null,
     includeProfileToggleRow: options.includeProfileToggleRow || null,
+    includeProfileDividerRow: options.includeProfileDividerRow || null,
     selectedImageKey: "",
     generatedBlob: null,
     generatedUrl: "",
@@ -2360,6 +2361,9 @@ function syncSnapshotGalleryControls(state) {
 
   if (state.includeProfileToggleRow) {
     state.includeProfileToggleRow.hidden = !includesGallery;
+  }
+  if (state.includeProfileDividerRow) {
+    state.includeProfileDividerRow.hidden = !includesGallery;
   }
   if (state.includeProfileToggle && !includesGallery) {
     state.includeProfileToggle.checked = false;
@@ -4685,6 +4689,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
   const snapshotIncludeProfileToggle = document.querySelector("#snapshot-include-profile");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
+  const snapshotIncludeProfileDividerRow = document.querySelector("#snapshot-profile-divider-row");
   const snapshotDestinationInputs = [...document.querySelectorAll('input[name="snapshot-destination"]')];
   const timingSection = document.querySelector("#session-timing-section");
   const timingSummary = document.querySelector("#session-timing-summary");
@@ -4734,6 +4739,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     destinationInputs: snapshotDestinationInputs,
     includeProfileToggle: snapshotIncludeProfileToggle,
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
+    includeProfileDividerRow: snapshotIncludeProfileDividerRow,
     galleryNote: snapshotGalleryNote,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
@@ -5666,6 +5672,7 @@ function renderSessionDetail(sessionId) {
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
   const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
+  const detailSnapshotIncludeProfileDividerRow = document.querySelector("#detail-snapshot-profile-divider-row");
   const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
   const detailChartShell = document.querySelector("#detail-chart-shell");
   const detailChartHeader = document.querySelector("#detail-chart-header");
@@ -5746,6 +5753,7 @@ function renderSessionDetail(sessionId) {
     destinationInputs: detailSnapshotDestinationInputs,
     includeProfileToggle: detailSnapshotIncludeProfileToggle,
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
+    includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
     galleryNote: detailSnapshotGalleryNote,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,
