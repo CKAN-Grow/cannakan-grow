@@ -1956,6 +1956,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   height: auto;
   object-fit: contain;
   background: transparent;
+  border-radius: 16px;
 }
 
 .snapshot-preview-modal::backdrop {
