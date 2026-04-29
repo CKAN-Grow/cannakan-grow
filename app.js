@@ -2785,9 +2785,9 @@ function drawSnapshotBackground(context, size) {
 
 function drawSnapshotHeroImage(context, image, size) {
   const frameX = 40;
-  const frameY = 36;
+  const frameY = 40;
   const frameWidth = size - 80;
-  const frameBottomInset = 28;
+  const frameBottomInset = 40;
   const frameHeight = size - frameY - frameBottomInset;
   const radius = 36;
   drawRoundedRectPath(context, frameX, frameY, frameWidth, frameHeight, radius);
@@ -2801,13 +2801,13 @@ function drawSnapshotHeroImage(context, image, size) {
 
 function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const frameX = 40;
-  const frameY = 36;
+  const frameY = 40;
   const frameWidth = size - 80;
-  const frameBottomInset = 28;
+  const frameBottomInset = 40;
   const frameHeight = size - frameY - frameBottomInset;
   const panelX = frameX + 18;
   const panelWidth = frameWidth - 36;
-  const panelHeight = 238;
+  const panelHeight = 228;
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
