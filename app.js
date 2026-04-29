@@ -1845,6 +1845,28 @@ function initializeSessionImageState(scope, options) {
     });
     state.grid.dataset.dotsBound = "true";
   }
+
+  if (!state.grid.dataset.removeBound) {
+    state.grid.addEventListener("click", async (event) => {
+      const removeButton = event.target instanceof Element
+        ? event.target.closest(".session-image-remove")
+        : null;
+      if (!removeButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const imageKey = removeButton.getAttribute("data-image-key") || "";
+      if (!imageKey) {
+        return;
+      }
+
+      await removeSessionImageEntry(state, imageKey, removeButton);
+    });
+    state.grid.dataset.removeBound = "true";
+  }
 }
 
 function ensureSessionImageDots(scope, grid) {
@@ -1872,6 +1894,15 @@ function normalizeSessionImages(images) {
     previewUrl: image.url || image.previewUrl || "",
     pending: Boolean(image.pending),
   }));
+}
+
+function getSessionImageEntryKey(image, index = 0) {
+  return String(
+    image?.path
+    || image?.previewUrl
+    || image?.url
+    || `${image?.name || image?.filename || "session-image"}-${index}`,
+  );
 }
 
 async function handleSessionImageSelection(state, fileList) {
@@ -1935,13 +1966,14 @@ function renderSessionImageGrid(state) {
   }
 
   allImages.forEach((image, index) => {
+    const imageKey = getSessionImageEntryKey(image, index);
     const card = document.createElement("article");
     card.className = "session-image-card";
     card.innerHTML = `
       <div class="session-image-frame">
         <img src="${escapeHtml(image.previewUrl || image.url || "")}" alt="${escapeHtml(image.name || "Session image")}" class="session-image-thumb">
         ${image.pending ? '<span class="session-image-badge">Pending</span>' : ""}
-        <button type="button" class="session-image-remove" aria-label="Remove image">
+        <button type="button" class="session-image-remove" data-image-key="${escapeHtml(imageKey)}" aria-label="Remove image">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M9 4.5h6M5.5 7h13M9.5 10.5v6M14.5 10.5v6M7.5 7l.7 10.1a2 2 0 0 0 2 1.9h3.6a2 2 0 0 0 2-1.9L16.5 7" />
           </svg>
@@ -1949,37 +1981,51 @@ function renderSessionImageGrid(state) {
       </div>
     `;
 
-    card.querySelector(".session-image-remove")?.addEventListener("click", async () => {
-      clearSessionImageMessage(state);
-      if (image.pending) {
-        URL.revokeObjectURL(image.previewUrl);
-        state.pendingFiles = state.pendingFiles.filter((entry) => entry !== image);
-        renderSessionImageGrid(state);
-        return;
-      }
-
-      if (state.session) {
-        try {
-          await removeSessionImageFromStorage(image);
-          state.images = state.images.filter((entry) => entry !== image);
-          renderSessionImageGrid(state);
-          await state.onImagesChange?.(state.images);
-        } catch (error) {
-          setSessionImageMessage(state, error.message || "Could not remove image.");
-        }
-        return;
-      }
-
-      state.images = state.images.filter((entry) => entry !== image);
-      renderSessionImageGrid(state);
-    });
-
     state.grid.appendChild(card);
   });
 
   state.onRender?.(allImages);
   renderSessionImageDots(state, allImages.length);
   updateSessionImageDotsFromScroll(state);
+}
+
+async function removeSessionImageEntry(state, imageKey, triggerButton = null) {
+  clearSessionImageMessage(state);
+
+  const pendingImage = state.pendingFiles.find((entry, index) => getSessionImageEntryKey(entry, index) === imageKey);
+  if (pendingImage) {
+    URL.revokeObjectURL(pendingImage.previewUrl);
+    state.pendingFiles = state.pendingFiles.filter((entry) => entry !== pendingImage);
+    renderSessionImageGrid(state);
+    return;
+  }
+
+  const persistedImage = state.images.find((entry, index) => getSessionImageEntryKey(entry, index) === imageKey);
+  if (!persistedImage) {
+    return;
+  }
+
+  if (triggerButton) {
+    triggerButton.disabled = true;
+  }
+
+  if (state.session) {
+    try {
+      await removeSessionImageFromStorage(persistedImage);
+      state.images = state.images.filter((entry) => entry !== persistedImage);
+      renderSessionImageGrid(state);
+      await state.onImagesChange?.(state.images);
+    } catch (error) {
+      setSessionImageMessage(state, error.message || "Could not remove image.");
+      if (triggerButton) {
+        triggerButton.disabled = false;
+      }
+    }
+    return;
+  }
+
+  state.images = state.images.filter((entry) => entry !== persistedImage);
+  renderSessionImageGrid(state);
 }
 
 function renderSessionImageDots(state, imageCount) {
