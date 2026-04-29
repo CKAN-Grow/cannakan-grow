@@ -2810,9 +2810,11 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const frameWidth = size - 80;
   const frameBottomInset = 40;
   const frameHeight = size - frameY - frameBottomInset;
-  const panelSideInset = 18;
-  const panelX = frameX + panelSideInset;
-  const panelWidth = frameWidth - panelSideInset * 2;
+  const panelSideInset = 16;
+  const panelLeft = frameX + panelSideInset;
+  const panelRight = frameX + frameWidth - panelSideInset;
+  const panelX = panelLeft;
+  const panelWidth = panelRight - panelLeft;
   const panelHeight = 228;
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
