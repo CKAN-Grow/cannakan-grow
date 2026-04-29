@@ -2808,13 +2808,13 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const frameHeight = size - frameY - frameBottomInset;
   const panelX = frameX + 18;
   const panelWidth = frameWidth - 36;
-  const panelHeight = 272;
+  const panelHeight = 248;
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
   context.shadowBlur = 12;
   context.shadowOffsetY = 4;
-  context.fillStyle = "rgba(6, 14, 9, 0.34)";
+  context.fillStyle = "rgba(4, 10, 7, 0.44)";
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
   context.fill();
   context.restore();
@@ -2843,7 +2843,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const overlayHeight = roomy ? 338 : height;
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 156 : 102);
+  const percentY = overlayTopY + (roomy ? 156 : 112);
   const rateY = percentY + (roomy ? 54 : 25);
   const seedsY = rateY + (roomy ? 42 : 22);
   const dividerX = x + (roomy ? width * 0.45 : width * 0.426);
@@ -2852,7 +2852,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const metaIconSize = roomy ? 18 : 14;
   const rightRegionX = dividerX + (roomy ? 48 : 24);
   const rightRegionWidth = x + width - inset - rightRegionX;
-  const badgeTopY = overlayTopY + (roomy ? 18 : 12);
+  const badgeTopY = overlayTopY + (roomy ? 18 : 20);
 
   const percentFontSize = roomy ? 164 : 86;
   context.save();
@@ -2875,8 +2875,8 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.strokeStyle = "rgba(148, 209, 89, 0.22)";
   context.lineWidth = 0.8;
   context.beginPath();
-  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 46));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 46));
+  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 56));
+  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 38));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -2904,13 +2904,13 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.stroke();
 
   if (brandLogo) {
-    const maxLogoWidth = roomy ? 280 : 332;
-    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 10));
+    const maxLogoWidth = roomy ? 280 : 356;
+    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 6));
     const logoHeight = logoWidth * (brandLogo.height / brandLogo.width);
     const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 18);
     const logoY = roomy
       ? overlayTopY + 118
-      : overlayTopY + ((footerDividerY - overlayTopY) - logoHeight) / 2 - 4;
+      : overlayTopY + ((footerDividerY - overlayTopY) - logoHeight) / 2 + 4;
     context.save();
     context.globalAlpha = roomy ? 0.92 : 0.94;
     context.drawImage(brandLogo, logoX, logoY, logoWidth, logoHeight);
@@ -2918,7 +2918,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   }
 
   const dateText = data.dateLabel;
-  context.font = `600 ${roomy ? 24 : 15}px Arial, sans-serif`;
+  context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const separatorText = " • ";
   const dateWidth = context.measureText(separatorText + dateText).width;
   const sessionNameMaxWidth = width - inset * 2 - dateWidth;
