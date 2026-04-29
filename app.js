@@ -2716,7 +2716,7 @@ function drawSnapshotHeroImage(context, image, size) {
   const frameX = 36;
   const frameY = 36;
   const frameWidth = size - 72;
-  const frameHeight = 736;
+  const frameHeight = size - 72;
   const radius = 36;
   drawRoundedRectPath(context, frameX, frameY, frameWidth, frameHeight, radius);
   context.save();
@@ -2731,7 +2731,7 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   const frameX = 36;
   const frameY = 36;
   const frameWidth = size - 72;
-  const frameHeight = 736;
+  const frameHeight = size - 72;
   const panelX = frameX + 18;
   const panelWidth = frameWidth - 36;
   const panelHeight = 186;
