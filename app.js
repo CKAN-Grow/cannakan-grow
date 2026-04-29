@@ -2424,14 +2424,8 @@ function setSnapshotPreview(state, payload) {
 
   state.generatedUrl = URL.createObjectURL(payload.blob);
   state.preview.hidden = false;
-  console.log("ACTIVE SNAPSHOT PREVIEW SET", {
-    hasBlob: Boolean(payload?.blob),
-    imageUrl: payload?.imageUrl || "",
-    generatedUrl: state.generatedUrl,
-    hasData: Boolean(payload?.data),
-  });
   state.preview.innerHTML = renderSnapshotPreviewMarkup({
-    previewImageUrl: payload?.imageUrl || state.generatedUrl,
+    previewImageUrl: state.generatedUrl,
     fallbackImageUrl: state.generatedUrl,
     data: payload?.data || null,
   });
@@ -2441,49 +2435,13 @@ function setSnapshotPreview(state, payload) {
 }
 
 function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = "", data = null }) {
-  console.log("ACTIVE SNAPSHOT PREVIEW RENDERER HIT", {
-    previewImageUrl,
-    fallbackImageUrl,
-    hasData: Boolean(data),
-  });
   const baseImageUrl = previewImageUrl || fallbackImageUrl;
-  if (!data || !baseImageUrl) {
-    return `
-      <article class="snapshot-preview-card">
-        <div style="position:absolute;z-index:5;top:12px;left:12px;padding:6px 10px;background:#ff2b2b;color:#fff;font:700 14px/1 Arial,sans-serif;border-radius:8px;box-shadow:0 0 0 2px rgba(0,0,0,0.35);">
-          ACTIVE PREVIEW DEBUG
-        </div>
-        <img src="${fallbackImageUrl}" alt="Session snapshot preview" class="snapshot-preview-image">
-      </article>
-    `;
+  if (!baseImageUrl) {
+    return "";
   }
-
-  const seedCountLabel = `${data.totalPlanted} / ${data.totalSeeds} seeds`;
   return `
     <article class="snapshot-preview-card">
-      <div style="position:absolute;z-index:5;top:12px;left:12px;padding:6px 10px;background:#ff2b2b;color:#fff;font:700 14px/1 Arial,sans-serif;border-radius:8px;box-shadow:0 0 0 2px rgba(0,0,0,0.35);">
-        ACTIVE PREVIEW DEBUG
-      </div>
-      <div class="snapshot-preview-media">
-        <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
-      </div>
-      <div class="snapshot-preview-overlay">
-        <div class="snapshot-preview-badge-row">
-          <span class="snapshot-preview-badge">${escapeHtml(data.systemLabel)}</span>
-        </div>
-        <div class="snapshot-preview-content">
-          <div class="snapshot-stat-block">
-            <strong class="snapshot-preview-percentage">${escapeHtml(String(data.percentage))}%</strong>
-            <p class="snapshot-preview-label">Germination Rate</p>
-            <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
-            <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
-          </div>
-          <div class="snapshot-preview-divider" aria-hidden="true"></div>
-          <div class="snapshot-preview-brand">
-            <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
-          </div>
-        </div>
-      </div>
+      <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
     </article>
   `;
 }
@@ -2712,6 +2670,11 @@ function formatSnapshotSystemLabel(systemType) {
 }
 
 async function buildSessionSnapshotBlob(data, imageSource = "") {
+  console.log("ACTIVE CANVAS SNAPSHOT RENDERER HIT", {
+    hasImageSource: Boolean(imageSource),
+    systemLabel: data?.systemLabel || "",
+    percentage: data?.percentage,
+  });
   const canvas = document.createElement("canvas");
   const size = 1080;
   canvas.width = size;
