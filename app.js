@@ -2236,11 +2236,19 @@ function initializeSnapshotSection(scope, options) {
     selectedImageKey: "",
     generatedBlob: null,
     generatedUrl: "",
+    generatedRenderKey: "",
   };
 
   scope.__snapshotState = state;
   if (state.includeProfileToggle) {
     state.includeProfileToggle.checked = false;
+    state.includeProfileToggle.addEventListener("change", async () => {
+      if (!state.generatedBlob) {
+        return;
+      }
+
+      await generateSnapshotPreview(state);
+    });
   }
   if (state.destinationInputs.length) {
     const hasPublishedEntry = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
@@ -2535,6 +2543,7 @@ function setSnapshotPreview(state, payload) {
   }
 
   state.generatedBlob = payload?.blob || null;
+  state.generatedRenderKey = payload?.renderKey || "";
   if (!payload?.blob) {
     state.preview.hidden = true;
     state.preview.innerHTML = "";
@@ -2648,11 +2657,16 @@ async function resetSnapshotState(state) {
 }
 
 async function ensureSnapshotGenerated(state) {
-  if (state.generatedBlob) {
+  const baseData = state.getSnapshotData?.();
+  const data = buildSnapshotGenerationData(state, baseData);
+  const selectedImage = getExistingSnapshotSelection(state);
+  const renderKey = buildSnapshotRenderKey(state, data, selectedImage);
+
+  if (state.generatedBlob && renderKey && renderKey === state.generatedRenderKey) {
     return {
       blob: state.generatedBlob,
-      fileName: buildSnapshotFileName(state.getSnapshotData?.()),
-      summaryText: buildSnapshotShareText(state.getSnapshotData?.()),
+      fileName: buildSnapshotFileName(data),
+      summaryText: buildSnapshotShareText(data),
     };
   }
 
@@ -2663,20 +2677,23 @@ async function generateSnapshotPreview(state) {
   try {
     setSnapshotMessage(state, "");
     state.generateButton?.setAttribute("disabled", "disabled");
-    const data = state.getSnapshotData?.();
-    if (!data) {
+    const baseData = state.getSnapshotData?.();
+    if (!baseData) {
       throw new Error("Snapshot data is not available yet.");
     }
+    const data = buildSnapshotGenerationData(state, baseData);
 
     const selectedImage = await resolveSnapshotImageSelection(state);
     if (selectedImage === undefined) {
       return null;
     }
     const blob = await buildSessionSnapshotBlob(data, selectedImage?.displayUrl || "");
+    const renderKey = buildSnapshotRenderKey(state, data, selectedImage);
     setSnapshotPreview(state, {
       blob,
       data,
       imageUrl: selectedImage?.displayUrl || "",
+      renderKey,
     });
     setSnapshotMessage(state, selectedImage ? "Snapshot ready with your selected image." : "Snapshot ready as a text-only share image.");
     return {
@@ -2698,6 +2715,12 @@ async function resolveSnapshotImageSelection(state) {
   if (!images.length) {
     state.selectedImageKey = "";
     return null;
+  }
+
+  const existingSelection = getExistingSnapshotSelection(state, images);
+  if (existingSelection) {
+    state.selectedImageKey = existingSelection.key;
+    return existingSelection;
   }
 
   if (images.length === 1) {
@@ -2844,6 +2867,67 @@ function buildSnapshotData(source) {
   };
 }
 
+function getSnapshotProfileAttribution(state) {
+  if (!state?.includeProfileToggle?.checked) {
+    return null;
+  }
+
+  const name = String(appState.profile?.username || appState.user?.email || "").trim();
+  if (!name) {
+    return null;
+  }
+
+  return {
+    name,
+    imageUrl: String(appState.profile?.avatarUrl || "").trim(),
+  };
+}
+
+function buildSnapshotGenerationData(state, baseData) {
+  if (!baseData) {
+    return null;
+  }
+
+  return {
+    ...baseData,
+    profileAttribution: getSnapshotProfileAttribution(state),
+  };
+}
+
+function getExistingSnapshotSelection(state, images = getSnapshotImageEntries(state)) {
+  if (!images.length) {
+    return null;
+  }
+
+  if (state?.selectedImageKey) {
+    return images.find((image) => image.key === state.selectedImageKey) || null;
+  }
+
+  if (images.length === 1) {
+    return images[0];
+  }
+
+  return null;
+}
+
+function buildSnapshotRenderKey(state, data, selectedImage) {
+  if (!data) {
+    return "";
+  }
+
+  return JSON.stringify({
+    sessionName: data.sessionName || "",
+    dateLabel: data.dateLabel || "",
+    systemType: data.systemType || "",
+    totalSeeds: Number(data.totalSeeds) || 0,
+    totalPlanted: Number(data.totalPlanted) || 0,
+    percentage: Number(data.percentage) || 0,
+    imageKey: selectedImage?.key || "",
+    profileName: data.profileAttribution?.name || "",
+    profileImageUrl: data.profileAttribution?.imageUrl || "",
+  });
+}
+
 function formatSnapshotSystemLabel(systemType) {
   if (systemType === "TRA") {
     return "TRā™";
@@ -2868,13 +2952,14 @@ async function buildSessionSnapshotBlob(data, imageSource = "") {
   context.clip();
   drawSnapshotBackground(context, size);
   const brandLogo = await loadSnapshotBrandLogo();
+  const profileAvatar = await loadSnapshotProfileAvatar(data?.profileAttribution?.imageUrl || "");
 
   if (imageSource) {
     const image = await loadSnapshotImage(imageSource);
     drawSnapshotHeroImage(context, image, size);
-    drawSnapshotImageFooter(context, size, data, brandLogo);
+    drawSnapshotImageFooter(context, size, data, brandLogo, profileAvatar);
   } else {
-    drawSnapshotTextLayout(context, size, data, brandLogo);
+    drawSnapshotTextLayout(context, size, data, brandLogo, profileAvatar);
   }
   context.restore();
 
@@ -2910,7 +2995,7 @@ function drawSnapshotHeroImage(context, image, size) {
   context.restore();
 }
 
-function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
+function drawSnapshotImageFooter(context, size, data, brandLogo = null, profileAvatar = null) {
   const frameX = 40;
   const frameY = 40;
   const frameWidth = size - 80;
@@ -2932,10 +3017,10 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   context.fill();
   context.restore();
 
-  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, false, brandLogo);
+  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, false, brandLogo, profileAvatar);
 }
 
-function drawSnapshotTextLayout(context, size, data, brandLogo = null) {
+function drawSnapshotTextLayout(context, size, data, brandLogo = null, profileAvatar = null) {
   const panelX = 40;
   const panelY = 40;
   const panelWidth = size - 80;
@@ -2948,10 +3033,10 @@ function drawSnapshotTextLayout(context, size, data, brandLogo = null) {
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 42);
   context.stroke();
 
-  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, true, brandLogo);
+  drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, true, brandLogo, profileAvatar);
 }
 
-function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null) {
+function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null, profileAvatar = null) {
   const inset = roomy ? 80 : 36;
   const overlayHeight = roomy ? 338 : height;
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
@@ -3034,10 +3119,22 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   }
 
   const dateText = data.dateLabel;
+  const profileName = String(data?.profileAttribution?.name || "").trim();
+  const showProfileAttribution = Boolean(profileName);
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const separatorText = " • ";
   const dateWidth = context.measureText(separatorText + dateText).width;
-  const sessionNameMaxWidth = width - inset * 2 - dateWidth;
+  let profileAttributionWidth = 0;
+  const profileAvatarSize = roomy ? 26 : 20;
+  const profileGap = roomy ? 10 : 8;
+  let profileText = "";
+  if (showProfileAttribution) {
+    context.font = `600 ${roomy ? 18 : 15}px Arial, sans-serif`;
+    profileText = truncateTextToWidth(context, profileName, width * (roomy ? 0.2 : 0.24));
+    profileAttributionWidth = profileAvatarSize + profileGap + context.measureText(profileText).width + (roomy ? 18 : 14);
+  }
+  context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
+  const sessionNameMaxWidth = Math.max(120, width - inset * 2 - dateWidth - profileAttributionWidth);
   const sessionNameText = truncateTextToWidth(context, data.sessionName, sessionNameMaxWidth);
 
   context.fillStyle = "#eef7e6";
@@ -3046,6 +3143,16 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const sessionNameWidth = context.measureText(sessionNameText).width;
   context.fillStyle = "#94d159";
   context.fillText(separatorText + dateText, x + inset + sessionNameWidth, footerTextY);
+
+  if (showProfileAttribution) {
+    context.font = `600 ${roomy ? 18 : 15}px Arial, sans-serif`;
+    const profileTextWidth = context.measureText(profileText).width;
+    const attributionX = x + width - inset - profileAvatarSize - profileGap - profileTextWidth;
+    const avatarY = footerTextY - profileAvatarSize + (roomy ? 2 : 1);
+    drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
+    context.fillStyle = "#dce9d2";
+    context.fillText(profileText, attributionX + profileAvatarSize + profileGap, footerTextY);
+  }
 }
 
 async function loadSnapshotBrandLogo() {
@@ -3054,6 +3161,51 @@ async function loadSnapshotBrandLogo() {
   } catch {
     return null;
   }
+}
+
+async function loadSnapshotProfileAvatar(source) {
+  if (!source) {
+    return null;
+  }
+
+  try {
+    return await loadSnapshotImage(source);
+  } catch {
+    return null;
+  }
+}
+
+function drawSnapshotProfileAvatar(context, image, name, x, y, size, roomy = false) {
+  context.save();
+  context.beginPath();
+  context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+  context.closePath();
+  context.clip();
+
+  if (image) {
+    drawImageCover(context, image, x, y, size, size);
+  } else {
+    context.fillStyle = "rgba(148, 209, 89, 0.92)";
+    context.fillRect(x, y, size, size);
+    context.fillStyle = "#182218";
+    context.font = `700 ${roomy ? 12 : 10}px Arial, sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    const initials = String(name || "G").trim().charAt(0).toUpperCase() || "G";
+    context.fillText(initials, x + size / 2, y + size / 2 + 0.5);
+    context.textAlign = "start";
+    context.textBaseline = "alphabetic";
+  }
+
+  context.restore();
+
+  context.save();
+  context.strokeStyle = "rgba(255, 255, 255, 0.22)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.arc(x + size / 2, y + size / 2, size / 2 - 0.5, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
 }
 
 function drawSproutIcon(context, x, y, size, color) {
