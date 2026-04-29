@@ -5087,8 +5087,8 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   }
 
   scope.querySelectorAll(".session-image-remove").forEach((button) => {
-    button.disabled = !allowFullEditing;
-    button.hidden = !allowFullEditing;
+    button.disabled = false;
+    button.hidden = false;
   });
 
   const imageUpload = scope.querySelector(".session-images-upload");
