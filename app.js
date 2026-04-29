@@ -2464,17 +2464,16 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
         <div class="snapshot-preview-badge-row">
           <span class="snapshot-preview-badge">${escapeHtml(data.systemLabel)}</span>
         </div>
-        <div class="snapshot-preview-content">
-          <div class="snapshot-stat-block">
-            <strong class="snapshot-preview-percentage">${escapeHtml(String(data.percentage))}%</strong>
-            <p class="snapshot-preview-label">Germination Rate</p>
-            <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
-          </div>
-          <div class="snapshot-preview-logo-wrap">
-            <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
-          </div>
+        <div class="snapshot-preview-left">
+          <div class="snapshot-preview-percent">${escapeHtml(String(data.percentage))}%</div>
+          <div class="snapshot-preview-label">Germination Rate</div>
+          <div class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</div>
         </div>
-        <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
+        <div class="snapshot-preview-divider" aria-hidden="true"></div>
+        <div class="snapshot-preview-right">
+          <img src="src/assets/Cannakan_GROW_darkmode.png" class="snapshot-preview-logo" alt="Cannakan Grow">
+        </div>
+        <div class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></div>
       </div>
     </article>
   `;
