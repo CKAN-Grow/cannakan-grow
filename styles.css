@@ -1365,9 +1365,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-gallery-actions {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   width: 100%;
-  padding: 20px 22px 22px;
+  padding: 18px 20px 20px;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(249, 252, 247, 0.9) 0%, rgba(243, 248, 240, 0.72) 100%);
@@ -1376,11 +1376,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-top: 1px solid rgba(24, 34, 24, 0.1);
 }
 
+.snapshot-gallery-eyebrow {
+  margin: 0;
+}
+
 .snapshot-gallery-visit-group {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  column-gap: 16px;
+  row-gap: 0;
   width: 100%;
 }
 
@@ -1400,35 +1405,28 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-gallery-copy {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: start;
   min-width: 0;
 }
 
-.snapshot-gallery-label,
 .snapshot-gallery-title,
 .snapshot-gallery-description {
   margin: 0;
 }
 
-.snapshot-gallery-label {
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 .snapshot-gallery-title {
-  font-size: 1.5rem;
-  line-height: 1.08;
+  font-size: 1.08rem;
+  line-height: 1.2;
+  font-weight: 700;
   color: var(--ink);
 }
 
 .snapshot-gallery-description {
-  max-width: 32ch;
+  max-width: 38ch;
   color: var(--muted);
   line-height: 1.45;
+  font-size: 0.92rem;
 }
 
 .snapshot-gallery-button-row {
@@ -1436,7 +1434,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .snapshot-gallery-icon svg {
@@ -4460,7 +4458,7 @@ body.theme-dark .snapshot-gallery-link:focus-visible {
   background: rgba(148, 209, 89, 0.08);
 }
 
-body.theme-dark .snapshot-gallery-label,
+body.theme-dark .snapshot-gallery-eyebrow,
 body.theme-dark .snapshot-gallery-description {
   color: #8f9a91;
 }
