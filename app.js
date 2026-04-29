@@ -2429,7 +2429,7 @@ function setSnapshotPreview(state, payload) {
   state.generatedUrl = URL.createObjectURL(payload.blob);
   state.preview.hidden = false;
   state.preview.innerHTML = renderSnapshotPreviewMarkup({
-    previewImageUrl: payload?.imageUrl || state.generatedUrl,
+    previewImageUrl: state.generatedUrl,
     fallbackImageUrl: state.generatedUrl,
     data: payload?.data || null,
   });
@@ -2443,37 +2443,10 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
   if (!baseImageUrl) {
     return "";
   }
-
-  if (!data) {
-    return `
-      <article class="snapshot-preview-card">
-        <div class="snapshot-preview-media">
-          <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
-        </div>
-      </article>
-    `;
-  }
-
-  const seedCountLabel = `${data.totalPlanted} / ${data.totalSeeds} seeds`;
   return `
     <article class="snapshot-preview-card">
       <div class="snapshot-preview-media">
         <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
-      </div>
-      <div class="snapshot-preview-overlay">
-        <div class="snapshot-preview-badge-row">
-          <span class="snapshot-preview-badge">${escapeHtml(data.systemLabel)}</span>
-        </div>
-        <div class="snapshot-preview-left">
-          <div class="snapshot-preview-percent">${escapeHtml(String(data.percentage))}%</div>
-          <div class="snapshot-preview-label">Germination Rate</div>
-          <div class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</div>
-        </div>
-        <div class="snapshot-preview-divider" aria-hidden="true"></div>
-        <div class="snapshot-preview-right">
-          <img src="src/assets/Cannakan_GROW_darkmode.png" class="snapshot-preview-logo" alt="Cannakan Grow">
-        </div>
-        <div class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></div>
       </div>
     </article>
   `;
@@ -2755,23 +2728,22 @@ function drawSnapshotHeroImage(context, image, size) {
 }
 
 function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
-  const panelX = 40;
-  const panelWidth = size - 80;
-  const panelHeight = 208;
-  const panelY = size - panelHeight - 40;
+  const frameX = 36;
+  const frameY = 36;
+  const frameWidth = size - 72;
+  const frameHeight = 736;
+  const panelX = frameX + 18;
+  const panelWidth = frameWidth - 36;
+  const panelHeight = 186;
+  const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
-  context.shadowColor = "rgba(12, 18, 10, 0.18)";
-  context.shadowBlur = 18;
-  context.shadowOffsetY = 10;
-  context.fillStyle = "#0f130e";
+  context.shadowColor = "rgba(0, 0, 0, 0.18)";
+  context.shadowBlur = 14;
+  context.shadowOffsetY = 6;
+  context.fillStyle = "rgba(7, 12, 9, 0.58)";
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
   context.fill();
   context.restore();
-
-  context.strokeStyle = "rgba(148, 209, 89, 0.65)";
-  context.lineWidth = 1.1;
-  drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
-  context.stroke();
 
   drawSnapshotPanelContent(context, panelX, panelY, panelWidth, panelHeight, data, false, brandLogo);
 }
@@ -2793,22 +2765,22 @@ function drawSnapshotTextLayout(context, size, data, brandLogo = null) {
 }
 
 function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null) {
-  const inset = roomy ? 80 : 44;
-  const overlayHeight = roomy ? 338 : Math.max(152, height - 20);
+  const inset = roomy ? 80 : 36;
+  const overlayHeight = roomy ? 338 : height;
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 156 : 74);
-  const rateY = percentY + (roomy ? 54 : 28);
-  const seedsY = rateY + (roomy ? 42 : 24);
-  const dividerX = x + (roomy ? width * 0.45 : width * 0.41);
-  const footerDividerY = overlayBottomY - (roomy ? 64 : 36);
-  const footerTextY = overlayBottomY - (roomy ? 28 : 16);
+  const percentY = overlayTopY + (roomy ? 156 : 102);
+  const rateY = percentY + (roomy ? 54 : 26);
+  const seedsY = rateY + (roomy ? 42 : 22);
+  const dividerX = x + (roomy ? width * 0.45 : width * 0.42);
+  const footerDividerY = overlayBottomY - (roomy ? 64 : 30);
+  const footerTextY = overlayBottomY - (roomy ? 28 : 12);
   const metaIconSize = roomy ? 18 : 14;
-  const rightRegionX = dividerX + (roomy ? 48 : 28);
+  const rightRegionX = dividerX + (roomy ? 48 : 24);
   const rightRegionWidth = x + width - inset - rightRegionX;
-  const badgeTopY = overlayTopY + (roomy ? 18 : 18);
+  const badgeTopY = overlayTopY + (roomy ? 18 : 12);
 
-  const percentFontSize = roomy ? 164 : 128;
+  const percentFontSize = roomy ? 164 : 88;
   context.save();
   context.shadowColor = "rgba(148, 209, 89, 0.28)";
   context.shadowBlur = 14;
@@ -2818,19 +2790,19 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.restore();
 
   context.fillStyle = "#ffffff";
-  context.font = roomy ? "500 28px Arial, sans-serif" : "500 23px Arial, sans-serif";
+  context.font = roomy ? "500 28px Arial, sans-serif" : "600 18px Arial, sans-serif";
   context.fillText("Germination Rate", x + inset, rateY);
 
   drawSeedIcon(context, x + inset, seedsY - metaIconSize + 1, metaIconSize, "#94d159");
   context.fillStyle = "#dce9d2";
-  context.font = roomy ? "500 25px Arial, sans-serif" : "500 21px Arial, sans-serif";
+  context.font = roomy ? "500 25px Arial, sans-serif" : "600 16px Arial, sans-serif";
   context.fillText(`${data.totalPlanted} / ${data.totalSeeds} seeds`, x + inset + metaIconSize + 12, seedsY);
 
   context.strokeStyle = "rgba(148, 209, 89, 0.35)";
   context.lineWidth = 1.2;
   context.beginPath();
-  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 10));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 20));
+  context.moveTo(dividerX, overlayTopY + (roomy ? 14 : 48));
+  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 42));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -2858,11 +2830,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.stroke();
 
   if (brandLogo) {
-    const maxLogoWidth = roomy ? 280 : 206;
+    const maxLogoWidth = roomy ? 280 : 228;
     const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 6));
     const logoHeight = logoWidth * (brandLogo.height / brandLogo.width);
-    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 24);
-    const logoY = overlayTopY + (roomy ? 118 : 50);
+    const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 10);
+    const logoY = overlayTopY + (roomy ? 118 : 82);
     context.save();
     context.globalAlpha = roomy ? 0.92 : 0.88;
     context.drawImage(brandLogo, logoX, logoY, logoWidth, logoHeight);
@@ -2870,7 +2842,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   }
 
   const dateText = data.dateLabel;
-  context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
+  context.font = `600 ${roomy ? 24 : 15}px Arial, sans-serif`;
   const separatorText = " • ";
   const dateWidth = context.measureText(separatorText + dateText).width;
   const sessionNameMaxWidth = width - inset * 2 - dateWidth;
