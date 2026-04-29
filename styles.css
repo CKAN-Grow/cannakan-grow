@@ -1947,13 +1947,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
 }
 
+.snapshot-preview-media > img,
 .snapshot-preview-image {
   display: block;
   width: 100%;
+  height: auto;
   max-width: 100%;
   margin: 0;
-  aspect-ratio: 1 / 1;
-  height: auto;
   object-fit: contain;
   background: transparent;
   border-radius: 16px;
