@@ -2465,13 +2465,12 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
             <strong class="snapshot-preview-percentage">${escapeHtml(String(data.percentage))}%</strong>
             <p class="snapshot-preview-label">Germination Rate</p>
             <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
-            <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
           </div>
-          <div class="snapshot-preview-divider" aria-hidden="true"></div>
-          <div class="snapshot-preview-brand">
+          <div class="snapshot-preview-logo-wrap">
             <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
           </div>
         </div>
+        <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
       </div>
     </article>
   `;
