@@ -3156,7 +3156,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
     const profileAscent = profileMetrics.actualBoundingBoxAscent || (roomy ? 30 : 26);
     const profileDescent = profileMetrics.actualBoundingBoxDescent || (roomy ? 8 : 7);
     const profileCenterY = footerTextY - profileDescent - ((profileAscent + profileDescent) / 2) + 1;
-    const avatarY = profileCenterY - (profileAvatarSize / 2) + 4;
+    const avatarY = profileCenterY - (profileAvatarSize / 2) + 20;
     drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
     context.fillStyle = "#dce9d2";
     context.save();
