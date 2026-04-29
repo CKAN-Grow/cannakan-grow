@@ -2425,7 +2425,7 @@ function setSnapshotPreview(state, payload) {
   state.generatedUrl = URL.createObjectURL(payload.blob);
   state.preview.hidden = false;
   state.preview.innerHTML = renderSnapshotPreviewMarkup({
-    previewImageUrl: state.generatedUrl,
+    previewImageUrl: payload?.imageUrl || state.generatedUrl,
     fallbackImageUrl: state.generatedUrl,
     data: payload?.data || null,
   });
@@ -2439,9 +2439,40 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
   if (!baseImageUrl) {
     return "";
   }
+
+  if (!data) {
+    return `
+      <article class="snapshot-preview-card">
+        <div class="snapshot-preview-media">
+          <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
+        </div>
+      </article>
+    `;
+  }
+
+  const seedCountLabel = `${data.totalPlanted} / ${data.totalSeeds} seeds`;
   return `
     <article class="snapshot-preview-card">
-      <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
+      <div class="snapshot-preview-media">
+        <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
+      </div>
+      <div class="snapshot-preview-overlay">
+        <div class="snapshot-preview-badge-row">
+          <span class="snapshot-preview-badge">${escapeHtml(data.systemLabel)}</span>
+        </div>
+        <div class="snapshot-preview-content">
+          <div class="snapshot-stat-block">
+            <strong class="snapshot-preview-percentage">${escapeHtml(String(data.percentage))}%</strong>
+            <p class="snapshot-preview-label">Germination Rate</p>
+            <p class="snapshot-preview-seeds">${escapeHtml(seedCountLabel)}</p>
+            <p class="snapshot-preview-footer">${escapeHtml(data.sessionName)} <span>• ${escapeHtml(data.dateLabel)}</span></p>
+          </div>
+          <div class="snapshot-preview-divider" aria-hidden="true"></div>
+          <div class="snapshot-preview-brand">
+            <img class="snapshot-preview-logo" src="src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
+          </div>
+        </div>
+      </div>
     </article>
   `;
 }
@@ -2670,11 +2701,6 @@ function formatSnapshotSystemLabel(systemType) {
 }
 
 async function buildSessionSnapshotBlob(data, imageSource = "") {
-  console.log("ACTIVE CANVAS SNAPSHOT RENDERER HIT", {
-    hasImageSource: Boolean(imageSource),
-    systemLabel: data?.systemLabel || "",
-    percentage: data?.percentage,
-  });
   const canvas = document.createElement("canvas");
   const size = 1080;
   canvas.width = size;
@@ -2769,12 +2795,6 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const overlayHeight = roomy ? 338 : Math.max(152, height - 20);
   const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  context.save();
-  context.strokeStyle = "#ff2b2b";
-  context.lineWidth = roomy ? 4 : 3;
-  drawRoundedRectPath(context, x, overlayTopY, width, overlayHeight, roomy ? 30 : 24);
-  context.stroke();
-  context.restore();
   const percentY = overlayTopY + (roomy ? 156 : 74);
   const rateY = percentY + (roomy ? 54 : 28);
   const seedsY = rateY + (roomy ? 42 : 24);
