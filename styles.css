@@ -1656,6 +1656,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: block;
   padding: 0;
   margin: 16px 0;
+  justify-content: flex-start;
+  align-items: flex-start;
 }
 
 .gallery-hero-section {
@@ -1925,13 +1927,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-card {
   position: relative;
-  margin: 0 auto;
+  margin: 0;
   width: 100%;
   max-width: 400px;
   min-width: 0;
   padding: 0;
-  border-radius: 0;
-  overflow: visible;
+  border-radius: 16px;
+  overflow: hidden;
   border: none !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -1940,8 +1942,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-preview-media {
   position: relative;
-  border-radius: 0;
-  overflow: visible;
+  border-radius: 16px;
+  overflow: hidden;
   width: 100%;
 }
 
