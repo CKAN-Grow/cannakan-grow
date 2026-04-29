@@ -1367,7 +1367,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 0;
   width: 100%;
-  padding: 18px 20px 20px;
+  padding: 24px 24px 24px;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(249, 252, 247, 0.9) 0%, rgba(243, 248, 240, 0.72) 100%);
@@ -1380,7 +1380,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
   align-items: start;
-  gap: 16px;
+  gap: 22px;
   width: 100%;
 }
 
@@ -1402,11 +1402,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 0;
   align-content: start;
+  justify-items: start;
   min-width: 0;
 }
 
 .snapshot-gallery-eyebrow {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 
 .snapshot-gallery-title,
@@ -1423,7 +1424,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-gallery-description {
   max-width: 38ch;
-  margin-top: 8px;
+  margin-top: 10px;
   color: var(--muted);
   line-height: 1.45;
   font-size: 0.92rem;
@@ -1433,8 +1434,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
 }
 
 .snapshot-gallery-icon svg {
