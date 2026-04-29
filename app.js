@@ -2648,7 +2648,6 @@ function chooseSnapshotImageForState(state, images) {
       <label class="snapshot-modal-thumb ${selectedKey === image.key ? "is-selected" : ""}">
         <input type="radio" name="snapshot-modal-choice" value="${escapeHtml(image.key)}" ${selectedKey === image.key ? "checked" : ""}>
         <img src="${escapeHtml(image.displayUrl)}" alt="${escapeHtml(image.name || "Session image")}">
-        <span>${escapeHtml(image.name || "Session image")}</span>
       </label>
     `).join("");
 
