@@ -1906,6 +1906,41 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(24, 34, 24, 0.04);
 }
 
+.snapshot-preview-modal::backdrop {
+  background: rgba(10, 14, 11, 0.82);
+}
+
+.snapshot-preview-modal {
+  background: transparent;
+}
+
+.snapshot-preview-modal-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.snapshot-preview-modal-image {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+}
+
+.snapshot-preview-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 42px;
+  height: 42px;
+  color: #f3f7f2;
+  background: rgba(10, 14, 11, 0.52);
+  backdrop-filter: blur(8px);
+}
+
 .snapshot-preview-card .snapshot-preview-overlay {
   position: absolute !important;
   left: 12px !important;
@@ -2086,6 +2121,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .snapshot-social-icon--hero {
     width: 84px;
     height: 84px;
+  }
+}
+
+@media (min-width: 768px) {
+  .snapshot-preview-card {
+    cursor: zoom-in;
   }
 }
 

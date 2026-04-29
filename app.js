@@ -2163,6 +2163,17 @@ function initializeSnapshotSection(scope, options) {
     await generateSnapshotPreview(state);
   });
 
+  state.preview.addEventListener("click", (event) => {
+    const previewCard = event.target instanceof Element
+      ? event.target.closest(".snapshot-preview-card")
+      : null;
+    if (!previewCard || !state.generatedUrl || !isDesktopSnapshotPreviewEnabled()) {
+      return;
+    }
+
+    openSnapshotPreviewModal(state.generatedUrl);
+  });
+
   state.downloadButton?.addEventListener("click", async () => {
     const result = await ensureSnapshotGenerated(state);
     if (!result) {
@@ -2451,12 +2462,66 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
     return "";
   }
   return `
-    <article class="snapshot-preview-card">
+    <article class="snapshot-preview-card" aria-label="Generated session snapshot preview">
       <div class="snapshot-preview-media">
         <img src="${escapeHtml(baseImageUrl)}" alt="Session snapshot preview" class="snapshot-preview-image">
       </div>
     </article>
   `;
+}
+
+function isDesktopSnapshotPreviewEnabled() {
+  return window.matchMedia("(min-width: 768px)").matches;
+}
+
+function ensureSnapshotPreviewModal() {
+  let modal = document.querySelector("#snapshot-preview-modal");
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "snapshot-preview-modal";
+  modal.className = "snapshot-modal snapshot-preview-modal";
+  modal.innerHTML = `
+    <div class="snapshot-preview-modal-card" role="document">
+      <button type="button" class="modal-close snapshot-preview-modal-close" aria-label="Close preview">×</button>
+      <img src="" alt="Generated snapshot preview" class="snapshot-preview-modal-image">
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+
+  modal.querySelector(".snapshot-preview-modal-close")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openSnapshotPreviewModal(imageUrl) {
+  if (!imageUrl || !isDesktopSnapshotPreviewEnabled()) {
+    return;
+  }
+
+  const modal = ensureSnapshotPreviewModal();
+  const image = modal.querySelector(".snapshot-preview-modal-image");
+  if (!image) {
+    return;
+  }
+
+  image.src = imageUrl;
+  if (!modal.open) {
+    modal.showModal();
+  }
+  modal.querySelector(".snapshot-preview-modal-close")?.focus();
 }
 
 async function resetSnapshotState(state) {
