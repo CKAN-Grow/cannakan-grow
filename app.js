@@ -2814,7 +2814,7 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null) {
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
   context.shadowBlur = 12;
   context.shadowOffsetY = 4;
-  context.fillStyle = "rgba(4, 10, 7, 0.44)";
+  context.fillStyle = "rgba(0, 0, 0, 0.45)";
   drawRoundedRectPath(context, panelX, panelY, panelWidth, panelHeight, 30);
   context.fill();
   context.restore();
@@ -2847,8 +2847,8 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const rateY = percentY + (roomy ? 54 : 25);
   const seedsY = rateY + (roomy ? 42 : 22);
   const dividerX = x + (roomy ? width * 0.45 : width * 0.426);
-  const footerDividerY = overlayBottomY - (roomy ? 64 : 34);
-  const footerTextY = overlayBottomY - (roomy ? 28 : 14);
+  const footerDividerY = overlayBottomY - (roomy ? 64 : 40);
+  const footerTextY = overlayBottomY - (roomy ? 28 : 20);
   const metaIconSize = roomy ? 18 : 14;
   const rightRegionX = dividerX + (roomy ? 48 : 24);
   const rightRegionWidth = x + width - inset - rightRegionX;
@@ -2904,8 +2904,8 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.stroke();
 
   if (brandLogo) {
-    const maxLogoWidth = roomy ? 280 : 356;
-    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 6));
+    const maxLogoWidth = roomy ? 280 : 388;
+    const logoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 12));
     const logoHeight = logoWidth * (brandLogo.height / brandLogo.width);
     const logoX = rightRegionX + Math.max(0, (rightRegionWidth - logoWidth) / 2) - (roomy ? 12 : 18);
     const logoY = roomy
