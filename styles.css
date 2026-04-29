@@ -1557,6 +1557,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 14px;
 }
 
+.snapshot-preview[hidden],
+.snapshot-post-actions[hidden] {
+  display: none !important;
+}
+
 .snapshot-share-row .button,
 .snapshot-gallery-actions .button {
   min-height: 46px;
