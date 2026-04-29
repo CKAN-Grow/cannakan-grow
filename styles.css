@@ -2345,7 +2345,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-modal-profile-toggle {
-  margin-top: 18px;
+  width: 100%;
+  margin-top: 16px;
+  margin-bottom: 12px;
 }
 
 .snapshot-modal-thumb {
