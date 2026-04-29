@@ -1908,7 +1908,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: stretch !important;
   gap: 8px !important;
   min-height: 142px;
-  padding: 14px 18px 12px !important;
+  padding: 14px 18px !important;
   border-radius: 0 0 28px 28px;
   background: rgba(15, 19, 14, 0.94);
   border-top: 1px solid rgba(148, 209, 89, 0.22);
@@ -1927,6 +1927,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: start;
+  margin-top: 2px;
 }
 
 .snapshot-preview-card .snapshot-preview-overlay > .snapshot-preview-content {
@@ -1935,6 +1936,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center !important;
   gap: 0 !important;
   min-height: 78px;
+  transform: translateY(6px);
 }
 
 .snapshot-preview-card .snapshot-preview-overlay > .snapshot-preview-content > .snapshot-stat-block {
@@ -1954,7 +1956,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 0;
   min-height: 72px;
   padding-left: 18px;
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .snapshot-preview-percentage {
@@ -1992,7 +1994,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #eef7e6;
   font-size: 0.76rem;
   font-weight: 600;
-  margin-top: 2px;
+  margin-top: 0;
+  transform: translateY(2px);
 }
 
 .snapshot-preview-footer span {
@@ -2013,11 +2016,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-preview-logo {
-  width: 220px;
+  width: 240px;
   max-width: 90%;
   height: auto;
   object-fit: contain;
-  transform: translateX(-4px);
+  transform: translateX(-12px);
 }
 
 @media (max-width: 960px) {
@@ -2027,7 +2030,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .snapshot-preview-card .snapshot-preview-overlay {
     min-height: 148px;
-    padding: 14px 16px 12px !important;
+    padding: 13px 16px !important;
   }
 
   .snapshot-preview-card .snapshot-preview-overlay > .snapshot-preview-content > .snapshot-stat-block {
@@ -2039,7 +2042,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-logo {
-    width: 190px;
+    width: 204px;
     max-width: 88%;
     transform: translateX(-4px);
   }
@@ -2079,7 +2082,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .snapshot-preview-card .snapshot-preview-overlay {
     min-height: 144px;
-    padding: 12px 14px 10px !important;
+    padding: 12px 14px !important;
   }
 
   .snapshot-preview-percentage {
@@ -2087,7 +2090,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-preview-logo {
-    width: 180px;
+    width: 188px;
     max-width: 86%;
   }
 
