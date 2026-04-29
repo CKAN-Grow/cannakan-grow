@@ -2344,6 +2344,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 18px;
 }
 
+.snapshot-modal-profile-toggle {
+  margin-top: 18px;
+}
+
 .snapshot-modal-thumb {
   display: grid;
   gap: 8px;
