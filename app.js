@@ -3152,10 +3152,17 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
     context.font = `600 ${roomy ? 42 : 36}px Arial, sans-serif`;
     const profileTextWidth = context.measureText(profileText).width;
     const attributionX = x + width - inset - profileAvatarSize - profileGap - profileTextWidth;
-    const avatarY = footerTextY - profileAvatarSize + (roomy ? 1 : 0);
+    const profileMetrics = context.measureText(profileText);
+    const profileAscent = profileMetrics.actualBoundingBoxAscent || (roomy ? 30 : 26);
+    const profileDescent = profileMetrics.actualBoundingBoxDescent || (roomy ? 8 : 7);
+    const profileCenterY = footerTextY - profileDescent - ((profileAscent + profileDescent) / 2) + 1;
+    const avatarY = profileCenterY - (profileAvatarSize / 2);
     drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
     context.fillStyle = "#dce9d2";
-    context.fillText(profileText, attributionX + profileAvatarSize + profileGap, footerTextY);
+    context.save();
+    context.textBaseline = "middle";
+    context.fillText(profileText, attributionX + profileAvatarSize + profileGap, profileCenterY);
+    context.restore();
   }
 }
 
