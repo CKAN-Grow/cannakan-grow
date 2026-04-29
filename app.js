@@ -2920,7 +2920,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
     const logoX = rightRegionX + Math.max(0, (rightRegionWidth - baseLogoWidth) / 2) - (roomy ? 12 : 18);
     const logoY = roomy
       ? overlayTopY + 118
-      : overlayTopY + ((footerDividerY - overlayTopY) - baseLogoHeight) / 2 - 1;
+      : overlayTopY + ((footerDividerY - overlayTopY) - baseLogoHeight) / 2 + 5;
     context.save();
     context.globalAlpha = roomy ? 0.92 : 0.94;
     context.drawImage(brandLogo, logoX, logoY, logoWidth, logoHeight);
