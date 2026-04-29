@@ -1286,6 +1286,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-gallery-controls {
   display: grid;
   gap: 10px;
+  padding-bottom: 18px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(24, 34, 24, 0.1);
 }
 
 .snapshot-destination-label {
@@ -1367,7 +1370,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  margin: 2px 0 0;
+  margin: 4px 0 6px;
   cursor: pointer;
   color: var(--ink);
 }
@@ -1619,6 +1622,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 12px;
   width: 100%;
   justify-items: start;
+}
+
+.snapshot-actions + .snapshot-message {
+  margin-top: 4px;
 }
 
 .snapshot-actions .button {
