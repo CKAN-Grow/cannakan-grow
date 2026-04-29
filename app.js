@@ -3125,13 +3125,13 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const separatorText = " • ";
   const dateWidth = context.measureText(separatorText + dateText).width;
   let profileAttributionWidth = 0;
-  const profileAvatarSize = roomy ? 26 : 20;
-  const profileGap = roomy ? 10 : 8;
+  const profileAvatarSize = roomy ? 20 : 18;
+  const profileGap = roomy ? 8 : 7;
   let profileText = "";
   if (showProfileAttribution) {
-    context.font = `600 ${roomy ? 18 : 15}px Arial, sans-serif`;
+    context.font = `600 ${roomy ? 16 : 14}px Arial, sans-serif`;
     profileText = truncateTextToWidth(context, profileName, width * (roomy ? 0.2 : 0.24));
-    profileAttributionWidth = profileAvatarSize + profileGap + context.measureText(profileText).width + (roomy ? 18 : 14);
+    profileAttributionWidth = profileAvatarSize + profileGap + context.measureText(profileText).width + (roomy ? 16 : 12);
   }
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const sessionNameMaxWidth = Math.max(120, width - inset * 2 - dateWidth - profileAttributionWidth);
@@ -3145,10 +3145,10 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.fillText(separatorText + dateText, x + inset + sessionNameWidth, footerTextY);
 
   if (showProfileAttribution) {
-    context.font = `600 ${roomy ? 18 : 15}px Arial, sans-serif`;
+    context.font = `600 ${roomy ? 16 : 14}px Arial, sans-serif`;
     const profileTextWidth = context.measureText(profileText).width;
     const attributionX = x + width - inset - profileAvatarSize - profileGap - profileTextWidth;
-    const avatarY = footerTextY - profileAvatarSize + (roomy ? 2 : 1);
+    const avatarY = footerTextY - profileAvatarSize + (roomy ? 1 : 0);
     drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
     context.fillStyle = "#dce9d2";
     context.fillText(profileText, attributionX + profileAvatarSize + profileGap, footerTextY);
