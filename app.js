@@ -2749,6 +2749,7 @@ function formatSnapshotSystemLabel(systemType) {
 async function buildSessionSnapshotBlob(data, imageSource = "") {
   const canvas = document.createElement("canvas");
   const size = 1080;
+  const exportRadius = 42;
   canvas.width = size;
   canvas.height = size;
   const context = canvas.getContext("2d");
@@ -2756,6 +2757,9 @@ async function buildSessionSnapshotBlob(data, imageSource = "") {
     throw new Error("Could not generate the snapshot image.");
   }
 
+  context.save();
+  drawRoundedRectPath(context, 0, 0, size, size, exportRadius);
+  context.clip();
   drawSnapshotBackground(context, size);
   const brandLogo = await loadSnapshotBrandLogo();
 
@@ -2766,6 +2770,7 @@ async function buildSessionSnapshotBlob(data, imageSource = "") {
   } else {
     drawSnapshotTextLayout(context, size, data, brandLogo);
   }
+  context.restore();
 
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
