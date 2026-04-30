@@ -6673,11 +6673,11 @@ function renderGallery(targetSnapshotId = "") {
             </div>
           </div>
           <div class="gallery-card-feed-meta">
-            <div class="gallery-card-feed-row gallery-card-feed-row--primary">
+            <div class="gallery-card-feed-row gallery-card-feed-row--primary gallery-card-stats-row-1">
               <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
               ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
             </div>
-            <div class="gallery-card-feed-row gallery-card-feed-row--secondary">
+            <div class="gallery-card-feed-row gallery-card-feed-row--secondary gallery-card-stats-row-2">
               <div class="gallery-card-pill-pair">
                 <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
                 <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>

@@ -2500,12 +2500,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
 }
 
+.gallery-card-stats-row-1,
+.gallery-card-stats-row-2 {
+  width: 100%;
+}
+
 .gallery-card-feed-row--secondary {
   flex-wrap: nowrap;
 }
 
+.gallery-card-stats-row-2 {
+  justify-content: flex-start;
+  min-width: 0;
+}
+
 .gallery-card-pill-pair {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
