@@ -3435,7 +3435,14 @@ function renderHomeGalleryRankingsTeaser() {
       <div class="home-gallery-rankings-head">
         <div class="section-title-with-icon">
           <span class="gallery-leaderboard-section-icon home-gallery-rankings-title-icon" aria-hidden="true">
-            ${renderGalleryLeaderboardSectionHeadingIcon("month")}
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+              <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
+              <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+              <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
+              <path d="M11.2 18.8c1.2.9 2.7 1.4 4.3 1.4"></path>
+              <path d="M12 5.5c2.8.2 5.1 1.5 6.4 3.7"></path>
+            </svg>
           </span>
           <div>
             <p class="eyebrow">Leaderboard Preview</p>
