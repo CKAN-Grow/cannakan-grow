@@ -1984,6 +1984,22 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     galleryRoute: String(snapshotState.galleryRoute || "").trim(),
   };
 
+  const hasSubmittedStatus = ["pending_review", "approved", "rejected"].includes(normalized.galleryStatus);
+  if (normalized.gallerySnapshotId && !normalized.submittedAt) {
+    normalized.gallerySnapshotId = "";
+    normalized.galleryRoute = "";
+    normalized.imageUrl = "";
+    normalized.imagePath = "";
+    normalized.galleryStatus = normalized.galleryStatus === "social-only" ? "social-only" : "private";
+  }
+  if (!normalized.gallerySnapshotId && hasSubmittedStatus) {
+    normalized.submittedAt = "";
+    normalized.galleryRoute = "";
+    normalized.imageUrl = "";
+    normalized.imagePath = "";
+    normalized.galleryStatus = "private";
+  }
+
   return Object.values(normalized).some(Boolean) ? normalized : null;
 }
 
@@ -2771,6 +2787,7 @@ function renderSnapshotSavedNotice(state) {
 
   const snapshotState = getSnapshotStateForSection(state);
   if (!hasConfirmedGallerySubmissionForState(state)) {
+    state.savedSnapshotText.textContent = "";
     state.savedSnapshotNotice.hidden = true;
     if (state.savedSnapshotLink) {
       state.savedSnapshotLink.hidden = true;
