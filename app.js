@@ -963,6 +963,81 @@ function buildMockGallerySourceBadgeDataUri(sourceName) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
+function buildMockGalleryProfileAvatarDataUri(profileName, sourceName, index = 0) {
+  const palette = getMockGallerySourcePalette(sourceName);
+  const safeName = String(profileName || "").trim();
+  const initials = safeName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment[0].toUpperCase())
+    .join("") || "CG";
+  const accentOpacity = 0.18 + ((index % 3) * 0.06);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Mock grower avatar">
+      <defs>
+        <linearGradient id="avatarBg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="${palette.background}" />
+          <stop offset="100%" stop-color="#101714" />
+        </linearGradient>
+      </defs>
+      <rect width="120" height="120" rx="60" fill="url(#avatarBg)" />
+      <circle cx="92" cy="28" r="20" fill="${palette.accent}" opacity="${accentOpacity}" />
+      <circle cx="26" cy="96" r="24" fill="${palette.accent}" opacity="0.14" />
+      <circle cx="60" cy="60" r="52" fill="none" stroke="${palette.accent}" stroke-width="4" opacity="0.5" />
+      <text x="60" y="70" fill="${palette.text}" text-anchor="middle" font-size="34" font-family="Arial, sans-serif" font-weight="700">${initials}</text>
+    </svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function getMockGallerySharedProfile(index, record) {
+  const mockProfiles = [
+    "Avery Moss",
+    "Jordan Vale",
+    "Riley Stone",
+    "Harper Lane",
+    "Kai Rivers",
+    "Sage Bennett",
+    "Morgan Frost",
+    "Parker Quinn",
+  ];
+  const profileName = mockProfiles[index % mockProfiles.length];
+  const profileImageUrl = buildMockGalleryProfileAvatarDataUri(profileName, record?.source, index);
+  const scenario = index % 4;
+
+  if (scenario === 0) {
+    return {
+      includeProfileInGallery: true,
+      profileName,
+      profileImageUrl,
+    };
+  }
+
+  if (scenario === 1) {
+    return {
+      includeProfileInGallery: true,
+      profileName,
+      profileImageUrl: "",
+    };
+  }
+
+  if (scenario === 2) {
+    return {
+      includeProfileInGallery: true,
+      profileName: "",
+      profileImageUrl,
+    };
+  }
+
+  return {
+    includeProfileInGallery: false,
+    profileName: "",
+    profileImageUrl: "",
+  };
+}
+
 function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   const sources = [
     "Seedsman",
@@ -1037,6 +1112,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       ? String.fromCharCode(65 + (index % 4))
       : String((index % 4) + 1);
     const usesDetailsOnlyCard = index % 9 === 0;
+    const sharedProfile = getMockGallerySharedProfile(index, record);
 
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
@@ -1056,9 +1132,9 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
       seedTypeName: record.seedType,
-      includeProfileInGallery: false,
-      profileName: "",
-      profileImageUrl: "",
+      includeProfileInGallery: sharedProfile.includeProfileInGallery,
+      profileName: sharedProfile.profileName,
+      profileImageUrl: sharedProfile.profileImageUrl,
       status: "approved",
       published: record.approved,
       includeNotes: false,
@@ -2392,7 +2468,7 @@ function getGallerySnapshotGrowMemberLabel(snapshot) {
     return "";
   }
 
-  return String(snapshot?.profileName || snapshot?.submittedBy || "").trim();
+  return String(snapshot?.profileName || "").trim();
 }
 
 function hasGallerySnapshotImage(snapshot) {
@@ -2490,7 +2566,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
     return "";
   }
 
-  const profileName = String(snapshot.profileName || snapshot.submittedBy || "").trim();
+  const profileName = String(snapshot.profileName || "").trim();
   const profileImageUrl = String(snapshot.profileImageUrl || "").trim();
   if (!profileName && !profileImageUrl) {
     return "";
@@ -3003,7 +3079,14 @@ function renderGalleryLikeButtonMarkup(snapshot) {
 }
 
 function hasGallerySnapshotGrowMember(snapshot) {
-  return Boolean(String(snapshot?.profileName || snapshot?.submittedBy || "").trim());
+  if (!snapshot?.includeProfileInGallery) {
+    return false;
+  }
+
+  return Boolean(
+    String(snapshot?.profileName || "").trim()
+    || String(snapshot?.profileImageUrl || "").trim(),
+  );
 }
 
 function getGallerySnapshotSuccessRate(snapshot) {
@@ -6492,6 +6575,7 @@ function renderGallery(targetSnapshotId = "") {
       const isPrivate = snapshotStatus === "private";
       const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
       const details = getGallerySnapshotFeedDetails(snapshot);
+      const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
       const statusBadge = isPending
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
         : isRejected
@@ -6515,13 +6599,12 @@ function renderGallery(targetSnapshotId = "") {
             </div>
             ${statusBadge ? `<div class="gallery-review-status-stack">${statusBadge}</div>` : ""}
           </div>
-          ${renderGallerySharedProfileMarkup(snapshot)}
           <div class="gallery-card-feed-meta">
-            <div class="gallery-card-feed-row">
+            <div class="gallery-card-feed-row gallery-card-feed-row--primary">
               <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
               ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
             </div>
-            <div class="gallery-card-feed-row">
+            <div class="gallery-card-feed-row gallery-card-feed-row--secondary">
               <div class="gallery-card-pill-pair">
                 <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
                 <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
@@ -6530,9 +6613,12 @@ function renderGallery(targetSnapshotId = "") {
           </div>
           ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
           <div class="gallery-card-footer">
-            <div class="gallery-card-actions">
-              ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
-              ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
+            <div class="gallery-card-footer-main">
+              ${sharedProfileMarkup}
+              <div class="gallery-card-actions">
+                ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
+                ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
+              </div>
             </div>
             ${renderGalleryLikeButtonMarkup(snapshot)}
           </div>

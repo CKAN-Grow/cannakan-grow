@@ -2420,6 +2420,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   gap: 10px;
   min-width: 0;
+  max-width: 100%;
 }
 
 .gallery-card-profile-avatar {
@@ -2434,6 +2435,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-card-profile-name {
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: #eef4ee;
   font-size: 0.92rem;
   font-weight: 600;
@@ -2491,11 +2496,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
 }
 
+.gallery-card-feed-row--secondary {
+  flex-wrap: nowrap;
+}
+
 .gallery-card-pill-pair {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+  flex: 0 0 auto;
   max-width: 100%;
 }
 
@@ -2679,10 +2689,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   white-space: nowrap;
 }
 
+.gallery-card-footer-main {
+  display: flex;
+  flex: 1 1 220px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
 .gallery-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .gallery-card-footer {
@@ -2691,6 +2711,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.gallery-card-footer > .gallery-like-button {
+  margin-left: auto;
 }
 
 .gallery-like-button {
