@@ -1859,6 +1859,25 @@ function getGallerySnapshotGrowMemberLabel(snapshot) {
   return String(snapshot?.profileName || snapshot?.submittedBy || "").trim();
 }
 
+function renderGallerySharedProfileMarkup(snapshot) {
+  if (!snapshot?.includeProfileInGallery) {
+    return "";
+  }
+
+  const profileName = String(snapshot.profileName || snapshot.submittedBy || "").trim();
+  const profileImageUrl = String(snapshot.profileImageUrl || "").trim();
+  if (!profileName && !profileImageUrl) {
+    return "";
+  }
+
+  return `
+    <div class="gallery-card-profile">
+      ${profileImageUrl ? `<img src="${escapeHtml(profileImageUrl)}" alt="${escapeHtml(profileName || "Shared grower profile image")}" class="gallery-card-profile-avatar">` : ""}
+      ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
+    </div>
+  `;
+}
+
 function hasGallerySnapshotGrowMember(snapshot) {
   return Boolean(String(snapshot?.profileName || snapshot?.submittedBy || "").trim());
 }
@@ -5255,6 +5274,7 @@ function renderGallery(targetSnapshotId = "") {
             </div>
             ${statusBadge ? `<div class="gallery-review-status-stack">${statusBadge}</div>` : ""}
           </div>
+          ${renderGallerySharedProfileMarkup(snapshot)}
           <div class="gallery-card-feed-meta">
             <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
             ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}

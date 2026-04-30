@@ -2026,6 +2026,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
 }
 
+.gallery-card-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gallery-card-profile-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  box-shadow: 0 4px 10px rgba(10, 16, 12, 0.12);
+  flex: 0 0 auto;
+}
+
+.gallery-card-profile-name {
+  min-width: 0;
+  color: #eef4ee;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .gallery-card-copy {
   min-width: 0;
 }
