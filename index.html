@@ -266,24 +266,43 @@
           <div>
             <p class="eyebrow">Published Snapshots</p>
             <h3>Community Grow Gallery</h3>
-            <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Newest</p>
+            <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
           </div>
         </div>
-        <label class="session-history-sort-control" for="gallery-sort">
-          <span>Sort by</span>
-          <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-sort">
-            <select id="gallery-sort" name="gallerySort" class="custom-select-native" data-custom-select="true">
-              <option value="date">Newest</option>
-              <option value="rate">Highest Germination %</option>
-              <option value="likes">Most Likes</option>
-            </select>
-            <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-              <span class="custom-select-value">Newest</span>
-              <span class="custom-select-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="custom-select-menu" role="listbox" hidden></div>
-          </div>
-        </label>
+        <div class="gallery-sort-controls">
+          <label class="session-history-sort-control" for="gallery-sort">
+            <span>SORT BY</span>
+            <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-sort">
+              <select id="gallery-sort" name="gallerySort" class="custom-select-native" data-custom-select="true">
+                <option value="date">Date</option>
+                <option value="rate">Highest Germination Rate</option>
+                <option value="source">Source</option>
+                <option value="seed-type">Seed Type</option>
+                <option value="profile">Profile</option>
+                <option value="likes">Most Likes</option>
+              </select>
+              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="custom-select-value">Date</span>
+                <span class="custom-select-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="custom-select-menu" role="listbox" hidden></div>
+            </div>
+          </label>
+          <label class="session-history-sort-control" for="gallery-sort-order">
+            <span>ORDER</span>
+            <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-sort-order">
+              <select id="gallery-sort-order" name="gallerySortOrder" class="custom-select-native" data-custom-select="true">
+                <option value="desc">Newest to Oldest</option>
+                <option value="asc">Oldest to Newest</option>
+              </select>
+              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="custom-select-value">Newest to Oldest</span>
+                <span class="custom-select-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="custom-select-menu" role="listbox" hidden></div>
+            </div>
+          </label>
+        </div>
       </div>
       <div id="gallery-grid" class="gallery-grid"></div>
     </section>

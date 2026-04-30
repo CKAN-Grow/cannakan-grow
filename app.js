@@ -80,6 +80,7 @@ const appState = {
   gallerySnapshots: [],
   galleryRefreshPromise: null,
   gallerySort: "date",
+  gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   growthStage: null,
@@ -2241,40 +2242,148 @@ function sortGallerySnapshotsNewestFirst(items) {
 
 function normalizeGallerySort(sortBy = "date") {
   const normalizedSort = String(sortBy || "").trim().toLowerCase();
-  if (normalizedSort === "date" || normalizedSort === "rate" || normalizedSort === "likes") {
+  if (
+    normalizedSort === "date"
+    || normalizedSort === "rate"
+    || normalizedSort === "source"
+    || normalizedSort === "seed-type"
+    || normalizedSort === "profile"
+    || normalizedSort === "likes"
+  ) {
     return normalizedSort;
   }
 
   return "date";
 }
 
+function getGallerySortOrderOptions(sortBy = "date") {
+  switch (normalizeGallerySort(sortBy)) {
+    case "source":
+    case "seed-type":
+    case "profile":
+      return [
+        { value: "asc", label: "A-Z" },
+        { value: "desc", label: "Z-A" },
+      ];
+    case "rate":
+    case "likes":
+      return [
+        { value: "desc", label: "Highest to Lowest" },
+        { value: "asc", label: "Lowest to Highest" },
+      ];
+    case "date":
+    default:
+      return [
+        { value: "desc", label: "Newest to Oldest" },
+        { value: "asc", label: "Oldest to Newest" },
+      ];
+  }
+}
+
+function getDefaultGallerySortOrder(sortBy = "date") {
+  return getGallerySortOrderOptions(sortBy)[0]?.value || "desc";
+}
+
+function normalizeGallerySortOrder(sortBy = "date", sortOrder = "") {
+  const normalizedOrder = String(sortOrder || "").trim().toLowerCase();
+  const validOptions = new Set(getGallerySortOrderOptions(sortBy).map((option) => option.value));
+  return validOptions.has(normalizedOrder)
+    ? normalizedOrder
+    : getDefaultGallerySortOrder(sortBy);
+}
+
 function getGallerySortLabel(sortBy = "date") {
   switch (normalizeGallerySort(sortBy)) {
+    case "source":
+      return "Source";
+    case "seed-type":
+      return "Seed Type";
+    case "profile":
+      return "Profile";
     case "rate":
-      return "Highest Germination %";
+      return "Highest Germination Rate";
     case "likes":
       return "Most Likes";
     case "date":
     default:
-      return "Newest";
+      return "Date";
   }
 }
 
-function sortVisibleGallerySnapshots(items, sortBy = "date") {
+function getGallerySortOrderLabel(sortBy = "date", sortOrder = "") {
+  const normalizedOrder = normalizeGallerySortOrder(sortBy, sortOrder);
+  return getGallerySortOrderOptions(sortBy).find((option) => option.value === normalizedOrder)?.label || "";
+}
+
+function getGallerySnapshotSortSourceLabel(snapshot) {
+  return getGallerySnapshotLeaderboardMetadata(snapshot).sourceName;
+}
+
+function getGallerySnapshotSortSeedTypeLabel(snapshot) {
+  return getGallerySnapshotLeaderboardMetadata(snapshot).seedTypeName;
+}
+
+function compareGalleryTextValues(leftValue, rightValue, sortOrder = "asc") {
+  const leftText = String(leftValue || "").trim();
+  const rightText = String(rightValue || "").trim();
+  if (leftText && !rightText) {
+    return -1;
+  }
+  if (!leftText && rightText) {
+    return 1;
+  }
+  if (!leftText && !rightText) {
+    return 0;
+  }
+
+  return sortOrder === "desc"
+    ? rightText.localeCompare(leftText, "en", { sensitivity: "base" })
+    : leftText.localeCompare(rightText, "en", { sensitivity: "base" });
+}
+
+function sortVisibleGallerySnapshots(items, sortBy = "date", sortOrder = "") {
   const normalizedSort = normalizeGallerySort(sortBy);
+  const normalizedOrder = normalizeGallerySortOrder(normalizedSort, sortOrder);
   return [...(items || [])]
     .filter(Boolean)
     .sort((left, right) => {
       switch (normalizedSort) {
         case "likes":
-          return (Math.max(0, Number(right?.likeCount) || 0) - Math.max(0, Number(left?.likeCount) || 0))
+          return ((normalizedOrder === "asc"
+            ? (Math.max(0, Number(left?.likeCount) || 0) - Math.max(0, Number(right?.likeCount) || 0))
+            : (Math.max(0, Number(right?.likeCount) || 0) - Math.max(0, Number(left?.likeCount) || 0)))
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left)));
+        case "profile":
+          return compareGalleryTextValues(
+            getGallerySnapshotGrowMemberLabel(left),
+            getGallerySnapshotGrowMemberLabel(right),
+            normalizedOrder,
+          )
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "seed-type":
+          return compareGalleryTextValues(
+            getGallerySnapshotSortSeedTypeLabel(left),
+            getGallerySnapshotSortSeedTypeLabel(right),
+            normalizedOrder,
+          )
+            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+        case "source":
+          return compareGalleryTextValues(
+            getGallerySnapshotSortSourceLabel(left),
+            getGallerySnapshotSortSourceLabel(right),
+            normalizedOrder,
+          )
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
         case "rate":
-          return getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)
+          return ((normalizedOrder === "asc"
+            ? getGallerySnapshotSuccessRate(left) - getGallerySnapshotSuccessRate(right)
+            : getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)))
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
         case "date":
         default:
-          return getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left);
+          return normalizedOrder === "asc"
+            ? getGallerySnapshotSortTime(left) - getGallerySnapshotSortTime(right)
+            : getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left);
       }
     });
 }
@@ -6026,6 +6135,7 @@ function renderGallery(targetSnapshotId = "") {
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
+  const gallerySortOrderControl = document.querySelector("#gallery-sort-order");
   const gallerySortState = document.querySelector("#gallery-sort-state");
   const galleryFeedSection = document.querySelector(".gallery-feed-section");
   if (!galleryGrid) {
@@ -6033,8 +6143,9 @@ function renderGallery(targetSnapshotId = "") {
   }
 
   appState.gallerySort = normalizeGallerySort(appState.gallerySort);
+  appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
   if (gallerySortState) {
-    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)}`;
+    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
   }
 
   if (galleryFeedSection) {
@@ -6189,7 +6300,14 @@ function renderGallery(targetSnapshotId = "") {
 
   const renderVisibleGallerySnapshots = () => {
     galleryGrid.innerHTML = "";
-    const visibleSnapshots = sortVisibleGallerySnapshots(gallerySnapshots, appState.gallerySort);
+    const approvedSnapshots = gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+    const nonApprovedSnapshots = sortGallerySnapshotsNewestFirst(
+      gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
+    );
+    const visibleSnapshots = [
+      ...sortVisibleGallerySnapshots(approvedSnapshots, appState.gallerySort, appState.gallerySortOrder),
+      ...nonApprovedSnapshots,
+    ];
     let targetCard = null;
     if (!visibleSnapshots.length) {
       galleryGrid.innerHTML = `
@@ -6313,12 +6431,47 @@ function renderGallery(targetSnapshotId = "") {
     });
   };
 
+  const syncGallerySortOrderControl = (resetToDefault = false) => {
+    if (!gallerySortOrderControl) {
+      return;
+    }
+
+    const sortOrderOptions = getGallerySortOrderOptions(appState.gallerySort);
+    if (resetToDefault) {
+      appState.gallerySortOrder = getDefaultGallerySortOrder(appState.gallerySort);
+    } else {
+      appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
+    }
+
+    gallerySortOrderControl.innerHTML = sortOrderOptions.map((option) => (
+      `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`
+    )).join("");
+    gallerySortOrderControl.value = appState.gallerySortOrder;
+    const sortOrderMenu = gallerySortOrderControl.closest(".custom-select")?.querySelector(".custom-select-menu");
+    if (sortOrderMenu) {
+      buildCustomSelectOptions(gallerySortOrderControl, sortOrderMenu);
+    }
+    syncCustomSelect(gallerySortOrderControl);
+  };
+
   if (gallerySortControl) {
     gallerySortControl.value = normalizeGallerySort(appState.gallerySort);
     gallerySortControl.addEventListener("change", () => {
       appState.gallerySort = normalizeGallerySort(gallerySortControl.value);
+      syncGallerySortOrderControl(true);
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
+      }
+      renderVisibleGallerySnapshots();
+    });
+  }
+
+  if (gallerySortOrderControl) {
+    syncGallerySortOrderControl(false);
+    gallerySortOrderControl.addEventListener("change", () => {
+      appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, gallerySortOrderControl.value);
+      if (gallerySortState) {
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
       }
       renderVisibleGallerySnapshots();
     });

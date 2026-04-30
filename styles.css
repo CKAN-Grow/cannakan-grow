@@ -1063,6 +1063,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 @media (max-width: 768px) {
+  .gallery-sort-controls {
+    width: 100%;
+  }
+
   .session-history-grid {
     grid-template-columns: 1fr;
   }
@@ -1969,6 +1973,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-sort-state {
   margin: 4px 0 0;
   font-size: 0.88rem;
+}
+
+.gallery-sort-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
 }
 
 .gallery-section {
