@@ -1519,6 +1519,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(148, 209, 89, 0.06);
 }
 
+.snapshot-status-notice[hidden] {
+  display: none !important;
+}
+
 .snapshot-status-copy {
   margin: 0;
   color: var(--ink);
