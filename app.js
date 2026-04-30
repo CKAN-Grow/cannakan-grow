@@ -2471,12 +2471,10 @@ function renderSnapshotSavedNotice(state) {
   const noticeDate = snapshotState.submittedAt || snapshotState.createdAt;
   let message = `Snapshot created on ${formatSnapshotSavedDateTime(snapshotState.createdAt || noticeDate)}.`;
   if (snapshotState.galleryStatus && snapshotState.galleryStatus !== "social-only") {
-    message = `Snapshot submitted to Grow Gallery for review on ${formatSnapshotSavedDateTime(noticeDate)}.`;
+    message = `Snapshot shared to Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
   }
-  if (snapshotState.galleryStatus === "approved") {
-    message = `Snapshot approved in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
-  } else if (snapshotState.galleryStatus === "rejected") {
-    message = `Snapshot rejected in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
+  if (snapshotState.galleryStatus === "pending_review") {
+    message = `Snapshot submitted to Grow Gallery for review on ${formatSnapshotSavedDateTime(noticeDate)}.`;
   }
 
   state.savedSnapshotText.textContent = message;
