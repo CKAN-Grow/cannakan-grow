@@ -4458,6 +4458,16 @@ body.theme-dark .chart-header span:not(:last-child)::after {
   box-shadow: 0 0 0 3px rgba(77, 76, 74, 0.12);
 }
 
+.partition-table[data-session-status="completed"] .partition-row .partition-number,
+.partition-table[data-session-status="completed"] .partition-row .partition-btn,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row .partition-number,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row .partition-btn {
+  background: #363022 !important;
+  color: #f6f1e7 !important;
+  border-color: rgba(89, 73, 45, 0.92) !important;
+  box-shadow: 0 0 0 3px rgba(54, 48, 34, 0.14);
+}
+
 .partition-btn--in-progress:hover,
 .partition-btn--complete:hover {
   border-color: transparent;
@@ -4578,6 +4588,26 @@ body.theme-dark .partition-row.partition-row--filled .detail-cell {
 body.theme-dark .partition-row.row-has-warning {
   background: rgba(221, 128, 69, 0.05) !important;
   box-shadow: inset 0 0 0 1px rgba(221, 128, 69, 0.12);
+}
+
+.partition-table[data-session-status="completed"] .partition-row.row-completed-empty,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty {
+  opacity: 0.56;
+  filter: saturate(0.82);
+}
+
+.partition-table[data-session-status="completed"] .partition-row.row-completed-empty input,
+.partition-table[data-session-status="completed"] .partition-row.row-completed-empty select,
+.partition-table[data-session-status="completed"] .partition-row.row-completed-empty .custom-select-trigger,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty input,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty select,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty .custom-select-trigger {
+  opacity: 0.88;
+}
+
+.partition-table[data-session-status="completed"] .partition-row.row-completed-empty input::placeholder,
+body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty input::placeholder {
+  color: rgba(179, 184, 175, 0.92);
 }
 
 body.theme-dark .button-secondary,

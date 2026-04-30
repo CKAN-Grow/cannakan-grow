@@ -7585,6 +7585,7 @@ function validatePartitionRow(row) {
   const fieldsComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
   const rowInvalid = (rowStarted && !fieldsComplete) || !plantedCountValid;
   const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
+  const normalizedSessionStatus = normalizeSessionStatus(sessionStatus);
   const rowState = getPartitionRowState({
     varietyValue,
     typeValue,
@@ -7596,7 +7597,8 @@ function validatePartitionRow(row) {
   row.classList.toggle("partition-row--filled", rowStarted);
   row.classList.toggle("row--completed", fieldsComplete);
   row.classList.toggle("row-has-warning", rowInvalid);
-  row.classList.toggle("row-complete", normalizeSessionStatus(sessionStatus) === "completed" && rowStarted);
+  row.classList.toggle("row-complete", normalizedSessionStatus === "completed" && rowStarted);
+  row.classList.toggle("row-completed-empty", normalizedSessionStatus === "completed" && !rowStarted);
   updatePartitionButtonState(row, rowState);
   applyPartitionRowVisualState(row);
 
