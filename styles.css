@@ -4420,44 +4420,50 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   transform: translateY(-1px);
 }
 
-.button-primary {
-  background: #94d159;
-  color: #1c1f1d;
-  border-color: #94d159;
-  transition: all 0.2s ease;
-}
-
-.button-primary:hover {
-  background: #7fc94a;
-  border-color: #7fc94a;
-  transform: translateY(-1px);
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.1),
-    0 0 0 2px rgba(148, 209, 89, 0.2);
-}
-
-.button-primary:active {
-  background: #6fb63d;
-  border-color: #6fb63d;
-}
-
+.button-primary,
 .button-new-session {
-  background: #151815;
-  border-color: #151815;
-  color: #f6f8f5;
-  box-shadow: 0 10px 18px rgba(21, 24, 21, 0.16);
+  min-height: 48px;
+  padding: 13px 22px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #9ee76a 0%, #94d159 58%, #78b546 100%);
+  color: #111612;
+  border-color: #94d159;
+  box-shadow:
+    0 14px 24px rgba(94, 141, 55, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.14),
+    0 0 22px rgba(148, 209, 89, 0.16);
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
+.button-primary:hover,
+.button-primary:focus-visible,
 .button-new-session:hover,
 .button-new-session:focus-visible {
-  background: #202520;
-  border-color: #202520;
-  color: #f6f8f5;
+  background: linear-gradient(180deg, #b2f57f 0%, #9cde63 56%, #82c14e 100%);
+  border-color: #a5ea70;
+  color: #101510;
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 28px rgba(94, 141, 55, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 28px rgba(148, 209, 89, 0.24);
 }
 
+.button-primary:active,
 .button-new-session:active {
-  background: #0f120f;
-  border-color: #0f120f;
+  background: linear-gradient(180deg, #84c64c 0%, #74b043 100%);
+  border-color: #74b043;
+  color: #0f140f;
+  transform: translateY(0) scale(0.985);
+  box-shadow:
+    0 10px 16px rgba(94, 141, 55, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
 }
 
 .dashboard-bar .hero-actions .button-new-session,
@@ -4471,35 +4477,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .dashboard-bar .hero-actions .button-new-session {
   padding-inline: 30px;
   font-weight: 900;
-  background: linear-gradient(180deg, #9ee76a 0%, #94d159 58%, #78b546 100%);
-  border-color: #94d159;
-  color: #111612;
-  box-shadow:
-    0 14px 24px rgba(94, 141, 55, 0.2),
-    0 0 0 1px rgba(148, 209, 89, 0.14),
-    0 0 22px rgba(148, 209, 89, 0.16);
-}
-
-.dashboard-bar .hero-actions .button-new-session:hover,
-.dashboard-bar .hero-actions .button-new-session:focus-visible {
-  background: linear-gradient(180deg, #b2f57f 0%, #9cde63 56%, #82c14e 100%);
-  border-color: #a5ea70;
-  color: #101510;
-  transform: translateY(-1px);
-  box-shadow:
-    0 18px 28px rgba(94, 141, 55, 0.24),
-    0 0 0 1px rgba(148, 209, 89, 0.18),
-    0 0 28px rgba(148, 209, 89, 0.24);
-}
-
-.dashboard-bar .hero-actions .button-new-session:active {
-  background: linear-gradient(180deg, #84c64c 0%, #74b043 100%);
-  border-color: #74b043;
-  color: #0f140f;
-  transform: translateY(0) scale(0.985);
-  box-shadow:
-    0 10px 16px rgba(94, 141, 55, 0.18),
-    0 0 0 1px rgba(148, 209, 89, 0.12);
 }
 
 .dashboard-bar .hero-actions .button-secondary {
@@ -4617,35 +4594,6 @@ body.theme-dark .button-secondary:hover {
   transform: translateY(-1px);
 }
 
-body.theme-dark .dashboard-bar .hero-actions .button-new-session {
-  background: linear-gradient(180deg, #a8ef73 0%, #94d159 56%, #6da83f 100%);
-  border-color: #94d159;
-  color: #101510;
-  box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(148, 209, 89, 0.12),
-    0 0 24px rgba(148, 209, 89, 0.18);
-}
-
-body.theme-dark .dashboard-bar .hero-actions .button-new-session:hover,
-body.theme-dark .dashboard-bar .hero-actions .button-new-session:focus-visible {
-  background: linear-gradient(180deg, #b9fa88 0%, #a1e267 56%, #79bc47 100%);
-  border-color: #b4f57f;
-  color: #0f140f;
-  box-shadow:
-    0 18px 30px rgba(0, 0, 0, 0.26),
-    0 0 0 1px rgba(148, 209, 89, 0.18),
-    0 0 30px rgba(148, 209, 89, 0.26);
-}
-
-body.theme-dark .dashboard-bar .hero-actions .button-new-session:active {
-  background: linear-gradient(180deg, #81c34e 0%, #6ea941 100%);
-  border-color: #6ea941;
-  box-shadow:
-    0 10px 16px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(148, 209, 89, 0.12);
-}
-
 body.theme-dark .dashboard-bar .hero-actions .button-secondary {
   background: rgba(148, 209, 89, 0.04);
   border-color: #94d159;
@@ -4671,6 +4619,39 @@ body.theme-dark .dashboard-bar .hero-actions .button-secondary:active {
   box-shadow:
     0 6px 12px rgba(0, 0, 0, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body.theme-dark .button-primary,
+body.theme-dark .button-new-session {
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 56%, #6da83f 100%);
+  border-color: #94d159;
+  color: #101510;
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 24px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .button-primary:hover,
+body.theme-dark .button-primary:focus-visible,
+body.theme-dark .button-new-session:hover,
+body.theme-dark .button-new-session:focus-visible {
+  background: linear-gradient(180deg, #b9fa88 0%, #a1e267 56%, #79bc47 100%);
+  border-color: #b4f57f;
+  color: #0f140f;
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 30px rgba(148, 209, 89, 0.26);
+}
+
+body.theme-dark .button-primary:active,
+body.theme-dark .button-new-session:active {
+  background: linear-gradient(180deg, #81c34e 0%, #6ea941 100%);
+  border-color: #6ea941;
+  box-shadow:
+    0 10px 16px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
 }
 
 .theme-toggle-button {
@@ -7157,25 +7138,6 @@ body.theme-dark #session-history-section {
 #grow-sessions-header .eyebrow,
 #grow-sessions-header h2 {
   color: #151815;
-}
-
-#grow-sessions-header .button-primary {
-  background: #1f3a2a;
-  border-color: #1f3a2a;
-  color: #f6f8f5;
-  box-shadow: 0 10px 18px rgba(31, 58, 42, 0.18);
-}
-
-#grow-sessions-header .button-primary:hover,
-#grow-sessions-header .button-primary:focus-visible {
-  background: #284a35;
-  border-color: #284a35;
-  color: #f6f8f5;
-}
-
-#grow-sessions-header .button-primary:active {
-  background: #173021;
-  border-color: #173021;
 }
 
 body.theme-dark #active-sessions-section {
