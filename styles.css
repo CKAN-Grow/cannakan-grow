@@ -2192,9 +2192,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-gallery-rankings-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   min-height: 52px;
   padding: 12px 14px;
@@ -2231,10 +2231,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-gallery-rankings-row-main {
-  display: flex;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   min-width: 0;
+  width: 100%;
 }
 
 .home-gallery-rankings-row-icon {
@@ -2265,10 +2267,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-row-label {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
 }
 
 .home-gallery-rankings-row-value {
@@ -2276,6 +2278,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.98rem;
   font-weight: 700;
   text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .home-gallery-rankings-empty {
@@ -4430,7 +4434,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-gallery-rankings-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: flex-start;
   }
 
@@ -6147,7 +6151,7 @@ body.theme-dark .home-gallery-rankings-card {
 
 body.theme-dark .home-gallery-rankings-row {
   border-color: rgba(148, 209, 89, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.02) 100%);
 }
 
 body.theme-dark .home-gallery-rankings-row-icon {
