@@ -1,6 +1,10 @@
 const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
+const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
+const GALLERY_MOCK_TOGGLE_QUERY_KEY = "mockGallery";
+const GALLERY_MOCK_TOGGLE_STORAGE_KEY = "cannakan-grow-mock-gallery";
+const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
 const SESSION_IMAGE_BUCKET = "session-images";
@@ -833,6 +837,256 @@ function removeSampleSessions() {
   localStorage.removeItem(SAMPLE_SEED_KEY);
 }
 
+function isLocalDevelopmentEnvironment() {
+  const hostname = String(window.location.hostname || "").trim().toLowerCase();
+  const protocol = String(window.location.protocol || "").trim().toLowerCase();
+  return protocol === "file:"
+    || hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "::1";
+}
+
+function shouldUseMockGallerySnapshots() {
+  const queryValue = new URLSearchParams(window.location.search || "").get(GALLERY_MOCK_TOGGLE_QUERY_KEY);
+  if (queryValue === "1" || queryValue === "true") {
+    return true;
+  }
+  if (queryValue === "0" || queryValue === "false") {
+    return false;
+  }
+
+  const storedValue = localStorage.getItem(GALLERY_MOCK_TOGGLE_STORAGE_KEY);
+  if (storedValue === "1" || storedValue === "true") {
+    return true;
+  }
+  if (storedValue === "0" || storedValue === "false") {
+    return false;
+  }
+
+  return isLocalDevelopmentEnvironment();
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getMockGallerySeededNoise(seed) {
+  const raw = Math.sin(seed * 12.9898) * 43758.5453;
+  return raw - Math.floor(raw);
+}
+
+function createMockGalleryMonthDate(monthReference, day, hour) {
+  const maxDay = new Date(
+    monthReference.getFullYear(),
+    monthReference.getMonth() + 1,
+    0,
+  ).getDate();
+  const clampedDay = clampNumber(day, 1, maxDay);
+  return new Date(
+    monthReference.getFullYear(),
+    monthReference.getMonth(),
+    clampedDay,
+    clampNumber(hour, 0, 23),
+    (clampedDay * 7) % 60,
+    0,
+    0,
+  ).toISOString();
+}
+
+function getMockGallerySourcePalette(sourceName) {
+  const normalized = String(sourceName || "").trim().toLowerCase();
+  if (normalized.includes("seedsman")) {
+    return { background: "#113822", accent: "#8ed16f", text: "#f4ffe9" };
+  }
+  if (normalized.includes("humboldt")) {
+    return { background: "#1f3022", accent: "#d8a85d", text: "#fff5df" };
+  }
+  if (normalized.includes("mephisto")) {
+    return { background: "#1f2033", accent: "#9fb8ff", text: "#edf2ff" };
+  }
+  if (normalized.includes("barney")) {
+    return { background: "#3a2415", accent: "#f0b06e", text: "#fff0df" };
+  }
+  if (normalized.includes("ethos")) {
+    return { background: "#1d2833", accent: "#86d7ff", text: "#eefbff" };
+  }
+  if (normalized.includes("royal")) {
+    return { background: "#33211c", accent: "#e7bf7a", text: "#fff6e8" };
+  }
+
+  return { background: "#182422", accent: "#94d159", text: "#f5ffec" };
+}
+
+function buildMockGalleryImageDataUri(record) {
+  const palette = getMockGallerySourcePalette(record.source);
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Dev mock grow gallery preview">
+      <defs>
+        <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="${palette.background}" />
+          <stop offset="100%" stop-color="#0f1514" />
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="900" fill="url(#bg)" />
+      <circle cx="960" cy="190" r="180" fill="${palette.accent}" opacity="0.16" />
+      <circle cx="250" cy="680" r="220" fill="${palette.accent}" opacity="0.12" />
+      <rect x="74" y="74" width="1052" height="752" rx="34" fill="none" stroke="${palette.accent}" stroke-width="4" opacity="0.35" />
+      <text x="96" y="152" fill="${palette.accent}" font-size="36" font-family="Arial, sans-serif" font-weight="700">DEV MOCK GALLERY DATA</text>
+      <text x="96" y="260" fill="${palette.text}" font-size="74" font-family="Arial, sans-serif" font-weight="700">${record.seedVariety}</text>
+      <text x="96" y="330" fill="${palette.text}" font-size="38" font-family="Arial, sans-serif">${record.source}</text>
+      <text x="96" y="448" fill="${palette.text}" font-size="118" font-family="Arial, sans-serif" font-weight="700">${record.germinationRate}%</text>
+      <text x="96" y="508" fill="${palette.accent}" font-size="34" font-family="Arial, sans-serif">GERMINATION RATE</text>
+      <text x="96" y="648" fill="${palette.text}" font-size="34" font-family="Arial, sans-serif">${record.germinatedCount} of ${record.seedCount} germinated</text>
+      <text x="96" y="708" fill="${palette.text}" font-size="30" font-family="Arial, sans-serif">Likes ${record.likes}   Submitted ${record.submittedAt.slice(0, 10)}</text>
+    </svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function buildMockGallerySourceBadgeDataUri(sourceName) {
+  const palette = getMockGallerySourcePalette(sourceName);
+  const initials = String(sourceName || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((segment) => segment[0].toUpperCase())
+    .join("") || "MG";
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Mock source badge">
+      <rect width="160" height="160" rx="40" fill="${palette.background}" />
+      <rect x="8" y="8" width="144" height="144" rx="34" fill="none" stroke="${palette.accent}" stroke-width="6" opacity="0.55" />
+      <text x="80" y="96" fill="${palette.text}" text-anchor="middle" font-size="52" font-family="Arial, sans-serif" font-weight="700">${initials}</text>
+    </svg>
+  `.trim();
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function buildMockGallerySnapshotSeedRecords(now = new Date()) {
+  const sources = [
+    "Seedsman",
+    "Humboldt Seed Co",
+    "Mephisto",
+    "Barney's Farm",
+    "Ethos",
+    "Royal Queen Seeds",
+  ];
+  const seedVarieties = [
+    "Blue Dream",
+    "Gelato 41",
+    "Wedding Cake",
+    "Gorilla Glue #4",
+    "Sour Diesel",
+    "White Widow",
+  ];
+  const varietyBaseRates = [92, 87, 79, 71, 55, 83];
+  const sourceAdjustments = [4, 2, -1, -4, 1, -7];
+  const rowAdjustments = [6, 1, -4, 3, -8, 0];
+  const seedCountPattern = [5, 6, 8, 10, 12, 8];
+  const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
+  const hourPattern = [8, 10, 12, 15, 17, 19];
+
+  return sources.flatMap((source, sourceIndex) => (
+    seedVarieties.map((_, rowIndex) => {
+      const recordIndex = (sourceIndex * seedVarieties.length) + rowIndex;
+      const seedVariety = seedVarieties[(sourceIndex + rowIndex) % seedVarieties.length];
+      const varietyIndex = seedVarieties.indexOf(seedVariety);
+      const monthOffset = Math.floor(recordIndex / 9);
+      const monthReference = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1, 12, 0, 0, 0);
+      const seedCount = seedCountPattern[(sourceIndex + rowIndex) % seedCountPattern.length];
+      const targetRate = clampNumber(
+        varietyBaseRates[varietyIndex] + sourceAdjustments[sourceIndex] + rowAdjustments[rowIndex],
+        33,
+        100,
+      );
+      const germinatedCount = clampNumber(Math.round((seedCount * targetRate) / 100), 1, seedCount);
+      const germinationRate = Math.round((germinatedCount / seedCount) * 100);
+      const likeNoise = getMockGallerySeededNoise(recordIndex + 1);
+      const monthRecencyBoost = [10, 7, 4, 2][monthOffset] || 1;
+      const likes = clampNumber(
+        Math.round((germinationRate * 0.22) + (likeNoise * 18) + monthRecencyBoost),
+        3,
+        48,
+      );
+
+      return {
+        source,
+        seedVariety,
+        seedCount,
+        germinatedCount,
+        germinationRate,
+        submittedAt: createMockGalleryMonthDate(
+          monthReference,
+          dayPattern[recordIndex % dayPattern.length],
+          hourPattern[(sourceIndex + (rowIndex * 2)) % hourPattern.length],
+        ),
+        approved: true,
+        likes,
+      };
+    })
+  ));
+}
+
+function buildMockGallerySnapshots() {
+  return buildMockGallerySnapshotSeedRecords().map((record, index) => {
+    const systemType = index % 2 === 0 ? "KAN" : "TRA";
+    const unitId = systemType === "KAN"
+      ? String.fromCharCode(65 + (index % 4))
+      : String((index % 4) + 1);
+
+    return {
+      id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
+      userId: GALLERY_MOCK_USER_ID,
+      sessionId: "",
+      title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
+      imageUrl: buildMockGalleryImageDataUri(record),
+      imagePath: "",
+      sessionDate: record.submittedAt.slice(0, 10),
+      systemType,
+      unitId,
+      totalSeeds: record.seedCount,
+      totalPlanted: record.germinatedCount,
+      successPercent: record.germinationRate,
+      submittedBy: "Dev Mock Preview",
+      sourceName: record.source,
+      sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
+      seedVarietyName: record.seedVariety,
+      includeProfileInGallery: false,
+      profileName: "",
+      profileImageUrl: "",
+      status: "approved",
+      published: record.approved,
+      includeNotes: false,
+      publishedAt: record.submittedAt,
+      createdAt: record.submittedAt,
+      updatedAt: record.submittedAt,
+      likeCount: record.likes,
+      likedByCurrentUser: false,
+      isMock: true,
+      mockDataVersion: GALLERY_MOCK_DATA_VERSION,
+    };
+  });
+}
+
+function mergeMockGallerySnapshots(snapshotRows = []) {
+  const rowsById = new Map();
+  (snapshotRows || []).filter(Boolean).forEach((snapshot) => {
+    rowsById.set(snapshot.id, snapshot);
+  });
+  if (shouldUseMockGallerySnapshots()) {
+    buildMockGallerySnapshots().forEach((snapshot) => {
+      rowsById.set(snapshot.id, snapshot);
+    });
+  }
+
+  return sortGallerySnapshotsNewestFirst([...rowsById.values()]);
+}
+
+function isMockGallerySnapshot(snapshot) {
+  return Boolean(snapshot?.isMock) || String(snapshot?.id || "").startsWith("mock-gallery-");
+}
+
 function createDefaultPartitions() {
   return Array.from({ length: getPartitionCountForSystem("KAN") }, (_, index) => ({
     id: index + 1,
@@ -931,6 +1185,7 @@ async function bootstrapApp() {
   } else {
     ensureSampleSessions();
     saveSessions(loadLocalSessions());
+    appState.gallerySnapshots = await loadGallerySnapshots("local-dev-mock-seed");
   }
 
   appState.initialized = true;
@@ -1051,8 +1306,14 @@ async function loadUserProfile() {
 
 async function loadGallerySnapshots(reason = "unspecified") {
   if (!appState.supabase) {
-    logGrowGalleryDebug("loadGallerySnapshots:skipped", { reason, cause: "supabase-missing" });
-    return [];
+    const mockSnapshots = mergeMockGallerySnapshots([]);
+    logGrowGalleryDebug("loadGallerySnapshots:mock-only", {
+      reason,
+      cause: "supabase-missing",
+      count: mockSnapshots.length,
+      enabled: shouldUseMockGallerySnapshots(),
+    });
+    return mockSnapshots;
   }
 
   const { data, error } = await appState.supabase
@@ -1080,19 +1341,21 @@ async function loadGallerySnapshots(reason = "unspecified") {
 
   const mapped = (data || []).map(mapRowToGallerySnapshot);
   const likedSnapshots = await hydrateGallerySnapshotLikes(mapped, reason);
+  const snapshotsWithMocks = mergeMockGallerySnapshots(likedSnapshots);
   logGrowGalleryDebug("loadGallerySnapshots:mapped", {
     reason,
-    count: likedSnapshots.length,
-    rows: likedSnapshots.map((row) => ({
+    count: snapshotsWithMocks.length,
+    rows: snapshotsWithMocks.map((row) => ({
       id: row.id,
       status: row.status,
       userId: row.userId,
       sessionId: row.sessionId,
       likeCount: row.likeCount,
       likedByCurrentUser: row.likedByCurrentUser,
+      isMock: Boolean(row.isMock),
     })),
   });
-  return likedSnapshots;
+  return snapshotsWithMocks;
 }
 
 async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified") {
@@ -1931,6 +2194,9 @@ async function toggleGallerySnapshotLike(snapshotId) {
   if (!snapshot) {
     throw new Error("Could not find this Grow Gallery snapshot.");
   }
+  if (isMockGallerySnapshot(snapshot)) {
+    throw new Error("Mock gallery likes are preview-only in local development.");
+  }
 
   if (!appState.supabase || !appState.user?.id) {
     throw new Error("Sign in to like Grow Gallery snapshots.");
@@ -2391,6 +2657,7 @@ function renderGalleryLeaderboardSection() {
 function renderGalleryLikeButtonMarkup(snapshot) {
   const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
   const isLiked = Boolean(snapshot?.likedByCurrentUser);
+  const isMock = isMockGallerySnapshot(snapshot);
 
   return `
     <button
@@ -2398,7 +2665,8 @@ function renderGalleryLikeButtonMarkup(snapshot) {
       class="gallery-like-button${isLiked ? " is-liked" : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
-      aria-label="${isLiked ? "Unlike this Grow Gallery snapshot" : "Like this Grow Gallery snapshot"}"
+      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Grow Gallery snapshot" : "Like this Grow Gallery snapshot")}"
+      ${isMock ? "disabled" : ""}
     >
       <span class="gallery-like-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -2437,8 +2705,15 @@ function getGallerySnapshotDebugSignature(snapshots) {
 
 async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId = "") {
   if (!appState.supabase) {
-    logGrowGalleryDebug("refreshGallerySnapshots:skipped", { reason, cause: "supabase-missing" });
-    return appState.gallerySnapshots;
+    const snapshots = mergeMockGallerySnapshots([]);
+    appState.gallerySnapshots = snapshots;
+    logGrowGalleryDebug("refreshGallerySnapshots:mock-only", {
+      reason,
+      cause: "supabase-missing",
+      count: snapshots.length,
+      targetSnapshotId,
+    });
+    return snapshots;
   }
 
   if (appState.galleryRefreshPromise) {
