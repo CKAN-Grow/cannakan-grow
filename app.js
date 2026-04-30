@@ -2579,7 +2579,7 @@ function initializeSnapshotSection(scope, options) {
         if (socialInput) {
           socialInput.checked = true;
         }
-        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE);
+        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE);
       }
       syncSnapshotGalleryControls(state);
     });
@@ -2612,8 +2612,8 @@ function getSnapshotDestination(state) {
   return selectedInput?.value || "social";
 }
 
-const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "To submit a different snapshot, delete the existing gallery snapshot first. A new submission will require approval again.";
-const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "Social only. This session already has a snapshot uploaded to the Grow Gallery.";
+const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
+const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Grow Gallery.";
 
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
@@ -2829,12 +2829,12 @@ function buildUnpublishedSessionSnapshotState(state) {
 function hasExistingGallerySnapshotForState(state) {
   const session = state?.getGallerySession?.() || null;
   const liveGallerySnapshot = getGallerySnapshotForSession(session?.id);
-  if (liveGallerySnapshot) {
+  if (liveGallerySnapshot?.id) {
     return true;
   }
 
   const snapshotState = getSnapshotStateForSection(state);
-  return Boolean(snapshotState?.galleryStatus && snapshotState.galleryStatus !== "social-only");
+  return Boolean(snapshotState?.gallerySnapshotId);
 }
 
 function syncSnapshotDestinationAvailability(state) {
@@ -2846,6 +2846,7 @@ function syncSnapshotDestinationAvailability(state) {
     const isGalleryMode = input.value === "social-gallery" || input.value === "gallery";
     option?.classList.toggle("is-unavailable", Boolean(hasExistingGallerySnapshot && isGalleryMode));
     option?.setAttribute("aria-disabled", hasExistingGallerySnapshot && isGalleryMode ? "true" : "false");
+    input.disabled = Boolean(hasExistingGallerySnapshot && isGalleryMode);
   });
 
   if (!hasExistingGallerySnapshot) {
@@ -2877,7 +2878,7 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.galleryNote) {
-    if (includesGallery && hasExistingGallerySnapshotForState(state)) {
+    if (hasExistingGallerySnapshotForState(state)) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
     } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
@@ -2929,7 +2930,7 @@ async function maybePublishSnapshotFromState(state, result) {
       snapshotState: getSnapshotStateForSection(state),
     });
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE);
+    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE);
     return { published: null, blocked: true };
   }
 
