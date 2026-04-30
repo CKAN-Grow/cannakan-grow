@@ -8,12 +8,12 @@
   "theme_color": "#94d159",
   "icons": [
     {
-      "src": "/icons/ck-leaf-icon-192-v4.png",
+      "src": "/icons/ck-grow-icon-192-v1.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/ck-leaf-icon-512-v4.png",
+      "src": "/icons/ck-grow-icon-512-v1.png",
       "sizes": "512x512",
       "type": "image/png"
     }
