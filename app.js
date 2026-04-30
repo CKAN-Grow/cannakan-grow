@@ -24,6 +24,7 @@ const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "src/assets/kan-partition-icon-v2.png",
   TRA: "src/assets/tra-partition-icon.png",
 };
+const GROW_GALLERY_DEBUG = true;
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
   { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
@@ -72,6 +73,7 @@ const appState = {
   customSelectOpenKey: "",
   sessions: [],
   gallerySnapshots: [],
+  galleryRefreshPromise: null,
   gallerySort: "date",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
@@ -104,6 +106,14 @@ const ADMIN_EMAILS = new Set([
 
 function isConfiguredAdminEmail(email) {
   return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+}
+
+function logGrowGalleryDebug(event, details = {}) {
+  if (!GROW_GALLERY_DEBUG) {
+    return;
+  }
+
+  console.info(`[GrowGalleryDebug] ${event}`, details);
 }
 
 function reportAppError(error, context = "App Error") {
@@ -1035,8 +1045,9 @@ async function loadUserProfile() {
   return normalizeProfileRow(data);
 }
 
-async function loadGallerySnapshots() {
+async function loadGallerySnapshots(reason = "unspecified") {
   if (!appState.supabase) {
+    logGrowGalleryDebug("loadGallerySnapshots:skipped", { reason, cause: "supabase-missing" });
     return [];
   }
 
@@ -1046,19 +1057,50 @@ async function loadGallerySnapshots() {
     .order("published_at", { ascending: false });
 
   if (error) {
+    logGrowGalleryDebug("loadGallerySnapshots:error", { reason, error });
     console.error("Failed to load gallery snapshots", error);
     return [];
   }
 
-  return (data || []).map(mapRowToGallerySnapshot);
+  logGrowGalleryDebug("loadGallerySnapshots:raw", {
+    reason,
+    count: (data || []).length,
+    rows: (data || []).map((row) => ({
+      id: row.id,
+      status: row.status,
+      isPublished: row.is_published,
+      userId: row.user_id,
+      sessionId: row.session_id,
+    })),
+  });
+
+  const mapped = (data || []).map(mapRowToGallerySnapshot);
+  logGrowGalleryDebug("loadGallerySnapshots:mapped", {
+    reason,
+    count: mapped.length,
+    rows: mapped.map((row) => ({
+      id: row.id,
+      status: row.status,
+      userId: row.userId,
+      sessionId: row.sessionId,
+    })),
+  });
+  return mapped;
 }
 
 async function loadAdminStatus() {
   if (!appState.user) {
+    logGrowGalleryDebug("loadAdminStatus:skipped", { cause: "user-missing" });
     return false;
   }
 
-  return isConfiguredAdminEmail(appState.user.email);
+  const isAdmin = isConfiguredAdminEmail(appState.user.email);
+  logGrowGalleryDebug("loadAdminStatus:resolved", {
+    email: appState.user.email || "",
+    userId: appState.user.id || "",
+    isAdmin,
+  });
+  return isAdmin;
 }
 
 function normalizeProfileRow(row) {
@@ -1088,7 +1130,14 @@ function getProfileDisplayName() {
 }
 
 function isAdminUser(profile = appState.profile) {
-  return Boolean(appState.isAdmin || isConfiguredAdminEmail(appState.user?.email));
+  const isAdmin = Boolean(appState.isAdmin || isConfiguredAdminEmail(appState.user?.email));
+  logGrowGalleryDebug("isAdminUser:checked", {
+    email: appState.user?.email || "",
+    userId: appState.user?.id || "",
+    appStateIsAdmin: Boolean(appState.isAdmin),
+    isAdmin,
+  });
+  return isAdmin;
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -1483,14 +1532,29 @@ function mapRowToGallerySnapshot(row) {
 function normalizeGallerySnapshotRecordStatus(status, isPublished = false) {
   const normalizedStatus = String(status || "").trim().toLowerCase();
   if (normalizedStatus === "pending") {
+    logGrowGalleryDebug("normalizeGallerySnapshotRecordStatus", {
+      inputStatus: status,
+      isPublished,
+      normalizedStatus: "pending_review",
+    });
     return "pending_review";
   }
   if (normalizedStatus === "published") {
+    logGrowGalleryDebug("normalizeGallerySnapshotRecordStatus", {
+      inputStatus: status,
+      isPublished,
+      normalizedStatus: "approved",
+    });
     return "approved";
   }
   if (["private", "pending_review", "approved", "rejected"].includes(normalizedStatus)) {
     return normalizedStatus;
   }
+  logGrowGalleryDebug("normalizeGallerySnapshotRecordStatus:fallback", {
+    inputStatus: status,
+    isPublished,
+    normalizedStatus: isPublished ? "approved" : "private",
+  });
   return isPublished ? "approved" : "private";
 }
 
@@ -1547,6 +1611,11 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
 
   const existing = getGallerySnapshotForSession(session.id);
   if (existing) {
+    logGrowGalleryDebug("publishSnapshotToGallery:blocked-existing", {
+      sessionId: session.id,
+      existingSnapshotId: existing.id,
+      existingStatus: existing.status,
+    });
     throw new Error(EXISTING_GALLERY_SNAPSHOT_MESSAGE);
   }
 
@@ -1578,6 +1647,12 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   };
 
   const query = appState.supabase.from("grow_gallery_snapshots").insert(payload).select("*").single();
+  logGrowGalleryDebug("publishSnapshotToGallery:submit", {
+    sessionId: session.id,
+    userId: appState.user.id,
+    destinationStatus: payload.status,
+    payload,
+  });
 
   const { data, error } = await query;
   if (error) {
@@ -1595,6 +1670,16 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   }
 
   const mapped = mapRowToGallerySnapshot(data);
+  logGrowGalleryDebug("publishSnapshotToGallery:saved", {
+    savedRow: {
+      id: data?.id || "",
+      status: data?.status || "",
+      isPublished: data?.is_published,
+      userId: data?.user_id || "",
+      sessionId: data?.session_id || "",
+    },
+    mapped,
+  });
   appState.gallerySnapshots = sortGallerySnapshotsNewestFirst([
     mapped,
     ...appState.gallerySnapshots.filter((entry) => entry.id !== mapped.id),
@@ -1726,6 +1811,58 @@ function getGallerySnapshotSortTime(snapshot) {
 
 function getGallerySnapshotDisplayStatus(snapshot) {
   return normalizeGallerySnapshotRecordStatus(snapshot?.status, snapshot?.published);
+}
+
+function getGallerySnapshotDebugSignature(snapshots) {
+  return JSON.stringify((snapshots || []).map((snapshot) => ({
+    id: snapshot.id,
+    status: getGallerySnapshotDisplayStatus(snapshot),
+    userId: snapshot.userId || "",
+    sessionId: snapshot.sessionId || "",
+  })));
+}
+
+async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId = "") {
+  if (!appState.supabase) {
+    logGrowGalleryDebug("refreshGallerySnapshots:skipped", { reason, cause: "supabase-missing" });
+    return appState.gallerySnapshots;
+  }
+
+  if (appState.galleryRefreshPromise) {
+    logGrowGalleryDebug("refreshGallerySnapshots:join", { reason });
+    return appState.galleryRefreshPromise;
+  }
+
+  const previousSignature = getGallerySnapshotDebugSignature(appState.gallerySnapshots);
+  appState.galleryRefreshPromise = (async () => {
+    try {
+      const snapshots = await loadGallerySnapshots(reason);
+      const nextSignature = getGallerySnapshotDebugSignature(snapshots);
+      appState.gallerySnapshots = snapshots;
+      logGrowGalleryDebug("refreshGallerySnapshots:complete", {
+        reason,
+        previousSignature,
+        nextSignature,
+      });
+
+      const hashRoute = window.location.hash || "";
+      const pathRoute = window.location.pathname.replace(/^\/+/, "");
+      const isGalleryRoute = hashRoute.startsWith("#gallery") || pathRoute === "admin/gallery-moderation";
+      if (isGalleryRoute && previousSignature !== nextSignature) {
+        logGrowGalleryDebug("refreshGallerySnapshots:rerender", {
+          reason,
+          targetSnapshotId,
+        });
+        renderGallery(targetSnapshotId);
+      }
+
+      return snapshots;
+    } finally {
+      appState.galleryRefreshPromise = null;
+    }
+  })();
+
+  return appState.galleryRefreshPromise;
 }
 
 function getGallerySnapshotSession(snapshot) {
@@ -2530,7 +2667,12 @@ function renderSnapshotSavedNotice(state) {
   state.savedSnapshotNotice.hidden = false;
 
   if (state.savedSnapshotLink) {
-    const shouldShowLink = hasSubmittedGallerySnapshotState(snapshotState);
+    const shouldShowLink = Boolean(snapshotState?.gallerySnapshotId);
+    logGrowGalleryDebug("renderSnapshotSavedNotice:link", {
+      gallerySnapshotId: snapshotState?.gallerySnapshotId || "",
+      galleryStatus: snapshotState?.galleryStatus || "",
+      shouldShowLink,
+    });
     state.savedSnapshotLink.hidden = !shouldShowLink;
     state.savedSnapshotLink.setAttribute(
       "href",
@@ -2769,13 +2911,25 @@ function syncSnapshotGalleryControls(state) {
 
 async function maybePublishSnapshotFromState(state, result) {
   const destination = getSnapshotDestination(state);
+  logGrowGalleryDebug("maybePublishSnapshotFromState:start", {
+    destination,
+    hasBlob: Boolean(result?.blob),
+    sessionId: state.getGallerySession?.()?.id || "",
+  });
   if (destination === "social") {
+    logGrowGalleryDebug("maybePublishSnapshotFromState:skip-social", {
+      sessionId: state.getGallerySession?.()?.id || "",
+    });
     return { published: null, blocked: false };
   }
 
   const session = state.getGallerySession?.();
   const snapshotData = state.getSnapshotData?.();
   if (hasExistingGallerySnapshotForState(state)) {
+    logGrowGalleryDebug("maybePublishSnapshotFromState:blocked-existing", {
+      sessionId: session?.id || "",
+      snapshotState: getSnapshotStateForSection(state),
+    });
     syncSnapshotGalleryControls(state);
     setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE);
     return { published: null, blocked: true };
@@ -2785,9 +2939,16 @@ async function maybePublishSnapshotFromState(state, result) {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
     });
+    logGrowGalleryDebug("maybePublishSnapshotFromState:publish-result", {
+      sessionId: session?.id || "",
+      publishedSnapshotId: published?.id || "",
+      publishedStatus: published?.status || "",
+      publishedUserId: published?.userId || "",
+    });
     await persistSnapshotStateForSection(state, buildSessionSnapshotStateFromGallerySnapshot(published, getSnapshotStateForSection(state)));
     syncSnapshotGalleryControls(state);
     setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
+    void refreshGallerySnapshots(`post-publish:${published?.id || "unknown"}`, published?.id || "");
     return { published, blocked: false };
   } catch (error) {
     console.error("Grow Gallery publish flow failed", {
@@ -3866,6 +4027,7 @@ function render() {
 
   if (route === "gallery") {
     renderGallery(id || "");
+    void refreshGallerySnapshots("route:gallery", id || "");
     return;
   }
 
@@ -3879,6 +4041,7 @@ function render() {
       return;
     }
     renderGalleryReview();
+    void refreshGallerySnapshots("route:admin-gallery-review", subroute || "");
     return;
   }
 
@@ -4777,11 +4940,35 @@ function renderGallery(targetSnapshotId = "") {
     }
     return entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(status);
   });
+  logGrowGalleryDebug("renderGallery:start", {
+    targetSnapshotId,
+    isAdminView,
+    currentUserId: appState.user?.id || "",
+    currentUserEmail: appState.user?.email || "",
+    loadedSnapshots: appState.gallerySnapshots.map((entry) => ({
+      id: entry.id,
+      status: entry.status,
+      displayStatus: getGallerySnapshotDisplayStatus(entry),
+      userId: entry.userId,
+      sessionId: entry.sessionId,
+    })),
+    visibleSnapshotIds: gallerySnapshots.map((entry) => entry.id),
+  });
 
   if (isAdminView && galleryFeedSection) {
     const pendingSnapshots = sortGallerySnapshotsNewestFirst(
       appState.gallerySnapshots.filter((entry) => getGallerySnapshotDisplayStatus(entry) === "pending_review"),
     );
+    logGrowGalleryDebug("renderGallery:admin-review", {
+      pendingCount: pendingSnapshots.length,
+      pendingSnapshotIds: pendingSnapshots.map((entry) => entry.id),
+      pendingStatuses: pendingSnapshots.map((entry) => ({
+        id: entry.id,
+        status: entry.status,
+        displayStatus: getGallerySnapshotDisplayStatus(entry),
+        userId: entry.userId,
+      })),
+    });
     const adminSection = document.createElement("section");
     adminSection.className = "card gallery-review-section gallery-inline-review-section";
     adminSection.innerHTML = `
