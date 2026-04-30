@@ -83,6 +83,8 @@ const appState = {
   galleryRefreshPromise: null,
   homeGalleryRankingsHydrationRequested: false,
   mockGalleryReviewStatuses: {},
+  deferredInstallPrompt: null,
+  installPromptMode: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
@@ -213,6 +215,127 @@ function registerServiceWorker() {
       console.warn("Service worker registration failed", error);
     });
   }, { once: true });
+}
+
+function isStandaloneAppDisplay() {
+  return Boolean(
+    window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator.standalone === true,
+  );
+}
+
+function getUserAgent() {
+  return String(window.navigator.userAgent || "").toLowerCase();
+}
+
+function isIPhoneSafariInstallCandidate() {
+  const userAgent = getUserAgent();
+  const isIos = /iphone|ipad|ipod/.test(userAgent);
+  const isSafari = /safari/.test(userAgent) && !/crios|fxios|edgios|opr\//.test(userAgent);
+  return isIos && isSafari && !isStandaloneAppDisplay();
+}
+
+function getInstallPromptMode() {
+  if (isStandaloneAppDisplay()) {
+    return "";
+  }
+
+  if (appState.deferredInstallPrompt) {
+    return "prompt";
+  }
+
+  if (isIPhoneSafariInstallCandidate()) {
+    return "ios";
+  }
+
+  return "";
+}
+
+function syncInstallPromptBanner() {
+  const appShell = document.querySelector(".app-shell");
+  const topbar = document.querySelector(".topbar");
+  if (!appShell || !topbar) {
+    return;
+  }
+
+  const mode = getInstallPromptMode();
+  appState.installPromptMode = mode;
+  const existingBanner = appShell.querySelector("#install-grow-app-banner");
+  if (!mode) {
+    existingBanner?.remove();
+    return;
+  }
+
+  const banner = existingBanner || document.createElement("section");
+  banner.id = "install-grow-app-banner";
+  banner.className = `card install-app-banner install-app-banner--${mode}`;
+  const bodyMarkup = mode === "prompt"
+    ? `
+      <div class="install-app-banner-actions">
+        <button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Grow App</button>
+      </div>
+    `
+    : `
+      <div class="install-app-banner-actions">
+        <p class="install-app-banner-ios-tip">Tap Share, then Add to Home Screen</p>
+      </div>
+    `;
+
+  banner.innerHTML = `
+    <div class="install-app-banner-shell">
+      <div class="install-app-banner-copy">
+        <span class="install-app-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 3.5 5.5 7v5.5c0 3.8 2.4 7 6.5 8 4.1-1 6.5-4.2 6.5-8V7L12 3.5Z"></path>
+            <path d="M12 8v8"></path>
+            <path d="m8.75 11.25 3.25-3.25 3.25 3.25"></path>
+          </svg>
+        </span>
+        <div>
+          <p class="eyebrow">Install App</p>
+          <h3>Install Grow App</h3>
+          <p class="muted install-app-banner-subtitle">${mode === "prompt"
+      ? "Add Cannakan Grow to your home screen for a faster, full-screen experience."
+      : "Save Cannakan Grow to your iPhone home screen for a full-screen app experience."}</p>
+        </div>
+      </div>
+      ${bodyMarkup}
+    </div>
+  `;
+
+  if (!existingBanner) {
+    topbar.insertAdjacentElement("afterend", banner);
+  }
+
+  banner.querySelector("[data-install-grow-app]")?.addEventListener("click", async () => {
+    const promptEvent = appState.deferredInstallPrompt;
+    if (!promptEvent) {
+      return;
+    }
+
+    try {
+      await promptEvent.prompt();
+      await promptEvent.userChoice;
+    } catch (error) {
+      console.warn("Install prompt was not completed", error);
+    } finally {
+      appState.deferredInstallPrompt = null;
+      syncInstallPromptBanner();
+    }
+  });
+}
+
+function bindInstallPromptEvents() {
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    appState.deferredInstallPrompt = event;
+    syncInstallPromptBanner();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    appState.deferredInstallPrompt = null;
+    syncInstallPromptBanner();
+  });
 }
 
 function getPreferredTheme() {
@@ -1668,10 +1791,12 @@ async function bootstrapApp() {
   appState.loading = true;
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
+  appState.installPromptMode = getInstallPromptMode();
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
   bindBackToTopVisibilityObservers();
   updateAuthStatus();
+  syncInstallPromptBanner();
   safeRender();
 
   if (appState.supabase) {
@@ -6144,6 +6269,7 @@ function render() {
   closeAllCustomSelects();
   clearSessionTimerInterval();
   updateAuthStatus();
+  syncInstallPromptBanner();
   syncMockDataBanner();
   updateNavState();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
@@ -6157,6 +6283,7 @@ function render() {
   }
   const finalizeRender = () => {
     renderMockDataAdminSection();
+    syncInstallPromptBanner();
     syncMockDataBanner();
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
@@ -11303,6 +11430,7 @@ if (document.body) {
 }
 
 registerServiceWorker();
+bindInstallPromptEvents();
 
 window.addEventListener("error", (event) => {
   reportAppError(event.error || new Error(event.message || "Unknown script error"), "JavaScript Error");

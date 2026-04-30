@@ -2,8 +2,9 @@
   "name": "Cannakan Grow",
   "short_name": "Grow",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0f1412",
+  "background_color": "#10140f",
   "theme_color": "#94d159",
   "icons": [
     {
