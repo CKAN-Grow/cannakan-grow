@@ -79,7 +79,9 @@ const appState = {
   customSelectOpenKey: "",
   sessions: [],
   gallerySnapshots: [],
+  gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
+  homeGalleryRankingsHydrationRequested: false,
   gallerySort: "date",
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
@@ -1452,6 +1454,8 @@ function updateNavState() {
 
 async function bootstrapApp() {
   appState.loading = true;
+  appState.gallerySnapshotsLoaded = false;
+  appState.homeGalleryRankingsHydrationRequested = false;
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
   bindBackToTopVisibilityObservers();
@@ -1477,6 +1481,7 @@ async function bootstrapApp() {
     ensureSampleSessions();
     saveSessions(loadLocalSessions());
     appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
+    appState.gallerySnapshotsLoaded = true;
   }
 
   appState.initialized = true;
@@ -1538,6 +1543,8 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.profileError = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
+  appState.gallerySnapshotsLoaded = false;
+  appState.homeGalleryRankingsHydrationRequested = false;
 
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
@@ -1545,9 +1552,11 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
     const sessions = await loadUserSessions();
     saveSessions(sessions);
     appState.gallerySnapshots = await loadGallerySnapshots();
+    appState.gallerySnapshotsLoaded = true;
   } else if (isSupabaseConfigured()) {
     saveSessions([]);
     appState.gallerySnapshots = await loadGallerySnapshots();
+    appState.gallerySnapshotsLoaded = true;
   }
 
   updateAuthStatus();
@@ -3280,29 +3289,57 @@ function formatHomeGalleryRankingMetric(entry) {
   return `${Math.round(averagePercent)}%`;
 }
 
+function buildHomeGalleryRankingsTeaserState() {
+  const snapshots = getGallerySnapshotsForDisplay();
+  const approvedPublicSnapshots = snapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const currentMonthKey = getLeaderboardMonthKey(new Date());
+  const monthlySnapshots = approvedPublicSnapshots.filter((snapshot) => (
+    getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
+  ));
+  const rankings = {
+    topSource: buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null,
+    topVariety: buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null,
+    topSeedType: buildGallerySeedTypeHighlightEntry(monthlySnapshots),
+  };
+
+  console.log("[HomeRankingsTeaser] mock enabled:", isMockDataEnabled());
+  console.log("[HomeRankingsTeaser] snapshot count:", snapshots.length);
+  console.log("[HomeRankingsTeaser] rankings:", {
+    approvedPublicSnapshotCount: approvedPublicSnapshots.length,
+    currentMonthSnapshotCount: monthlySnapshots.length,
+    rankings,
+  });
+
+  return {
+    snapshots,
+    approvedPublicSnapshots,
+    monthlySnapshots,
+    rankings,
+  };
+}
+
 function renderHomeGalleryRankingsTeaser() {
-  const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
-  const topSource = buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null;
-  const topVariety = buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null;
-  const topSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
+  const teaserState = buildHomeGalleryRankingsTeaserState();
+  const { snapshots, approvedPublicSnapshots, monthlySnapshots, rankings } = teaserState;
   const rankingRows = [
     {
       label: "This Month Top Source",
       toneClass: "is-gold",
-      entry: topSource,
+      entry: rankings.topSource,
     },
     {
       label: "This Month Top Seed Variety",
       toneClass: "is-silver",
-      entry: topVariety,
+      entry: rankings.topVariety,
     },
     {
       label: "This Month Top Seed Type",
       toneClass: "is-bronze",
-      entry: topSeedType,
+      entry: rankings.topSeedType,
     },
   ];
   const hasRankingData = rankingRows.some((row) => row.entry);
+  const shouldShowEmptyState = snapshots.length === 0 || approvedPublicSnapshots.length === 0 || monthlySnapshots.length === 0 || !hasRankingData;
 
   return `
     <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
@@ -3319,7 +3356,7 @@ function renderHomeGalleryRankingsTeaser() {
         </div>
         <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">View Community Grow Gallery</a>
       </div>
-      ${hasRankingData ? `
+      ${!shouldShowEmptyState ? `
         <ul class="home-gallery-rankings-list" aria-label="Community Grow Gallery ranking preview">
           ${rankingRows.map((row) => `
             <li class="home-gallery-rankings-row ${row.toneClass}">
@@ -3410,6 +3447,7 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       const snapshots = await loadGallerySnapshots(reason);
       const nextSignature = getGallerySnapshotDebugSignature(snapshots);
       appState.gallerySnapshots = snapshots;
+      appState.gallerySnapshotsLoaded = true;
       logGrowGalleryDebug("refreshGallerySnapshots:complete", {
         reason,
         previousSignature,
@@ -6523,6 +6561,15 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
 
 function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
+  if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
+    appState.homeGalleryRankingsHydrationRequested = true;
+    void refreshGallerySnapshots("home-rankings-teaser").then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#home" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
   const sessions = sortSessionsNewestFirst(getSessions());
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const spotlightCard = document.querySelector("#active-session-spotlight");
