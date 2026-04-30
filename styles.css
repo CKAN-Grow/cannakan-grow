@@ -1067,6 +1067,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     width: 100%;
   }
 
+  .mock-data-admin-actions {
+    justify-items: start;
+  }
+
   .session-history-grid {
     grid-template-columns: 1fr;
   }
@@ -2534,6 +2538,44 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border: 1px solid var(--line);
   background: var(--card);
   box-shadow: 0 14px 24px rgba(24, 34, 24, 0.08);
+}
+
+.mock-data-admin-section {
+  margin-top: 16px;
+  border: 1px dashed rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(244, 248, 243, 0.32) 0%, rgba(234, 241, 233, 0.22) 100%);
+}
+
+.mock-data-admin-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.mock-data-admin-actions .muted {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.mock-data-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 60;
+  min-width: min(90vw, 360px);
+  padding: 12px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 173, 74, 0.42);
+  background: rgba(35, 48, 38, 0.96);
+  color: #fff4cf;
+  box-shadow: 0 16px 28px rgba(12, 18, 14, 0.28);
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
 }
 
 .gallery-review-media {
@@ -5275,6 +5317,17 @@ body.theme-dark .gallery-seedtype-highlight-icon {
   border-color: rgba(217, 173, 74, 0.42);
   background: rgba(217, 173, 74, 0.12);
   color: #f2d58f;
+}
+
+body.theme-dark .mock-data-admin-section {
+  border-color: rgba(148, 209, 89, 0.18);
+  background: linear-gradient(180deg, rgba(31, 42, 34, 0.72) 0%, rgba(24, 33, 27, 0.62) 100%);
+}
+
+body.theme-dark .mock-data-banner {
+  background: rgba(20, 28, 22, 0.97);
+  color: #ffe8aa;
+  border-color: rgba(217, 173, 74, 0.48);
 }
 
 body.theme-dark .gallery-hero-section .muted {
