@@ -2350,6 +2350,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-bottom: 12px;
 }
 
+.snapshot-modal-profile-test {
+  color: red;
+  font-size: 20px;
+  margin: 16px 0;
+}
+
 .snapshot-modal-thumb {
   display: grid;
   gap: 8px;

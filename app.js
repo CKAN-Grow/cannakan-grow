@@ -2759,14 +2759,7 @@ function ensureSnapshotImageModal() {
         <p class="muted">Select the uploaded image you want to feature as the main visual.</p>
       </div>
       <div class="snapshot-modal-grid" id="snapshot-modal-grid"></div>
-      <label id="snapshot-modal-profile-toggle-row" class="snapshot-profile-toggle snapshot-modal-profile-toggle" hidden>
-        <input id="snapshot-modal-include-profile" type="checkbox" name="snapshot-modal-include-profile">
-        <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
-        <span class="snapshot-profile-toggle-text">
-          <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in the Grow Gallery</span>
-          <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
-        </span>
-      </label>
+      <div class="snapshot-modal-profile-test">PROFILE TOGGLE TEST</div>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-snapshot-modal-action="cancel">Cancel</button>
         <button type="button" class="button button-primary" data-snapshot-modal-action="confirm">Use Selected Image</button>
@@ -2780,20 +2773,9 @@ function ensureSnapshotImageModal() {
 function chooseSnapshotImageForState(state, images) {
   const modal = ensureSnapshotImageModal();
   const grid = modal.querySelector("#snapshot-modal-grid");
-  const modalProfileToggleRow = modal.querySelector("#snapshot-modal-profile-toggle-row");
-  const modalProfileToggle = modal.querySelector("#snapshot-modal-include-profile");
   let selectedKey = state.selectedImageKey && images.some((image) => image.key === state.selectedImageKey)
     ? state.selectedImageKey
     : images[0]?.key || "";
-  const destination = getSnapshotDestination(state);
-  const includesGallery = destination === "social-gallery" || destination === "gallery";
-
-  if (modalProfileToggleRow) {
-    modalProfileToggleRow.hidden = !includesGallery;
-  }
-  if (modalProfileToggle) {
-    modalProfileToggle.checked = Boolean(state.includeProfileToggle?.checked);
-  }
 
   const renderChoices = () => {
     grid.innerHTML = images.map((image) => `
@@ -2816,20 +2798,10 @@ function chooseSnapshotImageForState(state, images) {
   return new Promise((resolve) => {
     const cancelButton = modal.querySelector('[data-snapshot-modal-action="cancel"]');
     const confirmButton = modal.querySelector('[data-snapshot-modal-action="confirm"]');
-    const syncIncludeProfileState = () => {
-      if (!modalProfileToggle || !state.includeProfileToggle) {
-        return;
-      }
-
-      state.includeProfileToggle.checked = modalProfileToggle.checked;
-    };
 
     const cleanup = (result) => {
       cancelButton.onclick = null;
       confirmButton.onclick = null;
-      if (modalProfileToggle) {
-        modalProfileToggle.onchange = null;
-      }
       modal.removeEventListener("cancel", onCancel);
       if (modal.open) {
         modal.close();
@@ -2842,16 +2814,8 @@ function chooseSnapshotImageForState(state, images) {
       cleanup("");
     };
 
-    if (modalProfileToggle) {
-      modalProfileToggle.onchange = () => {
-        syncIncludeProfileState();
-      };
-    }
     cancelButton.onclick = () => cleanup("");
-    confirmButton.onclick = () => {
-      syncIncludeProfileState();
-      cleanup(selectedKey);
-    };
+    confirmButton.onclick = () => cleanup(selectedKey);
     modal.addEventListener("cancel", onCancel, { once: true });
     modal.showModal();
   });
