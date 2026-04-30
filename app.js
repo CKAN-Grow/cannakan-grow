@@ -2083,6 +2083,8 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
   };
 }
 
+// Performance leaderboards are intentionally based only on germination results.
+// Likes remain separate display/sort metadata for future non-performance views.
 function buildGalleryLeaderboardEntries(snapshots, type = "source") {
   const groups = new Map();
 
@@ -2329,7 +2331,7 @@ function renderGalleryLeaderboardSection() {
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
           <h3>Community Grow Gallery Rankings</h3>
-          <p class="muted">Approved public snapshots only. Rankings require at least 3 approved snapshots per source or seed variety.</p>
+          <p class="muted">Approved public snapshots only. Rankings use germination performance only, with a 3-snapshot minimum per source or seed variety. Likes stay separate for future sorting.</p>
         </div>
       </div>
     </div>
