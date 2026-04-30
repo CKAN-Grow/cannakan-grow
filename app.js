@@ -82,6 +82,7 @@ const appState = {
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
   homeGalleryRankingsHydrationRequested: false,
+  mockGalleryReviewStatuses: {},
   gallerySort: "date",
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
@@ -1169,6 +1170,7 @@ function isMockDataEnabled() {
 
 function setMockDataEnabled(enabled) {
   if (enabled) {
+    appState.mockGalleryReviewStatuses = {};
     localStorage.setItem(MOCK_DATA_STORAGE_KEY, "true");
     return;
   }
@@ -1461,6 +1463,66 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
 
 const MOCK_GALLERY_SNAPSHOTS = buildMockGallerySnapshots();
 
+function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
+  const records = buildMockGallerySnapshotSeedRecords(now)
+    .slice(0, 5)
+    .map((record, index) => ({
+      ...record,
+      submittedAt: createMockGalleryMonthDate(
+        new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0),
+        [4, 8, 12, 19, 26][index] || (index + 1),
+        [9, 11, 14, 16, 18][index] || 12,
+      ),
+      approved: false,
+      likes: 0,
+    }));
+
+  return records.map((record, index) => {
+    const systemType = index % 2 === 0 ? "KAN" : "TRA";
+    const unitId = systemType === "KAN"
+      ? String.fromCharCode(65 + ((index + 1) % 4))
+      : String(((index + 1) % 4) + 1);
+    const usesDetailsOnlyCard = index === 1 || index === 4;
+    const sharedProfile = getMockGallerySharedProfile(index, record);
+
+    return {
+      id: `mock-gallery-review-${String(index + 1).padStart(2, "0")}`,
+      userId: `${GALLERY_MOCK_USER_ID}-review`,
+      sessionId: `mock-gallery-review-session-${String(index + 1).padStart(2, "0")}`,
+      title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
+      imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
+      imagePath: "",
+      sessionDate: record.submittedAt.slice(0, 10),
+      systemType,
+      unitId,
+      totalSeeds: record.seedCount,
+      totalPlanted: record.germinatedCount,
+      successPercent: record.germinationRate,
+      submittedBy: "Dev Mock Submission",
+      sourceName: record.source,
+      sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
+      seedVarietyName: record.seedVariety,
+      seedTypeName: record.seedType,
+      includeProfileInGallery: sharedProfile.includeProfileInGallery,
+      profileName: sharedProfile.profileName,
+      profileImageUrl: sharedProfile.profileImageUrl,
+      status: "pending_review",
+      published: false,
+      includeNotes: false,
+      publishedAt: "",
+      createdAt: record.submittedAt,
+      updatedAt: record.submittedAt,
+      likeCount: 0,
+      likedByCurrentUser: false,
+      isMock: true,
+      isMockReview: true,
+      mockDataVersion: GALLERY_MOCK_DATA_VERSION,
+    };
+  });
+}
+
+const MOCK_PENDING_GALLERY_SUBMISSIONS = buildMockPendingGalleryReviewSnapshots();
+
 function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots) {
   if (isMockDataEnabled()) {
     return sortGallerySnapshotsNewestFirst(MOCK_GALLERY_SNAPSHOTS);
@@ -1471,6 +1533,50 @@ function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots)
 
 function isMockGallerySnapshot(snapshot) {
   return Boolean(snapshot?.isMock) || String(snapshot?.id || "").startsWith("mock-gallery-");
+}
+
+function isMockGalleryReviewSnapshot(snapshot) {
+  return Boolean(snapshot?.isMockReview) || String(snapshot?.id || "").startsWith("mock-gallery-review-");
+}
+
+function getMockGalleryReviewStatus(snapshot) {
+  const snapshotId = String(snapshot?.id || "").trim();
+  if (!snapshotId) {
+    return "pending_review";
+  }
+
+  return appState.mockGalleryReviewStatuses[snapshotId] || "pending_review";
+}
+
+function getGalleryReviewSnapshotById(snapshotId) {
+  const normalizedId = String(snapshotId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return [
+    ...appState.gallerySnapshots,
+    ...(isMockDataEnabled() ? MOCK_PENDING_GALLERY_SUBMISSIONS : []),
+  ].find((snapshot) => String(snapshot?.id || "").trim() === normalizedId) || null;
+}
+
+function getAdminReviewPendingSnapshots() {
+  const realPendingSnapshots = appState.gallerySnapshots.filter((entry) => (
+    getGallerySnapshotDisplayStatus(entry) === "pending_review"
+  ));
+
+  if (!isMockDataEnabled()) {
+    return sortGallerySnapshotsNewestFirst(realPendingSnapshots);
+  }
+
+  const mockPendingSnapshots = MOCK_PENDING_GALLERY_SUBMISSIONS.filter((snapshot) => (
+    getMockGalleryReviewStatus(snapshot) === "pending_review"
+  ));
+
+  return sortGallerySnapshotsNewestFirst([
+    ...mockPendingSnapshots,
+    ...realPendingSnapshots,
+  ]);
 }
 
 function createDefaultPartitions() {
@@ -2498,6 +2604,34 @@ async function rejectSnapshot(snapshotId) {
   return updateGallerySnapshotModerationStatus(snapshotId, "rejected");
 }
 
+async function approveGalleryReviewSnapshot(snapshotId) {
+  const snapshot = getGalleryReviewSnapshotById(snapshotId);
+  if (isMockGalleryReviewSnapshot(snapshot)) {
+    appState.mockGalleryReviewStatuses[String(snapshot.id)] = "approved";
+    return {
+      ...snapshot,
+      status: "approved",
+      published: true,
+    };
+  }
+
+  return approveSnapshot(snapshotId);
+}
+
+async function rejectGalleryReviewSnapshot(snapshotId) {
+  const snapshot = getGalleryReviewSnapshotById(snapshotId);
+  if (isMockGalleryReviewSnapshot(snapshot)) {
+    appState.mockGalleryReviewStatuses[String(snapshot.id)] = "rejected";
+    return {
+      ...snapshot,
+      status: "rejected",
+      published: false,
+    };
+  }
+
+  return rejectSnapshot(snapshotId);
+}
+
 function buildClearedSessionSnapshotState(snapshotState) {
   const existingSnapshotState = normalizePersistedSessionSnapshotState(snapshotState) || {};
   return normalizePersistedSessionSnapshotState({
@@ -2824,6 +2958,21 @@ function getGallerySnapshotSubmittedDateLabel(snapshot) {
   }).format(parsedDate);
 }
 
+function getGallerySnapshotSubmittedDateTimeLabel(snapshot) {
+  const parsedDate = parseLeaderboardSnapshotDate(snapshot);
+  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
+    return "Unknown date";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsedDate);
+}
+
 function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
   if (hasGallerySnapshotImage(snapshot)) {
     return `
@@ -2902,6 +3051,98 @@ function renderGallerySharedProfileMarkup(snapshot) {
       ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
     </div>
   `;
+}
+
+function ensureGalleryReviewPreviewModal() {
+  let modal = document.querySelector("#gallery-review-preview-modal");
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "gallery-review-preview-modal";
+  modal.className = "snapshot-modal gallery-review-preview-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card gallery-review-preview-card" role="document">
+      <button type="button" class="modal-close gallery-review-preview-close" aria-label="Close review preview">×</button>
+      <div class="gallery-review-preview-content"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".gallery-review-preview-close")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+
+  return modal;
+}
+
+function openGalleryReviewPreview(snapshotId) {
+  const snapshot = getGalleryReviewSnapshotById(snapshotId);
+  if (!snapshot) {
+    window.alert("Could not find this Grow Gallery submission.");
+    return;
+  }
+
+  const modal = ensureGalleryReviewPreviewModal();
+  const content = modal.querySelector(".gallery-review-preview-content");
+  if (!content) {
+    return;
+  }
+
+  const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
+  const isMockReviewSnapshot = isMockGalleryReviewSnapshot(snapshot);
+  const facts = [
+    { label: "Snapshot ID", value: snapshot.id || "Unknown" },
+    { label: "Source", value: publicDetails.sourceLabel },
+    { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
+    { label: "Seed Type", value: publicDetails.seedTypeLabel },
+    { label: "Seed Count", value: publicDetails.seedCountLabel },
+    { label: "Germinated", value: publicDetails.germinatedLabel },
+    { label: "Germination Rate", value: publicDetails.germinationRateLabel },
+    { label: "Submitted", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) },
+  ];
+
+  content.innerHTML = `
+    <div class="gallery-review-preview-header">
+      <div>
+        <p class="eyebrow">${isMockReviewSnapshot ? "DEV MOCK" : "Admin Review"}</p>
+        <h3>${escapeHtml(snapshot.title || "Grow Gallery submission")}</h3>
+        <p class="muted">Preview pending Grow Gallery submission details before moderation.</p>
+      </div>
+      <div class="gallery-review-preview-statuses">
+        ${isMockReviewSnapshot ? '<span class="gallery-review-status-badge is-dev-mock">DEV MOCK</span>' : ""}
+        <span class="gallery-review-status-badge is-pending">Pending Review</span>
+      </div>
+    </div>
+    ${sharedProfileMarkup ? `<div class="gallery-review-preview-profile">${sharedProfileMarkup}</div>` : ""}
+    <div class="gallery-review-preview-layout">
+      <div class="gallery-review-preview-media">
+        ${renderGallerySnapshotMediaMarkup(snapshot, feedDetails)}
+      </div>
+      <div class="gallery-review-preview-meta">
+        ${facts.map((fact) => `
+          <article class="meta-card gallery-review-preview-meta-card">
+            <strong>${escapeHtml(fact.label)}</strong>
+            <p>${escapeHtml(fact.value)}</p>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  modal.showModal();
+  modal.querySelector(".gallery-review-preview-close")?.focus();
 }
 
 function normalizeLeaderboardLabel(value) {
@@ -6979,16 +7220,16 @@ function renderGallery(targetSnapshotId = "") {
   });
 
   if (isAdminView && galleryFeedSection) {
-    const pendingSnapshots = sortGallerySnapshotsNewestFirst(
-      appState.gallerySnapshots.filter((entry) => getGallerySnapshotDisplayStatus(entry) === "pending_review"),
-    );
+    const pendingSnapshots = getAdminReviewPendingSnapshots();
     logGrowGalleryDebug("renderGallery:admin-review", {
       pendingCount: pendingSnapshots.length,
       pendingSnapshotIds: pendingSnapshots.map((entry) => entry.id),
       pendingStatuses: pendingSnapshots.map((entry) => ({
         id: entry.id,
-        status: entry.status,
-        displayStatus: getGallerySnapshotDisplayStatus(entry),
+        status: isMockGalleryReviewSnapshot(entry) ? getMockGalleryReviewStatus(entry) : entry.status,
+        displayStatus: isMockGalleryReviewSnapshot(entry)
+          ? getMockGalleryReviewStatus(entry)
+          : getGallerySnapshotDisplayStatus(entry),
         userId: entry.userId,
       })),
     });
@@ -7018,6 +7259,9 @@ function renderGallery(targetSnapshotId = "") {
           item.className = "gallery-review-card";
           item.dataset.gallerySnapshotId = snapshot.id;
           const details = getGallerySnapshotFeedDetails(snapshot);
+          const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+          const isMockReviewSnapshot = isMockGalleryReviewSnapshot(snapshot);
+          const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
           item.innerHTML = `
             <div class="gallery-review-media">
               ${renderGallerySnapshotMediaMarkup(snapshot, details)}
@@ -7026,18 +7270,25 @@ function renderGallery(targetSnapshotId = "") {
               <div class="gallery-card-top">
                 <div>
                   <strong>${escapeHtml(snapshot.title)}</strong>
-                  <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+                  <p>${escapeHtml(getGallerySnapshotSubmittedDateTimeLabel(snapshot))}</p>
                 </div>
                 <div class="gallery-review-status-stack">
+                  ${isMockReviewSnapshot ? '<span class="gallery-review-status-badge is-dev-mock">DEV MOCK</span>' : ""}
                   <span class="gallery-review-status-badge is-pending">Pending Review</span>
                   <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
                 </div>
               </div>
-              <div class="gallery-card-meta">
-                <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-                <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
+              <div class="gallery-review-meta-grid">
+                <span class="gallery-card-chip">${escapeHtml(`ID ${snapshot.id}`)}</span>
+                <span class="gallery-card-chip">${escapeHtml(publicDetails.systemLabel)}</span>
+                <span class="gallery-card-chip">${escapeHtml(publicDetails.sourceLabel)}</span>
+                <span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>
+                <span class="gallery-card-chip">${escapeHtml(publicDetails.seedTypeLabel)}</span>
+                <span class="gallery-card-chip">${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds`)}</span>
               </div>
+              ${sharedProfileMarkup ? `<div class="gallery-review-profile-row">${sharedProfileMarkup}</div>` : ""}
               <div class="gallery-review-actions">
+                <button type="button" class="button button-secondary" data-gallery-review-preview="${escapeHtml(snapshot.id)}">View Session / Preview</button>
                 <button type="button" class="button button-primary gallery-admin-approve" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
                 <button type="button" class="button button-secondary gallery-admin-reject" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
               </div>
@@ -7047,10 +7298,15 @@ function renderGallery(targetSnapshotId = "") {
         });
       }
     }
+    adminSection.querySelectorAll("[data-gallery-review-preview]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openGalleryReviewPreview(button.dataset.galleryReviewPreview);
+      });
+    });
     adminSection.querySelectorAll("[data-gallery-approve]").forEach((button) => {
       button.addEventListener("click", async () => {
         try {
-          await approveSnapshot(button.dataset.galleryApprove);
+          await approveGalleryReviewSnapshot(button.dataset.galleryApprove);
           renderGallery(button.dataset.galleryApprove);
         } catch (error) {
           window.alert(error.message || "Could not approve this snapshot.");
@@ -7060,7 +7316,7 @@ function renderGallery(targetSnapshotId = "") {
     adminSection.querySelectorAll("[data-gallery-reject]").forEach((button) => {
       button.addEventListener("click", async () => {
         try {
-          await rejectSnapshot(button.dataset.galleryReject);
+          await rejectGalleryReviewSnapshot(button.dataset.galleryReject);
           renderGallery(button.dataset.galleryReject);
         } catch (error) {
           window.alert(error.message || "Could not reject this snapshot.");

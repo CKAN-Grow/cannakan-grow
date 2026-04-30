@@ -3380,6 +3380,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-content: start;
 }
 
+.gallery-review-meta-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.gallery-review-profile-row {
+  display: flex;
+  align-items: center;
+}
+
 .gallery-review-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3423,6 +3434,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-review-status-badge.is-private {
   background: rgba(88, 102, 94, 0.16);
   color: #35433c;
+}
+
+.gallery-review-status-badge.is-dev-mock {
+  background: rgba(148, 209, 89, 0.14);
+  color: #456633;
 }
 
 .gallery-admin-reject {
@@ -3504,6 +3520,67 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #f3f7f2;
   background: rgba(10, 14, 11, 0.52);
   backdrop-filter: blur(8px);
+}
+
+.gallery-review-preview-card {
+  width: min(980px, calc(100vw - 32px));
+  max-width: 980px;
+}
+
+.gallery-review-preview-content {
+  display: grid;
+  gap: 18px;
+}
+
+.gallery-review-preview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gallery-review-preview-header h3,
+.gallery-review-preview-header p {
+  margin: 0;
+}
+
+.gallery-review-preview-statuses {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.gallery-review-preview-profile {
+  display: flex;
+  align-items: center;
+}
+
+.gallery-review-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.gallery-review-preview-media {
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(24, 34, 24, 0.06);
+}
+
+.gallery-review-preview-media > .gallery-card-media {
+  min-height: 100%;
+}
+
+.gallery-review-preview-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gallery-review-preview-meta-card {
+  min-height: 92px;
 }
 
 .snapshot-preview-card .snapshot-preview-overlay {
@@ -3641,6 +3718,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     width: 50%;
   }
 
+  .gallery-review-preview-header {
+    flex-direction: column;
+  }
+
+  .gallery-review-preview-statuses {
+    justify-content: flex-start;
+  }
+
+  .gallery-review-preview-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .snapshot-preview-card .snapshot-preview-overlay {
     left: 12px !important;
     right: 12px !important;
@@ -3699,6 +3788,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .snapshot-preview-card {
     width: 100%;
     max-width: none;
+  }
+
+  .gallery-review-preview-meta {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .snapshot-preview-card .snapshot-preview-overlay {
@@ -6107,6 +6200,15 @@ body.theme-dark .gallery-empty-state {
 body.theme-dark .gallery-review-status-badge.is-pending {
   background: rgba(221, 128, 69, 0.18);
   color: #ffd2b9;
+}
+
+body.theme-dark .gallery-review-status-badge.is-dev-mock {
+  background: rgba(148, 209, 89, 0.18);
+  color: #dff7c6;
+}
+
+body.theme-dark .gallery-review-preview-media {
+  background: rgba(0, 0, 0, 0.18);
 }
 
 @media (prefers-reduced-motion: reduce) {
