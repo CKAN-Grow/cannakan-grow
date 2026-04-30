@@ -6798,7 +6798,9 @@ function applyPartitionRowVisualState(row) {
   if (isCompletedSession && isCompletedEmpty) {
     row.style.setProperty("opacity", "0.55", "important");
     row.style.setProperty("filter", "grayscale(0.35)", "important");
-    row.style.setProperty("background", "rgba(255,255,255,0.03)", "important");
+    row.style.setProperty("background", "#18201b", "important");
+    row.style.setProperty("background-image", "none", "important");
+    row.style.setProperty("box-shadow", "inset 0 0 0 1px rgba(148, 209, 89, 0.12)", "important");
   } else {
     row.style.removeProperty("opacity");
     row.style.removeProperty("filter");
@@ -6810,12 +6812,18 @@ function applyPartitionRowVisualState(row) {
   });
 
   fields.forEach((node) => {
-    const fieldBackground = isFilled || isCompleted ? "#232823" : "#1E221F";
+    const fieldBackground = isCompletedSession && isCompletedEmpty
+      ? "#202622"
+      : (isFilled || isCompleted ? "#232823" : "#1E221F");
     node.style.setProperty("background", fieldBackground, "important");
     node.style.setProperty("background-image", "none", "important");
     node.style.setProperty("color", "#f6f8f5", "important");
     node.style.setProperty("-webkit-text-fill-color", "#f6f8f5", "important");
-    node.style.setProperty("border-color", "#343a35", "important");
+    node.style.setProperty(
+      "border-color",
+      isCompletedSession && isCompletedEmpty ? "rgba(148, 209, 89, 0.12)" : "#343a35",
+      "important",
+    );
     node.style.setProperty("box-shadow", "none", "important");
     if (isCompletedSession && isCompletedEmpty) {
       node.style.setProperty("opacity", "0.88", "important");
