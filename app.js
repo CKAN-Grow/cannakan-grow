@@ -1451,6 +1451,11 @@ function mapRowToGallerySnapshot(row) {
     return null;
   }
 
+  const normalizedStatus = normalizeGallerySnapshotRecordStatus(
+    row.status,
+    row.is_published,
+  );
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -1468,13 +1473,27 @@ function mapRowToGallerySnapshot(row) {
     includeProfileInGallery: Boolean(row.include_profile_in_gallery),
     profileName: String(row.submitted_profile_name || "").trim(),
     profileImageUrl: String(row.submitted_profile_avatar_url || "").trim(),
-    status: String(row.status || (row.is_published ? "approved" : "private")).trim() || "private",
+    status: normalizedStatus,
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
     publishedAt: row.published_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
+}
+
+function normalizeGallerySnapshotRecordStatus(status, isPublished = false) {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (normalizedStatus === "pending") {
+    return "pending_review";
+  }
+  if (normalizedStatus === "published") {
+    return "approved";
+  }
+  if (["private", "pending_review", "approved", "rejected"].includes(normalizedStatus)) {
+    return normalizedStatus;
+  }
+  return isPublished ? "approved" : "private";
 }
 
 function getGallerySnapshotForSession(sessionId) {
