@@ -371,11 +371,98 @@ function closeAllCustomSelects(exceptKey = "") {
     const menu = wrapper.querySelector(".custom-select-menu");
     trigger?.setAttribute("aria-expanded", "false");
     if (menu) {
+      resetCustomSelectMenuPosition(wrapper, menu);
       menu.hidden = true;
     }
   });
 
   appState.customSelectOpenKey = exceptKey || "";
+}
+
+function resetCustomSelectMenuPosition(wrapper, menu) {
+  if (!menu) {
+    return;
+  }
+
+  menu.style.position = "";
+  menu.style.left = "";
+  menu.style.top = "";
+  menu.style.right = "";
+  menu.style.bottom = "";
+  menu.style.width = "";
+  menu.style.maxHeight = "";
+  menu.style.visibility = "";
+  menu.dataset.dropdownDirection = "down";
+  if (wrapper) {
+    wrapper.dataset.dropdownDirection = "down";
+  }
+}
+
+function positionCustomSelectMenu(select) {
+  const wrapper = select?.closest(".custom-select");
+  if (!wrapper) {
+    return;
+  }
+
+  const trigger = wrapper.querySelector(".custom-select-trigger");
+  const menu = wrapper.querySelector(".custom-select-menu");
+  if (!trigger || !menu || menu.hidden) {
+    return;
+  }
+
+  const triggerRect = trigger.getBoundingClientRect();
+  if (triggerRect.width <= 0 || triggerRect.height <= 0) {
+    return;
+  }
+
+  const viewportPadding = 12;
+  const menuGap = 8;
+  menu.style.position = "fixed";
+  menu.style.left = `${Math.round(triggerRect.left)}px`;
+  menu.style.top = "0px";
+  menu.style.right = "auto";
+  menu.style.bottom = "auto";
+  menu.style.width = `${Math.round(triggerRect.width)}px`;
+  menu.style.visibility = "hidden";
+  menu.style.maxHeight = "";
+
+  const naturalHeight = Math.max(menu.scrollHeight, 0);
+  const spaceBelow = Math.max(120, Math.floor(window.innerHeight - triggerRect.bottom - viewportPadding - menuGap));
+  const spaceAbove = Math.max(120, Math.floor(triggerRect.top - viewportPadding - menuGap));
+  const openUpward = naturalHeight > spaceBelow && spaceAbove > spaceBelow;
+  const availableHeight = openUpward ? spaceAbove : spaceBelow;
+  const renderedHeight = Math.min(Math.max(menu.scrollHeight, naturalHeight), availableHeight);
+  const top = openUpward
+    ? Math.max(viewportPadding, Math.round(triggerRect.top - renderedHeight - menuGap))
+    : Math.min(
+      Math.round(triggerRect.bottom + menuGap),
+      Math.max(viewportPadding, Math.round(window.innerHeight - viewportPadding - renderedHeight)),
+    );
+
+  menu.style.maxHeight = `${availableHeight}px`;
+  menu.style.top = `${top}px`;
+  menu.style.visibility = "";
+  menu.dataset.dropdownDirection = openUpward ? "up" : "down";
+  wrapper.dataset.dropdownDirection = openUpward ? "up" : "down";
+}
+
+function syncOpenCustomSelectMenuPosition() {
+  const openWrapper = document.querySelector(".custom-select.is-open");
+  const openSelect = openWrapper?.querySelector("select[data-custom-select]");
+  if (openSelect instanceof HTMLSelectElement) {
+    positionCustomSelectMenu(openSelect);
+  }
+}
+
+function requestOpenCustomSelectMenuPositionSync() {
+  if (appState.customSelectPositionFrame) {
+    return;
+  }
+
+  appState.customSelectPositionFrame = window.requestAnimationFrame(() => {
+    appState.customSelectPositionFrame = 0;
+    syncOpenCustomSelectMenuPosition();
+  });
 }
 
 function syncCustomSelect(select) {
@@ -423,8 +510,12 @@ function openCustomSelect(select) {
   appState.customSelectOpenKey = dropdownKey;
   if (menu) {
     menu.hidden = false;
+    positionCustomSelectMenu(select);
     const selectedOption = menu.querySelector(".custom-select-option.is-selected") || menu.querySelector(".custom-select-option");
-    window.setTimeout(() => selectedOption?.focus(), 0);
+    window.setTimeout(() => {
+      positionCustomSelectMenu(select);
+      selectedOption?.focus();
+    }, 0);
   }
 }
 
@@ -439,6 +530,7 @@ function closeCustomSelect(select) {
   const menu = wrapper.querySelector(".custom-select-menu");
   trigger?.setAttribute("aria-expanded", "false");
   if (menu) {
+    resetCustomSelectMenuPosition(wrapper, menu);
     menu.hidden = true;
   }
 
@@ -504,6 +596,11 @@ function initializeCustomSelects(scope) {
     wrapper.classList.toggle("is-open", isOpen);
     menu.hidden = !isOpen;
     trigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    if (isOpen) {
+      positionCustomSelectMenu(select);
+    } else {
+      resetCustomSelectMenuPosition(wrapper, menu);
+    }
 
     if (select.dataset.customSelectBound === "true") {
       return;
@@ -10494,6 +10591,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+window.addEventListener("resize", requestOpenCustomSelectMenuPositionSync, { passive: true });
+document.addEventListener("scroll", requestOpenCustomSelectMenuPositionSync, true);
 window.addEventListener("hashchange", safeRender);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;

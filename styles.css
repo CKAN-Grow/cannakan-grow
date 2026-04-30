@@ -4969,16 +4969,24 @@ select {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 9999;
   display: grid;
   gap: 4px;
   padding: 8px;
+  max-height: min(320px, calc(100vh - 24px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: linear-gradient(180deg, rgba(241, 247, 239, 0.98) 0%, rgba(232, 240, 231, 0.98) 100%);
   border: 1px solid rgba(116, 139, 117, 0.24);
   border-radius: 12px;
   box-shadow:
     0 14px 30px rgba(29, 49, 33, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transform-origin: top center;
+}
+
+.custom-select-menu[data-dropdown-direction="up"] {
+  transform-origin: bottom center;
 }
 
 .custom-select-menu[hidden] {
