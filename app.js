@@ -2647,7 +2647,13 @@ function buildUnpublishedSessionSnapshotState(state) {
 
 function hasExistingGallerySnapshotForState(state) {
   const session = state?.getGallerySession?.() || null;
-  return Boolean(getGallerySnapshotForSession(session?.id));
+  const liveGallerySnapshot = getGallerySnapshotForSession(session?.id);
+  if (liveGallerySnapshot) {
+    return true;
+  }
+
+  const snapshotState = getSnapshotStateForSection(state);
+  return Boolean(snapshotState?.galleryStatus && snapshotState.galleryStatus !== "social-only");
 }
 
 function syncSnapshotDestinationAvailability(state) {
@@ -2690,7 +2696,7 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.galleryNote) {
-    if (includesGallery && publishedEntry) {
+    if (includesGallery && hasExistingGallerySnapshotForState(state)) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
     } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
