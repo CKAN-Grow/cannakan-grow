@@ -23,8 +23,8 @@ const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
-  KAN: "Icons/KAN%20icon.svg",
-  TRA: "Icons/TRA%20icon.svg",
+  KAN: "icons/KAN%20icon.svg",
+  TRA: "icons/TRA%20icon.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "src/assets/kan-partition-icon-v2.png",

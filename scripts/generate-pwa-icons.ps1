@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Drawing
 
 $workspace = Split-Path -Parent $PSScriptRoot
-$publicIconsDir = Join-Path $workspace "public/icons"
+$publicIconsDir = Join-Path $workspace "icons"
 $sourcePath = Join-Path $workspace "Assets/Icons/ck-grow-favicon.png"
 
 $targets = @(
