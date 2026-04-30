@@ -97,6 +97,15 @@ const templates = {
   detail: document.querySelector("#session-detail-template"),
 };
 
+const ADMIN_EMAILS = new Set([
+  "don@cannakan.com",
+]);
+// TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
+
+function isConfiguredAdminEmail(email) {
+  return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+}
+
 function reportAppError(error, context = "App Error") {
   const errorMessage = error?.message || String(error || "Unknown error");
   const errorStack = error?.stack || "";
@@ -879,7 +888,7 @@ function updateNavState() {
   });
 
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
-    link.hidden = !isAdminUser();
+    link.hidden = true;
   });
 }
 
@@ -1045,22 +1054,11 @@ async function loadGallerySnapshots() {
 }
 
 async function loadAdminStatus() {
-  if (!appState.supabase || !appState.user) {
+  if (!appState.user) {
     return false;
   }
 
-  const { data, error } = await appState.supabase
-    .from("admin_users")
-    .select("user_id")
-    .eq("user_id", appState.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to load admin membership", error);
-    return false;
-  }
-
-  return Boolean(data?.user_id);
+  return isConfiguredAdminEmail(appState.user.email);
 }
 
 function normalizeProfileRow(row) {
@@ -1090,7 +1088,7 @@ function getProfileDisplayName() {
 }
 
 function isAdminUser(profile = appState.profile) {
-  return Boolean(appState.isAdmin);
+  return Boolean(appState.isAdmin || isConfiguredAdminEmail(appState.user?.email));
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -1633,6 +1631,14 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
   return mapped;
 }
 
+async function approveSnapshot(snapshotId) {
+  return updateGallerySnapshotModerationStatus(snapshotId, "approved");
+}
+
+async function rejectSnapshot(snapshotId) {
+  return updateGallerySnapshotModerationStatus(snapshotId, "rejected");
+}
+
 async function unpublishGallerySnapshot(snapshotId) {
   const existing = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
   if (!existing || !appState.supabase) {
@@ -1716,6 +1722,10 @@ function getGallerySnapshotSuccessRate(snapshot) {
 
 function getGallerySnapshotSortTime(snapshot) {
   return new Date(snapshot?.publishedAt || snapshot?.createdAt || 0).getTime();
+}
+
+function getGallerySnapshotDisplayStatus(snapshot) {
+  return normalizeGallerySnapshotRecordStatus(snapshot?.status, snapshot?.published);
 }
 
 function getGallerySnapshotSession(snapshot) {
@@ -4751,14 +4761,103 @@ function renderGallery(targetSnapshotId = "") {
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
+  const galleryFeedSection = document.querySelector(".gallery-feed-section");
   if (!galleryGrid) {
     return;
   }
 
-  const gallerySnapshots = appState.gallerySnapshots.filter((entry) => (
-      entry.status === "approved"
-      || (entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(entry.status))
-    ));
+  const isAdminView = isAdminUser();
+  const gallerySnapshots = appState.gallerySnapshots.filter((entry) => {
+    const status = getGallerySnapshotDisplayStatus(entry);
+    if (isAdminView) {
+      return true;
+    }
+    if (status === "approved") {
+      return true;
+    }
+    return entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(status);
+  });
+
+  if (isAdminView && galleryFeedSection) {
+    const pendingSnapshots = sortGallerySnapshotsNewestFirst(
+      appState.gallerySnapshots.filter((entry) => getGallerySnapshotDisplayStatus(entry) === "pending_review"),
+    );
+    const adminSection = document.createElement("section");
+    adminSection.className = "card gallery-review-section gallery-inline-review-section";
+    adminSection.innerHTML = `
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Admin Review</p>
+          <h3>Grow Gallery Submissions</h3>
+          <p class="muted">Review pending Grow Gallery snapshots before they become public.</p>
+        </div>
+      </div>
+      <div class="gallery-review-list"></div>
+    `;
+    const pendingList = adminSection.querySelector(".gallery-review-list");
+    if (pendingList) {
+      if (!pendingSnapshots.length) {
+        pendingList.innerHTML = `
+          <div class="empty-state gallery-empty-state">
+            <p>No pending snapshots to review.</p>
+          </div>
+        `;
+      } else {
+        pendingSnapshots.forEach((snapshot) => {
+          const item = document.createElement("article");
+          item.className = "gallery-review-card";
+          item.dataset.gallerySnapshotId = snapshot.id;
+          item.innerHTML = `
+            <div class="gallery-review-media">
+              <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+            </div>
+            <div class="gallery-review-body">
+              <div class="gallery-card-top">
+                <div>
+                  <strong>${escapeHtml(snapshot.title)}</strong>
+                  <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
+                </div>
+                <div class="gallery-review-status-stack">
+                  <span class="gallery-review-status-badge is-pending">Pending Review</span>
+                  <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+                </div>
+              </div>
+              <div class="gallery-card-meta">
+                <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
+                <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
+              </div>
+              <div class="gallery-review-actions">
+                <button type="button" class="button button-primary gallery-admin-approve" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
+                <button type="button" class="button button-secondary gallery-admin-reject" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
+              </div>
+            </div>
+          `;
+          pendingList.appendChild(item);
+        });
+      }
+    }
+    adminSection.querySelectorAll("[data-gallery-approve]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await approveSnapshot(button.dataset.galleryApprove);
+          renderGallery(button.dataset.galleryApprove);
+        } catch (error) {
+          window.alert(error.message || "Could not approve this snapshot.");
+        }
+      });
+    });
+    adminSection.querySelectorAll("[data-gallery-reject]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await rejectSnapshot(button.dataset.galleryReject);
+          renderGallery(button.dataset.galleryReject);
+        } catch (error) {
+          window.alert(error.message || "Could not reject this snapshot.");
+        }
+      });
+    });
+    galleryFeedSection.before(adminSection);
+  }
 
   const renderVisibleGallerySnapshots = () => {
     galleryGrid.innerHTML = "";
@@ -4786,14 +4885,28 @@ function renderGallery(targetSnapshotId = "") {
       card.dataset.gallerySnapshotId = snapshot.id;
       card.tabIndex = -1;
       const isOwner = snapshot.userId === appState.user?.id;
-      const isPending = snapshot.status === "pending_review";
-      const isRejected = snapshot.status === "rejected";
+      const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
+      const isPending = snapshotStatus === "pending_review";
+      const isRejected = snapshotStatus === "rejected";
+      const isApproved = snapshotStatus === "approved";
+      const isPrivate = snapshotStatus === "private";
       const details = getGallerySnapshotFeedDetails(snapshot);
       const statusBadge = isPending
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
         : isRejected
           ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
-          : "";
+          : (isAdminView && isApproved)
+            ? '<span class="gallery-review-status-badge is-approved">Approved</span>'
+            : (isAdminView && isPrivate)
+              ? '<span class="gallery-review-status-badge is-private">Private</span>'
+              : "";
+      const visibilityLabel = isPending
+        ? "Visible to you while under review"
+        : isRejected
+          ? "Rejected submission"
+          : isPrivate
+            ? "Private submission"
+            : "Germination success";
       card.innerHTML = `
         <div class="gallery-card-media">
           <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
@@ -4812,7 +4925,7 @@ function renderGallery(targetSnapshotId = "") {
           <div class="gallery-card-feed-meta">
             <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
             ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
-            <span class="gallery-card-chip">${isPending ? "Visible to you while under review" : isRejected ? "Rejected submission" : "Germination success"}</span>
+            <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
           </div>
           <div class="gallery-card-actions">
             ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
@@ -4860,158 +4973,7 @@ function renderGallery(targetSnapshotId = "") {
 
 function renderGalleryReview() {
   document.title = "Grow Gallery Moderation";
-  if (!isAdminUser()) {
-    app.innerHTML = `
-      <section class="card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Admin</p>
-            <h2>Gallery Moderation</h2>
-            <p class="muted">You do not have access to review gallery submissions.</p>
-          </div>
-        </div>
-      </section>
-    `;
-    return;
-  }
-
-  app.replaceChildren(cloneTemplate(templates.galleryReview));
-  const pendingList = document.querySelector("#gallery-review-pending-list");
-  const approvedList = document.querySelector("#gallery-review-approved-list");
-  if (!pendingList || !approvedList) {
-    return;
-  }
-
-  const pendingSnapshots = sortGallerySnapshotsNewestFirst(
-    appState.gallerySnapshots.filter((entry) => entry.status === "pending_review"),
-  );
-  const approvedSnapshots = sortGallerySnapshotsNewestFirst(
-    appState.gallerySnapshots.filter((entry) => entry.status === "approved"),
-  );
-
-  if (!pendingSnapshots.length) {
-    pendingList.innerHTML = `
-      <div class="empty-state gallery-empty-state">
-        <p>No snapshots pending review.</p>
-      </div>
-    `;
-  }
-
-  pendingSnapshots.forEach((snapshot) => {
-    const item = document.createElement("article");
-    item.className = "gallery-review-card";
-    item.innerHTML = `
-      <div class="gallery-review-media">
-        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
-      </div>
-      <div class="gallery-review-body">
-        <div class="gallery-card-top">
-          <div>
-            <strong>${escapeHtml(snapshot.title)}</strong>
-            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
-          </div>
-          <div class="gallery-review-status-stack">
-            <span class="gallery-review-status-badge is-pending">Pending Review</span>
-            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-          </div>
-        </div>
-        <div class="gallery-card-meta">
-          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
-        </div>
-        <div class="gallery-review-actions">
-          <button type="button" class="button button-primary" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
-          <button type="button" class="button button-secondary" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
-          <button type="button" class="button button-danger" data-gallery-delete="${escapeHtml(snapshot.id)}">Delete</button>
-        </div>
-      </div>
-    `;
-    pendingList.appendChild(item);
-  });
-
-  if (!approvedSnapshots.length) {
-    approvedList.innerHTML = `
-      <div class="empty-state gallery-empty-state">
-        <p>No approved gallery snapshots yet.</p>
-      </div>
-    `;
-  }
-
-  approvedSnapshots.forEach((snapshot) => {
-    const item = document.createElement("article");
-    item.className = "gallery-review-card";
-    item.innerHTML = `
-      <div class="gallery-review-media">
-        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
-      </div>
-      <div class="gallery-review-body">
-        <div class="gallery-card-top">
-          <div>
-            <strong>${escapeHtml(snapshot.title)}</strong>
-            <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
-          </div>
-          <div class="gallery-review-status-stack">
-            <span class="gallery-review-status-badge is-approved">Approved</span>
-            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-          </div>
-        </div>
-        <div class="gallery-card-meta">
-          <span>${escapeHtml(formatSnapshotSystemLabel(snapshot.systemType))}</span>
-          <span>${escapeHtml(getGallerySnapshotSubmitterLabel(snapshot))}</span>
-        </div>
-        <div class="gallery-review-actions">
-          <button type="button" class="button button-secondary" data-gallery-private="${escapeHtml(snapshot.id)}">Make Private</button>
-          <button type="button" class="button button-secondary" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
-          <button type="button" class="button button-danger" data-gallery-delete="${escapeHtml(snapshot.id)}">Delete</button>
-        </div>
-      </div>
-    `;
-    approvedList.appendChild(item);
-  });
-
-  app.querySelectorAll("[data-gallery-approve]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await updateGallerySnapshotModerationStatus(button.dataset.galleryApprove, "approved");
-        renderGalleryReview();
-      } catch (error) {
-        window.alert(error.message || "Could not approve this snapshot.");
-      }
-    });
-  });
-
-  app.querySelectorAll("[data-gallery-reject]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await updateGallerySnapshotModerationStatus(button.dataset.galleryReject, "rejected");
-        renderGalleryReview();
-      } catch (error) {
-        window.alert(error.message || "Could not reject this snapshot.");
-      }
-    });
-  });
-
-  app.querySelectorAll("[data-gallery-private]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await updateGallerySnapshotModerationStatus(button.dataset.galleryPrivate, "private");
-        renderGalleryReview();
-      } catch (error) {
-        window.alert(error.message || "Could not make this snapshot private.");
-      }
-    });
-  });
-
-  app.querySelectorAll("[data-gallery-delete]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await unpublishGallerySnapshot(button.dataset.galleryDelete);
-        renderGalleryReview();
-      } catch (error) {
-        window.alert(error.message || "Could not delete this snapshot.");
-      }
-    });
-  });
+  renderGallery();
 }
 
 function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
