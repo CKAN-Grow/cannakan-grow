@@ -5279,17 +5279,14 @@ function renderGallery(targetSnapshotId = "") {
           <div class="gallery-card-top">
             <div class="gallery-card-copy">
               <strong>${escapeHtml(snapshot.title)}</strong>
-              <p>${escapeHtml(formatSessionNameDate(snapshot.sessionDate) || "Unknown date")}</p>
             </div>
-            <div class="gallery-review-status-stack">
-              ${statusBadge}
-              <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-            </div>
+            ${statusBadge ? `<div class="gallery-review-status-stack">${statusBadge}</div>` : ""}
           </div>
           <div class="gallery-card-feed-meta">
             <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
             ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
             <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
+            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
           </div>
           ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
           <div class="gallery-card-actions">
