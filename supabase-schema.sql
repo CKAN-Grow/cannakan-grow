@@ -217,7 +217,7 @@ for select
 using (
   status = 'approved'
   or auth.uid() = user_id
-  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -239,7 +239,7 @@ for update
 to authenticated
 using (
   auth.uid() = user_id
-  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -248,7 +248,7 @@ using (
 )
 with check (
   auth.uid() = user_id
-  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -263,7 +263,7 @@ for delete
 to authenticated
 using (
   auth.uid() = user_id
-  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
     from public.admin_users

@@ -101,6 +101,7 @@ const templates = {
 
 const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
+  "mo@cannakan.com",
 ]);
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
