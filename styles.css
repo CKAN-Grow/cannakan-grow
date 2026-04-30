@@ -2231,15 +2231,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-height: 50px;
   padding: 0 18px;
   border-radius: 16px;
-  border: 1px solid rgba(83, 130, 70, 0.28);
-  background:
-    linear-gradient(180deg, rgba(92, 150, 76, 0.94) 0%, rgba(55, 108, 53, 0.96) 100%);
-  color: #f6fbf4;
+  border: 2px solid #94d159;
+  background: rgba(148, 209, 89, 0.04);
+  color: #94d159;
   box-shadow:
-    0 12px 24px rgba(57, 104, 49, 0.18),
-    0 0 0 1px rgba(148, 209, 89, 0.08),
-    0 0 20px rgba(148, 209, 89, 0.14);
-  text-shadow: 0 1px 0 rgba(17, 34, 17, 0.2);
+    0 10px 22px rgba(57, 104, 49, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.04),
+    0 0 16px rgba(148, 209, 89, 0.1);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -2251,21 +2249,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-gallery-rankings-cta:hover,
 .home-gallery-rankings-cta:focus-visible {
   transform: scale(1.03);
-  border-color: rgba(124, 184, 96, 0.42);
-  filter: brightness(1.04);
+  border-color: #94d159;
+  background: rgba(148, 209, 89, 0.1);
+  filter: brightness(1.02);
   box-shadow:
-    0 16px 28px rgba(57, 104, 49, 0.24),
-    0 0 0 1px rgba(148, 209, 89, 0.12),
-    0 0 28px rgba(148, 209, 89, 0.22);
+    0 14px 24px rgba(57, 104, 49, 0.12),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 22px rgba(148, 209, 89, 0.16);
 }
 
 .home-gallery-rankings-cta:active {
   transform: scale(0.985);
   filter: brightness(0.98);
   box-shadow:
-    0 8px 16px rgba(57, 104, 49, 0.14),
-    0 0 0 1px rgba(148, 209, 89, 0.08),
-    0 0 14px rgba(148, 209, 89, 0.12);
+    0 6px 12px rgba(57, 104, 49, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    0 0 10px rgba(148, 209, 89, 0.1);
 }
 
 .home-gallery-rankings-cta-icon {
@@ -2275,14 +2274,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(148, 209, 89, 0.08);
   transition: transform 0.18s ease, background-color 0.18s ease;
 }
 
 .home-gallery-rankings-cta:hover .home-gallery-rankings-cta-icon,
 .home-gallery-rankings-cta:focus-visible .home-gallery-rankings-cta-icon {
   transform: translateX(3px);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(148, 209, 89, 0.14);
 }
 
 .home-gallery-rankings-cta-icon svg {
@@ -6386,27 +6385,26 @@ body.theme-dark .home-gallery-rankings-row-value {
 }
 
 body.theme-dark .home-gallery-rankings-cta {
-  border-color: rgba(148, 209, 89, 0.28);
-  background:
-    linear-gradient(180deg, rgba(84, 142, 62, 0.98) 0%, rgba(42, 88, 38, 0.98) 100%);
-  color: #f4f9ef;
+  border-color: #94d159;
+  background: rgba(148, 209, 89, 0.05);
+  color: #94d159;
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.22),
-    0 0 0 1px rgba(148, 209, 89, 0.1),
-    0 0 24px rgba(148, 209, 89, 0.16);
+    0 12px 24px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 18px rgba(148, 209, 89, 0.12);
 }
 
 body.theme-dark .home-gallery-rankings-cta:hover,
 body.theme-dark .home-gallery-rankings-cta:focus-visible {
-  border-color: rgba(148, 209, 89, 0.4);
+  background: rgba(148, 209, 89, 0.11);
   box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.26),
-    0 0 0 1px rgba(148, 209, 89, 0.14),
-    0 0 30px rgba(148, 209, 89, 0.24);
+    0 16px 28px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 24px rgba(148, 209, 89, 0.18);
 }
 
 body.theme-dark .home-gallery-rankings-cta-icon {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(148, 209, 89, 0.1);
 }
 
 body.theme-dark .gallery-leaderboard-section-icon {
