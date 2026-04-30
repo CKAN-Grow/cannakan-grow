@@ -370,15 +370,71 @@ function closeAllCustomSelects(exceptKey = "") {
 
     wrapper.classList.remove("is-open");
     const trigger = wrapper.querySelector(".custom-select-trigger");
-    const menu = wrapper.querySelector(".custom-select-menu");
+    const menu = getCustomSelectMenuElement(wrapper);
     trigger?.setAttribute("aria-expanded", "false");
     if (menu) {
       resetCustomSelectMenuPosition(wrapper, menu);
       menu.hidden = true;
+      restoreCustomSelectMenuToWrapper(wrapper, menu);
     }
   });
 
   appState.customSelectOpenKey = exceptKey || "";
+}
+
+function getCustomSelectMenuElement(wrapper) {
+  if (!wrapper) {
+    return null;
+  }
+
+  if (wrapper.__customSelectMenu instanceof HTMLElement) {
+    return wrapper.__customSelectMenu;
+  }
+
+  const menu = wrapper.querySelector(".custom-select-menu");
+  if (menu instanceof HTMLElement) {
+    wrapper.__customSelectMenu = menu;
+    return menu;
+  }
+
+  return null;
+}
+
+function mountCustomSelectMenuToBody(wrapper, menu) {
+  if (!(document.body instanceof HTMLBodyElement) || !wrapper || !menu) {
+    return;
+  }
+
+  wrapper.__customSelectMenu = menu;
+  menu.dataset.portalMounted = "true";
+  menu.dataset.ownerKey = wrapper.dataset.dropdownKey || "";
+  wrapper.dataset.portalMounted = "true";
+
+  if (menu.parentElement !== document.body) {
+    document.body.appendChild(menu);
+  }
+}
+
+function restoreCustomSelectMenuToWrapper(wrapper, menu) {
+  if (!menu) {
+    return;
+  }
+
+  delete menu.dataset.portalMounted;
+  delete menu.dataset.ownerKey;
+  if (wrapper) {
+    delete wrapper.dataset.portalMounted;
+  }
+
+  if (wrapper?.isConnected) {
+    wrapper.appendChild(menu);
+    wrapper.__customSelectMenu = menu;
+    return;
+  }
+
+  if (menu.parentElement === document.body) {
+    menu.remove();
+  }
 }
 
 function resetCustomSelectMenuPosition(wrapper, menu) {
@@ -407,7 +463,7 @@ function positionCustomSelectMenu(select) {
   }
 
   const trigger = wrapper.querySelector(".custom-select-trigger");
-  const menu = wrapper.querySelector(".custom-select-menu");
+  const menu = getCustomSelectMenuElement(wrapper);
   if (!trigger || !menu || menu.hidden) {
     return;
   }
@@ -475,7 +531,7 @@ function syncCustomSelect(select) {
 
   const trigger = wrapper.querySelector(".custom-select-trigger");
   const valueLabel = wrapper.querySelector(".custom-select-value");
-  const menu = wrapper.querySelector(".custom-select-menu");
+  const menu = getCustomSelectMenuElement(wrapper);
   const selectedOption = select.options[select.selectedIndex] || select.options[0];
   const selectedText = selectedOption?.textContent?.trim() || "Select";
 
@@ -506,12 +562,13 @@ function openCustomSelect(select) {
   const dropdownKey = wrapper.dataset.dropdownKey || "";
   closeAllCustomSelects(dropdownKey);
   const trigger = wrapper.querySelector(".custom-select-trigger");
-  const menu = wrapper.querySelector(".custom-select-menu");
+  const menu = getCustomSelectMenuElement(wrapper);
   wrapper.classList.add("is-open");
   trigger?.setAttribute("aria-expanded", "true");
   appState.customSelectOpenKey = dropdownKey;
   if (menu) {
     menu.hidden = false;
+    mountCustomSelectMenuToBody(wrapper, menu);
     positionCustomSelectMenu(select);
     const selectedOption = menu.querySelector(".custom-select-option.is-selected") || menu.querySelector(".custom-select-option");
     window.setTimeout(() => {
@@ -529,11 +586,12 @@ function closeCustomSelect(select) {
 
   wrapper.classList.remove("is-open");
   const trigger = wrapper.querySelector(".custom-select-trigger");
-  const menu = wrapper.querySelector(".custom-select-menu");
+  const menu = getCustomSelectMenuElement(wrapper);
   trigger?.setAttribute("aria-expanded", "false");
   if (menu) {
     resetCustomSelectMenuPosition(wrapper, menu);
     menu.hidden = true;
+    restoreCustomSelectMenuToWrapper(wrapper, menu);
   }
 
   if (appState.customSelectOpenKey === (wrapper.dataset.dropdownKey || "")) {
@@ -591,6 +649,7 @@ function initializeCustomSelects(scope) {
       return;
     }
 
+    wrapper.__customSelectMenu = menu;
     buildCustomSelectOptions(select, menu);
     syncCustomSelect(select);
     const dropdownKey = wrapper.dataset.dropdownKey || "";
@@ -599,9 +658,11 @@ function initializeCustomSelects(scope) {
     menu.hidden = !isOpen;
     trigger.setAttribute("aria-expanded", isOpen ? "true" : "false");
     if (isOpen) {
+      mountCustomSelectMenuToBody(wrapper, menu);
       positionCustomSelectMenu(select);
     } else {
       resetCustomSelectMenuPosition(wrapper, menu);
+      restoreCustomSelectMenuToWrapper(wrapper, menu);
     }
 
     if (select.dataset.customSelectBound === "true") {
@@ -5747,6 +5808,7 @@ async function shareSnapshotBlob(blob, fileName, text) {
 }
 
 function render() {
+  closeAllCustomSelects();
   clearSessionTimerInterval();
   updateAuthStatus();
   syncMockDataBanner();
