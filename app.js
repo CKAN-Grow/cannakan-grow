@@ -6657,13 +6657,6 @@ function renderGallery(targetSnapshotId = "") {
             </div>
           `
         : "";
-      const statusBadge = isPending
-        ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
-        : isRejected
-          ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
-          : (isAdminView && isPrivate)
-              ? '<span class="gallery-review-status-badge is-private">Private</span>'
-              : "";
       const visibilityLabel = isPending
         ? "Visible to you while under review"
         : isRejected
@@ -6678,7 +6671,6 @@ function renderGallery(targetSnapshotId = "") {
             <div class="gallery-card-copy">
               <strong>${escapeHtml(snapshot.title)}</strong>
             </div>
-            ${statusBadge ? `<div class="gallery-review-status-stack">${statusBadge}</div>` : ""}
           </div>
           <div class="gallery-card-feed-meta">
             <div class="gallery-card-feed-row gallery-card-feed-row--primary">
