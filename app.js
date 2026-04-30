@@ -3342,7 +3342,7 @@ function renderGalleryLeaderboardSection() {
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
           <h3>Community Grow Gallery Rankings</h3>
-          <p class="muted">Approved public snapshots only. Rankings use germination performance only, with a 3-snapshot minimum per source or seed variety. Likes stay separate for future sorting.</p>
+          <p class="muted">Approved public snapshots only. Rankings use germination performance only, with a 3-snapshot minimum per source or seed variety.</p>
         </div>
       </div>
     </div>
