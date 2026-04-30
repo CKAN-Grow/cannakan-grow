@@ -7932,6 +7932,15 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     flex-direction: column;
   }
 
+  .topbar {
+    gap: 12px;
+  }
+
+  .topbar > :first-child {
+    order: 1;
+    width: 100%;
+  }
+
   .card {
     padding: 18px;
   }
@@ -7961,7 +7970,41 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .topbar-nav {
+    order: 3;
     width: 100%;
+    display: grid;
+    gap: 10px;
+  }
+
+  .auth-status {
+    order: 2;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .account-menu-root {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+  }
+
+  .auth-profile-chip {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .auth-profile-chip .auth-pill {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .account-menu-trigger {
+    align-self: start;
   }
 
   .session-chart-header {
