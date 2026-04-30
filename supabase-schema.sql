@@ -62,9 +62,22 @@ create table if not exists public.grow_gallery_snapshots (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.grow_gallery_snapshot_likes (
+  id uuid primary key default gen_random_uuid(),
+  snapshot_id uuid not null references public.grow_gallery_snapshots(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
+
+create unique index if not exists grow_gallery_snapshot_likes_snapshot_user_idx
+  on public.grow_gallery_snapshot_likes (snapshot_id, user_id);
+
+create index if not exists grow_gallery_snapshot_likes_snapshot_idx
+  on public.grow_gallery_snapshot_likes (snapshot_id, created_at desc);
 
 alter table public.profiles
   add column if not exists deletion_requested_at timestamptz;
@@ -158,6 +171,7 @@ alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.grow_gallery_snapshots enable row level security;
+alter table public.grow_gallery_snapshot_likes enable row level security;
 
 drop policy if exists "Users can view their own grow sessions" on public.grow_sessions;
 create policy "Users can view their own grow sessions"
@@ -270,6 +284,59 @@ using (
     where admin_users.user_id = auth.uid()
   )
 );
+
+drop policy if exists "Visible grow gallery likes can be read" on public.grow_gallery_snapshot_likes;
+create policy "Visible grow gallery likes can be read"
+on public.grow_gallery_snapshot_likes
+for select
+using (
+  exists (
+    select 1
+    from public.grow_gallery_snapshots
+    where grow_gallery_snapshots.id = snapshot_id
+      and (
+        grow_gallery_snapshots.status = 'approved'
+        or auth.uid() = grow_gallery_snapshots.user_id
+        or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+        or exists (
+          select 1
+          from public.admin_users
+          where admin_users.user_id = auth.uid()
+        )
+      )
+  )
+);
+
+drop policy if exists "Users can like visible gallery snapshots" on public.grow_gallery_snapshot_likes;
+create policy "Users can like visible gallery snapshots"
+on public.grow_gallery_snapshot_likes
+for insert
+to authenticated
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.grow_gallery_snapshots
+    where grow_gallery_snapshots.id = snapshot_id
+      and (
+        grow_gallery_snapshots.status = 'approved'
+        or auth.uid() = grow_gallery_snapshots.user_id
+        or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+        or exists (
+          select 1
+          from public.admin_users
+          where admin_users.user_id = auth.uid()
+        )
+      )
+  )
+);
+
+drop policy if exists "Users can remove their own gallery likes" on public.grow_gallery_snapshot_likes;
+create policy "Users can remove their own gallery likes"
+on public.grow_gallery_snapshot_likes
+for delete
+to authenticated
+using (auth.uid() = user_id);
 
 -- Keep this email allowlist in sync with ADMIN_EMAILS in app.js before production.
 

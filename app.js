@@ -15,6 +15,7 @@ const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
 const GROW_GALLERY_BUCKET = "grow-gallery";
+const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "Icons/KAN%20icon.svg",
@@ -1076,17 +1077,123 @@ async function loadGallerySnapshots(reason = "unspecified") {
   });
 
   const mapped = (data || []).map(mapRowToGallerySnapshot);
+  const likedSnapshots = await hydrateGallerySnapshotLikes(mapped, reason);
   logGrowGalleryDebug("loadGallerySnapshots:mapped", {
     reason,
-    count: mapped.length,
-    rows: mapped.map((row) => ({
+    count: likedSnapshots.length,
+    rows: likedSnapshots.map((row) => ({
       id: row.id,
       status: row.status,
       userId: row.userId,
       sessionId: row.sessionId,
+      likeCount: row.likeCount,
+      likedByCurrentUser: row.likedByCurrentUser,
     })),
   });
-  return mapped;
+  return likedSnapshots;
+}
+
+async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified") {
+  const uniqueSnapshotIds = [...new Set((snapshotIds || []).filter(Boolean))];
+  if (!appState.supabase || !uniqueSnapshotIds.length) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(GROW_GALLERY_LIKES_TABLE)
+    .select("snapshot_id, user_id")
+    .in("snapshot_id", uniqueSnapshotIds);
+
+  if (error) {
+    console.error("Failed to load gallery likes", { reason, error });
+    return [];
+  }
+
+  return data || [];
+}
+
+function applyGallerySnapshotLikes(snapshotRows = [], likeRows = []) {
+  const likeCountBySnapshotId = new Map();
+  const likedSnapshotIds = new Set();
+  const currentUserId = appState.user?.id || "";
+
+  (likeRows || []).forEach((row) => {
+    const snapshotId = String(row?.snapshot_id || "").trim();
+    if (!snapshotId) {
+      return;
+    }
+
+    likeCountBySnapshotId.set(snapshotId, (likeCountBySnapshotId.get(snapshotId) || 0) + 1);
+    if (currentUserId && row?.user_id === currentUserId) {
+      likedSnapshotIds.add(snapshotId);
+    }
+  });
+
+  return (snapshotRows || []).map((snapshot) => {
+    if (!snapshot) {
+      return snapshot;
+    }
+
+    return {
+      ...snapshot,
+      likeCount: likeCountBySnapshotId.get(snapshot.id) || 0,
+      likedByCurrentUser: likedSnapshotIds.has(snapshot.id),
+    };
+  });
+}
+
+function buildGallerySnapshotLikeState(likeRows = []) {
+  const likeCountBySnapshotId = new Map();
+  const likedSnapshotIds = new Set();
+  const currentUserId = appState.user?.id || "";
+
+  (likeRows || []).forEach((row) => {
+    const snapshotId = String(row?.snapshot_id || "").trim();
+    if (!snapshotId) {
+      return;
+    }
+
+    likeCountBySnapshotId.set(snapshotId, (likeCountBySnapshotId.get(snapshotId) || 0) + 1);
+    if (currentUserId && row?.user_id === currentUserId) {
+      likedSnapshotIds.add(snapshotId);
+    }
+  });
+
+  return {
+    likeCountBySnapshotId,
+    likedSnapshotIds,
+  };
+}
+
+async function hydrateGallerySnapshotLikes(snapshotRows = [], reason = "unspecified") {
+  const uniqueSnapshotIds = [...new Set((snapshotRows || []).map((snapshot) => snapshot?.id).filter(Boolean))];
+  if (!uniqueSnapshotIds.length) {
+    return snapshotRows;
+  }
+
+  const likeRows = await loadGallerySnapshotLikes(uniqueSnapshotIds, reason);
+  return applyGallerySnapshotLikes(snapshotRows, likeRows);
+}
+
+async function refreshGallerySnapshotLikes(snapshotIds = [], reason = "refresh") {
+  const uniqueSnapshotIds = [...new Set((snapshotIds || []).filter(Boolean))];
+  if (!uniqueSnapshotIds.length) {
+    return;
+  }
+
+  const likeRows = await loadGallerySnapshotLikes(uniqueSnapshotIds, reason);
+  const { likeCountBySnapshotId, likedSnapshotIds } = buildGallerySnapshotLikeState(likeRows);
+  appState.gallerySnapshots = appState.gallerySnapshots.map((snapshot) => {
+    if (!snapshot || !uniqueSnapshotIds.includes(snapshot.id)) {
+      return snapshot;
+    }
+
+    return {
+      ...snapshot,
+      likeCount: likeCountBySnapshotId.get(snapshot.id) || 0,
+      likedByCurrentUser: likedSnapshotIds.has(snapshot.id),
+    };
+  });
 }
 
 async function loadAdminStatus() {
@@ -1527,6 +1634,8 @@ function mapRowToGallerySnapshot(row) {
     publishedAt: row.published_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
+    likeCount: Math.max(0, Number(row.like_count) || 0),
+    likedByCurrentUser: Boolean(row.liked_by_current_user),
   };
 }
 
@@ -1671,6 +1780,8 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   }
 
   const mapped = mapRowToGallerySnapshot(data);
+  mapped.likeCount = 0;
+  mapped.likedByCurrentUser = false;
   logGrowGalleryDebug("publishSnapshotToGallery:saved", {
     savedRow: {
       id: data?.id || "",
@@ -1709,7 +1820,12 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
     throw new Error("Could not update moderation status.");
   }
 
-  const mapped = mapRowToGallerySnapshot(data);
+  const existing = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  const mapped = {
+    ...mapRowToGallerySnapshot(data),
+    likeCount: Math.max(0, Number(existing?.likeCount) || 0),
+    likedByCurrentUser: Boolean(existing?.likedByCurrentUser),
+  };
   appState.gallerySnapshots = sortGallerySnapshotsNewestFirst([
     mapped,
     ...appState.gallerySnapshots.filter((entry) => entry.id !== mapped.id),
@@ -1805,6 +1921,48 @@ async function unpublishGallerySnapshot(snapshotId) {
   return deleteGallerySnapshot(snapshotId);
 }
 
+async function toggleGallerySnapshotLike(snapshotId) {
+  const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
+  if (!snapshot) {
+    throw new Error("Could not find this Grow Gallery snapshot.");
+  }
+
+  if (!appState.supabase || !appState.user?.id) {
+    throw new Error("Sign in to like Grow Gallery snapshots.");
+  }
+
+  if (snapshot.likedByCurrentUser) {
+    const { error } = await appState.supabase
+      .from(GROW_GALLERY_LIKES_TABLE)
+      .delete()
+      .eq("snapshot_id", snapshotId)
+      .eq("user_id", appState.user.id);
+
+    if (error) {
+      throw new Error("Could not remove your like right now.");
+    }
+  } else {
+    const { error } = await appState.supabase
+      .from(GROW_GALLERY_LIKES_TABLE)
+      .upsert(
+        {
+          snapshot_id: snapshotId,
+          user_id: appState.user.id,
+        },
+        {
+          onConflict: "snapshot_id,user_id",
+          ignoreDuplicates: true,
+        },
+      );
+
+    if (error) {
+      throw new Error("Could not save your like right now.");
+    }
+  }
+
+  await refreshGallerySnapshotLikes([snapshotId], "toggle-like");
+}
+
 function sortGallerySnapshotsNewestFirst(items) {
   return [...(items || [])]
     .filter(Boolean)
@@ -1875,6 +2033,28 @@ function renderGallerySharedProfileMarkup(snapshot) {
       ${profileImageUrl ? `<img src="${escapeHtml(profileImageUrl)}" alt="${escapeHtml(profileName || "Shared grower profile image")}" class="gallery-card-profile-avatar">` : ""}
       ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
     </div>
+  `;
+}
+
+function renderGalleryLikeButtonMarkup(snapshot) {
+  const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
+  const isLiked = Boolean(snapshot?.likedByCurrentUser);
+
+  return `
+    <button
+      type="button"
+      class="gallery-like-button${isLiked ? " is-liked" : ""}"
+      data-gallery-like="${escapeHtml(snapshot?.id || "")}"
+      aria-pressed="${isLiked ? "true" : "false"}"
+      aria-label="${isLiked ? "Unlike this Grow Gallery snapshot" : "Like this Grow Gallery snapshot"}"
+    >
+      <span class="gallery-like-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 20.2 4.95 13.7a4.96 4.96 0 0 1 0-7.11 4.85 4.85 0 0 1 6.97 0L12 7.08l.08-.49a4.85 4.85 0 0 1 6.97 0 4.96 4.96 0 0 1 0 7.11Z"></path>
+        </svg>
+      </span>
+      <span class="gallery-like-count">${escapeHtml(String(likeCount))}</span>
+    </button>
   `;
 }
 
@@ -5282,9 +5462,12 @@ function renderGallery(targetSnapshotId = "") {
             <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
           </div>
           ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
-          <div class="gallery-card-actions">
-            ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
-            ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
+          <div class="gallery-card-footer">
+            <div class="gallery-card-actions">
+              ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
+              ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
+            </div>
+            ${renderGalleryLikeButtonMarkup(snapshot)}
           </div>
         </div>
       `;
@@ -5321,6 +5504,17 @@ function renderGallery(targetSnapshotId = "") {
           renderGallery();
         } catch (error) {
           window.alert(error.message || "Could not remove this gallery snapshot.");
+        }
+      });
+    });
+
+    galleryGrid.querySelectorAll("[data-gallery-like]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        try {
+          await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
+          renderGallery(targetSnapshotId);
+        } catch (error) {
+          window.alert(error.message || "Could not update your like right now.");
         }
       });
     });
