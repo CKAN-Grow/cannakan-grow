@@ -1966,6 +1966,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(42, 76, 48, 0.78);
 }
 
+.gallery-sort-state {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+}
+
 .gallery-section {
   display: grid;
   gap: 24px;

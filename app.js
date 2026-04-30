@@ -1974,32 +1974,36 @@ function sortGallerySnapshotsNewestFirst(items) {
     .sort((left, right) => new Date(right.publishedAt || right.createdAt || 0).getTime() - new Date(left.publishedAt || left.createdAt || 0).getTime());
 }
 
-function sortVisibleGallerySnapshots(items, sortBy = "date") {
-  const collator = new Intl.Collator("en", {
-    sensitivity: "base",
-    numeric: true,
-  });
+function normalizeGallerySort(sortBy = "date") {
+  const normalizedSort = String(sortBy || "").trim().toLowerCase();
+  if (normalizedSort === "date" || normalizedSort === "rate" || normalizedSort === "likes") {
+    return normalizedSort;
+  }
 
+  return "date";
+}
+
+function getGallerySortLabel(sortBy = "date") {
+  switch (normalizeGallerySort(sortBy)) {
+    case "rate":
+      return "Highest Germination %";
+    case "likes":
+      return "Most Likes";
+    case "date":
+    default:
+      return "Newest";
+  }
+}
+
+function sortVisibleGallerySnapshots(items, sortBy = "date") {
+  const normalizedSort = normalizeGallerySort(sortBy);
   return [...(items || [])]
     .filter(Boolean)
     .sort((left, right) => {
-      switch (sortBy) {
-        case "name-asc":
-          return collator.compare(getGallerySnapshotSortLabel(left), getGallerySnapshotSortLabel(right))
+      switch (normalizedSort) {
+        case "likes":
+          return (Math.max(0, Number(right?.likeCount) || 0) - Math.max(0, Number(left?.likeCount) || 0))
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
-        case "name-desc":
-          return collator.compare(getGallerySnapshotSortLabel(right), getGallerySnapshotSortLabel(left))
-            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
-        case "grow-member": {
-          const leftHasMember = hasGallerySnapshotGrowMember(left);
-          const rightHasMember = hasGallerySnapshotGrowMember(right);
-          if (leftHasMember !== rightHasMember) {
-            return leftHasMember ? -1 : 1;
-          }
-
-          return collator.compare(getGallerySnapshotGrowMemberLabel(left), getGallerySnapshotGrowMemberLabel(right))
-            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
-        }
         case "rate":
           return getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
@@ -5621,9 +5625,15 @@ function renderGallery(targetSnapshotId = "") {
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
+  const gallerySortState = document.querySelector("#gallery-sort-state");
   const galleryFeedSection = document.querySelector(".gallery-feed-section");
   if (!galleryGrid) {
     return;
+  }
+
+  appState.gallerySort = normalizeGallerySort(appState.gallerySort);
+  if (gallerySortState) {
+    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)}`;
   }
 
   if (galleryFeedSection) {
@@ -5874,9 +5884,12 @@ function renderGallery(targetSnapshotId = "") {
   };
 
   if (gallerySortControl) {
-    gallerySortControl.value = appState.gallerySort || "date";
+    gallerySortControl.value = normalizeGallerySort(appState.gallerySort);
     gallerySortControl.addEventListener("change", () => {
-      appState.gallerySort = gallerySortControl.value || "date";
+      appState.gallerySort = normalizeGallerySort(gallerySortControl.value);
+      if (gallerySortState) {
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)}`;
+      }
       renderVisibleGallerySnapshots();
     });
   }

@@ -266,20 +266,19 @@
           <div>
             <p class="eyebrow">Published Snapshots</p>
             <h3>Community Grow Gallery</h3>
+            <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Newest</p>
           </div>
         </div>
         <label class="session-history-sort-control" for="gallery-sort">
           <span>Sort by</span>
           <div class="custom-select session-history-sort-select" data-dropdown-key="gallery-sort">
             <select id="gallery-sort" name="gallerySort" class="custom-select-native" data-custom-select="true">
-              <option value="date">Date</option>
-              <option value="name-asc">Name A-Z</option>
-              <option value="name-desc">Name Z-A</option>
-              <option value="rate">Germination Rate</option>
-              <option value="grow-member">Grow Member</option>
+              <option value="date">Newest</option>
+              <option value="rate">Highest Germination %</option>
+              <option value="likes">Most Likes</option>
             </select>
             <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-              <span class="custom-select-value">Date</span>
+              <span class="custom-select-value">Newest</span>
               <span class="custom-select-chevron" aria-hidden="true"></span>
             </button>
             <div class="custom-select-menu" role="listbox" hidden></div>
