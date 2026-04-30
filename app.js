@@ -2408,6 +2408,13 @@ function initializeSnapshotSection(scope, options) {
 
   state.destinationInputs.forEach((input) => {
     input.addEventListener("change", () => {
+      if (hasExistingGallerySnapshotForState(state) && input.checked && (input.value === "social-gallery" || input.value === "gallery")) {
+        const socialInput = state.destinationInputs.find((item) => item.value === "social");
+        if (socialInput) {
+          socialInput.checked = true;
+        }
+        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE);
+      }
       syncSnapshotGalleryControls(state);
     });
   });
@@ -2440,6 +2447,7 @@ function getSnapshotDestination(state) {
 }
 
 const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "To submit a different snapshot, delete the existing gallery snapshot first. A new submission will require approval again.";
+const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "Social only. This session already has a snapshot uploaded to the Grow Gallery.";
 
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
@@ -2642,6 +2650,27 @@ function hasExistingGallerySnapshotForState(state) {
   return Boolean(getGallerySnapshotForSession(session?.id));
 }
 
+function syncSnapshotDestinationAvailability(state) {
+  const hasExistingGallerySnapshot = hasExistingGallerySnapshotForState(state);
+  const socialInput = state?.destinationInputs?.find((input) => input.value === "social") || null;
+
+  state?.destinationInputs?.forEach((input) => {
+    const option = input.closest(".snapshot-destination-option");
+    const isGalleryMode = input.value === "social-gallery" || input.value === "gallery";
+    option?.classList.toggle("is-unavailable", Boolean(hasExistingGallerySnapshot && isGalleryMode));
+    option?.setAttribute("aria-disabled", hasExistingGallerySnapshot && isGalleryMode ? "true" : "false");
+  });
+
+  if (!hasExistingGallerySnapshot) {
+    return;
+  }
+
+  const selectedDestination = getSnapshotDestination(state);
+  if ((selectedDestination === "social-gallery" || selectedDestination === "gallery") && socialInput) {
+    socialInput.checked = true;
+  }
+}
+
 function syncSnapshotGalleryControls(state) {
   if (!state) {
     return;
@@ -2651,6 +2680,7 @@ function syncSnapshotGalleryControls(state) {
   const publishedEntry = getGallerySnapshotForSession(session?.id);
   const canPublish = Boolean(state.canPublish && session?.id);
   const currentStatus = String(publishedEntry?.status || "private");
+  syncSnapshotDestinationAvailability(state);
   const destination = getSnapshotDestination(state);
   const includesGallery = doesSnapshotDestinationIncludeGallery(destination);
 
