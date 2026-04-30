@@ -2419,9 +2419,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   stroke-linejoin: round;
 }
 
-.home-install-card-subtitle {
-  margin-top: 4px;
-  max-width: 28ch;
+.home-install-card-description {
+  margin: 0;
+  max-width: 30ch;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .home-install-card-actions,
@@ -6787,7 +6789,7 @@ body.theme-dark .home-install-card-icon {
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-body.theme-dark .home-install-card-subtitle,
+body.theme-dark .home-install-card-description,
 body.theme-dark .home-install-card-directions p {
   color: rgba(189, 204, 192, 0.82);
 }

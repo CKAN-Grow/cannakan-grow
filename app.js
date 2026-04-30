@@ -7195,11 +7195,11 @@ function renderHomeInstallInfoCardMarkup() {
           <div class="home-install-card-copy-block">
             <p class="eyebrow">Get the App</p>
             <h3 id="home-install-card-title">Install Cannakan Grow</h3>
-            <p class="muted home-install-card-subtitle">Add Cannakan Grow to your phone for a full-screen app experience.</p>
           </div>
         </div>
       </div>
       <div class="home-install-card-body">
+        <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
         <div class="home-install-card-directions">
           <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
           <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
