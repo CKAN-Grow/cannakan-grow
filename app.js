@@ -7164,6 +7164,7 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
 function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
+  const cardStateClass = isInstalled ? "is-installed" : "";
   const actionMarkup = isInstalled
     ? `
       <div class="home-install-card-status">
@@ -7179,7 +7180,7 @@ function renderHomeInstallInfoCardMarkup() {
     `;
 
   return `
-    <section class="card home-install-card" aria-labelledby="home-install-card-title">
+    <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
         <div class="home-install-card-copy">
           <span class="install-app-banner-icon home-install-card-icon" aria-hidden="true">
@@ -7203,6 +7204,19 @@ function renderHomeInstallInfoCardMarkup() {
         ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
       </div>
     </section>
+  `;
+}
+
+function renderHomeSecondaryInfoRowMarkup() {
+  return `
+    <div class="home-dashboard-secondary-row">
+      <div class="home-dashboard-secondary-row-main">
+        ${renderHomeGalleryRankingsTeaser()}
+      </div>
+      <div class="home-dashboard-secondary-row-side">
+        ${renderHomeInstallInfoCardMarkup()}
+      </div>
+    </div>
   `;
 }
 
@@ -7315,26 +7329,20 @@ function renderHome() {
     bestSessionResultEl.textContent = "";
   }
 
-  const dashboardBar = document.querySelector(".dashboard-bar");
-  const homeInstallCardMarkup = renderHomeInstallInfoCardMarkup();
-  if (dashboardBar) {
-    dashboardBar.insertAdjacentHTML("afterend", homeInstallCardMarkup);
-    dashboardBar.nextElementSibling?.querySelector("[data-install-grow-app]")?.addEventListener("click", async () => {
-      await promptInstallGrowApp();
-    });
-  }
-
-  const galleryRankingsTeaserMarkup = renderHomeGalleryRankingsTeaser();
+  const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
   if (summaryGrid) {
     if (isAdminView) {
       summaryGrid.insertAdjacentHTML("beforeend", renderRegisteredMemberCountCardMarkup());
     }
-    summaryGrid.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
+    summaryGrid.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else if (spotlightCard) {
-    spotlightCard.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
+    spotlightCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else {
-    app.insertAdjacentHTML("beforeend", galleryRankingsTeaserMarkup);
+    app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
   }
+  app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
+    await promptInstallGrowApp();
+  });
 
   const spotlightSession = activeSessions[0] || null;
   const updateSpotlight = () => {

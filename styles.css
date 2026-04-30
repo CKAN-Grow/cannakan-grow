@@ -2315,6 +2315,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+.home-dashboard-secondary-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.home-dashboard-secondary-row-main,
+.home-dashboard-secondary-row-side {
+  min-width: 0;
+}
+
+.home-dashboard-secondary-row .home-gallery-rankings-card,
+.home-dashboard-secondary-row .home-install-card {
+  margin-top: 0;
+  height: 100%;
+}
+
 .home-install-card {
   display: grid;
   gap: 14px;
@@ -2327,6 +2346,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow:
     0 10px 24px rgba(24, 34, 24, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.home-install-card.is-installed {
+  border-color: rgba(148, 209, 89, 0.08);
+  background:
+    linear-gradient(180deg, rgba(244, 248, 243, 0.5) 0%, rgba(234, 241, 233, 0.34) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.04), rgba(43, 111, 65, 0.015) 58%);
+  box-shadow:
+    0 8px 18px rgba(24, 34, 24, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  opacity: 0.9;
 }
 
 .home-install-card-shell {
@@ -4906,6 +4936,10 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .home-dashboard-secondary-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .session-history-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4927,6 +4961,10 @@ body.theme-dark .theme-toggle-button:hover {
 @media (max-width: 640px) {
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-dashboard-secondary-row {
+    gap: 12px;
   }
 
   .home-install-card-shell {
