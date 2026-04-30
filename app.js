@@ -3502,17 +3502,18 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   let profileAttributionWidth = 0;
   const profileAvatarSize = roomy ? 56 : 48;
   const profileGap = roomy ? 8 : 6;
-  const profileFontSize = roomy ? 31 : 27;
+  const profileFontSize = roomy ? 24 : 21;
+  const profileRightInset = roomy ? 20 : 16;
+  const minimumSessionNameWidth = roomy ? 240 : 180;
   let profileText = "";
   if (showProfileAttribution) {
     context.font = `600 ${profileFontSize}px Arial, sans-serif`;
-    const minimumSessionNameWidth = roomy ? 240 : 180;
     const profileTextMaxWidth = Math.max(
-      roomy ? 180 : 120,
-      width - inset * 2 - dateWidth - minimumSessionNameWidth - profileAvatarSize - profileGap,
+      roomy ? 220 : 160,
+      width - inset * 2 - dateWidth - minimumSessionNameWidth - profileAvatarSize - profileGap - profileRightInset,
     );
     profileText = truncateTextToWidth(context, profileName, profileTextMaxWidth);
-    profileAttributionWidth = profileAvatarSize + profileGap + context.measureText(profileText).width;
+    profileAttributionWidth = profileAvatarSize + profileGap + context.measureText(profileText).width + profileRightInset;
   }
   context.font = `600 ${roomy ? 24 : 17}px Arial, sans-serif`;
   const sessionNameMaxWidth = Math.max(120, width - inset * 2 - dateWidth - profileAttributionWidth);
@@ -3528,11 +3529,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   if (showProfileAttribution) {
     context.font = `600 ${profileFontSize}px Arial, sans-serif`;
     const profileTextWidth = context.measureText(profileText).width;
-    const attributionRightX = x + width - inset;
+    const attributionRightX = x + width - inset - profileRightInset;
     const attributionX = attributionRightX - profileTextWidth - profileGap - profileAvatarSize;
     const profileMetrics = context.measureText(profileText);
-    const profileAscent = profileMetrics.actualBoundingBoxAscent || (roomy ? 23 : 20);
-    const profileDescent = profileMetrics.actualBoundingBoxDescent || (roomy ? 7 : 6);
+    const profileAscent = profileMetrics.actualBoundingBoxAscent || (roomy ? 18 : 16);
+    const profileDescent = profileMetrics.actualBoundingBoxDescent || (roomy ? 6 : 5);
     const profileCenterY = footerTextY - profileDescent - ((profileAscent + profileDescent) / 2) + 1;
     const avatarY = profileCenterY - (profileAvatarSize / 2) + 20;
     drawSnapshotProfileAvatar(context, profileAvatar, profileName, attributionX, avatarY, profileAvatarSize, roomy);
