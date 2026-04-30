@@ -4460,6 +4460,77 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-color: #0f120f;
 }
 
+.dashboard-bar .hero-actions .button-new-session,
+.dashboard-bar .hero-actions .button-secondary {
+  min-height: 50px;
+  padding: 13px 22px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.dashboard-bar .hero-actions .button-new-session {
+  padding-inline: 30px;
+  font-weight: 900;
+  background: linear-gradient(180deg, #9ee76a 0%, #94d159 58%, #78b546 100%);
+  border-color: #94d159;
+  color: #111612;
+  box-shadow:
+    0 14px 24px rgba(94, 141, 55, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.14),
+    0 0 22px rgba(148, 209, 89, 0.16);
+}
+
+.dashboard-bar .hero-actions .button-new-session:hover,
+.dashboard-bar .hero-actions .button-new-session:focus-visible {
+  background: linear-gradient(180deg, #b2f57f 0%, #9cde63 56%, #82c14e 100%);
+  border-color: #a5ea70;
+  color: #101510;
+  transform: translateY(-1px);
+  box-shadow:
+    0 18px 28px rgba(94, 141, 55, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 28px rgba(148, 209, 89, 0.24);
+}
+
+.dashboard-bar .hero-actions .button-new-session:active {
+  background: linear-gradient(180deg, #84c64c 0%, #74b043 100%);
+  border-color: #74b043;
+  color: #0f140f;
+  transform: translateY(0) scale(0.985);
+  box-shadow:
+    0 10px 16px rgba(94, 141, 55, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
+}
+
+.dashboard-bar .hero-actions .button-secondary {
+  background: rgba(148, 209, 89, 0.03);
+  border: 2px solid #94d159;
+  color: #2d5b22;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 8px 18px rgba(57, 104, 49, 0.06);
+}
+
+.dashboard-bar .hero-actions .button-secondary:hover,
+.dashboard-bar .hero-actions .button-secondary:focus-visible {
+  background: rgba(148, 209, 89, 0.11);
+  border-color: #94d159;
+  color: #224a1a;
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 20px rgba(57, 104, 49, 0.1),
+    0 0 0 1px rgba(148, 209, 89, 0.1);
+}
+
+.dashboard-bar .hero-actions .button-secondary:active {
+  background: rgba(148, 209, 89, 0.16);
+  color: #1f3e19;
+  transform: translateY(0) scale(0.985);
+  box-shadow:
+    0 6px 12px rgba(57, 104, 49, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
 .auth-card {
   max-width: 520px;
   width: 100%;
@@ -4544,6 +4615,62 @@ body.theme-dark .button-secondary:hover {
   border-color: #94d159;
   color: #94d159;
   transform: translateY(-1px);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-new-session {
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 56%, #6da83f 100%);
+  border-color: #94d159;
+  color: #101510;
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 24px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-new-session:hover,
+body.theme-dark .dashboard-bar .hero-actions .button-new-session:focus-visible {
+  background: linear-gradient(180deg, #b9fa88 0%, #a1e267 56%, #79bc47 100%);
+  border-color: #b4f57f;
+  color: #0f140f;
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 30px rgba(148, 209, 89, 0.26);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-new-session:active {
+  background: linear-gradient(180deg, #81c34e 0%, #6ea941 100%);
+  border-color: #6ea941;
+  box-shadow:
+    0 10px 16px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-secondary {
+  background: rgba(148, 209, 89, 0.04);
+  border-color: #94d159;
+  color: #d4f2b4;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-secondary:hover,
+body.theme-dark .dashboard-bar .hero-actions .button-secondary:focus-visible {
+  background: rgba(148, 209, 89, 0.12);
+  border-color: #a7ee72;
+  color: #eff9e3;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .dashboard-bar .hero-actions .button-secondary:active {
+  background: rgba(148, 209, 89, 0.16);
+  color: #ffffff;
+  box-shadow:
+    0 6px 12px rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .theme-toggle-button {
