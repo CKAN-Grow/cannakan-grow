@@ -1,15 +1,17 @@
-const CACHE_NAME = "cannakan-grow-shell-v7";
+const CACHE_NAME = "cannakan-grow-shell-v8";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
   "/manifest.json",
-  "/icons/ck-grow-apple-touch-180-v5.png",
-  "/icons/ck-grow-pwa-192-v5.png",
-  "/icons/ck-grow-pwa-512-v5.png",
-  "/icons/ck-grow-favicon-32-v5.png",
-  "/icons/ck-grow-favicon-16-v5.png",
+  "/favicon.ico",
+  "/favicon-32x32.png",
+  "/favicon-16x16.png",
+  "/apple-touch-icon.png",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-512.png",
   "/src/assets/Cannakan_GROW_darkmode.png",
   "/src/assets/Cannakan_GROW_lightmode.png",
 ];

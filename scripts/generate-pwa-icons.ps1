@@ -1,18 +1,18 @@
 Add-Type -AssemblyName System.Drawing
 
 $workspace = Split-Path -Parent $PSScriptRoot
-$publicIconsDir = Join-Path $workspace "icons"
+$outputDir = $workspace
 $sourcePath = Join-Path $workspace "Assets/Icons/ck-grow-favicon.png"
 
 $targets = @(
-  @{ Size = 512; Name = "ck-grow-pwa-512-v5.png" },
-  @{ Size = 192; Name = "ck-grow-pwa-192-v5.png" },
-  @{ Size = 180; Name = "ck-grow-apple-touch-180-v5.png" },
-  @{ Size = 32; Name = "ck-grow-favicon-32-v5.png" },
-  @{ Size = 16; Name = "ck-grow-favicon-16-v5.png" }
+  @{ Size = 512; Name = "icon-512.png" },
+  @{ Size = 192; Name = "icon-192.png" },
+  @{ Size = 180; Name = "apple-touch-icon.png" },
+  @{ Size = 32; Name = "favicon-32x32.png" },
+  @{ Size = 16; Name = "favicon-16x16.png" }
 )
 
-New-Item -ItemType Directory -Force -Path $publicIconsDir | Out-Null
+New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 $sourceImage = [System.Drawing.Image]::FromFile($sourcePath)
 try {
@@ -28,13 +28,16 @@ try {
       $graphics.Clear([System.Drawing.Color]::Transparent)
       $graphics.DrawImage($sourceImage, 0, 0, $target.Size, $target.Size)
 
-      $destinationPath = Join-Path $publicIconsDir $target.Name
+      $destinationPath = Join-Path $outputDir $target.Name
       $bitmap.Save($destinationPath, [System.Drawing.Imaging.ImageFormat]::Png)
     } finally {
       $graphics.Dispose()
       $bitmap.Dispose()
     }
   }
+
+  Copy-Item (Join-Path $outputDir "icon-512.png") (Join-Path $outputDir "icon-maskable-512.png") -Force
+  Copy-Item (Join-Path $outputDir "favicon-32x32.png") (Join-Path $outputDir "favicon.ico") -Force
 } finally {
   $sourceImage.Dispose()
 }
