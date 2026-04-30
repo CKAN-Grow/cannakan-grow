@@ -197,8 +197,30 @@ function updateFileUploadName(input, files = input?.files) {
   nameElement.textContent = getFileUploadNameLabel(input, files);
 }
 
+function getBackToTopScrollContainerCandidates() {
+  return [
+    document.scrollingElement,
+    document.documentElement,
+    document.body,
+    document.querySelector(".app-shell"),
+    document.querySelector("#app"),
+  ].filter((entry, index, items) => entry && items.indexOf(entry) === index);
+}
+
+function getBackToTopScrollTop() {
+  const windowScrollTop = Math.max(
+    window.scrollY || 0,
+    window.pageYOffset || 0,
+  );
+  const containerScrollTop = getBackToTopScrollContainerCandidates().reduce((maxScrollTop, candidate) => (
+    Math.max(maxScrollTop, candidate?.scrollTop || 0)
+  ), 0);
+
+  return Math.max(windowScrollTop, containerScrollTop);
+}
+
 function shouldShowBackToTopButton() {
-  return window.scrollY > BACK_TO_TOP_VISIBILITY_OFFSET;
+  return getBackToTopScrollTop() > BACK_TO_TOP_VISIBILITY_OFFSET;
 }
 
 function updateBackToTopButtonVisibility() {
@@ -247,9 +269,17 @@ function ensureBackToTopButton() {
       </span>
     `;
     button.addEventListener("click", () => {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      getBackToTopScrollContainerCandidates().forEach((candidate) => {
+        if (!candidate || candidate === document.body || candidate === document.documentElement) {
+          return;
+        }
+
+        if (typeof candidate.scrollTo === "function") {
+          candidate.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          candidate.scrollTop = 0;
+        }
       });
     });
     document.body.appendChild(button);
@@ -257,6 +287,22 @@ function ensureBackToTopButton() {
 
   updateBackToTopButtonVisibility();
   return button;
+}
+
+function bindBackToTopVisibilityObservers() {
+  if (document.body?.dataset.backToTopObserversBound === "true") {
+    return;
+  }
+
+  document.body.dataset.backToTopObserversBound = "true";
+  window.addEventListener("scroll", requestBackToTopButtonVisibilitySync, { passive: true });
+  getBackToTopScrollContainerCandidates().forEach((candidate) => {
+    if (!candidate || candidate === document.body || candidate === document.documentElement) {
+      return;
+    }
+
+    candidate.addEventListener("scroll", requestBackToTopButtonVisibilitySync, { passive: true });
+  });
 }
 
 function bindFileUploadControl(input) {
@@ -1304,6 +1350,7 @@ async function bootstrapApp() {
   appState.loading = true;
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
+  bindBackToTopVisibilityObservers();
   updateAuthStatus();
   safeRender();
 
@@ -10314,8 +10361,6 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
   reportAppError(event.reason instanceof Error ? event.reason : new Error(String(event.reason || "Unhandled promise rejection")), "Unhandled Promise Rejection");
 });
-
-window.addEventListener("scroll", requestBackToTopButtonVisibilitySync, { passive: true });
 
 document.addEventListener("click", (event) => {
   const newSessionTrigger = event.target instanceof Element
