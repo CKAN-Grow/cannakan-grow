@@ -2347,6 +2347,24 @@ function getSnapshotDestination(state) {
   return selectedInput?.value || "social";
 }
 
+function doesSnapshotDestinationIncludeGallery(destination) {
+  return destination === "social-gallery" || destination === "gallery";
+}
+
+function setSnapshotIncludeProfileEnabled(state, checked) {
+  if (!state?.includeProfileToggle) {
+    return;
+  }
+
+  const normalizedChecked = Boolean(checked);
+  if (state.includeProfileToggle.checked === normalizedChecked) {
+    return;
+  }
+
+  state.includeProfileToggle.checked = normalizedChecked;
+  state.includeProfileToggle.dispatchEvent(new Event("change"));
+}
+
 function syncSnapshotGalleryControls(state) {
   if (!state) {
     return;
@@ -2357,7 +2375,7 @@ function syncSnapshotGalleryControls(state) {
   const canPublish = Boolean(state.canPublish && session?.id);
   const currentStatus = String(publishedEntry?.status || "private");
   const destination = getSnapshotDestination(state);
-  const includesGallery = destination === "social-gallery" || destination === "gallery";
+  const includesGallery = doesSnapshotDestinationIncludeGallery(destination);
 
   if (state.includeProfileToggleRow) {
     state.includeProfileToggleRow.hidden = !includesGallery;
@@ -2366,7 +2384,7 @@ function syncSnapshotGalleryControls(state) {
     state.includeProfileDividerRow.hidden = !includesGallery;
   }
   if (state.includeProfileToggle && !includesGallery) {
-    state.includeProfileToggle.checked = false;
+    setSnapshotIncludeProfileEnabled(state, false);
   }
 
   if (state.galleryNote) {
@@ -2759,7 +2777,14 @@ function ensureSnapshotImageModal() {
         <p class="muted">Select the uploaded image you want to feature as the main visual.</p>
       </div>
       <div class="snapshot-modal-grid" id="snapshot-modal-grid"></div>
-      <div class="snapshot-modal-profile-test">PROFILE TOGGLE TEST</div>
+      <label class="snapshot-profile-toggle" id="snapshot-modal-profile-toggle-row" hidden>
+        <input id="snapshot-modal-include-profile" type="checkbox" name="snapshot-modal-include-profile">
+        <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
+        <span class="snapshot-profile-toggle-text">
+          <span class="snapshot-profile-toggle-copy">Include my profile name & image with this snapshot in the Grow Gallery</span>
+          <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
+        </span>
+      </label>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-snapshot-modal-action="cancel">Cancel</button>
         <button type="button" class="button button-primary" data-snapshot-modal-action="confirm">Use Selected Image</button>
@@ -2773,6 +2798,8 @@ function ensureSnapshotImageModal() {
 function chooseSnapshotImageForState(state, images) {
   const modal = ensureSnapshotImageModal();
   const grid = modal.querySelector("#snapshot-modal-grid");
+  const includeProfileToggleRow = modal.querySelector("#snapshot-modal-profile-toggle-row");
+  const includeProfileToggle = modal.querySelector("#snapshot-modal-include-profile");
   let selectedKey = state.selectedImageKey && images.some((image) => image.key === state.selectedImageKey)
     ? state.selectedImageKey
     : images[0]?.key || "";
@@ -2794,6 +2821,16 @@ function chooseSnapshotImageForState(state, images) {
   };
 
   renderChoices();
+  const includesGallery = doesSnapshotDestinationIncludeGallery(getSnapshotDestination(state));
+  if (includeProfileToggleRow) {
+    includeProfileToggleRow.hidden = !includesGallery;
+  }
+  if (includeProfileToggle) {
+    includeProfileToggle.checked = Boolean(state?.includeProfileToggle?.checked) && includesGallery;
+    includeProfileToggle.onchange = () => {
+      setSnapshotIncludeProfileEnabled(state, includeProfileToggle.checked);
+    };
+  }
 
   return new Promise((resolve) => {
     const cancelButton = modal.querySelector('[data-snapshot-modal-action="cancel"]');
@@ -2802,6 +2839,9 @@ function chooseSnapshotImageForState(state, images) {
     const cleanup = (result) => {
       cancelButton.onclick = null;
       confirmButton.onclick = null;
+      if (includeProfileToggle) {
+        includeProfileToggle.onchange = null;
+      }
       modal.removeEventListener("cancel", onCancel);
       if (modal.open) {
         modal.close();
