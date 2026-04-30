@@ -6791,7 +6791,8 @@ function renderHome() {
     if (!spotlightSession) {
       spotlightCard?.classList.remove("stage-soaking", "stage-germinating", "stage-completed");
       if (spotlightStage) {
-        spotlightStage.dataset.stage = "";
+        spotlightStage.dataset.stage = "No active session";
+        spotlightStage.classList.add("is-inactive");
       }
       spotlightStage.textContent = "No active session";
       spotlightName.textContent = "No active session";
@@ -6824,6 +6825,7 @@ function renderHome() {
     spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
     spotlightStage.textContent = capitalize(normalizedStage).replace("Unselected", "Not started");
     if (spotlightStage) {
+      spotlightStage.classList.remove("is-inactive");
       spotlightStage.dataset.stage = normalizedStage;
       if (previousStage && previousStage !== normalizedStage) {
         animateStageBadge(spotlightStage);
