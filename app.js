@@ -7099,7 +7099,7 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
 function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
-  const statusMarkup = isInstalled
+  const actionMarkup = isInstalled
     ? `
       <div class="home-install-card-status">
         <span class="home-install-card-status-pill">Cannakan Grow is installed.</span>
@@ -7130,15 +7130,13 @@ function renderHomeInstallInfoCardMarkup() {
             <p class="muted home-install-card-subtitle">Add Cannakan Grow to your phone for a full-screen app experience.</p>
           </div>
         </div>
-        ${statusMarkup}
+        ${actionMarkup}
       </div>
-      ${!isInstalled ? `
-        <div class="home-install-card-directions">
-          <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
-          <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
-          ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
-        </div>
-      ` : ""}
+      <div class="home-install-card-directions">
+        <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
+        <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
+        ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
+      </div>
     </section>
   `;
 }
