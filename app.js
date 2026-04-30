@@ -601,8 +601,28 @@ function getSessions() {
   return appState.sessions;
 }
 
+function normalizeStoredSession(session) {
+  if (!session || typeof session !== "object") {
+    return null;
+  }
+
+  return {
+    ...session,
+    customSessionName: String(session.customSessionName || "").trim(),
+    sessionNotes: String(session.sessionNotes || "").trim(),
+    sessionImages: normalizePersistedSessionImages(session.sessionImages),
+    sessionStatus: String(session.sessionStatus || "").trim(),
+    germinationStartedAt: String(session.germinationStartedAt || "").trim(),
+    firstPlantedAt: String(session.firstPlantedAt || "").trim(),
+    completedAt: String(session.completedAt || "").trim(),
+    partitions: Array.isArray(session.partitions) ? session.partitions : [],
+    snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
+    createdAt: String(session.createdAt || "").trim(),
+  };
+}
+
 function saveSessions(sessions) {
-  appState.sessions = sortSessionsNewestFirst(sessions);
+  appState.sessions = sortSessionsNewestFirst((sessions || []).map(normalizeStoredSession).filter(Boolean));
   if (!isSupabaseConfigured()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.sessions));
   }
@@ -765,6 +785,7 @@ function createSampleSession(config) {
     customSessionName: config.sessionName.replace(/\s-\s[A-Z][a-z]{2}\s\d{1,2},\s\d{4}$/, ""),
     sessionNotes: config.sessionNotes || "",
     sessionImages: [],
+    snapshotState: null,
     sessionStatus: config.sessionStatus,
     germinationStartedAt: config.germinationStartedAt || "",
     firstPlantedAt: config.firstPlantedAt || "",
@@ -933,7 +954,8 @@ function loadLocalSessions() {
   }
 
   try {
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map(normalizeStoredSession).filter(Boolean) : [];
   } catch {
     return [];
   }
@@ -1711,6 +1733,65 @@ function getGallerySnapshotFeedDetails(snapshot) {
   };
 }
 
+function normalizeSessionSnapshotGalleryStatus(status) {
+  const normalizedStatus = String(status || "").trim();
+  return ["social-only", "private", "pending_review", "approved", "rejected"].includes(normalizedStatus)
+    ? normalizedStatus
+    : "";
+}
+
+function normalizePersistedSessionSnapshotState(snapshotState) {
+  if (!snapshotState || typeof snapshotState !== "object" || Array.isArray(snapshotState)) {
+    return null;
+  }
+
+  const normalized = {
+    referenceId: String(snapshotState.referenceId || snapshotState.id || "").trim(),
+    createdAt: String(snapshotState.createdAt || "").trim(),
+    submittedAt: String(snapshotState.submittedAt || "").trim(),
+    galleryStatus: normalizeSessionSnapshotGalleryStatus(snapshotState.galleryStatus),
+    selectedImageKey: String(snapshotState.selectedImageKey || "").trim(),
+    renderKey: String(snapshotState.renderKey || "").trim(),
+    imageUrl: String(snapshotState.imageUrl || "").trim(),
+    imagePath: String(snapshotState.imagePath || "").trim(),
+    gallerySnapshotId: String(snapshotState.gallerySnapshotId || snapshotState.snapshotId || "").trim(),
+    galleryRoute: String(snapshotState.galleryRoute || "").trim(),
+  };
+
+  return Object.values(normalized).some(Boolean) ? normalized : null;
+}
+
+function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotState = null) {
+  const normalizedBase = normalizePersistedSessionSnapshotState(baseSnapshotState) || null;
+  if (!snapshot) {
+    return normalizedBase;
+  }
+
+  return normalizePersistedSessionSnapshotState({
+    ...normalizedBase,
+    referenceId: normalizedBase?.referenceId || snapshot.id || `snapshot-${crypto.randomUUID()}`,
+    createdAt: normalizedBase?.createdAt || snapshot.createdAt || snapshot.publishedAt || new Date().toISOString(),
+    submittedAt: snapshot.publishedAt || snapshot.createdAt || normalizedBase?.submittedAt || "",
+    galleryStatus: normalizeSessionSnapshotGalleryStatus(snapshot.status) || normalizedBase?.galleryStatus || "pending_review",
+    imageUrl: String(snapshot.imageUrl || normalizedBase?.imageUrl || "").trim(),
+    imagePath: String(snapshot.imagePath || normalizedBase?.imagePath || "").trim(),
+    gallerySnapshotId: String(snapshot.id || normalizedBase?.gallerySnapshotId || "").trim(),
+    galleryRoute: snapshot.id ? `#gallery/${snapshot.id}` : (normalizedBase?.galleryRoute || ""),
+  });
+}
+
+function getSessionSnapshotState(session) {
+  const baseSnapshotState = normalizePersistedSessionSnapshotState(session?.snapshotState);
+  if (!session?.id) {
+    return baseSnapshotState;
+  }
+
+  const gallerySnapshot = getGallerySnapshotForSession(session.id);
+  return gallerySnapshot
+    ? buildSessionSnapshotStateFromGallerySnapshot(gallerySnapshot, baseSnapshotState)
+    : baseSnapshotState;
+}
+
 function mapSessionToRecord(session, userId) {
   return {
     id: session.id,
@@ -1723,6 +1804,7 @@ function mapSessionToRecord(session, userId) {
     custom_session_name: session.customSessionName || "",
     session_notes: session.sessionNotes || "",
     session_images: getEffectiveSessionImages(session),
+    snapshot_state: normalizePersistedSessionSnapshotState(session.snapshotState) || {},
     session_status: session.sessionStatus || "",
     germination_started_at: session.germinationStartedAt || null,
     first_planted_at: session.firstPlantedAt || null,
@@ -1743,6 +1825,7 @@ function mapRowToSession(row) {
     customSessionName: row.custom_session_name || "",
     sessionNotes: row.session_notes || "",
     sessionImages: normalizePersistedSessionImages(row.session_images),
+    snapshotState: normalizePersistedSessionSnapshotState(row.snapshot_state),
     sessionStatus: row.session_status || "",
     germinationStartedAt: row.germination_started_at || "",
     firstPlantedAt: row.first_planted_at || "",
@@ -2214,6 +2297,9 @@ function initializeSnapshotSection(scope, options) {
     return;
   }
 
+  const initialSnapshotState = normalizePersistedSessionSnapshotState(
+    options.initialSnapshotState || options.getGallerySession?.()?.snapshotState,
+  );
   const state = {
     scope,
     picker: options.picker,
@@ -2234,10 +2320,14 @@ function initializeSnapshotSection(scope, options) {
     includeProfileToggle: options.includeProfileToggle || null,
     includeProfileToggleRow: options.includeProfileToggleRow || null,
     includeProfileDividerRow: options.includeProfileDividerRow || null,
+    savedSnapshotNotice: options.savedSnapshotNotice || null,
+    savedSnapshotText: options.savedSnapshotText || null,
+    savedSnapshotLink: options.savedSnapshotLink || null,
     selectedImageKey: "",
     generatedBlob: null,
     generatedUrl: "",
     generatedRenderKey: "",
+    pendingSnapshotState: initialSnapshotState,
   };
 
   scope.__snapshotState = state;
@@ -2261,6 +2351,7 @@ function initializeSnapshotSection(scope, options) {
   }
   renderSnapshotSourceSummary(state);
   syncSnapshotGalleryControls(state);
+  renderSnapshotSavedNotice(state);
   setSnapshotMessage(state, "");
   setSnapshotPreview(state, null);
 
@@ -2334,6 +2425,7 @@ function initializeSnapshotSection(scope, options) {
       if (socialInput) {
         socialInput.checked = true;
       }
+      await persistSnapshotStateForSection(state, buildUnpublishedSessionSnapshotState(state));
       syncSnapshotGalleryControls(state);
       setSnapshotMessage(state, "Snapshot removed from the Grow Gallery.");
     } catch (error) {
@@ -2345,6 +2437,54 @@ function initializeSnapshotSection(scope, options) {
 function getSnapshotDestination(state) {
   const selectedInput = state?.destinationInputs?.find((input) => input.checked);
   return selectedInput?.value || "social";
+}
+
+function formatSnapshotSavedDateTime(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  return parsedDate ? formatTimingDateTime(parsedDate) : "Unknown date";
+}
+
+function getSnapshotStateForSection(state) {
+  const session = state?.getGallerySession?.() || null;
+  return session
+    ? getSessionSnapshotState(session)
+    : normalizePersistedSessionSnapshotState(state?.pendingSnapshotState);
+}
+
+function renderSnapshotSavedNotice(state) {
+  if (!state?.savedSnapshotNotice || !state.savedSnapshotText) {
+    return;
+  }
+
+  const snapshotState = getSnapshotStateForSection(state);
+  if (!snapshotState) {
+    state.savedSnapshotNotice.hidden = true;
+    if (state.savedSnapshotLink) {
+      state.savedSnapshotLink.hidden = true;
+      state.savedSnapshotLink.setAttribute("href", "#gallery");
+    }
+    return;
+  }
+
+  const noticeDate = snapshotState.submittedAt || snapshotState.createdAt;
+  let message = `Snapshot created on ${formatSnapshotSavedDateTime(snapshotState.createdAt || noticeDate)}.`;
+  if (snapshotState.galleryStatus === "pending_review") {
+    message = `Snapshot submitted to Grow Gallery for review on ${formatSnapshotSavedDateTime(noticeDate)}.`;
+  } else if (snapshotState.galleryStatus === "approved") {
+    message = `Snapshot approved in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
+  } else if (snapshotState.galleryStatus === "rejected") {
+    message = `Snapshot rejected in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
+  }
+
+  state.savedSnapshotText.textContent = message;
+  state.savedSnapshotNotice.hidden = false;
+
+  if (state.savedSnapshotLink) {
+    const shouldShowLink = Boolean(snapshotState.gallerySnapshotId)
+      && ["pending_review", "approved", "rejected"].includes(snapshotState.galleryStatus);
+    state.savedSnapshotLink.hidden = !shouldShowLink;
+    state.savedSnapshotLink.setAttribute("href", shouldShowLink ? `#gallery/${snapshotState.gallerySnapshotId}` : "#gallery");
+  }
 }
 
 function prefersReducedSnapshotMotion() {
@@ -2426,6 +2566,72 @@ function setSnapshotIncludeProfileEnabled(state, checked) {
   state.includeProfileToggle.dispatchEvent(new Event("change"));
 }
 
+function updateSessionSnapshotStateCache(sessionId, snapshotState) {
+  if (!sessionId) {
+    return;
+  }
+
+  saveSessions(getSessions().map((session) => (
+    session.id === sessionId
+      ? { ...session, snapshotState }
+      : session
+  )));
+}
+
+async function persistSnapshotStateForSection(state, snapshotState) {
+  const normalizedSnapshotState = normalizePersistedSessionSnapshotState(snapshotState);
+  if (!state) {
+    return normalizedSnapshotState;
+  }
+
+  state.pendingSnapshotState = normalizedSnapshotState;
+  const session = state.getGallerySession?.() || null;
+  if (session?.id) {
+    session.snapshotState = normalizedSnapshotState;
+    updateSessionSnapshotStateCache(session.id, normalizedSnapshotState);
+    const savedSession = await saveSessionUpdate(session);
+    if (savedSession?.snapshotState !== undefined) {
+      session.snapshotState = normalizePersistedSessionSnapshotState(savedSession.snapshotState);
+      state.pendingSnapshotState = session.snapshotState;
+    }
+  }
+
+  renderSnapshotSavedNotice(state);
+  return state.pendingSnapshotState;
+}
+
+function buildGeneratedSessionSnapshotState(state) {
+  const existingSnapshotState = getSnapshotStateForSection(state);
+  const destination = getSnapshotDestination(state);
+  const generatedStatus = existingSnapshotState?.gallerySnapshotId
+    ? (existingSnapshotState.galleryStatus || "pending_review")
+    : (destination === "social" ? "social-only" : "private");
+
+  return {
+    ...existingSnapshotState,
+    referenceId: existingSnapshotState?.referenceId || `snapshot-${crypto.randomUUID()}`,
+    createdAt: new Date().toISOString(),
+    galleryStatus: generatedStatus,
+    selectedImageKey: String(state?.selectedImageKey || "").trim(),
+    renderKey: String(state?.generatedRenderKey || "").trim(),
+  };
+}
+
+function buildUnpublishedSessionSnapshotState(state) {
+  const existingSnapshotState = getSnapshotStateForSection(state);
+  return {
+    ...existingSnapshotState,
+    referenceId: existingSnapshotState?.referenceId || `snapshot-${crypto.randomUUID()}`,
+    createdAt: existingSnapshotState?.createdAt || new Date().toISOString(),
+    submittedAt: "",
+    galleryStatus: "social-only",
+    gallerySnapshotId: "",
+    galleryRoute: "",
+    imageUrl: "",
+    imagePath: "",
+  };
+}
+
 function syncSnapshotGalleryControls(state) {
   if (!state) {
     return;
@@ -2468,6 +2674,8 @@ function syncSnapshotGalleryControls(state) {
   if (state.unpublishButton) {
     state.unpublishButton.hidden = !publishedEntry || currentStatus === "private";
   }
+
+  renderSnapshotSavedNotice(state);
 }
 
 async function maybePublishSnapshotFromState(state, result) {
@@ -2482,6 +2690,7 @@ async function maybePublishSnapshotFromState(state, result) {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
     });
+    await persistSnapshotStateForSection(state, buildSessionSnapshotStateFromGallerySnapshot(published, getSnapshotStateForSection(state)));
     syncSnapshotGalleryControls(state);
     setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
     return published;
@@ -2773,6 +2982,7 @@ async function generateSnapshotPreview(state) {
       imageUrl: selectedImage?.displayUrl || "",
       renderKey,
     });
+    await persistSnapshotStateForSection(state, buildGeneratedSessionSnapshotState(state));
     setSnapshotMessage(state, selectedImage ? "Snapshot ready with your selected image." : "Snapshot ready as a text-only share image.");
     return {
       blob,
@@ -2854,8 +3064,7 @@ function ensureSnapshotImageModal() {
 function chooseSnapshotImageForState(state, images) {
   const modal = ensureSnapshotImageModal();
   const grid = modal.querySelector("#snapshot-modal-grid");
-  const includeProfileToggleRow = modal.querySelector("#snapshot-modal-profile-toggle-row");
-  const includeProfileHelper = modal.querySelector("#snapshot-modal-profile-helper");
+  const includeProfileOption = modal.querySelector(".snapshot-modal-profile-option");
   const includeProfileToggle = modal.querySelector("#snapshot-modal-include-profile");
   let selectedKey = state.selectedImageKey && images.some((image) => image.key === state.selectedImageKey)
     ? state.selectedImageKey
@@ -2879,7 +3088,7 @@ function chooseSnapshotImageForState(state, images) {
 
   renderChoices();
   const includesGallery = doesSnapshotDestinationIncludeGallery(getSnapshotDestination(state));
-  setSnapshotAnimatedVisibility([includeProfileToggleRow, includeProfileHelper], includesGallery);
+  setSnapshotAnimatedVisibility(includeProfileOption, includesGallery);
   if (includeProfileToggle) {
     includeProfileToggle.checked = Boolean(state?.includeProfileToggle?.checked) && includesGallery;
     includeProfileToggle.onchange = () => {
@@ -3552,8 +3761,8 @@ function render() {
     return;
   }
 
-  if (rawRoute === "gallery") {
-    renderGallery();
+  if (route === "gallery") {
+    renderGallery(id || "");
     return;
   }
 
@@ -4444,7 +4653,7 @@ function renderHome() {
   startSessionTimer(updateSpotlight);
 }
 
-function renderGallery() {
+function renderGallery(targetSnapshotId = "") {
   app.replaceChildren(cloneTemplate(templates.gallery));
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
@@ -4461,6 +4670,7 @@ function renderGallery() {
   const renderVisibleGallerySnapshots = () => {
     galleryGrid.innerHTML = "";
     const visibleSnapshots = sortVisibleGallerySnapshots(gallerySnapshots, appState.gallerySort);
+    let targetCard = null;
     if (!visibleSnapshots.length) {
       galleryGrid.innerHTML = `
         <div class="empty-state gallery-empty-state">
@@ -4480,6 +4690,8 @@ function renderGallery() {
     visibleSnapshots.forEach((snapshot) => {
       const card = document.createElement("article");
       card.className = "gallery-card";
+      card.dataset.gallerySnapshotId = snapshot.id;
+      card.tabIndex = -1;
       const isOwner = snapshot.userId === appState.user?.id;
       const isPending = snapshot.status === "pending_review";
       const isRejected = snapshot.status === "rejected";
@@ -4515,8 +4727,20 @@ function renderGallery() {
           </div>
         </div>
       `;
+      if (targetSnapshotId && snapshot.id === targetSnapshotId) {
+        card.classList.add("is-targeted");
+        targetCard = card;
+      }
       galleryGrid.appendChild(card);
     });
+
+    if (targetCard) {
+      targetCard.scrollIntoView({
+        block: "center",
+        behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
+      });
+      targetCard.focus({ preventScroll: true });
+    }
 
     galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
       button.addEventListener("click", async () => {
@@ -4789,6 +5013,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const resetSnapshotButton = document.querySelector("#reset-snapshot");
   const shareSnapshotButton = document.querySelector("#share-snapshot");
   const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
+  const snapshotStatusNotice = document.querySelector("#snapshot-status-notice");
+  const snapshotStatusCopy = document.querySelector("#snapshot-status-copy");
+  const snapshotStatusLink = document.querySelector("#snapshot-status-link");
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
   const snapshotIncludeProfileToggle = document.querySelector("#snapshot-include-profile");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
@@ -4844,6 +5071,9 @@ function renderSessionForm(initialSystemType = "KAN") {
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
     includeProfileDividerRow: snapshotIncludeProfileDividerRow,
     galleryNote: snapshotGalleryNote,
+    savedSnapshotNotice: snapshotStatusNotice,
+    savedSnapshotText: snapshotStatusCopy,
+    savedSnapshotLink: snapshotStatusLink,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
     getGallerySession: () => null,
@@ -5203,6 +5433,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       customSessionName: String(formData.get("sessionName") || "").trim(),
       sessionNotes: String(formData.get("sessionNotes") || "").trim(),
       sessionImages: [],
+      snapshotState: normalizePersistedSessionSnapshotState(snapshotSection?.__snapshotState?.pendingSnapshotState),
       sessionStatus: formData.get("sessionStatus") || "soaking",
       germinationStartedAt:
         normalizeSessionStatus(formData.get("sessionStatus")) === "germinating"
@@ -5772,6 +6003,9 @@ function renderSessionDetail(sessionId) {
   const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
   const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
   const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
+  const detailSnapshotStatusNotice = document.querySelector("#detail-snapshot-status-notice");
+  const detailSnapshotStatusCopy = document.querySelector("#detail-snapshot-status-copy");
+  const detailSnapshotStatusLink = document.querySelector("#detail-snapshot-status-link");
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
   const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
@@ -5858,6 +6092,9 @@ function renderSessionDetail(sessionId) {
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
     includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
     galleryNote: detailSnapshotGalleryNote,
+    savedSnapshotNotice: detailSnapshotStatusNotice,
+    savedSnapshotText: detailSnapshotStatusCopy,
+    savedSnapshotLink: detailSnapshotStatusLink,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,
     getGallerySession: () => session,

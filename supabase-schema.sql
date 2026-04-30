@@ -11,6 +11,7 @@ create table if not exists public.grow_sessions (
   custom_session_name text default '',
   session_notes text default '',
   session_images jsonb not null default '[]'::jsonb,
+  snapshot_state jsonb not null default '{}'::jsonb,
   session_status text default '',
   germination_started_at timestamptz,
   first_planted_at timestamptz,
@@ -79,6 +80,9 @@ create index if not exists grow_sessions_user_created_idx
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
+
+alter table public.grow_sessions
+  add column if not exists snapshot_state jsonb not null default '{}'::jsonb;
 
 alter table public.grow_gallery_snapshots
   add column if not exists submitted_by text default '';

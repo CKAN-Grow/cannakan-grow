@@ -1380,26 +1380,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-profile-toggle.is-concealing,
 .snapshot-profile-divider.is-revealing,
 .snapshot-profile-divider.is-concealing,
-.snapshot-modal-profile-toggle.is-revealing,
-.snapshot-modal-profile-toggle.is-concealing,
-.snapshot-modal-profile-helper.is-revealing,
-.snapshot-modal-profile-helper.is-concealing {
+.snapshot-modal-profile-option.is-revealing,
+.snapshot-modal-profile-option.is-concealing {
   animation-duration: 180ms;
   animation-fill-mode: both;
 }
 
 .snapshot-profile-toggle.is-revealing,
 .snapshot-profile-divider.is-revealing,
-.snapshot-modal-profile-toggle.is-revealing,
-.snapshot-modal-profile-helper.is-revealing {
+.snapshot-modal-profile-option.is-revealing {
   animation-name: snapshotFadeSlideIn;
   animation-timing-function: ease-out;
 }
 
 .snapshot-profile-toggle.is-concealing,
 .snapshot-profile-divider.is-concealing,
-.snapshot-modal-profile-toggle.is-concealing,
-.snapshot-modal-profile-helper.is-concealing {
+.snapshot-modal-profile-option.is-concealing {
   animation-name: snapshotFadeSlideOut;
   animation-timing-function: ease-in;
 }
@@ -1484,6 +1480,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow: none;
   margin-top: 16px;
   border-top: 1px solid rgba(24, 34, 24, 0.1);
+}
+
+.snapshot-status-notice {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(148, 209, 89, 0.06);
+}
+
+.snapshot-status-copy {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.snapshot-status-link {
+  justify-self: start;
 }
 
 .snapshot-gallery-header-row {
@@ -1838,6 +1855,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow:
     0 22px 38px rgba(10, 16, 12, 0.26),
     0 0 0 1px rgba(148, 209, 89, 0.06);
+}
+
+.gallery-card.is-targeted {
+  border-color: rgba(148, 209, 89, 0.58);
+  box-shadow:
+    0 24px 42px rgba(10, 16, 12, 0.28),
+    0 0 0 2px rgba(148, 209, 89, 0.3);
 }
 
 .gallery-card-media {
@@ -2372,10 +2396,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 18px;
 }
 
-.snapshot-modal-profile-toggle {
+.snapshot-modal-profile-option {
   width: 100%;
   margin-top: 16px;
-  margin-bottom: 0;
+  margin-bottom: 12px;
+}
+
+.snapshot-modal-profile-option[hidden] {
+  display: none !important;
+}
+
+.snapshot-modal-profile-option .snapshot-profile-toggle-row {
   display: inline-flex;
   align-items: center;
   gap: 12px;
@@ -2383,11 +2414,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--ink);
 }
 
-.snapshot-modal-profile-toggle[hidden] {
-  display: none !important;
-}
-
-.snapshot-modal-profile-toggle input {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row input {
   appearance: none;
   -webkit-appearance: none;
   position: relative;
@@ -2402,7 +2429,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   cursor: pointer;
 }
 
-.snapshot-modal-profile-toggle input::after {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row input::after {
   content: "";
   position: absolute;
   top: 3px;
@@ -2415,21 +2442,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   transition: transform 0.18s ease;
 }
 
-.snapshot-modal-profile-toggle input:checked {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row input:checked {
   background: rgba(148, 209, 89, 0.88);
   border-color: rgba(115, 170, 55, 0.8);
 }
 
-.snapshot-modal-profile-toggle input:checked::after {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row input:checked::after {
   transform: translateX(20px);
 }
 
-.snapshot-modal-profile-toggle input:focus-visible {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.2);
 }
 
-.snapshot-modal-profile-toggle span {
+.snapshot-modal-profile-option .snapshot-profile-toggle-row span {
   font-size: 0.92rem;
   line-height: 1.35;
 }
@@ -2474,10 +2501,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .snapshot-profile-toggle.is-concealing,
   .snapshot-profile-divider.is-revealing,
   .snapshot-profile-divider.is-concealing,
-  .snapshot-modal-profile-toggle.is-revealing,
-  .snapshot-modal-profile-toggle.is-concealing,
-  .snapshot-modal-profile-helper.is-revealing,
-  .snapshot-modal-profile-helper.is-concealing {
+  .snapshot-modal-profile-option.is-revealing,
+  .snapshot-modal-profile-option.is-concealing {
     animation: none;
   }
 }
