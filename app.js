@@ -3178,6 +3178,68 @@ function renderGalleryLeaderboardSection() {
   return section;
 }
 
+function formatHomeGalleryRankingMetric(entry) {
+  const averagePercent = Math.max(0, Number(entry?.averagePercent) || 0);
+  return `${Math.round(averagePercent)}%`;
+}
+
+function renderHomeGalleryRankingsTeaser() {
+  const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
+  const topSource = buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null;
+  const topVariety = buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null;
+  const topSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
+  const rankingRows = [
+    {
+      label: "This Month Top Source",
+      toneClass: "is-gold",
+      entry: topSource,
+    },
+    {
+      label: "This Month Top Seed Variety",
+      toneClass: "is-silver",
+      entry: topVariety,
+    },
+    {
+      label: "This Month Top Seed Type",
+      toneClass: "is-bronze",
+      entry: topSeedType,
+    },
+  ];
+  const hasRankingData = rankingRows.some((row) => row.entry);
+
+  return `
+    <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
+      <div class="home-gallery-rankings-head">
+        <div class="section-title-with-icon">
+          <span class="gallery-leaderboard-section-icon home-gallery-rankings-title-icon" aria-hidden="true">
+            ${renderGalleryLeaderboardSectionHeadingIcon("month")}
+          </span>
+          <div>
+            <p class="eyebrow">Leaderboard Preview</p>
+            <h3 id="home-gallery-rankings-title">Community Grow Gallery Rankings</h3>
+            <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
+          </div>
+        </div>
+        <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">View Community Grow Gallery</a>
+      </div>
+      ${hasRankingData ? `
+        <ul class="home-gallery-rankings-list" aria-label="Community Grow Gallery ranking preview">
+          ${rankingRows.map((row) => `
+            <li class="home-gallery-rankings-row ${row.toneClass}">
+              <span class="home-gallery-rankings-row-label">${escapeHtml(row.label)}</span>
+              <strong class="home-gallery-rankings-row-value">${row.entry
+                ? `${escapeHtml(row.entry.name)} - ${escapeHtml(formatHomeGalleryRankingMetric(row.entry))}`
+                : "Not enough data yet"}</strong>
+            </li>
+          `).join("")}
+        </ul>
+      ` : `
+        <p class="home-gallery-rankings-empty">Rankings will appear as more snapshots are shared.</p>
+      `}
+    </section>
+  `;
+}
+
 function renderGalleryLikeButtonMarkup(snapshot) {
   const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
   const isLiked = Boolean(snapshot?.likedByCurrentUser);
@@ -6367,6 +6429,7 @@ function renderHome() {
   const sessions = sortSessionsNewestFirst(getSessions());
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const spotlightCard = document.querySelector("#active-session-spotlight");
+  const summaryGrid = document.querySelector(".summary-grid");
   const spotlightStage = document.querySelector("#active-session-spotlight-stage");
   const spotlightName = document.querySelector("#active-session-spotlight-name");
   const spotlightDate = document.querySelector("#active-session-spotlight-date");
@@ -6429,6 +6492,15 @@ function renderHome() {
     bestSessionNameEl.textContent = "No completed sessions yet";
     bestSessionDateEl.textContent = "";
     bestSessionResultEl.textContent = "";
+  }
+
+  const galleryRankingsTeaserMarkup = renderHomeGalleryRankingsTeaser();
+  if (spotlightCard) {
+    spotlightCard.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
+  } else if (summaryGrid) {
+    summaryGrid.insertAdjacentHTML("beforebegin", galleryRankingsTeaserMarkup);
+  } else {
+    app.insertAdjacentHTML("beforeend", galleryRankingsTeaserMarkup);
   }
 
   const spotlightSession = activeSessions[0] || null;
