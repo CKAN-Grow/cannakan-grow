@@ -3691,7 +3691,15 @@ function renderHomeGalleryRankingsTeaser() {
             <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
           </div>
         </div>
-        <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">View Community Grow Gallery</a>
+        <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
+          <span>View Community Grow Gallery</span>
+          <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M5 12h14"></path>
+              <path d="m13 7 5 5-5 5"></path>
+            </svg>
+          </span>
+        </a>
       </div>
       ${!shouldShowEmptyState ? `
         <ul class="home-gallery-rankings-list" aria-label="Community Grow Gallery ranking preview">
