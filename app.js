@@ -2226,13 +2226,19 @@ function getOwnerGalleryAction(snapshot) {
   return null;
 }
 
+function isGallerySnapshotOwner(snapshot, user = appState.user) {
+  const snapshotUserId = String(snapshot?.userId || "").trim();
+  const currentUserId = String(user?.id || "").trim();
+  return Boolean(snapshotUserId && currentUserId && snapshotUserId === currentUserId);
+}
+
 async function deleteGallerySnapshot(snapshotId) {
   const existing = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
   if (!existing || !appState.supabase) {
     return;
   }
 
-  if (!appState.user || existing.userId !== appState.user.id) {
+  if (!isGallerySnapshotOwner(existing)) {
     throw new Error("You can only manage your own Grow Gallery snapshots.");
   }
 
@@ -6567,7 +6573,7 @@ function renderGallery(targetSnapshotId = "") {
       card.className = "gallery-card";
       card.dataset.gallerySnapshotId = snapshot.id;
       card.tabIndex = -1;
-      const isOwner = snapshot.userId === appState.user?.id;
+      const isOwner = isGallerySnapshotOwner(snapshot);
       const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
       const isPending = snapshotStatus === "pending_review";
       const isRejected = snapshotStatus === "rejected";
@@ -6576,6 +6582,27 @@ function renderGallery(targetSnapshotId = "") {
       const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
       const details = getGallerySnapshotFeedDetails(snapshot);
       const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
+      const openSessionMarkup = isOwner && snapshot.sessionId
+        ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
+        : "";
+      const ownerActionMarkup = ownerAction
+        ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
+        : "";
+      const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup)
+        ? `
+            <div class="gallery-card-footer-main">
+              ${sharedProfileMarkup}
+              ${(openSessionMarkup || ownerActionMarkup)
+                ? `
+                  <div class="gallery-card-actions">
+                    ${openSessionMarkup}
+                    ${ownerActionMarkup}
+                  </div>
+                `
+                : ""}
+            </div>
+          `
+        : "";
       const statusBadge = isPending
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
         : isRejected
@@ -6613,13 +6640,7 @@ function renderGallery(targetSnapshotId = "") {
           </div>
           ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
           <div class="gallery-card-footer">
-            <div class="gallery-card-footer-main">
-              ${sharedProfileMarkup}
-              <div class="gallery-card-actions">
-                ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
-                ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
-              </div>
-            </div>
+            ${footerMainMarkup}
             ${renderGalleryLikeButtonMarkup(snapshot)}
           </div>
         </div>
@@ -6644,6 +6665,10 @@ function renderGallery(targetSnapshotId = "") {
         try {
           const snapshotId = button.dataset.galleryRemove || "";
           const ownerAction = button.dataset.galleryOwnerAction || "";
+          const snapshot = gallerySnapshots.find((entry) => entry.id === snapshotId);
+          if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
+            throw new Error("You can only manage your own Grow Gallery snapshots.");
+          }
           if (ownerAction === "request-removal") {
             console.info("[GrowGallery] Removal requested for approved snapshot", {
               snapshotId,
