@@ -2366,8 +2366,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: relative;
   display: grid;
   min-height: 0;
-  padding: 16px;
+  padding: 18px;
   align-items: stretch;
+  overflow: visible;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--gallery-placeholder-bg, #1b2621) 88%, #08100c 12%) 0%, #121814 100%);
 }
@@ -2381,16 +2382,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-card-placeholder-orb--top {
   top: 18px;
-  right: -14px;
-  width: 112px;
-  height: 112px;
+  right: 10px;
+  width: 104px;
+  height: 104px;
+  opacity: 0.95;
 }
 
 .gallery-card-placeholder-orb--bottom {
-  left: -18px;
-  bottom: -18px;
-  width: 132px;
-  height: 132px;
+  left: 10px;
+  bottom: 10px;
+  width: 120px;
+  height: 120px;
+  opacity: 0.88;
 }
 
 .gallery-card-image {
@@ -2532,7 +2535,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-content: stretch;
   gap: 14px;
   min-height: 100%;
-  padding: 10px;
+  padding: 14px;
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--gallery-placeholder-accent, #94d159) 26%, transparent);
   background: linear-gradient(180deg, rgba(10, 15, 12, 0.08) 0%, rgba(10, 15, 12, 0.16) 100%);
