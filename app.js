@@ -2632,11 +2632,13 @@ function hasSubmittedGallerySnapshotState(snapshotState) {
     return false;
   }
 
-  if (snapshotState.gallerySnapshotId) {
-    return true;
-  }
-
-  return ["pending", "pending_review", "approved", "rejected"].includes(String(snapshotState.galleryStatus || "").trim());
+  const galleryStatus = String(snapshotState.galleryStatus || "").trim();
+  const hasSubmissionStatus = ["pending_review", "approved", "rejected"].includes(galleryStatus);
+  return Boolean(
+    snapshotState.gallerySnapshotId
+    && snapshotState.submittedAt
+    && hasSubmissionStatus
+  );
 }
 
 function renderSnapshotSavedNotice(state) {
@@ -2654,22 +2656,15 @@ function renderSnapshotSavedNotice(state) {
     return;
   }
 
-  const noticeDate = snapshotState.submittedAt || snapshotState.createdAt;
-  let message = `Snapshot created on ${formatSnapshotSavedDateTime(snapshotState.createdAt || noticeDate)}.`;
-  if (snapshotState.galleryStatus && snapshotState.galleryStatus !== "social-only") {
-    message = `Snapshot shared to Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
-  }
-  if (snapshotState.galleryStatus === "pending_review") {
-    message = `Snapshot submitted to Grow Gallery for review on ${formatSnapshotSavedDateTime(noticeDate)}.`;
-  }
-
-  state.savedSnapshotText.textContent = message;
+  const submittedDate = formatSnapshotSavedDateTime(snapshotState.submittedAt);
+  state.savedSnapshotText.textContent = `Snapshot submitted to Grow Gallery (${submittedDate})`;
   state.savedSnapshotNotice.hidden = false;
 
   if (state.savedSnapshotLink) {
-    const shouldShowLink = Boolean(snapshotState?.gallerySnapshotId);
+    const shouldShowLink = hasSubmittedGallerySnapshotState(snapshotState);
     logGrowGalleryDebug("renderSnapshotSavedNotice:link", {
       gallerySnapshotId: snapshotState?.gallerySnapshotId || "",
+      submittedAt: snapshotState?.submittedAt || "",
       galleryStatus: snapshotState?.galleryStatus || "",
       shouldShowLink,
     });
@@ -2807,7 +2802,10 @@ function buildGeneratedSessionSnapshotState(state) {
     ...existingSnapshotState,
     referenceId: existingSnapshotState?.referenceId || `snapshot-${crypto.randomUUID()}`,
     createdAt: new Date().toISOString(),
+    submittedAt: existingSnapshotState?.gallerySnapshotId ? existingSnapshotState.submittedAt || "" : "",
     galleryStatus: generatedStatus,
+    gallerySnapshotId: existingSnapshotState?.gallerySnapshotId || "",
+    galleryRoute: existingSnapshotState?.gallerySnapshotId ? (existingSnapshotState.galleryRoute || "") : "",
     selectedImageKey: String(state?.selectedImageKey || "").trim(),
     renderKey: String(state?.generatedRenderKey || "").trim(),
   };
