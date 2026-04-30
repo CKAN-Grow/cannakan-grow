@@ -1,10 +1,10 @@
 Add-Type -AssemblyName System.Drawing
 
 $workspace = Split-Path -Parent $PSScriptRoot
-$sourcePath = Join-Path $workspace "Assets/Cannakan-growapp-favicon.png"
-$icon192Path = Join-Path $workspace "pwa-icon-192.png"
-$icon512Path = Join-Path $workspace "pwa-icon-512.png"
-$appleTouchIconPath = Join-Path $workspace "apple-touch-icon.png"
+$sourcePath = Join-Path $workspace "Assets/Icons/icon-512.png"
+$icon192Path = Join-Path $workspace "public/icons/icon-192-v3.png"
+$icon512Path = Join-Path $workspace "public/icons/icon-512-v3.png"
+$appleTouchIconPath = Join-Path $workspace "public/icons/apple-touch-icon-v3.png"
 
 function New-RoundedRectPath {
   param(
