@@ -3407,23 +3407,23 @@ function buildHomeGalleryRankingsTeaserState() {
 function renderHomeGalleryRankingsTeaser() {
   const teaserState = buildHomeGalleryRankingsTeaserState();
   const { snapshots, approvedPublicSnapshots, monthlySnapshots, rankings } = teaserState;
-  console.log("[HomeRankingsTeaser] rendered");
-  console.log("[HomeRankingsTeaser] mock enabled", isMockDataEnabled());
-  console.log("[HomeRankingsTeaser] snapshot count", snapshots.length);
   const rankingRows = [
     {
       label: "This Month Top Source",
       toneClass: "is-gold",
+      iconType: "source",
       entry: rankings.topSource,
     },
     {
       label: "This Month Top Seed Variety",
       toneClass: "is-silver",
+      iconType: "variety",
       entry: rankings.topVariety,
     },
     {
       label: "This Month Top Seed Type",
       toneClass: "is-bronze",
+      iconType: "seed-type",
       entry: rankings.topSeedType,
     },
   ];
@@ -3449,7 +3449,12 @@ function renderHomeGalleryRankingsTeaser() {
         <ul class="home-gallery-rankings-list" aria-label="Community Grow Gallery ranking preview">
           ${rankingRows.map((row) => `
             <li class="home-gallery-rankings-row ${row.toneClass}">
-              <span class="home-gallery-rankings-row-label">${escapeHtml(row.label)}</span>
+              <div class="home-gallery-rankings-row-main">
+                <span class="home-gallery-rankings-row-icon" aria-hidden="true">
+                  ${renderHomeGalleryRankingRowIcon(row.iconType)}
+                </span>
+                <span class="home-gallery-rankings-row-label">${escapeHtml(row.label)}</span>
+              </div>
               <strong class="home-gallery-rankings-row-value">${row.entry
                 ? `${escapeHtml(row.entry.name)} - ${escapeHtml(formatHomeGalleryRankingMetric(row.entry))}`
                 : "Not enough data yet"}</strong>
@@ -3461,6 +3466,38 @@ function renderHomeGalleryRankingsTeaser() {
       `}
     </section>
   `;
+}
+
+function renderHomeGalleryRankingRowIcon(iconType = "source") {
+  switch (iconType) {
+    case "variety":
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 19v-4.5"></path>
+          <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
+          <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
+          <path d="M9.6 19.1c.4-1.6 1.5-2.6 2.7-2.6s2.3 1 2.7 2.6"></path>
+        </svg>
+      `;
+    case "seed-type":
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 5.5 14.3 10l4.9.7-3.6 3.5.9 4.8-4.5-2.3-4.5 2.3.9-4.8-3.6-3.5 4.9-.7Z"></path>
+          <path d="M9.5 20.5h5"></path>
+        </svg>
+      `;
+    case "source":
+    default:
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4.5 19.5h15"></path>
+          <path d="M6.5 19.5V9.5"></path>
+          <path d="M12 19.5V5.5"></path>
+          <path d="M17.5 19.5v-7"></path>
+          <path d="M5.5 9.5h2M11 5.5h2M16.5 12.5h2"></path>
+        </svg>
+      `;
+  }
 }
 
 function renderGalleryLikeButtonMarkup(snapshot) {
