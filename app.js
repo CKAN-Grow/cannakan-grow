@@ -6619,7 +6619,6 @@ function renderGallery(targetSnapshotId = "") {
     }
 
     visibleSnapshots.forEach((snapshot) => {
-      console.log("[GalleryCardRender] active template", snapshot.id);
       const card = document.createElement("article");
       card.className = "gallery-card";
       card.dataset.gallerySnapshotId = snapshot.id;
