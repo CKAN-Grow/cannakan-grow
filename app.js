@@ -2781,41 +2781,14 @@ function hasConfirmedGallerySubmissionForState(state) {
 }
 
 function renderSnapshotSavedNotice(state) {
-  if (!state?.savedSnapshotNotice || !state.savedSnapshotText) {
+  if (!state) {
     return;
   }
 
   const snapshotState = getSnapshotStateForSection(state);
   if (!hasConfirmedGallerySubmissionForState(state)) {
-    state.savedSnapshotText.textContent = "";
-    state.savedSnapshotNotice.hidden = true;
-    if (state.savedSnapshotLink) {
-      state.savedSnapshotLink.hidden = true;
-      state.savedSnapshotLink.setAttribute("href", "#gallery");
-    }
     renderSnapshotPreviewSurface(state);
     return;
-  }
-
-  const submittedDate = formatSnapshotSavedDateTime(snapshotState.submittedAt);
-  state.savedSnapshotText.textContent = `Snapshot submitted to Grow Gallery (${submittedDate})`;
-  state.savedSnapshotNotice.hidden = false;
-
-  if (state.savedSnapshotLink) {
-    const shouldShowLink = hasConfirmedGallerySubmissionForState(state);
-    logGrowGalleryDebug("renderSnapshotSavedNotice:link", {
-      gallerySnapshotId: snapshotState?.gallerySnapshotId || "",
-      submittedAt: snapshotState?.submittedAt || "",
-      galleryStatus: snapshotState?.galleryStatus || "",
-      shouldShowLink,
-    });
-    state.savedSnapshotLink.hidden = !shouldShowLink;
-    state.savedSnapshotLink.setAttribute(
-      "href",
-      shouldShowLink && snapshotState.gallerySnapshotId
-        ? `#gallery/${snapshotState.gallerySnapshotId}`
-        : "#gallery",
-    );
   }
   renderSnapshotPreviewSurface(state);
 }
@@ -5441,9 +5414,6 @@ function renderSessionForm(initialSystemType = "KAN") {
   const resetSnapshotButton = document.querySelector("#reset-snapshot");
   const shareSnapshotButton = document.querySelector("#share-snapshot");
   const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
-  const snapshotStatusNotice = document.querySelector("#snapshot-status-notice");
-  const snapshotStatusCopy = document.querySelector("#snapshot-status-copy");
-  const snapshotStatusLink = document.querySelector("#snapshot-status-link");
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
   const snapshotIncludeProfileToggle = document.querySelector("#snapshot-include-profile");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
@@ -5499,9 +5469,6 @@ function renderSessionForm(initialSystemType = "KAN") {
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
     includeProfileDividerRow: snapshotIncludeProfileDividerRow,
     galleryNote: snapshotGalleryNote,
-    savedSnapshotNotice: snapshotStatusNotice,
-    savedSnapshotText: snapshotStatusCopy,
-    savedSnapshotLink: snapshotStatusLink,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
     getGallerySession: () => null,
