@@ -3142,12 +3142,15 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       const hashRoute = window.location.hash || "";
       const pathRoute = window.location.pathname.replace(/^\/+/, "");
       const isGalleryRoute = hashRoute.startsWith("#gallery") || pathRoute === "admin/gallery-moderation";
+      const isPublicSessionRoute = hashRoute.startsWith("#sessions/public/");
       if (isGalleryRoute && previousSignature !== nextSignature) {
         logGrowGalleryDebug("refreshGallerySnapshots:rerender", {
           reason,
           targetSnapshotId,
         });
         renderGallery(targetSnapshotId);
+      } else if (isPublicSessionRoute && previousSignature !== nextSignature) {
+        render();
       }
 
       return snapshots;
@@ -3165,6 +3168,18 @@ function getGallerySnapshotSession(snapshot) {
   }
 
   return getSessions().find((session) => session.id === snapshot.sessionId) || null;
+}
+
+function getApprovedPublicGallerySnapshotById(snapshotId) {
+  const normalizedId = String(snapshotId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return getGallerySnapshotsForDisplay().find((snapshot) => (
+    snapshot?.id === normalizedId
+    && getGallerySnapshotDisplayStatus(snapshot) === "approved"
+  )) || null;
 }
 
 function getGallerySnapshotFeedDetails(snapshot) {
@@ -3188,6 +3203,34 @@ function getGallerySnapshotFeedDetails(snapshot) {
     systemLabel: unitId
       ? `${formatSnapshotSystemLabel(snapshot.systemType)} • ${unitId}`
       : formatSnapshotSystemLabel(snapshot.systemType),
+  };
+}
+
+function getGallerySnapshotPublicSessionDetails(snapshot) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
+  const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+  const firstPartition = (linkedSession?.partitions || []).find((partition) => (
+    normalizeLeaderboardLabel(formatPartitionSource(partition))
+    || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
+    || normalizeLeaderboardLabel(partition?.seedType)
+    || normalizeLeaderboardLabel(partition?.feminized)
+  )) || linkedSession?.partitions?.[0] || null;
+  const totalSeeds = Math.max(0, Number(feedDetails.totalSeeds) || 0);
+  const germinatedCount = Math.max(0, Number(feedDetails.totalPlanted) || 0);
+  const germinationRate = Math.max(0, Number(snapshot?.successPercent) || 0);
+  const sexValue = String(firstPartition?.feminized || "").trim();
+
+  return {
+    systemLabel: feedDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN"),
+    sourceLabel: metadata.sourceName || "Not shared",
+    seedVarietyLabel: metadata.seedVarietyName || "Not shared",
+    seedTypeLabel: metadata.seedTypeName || "Not shared",
+    sexLabel: sexValue ? capitalize(sexValue) : "Not shared",
+    seedCountLabel: totalSeeds > 0 ? String(totalSeeds) : "Not shared",
+    germinatedLabel: totalSeeds > 0 ? String(germinatedCount) : "Not shared",
+    germinationRateLabel: `${germinationRate}%`,
+    sessionDateLabel: getGallerySnapshotSubmittedDateLabel(snapshot),
   };
 }
 
@@ -5436,6 +5479,13 @@ function render() {
     return;
   }
 
+  if (route === "sessions" && id === "public" && subroute) {
+    renderPublicSessionDetail(subroute);
+    finalizeRender();
+    void refreshGallerySnapshots("route:public-session", subroute);
+    return;
+  }
+
   if (!appState.user) {
     renderAuthScreen();
     finalizeRender();
@@ -6585,18 +6635,22 @@ function renderGallery(targetSnapshotId = "") {
       const openSessionMarkup = isOwner && snapshot.sessionId
         ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
         : "";
+      const publicSessionMarkup = !isOwner
+        ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Session</a>`
+        : "";
       const ownerActionMarkup = ownerAction
         ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
         : "";
-      const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup)
+      const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
         ? `
             <div class="gallery-card-footer-main">
               ${sharedProfileMarkup}
-              ${(openSessionMarkup || ownerActionMarkup)
+              ${(openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
                 ? `
                   <div class="gallery-card-actions">
                     ${openSessionMarkup}
                     ${ownerActionMarkup}
+                    ${publicSessionMarkup}
                   </div>
                 `
                 : ""}
@@ -7795,6 +7849,86 @@ function renderSessionsList() {
   }
 
   renderHistorySessions();
+}
+
+function renderPublicSessionDetail(snapshotId) {
+  const snapshot = getApprovedPublicGallerySnapshotById(snapshotId);
+  const isLoadingSnapshot = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshots.length);
+
+  if (!snapshot) {
+    app.innerHTML = `
+      <section class="card public-session-card">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Public Session</p>
+            <h2>Grow session view</h2>
+            <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-secondary" href="#gallery">Back to Gallery</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
+  const facts = [
+    { label: "System", value: publicDetails.systemLabel },
+    { label: "Source", value: publicDetails.sourceLabel },
+    { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
+    { label: "Type", value: publicDetails.seedTypeLabel },
+    { label: "Sex", value: publicDetails.sexLabel },
+    { label: "Seed Count", value: publicDetails.seedCountLabel },
+    { label: "Germinated", value: publicDetails.germinatedLabel },
+    { label: "Germination Rate", value: publicDetails.germinationRateLabel },
+    { label: "Session Date", value: publicDetails.sessionDateLabel },
+  ];
+
+  app.innerHTML = `
+    <section class="card public-session-card">
+      <div class="section-heading">
+        <div class="section-title-with-icon">
+          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8 4.5h6l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-7A2.5 2.5 0 0 1 6 18.5v-11A3 3 0 0 1 9 4.5"></path>
+            <path d="M14 4.5v3h3"></path>
+            <path d="M9 12h6"></path>
+            <path d="M9 15h4"></path>
+          </svg>
+          <div>
+            <p class="eyebrow">Public Session</p>
+            <h2>${escapeHtml(snapshot.title)}</h2>
+            <p class="muted">Read-only grow session view</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#gallery">Back to Gallery</a>
+        </div>
+      </div>
+      ${sharedProfileMarkup ? `<div class="public-session-profile">${sharedProfileMarkup}</div>` : ""}
+      <div class="public-session-layout">
+        <div class="public-session-media">
+          ${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}
+        </div>
+        <div class="public-session-details">
+          <div class="public-session-readonly-note">
+            <strong>Read-only</strong>
+            <p>Public viewers can explore shared grow results here without editing sessions, notes, images, or gallery settings.</p>
+          </div>
+          <div class="public-session-meta-grid">
+            ${facts.map((fact) => `
+              <article class="meta-card public-session-meta-card">
+                <strong>${escapeHtml(fact.label)}</strong>
+                <p>${escapeHtml(fact.value)}</p>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function renderSessionDetail(sessionId) {
