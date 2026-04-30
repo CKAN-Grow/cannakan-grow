@@ -2315,6 +2315,86 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+.home-install-card {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+  padding: 18px 20px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(244, 248, 243, 0.62) 0%, rgba(234, 241, 233, 0.46) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
+  box-shadow:
+    0 10px 24px rgba(24, 34, 24, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.home-install-card-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.home-install-card-copy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.home-install-card-copy h3,
+.home-install-card-copy p {
+  margin: 0;
+}
+
+.home-install-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.home-install-card-subtitle {
+  margin-top: 4px;
+}
+
+.home-install-card-actions,
+.home-install-card-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.home-install-card-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.08);
+  color: #4c6d39;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.home-install-card-directions {
+  display: grid;
+  gap: 8px;
+}
+
+.home-install-card-directions p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.home-install-card-tip {
+  color: #55743e;
+  font-weight: 600;
+}
+
 .home-gallery-rankings-head {
   display: flex;
   align-items: center;
@@ -4739,6 +4819,15 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: 1fr;
   }
 
+  .home-install-card-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-install-card-actions,
+  .home-install-card-status {
+    justify-content: flex-start;
+  }
+
   .install-app-banner-shell {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -6482,6 +6571,31 @@ body.theme-dark .home-gallery-rankings-card {
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .home-install-card {
+  border-color: rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(31, 42, 34, 0.92) 0%, rgba(24, 33, 27, 0.84) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .home-install-card-subtitle,
+body.theme-dark .home-install-card-directions p {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .home-install-card-status-pill {
+  border-color: rgba(148, 209, 89, 0.26);
+  background: rgba(148, 209, 89, 0.1);
+  color: #cceea7;
+}
+
+body.theme-dark .home-install-card-tip {
+  color: #b8ef84;
 }
 
 body.theme-dark .home-gallery-rankings-row {
