@@ -2458,6 +2458,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow: 0 14px 24px rgba(24, 34, 24, 0.08);
 }
 
+.gallery-devtools-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 14px 24px rgba(24, 34, 24, 0.08);
+}
+
 .gallery-review-media {
   overflow: hidden;
   border-radius: 16px;

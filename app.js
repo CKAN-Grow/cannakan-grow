@@ -2,8 +2,8 @@ const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
-const GALLERY_MOCK_TOGGLE_QUERY_KEY = "mockGallery";
-const GALLERY_MOCK_TOGGLE_STORAGE_KEY = "cannakan-grow-mock-gallery";
+const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
+const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - testing only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
@@ -107,6 +107,11 @@ const templates = {
 const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
+  "admin",
+]);
+const MOCK_DATA_ADMIN_IDENTIFIERS = new Set([
+  "mo@cannakan.com",
+  "admin",
 ]);
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
@@ -837,33 +842,27 @@ function removeSampleSessions() {
   localStorage.removeItem(SAMPLE_SEED_KEY);
 }
 
-function isLocalDevelopmentEnvironment() {
-  const hostname = String(window.location.hostname || "").trim().toLowerCase();
-  const protocol = String(window.location.protocol || "").trim().toLowerCase();
-  return protocol === "file:"
-    || hostname === "localhost"
-    || hostname === "127.0.0.1"
-    || hostname === "::1";
+function canAccessMockDataControls() {
+  if (!isAdminUser()) {
+    return false;
+  }
+
+  const email = String(appState.user?.email || "").trim().toLowerCase();
+  const username = String(appState.profile?.username || "").trim().toLowerCase();
+  return MOCK_DATA_ADMIN_IDENTIFIERS.has(email) || MOCK_DATA_ADMIN_IDENTIFIERS.has(username);
 }
 
-function shouldUseMockGallerySnapshots() {
-  const queryValue = new URLSearchParams(window.location.search || "").get(GALLERY_MOCK_TOGGLE_QUERY_KEY);
-  if (queryValue === "1" || queryValue === "true") {
-    return true;
-  }
-  if (queryValue === "0" || queryValue === "false") {
+function isMockDataEnabled() {
+  if (!canAccessMockDataControls()) {
     return false;
   }
 
-  const storedValue = localStorage.getItem(GALLERY_MOCK_TOGGLE_STORAGE_KEY);
-  if (storedValue === "1" || storedValue === "true") {
-    return true;
-  }
-  if (storedValue === "0" || storedValue === "false") {
-    return false;
-  }
+  const storedValue = localStorage.getItem(MOCK_DATA_STORAGE_KEY);
+  return storedValue === "true" || storedValue === "1";
+}
 
-  return isLocalDevelopmentEnvironment();
+function setMockDataEnabled(enabled) {
+  localStorage.setItem(MOCK_DATA_STORAGE_KEY, enabled ? "true" : "false");
 }
 
 function clampNumber(value, min, max) {
@@ -1028,8 +1027,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   ));
 }
 
-function buildMockGallerySnapshots() {
-  return buildMockGallerySnapshotSeedRecords().map((record, index) => {
+function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords()) {
+  return records.map((record, index) => {
     const systemType = index % 2 === 0 ? "KAN" : "TRA";
     const unitId = systemType === "KAN"
       ? String.fromCharCode(65 + (index % 4))
@@ -1069,13 +1068,15 @@ function buildMockGallerySnapshots() {
   });
 }
 
-function mergeMockGallerySnapshots(snapshotRows = []) {
+const MOCK_GALLERY_SNAPSHOTS = buildMockGallerySnapshots();
+
+function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots) {
   const rowsById = new Map();
   (snapshotRows || []).filter(Boolean).forEach((snapshot) => {
     rowsById.set(snapshot.id, snapshot);
   });
-  if (shouldUseMockGallerySnapshots()) {
-    buildMockGallerySnapshots().forEach((snapshot) => {
+  if (isMockDataEnabled()) {
+    MOCK_GALLERY_SNAPSHOTS.forEach((snapshot) => {
       rowsById.set(snapshot.id, snapshot);
     });
   }
@@ -1185,7 +1186,7 @@ async function bootstrapApp() {
   } else {
     ensureSampleSessions();
     saveSessions(loadLocalSessions());
-    appState.gallerySnapshots = await loadGallerySnapshots("local-dev-mock-seed");
+    appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
   }
 
   appState.initialized = true;
@@ -1306,14 +1307,11 @@ async function loadUserProfile() {
 
 async function loadGallerySnapshots(reason = "unspecified") {
   if (!appState.supabase) {
-    const mockSnapshots = mergeMockGallerySnapshots([]);
-    logGrowGalleryDebug("loadGallerySnapshots:mock-only", {
+    logGrowGalleryDebug("loadGallerySnapshots:skipped", {
       reason,
       cause: "supabase-missing",
-      count: mockSnapshots.length,
-      enabled: shouldUseMockGallerySnapshots(),
     });
-    return mockSnapshots;
+    return [];
   }
 
   const { data, error } = await appState.supabase
@@ -1341,21 +1339,19 @@ async function loadGallerySnapshots(reason = "unspecified") {
 
   const mapped = (data || []).map(mapRowToGallerySnapshot);
   const likedSnapshots = await hydrateGallerySnapshotLikes(mapped, reason);
-  const snapshotsWithMocks = mergeMockGallerySnapshots(likedSnapshots);
   logGrowGalleryDebug("loadGallerySnapshots:mapped", {
     reason,
-    count: snapshotsWithMocks.length,
-    rows: snapshotsWithMocks.map((row) => ({
+    count: likedSnapshots.length,
+    rows: likedSnapshots.map((row) => ({
       id: row.id,
       status: row.status,
       userId: row.userId,
       sessionId: row.sessionId,
       likeCount: row.likeCount,
       likedByCurrentUser: row.likedByCurrentUser,
-      isMock: Boolean(row.isMock),
     })),
   });
-  return snapshotsWithMocks;
+  return likedSnapshots;
 }
 
 async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified") {
@@ -2422,7 +2418,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
 }
 
 function getApprovedPublicGallerySnapshots() {
-  return appState.gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  return getGallerySnapshotsForDisplay().filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
 }
 
 function getCurrentMonthApprovedGallerySnapshots() {
@@ -2705,15 +2701,8 @@ function getGallerySnapshotDebugSignature(snapshots) {
 
 async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId = "") {
   if (!appState.supabase) {
-    const snapshots = mergeMockGallerySnapshots([]);
-    appState.gallerySnapshots = snapshots;
-    logGrowGalleryDebug("refreshGallerySnapshots:mock-only", {
-      reason,
-      cause: "supabase-missing",
-      count: snapshots.length,
-      targetSnapshotId,
-    });
-    return snapshots;
+    logGrowGalleryDebug("refreshGallerySnapshots:skipped", { reason, cause: "supabase-missing", targetSnapshotId });
+    return appState.gallerySnapshots;
   }
 
   if (appState.galleryRefreshPromise) {
@@ -2960,6 +2949,7 @@ function updateAuthStatus() {
       <div class="auth-profile-chip">
         ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
         <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
+        ${isMockDataEnabled() ? `<span class="auth-pill">${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</span>` : ""}
       </div>
       <button
         id="account-menu-trigger"
@@ -5895,6 +5885,33 @@ function renderHome() {
   startSessionTimer(updateSpotlight);
 }
 
+function renderMockDataNoticeSection() {
+  const section = document.createElement("section");
+  section.className = "card gallery-section";
+  section.innerHTML = `
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Developer Notice</p>
+        <h3>${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</h3>
+        <p class="muted">DEV MODE is ON. Gallery and leaderboard previews are merging admin-only mock snapshots with real data for testing.</p>
+      </div>
+      <span class="gallery-review-status-badge is-pending">DEV MODE ON</span>
+    </div>
+  `;
+  return section;
+}
+
+function setMockDataEnabledAndRefresh(enabled) {
+  if (!canAccessMockDataControls()) {
+    return false;
+  }
+
+  setMockDataEnabled(enabled);
+  updateAuthStatus();
+  safeRender();
+  return true;
+}
+
 function renderGallery(targetSnapshotId = "") {
   app.replaceChildren(cloneTemplate(templates.gallery));
   initializeCustomSelects(app);
@@ -5912,11 +5929,15 @@ function renderGallery(targetSnapshotId = "") {
   }
 
   if (galleryFeedSection) {
+    if (isMockDataEnabled()) {
+      galleryFeedSection.before(renderMockDataNoticeSection());
+    }
     galleryFeedSection.before(renderGalleryLeaderboardSection());
   }
 
   const isAdminView = isAdminUser();
-  const gallerySnapshots = appState.gallerySnapshots.filter((entry) => {
+  const canManageMockData = canAccessMockDataControls();
+  const gallerySnapshots = getGallerySnapshotsForDisplay().filter((entry) => {
     const status = getGallerySnapshotDisplayStatus(entry);
     if (isAdminView) {
       return true;
@@ -5931,7 +5952,7 @@ function renderGallery(targetSnapshotId = "") {
     isAdminView,
     currentUserId: appState.user?.id || "",
     currentUserEmail: appState.user?.email || "",
-    loadedSnapshots: appState.gallerySnapshots.map((entry) => ({
+    loadedSnapshots: getGallerySnapshotsForDisplay().map((entry) => ({
       id: entry.id,
       status: entry.status,
       displayStatus: getGallerySnapshotDisplayStatus(entry),
@@ -5965,6 +5986,28 @@ function renderGallery(targetSnapshotId = "") {
           <p class="muted">Review pending Grow Gallery snapshots before they become public.</p>
         </div>
       </div>
+      ${canManageMockData ? `
+        <div class="gallery-devtools-panel">
+          <div class="gallery-review-body">
+            <div class="gallery-card-top">
+              <div>
+                <strong>DEV MODE: Mock Data ${isMockDataEnabled() ? "ON" : "OFF"}</strong>
+                <p>Admin-only gallery and leaderboard preview data. Stored in localStorage and never submitted to the database.</p>
+              </div>
+              <div class="gallery-review-status-stack">
+                <span class="gallery-review-status-badge ${isMockDataEnabled() ? "is-pending" : "is-private"}">${isMockDataEnabled() ? "ON" : "OFF"}</span>
+              </div>
+            </div>
+            <div class="gallery-review-actions">
+              <button type="button" class="button ${isMockDataEnabled() ? "button-secondary" : "button-primary"}" data-mock-data-toggle="true">
+                DEV MODE: Mock Data ${isMockDataEnabled() ? "ON" : "OFF"}
+              </button>
+            </div>
+            <p class="muted">Shortcut: Shift + D</p>
+            ${isMockDataEnabled() ? `<p class="gallery-owner-note">${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</p>` : ""}
+          </div>
+        </div>
+      ` : ""}
       <div class="gallery-review-list"></div>
     `;
     const pendingList = adminSection.querySelector(".gallery-review-list");
@@ -6028,6 +6071,9 @@ function renderGallery(targetSnapshotId = "") {
           window.alert(error.message || "Could not reject this snapshot.");
         }
       });
+    });
+    adminSection.querySelector("[data-mock-data-toggle='true']")?.addEventListener("click", () => {
+      setMockDataEnabledAndRefresh(!isMockDataEnabled());
     });
     galleryFeedSection.before(adminSection);
   }
@@ -9581,6 +9627,21 @@ document.addEventListener("keydown", (event) => {
 
   if (event.key === "Escape" && appState.accountMenuOpen) {
     closeAccountMenu();
+  }
+
+  const target = event.target;
+  const isTypingTarget = target instanceof HTMLElement && (
+    target.matches("input, textarea, select")
+    || target.isContentEditable
+  );
+  if (
+    !isTypingTarget
+    && event.shiftKey
+    && String(event.key || "").toLowerCase() === "d"
+    && canAccessMockDataControls()
+  ) {
+    event.preventDefault();
+    setMockDataEnabledAndRefresh(!isMockDataEnabled());
   }
 });
 
