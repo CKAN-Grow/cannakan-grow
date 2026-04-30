@@ -6478,9 +6478,7 @@ function renderGallery(targetSnapshotId = "") {
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
         : isRejected
           ? '<span class="gallery-review-status-badge is-rejected">Rejected</span>'
-          : (isAdminView && isApproved)
-            ? '<span class="gallery-review-status-badge is-approved">Approved</span>'
-            : (isAdminView && isPrivate)
+          : (isAdminView && isPrivate)
               ? '<span class="gallery-review-status-badge is-private">Private</span>'
               : "";
       const visibilityLabel = isPending
@@ -6501,10 +6499,16 @@ function renderGallery(targetSnapshotId = "") {
           </div>
           ${renderGallerySharedProfileMarkup(snapshot)}
           <div class="gallery-card-feed-meta">
-            <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
-            ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
-            <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
-            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+            <div class="gallery-card-feed-row">
+              <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
+              ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
+            </div>
+            <div class="gallery-card-feed-row">
+              <div class="gallery-card-pill-pair">
+                <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
+                <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+              </div>
+            </div>
           </div>
           ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
           <div class="gallery-card-footer">

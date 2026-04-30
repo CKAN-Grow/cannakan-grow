@@ -2412,12 +2412,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-card-rate {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   padding: 8px 10px;
   border-radius: 999px;
   background: #94d159;
   color: #151815;
   font-weight: 800;
   box-shadow: 0 0 16px rgba(148, 209, 89, 0.16);
+  white-space: nowrap;
 }
 
 .gallery-card-meta {
@@ -2428,9 +2432,23 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-card-feed-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.gallery-card-feed-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  align-items: center;
+}
+
+.gallery-card-pill-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  max-width: 100%;
 }
 
 .gallery-card-placeholder {
@@ -2539,6 +2557,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.84rem;
   font-weight: 700;
   border: 1px solid rgba(148, 209, 89, 0.1);
+  white-space: nowrap;
 }
 
 .gallery-card-actions {
