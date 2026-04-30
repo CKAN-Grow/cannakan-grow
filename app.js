@@ -7201,8 +7201,21 @@ function renderHomeInstallInfoCardMarkup() {
       <div class="home-install-card-body">
         <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
         <div class="home-install-card-directions">
-          <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
-          <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
+          <section class="home-install-card-platform">
+            <h4 class="home-install-card-platform-title">iPhone</h4>
+            <ol class="home-install-card-steps">
+              <li>Open in Safari</li>
+              <li>Tap Share</li>
+              <li>Add to Home Screen</li>
+            </ol>
+          </section>
+          <section class="home-install-card-platform">
+            <h4 class="home-install-card-platform-title">Android</h4>
+            <ol class="home-install-card-steps">
+              <li>Open in Chrome</li>
+              <li>Tap Install App or Add to Home Screen</li>
+            </ol>
+          </section>
           ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
         </div>
         ${actionMarkup}
