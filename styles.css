@@ -262,10 +262,11 @@ body.theme-dark .app-logo--dark {
     box-shadow 0.18s ease,
     border-color 0.18s ease,
     background 0.18s ease;
-  z-index: 9999;
+  z-index: 99999;
 }
 
 .back-to-top-button.is-visible {
+  display: inline-flex;
   opacity: 1;
   visibility: visible;
   pointer-events: auto;

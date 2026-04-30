@@ -7,7 +7,7 @@ const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
-const BACK_TO_TOP_VISIBILITY_OFFSET = 360;
+const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const AUTH_NAVIGATION_KEYS = [
@@ -95,6 +95,7 @@ const appState = {
 };
 let sessionTimerInterval = null;
 let backToTopScrollFrame = 0;
+let backToTopLastVisibleState = null;
 const templates = {
   auth: document.querySelector("#auth-template"),
   setup: document.querySelector("#setup-template"),
@@ -229,10 +230,15 @@ function updateBackToTopButtonVisibility() {
     return;
   }
 
+  const scrollTop = getBackToTopScrollTop();
   const isVisible = shouldShowBackToTopButton();
   button.classList.toggle("is-visible", isVisible);
   button.setAttribute("aria-hidden", isVisible ? "false" : "true");
   button.tabIndex = isVisible ? 0 : -1;
+  if (backToTopLastVisibleState !== isVisible) {
+    console.log(`[BackToTop] visible ${isVisible}`, scrollTop);
+    backToTopLastVisibleState = isVisible;
+  }
 }
 
 function requestBackToTopButtonVisibilitySync() {
@@ -283,6 +289,7 @@ function ensureBackToTopButton() {
       });
     });
     document.body.appendChild(button);
+    console.log("[BackToTop] button created");
   }
 
   updateBackToTopButtonVisibility();
