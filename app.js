@@ -277,7 +277,7 @@ function syncInstallPromptBanner() {
     `
     : `
       <div class="install-app-banner-actions">
-        <p class="install-app-banner-ios-tip">Tap Share, then Add to Home Screen</p>
+        <p class="install-app-banner-ios-tip">To install: tap Share, then Add to Home Screen</p>
       </div>
     `;
 
