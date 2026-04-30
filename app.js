@@ -1036,13 +1036,14 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
     const unitId = systemType === "KAN"
       ? String.fromCharCode(65 + (index % 4))
       : String((index % 4) + 1);
+    const usesDetailsOnlyCard = index % 9 === 0;
 
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
       userId: GALLERY_MOCK_USER_ID,
       sessionId: "",
       title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
-      imageUrl: buildMockGalleryImageDataUri(record),
+      imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
       imagePath: "",
       sessionDate: record.submittedAt.slice(0, 10),
       systemType,
@@ -2392,6 +2393,78 @@ function getGallerySnapshotGrowMemberLabel(snapshot) {
   }
 
   return String(snapshot?.profileName || snapshot?.submittedBy || "").trim();
+}
+
+function hasGallerySnapshotImage(snapshot) {
+  return Boolean(String(snapshot?.imageUrl || "").trim());
+}
+
+function getGallerySnapshotSourceLabel(snapshot) {
+  return getGallerySnapshotLeaderboardMetadata(snapshot).sourceName || "Unknown source";
+}
+
+function getGallerySnapshotSubmittedDateLabel(snapshot) {
+  if (snapshot?.sessionDate) {
+    return formatSessionNameDate(snapshot.sessionDate);
+  }
+
+  const parsedDate = parseLeaderboardSnapshotDate(snapshot);
+  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
+    return "Unknown date";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
+function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
+  if (hasGallerySnapshotImage(snapshot)) {
+    return `
+      <div class="gallery-card-media">
+        <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+      </div>
+    `;
+  }
+
+  return `
+    <div class="gallery-card-media gallery-card-media--details-only">
+      <div class="gallery-card-placeholder">
+        <span class="gallery-card-placeholder-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <rect x="4" y="5" width="16" height="14" rx="2"></rect>
+            <path d="M8 11h8"></path>
+            <path d="M8 15h5"></path>
+            <circle cx="9" cy="9" r="1"></circle>
+          </svg>
+        </span>
+        <div class="gallery-card-placeholder-copy">
+          <p class="gallery-card-placeholder-eyebrow">No image uploaded</p>
+          <p class="gallery-card-placeholder-title">Snapshot details only</p>
+        </div>
+        <div class="gallery-card-placeholder-stats">
+          <div class="gallery-card-placeholder-stat">
+            <span class="gallery-card-placeholder-label">Source</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(getGallerySnapshotSourceLabel(snapshot))}</span>
+          </div>
+          <div class="gallery-card-placeholder-stat">
+            <span class="gallery-card-placeholder-label">Germination rate</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(`${Math.max(0, Number(snapshot.successPercent) || 0)}%`)}</span>
+          </div>
+          <div class="gallery-card-placeholder-stat">
+            <span class="gallery-card-placeholder-label">Seed count</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(details.seedCountLabel || "Not available")}</span>
+          </div>
+          <div class="gallery-card-placeholder-stat">
+            <span class="gallery-card-placeholder-label">Submitted</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(getGallerySnapshotSubmittedDateLabel(snapshot))}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderGallerySharedProfileMarkup(snapshot) {
@@ -6308,9 +6381,10 @@ function renderGallery(targetSnapshotId = "") {
           const item = document.createElement("article");
           item.className = "gallery-review-card";
           item.dataset.gallerySnapshotId = snapshot.id;
+          const details = getGallerySnapshotFeedDetails(snapshot);
           item.innerHTML = `
             <div class="gallery-review-media">
-              <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
+              ${renderGallerySnapshotMediaMarkup(snapshot, details)}
             </div>
             <div class="gallery-review-body">
               <div class="gallery-card-top">
@@ -6417,9 +6491,7 @@ function renderGallery(targetSnapshotId = "") {
             ? "Private submission"
             : "Germination success";
       card.innerHTML = `
-        <div class="gallery-card-media">
-          <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
-        </div>
+        ${renderGallerySnapshotMediaMarkup(snapshot, details)}
         <div class="gallery-card-body">
           <div class="gallery-card-top">
             <div class="gallery-card-copy">

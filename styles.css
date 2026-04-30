@@ -2326,6 +2326,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(14, 20, 16, 0.5);
 }
 
+.gallery-card-media--details-only,
+.gallery-review-media > .gallery-card-media {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-card-media--details-only {
+  display: grid;
+  min-height: 0;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(23, 31, 27, 0.96) 0%, rgba(18, 25, 21, 0.94) 100%);
+}
+
 .gallery-card-image {
   width: 100%;
   height: 100%;
@@ -2343,6 +2357,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 14px;
   padding: 18px 18px 20px;
+  min-width: 0;
 }
 
 .gallery-card-top {
@@ -2387,6 +2402,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #f6f8f5;
   font-size: 1rem;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .gallery-card-top p,
@@ -2415,6 +2431,95 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.gallery-card-placeholder {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-height: 100%;
+  text-align: center;
+}
+
+.gallery-card-placeholder-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(148, 209, 89, 0.08);
+  color: #a8df71;
+}
+
+.gallery-card-placeholder-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gallery-card-placeholder-copy {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+
+.gallery-card-placeholder-eyebrow,
+.gallery-card-placeholder-title {
+  margin: 0;
+}
+
+.gallery-card-placeholder-eyebrow {
+  color: #a8df71;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gallery-card-placeholder-title {
+  color: #f5f8f3;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.gallery-card-placeholder-stats {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+}
+
+.gallery-card-placeholder-stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
+}
+
+.gallery-card-placeholder-label {
+  color: rgba(188, 200, 190, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gallery-card-placeholder-value {
+  color: #f0f5ef;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .gallery-owner-note {
