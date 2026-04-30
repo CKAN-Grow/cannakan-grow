@@ -203,6 +203,18 @@ async function safeBootstrapApp() {
   }
 }
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+    return;
+  }
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+      console.warn("Service worker registration failed", error);
+    });
+  }, { once: true });
+}
+
 function getPreferredTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY);
   if (savedTheme === "light" || savedTheme === "dark") {
@@ -11289,6 +11301,8 @@ function capitalize(value) {
 if (document.body) {
   applyTheme(getPreferredTheme(), { persist: false });
 }
+
+registerServiceWorker();
 
 window.addEventListener("error", (event) => {
   reportAppError(event.error || new Error(event.message || "Unknown script error"), "JavaScript Error");
