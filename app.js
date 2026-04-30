@@ -1529,6 +1529,10 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   }
 
   const existing = getGallerySnapshotForSession(session.id);
+  if (existing) {
+    throw new Error(EXISTING_GALLERY_SNAPSHOT_MESSAGE);
+  }
+
   const upload = await uploadGallerySnapshotBlob(session.id, blob);
   const includeProfileInGallery = Boolean(options.includeProfileInGallery);
   const profileName = includeProfileInGallery
@@ -1556,16 +1560,14 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     published_at: new Date().toISOString(),
   };
 
-  const query = existing?.id
-    ? appState.supabase.from("grow_gallery_snapshots").update(payload).eq("id", existing.id).select("*").single()
-    : appState.supabase.from("grow_gallery_snapshots").insert(payload).select("*").single();
+  const query = appState.supabase.from("grow_gallery_snapshots").insert(payload).select("*").single();
 
   const { data, error } = await query;
   if (error) {
     console.error("Grow Gallery snapshot save failed", {
       bucket: GROW_GALLERY_BUCKET,
       upload,
-      existingSnapshotId: existing?.id || "",
+      existingSnapshotId: "",
       sessionId: session.id,
       snapshotData,
       payload,
@@ -1573,10 +1575,6 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     });
     await removeGallerySnapshotImage(upload.path);
     throw new Error(getGalleryPublishErrorMessage(error, "Could not save this snapshot to the Grow Gallery."));
-  }
-
-  if (existing?.imagePath && existing.imagePath !== upload.path) {
-    await removeGallerySnapshotImage(existing.imagePath);
   }
 
   const mapped = mapRowToGallerySnapshot(data);
@@ -2342,8 +2340,7 @@ function initializeSnapshotSection(scope, options) {
     });
   }
   if (state.destinationInputs.length) {
-    const hasPublishedEntry = Boolean(getGallerySnapshotForSession(state.getGallerySession?.()?.id));
-    const defaultDestination = hasPublishedEntry ? "social-gallery" : "social";
+    const defaultDestination = "social";
     const defaultInput = state.destinationInputs.find((input) => input.value === defaultDestination) || state.destinationInputs[0];
     if (defaultInput) {
       defaultInput.checked = true;
@@ -2390,7 +2387,10 @@ function initializeSnapshotSection(scope, options) {
     }
 
     const destination = getSnapshotDestination(state);
-    const moderationEntry = await maybePublishSnapshotFromState(state, result);
+    const publishResult = await maybePublishSnapshotFromState(state, result);
+    if (publishResult?.blocked) {
+      return;
+    }
     if (destination === "gallery") {
       return;
     }
@@ -2399,7 +2399,7 @@ function initializeSnapshotSection(scope, options) {
     if (!shared) {
       setSnapshotMessage(
         state,
-        moderationEntry
+        publishResult?.published
           ? "Submitted for review. Sharing is not available here. Use Download instead."
           : "Sharing is not available here. Use Download instead.",
       );
@@ -2439,6 +2439,8 @@ function getSnapshotDestination(state) {
   return selectedInput?.value || "social";
 }
 
+const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "To submit a different snapshot, delete the existing gallery snapshot first. A new submission will require approval again.";
+
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
   return parsedDate ? formatTimingDateTime(parsedDate) : "Unknown date";
@@ -2468,9 +2470,10 @@ function renderSnapshotSavedNotice(state) {
 
   const noticeDate = snapshotState.submittedAt || snapshotState.createdAt;
   let message = `Snapshot created on ${formatSnapshotSavedDateTime(snapshotState.createdAt || noticeDate)}.`;
-  if (snapshotState.galleryStatus === "pending_review") {
+  if (snapshotState.galleryStatus && snapshotState.galleryStatus !== "social-only") {
     message = `Snapshot submitted to Grow Gallery for review on ${formatSnapshotSavedDateTime(noticeDate)}.`;
-  } else if (snapshotState.galleryStatus === "approved") {
+  }
+  if (snapshotState.galleryStatus === "approved") {
     message = `Snapshot approved in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
   } else if (snapshotState.galleryStatus === "rejected") {
     message = `Snapshot rejected in Grow Gallery on ${formatSnapshotSavedDateTime(noticeDate)}.`;
@@ -2480,10 +2483,14 @@ function renderSnapshotSavedNotice(state) {
   state.savedSnapshotNotice.hidden = false;
 
   if (state.savedSnapshotLink) {
-    const shouldShowLink = Boolean(snapshotState.gallerySnapshotId)
-      && ["pending_review", "approved", "rejected"].includes(snapshotState.galleryStatus);
+    const shouldShowLink = Boolean(snapshotState.galleryStatus && snapshotState.galleryStatus !== "social-only");
     state.savedSnapshotLink.hidden = !shouldShowLink;
-    state.savedSnapshotLink.setAttribute("href", shouldShowLink ? `#gallery/${snapshotState.gallerySnapshotId}` : "#gallery");
+    state.savedSnapshotLink.setAttribute(
+      "href",
+      shouldShowLink && snapshotState.gallerySnapshotId
+        ? `#gallery/${snapshotState.gallerySnapshotId}`
+        : "#gallery",
+    );
   }
 }
 
@@ -2632,6 +2639,11 @@ function buildUnpublishedSessionSnapshotState(state) {
   };
 }
 
+function hasExistingGallerySnapshotForState(state) {
+  const session = state?.getGallerySession?.() || null;
+  return Boolean(getGallerySnapshotForSession(session?.id));
+}
+
 function syncSnapshotGalleryControls(state) {
   if (!state) {
     return;
@@ -2650,7 +2662,9 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.galleryNote) {
-    if (!canPublish && destination !== "social") {
+    if (includesGallery && publishedEntry) {
+      state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
+    } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
     } else if (destination === "social") {
       state.galleryNote.textContent = "Social only keeps this snapshot private to you. Private notes stay private.";
@@ -2672,7 +2686,7 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.unpublishButton) {
-    state.unpublishButton.hidden = !publishedEntry || currentStatus === "private";
+    state.unpublishButton.hidden = !publishedEntry;
   }
 
   renderSnapshotSavedNotice(state);
@@ -2681,11 +2695,17 @@ function syncSnapshotGalleryControls(state) {
 async function maybePublishSnapshotFromState(state, result) {
   const destination = getSnapshotDestination(state);
   if (destination === "social") {
-    return null;
+    return { published: null, blocked: false };
   }
 
   const session = state.getGallerySession?.();
   const snapshotData = state.getSnapshotData?.();
+  if (hasExistingGallerySnapshotForState(state)) {
+    syncSnapshotGalleryControls(state);
+    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE);
+    return { published: null, blocked: true };
+  }
+
   try {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
@@ -2693,7 +2713,7 @@ async function maybePublishSnapshotFromState(state, result) {
     await persistSnapshotStateForSection(state, buildSessionSnapshotStateFromGallerySnapshot(published, getSnapshotStateForSection(state)));
     syncSnapshotGalleryControls(state);
     setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
-    return published;
+    return { published, blocked: false };
   } catch (error) {
     console.error("Grow Gallery publish flow failed", {
       sessionId: session?.id || "",
@@ -2702,7 +2722,7 @@ async function maybePublishSnapshotFromState(state, result) {
       error,
     });
     setSnapshotMessage(state, error.message || "Could not publish this snapshot to the Grow Gallery.", true);
-    return null;
+    return { published: null, blocked: true };
   }
 }
 
