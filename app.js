@@ -82,6 +82,10 @@ const appState = {
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
   homeGalleryRankingsHydrationRequested: false,
+  memberCount: null,
+  memberCountLoaded: false,
+  memberCountError: "",
+  memberCountRefreshPromise: null,
   mockGalleryReviewStatuses: {},
   deferredInstallPrompt: null,
   installPromptMode: "",
@@ -1892,10 +1896,14 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.accountMenuOpen = false;
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
+  resetMemberCountState();
 
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
     appState.isAdmin = await loadAdminStatus();
+    if (appState.isAdmin) {
+      await refreshRegisteredMemberCount({ force: true });
+    }
     const sessions = await loadUserSessions();
     saveSessions(sessions);
     appState.gallerySnapshots = await loadGallerySnapshots();
@@ -2116,6 +2124,63 @@ async function loadAdminStatus() {
     isAdmin,
   });
   return isAdmin;
+}
+
+function resetMemberCountState() {
+  appState.memberCount = null;
+  appState.memberCountLoaded = false;
+  appState.memberCountError = "";
+  appState.memberCountRefreshPromise = null;
+}
+
+function getRegisteredMemberCount() {
+  return Number.isFinite(appState.memberCount) ? appState.memberCount : null;
+}
+
+async function refreshRegisteredMemberCount(options = {}) {
+  const { force = false } = options;
+
+  if (!appState.supabase || !isAdminUser()) {
+    resetMemberCountState();
+    return null;
+  }
+
+  if (!force && appState.memberCountLoaded) {
+    return getRegisteredMemberCount();
+  }
+
+  if (!force && appState.memberCountRefreshPromise) {
+    return appState.memberCountRefreshPromise;
+  }
+
+  appState.memberCountError = "";
+
+  const refreshPromise = (async () => {
+    const { count, error } = await appState.supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true });
+
+    if (error) {
+      console.error("Failed to load member count", error);
+      appState.memberCount = null;
+      appState.memberCountLoaded = true;
+      appState.memberCountError = error.message || "Could not load member count.";
+      return null;
+    }
+
+    appState.memberCount = Number.isFinite(count) ? count : 0;
+    appState.memberCountLoaded = true;
+    appState.memberCountError = "";
+    return appState.memberCount;
+  })();
+
+  appState.memberCountRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.memberCountRefreshPromise = null;
+  }
 }
 
 function normalizeProfileRow(row) {
@@ -7141,6 +7206,25 @@ function renderHomeInstallInfoCardMarkup() {
   `;
 }
 
+function renderRegisteredMemberCountCardMarkup() {
+  const memberCount = getRegisteredMemberCount();
+  const hasMemberCount = Number.isFinite(memberCount);
+  const valueLabel = hasMemberCount
+    ? memberCount.toLocaleString()
+    : (appState.memberCountLoaded ? "—" : "--");
+  const subtext = hasMemberCount
+    ? "registered profiles"
+    : (appState.memberCountLoaded ? "Count unavailable" : "Loading registered profiles");
+
+  return `
+    <article class="card stat-card card-accent card-accent-green" data-admin-member-count-card="true">
+      <span class="stat-label">Total Members</span>
+      <strong class="stat-value">${escapeHtml(valueLabel)}</strong>
+      <p class="summary-subtext">${escapeHtml(subtext)}</p>
+    </article>
+  `;
+}
+
 function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
@@ -7176,6 +7260,17 @@ function renderHome() {
   const overallRateEl = document.querySelector("#overall-germination-rate");
   const overallTotalEl = document.querySelector("#overall-germination-total");
   const overallFillEl = document.querySelector("#overall-germination-fill");
+  const isAdminView = isAdminUser();
+
+  if (isAdminView && !appState.memberCountLoaded && !appState.memberCountRefreshPromise && appState.supabase) {
+    void refreshRegisteredMemberCount().then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#home" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
   countEl.textContent = String(sessions.length);
   activeCountEl.textContent = String(activeSessions.length);
   activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
@@ -7231,6 +7326,9 @@ function renderHome() {
 
   const galleryRankingsTeaserMarkup = renderHomeGalleryRankingsTeaser();
   if (summaryGrid) {
+    if (isAdminView) {
+      summaryGrid.insertAdjacentHTML("beforeend", renderRegisteredMemberCountCardMarkup());
+    }
     summaryGrid.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
   } else if (spotlightCard) {
     spotlightCard.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
