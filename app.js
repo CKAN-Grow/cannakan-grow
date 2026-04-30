@@ -1627,6 +1627,9 @@ function mapRowToGallerySnapshot(row) {
     totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
     submittedBy: String(row.submitted_by || "").trim(),
+    sourceName: String(row.source_name || "").trim(),
+    sourceLogoUrl: String(row.source_logo_url || "").trim(),
+    seedVarietyName: String(row.seed_variety_name || "").trim(),
     includeProfileInGallery: Boolean(row.include_profile_in_gallery),
     profileName: String(row.submitted_profile_name || "").trim(),
     profileImageUrl: String(row.submitted_profile_avatar_url || "").trim(),
@@ -2036,6 +2039,347 @@ function renderGallerySharedProfileMarkup(snapshot) {
       ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
     </div>
   `;
+}
+
+function normalizeLeaderboardLabel(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeLeaderboardKey(value) {
+  return normalizeLeaderboardLabel(value).toLowerCase();
+}
+
+function parseLeaderboardSnapshotDate(snapshot) {
+  const rawValue = snapshot?.publishedAt || snapshot?.createdAt || "";
+  if (!rawValue) {
+    return null;
+  }
+
+  const parsed = new Date(rawValue);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getLeaderboardMonthKey(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getGallerySnapshotLeaderboardMetadata(snapshot) {
+  const linkedSession = snapshot?.sessionId
+    ? getSessions().find((session) => session.id === snapshot.sessionId)
+    : null;
+  const firstPartitionWithIdentity = (linkedSession?.partitions || []).find((partition) => (
+    normalizeLeaderboardLabel(formatPartitionSource(partition))
+    || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
+  )) || linkedSession?.partitions?.[0] || null;
+
+  return {
+    sourceName: normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity)),
+    sourceLogoUrl: String(snapshot?.sourceLogoUrl || "").trim(),
+    seedVarietyName: normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity)),
+  };
+}
+
+function buildGalleryLeaderboardEntries(snapshots, type = "source") {
+  const groups = new Map();
+
+  (snapshots || []).forEach((snapshot) => {
+    const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
+    const label = type === "source" ? metadata.sourceName : metadata.seedVarietyName;
+    const normalizedKey = normalizeLeaderboardKey(label);
+    if (!normalizedKey) {
+      return;
+    }
+
+    const publishedDate = parseLeaderboardSnapshotDate(snapshot);
+    const currentGroup = groups.get(normalizedKey) || {
+      key: normalizedKey,
+      name: label,
+      sourceLogoUrl: type === "source" ? metadata.sourceLogoUrl : "",
+      snapshotCount: 0,
+      successPercentTotal: 0,
+      totalPlanted: 0,
+      totalSeeds: 0,
+      latestPublishedAt: "",
+    };
+
+    currentGroup.snapshotCount += 1;
+    currentGroup.successPercentTotal += Number(snapshot?.successPercent) || 0;
+    currentGroup.totalPlanted += Math.max(0, Number(snapshot?.totalPlanted) || 0);
+    currentGroup.totalSeeds += Math.max(0, Number(snapshot?.totalSeeds) || 0);
+    if (metadata.sourceLogoUrl && !currentGroup.sourceLogoUrl) {
+      currentGroup.sourceLogoUrl = metadata.sourceLogoUrl;
+    }
+
+    const currentLatest = currentGroup.latestPublishedAt ? new Date(currentGroup.latestPublishedAt) : null;
+    if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
+      currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
+    }
+
+    groups.set(normalizedKey, currentGroup);
+  });
+
+  return [...groups.values()]
+    .filter((entry) => entry.snapshotCount >= 3)
+    .map((entry) => ({
+      ...entry,
+      averagePercent: entry.snapshotCount > 0
+        ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
+        : 0,
+    }))
+    .sort((left, right) => {
+      if (right.averagePercent !== left.averagePercent) {
+        return right.averagePercent - left.averagePercent;
+      }
+      if (right.totalPlanted !== left.totalPlanted) {
+        return right.totalPlanted - left.totalPlanted;
+      }
+      if (right.totalSeeds !== left.totalSeeds) {
+        return right.totalSeeds - left.totalSeeds;
+      }
+      const leftTime = new Date(left.latestPublishedAt || 0).getTime();
+      const rightTime = new Date(right.latestPublishedAt || 0).getTime();
+      if (rightTime !== leftTime) {
+        return rightTime - leftTime;
+      }
+      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
+    });
+}
+
+function getApprovedPublicGallerySnapshots() {
+  return appState.gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+}
+
+function getCurrentMonthApprovedGallerySnapshots() {
+  const now = new Date();
+  const currentMonthKey = getLeaderboardMonthKey(now);
+  return getApprovedPublicGallerySnapshots().filter((snapshot) => (
+    getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
+  ));
+}
+
+function buildGalleryLongestTopStreak(snapshots, type = "source") {
+  const snapshotsByMonth = new Map();
+  (snapshots || []).forEach((snapshot) => {
+    const monthKey = getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot));
+    if (!monthKey) {
+      return;
+    }
+
+    const monthSnapshots = snapshotsByMonth.get(monthKey) || [];
+    monthSnapshots.push(snapshot);
+    snapshotsByMonth.set(monthKey, monthSnapshots);
+  });
+
+  const monthlyWinners = [...snapshotsByMonth.entries()]
+    .sort((left, right) => left[0].localeCompare(right[0], "en"))
+    .map(([monthKey, monthSnapshots]) => {
+      const topEntry = buildGalleryLeaderboardEntries(monthSnapshots, type)[0] || null;
+      return topEntry ? { monthKey, entry: topEntry } : null;
+    })
+    .filter(Boolean);
+
+  let bestStreak = null;
+  let currentStreak = null;
+
+  monthlyWinners.forEach(({ monthKey, entry }) => {
+    const [year, month] = monthKey.split("-").map((value) => Number(value));
+    const monthIndex = year * 12 + (month - 1);
+
+    if (
+      currentStreak
+      && currentStreak.key === entry.key
+      && monthIndex === currentStreak.lastMonthIndex + 1
+    ) {
+      currentStreak.length += 1;
+      currentStreak.lastMonthIndex = monthIndex;
+      currentStreak.lastMonthKey = monthKey;
+      currentStreak.averagePercent = entry.averagePercent;
+      currentStreak.sourceLogoUrl = currentStreak.sourceLogoUrl || entry.sourceLogoUrl || "";
+    } else {
+      currentStreak = {
+        key: entry.key,
+        name: entry.name,
+        averagePercent: entry.averagePercent,
+        sourceLogoUrl: entry.sourceLogoUrl || "",
+        length: 1,
+        firstMonthKey: monthKey,
+        lastMonthKey: monthKey,
+        lastMonthIndex: monthIndex,
+      };
+    }
+
+    if (
+      !bestStreak
+      || currentStreak.length > bestStreak.length
+      || (currentStreak.length === bestStreak.length && currentStreak.averagePercent > bestStreak.averagePercent)
+    ) {
+      bestStreak = { ...currentStreak };
+    }
+  });
+
+  return bestStreak;
+}
+
+function getLeaderboardRankTone(index) {
+  if (index === 0) {
+    return "is-gold";
+  }
+  if (index === 1) {
+    return "is-silver";
+  }
+  return "is-bronze";
+}
+
+function renderGalleryLeaderboardIcon(type, entry = {}) {
+  const logoUrl = type === "source" ? String(entry?.sourceLogoUrl || "").trim() : "";
+  if (type === "source" && logoUrl) {
+    return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(entry?.name || "Source logo")}" class="gallery-leaderboard-icon-image">`;
+  }
+
+  if (type === "source") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M8.5 14.5h7"></path>
+        <path d="M9 10.5h6"></path>
+        <path d="M12 7.5v9"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <path d="M12 18c-2.8 0-5-2.1-5-4.8 0-2.9 2.2-5.3 5.6-7.5.2-.1.5-.1.7 0 3.4 2.2 5.7 4.6 5.7 7.5 0 2.7-2.3 4.8-5 4.8Z"></path>
+      <path d="M12 10.5c0 3.6-1.2 6.1-3.5 7.5"></path>
+    </svg>
+  `;
+}
+
+function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessage = "Not enough approved public data yet.") {
+  if (!entries.length) {
+    return `
+      <div class="gallery-leaderboard-empty">
+        <p>${escapeHtml(emptyMessage)}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <ol class="gallery-leaderboard-list">
+      ${entries.map((entry, index) => `
+        <li class="gallery-leaderboard-row ${getLeaderboardRankTone(index)}">
+          <span class="gallery-leaderboard-rank">#${index + 1}</span>
+          <span class="gallery-leaderboard-icon" aria-hidden="true">
+            ${renderGalleryLeaderboardIcon(type, entry)}
+          </span>
+          <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
+          <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.averagePercent}% avg`)}</span>
+        </li>
+      `).join("")}
+    </ol>
+  `;
+}
+
+function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessage = "Not enough approved monthly data yet.") {
+  if (!streakEntry) {
+    return `
+      <div class="gallery-leaderboard-empty">
+        <p>${escapeHtml(emptyMessage)}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="gallery-leaderboard-row ${getLeaderboardRankTone(0)}">
+      <span class="gallery-leaderboard-rank">#1</span>
+      <span class="gallery-leaderboard-icon" aria-hidden="true">
+        ${renderGalleryLeaderboardIcon(type, streakEntry)}
+      </span>
+      <span class="gallery-leaderboard-name">${escapeHtml(streakEntry.name)}</span>
+      <span class="gallery-leaderboard-metric">${escapeHtml(`${streakEntry.averagePercent}% avg · ${streakEntry.length} mo`)}</span>
+    </div>
+  `;
+}
+
+function renderGalleryLeaderboardSection() {
+  const approvedSnapshots = getApprovedPublicGallerySnapshots();
+  const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
+  const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
+  const thisMonthVarieties = buildGalleryLeaderboardEntries(monthlySnapshots, "variety").slice(0, 3);
+  const allTimeSources = buildGalleryLeaderboardEntries(approvedSnapshots, "source").slice(0, 3);
+  const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
+  const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
+  const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
+
+  const section = document.createElement("section");
+  section.className = "card gallery-section gallery-leaderboard-section";
+  section.innerHTML = `
+    <div class="section-heading">
+      <div class="section-title-with-icon">
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5 17.5h14"></path>
+          <path d="M7.5 17.5V11"></path>
+          <path d="M12 17.5V7.5"></path>
+          <path d="M16.5 17.5v-4"></path>
+        </svg>
+        <div>
+          <p class="eyebrow">Leaderboard Insights</p>
+          <h3>Community Grow Gallery Rankings</h3>
+          <p class="muted">Approved public snapshots only. Rankings require at least 3 approved snapshots per source or seed variety.</p>
+        </div>
+      </div>
+    </div>
+    <div class="gallery-leaderboard-grid">
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">This Month</p>
+          <h4>Top 3 Sources</h4>
+        </div>
+        ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">This Month</p>
+          <h4>Top 3 Seed Varieties</h4>
+        </div>
+        ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">All Time</p>
+          <h4>Top 3 Sources</h4>
+        </div>
+        ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">All Time</p>
+          <h4>Top 3 Seed Varieties</h4>
+        </div>
+        ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">Longest Streak on Top</p>
+          <h4>#1 Source</h4>
+        </div>
+        ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        <div class="gallery-leaderboard-card-heading">
+          <p class="eyebrow">Longest Streak on Top</p>
+          <h4>#1 Seed Variety</h4>
+        </div>
+        ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
+      </article>
+    </div>
+  `;
+
+  return section;
 }
 
 function renderGalleryLikeButtonMarkup(snapshot) {
@@ -5278,6 +5622,10 @@ function renderGallery(targetSnapshotId = "") {
   const galleryFeedSection = document.querySelector(".gallery-feed-section");
   if (!galleryGrid) {
     return;
+  }
+
+  if (galleryFeedSection) {
+    galleryFeedSection.before(renderGalleryLeaderboardSection());
   }
 
   const isAdminView = isAdminUser();
