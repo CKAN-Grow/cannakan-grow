@@ -1963,6 +1963,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
+.gallery-owner-note {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
 .gallery-card-chip {
   display: inline-flex;
   align-items: center;

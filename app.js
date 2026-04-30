@@ -1724,10 +1724,64 @@ async function rejectSnapshot(snapshotId) {
   return updateGallerySnapshotModerationStatus(snapshotId, "rejected");
 }
 
-async function unpublishGallerySnapshot(snapshotId) {
+function buildClearedSessionSnapshotState(snapshotState) {
+  const existingSnapshotState = normalizePersistedSessionSnapshotState(snapshotState) || {};
+  return normalizePersistedSessionSnapshotState({
+    ...existingSnapshotState,
+    submittedAt: "",
+    galleryStatus: "social-only",
+    gallerySnapshotId: "",
+    galleryRoute: "",
+    imageUrl: "",
+    imagePath: "",
+  });
+}
+
+async function clearGallerySnapshotStateForSession(sessionId) {
+  if (!sessionId) {
+    return null;
+  }
+
+  const session = getSessions().find((entry) => entry.id === sessionId) || null;
+  if (!session) {
+    return null;
+  }
+
+  session.snapshotState = buildClearedSessionSnapshotState(session.snapshotState);
+  updateSessionSnapshotStateCache(session.id, session.snapshotState);
+  const savedSession = await saveSessionUpdate(session);
+  if (savedSession?.snapshotState !== undefined) {
+    session.snapshotState = normalizePersistedSessionSnapshotState(savedSession.snapshotState);
+  }
+  return session.snapshotState;
+}
+
+function getOwnerGalleryAction(snapshot) {
+  const status = getGallerySnapshotDisplayStatus(snapshot);
+  if (status === "pending_review") {
+    return { mode: "delete", label: "Withdraw from Grow Gallery" };
+  }
+  if (status === "rejected") {
+    return { mode: "delete", label: "Remove & Resubmit" };
+  }
+  if (status === "approved") {
+    return { mode: "request-removal", label: "Request Removal" };
+  }
+  return null;
+}
+
+async function deleteGallerySnapshot(snapshotId) {
   const existing = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
   if (!existing || !appState.supabase) {
     return;
+  }
+
+  if (!appState.user || existing.userId !== appState.user.id) {
+    throw new Error("You can only manage your own Grow Gallery snapshots.");
+  }
+
+  if (getGallerySnapshotDisplayStatus(existing) === "approved") {
+    throw new Error("Approved Grow Gallery snapshots cannot be removed here.");
   }
 
   await removeGallerySnapshotImage(existing.imagePath);
@@ -1741,6 +1795,13 @@ async function unpublishGallerySnapshot(snapshotId) {
   }
 
   appState.gallerySnapshots = appState.gallerySnapshots.filter((entry) => entry.id !== snapshotId);
+  if (existing.sessionId) {
+    await clearGallerySnapshotStateForSession(existing.sessionId);
+  }
+}
+
+async function unpublishGallerySnapshot(snapshotId) {
+  return deleteGallerySnapshot(snapshotId);
 }
 
 function sortGallerySnapshotsNewestFirst(items) {
@@ -2593,14 +2654,30 @@ function initializeSnapshotSection(scope, options) {
     }
 
     try {
-      await unpublishGallerySnapshot(existing.id);
+      const ownerAction = getOwnerGalleryAction(existing);
+      if (ownerAction?.mode === "request-removal") {
+        console.info("[GrowGallery] Removal requested for approved snapshot", {
+          snapshotId: existing.id,
+          sessionId: existing.sessionId || "",
+          userId: appState.user?.id || "",
+        });
+        setSnapshotMessage(state, "Removal request noted. Contact support for published Grow Gallery changes.");
+        return;
+      }
+
+      await deleteGallerySnapshot(existing.id);
       const socialInput = state.destinationInputs.find((input) => input.value === "social");
       if (socialInput) {
         socialInput.checked = true;
       }
-      await persistSnapshotStateForSection(state, buildUnpublishedSessionSnapshotState(state));
+      await persistSnapshotStateForSection(state, buildClearedSessionSnapshotState(getSnapshotStateForSection(state)));
       syncSnapshotGalleryControls(state);
-      setSnapshotMessage(state, "Snapshot removed from the Grow Gallery.");
+      setSnapshotMessage(
+        state,
+        getGallerySnapshotDisplayStatus(existing) === "rejected"
+          ? "Snapshot removed. You can submit a new Grow Gallery snapshot now."
+          : "Snapshot withdrawn from the Grow Gallery.",
+      );
     } catch (error) {
       setSnapshotMessage(state, error.message || "Could not remove this snapshot from the Grow Gallery.", true);
     }
@@ -2878,7 +2955,9 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.galleryNote) {
-    if (hasExistingGallerySnapshotForState(state)) {
+    if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
+      state.galleryNote.textContent = "This snapshot is published. To make changes, contact support or remove it.";
+    } else if (hasExistingGallerySnapshotForState(state)) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
     } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
@@ -2902,7 +2981,13 @@ function syncSnapshotGalleryControls(state) {
   }
 
   if (state.unpublishButton) {
-    state.unpublishButton.hidden = !publishedEntry;
+    const ownerAction = publishedEntry?.userId === appState.user?.id
+      ? getOwnerGalleryAction(publishedEntry)
+      : null;
+    state.unpublishButton.hidden = !ownerAction;
+    state.unpublishButton.disabled = false;
+    state.unpublishButton.dataset.galleryOwnerAction = ownerAction?.mode || "";
+    state.unpublishButton.textContent = ownerAction?.label || "Remove from Gallery";
   }
 
   renderSnapshotSavedNotice(state);
@@ -5076,6 +5161,7 @@ function renderGallery(targetSnapshotId = "") {
       const isRejected = snapshotStatus === "rejected";
       const isApproved = snapshotStatus === "approved";
       const isPrivate = snapshotStatus === "private";
+      const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
       const details = getGallerySnapshotFeedDetails(snapshot);
       const statusBadge = isPending
         ? '<span class="gallery-review-status-badge is-pending">Pending Review</span>'
@@ -5113,9 +5199,10 @@ function renderGallery(targetSnapshotId = "") {
             ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
             <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
           </div>
+          ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
           <div class="gallery-card-actions">
             ${isOwner && snapshot.sessionId ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>` : ""}
-            ${isOwner ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-remove="${escapeHtml(snapshot.id)}">Remove from Gallery</button>` : ""}
+            ${ownerAction ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>` : ""}
           </div>
         </div>
       `;
@@ -5137,7 +5224,18 @@ function renderGallery(targetSnapshotId = "") {
     galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
       button.addEventListener("click", async () => {
         try {
-          await unpublishGallerySnapshot(button.dataset.galleryRemove);
+          const snapshotId = button.dataset.galleryRemove || "";
+          const ownerAction = button.dataset.galleryOwnerAction || "";
+          if (ownerAction === "request-removal") {
+            console.info("[GrowGallery] Removal requested for approved snapshot", {
+              snapshotId,
+              userId: appState.user?.id || "",
+            });
+            window.alert("Removal request noted. Contact support for published Grow Gallery changes.");
+            return;
+          }
+
+          await deleteGallerySnapshot(snapshotId);
           renderGallery();
         } catch (error) {
           window.alert(error.message || "Could not remove this gallery snapshot.");
