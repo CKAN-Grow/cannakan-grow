@@ -5,11 +5,11 @@ $publicIconsDir = Join-Path $workspace "public/icons"
 $sourcePath = Join-Path $workspace "Assets/Icons/ck-grow-favicon.png"
 
 $targets = @(
-  @{ Size = 512; Name = "ck-grow-icon-512-v1.png" },
-  @{ Size = 192; Name = "ck-grow-icon-192-v1.png" },
-  @{ Size = 180; Name = "ck-grow-apple-touch-v1.png" },
-  @{ Size = 32; Name = "favicon-32x32-v1.png" },
-  @{ Size = 16; Name = "favicon-16x16-v1.png" }
+  @{ Size = 512; Name = "ck-grow-pwa-512-v5.png" },
+  @{ Size = 192; Name = "ck-grow-pwa-192-v5.png" },
+  @{ Size = 180; Name = "ck-grow-apple-touch-180-v5.png" },
+  @{ Size = 32; Name = "ck-grow-favicon-32-v5.png" },
+  @{ Size = 16; Name = "ck-grow-favicon-16-v5.png" }
 )
 
 New-Item -ItemType Directory -Force -Path $publicIconsDir | Out-Null
