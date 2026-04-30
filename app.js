@@ -2793,6 +2793,7 @@ function renderSnapshotSavedNotice(state) {
       state.savedSnapshotLink.hidden = true;
       state.savedSnapshotLink.setAttribute("href", "#gallery");
     }
+    renderSnapshotPreviewSurface(state);
     return;
   }
 
@@ -2816,6 +2817,7 @@ function renderSnapshotSavedNotice(state) {
         : "#gallery",
     );
   }
+  renderSnapshotPreviewSurface(state);
 }
 
 function prefersReducedSnapshotMotion() {
@@ -3229,27 +3231,18 @@ function setSnapshotPreview(state, payload) {
 
   state.generatedBlob = payload?.blob || null;
   state.generatedRenderKey = payload?.renderKey || "";
+  if (payload?.blob) {
+    state.generatedUrl = URL.createObjectURL(payload.blob);
+  }
+  renderSnapshotPreviewSurface(state);
+  if (state.postActions) {
+    state.postActions.hidden = !payload?.blob;
+  }
   if (!payload?.blob) {
-    state.preview.hidden = true;
-    state.preview.innerHTML = "";
-    if (state.postActions) {
-      state.postActions.hidden = true;
-    }
     state.downloadButton?.setAttribute("disabled", "disabled");
     state.resetButton?.setAttribute("disabled", "disabled");
     state.shareButton?.setAttribute("disabled", "disabled");
     return;
-  }
-
-  state.generatedUrl = URL.createObjectURL(payload.blob);
-  state.preview.hidden = false;
-  state.preview.innerHTML = renderSnapshotPreviewMarkup({
-    previewImageUrl: state.generatedUrl,
-    fallbackImageUrl: state.generatedUrl,
-    data: payload?.data || null,
-  });
-  if (state.postActions) {
-    state.postActions.hidden = false;
   }
   state.downloadButton?.removeAttribute("disabled");
   state.resetButton?.removeAttribute("disabled");
@@ -3268,6 +3261,47 @@ function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = 
       </div>
     </article>
   `;
+}
+
+function renderSnapshotSubmissionConfirmationMarkup(snapshotState) {
+  const submittedDate = formatSnapshotSavedDateTime(snapshotState?.submittedAt || "");
+  const galleryRoute = snapshotState?.gallerySnapshotId
+    ? `#gallery/${snapshotState.gallerySnapshotId}`
+    : "#gallery";
+  return `
+    <article class="snapshot-confirmation-card" aria-label="Grow Gallery submission confirmation">
+      <p class="eyebrow snapshot-confirmation-eyebrow">Grow Gallery</p>
+      <h4 class="snapshot-confirmation-title">Snapshot submitted to Grow Gallery</h4>
+      <p class="snapshot-confirmation-time">Submitted ${escapeHtml(submittedDate)}</p>
+      <a class="button button-primary snapshot-confirmation-button" href="${escapeHtml(galleryRoute)}">Go to Grow Gallery</a>
+    </article>
+  `;
+}
+
+function renderSnapshotPreviewSurface(state) {
+  if (!state?.preview) {
+    return;
+  }
+
+  const snapshotState = getSnapshotStateForSection(state);
+  if (hasConfirmedGallerySubmissionForState(state)) {
+    state.preview.hidden = false;
+    state.preview.innerHTML = renderSnapshotSubmissionConfirmationMarkup(snapshotState);
+    return;
+  }
+
+  if (!state.generatedUrl) {
+    state.preview.hidden = true;
+    state.preview.innerHTML = "";
+    return;
+  }
+
+  state.preview.hidden = false;
+  state.preview.innerHTML = renderSnapshotPreviewMarkup({
+    previewImageUrl: state.generatedUrl,
+    fallbackImageUrl: state.generatedUrl,
+    data: null,
+  });
 }
 
 function isDesktopSnapshotPreviewEnabled() {

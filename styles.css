@@ -1819,6 +1819,46 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: flex-start;
 }
 
+.snapshot-confirmation-card {
+  width: 100%;
+  max-width: 400px;
+  display: grid;
+  gap: 10px;
+  padding: 22px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(24, 34, 27, 0.96) 100%);
+  box-shadow:
+    0 0 18px rgba(148, 209, 89, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+.snapshot-confirmation-eyebrow {
+  margin: 0;
+}
+
+.snapshot-confirmation-title {
+  margin: 0;
+  font-size: 1.12rem;
+  color: #f4faef;
+}
+
+.snapshot-confirmation-time {
+  margin: 0;
+  color: #d7e6d5;
+  font-size: 0.95rem;
+}
+
+.snapshot-confirmation-button {
+  justify-self: start;
+  min-height: 46px;
+  padding: 11px 18px;
+  box-shadow:
+    0 0 10px rgba(148, 209, 89, 0.5),
+    0 12px 20px rgba(24, 34, 24, 0.14);
+}
+
 .gallery-hero-section {
   border: none;
   border-top: 4px solid #94d159;
