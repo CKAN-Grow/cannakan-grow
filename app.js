@@ -2403,6 +2403,10 @@ function getGallerySnapshotSourceLabel(snapshot) {
   return getGallerySnapshotLeaderboardMetadata(snapshot).sourceName || "Unknown source";
 }
 
+function getGallerySnapshotPlaceholderPalette(snapshot) {
+  return getMockGallerySourcePalette(getGallerySnapshotSourceLabel(snapshot));
+}
+
 function getGallerySnapshotSubmittedDateLabel(snapshot) {
   if (snapshot?.sessionDate) {
     return formatSessionNameDate(snapshot.sessionDate);
@@ -2429,37 +2433,51 @@ function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
     `;
   }
 
+  const palette = getGallerySnapshotPlaceholderPalette(snapshot);
+  const safeTitle = String(snapshot?.title || "Grow Snapshot").trim() || "Grow Snapshot";
+  const safeSource = getGallerySnapshotSourceLabel(snapshot);
+  const safeRate = `${Math.max(0, Number(snapshot.successPercent) || 0)}%`;
+  const safeSeeds = details.seedCountLabel || "Seed count unavailable";
+  const safeSubmitted = getGallerySnapshotSubmittedDateLabel(snapshot);
+
   return `
-    <div class="gallery-card-media gallery-card-media--details-only">
+    <div
+      class="gallery-card-media gallery-card-media--details-only"
+      style="--gallery-placeholder-bg:${escapeHtml(palette.background)};--gallery-placeholder-accent:${escapeHtml(palette.accent)};--gallery-placeholder-text:${escapeHtml(palette.text)};"
+    >
+      <span class="gallery-card-placeholder-orb gallery-card-placeholder-orb--top" aria-hidden="true"></span>
+      <span class="gallery-card-placeholder-orb gallery-card-placeholder-orb--bottom" aria-hidden="true"></span>
       <div class="gallery-card-placeholder">
-        <span class="gallery-card-placeholder-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <rect x="4" y="5" width="16" height="14" rx="2"></rect>
-            <path d="M8 11h8"></path>
-            <path d="M8 15h5"></path>
-            <circle cx="9" cy="9" r="1"></circle>
-          </svg>
-        </span>
-        <div class="gallery-card-placeholder-copy">
-          <p class="gallery-card-placeholder-eyebrow">No image uploaded</p>
-          <p class="gallery-card-placeholder-title">Snapshot details only</p>
+        <div class="gallery-card-placeholder-header">
+          <span class="gallery-card-placeholder-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <rect x="4" y="5" width="16" height="14" rx="2"></rect>
+              <path d="M8 11h8"></path>
+              <path d="M8 15h5"></path>
+              <circle cx="9" cy="9" r="1"></circle>
+            </svg>
+          </span>
+          <div class="gallery-card-placeholder-copy">
+            <p class="gallery-card-placeholder-eyebrow">No image uploaded</p>
+            <p class="gallery-card-placeholder-title">Snapshot details only</p>
+          </div>
+        </div>
+        <div class="gallery-card-placeholder-main">
+          <p class="gallery-card-placeholder-snapshot-title">${escapeHtml(safeTitle)}</p>
+          <p class="gallery-card-placeholder-source">${escapeHtml(safeSource)}</p>
+        </div>
+        <div class="gallery-card-placeholder-rate">
+          <span class="gallery-card-placeholder-rate-value">${escapeHtml(safeRate)}</span>
+          <span class="gallery-card-placeholder-rate-label">Germination rate</span>
         </div>
         <div class="gallery-card-placeholder-stats">
           <div class="gallery-card-placeholder-stat">
-            <span class="gallery-card-placeholder-label">Source</span>
-            <span class="gallery-card-placeholder-value">${escapeHtml(getGallerySnapshotSourceLabel(snapshot))}</span>
-          </div>
-          <div class="gallery-card-placeholder-stat">
-            <span class="gallery-card-placeholder-label">Germination rate</span>
-            <span class="gallery-card-placeholder-value">${escapeHtml(`${Math.max(0, Number(snapshot.successPercent) || 0)}%`)}</span>
-          </div>
-          <div class="gallery-card-placeholder-stat">
             <span class="gallery-card-placeholder-label">Seed count</span>
-            <span class="gallery-card-placeholder-value">${escapeHtml(details.seedCountLabel || "Not available")}</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(safeSeeds)}</span>
           </div>
           <div class="gallery-card-placeholder-stat">
             <span class="gallery-card-placeholder-label">Submitted</span>
-            <span class="gallery-card-placeholder-value">${escapeHtml(getGallerySnapshotSubmittedDateLabel(snapshot))}</span>
+            <span class="gallery-card-placeholder-value">${escapeHtml(safeSubmitted)}</span>
           </div>
         </div>
       </div>
