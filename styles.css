@@ -1376,6 +1376,34 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: none !important;
 }
 
+.snapshot-profile-toggle.is-revealing,
+.snapshot-profile-toggle.is-concealing,
+.snapshot-profile-divider.is-revealing,
+.snapshot-profile-divider.is-concealing,
+.snapshot-modal-profile-toggle.is-revealing,
+.snapshot-modal-profile-toggle.is-concealing,
+.snapshot-modal-profile-helper.is-revealing,
+.snapshot-modal-profile-helper.is-concealing {
+  animation-duration: 180ms;
+  animation-fill-mode: both;
+}
+
+.snapshot-profile-toggle.is-revealing,
+.snapshot-profile-divider.is-revealing,
+.snapshot-modal-profile-toggle.is-revealing,
+.snapshot-modal-profile-helper.is-revealing {
+  animation-name: snapshotFadeSlideIn;
+  animation-timing-function: ease-out;
+}
+
+.snapshot-profile-toggle.is-concealing,
+.snapshot-profile-divider.is-concealing,
+.snapshot-modal-profile-toggle.is-concealing,
+.snapshot-modal-profile-helper.is-concealing {
+  animation-name: snapshotFadeSlideOut;
+  animation-timing-function: ease-in;
+}
+
 .snapshot-profile-toggle input {
   position: absolute;
   opacity: 0;
@@ -2415,6 +2443,43 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-modal-profile-helper[hidden] {
   display: none !important;
+}
+
+@keyframes snapshotFadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes snapshotFadeSlideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snapshot-profile-toggle.is-revealing,
+  .snapshot-profile-toggle.is-concealing,
+  .snapshot-profile-divider.is-revealing,
+  .snapshot-profile-divider.is-concealing,
+  .snapshot-modal-profile-toggle.is-revealing,
+  .snapshot-modal-profile-toggle.is-concealing,
+  .snapshot-modal-profile-helper.is-revealing,
+  .snapshot-modal-profile-helper.is-concealing {
+    animation: none;
+  }
 }
 
 .snapshot-modal-thumb {

@@ -2347,6 +2347,67 @@ function getSnapshotDestination(state) {
   return selectedInput?.value || "social";
 }
 
+function prefersReducedSnapshotMotion() {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function setSnapshotAnimatedVisibility(elements, visible) {
+  const targets = (Array.isArray(elements) ? elements : [elements]).filter(Boolean);
+  const reducedMotion = prefersReducedSnapshotMotion();
+
+  targets.forEach((element) => {
+    const isConcealing = element.classList.contains("is-concealing");
+    if (visible && !element.hidden && !isConcealing) {
+      return;
+    }
+    if (!visible && element.hidden) {
+      return;
+    }
+
+    if (element.__snapshotVisibilityTimer) {
+      window.clearTimeout(element.__snapshotVisibilityTimer);
+      element.__snapshotVisibilityTimer = 0;
+    }
+    if (element.__snapshotVisibilityFrame) {
+      window.cancelAnimationFrame(element.__snapshotVisibilityFrame);
+      element.__snapshotVisibilityFrame = 0;
+    }
+
+    element.classList.remove("is-revealing", "is-concealing");
+
+    if (visible) {
+      element.hidden = false;
+      if (reducedMotion) {
+        return;
+      }
+
+      element.__snapshotVisibilityFrame = window.requestAnimationFrame(() => {
+        element.__snapshotVisibilityFrame = 0;
+        element.classList.add("is-revealing");
+        element.__snapshotVisibilityTimer = window.setTimeout(() => {
+          element.classList.remove("is-revealing");
+          element.__snapshotVisibilityTimer = 0;
+        }, 180);
+      });
+      return;
+    }
+
+    if (reducedMotion) {
+      element.hidden = true;
+      return;
+    }
+
+    element.classList.add("is-concealing");
+    element.__snapshotVisibilityTimer = window.setTimeout(() => {
+      element.hidden = true;
+      element.classList.remove("is-concealing");
+      element.__snapshotVisibilityTimer = 0;
+    }, 180);
+  });
+}
+
 function doesSnapshotDestinationIncludeGallery(destination) {
   return destination === "social-gallery" || destination === "gallery";
 }
@@ -2377,12 +2438,7 @@ function syncSnapshotGalleryControls(state) {
   const destination = getSnapshotDestination(state);
   const includesGallery = doesSnapshotDestinationIncludeGallery(destination);
 
-  if (state.includeProfileToggleRow) {
-    state.includeProfileToggleRow.hidden = !includesGallery;
-  }
-  if (state.includeProfileDividerRow) {
-    state.includeProfileDividerRow.hidden = !includesGallery;
-  }
+  setSnapshotAnimatedVisibility([state.includeProfileToggleRow, state.includeProfileDividerRow], includesGallery);
   if (state.includeProfileToggle && !includesGallery) {
     setSnapshotIncludeProfileEnabled(state, false);
   }
@@ -2822,12 +2878,7 @@ function chooseSnapshotImageForState(state, images) {
 
   renderChoices();
   const includesGallery = doesSnapshotDestinationIncludeGallery(getSnapshotDestination(state));
-  if (includeProfileToggleRow) {
-    includeProfileToggleRow.hidden = !includesGallery;
-  }
-  if (includeProfileHelper) {
-    includeProfileHelper.hidden = !includesGallery;
-  }
+  setSnapshotAnimatedVisibility([includeProfileToggleRow, includeProfileHelper], includesGallery);
   if (includeProfileToggle) {
     includeProfileToggle.checked = Boolean(state?.includeProfileToggle?.checked) && includesGallery;
     includeProfileToggle.onchange = () => {
