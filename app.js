@@ -2818,14 +2818,7 @@ async function resolveSnapshotImageSelection(state) {
 
 function ensureSnapshotImageModal() {
   let modal = document.querySelector("#snapshot-image-modal");
-  if (modal) {
-    return modal;
-  }
-
-  modal = document.createElement("dialog");
-  modal.id = "snapshot-image-modal";
-  modal.className = "snapshot-modal";
-  modal.innerHTML = `
+  const markup = `
     <form method="dialog" class="snapshot-modal-card">
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Share Snapshot</p>
@@ -2846,7 +2839,15 @@ function ensureSnapshotImageModal() {
       </div>
     </form>
   `;
-  document.body.appendChild(modal);
+
+  if (!modal) {
+    modal = document.createElement("dialog");
+    modal.id = "snapshot-image-modal";
+    modal.className = "snapshot-modal";
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = markup;
   return modal;
 }
 
