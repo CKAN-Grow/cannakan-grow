@@ -1982,6 +1982,54 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
 }
 
+.gallery-seedtype-highlights {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.gallery-seedtype-highlight {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gallery-seedtype-highlight-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 173, 74, 0.4);
+  background: rgba(217, 173, 74, 0.14);
+  color: #8b6a1f;
+  flex-shrink: 0;
+}
+
+.gallery-seedtype-highlight-icon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gallery-seedtype-highlight-text {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .gallery-leaderboard-card {
   display: grid;
   gap: 12px;
@@ -2151,6 +2199,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 @media (max-width: 640px) {
+  .gallery-seedtype-highlight {
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  .gallery-seedtype-highlight-text {
+    white-space: normal;
+  }
+
   .gallery-leaderboard-row {
     grid-template-columns: auto auto 1fr;
     grid-template-areas:
@@ -5196,6 +5253,17 @@ body.theme-dark .gallery-leaderboard-section {
 body.theme-dark .gallery-leaderboard-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.015) 100%);
   border-color: rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .gallery-seedtype-highlight {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+body.theme-dark .gallery-seedtype-highlight-icon {
+  border-color: rgba(217, 173, 74, 0.42);
+  background: rgba(217, 173, 74, 0.12);
+  color: #f2d58f;
 }
 
 body.theme-dark .gallery-hero-section .muted {

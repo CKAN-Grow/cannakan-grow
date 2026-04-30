@@ -982,6 +982,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   const varietyBaseRates = [92, 87, 79, 71, 55, 83];
   const sourceAdjustments = [4, 2, -1, -4, 1, -7];
   const rowAdjustments = [6, 1, -4, 3, -8, 0];
+  const seedTypePattern = ["photo", "photo", "auto", "photo", "auto", "photo"];
   const seedCountPattern = [5, 6, 8, 10, 12, 8];
   const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
   const hourPattern = [8, 10, 12, 15, 17, 19];
@@ -1012,6 +1013,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       return {
         source,
         seedVariety,
+        seedType: seedTypePattern[(sourceIndex + rowIndex) % seedTypePattern.length],
         seedCount,
         germinatedCount,
         germinationRate,
@@ -1051,6 +1053,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       sourceName: record.source,
       sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
+      seedTypeName: record.seedType,
       includeProfileInGallery: false,
       profileName: "",
       profileImageUrl: "",
@@ -2341,11 +2344,16 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
     normalizeLeaderboardLabel(formatPartitionSource(partition))
     || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
   )) || linkedSession?.partitions?.[0] || null;
+  const firstPartitionWithSeedType = (linkedSession?.partitions || []).find((partition) => (
+    normalizeLeaderboardLabel(partition?.seedType)
+  )) || linkedSession?.partitions?.[0] || null;
+  const normalizedSeedType = normalizeLeaderboardLabel(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
 
   return {
     sourceName: normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity)),
     sourceLogoUrl: String(snapshot?.sourceLogoUrl || "").trim(),
     seedVarietyName: normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity)),
+    seedTypeName: normalizedSeedType ? capitalize(normalizedSeedType) : "",
   };
 }
 
@@ -2427,6 +2435,104 @@ function getCurrentMonthApprovedGallerySnapshots() {
   return getApprovedPublicGallerySnapshots().filter((snapshot) => (
     getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
   ));
+}
+
+function buildGallerySeedTypeHighlightEntry(snapshots) {
+  const groups = new Map();
+
+  (snapshots || []).forEach((snapshot) => {
+    const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
+    const label = metadata.seedTypeName;
+    const normalizedKey = normalizeLeaderboardKey(label);
+    if (!normalizedKey) {
+      return;
+    }
+
+    const publishedDate = parseLeaderboardSnapshotDate(snapshot);
+    const currentGroup = groups.get(normalizedKey) || {
+      key: normalizedKey,
+      name: label,
+      snapshotCount: 0,
+      successPercentTotal: 0,
+      totalPlanted: 0,
+      totalSeeds: 0,
+      latestPublishedAt: "",
+    };
+
+    currentGroup.snapshotCount += 1;
+    currentGroup.successPercentTotal += Number(snapshot?.successPercent) || 0;
+    currentGroup.totalPlanted += Math.max(0, Number(snapshot?.totalPlanted) || 0);
+    currentGroup.totalSeeds += Math.max(0, Number(snapshot?.totalSeeds) || 0);
+
+    const currentLatest = currentGroup.latestPublishedAt ? new Date(currentGroup.latestPublishedAt) : null;
+    if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
+      currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
+    }
+
+    groups.set(normalizedKey, currentGroup);
+  });
+
+  return [...groups.values()]
+    .filter((entry) => entry.snapshotCount >= 3)
+    .map((entry) => ({
+      ...entry,
+      averagePercent: entry.snapshotCount > 0
+        ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
+        : 0,
+    }))
+    .sort((left, right) => {
+      if (right.averagePercent !== left.averagePercent) {
+        return right.averagePercent - left.averagePercent;
+      }
+      if (right.totalPlanted !== left.totalPlanted) {
+        return right.totalPlanted - left.totalPlanted;
+      }
+      if (right.totalSeeds !== left.totalSeeds) {
+        return right.totalSeeds - left.totalSeeds;
+      }
+      const leftTime = new Date(left.latestPublishedAt || 0).getTime();
+      const rightTime = new Date(right.latestPublishedAt || 0).getTime();
+      if (rightTime !== leftTime) {
+        return rightTime - leftTime;
+      }
+      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
+    })[0] || null;
+}
+
+function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType) {
+  const thisMonthLabel = thisMonthTopSeedType?.name || "Not enough data yet";
+  const allTimeLabel = allTimeTopSeedType?.name || "Not enough data yet";
+
+  return `
+    <div class="gallery-seedtype-highlights" aria-label="Top seed type highlights">
+      <div class="gallery-seedtype-highlight">
+        <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8 4.5h8"></path>
+            <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
+            <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
+            <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
+            <path d="M12 12v3.5"></path>
+            <path d="M9.5 19.5 12 15.5l2.5 4"></path>
+          </svg>
+        </span>
+        <span class="gallery-seedtype-highlight-text">${escapeHtml(`This Month Top Seed Type: ${thisMonthLabel}`)}</span>
+      </div>
+      <div class="gallery-seedtype-highlight">
+        <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8 4.5h8"></path>
+            <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
+            <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
+            <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
+            <path d="M12 12v3.5"></path>
+            <path d="M9.5 19.5 12 15.5l2.5 4"></path>
+          </svg>
+        </span>
+        <span class="gallery-seedtype-highlight-text">${escapeHtml(`All-Time Top Seed Type: ${allTimeLabel}`)}</span>
+      </div>
+    </div>
+  `;
 }
 
 function buildGalleryLongestTopStreak(snapshots, type = "source") {
@@ -2576,6 +2682,8 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
 function renderGalleryLeaderboardSection() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
+  const thisMonthTopSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
+  const allTimeTopSeedType = buildGallerySeedTypeHighlightEntry(approvedSnapshots);
   const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
   const thisMonthVarieties = buildGalleryLeaderboardEntries(monthlySnapshots, "variety").slice(0, 3);
   const allTimeSources = buildGalleryLeaderboardEntries(approvedSnapshots, "source").slice(0, 3);
@@ -2601,6 +2709,7 @@ function renderGalleryLeaderboardSection() {
         </div>
       </div>
     </div>
+    ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card">
         <div class="gallery-leaderboard-card-heading">
