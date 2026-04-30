@@ -2347,13 +2347,74 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-modal-profile-toggle {
   width: 100%;
   margin-top: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--ink);
 }
 
-.snapshot-modal-profile-test {
-  color: red;
-  font-size: 20px;
-  margin: 16px 0;
+.snapshot-modal-profile-toggle[hidden] {
+  display: none !important;
+}
+
+.snapshot-modal-profile-toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 46px;
+  margin: 0;
+  border-radius: 999px;
+  background: rgba(31, 58, 42, 0.14);
+  border: 1px solid rgba(31, 58, 42, 0.12);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  cursor: pointer;
+}
+
+.snapshot-modal-profile-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 19, 14, 0.16);
+  transition: transform 0.18s ease;
+}
+
+.snapshot-modal-profile-toggle input:checked {
+  background: rgba(148, 209, 89, 0.88);
+  border-color: rgba(115, 170, 55, 0.8);
+}
+
+.snapshot-modal-profile-toggle input:checked::after {
+  transform: translateX(20px);
+}
+
+.snapshot-modal-profile-toggle input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.2);
+}
+
+.snapshot-modal-profile-toggle span {
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.snapshot-modal-profile-helper {
+  margin: 4px 0 12px 58px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.snapshot-modal-profile-helper[hidden] {
+  display: none !important;
 }
 
 .snapshot-modal-thumb {

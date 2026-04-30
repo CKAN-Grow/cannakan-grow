@@ -2777,14 +2777,13 @@ function ensureSnapshotImageModal() {
         <p class="muted">Select the uploaded image you want to feature as the main visual.</p>
       </div>
       <div class="snapshot-modal-grid" id="snapshot-modal-grid"></div>
-      <label class="snapshot-profile-toggle" id="snapshot-modal-profile-toggle-row" hidden>
-        <input id="snapshot-modal-include-profile" type="checkbox" name="snapshot-modal-include-profile">
-        <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
-        <span class="snapshot-profile-toggle-text">
-          <span class="snapshot-profile-toggle-copy">Include my profile name & image with this snapshot in the Grow Gallery</span>
-          <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
-        </span>
+      <label class="snapshot-modal-profile-toggle" id="snapshot-modal-profile-toggle-row" hidden>
+        <input type="checkbox" id="snapshot-modal-include-profile">
+        <span>Include my profile name & image with this snapshot in the Grow Gallery</span>
       </label>
+      <p class="snapshot-modal-profile-helper" id="snapshot-modal-profile-helper" hidden>
+        Only your profile name and image will be shown.
+      </p>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-snapshot-modal-action="cancel">Cancel</button>
         <button type="button" class="button button-primary" data-snapshot-modal-action="confirm">Use Selected Image</button>
@@ -2799,6 +2798,7 @@ function chooseSnapshotImageForState(state, images) {
   const modal = ensureSnapshotImageModal();
   const grid = modal.querySelector("#snapshot-modal-grid");
   const includeProfileToggleRow = modal.querySelector("#snapshot-modal-profile-toggle-row");
+  const includeProfileHelper = modal.querySelector("#snapshot-modal-profile-helper");
   const includeProfileToggle = modal.querySelector("#snapshot-modal-include-profile");
   let selectedKey = state.selectedImageKey && images.some((image) => image.key === state.selectedImageKey)
     ? state.selectedImageKey
@@ -2824,6 +2824,9 @@ function chooseSnapshotImageForState(state, images) {
   const includesGallery = doesSnapshotDestinationIncludeGallery(getSnapshotDestination(state));
   if (includeProfileToggleRow) {
     includeProfileToggleRow.hidden = !includesGallery;
+  }
+  if (includeProfileHelper) {
+    includeProfileHelper.hidden = !includesGallery;
   }
   if (includeProfileToggle) {
     includeProfileToggle.checked = Boolean(state?.includeProfileToggle?.checked) && includesGallery;
