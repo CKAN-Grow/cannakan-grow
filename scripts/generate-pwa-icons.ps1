@@ -43,6 +43,36 @@ function New-ResizedBitmap {
   return $bitmap
 }
 
+function New-LeafPath {
+  param(
+    [float]$BaseX,
+    [float]$BaseY,
+    [float]$TipX,
+    [float]$TipY,
+    [float]$InnerControlX,
+    [float]$InnerControlY,
+    [float]$OuterControlX,
+    [float]$OuterControlY
+  )
+
+  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $path.StartFigure()
+  $path.AddBezier(
+    $BaseX, $BaseY,
+    $BaseX, ($BaseY - 36),
+    $OuterControlX, $OuterControlY,
+    $TipX, $TipY
+  )
+  $path.AddBezier(
+    $TipX, $TipY,
+    $InnerControlX, $InnerControlY,
+    ($BaseX + (($TipX - $BaseX) * 0.12)), ($BaseY - 86),
+    $BaseX, $BaseY
+  )
+  $path.CloseFigure()
+  return $path
+}
+
 $sourceImage = [System.Drawing.Image]::FromFile($sourcePath)
 $masterSize = 1024
 $master = New-Object System.Drawing.Bitmap $masterSize, $masterSize
@@ -84,10 +114,73 @@ $highlightPath = New-RoundedRectPath -X ($cardRect.X + 18) -Y ($cardRect.Y + 18)
 $highlightPen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(24, 255, 255, 255), 3)
 $graphics.DrawPath($highlightPen, $highlightPath)
 
-$iconBox = 680
+$iconBox = 666
 $iconX = [int](($masterSize - $iconBox) / 2)
-$iconY = [int](($masterSize - $iconBox) / 2) + 10
+$iconY = 160
 $graphics.DrawImage($sourceImage, $iconX, $iconY, $iconBox, $iconBox)
+
+$leafShadowBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(120, 7, 10, 8))
+$leafEdgePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(120, 18, 28, 18), 4)
+$leafVeinPen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(150, 20, 30, 18), 5)
+$leafVeinPen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+$leafVeinPen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+
+$leftLeaf = New-LeafPath -BaseX 445 -BaseY 742 -TipX 242 -TipY 545 -InnerControlX 328 -InnerControlY 548 -OuterControlX 218 -OuterControlY 628
+$rightLeaf = New-LeafPath -BaseX 579 -BaseY 742 -TipX 782 -TipY 550 -InnerControlX 695 -InnerControlY 552 -OuterControlX 808 -OuterControlY 635
+
+$centerLeaf = New-LeafPath -BaseX 512 -BaseY 742 -TipX 512 -TipY 590 -InnerControlX 560 -InnerControlY 640 -OuterControlX 462 -OuterControlY 640
+
+$leafGradientLeft = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+  (New-Object System.Drawing.PointF(242, 545)),
+  (New-Object System.Drawing.PointF(445, 742)),
+  ([System.Drawing.Color]::FromArgb(190, 236, 255, 96)),
+  ([System.Drawing.Color]::FromArgb(190, 120, 184, 38))
+)
+$leafGradientRight = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+  (New-Object System.Drawing.PointF(782, 550)),
+  (New-Object System.Drawing.PointF(579, 742)),
+  ([System.Drawing.Color]::FromArgb(190, 236, 255, 96)),
+  ([System.Drawing.Color]::FromArgb(190, 120, 184, 38))
+)
+$leafGradientCenter = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+  (New-Object System.Drawing.PointF(512, 590)),
+  (New-Object System.Drawing.PointF(512, 742)),
+  ([System.Drawing.Color]::FromArgb(160, 217, 247, 88)),
+  ([System.Drawing.Color]::FromArgb(160, 95, 146, 34))
+)
+
+$graphics.TranslateTransform(0, 8)
+$graphics.FillPath($leafShadowBrush, $centerLeaf)
+$graphics.FillPath($leafShadowBrush, $leftLeaf)
+$graphics.FillPath($leafShadowBrush, $rightLeaf)
+$graphics.ResetTransform()
+
+$graphics.FillPath($leafGradientCenter, $centerLeaf)
+$graphics.FillPath($leafGradientLeft, $leftLeaf)
+$graphics.FillPath($leafGradientRight, $rightLeaf)
+
+$graphics.DrawPath($leafEdgePen, $centerLeaf)
+$graphics.DrawPath($leafEdgePen, $leftLeaf)
+$graphics.DrawPath($leafEdgePen, $rightLeaf)
+
+$graphics.DrawCurve($leafVeinPen, @(
+  (New-Object System.Drawing.PointF(448, 738)),
+  (New-Object System.Drawing.PointF(404, 688)),
+  (New-Object System.Drawing.PointF(352, 632)),
+  (New-Object System.Drawing.PointF(296, 586))
+))
+$graphics.DrawCurve($leafVeinPen, @(
+  (New-Object System.Drawing.PointF(576, 738)),
+  (New-Object System.Drawing.PointF(620, 690)),
+  (New-Object System.Drawing.PointF(674, 635)),
+  (New-Object System.Drawing.PointF(728, 590))
+))
+$graphics.DrawCurve($leafVeinPen, @(
+  (New-Object System.Drawing.PointF(512, 742)),
+  (New-Object System.Drawing.PointF(512, 700)),
+  (New-Object System.Drawing.PointF(512, 652)),
+  (New-Object System.Drawing.PointF(512, 606))
+))
 
 $master.Save($icon512Path, [System.Drawing.Imaging.ImageFormat]::Png)
 $icon192 = New-ResizedBitmap -Source $master -Size 192
@@ -100,6 +193,15 @@ $appleTouchIcon.Dispose()
 $cardGradient.Dispose()
 $glowBrush.Dispose()
 $glowPath.Dispose()
+$leafShadowBrush.Dispose()
+$leafEdgePen.Dispose()
+$leafVeinPen.Dispose()
+$leafGradientLeft.Dispose()
+$leafGradientRight.Dispose()
+$leafGradientCenter.Dispose()
+$leftLeaf.Dispose()
+$rightLeaf.Dispose()
+$centerLeaf.Dispose()
 $cardStroke.Dispose()
 $highlightPen.Dispose()
 $cardPath.Dispose()

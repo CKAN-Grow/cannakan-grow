@@ -6,9 +6,9 @@ const APP_SHELL_ASSETS = [
   "/app.js",
   "/manifest.json",
   "/favicon.png",
-  "/apple-touch-icon.png",
-  "/pwa-icon-192.png",
-  "/pwa-icon-512.png",
+  "/icons/apple-touch-icon.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
   "/src/assets/Cannakan_GROW_darkmode.png",
   "/src/assets/Cannakan_GROW_lightmode.png",
 ];
