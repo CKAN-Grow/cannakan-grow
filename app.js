@@ -3363,14 +3363,6 @@ function buildHomeGalleryRankingsTeaserState() {
     topSeedType: buildGallerySeedTypeHighlightEntry(monthlySnapshots),
   };
 
-  console.log("[HomeRankingsTeaser] mock enabled:", isMockDataEnabled());
-  console.log("[HomeRankingsTeaser] snapshot count:", snapshots.length);
-  console.log("[HomeRankingsTeaser] rankings:", {
-    approvedPublicSnapshotCount: approvedPublicSnapshots.length,
-    currentMonthSnapshotCount: monthlySnapshots.length,
-    rankings,
-  });
-
   return {
     snapshots,
     approvedPublicSnapshots,
@@ -3382,6 +3374,9 @@ function buildHomeGalleryRankingsTeaserState() {
 function renderHomeGalleryRankingsTeaser() {
   const teaserState = buildHomeGalleryRankingsTeaserState();
   const { snapshots, approvedPublicSnapshots, monthlySnapshots, rankings } = teaserState;
+  console.log("[HomeRankingsTeaser] rendered");
+  console.log("[HomeRankingsTeaser] mock enabled", isMockDataEnabled());
+  console.log("[HomeRankingsTeaser] snapshot count", snapshots.length);
   const rankingRows = [
     {
       label: "This Month Top Source",
@@ -6701,10 +6696,10 @@ function renderHome() {
   }
 
   const galleryRankingsTeaserMarkup = renderHomeGalleryRankingsTeaser();
-  if (spotlightCard) {
+  if (summaryGrid) {
+    summaryGrid.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
+  } else if (spotlightCard) {
     spotlightCard.insertAdjacentHTML("afterend", galleryRankingsTeaserMarkup);
-  } else if (summaryGrid) {
-    summaryGrid.insertAdjacentHTML("beforebegin", galleryRankingsTeaserMarkup);
   } else {
     app.insertAdjacentHTML("beforeend", galleryRankingsTeaserMarkup);
   }
