@@ -2826,13 +2826,13 @@ function ensureSnapshotImageModal() {
         <p class="muted">Select the uploaded image you want to feature as the main visual.</p>
       </div>
       <div class="snapshot-modal-grid" id="snapshot-modal-grid"></div>
-      <label class="snapshot-modal-profile-toggle" id="snapshot-modal-profile-toggle-row" hidden>
-        <input type="checkbox" id="snapshot-modal-include-profile">
-        <span>Include my profile name & image with this snapshot in the Grow Gallery</span>
-      </label>
-      <p class="snapshot-modal-profile-helper" id="snapshot-modal-profile-helper" hidden>
-        Only your profile name and image will be shown.
-      </p>
+      <div class="snapshot-modal-profile-option">
+        <label class="snapshot-profile-toggle-row">
+          <input type="checkbox" id="snapshot-modal-include-profile">
+          <span>Include my profile name & image with this snapshot in the Grow Gallery</span>
+        </label>
+        <p class="snapshot-modal-profile-helper">Only your profile name and image will be shown.</p>
+      </div>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-snapshot-modal-action="cancel">Cancel</button>
         <button type="button" class="button button-primary" data-snapshot-modal-action="confirm">Use Selected Image</button>
