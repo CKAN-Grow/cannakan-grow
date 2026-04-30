@@ -2005,16 +2005,49 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
   });
 }
 
+function getConfirmedGallerySnapshotForState(session = null, snapshotState = null) {
+  const liveGallerySnapshot = getGallerySnapshotForSession(session?.id);
+  if (liveGallerySnapshot?.id) {
+    return liveGallerySnapshot;
+  }
+
+  const persistedSnapshotId = String(snapshotState?.gallerySnapshotId || "").trim();
+  if (!persistedSnapshotId) {
+    return null;
+  }
+
+  return appState.gallerySnapshots.find((entry) => (
+    entry.id === persistedSnapshotId
+    && (!session?.id || entry.sessionId === session.id)
+  )) || null;
+}
+
+function clearStaleGallerySnapshotState(session, snapshotState) {
+  if (!session?.id || !snapshotState?.gallerySnapshotId) {
+    return buildClearedSessionSnapshotState(snapshotState);
+  }
+
+  const clearedSnapshotState = buildClearedSessionSnapshotState(snapshotState);
+  session.snapshotState = clearedSnapshotState;
+  updateSessionSnapshotStateCache(session.id, clearedSnapshotState);
+  logGrowGalleryDebug("clearStaleGallerySnapshotState", {
+    sessionId: session.id,
+    staleGallerySnapshotId: snapshotState.gallerySnapshotId,
+  });
+  void saveSessionUpdate(session);
+  return clearedSnapshotState;
+}
+
 function getSessionSnapshotState(session) {
   const baseSnapshotState = normalizePersistedSessionSnapshotState(session?.snapshotState);
   if (!session?.id) {
     return baseSnapshotState;
   }
 
-  const gallerySnapshot = getGallerySnapshotForSession(session.id);
+  const gallerySnapshot = getConfirmedGallerySnapshotForState(session, baseSnapshotState);
   return gallerySnapshot
     ? buildSessionSnapshotStateFromGallerySnapshot(gallerySnapshot, baseSnapshotState)
-    : baseSnapshotState;
+    : (baseSnapshotState?.gallerySnapshotId ? clearStaleGallerySnapshotState(session, baseSnapshotState) : baseSnapshotState);
 }
 
 function mapSessionToRecord(session, userId) {
@@ -2718,13 +2751,25 @@ function hasSubmittedGallerySnapshotState(snapshotState) {
   );
 }
 
+function hasConfirmedGallerySubmissionForState(state) {
+  const session = state?.getGallerySession?.() || null;
+  const snapshotState = getSnapshotStateForSection(state);
+  const confirmedSnapshot = getConfirmedGallerySnapshotForState(session, snapshotState);
+  return Boolean(
+    confirmedSnapshot?.id
+    && snapshotState?.gallerySnapshotId
+    && snapshotState?.submittedAt
+    && ["pending_review", "approved", "rejected"].includes(String(snapshotState?.galleryStatus || "").trim())
+  );
+}
+
 function renderSnapshotSavedNotice(state) {
   if (!state?.savedSnapshotNotice || !state.savedSnapshotText) {
     return;
   }
 
   const snapshotState = getSnapshotStateForSection(state);
-  if (!hasSubmittedGallerySnapshotState(snapshotState)) {
+  if (!hasConfirmedGallerySubmissionForState(state)) {
     state.savedSnapshotNotice.hidden = true;
     if (state.savedSnapshotLink) {
       state.savedSnapshotLink.hidden = true;
@@ -2738,7 +2783,7 @@ function renderSnapshotSavedNotice(state) {
   state.savedSnapshotNotice.hidden = false;
 
   if (state.savedSnapshotLink) {
-    const shouldShowLink = hasSubmittedGallerySnapshotState(snapshotState);
+    const shouldShowLink = hasConfirmedGallerySubmissionForState(state);
     logGrowGalleryDebug("renderSnapshotSavedNotice:link", {
       gallerySnapshotId: snapshotState?.gallerySnapshotId || "",
       submittedAt: snapshotState?.submittedAt || "",
@@ -2904,14 +2949,7 @@ function buildUnpublishedSessionSnapshotState(state) {
 }
 
 function hasExistingGallerySnapshotForState(state) {
-  const session = state?.getGallerySession?.() || null;
-  const liveGallerySnapshot = getGallerySnapshotForSession(session?.id);
-  if (liveGallerySnapshot?.id) {
-    return true;
-  }
-
-  const snapshotState = getSnapshotStateForSection(state);
-  return Boolean(snapshotState?.gallerySnapshotId);
+  return hasConfirmedGallerySubmissionForState(state);
 }
 
 function syncSnapshotDestinationAvailability(state) {
@@ -2942,12 +2980,14 @@ function syncSnapshotGalleryControls(state) {
   }
 
   const session = state.getGallerySession?.() || null;
-  const publishedEntry = getGallerySnapshotForSession(session?.id);
+  const snapshotState = getSnapshotStateForSection(state);
+  const publishedEntry = getConfirmedGallerySnapshotForState(session, snapshotState);
   const canPublish = Boolean(state.canPublish && session?.id);
   const currentStatus = String(publishedEntry?.status || "private");
   syncSnapshotDestinationAvailability(state);
   const destination = getSnapshotDestination(state);
   const includesGallery = doesSnapshotDestinationIncludeGallery(destination);
+  const hasConfirmedSubmission = Boolean(publishedEntry?.id);
 
   setSnapshotAnimatedVisibility([state.includeProfileToggleRow, state.includeProfileDividerRow], includesGallery);
   if (state.includeProfileToggle && !includesGallery) {
@@ -2957,7 +2997,7 @@ function syncSnapshotGalleryControls(state) {
   if (state.galleryNote) {
     if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
       state.galleryNote.textContent = "This snapshot is published. To make changes, contact support or remove it.";
-    } else if (hasExistingGallerySnapshotForState(state)) {
+    } else if (hasConfirmedSubmission) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
     } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
