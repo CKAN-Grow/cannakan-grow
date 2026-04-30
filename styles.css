@@ -466,45 +466,57 @@ body.theme-dark .account-menu-item:hover {
 .topbar-nav a,
 .badge {
   padding: 10px 18px;
-  border-radius: 999px;
+  border-radius: 16px;
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(148, 209, 89, 0.25);
 }
 
 .topbar-nav a {
   color: var(--muted);
   font-weight: 600;
   transition:
-    transform 160ms ease,
-    background-color 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    color 160ms ease;
+    transform 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
 }
 
 .topbar-nav a:hover {
   color: var(--ink);
   border-color: #94d159;
   transform: translateY(-1px);
+  box-shadow:
+    0 10px 18px rgba(57, 104, 49, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 16px rgba(148, 209, 89, 0.12);
 }
 
 .topbar-nav a.is-active {
-  color: #1f3a2a;
-  background: rgba(148, 209, 89, 0.18);
+  color: #94d159;
+  background: rgba(148, 209, 89, 0.12);
   border-color: #94d159;
-  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 body.theme-dark .topbar-nav a:hover {
   color: var(--ink);
   border-color: #94d159;
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(148, 209, 89, 0.14),
+    0 0 18px rgba(148, 209, 89, 0.14);
 }
 
 body.theme-dark .topbar-nav a.is-active {
-  color: var(--ink);
-  background: rgba(148, 209, 89, 0.16);
+  color: #94d159;
+  background: rgba(148, 209, 89, 0.12);
   border-color: #94d159;
-  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.2);
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 body.theme-dark .install-app-banner {
@@ -4511,7 +4523,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-radius: 16px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .button:hover {
@@ -4579,11 +4596,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .dashboard-bar .hero-actions .button-secondary {
   background: rgba(148, 209, 89, 0.03);
-  border: 2px solid #94d159;
+  border: 1px solid rgba(148, 209, 89, 0.25);
   color: #2d5b22;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 8px 18px rgba(57, 104, 49, 0.06);
+    0 8px 16px rgba(57, 104, 49, 0.05);
 }
 
 .dashboard-bar .hero-actions .button-secondary:hover,
@@ -4593,8 +4610,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #224a1a;
   transform: translateY(-1px);
   box-shadow:
-    0 12px 20px rgba(57, 104, 49, 0.1),
-    0 0 0 1px rgba(148, 209, 89, 0.1);
+    0 10px 18px rgba(57, 104, 49, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.1),
+    0 0 14px rgba(148, 209, 89, 0.08);
 }
 
 .dashboard-bar .hero-actions .button-secondary:active {
@@ -4694,11 +4712,11 @@ body.theme-dark .button-secondary:hover {
 
 body.theme-dark .dashboard-bar .hero-actions .button-secondary {
   background: rgba(148, 209, 89, 0.04);
-  border-color: #94d159;
+  border-color: rgba(148, 209, 89, 0.25);
   color: #d4f2b4;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 10px 18px rgba(0, 0, 0, 0.16);
+    0 10px 18px rgba(0, 0, 0, 0.14);
 }
 
 body.theme-dark .dashboard-bar .hero-actions .button-secondary:hover,
@@ -4707,8 +4725,9 @@ body.theme-dark .dashboard-bar .hero-actions .button-secondary:focus-visible {
   border-color: #a7ee72;
   color: #eff9e3;
   box-shadow:
-    0 12px 22px rgba(0, 0, 0, 0.18),
-    0 0 0 1px rgba(148, 209, 89, 0.12);
+    0 12px 20px rgba(0, 0, 0, 0.16),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 16px rgba(148, 209, 89, 0.1);
 }
 
 body.theme-dark .dashboard-bar .hero-actions .button-secondary:active {
