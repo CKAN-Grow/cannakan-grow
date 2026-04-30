@@ -6692,9 +6692,22 @@ function updatePartitionButtonState(row, state) {
     return;
   }
 
+  const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
+  const isCompletedSession = normalizeSessionStatus(sessionStatus) === "completed";
   row.dataset.partitionButtonState = state;
   button.classList.toggle("partition-btn--in-progress", state === "in-progress");
   button.classList.toggle("partition-btn--complete", state === "complete");
+  if (isCompletedSession) {
+    button.style.setProperty("background", "#363022", "important");
+    button.style.setProperty("border-color", "#a56a3f", "important");
+    button.style.setProperty("color", "#fff", "important");
+    button.style.setProperty("box-shadow", "0 0 0 3px rgba(165, 106, 63, 0.18)", "important");
+  } else {
+    button.style.removeProperty("background");
+    button.style.removeProperty("border-color");
+    button.style.removeProperty("color");
+    button.style.removeProperty("box-shadow");
+  }
 }
 
 function applyPartitionRowVisualState(row) {
@@ -6705,11 +6718,16 @@ function applyPartitionRowVisualState(row) {
   const isDarkTheme = document.body.classList.contains("theme-dark");
   const labels = row.querySelectorAll("label, .detail-cell");
   const fields = row.querySelectorAll('input:not([name="plantedCount"]), select, .custom-select-trigger');
+  const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
+  const isCompletedSession = normalizeSessionStatus(sessionStatus) === "completed";
+  const isCompletedEmpty = row.classList.contains("row-completed-empty");
 
   if (!isDarkTheme) {
     row.style.removeProperty("background");
     row.style.removeProperty("background-image");
     row.style.removeProperty("box-shadow");
+    row.style.removeProperty("opacity");
+    row.style.removeProperty("filter");
     labels.forEach((node) => {
       node.style.removeProperty("background");
       node.style.removeProperty("background-image");
@@ -6721,6 +6739,7 @@ function applyPartitionRowVisualState(row) {
       node.style.removeProperty("-webkit-text-fill-color");
       node.style.removeProperty("border-color");
       node.style.removeProperty("box-shadow");
+      node.style.removeProperty("opacity");
     });
     return;
   }
@@ -6757,6 +6776,15 @@ function applyPartitionRowVisualState(row) {
     row.style.removeProperty("box-shadow");
   }
 
+  if (isCompletedSession && isCompletedEmpty) {
+    row.style.setProperty("opacity", "0.55", "important");
+    row.style.setProperty("filter", "grayscale(0.35)", "important");
+    row.style.setProperty("background", "rgba(255,255,255,0.03)", "important");
+  } else {
+    row.style.removeProperty("opacity");
+    row.style.removeProperty("filter");
+  }
+
   labels.forEach((node) => {
     node.style.setProperty("background", "transparent", "important");
     node.style.setProperty("background-image", "none", "important");
@@ -6770,6 +6798,11 @@ function applyPartitionRowVisualState(row) {
     node.style.setProperty("-webkit-text-fill-color", "#f6f8f5", "important");
     node.style.setProperty("border-color", "#343a35", "important");
     node.style.setProperty("box-shadow", "none", "important");
+    if (isCompletedSession && isCompletedEmpty) {
+      node.style.setProperty("opacity", "0.88", "important");
+    } else {
+      node.style.removeProperty("opacity");
+    }
   });
 }
 
