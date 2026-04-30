@@ -94,6 +94,18 @@ const appState = {
   newSessionSystemType: "",
   newSessionSystemModalOpen: false,
   newSessionReturnHash: "#home",
+  currentRouteHash: "#home",
+  customSelectPositionFrame: 0,
+  unsavedChanges: {
+    active: false,
+    hasUnsavedChanges: false,
+    pageHash: "",
+    baselineSignature: "",
+    getSignature: null,
+    saveFn: null,
+    promptOpen: false,
+    ignoreNextHashChange: false,
+  },
 };
 let sessionTimerInterval = null;
 let backToTopScrollFrame = 0;
@@ -158,6 +170,27 @@ function safeRender() {
   } catch (error) {
     reportAppError(error, "Render failed");
   }
+}
+
+function handleHashChange() {
+  const nextHash = normalizeNavigationHash(window.location.hash || "#home");
+  if (appState.unsavedChanges.ignoreNextHashChange) {
+    appState.unsavedChanges.ignoreNextHashChange = false;
+    safeRender();
+    return;
+  }
+
+  if (shouldBlockNavigationForUnsavedChanges(nextHash)) {
+    const currentHash = normalizeNavigationHash(appState.unsavedChanges.pageHash || appState.currentRouteHash || "#home");
+    if (nextHash !== currentHash) {
+      appState.unsavedChanges.ignoreNextHashChange = true;
+      window.location.hash = currentHash;
+    }
+    promptForUnsavedChangesNavigation(nextHash);
+    return;
+  }
+
+  safeRender();
 }
 
 async function safeBootstrapApp() {
@@ -5808,10 +5841,15 @@ function render() {
   updateAuthStatus();
   syncMockDataBanner();
   updateNavState();
+  appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
   const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
   const pathRoute = window.location.pathname.replace(/^\/+/, "");
   const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
   const [route, id, subroute] = rawRoute.split("/");
+  const isEditableSessionRoute = route === "new" || (route === "sessions" && id && id !== "public");
+  if (!isEditableSessionRoute) {
+    clearUnsavedChangesContext();
+  }
   const finalizeRender = () => {
     renderMockDataAdminSection();
     syncMockDataBanner();
@@ -7428,6 +7466,13 @@ function renderSessionForm(initialSystemType = "KAN") {
       lifecycleSection,
       buildFormLifecycleState(form),
     );
+    refreshUnsavedChangesState();
+  });
+  form.addEventListener("input", () => {
+    refreshUnsavedChangesState();
+  });
+  form.addEventListener("change", () => {
+    refreshUnsavedChangesState();
   });
   const persistNewSessionNoteDraft = () => {
     if (!notesField) {
@@ -7649,23 +7694,22 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   bindPartitionRowHighlighting(form);
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const persistNewSession = async ({ navigateOnSuccess = true } = {}) => {
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
       form.elements.timeDisplay?.focus();
-      return;
+      return null;
     }
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
       formMessage.textContent = "";
-        sessionStatusTrigger?.focus();
-        return;
-      }
+      sessionStatusTrigger?.focus();
+      return null;
+    }
 
     const validation = validatePartitions(form, { showMessage: true });
     if (!validation.isValid) {
       formMessage.textContent = "Please complete all partition fields before saving";
       validation.firstInvalidField?.focus();
-      return;
+      return null;
     }
 
     formMessage.textContent = "";
@@ -7722,10 +7766,26 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
       }
-      window.location.hash = `#sessions/${savedSession.id}`;
+      markUnsavedChangesSaved();
+      if (navigateOnSuccess) {
+        navigateWithUnsavedChangesBypass(`#sessions/${savedSession.id}`);
+      }
+      return savedSession;
     } catch (error) {
       formMessage.textContent = error.message || "Could not save session.";
+      return null;
     }
+  };
+
+  registerUnsavedChangesContext({
+    pageHash: appState.currentRouteHash,
+    getSignature: () => buildNewSessionDraftSignature(form),
+    saveFn: persistNewSession,
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await persistNewSession();
   });
 }
 
@@ -8500,6 +8560,9 @@ function renderSessionDetail(sessionId) {
       buildSessionLifecycleState(session),
     );
   };
+  const refreshDetailUnsavedChanges = () => {
+    refreshUnsavedChangesState();
+  };
   partitions.querySelectorAll(".partition-row").forEach((row) => {
     row.querySelectorAll("input, select").forEach((field) => {
       const eventName = field.tagName === "SELECT" ? "change" : "input";
@@ -8515,6 +8578,7 @@ function renderSessionDetail(sessionId) {
         updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
         refreshDetailDerivedViews();
         detailSaveMessage.textContent = "";
+        refreshDetailUnsavedChanges();
       });
       field.addEventListener("blur", () => {
         validatePartitionRow(row);
@@ -8527,6 +8591,7 @@ function renderSessionDetail(sessionId) {
         });
         updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
         refreshDetailDerivedViews();
+        refreshDetailUnsavedChanges();
       });
     });
     validatePartitionRow(row);
@@ -8558,7 +8623,11 @@ function renderSessionDetail(sessionId) {
       detailLifecycleSection,
       buildSessionLifecycleState(session),
     );
-    saveSessionUpdate(session);
+    void saveSessionUpdate(session).then((savedSession) => {
+      if (savedSession) {
+        markUnsavedChangesSaved();
+      }
+    });
   });
   startSessionTimer(() => {
     updateSessionStatusReminder(
@@ -8626,7 +8695,10 @@ function renderSessionDetail(sessionId) {
     syncSessionPartitionsFromContainer(session, partitions);
     refreshDetailDerivedViews();
 
-    await saveSessionUpdate(session);
+    const savedSession = await saveSessionUpdate(session);
+    if (savedSession) {
+      markUnsavedChangesSaved();
+    }
   });
 
   const persistDetailSession = async () => {
@@ -8637,7 +8709,17 @@ function renderSessionDetail(sessionId) {
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
     detailSaveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
+    if (savedSession) {
+      markUnsavedChangesSaved();
+    }
+    return savedSession;
   };
+
+  registerUnsavedChangesContext({
+    pageHash: appState.currentRouteHash,
+    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detailStatusField, detailNotesField),
+    saveFn: persistDetailSession,
+  });
 
   detailSaveShortcutButton?.addEventListener("click", persistDetailSession);
   detailSaveButton?.addEventListener("click", persistDetailSession);
@@ -8649,6 +8731,10 @@ function renderSessionDetail(sessionId) {
       if (detailNotesField) {
         detailNotesField.value = session.sessionNotes || "";
       }
+      patchUnsavedChangesBaseline((baseline, current) => ({
+        ...baseline,
+        sessionNotes: current.sessionNotes,
+      }));
       if (detailNotesMessage) {
         detailNotesMessage.textContent = "Note saved.";
         detailNotesMessage.classList.remove("is-error");
@@ -8670,6 +8756,7 @@ function renderSessionDetail(sessionId) {
 
     detailNotesMessage.textContent = "";
     detailNotesMessage.classList.remove("is-error");
+    refreshDetailUnsavedChanges();
   });
 
   document.querySelector("#delete-session").addEventListener("click", async () => {
@@ -8680,7 +8767,7 @@ function renderSessionDetail(sessionId) {
 
     try {
       await deleteCloudSession(sessionId);
-      window.location.hash = "#sessions";
+      navigateWithUnsavedChangesBypass("#sessions");
     } catch (error) {
       window.alert(error.message || "Could not delete session.");
     }
@@ -10626,6 +10713,265 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function normalizeNavigationHash(hash) {
+  const raw = String(hash || "").trim();
+  if (!raw || raw === "#") {
+    return "#home";
+  }
+
+  return raw.startsWith("#") ? raw : `#${raw.replace(/^#+/, "")}`;
+}
+
+function buildPartitionDraftValuesFromContainer(container) {
+  if (!container) {
+    return [];
+  }
+
+  return [...container.querySelectorAll(".partition-row")].map((row, index) => ({
+    id: Number(row.dataset.partitionId) || index + 1,
+    source: String(row.querySelector('input[name^="source-"]')?.value || "").trim(),
+    seedVariety: String(row.querySelector('input[name^="seedVariety-"]')?.value || "").trim(),
+    seedType: String(row.querySelector('select[name^="seedType-"]')?.value || "").trim(),
+    feminized: String(row.querySelector('select[name^="feminized-"]')?.value || "").trim(),
+    seedCount: String(row.querySelector('input[name^="seedCount-"]')?.value || "").trim(),
+    plantedCount: String(row.querySelector('input[name="plantedCount"]')?.value || "").trim(),
+  }));
+}
+
+function buildNewSessionDraftSignature(form) {
+  if (!form) {
+    return "";
+  }
+
+  return JSON.stringify({
+    sessionName: String(form.elements.sessionName?.value || "").trim(),
+    date: String(form.elements.date?.value || "").trim(),
+    time: String(form.elements.time?.value || "").trim(),
+    timeDisplay: String(form.elements.timeDisplay?.value || "").trim(),
+    systemType: String(form.elements.systemType?.value || "").trim(),
+    unitId: String(form.elements.unitId?.value || "").trim(),
+    sessionStatus: String(form.elements.sessionStatus?.value || "").trim(),
+    sessionNotes: String(form.elements.sessionNotes?.value || "").trim(),
+    germinationStartedAt: String(form.dataset.germinationStartedAt || "").trim(),
+    firstPlantedAt: String(form.dataset.firstPlantedAt || "").trim(),
+    completedAt: String(form.dataset.completedAt || "").trim(),
+    partitions: buildPartitionDraftValuesFromContainer(form.querySelector("#partition-fields")),
+  });
+}
+
+function buildSessionDetailDraftSignature(session, partitions, statusField, notesField) {
+  return JSON.stringify({
+    sessionId: String(session?.id || "").trim(),
+    sessionStatus: String(statusField?.value || session?.sessionStatus || "").trim(),
+    sessionNotes: String(notesField?.value || session?.sessionNotes || "").trim(),
+    germinationStartedAt: String(session?.germinationStartedAt || "").trim(),
+    firstPlantedAt: String(session?.firstPlantedAt || "").trim(),
+    completedAt: String(session?.completedAt || "").trim(),
+    partitions: buildPartitionDraftValuesFromContainer(partitions),
+  });
+}
+
+function clearUnsavedChangesContext() {
+  appState.unsavedChanges.active = false;
+  appState.unsavedChanges.hasUnsavedChanges = false;
+  appState.unsavedChanges.pageHash = "";
+  appState.unsavedChanges.baselineSignature = "";
+  appState.unsavedChanges.getSignature = null;
+  appState.unsavedChanges.saveFn = null;
+  appState.unsavedChanges.promptOpen = false;
+}
+
+function registerUnsavedChangesContext({ pageHash, getSignature, saveFn }) {
+  if (typeof getSignature !== "function" || typeof saveFn !== "function") {
+    clearUnsavedChangesContext();
+    return;
+  }
+
+  appState.unsavedChanges.active = true;
+  appState.unsavedChanges.pageHash = normalizeNavigationHash(pageHash || window.location.hash || "#home");
+  appState.unsavedChanges.getSignature = getSignature;
+  appState.unsavedChanges.saveFn = saveFn;
+  appState.unsavedChanges.baselineSignature = getSignature();
+  appState.unsavedChanges.hasUnsavedChanges = false;
+}
+
+function refreshUnsavedChangesState() {
+  if (!appState.unsavedChanges.active || typeof appState.unsavedChanges.getSignature !== "function") {
+    appState.unsavedChanges.hasUnsavedChanges = false;
+    return false;
+  }
+
+  const currentSignature = appState.unsavedChanges.getSignature();
+  appState.unsavedChanges.hasUnsavedChanges = currentSignature !== appState.unsavedChanges.baselineSignature;
+  return appState.unsavedChanges.hasUnsavedChanges;
+}
+
+function markUnsavedChangesSaved() {
+  if (!appState.unsavedChanges.active || typeof appState.unsavedChanges.getSignature !== "function") {
+    appState.unsavedChanges.hasUnsavedChanges = false;
+    return;
+  }
+
+  appState.unsavedChanges.baselineSignature = appState.unsavedChanges.getSignature();
+  appState.unsavedChanges.hasUnsavedChanges = false;
+}
+
+function patchUnsavedChangesBaseline(mutator) {
+  if (!appState.unsavedChanges.active || typeof appState.unsavedChanges.getSignature !== "function") {
+    return;
+  }
+
+  try {
+    const baseline = JSON.parse(appState.unsavedChanges.baselineSignature || "{}");
+    const current = JSON.parse(appState.unsavedChanges.getSignature() || "{}");
+    const nextBaseline = mutator({ ...baseline }, current) || baseline;
+    appState.unsavedChanges.baselineSignature = JSON.stringify(nextBaseline);
+    refreshUnsavedChangesState();
+  } catch {
+    markUnsavedChangesSaved();
+  }
+}
+
+function hasPendingUnsavedSessionChanges() {
+  return refreshUnsavedChangesState();
+}
+
+function shouldBlockNavigationForUnsavedChanges(nextHash = window.location.hash || "#home") {
+  if (!appState.unsavedChanges.active || appState.unsavedChanges.promptOpen) {
+    return false;
+  }
+
+  const currentHash = normalizeNavigationHash(appState.unsavedChanges.pageHash || appState.currentRouteHash || "#home");
+  const targetHash = normalizeNavigationHash(nextHash);
+  if (currentHash === targetHash) {
+    return false;
+  }
+
+  return hasPendingUnsavedSessionChanges();
+}
+
+function navigateWithUnsavedChangesBypass(nextHash) {
+  const targetHash = normalizeNavigationHash(nextHash);
+  appState.unsavedChanges.ignoreNextHashChange = true;
+  clearUnsavedChangesContext();
+  if ((window.location.hash || "#home") === targetHash) {
+    safeRender();
+    return;
+  }
+  window.location.hash = targetHash;
+}
+
+function ensureUnsavedChangesDialog() {
+  let modal = document.querySelector("#unsaved-changes-dialog");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "unsaved-changes-dialog";
+  modal.className = "snapshot-modal unsaved-changes-dialog";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card unsaved-changes-dialog-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Unsaved Changes</p>
+        <h3>You have unsaved changes. Save before leaving?</h3>
+        <p class="muted">You have unsaved changes. Are you sure you want to leave?</p>
+      </div>
+      <p id="unsaved-changes-dialog-message" class="form-message" role="alert" aria-live="polite"></p>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-primary" data-unsaved-action="save">Save and continue</button>
+        <button type="button" class="button button-danger" data-unsaved-action="leave">Leave without saving</button>
+        <button type="button" class="button button-secondary" data-unsaved-action="cancel">Cancel</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function promptForUnsavedChangesNavigation(nextHash) {
+  const targetHash = normalizeNavigationHash(nextHash);
+  if (appState.unsavedChanges.promptOpen || !appState.unsavedChanges.active) {
+    return;
+  }
+
+  const modal = ensureUnsavedChangesDialog();
+  const message = modal.querySelector("#unsaved-changes-dialog-message");
+  const saveButton = modal.querySelector('[data-unsaved-action="save"]');
+  const leaveButton = modal.querySelector('[data-unsaved-action="leave"]');
+  const cancelButton = modal.querySelector('[data-unsaved-action="cancel"]');
+  if (!(saveButton instanceof HTMLButtonElement) || !(leaveButton instanceof HTMLButtonElement) || !(cancelButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  appState.unsavedChanges.promptOpen = true;
+  if (message) {
+    message.textContent = "";
+    message.classList.remove("is-error");
+  }
+
+  const cleanup = () => {
+    saveButton.disabled = false;
+    leaveButton.disabled = false;
+    cancelButton.disabled = false;
+    appState.unsavedChanges.promptOpen = false;
+    saveButton.onclick = null;
+    leaveButton.onclick = null;
+    cancelButton.onclick = null;
+  };
+
+  cancelButton.onclick = () => {
+    cleanup();
+    if (modal.open) {
+      modal.close();
+    }
+  };
+
+  leaveButton.onclick = () => {
+    cleanup();
+    if (modal.open) {
+      modal.close();
+    }
+    navigateWithUnsavedChangesBypass(targetHash);
+  };
+
+  saveButton.onclick = async () => {
+    saveButton.disabled = true;
+    leaveButton.disabled = true;
+    cancelButton.disabled = true;
+    if (message) {
+      message.textContent = "";
+      message.classList.remove("is-error");
+    }
+
+    try {
+      const didSave = await appState.unsavedChanges.saveFn({ navigateOnSuccess: false, destinationHash: targetHash });
+      if (!didSave) {
+        throw new Error("Could not save this session before leaving.");
+      }
+
+      markUnsavedChangesSaved();
+      cleanup();
+      if (modal.open) {
+        modal.close();
+      }
+      navigateWithUnsavedChangesBypass(targetHash);
+    } catch (error) {
+      if (message) {
+        message.textContent = error.message || "Could not save this session before leaving.";
+        message.classList.add("is-error");
+      }
+      saveButton.disabled = false;
+      leaveButton.disabled = false;
+      cancelButton.disabled = false;
+    }
+  };
+
+  modal.addEventListener("close", cleanup, { once: true });
+  modal.showModal();
+  saveButton.focus();
+}
+
 function capitalize(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -10643,6 +10989,19 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const internalLink = event.target instanceof Element
+    ? event.target.closest('a[href^="#"]')
+    : null;
+  if (internalLink instanceof HTMLAnchorElement) {
+    const targetHash = normalizeNavigationHash(internalLink.getAttribute("href") || "#home");
+    if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
+      event.preventDefault();
+      event.stopPropagation();
+      promptForUnsavedChangesNavigation(targetHash);
+      return;
+    }
+  }
+
   const newSessionTrigger = event.target instanceof Element
     ? event.target.closest('a[href="#new"]')
     : null;
@@ -10695,8 +11054,17 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+window.addEventListener("beforeunload", (event) => {
+  if (!hasPendingUnsavedSessionChanges()) {
+    return;
+  }
+
+  event.preventDefault();
+  event.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+});
+
 window.addEventListener("resize", requestOpenCustomSelectMenuPositionSync, { passive: true });
 document.addEventListener("scroll", requestOpenCustomSelectMenuPositionSync, true);
-window.addEventListener("hashchange", safeRender);
+window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
