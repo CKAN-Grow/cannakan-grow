@@ -7,6 +7,7 @@ const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
+const BACK_TO_TOP_VISIBILITY_OFFSET = 360;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const AUTH_NAVIGATION_KEYS = [
@@ -93,6 +94,7 @@ const appState = {
   newSessionReturnHash: "#home",
 };
 let sessionTimerInterval = null;
+let backToTopScrollFrame = 0;
 const templates = {
   auth: document.querySelector("#auth-template"),
   setup: document.querySelector("#setup-template"),
@@ -193,6 +195,68 @@ function updateFileUploadName(input, files = input?.files) {
   }
 
   nameElement.textContent = getFileUploadNameLabel(input, files);
+}
+
+function shouldShowBackToTopButton() {
+  return window.scrollY > BACK_TO_TOP_VISIBILITY_OFFSET;
+}
+
+function updateBackToTopButtonVisibility() {
+  const button = document.querySelector("#back-to-top-button");
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const isVisible = shouldShowBackToTopButton();
+  button.classList.toggle("is-visible", isVisible);
+  button.setAttribute("aria-hidden", isVisible ? "false" : "true");
+  button.tabIndex = isVisible ? 0 : -1;
+}
+
+function requestBackToTopButtonVisibilitySync() {
+  if (backToTopScrollFrame) {
+    return;
+  }
+
+  backToTopScrollFrame = window.requestAnimationFrame(() => {
+    backToTopScrollFrame = 0;
+    updateBackToTopButtonVisibility();
+  });
+}
+
+function ensureBackToTopButton() {
+  if (!(document.body instanceof HTMLBodyElement)) {
+    return null;
+  }
+
+  let button = document.querySelector("#back-to-top-button");
+  if (!(button instanceof HTMLButtonElement)) {
+    button = document.createElement("button");
+    button.type = "button";
+    button.id = "back-to-top-button";
+    button.className = "back-to-top-button";
+    button.setAttribute("aria-label", "Back to top");
+    button.setAttribute("aria-hidden", "true");
+    button.tabIndex = -1;
+    button.innerHTML = `
+      <span class="back-to-top-button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 19V5"></path>
+          <path d="M6.5 10.5 12 5l5.5 5.5"></path>
+        </svg>
+      </span>
+    `;
+    button.addEventListener("click", () => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    });
+    document.body.appendChild(button);
+  }
+
+  updateBackToTopButtonVisibility();
+  return button;
 }
 
 function bindFileUploadControl(input) {
@@ -5443,10 +5507,14 @@ function render() {
   const finalizeRender = () => {
     renderMockDataAdminSection();
     syncMockDataBanner();
+    ensureBackToTopButton();
+    requestBackToTopButtonVisibilitySync();
   };
 
   if (!appState.initialized || appState.loading) {
     app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
+    ensureBackToTopButton();
+    requestBackToTopButtonVisibilitySync();
     return;
   }
 
@@ -10246,6 +10314,8 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
   reportAppError(event.reason instanceof Error ? event.reason : new Error(String(event.reason || "Unhandled promise rejection")), "Unhandled Promise Rejection");
 });
+
+window.addEventListener("scroll", requestBackToTopButtonVisibilitySync, { passive: true });
 
 document.addEventListener("click", (event) => {
   const newSessionTrigger = event.target instanceof Element

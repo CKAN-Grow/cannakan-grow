@@ -234,6 +234,92 @@ body.theme-dark .app-logo--dark {
   background: rgba(24, 34, 24, 0.05);
 }
 
+.back-to-top-button {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(43, 111, 65, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(43, 111, 65, 0.96) 0%, rgba(29, 77, 45, 0.96) 100%);
+  color: #f5fbf2;
+  box-shadow:
+    0 16px 28px rgba(29, 49, 33, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.94);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease,
+    visibility 0.22s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+  z-index: 34;
+}
+
+.back-to-top-button.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.back-to-top-button:hover,
+.back-to-top-button:focus-visible {
+  border-color: rgba(148, 209, 89, 0.42);
+  box-shadow:
+    0 18px 32px rgba(29, 49, 33, 0.24),
+    0 0 0 4px rgba(148, 209, 89, 0.16),
+    0 0 22px rgba(148, 209, 89, 0.24);
+}
+
+.back-to-top-button:focus-visible {
+  outline: none;
+}
+
+.back-to-top-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.back-to-top-button-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.theme-dark .back-to-top-button {
+  border-color: rgba(148, 209, 89, 0.22);
+  background: linear-gradient(180deg, rgba(148, 209, 89, 0.96) 0%, rgba(122, 181, 66, 0.94) 100%);
+  color: #132010;
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(148, 209, 89, 0.14);
+}
+
+body.theme-dark .back-to-top-button:hover,
+body.theme-dark .back-to-top-button:focus-visible {
+  border-color: rgba(208, 244, 168, 0.46);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.34),
+    0 0 0 4px rgba(148, 209, 89, 0.18),
+    0 0 22px rgba(148, 209, 89, 0.26);
+}
+
 .account-menu-item.is-danger {
   color: var(--danger);
 }
@@ -2259,6 +2345,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 @media (max-width: 640px) {
+  .back-to-top-button {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+  }
+
   .public-session-layout {
     grid-template-columns: 1fr;
   }
