@@ -2461,13 +2461,25 @@ function getSnapshotStateForSection(state) {
     : normalizePersistedSessionSnapshotState(state?.pendingSnapshotState);
 }
 
+function hasSubmittedGallerySnapshotState(snapshotState) {
+  if (!snapshotState) {
+    return false;
+  }
+
+  if (snapshotState.gallerySnapshotId) {
+    return true;
+  }
+
+  return ["pending", "pending_review", "approved", "rejected"].includes(String(snapshotState.galleryStatus || "").trim());
+}
+
 function renderSnapshotSavedNotice(state) {
   if (!state?.savedSnapshotNotice || !state.savedSnapshotText) {
     return;
   }
 
   const snapshotState = getSnapshotStateForSection(state);
-  if (!snapshotState) {
+  if (!hasSubmittedGallerySnapshotState(snapshotState)) {
     state.savedSnapshotNotice.hidden = true;
     if (state.savedSnapshotLink) {
       state.savedSnapshotLink.hidden = true;
@@ -2489,7 +2501,7 @@ function renderSnapshotSavedNotice(state) {
   state.savedSnapshotNotice.hidden = false;
 
   if (state.savedSnapshotLink) {
-    const shouldShowLink = Boolean(snapshotState.galleryStatus && snapshotState.galleryStatus !== "social-only");
+    const shouldShowLink = hasSubmittedGallerySnapshotState(snapshotState);
     state.savedSnapshotLink.hidden = !shouldShowLink;
     state.savedSnapshotLink.setAttribute(
       "href",
