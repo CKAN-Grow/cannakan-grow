@@ -4540,7 +4540,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 
 .chart-row {
   display: grid;
-  grid-template-columns: 72px minmax(260px, 1fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px 90px;
+  grid-template-columns: 72px minmax(160px, 0.7fr) minmax(260px, 1fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px 90px;
   gap: 10px;
   align-items: center;
 }
@@ -4549,7 +4549,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 .partition-table[data-session-status="unselected"] .chart-row,
 .chart-shell[data-session-status="soaking"] .chart-row,
 .partition-table[data-session-status="soaking"] .chart-row {
-  grid-template-columns: 72px minmax(260px, 1fr) minmax(130px, 150px) minmax(130px, 150px) 90px;
+  grid-template-columns: 72px minmax(160px, 0.7fr) minmax(260px, 1fr) minmax(130px, 150px) minmax(130px, 150px) 90px;
 }
 
 .chart-header {
@@ -5754,19 +5754,19 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
   background: rgba(255, 107, 107, 0.08);
 }
 
-.chart-shell[data-session-status="unselected"] .chart-header span:nth-child(6),
 .chart-shell[data-session-status="unselected"] .chart-header span:nth-child(7),
-.chart-shell[data-session-status="soaking"] .chart-header span:nth-child(6),
+.chart-shell[data-session-status="unselected"] .chart-header span:nth-child(8),
 .chart-shell[data-session-status="soaking"] .chart-header span:nth-child(7),
-.partition-table[data-session-status="unselected"] .partition-row > :nth-child(6),
+.chart-shell[data-session-status="soaking"] .chart-header span:nth-child(8),
 .partition-table[data-session-status="unselected"] .partition-row > :nth-child(7),
-.partition-table[data-session-status="soaking"] .partition-row > :nth-child(6),
-.partition-table[data-session-status="soaking"] .partition-row > :nth-child(7) {
+.partition-table[data-session-status="unselected"] .partition-row > :nth-child(8),
+.partition-table[data-session-status="soaking"] .partition-row > :nth-child(7),
+.partition-table[data-session-status="soaking"] .partition-row > :nth-child(8) {
   display: none;
 }
 
-.chart-shell[data-session-status="germinating"] .chart-header span:nth-child(6),
-.chart-shell[data-session-status="completed"] .chart-header span:nth-child(6) {
+.chart-shell[data-session-status="germinating"] .chart-header span:nth-child(7),
+.chart-shell[data-session-status="completed"] .chart-header span:nth-child(7) {
   background: transparent !important;
   color: inherit !important;
 }
@@ -5797,6 +5797,7 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
 body.theme-dark .partition-table input[type="number"],
 body.theme-dark .partition-table input[name="plantedCount"],
 body.theme-dark .partition-table input[name^="seedCount-"],
+body.theme-dark .partition-table input[name^="source-"],
 body.theme-dark .partition-table input[name^="seedVariety-"] {
   color: #f3f7f1;
   caret-color: #94d159;
@@ -6077,6 +6078,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .partition-row {
     grid-template-areas:
+      "number source"
       "number variety"
       "number type"
       "number sex"
@@ -6087,6 +6089,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .partition-table[data-session-status="germinating"] .partition-row,
   .partition-table[data-session-status="completed"] .partition-row {
     grid-template-areas:
+      "number source"
       "number variety"
       "number type"
       "number sex"
@@ -6105,28 +6108,32 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .partition-row > :nth-child(2) {
-    grid-area: variety;
+    grid-area: source;
   }
 
   .partition-row > :nth-child(3) {
-    grid-area: type;
+    grid-area: variety;
   }
 
   .partition-row > :nth-child(4) {
-    grid-area: sex;
+    grid-area: type;
   }
 
   .partition-row > :nth-child(5) {
-    grid-area: seeds;
+    grid-area: sex;
   }
 
-  .partition-table[data-session-status="germinating"] .partition-row > :nth-child(6),
-  .partition-table[data-session-status="completed"] .partition-row > :nth-child(6) {
-    grid-area: planted;
+  .partition-row > :nth-child(6) {
+    grid-area: seeds;
   }
 
   .partition-table[data-session-status="germinating"] .partition-row > :nth-child(7),
   .partition-table[data-session-status="completed"] .partition-row > :nth-child(7) {
+    grid-area: planted;
+  }
+
+  .partition-table[data-session-status="germinating"] .partition-row > :nth-child(8),
+  .partition-table[data-session-status="completed"] .partition-row > :nth-child(8) {
     grid-area: success;
   }
 

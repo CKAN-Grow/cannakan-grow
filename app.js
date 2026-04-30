@@ -816,6 +816,7 @@ function createSampleSession(config) {
     partitions: config.partitionSeeds.map((partition, index) => ({
       id: index + 1,
       seedVariety: partition[0],
+      source: partition[1],
       breeder: partition[1],
       seedType: partition[2],
       feminized: partition[3],
@@ -836,6 +837,7 @@ function createDefaultPartitions() {
   return Array.from({ length: getPartitionCountForSystem("KAN") }, (_, index) => ({
     id: index + 1,
     seedVariety: "",
+    source: "",
     breeder: "",
     seedType: "",
     feminized: "",
@@ -3736,6 +3738,7 @@ function getFormSnapshotData(form) {
 
   const partitions = [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     id: Number(row.dataset.partitionId) || index + 1,
+    source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
     seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
     plantedCount: Number(row.querySelector('input[name="plantedCount"]')?.value) || 0,
@@ -6017,11 +6020,11 @@ function renderSessionForm(initialSystemType = "KAN") {
     const partitionRows = [...form.querySelectorAll(".partition-row")];
     const partitionEntries = createPartitionsForSystem(formData.get("systemType")).map((partition, index) => {
       const row = partitionRows[index];
-      const parsedSeedVariety = parseSeedVarietyInput(formData.get(`seedVariety-${index}`));
       return {
         id: partition.id,
-        seedVariety: parsedSeedVariety.variety,
-        breeder: parsedSeedVariety.breeder,
+        source: String(formData.get(`source-${index}`) || "").trim(),
+        seedVariety: String(formData.get(`seedVariety-${index}`) || "").trim(),
+        breeder: "",
         seedType: formData.get(`seedType-${index}`),
         feminized: formData.get(`feminized-${index}`),
         seedCount: Number(formData.get(`seedCount-${index}`)) || 0,
@@ -6081,8 +6084,12 @@ function buildPartitionFormCard(partition, index) {
   row.innerHTML = `
     <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
     <label>
+      <span class="mobile-field-label">Source</span>
+        <input type="text" name="source-${index}" class="partition-input" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source">
+    </label>
+    <label>
       <span class="mobile-field-label">Seed Variety</span>
-        <input type="text" name="seedVariety-${index}" class="partition-input" placeholder="Enter seed variety - breeder" aria-label="Partition ${partition.id} seed variety">
+        <input type="text" name="seedVariety-${index}" class="partition-input" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety">
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
     <label>
@@ -6234,7 +6241,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     field.disabled = false;
   });
 
-  scope.querySelectorAll('.partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
+  scope.querySelectorAll('.partition-row input[name^="source-"], .partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
     field.disabled = isCompleted || allowGerminationOnlyEditing;
   });
 
@@ -6513,6 +6520,7 @@ function renderTraPartitionSections(container, partitions) {
 }
 
 function hydratePartitionRow(row, partition) {
+  row.querySelector('input[name^="source-"]').value = formatPartitionSource(partition);
   row.querySelector('input[name^="seedVariety-"]').value = formatPartitionSeedVariety(partition);
   row.querySelector('select[name^="seedType-"]').value = partition.seedType || "";
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
@@ -6522,7 +6530,9 @@ function hydratePartitionRow(row, partition) {
 
 function getCurrentPartitionValues(form) {
   return [...form.querySelectorAll(".partition-row")].map((row) => ({
-    ...parseSeedVarietyInput(row.querySelector('input[name^="seedVariety-"]')?.value || ""),
+    source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
+    seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
+    breeder: "",
     seedType: row.querySelector('select[name^="seedType-"]')?.value || "",
     feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
@@ -7122,6 +7132,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
   const basePartitionState = getPartitionBaseRowState({
+    sourceValue: formatPartitionSource(partition),
     varietyValue: formatPartitionSeedVariety(partition),
     typeValue: partition?.seedType || "",
     sexValue: partition?.feminized || "",
@@ -7135,6 +7146,10 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   row.dataset.partitionBaseState = basePartitionState;
   row.innerHTML = `
     <div class="partition-number partition-btn ${getPartitionButtonClassName(partitionState)}" aria-label="Partition ${partition.id}">${partition.id}</div>
+    <div class="detail-cell">
+      <span class="mobile-field-label">Source</span>
+      <p>${escapeHtml(formatPartitionSource(partition) || "Not set")}</p>
+    </div>
     <div class="detail-cell">
       <span class="mobile-field-label">Seed Variety</span>
       <p>${escapeHtml(formatPartitionSeedVariety(partition) || "Not set")}</p>
@@ -7164,6 +7179,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
 }
 
 function getPartitionBaseRowState(values) {
+  const sourceValue = String(values?.sourceValue || "").trim();
   const varietyValue = String(values?.varietyValue || "").trim();
   const typeValue = String(values?.typeValue || "").trim();
   const sexValue = String(values?.sexValue || "").trim();
@@ -7172,7 +7188,7 @@ function getPartitionBaseRowState(values) {
   const hasSeedCount = seedValue !== "";
   const hasPlantedCount = plantedValue !== "";
 
-  if (varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount) {
+  if (sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount) {
     return "in-progress";
   }
 
@@ -7195,6 +7211,7 @@ function getPartitionRowState(values, sessionStatus = "") {
 
 function getPartitionRowStateFromPartition(partition, sessionStatus = "") {
   return getPartitionRowState({
+    sourceValue: formatPartitionSource(partition),
     varietyValue: formatPartitionSeedVariety(partition),
     typeValue: partition?.seedType || "",
     sexValue: partition?.feminized || "",
@@ -7586,6 +7603,7 @@ function createPartitionsForSystem(systemType) {
   return Array.from({ length: getPartitionCountForSystem(systemType) }, (_, index) => ({
     id: index + 1,
     seedVariety: "",
+    source: "",
     breeder: "",
     seedType: "",
     feminized: "",
@@ -7839,40 +7857,17 @@ function parseSessionStartDateTime(sessionDate, sessionTime) {
   return parsedDate;
 }
 
-function parseSeedVarietyInput(value) {
-  const rawValue = String(value || "").trim();
-  if (!rawValue) {
-    return {
-      variety: "",
-      breeder: "",
-    };
-  }
-
-  const separatorIndex = rawValue.indexOf("-");
-  if (separatorIndex === -1) {
-    return {
-      variety: rawValue,
-      breeder: "",
-    };
-  }
-
-  const variety = rawValue.slice(0, separatorIndex).trim();
-  const breeder = rawValue.slice(separatorIndex + 1).trim();
-  return {
-    variety,
-    breeder,
-  };
+function formatPartitionSeedVariety(partition) {
+  return String(partition?.seedVariety || "").trim();
 }
 
-function formatPartitionSeedVariety(partition) {
-  const variety = String(partition.seedVariety || "").trim();
-  const breeder = String(partition.breeder || "").trim();
-
-  if (!variety) {
-    return "";
+function formatPartitionSource(partition) {
+  const source = String(partition?.source || "").trim();
+  if (source) {
+    return source;
   }
 
-  return breeder ? `${variety} - ${breeder}` : variety;
+  return String(partition?.breeder || "").trim();
 }
 
 function buildFinalSessionName(inputName, firstPartition, sessionDate) {
@@ -8128,6 +8123,7 @@ function validatePartitions(form, options = { showMessage: false }) {
 }
 
 function validatePartitionRow(row) {
+  const sourceInput = row.querySelector('input[name^="source-"]');
   const varietyInput = row.querySelector('input[name^="seedVariety-"]');
   const typeSelect = row.querySelector('select[name^="seedType-"]');
   const sexSelect = row.querySelector('select[name^="feminized-"]');
@@ -8139,6 +8135,7 @@ function validatePartitionRow(row) {
   const seedLabel = seedInput.closest("label");
   const plantedLabel = plantedInput.closest("label");
 
+  const sourceValue = sourceInput.value.trim();
   const varietyValue = varietyInput.value.trim();
   const typeValue = typeSelect.value;
   const sexValue = sexSelect.value;
@@ -8152,12 +8149,13 @@ function validatePartitionRow(row) {
   const seedCountValid = hasSeedCount && seedNumber > 0;
   const plantedCountValid = !hasPlantedCount || (Number.isFinite(plantedNumber) && plantedNumber >= 0 && seedCountValid && plantedNumber <= seedNumber);
 
-  const rowStarted = Boolean(varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount);
+  const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount);
   const fieldsComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
   const rowInvalid = (rowStarted && !fieldsComplete) || !plantedCountValid;
   const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
   const normalizedSessionStatus = normalizeSessionStatus(sessionStatus);
   const rowState = getPartitionRowState({
+    sourceValue,
     varietyValue,
     typeValue,
     sexValue,
@@ -8484,12 +8482,12 @@ function syncSessionPartitionsFromContainer(session, container) {
   }
 
   session.partitions = [...container.querySelectorAll(".partition-row")].map((row, index) => {
-    const parsedSeedVariety = parseSeedVarietyInput(row.querySelector('input[name^="seedVariety-"]')?.value || "");
     const existingPartition = session.partitions?.[index] || {};
     return {
       id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
-      seedVariety: parsedSeedVariety.variety,
-      breeder: parsedSeedVariety.breeder,
+      source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
+      seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
+      breeder: existingPartition.breeder || "",
       seedType: row.querySelector('select[name^="seedType-"]')?.value || "",
       feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
       seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
