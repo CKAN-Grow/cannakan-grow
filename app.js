@@ -6431,9 +6431,6 @@ function renderSessionDetail(sessionId) {
   const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
   const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
   const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
-  const detailSnapshotStatusNotice = document.querySelector("#detail-snapshot-status-notice");
-  const detailSnapshotStatusCopy = document.querySelector("#detail-snapshot-status-copy");
-  const detailSnapshotStatusLink = document.querySelector("#detail-snapshot-status-link");
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
   const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
@@ -6520,9 +6517,6 @@ function renderSessionDetail(sessionId) {
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
     includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
     galleryNote: detailSnapshotGalleryNote,
-    savedSnapshotNotice: detailSnapshotStatusNotice,
-    savedSnapshotText: detailSnapshotStatusCopy,
-    savedSnapshotLink: detailSnapshotStatusLink,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,
     getGallerySession: () => session,
