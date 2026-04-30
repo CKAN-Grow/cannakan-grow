@@ -217,6 +217,7 @@ for select
 using (
   status = 'approved'
   or auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -238,6 +239,7 @@ for update
 to authenticated
 using (
   auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -246,6 +248,7 @@ using (
 )
 with check (
   auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -260,6 +263,7 @@ for delete
 to authenticated
 using (
   auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com'])
   or exists (
     select 1
     from public.admin_users
@@ -267,7 +271,7 @@ using (
   )
 );
 
--- To make yourself an admin, add your Supabase auth user id and email to public.admin_users.
+-- Keep this email allowlist in sync with ADMIN_EMAILS in app.js before production.
 
 insert into storage.buckets (id, name, public)
 values ('session-images', 'session-images', true)

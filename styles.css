@@ -2091,6 +2091,23 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #8b383b;
 }
 
+.gallery-review-status-badge.is-private {
+  background: rgba(88, 102, 94, 0.16);
+  color: #35433c;
+}
+
+.gallery-admin-reject {
+  border-color: rgba(166, 61, 64, 0.42);
+  color: #b44d52;
+  background: rgba(166, 61, 64, 0.08);
+}
+
+.gallery-admin-reject:hover {
+  border-color: rgba(200, 84, 88, 0.52);
+  color: #c96266;
+  background: rgba(166, 61, 64, 0.12);
+}
+
 .snapshot-preview-card {
   position: relative;
   margin: 0;
@@ -4676,6 +4693,23 @@ body.theme-dark .gallery-review-status-badge.is-approved {
 body.theme-dark .gallery-review-status-badge.is-rejected {
   background: rgba(255, 107, 107, 0.18);
   color: #ffb3b3;
+}
+
+body.theme-dark .gallery-review-status-badge.is-private {
+  background: rgba(129, 144, 135, 0.18);
+  color: #e1e8e3;
+}
+
+body.theme-dark .gallery-admin-reject {
+  background: rgba(123, 45, 49, 0.16);
+  border-color: rgba(255, 107, 107, 0.32);
+  color: #ffb3b3;
+}
+
+body.theme-dark .gallery-admin-reject:hover {
+  background: rgba(123, 45, 49, 0.22);
+  border-color: rgba(255, 107, 107, 0.4);
+  color: #ffd0d0;
 }
 
 body.theme-dark .gallery-hero-section {
