@@ -2319,7 +2319,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
   margin-top: 12px;
 }
 
@@ -2339,12 +2339,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
   margin-top: 12px;
   padding: 18px 20px;
-  border: 1px solid rgba(148, 209, 89, 0.12);
+  align-content: start;
+  border: 1px solid rgba(148, 209, 89, 0.16);
   background:
-    linear-gradient(180deg, rgba(244, 248, 243, 0.62) 0%, rgba(234, 241, 233, 0.46) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
+    linear-gradient(180deg, rgba(244, 248, 243, 0.72) 0%, rgba(234, 241, 233, 0.48) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.11), rgba(43, 111, 65, 0.04) 58%);
   box-shadow:
-    0 10px 24px rgba(24, 34, 24, 0.05),
+    0 14px 30px rgba(24, 34, 24, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 24px rgba(148, 209, 89, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
@@ -2359,19 +2362,24 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   opacity: 0.9;
 }
 
-.home-install-card-shell {
+.home-install-card-header {
+  padding: 0 0 14px;
+  border-bottom: 1px solid rgba(148, 209, 89, 0.14);
+}
+
+.home-install-card-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
-  align-items: center;
+  align-content: space-between;
+  min-height: 0;
+  height: 100%;
 }
 
 .home-install-card-copy {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   min-width: 0;
-  flex-wrap: wrap;
 }
 
 .home-install-card-copy h3,
@@ -2379,21 +2387,54 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin: 0;
 }
 
+.home-install-card-copy-block {
+  min-width: 0;
+}
+
 .home-install-card-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(195, 243, 138, 0.28), transparent 58%),
+    linear-gradient(180deg, rgba(148, 209, 89, 0.2) 0%, rgba(148, 209, 89, 0.09) 100%);
+  color: #5f8c31;
+  box-shadow:
+    0 10px 22px rgba(148, 209, 89, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.home-install-card-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .home-install-card-subtitle {
   margin-top: 4px;
+  max-width: 28ch;
 }
 
 .home-install-card-actions,
 .home-install-card-status {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
+}
+
+.home-install-card-actions .install-app-button,
+.home-install-card-status-pill {
+  min-width: 100%;
+  justify-content: center;
 }
 
 .home-install-card-status-pill {
@@ -2412,6 +2453,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card-directions {
   display: grid;
   gap: 8px;
+  align-content: start;
 }
 
 .home-install-card-directions p {
@@ -4967,10 +5009,6 @@ body.theme-dark .theme-toggle-button:hover {
     gap: 12px;
   }
 
-  .home-install-card-shell {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .home-install-card-actions,
   .home-install-card-status {
     justify-content: flex-start;
@@ -6722,13 +6760,31 @@ body.theme-dark .home-gallery-rankings-card {
 }
 
 body.theme-dark .home-install-card {
-  border-color: rgba(148, 209, 89, 0.14);
+  border-color: rgba(148, 209, 89, 0.16);
   background:
-    linear-gradient(180deg, rgba(31, 42, 34, 0.92) 0%, rgba(24, 33, 27, 0.84) 100%),
+    linear-gradient(180deg, rgba(34, 47, 38, 0.96) 0%, rgba(24, 33, 27, 0.86) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
   box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 18px 30px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 22px rgba(148, 209, 89, 0.07),
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .home-install-card-header {
+  border-bottom-color: rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .home-install-card-icon {
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(195, 243, 138, 0.16), transparent 56%),
+    linear-gradient(180deg, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.06) 100%);
+  color: #b3e578;
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.16),
+    0 0 18px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 body.theme-dark .home-install-card-subtitle,

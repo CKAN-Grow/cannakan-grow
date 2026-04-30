@@ -7181,27 +7181,31 @@ function renderHomeInstallInfoCardMarkup() {
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
-      <div class="home-install-card-shell">
+      <div class="home-install-card-header">
         <div class="home-install-card-copy">
-          <span class="install-app-banner-icon home-install-card-icon" aria-hidden="true">
+          <span class="home-install-card-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M12 3.5 5.5 7v5.5c0 3.8 2.4 7 6.5 8 4.1-1 6.5-4.2 6.5-8V7L12 3.5Z"></path>
-              <path d="M12 8v8"></path>
-              <path d="m8.75 11.25 3.25-3.25 3.25 3.25"></path>
+              <rect x="6.5" y="2.75" width="11" height="18.5" rx="2.8"></rect>
+              <path d="M10.25 5.75h3.5"></path>
+              <path d="M9.75 17.25h4.5"></path>
+              <path d="M12 8.5v4.2"></path>
+              <path d="m9.95 10.65 2.05 2.05 2.05-2.05"></path>
             </svg>
           </span>
-          <div>
-            <p class="eyebrow">Install App</p>
+          <div class="home-install-card-copy-block">
+            <p class="eyebrow">Get the App</p>
             <h3 id="home-install-card-title">Install Cannakan Grow</h3>
             <p class="muted home-install-card-subtitle">Add Cannakan Grow to your phone for a full-screen app experience.</p>
           </div>
         </div>
-        ${actionMarkup}
       </div>
-      <div class="home-install-card-directions">
-        <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
-        <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
-        ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
+      <div class="home-install-card-body">
+        <div class="home-install-card-directions">
+          <p><strong>iPhone:</strong> Open in Safari, tap Share, then Add to Home Screen.</p>
+          <p><strong>Android:</strong> Open in Chrome, tap Install App or Add to Home Screen.</p>
+          ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
+        </div>
+        ${actionMarkup}
       </div>
     </section>
   `;
