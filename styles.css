@@ -1531,16 +1531,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-gallery-header-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 14px;
   width: 100%;
+}
+
+.snapshot-gallery-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 26px;
 }
 
 .snapshot-gallery-icon {
   width: 192px;
   height: 192px;
-  flex: 0 0 192px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1560,11 +1569,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-gallery-header-content {
   display: grid;
-  gap: 0;
-  align-content: center;
-  justify-items: start;
+  gap: 6px;
+  align-content: start;
+  justify-items: center;
   min-width: 0;
-  flex: 1 1 auto;
+  width: 100%;
+  text-align: center;
 }
 
 .snapshot-gallery-eyebrow {
@@ -1589,6 +1599,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--muted);
   line-height: 1.45;
   font-size: 0.92rem;
+  text-align: center;
 }
 
 .snapshot-gallery-button-row {
@@ -1601,14 +1612,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
 }
 
-.snapshot-gallery-header-row:hover .snapshot-gallery-icon,
-.snapshot-gallery-header-row:focus-within .snapshot-gallery-icon {
+.snapshot-gallery-icon-link:hover .snapshot-gallery-icon,
+.snapshot-gallery-icon-link:focus-visible .snapshot-gallery-icon {
   border-color: rgba(148, 209, 89, 0.42);
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.015);
   box-shadow:
     0 0 16px rgba(148, 209, 89, 0.16),
     0 14px 28px rgba(24, 34, 24, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.snapshot-gallery-icon-link:focus-visible {
+  outline: none;
 }
 
 .snapshot-gallery-collage {
@@ -4945,8 +4960,8 @@ body.theme-dark .snapshot-gallery-icon {
     0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-body.theme-dark .snapshot-gallery-header-row:hover .snapshot-gallery-icon,
-body.theme-dark .snapshot-gallery-header-row:focus-within .snapshot-gallery-icon {
+body.theme-dark .snapshot-gallery-icon-link:hover .snapshot-gallery-icon,
+body.theme-dark .snapshot-gallery-icon-link:focus-visible .snapshot-gallery-icon {
   border-color: rgba(148, 209, 89, 0.42);
   box-shadow:
     0 0 18px rgba(148, 209, 89, 0.18),
