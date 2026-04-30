@@ -2761,6 +2761,49 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
   `;
 }
 
+function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
+  switch (iconType) {
+    case "all-time":
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="M12 7v5l3 2"></path>
+        </svg>
+      `;
+    case "streak":
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M13 3 6 14h5l-1 7 8-12h-5l0-6Z"></path>
+        </svg>
+      `;
+    case "month":
+    default:
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4.5" y="5.5" width="15" height="14" rx="2.5"></rect>
+          <path d="M8 3.5v4M16 3.5v4M4.5 9.5h15"></path>
+          <path d="M8.5 13h3M8.5 16h7"></path>
+        </svg>
+      `;
+  }
+}
+
+function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "month") {
+  return `
+    <div class="gallery-leaderboard-card-heading">
+      <div class="gallery-leaderboard-card-heading-row">
+        <span class="gallery-leaderboard-section-icon" aria-hidden="true">
+          ${renderGalleryLeaderboardSectionHeadingIcon(iconType)}
+        </span>
+        <div class="gallery-leaderboard-card-heading-copy">
+          <h4>${escapeHtml(title)}</h4>
+          <p class="eyebrow">${escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessage = "Not enough approved monthly data yet.") {
   if (!streakEntry) {
     return `
@@ -2815,45 +2858,27 @@ function renderGalleryLeaderboardSection() {
     ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">This Month</p>
-          <h4>Top 3 Sources</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "This Month", "month")}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">This Month</p>
-          <h4>Top 3 Seed Varieties</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "This Month", "month")}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">All Time</p>
-          <h4>Top 3 Sources</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All Time", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">All Time</p>
-          <h4>Top 3 Seed Varieties</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All Time", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">Longest Streak on Top</p>
-          <h4>#1 Source</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("#1 Source", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
       </article>
       <article class="gallery-leaderboard-card">
-        <div class="gallery-leaderboard-card-heading">
-          <p class="eyebrow">Longest Streak on Top</p>
-          <h4>#1 Seed Variety</h4>
-        </div>
+        ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
     </div>
