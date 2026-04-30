@@ -3,7 +3,7 @@ const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
-const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - testing only";
+const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
@@ -3161,7 +3161,6 @@ function updateAuthStatus() {
       <div class="auth-profile-chip">
         ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
         <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
-        ${isMockDataEnabled() ? `<span class="auth-pill">${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</span>` : ""}
       </div>
       <button
         id="account-menu-trigger"
@@ -6114,18 +6113,30 @@ function renderHome() {
 }
 
 function syncMockDataBanner() {
-  const existingBanner = document.querySelector("#mock-data-banner");
+  if (!app) {
+    return;
+  }
+
+  const existingBanner = app.querySelector("#mock-data-banner");
   if (!isMockDataEnabled()) {
     existingBanner?.remove();
     return;
   }
 
-  const banner = existingBanner || document.createElement("div");
+  const banner = existingBanner || document.createElement("section");
   banner.id = "mock-data-banner";
-  banner.className = "mock-data-banner";
-  banner.textContent = MOCK_DATA_ACTIVE_NOTICE;
+  banner.className = "card mock-data-banner";
+  banner.innerHTML = `
+    <span class="mock-data-banner-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M12 3.5 4.5 7.2V12c0 4.1 2.7 7.8 7.5 8.8 4.8-1 7.5-4.7 7.5-8.8V7.2L12 3.5Z"></path>
+        <path d="M9.5 12.2 11 13.7l3.6-3.9"></path>
+      </svg>
+    </span>
+    <span class="mock-data-banner-copy">${escapeHtml(MOCK_DATA_ACTIVE_NOTICE)}</span>
+  `;
   if (!existingBanner) {
-    document.body.appendChild(banner);
+    app.prepend(banner);
   }
 }
 
@@ -6135,19 +6146,33 @@ function renderMockDataAdminSection() {
   }
 
   const section = document.createElement("section");
-  section.className = "card mock-data-admin-section";
+  section.className = `card mock-data-admin-section ${isMockDataEnabled() ? "is-on" : "is-off"}`;
   section.innerHTML = `
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">Developer Mode</p>
-        <h3>DEV MODE: Mock Data ${isMockDataEnabled() ? "ON" : "OFF"}</h3>
+    <div class="mock-data-admin-shell">
+      <div class="mock-data-admin-copy">
+        <p class="eyebrow">Admin Utility</p>
+        <h3>Dev Mode</h3>
+        <p class="mock-data-admin-subtitle">Mock gallery data</p>
         <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
       </div>
       <div class="mock-data-admin-actions">
-        <button type="button" class="button ${isMockDataEnabled() ? "button-secondary" : "button-primary"}" data-mock-data-toggle="true">
-          DEV MODE: Mock Data ${isMockDataEnabled() ? "ON" : "OFF"}
+        <button
+          type="button"
+          class="mock-data-toggle ${isMockDataEnabled() ? "is-on" : "is-off"}"
+          data-mock-data-toggle="true"
+          aria-pressed="${isMockDataEnabled() ? "true" : "false"}"
+          aria-label="Toggle Dev Mode mock gallery data"
+        >
+          <span class="mock-data-toggle-text">
+            <span class="mock-data-toggle-label">Dev Mode</span>
+            <span class="mock-data-toggle-sublabel">Mock gallery data</span>
+          </span>
+          <span class="mock-data-toggle-switch" aria-hidden="true">
+            <span class="mock-data-toggle-thumb"></span>
+          </span>
+          <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
         </button>
-        <p class="muted">Shortcut: Shift + D</p>
+        <p class="muted">Shift + D</p>
       </div>
     </div>
   `;
