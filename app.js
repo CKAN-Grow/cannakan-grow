@@ -9241,6 +9241,22 @@ function buildHomeGalleryRankingsTeaserState() {
   };
 }
 
+function formatInstallPreviewElapsed(days, hours) {
+  const normalizedDays = Number.isFinite(Number(days)) ? Math.max(0, Math.floor(Number(days))) : 0;
+  const normalizedHours = Number.isFinite(Number(hours)) ? Math.max(0, Math.floor(Number(hours))) : 0;
+  const parts = [];
+
+  if (normalizedDays > 0) {
+    parts.push(`${normalizedDays} day${normalizedDays === 1 ? "" : "s"}`);
+  }
+
+  if (normalizedHours > 0 || !parts.length) {
+    parts.push(`${normalizedHours} hour${normalizedHours === 1 ? "" : "s"}`);
+  }
+
+  return parts.join(" ");
+}
+
 function renderHomeGalleryRankingsTeaser() {
   const teaserState = buildHomeGalleryRankingsTeaserState();
   const { snapshots, approvedPublicSnapshots, monthlySnapshots, rankings } = teaserState;
@@ -13375,6 +13391,7 @@ function renderHomeInstallInfoCardMarkup() {
       : hasDeferredPrompt
         ? "Install directly from this browser for a faster full-screen experience."
         : "Install becomes available on supported browsers like Chrome.";
+  const installPreviewElapsed = formatInstallPreviewElapsed(2, 14);
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
@@ -13404,7 +13421,7 @@ function renderHomeInstallInfoCardMarkup() {
                 </div>
                 <div class="home-install-phone-metric">
                   <span>Time Elapsed</span>
-                  <strong>2d 14h</strong>
+                  <strong>${escapeHtml(installPreviewElapsed)}</strong>
                 </div>
               </div>
               <div class="home-install-phone-actions">
