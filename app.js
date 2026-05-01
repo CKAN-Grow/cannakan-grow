@@ -13213,84 +13213,114 @@ function renderHomeInstallInfoCardMarkup() {
   const isInstalled = isStandaloneAppDisplay();
   const isIOS = isIOSDevice();
   const cardStateClass = isInstalled ? "is-installed" : "";
-  const showIosInstructions = isIOS && !isInstalled;
   const hasDeferredPrompt = !isIOS && mode === "prompt";
-  const cardTitle = showIosInstructions ? "Install the Grow App" : "Install Cannakan Grow";
-  const bodyContentMarkup = isInstalled
-    ? ""
-    : showIosInstructions
-      ? `
-      <p class="muted home-install-card-description">Tap Share (square with arrow) → Add to Home Screen</p>
-      <div class="home-install-card-directions">
-        <p class="home-install-card-tip">Tap Share (square with arrow) → Add to Home Screen</p>
-      </div>
-    `
-      : `
-      <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
-      <div class="home-install-card-directions">
-        <section class="home-install-card-platform">
-          <h4 class="home-install-card-platform-title">iPhone</h4>
-          <ol class="home-install-card-steps">
-            <li>Open in Safari</li>
-            <li>Tap Share</li>
-            <li>Add to Home Screen</li>
-          </ol>
-        </section>
-        <section class="home-install-card-platform">
-          <h4 class="home-install-card-platform-title">Android</h4>
-          <ol class="home-install-card-steps">
-            <li>Open in Chrome</li>
-            <li>Tap Install App or Add to Home Screen</li>
-          </ol>
-        </section>
-        <p class="home-install-card-tip">Install becomes available on supported browsers and devices.</p>
-      </div>
-    `;
-  const actionMarkup = isInstalled
-    ? `
-      <div class="home-install-card-actions">
-        <button
-          type="button"
-          class="button button-primary install-app-button"
-          disabled
-          aria-disabled="true"
-        >App Installed ✓</button>
-      </div>
-    `
-    : `
-      <div class="home-install-card-actions">
-        <button
-          type="button"
-          class="button button-primary install-app-button"
-          data-install-grow-app="true"
-          ${(hasDeferredPrompt && !showIosInstructions) ? "" : "disabled"}
-          aria-disabled="${hasDeferredPrompt ? "false" : "true"}"
-        >${showIosInstructions ? "Install on iPhone" : "Install Grow App"}</button>
-      </div>
-    `;
+  const isUnsupported = !isInstalled && !isIOS && !hasDeferredPrompt;
+  const buttonLabel = isInstalled
+    ? "App Installed ✓"
+    : isIOS
+      ? "Use Share → Add to Home Screen"
+      : hasDeferredPrompt
+        ? "Install Grow App"
+        : "Install available on supported browsers";
+  const buttonEnabled = hasDeferredPrompt && !isInstalled;
+  const statusToneClass = isInstalled
+    ? "is-installed"
+    : isIOS
+      ? "is-ios"
+      : hasDeferredPrompt
+        ? "is-active"
+        : "is-disabled";
+  const helperText = isInstalled
+    ? "Cannakan Grow is already installed on this device."
+    : isIOS
+      ? "Use Safari on iPhone or iPad to add Cannakan Grow to your home screen."
+      : hasDeferredPrompt
+        ? "Install directly from this browser for a faster full-screen experience."
+        : "Install becomes available on supported browsers like Chrome.";
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
-      <div class="home-install-card-header">
-        <div class="home-install-card-copy">
-          <span class="home-install-card-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <rect x="6.5" y="2.75" width="11" height="18.5" rx="2.8"></rect>
-              <path d="M10.25 5.75h3.5"></path>
-              <path d="M9.75 17.25h4.5"></path>
-              <path d="M12 8.5v4.2"></path>
-              <path d="m9.95 10.65 2.05 2.05 2.05-2.05"></path>
-            </svg>
-          </span>
-          <div class="home-install-card-copy-block">
-            <p class="eyebrow">Get the App</p>
-            <h3 id="home-install-card-title">${escapeHtml(cardTitle)}</h3>
+      <div class="home-install-card-shell">
+        <div class="home-install-card-preview" aria-hidden="true">
+          <div class="home-install-phone-mockup">
+            <div class="home-install-phone-notch"></div>
+            <div class="home-install-phone-screen">
+              <div class="home-install-phone-screen-head">
+                <span class="home-install-phone-screen-dot"></span>
+                <span>Cannakan Grow</span>
+              </div>
+              <div class="home-install-phone-stat">
+                <div class="home-install-phone-stat-ring">
+                  <span>98%</span>
+                </div>
+                <p class="home-install-phone-stat-label">Germination</p>
+              </div>
+              <div class="home-install-phone-metrics">
+                <div class="home-install-phone-metric">
+                  <span>Stage</span>
+                  <strong>Germination</strong>
+                </div>
+                <div class="home-install-phone-metric">
+                  <span>Seeds</span>
+                  <strong>98 / 100</strong>
+                </div>
+                <div class="home-install-phone-metric">
+                  <span>Time Elapsed</span>
+                  <strong>2d 14h</strong>
+                </div>
+              </div>
+              <div class="home-install-phone-actions">
+                <span class="home-install-phone-button">View Session</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="home-install-card-body">
-        ${bodyContentMarkup}
-        ${actionMarkup}
+        <div class="home-install-card-body">
+          <div class="home-install-card-copy">
+            <span class="home-install-card-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <rect x="6.5" y="2.75" width="11" height="18.5" rx="2.8"></rect>
+                <path d="M10.25 5.75h3.5"></path>
+                <path d="M9.75 17.25h4.5"></path>
+                <path d="M12 8.5v4.2"></path>
+                <path d="m9.95 10.65 2.05 2.05 2.05-2.05"></path>
+              </svg>
+            </span>
+            <div class="home-install-card-copy-block">
+              <p class="eyebrow">Install App</p>
+              <h3 id="home-install-card-title">Install the Grow App</h3>
+              <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+            </div>
+          </div>
+          <div class="home-install-card-directions">
+            <section class="home-install-card-platform">
+              <h4 class="home-install-card-platform-title">iPhone</h4>
+              <ol class="home-install-card-steps">
+                <li>Open in Safari</li>
+                <li>Tap Share</li>
+                <li>Add to Home Screen</li>
+              </ol>
+            </section>
+            <section class="home-install-card-platform">
+              <h4 class="home-install-card-platform-title">Android</h4>
+              <ol class="home-install-card-steps">
+                <li>Open in Chrome</li>
+                <li>Tap Install App or Add to Home Screen</li>
+              </ol>
+            </section>
+          </div>
+          <div class="home-install-card-actions">
+            <button
+              type="button"
+              class="button button-primary install-app-button"
+              data-install-grow-app="true"
+              ${buttonEnabled ? "" : "disabled"}
+              aria-disabled="${buttonEnabled ? "false" : "true"}"
+            >${escapeHtml(buttonLabel)}</button>
+          </div>
+          <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(helperText)}</p>
+          ${isUnsupported ? '<p class="home-install-card-support-note muted">Browser install support depends on device and browser capabilities.</p>' : ""}
+        </div>
       </div>
     </section>
   `;
