@@ -319,6 +319,7 @@ function resetSessionScopedAppState() {
 
 async function rehydratePersistentBrowserState(reason = "unspecified") {
   appState.mockDataEnabled = isMockDataEnabled();
+  seedFallbackContentStorageIfEmpty();
   appState.announcements = await loadAnnouncements(reason);
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
@@ -9673,6 +9674,35 @@ function writeStoredFallbackFacts(records = []) {
     localStorage.setItem(FALLBACK_FACTS_STORAGE_KEY, JSON.stringify(records));
   } catch (error) {
     console.error("Failed to write fallback facts to localStorage", error);
+  }
+}
+
+function seedFallbackContentStorageIfEmpty() {
+  try {
+    const storedJokes = readStoredFallbackJokes();
+    if (!storedJokes.length) {
+      writeStoredFallbackJokes(DEFAULT_GROW_JOKES);
+    }
+  } catch (error) {
+    console.error("Failed to seed fallback jokes into localStorage", error);
+  }
+
+  try {
+    const storedFacts = readStoredFallbackFacts();
+    if (!storedFacts.length) {
+      writeStoredFallbackFacts(DEFAULT_GROW_FACTS.map((text) => ({ text })));
+    }
+  } catch (error) {
+    console.error("Failed to seed fallback facts into localStorage", error);
+  }
+
+  try {
+    const storedMode = getFallbackContentMode();
+    if (!localStorage.getItem(FALLBACK_MODE_STORAGE_KEY)) {
+      writeFallbackContentMode(storedMode || DEFAULT_FALLBACK_CONTENT_MODE);
+    }
+  } catch (error) {
+    console.error("Failed to seed fallback content mode into localStorage", error);
   }
 }
 
