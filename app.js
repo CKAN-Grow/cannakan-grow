@@ -11406,26 +11406,23 @@ function renderGallery(targetSnapshotId = "") {
       pendingReviewCount === 1 ? "1 Pending Review" : `${pendingReviewCount} Pending Reviews`;
     adminSection.innerHTML = `
       <div class="section-heading gallery-inline-review-heading">
-        <div class="gallery-inline-review-heading-shell">
-          <span class="gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M9 4.75h6" />
-              <path d="M14.5 3h-5a1.5 1.5 0 0 0-1.5 1.5v.25h8V4.5A1.5 1.5 0 0 0 14.5 3Z" />
-              <path d="M8 5.25H6.75A1.75 1.75 0 0 0 5 7v11.25C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V7c0-.966-.784-1.75-1.75-1.75H16" />
-              <path d="M8.25 10.5h5.5" />
-              <path d="M8.25 13.5h3.25" />
-              <path d="M16.5 15.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              <path d="m17.9 17.9 1.6 1.6" />
-            </svg>
-          </span>
-          <div class="gallery-inline-review-copy">
-          <p class="eyebrow">Admin Review</p>
-            <div class="gallery-inline-review-title-row">
-              <h3>Grow Gallery Submissions</h3>
-              <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
-            </div>
-            <p class="muted">Review pending Grow Gallery snapshots before they become public.</p>
+        <span class="gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8 4.75h8" />
+            <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z" />
+            <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5" />
+            <path d="M8.5 10.25h5.25" />
+            <path d="M8.5 13.25h3.5" />
+            <path d="M13.75 15.5 15 16.75l2.75-3" />
+            <circle cx="16" cy="15.5" r="3.5"></circle>
+          </svg>
+        </span>
+        <div class="gallery-inline-review-copy">
+          <div class="gallery-inline-review-title-row">
+            <h3>Grow Gallery Submissions</h3>
+            <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
           </div>
+          <p class="muted">Review pending Grow Gallery snapshots before they become public.</p>
         </div>
       </div>
       <div class="gallery-review-list"></div>
