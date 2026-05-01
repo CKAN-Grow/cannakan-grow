@@ -3599,6 +3599,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.78rem;
 }
 
+.admin-page-hero,
+.admin-section-card,
+.admin-access-card {
+  display: grid;
+  gap: var(--space-stack);
+}
+
+.admin-section-actions {
+  display: flex;
+  gap: var(--space-stack);
+  flex-wrap: wrap;
+}
+
+.admin-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-section);
+}
+
 .leaderboard-audit-section {
   display: grid;
   gap: var(--space-section);
@@ -5224,6 +5243,10 @@ body.theme-dark .theme-toggle-button:hover {
 
   .home-dashboard-secondary-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-mini-grid {
+    grid-template-columns: 1fr;
   }
 
   .leaderboard-audit-filter-grid,
@@ -8274,6 +8297,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .leaderboard-audit-filter-grid,
   .leaderboard-audit-metrics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-section-actions {
+    display: grid;
   }
 
   .leaderboard-audit-actions {

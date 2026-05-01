@@ -1794,7 +1794,9 @@ function updateNavState() {
   const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
-    : ((route === "gallery" || route === "admin") ? "gallery" : "sessions");
+    : (route === "admin"
+      ? "admin"
+      : ((route === "gallery") ? "gallery" : "sessions"));
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -1808,7 +1810,7 @@ function updateNavState() {
   });
 
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
-    link.hidden = true;
+    link.hidden = !isAdminUser();
   });
 }
 
@@ -6368,8 +6370,6 @@ function render() {
     clearUnsavedChangesContext();
   }
   const finalizeRender = () => {
-    renderMockDataAdminSection();
-    renderLeaderboardAuditSection();
     syncInstallPromptBanner();
     syncMockDataBanner();
     ensureBackToTopButton();
@@ -6396,13 +6396,41 @@ function render() {
     return;
   }
 
-  if (route === "admin" && id === "gallery-moderation") {
+  if (route === "admin" && !id) {
     if (!appState.user) {
       renderAuthScreen();
+      finalizeRender();
       return;
     }
     if (!hasCompletedProfile()) {
       renderProfileSetupScreen();
+      finalizeRender();
+      return;
+    }
+    if (!isAdminUser()) {
+      renderAdminAccessDeniedScreen();
+      finalizeRender();
+      return;
+    }
+    renderAdminPage();
+    finalizeRender();
+    void refreshGallerySnapshots("route:admin-dashboard");
+    return;
+  }
+
+  if (route === "admin" && id === "gallery-moderation") {
+    if (!appState.user) {
+      renderAuthScreen();
+      finalizeRender();
+      return;
+    }
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      finalizeRender();
+      return;
+    }
+    if (!isAdminUser()) {
+      renderAdminAccessDeniedScreen();
       finalizeRender();
       return;
     }
@@ -7273,6 +7301,156 @@ function renderRegisteredMemberCountCardMarkup() {
   `;
 }
 
+function renderAdminAccessDeniedScreen() {
+  app.innerHTML = `
+    <section class="card admin-access-card">
+      <p class="eyebrow">Access Denied</p>
+      <h2>Admin access required</h2>
+      <p class="muted">This page is available only to Cannakan Grow admins.</p>
+      <div class="form-actions">
+        <a class="button button-primary" href="#home">Return Home</a>
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminOverviewCardMarkup({ label, value, subtext = "" }) {
+  return `
+    <article class="card stat-card card-accent card-accent-green admin-overview-card">
+      <span class="stat-label">${escapeHtml(label)}</span>
+      <strong class="stat-value">${escapeHtml(value)}</strong>
+      <p class="summary-subtext">${escapeHtml(subtext)}</p>
+    </article>
+  `;
+}
+
+function renderAdminPage() {
+  app.innerHTML = `
+    <section class="card admin-page-hero">
+      <div class="section-title-with-icon">
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 3.5 4.5 7.2V12c0 4.1 2.7 7.8 7.5 8.8 4.8-1 7.5-4.7 7.5-8.8V7.2L12 3.5Z"></path>
+          <path d="M9.5 12.2 11 13.7l3.6-3.9"></path>
+        </svg>
+        <div>
+          <p class="eyebrow">Admin</p>
+          <h2>Admin Tools</h2>
+          <p class="muted">Manage moderation, inspect leaderboard inputs, and review system-level controls without exposing admin data in public views.</p>
+        </div>
+      </div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Admin Overview</p>
+          <h3>High-level system snapshot</h3>
+          <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
+        </div>
+      </div>
+      <div class="summary-grid admin-overview-grid"></div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Gallery Moderation</p>
+          <h3>Review Community Grow Gallery submissions</h3>
+          <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
+        </div>
+        <div class="admin-section-actions">
+          <a class="button button-primary" href="/admin/gallery-moderation">Open Gallery Moderation</a>
+        </div>
+      </div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">User / Profile Review</p>
+          <h3>Member and profile visibility snapshot</h3>
+          <p class="muted">Quick admin context for registered members and shared Grow Gallery profile attribution.</p>
+        </div>
+      </div>
+      <div class="admin-mini-grid" id="admin-user-review-grid"></div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">System Tools</p>
+          <h3>Admin-only utilities</h3>
+          <p class="muted">Use dev-only tools here without surfacing them on the public dashboard.</p>
+        </div>
+      </div>
+      <div id="admin-system-tools"></div>
+    </section>
+    <div id="admin-leaderboard-audit-anchor"></div>
+  `;
+
+  if (!appState.memberCountLoaded && !appState.memberCountRefreshPromise && appState.supabase) {
+    void refreshRegisteredMemberCount().then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  const displaySnapshots = getGallerySnapshotsForDisplay();
+  const approvedSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const pendingSnapshots = getAdminReviewPendingSnapshots();
+  const sharedProfileSnapshots = approvedSnapshots.filter((snapshot) => snapshot.includeProfileInGallery);
+  const overviewGrid = app.querySelector(".admin-overview-grid");
+  if (overviewGrid) {
+    const memberCount = getRegisteredMemberCount();
+    const memberValue = Number.isFinite(memberCount)
+      ? memberCount.toLocaleString()
+      : (appState.memberCountLoaded ? "—" : "--");
+    overviewGrid.innerHTML = [
+      renderAdminOverviewCardMarkup({
+        label: "Total Members",
+        value: memberValue,
+        subtext: Number.isFinite(memberCount) ? "registered profiles" : (appState.memberCountLoaded ? "Count unavailable" : "Loading members"),
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "Approved Gallery Snapshots",
+        value: approvedSnapshots.length.toLocaleString(),
+        subtext: "used in public gallery views",
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "Pending Moderation",
+        value: pendingSnapshots.length.toLocaleString(),
+        subtext: "awaiting admin review",
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "Shared Gallery Profiles",
+        value: sharedProfileSnapshots.length.toLocaleString(),
+        subtext: "approved snapshots with shared profile info",
+      }),
+    ].join("");
+  }
+
+  const userReviewGrid = app.querySelector("#admin-user-review-grid");
+  if (userReviewGrid) {
+    const privateSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "private").length;
+    userReviewGrid.innerHTML = `
+      ${renderAdminOverviewCardMarkup({
+    label: "Shared Profiles",
+    value: sharedProfileSnapshots.length.toLocaleString(),
+    subtext: "approved public snapshots with shared profile attribution",
+  })}
+      ${renderAdminOverviewCardMarkup({
+    label: "Private Snapshots",
+    value: privateSnapshots.toLocaleString(),
+    subtext: "excluded from public leaderboard calculations",
+  })}
+    `;
+  }
+
+  const systemToolsContainer = app.querySelector("#admin-system-tools");
+  renderMockDataAdminSection(systemToolsContainer);
+
+  const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
+  renderLeaderboardAuditSection(leaderboardAuditAnchor);
+}
+
 function renderHome() {
   app.replaceChildren(cloneTemplate(templates.home));
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
@@ -7308,17 +7486,6 @@ function renderHome() {
   const overallRateEl = document.querySelector("#overall-germination-rate");
   const overallTotalEl = document.querySelector("#overall-germination-total");
   const overallFillEl = document.querySelector("#overall-germination-fill");
-  const isAdminView = isAdminUser();
-
-  if (isAdminView && !appState.memberCountLoaded && !appState.memberCountRefreshPromise && appState.supabase) {
-    void refreshRegisteredMemberCount().then(() => {
-      const currentHash = window.location.hash || "#home";
-      if (currentHash === "#home" || currentHash === "") {
-        safeRender();
-      }
-    });
-  }
-
   countEl.textContent = String(sessions.length);
   activeCountEl.textContent = String(activeSessions.length);
   activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
@@ -7365,9 +7532,6 @@ function renderHome() {
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
   if (summaryGrid) {
-    if (isAdminView) {
-      summaryGrid.insertAdjacentHTML("beforeend", renderRegisteredMemberCountCardMarkup());
-    }
     summaryGrid.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else if (spotlightCard) {
     spotlightCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
@@ -7466,9 +7630,9 @@ function syncMockDataBanner() {
   }
 }
 
-function renderMockDataAdminSection() {
-  if (!app || !canAccessMockDataControls()) {
-    return;
+function renderMockDataAdminSection(target = app) {
+  if (!target || !canAccessMockDataControls()) {
+    return null;
   }
 
   const section = document.createElement("section");
@@ -7507,7 +7671,8 @@ function renderMockDataAdminSection() {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
 
-  app.appendChild(section);
+  target.appendChild(section);
+  return section;
 }
 
 function normalizeLeaderboardAuditFilters(filters = {}) {
@@ -8042,9 +8207,9 @@ function exportLeaderboardAuditCsv(rows) {
   downloadSnapshotBlob(blob, "leaderboard-data-audit.csv");
 }
 
-function renderLeaderboardAuditSection() {
-  if (!app || !isAdminUser()) {
-    return;
+function renderLeaderboardAuditSection(target = app) {
+  if (!target || !isAdminUser()) {
+    return null;
   }
 
   const state = buildLeaderboardAuditState();
@@ -8185,7 +8350,8 @@ function renderLeaderboardAuditSection() {
     }
   });
 
-  app.appendChild(section);
+  target.appendChild(section);
+  return section;
 }
 
 function setMockDataEnabledAndRefresh(enabled) {
