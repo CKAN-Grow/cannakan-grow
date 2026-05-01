@@ -2595,25 +2595,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-install-card {
-  display: grid;
-  gap: var(--space-stack);
+  display: block;
   margin-top: 0;
   padding: var(--space-card);
-  align-content: start;
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.16), transparent 38%),
     linear-gradient(180deg, rgba(244, 248, 243, 0.72) 0%, rgba(234, 241, 233, 0.48) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.11), rgba(43, 111, 65, 0.04) 58%);
   box-shadow:
     0 14px 30px rgba(24, 34, 24, 0.08),
     0 0 0 1px rgba(148, 209, 89, 0.08),
-    0 0 24px rgba(148, 209, 89, 0.08),
+    0 0 28px rgba(148, 209, 89, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow: hidden;
 }
 
 .home-install-card.is-installed {
   border-color: rgba(148, 209, 89, 0.08);
   background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.08), transparent 36%),
     linear-gradient(180deg, rgba(244, 248, 243, 0.5) 0%, rgba(234, 241, 233, 0.34) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.04), rgba(43, 111, 65, 0.015) 58%);
   box-shadow:
@@ -2622,28 +2623,246 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   opacity: 0.9;
 }
 
-.home-install-card.is-installed .home-install-card-header {
-  padding-bottom: 0;
-  border-bottom: 0;
+.home-install-card-shell {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  align-items: start;
 }
 
-.home-install-card-header {
-  padding: 0 0 var(--space-stack);
-  border-bottom: 1px solid rgba(148, 209, 89, 0.14);
+.home-install-card-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.home-install-card .home-install-card-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.phone-mock,
+.home-install-phone,
+.home-install-phone-mockup {
+  width: 220px;
+  max-width: 100%;
+  margin-bottom: 16px;
+  padding: 10px;
+  border-radius: 24px;
+  background: #0f1411;
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.25);
+}
+
+.home-install-card .home-install-card-preview .home-install-phone {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  margin-bottom: 16px;
+  padding: 10px;
+  border-radius: 24px;
+  background: #0f1411;
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.25);
+}
+
+.home-install-phone-notch {
+  width: 70px;
+  height: 7px;
+  margin: 2px auto 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.phone-screen,
+.home-install-phone-screen {
+  display: grid;
+  gap: 12px;
+  min-height: 316px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #111814, #0b100d);
+  color: #f5faf2;
+  font-size: 12px;
+}
+
+.home-install-card .home-install-card-preview .home-install-phone-screen {
+  display: grid;
+  gap: 12px;
+  min-height: 316px;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #111814, #0b100d);
+  color: #fff;
+  font-size: 12px;
+}
+
+.home-install-phone-screen-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(211, 238, 180, 0.9);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-install-phone-screen-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94d159;
+  box-shadow: 0 0 10px rgba(148, 209, 89, 0.75);
+}
+
+.home-install-phone-stat {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+}
+
+.home-install-card .home-install-card-preview .home-install-phone-stat {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+  text-align: center;
+}
+
+.home-install-progress-ring,
+.home-install-phone-stat-ring {
+  width: 128px;
+  height: 128px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(18, 31, 20, 0.96) 58%, transparent 59%),
+    conic-gradient(#94d159 0 352.8deg, rgba(255, 255, 255, 0.08) 352.8deg 360deg);
+  box-shadow:
+    inset 0 0 18px rgba(148, 209, 89, 0.12),
+    0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.home-install-card .home-install-card-preview .home-install-progress-ring {
+  width: 128px;
+  height: 128px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(18, 31, 20, 0.96) 58%, transparent 59%),
+    conic-gradient(#94d159 0 352.8deg, rgba(255, 255, 255, 0.08) 352.8deg 360deg);
+  box-shadow:
+    inset 0 0 18px rgba(148, 209, 89, 0.12),
+    0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.home-install-phone-stat-ring span {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #eef8e4;
+  line-height: 1;
+}
+
+.home-install-card .home-install-card-preview .home-install-progress-ring span {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #eef8e4;
+  line-height: 1;
+}
+
+.home-install-phone-stat-label {
+  margin: 0;
+  color: rgba(211, 238, 180, 0.88);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-install-phone-metrics {
+  display: grid;
+  gap: 10px;
+}
+
+.home-install-phone-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(148, 209, 89, 0.12);
+}
+
+.home-install-phone-metric span {
+  color: rgba(189, 204, 192, 0.8);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-install-phone-metric strong {
+  color: #f2fbeb;
+  font-size: 0.78rem;
+}
+
+.home-install-phone-actions {
+  margin-top: auto;
+}
+
+.home-install-phone-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a7e46b 0%, #7fb643 100%);
+  color: #18301a;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow:
+    0 10px 18px rgba(127, 182, 67, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.home-install-card .home-install-card-preview .home-install-phone-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #a7e46b 0%, #7fb643 100%);
+  color: #18301a;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow:
+    0 10px 18px rgba(127, 182, 67, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .home-install-card-body {
   display: grid;
-  gap: var(--space-stack);
-  align-content: space-between;
-  min-height: 0;
-  height: 100%;
+  gap: 16px;
+  min-width: 0;
 }
 
 .home-install-card-copy {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-stack);
+  gap: 14px;
   min-width: 0;
 }
 
@@ -2654,6 +2873,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-copy-block {
   min-width: 0;
+  display: grid;
+  gap: 8px;
 }
 
 .home-install-card-icon {
@@ -2686,47 +2907,37 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-description {
   margin: 0;
-  max-width: 30ch;
+  max-width: 42ch;
   color: var(--muted);
   font-size: 0.98rem;
-  line-height: 1.62;
+  line-height: 1.58;
 }
 
-.home-install-card-actions,
-.home-install-card-status {
+.home-install-card-actions {
   display: flex;
   align-items: center;
   justify-content: flex-start;
 }
 
-.home-install-card-actions .install-app-button,
-.home-install-card-status-pill {
-  min-width: 100%;
+.home-install-card-actions .install-app-button {
+  min-width: min(100%, 320px);
   justify-content: center;
-}
-
-.home-install-card-status-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 209, 89, 0.24);
-  background: rgba(148, 209, 89, 0.08);
-  color: #4c6d39;
-  font-size: 0.88rem;
-  font-weight: 700;
 }
 
 .home-install-card-directions {
   display: grid;
-  gap: var(--space-stack);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   align-content: start;
 }
 
 .home-install-card-platform {
   display: grid;
   gap: 8px;
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.42);
 }
 
 .home-install-card-platform-title {
@@ -2743,9 +2954,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   padding-left: 1.2rem;
   color: var(--muted);
   display: grid;
-  gap: 6px;
-  font-size: 0.96rem;
-  line-height: 1.56;
+  gap: 5px;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .home-install-card-steps li {
@@ -2753,8 +2964,32 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-install-card-tip {
+  margin: 0;
   color: #55743e;
   font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.home-install-card-tip.is-active {
+  color: #55743e;
+}
+
+.home-install-card-tip.is-ios {
+  color: #628843;
+}
+
+.home-install-card-tip.is-installed {
+  color: #4d6d37;
+}
+
+.home-install-card-tip.is-disabled {
+  color: var(--muted);
+}
+
+.home-install-card-support-note {
+  margin: -4px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
 }
 
 .filter-paper-card {
@@ -3568,6 +3803,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .gallery-leaderboard-metric {
     grid-area: metric;
   }
+
+  .gallery-card-feed-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gallery-card-performance-badge {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .gallery-card-performance-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .gallery-card {
@@ -3718,6 +3967,25 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.3;
 }
 
+.gallery-card-profile-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gallery-card-profile-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.gallery-card-feed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
 .gallery-card-copy {
   min-width: 0;
 }
@@ -3735,6 +4003,37 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-card-meta {
   margin: 0;
   color: var(--muted);
+}
+
+.gallery-card-caption {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.gallery-card-performance-badge {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.gallery-card-performance-badge strong {
+  margin: 0;
+  color: #94d159;
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.gallery-card-performance-badge span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .gallery-card-rate {
@@ -3767,6 +4066,38 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+}
+
+.gallery-card-performance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gallery-card-performance-stat {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.gallery-card-performance-stat span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gallery-card-performance-stat strong {
+  margin: 0;
+  color: #f6f8f5;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .gallery-card-stats-row-1,
@@ -4004,7 +4335,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-card-footer > .gallery-like-button {
-  margin-left: auto;
+  margin-left: 0;
+}
+
+.gallery-card-social-actions {
+  justify-content: flex-end;
+  flex: 1 1 320px;
+}
+
+.gallery-card-follow-button {
+  min-width: 110px;
+  justify-content: center;
 }
 
 .gallery-like-button {
@@ -7537,6 +7878,20 @@ body.theme-dark .theme-toggle-button:hover {
     gap: 12px;
   }
 
+  .home-install-card-shell {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .home-install-card-preview {
+    order: -1;
+    justify-content: center;
+  }
+
+  .home-install-card-directions {
+    grid-template-columns: 1fr;
+  }
+
   .home-install-card-actions,
   .home-install-card-status {
     justify-content: flex-start;
@@ -9744,6 +10099,15 @@ body.theme-dark .gallery-card-chip {
   border-color: rgba(148, 209, 89, 0.12);
 }
 
+body.theme-dark .gallery-card-performance-badge strong {
+  color: #b8ef84;
+}
+
+body.theme-dark .gallery-card-performance-stat {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
 body.theme-dark .gallery-like-button {
   background: rgba(255, 255, 255, 0.04);
   color: #e8efe8;
@@ -9863,6 +10227,7 @@ body.theme-dark .home-gallery-rankings-card {
 body.theme-dark .home-install-card {
   border-color: rgba(148, 209, 89, 0.16);
   background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.14), transparent 38%),
     linear-gradient(180deg, rgba(34, 47, 38, 0.96) 0%, rgba(24, 33, 27, 0.86) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
   box-shadow:
@@ -9872,8 +10237,29 @@ body.theme-dark .home-install-card {
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-body.theme-dark .home-install-card-header {
-  border-bottom-color: rgba(148, 209, 89, 0.12);
+body.theme-dark .phone-mock,
+body.theme-dark .home-install-phone,
+body.theme-dark .home-install-phone-mockup {
+  background: #0f1411;
+  box-shadow:
+    0 22px 38px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(148, 209, 89, 0.25);
+}
+
+body.theme-dark .home-install-card .home-install-card-preview .home-install-phone {
+  background: #0f1411;
+  box-shadow:
+    0 22px 38px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(148, 209, 89, 0.25);
+}
+
+body.theme-dark .phone-screen,
+body.theme-dark .home-install-phone-screen {
+  background: linear-gradient(180deg, #111814, #0b100d);
+}
+
+body.theme-dark .home-install-card .home-install-card-preview .home-install-phone-screen {
+  background: linear-gradient(180deg, #111814, #0b100d);
 }
 
 body.theme-dark .home-install-card-icon {
@@ -9893,18 +10279,35 @@ body.theme-dark .home-install-card-steps {
   color: rgba(189, 204, 192, 0.82);
 }
 
+body.theme-dark .home-install-card-platform {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+}
+
 body.theme-dark .home-install-card-platform-title {
   color: #b8ef84;
 }
 
-body.theme-dark .home-install-card-status-pill {
-  border-color: rgba(148, 209, 89, 0.26);
-  background: rgba(148, 209, 89, 0.1);
-  color: #cceea7;
+body.theme-dark .home-install-phone-metric {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .home-install-phone-metric span {
+  color: rgba(189, 204, 192, 0.76);
+}
+
+body.theme-dark .home-install-phone-button {
+  color: #143017;
 }
 
 body.theme-dark .home-install-card-tip {
   color: #b8ef84;
+}
+
+body.theme-dark .home-install-card-tip.is-disabled,
+body.theme-dark .home-install-card-support-note {
+  color: rgba(189, 204, 192, 0.72);
 }
 
 body.theme-dark .filter-paper-card {
