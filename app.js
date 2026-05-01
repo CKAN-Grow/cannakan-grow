@@ -701,21 +701,34 @@ function registerServiceWorker() {
 }
 
 function isStandaloneAppDisplay() {
-  return Boolean(
-    window.matchMedia?.("(display-mode: standalone)")?.matches
-    || window.navigator.standalone === true,
-  );
+  const isStandalone = window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator.standalone;
+  return Boolean(isStandalone);
 }
 
 function getUserAgent() {
   return String(window.navigator.userAgent || "").toLowerCase();
 }
 
+function isIOSDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent || "");
+}
+
 function isIPhoneSafariInstallCandidate() {
   const userAgent = getUserAgent();
-  const isIos = /iphone|ipad|ipod/.test(userAgent);
+  const isIos = isIOSDevice();
   const isSafari = /safari/.test(userAgent) && !/crios|fxios|edgios|opr\//.test(userAgent);
   return isIos && isSafari && !isStandaloneAppDisplay();
+}
+
+function getDeferredInstallPrompt() {
+  return window.deferredPrompt || appState.deferredInstallPrompt || null;
+}
+
+function setDeferredInstallPrompt(promptEvent = null) {
+  window.deferredPrompt = promptEvent || null;
+  appState.deferredInstallPrompt = window.deferredPrompt;
+  return appState.deferredInstallPrompt;
 }
 
 function getInstallPromptMode() {
@@ -723,7 +736,7 @@ function getInstallPromptMode() {
     return "";
   }
 
-  if (appState.deferredInstallPrompt) {
+  if (getDeferredInstallPrompt()) {
     return "prompt";
   }
 
@@ -735,8 +748,10 @@ function getInstallPromptMode() {
 }
 
 async function promptInstallGrowApp() {
-  const promptEvent = appState.deferredInstallPrompt;
+  const promptEvent = getDeferredInstallPrompt();
   if (!promptEvent) {
+    appState.installPromptMode = getInstallPromptMode();
+    safeRender();
     return;
   }
 
@@ -748,7 +763,7 @@ async function promptInstallGrowApp() {
     console.warn("Install prompt was not completed", error);
     appState.installPromptDismissed = true;
   } finally {
-    appState.deferredInstallPrompt = null;
+    setDeferredInstallPrompt(null);
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
     safeRender();
@@ -824,7 +839,7 @@ function syncInstallPromptBanner() {
 function bindInstallPromptEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
-    appState.deferredInstallPrompt = event;
+    setDeferredInstallPrompt(event);
     appState.installPromptDismissed = false;
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
@@ -832,7 +847,7 @@ function bindInstallPromptEvents() {
   });
 
   window.addEventListener("appinstalled", () => {
-    appState.deferredInstallPrompt = null;
+    setDeferredInstallPrompt(null);
     appState.installPromptDismissed = true;
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
@@ -3088,6 +3103,7 @@ async function bootstrapApp() {
   appState.mockDataEnabled = isMockDataEnabled();
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
+  setDeferredInstallPrompt(window.deferredPrompt || null);
   appState.installPromptMode = getInstallPromptMode();
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
@@ -13195,13 +13211,21 @@ function promptFilterPaperPreSessionWarning() {
 function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
-  if (!isInstalled && !mode) {
-    return "";
-  }
+  const isIOS = isIOSDevice();
   const cardStateClass = isInstalled ? "is-installed" : "";
+  const showIosInstructions = isIOS && !isInstalled;
+  const hasDeferredPrompt = !isIOS && mode === "prompt";
+  const cardTitle = showIosInstructions ? "Install the Grow App" : "Install Cannakan Grow";
   const bodyContentMarkup = isInstalled
     ? ""
-    : `
+    : showIosInstructions
+      ? `
+      <p class="muted home-install-card-description">Tap Share (square with arrow) → Add to Home Screen</p>
+      <div class="home-install-card-directions">
+        <p class="home-install-card-tip">Tap Share (square with arrow) → Add to Home Screen</p>
+      </div>
+    `
+      : `
       <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
       <div class="home-install-card-directions">
         <section class="home-install-card-platform">
@@ -13219,20 +13243,29 @@ function renderHomeInstallInfoCardMarkup() {
             <li>Tap Install App or Add to Home Screen</li>
           </ol>
         </section>
-        ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
+        <p class="home-install-card-tip">Install becomes available on supported browsers and devices.</p>
       </div>
     `;
   const actionMarkup = isInstalled
     ? `
-      <div class="home-install-card-status">
-        <span class="home-install-card-status-pill">Cannakan Grow is installed.</span>
+      <div class="home-install-card-actions">
+        <button
+          type="button"
+          class="button button-primary install-app-button"
+          disabled
+          aria-disabled="true"
+        >App Installed ✓</button>
       </div>
     `
     : `
       <div class="home-install-card-actions">
-        ${mode === "prompt"
-      ? '<button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Grow App</button>'
-      : ""}
+        <button
+          type="button"
+          class="button button-primary install-app-button"
+          data-install-grow-app="true"
+          ${(hasDeferredPrompt && !showIosInstructions) ? "" : "disabled"}
+          aria-disabled="${hasDeferredPrompt ? "false" : "true"}"
+        >${showIosInstructions ? "Install on iPhone" : "Install Grow App"}</button>
       </div>
     `;
 
@@ -13251,7 +13284,7 @@ function renderHomeInstallInfoCardMarkup() {
           </span>
           <div class="home-install-card-copy-block">
             <p class="eyebrow">Get the App</p>
-            <h3 id="home-install-card-title">Install Cannakan Grow</h3>
+            <h3 id="home-install-card-title">${escapeHtml(cardTitle)}</h3>
           </div>
         </div>
       </div>
