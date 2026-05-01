@@ -2355,6 +2355,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: start;
 }
 
+.home-dashboard-secondary-side-column {
+  display: grid;
+  gap: var(--space-section);
+  align-content: start;
+}
+
 .home-dashboard-secondary-row-bottom {
   display: grid;
   gap: var(--space-section);
@@ -2362,6 +2368,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-dashboard-secondary-row-top .home-gallery-rankings-card,
+.home-dashboard-secondary-row-top .filter-paper-card,
 .home-dashboard-secondary-row-top .home-install-card,
 .home-dashboard-secondary-row-bottom .mock-data-admin-section {
   margin-top: 0;
@@ -2732,6 +2739,150 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card-tip {
   color: #55743e;
   font-weight: 600;
+}
+
+.filter-paper-card {
+  --filter-paper-accent: #94d159;
+  --filter-paper-accent-soft: rgba(148, 209, 89, 0.16);
+  --filter-paper-accent-text: #446d28;
+  display: grid;
+  gap: var(--space-stack);
+  padding: var(--space-card);
+  border: 1px solid var(--filter-paper-accent-soft);
+  background:
+    linear-gradient(180deg, rgba(244, 248, 243, 0.78) 0%, rgba(234, 241, 233, 0.56) 100%),
+    linear-gradient(135deg, color-mix(in srgb, var(--filter-paper-accent) 12%, transparent), rgba(43, 111, 65, 0.03) 60%);
+  box-shadow:
+    0 14px 28px rgba(24, 34, 24, 0.07),
+    0 0 0 1px rgba(255, 255, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.filter-paper-card--ok {
+  --filter-paper-accent: #94d159;
+  --filter-paper-accent-soft: rgba(148, 209, 89, 0.18);
+  --filter-paper-accent-text: #446d28;
+}
+
+.filter-paper-card--low {
+  --filter-paper-accent: #d98b2b;
+  --filter-paper-accent-soft: rgba(217, 139, 43, 0.18);
+  --filter-paper-accent-text: #8f5313;
+}
+
+.filter-paper-card--critical {
+  --filter-paper-accent: #c6534c;
+  --filter-paper-accent-soft: rgba(198, 83, 76, 0.2);
+  --filter-paper-accent-text: #92342f;
+}
+
+.filter-paper-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.filter-paper-card-head h3,
+.filter-paper-card-head p,
+.filter-paper-card-body p {
+  margin: 0;
+}
+
+.filter-paper-card-body {
+  display: grid;
+  gap: 10px;
+}
+
+.filter-paper-count {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.filter-paper-count strong {
+  font-size: 1.3rem;
+}
+
+.filter-paper-status-line strong,
+.filter-paper-store strong,
+.filter-paper-auto-subtract.is-enabled {
+  color: var(--filter-paper-accent-text);
+}
+
+.filter-paper-helper,
+.filter-paper-store,
+.filter-paper-auto-subtract {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.filter-paper-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--filter-paper-accent-soft);
+  background: color-mix(in srgb, var(--filter-paper-accent) 12%, white 88%);
+  color: var(--filter-paper-accent-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.filter-paper-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-paper-actions .button,
+.filter-paper-reminder-button {
+  min-height: 42px;
+}
+
+.filter-paper-reminder {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--filter-paper-accent-soft);
+  background: color-mix(in srgb, var(--filter-paper-accent) 12%, white 88%);
+}
+
+.filter-paper-reminder p {
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.filter-paper-reminder-button {
+  width: fit-content;
+}
+
+.filter-paper-modal-card {
+  width: min(94vw, 560px);
+}
+
+.filter-paper-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.filter-paper-modal-toggle {
+  margin-top: 18px;
+}
+
+.filter-paper-toggle-row {
+  width: 100%;
+}
+
+.filter-paper-modal-note {
+  margin-top: 12px;
 }
 
 .home-gallery-rankings-head {
@@ -6703,6 +6854,7 @@ body.theme-dark .theme-toggle-button:hover {
     gap: 12px;
   }
 
+  .home-dashboard-secondary-side-column,
   .home-dashboard-secondary-row-bottom {
     gap: 12px;
   }
@@ -6710,6 +6862,19 @@ body.theme-dark .theme-toggle-button:hover {
   .home-install-card-actions,
   .home-install-card-status {
     justify-content: flex-start;
+  }
+
+  .filter-paper-actions {
+    flex-direction: column;
+  }
+
+  .filter-paper-actions .button,
+  .filter-paper-reminder-button {
+    width: 100%;
+  }
+
+  .filter-paper-modal-grid {
+    grid-template-columns: 1fr;
   }
 
   .admin-member-details-close {
@@ -8553,6 +8718,44 @@ body.theme-dark .home-install-card-status-pill {
 
 body.theme-dark .home-install-card-tip {
   color: #b8ef84;
+}
+
+body.theme-dark .filter-paper-card {
+  border-color: var(--filter-paper-accent-soft);
+  background:
+    linear-gradient(180deg, rgba(34, 47, 38, 0.96) 0%, rgba(24, 33, 27, 0.86) 100%),
+    linear-gradient(135deg, color-mix(in srgb, var(--filter-paper-accent) 14%, transparent), rgba(10, 14, 11, 0.08) 64%);
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.18),
+    0 0 18px color-mix(in srgb, var(--filter-paper-accent) 10%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .filter-paper-count,
+body.theme-dark .filter-paper-reminder p {
+  color: #f3f8f2;
+}
+
+body.theme-dark .filter-paper-helper,
+body.theme-dark .filter-paper-store,
+body.theme-dark .filter-paper-auto-subtract {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .filter-paper-status-badge,
+body.theme-dark .filter-paper-reminder {
+  background: color-mix(in srgb, var(--filter-paper-accent) 14%, rgba(22, 28, 23, 0.92));
+  border-color: color-mix(in srgb, var(--filter-paper-accent) 32%, rgba(255, 255, 255, 0.06));
+}
+
+body.theme-dark .filter-paper-status-badge {
+  color: color-mix(in srgb, var(--filter-paper-accent) 78%, white 22%);
+}
+
+body.theme-dark .filter-paper-status-line strong,
+body.theme-dark .filter-paper-store strong,
+body.theme-dark .filter-paper-auto-subtract.is-enabled {
+  color: color-mix(in srgb, var(--filter-paper-accent) 78%, white 22%);
 }
 
 body.theme-dark .home-gallery-rankings-row {

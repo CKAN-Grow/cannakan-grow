@@ -4,6 +4,8 @@ const SAMPLE_SEED_VERSION = "history-preview-v2";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
 const ANNOUNCEMENT_STORAGE_KEY = "cannakanGrowAnnouncement";
+const FILTER_PAPER_INVENTORY_STORAGE_KEY = "cannakanGrowFilterPaperInventory";
+const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDeductionRegistry";
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
@@ -101,6 +103,17 @@ const DEFAULT_GROW_FACTS = Object.freeze([
 ]);
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
+const FILTER_PAPER_STORE_URLS = Object.freeze({
+  US: "https://cannakan.com",
+  EU: "https://cannakan.eu",
+});
+const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
+  count: 0,
+  autoSubtract: false,
+  storeRegion: "US",
+});
+const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
+// TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "icons/KAN%20icon.svg",
   TRA: "icons/TRA%20icon.svg",
@@ -162,6 +175,8 @@ const appState = {
   accountMenuOpen: false,
   customSelectOpenKey: "",
   sessions: [],
+  filterPaperInventory: null,
+  filterPaperDeductionRegistry: null,
   sources: [],
   sourcesLoaded: false,
   sourcesError: "",
@@ -330,6 +345,8 @@ function resetSessionScopedAppState() {
 
 async function rehydratePersistentBrowserState(reason = "unspecified") {
   appState.mockDataEnabled = isMockDataEnabled();
+  appState.filterPaperInventory = loadFilterPaperInventory();
+  appState.filterPaperDeductionRegistry = loadFilterPaperDeductionRegistry();
   seedFallbackContentStorageIfEmpty();
   appState.announcements = await loadAnnouncements(reason);
   appState.announcementsLoaded = true;
@@ -1369,6 +1386,176 @@ function getSessions() {
   return appState.sessions;
 }
 
+function normalizeFilterPaperInventory(inventory) {
+  const normalizedCount = Math.max(0, Math.floor(Number(inventory?.count) || 0));
+  return {
+    count: normalizedCount,
+    autoSubtract: Boolean(inventory?.autoSubtract),
+    storeRegion: inventory?.storeRegion === "EU" ? "EU" : "US",
+  };
+}
+
+function loadFilterPaperInventory() {
+  try {
+    return normalizeFilterPaperInventory(JSON.parse(localStorage.getItem(FILTER_PAPER_INVENTORY_STORAGE_KEY) || "null"));
+  } catch (error) {
+    console.error("Failed to read filter paper inventory from localStorage", error);
+    return { ...DEFAULT_FILTER_PAPER_INVENTORY };
+  }
+}
+
+function getFilterPaperInventory() {
+  if (!appState.filterPaperInventory) {
+    appState.filterPaperInventory = loadFilterPaperInventory();
+  }
+  return normalizeFilterPaperInventory(appState.filterPaperInventory);
+}
+
+function saveFilterPaperInventory(inventory) {
+  const normalizedInventory = normalizeFilterPaperInventory(inventory);
+  appState.filterPaperInventory = normalizedInventory;
+  localStorage.setItem(FILTER_PAPER_INVENTORY_STORAGE_KEY, JSON.stringify(normalizedInventory));
+  return normalizedInventory;
+}
+
+function normalizeFilterPaperDeductionRegistry(registry) {
+  if (!registry || typeof registry !== "object") {
+    return {};
+  }
+
+  return Object.entries(registry).reduce((accumulator, [sessionId, deducted]) => {
+    const normalizedSessionId = String(sessionId || "").trim();
+    if (normalizedSessionId && deducted) {
+      accumulator[normalizedSessionId] = true;
+    }
+    return accumulator;
+  }, {});
+}
+
+function loadFilterPaperDeductionRegistry() {
+  try {
+    return normalizeFilterPaperDeductionRegistry(JSON.parse(localStorage.getItem(FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY) || "{}"));
+  } catch (error) {
+    console.error("Failed to read filter paper deduction registry from localStorage", error);
+    return {};
+  }
+}
+
+function getFilterPaperDeductionRegistry() {
+  if (!appState.filterPaperDeductionRegistry) {
+    appState.filterPaperDeductionRegistry = loadFilterPaperDeductionRegistry();
+  }
+  return appState.filterPaperDeductionRegistry;
+}
+
+function saveFilterPaperDeductionRegistry(registry) {
+  const normalizedRegistry = normalizeFilterPaperDeductionRegistry(registry);
+  appState.filterPaperDeductionRegistry = normalizedRegistry;
+  localStorage.setItem(FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY, JSON.stringify(normalizedRegistry));
+  return normalizedRegistry;
+}
+
+function getSessionFilterPaperDeducted(session) {
+  const sessionId = String(session?.id || "").trim();
+  if (!sessionId) {
+    return Boolean(session?.filterPaperDeducted);
+  }
+
+  return Boolean(session?.filterPaperDeducted || getFilterPaperDeductionRegistry()[sessionId]);
+}
+
+function setSessionFilterPaperDeducted(session, deducted = true) {
+  const sessionId = String(session?.id || "").trim();
+  if (!sessionId) {
+    if (session && deducted) {
+      session.filterPaperDeducted = true;
+    }
+    return;
+  }
+
+  const nextRegistry = {
+    ...getFilterPaperDeductionRegistry(),
+  };
+  if (deducted) {
+    nextRegistry[sessionId] = true;
+  } else {
+    delete nextRegistry[sessionId];
+  }
+  saveFilterPaperDeductionRegistry(nextRegistry);
+
+  if (session) {
+    session.filterPaperDeducted = Boolean(deducted);
+  }
+}
+
+function shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus = "") {
+  const inventory = getFilterPaperInventory();
+  return (
+    inventory.autoSubtract
+    && normalizeSessionStatus(previousStatus) !== "completed"
+    && normalizeSessionStatus(session?.sessionStatus) === "completed"
+    && !getSessionFilterPaperDeducted(session)
+  );
+}
+
+function applyFilterPaperDeductionForCompletedSession(session) {
+  if (!session?.id || getSessionFilterPaperDeducted(session)) {
+    return null;
+  }
+
+  const inventory = getFilterPaperInventory();
+  const nextInventory = saveFilterPaperInventory({
+    ...inventory,
+    count: Math.max(0, inventory.count - FILTER_PAPER_USAGE_PER_COMPLETED_SESSION),
+  });
+  setSessionFilterPaperDeducted(session, true);
+  // TODO: Persist per-session deduction flags alongside the session record once Supabase sync is added for supplies metadata.
+  saveSessions(getSessions().map((item) => (
+    item.id === session.id
+      ? { ...item, filterPaperDeducted: true }
+      : item
+  )));
+  return nextInventory;
+}
+
+function getFilterPaperStatusMeta(count) {
+  if (count <= 1) {
+    return { key: "critical", label: "Critical" };
+  }
+  if (count === 2) {
+    return { key: "low", label: "Low" };
+  }
+  return { key: "ok", label: "OK" };
+}
+
+function getFilterPaperReminder(count) {
+  if (count === 2) {
+    return "You're running low on filter papers - about 2 sessions left.";
+  }
+  if (count === 1) {
+    return "You only have 1 filter paper left. Reorder before your next session.";
+  }
+  if (count === 0) {
+    return "You're out of filter papers. Reorder before starting your next session.";
+  }
+  return "";
+}
+
+function getFilterPaperStoreUrl(region = "US") {
+  const normalizedRegion = region === "EU" ? "EU" : "US";
+  // TODO: Route users to distributor- or province/state-specific supply links when regional rules are defined.
+  return FILTER_PAPER_STORE_URLS[normalizedRegion] || FILTER_PAPER_STORE_URLS.US;
+}
+
+function openFilterPaperStore(region = getFilterPaperInventory().storeRegion) {
+  const url = getFilterPaperStoreUrl(region);
+  if (!url) {
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 function normalizeStoredSession(session) {
   if (!session || typeof session !== "object") {
     return null;
@@ -1383,6 +1570,7 @@ function normalizeStoredSession(session) {
     germinationStartedAt: String(session.germinationStartedAt || "").trim(),
     firstPlantedAt: String(session.firstPlantedAt || "").trim(),
     completedAt: String(session.completedAt || "").trim(),
+    filterPaperDeducted: getSessionFilterPaperDeducted(session),
     partitions: Array.isArray(session.partitions) ? session.partitions : [],
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
     createdAt: String(session.createdAt || "").trim(),
@@ -2935,6 +3123,7 @@ async function createCloudSession(session) {
   }
 
   const savedSession = mapRowToSession(data);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
   const intendedImages = normalizePersistedSessionImages(session.sessionImages);
   if (intendedImages.length > 0 && savedSession.sessionImages.length !== intendedImages.length) {
     savedSession.sessionImages = await persistSessionImages(savedSession, intendedImages);
@@ -2957,6 +3146,7 @@ async function updateCloudSession(session) {
   }
 
   const savedSession = mapRowToSession(data);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
   return savedSession;
 }
@@ -2974,6 +3164,7 @@ async function updateCloudSessionNotes(sessionId, sessionNotes) {
   }
 
   const savedSession = mapRowToSession(data);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted({ id: sessionId });
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
   return savedSession;
 }
@@ -3002,6 +3193,7 @@ async function deleteCloudSession(sessionId) {
   if (existingGallerySnapshot?.imagePath) {
     await removeGallerySnapshotImage(existingGallerySnapshot.imagePath);
   }
+  setSessionFilterPaperDeducted({ id: sessionId }, false);
   saveSessions(getSessions().filter((item) => item.id !== sessionId));
   appState.gallerySnapshots = appState.gallerySnapshots.filter((item) => item.sessionId !== sessionId);
 }
@@ -5771,6 +5963,7 @@ function mapRowToSession(row) {
     germinationStartedAt: row.germination_started_at || "",
     firstPlantedAt: row.first_planted_at || "",
     completedAt: row.completed_at || "",
+    filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
     partitions: Array.isArray(row.partitions) ? row.partitions : [],
     createdAt: row.created_at,
   };
@@ -8807,6 +9000,149 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
   removeButton.hidden = false;
 }
 
+function renderFilterPaperCardMarkup() {
+  const inventory = getFilterPaperInventory();
+  const status = getFilterPaperStatusMeta(inventory.count);
+  const reminder = getFilterPaperReminder(inventory.count);
+  const storeLabel = inventory.storeRegion === "EU" ? "cannakan.eu" : "cannakan.com";
+
+  return `
+    <section class="card filter-paper-card filter-paper-card--${status.key}" aria-labelledby="filter-paper-card-title">
+      <div class="filter-paper-card-head">
+        <div>
+          <p class="eyebrow">Supplies</p>
+          <h3 id="filter-paper-card-title">Filter Papers</h3>
+        </div>
+        <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(status.label)}</span>
+      </div>
+      <div class="filter-paper-card-body">
+        <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
+        <p class="filter-paper-status-line">Status: <strong>${escapeHtml(status.label)}</strong></p>
+        <p class="filter-paper-helper">Each completed session can automatically deduct 1 filter paper.</p>
+        <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
+        <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">
+          ${inventory.autoSubtract ? "Auto subtract is on." : "Auto subtract is off."}
+        </p>
+        <div class="filter-paper-actions">
+          <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
+          <button type="button" class="button button-primary" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+        </div>
+        ${reminder ? `
+          <div class="filter-paper-reminder filter-paper-reminder--${status.key}" role="status" aria-live="polite">
+            <p>${escapeHtml(reminder)}</p>
+            <button type="button" class="button button-secondary filter-paper-reminder-button" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+          </div>
+        ` : ""}
+      </div>
+    </section>
+  `;
+}
+
+function ensureFilterPaperInventoryModal() {
+  let modal = document.querySelector("#filter-paper-inventory-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "filter-paper-inventory-modal";
+  modal.className = "snapshot-modal filter-paper-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card filter-paper-modal-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Supplies Tracker</p>
+        <h3>Filter Papers</h3>
+        <p>Keep your current count up to date so Cannakan Grow can give you a gentle reorder reminder when you're getting low.</p>
+      </div>
+      <div class="filter-paper-modal-grid">
+        <label>
+          <span>Filter papers on hand</span>
+          <input type="number" name="filterPaperCount" min="0" step="1" inputmode="numeric" placeholder="0">
+        </label>
+        <label>
+          <span>Store region</span>
+          <select name="storeRegion">
+            <option value="US">US - cannakan.com</option>
+            <option value="EU">EU - cannakan.eu</option>
+          </select>
+        </label>
+      </div>
+      <div class="filter-paper-modal-toggle">
+        <label class="snapshot-profile-toggle-row filter-paper-toggle-row">
+          <input type="checkbox" name="autoSubtract">
+          <span>Auto subtract 1 filter paper when a session is completed</span>
+        </label>
+      </div>
+      <p class="muted filter-paper-modal-note">You can update this any time without affecting session history.</p>
+      <p id="filter-paper-modal-message" class="form-message" role="alert" aria-live="polite"></p>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-filter-paper-modal-cancel="true">Cancel</button>
+        <button type="button" class="button button-primary" data-filter-paper-modal-save="true">Save</button>
+      </div>
+    </form>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openFilterPaperInventoryModal() {
+  const inventory = getFilterPaperInventory();
+  const modal = ensureFilterPaperInventoryModal();
+  const form = modal.querySelector("form");
+  const countInput = form?.querySelector('input[name="filterPaperCount"]');
+  const autoSubtractInput = form?.querySelector('input[name="autoSubtract"]');
+  const regionSelect = form?.querySelector('select[name="storeRegion"]');
+  const message = form?.querySelector("#filter-paper-modal-message");
+  const cancelButton = form?.querySelector('[data-filter-paper-modal-cancel="true"]');
+  const saveButton = form?.querySelector('[data-filter-paper-modal-save="true"]');
+
+  if (!form || !countInput || !autoSubtractInput || !regionSelect || !cancelButton || !saveButton) {
+    return;
+  }
+
+  countInput.value = String(inventory.count);
+  autoSubtractInput.checked = Boolean(inventory.autoSubtract);
+  regionSelect.value = inventory.storeRegion;
+  if (message) {
+    message.textContent = "";
+    message.classList.remove("is-error");
+  }
+
+  cancelButton.onclick = () => {
+    if (modal.open) {
+      modal.close();
+    }
+  };
+
+  saveButton.onclick = () => {
+    const rawCount = Number(countInput.value);
+    const nextCount = Number.isFinite(rawCount) ? Math.max(0, Math.floor(rawCount)) : 0;
+    saveFilterPaperInventory({
+      count: nextCount,
+      autoSubtract: autoSubtractInput.checked,
+      storeRegion: regionSelect.value === "EU" ? "EU" : "US",
+    });
+    // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.
+    if (modal.open) {
+      modal.close();
+    }
+    safeRender();
+  };
+
+  if (!modal.open) {
+    modal.showModal();
+  }
+  countInput.focus();
+  countInput.select();
+}
+
 function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
@@ -8923,7 +9259,10 @@ function renderHomeSecondaryInfoRowMarkup() {
     <div class="home-dashboard-secondary-row">
       <div class="home-dashboard-secondary-row-top">
         ${renderHomeGalleryRankingsTeaser()}
-        ${renderHomeInstallInfoCardMarkup()}
+        <div class="home-dashboard-secondary-side-column">
+          ${renderFilterPaperCardMarkup()}
+          ${renderHomeInstallInfoCardMarkup()}
+        </div>
       </div>
       ${announcementMarkup}
       ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
@@ -11512,6 +11851,14 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });
+  app.querySelector(".home-dashboard-secondary-row [data-filter-paper-edit='true']")?.addEventListener("click", () => {
+    openFilterPaperInventoryModal();
+  });
+  app.querySelectorAll(".home-dashboard-secondary-row [data-filter-paper-reorder='true']").forEach((button) => {
+    button.addEventListener("click", () => {
+      openFilterPaperStore();
+    });
+  });
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
@@ -13793,9 +14140,11 @@ function renderSessionForm(initialSystemType = "KAN") {
         formData.get("sessionStatus") === "completed"
           ? form.dataset.completedAt || new Date().toISOString()
           : form.dataset.completedAt || "",
+      filterPaperDeducted: false,
       partitions: partitionEntries,
       createdAt: new Date().toISOString(),
     };
+    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
 
     try {
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
@@ -13804,6 +14153,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
+      }
+      if (shouldDeductFilterPaper) {
+        applyFilterPaperDeductionForCompletedSession(savedSession);
       }
       markUnsavedChangesSaved();
       if (navigateOnSuccess) {
@@ -14657,6 +15009,7 @@ function renderSessionDetail(sessionId) {
   });
   refreshDetailDerivedViews();
   bindSessionTimelineDebugTools(detailLifecycleSection, (action) => {
+    const previousStatus = session.sessionStatus || "";
     applyDebugEventToSession(session, detailStatusField, action);
     syncSessionStatusControlDatasets(detailStatusField, {
       germinationStartedAt: session.germinationStartedAt || "",
@@ -14682,8 +15035,13 @@ function renderSessionDetail(sessionId) {
       detailLifecycleSection,
       buildSessionLifecycleState(session),
     );
+    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
     void saveSessionUpdate(session).then((savedSession) => {
       if (savedSession) {
+        if (shouldDeductFilterPaper) {
+          applyFilterPaperDeductionForCompletedSession(savedSession);
+          Object.assign(session, savedSession);
+        }
         markUnsavedChangesSaved();
       }
     });
@@ -14754,8 +15112,13 @@ function renderSessionDetail(sessionId) {
     syncSessionPartitionsFromContainer(session, partitions);
     refreshDetailDerivedViews();
 
+    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
     const savedSession = await saveSessionUpdate(session);
     if (savedSession) {
+      if (shouldDeductFilterPaper) {
+        applyFilterPaperDeductionForCompletedSession(savedSession);
+        Object.assign(session, savedSession);
+      }
       markUnsavedChangesSaved();
     }
   });
