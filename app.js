@@ -139,6 +139,7 @@ const appState = {
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
+  leaderboardAuditExpandedId: "",
   growthStage: null,
   growthStageModalOpen: false,
   growthStageModalDismissed: false,
@@ -10939,6 +10940,137 @@ function renderLeaderboardAuditEmptyStateMarkup(state) {
   `;
 }
 
+function renderLeaderboardAuditExpandedPartitionRowsMarkup(session) {
+  const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
+  if (!partitions.length) {
+    return '<p class="leaderboard-audit-expanded-empty">No partition data is available for this session.</p>';
+  }
+
+  return `
+    <div class="leaderboard-audit-expanded-table-shell">
+      <table class="leaderboard-audit-expanded-table">
+        <thead>
+          <tr>
+            <th>Partition</th>
+            <th>Source</th>
+            <th>Seed Variety</th>
+            <th>Type</th>
+            <th>Sex</th>
+            <th>Seeds</th>
+            <th>Germinated</th>
+            <th>Success</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${partitions.map((partition) => {
+            const germinatedCount = Math.max(0, Number(partition?.plantedCount) || 0);
+            const seedCount = Math.max(0, Number(partition?.seedCount) || 0);
+            const successPercent = seedCount > 0 ? Math.round((germinatedCount / seedCount) * 100) : 0;
+            return `
+              <tr>
+                <td>${escapeHtml(String(partition?.id || "—"))}</td>
+                <td>${escapeHtml(formatPartitionSource(partition) || "Not set")}</td>
+                <td>${escapeHtml(formatPartitionSeedVariety(partition) || "Not set")}</td>
+                <td>${escapeHtml(partition?.seedType ? capitalize(partition.seedType) : "Not selected")}</td>
+                <td>${escapeHtml(partition?.feminized ? capitalize(partition.feminized) : "Not selected")}</td>
+                <td>${escapeHtml(String(seedCount))}</td>
+                <td>${escapeHtml(String(germinatedCount))}</td>
+                <td>${escapeHtml(`${successPercent}%`)}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderLeaderboardAuditExpandedRowMarkup(row) {
+  const snapshot = row.snapshot;
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+  const sessionFacts = linkedSession
+    ? [
+      { label: "Session Name", value: formatSessionLabel(linkedSession) },
+      { label: "Status", value: capitalize(normalizeSessionStatus(linkedSession.sessionStatus || "")).replace("Unselected", "Not started") },
+      { label: "System", value: getSessionSystemSummary(linkedSession) },
+      { label: "Date", value: formatSessionNameDate(linkedSession.date) },
+      { label: "Time", value: formatStoredTime(linkedSession.time) },
+      { label: "Source", value: publicDetails.sourceLabel },
+      { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
+      { label: "Seed Type", value: publicDetails.seedTypeLabel },
+      { label: "Seed Sex", value: publicDetails.sexLabel },
+      { label: "Seeds", value: `${feedDetails.totalPlanted} / ${feedDetails.totalSeeds}` },
+    ]
+    : [
+      { label: "Snapshot Title", value: row.sessionName },
+      { label: "Profile/User", value: row.profileLabel },
+      { label: "System", value: publicDetails.systemLabel },
+      { label: "Source", value: publicDetails.sourceLabel },
+      { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
+      { label: "Seed Type", value: publicDetails.seedTypeLabel },
+      { label: "Seed Sex", value: publicDetails.sexLabel },
+      { label: "Seeds", value: `${feedDetails.totalPlanted} / ${feedDetails.totalSeeds}` },
+      { label: "Submitted", value: row.submittedAtLabel },
+      { label: "Status", value: row.statusLabel },
+    ];
+  const notesMarkup = linkedSession?.sessionNotes
+    ? `<div class="leaderboard-audit-expanded-notes"><strong>Session Notes</strong><p>${escapeHtml(linkedSession.sessionNotes)}</p></div>`
+    : '<div class="leaderboard-audit-expanded-notes"><strong>Session Notes</strong><p>No saved notes for this session.</p></div>';
+  const timelineMarkup = linkedSession
+    ? renderSessionLifecycleTimelineMarkup(buildSessionLifecycleState(linkedSession))
+    : '<p class="leaderboard-audit-expanded-empty">Timeline data is unavailable because this snapshot is not linked to a saved session.</p>';
+  const exclusionMarkup = !row.includedInLeaderboard
+    ? `
+      <div class="leaderboard-audit-expanded-notice">
+        <strong>Exclusion Reason</strong>
+        <p>${escapeHtml(row.exclusionReason || "No qualifying leaderboard group")}</p>
+      </div>
+    `
+    : "";
+
+  return `
+    <div class="leaderboard-audit-expanded-panel">
+      <div class="leaderboard-audit-expanded-layout">
+        <div class="leaderboard-audit-expanded-media">
+          ${renderGallerySnapshotMediaMarkup(snapshot, feedDetails)}
+        </div>
+        <div class="leaderboard-audit-expanded-main">
+          <div class="leaderboard-audit-expanded-section">
+            <div class="leaderboard-audit-expanded-meta-grid">
+              ${sessionFacts.map((fact) => `
+                <article class="meta-card leaderboard-audit-expanded-meta-card">
+                  <strong>${escapeHtml(fact.label)}</strong>
+                  <p>${escapeHtml(fact.value || "Not available")}</p>
+                </article>
+              `).join("")}
+            </div>
+            ${notesMarkup}
+            ${exclusionMarkup}
+          </div>
+          <div class="leaderboard-audit-expanded-section">
+            <div class="leaderboard-audit-expanded-section-head">
+              <strong>Partition Data</strong>
+            </div>
+            ${linkedSession
+    ? renderLeaderboardAuditExpandedPartitionRowsMarkup(linkedSession)
+    : '<p class="leaderboard-audit-expanded-empty">Partition data is unavailable because this snapshot is not linked to a saved session.</p>'}
+          </div>
+          <div class="leaderboard-audit-expanded-section">
+            <div class="leaderboard-audit-expanded-section-head">
+              <strong>Timeline Data</strong>
+            </div>
+            <div class="leaderboard-audit-expanded-timeline">
+              ${timelineMarkup}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function buildLeaderboardAuditSummaryText(state) {
   const summaryLines = [
     "Leaderboard Data Audit",
@@ -11103,8 +11235,15 @@ function renderLeaderboardAuditSection(target = app) {
         </thead>
         <tbody>
           ${state.rows.length
-      ? state.rows.map((row) => `
-              <tr>
+      ? state.rows.map((row) => {
+        const isExpanded = appState.leaderboardAuditExpandedId === row.id;
+        return `
+              <tr
+                class="leaderboard-audit-row${isExpanded ? " is-expanded" : ""}"
+                data-audit-row="${escapeHtml(row.id)}"
+                aria-expanded="${isExpanded ? "true" : "false"}"
+                tabindex="0"
+              >
                 <td>${escapeHtml(row.submittedAtLabel)}</td>
                 <td>${escapeHtml(row.profileLabel)}</td>
                 <td>${escapeHtml(row.sessionName)}</td>
@@ -11118,7 +11257,15 @@ function renderLeaderboardAuditSection(target = app) {
                 <td>${row.includedInLeaderboard ? '<span class="leaderboard-audit-inclusion is-included">Yes</span>' : '<span class="leaderboard-audit-inclusion is-excluded">No</span>'}</td>
                 <td>${escapeHtml(row.exclusionReason || "—")}</td>
               </tr>
-            `).join("")
+              ${isExpanded ? `
+                <tr class="leaderboard-audit-expanded-row">
+                  <td colspan="12" class="leaderboard-audit-expanded-cell">
+                    ${renderLeaderboardAuditExpandedRowMarkup(row)}
+                  </td>
+                </tr>
+              ` : ""}
+            `;
+      }).join("")
       : `
             <tr>
               <td colspan="12" class="leaderboard-audit-empty">${renderLeaderboardAuditEmptyStateMarkup(state)}</td>
@@ -11193,6 +11340,27 @@ function renderLeaderboardAuditSection(target = app) {
         [filterKey]: LEADERBOARD_AUDIT_DEFAULT_FILTERS[filterKey],
       });
       safeRender();
+    });
+  });
+
+  section.querySelectorAll("[data-audit-row]").forEach((rowElement) => {
+    const toggleExpandedState = () => {
+      const rowId = String(rowElement.dataset.auditRow || "").trim();
+      if (!rowId) {
+        return;
+      }
+
+      appState.leaderboardAuditExpandedId = appState.leaderboardAuditExpandedId === rowId ? "" : rowId;
+      safeRender();
+    };
+
+    rowElement.addEventListener("click", toggleExpandedState);
+    rowElement.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      toggleExpandedState();
     });
   });
 
@@ -14595,6 +14763,11 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
     return;
   }
 
+  summaryElement.innerHTML = renderSessionLifecycleTimelineMarkup(state);
+  sectionElement.hidden = false;
+}
+
+function renderSessionLifecycleTimelineMarkup(state) {
   const events = [
     { label: "SOAKING", timestamp: state.startedAt, tone: "soaking", complete: Boolean(state.startedAt) },
     { label: "GERMINATION STARTED", timestamp: state.germinationStartedAt, tone: "germination", complete: Boolean(state.germinationStartedAt) },
@@ -14602,7 +14775,7 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
     { label: "COMPLETED", timestamp: state.completedAt, tone: "completed", complete: Boolean(state.completedAt) },
   ];
 
-  summaryElement.innerHTML = `
+  return `
     <div class="lifecycle-bar">
       ${events.map((event) => `
         <span class="lifecycle-segment lifecycle-${event.tone} ${event.complete ? "is-complete" : ""}"></span>
@@ -14614,10 +14787,9 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
           <strong>${event.label}</strong>
           <p>${event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"}</p>
         </article>
-      `).join("")}
-    </div>
+        `).join("")}
+      </div>
   `;
-  sectionElement.hidden = false;
 }
 
 function buildFormLifecycleState(form) {
