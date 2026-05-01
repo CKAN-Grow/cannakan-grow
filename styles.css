@@ -4004,6 +4004,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin: 0;
 }
 
+.admin-message-board-upload-block {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+
 .admin-message-board-radio-group {
   display: grid;
   gap: 10px;

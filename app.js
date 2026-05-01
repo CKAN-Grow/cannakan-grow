@@ -3480,6 +3480,15 @@ function normalizeMediaUrl(value) {
   return `https://${rawValue}`;
 }
 
+function isDataUrl(value) {
+  return /^data:/i.test(String(value || "").trim());
+}
+
+function getMessageBoardImageFieldDisplayValue(value) {
+  const normalizedValue = normalizeMediaUrl(value);
+  return isDataUrl(normalizedValue) ? "" : normalizedValue;
+}
+
 function normalizeMessageBoardDisplayMode(value) {
   return String(value || "").trim().toLowerCase() === "fallback"
     ? "fallback"
@@ -3576,6 +3585,7 @@ function writeStoredMessageBoardImageUrl(storageKey, value) {
     localStorage.setItem(storageKey, normalizeMediaUrl(value));
   } catch (error) {
     console.error("Failed to write message board image setting to localStorage", error);
+    throw new Error("Could not save the uploaded image to this browser. Try a smaller image.");
   }
 }
 
@@ -6232,6 +6242,20 @@ async function prepareImageForUpload(file, maxDimension = MAX_IMAGE_DIMENSION, q
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
+}
+
+function readBlobAsDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read the uploaded image."));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function prepareImageDataUrlForStorage(file, maxDimension = MAX_IMAGE_DIMENSION, quality = 0.84) {
+  const preparedImage = await prepareImageForUpload(file, maxDimension, quality);
+  return readBlobAsDataUrl(preparedImage.blob || file);
 }
 
 function loadImageBitmap(objectUrl) {
@@ -10422,6 +10446,38 @@ function renderAdminMessageBoardImagePreviewMarkup({ title, description, imageUr
   `;
 }
 
+function renderAdminMessageBoardImageFieldMarkup({
+  label,
+  fieldName,
+  uploadName,
+  clearButtonId,
+  value,
+  placeholder,
+}) {
+  const hasLocalUpload = isDataUrl(value);
+  const savedStateLabel = hasLocalUpload
+    ? "A local uploaded image is currently saved for this slot."
+    : (normalizeMediaUrl(value)
+      ? "A saved image URL or asset path is currently set for this slot."
+      : `If nothing is set, ${MESSAGE_BOARD_IMAGE_FALLBACK_URL} will be used.`);
+
+  return `
+    <label class="admin-source-form-full">
+      <span>${escapeHtml(label)}</span>
+      <input type="text" name="${escapeHtml(fieldName)}" value="${escapeHtml(getMessageBoardImageFieldDisplayValue(value))}" placeholder="${escapeHtml(placeholder)}">
+    </label>
+    <div class="admin-source-form-full admin-message-board-upload-block">
+      <span class="file-upload-control" aria-label="${escapeHtml(`Upload ${label}`)}">
+        <button type="button" class="file-upload-button">Upload image file</button>
+        <span class="file-upload-name">No file selected</span>
+        <input type="file" name="${escapeHtml(uploadName)}" accept="image/*" class="file-upload-input">
+      </span>
+      <button type="button" class="button button-secondary" id="${escapeHtml(clearButtonId)}">Clear Saved Image</button>
+      <p class="muted admin-source-logo-helper">${escapeHtml(savedStateLabel)}</p>
+    </div>
+  `;
+}
+
 function renderAdminAnnouncementStatusPillMarkup(status) {
   const normalizedStatus = normalizeAnnouncementStatus(status);
   return `<span class="admin-source-status-pill is-${escapeHtml(normalizedStatus === "active" ? "active" : "hidden")}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
@@ -10518,10 +10574,14 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <span>Message</span>
           <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update">${escapeHtml(announcement?.body || "")}</textarea>
         </label>
-        <label class="admin-source-form-full">
-          <span>Image URL</span>
-          <input type="text" name="imageUrl" value="${escapeHtml(announcement?.imageUrl || "")}" placeholder="https://example.com/post-image.jpg or /assets/custom-image.png">
-        </label>
+        ${renderAdminMessageBoardImageFieldMarkup({
+    label: "Announcement image",
+    fieldName: "imageUrl",
+    uploadName: "announcementImageUpload",
+    clearButtonId: "admin-message-board-clear-announcement-image",
+    value: announcement?.imageUrl || "",
+    placeholder: "https://example.com/post-image.jpg or /assets/custom-image.png",
+  })}
         <label class="admin-source-form-full">
           <span>Instagram URL</span>
           <input type="url" name="instagramUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
@@ -10564,18 +10624,30 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <strong>Default Image Manager</strong>
           <p class="muted">If a custom image is missing or fails, the Home card falls back to the built-in wow image.</p>
         </div>
-        <label class="admin-source-form-full">
-          <span>Announcement default image</span>
-          <input type="text" name="defaultAnnouncementImageUrl" value="${escapeHtml(defaultAnnouncementImageUrl)}" placeholder="https://example.com/announcement-default.jpg or /assets/custom-image.png">
-        </label>
-        <label class="admin-source-form-full">
-          <span>Joke fallback image</span>
-          <input type="text" name="defaultJokeImageUrl" value="${escapeHtml(defaultJokeImageUrl)}" placeholder="https://example.com/joke-default.jpg or /assets/custom-image.png">
-        </label>
-        <label class="admin-source-form-full">
-          <span>Grow fact fallback image</span>
-          <input type="text" name="defaultFactImageUrl" value="${escapeHtml(defaultFactImageUrl)}" placeholder="https://example.com/fact-default.jpg or /assets/custom-image.png">
-        </label>
+        ${renderAdminMessageBoardImageFieldMarkup({
+    label: "Announcement default image",
+    fieldName: "defaultAnnouncementImageUrl",
+    uploadName: "defaultAnnouncementImageUpload",
+    clearButtonId: "admin-message-board-clear-default-announcement-image",
+    value: defaultAnnouncementImageUrl,
+    placeholder: "https://example.com/announcement-default.jpg or /assets/custom-image.png",
+  })}
+        ${renderAdminMessageBoardImageFieldMarkup({
+    label: "Joke fallback image",
+    fieldName: "defaultJokeImageUrl",
+    uploadName: "defaultJokeImageUpload",
+    clearButtonId: "admin-message-board-clear-default-joke-image",
+    value: defaultJokeImageUrl,
+    placeholder: "https://example.com/joke-default.jpg or /assets/custom-image.png",
+  })}
+        ${renderAdminMessageBoardImageFieldMarkup({
+    label: "Grow fact fallback image",
+    fieldName: "defaultFactImageUrl",
+    uploadName: "defaultFactImageUpload",
+    clearButtonId: "admin-message-board-clear-default-fact-image",
+    value: defaultFactImageUrl,
+    placeholder: "https://example.com/fact-default.jpg or /assets/custom-image.png",
+  })}
         ${renderAdminMessageBoardRadioSelectorMarkup({
     name: "mixedImageMode",
     legend: "Mixed image behavior",
@@ -10680,9 +10752,130 @@ function bindAdminAnnouncementsSection() {
     return;
   }
 
+  const existingAnnouncement = appState.announcements[0] || null;
   const message = form.querySelector("#admin-message-board-settings-message");
   const submitButton = form.querySelector('button[type="submit"]');
   const clearButton = form.querySelector("#admin-announcement-clear");
+  const imageFieldState = {
+    announcementImage: {
+      label: "Announcement image",
+      input: form.elements.announcementImageUpload,
+      clearButton: form.querySelector("#admin-message-board-clear-announcement-image"),
+      textInput: form.elements.imageUrl,
+      pendingFile: null,
+      clearRequested: false,
+      existingValue: String(existingAnnouncement?.imageUrl || "").trim(),
+    },
+    defaultAnnouncementImage: {
+      label: "Announcement default image",
+      input: form.elements.defaultAnnouncementImageUpload,
+      clearButton: form.querySelector("#admin-message-board-clear-default-announcement-image"),
+      textInput: form.elements.defaultAnnouncementImageUrl,
+      pendingFile: null,
+      clearRequested: false,
+      existingValue: getDefaultAnnouncementImageUrl(),
+    },
+    defaultJokeImage: {
+      label: "Joke fallback image",
+      input: form.elements.defaultJokeImageUpload,
+      clearButton: form.querySelector("#admin-message-board-clear-default-joke-image"),
+      textInput: form.elements.defaultJokeImageUrl,
+      pendingFile: null,
+      clearRequested: false,
+      existingValue: getDefaultJokeImageUrl(),
+    },
+    defaultFactImage: {
+      label: "Grow fact fallback image",
+      input: form.elements.defaultFactImageUpload,
+      clearButton: form.querySelector("#admin-message-board-clear-default-fact-image"),
+      textInput: form.elements.defaultFactImageUrl,
+      pendingFile: null,
+      clearRequested: false,
+      existingValue: getDefaultFactImageUrl(),
+    },
+  };
+
+  const validateMessageBoardImageFile = (file, label) => {
+    if (!file) {
+      return "";
+    }
+    if (!file.type.startsWith("image/")) {
+      return `${label} must be an image file.`;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      return `${label} is too large. Please choose an image under 12 MB.`;
+    }
+    return "";
+  };
+
+  const resolveMessageBoardImageValue = async (fieldState) => {
+    if (!fieldState) {
+      return "";
+    }
+    if (fieldState.clearRequested) {
+      return "";
+    }
+    if (fieldState.pendingFile) {
+      return prepareImageDataUrlForStorage(fieldState.pendingFile, MAX_IMAGE_DIMENSION, 0.86);
+    }
+
+    const typedValue = normalizeMediaUrl(fieldState.textInput?.value || "");
+    if (typedValue) {
+      return typedValue;
+    }
+
+    return isDataUrl(fieldState.existingValue) ? fieldState.existingValue : "";
+  };
+
+  Object.values(imageFieldState).forEach((fieldState) => {
+    if (!(fieldState.input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    bindFileUploadControl(fieldState.input);
+    updateFileUploadName(fieldState.input);
+
+    fieldState.input.addEventListener("change", () => {
+      const file = fieldState.input.files?.[0] || null;
+      updateFileUploadName(fieldState.input);
+      if (!file) {
+        fieldState.pendingFile = null;
+        return;
+      }
+
+      const validationMessage = validateMessageBoardImageFile(file, fieldState.label);
+      if (validationMessage) {
+        fieldState.input.value = "";
+        fieldState.pendingFile = null;
+        updateFileUploadName(fieldState.input, []);
+        if (message) {
+          message.textContent = validationMessage;
+        }
+        return;
+      }
+
+      fieldState.pendingFile = file;
+      fieldState.clearRequested = false;
+      if (message) {
+        message.textContent = `${fieldState.label} will be uploaded and stored locally when you save.`;
+      }
+    });
+
+    fieldState.clearButton?.addEventListener("click", () => {
+      fieldState.pendingFile = null;
+      fieldState.clearRequested = true;
+      if (fieldState.input) {
+        fieldState.input.value = "";
+        updateFileUploadName(fieldState.input, []);
+      }
+      if (fieldState.textInput instanceof HTMLInputElement) {
+        fieldState.textInput.value = "";
+      }
+      if (message) {
+        message.textContent = `${fieldState.label} will be cleared when you save.`;
+      }
+    });
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -10694,6 +10887,10 @@ function bindAdminAnnouncementsSection() {
     try {
       const formData = new FormData(form);
       const previousFallbackMode = getFallbackContentMode();
+      const announcementImageValue = await resolveMessageBoardImageValue(imageFieldState.announcementImage);
+      const defaultAnnouncementImageValue = await resolveMessageBoardImageValue(imageFieldState.defaultAnnouncementImage);
+      const defaultJokeImageValue = await resolveMessageBoardImageValue(imageFieldState.defaultJokeImage);
+      const defaultFactImageValue = await resolveMessageBoardImageValue(imageFieldState.defaultFactImage);
       const displayMode = writeMessageBoardDisplayMode(
         String(formData.get("displayMode") || DEFAULT_MESSAGE_BOARD_DISPLAY_MODE),
       );
@@ -10705,15 +10902,15 @@ function bindAdminAnnouncementsSection() {
       );
       writeStoredMessageBoardImageUrl(
         DEFAULT_ANNOUNCEMENT_IMAGE_STORAGE_KEY,
-        form.elements.defaultAnnouncementImageUrl?.value || "",
+        defaultAnnouncementImageValue,
       );
       writeStoredMessageBoardImageUrl(
         DEFAULT_JOKE_IMAGE_STORAGE_KEY,
-        form.elements.defaultJokeImageUrl?.value || "",
+        defaultJokeImageValue,
       );
       writeStoredMessageBoardImageUrl(
         DEFAULT_FACT_IMAGE_STORAGE_KEY,
-        form.elements.defaultFactImageUrl?.value || "",
+        defaultFactImageValue,
       );
 
       if (previousFallbackMode !== fallbackMode) {
@@ -10726,15 +10923,13 @@ function bindAdminAnnouncementsSection() {
 
       const announcementTitle = String(form.elements.title?.value || "").trim();
       const announcementMessage = String(form.elements.message?.value || "").trim();
-      const announcementImageUrl = String(form.elements.imageUrl?.value || "").trim();
       const instagramUrl = String(form.elements.instagramUrl?.value || "").trim();
       const buttonText = String(form.elements.buttonText?.value || "").trim();
       const announcementActive = Boolean(form.elements.active?.checked);
-      const existingAnnouncement = appState.announcements[0] || null;
       const hasAnnouncementInput = Boolean(
         announcementTitle
         || announcementMessage
-        || announcementImageUrl
+        || announcementImageValue
         || instagramUrl
         || buttonText
         || announcementActive,
@@ -10742,7 +10937,7 @@ function bindAdminAnnouncementsSection() {
       const announcementChanged = Boolean(existingAnnouncement) && (
         announcementTitle !== String(existingAnnouncement.title || "").trim()
         || announcementMessage !== String(existingAnnouncement.body || "").trim()
-        || normalizeMediaUrl(announcementImageUrl) !== String(existingAnnouncement.imageUrl || "").trim()
+        || announcementImageValue !== String(existingAnnouncement.imageUrl || "").trim()
         || normalizeExternalUrl(instagramUrl) !== String(existingAnnouncement.instagramPostUrl || "").trim()
         || buttonText !== String(existingAnnouncement.buttonText || "").trim()
         || announcementActive !== isAnnouncementCurrentlyPublic(existingAnnouncement)
@@ -10760,7 +10955,7 @@ function bindAdminAnnouncementsSection() {
         await saveAnnouncementRecord({
           title: announcementTitle,
           message: announcementMessage,
-          imageUrl: announcementImageUrl,
+          imageUrl: announcementImageValue,
           instagramUrl,
           buttonText,
           active: announcementActive,
