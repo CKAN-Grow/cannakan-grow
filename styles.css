@@ -2784,8 +2784,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .filter-paper-card--compact {
-  margin-top: 14px;
-  padding: 16px 18px;
+  margin-top: 0;
+  padding: 14px 16px;
   box-shadow:
     0 10px 22px rgba(24, 34, 24, 0.06),
     0 0 0 1px rgba(255, 255, 255, 0.18),
@@ -2793,14 +2793,45 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .filter-paper-card--compact .filter-paper-card-body {
-  gap: 8px;
+  gap: 7px;
 }
 
 .filter-paper-card--compact .filter-paper-helper,
-.filter-paper-card--compact .filter-paper-store,
-.filter-paper-card--compact .filter-paper-auto-subtract,
 .filter-paper-card--compact .filter-paper-reminder {
   display: none;
+}
+
+.filter-paper-card--compact .filter-paper-card-head {
+  gap: 10px;
+}
+
+.filter-paper-card--compact .filter-paper-card-head h3 {
+  font-size: 1.12rem;
+}
+
+.filter-paper-card--compact .filter-paper-count {
+  font-size: 0.98rem;
+}
+
+.filter-paper-card--compact .filter-paper-count strong {
+  font-size: 1.18rem;
+}
+
+.filter-paper-card--compact .filter-paper-status-line,
+.filter-paper-card--compact .filter-paper-store,
+.filter-paper-card--compact .filter-paper-auto-subtract,
+.filter-paper-card--compact .filter-paper-reminder-copy {
+  font-size: 0.88rem;
+}
+
+.filter-paper-card--compact .filter-paper-actions {
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.filter-paper-card--compact .button {
+  min-height: 40px;
+  padding-inline: 14px;
 }
 
 .filter-paper-reminder-copy {
@@ -9935,6 +9966,17 @@ body.theme-dark #session-history-section {
   padding: clamp(20px, 2.25vw, 28px);
 }
 
+.active-sessions-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  gap: clamp(16px, 2vw, 24px);
+  align-items: start;
+}
+
+#active-sessions-supplies-sidebar {
+  min-width: 0;
+}
+
 #grow-sessions-header .section-heading,
 #active-sessions-section .section-heading,
 #recent-completed-sessions-section .section-heading,
@@ -10165,6 +10207,10 @@ body.theme-dark #session-history-section .session-row:hover {
     width: 100%;
     margin-left: 0;
     align-self: stretch;
+  }
+
+  .active-sessions-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

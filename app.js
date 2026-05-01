@@ -9939,6 +9939,8 @@ function renderSessionsFilterPaperCardMarkup() {
     : "Not set";
   const reminder = isInventorySet && inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
   const countLabel = isInventorySet ? `${inventory.count}` : "Not set";
+  const storeLabel = inventory.storeRegion === "EU" ? "cannakan.eu" : "cannakan.com";
+  const autoSubtractLabel = inventory.autoSubtract ? "Enabled" : "Off";
 
   return `
     <section class="card filter-paper-card filter-paper-card--compact filter-paper-card--${toneKey}" aria-labelledby="sessions-filter-paper-card-title">
@@ -9952,6 +9954,8 @@ function renderSessionsFilterPaperCardMarkup() {
       <div class="filter-paper-card-body">
         <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(countLabel))}</strong>${isInventorySet ? " remaining" : ""}</p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
+        <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
+        <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">Auto subtract: <strong>${escapeHtml(autoSubtractLabel)}</strong></p>
         ${reminder ? `<p class="filter-paper-reminder-copy filter-paper-reminder-copy--${status.key}">${escapeHtml(reminder)}</p>` : ""}
         <div class="filter-paper-actions">
           <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
@@ -16412,10 +16416,10 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   applySupplyStatusToSessionEntryButtons(app);
-  const sessionsHeader = document.querySelector("#grow-sessions-header");
-  if (sessionsHeader) {
-    sessionsHeader.insertAdjacentHTML("afterend", renderFilterPaperCardMarkup());
-    bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
+  const activeSessionsSuppliesSidebar = document.querySelector("#active-sessions-supplies-sidebar");
+  if (activeSessionsSuppliesSidebar) {
+    activeSessionsSuppliesSidebar.innerHTML = renderSessionsFilterPaperCardMarkup();
+    bindFilterPaperCardActions(activeSessionsSuppliesSidebar, {
       onSave: () => safeRender(),
     });
   }
