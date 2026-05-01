@@ -13392,6 +13392,9 @@ function renderHomeInstallInfoCardMarkup() {
       : hasDeferredPrompt
         ? "Install directly from this browser for a faster full-screen experience."
         : "Install becomes available on supported browsers like Chrome.";
+  const footerText = isUnsupported
+    ? "Install available on supported browsers like Chrome. Support varies by device."
+    : helperText;
   const installPreviewElapsed = formatInstallPreviewElapsed(2, 14);
 
   return `
@@ -13433,15 +13436,6 @@ function renderHomeInstallInfoCardMarkup() {
         </div>
         <div class="home-install-card-body">
           <div class="home-install-card-copy">
-            <span class="home-install-card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <rect x="6.5" y="2.75" width="11" height="18.5" rx="2.8"></rect>
-                <path d="M10.25 5.75h3.5"></path>
-                <path d="M9.75 17.25h4.5"></path>
-                <path d="M12 8.5v4.2"></path>
-                <path d="m9.95 10.65 2.05 2.05 2.05-2.05"></path>
-              </svg>
-            </span>
             <div class="home-install-card-copy-block">
               <p class="eyebrow">Install App</p>
               <h3 id="home-install-card-title">Install the Grow App</h3>
@@ -13474,8 +13468,7 @@ function renderHomeInstallInfoCardMarkup() {
               aria-disabled="${buttonEnabled ? "false" : "true"}"
             >${escapeHtml(buttonLabel)}</button>
           </div>
-          <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(helperText)}</p>
-          ${isUnsupported ? '<p class="home-install-card-support-note muted">Browser install support depends on device and browser capabilities.</p>' : ""}
+          <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(footerText)}</p>
         </div>
       </div>
     </section>
