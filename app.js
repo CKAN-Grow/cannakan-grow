@@ -139,8 +139,8 @@ const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
 const SYSTEM_LAYOUT_ASSETS = {
-  KAN: "icons/KAN%20icon.svg",
-  TRA: "icons/TRA%20icon.svg",
+  KAN: "/icons/KAN%20icon.svg",
+  TRA: "/icons/TRA%20icon.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "src/assets/kan-partition-icon-v2.png",
@@ -17918,7 +17918,9 @@ async function renderSystemLayoutReference(container, systemType) {
     const markup = await buildSystemLayoutImage(systemType);
     if (container.dataset.pendingSystem === systemType) {
       container.innerHTML = markup;
-      attachSystemLayoutReady(container);
+      if (container.querySelector("[data-system-layout]")) {
+        attachSystemLayoutReady(container);
+      }
     }
     return;
   }
@@ -17930,17 +17932,13 @@ async function renderSystemLayoutReference(container, systemType) {
 
 async function buildSystemLayoutImage(systemType) {
   const svgMarkup = await getInlineSvgMarkup(systemType);
-  const content = svgMarkup || `
-    <object
-      class="system-layout-object"
-      data="${SYSTEM_LAYOUT_ASSETS[systemType]}"
-      type="image/svg+xml"
-      aria-label="${systemType} system layout"
-    ></object>
-  `;
+  if (!svgMarkup) {
+    return buildSystemLayoutUnavailableMarkup(systemType);
+  }
+
   return `
     <div class="system-layout-image system-layout-image-${systemType.toLowerCase()}" data-system-layout="${systemType}">
-      ${content}
+      ${svgMarkup}
     </div>
   `;
 }
@@ -18260,6 +18258,18 @@ function buildSystemLayoutPlaceholder(systemType) {
   `;
 }
 
+function buildSystemLayoutUnavailableMarkup(systemType) {
+  const label = systemType === "TRA" ? "TRā layout unavailable" : "KAN layout unavailable";
+  return `
+    <div class="layout-reference-copy">
+      <p>Layout unavailable</p>
+    </div>
+    <div class="layout-placeholder" aria-label="${label}">
+      <span>${systemType || "System"}</span>
+    </div>
+  `;
+}
+
 async function getInlineSvgMarkup(systemType) {
   if (inlineSvgCache[systemType]) {
     return inlineSvgCache[systemType];
@@ -18267,10 +18277,23 @@ async function getInlineSvgMarkup(systemType) {
 
   try {
     const response = await fetch(SYSTEM_LAYOUT_ASSETS[systemType]);
+    if (!response.ok) {
+      throw new Error(`Layout asset request failed with status ${response.status}`);
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType.includes("image/svg") && !contentType.includes("text/plain")) {
+      throw new Error(`Unexpected layout asset content type: ${contentType}`);
+    }
+
     const svgMarkup = normalizeInlineSvgMarkup(await response.text());
+    if (!svgMarkup.startsWith("<svg")) {
+      throw new Error("Layout asset did not return SVG markup.");
+    }
     inlineSvgCache[systemType] = svgMarkup;
     return svgMarkup;
-  } catch {
+  } catch (error) {
+    console.warn(`Could not load ${systemType} system layout`, error);
     return "";
   }
 }
