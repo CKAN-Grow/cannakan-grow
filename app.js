@@ -9525,41 +9525,19 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
 function renderHomeAnnouncementCard() {
   const cardData = getHomeAnnouncementCardData();
   const isFallback = !getLatestActiveAnnouncement();
+  const visualImageUrl = cardData.imageUrl || "/assets/wow-fallback.png";
   console.log("[Cannakan Announcements] Home announcement section rendered", {
     hasActiveAnnouncement: !isFallback,
     title: cardData.title,
   });
-  const imageMarkup = cardData.imageUrl
-    ? `
-      <div class="home-announcement-card-visual-shell">
-        <img src="${escapeHtml(cardData.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">
-      </div>
-    `
-    : `
-      <div class="home-announcement-card-visual-shell home-announcement-card-visual-shell--placeholder" aria-hidden="true">
-        <div class="home-announcement-card-placeholder-pattern"></div>
-        <div class="home-announcement-card-placeholder-glow"></div>
-        <div class="home-announcement-card-placeholder-badge">
-          ${isFallback
-    ? `
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M8 10.5c0-2.8 1.8-4.8 4-4.8s4 2 4 4.8c0 3-1.8 5-4 5s-4-2-4-5Z"></path>
-              <path d="M9.2 7.9c.6-.9 1.6-1.4 2.8-1.4 1.2 0 2.2.5 2.8 1.4"></path>
-              <path d="M9.7 12.5c.6.6 1.4 1 2.3 1s1.7-.4 2.3-1"></path>
-              <path d="M9.6 10.6h.01"></path>
-              <path d="M14.4 10.6h.01"></path>
-            </svg>
-          `
-    : `
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M12 18.5v-4.5"></path>
-              <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
-              <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
-              <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
-              <path d="M10.1 21h4.2"></path>
-            </svg>
-          `}
-        </div>
+  const imageMarkup = `
+      <div class="home-announcement-card-visual-shell${cardData.imageUrl ? "" : " home-announcement-card-visual-shell--fallback"}">
+        <img
+          src="${escapeHtml(visualImageUrl)}"
+          alt="Latest Cannakan announcement"
+          class="home-announcement-card-image${cardData.imageUrl ? "" : " home-announcement-card-image--fallback"}"
+        >
+        ${cardData.imageUrl ? "" : '<div class="home-announcement-card-image-overlay" aria-hidden="true"></div>'}
       </div>
     `;
 

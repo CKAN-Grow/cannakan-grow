@@ -2407,14 +2407,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   overflow: hidden;
 }
 
-.home-announcement-card-visual-shell--placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(circle at top left, rgba(148, 209, 89, 0.2), transparent 38%),
-    radial-gradient(circle at bottom right, rgba(84, 147, 60, 0.15), transparent 34%),
-    linear-gradient(180deg, rgba(31, 58, 42, 0.98) 0%, rgba(17, 26, 20, 1) 100%);
+.home-announcement-card-visual-shell--fallback {
+  background: linear-gradient(180deg, rgba(11, 17, 14, 0.96) 0%, rgba(7, 12, 10, 0.98) 100%);
 }
 
 .home-announcement-card-image,
@@ -2430,9 +2424,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-radius: 0;
   overflow: hidden;
   box-shadow: none;
+  object-position: center center;
 }
 
-.home-announcement-card-image--placeholder,
+.home-announcement-card-image--fallback {
+  object-position: 38% center;
+}
+
+.home-announcement-card-image-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.65) 100%);
+}
+
 .admin-announcement-card-image--placeholder,
 .admin-announcement-preview-image--placeholder {
   position: relative;
@@ -2450,7 +2455,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #b8d998;
 }
 
-.home-announcement-card-image--placeholder svg,
 .admin-announcement-card-image--placeholder svg,
 .admin-announcement-preview-image--placeholder svg {
   width: 44px;
@@ -2460,44 +2464,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
-}
-
-.home-announcement-card-placeholder-pattern {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 18% 24%, rgba(148, 209, 89, 0.14), transparent 0 20%),
-    radial-gradient(circle at 82% 18%, rgba(148, 209, 89, 0.1), transparent 0 18%),
-    linear-gradient(135deg, transparent 0 44%, rgba(255, 255, 255, 0.05) 44% 46%, transparent 46% 100%),
-    linear-gradient(45deg, transparent 0 58%, rgba(255, 255, 255, 0.04) 58% 60%, transparent 60% 100%);
-  opacity: 0.95;
-}
-
-.home-announcement-card-placeholder-glow {
-  position: absolute;
-  width: 180px;
-  height: 180px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(148, 209, 89, 0.28) 0%, rgba(148, 209, 89, 0.08) 42%, transparent 72%);
-  filter: blur(10px);
-  opacity: 0.9;
-}
-
-.home-announcement-card-placeholder-badge {
-  position: relative;
-  z-index: 1;
-  width: 128px;
-  height: 128px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 36px;
-  border: 1px solid rgba(184, 217, 152, 0.22);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 22px 44px rgba(0, 0, 0, 0.2),
-    0 0 32px rgba(148, 209, 89, 0.14);
 }
 
 .home-announcement-card-body {
@@ -4204,6 +4170,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .home-announcement-card-visual-shell {
     min-height: 240px;
+  }
+
+  .home-announcement-card-image--fallback {
+    object-position: 42% center;
   }
 
   .admin-announcement-card-media {
