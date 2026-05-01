@@ -60,11 +60,16 @@ create table if not exists public.sources (
 
 create table if not exists public.announcements (
   id uuid primary key default gen_random_uuid(),
+  title text default '',
+  body text default '',
   image_url text default '',
   image_path text default '',
   caption text default '',
   instagram_post_url text default '',
+  button_text text default 'View on Instagram →',
   status text not null default 'inactive',
+  publish_at timestamptz not null default timezone('utc', now()),
+  expires_at timestamptz,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -138,8 +143,28 @@ create index if not exists profiles_account_status_idx
 create index if not exists profiles_last_active_idx
   on public.profiles (last_active_at desc);
 
-create index if not exists announcements_status_updated_idx
-  on public.announcements (status, updated_at desc, created_at desc);
+alter table public.announcements
+  add column if not exists title text default '';
+
+alter table public.announcements
+  add column if not exists body text default '';
+
+alter table public.announcements
+  add column if not exists button_text text default 'View on Instagram →';
+
+alter table public.announcements
+  add column if not exists publish_at timestamptz not null default timezone('utc', now());
+
+alter table public.announcements
+  add column if not exists expires_at timestamptz;
+
+update public.announcements
+set body = caption
+where coalesce(body, '') = ''
+  and coalesce(caption, '') <> '';
+
+create index if not exists announcements_status_publish_updated_idx
+  on public.announcements (status, publish_at desc, updated_at desc, created_at desc);
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
@@ -455,7 +480,14 @@ create policy "Anyone can view active announcements"
 on public.announcements
 for select
 using (
-  status = 'active'
+  (
+    status = 'active'
+    and coalesce(publish_at, created_at, updated_at) <= timezone('utc', now())
+    and (
+      expires_at is null
+      or expires_at > timezone('utc', now())
+    )
+  )
   or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1

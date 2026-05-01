@@ -2446,13 +2446,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--ink);
   line-height: 1.55;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.home-announcement-card-date,
-.home-announcement-card-follow {
+.home-announcement-card-date {
   color: var(--muted);
 }
 
@@ -2464,17 +2463,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-announcement-card-link {
   width: fit-content;
-}
-
-.home-announcement-card-follow {
-  font-size: 0.92rem;
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.home-announcement-card-follow:hover,
-.home-announcement-card-follow:focus-visible {
-  color: var(--accent-dark);
 }
 
 .home-install-card {
@@ -3836,6 +3824,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 0;
 }
 
+.admin-announcement-card-copy-block {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-announcement-card-title {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
 .admin-announcement-card-head {
   display: flex;
   align-items: center;
@@ -3852,6 +3850,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .admin-announcement-card-caption {
   line-height: 1.55;
   color: var(--ink);
+}
+
+.admin-announcement-card-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .admin-announcement-card-link-row {
@@ -7786,14 +7791,8 @@ body.theme-dark .home-announcement-card-caption {
   color: #f3f7f1;
 }
 
-body.theme-dark .home-announcement-card-date,
-body.theme-dark .home-announcement-card-follow {
+body.theme-dark .home-announcement-card-date {
   color: rgba(189, 204, 192, 0.82);
-}
-
-body.theme-dark .home-announcement-card-follow:hover,
-body.theme-dark .home-announcement-card-follow:focus-visible {
-  color: #bfe89d;
 }
 
 body.theme-dark .admin-source-logo {
@@ -7823,6 +7822,11 @@ body.theme-dark .admin-announcement-card-caption {
   color: #f3f7f1;
 }
 
+body.theme-dark .admin-announcement-card-title {
+  color: #f3f7f1;
+}
+
+body.theme-dark .admin-announcement-card-meta,
 body.theme-dark .admin-announcement-card-link-row {
   color: rgba(189, 204, 192, 0.82);
 }

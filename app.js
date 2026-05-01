@@ -36,6 +36,14 @@ const MAX_ANNOUNCEMENT_IMAGE_DIMENSION = 1600;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
+const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
+const ANNOUNCEMENT_FALLBACK_JOKES = [
+  "Why did the seed bring a blanket? Because it wanted to stay warm before sprouting.",
+  "What did one seed say to the other? Let's grow through this together.",
+  "Why was the sprout so confident? It knew it was rooted in success.",
+  "Why did the gardener trust the seedling? It was showing real growth potential.",
+  "What is a grower's favorite kind of progress? The kind you can see one leaf at a time.",
+];
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
@@ -3179,6 +3187,11 @@ function normalizeAnnouncementStatus(status) {
   return String(status || "").trim().toLowerCase() === "active" ? "active" : "inactive";
 }
 
+function normalizeAnnouncementButtonText(value) {
+  const trimmedValue = String(value || "").trim();
+  return trimmedValue || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT;
+}
+
 function normalizeExternalUrl(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
@@ -3199,14 +3212,121 @@ function mapRowToAnnouncement(row) {
 
   return {
     id: row.id,
+    title: String(row.title || "").trim(),
+    body: String(row.body || row.caption || "").trim(),
     imageUrl: String(row.image_url || "").trim(),
     imagePath: String(row.image_path || "").trim(),
-    caption: String(row.caption || "").trim(),
     instagramPostUrl: normalizeExternalUrl(row.instagram_post_url || ""),
+    buttonText: normalizeAnnouncementButtonText(row.button_text || ""),
     status: normalizeAnnouncementStatus(row.status),
+    publishAt: row.publish_at || row.created_at || row.updated_at || "",
+    expiresAt: row.expires_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
+}
+
+function getAnnouncementSortTimestamp(announcement) {
+  const publishAt = parseCompletedAtValue(announcement?.publishAt);
+  const updatedAt = parseCompletedAtValue(announcement?.updatedAt);
+  const createdAt = parseCompletedAtValue(announcement?.createdAt);
+  return (
+    publishAt?.getTime()
+    || updatedAt?.getTime()
+    || createdAt?.getTime()
+    || 0
+  );
+}
+
+function compareAnnouncementsByRecency(left, right) {
+  return getAnnouncementSortTimestamp(right) - getAnnouncementSortTimestamp(left);
+}
+
+function formatDateTimeLocalInputValue(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  const timezoneOffset = parsedDate.getTimezoneOffset() * 60000;
+  return new Date(parsedDate.getTime() - timezoneOffset).toISOString().slice(0, 16);
+}
+
+function parseDateTimeLocalInputValue(value, fallbackValue = "") {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return fallbackValue;
+  }
+
+  const parsedDate = new Date(rawValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return fallbackValue;
+  }
+
+  return parsedDate.toISOString();
+}
+
+function getAnnouncementPublishDate(announcement) {
+  return parseCompletedAtValue(announcement?.publishAt || announcement?.updatedAt || announcement?.createdAt || "");
+}
+
+function isAnnouncementCurrentlyPublic(announcement, referenceDate = new Date()) {
+  if (!announcement || normalizeAnnouncementStatus(announcement.status) !== "active") {
+    return false;
+  }
+
+  const publishDate = getAnnouncementPublishDate(announcement);
+  if (publishDate && publishDate.getTime() > referenceDate.getTime()) {
+    return false;
+  }
+
+  const expirationDate = parseCompletedAtValue(announcement.expiresAt);
+  if (expirationDate && expirationDate.getTime() <= referenceDate.getTime()) {
+    return false;
+  }
+
+  return true;
+}
+
+function getAnnouncementLifecycleLabel(announcement, referenceDate = new Date()) {
+  if (!announcement) {
+    return "";
+  }
+
+  if (normalizeAnnouncementStatus(announcement.status) !== "active") {
+    return "Inactive";
+  }
+
+  const publishDate = getAnnouncementPublishDate(announcement);
+  if (publishDate && publishDate.getTime() > referenceDate.getTime()) {
+    return "Scheduled";
+  }
+
+  const expirationDate = parseCompletedAtValue(announcement.expiresAt);
+  if (expirationDate && expirationDate.getTime() <= referenceDate.getTime()) {
+    return "Expired";
+  }
+
+  return "Live";
+}
+
+function getAnnouncementScheduleSummary(announcement) {
+  const publishDate = getAnnouncementPublishDate(announcement);
+  const expirationDate = parseCompletedAtValue(announcement?.expiresAt);
+
+  if (!publishDate && !expirationDate) {
+    return "Publishes immediately with no expiration.";
+  }
+
+  const parts = [];
+  if (publishDate) {
+    parts.push(`Publishes ${formatAdminTimestamp(publishDate.toISOString())}`);
+  }
+  if (expirationDate) {
+    parts.push(`Expires ${formatAdminTimestamp(expirationDate.toISOString())}`);
+  }
+
+  return parts.join(" | ");
 }
 
 function getAnnouncementErrorMessage(error, fallbackMessage) {
@@ -3241,6 +3361,7 @@ async function loadAnnouncements(reason = "unspecified") {
   const { data, error } = await appState.supabase
     .from("announcements")
     .select("*")
+    .order("publish_at", { ascending: false })
     .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false });
 
@@ -3251,7 +3372,7 @@ async function loadAnnouncements(reason = "unspecified") {
   }
 
   appState.announcementsError = "";
-  return (data || []).map(mapRowToAnnouncement).filter(Boolean);
+  return (data || []).map(mapRowToAnnouncement).filter(Boolean).sort(compareAnnouncementsByRecency);
 }
 
 async function refreshAnnouncements(options = {}) {
@@ -3289,7 +3410,9 @@ async function refreshAnnouncements(options = {}) {
 }
 
 function getLatestActiveAnnouncement() {
-  return (appState.announcements || []).find((announcement) => announcement.status === "active") || null;
+  return [...(appState.announcements || [])]
+    .filter((announcement) => isAnnouncementCurrentlyPublic(announcement))
+    .sort(compareAnnouncementsByRecency)[0] || null;
 }
 
 async function uploadAnnouncementImage(file, announcementId = "") {
@@ -3350,11 +3473,19 @@ async function saveAnnouncementRecord(announcementInput, options = {}) {
   }
 
   const payload = {
+    title: String(announcementInput.title || "").trim(),
+    body: String(announcementInput.body || "").trim(),
     image_url: imageUrl,
     image_path: imagePath,
-    caption: String(announcementInput.caption || "").trim(),
+    caption: String(announcementInput.body || "").trim(),
     instagram_post_url: normalizeExternalUrl(announcementInput.instagramPostUrl),
+    button_text: normalizeAnnouncementButtonText(announcementInput.buttonText),
     status: normalizeAnnouncementStatus(announcementInput.status),
+    publish_at: parseDateTimeLocalInputValue(
+      announcementInput.publishAt,
+      existingAnnouncement?.publishAt || new Date().toISOString(),
+    ),
+    expires_at: parseDateTimeLocalInputValue(announcementInput.expiresAt, null),
   };
 
   const query = existingAnnouncement?.id
@@ -3377,7 +3508,7 @@ async function saveAnnouncementRecord(announcementInput, options = {}) {
   appState.announcements = [
     savedAnnouncement,
     ...appState.announcements.filter((announcement) => announcement.id !== savedAnnouncement.id),
-  ].sort((left, right) => new Date(right.updatedAt || right.createdAt || 0).getTime() - new Date(left.updatedAt || left.createdAt || 0).getTime());
+  ].sort(compareAnnouncementsByRecency);
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
   return savedAnnouncement;
@@ -8315,7 +8446,7 @@ function renderHomeSecondaryInfoRowMarkup() {
         ${renderHomeGalleryRankingsTeaser()}
       </div>
       <div class="home-dashboard-secondary-row-side">
-        ${announcementMarkup ? `<div class="home-dashboard-side-stack">${announcementMarkup}${renderHomeInstallInfoCardMarkup()}</div>` : renderHomeInstallInfoCardMarkup()}
+        <div class="home-dashboard-side-stack">${announcementMarkup}${renderHomeInstallInfoCardMarkup()}</div>
       </div>
     </div>
   `;
@@ -9194,15 +9325,27 @@ function formatAnnouncementDateLabel(value) {
   }).format(parsedDate);
 }
 
+function getAnnouncementFallbackJoke(referenceDate = new Date()) {
+  const startOfYear = new Date(referenceDate.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((referenceDate - startOfYear) / 86400000);
+  return ANNOUNCEMENT_FALLBACK_JOKES[dayOfYear % ANNOUNCEMENT_FALLBACK_JOKES.length];
+}
+
 function renderHomeAnnouncementCard() {
   const announcement = getLatestActiveAnnouncement();
-  if (!announcement) {
-    return "";
-  }
-
-  const caption = announcement.caption || "Latest update from Cannakan.";
-  const announcementUrl = announcement.instagramPostUrl || "https://www.instagram.com/cannakan/";
-  const imageMarkup = announcement.imageUrl
+  const isFallback = !announcement;
+  const cardTitle = isFallback
+    ? "Grow Joke of the Day"
+    : (announcement.title || "Latest from Cannakan");
+  const bodyText = isFallback
+    ? getAnnouncementFallbackJoke()
+    : (announcement.body || "Latest update from Cannakan.");
+  const announcementUrl = announcement?.instagramPostUrl || "";
+  const buttonText = normalizeAnnouncementButtonText(announcement?.buttonText || "");
+  const dateValue = isFallback
+    ? new Date().toISOString()
+    : (announcement.publishAt || announcement.updatedAt || announcement.createdAt);
+  const imageMarkup = announcement?.imageUrl
     ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
     : `
       <div class="home-announcement-card-image home-announcement-card-image--placeholder" aria-hidden="true">
@@ -9222,16 +9365,17 @@ function renderHomeAnnouncementCard() {
       <div class="home-announcement-card-body">
         <div class="home-announcement-card-copy">
           <p class="eyebrow">Latest from Cannakan</p>
-          <h3 id="home-announcement-title">Latest from Cannakan</h3>
-          <p class="home-announcement-card-caption" title="${escapeHtml(caption)}">${escapeHtml(caption)}</p>
-          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(announcement.updatedAt || announcement.createdAt))}</p>
+          <h3 id="home-announcement-title">${escapeHtml(cardTitle)}</h3>
+          <p class="home-announcement-card-caption" title="${escapeHtml(bodyText)}">${escapeHtml(bodyText)}</p>
+          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(dateValue))}</p>
         </div>
-        <div class="home-announcement-card-actions">
-          <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(announcementUrl)}" target="_blank" rel="noreferrer">
-            <span>View on Instagram →</span>
-          </a>
-          <a class="home-announcement-card-follow" href="https://www.instagram.com/cannakan/" target="_blank" rel="noreferrer">Follow @cannakan</a>
-        </div>
+        ${announcementUrl ? `
+          <div class="home-announcement-card-actions">
+            <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(announcementUrl)}" target="_blank" rel="noreferrer">
+              <span>${escapeHtml(buttonText)}</span>
+            </a>
+          </div>
+        ` : ""}
       </div>
     </section>
   `;
@@ -9243,7 +9387,9 @@ function renderAdminAnnouncementStatusPillMarkup(status) {
 }
 
 function renderAdminAnnouncementCardMarkup(announcement) {
-  const caption = announcement.caption || "No caption added yet.";
+  const title = announcement.title || "Untitled announcement";
+  const body = announcement.body || "No message added yet.";
+  const lifecycleLabel = getAnnouncementLifecycleLabel(announcement);
   const imageMarkup = announcement.imageUrl
     ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Announcement preview" class="admin-announcement-card-image">`
     : `
@@ -9262,13 +9408,17 @@ function renderAdminAnnouncementCardMarkup(announcement) {
       <div class="admin-announcement-card-copy">
         <div class="admin-announcement-card-head">
           ${renderAdminAnnouncementStatusPillMarkup(announcement.status)}
-          <span class="muted">${escapeHtml(formatAdminTimestamp(announcement.updatedAt || announcement.createdAt))}</span>
+          <span class="muted">${escapeHtml(lifecycleLabel)}</span>
         </div>
-        <p class="admin-announcement-card-caption">${escapeHtml(caption)}</p>
+        <div class="admin-announcement-card-copy-block">
+          <strong class="admin-announcement-card-title">${escapeHtml(title)}</strong>
+          <p class="admin-announcement-card-caption">${escapeHtml(body)}</p>
+        </div>
+        <p class="admin-announcement-card-meta">${escapeHtml(getAnnouncementScheduleSummary(announcement))}</p>
         <p class="admin-announcement-card-link-row">
           ${announcement.instagramPostUrl
-    ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(announcement.instagramPostUrl)}</a>`
-    : '<span class="muted">No Instagram URL added</span>'}
+    ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(announcement.buttonText || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}</a>`
+    : '<span class="muted">No Instagram button configured</span>'}
         </p>
         <div class="admin-source-card-actions">
           <button type="button" class="button button-secondary" data-announcement-edit="${escapeHtml(announcement.id)}">Edit</button>
@@ -9281,16 +9431,26 @@ function renderAdminAnnouncementCardMarkup(announcement) {
 
 function renderAdminAnnouncementEditorMarkup(announcement = null) {
   const isEditing = Boolean(announcement?.id);
+  const publishValue = formatDateTimeLocalInputValue(announcement?.publishAt || new Date().toISOString());
+  const expirationValue = formatDateTimeLocalInputValue(announcement?.expiresAt || "");
   return `
     <form id="admin-announcement-form" class="admin-source-form">
       <div class="section-heading admin-source-form-heading">
         <div>
           <p class="eyebrow">Announcement Editor</p>
           <h4>${escapeHtml(isEditing ? "Edit Announcement" : "Add Announcement")}</h4>
-          <p class="muted">Upload an image or paste an image URL, add a caption, and choose whether the announcement is active on the dashboard.</p>
+          <p class="muted">Create the public message board card shown on the dashboard, or schedule a future update.</p>
         </div>
       </div>
       <div class="admin-source-form-grid">
+        <label class="admin-source-form-full">
+          <span>Title</span>
+          <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan" required>
+        </label>
+        <label class="admin-source-form-full">
+          <span>Message / Body</span>
+          <textarea name="body" rows="5" maxlength="800" placeholder="Share the latest Cannakan update" required>${escapeHtml(announcement?.body || "")}</textarea>
+        </label>
         <div class="admin-source-form-full admin-source-logo-field">
           <span class="admin-source-field-label">Announcement Image</span>
           <div id="admin-announcement-image-preview" class="admin-source-logo-preview"></div>
@@ -9308,12 +9468,20 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           </div>
         </div>
         <label class="admin-source-form-full">
-          <span>Caption</span>
-          <textarea name="caption" rows="4" maxlength="500" placeholder="Latest Cannakan update caption">${escapeHtml(announcement?.caption || "")}</textarea>
-        </label>
-        <label class="admin-source-form-full">
           <span>Instagram Post URL</span>
           <input type="url" name="instagramPostUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
+        </label>
+        <label>
+          <span>Button Text</span>
+          <input type="text" name="buttonText" maxlength="80" value="${escapeHtml(announcement?.buttonText || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}" placeholder="${escapeHtml(DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}">
+        </label>
+        <label>
+          <span>Publish Date</span>
+          <input type="datetime-local" name="publishAt" value="${escapeHtml(publishValue)}" required>
+        </label>
+        <label>
+          <span>Expiration Date</span>
+          <input type="datetime-local" name="expiresAt" value="${escapeHtml(expirationValue)}">
         </label>
         <label>
           <span>Publish Status</span>
@@ -9401,7 +9569,7 @@ function bindAdminAnnouncementsSection() {
         return;
       }
 
-      const confirmed = window.confirm("Delete this announcement?");
+      const confirmed = window.confirm("Are you sure you want to delete this announcement?");
       if (!confirmed) {
         return;
       }
@@ -9521,13 +9689,30 @@ function bindAdminAnnouncementsSection() {
     message.textContent = "";
 
     try {
-      const savedAnnouncement = await saveAnnouncementRecord({
+      const publishAtValue = form.elements.publishAt?.value || "";
+      const expiresAtValue = form.elements.expiresAt?.value || "";
+      const publishAtIso = parseDateTimeLocalInputValue(
+        publishAtValue,
+        existingAnnouncement?.publishAt || new Date().toISOString(),
+      );
+      const expiresAtIso = parseDateTimeLocalInputValue(expiresAtValue, "");
+      const publishDate = parseCompletedAtValue(publishAtIso);
+      const expirationDate = parseCompletedAtValue(expiresAtIso);
+      if (publishDate && expirationDate && expirationDate.getTime() <= publishDate.getTime()) {
+        throw new Error("Expiration date must be later than the publish date.");
+      }
+
+      await saveAnnouncementRecord({
+        title: form.elements.title?.value || "",
+        body: form.elements.body?.value || "",
         imageFile: state.pendingFile,
         imageUrlInput: imageUrlInput?.value || "",
         removeImage: state.removeImage,
-        caption: form.elements.caption?.value || "",
         instagramPostUrl: form.elements.instagramPostUrl?.value || "",
+        buttonText: form.elements.buttonText?.value || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT,
         status: form.elements.status?.value || "inactive",
+        publishAt: publishAtValue,
+        expiresAt: expiresAtValue,
       }, {
         existingAnnouncement,
       });
@@ -9623,7 +9808,7 @@ function renderAdminPage() {
         <div>
           <p class="eyebrow">Announcements</p>
           <h3>Manage dashboard announcements.</h3>
-          <p class="muted">Create admin-controlled updates for the home dashboard without using the Instagram API.</p>
+          <p class="muted">Create admin-controlled message board updates for the public dashboard without using the Instagram API.</p>
         </div>
       </div>
       <div class="admin-sources-layout">
