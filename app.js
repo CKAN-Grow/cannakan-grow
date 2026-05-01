@@ -198,6 +198,18 @@ function isConfiguredAdminEmail(email) {
   return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
 }
 
+function syncAdminNavigationVisibility() {
+  const shouldShowAdminNav = Boolean(appState.user && isAdminUser());
+  document.querySelectorAll("[data-admin-nav]").forEach((link) => {
+    link.hidden = !shouldShowAdminNav;
+    if (shouldShowAdminNav) {
+      link.removeAttribute("aria-hidden");
+    } else {
+      link.setAttribute("aria-hidden", "true");
+    }
+  });
+}
+
 function logGrowGalleryDebug(event, details = {}) {
   if (!GROW_GALLERY_DEBUG) {
     return;
@@ -1830,6 +1842,7 @@ function redirectToHomeAfterLogin() {
 
 function updateNavState() {
   const navLinks = document.querySelectorAll(".topbar-nav a");
+  syncAdminNavigationVisibility();
   if (!navLinks.length) {
     return;
   }
@@ -1853,10 +1866,6 @@ function updateNavState() {
     } else {
       link.removeAttribute("aria-current");
     }
-  });
-
-  document.querySelectorAll("[data-admin-nav]").forEach((link) => {
-    link.hidden = !isAdminUser();
   });
 }
 
@@ -5487,17 +5496,20 @@ function updateAuthStatus() {
 
   if (!isSupabaseConfigured()) {
     authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
+    syncAdminNavigationVisibility();
     return;
   }
 
   if (!appState.user) {
     authStatus.innerHTML = `<span class="auth-pill">Signed out</span>`;
+    syncAdminNavigationVisibility();
     return;
   }
 
   const themeTarget = appState.theme === "dark" ? "light" : "dark";
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
+  const showAdminMenuItem = Boolean(appState.user && isAdminUser());
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
@@ -5520,6 +5532,12 @@ function updateAuthStatus() {
           ${getMenuIconMarkup(themeIcon)}
           <span>${themeLabel}</span>
         </button>
+        ${showAdminMenuItem ? `
+          <button id="account-admin-link" class="account-menu-item" type="button" role="menuitem">
+            ${getMenuIconMarkup("menu")}
+            <span>Admin</span>
+          </button>
+        ` : ""}
         <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("profile")}
           <span>Edit Profile</span>
@@ -5539,6 +5557,7 @@ function updateAuthStatus() {
   const menuRoot = authStatus.querySelector("[data-account-menu-root]");
   const trigger = authStatus.querySelector("#account-menu-trigger");
   const dropdown = authStatus.querySelector(".account-dropdown");
+  syncAdminNavigationVisibility();
 
   menuRoot?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -5555,6 +5574,13 @@ function updateAuthStatus() {
     event.stopPropagation();
     closeAccountMenu();
     toggleTheme();
+  });
+
+  dropdown?.querySelector("#account-admin-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    window.location.hash = "#admin";
   });
 
   dropdown?.querySelector("#account-edit-profile")?.addEventListener("click", (event) => {
