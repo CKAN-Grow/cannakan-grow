@@ -265,6 +265,12 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     sessionRoute: "#members/mock-kan-trial-user",
   },
 ]);
+const MOCK_PUBLIC_SESSION_TIMELINE = Object.freeze({
+  startedAt: "2026-04-28T08:14:00.000Z",
+  germinationStartedAt: "2026-04-29T02:35:00.000Z",
+  firstPlantedAt: "2026-04-30T02:57:00.000Z",
+  completedAt: "2026-04-30T12:57:00.000Z",
+});
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
@@ -22692,7 +22698,21 @@ function buildSessionLifecycleState(session) {
   };
 }
 
+function buildMockPublicSessionLifecycleState() {
+  return {
+    showEmptyTimeline: false,
+    startedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.startedAt),
+    germinationStartedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.germinationStartedAt),
+    firstPlantedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.firstPlantedAt),
+    completedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.completedAt),
+  };
+}
+
 function buildPublicSessionLifecycleState(snapshot) {
+  if (isMockDataEnabled() && isMockGallerySnapshot(snapshot)) {
+    return buildMockPublicSessionLifecycleState();
+  }
+
   const linkedSession = getGallerySnapshotSession(snapshot);
   if (linkedSession) {
     return buildSessionLifecycleState(linkedSession);
