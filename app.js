@@ -265,12 +265,59 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     sessionRoute: "#members/mock-kan-trial-user",
   },
 ]);
-const MOCK_PUBLIC_SESSION_TIMELINE = Object.freeze({
-  startedAt: "2026-04-28T08:14:00.000Z",
-  germinationStartedAt: "2026-04-29T02:35:00.000Z",
-  firstPlantedAt: "2026-04-30T02:57:00.000Z",
-  completedAt: "2026-04-30T12:57:00.000Z",
-});
+const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
+  {
+    key: "perfect-run",
+    name: "Perfect Run",
+    seedVarietyName: "Blue Dream",
+    sourceName: "Humboldt Seed Co",
+    seedTypeName: "Photo",
+    sexLabel: "Feminized",
+    totalSeeds: 10,
+    totalPlanted: 10,
+    successPercent: 100,
+    timeline: {
+      startedAt: "2026-04-28T08:14:00.000Z",
+      germinationStartedAt: "2026-04-29T02:35:00.000Z",
+      firstPlantedAt: "2026-04-30T00:45:00.000Z",
+      completedAt: "2026-04-30T08:44:00.000Z",
+    },
+  },
+  {
+    key: "strong-average-run",
+    name: "Strong Average Run",
+    seedVarietyName: "Gorilla Glue #4",
+    sourceName: "Seedsman",
+    seedTypeName: "Photo",
+    sexLabel: "Feminized",
+    totalSeeds: 12,
+    totalPlanted: 10,
+    successPercent: 83,
+    timeline: {
+      startedAt: "2026-04-22T07:10:00.000Z",
+      germinationStartedAt: "2026-04-23T03:15:00.000Z",
+      firstPlantedAt: "2026-04-24T07:55:00.000Z",
+      completedAt: "2026-04-24T19:25:00.000Z",
+    },
+  },
+  {
+    key: "difficult-seed-recovery",
+    name: "Difficult Seed Recovery",
+    seedVarietyName: "Old Stock Test",
+    sourceName: "SeedVault",
+    seedTypeName: "Regular",
+    sexLabel: "Not shared",
+    totalSeeds: 8,
+    totalPlanted: 5,
+    successPercent: 63,
+    timeline: {
+      startedAt: "2026-04-18T09:00:00.000Z",
+      germinationStartedAt: "2026-04-19T09:00:00.000Z",
+      firstPlantedAt: "2026-04-21T01:30:00.000Z",
+      completedAt: "2026-04-21T15:45:00.000Z",
+    },
+  },
+]);
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
@@ -387,6 +434,7 @@ const appState = {
   growNetworkFollowingRefreshPromise: null,
   growNetworkActiveTab: "following",
   mockGrowNetworkFollowStates: {},
+  mockPublicSessionScenarioKey: "perfect-run",
   growNetworkActivity: [],
   growNetworkActivityLoaded: false,
   growNetworkActivityError: "",
@@ -652,6 +700,7 @@ function resetSessionScopedAppState() {
   appState.growNetworkFollowingRefreshPromise = null;
   appState.growNetworkActiveTab = "following";
   appState.mockGrowNetworkFollowStates = {};
+  appState.mockPublicSessionScenarioKey = "perfect-run";
   appState.growNetworkActivity = [];
   appState.growNetworkActivityLoaded = false;
   appState.growNetworkActivityError = "";
@@ -2587,6 +2636,26 @@ function isMockGallerySnapshot(snapshot) {
 
 function isMockGalleryReviewSnapshot(snapshot) {
   return Boolean(snapshot?.isMockReview) || String(snapshot?.id || "").startsWith("mock-gallery-review-");
+}
+
+function normalizeMockPublicSessionScenarioKey(key = "") {
+  const normalizedKey = String(key || "").trim().toLowerCase();
+  return MOCK_PUBLIC_SESSION_SCENARIOS.some((scenario) => scenario.key === normalizedKey)
+    ? normalizedKey
+    : MOCK_PUBLIC_SESSION_SCENARIOS[0].key;
+}
+
+function getActiveMockPublicSessionScenario(snapshot = null) {
+  if (!isMockDataEnabled() || !isMockGallerySnapshot(snapshot)) {
+    return null;
+  }
+
+  const scenarioKey = normalizeMockPublicSessionScenarioKey(appState.mockPublicSessionScenarioKey);
+  return MOCK_PUBLIC_SESSION_SCENARIOS.find((scenario) => scenario.key === scenarioKey) || MOCK_PUBLIC_SESSION_SCENARIOS[0];
+}
+
+function setActiveMockPublicSessionScenario(key = "") {
+  appState.mockPublicSessionScenarioKey = normalizeMockPublicSessionScenarioKey(key);
 }
 
 function getMockGalleryReviewStatus(snapshot) {
@@ -9994,6 +10063,27 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
     germinatedLabel: totalSeeds > 0 ? String(germinatedCount) : "Not shared",
     germinationRateLabel: `${germinationRate}%`,
     sessionDateLabel: getGallerySnapshotSubmittedDateLabel(snapshot),
+  };
+}
+
+function getMockPublicSessionDetails(snapshot, scenario) {
+  if (!scenario) {
+    return getGallerySnapshotPublicSessionDetails(snapshot);
+  }
+
+  const startedAt = String(scenario.timeline?.startedAt || "").trim();
+  const startedSessionDate = startedAt ? startedAt.slice(0, 10) : "";
+
+  return {
+    systemLabel: formatSnapshotSystemLabel(snapshot?.systemType || "KAN"),
+    sourceLabel: scenario.sourceName,
+    seedVarietyLabel: scenario.seedVarietyName,
+    seedTypeLabel: scenario.seedTypeName,
+    sexLabel: scenario.sexLabel,
+    seedCountLabel: String(scenario.totalSeeds),
+    germinatedLabel: String(scenario.totalPlanted),
+    germinationRateLabel: `${scenario.successPercent}%`,
+    sessionDateLabel: getGallerySnapshotSubmittedDateLabel({ sessionDate: startedSessionDate }),
   };
 }
 
@@ -20062,8 +20152,12 @@ function renderPublicSessionDetail(snapshotId) {
     return;
   }
 
-  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const activeMockScenario = getActiveMockPublicSessionScenario(snapshot);
+  const publicDetails = activeMockScenario
+    ? getMockPublicSessionDetails(snapshot, activeMockScenario)
+    : getGallerySnapshotPublicSessionDetails(snapshot);
   const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
+  const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
   const facts = [
     { label: "System", value: publicDetails.systemLabel },
     { label: "Source", value: publicDetails.sourceLabel },
@@ -20075,6 +20169,20 @@ function renderPublicSessionDetail(snapshotId) {
     { label: "Germination Rate", value: publicDetails.germinationRateLabel },
     { label: "Session Date", value: publicDetails.sessionDateLabel },
   ];
+  const mockScenarioSelectorMarkup = activeMockScenario
+    ? `
+      <div class="inline-actions" aria-label="Mock public session scenarios">
+        ${MOCK_PUBLIC_SESSION_SCENARIOS.map((scenario) => `
+          <button
+            type="button"
+            class="button ${scenario.key === activeMockScenario.key ? "button-primary" : "button-secondary"}"
+            data-mock-public-session-scenario="${escapeHtml(scenario.key)}"
+            aria-pressed="${scenario.key === activeMockScenario.key ? "true" : "false"}"
+          >${escapeHtml(scenario.name)}</button>
+        `).join("")}
+      </div>
+    `
+    : "";
 
   app.innerHTML = `
     <section class="card public-session-card">
@@ -20088,8 +20196,9 @@ function renderPublicSessionDetail(snapshotId) {
           </svg>
           <div>
             <p class="eyebrow">Public Session</p>
-            <h2>${escapeHtml(snapshot.title)}</h2>
+            <h2>${escapeHtml(sessionTitle)}</h2>
             <p class="muted">Read-only grow session view</p>
+            ${mockScenarioSelectorMarkup}
           </div>
         </div>
         <div class="inline-actions">
@@ -20120,6 +20229,13 @@ function renderPublicSessionDetail(snapshotId) {
       </div>
     </section>
   `;
+
+  app.querySelectorAll("[data-mock-public-session-scenario]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveMockPublicSessionScenario(button.dataset.mockPublicSessionScenario || "");
+      renderPublicSessionDetail(snapshotId);
+    });
+  });
 }
 
 function renderPublicMemberProfile(memberId) {
@@ -22698,19 +22814,21 @@ function buildSessionLifecycleState(session) {
   };
 }
 
-function buildMockPublicSessionLifecycleState() {
+function buildMockPublicSessionLifecycleState(scenario = null) {
+  const activeScenario = scenario || MOCK_PUBLIC_SESSION_SCENARIOS[0];
   return {
     showEmptyTimeline: false,
-    startedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.startedAt),
-    germinationStartedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.germinationStartedAt),
-    firstPlantedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.firstPlantedAt),
-    completedAt: parseCompletedAtValue(MOCK_PUBLIC_SESSION_TIMELINE.completedAt),
+    startedAt: parseCompletedAtValue(activeScenario.timeline.startedAt),
+    germinationStartedAt: parseCompletedAtValue(activeScenario.timeline.germinationStartedAt),
+    firstPlantedAt: parseCompletedAtValue(activeScenario.timeline.firstPlantedAt),
+    completedAt: parseCompletedAtValue(activeScenario.timeline.completedAt),
   };
 }
 
 function buildPublicSessionLifecycleState(snapshot) {
-  if (isMockDataEnabled() && isMockGallerySnapshot(snapshot)) {
-    return buildMockPublicSessionLifecycleState();
+  const activeMockScenario = getActiveMockPublicSessionScenario(snapshot);
+  if (activeMockScenario) {
+    return buildMockPublicSessionLifecycleState(activeMockScenario);
   }
 
   const linkedSession = getGallerySnapshotSession(snapshot);
