@@ -3,6 +3,7 @@ const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v2";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
+const ANNOUNCEMENT_STORAGE_KEY = "cannakanGrowAnnouncement";
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
@@ -1902,7 +1903,7 @@ async function bootstrapApp() {
     appState.sources = [];
     appState.sourcesLoaded = true;
     appState.sourcesError = "";
-    appState.announcements = [];
+    appState.announcements = await loadAnnouncements("local-no-supabase");
     appState.announcementsLoaded = true;
     appState.announcementsError = "";
     appState.members = [];
@@ -3223,25 +3224,78 @@ function normalizeExternalUrl(value) {
   return `https://${rawValue}`;
 }
 
-function mapRowToAnnouncement(row) {
-  if (!row) {
+function mapStoredAnnouncementToAnnouncement(record) {
+  if (!record) {
     return null;
   }
 
   return {
-    id: row.id,
-    title: String(row.title || "").trim(),
-    body: String(row.body || row.caption || "").trim(),
-    imageUrl: String(row.image_url || "").trim(),
-    imagePath: String(row.image_path || "").trim(),
-    instagramPostUrl: normalizeExternalUrl(row.instagram_post_url || ""),
-    buttonText: normalizeAnnouncementButtonText(row.button_text || ""),
-    status: normalizeAnnouncementStatus(row.status),
-    publishAt: row.publish_at || row.created_at || row.updated_at || "",
-    expiresAt: row.expires_at || "",
-    createdAt: row.created_at || "",
-    updatedAt: row.updated_at || "",
+    id: "local-storage-announcement",
+    title: String(record.title || "").trim(),
+    body: String(record.message || "").trim(),
+    imageUrl: String(record.imageUrl || "").trim(),
+    imagePath: "",
+    instagramPostUrl: normalizeExternalUrl(record.instagramUrl || ""),
+    buttonText: String(record.buttonText || "").trim(),
+    status: record.active ? "active" : "inactive",
+    publishAt: record.updatedAt || "",
+    expiresAt: "",
+    createdAt: record.updatedAt || "",
+    updatedAt: record.updatedAt || "",
   };
+}
+
+function normalizeStoredAnnouncementRecord(record) {
+  if (!record || typeof record !== "object") {
+    return null;
+  }
+
+  const title = String(record.title || "").trim();
+  const message = String(record.message || record.body || "").trim();
+  const imageUrl = normalizeExternalUrl(record.imageUrl || "");
+  const instagramUrl = normalizeExternalUrl(record.instagramUrl || record.instagramPostUrl || "");
+  const buttonText = String(record.buttonText || "").trim();
+  const parsedUpdatedAt = parseCompletedAtValue(record.updatedAt || "");
+  const updatedAt = parsedUpdatedAt instanceof Date && !Number.isNaN(parsedUpdatedAt.getTime())
+    ? parsedUpdatedAt.toISOString()
+    : new Date().toISOString();
+  const active = Boolean(record.active);
+
+  if (!title && !message && !imageUrl && !instagramUrl && !buttonText && !active) {
+    return null;
+  }
+
+  return {
+    title,
+    message,
+    imageUrl,
+    instagramUrl,
+    buttonText,
+    active,
+    updatedAt,
+  };
+}
+
+function readStoredAnnouncementRecord() {
+  try {
+    const rawValue = localStorage.getItem(ANNOUNCEMENT_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+    return normalizeStoredAnnouncementRecord(JSON.parse(rawValue));
+  } catch (error) {
+    console.error("Failed to read announcement from localStorage", error);
+    appState.announcementsError = "Could not load the saved announcement from this browser.";
+    return null;
+  }
+}
+
+function writeStoredAnnouncementRecord(record) {
+  localStorage.setItem(ANNOUNCEMENT_STORAGE_KEY, JSON.stringify(record));
+}
+
+function removeStoredAnnouncementRecord() {
+  localStorage.removeItem(ANNOUNCEMENT_STORAGE_KEY);
 }
 
 function getAnnouncementSortTimestamp(announcement) {
@@ -3260,149 +3314,24 @@ function compareAnnouncementsByRecency(left, right) {
   return getAnnouncementSortTimestamp(right) - getAnnouncementSortTimestamp(left);
 }
 
-function formatDateTimeLocalInputValue(value) {
-  const parsedDate = parseCompletedAtValue(value);
-  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
-    return "";
-  }
-
-  const timezoneOffset = parsedDate.getTimezoneOffset() * 60000;
-  return new Date(parsedDate.getTime() - timezoneOffset).toISOString().slice(0, 16);
-}
-
-function parseDateTimeLocalInputValue(value, fallbackValue = "") {
-  const rawValue = String(value || "").trim();
-  if (!rawValue) {
-    return fallbackValue;
-  }
-
-  const parsedDate = new Date(rawValue);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return fallbackValue;
-  }
-
-  return parsedDate.toISOString();
-}
-
 function getAnnouncementPublishDate(announcement) {
   return parseCompletedAtValue(announcement?.publishAt || announcement?.updatedAt || announcement?.createdAt || "");
 }
 
-function isAnnouncementCurrentlyPublic(announcement, referenceDate = new Date()) {
-  if (!announcement || normalizeAnnouncementStatus(announcement.status) !== "active") {
-    return false;
-  }
-
-  const publishDate = getAnnouncementPublishDate(announcement);
-  if (publishDate && publishDate.getTime() > referenceDate.getTime()) {
-    return false;
-  }
-
-  const expirationDate = parseCompletedAtValue(announcement.expiresAt);
-  if (expirationDate && expirationDate.getTime() <= referenceDate.getTime()) {
-    return false;
-  }
-
-  return true;
-}
-
-function getAnnouncementLifecycleLabel(announcement, referenceDate = new Date()) {
-  if (!announcement) {
-    return "";
-  }
-
-  if (normalizeAnnouncementStatus(announcement.status) !== "active") {
-    return "Inactive";
-  }
-
-  const publishDate = getAnnouncementPublishDate(announcement);
-  if (publishDate && publishDate.getTime() > referenceDate.getTime()) {
-    return "Scheduled";
-  }
-
-  const expirationDate = parseCompletedAtValue(announcement.expiresAt);
-  if (expirationDate && expirationDate.getTime() <= referenceDate.getTime()) {
-    return "Expired";
-  }
-
-  return "Live";
-}
-
-function getAnnouncementScheduleSummary(announcement) {
-  const publishDate = getAnnouncementPublishDate(announcement);
-  const expirationDate = parseCompletedAtValue(announcement?.expiresAt);
-
-  if (!publishDate && !expirationDate) {
-    return "Publishes immediately with no expiration.";
-  }
-
-  const parts = [];
-  if (publishDate) {
-    parts.push(`Publishes ${formatAdminTimestamp(publishDate.toISOString())}`);
-  }
-  if (expirationDate) {
-    parts.push(`Expires ${formatAdminTimestamp(expirationDate.toISOString())}`);
-  }
-
-  return parts.join(" | ");
-}
-
-function getAnnouncementErrorMessage(error, fallbackMessage) {
-  const normalizedMessage = String(
-    error?.message
-    || error?.error_description
-    || error?.details
-    || "",
-  ).trim().toLowerCase();
-
-  if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
-    return "Announcement image storage is missing or not configured.";
-  }
-  if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
-    return "You do not have permission to manage announcements.";
-  }
-  if (normalizedMessage.includes("relation") && normalizedMessage.includes("announcements")) {
-    return "Announcements data store is missing. Run the latest schema setup.";
-  }
-  if (normalizedMessage.includes("column") && normalizedMessage.includes("announcements")) {
-    return "Announcements schema is out of date. Apply the latest database schema.";
-  }
-
-  return fallbackMessage;
+function isAnnouncementCurrentlyPublic(announcement) {
+  return Boolean(announcement && normalizeAnnouncementStatus(announcement.status) === "active");
 }
 
 async function loadAnnouncements(reason = "unspecified") {
-  if (!appState.supabase) {
-    return [];
-  }
-
-  const { data, error } = await appState.supabase
-    .from("announcements")
-    .select("*")
-    .order("publish_at", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Failed to load announcements", { reason, error });
-    appState.announcementsError = getAnnouncementErrorMessage(error, "Could not load announcements.");
-    return [];
-  }
-
+  void reason;
   appState.announcementsError = "";
-  return (data || []).map(mapRowToAnnouncement).filter(Boolean).sort(compareAnnouncementsByRecency);
+  const storedAnnouncement = readStoredAnnouncementRecord();
+  const mappedAnnouncement = mapStoredAnnouncementToAnnouncement(storedAnnouncement);
+  return mappedAnnouncement ? [mappedAnnouncement].sort(compareAnnouncementsByRecency) : [];
 }
 
 async function refreshAnnouncements(options = {}) {
-  const { force = false, reason = "refresh" } = options;
-
-  if (!appState.supabase) {
-    appState.announcements = [];
-    appState.announcementsLoaded = true;
-    appState.announcementsError = "";
-    return [];
-  }
-
+  const { force = false } = options;
   if (!force && appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
     return appState.announcements;
   }
@@ -3412,7 +3341,7 @@ async function refreshAnnouncements(options = {}) {
   }
 
   const refreshPromise = (async () => {
-    const announcements = await loadAnnouncements(reason);
+    const announcements = await loadAnnouncements(options.reason || "refresh");
     appState.announcements = announcements;
     appState.announcementsLoaded = true;
     return announcements;
@@ -3433,124 +3362,59 @@ function getLatestActiveAnnouncement() {
     .sort(compareAnnouncementsByRecency)[0] || null;
 }
 
-async function uploadAnnouncementImage(file, announcementId = "") {
-  if (!appState.supabase?.storage || !appState.user || !isAdminUser()) {
-    throw new Error("Announcement image uploads are not available until admin storage is ready.");
-  }
-
-  const preparedImage = await prepareImageForUpload(file, MAX_ANNOUNCEMENT_IMAGE_DIMENSION, 0.88);
-  const path = `announcements/${announcementId || "new"}/image-${crypto.randomUUID()}.jpg`;
-  const { error } = await appState.supabase.storage
-    .from(ANNOUNCEMENT_BUCKET)
-    .upload(path, preparedImage.blob, {
-      contentType: preparedImage.contentType,
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(getAnnouncementErrorMessage(error, "Could not upload announcement image."));
-  }
-
-  const { data } = appState.supabase.storage.from(ANNOUNCEMENT_BUCKET).getPublicUrl(path);
-  return {
-    path,
-    url: data.publicUrl,
-  };
-}
-
-async function removeAnnouncementImageFromStorage(path) {
-  if (!path || !appState.supabase?.storage) {
-    return;
-  }
-
-  await appState.supabase.storage.from(ANNOUNCEMENT_BUCKET).remove([path]);
-}
-
-async function saveAnnouncementRecord(announcementInput, options = {}) {
-  const existingAnnouncement = options.existingAnnouncement || null;
-  if (!appState.supabase || !isAdminUser()) {
+async function saveAnnouncementRecord(announcementInput) {
+  if (!isAdminUser()) {
     throw new Error("You must be an admin to manage announcements.");
   }
 
-  let uploadedImage = null;
-  let imageUrl = String(existingAnnouncement?.imageUrl || "").trim();
-  let imagePath = String(existingAnnouncement?.imagePath || "").trim();
+  const title = String(announcementInput.title || "").trim();
+  const message = String(announcementInput.message || announcementInput.body || "").trim();
 
-  if (announcementInput.removeImage) {
-    imageUrl = "";
-    imagePath = "";
+  if (!title) {
+    throw new Error("Title is required.");
   }
 
-  if (announcementInput.imageFile) {
-    uploadedImage = await uploadAnnouncementImage(announcementInput.imageFile, existingAnnouncement?.id || "");
-    imageUrl = uploadedImage.url;
-    imagePath = uploadedImage.path;
-  } else if (announcementInput.imageUrlInput) {
-    imageUrl = normalizeExternalUrl(announcementInput.imageUrlInput);
-    imagePath = "";
+  if (!message) {
+    throw new Error("Message is required.");
   }
 
-  const payload = {
-    title: String(announcementInput.title || "").trim(),
-    body: String(announcementInput.body || "").trim(),
-    image_url: imageUrl,
-    image_path: imagePath,
-    caption: String(announcementInput.body || "").trim(),
-    instagram_post_url: normalizeExternalUrl(announcementInput.instagramPostUrl),
-    button_text: normalizeAnnouncementButtonText(announcementInput.buttonText),
-    status: normalizeAnnouncementStatus(announcementInput.status),
-    publish_at: parseDateTimeLocalInputValue(
-      announcementInput.publishAt,
-      existingAnnouncement?.publishAt || new Date().toISOString(),
-    ),
-    expires_at: parseDateTimeLocalInputValue(announcementInput.expiresAt, null),
+  const storedRecord = {
+    title,
+    message,
+    imageUrl: normalizeExternalUrl(announcementInput.imageUrl || announcementInput.imageUrlInput || ""),
+    instagramUrl: normalizeExternalUrl(announcementInput.instagramUrl || announcementInput.instagramPostUrl || ""),
+    buttonText: String(announcementInput.buttonText || "").trim(),
+    active: Boolean(announcementInput.active),
+    updatedAt: new Date().toISOString(),
   };
 
-  const query = existingAnnouncement?.id
-    ? appState.supabase.from("announcements").update(payload).eq("id", existingAnnouncement.id).select("*").single()
-    : appState.supabase.from("announcements").insert(payload).select("*").single();
-  const { data, error } = await query;
-
-  if (error) {
-    if (uploadedImage?.path) {
-      await removeAnnouncementImageFromStorage(uploadedImage.path);
-    }
-    throw new Error(getAnnouncementErrorMessage(error, existingAnnouncement ? "Could not update announcement." : "Could not add announcement."));
+  try {
+    writeStoredAnnouncementRecord(storedRecord);
+  } catch (error) {
+    console.error("Failed to save announcement to localStorage", error);
+    throw new Error("Could not save the announcement to this browser.");
   }
 
-  if ((announcementInput.removeImage || announcementInput.imageFile || announcementInput.imageUrlInput) && existingAnnouncement?.imagePath && existingAnnouncement.imagePath !== imagePath) {
-    await removeAnnouncementImageFromStorage(existingAnnouncement.imagePath);
-  }
-
-  const savedAnnouncement = mapRowToAnnouncement(data);
-  appState.announcements = [
-    savedAnnouncement,
-    ...appState.announcements.filter((announcement) => announcement.id !== savedAnnouncement.id),
-  ].sort(compareAnnouncementsByRecency);
+  const savedAnnouncement = mapStoredAnnouncementToAnnouncement(storedRecord);
+  appState.announcements = savedAnnouncement ? [savedAnnouncement] : [];
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
   return savedAnnouncement;
 }
 
-async function deleteAnnouncementRecord(announcement) {
-  if (!appState.supabase || !isAdminUser()) {
+async function clearAnnouncementRecord() {
+  if (!isAdminUser()) {
     throw new Error("You must be an admin to manage announcements.");
   }
 
-  const { error } = await appState.supabase
-    .from("announcements")
-    .delete()
-    .eq("id", announcement.id);
-
-  if (error) {
-    throw new Error(getAnnouncementErrorMessage(error, "Could not delete announcement."));
+  try {
+    removeStoredAnnouncementRecord();
+  } catch (error) {
+    console.error("Failed to clear announcement from localStorage", error);
+    throw new Error("Could not clear the saved announcement from this browser.");
   }
 
-  if (announcement.imagePath) {
-    await removeAnnouncementImageFromStorage(announcement.imagePath);
-  }
-
-  appState.announcements = appState.announcements.filter((entry) => entry.id !== announcement.id);
+  appState.announcements = [];
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
 }
@@ -8473,15 +8337,56 @@ function renderHomeInstallInfoCardMarkup() {
   `;
 }
 
+function renderHomeAdminUtilityCardMarkup() {
+  if (!canAccessMockDataControls()) {
+    return "";
+  }
+
+  return `
+    <section class="card mock-data-admin-section ${isMockDataEnabled() ? "is-on" : "is-off"}">
+      <div class="mock-data-admin-shell">
+        <div class="mock-data-admin-copy">
+          <p class="eyebrow">Admin Utility</p>
+          <h3>Dev Mode (Mock Data)</h3>
+          <p class="mock-data-admin-subtitle">
+            <span>Admin-only preview controls</span>
+            ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
+          </p>
+          <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
+        </div>
+        <div class="mock-data-admin-actions">
+          <button
+            type="button"
+            class="mock-data-toggle ${isMockDataEnabled() ? "is-on" : "is-off"}"
+            data-home-mock-data-toggle="true"
+            aria-pressed="${isMockDataEnabled() ? "true" : "false"}"
+            aria-label="Toggle Dev Mode mock gallery data"
+          >
+            <span class="mock-data-toggle-text">
+              <span class="mock-data-toggle-label">Dev Mode</span>
+              <span class="mock-data-toggle-sublabel">Mock gallery data</span>
+            </span>
+            <span class="mock-data-toggle-switch" aria-hidden="true">
+              <span class="mock-data-toggle-thumb"></span>
+            </span>
+            <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
+          </button>
+          <p class="muted">Shift + D</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderHomeSecondaryInfoRowMarkup() {
   const announcementMarkup = renderHomeAnnouncementCard();
   return `
     <div class="home-dashboard-secondary-row">
-      <div class="home-dashboard-secondary-row-main">
-        ${renderHomeGalleryRankingsTeaser()}
-      </div>
-      <div class="home-dashboard-secondary-row-side">
-        <div class="home-dashboard-side-stack">${announcementMarkup}${renderHomeInstallInfoCardMarkup()}</div>
+      ${renderHomeGalleryRankingsTeaser()}
+      ${announcementMarkup}
+      <div class="home-dashboard-secondary-row-bottom">
+        ${renderHomeInstallInfoCardMarkup()}
+        ${renderHomeAdminUtilityCardMarkup()}
       </div>
     </div>
   `;
@@ -9440,7 +9345,6 @@ function renderAdminAnnouncementStatusPillMarkup(status) {
 function renderAdminAnnouncementCardMarkup(announcement) {
   const title = announcement.title || "Untitled announcement";
   const body = announcement.body || "No message added yet.";
-  const lifecycleLabel = getAnnouncementLifecycleLabel(announcement);
   const imageMarkup = announcement.imageUrl
     ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Announcement preview" class="admin-announcement-card-image">`
     : `
@@ -9459,38 +9363,32 @@ function renderAdminAnnouncementCardMarkup(announcement) {
       <div class="admin-announcement-card-copy">
         <div class="admin-announcement-card-head">
           ${renderAdminAnnouncementStatusPillMarkup(announcement.status)}
-          <span class="muted">${escapeHtml(lifecycleLabel)}</span>
+          <span class="muted">${escapeHtml(announcement.updatedAt ? `Updated ${formatAnnouncementDateLabel(announcement.updatedAt)}` : "Stored locally")}</span>
         </div>
         <div class="admin-announcement-card-copy-block">
           <strong class="admin-announcement-card-title">${escapeHtml(title)}</strong>
           <p class="admin-announcement-card-caption">${escapeHtml(body)}</p>
         </div>
-        <p class="admin-announcement-card-meta">${escapeHtml(getAnnouncementScheduleSummary(announcement))}</p>
+        <p class="admin-announcement-card-meta">${escapeHtml(isAnnouncementCurrentlyPublic(announcement) ? "This message board item is currently live on Home." : "This message board item is saved but inactive, so Home will show the Grow Joke of the Day.")}</p>
         <p class="admin-announcement-card-link-row">
           ${announcement.instagramPostUrl
-    ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(announcement.buttonText || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}</a>`
+    ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(normalizeAnnouncementButtonText(announcement.buttonText || ""))}</a>`
     : '<span class="muted">No Instagram button configured</span>'}
         </p>
-        <div class="admin-source-card-actions">
-          <button type="button" class="button button-secondary" data-announcement-edit="${escapeHtml(announcement.id)}">Edit</button>
-          <button type="button" class="button button-secondary gallery-admin-reject" data-announcement-delete="${escapeHtml(announcement.id)}">Delete</button>
-        </div>
       </div>
     </article>
   `;
 }
 
 function renderAdminAnnouncementEditorMarkup(announcement = null) {
-  const isEditing = Boolean(announcement?.id);
-  const publishValue = formatDateTimeLocalInputValue(announcement?.publishAt || new Date().toISOString());
-  const expirationValue = formatDateTimeLocalInputValue(announcement?.expiresAt || "");
+  const isActive = normalizeAnnouncementStatus(announcement?.status) === "active";
   return `
     <form id="admin-announcement-form" class="admin-source-form">
       <div class="section-heading admin-source-form-heading">
         <div>
-          <p class="eyebrow">Announcement Editor</p>
-          <h4>${escapeHtml(isEditing ? "Edit Announcement" : "Add Announcement")}</h4>
-          <p class="muted">Create the public message board card shown on the dashboard, or schedule a future update.</p>
+          <p class="eyebrow">Announcements</p>
+          <h4>Manage the Home message board</h4>
+          <p class="muted">Save one public announcement for the Home dashboard, or clear it to fall back to the daily grow joke.</p>
         </div>
       </div>
       <div class="admin-source-form-grid">
@@ -9500,237 +9398,81 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
         </label>
         <label class="admin-source-form-full">
           <span>Message / Body</span>
-          <textarea name="body" rows="5" maxlength="800" placeholder="Share the latest Cannakan update" required>${escapeHtml(announcement?.body || "")}</textarea>
+          <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update" required>${escapeHtml(announcement?.body || "")}</textarea>
         </label>
-        <div class="admin-source-form-full admin-source-logo-field">
-          <span class="admin-source-field-label">Announcement Image</span>
-          <div id="admin-announcement-image-preview" class="admin-source-logo-preview"></div>
-          <span class="file-upload-control">
-            <span class="file-upload-button">Choose Image</span>
-            <span class="file-upload-name">No file selected</span>
-            <input class="file-upload-input" type="file" name="announcementImage" accept="image/*">
-          </span>
-          <label class="admin-source-form-full">
-            <span>Or Paste Image URL</span>
-            <input type="url" name="imageUrlInput" value="${escapeHtml(announcement?.imagePath ? "" : (announcement?.imageUrl || ""))}" placeholder="https://example.com/post-image.jpg">
-          </label>
-          <div class="admin-source-logo-actions">
-            <button type="button" class="button button-secondary" id="admin-announcement-remove-image">Remove Image</button>
-          </div>
-        </div>
         <label class="admin-source-form-full">
-          <span>Instagram Post URL</span>
-          <input type="url" name="instagramPostUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
+          <span>Optional Image URL</span>
+          <input type="url" name="imageUrl" value="${escapeHtml(announcement?.imageUrl || "")}" placeholder="https://example.com/post-image.jpg">
         </label>
-        <label>
-          <span>Button Text</span>
-          <input type="text" name="buttonText" maxlength="80" value="${escapeHtml(announcement?.buttonText || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}" placeholder="${escapeHtml(DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}">
+        <label class="admin-source-form-full">
+          <span>Optional Instagram URL</span>
+          <input type="url" name="instagramUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
         </label>
-        <label>
-          <span>Publish Date</span>
-          <input type="datetime-local" name="publishAt" value="${escapeHtml(publishValue)}" required>
+        <label class="admin-source-form-full">
+          <span>Optional Button Text</span>
+          <input type="text" name="buttonText" maxlength="80" value="${escapeHtml(announcement?.buttonText || "")}" placeholder="${escapeHtml(DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}">
         </label>
-        <label>
-          <span>Expiration Date</span>
-          <input type="datetime-local" name="expiresAt" value="${escapeHtml(expirationValue)}">
-        </label>
-        <label>
-          <span>Publish Status</span>
-          <select name="status">
-            <option value="active"${normalizeAnnouncementStatus(announcement?.status) === "active" ? " selected" : ""}>Active</option>
-            <option value="inactive"${normalizeAnnouncementStatus(announcement?.status) === "inactive" ? " selected" : ""}>Inactive</option>
-          </select>
-        </label>
+        <div class="admin-source-form-full admin-announcement-toggle-field">
+          <span class="admin-source-field-label">Active</span>
+          <label class="admin-announcement-toggle-row">
+            <input type="checkbox" name="active"${isActive ? " checked" : ""}>
+            <span>Show this announcement on the Home dashboard</span>
+          </label>
+        </div>
       </div>
       <p id="admin-announcement-form-message" class="snapshot-message">${escapeHtml(appState.announcementAdminMessage || "")}</p>
       <div class="form-actions admin-source-form-actions">
-        <button type="submit" class="button button-primary">${escapeHtml(isEditing ? "Update Announcement" : "Add Announcement")}</button>
-        ${isEditing ? '<button type="button" class="button button-secondary" id="admin-announcement-cancel-edit">Cancel</button>' : ""}
+        <button type="submit" class="button button-primary">Save Announcement</button>
+        <button type="button" class="button button-secondary" id="admin-announcement-clear">Clear Announcement</button>
       </div>
     </form>
   `;
 }
 
 function renderAdminAnnouncementsListMarkup() {
-  if (!appState.supabase) {
-    return `<div class="admin-sources-empty"><p>Announcements require Supabase tables and storage to be configured.</p></div>`;
-  }
-
-  if (!appState.announcementsLoaded && appState.announcementsRefreshPromise) {
-    return `<div class="admin-sources-empty"><p>Loading announcements...</p></div>`;
-  }
-
   if (appState.announcementsError) {
-    return `<div class="admin-sources-empty"><p>${escapeHtml(appState.announcementsError)}</p></div>`;
-  }
-
-  if (!appState.announcements.length) {
-    return `<div class="admin-sources-empty"><p>No announcements have been added yet.</p></div>`;
-  }
-
-  return appState.announcements.map(renderAdminAnnouncementCardMarkup).join("");
-}
-
-function renderAdminAnnouncementImagePreview(container, state, existingAnnouncement = null) {
-  if (!container) {
-    return;
-  }
-
-  const displayUrl = state.previewUrl || (state.removeImage ? "" : existingAnnouncement?.imageUrl || "");
-  container.innerHTML = `
-    <div class="admin-source-logo-preview-shell">
-      ${displayUrl
-    ? `<img src="${escapeHtml(displayUrl)}" alt="Announcement preview" class="admin-announcement-preview-image">`
-    : `
-      <div class="admin-announcement-preview-image admin-announcement-preview-image--placeholder" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
-          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
-          <circle cx="9" cy="9" r="1.2"></circle>
-        </svg>
+    return `
+      <div class="admin-sources-list-shell">
+        <div class="admin-sources-empty"><p>${escapeHtml(appState.announcementsError)}</p></div>
       </div>
-    `}
-      <div class="admin-source-logo-preview-copy">
-        <strong>${escapeHtml(displayUrl ? "Image ready" : "No image added")}</strong>
-        <p>${escapeHtml(displayUrl ? "This image will be used in the Latest from Cannakan dashboard card." : "You can upload an image or paste an image URL for the dashboard card.")}</p>
+    `;
+  }
+
+  const announcement = appState.announcements[0] || null;
+  if (!announcement) {
+    return `
+      <div class="admin-sources-list-shell">
+        <div class="admin-sources-list-head">
+          <strong>Current Dashboard Preview</strong>
+          <span class="muted">Fallback mode</span>
+        </div>
+        <div class="admin-sources-empty">
+          <p>No saved announcement is active. The Home dashboard will show the Grow Joke of the Day until an active announcement is saved.</p>
+        </div>
       </div>
+    `;
+  }
+
+  return `
+    <div class="admin-sources-list-shell">
+      <div class="admin-sources-list-head">
+        <strong>Current Dashboard Preview</strong>
+        <span class="muted">${escapeHtml(normalizeAnnouncementStatus(announcement.status) === "active" ? "Live" : "Inactive")}</span>
+      </div>
+      ${renderAdminAnnouncementCardMarkup(announcement)}
     </div>
   `;
 }
 
 function bindAdminAnnouncementsSection() {
-  const list = app.querySelector("#admin-announcements-list");
-  const editor = app.querySelector("#admin-announcement-editor");
-  if (!list || !editor) {
-    return;
-  }
-
-  list.querySelectorAll("[data-announcement-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
-      appState.announcementAdminEditingId = button.dataset.announcementEdit || "";
-      appState.announcementAdminMessage = "";
-      safeRender();
-    });
-  });
-
-  list.querySelectorAll("[data-announcement-delete]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const announcement = appState.announcements.find((entry) => entry.id === button.dataset.announcementDelete);
-      if (!announcement) {
-        return;
-      }
-
-      const confirmed = window.confirm("Are you sure you want to delete this announcement?");
-      if (!confirmed) {
-        return;
-      }
-
-      try {
-        await deleteAnnouncementRecord(announcement);
-        if (appState.announcementAdminEditingId === announcement.id) {
-          appState.announcementAdminEditingId = "";
-        }
-        appState.announcementAdminMessage = "Announcement deleted.";
-        safeRender();
-      } catch (error) {
-        appState.announcementAdminMessage = error.message || "Could not delete announcement.";
-        safeRender();
-      }
-    });
-  });
-
-  const form = editor.querySelector("#admin-announcement-form");
+  const form = app.querySelector("#admin-announcement-form");
   if (!form) {
     return;
   }
 
-  const existingAnnouncement = appState.announcements.find((entry) => entry.id === appState.announcementAdminEditingId) || null;
-  const imageInput = form.elements.announcementImage;
-  const imageUrlInput = form.elements.imageUrlInput;
-  const preview = form.querySelector("#admin-announcement-image-preview");
-  const removeImageButton = form.querySelector("#admin-announcement-remove-image");
-  const cancelEditButton = form.querySelector("#admin-announcement-cancel-edit");
   const message = form.querySelector("#admin-announcement-form-message");
   const submitButton = form.querySelector('button[type="submit"]');
-  const state = {
-    previewUrl: "",
-    pendingFile: null,
-    removeImage: false,
-  };
-
-  bindFileUploadControl(imageInput);
-  updateFileUploadName(imageInput);
-  renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
-
-  imageInput?.addEventListener("change", () => {
-    const file = imageInput.files?.[0];
-    updateFileUploadName(imageInput);
-    if (!file) {
-      return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-      message.textContent = "Images only. Please choose a valid announcement image.";
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      message.textContent = "Image is too large. Please choose an image under 12 MB.";
-      return;
-    }
-
-    if (state.previewUrl) {
-      URL.revokeObjectURL(state.previewUrl);
-    }
-
-    state.pendingFile = file;
-    state.removeImage = false;
-    state.previewUrl = URL.createObjectURL(file);
-    if (imageUrlInput) {
-      imageUrlInput.value = "";
-    }
-    message.textContent = "";
-    renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
-  });
-
-  imageUrlInput?.addEventListener("input", () => {
-    if (state.previewUrl) {
-      URL.revokeObjectURL(state.previewUrl);
-      state.previewUrl = "";
-    }
-    state.pendingFile = null;
-    state.removeImage = false;
-    renderAdminAnnouncementImagePreview(preview, {
-      ...state,
-      previewUrl: normalizeExternalUrl(imageUrlInput.value || ""),
-    }, existingAnnouncement);
-  });
-
-  removeImageButton?.addEventListener("click", () => {
-    if (state.previewUrl) {
-      URL.revokeObjectURL(state.previewUrl);
-      state.previewUrl = "";
-    }
-    state.pendingFile = null;
-    state.removeImage = true;
-    if (imageInput) {
-      imageInput.value = "";
-      updateFileUploadName(imageInput, []);
-    }
-    if (imageUrlInput) {
-      imageUrlInput.value = "";
-    }
-    renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
-  });
-
-  cancelEditButton?.addEventListener("click", () => {
-    if (state.previewUrl) {
-      URL.revokeObjectURL(state.previewUrl);
-    }
-    appState.announcementAdminEditingId = "";
-    appState.announcementAdminMessage = "";
-    safeRender();
-  });
+  const clearButton = form.querySelector("#admin-announcement-clear");
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -9740,46 +9482,34 @@ function bindAdminAnnouncementsSection() {
     message.textContent = "";
 
     try {
-      const publishAtValue = form.elements.publishAt?.value || "";
-      const expiresAtValue = form.elements.expiresAt?.value || "";
-      const publishAtIso = parseDateTimeLocalInputValue(
-        publishAtValue,
-        existingAnnouncement?.publishAt || new Date().toISOString(),
-      );
-      const expiresAtIso = parseDateTimeLocalInputValue(expiresAtValue, "");
-      const publishDate = parseCompletedAtValue(publishAtIso);
-      const expirationDate = parseCompletedAtValue(expiresAtIso);
-      if (publishDate && expirationDate && expirationDate.getTime() <= publishDate.getTime()) {
-        throw new Error("Expiration date must be later than the publish date.");
-      }
-
       await saveAnnouncementRecord({
         title: form.elements.title?.value || "",
-        body: form.elements.body?.value || "",
-        imageFile: state.pendingFile,
-        imageUrlInput: imageUrlInput?.value || "",
-        removeImage: state.removeImage,
-        instagramPostUrl: form.elements.instagramPostUrl?.value || "",
-        buttonText: form.elements.buttonText?.value || DEFAULT_ANNOUNCEMENT_BUTTON_TEXT,
-        status: form.elements.status?.value || "inactive",
-        publishAt: publishAtValue,
-        expiresAt: expiresAtValue,
-      }, {
-        existingAnnouncement,
+        message: form.elements.message?.value || "",
+        imageUrl: form.elements.imageUrl?.value || "",
+        instagramUrl: form.elements.instagramUrl?.value || "",
+        buttonText: form.elements.buttonText?.value || "",
+        active: Boolean(form.elements.active?.checked),
       });
 
-      if (state.previewUrl) {
-        URL.revokeObjectURL(state.previewUrl);
-      }
-
-      appState.announcementAdminEditingId = "";
-      appState.announcementAdminMessage = `${existingAnnouncement ? "Updated" : "Added"} announcement.`;
+      appState.announcementAdminMessage = "Announcement saved.";
       safeRender();
     } catch (error) {
       message.textContent = error.message || "Could not save announcement.";
     } finally {
       if (submitButton instanceof HTMLButtonElement) {
         submitButton.disabled = false;
+      }
+    }
+  });
+
+  clearButton?.addEventListener("click", async () => {
+    try {
+      await clearAnnouncementRecord();
+      appState.announcementAdminMessage = "Announcement cleared. Home will show the Grow Joke of the Day.";
+      safeRender();
+    } catch (error) {
+      if (message) {
+        message.textContent = error.message || "Could not clear announcement.";
       }
     }
   });
@@ -9858,19 +9588,13 @@ function renderAdminPage() {
       <div class="section-heading">
         <div>
           <p class="eyebrow">Announcements</p>
-          <h3>Manage dashboard announcements.</h3>
-          <p class="muted">Create admin-controlled message board updates for the public dashboard without using the Instagram API.</p>
+          <h3>Announcements</h3>
+          <p class="muted">Manage the public message board shown on the Home dashboard.</p>
         </div>
       </div>
       <div class="admin-sources-layout">
-        <div class="admin-sources-list-shell">
-          <div class="admin-sources-list-head">
-            <strong>Saved Announcements</strong>
-            <span class="muted">${escapeHtml(`${appState.announcements.length} total`)}</span>
-          </div>
-          <div id="admin-announcements-list" class="admin-sources-list"></div>
-        </div>
         <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
+        <div id="admin-announcements-list"></div>
       </div>
     </section>
     <section class="card admin-section-card">
@@ -9904,7 +9628,7 @@ function renderAdminPage() {
     });
   }
 
-  if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise && appState.supabase) {
+  if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
     void refreshAnnouncements({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
@@ -10011,8 +9735,7 @@ function renderAdminPage() {
 
   const announcementEditor = app.querySelector("#admin-announcement-editor");
   if (announcementEditor) {
-    const editingAnnouncement = appState.announcements.find((entry) => entry.id === appState.announcementAdminEditingId) || null;
-    announcementEditor.innerHTML = renderAdminAnnouncementEditorMarkup(editingAnnouncement);
+    announcementEditor.innerHTML = renderAdminAnnouncementEditorMarkup(appState.announcements[0] || null);
   }
 
   const membersTableAnchor = app.querySelector("#admin-members-table-anchor");
@@ -10039,7 +9762,7 @@ function renderHome() {
       }
     });
   }
-  if (appState.supabase && !appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
+  if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
     void refreshAnnouncements({ force: true, reason: "home-announcements" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#home" || currentHash === "") {
@@ -10125,6 +9848,9 @@ function renderHome() {
   }
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
+  });
+  app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
+    setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
 
   const spotlightSession = activeSessions[0] || null;
