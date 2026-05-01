@@ -66,9 +66,10 @@ const BUILD_INFO_ACTIVE_RECHECK_MS = 30000;
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const CURRENT_APP_BUILD_INFO = Object.freeze({
   version: "1.0.0",
-  buildTimestamp: "2026-05-01T06:22:13.146Z",
-  commitHash: "e40404f",
+  buildTimestamp: "2026-05-01T06:58:09.322Z",
+  commitHash: "f787396",
 });
+window.CANNAKAN_GROW_APP_READY = false;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
@@ -610,9 +611,11 @@ async function safeBootstrapApp() {
   try {
     await bootstrapApp();
   } catch (error) {
+    console.error("[Cannakan App Init] Startup failed", error);
     markAuthReady("startup-error");
     appState.loading = false;
     updateAuthStatus();
+    window.CANNAKAN_GROW_APP_READY = false;
     reportAppError(error, "Startup failed");
   }
 }
@@ -2779,6 +2782,7 @@ async function bootstrapApp() {
     hash: window.location.hash || "#home",
     pathname: window.location.pathname || "/",
   });
+  window.CANNAKAN_GROW_APP_READY = false;
   appState.loading = true;
   appState.authReady = false;
   appState.lastHydratedAuthSessionKey = "";
@@ -2841,6 +2845,7 @@ async function bootstrapApp() {
   appState.loading = false;
   updateAuthStatus();
   safeRender();
+  window.CANNAKAN_GROW_APP_READY = true;
 }
 
 function withTimeout(promise, timeoutMs, timeoutMessage) {

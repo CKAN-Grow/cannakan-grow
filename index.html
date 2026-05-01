@@ -30,10 +30,44 @@
       document.documentElement.style.colorScheme = savedTheme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=1.0.0-e40404f-20260501T062213146Z">
+  <link rel="stylesheet" href="styles.css?v=1.0.0-f787396-20260501T065809322Z">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=1.0.0-e40404f-20260501T062213146Z"></script>
-  <script src="build-info.js?v=1.0.0-e40404f-20260501T062213146Z"></script>
+  <script>
+    window.CANNAKAN_SUPABASE_CONFIG = window.CANNAKAN_SUPABASE_CONFIG || { url: "", anonKey: "" };
+    window.CANNAKAN_BUILD_INFO = window.CANNAKAN_BUILD_INFO || {};
+    window.CANNAKAN_GROW_APP_READY = window.CANNAKAN_GROW_APP_READY === true;
+    window.CANNAKAN_SCRIPT_FALLBACKS = window.CANNAKAN_SCRIPT_FALLBACKS || {
+      loadPlainScript: function (failedScript, fallbackSrc, options) {
+        var settings = options || {};
+        var label = settings.label || fallbackSrc;
+        console.warn("[Cannakan Asset Loader] Failed to load versioned asset, retrying plain file.", {
+          label: label,
+          failedSrc: failedScript && failedScript.src ? failedScript.src : "",
+          fallbackSrc: fallbackSrc
+        });
+
+        var script = document.createElement("script");
+        script.src = fallbackSrc;
+        script.async = false;
+        script.onerror = function () {
+          console.error("[Cannakan Asset Loader] Failed to load asset fallback.", {
+            label: label,
+            fallbackSrc: fallbackSrc
+          });
+          if (settings.optional) {
+            return;
+          }
+          var appRoot = document.getElementById("app");
+          if (appRoot && !appRoot.children.length) {
+            appRoot.innerHTML = '<section class="card app-error-card"><p class="eyebrow">Startup Error</p><h2>App assets failed to load</h2><p class="app-error-message">Cannakan Grow could not load the latest application bundle. Refresh to try again.</p></section>';
+          }
+        };
+        document.head.appendChild(script);
+      }
+    };
+  </script>
+  <script src="supabase-config.js?v=1.0.0-f787396-20260501T065809322Z" onerror="window.CANNAKAN_SCRIPT_FALLBACKS.loadPlainScript(this, 'supabase-config.js', { optional: true, label: 'supabase-config.js' })"></script>
+  <script src="build-info.js?v=1.0.0-f787396-20260501T065809322Z" onerror="window.CANNAKAN_SCRIPT_FALLBACKS.loadPlainScript(this, 'build-info.js', { optional: true, label: 'build-info.js' })"></script>
 </head>
 <body>
   <script>
@@ -1025,6 +1059,21 @@
     </section>
   </template>
 
-  <script src="app.js?v=1.0.0-e40404f-20260501T062213146Z"></script>
+  <script src="app.js?v=1.0.0-f787396-20260501T065809322Z" onerror="window.CANNAKAN_SCRIPT_FALLBACKS.loadPlainScript(this, 'app.js', { optional: false, label: 'app.js' })"></script>
+  <script>
+    window.addEventListener("load", function () {
+      window.setTimeout(function () {
+        if (window.CANNAKAN_GROW_APP_READY) {
+          return;
+        }
+
+        console.error("[Cannakan App Init] App did not report ready state after load.", {
+          appChildren: document.getElementById("app") ? document.getElementById("app").children.length : 0,
+          hasBuildInfo: Boolean(window.CANNAKAN_BUILD_INFO && (window.CANNAKAN_BUILD_INFO.version || window.CANNAKAN_BUILD_INFO.buildTimestamp)),
+          hasSupabaseConfig: Boolean(window.CANNAKAN_SUPABASE_CONFIG && (window.CANNAKAN_SUPABASE_CONFIG.url || window.CANNAKAN_SUPABASE_CONFIG.anonKey))
+        });
+      }, 8000);
+    }, { once: true });
+  </script>
 </body>
 </html>
