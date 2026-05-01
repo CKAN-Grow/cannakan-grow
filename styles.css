@@ -8568,6 +8568,15 @@ input::placeholder {
   overflow-wrap: anywhere;
 }
 
+.public-member-follow-button {
+  min-width: 124px;
+}
+
+.public-member-follow-button.is-following {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.12);
+}
+
 .public-member-profile-joined {
   margin-top: 8px !important;
   color: #d5ddd5;

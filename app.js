@@ -37,6 +37,7 @@ const MAX_SOURCE_LOGO_DIMENSION = 768;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
+const MEMBER_FOLLOWS_TABLE = "member_follows";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -225,6 +226,13 @@ const appState = {
   publicMemberProfiles: {},
   publicMemberProfilesRefreshPromises: {},
   publicMemberProfilesViewUnavailable: false,
+  publicMemberFollowSummaries: {},
+  publicMemberFollowSummaryRefreshPromises: {},
+  publicMemberFollowSummaryUnavailable: false,
+  publicMemberFollowStates: {},
+  publicMemberFollowStateRefreshPromises: {},
+  publicMemberFollowPendingActions: {},
+  publicMemberFollowsTableUnavailable: false,
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -453,6 +461,13 @@ function resetSessionScopedAppState() {
   appState.publicMemberProfiles = {};
   appState.publicMemberProfilesRefreshPromises = {};
   appState.publicMemberProfilesViewUnavailable = false;
+  appState.publicMemberFollowSummaries = {};
+  appState.publicMemberFollowSummaryRefreshPromises = {};
+  appState.publicMemberFollowSummaryUnavailable = false;
+  appState.publicMemberFollowStates = {};
+  appState.publicMemberFollowStateRefreshPromises = {};
+  appState.publicMemberFollowPendingActions = {};
+  appState.publicMemberFollowsTableUnavailable = false;
   appState.siteVisitorAnalyticsRows = [];
   appState.siteVisitorAnalyticsLoaded = false;
   appState.siteVisitorAnalyticsLoadedFilter = "";
@@ -4607,6 +4622,286 @@ async function refreshPublicMemberProfile(memberId = "", options = {}) {
     renderPublicMemberProfile(normalizedId);
   }
   return profile;
+}
+
+function normalizePublicMemberFollowSummaryRow(row) {
+  return {
+    followerCount: Math.max(0, Number(row?.follower_count ?? row?.followerCount) || 0),
+    followingCount: Math.max(0, Number(row?.following_count ?? row?.followingCount) || 0),
+  };
+}
+
+function isPublicMemberFollowSummaryUnavailableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("get_public_member_follow_summary") && (
+    message.includes("function")
+    || message.includes("permission denied")
+  );
+}
+
+function isMemberFollowsTableUnavailableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("member_follows") && (
+    message.includes("relation")
+    || message.includes("permission denied")
+  );
+}
+
+function getPublicMemberFollowSummary(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return appState.publicMemberFollowSummaries[normalizedId] || null;
+}
+
+function hasPublicMemberFollowState(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  return normalizedId
+    ? Object.prototype.hasOwnProperty.call(appState.publicMemberFollowStates, normalizedId)
+    : false;
+}
+
+function getPublicMemberFollowState(memberId = "") {
+  return hasPublicMemberFollowState(memberId)
+    ? Boolean(appState.publicMemberFollowStates[String(memberId || "").trim()])
+    : null;
+}
+
+function isPublicMemberFollowPending(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  return Boolean(normalizedId && appState.publicMemberFollowPendingActions[normalizedId]);
+}
+
+function isViewingOwnPublicMemberProfile(memberId = "", user = appState.user) {
+  const normalizedId = String(memberId || "").trim();
+  const currentUserId = String(user?.id || "").trim();
+  return Boolean(normalizedId && currentUserId && normalizedId === currentUserId);
+}
+
+async function loadPublicMemberFollowSummary(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return normalizePublicMemberFollowSummaryRow();
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  if (!force && appState.publicMemberFollowSummaries[normalizedId]) {
+    return appState.publicMemberFollowSummaries[normalizedId];
+  }
+
+  if (!appState.supabase || appState.publicMemberFollowSummaryUnavailable) {
+    return appState.publicMemberFollowSummaries[normalizedId] || normalizePublicMemberFollowSummaryRow();
+  }
+
+  if (!force && appState.publicMemberFollowSummaryRefreshPromises[normalizedId]) {
+    return appState.publicMemberFollowSummaryRefreshPromises[normalizedId];
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const { data, error } = await appState.supabase.rpc("get_public_member_follow_summary", {
+        target_user_id: normalizedId,
+      });
+
+      if (error) {
+        if (isPublicMemberFollowSummaryUnavailableError(error)) {
+          appState.publicMemberFollowSummaryUnavailable = true;
+          console.warn("Public member follow summary function unavailable.", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        } else {
+          console.error("Failed to load public member follow summary", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        }
+
+        return appState.publicMemberFollowSummaries[normalizedId] || normalizePublicMemberFollowSummaryRow();
+      }
+
+      const summary = normalizePublicMemberFollowSummaryRow(Array.isArray(data) ? data[0] : data);
+      appState.publicMemberFollowSummaries[normalizedId] = summary;
+      return summary;
+    } finally {
+      delete appState.publicMemberFollowSummaryRefreshPromises[normalizedId];
+    }
+  })();
+
+  appState.publicMemberFollowSummaryRefreshPromises[normalizedId] = refreshPromise;
+  return refreshPromise;
+}
+
+async function refreshPublicMemberFollowSummary(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return normalizePublicMemberFollowSummaryRow();
+  }
+
+  const summary = await loadPublicMemberFollowSummary(normalizedId, options);
+  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+    renderPublicMemberProfile(normalizedId);
+  }
+  return summary;
+}
+
+async function loadPublicMemberFollowState(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId || !appState.user?.id || isViewingOwnPublicMemberProfile(normalizedId)) {
+    return false;
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  if (!force && hasPublicMemberFollowState(normalizedId)) {
+    return Boolean(appState.publicMemberFollowStates[normalizedId]);
+  }
+
+  if (!appState.supabase || appState.publicMemberFollowsTableUnavailable) {
+    return hasPublicMemberFollowState(normalizedId)
+      ? Boolean(appState.publicMemberFollowStates[normalizedId])
+      : false;
+  }
+
+  if (!force && appState.publicMemberFollowStateRefreshPromises[normalizedId]) {
+    return appState.publicMemberFollowStateRefreshPromises[normalizedId];
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const { data, error } = await appState.supabase
+        .from(MEMBER_FOLLOWS_TABLE)
+        .select("id")
+        .eq("follower_user_id", appState.user.id)
+        .eq("followed_user_id", normalizedId)
+        .maybeSingle();
+
+      if (error) {
+        if (isMemberFollowsTableUnavailableError(error)) {
+          appState.publicMemberFollowsTableUnavailable = true;
+          console.warn("Member follows table unavailable.", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        } else {
+          console.error("Failed to load public member follow state", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        }
+
+        return hasPublicMemberFollowState(normalizedId)
+          ? Boolean(appState.publicMemberFollowStates[normalizedId])
+          : false;
+      }
+
+      const isFollowing = Boolean(String(data?.id || "").trim());
+      appState.publicMemberFollowStates[normalizedId] = isFollowing;
+      return isFollowing;
+    } finally {
+      delete appState.publicMemberFollowStateRefreshPromises[normalizedId];
+    }
+  })();
+
+  appState.publicMemberFollowStateRefreshPromises[normalizedId] = refreshPromise;
+  return refreshPromise;
+}
+
+async function refreshPublicMemberFollowState(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId || !appState.user?.id || isViewingOwnPublicMemberProfile(normalizedId)) {
+    return false;
+  }
+
+  const isFollowing = await loadPublicMemberFollowState(normalizedId, options);
+  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+    renderPublicMemberProfile(normalizedId);
+  }
+  return isFollowing;
+}
+
+async function togglePublicMemberFollow(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    throw new Error("Could not find this community member.");
+  }
+  if (!appState.supabase || !appState.user?.id) {
+    throw new Error("Sign in to follow community members.");
+  }
+  if (isViewingOwnPublicMemberProfile(normalizedId)) {
+    throw new Error("You cannot follow your own profile.");
+  }
+  if (isPublicMemberFollowPending(normalizedId)) {
+    return false;
+  }
+
+  appState.publicMemberFollowPendingActions[normalizedId] = true;
+  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+    renderPublicMemberProfile(normalizedId);
+  }
+
+  try {
+    const isFollowing = await loadPublicMemberFollowState(normalizedId, {
+      force: true,
+      reason: "follow-toggle:preflight",
+    });
+
+    if (isFollowing) {
+      const { error } = await appState.supabase
+        .from(MEMBER_FOLLOWS_TABLE)
+        .delete()
+        .eq("follower_user_id", appState.user.id)
+        .eq("followed_user_id", normalizedId);
+
+      if (error) {
+        throw new Error("Could not unfollow this member right now.");
+      }
+    } else {
+      const { error } = await appState.supabase
+        .from(MEMBER_FOLLOWS_TABLE)
+        .upsert(
+          {
+            follower_user_id: appState.user.id,
+            followed_user_id: normalizedId,
+          },
+          {
+            onConflict: "follower_user_id,followed_user_id",
+            ignoreDuplicates: true,
+          },
+        );
+
+      if (error) {
+        throw new Error("Could not follow this member right now.");
+      }
+    }
+
+    await Promise.all([
+      refreshPublicMemberFollowState(normalizedId, {
+        force: true,
+        reason: "follow-toggle:state",
+      }),
+      refreshPublicMemberFollowSummary(normalizedId, {
+        force: true,
+        reason: "follow-toggle:target-summary",
+      }),
+      refreshPublicMemberFollowSummary(appState.user.id, {
+        force: true,
+        reason: "follow-toggle:viewer-summary",
+      }),
+    ]);
+
+    return !isFollowing;
+  } finally {
+    delete appState.publicMemberFollowPendingActions[normalizedId];
+    if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+      renderPublicMemberProfile(normalizedId);
+    }
+  }
 }
 
 function hasCompletedProfile(profile = appState.profile) {
@@ -10129,6 +10424,10 @@ function render() {
     }));
     void refreshGallerySnapshots("route:public-member-profile");
     void refreshPublicMemberProfile(memberId, { reason: "route:public-member-profile" });
+    void refreshPublicMemberFollowSummary(memberId, { reason: "route:public-member-profile" });
+    if (appState.user?.id && appState.user.id !== memberId) {
+      void refreshPublicMemberFollowState(memberId, { reason: "route:public-member-profile" });
+    }
     return;
   }
 
@@ -17606,6 +17905,14 @@ function renderPublicMemberProfile(memberId) {
   const normalizedId = String(memberId || "").trim();
   const isLoadingSnapshots = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
   const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId]);
+  const followSummary = getPublicMemberFollowSummary(normalizedId);
+  const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
+  const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedId);
+  const canShowFollowButton = Boolean(appState.user?.id) && !isOwnProfile && !appState.publicMemberFollowsTableUnavailable;
+  const followState = getPublicMemberFollowState(normalizedId);
+  const isFollowing = followState === true;
+  const isLoadingFollowState = Boolean(appState.publicMemberFollowStateRefreshPromises[normalizedId]);
+  const isFollowPending = isPublicMemberFollowPending(normalizedId);
   const approvedSnapshots = sortGallerySnapshotsNewestFirst(getApprovedPublicSnapshotsForMember(normalizedId));
   const profile = getPublicMemberProfile(normalizedId);
 
@@ -17648,6 +17955,12 @@ function renderPublicMemberProfile(memberId) {
   const displayName = profile?.displayName || "Community member";
   const avatarUrl = profile?.avatarUrl || "";
   const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
+  const followerCountValue = followSummary
+    ? followSummary.followerCount.toLocaleString()
+    : (isLoadingFollowSummary ? "--" : "0");
+  const followingCountValue = followSummary
+    ? followSummary.followingCount.toLocaleString()
+    : (isLoadingFollowSummary ? "--" : "0");
   const averageRate = approvedSnapshots.length
     ? (approvedSnapshots.reduce((sum, snapshot) => sum + getGallerySnapshotSuccessRate(snapshot), 0) / approvedSnapshots.length)
     : null;
@@ -17655,6 +17968,16 @@ function renderPublicMemberProfile(memberId) {
     ? ""
     : String(Number((Math.round(averageRate * 10) / 10).toFixed(1))).replace(/\.0$/, "");
   const stats = [
+    {
+      label: "Followers",
+      value: followerCountValue,
+      detail: "community members following this grower",
+    },
+    {
+      label: "Following",
+      value: followingCountValue,
+      detail: "community members this grower follows",
+    },
     {
       label: "Approved Snapshots",
       value: approvedSnapshots.length.toLocaleString(),
@@ -17691,6 +18014,15 @@ function renderPublicMemberProfile(memberId) {
           </div>
         </div>
         <div class="inline-actions">
+          ${canShowFollowButton ? `
+            <button
+              type="button"
+              class="button ${isFollowing ? "button-secondary" : "button-primary"} public-member-follow-button${isFollowing ? " is-following" : ""}"
+              data-public-member-follow="${escapeHtml(normalizedId)}"
+              ${(isFollowPending || (isLoadingFollowState && followState === null)) ? "disabled" : ""}
+              aria-pressed="${isFollowing ? "true" : "false"}"
+            >${escapeHtml(isFollowing ? "Following" : "Follow")}</button>
+          ` : ""}
           <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Report content">Report / Contact Admin</button>
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
@@ -17730,6 +18062,14 @@ function renderPublicMemberProfile(memberId) {
       </section>
     </section>
   `;
+
+  app.querySelector("[data-public-member-follow]")?.addEventListener("click", async () => {
+    try {
+      await togglePublicMemberFollow(normalizedId);
+    } catch (error) {
+      window.alert(error.message || "Could not update this follow right now.");
+    }
+  });
 
   const profileGrid = app.querySelector("#public-member-profile-grid");
   if (!profileGrid) {
