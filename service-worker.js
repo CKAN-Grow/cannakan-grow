@@ -1,4 +1,6 @@
-const CACHE_NAME = "cannakan-grow-shell-v10";
+const CACHE_VERSION = "v11";
+const CACHE_PREFIX = "cannakan-grow-shell";
+const CACHE_NAME = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -34,7 +36,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys
-        .filter((key) => key !== CACHE_NAME)
+        .filter((key) => key.startsWith(`${CACHE_PREFIX}-`) && key !== CACHE_NAME)
         .map((key) => caches.delete(key)),
     )),
   );

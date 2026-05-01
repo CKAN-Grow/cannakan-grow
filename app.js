@@ -608,6 +608,26 @@ function registerServiceWorker() {
     return;
   }
 
+  const isDevelopmentHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  if (isDevelopmentHost) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => Promise.all(
+      registrations.map((registration) => registration.unregister()),
+    )).catch((error) => {
+      console.warn("Service worker cleanup failed in development", error);
+    });
+
+    if ("caches" in window) {
+      caches.keys().then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith("cannakan-grow-shell-"))
+          .map((key) => caches.delete(key)),
+      )).catch((error) => {
+        console.warn("Cache cleanup failed in development", error);
+      });
+    }
+    return;
+  }
+
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/service-worker.js").then((registration) => {
       void registration.update();
