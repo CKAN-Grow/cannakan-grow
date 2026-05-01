@@ -6168,6 +6168,91 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
   `;
 }
 
+function getGallerySnapshotMemberKey(snapshot = {}) {
+  return String(
+    snapshot?.userId
+    || snapshot?.profileName
+    || snapshot?.submittedBy
+    || snapshot?.submittedByName
+    || "",
+  ).trim();
+}
+
+function getGallerySnapshotMemberLabel(snapshot = {}) {
+  return String(
+    snapshot?.profileName
+    || snapshot?.submittedBy
+    || snapshot?.submittedByName
+    || "Community member",
+  ).trim() || "Community member";
+}
+
+function buildGalleryTopMemberEntries(snapshots = []) {
+  const entriesByMemberKey = new Map();
+
+  (snapshots || []).forEach((snapshot) => {
+    const memberKey = getGallerySnapshotMemberKey(snapshot);
+    if (!memberKey) {
+      return;
+    }
+
+    const existingEntry = entriesByMemberKey.get(memberKey) || {
+      key: memberKey,
+      name: getGallerySnapshotMemberLabel(snapshot),
+      snapshotCount: 0,
+      totalLikes: 0,
+      latestPublishedAt: 0,
+    };
+
+    existingEntry.name = existingEntry.name === "Community member"
+      ? getGallerySnapshotMemberLabel(snapshot)
+      : existingEntry.name;
+    existingEntry.snapshotCount += 1;
+    existingEntry.totalLikes += Math.max(0, Number(snapshot?.likeCount) || 0);
+    const publishedAtMs = parseLeaderboardSnapshotDate(snapshot)?.getTime() || 0;
+    existingEntry.latestPublishedAt = Math.max(existingEntry.latestPublishedAt, publishedAtMs);
+    entriesByMemberKey.set(memberKey, existingEntry);
+  });
+
+  return [...entriesByMemberKey.values()]
+    .sort((left, right) => (
+      (right.snapshotCount - left.snapshotCount)
+      || (right.totalLikes - left.totalLikes)
+      || (right.latestPublishedAt - left.latestPublishedAt)
+      || left.name.localeCompare(right.name)
+    ));
+}
+
+function renderGalleryTopMemberRows(entries = [], emptyMessage = "Not enough member activity yet.") {
+  if (!entries.length) {
+    return `
+      <div class="gallery-leaderboard-empty">
+        <p>${escapeHtml(emptyMessage)}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <ol class="gallery-leaderboard-list">
+      ${entries.map((entry, index) => `
+        <li class="gallery-leaderboard-row ${getLeaderboardRankTone(index)}">
+          <span class="gallery-leaderboard-rank">#${index + 1}</span>
+          <span class="gallery-leaderboard-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+              <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
+              <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+              <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
+            </svg>
+          </span>
+          <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
+          <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.snapshotCount} approved${entry.totalLikes ? ` · ${entry.totalLikes} likes` : ""}`)}</span>
+        </li>
+      `).join("")}
+    </ol>
+  `;
+}
+
 function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
   switch (iconType) {
     case "all-time":
@@ -6243,6 +6328,7 @@ function renderGalleryLeaderboardSection() {
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
   const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
+  const topMembers = buildGalleryTopMemberEntries(approvedSnapshots).slice(0, 3);
 
   const section = document.createElement("section");
   section.className = "card gallery-section gallery-leaderboard-section";
@@ -6287,6 +6373,11 @@ function renderGalleryLeaderboardSection() {
       <article class="gallery-leaderboard-card">
         ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
+      </article>
+      <article class="gallery-leaderboard-card">
+        ${renderGalleryLeaderboardCardHeading("Top Members", "Activity-Based", "all-time")}
+        <p class="gallery-leaderboard-card-description">Most active community members based on approved snapshot submissions.</p>
+        ${renderGalleryTopMemberRows(topMembers, "Not enough member activity yet.")}
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>

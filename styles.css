@@ -3315,6 +3315,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--ink);
 }
 
+.gallery-leaderboard-card-description {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .gallery-leaderboard-section-icon {
   width: 64px;
   height: 64px;
