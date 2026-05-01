@@ -5550,7 +5550,37 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.admin-messages-filter-shell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
   margin-bottom: 14px;
+}
+
+.admin-messages-issue-filter {
+  display: grid;
+  gap: var(--space-2);
+  min-width: min(100%, 220px);
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.admin-messages-issue-filter select {
+  min-height: 42px;
+  padding: 0 var(--space-3);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+  color: var(--ink);
+}
+
+.admin-user-reports-summary-grid {
+  margin-bottom: var(--space-4);
 }
 
 .admin-members-table td:last-child,
@@ -5608,6 +5638,64 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
+.admin-report-card-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-report-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.admin-report-card.is-new {
+  border-color: rgba(217, 139, 43, 0.24);
+  box-shadow: inset 3px 0 0 rgba(217, 139, 43, 0.36);
+}
+
+.admin-report-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-report-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.admin-report-card-date {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: right;
+}
+
+.admin-report-card-meta {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-report-card-meta strong,
+.admin-report-card-meta p,
+.admin-report-card-message p {
+  margin: 0;
+}
+
+.admin-report-card-meta p {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.admin-report-card-message {
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(109, 124, 113, 0.16);
+}
+
 .admin-members-empty {
   padding: 22px;
   border-radius: 16px;
@@ -5642,6 +5730,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.8rem;
   font-weight: 700;
   border: 1px solid transparent;
+}
+
+.admin-message-issue-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #33523a;
+  background: rgba(148, 209, 89, 0.1);
+  border: 1px solid rgba(148, 209, 89, 0.22);
 }
 
 .admin-message-status-pill.is-new {
@@ -11142,6 +11244,16 @@ body.theme-dark .admin-member-details-meta {
   color: rgba(189, 204, 192, 0.82);
 }
 
+body.theme-dark .admin-messages-issue-filter {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-messages-issue-filter select {
+  border-color: rgba(111, 122, 116, 0.24);
+  background: rgba(24, 30, 26, 0.9);
+  color: #f6f8f5;
+}
+
 body.theme-dark .admin-member-role-pill.is-admin,
 body.theme-dark .admin-member-status-pill.is-active {
   color: #bfe89d;
@@ -11159,6 +11271,26 @@ body.theme-dark .admin-message-status-pill.is-new {
   color: #f0cf8d;
   background: rgba(230, 180, 90, 0.14);
   border-color: rgba(230, 180, 90, 0.24);
+}
+
+body.theme-dark .admin-report-card.is-new {
+  border-color: rgba(230, 180, 90, 0.24);
+  box-shadow: inset 3px 0 0 rgba(230, 180, 90, 0.4);
+}
+
+body.theme-dark .admin-report-card-date,
+body.theme-dark .admin-report-card-meta p {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-report-card-message {
+  border-top-color: rgba(111, 122, 116, 0.18);
+}
+
+body.theme-dark .admin-message-issue-pill {
+  color: #bfe89d;
+  background: rgba(148, 209, 89, 0.14);
+  border-color: rgba(148, 209, 89, 0.24);
 }
 
 body.theme-dark .admin-message-row td {
@@ -12526,6 +12658,19 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   border-radius: 14px;
   background: var(--surface-strong);
   border: 1px solid var(--line);
+}
+
+@media (max-width: 720px) {
+  .admin-messages-filter-shell,
+  .admin-report-card-header,
+  .admin-report-card-meta {
+    grid-auto-flow: row;
+    display: grid;
+  }
+
+  .admin-report-card-date {
+    text-align: left;
+  }
 }
 
 @media (max-width: 640px) {

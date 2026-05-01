@@ -457,6 +457,7 @@ const appState = {
   adminMessagesError: "",
   adminMessagesRefreshPromise: null,
   adminMessageStatusFilter: "all",
+  adminMessageIssueTypeFilter: "all",
   adminMessageExpandedState: {},
   mockAdminMessages: [],
   members: [],
@@ -3142,6 +3143,36 @@ function getFriendlyAdminMessagesFallbackMessage() {
   return "User reports are unavailable right now. Try again after Supabase is ready.";
 }
 
+async function notifyAdminReportByEmail(record = {}) {
+  const payload = {
+    name: String(record.name || "").trim(),
+    email: String(record.email || "").trim(),
+    issueType: normalizeAdminMessageType(record.issue_type || record.issueType),
+    message: String(record.message || "").trim(),
+    createdAt: String(record.created_at || record.createdAt || new Date().toISOString()).trim(),
+    userId: String(record.user_id || record.userId || "").trim(),
+  };
+
+  try {
+    const response = await fetch("/api/admin-report-notify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Email notify returned ${response.status}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.info("[Admin Reports] Email notification skipped or unavailable.", error);
+    return false;
+  }
+}
+
 async function submitAdminMessage(payload = {}) {
   let resolvedUserId = null;
   if (appState.supabase) {
@@ -3166,7 +3197,9 @@ async function submitAdminMessage(payload = {}) {
   };
 
   if (!appState.supabase) {
-    return logAdminReportFallback(record);
+    const fallbackRecord = logAdminReportFallback(record);
+    void notifyAdminReportByEmail(record);
+    return fallbackRecord;
   }
 
   const { error } = await appState.supabase
@@ -3174,9 +3207,12 @@ async function submitAdminMessage(payload = {}) {
     .insert(record);
 
   if (error) {
-    return logAdminReportFallback(record, error);
+    const fallbackRecord = logAdminReportFallback(record, error);
+    void notifyAdminReportByEmail(record);
+    return fallbackRecord;
   }
 
+  void notifyAdminReportByEmail(record);
   return record;
 }
 
@@ -17003,18 +17039,67 @@ function getAdminMessageStatusFilterOptions() {
   ];
 }
 
+function getAdminMessageIssueTypeFilterOptions(rows = []) {
+  const normalizedRows = Array.isArray(rows) ? rows : [];
+  const seen = new Set();
+  const issueTypes = normalizedRows
+    .map((row) => normalizeAdminMessageType(row?.issueType || row?.issue_type))
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    })
+    .sort((left, right) => left.localeCompare(right));
+
+  return [
+    { key: "all", label: "All issue types" },
+    ...issueTypes.map((issueType) => ({ key: issueType, label: issueType })),
+  ];
+}
+
+function renderAdminMessageIssueTypeBadgeMarkup(issueType = "Other") {
+  const normalizedType = normalizeAdminMessageType(issueType);
+  const badgeTone = normalizedType.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `<span class="admin-message-issue-pill is-${escapeHtml(badgeTone)}">${escapeHtml(normalizedType)}</span>`;
+}
+
+function getAdminMessagesSummary(rows = []) {
+  return {
+    total: rows.length,
+    newCount: rows.filter((row) => row.status === "new").length,
+    reviewedCount: rows.filter((row) => row.status === "reviewed").length,
+    resolvedCount: rows.filter((row) => row.status === "resolved").length,
+  };
+}
+
 function renderAdminMessagesFilterMarkup() {
+  const displayRows = getAdminMessagesForDisplay();
+  const issueTypeOptions = getAdminMessageIssueTypeFilterOptions(displayRows);
   return `
-    <div class="admin-messages-filter-toolbar" aria-label="User reports status filter">
-      ${getAdminMessageStatusFilterOptions().map((option) => `
-        <button
-          type="button"
-          class="button ${appState.adminMessageStatusFilter === option.key ? "button-primary" : "button-secondary"}"
-          data-admin-message-filter="${escapeHtml(option.key)}"
-        >
-          ${escapeHtml(option.label)}
-        </button>
-      `).join("")}
+    <div class="admin-messages-filter-shell">
+      <div class="admin-messages-filter-toolbar" aria-label="User reports status filter">
+        ${getAdminMessageStatusFilterOptions().map((option) => `
+          <button
+            type="button"
+            class="button ${appState.adminMessageStatusFilter === option.key ? "button-primary" : "button-secondary"}"
+            data-admin-message-filter="${escapeHtml(option.key)}"
+          >
+            ${escapeHtml(option.label)}
+          </button>
+        `).join("")}
+      </div>
+      <label class="admin-messages-issue-filter">
+        <span>Issue type</span>
+        <select data-admin-message-issue-filter="true">
+          ${issueTypeOptions.map((option) => `
+            <option value="${escapeHtml(option.key)}" ${appState.adminMessageIssueTypeFilter === option.key ? "selected" : ""}>
+              ${escapeHtml(option.label)}
+            </option>
+          `).join("")}
+        </select>
+      </label>
     </div>
   `;
 }
@@ -17061,11 +17146,26 @@ function renderAdminMessageCellMarkup(row) {
   `;
 }
 
-function renderAdminMessagesTableMarkup() {
+function renderAdminMessagesSummaryMarkup() {
+  const summary = getAdminMessagesSummary(getAdminMessagesForDisplay());
+  return `
+    <div class="summary-grid admin-overview-grid admin-user-reports-summary-grid">
+      ${renderAdminOverviewCardMarkup({ label: "New Reports", value: String(summary.newCount), subtext: "awaiting review" })}
+      ${renderAdminOverviewCardMarkup({ label: "Reviewed", value: String(summary.reviewedCount), subtext: "triaged by admin" })}
+      ${renderAdminOverviewCardMarkup({ label: "Resolved", value: String(summary.resolvedCount), subtext: "closed reports" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Reports", value: String(summary.total), subtext: "all submitted reports" })}
+    </div>
+  `;
+}
+
+function renderAdminMessagesPanelMarkup() {
   const displayRows = getAdminMessagesForDisplay();
-  const filteredRows = (appState.adminMessageStatusFilter === "all"
-    ? displayRows
-    : displayRows.filter((row) => row.status === appState.adminMessageStatusFilter));
+  const filteredRows = displayRows.filter((row) => {
+    const statusMatches = appState.adminMessageStatusFilter === "all" || row.status === appState.adminMessageStatusFilter;
+    const issueTypeMatches = appState.adminMessageIssueTypeFilter === "all"
+      || normalizeAdminMessageType(row.issueType) === appState.adminMessageIssueTypeFilter;
+    return statusMatches && issueTypeMatches;
+  });
   const rows = [...filteredRows].sort((left, right) => (
     new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()
   ));
@@ -17073,6 +17173,7 @@ function renderAdminMessagesTableMarkup() {
 
   if (isLoading) {
     return `
+      ${renderAdminMessagesSummaryMarkup()}
       ${renderAdminMessagesFilterMarkup()}
       <div class="admin-messages-empty"><p>Loading user reports...</p></div>
     `;
@@ -17080,55 +17181,56 @@ function renderAdminMessagesTableMarkup() {
 
   if (appState.adminMessagesError && !isMockDataEnabled()) {
     return `
+      ${renderAdminMessagesSummaryMarkup()}
       ${renderAdminMessagesFilterMarkup()}
       <div class="admin-messages-empty"><p>${escapeHtml(getFriendlyAdminMessagesFallbackMessage())}</p></div>
     `;
   }
 
   if (!rows.length) {
-    const emptyMessage = appState.adminMessageStatusFilter === "all"
-      ? "No user reports yet."
-      : `No ${appState.adminMessageStatusFilter} reports yet.`;
+    let emptyMessage = "No user reports yet.";
+    if (appState.adminMessageStatusFilter !== "all" && appState.adminMessageIssueTypeFilter !== "all") {
+      emptyMessage = `No ${appState.adminMessageStatusFilter} ${appState.adminMessageIssueTypeFilter.toLowerCase()} reports yet.`;
+    } else if (appState.adminMessageStatusFilter !== "all") {
+      emptyMessage = `No ${appState.adminMessageStatusFilter} reports yet.`;
+    } else if (appState.adminMessageIssueTypeFilter !== "all") {
+      emptyMessage = `No ${appState.adminMessageIssueTypeFilter.toLowerCase()} reports yet.`;
+    }
     return `
+      ${renderAdminMessagesSummaryMarkup()}
       ${renderAdminMessagesFilterMarkup()}
       <div class="admin-messages-empty"><p>${escapeHtml(emptyMessage)}</p></div>
     `;
   }
 
   return `
+    ${renderAdminMessagesSummaryMarkup()}
     ${renderAdminMessagesFilterMarkup()}
-    <div class="admin-messages-table-shell">
-      <table class="leaderboard-audit-table admin-messages-table">
-        <thead>
-          <tr>
-            <th>Status</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Issue Type</th>
-            <th>Message Preview</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((row) => `
-              <tr class="${row.status === "new" ? "admin-message-row is-new" : "admin-message-row"}">
-                <td>${renderAdminMessageStatusPillMarkup(row.status)}</td>
-                <td>${escapeHtml(row.name || "Not provided")}</td>
-                <td>${escapeHtml(row.email || "Not provided")}</td>
-                <td>${escapeHtml(row.issueType)}</td>
-                <td class="admin-message-cell">${renderAdminMessageCellMarkup(row)}</td>
-                <td>${escapeHtml(parseCompletedAtValue(row.createdAt) ? formatTimingDateTime(parseCompletedAtValue(row.createdAt)) : "Not available")}</td>
-                <td>
-                  <div class="admin-message-actions">
-                    ${row.status !== "reviewed" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="reviewed">Mark Reviewed</button>` : ""}
-                    ${row.status !== "resolved" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="resolved">Mark Resolved</button>` : ""}
-                  </div>
-                </td>
-              </tr>
-          `).join("")}
-        </tbody>
-      </table>
+    <div class="admin-report-card-list">
+      ${rows.map((row) => `
+        <article class="meta-card admin-report-card ${row.status === "new" ? "is-new" : ""}">
+          <div class="admin-report-card-header">
+            <div class="admin-report-card-badges">
+              ${renderAdminMessageStatusPillMarkup(row.status)}
+              ${renderAdminMessageIssueTypeBadgeMarkup(row.issueType)}
+            </div>
+            <p class="admin-report-card-date">${escapeHtml(parseCompletedAtValue(row.createdAt) ? formatTimingDateTime(parseCompletedAtValue(row.createdAt)) : "Not available")}</p>
+          </div>
+          <div class="admin-report-card-meta">
+            <div>
+              <strong>${escapeHtml(row.name || "Not provided")}</strong>
+              <p>${escapeHtml(row.email || "Not provided")}</p>
+            </div>
+          </div>
+          <div class="admin-report-card-message">
+            ${renderAdminMessageCellMarkup(row)}
+          </div>
+          <div class="admin-message-actions">
+            ${row.status !== "reviewed" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="reviewed">Mark Reviewed</button>` : ""}
+            ${row.status !== "resolved" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="resolved">Mark Resolved</button>` : ""}
+          </div>
+        </article>
+      `).join("")}
     </div>
   `;
 }
@@ -17141,7 +17243,7 @@ function renderAdminMessagesSectionMarkup() {
     storageKey: ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
     contentId: "admin-user-reports-section-content",
     defaultOpen: false,
-    bodyMarkup: renderAdminMessagesTableMarkup(),
+    bodyMarkup: renderAdminMessagesPanelMarkup(),
   });
 }
 
@@ -17154,6 +17256,18 @@ function bindAdminMessagesSection(scope = app) {
     button.dataset.adminMessageFilterBound = "true";
     button.addEventListener("click", () => {
       appState.adminMessageStatusFilter = String(button.dataset.adminMessageFilter || "all").trim() || "all";
+      safeRender();
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-message-issue-filter='true']").forEach((select) => {
+    if (select.dataset.adminMessageIssueFilterBound === "true") {
+      return;
+    }
+
+    select.dataset.adminMessageIssueFilterBound = "true";
+    select.addEventListener("change", () => {
+      appState.adminMessageIssueTypeFilter = String(select.value || "all").trim() || "all";
       safeRender();
     });
   });
