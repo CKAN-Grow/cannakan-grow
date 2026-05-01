@@ -36,7 +36,35 @@ const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
-const DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE = "Why did the seed bring a blanket? It wanted to stay warm before sprouting.";
+const RECENT_GROW_JOKES_STORAGE_KEY = "cannakanGrowRecentJokes";
+const GROW_JOKE_HISTORY_LIMIT = 7;
+const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now — here’s something to grow on 🌱";
+const GROW_JOKES = Object.freeze([
+  { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
+  { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
+  { question: "Why did the tomato turn red in the garden?", answer: "It saw the salad dressing." },
+  { question: "Why did the bean plant win the race?", answer: "It knew how to spring ahead." },
+  { question: "What did the flowerpot say after a long day?", answer: "I need a little space to grow." },
+  { question: "Why did the gardener carry a pencil?", answer: "To draw up a planting plan." },
+  { question: "What do seedlings study in school?", answer: "Stem subjects." },
+  { question: "Why did the sunflower sit in the front row?", answer: "It wanted a brighter future." },
+  { question: "What did one seed say to the other at sunrise?", answer: "Time to rise and root." },
+  { question: "Why don’t gardens tell secrets?", answer: "Because the potatoes always spill the beans." },
+  { question: "What kind of stories do gardeners love?", answer: "Plot twists." },
+  { question: "Why did the watering can get promoted?", answer: "It always poured its heart into the job." },
+  { question: "What did the carrot say after a workout?", answer: "I’m really starting to feel rooted." },
+  { question: "Why was the compost pile such a good friend?", answer: "It always knew how to break things down." },
+  { question: "Why did the gardener talk to the sprouts?", answer: "A little encouragement helps them come out of their shell." },
+  { question: "What’s a gardener’s favorite kind of math?", answer: "Mulch-tiplication." },
+  { question: "Why did the peas get along so well?", answer: "They were in the same pod cast." },
+  { question: "What did the rake say to the leaves?", answer: "I’m falling for all of you." },
+  { question: "Why did the gardener plant light bulbs?", answer: "They wanted a power garden." },
+  { question: "What did the shovel say after planting day?", answer: "That was groundbreaking work." },
+  { question: "Why did the lettuce enjoy the garden party?", answer: "Because everyone was so refreshing." },
+  { question: "Why was the greenhouse so popular?", answer: "It was always full of warm welcomes." },
+  { question: "What do you call a fast-growing herb garden?", answer: "A mint condition miracle." },
+  { question: "Why did the gardener smile at the rain cloud?", answer: "It looked like a shower of support." },
+]);
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
@@ -274,9 +302,11 @@ async function rehydratePersistentBrowserState(reason = "unspecified") {
     activeAnnouncementTitle: activeAnnouncement?.title || "",
   });
   if (!activeAnnouncement) {
+    const dailyJoke = getDailyGrowJoke();
     console.log("[Cannakan App Init] announcement fallback used", {
-      title: "Grow Joke of the Day",
-      message: DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE,
+      title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
+      joke: dailyJoke.question,
+      answer: dailyJoke.answer,
     });
   }
 }
@@ -9499,6 +9529,97 @@ function formatAnnouncementDateLabel(value) {
   }).format(parsedDate);
 }
 
+function getLocalCalendarDateKey(referenceDate = new Date()) {
+  const year = referenceDate.getFullYear();
+  const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(referenceDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLocalCalendarDayIndex(referenceDate = new Date()) {
+  return Math.floor(new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  ).getTime() / 86400000);
+}
+
+function readRecentGrowJokeHistory() {
+  try {
+    const rawValue = localStorage.getItem(RECENT_GROW_JOKES_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue
+      .map((entry) => ({
+        dateKey: String(entry?.dateKey || "").trim(),
+        jokeIndex: Number(entry?.jokeIndex),
+      }))
+      .filter((entry) => (
+        /^\d{4}-\d{2}-\d{2}$/.test(entry.dateKey)
+        && Number.isInteger(entry.jokeIndex)
+        && entry.jokeIndex >= 0
+        && entry.jokeIndex < GROW_JOKES.length
+      ))
+      .slice(-GROW_JOKE_HISTORY_LIMIT);
+  } catch (error) {
+    console.error("Failed to read recent grow joke history from localStorage", error);
+    return [];
+  }
+}
+
+function writeRecentGrowJokeHistory(historyEntries = []) {
+  try {
+    localStorage.setItem(
+      RECENT_GROW_JOKES_STORAGE_KEY,
+      JSON.stringify(historyEntries.slice(-GROW_JOKE_HISTORY_LIMIT)),
+    );
+  } catch (error) {
+    console.error("Failed to write recent grow joke history to localStorage", error);
+  }
+}
+
+function getDailyGrowJoke(referenceDate = new Date()) {
+  const dateKey = getLocalCalendarDateKey(referenceDate);
+  const history = readRecentGrowJokeHistory();
+  const todayEntry = history.find((entry) => entry.dateKey === dateKey);
+  if (todayEntry && GROW_JOKES[todayEntry.jokeIndex]) {
+    return GROW_JOKES[todayEntry.jokeIndex];
+  }
+
+  const totalJokes = GROW_JOKES.length;
+  const baseIndex = ((getLocalCalendarDayIndex(referenceDate) % totalJokes) + totalJokes) % totalJokes;
+  const recentJokeIndexes = new Set(
+    history
+      .filter((entry) => entry.dateKey !== dateKey)
+      .map((entry) => entry.jokeIndex),
+  );
+
+  let selectedIndex = baseIndex;
+  if (recentJokeIndexes.has(selectedIndex)) {
+    for (let offset = 1; offset < totalJokes; offset += 1) {
+      const candidateIndex = (baseIndex + offset) % totalJokes;
+      if (!recentJokeIndexes.has(candidateIndex)) {
+        selectedIndex = candidateIndex;
+        break;
+      }
+    }
+  }
+
+  const nextHistory = [
+    ...history.filter((entry) => entry.dateKey !== dateKey),
+    { dateKey, jokeIndex: selectedIndex },
+  ].slice(-GROW_JOKE_HISTORY_LIMIT);
+  writeRecentGrowJokeHistory(nextHistory);
+  return GROW_JOKES[selectedIndex];
+}
+
 function getHomeAnnouncementCardData(referenceDate = new Date()) {
   const announcement = getLatestActiveAnnouncement();
   if (announcement) {
@@ -9512,13 +9633,16 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
     };
   }
 
+  const dailyJoke = getDailyGrowJoke(referenceDate);
   return {
-    title: "Grow Joke of the Day",
-    body: DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE,
+    title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
+    body: dailyJoke.question,
+    answer: dailyJoke.answer,
     imageUrl: "",
     linkUrl: "",
     buttonText: "",
     dateValue: referenceDate.toISOString(),
+    isFallbackJoke: true,
   };
 }
 
@@ -9550,7 +9674,20 @@ function renderHomeAnnouncementCard() {
         <div class="home-announcement-card-copy">
           <p class="home-announcement-card-label">Latest from Cannakan</p>
           <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
-          <p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>
+          ${cardData.isFallbackJoke
+    ? `
+          <div class="home-announcement-card-caption home-announcement-card-caption--joke">
+            <p class="home-announcement-card-caption-line">
+              <span class="home-announcement-card-caption-kicker">Joke:</span>
+              <span>${escapeHtml(cardData.body)}</span>
+            </p>
+            <p class="home-announcement-card-caption-line">
+              <span class="home-announcement-card-caption-kicker">Answer:</span>
+              <span>${escapeHtml(cardData.answer || "")}</span>
+            </p>
+          </div>
+          `
+    : `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`}
         </div>
         <div class="home-announcement-card-footer">
           <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(cardData.dateValue))}</p>
