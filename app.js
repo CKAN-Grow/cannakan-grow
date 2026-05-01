@@ -145,6 +145,126 @@ const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   { key: "mock-don-cannakan", name: "Don-Cannakan", snapshotCount: 24, totalLikes: 842 },
   { key: "mock-mo", name: "Mo", snapshotCount: 18, totalLikes: 611 },
 ]);
+const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
+  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photo", followerCount: 218, followingCount: 64, isFollowing: true },
+  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photo", followerCount: 194, followingCount: 58, isFollowing: true },
+  { id: "mock-mo", displayName: "Mo", averageGermination: 94, approvedSnapshots: 18, likes: 611, favoriteSeedType: "Auto", followerCount: 167, followingCount: 46, isFollowing: true },
+  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photo", followerCount: 123, followingCount: 35, isFollowing: true },
+  { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", followerCount: 176, followingCount: 40, isFollowing: true },
+  { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", followerCount: 72, followingCount: 22, isFollowing: true },
+  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photo", followerCount: 144, followingCount: 39, isFollowing: true },
+  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", followerCount: 58, followingCount: 18, isFollowing: true },
+  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Regular", followerCount: 86, followingCount: 28, isFollowing: false },
+  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photo", followerCount: 162, followingCount: 44, isFollowing: false },
+  { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", followerCount: 108, followingCount: 32, isFollowing: false },
+  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Mixed", followerCount: 79, followingCount: 24, isFollowing: false },
+]);
+const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
+  {
+    id: "mock-activity-avery-snapshot",
+    memberId: "mock-avery-moss",
+    activityType: "approved-snapshot",
+    typeLabel: "New approved Community Grow snapshot",
+    typeMeta: "Approved in Community Grow",
+    title: "Avery Moss submitted a 96% germination snapshot",
+    summary: "Photo run with a strong early finish and clean germination consistency.",
+    germinationRateLabel: "96%",
+    sourceLabel: "Photo",
+    occurredAt: "2026-05-01T09:18:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-don-session",
+    memberId: "mock-don-cannakan",
+    activityType: "shared-session",
+    typeLabel: "Public session shared",
+    typeMeta: "Public session now visible",
+    title: "Don-Cannakan started a new KAN® session",
+    summary: "Fresh public session shared for photo-line benchmarking.",
+    germinationRateLabel: "98%",
+    sourceLabel: "Photo",
+    occurredAt: "2026-05-01T08:02:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-mo-follow",
+    memberId: "mock-mo",
+    activityType: "approved-snapshot",
+    typeLabel: "Grow Network update",
+    typeMeta: "Community connection",
+    title: "Mo followed SeedVault",
+    summary: "Added a high-performing auto grower to the network.",
+    germinationRateLabel: "94%",
+    sourceLabel: "Auto",
+    occurredAt: "2026-05-01T06:42:00.000Z",
+    sessionRoute: "#members/mock-seedvault",
+  },
+  {
+    id: "mock-activity-greenlab-perfect",
+    memberId: "mock-greenlab",
+    activityType: "completed-session",
+    typeLabel: "Completed public session",
+    typeMeta: "Approved in Community Grow",
+    title: "GreenLab reached 100% germination",
+    summary: "Perfect completion on a photo trial with a public wrap-up.",
+    germinationRateLabel: "100%",
+    sourceLabel: "Photo",
+    occurredAt: "2026-04-30T20:14:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-rootrunner-snapshot",
+    memberId: "mock-rootrunner",
+    activityType: "approved-snapshot",
+    typeLabel: "New approved Community Grow snapshot",
+    typeMeta: "Approved in Community Grow",
+    title: "RootRunner posted a new Community Grow snapshot",
+    summary: "Fast-cycle update with a fresh tray check-in.",
+    germinationRateLabel: "87%",
+    sourceLabel: "Fast",
+    occurredAt: "2026-04-30T16:25:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-seedvault-source",
+    memberId: "mock-seedvault",
+    activityType: "approved-snapshot",
+    typeLabel: "Grow Network update",
+    typeMeta: "Leaderboard highlight",
+    title: "SeedVault became this month’s top source tester",
+    summary: "Auto-heavy runs are leading this month’s source chart.",
+    germinationRateLabel: "96%",
+    sourceLabel: "Auto",
+    occurredAt: "2026-04-30T13:38:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-sproutscout-complete",
+    memberId: "mock-sproutscout",
+    activityType: "completed-session",
+    typeLabel: "Completed public session",
+    typeMeta: "Approved in Community Grow",
+    title: "SproutScout completed a multi-variety session",
+    summary: "Shared the final public results from a mixed-variety comparison.",
+    germinationRateLabel: "93%",
+    sourceLabel: "Photo",
+    occurredAt: "2026-04-30T10:11:00.000Z",
+    sessionRoute: "#gallery",
+  },
+  {
+    id: "mock-activity-kan-joined",
+    memberId: "mock-kan-trial-user",
+    activityType: "shared-session",
+    typeLabel: "Grow Network update",
+    typeMeta: "New member",
+    title: "KAN Trial User joined the Grow Network",
+    summary: "Started sharing public test runs for new growers to compare against.",
+    germinationRateLabel: "90%",
+    sourceLabel: "Auto",
+    occurredAt: "2026-04-29T18:47:00.000Z",
+    sessionRoute: "#members/mock-kan-trial-user",
+  },
+]);
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
@@ -259,6 +379,8 @@ const appState = {
   growNetworkFollowingLoaded: false,
   growNetworkFollowingError: "",
   growNetworkFollowingRefreshPromise: null,
+  growNetworkActiveTab: "following",
+  mockGrowNetworkFollowStates: {},
   growNetworkActivity: [],
   growNetworkActivityLoaded: false,
   growNetworkActivityError: "",
@@ -522,6 +644,8 @@ function resetSessionScopedAppState() {
   appState.growNetworkFollowingLoaded = false;
   appState.growNetworkFollowingError = "";
   appState.growNetworkFollowingRefreshPromise = null;
+  appState.growNetworkActiveTab = "following";
+  appState.mockGrowNetworkFollowStates = {};
   appState.growNetworkActivity = [];
   appState.growNetworkActivityLoaded = false;
   appState.growNetworkActivityError = "";
@@ -5059,6 +5183,123 @@ function normalizeGrowNetworkFollowingRow(row) {
   };
 }
 
+function normalizeGrowNetworkTab(tab = "") {
+  const normalizedTab = String(tab || "").trim().toLowerCase();
+  return ["discover", "followers"].includes(normalizedTab)
+    ? normalizedTab
+    : "following";
+}
+
+function getGrowNetworkActiveTab() {
+  return normalizeGrowNetworkTab(appState.growNetworkActiveTab);
+}
+
+function setGrowNetworkActiveTab(tab = "") {
+  appState.growNetworkActiveTab = normalizeGrowNetworkTab(tab);
+}
+
+function getMockGrowNetworkProfiles() {
+  return GROW_NETWORK_MOCK_PROFILES.map((profile) => {
+    const hasOverride = Object.prototype.hasOwnProperty.call(appState.mockGrowNetworkFollowStates, profile.id);
+    return {
+      ...profile,
+      isFollowing: hasOverride
+        ? Boolean(appState.mockGrowNetworkFollowStates[profile.id])
+        : Boolean(profile.isFollowing),
+    };
+  });
+}
+
+function syncMockGrowNetworkCaches() {
+  const mockProfiles = getMockGrowNetworkProfiles();
+  mockProfiles.forEach((profile) => {
+    appState.publicMemberProfiles[profile.id] = {
+      id: profile.id,
+      displayName: profile.displayName,
+      avatarUrl: "",
+      joinedAt: "2026-01-01T12:00:00.000Z",
+    };
+    appState.publicMemberFollowSummaries[profile.id] = {
+      followerCount: Math.max(0, Number(profile.followerCount) || 0),
+      followingCount: Math.max(0, Number(profile.followingCount) || 0),
+    };
+    appState.publicMemberFollowStates[profile.id] = Boolean(profile.isFollowing);
+  });
+  return mockProfiles;
+}
+
+function buildMockGrowNetworkFollowingEntries() {
+  return syncMockGrowNetworkCaches()
+    .filter((profile) => profile.isFollowing)
+    .map((profile, index) => ({
+      memberId: profile.id,
+      followedAt: new Date(Date.UTC(2026, 3, Math.max(1, 28 - index), 16, 0, 0)).toISOString(),
+      isMock: true,
+    }));
+}
+
+function buildMockGrowNetworkMemberCards(tab = "following") {
+  const normalizedTab = normalizeGrowNetworkTab(tab);
+  const mockProfiles = syncMockGrowNetworkCaches();
+
+  if (normalizedTab === "discover") {
+    return mockProfiles;
+  }
+
+  if (normalizedTab === "followers") {
+    return mockProfiles.slice(4).concat(mockProfiles.slice(0, 4)).slice(0, 8);
+  }
+
+  return mockProfiles.filter((profile) => profile.isFollowing);
+}
+
+function buildMockGrowNetworkActivityEntries() {
+  const followedIds = new Set(buildMockGrowNetworkFollowingEntries().map((entry) => entry.memberId));
+  return GROW_NETWORK_MOCK_ACTIVITIES
+    .filter((activity) => followedIds.has(activity.memberId))
+    .map((activity) => {
+      const profile = getPublicMemberProfile(activity.memberId);
+      return {
+        id: activity.id,
+        activityType: activity.activityType,
+        typeLabel: activity.typeLabel,
+        typeMeta: activity.typeMeta,
+        title: activity.title,
+        summary: activity.summary,
+        successPercent: Math.max(0, Number(String(activity.germinationRateLabel || "").replace(/[^0-9.]/g, "")) || 0),
+        occurredAt: activity.occurredAt,
+        memberId: activity.memberId,
+        displayName: profile?.displayName || activity.memberId,
+        avatarUrl: profile?.avatarUrl || "",
+        profileRoute: getPublicMemberProfileRoute(activity.memberId),
+        sessionRoute: activity.sessionRoute || "#gallery",
+        sessionDateLabel: "",
+        sourceLabel: activity.sourceLabel || "",
+        germinationRateLabel: activity.germinationRateLabel || "0%",
+        systemLabel: "KAN",
+      };
+    });
+}
+
+function toggleMockGrowNetworkFollowState(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return;
+  }
+
+  const currentProfile = getMockGrowNetworkProfiles().find((profile) => profile.id === normalizedId);
+  if (!currentProfile) {
+    return;
+  }
+
+  appState.mockGrowNetworkFollowStates[normalizedId] = !currentProfile.isFollowing;
+  appState.publicMemberFollowStates[normalizedId] = Boolean(appState.mockGrowNetworkFollowStates[normalizedId]);
+  appState.growNetworkFollowing = buildMockGrowNetworkFollowingEntries();
+  appState.growNetworkActivity = buildMockGrowNetworkActivityEntries();
+  appState.growNetworkFollowingLoaded = true;
+  appState.growNetworkActivityLoaded = true;
+}
+
 function buildFallbackGrowNetworkFollowingEntries(limit = 6) {
   const seenMemberIds = new Set();
   const approvedSnapshots = getGallerySnapshotsForDisplay()
@@ -5763,32 +6004,19 @@ async function loadGrowNetworkFollowing(reason = "unspecified") {
     return [];
   }
 
-  const applyFallbackFollowingEntries = () => {
-    const fallbackFollowing = buildFallbackGrowNetworkFollowingEntries();
-    appState.growNetworkFollowing = fallbackFollowing;
+  if (isMockDataEnabled()) {
+    const mockFollowing = buildMockGrowNetworkFollowingEntries();
+    appState.growNetworkFollowing = mockFollowing;
     appState.growNetworkFollowingLoaded = true;
     appState.growNetworkFollowingError = "";
-    return fallbackFollowing;
-  };
-
-  if (isMockDataEnabled()) {
-    const fallbackFollowing = applyFallbackFollowingEntries();
-    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
-    await Promise.allSettled([
-      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:mock-profiles` }),
-      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:mock-summaries` }),
-    ]);
-    return fallbackFollowing;
+    return mockFollowing;
   }
 
   if (!appState.supabase) {
-    const fallbackFollowing = applyFallbackFollowingEntries();
-    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
-    await Promise.allSettled([
-      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:fallback-profiles` }),
-      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:fallback-summaries` }),
-    ]);
-    return fallbackFollowing;
+    appState.growNetworkFollowing = [];
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return [];
   }
 
   const { data, error } = await appState.supabase
@@ -5801,26 +6029,24 @@ async function loadGrowNetworkFollowing(reason = "unspecified") {
     if (isGrowFollowsTableUnavailableError(error)) {
       appState.publicMemberFollowsTableUnavailable = true;
     }
-    const fallbackFollowing = applyFallbackFollowingEntries();
-    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
-    await Promise.allSettled([
-      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:error-profiles` }),
-      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:error-summaries` }),
-    ]);
-    return fallbackFollowing;
+    console.warn("Grow Network follows unavailable; showing friendly empty state.", {
+      reason,
+      error,
+    });
+    appState.growNetworkFollowing = [];
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return [];
   }
 
   const following = (data || [])
     .map(normalizeGrowNetworkFollowingRow)
     .filter((entry) => entry?.memberId);
   if (!following.length) {
-    const fallbackFollowing = applyFallbackFollowingEntries();
-    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
-    await Promise.allSettled([
-      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:empty-profiles` }),
-      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:empty-summaries` }),
-    ]);
-    return fallbackFollowing;
+    appState.growNetworkFollowing = [];
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return [];
   }
 
   appState.growNetworkFollowing = following;
@@ -6279,6 +6505,14 @@ async function syncCommunityActivityForCompletedSession(session, options = {}) {
 }
 
 async function loadGrowNetworkActivity(reason = "unspecified") {
+  if (isMockDataEnabled()) {
+    const mockActivities = buildMockGrowNetworkActivityEntries();
+    appState.growNetworkActivity = mockActivities;
+    appState.growNetworkActivityLoaded = true;
+    appState.growNetworkActivityError = "";
+    return mockActivities;
+  }
+
   const followedIds = getGrowNetworkFollowingEntries().map((entry) => String(entry?.memberId || "").trim()).filter(Boolean);
   if (!followedIds.length) {
     appState.growNetworkActivity = [];
@@ -6288,7 +6522,10 @@ async function loadGrowNetworkActivity(reason = "unspecified") {
   }
 
   if (!appState.supabase) {
-    return appState.growNetworkActivity || [];
+    appState.growNetworkActivity = [];
+    appState.growNetworkActivityLoaded = true;
+    appState.growNetworkActivityError = "";
+    return [];
   }
 
   const { data, error } = await appState.supabase
@@ -6301,17 +6538,16 @@ async function loadGrowNetworkActivity(reason = "unspecified") {
   if (error) {
     if (isCommunityActivityTableUnavailableError(error)) {
       appState.communityActivityTableUnavailable = true;
-      appState.growNetworkActivityError = "Community activity is unavailable. Apply the latest community activity migration.";
-    } else {
-      appState.growNetworkActivityError = error.message || "Could not load your Grow Network activity.";
     }
-    console.error("Failed to load community activity feed", {
+    console.warn("Failed to load community activity feed; showing friendly empty state.", {
       reason,
       followedIds,
       error,
     });
+    appState.growNetworkActivity = [];
     appState.growNetworkActivityLoaded = true;
-    return appState.growNetworkActivity || [];
+    appState.growNetworkActivityError = "";
+    return [];
   }
 
   const activities = (data || [])
@@ -20094,10 +20330,81 @@ function renderPublicMemberProfile(memberId) {
 
 function renderGrowNetworkPage() {
   const followingEntries = getGrowNetworkFollowingEntries();
-  const isLoadingNetworkActivity = Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id));
+  const isMockNetwork = isMockDataEnabled();
+  const activeTab = isMockNetwork ? getGrowNetworkActiveTab() : "following";
+  const isLoadingNetworkActivity = !isMockNetwork && (Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id)));
   const activities = getGrowNetworkActivityEntries();
-  const isLoadingFollowing = Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id));
+  const isLoadingFollowing = !isMockNetwork && (Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id)));
   const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
+  const mockMembers = isMockNetwork ? buildMockGrowNetworkMemberCards(activeTab) : [];
+
+  const renderMemberMetaMarkup = (member) => {
+    if (!isMockNetwork) {
+      return "";
+    }
+
+    return `
+      <p class="grow-network-member-caption">${escapeHtml(`${member.averageGermination}% avg germination · ${member.favoriteSeedType}`)}</p>
+      <div class="grow-network-member-stats" aria-label="${escapeHtml(`${member.displayName} performance`)}">
+        <span class="grow-network-member-stat-chip">${escapeHtml(`${member.approvedSnapshots} approved`)}</span>
+        <span class="grow-network-member-stat-chip">${escapeHtml(`${member.likes} likes`)}</span>
+        <span class="grow-network-member-stat-chip">${escapeHtml(member.favoriteSeedType)}</span>
+      </div>
+    `;
+  };
+
+  const renderMockTabsMarkup = () => {
+    if (!isMockNetwork) {
+      return "";
+    }
+
+    const tabs = [
+      { key: "following", label: "Following" },
+      { key: "discover", label: "Discover Growers" },
+      { key: "followers", label: "Followers" },
+    ];
+
+    return `
+      <div class="grow-network-tabs" role="tablist" aria-label="Grow Network views">
+        ${tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return `
+            <button
+              type="button"
+              class="grow-network-tab${isActive ? " is-active" : ""}"
+              data-grow-network-tab="${escapeHtml(tab.key)}"
+              role="tab"
+              aria-selected="${isActive ? "true" : "false"}"
+            >${escapeHtml(tab.label)}</button>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  const getMockSectionCopy = () => {
+    if (activeTab === "discover") {
+      return {
+        eyebrow: "Discover",
+        title: "Discover Growers",
+        subtitle: "Explore performance-focused mock profiles and test follow interactions visually.",
+      };
+    }
+
+    if (activeTab === "followers") {
+      return {
+        eyebrow: "Followers",
+        title: "Members Following You",
+        subtitle: "Preview how followers will appear in the Grow Network social layer.",
+      };
+    }
+
+    return {
+      eyebrow: "Following",
+      title: "People You Follow",
+      subtitle: "Your followed growers, with enough mock depth to test card behavior and spacing.",
+    };
+  };
 
   const renderFollowingListMarkup = () => {
     if (isLoadingFollowing) {
@@ -20110,8 +20417,45 @@ function renderGrowNetworkPage() {
 
     if (appState.growNetworkFollowingError) {
       return `
-        <div class="empty-state gallery-empty-state">
-          <p>${escapeHtml(appState.growNetworkFollowingError)}</p>
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>Follow members to build your Grow Network.</p>
+        </div>
+      `;
+    }
+
+    if (isMockNetwork) {
+      if (!mockMembers.length) {
+        return `
+          <div class="empty-state gallery-empty-state grow-network-empty-state">
+            <p>Follow members to build your Grow Network.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="grow-network-member-list grow-network-member-list--mock">
+          ${mockMembers.map((member) => `
+            <article class="grow-network-member-card grow-network-member-card--mock">
+              <a class="grow-network-member-identity" href="${escapeHtml(getPublicMemberProfileRoute(member.id))}">
+                <span class="grow-network-member-avatar-shell">
+                  ${renderPublicMemberAvatarMarkup(member.displayName, "", "grow-network-member-avatar")}
+                </span>
+                <div class="grow-network-member-copy">
+                  <strong>${escapeHtml(member.displayName)}</strong>
+                  ${renderMemberMetaMarkup(member)}
+                </div>
+              </a>
+              <div class="grow-network-member-actions">
+                <a class="button button-secondary" href="${escapeHtml(getPublicMemberProfileRoute(member.id))}">View Profile</a>
+                <button
+                  type="button"
+                  class="button ${member.isFollowing ? "button-secondary" : "button-primary"} grow-network-mock-follow-button${member.isFollowing ? " is-following" : ""}"
+                  data-grow-network-mock-follow="${escapeHtml(member.id)}"
+                  aria-pressed="${member.isFollowing ? "true" : "false"}"
+                >${escapeHtml(member.isFollowing ? "Following" : "Follow")}</button>
+              </div>
+            </article>
+          `).join("")}
         </div>
       `;
     }
@@ -20144,10 +20488,10 @@ function renderGrowNetworkPage() {
                 <span class="grow-network-member-avatar-shell">
                   ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "grow-network-member-avatar")}
                 </span>
-                <span class="grow-network-member-copy">
+                <div class="grow-network-member-copy">
                   <strong>${escapeHtml(displayName)}</strong>
-                  <span>${escapeHtml(publicSnapshotLabel)}</span>
-                </span>
+                  <span class="grow-network-member-caption">${escapeHtml(publicSnapshotLabel)}</span>
+                </div>
               </a>
               <div class="grow-network-member-actions">
                 <a class="button button-secondary" href="${escapeHtml(getPublicMemberProfileRoute(memberId))}">View Profile</a>
@@ -20181,7 +20525,7 @@ function renderGrowNetworkPage() {
     if (appState.growNetworkActivityError) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state">
-          <p>${escapeHtml(appState.growNetworkActivityError)}</p>
+          <p>No public activity from your Grow Network yet.</p>
         </div>
       `;
     }
@@ -20211,10 +20555,10 @@ function renderGrowNetworkPage() {
                 <span class="grow-network-feed-avatar-shell">
                   ${renderPublicMemberAvatarMarkup(activity.displayName, activity.avatarUrl, "grow-network-feed-avatar")}
                 </span>
-                <span class="grow-network-feed-member-copy">
+                <div class="grow-network-feed-member-copy">
                   <strong>${escapeHtml(activity.displayName)}</strong>
                   <span>${escapeHtml(activity.typeLabel)}</span>
-                </span>
+                </div>
               </a>
               <span class="grow-network-feed-time">${escapeHtml(getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: activity.occurredAt, createdAt: activity.occurredAt }))}</span>
             </div>
@@ -20238,9 +20582,11 @@ function renderGrowNetworkPage() {
     `;
   };
 
+  const mockSectionCopy = getMockSectionCopy();
+
   app.innerHTML = `
     <section class="card grow-network-page">
-      <div class="section-heading">
+      <div class="section-heading grow-network-page-heading">
         <div class="section-title-with-icon">
           <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
@@ -20260,10 +20606,12 @@ function renderGrowNetworkPage() {
       </div>
       <div class="grow-network-layout">
         <section class="grow-network-section">
+          ${renderMockTabsMarkup()}
           <div class="section-heading grow-network-section-heading">
             <div>
-              <p class="eyebrow">Following</p>
-              <h3>People You Follow</h3>
+              <p class="eyebrow">${escapeHtml(isMockNetwork ? mockSectionCopy.eyebrow : "Following")}</p>
+              <h3>${escapeHtml(isMockNetwork ? mockSectionCopy.title : "People You Follow")}</h3>
+              ${isMockNetwork ? `<p class="muted grow-network-section-subtitle">${escapeHtml(mockSectionCopy.subtitle)}</p>` : ""}
             </div>
           </div>
           ${renderFollowingListMarkup()}
@@ -20288,6 +20636,20 @@ function renderGrowNetworkPage() {
       } catch (error) {
         window.alert(error.message || "Could not update this follow right now.");
       }
+    });
+  });
+
+  app.querySelectorAll("[data-grow-network-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setGrowNetworkActiveTab(button.dataset.growNetworkTab || "following");
+      renderGrowNetworkPage();
+    });
+  });
+
+  app.querySelectorAll("[data-grow-network-mock-follow]").forEach((button) => {
+    button.addEventListener("click", () => {
+      toggleMockGrowNetworkFollowState(button.dataset.growNetworkMockFollow || "");
+      renderGrowNetworkPage();
     });
   });
 }
