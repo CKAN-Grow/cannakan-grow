@@ -10,7 +10,6 @@ const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
-const USER_ROLE_STORAGE_KEY = "cannakanGrowUserRole";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
@@ -293,7 +292,8 @@ const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
 ]);
-// TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
+// Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
+// Database access should be protected with Supabase RLS policies.
 
 function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
   const normalizedEmail = getNormalizedUserEmail(userOrEmail);
@@ -315,49 +315,42 @@ function getAuthSessionHydrationKey(session) {
   return `${userId}|${email}|${expiresAt}`;
 }
 
-function normalizePersistedUserRole(role) {
+function normalizeUserRole(role) {
   return String(role || "").trim().toLowerCase() === "admin" ? "admin" : "user";
 }
 
-function loadPersistedUserRole() {
-  try {
-    return normalizePersistedUserRole(localStorage.getItem(USER_ROLE_STORAGE_KEY) || "user");
-  } catch (error) {
-    console.error("Failed to read persisted user role", error);
+function resolveSupabaseBackedUserRole(session = appState.authSession, profile = appState.profile) {
+  if (!session?.user) {
     return "user";
   }
-}
 
-function persistUserRole(role) {
-  const normalizedRole = normalizePersistedUserRole(role);
-  appState.userRole = normalizedRole;
-  try {
-    localStorage.setItem(USER_ROLE_STORAGE_KEY, normalizedRole);
-  } catch (error) {
-    console.error("Failed to persist user role", error);
+  const sessionRole = normalizeUserRole(
+    session.user?.app_metadata?.role
+    || session.user?.user_metadata?.role
+  );
+  if (sessionRole === "admin") {
+    return "admin";
   }
-  return normalizedRole;
-}
 
-function clearPersistedUserRole() {
-  appState.userRole = "user";
-  try {
-    localStorage.removeItem(USER_ROLE_STORAGE_KEY);
-  } catch (error) {
-    console.error("Failed to clear persisted user role", error);
+  const profileRole = normalizeUserRole(profile?.role);
+  if (profileRole === "admin") {
+    return "admin";
   }
+
+  return isAdminUser(session.user) ? "admin" : "user";
 }
 
 function hasResolvedAdminAccess() {
-  // Admin visibility tied to persistent auth state
-  // Prevents UI disappearing on refresh
+  // Admin visibility is derived from Supabase auth/session.
+  // Do not use localStorage as the source of truth for admin permissions.
+  // Database access should be protected with Supabase RLS policies.
   return appState.userRole === "admin";
 }
 
-function applyResolvedAuthState(session, reason = "auth-change") {
+function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile) {
   const sessionEmail = String(session?.user?.email || "").trim();
   const normalizedEmail = getNormalizedUserEmail(session?.user || null);
-  const resolvedRole = session ? (isAdminUser(normalizedEmail) ? "admin" : "user") : "user";
+  const resolvedRole = session ? resolveSupabaseBackedUserRole(session, profile) : "user";
   const isAdmin = resolvedRole === "admin";
 
   appState.authSession = session || null;
@@ -365,11 +358,6 @@ function applyResolvedAuthState(session, reason = "auth-change") {
   appState.currentUserEmail = normalizedEmail;
   appState.userRole = resolvedRole;
   appState.isAdmin = isAdmin;
-  if (session) {
-    persistUserRole(resolvedRole);
-  } else {
-    clearPersistedUserRole();
-  }
 
   console.log("[Cannakan App Init] session email", {
     reason,
@@ -419,12 +407,11 @@ function syncAdminNavigationVisibility() {
 }
 
 function resetSessionScopedAppState() {
-  const persistedUserRole = loadPersistedUserRole();
   appState.authSession = null;
   appState.user = null;
   appState.currentUserEmail = "";
-  appState.userRole = persistedUserRole;
-  appState.isAdmin = persistedUserRole === "admin";
+  appState.userRole = "user";
+  appState.isAdmin = false;
   appState.profile = null;
   appState.profileError = "";
   appState.deletionPromptShown = false;
@@ -2440,8 +2427,8 @@ async function bootstrapApp() {
   appState.loading = true;
   appState.authReady = false;
   appState.lastHydratedAuthSessionKey = "";
-  appState.userRole = loadPersistedUserRole();
-  appState.isAdmin = appState.userRole === "admin";
+  appState.userRole = "user";
+  appState.isAdmin = false;
   appState.mockDataEnabled = isMockDataEnabled();
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
@@ -3179,6 +3166,8 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           "Failed to initialize user profile during auth hydration.",
           "profileError",
         );
+        applyResolvedAuthState(session, `${reason}:profile`, appState.profile);
+        updateAuthStatus();
         if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
           appState.authNotice = "This Cannakan Grow account has been disabled. Contact an administrator for help.";
           await appState.supabase?.auth.signOut();
@@ -3842,6 +3831,7 @@ function normalizeProfileRow(row) {
     id: row.id,
     username: String(row.username || "").trim(),
     email: String(row.email || "").trim().toLowerCase(),
+    role: normalizeUserRole(row.role),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
     accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
@@ -6881,6 +6871,10 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     closeAccountMenu();
+    appState.userRole = "user";
+    appState.isAdmin = false;
+    updateAuthStatus();
+    safeRender();
     await appState.supabase.auth.signOut();
   });
 }
