@@ -361,6 +361,58 @@ const STAGE_REMINDER_SCHEDULES = {
     { hours: 120, message: "This session has been running for several days. Check seeds and complete when ready.", level: "critical" },
   ],
 };
+const MOCK_ADMIN_REPORTS = Object.freeze([
+  {
+    id: "mock-admin-report-technical",
+    user_id: "",
+    name: "Jamie Ortega",
+    email: "jamie@example.com",
+    issue_type: "Technical issue",
+    message: "The session dashboard saved my latest germination check, but the card did not refresh until I reopened the page. Everything came back after refresh, so this may be a front-end sync issue.",
+    status: "new",
+    created_at: new Date(Date.now() - (2 * 60 * 60 * 1000)).toISOString(),
+  },
+  {
+    id: "mock-admin-report-account",
+    user_id: "",
+    name: "Morgan Lee",
+    email: "morgan@example.com",
+    issue_type: "Account issue",
+    message: "I can sign in on desktop, but my phone keeps returning me to the home screen after authentication. Please check whether my account session is expiring too quickly on mobile Safari.",
+    status: "reviewed",
+    created_at: new Date(Date.now() - (6 * 60 * 60 * 1000)).toISOString(),
+  },
+  {
+    id: "mock-admin-report-feedback",
+    user_id: "",
+    name: "Avery Moss",
+    email: "avery@example.com",
+    issue_type: "Feedback",
+    message: "The new Grow Network layout feels much better. A pinned explanation of what counts as public activity would make the section even clearer for first-time members.",
+    status: "new",
+    created_at: new Date(Date.now() - (11 * 60 * 60 * 1000)).toISOString(),
+  },
+  {
+    id: "mock-admin-report-content",
+    user_id: "",
+    name: "Casey Hart",
+    email: "casey@example.com",
+    issue_type: "Report content",
+    message: "One Community Grow snapshot appears to use a mismatched source label that does not match the session details shown in the public view. Please review the post before it stays on the feed.",
+    status: "resolved",
+    created_at: new Date(Date.now() - (26 * 60 * 60 * 1000)).toISOString(),
+  },
+  {
+    id: "mock-admin-report-other",
+    user_id: "",
+    name: "Devon Price",
+    email: "devon@example.com",
+    issue_type: "Other",
+    message: "Could the footer contact form eventually include an optional order or batch reference field? It would help when sending support questions tied to a specific grow setup.",
+    status: "new",
+    created_at: new Date(Date.now() - (52 * 60 * 60 * 1000)).toISOString(),
+  },
+]);
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
 const appFooter = document.querySelector(".app-footer");
@@ -405,6 +457,8 @@ const appState = {
   adminMessagesError: "",
   adminMessagesRefreshPromise: null,
   adminMessageStatusFilter: "all",
+  adminMessageExpandedState: {},
+  mockAdminMessages: [],
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -3063,6 +3117,31 @@ function logAdminReportFallback(record = {}, error = null) {
   };
 }
 
+function getMockAdminMessages() {
+  return MOCK_ADMIN_REPORTS.map((row) => normalizeAdminMessageRow(row)).filter(Boolean);
+}
+
+function ensureMockAdminMessages() {
+  if (!Array.isArray(appState.mockAdminMessages) || !appState.mockAdminMessages.length) {
+    appState.mockAdminMessages = getMockAdminMessages();
+  }
+  return appState.mockAdminMessages;
+}
+
+function getAdminMessagesForDisplay() {
+  if (isMockDataEnabled()) {
+    return ensureMockAdminMessages();
+  }
+  return Array.isArray(appState.adminMessages) ? appState.adminMessages : [];
+}
+
+function getFriendlyAdminMessagesFallbackMessage() {
+  if (isMockDataEnabled()) {
+    return "Dev Mode mock reports are unavailable right now.";
+  }
+  return "User reports are unavailable right now. Try again after Supabase is ready.";
+}
+
 async function submitAdminMessage(payload = {}) {
   let resolvedUserId = null;
   if (appState.supabase) {
@@ -3150,7 +3229,8 @@ async function refreshAdminMessages(options = {}) {
     } catch (error) {
       appState.adminMessages = [];
       appState.adminMessagesLoaded = true;
-      appState.adminMessagesError = error.message || "Could not load user reports.";
+      console.warn("[Admin Reports] Could not load user reports.", error);
+      appState.adminMessagesError = "Could not load user reports.";
       return [];
     }
   })();
@@ -3165,6 +3245,18 @@ async function refreshAdminMessages(options = {}) {
 }
 
 async function updateAdminMessageStatus(messageId, nextStatus = "reviewed") {
+  if (isMockDataEnabled()) {
+    const normalizedStatus = normalizeAdminMessageStatus(nextStatus);
+    const normalizedMessageId = String(messageId || "").trim();
+    ensureMockAdminMessages();
+    appState.mockAdminMessages = appState.mockAdminMessages.map((row) => (
+      row.id === normalizedMessageId
+        ? { ...row, status: normalizedStatus }
+        : row
+    ));
+    return appState.mockAdminMessages.find((row) => row.id === normalizedMessageId) || null;
+  }
+
   if (!appState.supabase || !isAdminUser()) {
     throw new Error("You must be an admin to manage user reports.");
   }
@@ -16935,14 +17027,49 @@ function getAdminMessagePreview(message = "") {
   return `${trimmedMessage.slice(0, 177).trimEnd()}...`;
 }
 
+function isAdminMessageExpanded(messageId = "") {
+  return Boolean(appState.adminMessageExpandedState?.[String(messageId || "").trim()]);
+}
+
+function getAdminMessageDisplayText(row) {
+  const message = String(row?.message || "").trim();
+  const expanded = isAdminMessageExpanded(row?.id);
+  const truncated = message.length > 180;
+  return {
+    message: expanded ? message : getAdminMessagePreview(message),
+    expanded,
+    truncated,
+  };
+}
+
+function renderAdminMessageCellMarkup(row) {
+  const display = getAdminMessageDisplayText(row);
+  return `
+    <div class="admin-message-cell-copy">
+      <p>${escapeHtml(display.message || "No message provided.")}</p>
+      ${display.truncated ? `
+        <button
+          type="button"
+          class="admin-message-expand"
+          data-admin-message-expand="${escapeHtml(row.id)}"
+          aria-expanded="${display.expanded ? "true" : "false"}"
+        >
+          ${display.expanded ? "Collapse" : "Expand"}
+        </button>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderAdminMessagesTableMarkup() {
+  const displayRows = getAdminMessagesForDisplay();
   const filteredRows = (appState.adminMessageStatusFilter === "all"
-    ? (appState.adminMessages || [])
-    : (appState.adminMessages || []).filter((row) => row.status === appState.adminMessageStatusFilter));
+    ? displayRows
+    : displayRows.filter((row) => row.status === appState.adminMessageStatusFilter));
   const rows = [...filteredRows].sort((left, right) => (
     new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()
   ));
-  const isLoading = Boolean(appState.supabase && !appState.adminMessagesLoaded && appState.adminMessagesRefreshPromise);
+  const isLoading = Boolean(!isMockDataEnabled() && appState.supabase && !appState.adminMessagesLoaded && appState.adminMessagesRefreshPromise);
 
   if (isLoading) {
     return `
@@ -16951,10 +17078,10 @@ function renderAdminMessagesTableMarkup() {
     `;
   }
 
-  if (appState.adminMessagesError) {
+  if (appState.adminMessagesError && !isMockDataEnabled()) {
     return `
       ${renderAdminMessagesFilterMarkup()}
-      <div class="admin-messages-empty"><p>${escapeHtml(appState.adminMessagesError)}</p></div>
+      <div class="admin-messages-empty"><p>${escapeHtml(getFriendlyAdminMessagesFallbackMessage())}</p></div>
     `;
   }
 
@@ -16985,12 +17112,12 @@ function renderAdminMessagesTableMarkup() {
         </thead>
         <tbody>
           ${rows.map((row) => `
-              <tr>
+              <tr class="${row.status === "new" ? "admin-message-row is-new" : "admin-message-row"}">
                 <td>${renderAdminMessageStatusPillMarkup(row.status)}</td>
                 <td>${escapeHtml(row.name || "Not provided")}</td>
                 <td>${escapeHtml(row.email || "Not provided")}</td>
                 <td>${escapeHtml(row.issueType)}</td>
-                <td class="admin-message-cell">${escapeHtml(getAdminMessagePreview(row.message))}</td>
+                <td class="admin-message-cell">${renderAdminMessageCellMarkup(row)}</td>
                 <td>${escapeHtml(parseCompletedAtValue(row.createdAt) ? formatTimingDateTime(parseCompletedAtValue(row.createdAt)) : "Not available")}</td>
                 <td>
                   <div class="admin-message-actions">
@@ -17044,8 +17171,28 @@ function bindAdminMessagesSection(scope = app) {
         await updateAdminMessageStatus(messageId, nextStatus);
         safeRender();
       } catch (error) {
-        window.alert(error.message || "Could not update this message.");
+        console.warn("[Admin Reports] Could not update report status.", error);
+        window.alert("Could not update this report right now.");
       }
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-message-expand]").forEach((button) => {
+    if (button.dataset.adminMessageExpandBound === "true") {
+      return;
+    }
+
+    button.dataset.adminMessageExpandBound = "true";
+    button.addEventListener("click", () => {
+      const messageId = String(button.dataset.adminMessageExpand || "").trim();
+      if (!messageId) {
+        return;
+      }
+      appState.adminMessageExpandedState = {
+        ...appState.adminMessageExpandedState,
+        [messageId]: !isAdminMessageExpanded(messageId),
+      };
+      safeRender();
     });
   });
 }
@@ -18846,6 +18993,12 @@ function setMockDataEnabledAndRefresh(enabled) {
 
   setMockDataEnabled(enabled);
   appState.mockDataEnabled = isMockDataEnabled();
+  if (appState.mockDataEnabled) {
+    ensureMockAdminMessages();
+  } else {
+    appState.mockAdminMessages = [];
+    appState.adminMessageExpandedState = {};
+  }
   updateAuthStatus();
   syncMockDataBanner();
   safeRender();
