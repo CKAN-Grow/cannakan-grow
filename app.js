@@ -11072,8 +11072,14 @@ function renderLeaderboardAuditExpandedRowMarkup(row) {
 }
 
 function buildLeaderboardAuditSummaryText(state) {
+  const scopeLabel = state.hasActiveFilters ? "Filtered results" : "All records";
+  const filtersLabel = state.activeFilterChips.length
+    ? state.activeFilterChips.map((chip) => chip.label).join(" | ")
+    : "None";
   const summaryLines = [
     "Leaderboard Data Audit",
+    `Scope: ${scopeLabel}`,
+    `Active filters: ${filtersLabel}`,
     `Visible snapshot rows: ${state.rows.length}`,
     `Active ranking snapshot rows: ${state.filteredActiveRowCount}`,
     `This Month Top Source: ${formatLeaderboardAuditMetric(state.calculations.monthSource.topEntry)}`,
@@ -11087,7 +11093,7 @@ function buildLeaderboardAuditSummaryText(state) {
   return summaryLines.join("\n");
 }
 
-function exportLeaderboardAuditCsv(rows) {
+function exportLeaderboardAuditCsv(rows, hasActiveFilters = false) {
   const headers = [
     "submitted_date",
     "profile_user",
@@ -11124,7 +11130,16 @@ function exportLeaderboardAuditCsv(rows) {
   ];
 
   const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" });
-  downloadSnapshotBlob(blob, "leaderboard-data-audit.csv");
+  downloadSnapshotBlob(blob, hasActiveFilters ? "leaderboard-data-audit-filtered.csv" : "leaderboard-data-audit-all-records.csv");
+}
+
+function exportLeaderboardAuditSummary(state) {
+  const summaryText = buildLeaderboardAuditSummaryText(state);
+  const blob = new Blob([summaryText], { type: "text/plain;charset=utf-8" });
+  downloadSnapshotBlob(
+    blob,
+    state.hasActiveFilters ? "leaderboard-data-audit-summary-filtered.txt" : "leaderboard-data-audit-summary-all-records.txt",
+  );
 }
 
 function renderLeaderboardAuditSection(target = app) {
@@ -11158,7 +11173,8 @@ function renderLeaderboardAuditSection(target = app) {
         <span class="leaderboard-audit-filter-state">${escapeHtml(state.hasActiveFilters ? "Filtered results" : "All records")}</span>
         <button type="button" class="button button-secondary" data-leaderboard-audit-clear="true">Clear All</button>
         <button type="button" class="button button-secondary" data-leaderboard-audit-copy="true">Copy Summary</button>
-        <button type="button" class="button button-primary" data-leaderboard-audit-export="true">Export CSV</button>
+        <button type="button" class="button button-secondary" data-leaderboard-audit-export-summary="true">Export Summary (${escapeHtml(state.hasActiveFilters ? "Filtered" : "All Records")})</button>
+        <button type="button" class="button button-primary" data-leaderboard-audit-export-raw="true">Export Raw CSV (${escapeHtml(state.hasActiveFilters ? "Filtered" : "All Records")})</button>
       </div>
       <div class="leaderboard-audit-filter-grid">
         <label>
@@ -11364,8 +11380,12 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelector("[data-leaderboard-audit-export='true']")?.addEventListener("click", () => {
-    exportLeaderboardAuditCsv(state.rows);
+  section.querySelector("[data-leaderboard-audit-export-raw='true']")?.addEventListener("click", () => {
+    exportLeaderboardAuditCsv(state.rows, state.hasActiveFilters);
+  });
+
+  section.querySelector("[data-leaderboard-audit-export-summary='true']")?.addEventListener("click", () => {
+    exportLeaderboardAuditSummary(state);
   });
 
   section.querySelector("[data-leaderboard-audit-copy='true']")?.addEventListener("click", async () => {
