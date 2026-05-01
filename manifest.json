@@ -1,6 +1,7 @@
 {
   "name": "Cannakan Grow",
   "short_name": "Grow",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
