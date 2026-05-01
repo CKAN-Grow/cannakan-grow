@@ -326,12 +326,20 @@ async function rehydratePersistentBrowserState(reason = "unspecified") {
   appState.announcements = await loadAnnouncements(reason);
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
+  const fallbackMode = getFallbackContentMode();
   const activeAnnouncement = getLatestActiveAnnouncement();
   console.log("[Cannakan App Init] announcement loaded", {
     reason,
     mockDataEnabled: appState.mockDataEnabled,
     storedAnnouncementCount: appState.announcements.length,
     activeAnnouncementTitle: activeAnnouncement?.title || "",
+  });
+  console.log("[Cannakan App Init] fallback mode loaded", {
+    reason,
+    fallbackMode,
+    storedJokesCount: readStoredFallbackJokes().length,
+    storedFactsCount: readStoredFallbackFacts().length,
+    hasRecentFallbackHistory: readRecentFallbackItemsHistory().length > 0,
   });
   if (!activeAnnouncement) {
     const fallbackContent = getDailyFallbackContent();
@@ -341,6 +349,46 @@ async function rehydratePersistentBrowserState(reason = "unspecified") {
       body: fallbackContent.type === "joke" ? fallbackContent.question : fallbackContent.text,
       answer: fallbackContent.type === "joke" ? fallbackContent.answer : "",
     });
+  }
+}
+
+async function resolveSupabaseAuthSession(reason = "unspecified", sessionHint = null) {
+  if (!appState.supabase) {
+    return sessionHint || null;
+  }
+
+  try {
+    const { data } = await withTimeout(
+      appState.supabase.auth.getSession(),
+      8000,
+      "Supabase session check timed out.",
+    );
+    const resolvedSession = data?.session || sessionHint || null;
+    const currentEmail = resolvedSession?.user?.email || "";
+    const normalizedEmail = getNormalizedUserEmail(resolvedSession?.user || null);
+    console.log("[Cannakan App Init] session loaded", {
+      reason,
+      hasSession: Boolean(resolvedSession),
+      currentEmail,
+      normalizedEmail,
+      isAdminResult: isAdminUser(normalizedEmail),
+    });
+    return resolvedSession;
+  } catch (error) {
+    console.error(`Failed to resolve Supabase auth session during ${reason}`, error);
+    if (sessionHint) {
+      const currentEmail = sessionHint?.user?.email || "";
+      const normalizedEmail = getNormalizedUserEmail(sessionHint?.user || null);
+      console.log("[Cannakan App Init] session loaded", {
+        reason: `${reason}:session-hint-fallback`,
+        hasSession: Boolean(sessionHint),
+        currentEmail,
+        normalizedEmail,
+        isAdminResult: isAdminUser(normalizedEmail),
+      });
+      return sessionHint;
+    }
+    return null;
   }
 }
 
@@ -2039,32 +2087,16 @@ async function bootstrapApp() {
 
   if (appState.supabase) {
     try {
-      const { data } = await withTimeout(appState.supabase.auth.getSession(), 8000, "Supabase session check timed out.");
-      const sessionEmail = data?.session?.user?.email || "";
-      const normalizedSessionEmail = getNormalizedUserEmail(data?.session?.user || null);
-      console.log("[Cannakan App Init] auth session loaded", {
-        hasSession: Boolean(data?.session),
-        currentEmail: sessionEmail,
-        normalizedEmail: normalizedSessionEmail,
-        isAdminResult: isAdminUser(normalizedSessionEmail),
-      });
-      await handleAuthSession(data?.session, {
+      const resolvedSession = await resolveSupabaseAuthSession("bootstrap:getSession");
+      await handleAuthSession(resolvedSession, {
         shouldRender: false,
         reason: "bootstrap:getSession",
         force: true,
       });
       appState.supabase.auth.onAuthStateChange((event, session) => {
         window.setTimeout(async () => {
-          const sessionEmail = session?.user?.email || "";
-          const normalizedSessionEmail = getNormalizedUserEmail(session?.user || null);
-          console.log("[Cannakan App Init] auth session loaded", {
-            event,
-            hasSession: Boolean(session),
-            currentEmail: sessionEmail,
-            normalizedEmail: normalizedSessionEmail,
-            isAdminResult: isAdminUser(normalizedSessionEmail),
-          });
-          await handleAuthSession(session, {
+          const resolvedSessionForEvent = await resolveSupabaseAuthSession(`auth:${String(event || "").toLowerCase()}`, session);
+          await handleAuthSession(resolvedSessionForEvent, {
             reason: `auth:${String(event || "").toLowerCase()}`,
             event,
           });
@@ -7667,7 +7699,11 @@ function render() {
   };
 
   if (!appState.initialized || appState.loading || !appState.authReady) {
-    app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
+    const shouldRenderAnnouncementDuringLoad = route === "home" || !route;
+    app.innerHTML = `
+      <section class="card"><p class="muted">Loading Cannakan Grow...</p></section>
+      ${shouldRenderAnnouncementDuringLoad ? renderHomeAnnouncementCard() : ""}
+    `;
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     return;
@@ -9921,6 +9957,12 @@ function getDailyFallbackContent(referenceDate = new Date()) {
     { dateKey, itemType: selectedItem.type, itemKey: selectedItem.key },
   ].slice(-FALLBACK_CONTENT_HISTORY_LIMIT);
   writeRecentFallbackItemsHistory(nextHistory);
+  console.log("[Cannakan App Init] fallback item selected", {
+    dateKey,
+    fallbackMode,
+    fallbackType: selectedItem.type,
+    fallbackItemKey: selectedItem.key,
+  });
   return selectedItem;
 }
 
