@@ -244,6 +244,7 @@ const appState = {
   siteAnalyticsLastTrackedSignature: "",
   mockGalleryReviewStatuses: {},
   deferredInstallPrompt: null,
+  installPromptDismissed: false,
   installPromptMode: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
@@ -644,7 +645,7 @@ function getInstallPromptMode() {
     return "prompt";
   }
 
-  if (isIPhoneSafariInstallCandidate()) {
+  if (!appState.installPromptDismissed && isIPhoneSafariInstallCandidate()) {
     return "ios";
   }
 
@@ -659,11 +660,14 @@ async function promptInstallGrowApp() {
 
   try {
     await promptEvent.prompt();
-    await promptEvent.userChoice;
+    const userChoice = await promptEvent.userChoice;
+    appState.installPromptDismissed = userChoice?.outcome !== "accepted";
   } catch (error) {
     console.warn("Install prompt was not completed", error);
+    appState.installPromptDismissed = true;
   } finally {
     appState.deferredInstallPrompt = null;
+    appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
     safeRender();
   }
@@ -739,12 +743,18 @@ function bindInstallPromptEvents() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     appState.deferredInstallPrompt = event;
+    appState.installPromptDismissed = false;
+    appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
+    safeRender();
   });
 
   window.addEventListener("appinstalled", () => {
     appState.deferredInstallPrompt = null;
+    appState.installPromptDismissed = true;
+    appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
+    safeRender();
   });
 }
 
@@ -10358,6 +10368,9 @@ function promptFilterPaperPreSessionWarning() {
 function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
+  if (!isInstalled && !mode) {
+    return "";
+  }
   const cardStateClass = isInstalled ? "is-installed" : "";
   const bodyContentMarkup = isInstalled
     ? ""
