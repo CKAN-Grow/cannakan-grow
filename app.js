@@ -233,6 +233,10 @@ const appState = {
   publicMemberFollowStateRefreshPromises: {},
   publicMemberFollowPendingActions: {},
   publicMemberFollowsTableUnavailable: false,
+  growNetworkFollowing: [],
+  growNetworkFollowingLoaded: false,
+  growNetworkFollowingError: "",
+  growNetworkFollowingRefreshPromise: null,
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -424,6 +428,18 @@ function syncAdminNavigationVisibility() {
   });
 }
 
+function syncGrowNetworkNavigationVisibility() {
+  const shouldShowNetworkNav = Boolean(appState.user);
+  document.querySelectorAll("[data-network-nav]").forEach((link) => {
+    link.hidden = !shouldShowNetworkNav;
+    if (shouldShowNetworkNav) {
+      link.removeAttribute("aria-hidden");
+    } else {
+      link.setAttribute("aria-hidden", "true");
+    }
+  });
+}
+
 function resetSessionScopedAppState() {
   appState.authSession = null;
   appState.user = null;
@@ -468,6 +484,10 @@ function resetSessionScopedAppState() {
   appState.publicMemberFollowStateRefreshPromises = {};
   appState.publicMemberFollowPendingActions = {};
   appState.publicMemberFollowsTableUnavailable = false;
+  appState.growNetworkFollowing = [];
+  appState.growNetworkFollowingLoaded = false;
+  appState.growNetworkFollowingError = "";
+  appState.growNetworkFollowingRefreshPromise = null;
   appState.siteVisitorAnalyticsRows = [];
   appState.siteVisitorAnalyticsLoaded = false;
   appState.siteVisitorAnalyticsLoadedFilter = "";
@@ -2995,6 +3015,7 @@ function bindContactAdminButtons(scope = document) {
 function updateNavState() {
   const navLinks = document.querySelectorAll(".topbar-nav a");
   syncAdminNavigationVisibility();
+  syncGrowNetworkNavigationVisibility();
   if (!navLinks.length) {
     return;
   }
@@ -3007,7 +3028,9 @@ function updateNavState() {
     ? "home"
     : (route === "admin"
       ? "admin"
-      : ((route === "gallery") ? "gallery" : "sessions"));
+      : (route === "gallery"
+        ? "gallery"
+        : (route === "network" ? "network" : "sessions")));
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -3280,6 +3303,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "member-profile",
       pageLabel: "Member Profile",
       pagePath: rawRoute ? `#${rawRoute}` : "#members",
+    });
+  }
+  if (route === "network") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "grow-network",
+      pageLabel: "My Grow Network",
+      pagePath: rawRoute ? `#${rawRoute}` : "#network",
     });
   }
   if (route === "sessions" || route === "new") {
@@ -4624,11 +4655,97 @@ async function refreshPublicMemberProfile(memberId = "", options = {}) {
   return profile;
 }
 
+async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
+  const normalizedIds = [...new Set((memberIds || []).map((memberId) => String(memberId || "").trim()).filter(Boolean))];
+  if (!normalizedIds.length) {
+    return {};
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  const missingIds = normalizedIds.filter((memberId) => force || !appState.publicMemberProfiles[memberId]);
+  if (!missingIds.length) {
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
+  }
+
+  if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
+    missingIds.forEach((memberId) => {
+      const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
+      if (fallbackProfile) {
+        appState.publicMemberProfiles[memberId] = fallbackProfile;
+      }
+    });
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
+  }
+
+  const { data, error } = await appState.supabase
+    .from("public_member_profiles")
+    .select("id,display_name,avatar_url,joined_at")
+    .in("id", missingIds);
+
+  if (error) {
+    if (isPublicMemberProfilesViewUnavailableError(error)) {
+      appState.publicMemberProfilesViewUnavailable = true;
+      console.warn("Public member profiles view unavailable; falling back to snapshot-only profiles.", {
+        reason,
+        memberIds: missingIds,
+        error,
+      });
+    } else {
+      console.error("Failed to load public member profiles", {
+        reason,
+        memberIds: missingIds,
+        error,
+      });
+    }
+
+    missingIds.forEach((memberId) => {
+      const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
+      if (fallbackProfile) {
+        appState.publicMemberProfiles[memberId] = fallbackProfile;
+      }
+    });
+
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
+  }
+
+  const rowsById = new Map((data || []).map((row) => [String(row?.id || "").trim(), row]));
+  missingIds.forEach((memberId) => {
+    const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
+    const loadedProfile = normalizePublicMemberProfileRow(rowsById.get(memberId));
+    const resolvedProfile = loadedProfile
+      ? {
+        ...fallbackProfile,
+        ...loadedProfile,
+        displayName: loadedProfile.displayName || fallbackProfile?.displayName || "Community member",
+        avatarUrl: loadedProfile.avatarUrl || fallbackProfile?.avatarUrl || "",
+        joinedAt: loadedProfile.joinedAt || fallbackProfile?.joinedAt || "",
+      }
+      : fallbackProfile;
+    if (resolvedProfile) {
+      appState.publicMemberProfiles[memberId] = resolvedProfile;
+    }
+  });
+
+  return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
+}
+
 function normalizePublicMemberFollowSummaryRow(row) {
   return {
     followerCount: Math.max(0, Number(row?.follower_count ?? row?.followerCount) || 0),
     followingCount: Math.max(0, Number(row?.following_count ?? row?.followingCount) || 0),
   };
+}
+
+function normalizePublicMemberFollowSummariesRows(rows = []) {
+  const summaries = {};
+  (rows || []).forEach((row) => {
+    const userId = String(row?.user_id || row?.userId || "").trim();
+    if (!userId) {
+      return;
+    }
+    summaries[userId] = normalizePublicMemberFollowSummaryRow(row);
+  });
+  return summaries;
 }
 
 function isPublicMemberFollowSummaryUnavailableError(error) {
@@ -4654,6 +4771,17 @@ function getPublicMemberFollowSummary(memberId = "") {
   }
 
   return appState.publicMemberFollowSummaries[normalizedId] || null;
+}
+
+function normalizeGrowNetworkFollowingRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    memberId: String(row.followed_user_id || "").trim(),
+    followedAt: row.created_at || "",
+  };
 }
 
 function hasPublicMemberFollowState(memberId = "") {
@@ -4734,6 +4862,60 @@ async function loadPublicMemberFollowSummary(memberId = "", options = {}) {
 
   appState.publicMemberFollowSummaryRefreshPromises[normalizedId] = refreshPromise;
   return refreshPromise;
+}
+
+async function loadPublicMemberFollowSummariesByIds(memberIds = [], options = {}) {
+  const normalizedIds = [...new Set((memberIds || []).map((memberId) => String(memberId || "").trim()).filter(Boolean))];
+  if (!normalizedIds.length) {
+    return {};
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  const missingIds = normalizedIds.filter((memberId) => force || !appState.publicMemberFollowSummaries[memberId]);
+  if (!missingIds.length) {
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberFollowSummaries[memberId]]));
+  }
+
+  if (!appState.supabase || appState.publicMemberFollowSummaryUnavailable) {
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberFollowSummaries[memberId] || normalizePublicMemberFollowSummaryRow()]));
+  }
+
+  const { data, error } = await appState.supabase.rpc("get_public_member_follow_summaries", {
+    target_user_ids: missingIds,
+  });
+
+  if (error) {
+    if (String(error?.message || error?.details || "").toLowerCase().includes("get_public_member_follow_summaries")) {
+      console.warn("Bulk public member follow summaries function unavailable; falling back to single lookups.", {
+        reason,
+        memberIds: missingIds,
+        error,
+      });
+      await Promise.allSettled(missingIds.map((memberId) => loadPublicMemberFollowSummary(memberId, { force, reason: `${reason}:fallback-single` })));
+    } else if (isPublicMemberFollowSummaryUnavailableError(error)) {
+      appState.publicMemberFollowSummaryUnavailable = true;
+      console.warn("Public member follow summary function unavailable.", {
+        reason,
+        memberIds: missingIds,
+        error,
+      });
+    } else {
+      console.error("Failed to load public member follow summaries", {
+        reason,
+        memberIds: missingIds,
+        error,
+      });
+    }
+
+    return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberFollowSummaries[memberId] || normalizePublicMemberFollowSummaryRow()]));
+  }
+
+  const summariesById = normalizePublicMemberFollowSummariesRows(data || []);
+  missingIds.forEach((memberId) => {
+    appState.publicMemberFollowSummaries[memberId] = summariesById[memberId] || normalizePublicMemberFollowSummaryRow();
+  });
+
+  return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberFollowSummaries[memberId]]));
 }
 
 async function refreshPublicMemberFollowSummary(memberId = "", options = {}) {
@@ -4825,6 +5007,125 @@ async function refreshPublicMemberFollowState(memberId = "", options = {}) {
   return isFollowing;
 }
 
+async function loadGrowNetworkFollowing(reason = "unspecified") {
+  if (!appState.user?.id) {
+    appState.growNetworkFollowing = [];
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return [];
+  }
+
+  if (!appState.supabase) {
+    return appState.growNetworkFollowing || [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(MEMBER_FOLLOWS_TABLE)
+    .select("followed_user_id,created_at")
+    .eq("follower_user_id", appState.user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isMemberFollowsTableUnavailableError(error)) {
+      appState.publicMemberFollowsTableUnavailable = true;
+      appState.growNetworkFollowingError = "Grow Network follows table unavailable. Apply the latest follow migration.";
+    } else {
+      appState.growNetworkFollowingError = error.message || "Could not load your Grow Network.";
+    }
+    console.error("Failed to load Grow Network follows", {
+      reason,
+      userId: appState.user.id,
+      error,
+    });
+    appState.growNetworkFollowingLoaded = true;
+    return appState.growNetworkFollowing || [];
+  }
+
+  const following = (data || [])
+    .map(normalizeGrowNetworkFollowingRow)
+    .filter((entry) => entry?.memberId);
+  appState.growNetworkFollowing = following;
+  appState.growNetworkFollowingLoaded = true;
+  appState.growNetworkFollowingError = "";
+
+  const followedIds = following.map((entry) => entry.memberId);
+  await Promise.allSettled([
+    loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:profiles` }),
+    loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:summaries` }),
+  ]);
+
+  return following;
+}
+
+async function refreshGrowNetworkFollowing(options = {}) {
+  const { force = false, reason = "unspecified" } = options;
+  if (!appState.user?.id) {
+    appState.growNetworkFollowing = [];
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return [];
+  }
+
+  if (!force && appState.growNetworkFollowingLoaded && !appState.growNetworkFollowingRefreshPromise) {
+    return appState.growNetworkFollowing;
+  }
+
+  if (!force && appState.growNetworkFollowingRefreshPromise) {
+    return appState.growNetworkFollowingRefreshPromise;
+  }
+
+  const refreshPromise = loadGrowNetworkFollowing(reason);
+  appState.growNetworkFollowingRefreshPromise = refreshPromise;
+  try {
+    const following = await refreshPromise;
+    if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+      renderGrowNetworkPage();
+    }
+    return following;
+  } finally {
+    appState.growNetworkFollowingRefreshPromise = null;
+  }
+}
+
+function getGrowNetworkFollowingEntries() {
+  return appState.growNetworkFollowing || [];
+}
+
+function buildGrowNetworkActivities(followedMemberIds = []) {
+  const followedIdSet = new Set((followedMemberIds || []).map((memberId) => String(memberId || "").trim()).filter(Boolean));
+  if (!followedIdSet.size) {
+    return [];
+  }
+
+  return getApprovedPublicGallerySnapshots()
+    .filter((snapshot) => followedIdSet.has(String(snapshot?.userId || "").trim()))
+    .map((snapshot) => {
+      const memberId = String(snapshot?.userId || "").trim();
+      const profile = getPublicMemberProfile(memberId);
+      const displayName = profile?.displayName || getGallerySnapshotMemberLabel(snapshot);
+      const avatarUrl = profile?.avatarUrl || String(snapshot?.profileImageUrl || "").trim();
+      const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+      const hasSessionContext = Boolean(String(snapshot?.sessionDate || "").trim() || String(snapshot?.title || "").trim());
+      return {
+        id: `snapshot-${snapshot.id}`,
+        typeLabel: hasSessionContext ? "Shared a public grow session" : "New approved Community Grow snapshot",
+        typeMeta: hasSessionContext ? "Approved in Community Grow" : "",
+        title: String(snapshot?.title || "").trim() || "Grow Snapshot",
+        successPercent: Math.max(0, Number(snapshot?.successPercent) || 0),
+        occurredAt: snapshot?.publishedAt || snapshot?.createdAt || "",
+        memberId,
+        displayName,
+        avatarUrl,
+        profileRoute: getPublicMemberProfileRoute(memberId),
+        sessionRoute: snapshot?.id ? `#sessions/public/${snapshot.id}` : "#gallery",
+        sessionDateLabel: publicDetails.sessionDateLabel || "",
+        sourceLabel: publicDetails.sourceLabel || "",
+        germinationRateLabel: publicDetails.germinationRateLabel || `${Math.max(0, Number(snapshot?.successPercent) || 0)}%`,
+      };
+    })
+    .sort((left, right) => new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime());
+}
+
 async function togglePublicMemberFollow(memberId = "") {
   const normalizedId = String(memberId || "").trim();
   if (!normalizedId) {
@@ -4892,6 +5193,10 @@ async function togglePublicMemberFollow(memberId = "") {
       refreshPublicMemberFollowSummary(appState.user.id, {
         force: true,
         reason: "follow-toggle:viewer-summary",
+      }),
+      refreshGrowNetworkFollowing({
+        force: true,
+        reason: "follow-toggle:grow-network",
       }),
     ]);
 
@@ -7888,13 +8193,14 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       const isGalleryRoute = hashRoute.startsWith("#gallery") || pathRoute === "admin/gallery-moderation";
       const isPublicSessionRoute = hashRoute.startsWith("#sessions/public/");
       const isPublicMemberRoute = hashRoute.startsWith("#members/");
+      const isGrowNetworkRoute = hashRoute.startsWith("#network");
       if (isGalleryRoute && previousSignature !== nextSignature) {
         logGrowGalleryDebug("refreshGallerySnapshots:rerender", {
           reason,
           targetSnapshotId,
         });
         renderGallery(targetSnapshotId);
-      } else if ((isPublicSessionRoute || isPublicMemberRoute) && previousSignature !== nextSignature) {
+      } else if ((isPublicSessionRoute || isPublicMemberRoute || isGrowNetworkRoute) && previousSignature !== nextSignature) {
         render();
       }
 
@@ -8141,12 +8447,14 @@ function updateAuthStatus() {
   if (isSupabaseConfigured() && !appState.authReady) {
     authStatus.innerHTML = `<span class="auth-pill">Checking session...</span>`;
     syncAdminNavigationVisibility();
+    syncGrowNetworkNavigationVisibility();
     return;
   }
 
   if (!isSupabaseConfigured()) {
     authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
     syncAdminNavigationVisibility();
+    syncGrowNetworkNavigationVisibility();
     return;
   }
 
@@ -8161,6 +8469,7 @@ function updateAuthStatus() {
     });
     bindContactAdminButtons(authStatus);
     syncAdminNavigationVisibility();
+    syncGrowNetworkNavigationVisibility();
     return;
   }
 
@@ -8229,6 +8538,7 @@ function updateAuthStatus() {
   const trigger = authStatus.querySelector("#account-menu-trigger");
   const dropdown = authStatus.querySelector(".account-dropdown");
   syncAdminNavigationVisibility();
+  syncGrowNetworkNavigationVisibility();
 
   menuRoot?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -10428,6 +10738,39 @@ function render() {
     if (appState.user?.id && appState.user.id !== memberId) {
       void refreshPublicMemberFollowState(memberId, { reason: "route:public-member-profile" });
     }
+    return;
+  }
+
+  if (route === "network") {
+    if (!appState.user) {
+      renderAuthScreen({ autoOpenModal: true });
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "auth",
+        pageKey: "auth",
+        pageLabel: "Authentication",
+        pagePath: "#network",
+      }));
+      return;
+    }
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: "#network",
+      }));
+      return;
+    }
+    renderGrowNetworkPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "grow-network",
+      pageLabel: "My Grow Network",
+      pagePath: "#network",
+    }));
+    void refreshGallerySnapshots("route:grow-network");
+    void refreshGrowNetworkFollowing({ force: true, reason: "route:grow-network" });
     return;
   }
 
@@ -18089,6 +18432,189 @@ function renderPublicMemberProfile(memberId) {
   });
 
   bindGallerySnapshotCardInteractions(profileGrid, approvedSnapshots, () => renderPublicMemberProfile(normalizedId));
+}
+
+function renderGrowNetworkPage() {
+  const followingEntries = getGrowNetworkFollowingEntries();
+  const followedIds = followingEntries.map((entry) => entry.memberId);
+  const isLoadingNetworkActivity = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
+  const activities = buildGrowNetworkActivities(followedIds);
+  const isLoadingFollowing = Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id));
+  const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
+
+  const renderFollowingListMarkup = () => {
+    if (isLoadingFollowing) {
+      return `
+        <div class="empty-state gallery-empty-state">
+          <p>Loading your Grow Network...</p>
+        </div>
+      `;
+    }
+
+    if (appState.growNetworkFollowingError) {
+      return `
+        <div class="empty-state gallery-empty-state">
+          <p>${escapeHtml(appState.growNetworkFollowingError)}</p>
+        </div>
+      `;
+    }
+
+    if (!followingEntries.length) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>Follow members to build your Grow Network.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="grow-network-member-list">
+        ${followingEntries.map((entry) => {
+          const memberId = entry.memberId;
+          const profile = getPublicMemberProfile(memberId);
+          const summary = getPublicMemberFollowSummary(memberId);
+          const displayName = profile?.displayName || "Community member";
+          const avatarUrl = profile?.avatarUrl || "";
+          const followerCount = summary ? summary.followerCount.toLocaleString() : "--";
+          const followingCount = summary ? summary.followingCount.toLocaleString() : "--";
+          return `
+            <article class="grow-network-member-card">
+              <a class="grow-network-member-identity" href="${escapeHtml(getPublicMemberProfileRoute(memberId))}">
+                <span class="grow-network-member-avatar-shell">
+                  ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "grow-network-member-avatar")}
+                </span>
+                <span class="grow-network-member-copy">
+                  <strong>${escapeHtml(displayName)}</strong>
+                  <span>${escapeHtml(`${followerCount} followers · ${followingCount} following`)}</span>
+                </span>
+              </a>
+              <div class="grow-network-member-actions">
+                <a class="button button-secondary" href="${escapeHtml(getPublicMemberProfileRoute(memberId))}">View Profile</a>
+                <button
+                  type="button"
+                  class="button button-secondary grow-network-unfollow-button"
+                  data-grow-network-unfollow="${escapeHtml(memberId)}"
+                  ${isPublicMemberFollowPending(memberId) ? "disabled" : ""}
+                >Unfollow</button>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
+
+  const renderActivityFeedMarkup = () => {
+    if (hasNoFollows) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>Follow members to build your Grow Network.</p>
+        </div>
+      `;
+    }
+
+    if (isLoadingNetworkActivity) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>Loading public activity from your Grow Network...</p>
+        </div>
+      `;
+    }
+
+    if (!activities.length) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>No public activity from your Grow Network yet.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="grow-network-feed-list">
+        ${activities.map((activity) => `
+          <article class="grow-network-feed-card">
+            <div class="grow-network-feed-card-head">
+              <a class="grow-network-feed-member" href="${escapeHtml(activity.profileRoute)}">
+                <span class="grow-network-feed-avatar-shell">
+                  ${renderPublicMemberAvatarMarkup(activity.displayName, activity.avatarUrl, "grow-network-feed-avatar")}
+                </span>
+                <span class="grow-network-feed-member-copy">
+                  <strong>${escapeHtml(activity.displayName)}</strong>
+                  <span>${escapeHtml(activity.typeLabel)}</span>
+                </span>
+              </a>
+              <span class="grow-network-feed-time">${escapeHtml(getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: activity.occurredAt, createdAt: activity.occurredAt }))}</span>
+            </div>
+            <div class="grow-network-feed-body">
+              <strong class="grow-network-feed-title">${escapeHtml(activity.title)}</strong>
+              <div class="grow-network-feed-meta">
+                <span class="gallery-card-chip">${escapeHtml(`${activity.germinationRateLabel} germination`)}</span>
+                ${activity.sourceLabel && activity.sourceLabel !== "Unknown source" ? `<span class="gallery-card-chip">${escapeHtml(activity.sourceLabel)}</span>` : ""}
+                ${activity.typeMeta ? `<span class="gallery-card-chip">${escapeHtml(activity.typeMeta)}</span>` : ""}
+              </div>
+            </div>
+            <div class="grow-network-feed-actions">
+              <a class="button button-secondary" href="${escapeHtml(activity.profileRoute)}">Profile</a>
+              <a class="button button-secondary" href="${escapeHtml(activity.sessionRoute)}">View Public Session</a>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  };
+
+  app.innerHTML = `
+    <section class="card grow-network-page">
+      <div class="section-heading">
+        <div class="section-title-with-icon">
+          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+            <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
+            <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+            <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
+          </svg>
+          <div>
+            <p class="eyebrow">My Grow Network</p>
+            <h2>Following</h2>
+            <p class="muted">Keep up with public Community Grow activity from members you follow.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#gallery">Browse Community Grow</a>
+        </div>
+      </div>
+      <div class="grow-network-layout">
+        <section class="grow-network-section">
+          <div class="section-heading grow-network-section-heading">
+            <div>
+              <p class="eyebrow">Network</p>
+              <h3>Members you follow</h3>
+            </div>
+          </div>
+          ${renderFollowingListMarkup()}
+        </section>
+        <section class="grow-network-section">
+          <div class="section-heading grow-network-section-heading">
+            <div>
+              <p class="eyebrow">Activity Feed</p>
+              <h3>Recent public activity</h3>
+            </div>
+          </div>
+          ${renderActivityFeedMarkup()}
+        </section>
+      </div>
+    </section>
+  `;
+
+  app.querySelectorAll("[data-grow-network-unfollow]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await togglePublicMemberFollow(button.dataset.growNetworkUnfollow || "");
+      } catch (error) {
+        window.alert(error.message || "Could not update this follow right now.");
+      }
+    });
+  });
 }
 
 function renderSessionDetail(sessionId) {

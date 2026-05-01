@@ -40,6 +40,48 @@ revoke all on function public.get_public_member_follow_summary(uuid) from public
 grant execute on function public.get_public_member_follow_summary(uuid) to anon;
 grant execute on function public.get_public_member_follow_summary(uuid) to authenticated;
 
+create or replace function public.get_public_member_follow_summaries(target_user_ids uuid[])
+returns table (
+  user_id uuid,
+  follower_count bigint,
+  following_count bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with requested_users as (
+    select distinct unnest(coalesce(target_user_ids, '{}'::uuid[])) as user_id
+  )
+  select
+    requested_users.user_id,
+    coalesce(follower_counts.follower_count, 0)::bigint as follower_count,
+    coalesce(following_counts.following_count, 0)::bigint as following_count
+  from requested_users
+  left join (
+    select
+      member_follows.followed_user_id as user_id,
+      count(*)::bigint as follower_count
+    from public.member_follows
+    where member_follows.followed_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
+    group by member_follows.followed_user_id
+  ) as follower_counts
+    on follower_counts.user_id = requested_users.user_id
+  left join (
+    select
+      member_follows.follower_user_id as user_id,
+      count(*)::bigint as following_count
+    from public.member_follows
+    where member_follows.follower_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
+    group by member_follows.follower_user_id
+  ) as following_counts
+    on following_counts.user_id = requested_users.user_id;
+$$;
+
+revoke all on function public.get_public_member_follow_summaries(uuid[]) from public;
+grant execute on function public.get_public_member_follow_summaries(uuid[]) to anon;
+grant execute on function public.get_public_member_follow_summaries(uuid[]) to authenticated;
+
 alter table public.member_follows enable row level security;
 
 drop policy if exists "Users can view their own follow relationships" on public.member_follows;
