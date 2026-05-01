@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const url = process.env.CANNAKAN_SUPABASE_URL || "";
@@ -12,6 +12,8 @@ if ((!url || !anonKey) && isVercelBuild) {
 
 const outputPath = resolve(process.cwd(), "supabase-config.js");
 const manifestPath = resolve(process.cwd(), "manifest.json");
+const publicDir = resolve(process.cwd(), "public");
+const publicManifestPath = resolve(publicDir, "manifest.json");
 const iconsFallbackDir = resolve(process.cwd(), "Assets", "Icons");
 const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   url: ${JSON.stringify(url)},
@@ -19,7 +21,7 @@ const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
 };
 `;
 
-const requiredPwaRootAssets = [
+const requiredPwaAssets = [
   { name: "apple-touch-icon.png", fallbackName: "apple-touch-icon.png" },
   { name: "icon-192.png", fallbackName: "icon-192.png" },
   { name: "icon-512.png", fallbackName: "icon-512.png" },
@@ -58,22 +60,34 @@ const manifestContents = {
   ],
 };
 
-requiredPwaRootAssets.forEach(({ name, fallbackName }) => {
-  const targetPath = resolve(process.cwd(), name);
+mkdirSync(publicDir, { recursive: true });
+
+function ensurePwaAsset(targetDir, name, fallbackName) {
+  const targetPath = resolve(targetDir, name);
   if (existsSync(targetPath)) {
     return;
   }
 
-  const fallbackPath = resolve(iconsFallbackDir, fallbackName);
-  if (!existsSync(fallbackPath)) {
+  const candidatePaths = [
+    resolve(process.cwd(), name),
+    resolve(iconsFallbackDir, fallbackName),
+  ];
+  const sourcePath = candidatePaths.find((candidatePath) => existsSync(candidatePath) && candidatePath !== targetPath);
+  if (!sourcePath) {
     throw new Error(`Missing required PWA asset: ${name}`);
   }
 
-  copyFileSync(fallbackPath, targetPath);
+  copyFileSync(sourcePath, targetPath);
+}
+
+requiredPwaAssets.forEach(({ name, fallbackName }) => {
+  ensurePwaAsset(process.cwd(), name, fallbackName);
+  ensurePwaAsset(publicDir, name, fallbackName);
 });
 
 writeFileSync(outputPath, configContents, "utf8");
 writeFileSync(manifestPath, `${JSON.stringify(manifestContents, null, 2)}\n`, "utf8");
+writeFileSync(publicManifestPath, `${JSON.stringify(manifestContents, null, 2)}\n`, "utf8");
 
 if (!url || !anonKey) {
   console.warn("Supabase runtime config was generated without values. The app will show the setup screen until config values are provided.");

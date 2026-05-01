@@ -2,6 +2,40 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/manifest.json",
+      "destination": "/public/manifest.json"
+    },
+    {
+      "source": "/apple-touch-icon.png",
+      "destination": "/public/apple-touch-icon.png"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/public/favicon.ico"
+    },
+    {
+      "source": "/favicon-16x16.png",
+      "destination": "/public/favicon-16x16.png"
+    },
+    {
+      "source": "/favicon-32x32.png",
+      "destination": "/public/favicon-32x32.png"
+    },
+    {
+      "source": "/icon-192.png",
+      "destination": "/public/icon-192.png"
+    },
+    {
+      "source": "/icon-512.png",
+      "destination": "/public/icon-512.png"
+    },
+    {
+      "source": "/icon-maskable-512.png",
+      "destination": "/public/icon-maskable-512.png"
+    }
+  ],
   "headers": [
     {
       "source": "/service-worker.js",
