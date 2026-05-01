@@ -1597,6 +1597,16 @@ function getFilterPaperStatusMeta(count) {
   return { key: "ok", label: "OK" };
 }
 
+function getSessionEntrySupplyTone(count = getFilterPaperInventory().count) {
+  if (count <= 1) {
+    return "urgent";
+  }
+  if (count === 2) {
+    return "low";
+  }
+  return "ok";
+}
+
 function getFilterPaperReminder(count) {
   if (count === 2) {
     return "Running low - about 2 sessions left.";
@@ -1624,6 +1634,24 @@ function openFilterPaperStore(region = getFilterPaperInventory().storeRegion) {
   }
 
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function applySupplyStatusToSessionEntryButtons(scope = document) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  const tone = getSessionEntrySupplyTone();
+  scope.querySelectorAll('[data-session-entry="true"]').forEach((button) => {
+    button.classList.remove("session-entry-supply-low", "session-entry-supply-urgent");
+    // Button styling reflects supply status for subtle UX guidance.
+    // Future: could expand to other consumables or predictive warnings.
+    if (tone === "low") {
+      button.classList.add("session-entry-supply-low");
+    } else if (tone === "urgent") {
+      button.classList.add("session-entry-supply-urgent");
+    }
+  });
 }
 
 function normalizeStoredSession(session) {
@@ -9980,6 +10008,7 @@ function openFilterPaperInventoryModal(options = {}) {
       storeRegion: regionSelect.value === "EU" ? "EU" : "US",
     });
     // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.
+    applySupplyStatusToSessionEntryButtons(document);
     didSave = true;
     if (modal.open) {
       modal.close();
@@ -13221,6 +13250,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
+  applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
     void refreshGallerySnapshots("home-rankings-teaser").then(() => {
@@ -16141,6 +16171,7 @@ function getCurrentPartitionValues(form) {
 function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
+  applySupplyStatusToSessionEntryButtons(app);
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
   const activeContainer = document.querySelector("#active-sessions-list");
@@ -16701,9 +16732,10 @@ function renderSessionCollection(container, sessions, options) {
     empty.className = "empty-state";
     empty.innerHTML = `
       <p>${options.emptyMessage}</p>
-      <a class="button button-primary" href="#new">${options.emptyActionLabel}</a>
+      <a class="button button-primary" href="#new" data-session-entry="true">${options.emptyActionLabel}</a>
     `;
     container.appendChild(empty);
+    applySupplyStatusToSessionEntryButtons(empty);
     return;
   }
 
