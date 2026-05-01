@@ -5592,6 +5592,45 @@ async function removeGallerySnapshotImage(path) {
   await appState.supabase.storage.from(GROW_GALLERY_BUCKET).remove([path]);
 }
 
+async function buildGallerySnapshotImageHash(blob) {
+  if (!blob || typeof blob.arrayBuffer !== "function" || !globalThis.crypto?.subtle) {
+    throw new Error("Image hashing is not available in this browser.");
+  }
+
+  const imageBuffer = await blob.arrayBuffer();
+  const digestBuffer = await globalThis.crypto.subtle.digest("SHA-256", imageBuffer);
+  return Array.from(new Uint8Array(digestBuffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function findDuplicateGallerySnapshotByImageHash(imageHash, sessionId = "") {
+  if (!appState.supabase || !imageHash) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase.rpc("find_duplicate_grow_gallery_snapshot_by_hash", {
+    candidate_hash: imageHash,
+    candidate_session_id: sessionId || null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const duplicateRow = Array.isArray(data)
+    ? data.find(Boolean)
+    : data;
+
+  if (!duplicateRow) {
+    return null;
+  }
+
+  return {
+    id: duplicateRow.id,
+    status: normalizeGallerySnapshotRecordStatus(duplicateRow.status),
+    sessionId: duplicateRow.session_id || "",
+  };
+}
+
 function mapRowToGallerySnapshot(row) {
   if (!row) {
     return null;
@@ -5609,6 +5648,7 @@ function mapRowToGallerySnapshot(row) {
     title: String(row.snapshot_title || "").trim() || "Grow Snapshot",
     imageUrl: String(row.snapshot_image_url || "").trim(),
     imagePath: String(row.snapshot_image_path || "").trim(),
+    imageHash: String(row.image_hash || "").trim(),
     sessionDate: row.session_date || "",
     systemType: String(row.system_type || "KAN").trim() || "KAN",
     unitId: String(row.unit_id || "").trim(),
@@ -5701,6 +5741,9 @@ function getGalleryPublishErrorMessage(error, fallbackMessage) {
   if (normalizedMessage.includes("column") && normalizedMessage.includes("grow_gallery_snapshots")) {
     return "Community Grow schema is out of date. Apply the latest database schema.";
   }
+  if (normalizedMessage.includes("find_duplicate_grow_gallery_snapshot_by_hash")) {
+    return "Community Grow schema is out of date. Apply the latest database schema.";
+  }
 
   return fallbackMessage;
 }
@@ -5724,6 +5767,42 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     throw new Error(EXISTING_GALLERY_SNAPSHOT_MESSAGE);
   }
 
+  let imageHash = "";
+  try {
+    imageHash = await buildGallerySnapshotImageHash(blob);
+  } catch (error) {
+    console.warn("Grow Gallery image hashing failed; allowing submission without duplicate detection.", {
+      sessionId: session.id,
+      error,
+    });
+  }
+
+  if (imageHash) {
+    let duplicateSnapshot = null;
+    try {
+      duplicateSnapshot = await findDuplicateGallerySnapshotByImageHash(imageHash, session.id);
+    } catch (error) {
+      console.error("Grow Gallery duplicate image check failed", {
+        sessionId: session.id,
+        imageHash,
+        error,
+      });
+      throw new Error(getGalleryPublishErrorMessage(
+        error,
+        "Could not verify whether this snapshot image is already in Community Grow.",
+      ));
+    }
+
+    if (duplicateSnapshot) {
+      logGrowGalleryDebug("publishSnapshotToGallery:blocked-duplicate-image", {
+        sessionId: session.id,
+        duplicateSnapshotId: duplicateSnapshot.id,
+        duplicateStatus: duplicateSnapshot.status,
+      });
+      throw new Error(DUPLICATE_GALLERY_SNAPSHOT_IMAGE_MESSAGE);
+    }
+  }
+
   const upload = await uploadGallerySnapshotBlob(session.id, blob);
   const includeProfileInGallery = Boolean(options.includeProfileInGallery);
   const profileName = includeProfileInGallery
@@ -5738,6 +5817,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     snapshot_title: String(snapshotData?.sessionName || formatSessionLabel(session) || "Grow Snapshot").trim(),
     snapshot_image_url: upload.url,
     snapshot_image_path: upload.path,
+    image_hash: imageHash || null,
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
     unit_id: String(session.unitId || "").trim(),
@@ -8118,6 +8198,7 @@ function getSnapshotDestination(state) {
 
 const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
 const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Community Grow.";
+const DUPLICATE_GALLERY_SNAPSHOT_IMAGE_MESSAGE = "This snapshot image is already being used in Community Grow.";
 
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);

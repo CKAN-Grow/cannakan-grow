@@ -81,6 +81,7 @@ create table if not exists public.grow_gallery_snapshots (
   snapshot_title text not null,
   snapshot_image_url text not null,
   snapshot_image_path text not null default '',
+  image_hash text,
   session_date date,
   system_type text not null default 'KAN',
   success_percent integer not null default 0,
@@ -106,6 +107,9 @@ create table if not exists public.grow_gallery_snapshot_likes (
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
+
+create index if not exists grow_gallery_snapshots_image_hash_idx
+  on public.grow_gallery_snapshots (image_hash);
 
 create unique index if not exists sources_name_lower_idx
   on public.sources (lower(name));
@@ -223,12 +227,44 @@ alter table public.grow_gallery_snapshots
 alter table public.grow_gallery_snapshots
   add column if not exists seed_variety_name text default '';
 
+alter table public.grow_gallery_snapshots
+  add column if not exists image_hash text;
+
 update public.grow_gallery_snapshots
 set status = case
   when coalesce(is_published, false) then 'approved'
   else 'private'
 end
 where status is null or status = '' or status = 'private';
+
+create or replace function public.find_duplicate_grow_gallery_snapshot_by_hash(candidate_hash text, candidate_session_id uuid default null)
+returns table (
+  id uuid,
+  status text,
+  session_id uuid
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    grow_gallery_snapshots.id,
+    grow_gallery_snapshots.status,
+    grow_gallery_snapshots.session_id
+  from public.grow_gallery_snapshots
+  where coalesce(candidate_hash, '') <> ''
+    and grow_gallery_snapshots.image_hash = candidate_hash
+    and grow_gallery_snapshots.status in ('pending_review', 'approved')
+    and (
+      candidate_session_id is null
+      or grow_gallery_snapshots.session_id is distinct from candidate_session_id
+    )
+  order by grow_gallery_snapshots.created_at desc
+  limit 1;
+$$;
+
+revoke all on function public.find_duplicate_grow_gallery_snapshot_by_hash(text, uuid) from public;
+grant execute on function public.find_duplicate_grow_gallery_snapshot_by_hash(text, uuid) to authenticated;
 
 create or replace function public.set_grow_sessions_updated_at()
 returns trigger
