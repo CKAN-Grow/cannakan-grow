@@ -4862,8 +4862,268 @@ function setPublicMemberProfileActiveTab(memberId = "", tab = "followers") {
   appState.publicMemberProfileActiveTabs[normalizedId] = String(tab || "").trim() === "following"
     ? "following"
     : "followers";
-  if (getActivePublicMemberProfileRouteId() === normalizedId) {
-    renderPublicMemberProfile(normalizedId);
+  rerenderOpenPublicMemberConnectionsModal();
+}
+
+function ensurePublicMemberConnectionsModal() {
+  let modal = document.querySelector("#public-member-connections-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "public-member-connections-modal";
+  modal.className = "snapshot-modal public-member-connections-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card public-member-connections-modal-card" role="document" aria-labelledby="public-member-connections-modal-title">
+      <button type="button" class="modal-close" data-public-member-connections-close aria-label="Close connections">×</button>
+      <div class="snapshot-modal-copy public-member-connections-modal-copy">
+        <p class="eyebrow">Grow Network</p>
+        <h3 id="public-member-connections-modal-title">Followers and following</h3>
+        <p id="public-member-connections-modal-subtitle">Explore this member's public social graph.</p>
+      </div>
+      <div id="public-member-connections-modal-body"></div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+  modal.querySelector("[data-public-member-connections-close]")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  });
+  modal.addEventListener("close", () => {
+    modal.dataset.memberId = "";
+    modal.dataset.listType = "";
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function getOpenPublicMemberConnectionsModalContext() {
+  const modal = document.querySelector("#public-member-connections-modal");
+  if (!(modal instanceof HTMLDialogElement) || !modal.open) {
+    return null;
+  }
+
+  const memberId = String(modal.dataset.memberId || "").trim();
+  const listType = String(modal.dataset.listType || "").trim() === "following" ? "following" : "followers";
+  if (!memberId) {
+    return null;
+  }
+
+  return {
+    modal,
+    memberId,
+    listType,
+  };
+}
+
+function renderPublicMemberConnectionRowsMarkup(profileMemberId = "", listType = "followers", options = {}) {
+  const normalizedProfileId = String(profileMemberId || "").trim();
+  const normalizedType = String(listType || "").trim() === "following" ? "following" : "followers";
+  const {
+    emptyStateClassName = "public-member-profile-connections-empty",
+    followButtonDataAttribute = "data-public-member-list-follow",
+    closeModalOnProfileView = false,
+  } = options;
+  const activeConnectionRows = getPublicMemberFollowList(normalizedProfileId, normalizedType);
+  const isLoadingFollowLists = Boolean(appState.publicMemberFollowListsRefreshPromises[normalizedProfileId]);
+  const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedProfileId);
+
+  if (isLoadingFollowLists && !Array.isArray(activeConnectionRows)) {
+    return `
+      <div class="empty-state gallery-empty-state ${escapeHtml(emptyStateClassName)}">
+        <p>Loading public member connections...</p>
+      </div>
+    `;
+  }
+
+  if (appState.publicMemberFollowListsUnavailable) {
+    return `
+      <div class="empty-state gallery-empty-state ${escapeHtml(emptyStateClassName)}">
+        <p>Follower and following lists are unavailable right now.</p>
+      </div>
+    `;
+  }
+
+  if (!Array.isArray(activeConnectionRows) || !activeConnectionRows.length) {
+    return `
+      <div class="empty-state gallery-empty-state ${escapeHtml(emptyStateClassName)}">
+        <p>${escapeHtml(normalizedType === "followers" ? "No followers yet." : "Not following anyone yet.")}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="public-member-profile-connections-list">
+      ${activeConnectionRows.map((row) => {
+        const rowFollowState = getViewerPublicMemberFollowState(row.memberId);
+        const isRowFollowPending = isPublicMemberFollowPending(row.memberId);
+        const canShowRowFollowButton = Boolean(appState.user?.id)
+          && !isOwnProfile
+          && !appState.publicMemberFollowsTableUnavailable
+          && !isViewingOwnPublicMemberProfile(row.memberId);
+        const isRowFollowing = rowFollowState === true;
+        const isLoadingRowFollowState = canShowRowFollowButton && rowFollowState === null && Boolean(appState.growNetworkFollowingRefreshPromise);
+        const rowMetaLabel = formatPublicMemberJoinedDateLabel(row.joinedAt || "")
+          ? `Joined ${formatPublicMemberJoinedDateLabel(row.joinedAt || "")}`
+          : "Public grow profile";
+        return `
+          <article class="public-member-profile-connection-card">
+            <a class="public-member-profile-connection-link" href="${escapeHtml(getPublicMemberProfileRoute(row.memberId))}" ${closeModalOnProfileView ? 'data-public-member-connections-profile-link="true"' : ""}>
+              <span class="public-member-profile-connection-avatar-shell">
+                ${renderPublicMemberAvatarMarkup(row.displayName, row.avatarUrl, "public-member-profile-connection-avatar")}
+              </span>
+              <span class="public-member-profile-connection-copy">
+                <strong>${escapeHtml(row.displayName)}</strong>
+                <span>${escapeHtml(rowMetaLabel)}</span>
+              </span>
+            </a>
+            <div class="public-member-profile-connection-actions">
+              <a
+                class="button button-secondary"
+                href="${escapeHtml(getPublicMemberProfileRoute(row.memberId))}"
+                ${closeModalOnProfileView ? 'data-public-member-connections-profile-link="true"' : ""}
+              >View Profile</a>
+              ${canShowRowFollowButton ? `
+                <button
+                  type="button"
+                  class="button ${isRowFollowing ? "button-secondary" : "button-primary"} public-member-profile-connection-follow-button${isRowFollowing ? " is-following" : ""}"
+                  ${escapeHtml(followButtonDataAttribute)}="${escapeHtml(row.memberId)}"
+                  ${(isRowFollowPending || isLoadingRowFollowState) ? "disabled" : ""}
+                  aria-pressed="${isRowFollowing ? "true" : "false"}"
+                >${escapeHtml(isLoadingRowFollowState ? "Loading..." : (isRowFollowing ? "Following" : "Follow"))}</button>
+              ` : ""}
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderPublicMemberConnectionsModal(memberId = "", listType = "followers") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return;
+  }
+
+  const normalizedType = String(listType || "").trim() === "following" ? "following" : "followers";
+  appState.publicMemberProfileActiveTabs[normalizedId] = normalizedType;
+  const modal = ensurePublicMemberConnectionsModal();
+  modal.dataset.memberId = normalizedId;
+  modal.dataset.listType = normalizedType;
+
+  const body = modal.querySelector("#public-member-connections-modal-body");
+  const title = modal.querySelector("#public-member-connections-modal-title");
+  const subtitle = modal.querySelector("#public-member-connections-modal-subtitle");
+  const profile = getPublicMemberProfile(normalizedId);
+  const followSummary = getPublicMemberFollowSummary(normalizedId);
+  const followLists = getPublicMemberFollowLists(normalizedId);
+  const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
+  const displayName = profile?.displayName || "Community member";
+  const followersCount = followSummary
+    ? followSummary.followerCount.toLocaleString()
+    : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
+  const followingCount = followSummary
+    ? followSummary.followingCount.toLocaleString()
+    : (Array.isArray(followLists?.following) ? followLists.following.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
+
+  if (title) {
+    title.textContent = displayName;
+  }
+  if (subtitle) {
+    subtitle.textContent = "Followers and following for this public grow profile.";
+  }
+  if (body) {
+    body.innerHTML = `
+      <div class="public-member-connections-modal-tabs" role="tablist" aria-label="Followers and following">
+        <button
+          type="button"
+          class="public-member-profile-connections-tab${normalizedType === "followers" ? " is-active" : ""}"
+          data-public-member-connections-modal-tab="followers"
+          role="tab"
+          aria-selected="${normalizedType === "followers" ? "true" : "false"}"
+        >
+          <span>Followers</span>
+          <strong>${escapeHtml(followersCount)}</strong>
+        </button>
+        <button
+          type="button"
+          class="public-member-profile-connections-tab${normalizedType === "following" ? " is-active" : ""}"
+          data-public-member-connections-modal-tab="following"
+          role="tab"
+          aria-selected="${normalizedType === "following" ? "true" : "false"}"
+        >
+          <span>Following</span>
+          <strong>${escapeHtml(followingCount)}</strong>
+        </button>
+      </div>
+      <div class="public-member-connections-modal-list">
+        ${renderPublicMemberConnectionRowsMarkup(normalizedId, normalizedType, {
+          emptyStateClassName: "public-member-connections-modal-empty",
+          followButtonDataAttribute: "data-public-member-modal-follow",
+          closeModalOnProfileView: true,
+        })}
+      </div>
+    `;
+  }
+
+  body?.querySelectorAll("[data-public-member-connections-modal-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextType = button.dataset.publicMemberConnectionsModalTab || "followers";
+      renderPublicMemberConnectionsModal(normalizedId, nextType);
+    });
+  });
+  body?.querySelectorAll("[data-public-member-modal-follow]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await togglePublicMemberFollow(button.dataset.publicMemberModalFollow || "");
+      } catch (error) {
+        window.alert(error.message || "Could not update this follow right now.");
+      }
+    });
+  });
+  body?.querySelectorAll("[data-public-member-connections-profile-link]").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (modal.open) {
+        modal.close();
+      }
+    });
+  });
+}
+
+function rerenderOpenPublicMemberConnectionsModal() {
+  const context = getOpenPublicMemberConnectionsModalContext();
+  if (!context) {
+    return;
+  }
+
+  renderPublicMemberConnectionsModal(context.memberId, context.listType);
+}
+
+function openPublicMemberConnectionsModal(memberId = "", listType = "followers") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return;
+  }
+
+  const normalizedType = String(listType || "").trim() === "following" ? "following" : "followers";
+  const modal = ensurePublicMemberConnectionsModal();
+  renderPublicMemberConnectionsModal(normalizedId, normalizedType);
+  if (!modal.open) {
+    modal.showModal();
+  }
+  modal.querySelector("[data-public-member-connections-close]")?.focus();
+  void refreshPublicMemberFollowLists(normalizedId, { force: true, reason: "public-member-connections-modal" });
+  void refreshPublicMemberFollowSummary(normalizedId, { force: true, reason: "public-member-connections-modal" });
+  if (appState.user?.id) {
+    void refreshGrowNetworkFollowing({ force: true, reason: "public-member-connections-modal" });
   }
 }
 
@@ -5029,6 +5289,10 @@ async function refreshPublicMemberFollowSummary(memberId = "", options = {}) {
   if (getActivePublicMemberProfileRouteId() === normalizedId) {
     renderPublicMemberProfile(normalizedId);
   }
+  const openModalContext = getOpenPublicMemberConnectionsModalContext();
+  if (openModalContext?.memberId === normalizedId) {
+    renderPublicMemberConnectionsModal(normalizedId, openModalContext.listType);
+  }
   return summary;
 }
 
@@ -5142,6 +5406,10 @@ async function refreshPublicMemberFollowLists(memberId = "", options = {}) {
   if (getActivePublicMemberProfileRouteId() === normalizedId) {
     renderPublicMemberProfile(normalizedId);
   }
+  const openModalContext = getOpenPublicMemberConnectionsModalContext();
+  if (openModalContext?.memberId === normalizedId) {
+    renderPublicMemberConnectionsModal(normalizedId, openModalContext.listType);
+  }
   return lists;
 }
 
@@ -5218,6 +5486,7 @@ async function refreshPublicMemberFollowState(memberId = "", options = {}) {
   if (getActivePublicMemberProfileRouteId() === normalizedId) {
     renderPublicMemberProfile(normalizedId);
   }
+  rerenderOpenPublicMemberConnectionsModal();
   return isFollowing;
 }
 
@@ -5303,6 +5572,7 @@ async function refreshGrowNetworkFollowing(options = {}) {
     if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
       renderGrowNetworkPage();
     }
+    rerenderOpenPublicMemberConnectionsModal();
     return following;
   } finally {
     appState.growNetworkFollowingRefreshPromise = null;
@@ -5386,6 +5656,7 @@ async function togglePublicMemberFollow(memberId = "") {
     if (activeProfileRouteId) {
       renderPublicMemberProfile(activeProfileRouteId);
     }
+    rerenderOpenPublicMemberConnectionsModal();
   };
   appState.publicMemberFollowPendingActions[normalizedId] = true;
   rerenderActivePublicMemberProfile();
@@ -18497,9 +18768,6 @@ function renderPublicMemberProfile(memberId) {
   const followSummary = getPublicMemberFollowSummary(normalizedId);
   const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
   const followLists = getPublicMemberFollowLists(normalizedId);
-  const isLoadingFollowLists = Boolean(appState.publicMemberFollowListsRefreshPromises[normalizedId]);
-  const activeConnectionTab = getPublicMemberProfileActiveTab(normalizedId);
-  const activeConnectionRows = getPublicMemberFollowList(normalizedId, activeConnectionTab);
   const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedId);
   const canShowFollowButton = Boolean(appState.user?.id) && !isOwnProfile && !appState.publicMemberFollowsTableUnavailable;
   const followState = getPublicMemberFollowState(normalizedId);
@@ -18560,22 +18828,18 @@ function renderPublicMemberProfile(memberId) {
   const roundedAverageRate = averageRate === null
     ? ""
     : String(Number((Math.round(averageRate * 10) / 10).toFixed(1))).replace(/\.0$/, "");
-  const followersTabCount = followSummary
-    ? followSummary.followerCount.toLocaleString()
-    : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
-  const followingTabCount = followSummary
-    ? followSummary.followingCount.toLocaleString()
-    : (Array.isArray(followLists?.following) ? followLists.following.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
   const stats = [
     {
       label: "Followers",
       value: followerCountValue,
       detail: "community members following this grower",
+      listType: "followers",
     },
     {
       label: "Following",
       value: followingCountValue,
       detail: "community members this grower follows",
+      listType: "following",
     },
     {
       label: "Approved Snapshots",
@@ -18597,73 +18861,6 @@ function renderPublicMemberProfile(memberId) {
       }
       : null,
   ].filter(Boolean);
-  const renderConnectionRowsMarkup = () => {
-    if (isLoadingFollowLists && !Array.isArray(activeConnectionRows)) {
-      return `
-        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
-          <p>Loading public member connections...</p>
-        </div>
-      `;
-    }
-
-    if (appState.publicMemberFollowListsUnavailable) {
-      return `
-        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
-          <p>Follower and following lists are unavailable right now.</p>
-        </div>
-      `;
-    }
-
-    if (!Array.isArray(activeConnectionRows) || !activeConnectionRows.length) {
-      return `
-        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
-          <p>${escapeHtml(activeConnectionTab === "followers" ? "No followers yet." : "Not following anyone yet.")}</p>
-        </div>
-      `;
-    }
-
-    return `
-      <div class="public-member-profile-connections-list">
-        ${activeConnectionRows.map((row) => {
-          const rowFollowState = getViewerPublicMemberFollowState(row.memberId);
-          const isRowFollowPending = isPublicMemberFollowPending(row.memberId);
-          const canShowRowFollowButton = Boolean(appState.user?.id)
-            && !isOwnProfile
-            && !appState.publicMemberFollowsTableUnavailable
-            && !isViewingOwnPublicMemberProfile(row.memberId);
-          const isRowFollowing = rowFollowState === true;
-          const isLoadingRowFollowState = canShowRowFollowButton && rowFollowState === null && Boolean(appState.growNetworkFollowingRefreshPromise);
-          const rowMetaLabel = formatPublicMemberJoinedDateLabel(row.joinedAt || "")
-            ? `Joined ${formatPublicMemberJoinedDateLabel(row.joinedAt || "")}`
-            : "View public grow profile";
-          return `
-            <article class="public-member-profile-connection-card">
-              <a class="public-member-profile-connection-link" href="${escapeHtml(getPublicMemberProfileRoute(row.memberId))}">
-                <span class="public-member-profile-connection-avatar-shell">
-                  ${renderPublicMemberAvatarMarkup(row.displayName, row.avatarUrl, "public-member-profile-connection-avatar")}
-                </span>
-                <span class="public-member-profile-connection-copy">
-                  <strong>${escapeHtml(row.displayName)}</strong>
-                  <span>${escapeHtml(rowMetaLabel)}</span>
-                </span>
-              </a>
-              ${canShowRowFollowButton ? `
-                <div class="public-member-profile-connection-actions">
-                  <button
-                    type="button"
-                    class="button ${isRowFollowing ? "button-secondary" : "button-primary"} public-member-profile-connection-follow-button${isRowFollowing ? " is-following" : ""}"
-                    data-public-member-list-follow="${escapeHtml(row.memberId)}"
-                    ${(isRowFollowPending || isLoadingRowFollowState) ? "disabled" : ""}
-                    aria-pressed="${isRowFollowing ? "true" : "false"}"
-                  >${escapeHtml(isLoadingRowFollowState ? "Loading..." : (isRowFollowing ? "Following" : "Follow"))}</button>
-                </div>
-              ` : ""}
-            </article>
-          `;
-        }).join("")}
-      </div>
-    `;
-  };
 
   app.innerHTML = `
     <section class="card public-member-profile-page">
@@ -18696,52 +18893,25 @@ function renderPublicMemberProfile(memberId) {
       <div class="public-member-profile-stats">
         ${stats.map((stat) => `
           <article class="meta-card public-member-profile-stat-card">
-            <strong>${escapeHtml(stat.label)}</strong>
-            <p class="public-member-profile-stat-value">${escapeHtml(stat.value)}</p>
-            <p class="public-member-profile-stat-detail">${escapeHtml(stat.detail)}</p>
+            ${stat.listType ? `
+              <button
+                type="button"
+                class="public-member-profile-stat-button"
+                data-public-member-open-list="${escapeHtml(stat.listType)}"
+                aria-label="${escapeHtml(`Open ${stat.label.toLowerCase()} list for ${displayName}`)}"
+              >
+                <strong>${escapeHtml(stat.label)}</strong>
+                <p class="public-member-profile-stat-value">${escapeHtml(stat.value)}</p>
+                <p class="public-member-profile-stat-detail">${escapeHtml(stat.detail)}</p>
+              </button>
+            ` : `
+              <strong>${escapeHtml(stat.label)}</strong>
+              <p class="public-member-profile-stat-value">${escapeHtml(stat.value)}</p>
+              <p class="public-member-profile-stat-detail">${escapeHtml(stat.detail)}</p>
+            `}
           </article>
         `).join("")}
       </div>
-      <section class="public-member-profile-connections">
-        <div class="section-heading">
-          <div class="section-title-with-icon">
-            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M16 19a4 4 0 0 0-8 0"></path>
-              <circle cx="12" cy="10" r="3.5"></circle>
-              <path d="M5.5 18.5a3.5 3.5 0 0 1 2.25-3.27"></path>
-              <path d="M18.5 18.5a3.5 3.5 0 0 0-2.25-3.27"></path>
-            </svg>
-            <div>
-              <p class="eyebrow">Grow Network</p>
-              <h3>Followers and following</h3>
-              <p class="muted">Explore this member’s public social graph.</p>
-            </div>
-          </div>
-        </div>
-        <div class="public-member-profile-connections-tabs" role="tablist" aria-label="Followers and following">
-          <button
-            type="button"
-            class="public-member-profile-connections-tab${activeConnectionTab === "followers" ? " is-active" : ""}"
-            data-public-member-profile-tab="followers"
-            role="tab"
-            aria-selected="${activeConnectionTab === "followers" ? "true" : "false"}"
-          >
-            <span>Followers</span>
-            <strong>${escapeHtml(followersTabCount)}</strong>
-          </button>
-          <button
-            type="button"
-            class="public-member-profile-connections-tab${activeConnectionTab === "following" ? " is-active" : ""}"
-            data-public-member-profile-tab="following"
-            role="tab"
-            aria-selected="${activeConnectionTab === "following" ? "true" : "false"}"
-          >
-            <span>Following</span>
-            <strong>${escapeHtml(followingTabCount)}</strong>
-          </button>
-        </div>
-        ${renderConnectionRowsMarkup()}
-      </section>
       <section class="public-member-profile-snapshots">
         <div class="section-heading">
           <div class="section-title-with-icon">
@@ -18776,18 +18946,9 @@ function renderPublicMemberProfile(memberId) {
       window.alert(error.message || "Could not update this follow right now.");
     }
   });
-  app.querySelectorAll("[data-public-member-profile-tab]").forEach((button) => {
+  app.querySelectorAll("[data-public-member-open-list]").forEach((button) => {
     button.addEventListener("click", () => {
-      setPublicMemberProfileActiveTab(normalizedId, button.dataset.publicMemberProfileTab || "followers");
-    });
-  });
-  app.querySelectorAll("[data-public-member-list-follow]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await togglePublicMemberFollow(button.dataset.publicMemberListFollow || "");
-      } catch (error) {
-        window.alert(error.message || "Could not update this follow right now.");
-      }
+      openPublicMemberConnectionsModal(normalizedId, button.dataset.publicMemberOpenList || "followers");
     });
   });
 

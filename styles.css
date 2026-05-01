@@ -8593,6 +8593,29 @@ input::placeholder {
   min-height: 124px;
 }
 
+.public-member-profile-stat-button {
+  width: 100%;
+  display: grid;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.public-member-profile-stat-button:hover .public-member-profile-stat-value,
+.public-member-profile-stat-button:focus-visible .public-member-profile-stat-value {
+  color: var(--accent) !important;
+}
+
+.public-member-profile-stat-button:focus-visible {
+  outline: 2px solid rgba(148, 209, 89, 0.35);
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+
 .public-member-profile-stat-value {
   color: var(--ink) !important;
   font-size: 1.35rem;
@@ -8726,6 +8749,32 @@ input::placeholder {
 
 .public-member-profile-connections-empty {
   min-height: 140px;
+}
+
+.public-member-connections-modal-card {
+  position: relative;
+  width: min(94vw, 880px);
+  display: grid;
+  gap: 18px;
+  padding-top: 28px;
+}
+
+.public-member-connections-modal-copy {
+  padding-right: 48px;
+}
+
+.public-member-connections-modal-tabs,
+.public-member-connections-modal-list {
+  display: grid;
+  gap: 14px;
+}
+
+.public-member-connections-modal-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-member-connections-modal-empty {
+  min-height: 180px;
 }
 
 .grow-network-page {
@@ -8890,6 +8939,11 @@ body.theme-dark .public-member-profile-connection-copy strong {
   color: #f6f8f5;
 }
 
+body.theme-dark .public-member-profile-stat-button:hover .public-member-profile-stat-value,
+body.theme-dark .public-member-profile-stat-button:focus-visible .public-member-profile-stat-value {
+  color: #94d159 !important;
+}
+
 .public-session-profile {
   display: flex;
   justify-content: flex-start;
@@ -8964,6 +9018,7 @@ body.theme-dark .public-member-profile-connection-copy strong {
     align-items: flex-start;
   }
 
+  .public-member-connections-modal-tabs,
   .public-member-profile-connection-card,
   .grow-network-layout,
   .grow-network-member-card {
