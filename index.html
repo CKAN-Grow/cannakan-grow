@@ -113,6 +113,30 @@
     </section>
   </template>
 
+  <template id="auth-reset-template">
+    <section class="card auth-card">
+      <div>
+        <p class="eyebrow">Secure Access</p>
+        <h2>Reset Password</h2>
+        <p class="muted">Choose a new password for your Cannakan Grow account.</p>
+      </div>
+      <form id="auth-reset-form" class="auth-form">
+        <label>
+          <span>New Password</span>
+          <input type="password" name="newPassword" placeholder="Enter new password" minlength="8" required>
+        </label>
+        <label>
+          <span>Confirm New Password</span>
+          <input type="password" name="confirmNewPassword" placeholder="Confirm new password" minlength="8" required>
+        </label>
+        <p id="auth-reset-message" class="form-message" role="alert" aria-live="polite"></p>
+        <div class="form-actions">
+          <button type="submit" class="button button-primary">Update Password</button>
+        </div>
+      </form>
+    </section>
+  </template>
+
   <template id="setup-template">
     <section class="card auth-card">
       <div>

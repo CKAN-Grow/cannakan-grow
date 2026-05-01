@@ -58,6 +58,7 @@ const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
 const ADMIN_REPORTS_TABLE = "admin_reports";
+const AUTH_FORGOT_PASSWORD_COOLDOWN_MS = 15000;
 const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
 const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
 const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
@@ -420,6 +421,8 @@ const appState = {
   initialized: false,
   loading: true,
   authReady: false,
+  authRecoveryMode: false,
+  authForgotPasswordCooldownUntil: 0,
   authHydrationPromise: null,
   lastHydratedAuthSessionKey: "",
   supabase: null,
@@ -558,6 +561,7 @@ let backToTopScrollFrame = 0;
 let backToTopLastVisibleState = null;
 const templates = {
   auth: document.querySelector("#auth-template"),
+  authReset: document.querySelector("#auth-reset-template"),
   setup: document.querySelector("#setup-template"),
   profile: document.querySelector("#profile-template"),
   home: document.querySelector("#home-template"),
@@ -2826,6 +2830,100 @@ function consumeAuthNotice() {
   return nextNotice;
 }
 
+function isSupabaseAuthFragmentHash(hash = "") {
+  const normalizedHash = String(hash || "").trim().replace(/^#/, "");
+  if (!normalizedHash) {
+    return false;
+  }
+
+  return normalizedHash.includes("access_token=")
+    || normalizedHash.includes("refresh_token=")
+    || normalizedHash.includes("type=recovery")
+    || normalizedHash.includes("type=invite")
+    || normalizedHash.includes("type=magiclink");
+}
+
+function isSupabaseRecoveryHash(hash = "") {
+  return String(hash || "").trim().replace(/^#/, "").includes("type=recovery");
+}
+
+function getLocationRouteHash() {
+  const currentHash = window.location.hash || "#home";
+  if (isSupabaseAuthFragmentHash(currentHash)) {
+    return "home";
+  }
+  return currentHash.replace(/^#/, "");
+}
+
+function clearSupabaseAuthFragmentHash() {
+  if (!isSupabaseAuthFragmentHash(window.location.hash || "")) {
+    return;
+  }
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#home`);
+}
+
+function renderAuthModalLoginContent(modal, options = {}) {
+  const body = modal?.querySelector("#auth-modal-body");
+  if (!body) {
+    return null;
+  }
+
+  body.replaceChildren(cloneTemplate(templates.auth));
+  body.querySelector(".auth-card")?.classList.add("auth-card-inline");
+  const modalTitle = body.querySelector(".auth-card h2");
+  if (modalTitle) {
+    modalTitle.textContent = "Sign in to your grow sessions";
+  }
+  bindAuthForm(body.querySelector("#auth-form"), {
+    messageElement: body.querySelector("#auth-message"),
+    onLoginSuccess: () => {
+      closeAuthModal();
+      redirectToHomeAfterLogin();
+    },
+    initialMessage: options.initialMessage || "",
+    initialMessageTone: options.initialMessageTone || "",
+  });
+
+  if (!modal.open) {
+    modal.showModal();
+  }
+  body.querySelector(`input[name="${options.focusField || "email"}"]`)?.focus();
+  return body;
+}
+
+function renderAuthModalResetContent(modal, options = {}) {
+  const body = modal?.querySelector("#auth-modal-body");
+  if (!body) {
+    return null;
+  }
+
+  body.replaceChildren(cloneTemplate(templates.authReset));
+  body.querySelector(".auth-card")?.classList.add("auth-card-inline");
+  bindPasswordResetForm(body.querySelector("#auth-reset-form"), {
+    messageElement: body.querySelector("#auth-reset-message"),
+    modal,
+    initialMessage: options.initialMessage || "",
+    initialMessageTone: options.initialMessageTone || "",
+  });
+
+  if (!modal.open) {
+    modal.showModal();
+  }
+  body.querySelector('input[name="newPassword"]')?.focus();
+  return body;
+}
+
+function openPasswordRecoveryModal(options = {}) {
+  if (!isSupabaseConfigured() || !appState.supabase) {
+    return false;
+  }
+
+  const modal = ensureAuthModal();
+  appState.authRecoveryMode = true;
+  renderAuthModalResetContent(modal, options);
+  return true;
+}
+
 function bindAuthForm(form, options = {}) {
   if (!form) {
     return;
@@ -2834,12 +2932,15 @@ function bindAuthForm(form, options = {}) {
   const {
     messageElement = form.querySelector("#auth-message"),
     onLoginSuccess = redirectToHomeAfterLogin,
+    initialMessage = "",
+    initialMessageTone = "",
   } = options;
   const confirmField = form.querySelector("#confirm-password-field");
   const confirmInput = form.elements.confirmPassword;
   const emailInput = form.elements.email;
   const forgotPasswordButton = form.querySelector("[data-auth-forgot-password]");
   let authMode = "login";
+  let forgotPasswordCooldownTimeout = null;
 
   const setMessage = (text = "", tone = "") => {
     if (!messageElement) {
@@ -2862,6 +2963,31 @@ function bindAuthForm(form, options = {}) {
     forgotPasswordButton.disabled = false;
     forgotPasswordButton.dataset.state = "idle";
     forgotPasswordButton.textContent = "Forgot password?";
+  };
+
+  const syncForgotPasswordCooldown = () => {
+    if (!forgotPasswordButton) {
+      return;
+    }
+    if (forgotPasswordCooldownTimeout) {
+      window.clearTimeout(forgotPasswordCooldownTimeout);
+      forgotPasswordCooldownTimeout = null;
+    }
+
+    const remainingMs = Math.max(0, Number(appState.authForgotPasswordCooldownUntil || 0) - Date.now());
+    if (remainingMs <= 0) {
+      appState.authForgotPasswordCooldownUntil = 0;
+      resetForgotPasswordState();
+      return;
+    }
+
+    forgotPasswordButton.disabled = true;
+    forgotPasswordButton.dataset.state = "sent";
+    forgotPasswordButton.textContent = "Email sent ✓";
+    forgotPasswordCooldownTimeout = window.setTimeout(() => {
+      appState.authForgotPasswordCooldownUntil = 0;
+      syncForgotPasswordCooldown();
+    }, remainingMs);
   };
 
   const setAuthMode = (mode) => {
@@ -2907,14 +3033,15 @@ function bindAuthForm(form, options = {}) {
   confirmInput?.addEventListener("input", validatePasswordMatch);
   form.elements.password?.addEventListener("input", validatePasswordMatch);
   emailInput?.addEventListener("input", () => {
-    if (forgotPasswordButton?.dataset.state === "sent") {
+    if (forgotPasswordButton?.dataset.state === "sent" && Date.now() >= Number(appState.authForgotPasswordCooldownUntil || 0)) {
       resetForgotPasswordState();
     }
   });
   setAuthMode("login");
-  const authNotice = consumeAuthNotice();
+  syncForgotPasswordCooldown();
+  const authNotice = initialMessage || consumeAuthNotice();
   if (authNotice) {
-    setMessage(authNotice);
+    setMessage(authNotice, initialMessage ? initialMessageTone : "");
   }
 
   forgotPasswordButton?.addEventListener("click", async () => {
@@ -2936,12 +3063,13 @@ function bindAuthForm(form, options = {}) {
       if (error) {
         throw error;
       }
-      forgotPasswordButton.dataset.state = "sent";
-      forgotPasswordButton.textContent = "Email sent ✓";
+      appState.authForgotPasswordCooldownUntil = Date.now() + AUTH_FORGOT_PASSWORD_COOLDOWN_MS;
+      syncForgotPasswordCooldown();
       setMessage("Password reset email sent. Check your inbox.", "success");
     } catch (error) {
+      console.warn("[Auth] Could not send password reset email.", error);
       forgotPasswordButton.disabled = false;
-      setMessage(error?.message ? `Could not send reset email. ${error.message}` : "Could not send reset email. Please try again.", "warning");
+      setMessage("Could not send reset email. Please verify your email and try again.", "warning");
     }
   });
 
@@ -2978,6 +3106,97 @@ function bindAuthForm(form, options = {}) {
       onLoginSuccess();
     } catch (error) {
       setMessage(error.message || "Authentication failed.");
+    }
+  });
+}
+
+function bindPasswordResetForm(form, options = {}) {
+  if (!form) {
+    return;
+  }
+
+  const {
+    messageElement = form.querySelector("#auth-reset-message"),
+    modal = ensureAuthModal(),
+    initialMessage = "",
+    initialMessageTone = "",
+  } = options;
+
+  const setMessage = (text = "", tone = "") => {
+    if (!messageElement) {
+      return;
+    }
+    messageElement.className = "form-message";
+    if (tone === "success") {
+      messageElement.classList.add("is-success");
+    } else if (tone === "warning") {
+      messageElement.classList.add("is-warning");
+    }
+    messageElement.textContent = text;
+  };
+
+  const validatePasswords = () => {
+    const newPassword = String(form.elements.newPassword?.value || "");
+    const confirmPassword = String(form.elements.confirmNewPassword?.value || "");
+    if (!newPassword) {
+      setMessage("Password required", "warning");
+      return false;
+    }
+    if (newPassword.length < 8) {
+      setMessage("Password must be at least 8 characters.", "warning");
+      return false;
+    }
+    if (newPassword !== confirmPassword) {
+      setMessage("Passwords must match.", "warning");
+      return false;
+    }
+    if (messageElement?.textContent === "Passwords must match." || messageElement?.textContent === "Password must be at least 8 characters." || messageElement?.textContent === "Password required") {
+      setMessage("");
+    }
+    return true;
+  };
+
+  form.elements.newPassword?.addEventListener("input", validatePasswords);
+  form.elements.confirmNewPassword?.addEventListener("input", validatePasswords);
+  if (initialMessage) {
+    setMessage(initialMessage, initialMessageTone);
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setMessage("");
+    if (!validatePasswords()) {
+      form.elements.newPassword?.reportValidity();
+      form.elements.confirmNewPassword?.reportValidity();
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+    const newPassword = String(form.elements.newPassword?.value || "");
+    submitButton?.setAttribute("disabled", "true");
+    try {
+      const { error } = await appState.supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        throw error;
+      }
+
+      appState.authRecoveryMode = false;
+      setMessage("Password updated. You can now sign in.", "success");
+      try {
+        await appState.supabase.auth.signOut();
+      } catch (signOutError) {
+        console.warn("[Auth Recovery] Could not sign out after password reset.", signOutError);
+      }
+      renderAuthModalLoginContent(modal, {
+        initialMessage: "Password updated. You can now sign in.",
+        initialMessageTone: "success",
+        focusField: "email",
+      });
+    } catch (error) {
+      console.warn("[Auth Recovery] Could not update password.", error);
+      setMessage("Could not update password. Please try again.", "warning");
+    } finally {
+      submitButton?.removeAttribute("disabled");
     }
   });
 }
@@ -3023,35 +3242,20 @@ function closeAuthModal() {
 }
 
 function openAuthModal() {
-  if (!isSupabaseConfigured() || !appState.authReady || appState.loading || appState.user) {
+  if (!isSupabaseConfigured() || !appState.authReady || appState.loading) {
+    return false;
+  }
+
+  if (appState.authRecoveryMode) {
+    return openPasswordRecoveryModal();
+  }
+
+  if (appState.user) {
     return false;
   }
 
   const modal = ensureAuthModal();
-  const body = modal.querySelector("#auth-modal-body");
-  if (!body) {
-    return false;
-  }
-
-  body.replaceChildren(cloneTemplate(templates.auth));
-  body.querySelector(".auth-card")?.classList.add("auth-card-inline");
-  const modalTitle = body.querySelector(".auth-card h2");
-  if (modalTitle) {
-    modalTitle.textContent = "Sign in to your grow sessions";
-  }
-  bindAuthForm(body.querySelector("#auth-form"), {
-    messageElement: body.querySelector("#auth-message"),
-    onLoginSuccess: () => {
-      closeAuthModal();
-      redirectToHomeAfterLogin();
-    },
-  });
-
-  if (!modal.open) {
-    modal.showModal();
-  }
-  body.querySelector('input[name="email"]')?.focus();
-  return true;
+  return Boolean(renderAuthModalLoginContent(modal, { focusField: "email" }));
 }
 
 function getCurrentAppRawRoute() {
@@ -3601,7 +3805,7 @@ function updateNavState() {
     return;
   }
 
-  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const hashRoute = getLocationRouteHash();
   const pathRoute = window.location.pathname.replace(/^\/+/, "");
   const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
   const [route] = rawRoute.split("/");
@@ -3657,6 +3861,11 @@ async function bootstrapApp() {
         reason: "bootstrap:getSession",
         force: true,
       });
+      if (isSupabaseRecoveryHash(window.location.hash || "")) {
+        appState.authRecoveryMode = true;
+        clearSupabaseAuthFragmentHash();
+        openPasswordRecoveryModal();
+      }
       appState.supabase.auth.onAuthStateChange((event, session) => {
         window.setTimeout(async () => {
           const resolvedSessionForEvent = await resolveSupabaseAuthSession(`auth:${String(event || "").toLowerCase()}`, session);
@@ -3664,6 +3873,11 @@ async function bootstrapApp() {
             reason: `auth:${String(event || "").toLowerCase()}`,
             event,
           });
+          if (String(event || "").toUpperCase() === "PASSWORD_RECOVERY") {
+            appState.authRecoveryMode = true;
+            clearSupabaseAuthFragmentHash();
+            openPasswordRecoveryModal();
+          }
         }, 0);
       });
     } catch (error) {
@@ -4368,6 +4582,10 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
       const sessionKey = getAuthSessionHydrationKey(session);
       if (!force && appState.authReady && appState.lastHydratedAuthSessionKey === sessionKey) {
         return;
+      }
+
+      if (!session && !isSupabaseRecoveryHash(window.location.hash || "")) {
+        appState.authRecoveryMode = false;
       }
 
       resetSessionScopedAppState();
@@ -12687,7 +12905,7 @@ function render() {
   syncMockDataBanner();
   updateNavState();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
-  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const hashRoute = getLocationRouteHash();
   const pathRoute = window.location.pathname.replace(/^\/+/, "");
   const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
   const [route, id, subroute] = rawRoute.split("/");
@@ -23788,6 +24006,10 @@ function escapeHtml(value) {
 function normalizeNavigationHash(hash) {
   const raw = String(hash || "").trim();
   if (!raw || raw === "#") {
+    return "#home";
+  }
+
+  if (isSupabaseAuthFragmentHash(raw)) {
     return "#home";
   }
 
