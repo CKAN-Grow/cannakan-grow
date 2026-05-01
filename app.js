@@ -9368,30 +9368,76 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
 
 function renderHomeAnnouncementCard() {
   const cardData = getHomeAnnouncementCardData();
+  const isFallback = !getLatestActiveAnnouncement();
   console.log("[Cannakan Announcements] Home announcement section rendered", {
-    hasActiveAnnouncement: Boolean(getLatestActiveAnnouncement()),
+    hasActiveAnnouncement: !isFallback,
     title: cardData.title,
   });
   const imageMarkup = cardData.imageUrl
     ? `<img src="${escapeHtml(cardData.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
     : `
       <div class="home-announcement-card-image home-announcement-card-image--placeholder" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
-          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
-          <circle cx="9" cy="9" r="1.2"></circle>
-        </svg>
+        <div class="home-announcement-card-placeholder-pattern"></div>
+        <div class="home-announcement-card-placeholder-badge">
+          ${isFallback
+    ? `
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M8 10.5c0-2.8 1.8-4.8 4-4.8s4 2 4 4.8c0 3-1.8 5-4 5s-4-2-4-5Z"></path>
+              <path d="M9.2 7.9c.6-.9 1.6-1.4 2.8-1.4 1.2 0 2.2.5 2.8 1.4"></path>
+              <path d="M9.7 12.5c.6.6 1.4 1 2.3 1s1.7-.4 2.3-1"></path>
+              <path d="M9.6 10.6h.01"></path>
+              <path d="M14.4 10.6h.01"></path>
+            </svg>
+          `
+    : `
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M12 18.5v-4.5"></path>
+              <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
+              <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
+              <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
+              <path d="M10.1 21h4.2"></path>
+            </svg>
+          `}
+        </div>
       </div>
     `;
 
   return `
-    <section class="card home-announcement-card" aria-labelledby="home-announcement-title">
+    <section class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}" aria-labelledby="home-announcement-title">
       <div class="home-announcement-card-media">
+        <div class="home-announcement-card-media-badge">
+          <span class="home-announcement-card-media-badge-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M12 18.5v-4.5"></path>
+              <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
+              <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
+              <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
+              <path d="M10.1 21h4.2"></path>
+            </svg>
+          </span>
+          <span>Cannakan Grow</span>
+        </div>
         ${imageMarkup}
       </div>
       <div class="home-announcement-card-body">
         <div class="home-announcement-card-copy">
-          <p class="eyebrow">Latest from Cannakan</p>
+          <div class="home-announcement-card-head">
+            <p class="home-announcement-card-label">Latest from Cannakan</p>
+            ${isFallback ? `
+              <span class="home-announcement-card-fallback-chip">
+                <span class="home-announcement-card-fallback-chip-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 18.5v-4.5"></path>
+                    <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
+                    <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
+                    <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
+                    <path d="M10.1 21h4.2"></path>
+                  </svg>
+                </span>
+                <span>Daily Pick</span>
+              </span>
+            ` : ""}
+          </div>
           <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
           <p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>
           <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(cardData.dateValue))}</p>
@@ -9399,7 +9445,7 @@ function renderHomeAnnouncementCard() {
         ${cardData.linkUrl ? `
           <div class="home-announcement-card-actions">
             <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
-              <span>${escapeHtml(cardData.buttonText)}</span>
+              <span>View on Instagram →</span>
             </a>
           </div>
         ` : ""}

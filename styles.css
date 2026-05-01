@@ -2375,14 +2375,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-announcement-card {
   display: grid;
-  grid-template-columns: minmax(180px, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(260px, 0.95fr) minmax(0, 1.2fr);
   gap: 0;
   overflow: hidden;
   padding: 0;
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
-    linear-gradient(180deg, rgba(244, 248, 243, 0.72) 0%, rgba(234, 241, 233, 0.48) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.11), rgba(43, 111, 65, 0.04) 58%);
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(244, 248, 243, 0.8) 0%, rgba(234, 241, 233, 0.56) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.12), rgba(43, 111, 65, 0.05) 58%);
   box-shadow:
     0 14px 30px rgba(24, 34, 24, 0.08),
     0 0 0 1px rgba(148, 209, 89, 0.08),
@@ -2391,8 +2392,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-announcement-card-media {
-  min-height: 220px;
-  background: rgba(24, 34, 24, 0.08);
+  position: relative;
+  min-height: 250px;
+  padding: 18px;
+  background:
+    linear-gradient(160deg, rgba(18, 40, 25, 0.94) 0%, rgba(16, 28, 21, 0.98) 100%);
 }
 
 .home-announcement-card-image,
@@ -2404,23 +2408,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: block;
 }
 
+.home-announcement-card-image {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.16);
+}
+
 .home-announcement-card-image--placeholder,
 .admin-announcement-card-image--placeholder,
 .admin-announcement-preview-image--placeholder {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 100%;
+  min-height: 214px;
+  overflow: hidden;
+  border-radius: 20px;
   background:
-    radial-gradient(circle at top left, rgba(148, 209, 89, 0.18), transparent 48%),
-    linear-gradient(180deg, rgba(31, 58, 42, 0.9) 0%, rgba(24, 34, 24, 0.96) 100%);
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.22), transparent 46%),
+    radial-gradient(circle at bottom right, rgba(84, 147, 60, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(31, 58, 42, 0.96) 0%, rgba(19, 29, 22, 0.98) 100%);
   color: #b8d998;
 }
 
 .home-announcement-card-image--placeholder svg,
 .admin-announcement-card-image--placeholder svg,
 .admin-announcement-preview-image--placeholder svg {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   stroke: currentColor;
   stroke-width: 1.75;
   stroke-linecap: round;
@@ -2428,16 +2444,134 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   fill: none;
 }
 
+.home-announcement-card-placeholder-pattern {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(148, 209, 89, 0.14), transparent 0 20%),
+    radial-gradient(circle at 82% 18%, rgba(148, 209, 89, 0.1), transparent 0 18%),
+    linear-gradient(135deg, transparent 0 44%, rgba(255, 255, 255, 0.05) 44% 46%, transparent 46% 100%),
+    linear-gradient(45deg, transparent 0 58%, rgba(255, 255, 255, 0.04) 58% 60%, transparent 60% 100%);
+  opacity: 0.95;
+}
+
+.home-announcement-card-placeholder-badge {
+  position: relative;
+  z-index: 1;
+  width: 84px;
+  height: 84px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 26px;
+  border: 1px solid rgba(184, 217, 152, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 14px 28px rgba(0, 0, 0, 0.16);
+}
+
+.home-announcement-card-media-badge {
+  position: absolute;
+  z-index: 2;
+  top: 18px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: rgba(12, 18, 14, 0.74);
+  border: 1px solid rgba(184, 217, 152, 0.18);
+  color: #eff8eb;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.home-announcement-card-media-badge-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.14);
+  color: #bde58f;
+}
+
+.home-announcement-card-media-badge svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
 .home-announcement-card-body {
   display: grid;
-  gap: var(--space-stack);
+  gap: 18px;
   align-content: space-between;
-  padding: var(--space-card);
+  padding: clamp(24px, 3vw, 34px);
 }
 
 .home-announcement-card-copy {
   display: grid;
+  gap: 12px;
+}
+
+.home-announcement-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-announcement-card-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.home-announcement-card-fallback-chip {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.12);
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  color: #466534;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.home-announcement-card-fallback-chip-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+}
+
+.home-announcement-card-fallback-chip-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
 }
 
 .home-announcement-card-copy h3,
@@ -2445,17 +2579,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin: 0;
 }
 
+.home-announcement-card-copy h3 {
+  font-size: clamp(1.55rem, 2vw, 2.05rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
 .home-announcement-card-caption {
   color: var(--ink);
-  line-height: 1.55;
+  font-size: 1rem;
+  line-height: 1.72;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .home-announcement-card-date {
   color: var(--muted);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
 }
 
 .home-announcement-card-actions {
@@ -4098,7 +4241,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .home-announcement-card-media {
-    min-height: 200px;
+    min-height: 230px;
   }
 
   .admin-announcement-card-media {
@@ -8192,6 +8335,7 @@ body.theme-dark .admin-sources-empty {
 body.theme-dark .home-announcement-card {
   border-color: rgba(111, 122, 116, 0.24);
   background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(30, 40, 33, 0.94) 0%, rgba(21, 29, 24, 0.92) 100%),
     linear-gradient(135deg, rgba(148, 209, 89, 0.12), rgba(43, 111, 65, 0.04) 58%);
   box-shadow:
@@ -8211,6 +8355,16 @@ body.theme-dark .home-announcement-card-caption {
 
 body.theme-dark .home-announcement-card-date {
   color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .home-announcement-card-label {
+  color: rgba(196, 210, 198, 0.78);
+}
+
+body.theme-dark .home-announcement-card-fallback-chip {
+  color: #d4ecb3;
+  background: rgba(148, 209, 89, 0.12);
+  border-color: rgba(148, 209, 89, 0.18);
 }
 
 body.theme-dark .admin-source-logo {
