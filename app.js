@@ -2516,6 +2516,25 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   ));
 }
 
+function buildMockGalleryTimeline(record, index = 0) {
+  const completedAt = new Date(record.submittedAt);
+  const soakingMinutes = 16 * 60 + ((index % 5) * 47) + (record.seedType === "auto" ? 22 : 9);
+  const germinationMinutes = 18 * 60 + ((100 - Math.max(0, Number(record.germinationRate) || 0)) * 9) + ((index % 4) * 26);
+  const completionMinutes = 6 * 60 + ((index % 3) * 18) + Math.max(0, Number(record.seedCount) || 0);
+  const startedAt = new Date(completedAt.getTime() - ((soakingMinutes + germinationMinutes + completionMinutes) * 60000));
+  const germinationStartedAt = new Date(startedAt.getTime() + (soakingMinutes * 60000));
+  const firstPlantedAt = new Date(germinationStartedAt.getTime() + (germinationMinutes * 60000));
+
+  return {
+    startedAt,
+    sessionDate: startedAt.toISOString().slice(0, 10),
+    sessionTime: startedAt.toISOString().slice(11, 16),
+    germinationStartedAt: germinationStartedAt.toISOString(),
+    firstPlantedAt: firstPlantedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+  };
+}
+
 function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords()) {
   return records.map((record, index) => {
     const systemType = index % 2 === 0 ? "KAN" : "TRA";
@@ -2524,6 +2543,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       : String((index % 4) + 1);
     const usesDetailsOnlyCard = index % 9 === 0;
     const sharedProfile = getMockGallerySharedProfile(index, record);
+    const timeline = buildMockGalleryTimeline(record, index);
 
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
@@ -2532,7 +2552,8 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
       imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
       imagePath: "",
-      sessionDate: record.submittedAt.slice(0, 10),
+      sessionDate: timeline.sessionDate,
+      sessionTime: timeline.sessionTime,
       systemType,
       unitId,
       totalSeeds: record.seedCount,
@@ -2552,6 +2573,9 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       publishedAt: record.submittedAt,
       createdAt: record.submittedAt,
       updatedAt: record.submittedAt,
+      germinationStartedAt: timeline.germinationStartedAt,
+      firstPlantedAt: timeline.firstPlantedAt,
+      completedAt: timeline.completedAt,
       likeCount: record.likes,
       likedByCurrentUser: false,
       isMock: true,
@@ -8636,10 +8660,13 @@ function sortVisibleGallerySnapshots(items, sortBy = "date", sortOrder = "") {
           )
             || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
         case "rate":
-          return ((normalizedOrder === "asc"
-            ? getGallerySnapshotSuccessRate(left) - getGallerySnapshotSuccessRate(right)
-            : getGallerySnapshotSuccessRate(right) - getGallerySnapshotSuccessRate(left)))
-            || (getGallerySnapshotSortTime(right) - getGallerySnapshotSortTime(left));
+          return comparePerformanceByRateSpeedAndRecency(left, right, {
+            getRate: getGallerySnapshotSuccessRate,
+            getDurationMs: getGallerySnapshotCompletedDurationMs,
+            getSortTime: getGallerySnapshotSortTime,
+            getFallbackLabel: getGallerySnapshotSortLabel,
+            sortDirection: normalizedOrder,
+          });
         case "date":
         default:
           return normalizedOrder === "asc"
@@ -9136,6 +9163,80 @@ function parseLeaderboardSnapshotDate(snapshot) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function getElapsedDurationMs(startedAt, endedAt) {
+  if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
+    return null;
+  }
+
+  if (!(endedAt instanceof Date) || Number.isNaN(endedAt.getTime())) {
+    return null;
+  }
+
+  const durationMs = endedAt.getTime() - startedAt.getTime();
+  return durationMs >= 0 ? durationMs : null;
+}
+
+function formatDurationMsShort(durationMs) {
+  const safeDurationMs = Number(durationMs);
+  if (!Number.isFinite(safeDurationMs) || safeDurationMs < 0) {
+    return "";
+  }
+
+  const totalMinutes = Math.floor(safeDurationMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+}
+
+function compareOptionalDurationMs(leftDurationMs, rightDurationMs) {
+  const leftHasDuration = Number.isFinite(leftDurationMs);
+  const rightHasDuration = Number.isFinite(rightDurationMs);
+  if (leftHasDuration && !rightHasDuration) {
+    return -1;
+  }
+  if (!leftHasDuration && rightHasDuration) {
+    return 1;
+  }
+  if (leftHasDuration && rightHasDuration && leftDurationMs !== rightDurationMs) {
+    return leftDurationMs - rightDurationMs;
+  }
+  return 0;
+}
+
+function comparePerformanceByRateSpeedAndRecency(left, right, options = {}) {
+  const {
+    getRate = () => 0,
+    getDurationMs = () => null,
+    getSortTime = () => 0,
+    getFallbackLabel = () => "",
+    sortDirection = "desc",
+  } = options;
+
+  const leftRate = Math.max(0, Number(getRate(left)) || 0);
+  const rightRate = Math.max(0, Number(getRate(right)) || 0);
+  if (leftRate !== rightRate) {
+    return sortDirection === "asc"
+      ? leftRate - rightRate
+      : rightRate - leftRate;
+  }
+
+  const durationComparison = compareOptionalDurationMs(getDurationMs(left), getDurationMs(right));
+  if (durationComparison) {
+    return durationComparison;
+  }
+
+  const leftSortTime = Number(getSortTime(left)) || 0;
+  const rightSortTime = Number(getSortTime(right)) || 0;
+  if (leftSortTime !== rightSortTime) {
+    return rightSortTime - leftSortTime;
+  }
+
+  return String(getFallbackLabel(left) || "").localeCompare(String(getFallbackLabel(right) || ""), "en", {
+    sensitivity: "base",
+    numeric: true,
+  });
+}
+
 function getLeaderboardMonthKey(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     return "";
@@ -9181,6 +9282,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
     }
 
     const publishedDate = parseLeaderboardSnapshotDate(snapshot);
+    const snapshotDurationMs = getGallerySnapshotCompletedDurationMs(snapshot);
     const currentGroup = groups.get(normalizedKey) || {
       key: normalizedKey,
       name: label,
@@ -9190,6 +9292,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
       totalPlanted: 0,
       totalSeeds: 0,
       latestPublishedAt: "",
+      fastestCompletedDurationMs: null,
     };
 
     currentGroup.snapshotCount += 1;
@@ -9204,6 +9307,9 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
     if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
       currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
     }
+    if (Number.isFinite(snapshotDurationMs) && (!Number.isFinite(currentGroup.fastestCompletedDurationMs) || snapshotDurationMs < currentGroup.fastestCompletedDurationMs)) {
+      currentGroup.fastestCompletedDurationMs = snapshotDurationMs;
+    }
 
     groups.set(normalizedKey, currentGroup);
   });
@@ -9215,24 +9321,15 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
       averagePercent: entry.snapshotCount > 0
         ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
         : 0,
+      fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
-    .sort((left, right) => {
-      if (right.averagePercent !== left.averagePercent) {
-        return right.averagePercent - left.averagePercent;
-      }
-      if (right.totalPlanted !== left.totalPlanted) {
-        return right.totalPlanted - left.totalPlanted;
-      }
-      if (right.totalSeeds !== left.totalSeeds) {
-        return right.totalSeeds - left.totalSeeds;
-      }
-      const leftTime = new Date(left.latestPublishedAt || 0).getTime();
-      const rightTime = new Date(right.latestPublishedAt || 0).getTime();
-      if (rightTime !== leftTime) {
-        return rightTime - leftTime;
-      }
-      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
-    });
+    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
+      getRate: (entry) => entry.averagePercent,
+      getDurationMs: (entry) => entry.fastestCompletedDurationMs,
+      getSortTime: (entry) => new Date(entry.latestPublishedAt || 0).getTime(),
+      getFallbackLabel: (entry) => entry.name,
+      sortDirection: "desc",
+    }));
 }
 
 function getApprovedPublicGallerySnapshots() {
@@ -9259,6 +9356,7 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
     }
 
     const publishedDate = parseLeaderboardSnapshotDate(snapshot);
+    const snapshotDurationMs = getGallerySnapshotCompletedDurationMs(snapshot);
     const currentGroup = groups.get(normalizedKey) || {
       key: normalizedKey,
       name: label,
@@ -9267,6 +9365,7 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
       totalPlanted: 0,
       totalSeeds: 0,
       latestPublishedAt: "",
+      fastestCompletedDurationMs: null,
     };
 
     currentGroup.snapshotCount += 1;
@@ -9277,6 +9376,9 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
     const currentLatest = currentGroup.latestPublishedAt ? new Date(currentGroup.latestPublishedAt) : null;
     if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
       currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
+    }
+    if (Number.isFinite(snapshotDurationMs) && (!Number.isFinite(currentGroup.fastestCompletedDurationMs) || snapshotDurationMs < currentGroup.fastestCompletedDurationMs)) {
+      currentGroup.fastestCompletedDurationMs = snapshotDurationMs;
     }
 
     groups.set(normalizedKey, currentGroup);
@@ -9289,24 +9391,15 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
       averagePercent: entry.snapshotCount > 0
         ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
         : 0,
+      fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
-    .sort((left, right) => {
-      if (right.averagePercent !== left.averagePercent) {
-        return right.averagePercent - left.averagePercent;
-      }
-      if (right.totalPlanted !== left.totalPlanted) {
-        return right.totalPlanted - left.totalPlanted;
-      }
-      if (right.totalSeeds !== left.totalSeeds) {
-        return right.totalSeeds - left.totalSeeds;
-      }
-      const leftTime = new Date(left.latestPublishedAt || 0).getTime();
-      const rightTime = new Date(right.latestPublishedAt || 0).getTime();
-      if (rightTime !== leftTime) {
-        return rightTime - leftTime;
-      }
-      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
-    })[0] || null;
+    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
+      getRate: (entry) => entry.averagePercent,
+      getDurationMs: (entry) => entry.fastestCompletedDurationMs,
+      getSortTime: (entry) => new Date(entry.latestPublishedAt || 0).getTime(),
+      getFallbackLabel: (entry) => entry.name,
+      sortDirection: "desc",
+    }))[0] || null;
 }
 
 function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType) {
@@ -9461,7 +9554,7 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
             ${renderGalleryLeaderboardIcon(type, entry)}
           </span>
           <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
-          <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.averagePercent}% avg`)}</span>
+          <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.averagePercent}% avg${entry.fastestCompletedDurationLabel ? ` · fastest ${entry.fastestCompletedDurationLabel}` : ""}`)}</span>
         </li>
       `).join("")}
     </ol>
@@ -9718,7 +9811,7 @@ function renderGalleryLeaderboardSection() {
 
 function formatHomeGalleryRankingMetric(entry) {
   const averagePercent = Math.max(0, Number(entry?.averagePercent) || 0);
-  return `${Math.round(averagePercent)}%`;
+  return `${Math.round(averagePercent)}% avg${entry?.fastestCompletedDurationLabel ? ` · fastest ${entry.fastestCompletedDurationLabel}` : ""}`;
 }
 
 function buildHomeGalleryRankingsTeaserState() {
@@ -9926,6 +10019,38 @@ function hasGallerySnapshotGrowMember(snapshot) {
 
 function getGallerySnapshotSuccessRate(snapshot) {
   return Math.max(0, Number(snapshot?.successPercent) || 0);
+}
+
+function getSessionCompletedDurationMs(session) {
+  if (!session) {
+    return null;
+  }
+
+  const startedAt = parseSessionStartDateTime(session.date, session.time);
+  const completedAt = parseCompletedAtValue(session.completedAt || "");
+  return getElapsedDurationMs(startedAt, completedAt);
+}
+
+function getGallerySnapshotCompletedDurationMs(snapshot) {
+  if (!snapshot) {
+    return null;
+  }
+
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  if (linkedSession) {
+    const linkedSessionDurationMs = getSessionCompletedDurationMs(linkedSession);
+    if (Number.isFinite(linkedSessionDurationMs)) {
+      return linkedSessionDurationMs;
+    }
+  }
+
+  const sessionDate = String(snapshot?.sessionDate || "").trim();
+  const sessionTime = String(snapshot?.sessionTime || snapshot?.session_time || "").trim();
+  const startedAt = sessionDate
+    ? parseSessionStartDateTime(sessionDate, sessionTime || "00:00")
+    : null;
+  const completedAt = parseCompletedAtValue(snapshot?.completedAt || snapshot?.completed_at || "");
+  return getElapsedDurationMs(startedAt, completedAt);
 }
 
 function getGallerySnapshotSortTime(snapshot) {
@@ -17310,12 +17435,15 @@ function renderHome() {
     const bestPercentage = bestTotals.totalSeeds > 0
       ? Math.round((bestTotals.totalPlanted / bestTotals.totalSeeds) * 100)
       : 0;
+    const bestDurationLabel = formatDurationMsShort(getSessionCompletedDurationMs(bestSession));
     bestSessionCard.href = `#sessions/${bestSession.id}`;
     bestSessionCard.classList.remove("is-empty");
     bestSessionIndicator.hidden = false;
     bestSessionNameEl.textContent = formatSessionLabel(bestSession);
     bestSessionDateEl.textContent = formatSessionNameDate(bestSession.date);
-    bestSessionResultEl.textContent = `${bestPercentage}%`;
+    bestSessionResultEl.textContent = bestDurationLabel
+      ? `${bestPercentage}% · ${bestDurationLabel}`
+      : `${bestPercentage}%`;
   } else {
     bestSessionCard.href = "#sessions";
     bestSessionCard.classList.add("is-empty");
@@ -17672,6 +17800,7 @@ function buildLeaderboardAuditRows() {
     const successPercent = Math.max(0, Number(snapshot?.successPercent) || 0);
     const sessionName = getLeaderboardAuditSessionName(snapshot);
     const profileLabel = getLeaderboardAuditProfileLabel(snapshot);
+    const completedDurationMs = getGallerySnapshotCompletedDurationMs(snapshot);
 
     return {
       id: String(snapshot.id || "").trim(),
@@ -17695,6 +17824,8 @@ function buildLeaderboardAuditRows() {
       isInActiveRankingSource: rankingSourceIds.has(String(snapshot.id || "").trim()),
       hasValidSubmittedAt: Boolean(submittedAt && !Number.isNaN(submittedAt.getTime())),
       hasValidPerformance: totalSeeds > 0 && Number.isFinite(successPercent),
+      completedDurationMs,
+      completedDurationLabel: formatDurationMsShort(completedDurationMs),
     };
   });
 }
@@ -17764,6 +17895,7 @@ function buildLeaderboardAuditPerformanceEntries(rows, options = {}) {
       totalPlanted: 0,
       totalSeeds: 0,
       latestSubmittedAt: "",
+      fastestCompletedDurationMs: null,
     };
 
     currentGroup.snapshotCount += 1;
@@ -17772,6 +17904,9 @@ function buildLeaderboardAuditPerformanceEntries(rows, options = {}) {
     currentGroup.totalSeeds += row.totalSeeds;
     if (row.submittedAt && (!currentGroup.latestSubmittedAt || row.submittedAt.toISOString() > currentGroup.latestSubmittedAt)) {
       currentGroup.latestSubmittedAt = row.submittedAt.toISOString();
+    }
+    if (Number.isFinite(row.completedDurationMs) && (!Number.isFinite(currentGroup.fastestCompletedDurationMs) || row.completedDurationMs < currentGroup.fastestCompletedDurationMs)) {
+      currentGroup.fastestCompletedDurationMs = row.completedDurationMs;
     }
 
     groups.set(normalizedKey, currentGroup);
@@ -17784,24 +17919,15 @@ function buildLeaderboardAuditPerformanceEntries(rows, options = {}) {
       averagePercent: entry.snapshotCount > 0
         ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
         : 0,
+      fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
-    .sort((left, right) => {
-      if (right.averagePercent !== left.averagePercent) {
-        return right.averagePercent - left.averagePercent;
-      }
-      if (right.totalPlanted !== left.totalPlanted) {
-        return right.totalPlanted - left.totalPlanted;
-      }
-      if (right.totalSeeds !== left.totalSeeds) {
-        return right.totalSeeds - left.totalSeeds;
-      }
-      const leftTime = new Date(left.latestSubmittedAt || 0).getTime();
-      const rightTime = new Date(right.latestSubmittedAt || 0).getTime();
-      if (rightTime !== leftTime) {
-        return rightTime - leftTime;
-      }
-      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
-    });
+    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
+      getRate: (entry) => entry.averagePercent,
+      getDurationMs: (entry) => entry.fastestCompletedDurationMs,
+      getSortTime: (entry) => new Date(entry.latestSubmittedAt || 0).getTime(),
+      getFallbackLabel: (entry) => entry.name,
+      sortDirection: "desc",
+    }));
 }
 
 function buildLeaderboardAuditCalculation(rows, options = {}) {
@@ -18052,7 +18178,7 @@ function formatLeaderboardAuditMetric(entry) {
     return "No qualifying data";
   }
 
-  return `${entry.name} - ${entry.averagePercent}% avg`;
+  return `${entry.name} - ${entry.averagePercent}% avg${entry.fastestCompletedDurationLabel ? ` · fastest ${entry.fastestCompletedDurationLabel}` : ""}`;
 }
 
 function renderLeaderboardAuditSelectOptions(options, selectedValue, allLabel) {
@@ -18064,7 +18190,7 @@ function renderLeaderboardAuditSelectOptions(options, selectedValue, allLabel) {
 
 function renderLeaderboardAuditCalculationCard(calculation) {
   const topSummary = calculation.topEntries.length
-    ? calculation.topEntries.map((entry, index) => `${index + 1}. ${entry.name} - ${entry.averagePercent}% avg`).join(" | ")
+    ? calculation.topEntries.map((entry, index) => `${index + 1}. ${formatLeaderboardAuditMetric(entry)}`).join(" | ")
     : "No qualifying data";
 
   return `
@@ -18391,8 +18517,8 @@ function buildLeaderboardAuditSummaryText(state) {
     `All-Time Top Source: ${formatLeaderboardAuditMetric(state.calculations.allSource.topEntry)}`,
     `This Month Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.monthSeedType.topEntry)}`,
     `All-Time Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.allSeedType.topEntry)}`,
-    `This Month Top 3 Sessions: ${state.calculations.monthSessions.topEntries.length ? state.calculations.monthSessions.topEntries.map((entry) => `${entry.name} (${entry.averagePercent}%)`).join(", ") : "No qualifying data"}`,
-    `All-Time Top 3 Sessions: ${state.calculations.allSessions.topEntries.length ? state.calculations.allSessions.topEntries.map((entry) => `${entry.name} (${entry.averagePercent}%)`).join(", ") : "No qualifying data"}`,
+    `This Month Top 3 Sessions: ${state.calculations.monthSessions.topEntries.length ? state.calculations.monthSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
+    `All-Time Top 3 Sessions: ${state.calculations.allSessions.topEntries.length ? state.calculations.allSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
   ];
 
   return summaryLines.join("\n");
@@ -19072,15 +19198,21 @@ function getBestCompletedSession(sessions) {
       const percentage = totals.totalSeeds > 0
         ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
         : -1;
-      return { session, percentage, sortTime: getSessionSortTime(session) };
+      return {
+        session,
+        percentage,
+        sortTime: getSessionSortTime(session),
+        durationMs: getSessionCompletedDurationMs(session),
+      };
     })
     .filter((item) => item.percentage >= 0)
-    .sort((left, right) => {
-      if (right.percentage !== left.percentage) {
-        return right.percentage - left.percentage;
-      }
-      return right.sortTime - left.sortTime;
-    });
+    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
+      getRate: (item) => item.percentage,
+      getDurationMs: (item) => item.durationMs,
+      getSortTime: (item) => item.sortTime,
+      getFallbackLabel: (item) => formatSessionLabel(item.session),
+      sortDirection: "desc",
+    }));
 
   return completedSessions[0]?.session || null;
 }
@@ -21304,8 +21436,13 @@ function sortSessionHistorySessions(sessions, sortBy = "date") {
         return collator.compare(formatSessionLabel(right), formatSessionLabel(left))
           || (getSessionSortTime(right) - getSessionSortTime(left));
       case "rate":
-        return getSessionSuccessRate(right) - getSessionSuccessRate(left)
-          || (getSessionSortTime(right) - getSessionSortTime(left));
+        return comparePerformanceByRateSpeedAndRecency(left, right, {
+          getRate: getSessionSuccessRate,
+          getDurationMs: getSessionCompletedDurationMs,
+          getSortTime: getSessionSortTime,
+          getFallbackLabel: formatSessionLabel,
+          sortDirection: "desc",
+        });
       case "date":
       default:
         return getSessionSortTime(right) - getSessionSortTime(left);
