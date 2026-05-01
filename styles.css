@@ -6606,6 +6606,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .button-primary,
 .button-new-session {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 48px;
   padding: 13px 22px;
   font-weight: 800;
@@ -6623,6 +6626,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     color 0.18s ease,
     border-color 0.18s ease,
     box-shadow 0.18s ease;
+}
+
+#grow-sessions-header .button-new-session {
+  min-width: 168px;
+  white-space: nowrap;
+  text-align: center;
+  align-self: center;
+  flex: 0 0 auto;
 }
 
 .button-primary:hover,
