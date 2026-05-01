@@ -18,6 +18,9 @@
   --field-focus-bg: #ffffff;
   --field-placeholder: #899589;
   --radius: 20px;
+  --space-section: 24px;
+  --space-card: 24px;
+  --space-stack: 12px;
 }
 
 body.theme-dark {
@@ -89,8 +92,8 @@ textarea {
 }
 
 .install-app-banner {
-  margin: 0 4px 16px;
-  padding: 16px 18px;
+  margin: 0 4px var(--space-section);
+  padding: var(--space-card);
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
     linear-gradient(180deg, rgba(243, 248, 240, 0.92) 0%, rgba(232, 240, 231, 0.82) 100%),
@@ -103,14 +106,14 @@ textarea {
 .install-app-banner-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: var(--space-stack);
   align-items: center;
 }
 
 .install-app-banner-copy {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--space-stack);
   min-width: 0;
 }
 
@@ -553,7 +556,7 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .app-main {
   display: grid;
-  gap: 14px;
+  gap: var(--space-section);
 }
 
 .card {
@@ -562,7 +565,7 @@ body.theme-dark .install-app-banner-ios-tip {
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 18px;
+  padding: var(--space-card);
 }
 
 .dashboard-bar {
@@ -574,7 +577,7 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .dashboard-bar + .spotlight-card,
 .spotlight-card + .summary-grid {
-  margin-top: 32px;
+  margin-top: var(--space-section);
 }
 
 .dashboard-bar h2 {
@@ -596,7 +599,7 @@ body.theme-dark .install-app-banner-ios-tip {
 .form-actions,
 .inline-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-stack);
   flex-wrap: wrap;
 }
 
@@ -652,8 +655,8 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .spotlight-card {
   display: grid;
-  gap: 18px;
-  padding: 30px;
+  gap: var(--space-section);
+  padding: var(--space-card);
   border: 1px solid var(--card-border);
   border-top: 4px solid rgba(24, 34, 24, 0.08);
   border-radius: 20px;
@@ -874,32 +877,32 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .progress-chart-section {
-  margin-top: 36px;
-  padding: 20px;
+  margin-top: var(--space-section);
+  padding: var(--space-card);
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
 }
 
 .session-timing-section {
-  margin-top: 36px;
-  padding: 20px;
+  margin-top: var(--space-section);
+  padding: var(--space-card);
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
 }
 
 .run-progress-section {
-  margin-top: 36px;
-  padding: 20px 20px 24px;
+  margin-top: var(--space-section);
+  padding: var(--space-card);
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
 }
 
 .session-lifecycle-section {
-  margin-top: 18px;
-  padding: 16px;
+  margin-top: var(--space-section);
+  padding: var(--space-card);
   border: 1px solid var(--line);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.62);
@@ -911,13 +914,13 @@ body.theme-dark .spotlight-stat strong {
 
 .session-lifecycle-summary {
   display: grid;
-  gap: 14px;
+  gap: var(--space-stack);
 }
 
 .lifecycle-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-stack);
 }
 
 .lifecycle-segment {
@@ -945,7 +948,7 @@ body.theme-dark .spotlight-stat strong {
 
 .lifecycle-events {
   display: grid;
-  gap: 10px;
+  gap: var(--space-stack);
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
@@ -1016,9 +1019,9 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .timeline-debug-panel {
-  margin-top: 14px;
+  margin-top: var(--space-stack);
   border-top: 1px dashed rgba(24, 34, 24, 0.14);
-  padding-top: 12px;
+  padding-top: var(--space-stack);
 }
 
 .timeline-debug-panel summary {
@@ -1031,14 +1034,14 @@ body.theme-dark .spotlight-stat strong {
 .timeline-debug-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
+  gap: var(--space-stack);
+  margin-top: var(--space-stack);
 }
 
 .run-progress-summary {
   display: grid;
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: var(--space-stack);
+  margin-bottom: var(--space-section);
 }
 
 .run-progress-meta {
@@ -1079,7 +1082,7 @@ body.theme-dark .spotlight-stat strong {
 
 .session-timing-summary {
   display: grid;
-  gap: 12px;
+  gap: var(--space-stack);
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
@@ -1106,15 +1109,15 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-notes-section {
-  margin-top: 36px;
+  margin-top: var(--space-section);
 }
 
 .session-images-section {
-  margin-top: 36px;
-  padding-top: 36px;
+  margin-top: var(--space-section);
+  padding-top: var(--space-section);
   border-top: 1px solid rgba(24, 34, 24, 0.1);
   display: grid;
-  gap: 16px;
+  gap: var(--space-stack);
 }
 
 .session-images-heading {
@@ -2317,8 +2320,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-leaderboard-card {
   display: grid;
-  gap: 12px;
-  padding: 16px 18px;
+  gap: var(--space-stack);
+  padding: var(--space-card);
   border-radius: 18px;
   border: 1px solid rgba(148, 209, 89, 0.08);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
@@ -2326,9 +2329,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-card {
   display: grid;
-  gap: 16px;
-  margin-top: 12px;
-  padding: 20px 22px;
+  gap: var(--space-stack);
+  margin-top: 0;
+  padding: var(--space-card);
   border: 1px solid rgba(148, 209, 89, 0.1);
   background:
     linear-gradient(180deg, rgba(244, 248, 243, 0.56) 0%, rgba(234, 241, 233, 0.4) 100%),
@@ -2341,9 +2344,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-dashboard-secondary-row {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
-  gap: 14px;
+  gap: var(--space-section);
   align-items: stretch;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .home-dashboard-secondary-row-main,
@@ -2359,9 +2362,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card {
   display: grid;
-  gap: 14px;
-  margin-top: 12px;
-  padding: 18px 20px;
+  gap: var(--space-stack);
+  margin-top: 0;
+  padding: var(--space-card);
   align-content: start;
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
@@ -2391,13 +2394,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-install-card-header {
-  padding: 0 0 14px;
+  padding: 0 0 var(--space-stack);
   border-bottom: 1px solid rgba(148, 209, 89, 0.14);
 }
 
 .home-install-card-body {
   display: grid;
-  gap: 16px;
+  gap: var(--space-stack);
   align-content: space-between;
   min-height: 0;
   height: 100%;
@@ -2406,7 +2409,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card-copy {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--space-stack);
   min-width: 0;
 }
 
@@ -2483,7 +2486,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-directions {
   display: grid;
-  gap: 14px;
+  gap: var(--space-stack);
   align-content: start;
 }
 
@@ -2900,7 +2903,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 20px;
+  gap: var(--space-section);
 }
 
 @media (max-width: 900px) {
@@ -3069,8 +3072,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-card-body {
   display: grid;
-  gap: 14px;
-  padding: 18px 18px 20px;
+  gap: var(--space-stack);
+  padding: var(--space-card);
   min-width: 0;
 }
 
@@ -3511,14 +3514,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-review-section,
 .gallery-review-list {
   display: grid;
-  gap: 18px;
+  gap: var(--space-section);
 }
 
 .gallery-review-card {
   display: grid;
   grid-template-columns: 200px minmax(0, 1fr);
-  gap: 18px;
-  padding: 18px;
+  gap: var(--space-section);
+  padding: var(--space-card);
   border-radius: 18px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -3527,8 +3530,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-devtools-panel {
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--space-stack);
+  padding: var(--space-card);
   border-radius: 18px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -3536,7 +3539,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .mock-data-admin-section {
-  margin-top: 16px;
+  margin-top: var(--space-section);
   border: 1px solid rgba(109, 124, 113, 0.28);
   background:
     linear-gradient(180deg, rgba(34, 44, 38, 0.96) 0%, rgba(25, 33, 28, 0.94) 100%);
@@ -3556,13 +3559,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .mock-data-admin-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
+  gap: var(--space-section);
   align-items: center;
 }
 
 .mock-data-admin-copy {
   display: grid;
-  gap: 6px;
+  gap: var(--space-stack);
 }
 
 .mock-data-admin-copy h3,
@@ -4875,7 +4878,7 @@ body.theme-dark .theme-toggle-button:hover {
 .field-grid,
 .detail-meta {
   display: grid;
-  gap: 14px;
+  gap: var(--space-section);
 }
 
 .summary-grid,
@@ -4885,7 +4888,7 @@ body.theme-dark .theme-toggle-button:hover {
 
 .stat-card {
   display: grid;
-  gap: 8px;
+  gap: var(--space-stack);
   min-height: 112px;
 }
 
@@ -5031,7 +5034,7 @@ body.theme-dark .theme-toggle-button:hover {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-stack);
 }
 
 @media (max-width: 1080px) {
@@ -7954,6 +7957,12 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 }
 
 @media (max-width: 640px) {
+  :root {
+    --space-section: 18px;
+    --space-card: 18px;
+    --space-stack: 10px;
+  }
+
   .app-shell {
     width: min(100% - 16px, 1280px);
     padding-top: 12px;
@@ -7977,7 +7986,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .card {
-    padding: 18px;
+    padding: var(--space-card);
   }
 
   .button,
