@@ -10427,7 +10427,6 @@ function renderHomeSecondaryInfoRowMarkup() {
       <div class="home-dashboard-secondary-row-top">
         ${renderHomeGalleryRankingsTeaser()}
         <div class="home-dashboard-secondary-side-column">
-          ${renderFilterPaperCardMarkup()}
           ${renderHomeInstallInfoCardMarkup()}
         </div>
       </div>
@@ -13530,9 +13529,6 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });
-  bindFilterPaperCardActions(app.querySelector(".home-dashboard-secondary-row"), {
-    onSave: () => safeRender(),
-  });
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
@@ -16356,7 +16352,7 @@ function renderSessionsList() {
   applySupplyStatusToSessionEntryButtons(app);
   const sessionsHeader = document.querySelector("#grow-sessions-header");
   if (sessionsHeader) {
-    sessionsHeader.insertAdjacentHTML("afterend", renderSessionsFilterPaperCardMarkup());
+    sessionsHeader.insertAdjacentHTML("afterend", renderFilterPaperCardMarkup());
     bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
       onSave: () => safeRender(),
     });
