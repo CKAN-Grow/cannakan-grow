@@ -13612,7 +13612,7 @@ function renderHomeInstallInfoCardMarkup() {
                   <span>Cannakan® Grow</span>
                 </div>
                 <div class="home-install-phone-stat">
-                  <div class="home-install-progress-ring home-install-phone-stat-ring">
+                  <div class="home-install-progress-ring home-install-phone-stat-ring is-animated">
                     <span>98%</span>
                   </div>
                   <p class="home-install-phone-stat-label">Germination</p>

@@ -32,6 +32,12 @@
   --space-stack: var(--space-3);
 }
 
+@property --install-ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
 body.theme-dark {
   --bg: #151815;
   --surface: #1e221f;
@@ -2958,6 +2964,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-progress-ring,
 .home-install-phone-stat-ring {
+  --install-ring-angle: 352.8deg;
   width: 128px;
   height: 128px;
   display: grid;
@@ -2965,13 +2972,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(18, 31, 20, 0.96) 58%, transparent 59%),
-    conic-gradient(#94d159 0 352.8deg, rgba(255, 255, 255, 0.08) 352.8deg 360deg);
+    conic-gradient(#94d159 0 var(--install-ring-angle), rgba(255, 255, 255, 0.08) var(--install-ring-angle) 360deg);
   box-shadow:
     inset 0 0 18px rgba(148, 209, 89, 0.12),
     0 0 18px rgba(148, 209, 89, 0.12);
 }
 
 .home-install-card .home-install-card-preview .home-install-progress-ring {
+  --install-ring-angle: 352.8deg;
   width: 128px;
   height: 128px;
   display: grid;
@@ -2979,10 +2987,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(18, 31, 20, 0.96) 58%, transparent 59%),
-    conic-gradient(#94d159 0 352.8deg, rgba(255, 255, 255, 0.08) 352.8deg 360deg);
+    conic-gradient(#94d159 0 var(--install-ring-angle), rgba(255, 255, 255, 0.08) var(--install-ring-angle) 360deg);
   box-shadow:
     inset 0 0 18px rgba(148, 209, 89, 0.12),
     0 0 18px rgba(148, 209, 89, 0.12);
+}
+
+.home-install-card .home-install-card-preview .home-install-progress-ring.is-animated,
+.home-install-card .home-install-card-preview .home-install-phone-stat-ring.is-animated {
+  --install-ring-angle: 0deg;
+  animation: home-install-ring-fill 1.2s ease-out forwards;
 }
 
 .home-install-phone-stat-ring span {
@@ -3055,6 +3069,44 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow:
     0 10px 18px rgba(127, 182, 67, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+@keyframes home-install-ring-fill {
+  0% {
+    --install-ring-angle: 0deg;
+    box-shadow:
+      inset 0 0 10px rgba(148, 209, 89, 0.06),
+      0 0 10px rgba(148, 209, 89, 0.06);
+  }
+
+  82% {
+    --install-ring-angle: 352.8deg;
+    box-shadow:
+      inset 0 0 18px rgba(148, 209, 89, 0.12),
+      0 0 18px rgba(148, 209, 89, 0.12);
+  }
+
+  92% {
+    --install-ring-angle: 352.8deg;
+    box-shadow:
+      inset 0 0 24px rgba(148, 209, 89, 0.2),
+      0 0 24px rgba(148, 209, 89, 0.24);
+  }
+
+  100% {
+    --install-ring-angle: 352.8deg;
+    box-shadow:
+      inset 0 0 18px rgba(148, 209, 89, 0.14),
+      0 0 20px rgba(148, 209, 89, 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-install-card .home-install-card-preview .home-install-progress-ring.is-animated,
+  .home-install-card .home-install-card-preview .home-install-phone-stat-ring.is-animated {
+    --install-ring-angle: 352.8deg;
+    animation: none;
+  }
 }
 
 .home-install-card .home-install-card-preview .home-install-phone-button {
