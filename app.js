@@ -13242,9 +13242,9 @@ function renderHomeInstallInfoCardMarkup() {
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
         <div class="home-install-card-preview" aria-hidden="true">
-          <div class="home-install-phone-mockup">
+          <div class="phone-mock home-install-phone-mockup">
             <div class="home-install-phone-notch"></div>
-            <div class="home-install-phone-screen">
+            <div class="phone-screen home-install-phone-screen">
               <div class="home-install-phone-screen-head">
                 <span class="home-install-phone-screen-dot"></span>
                 <span>Cannakan Grow</span>
