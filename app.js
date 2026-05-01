@@ -14735,6 +14735,7 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   const sessions = sortSessionsNewestFirst(getSessions());
+  const hasSessionHistory = sessions.length > 0;
   const activeContainer = document.querySelector("#active-sessions-list");
   const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
   const historyContainer = document.querySelector("#sessions-list");
@@ -14744,8 +14745,8 @@ function renderSessionsList() {
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
   renderSessionCollection(activeContainer, activeSessions, {
-    emptyMessage: "No active sessions.",
-    emptyActionLabel: "Create your first session",
+    emptyMessage: hasSessionHistory ? "No active sessions." : "No sessions yet.",
+    emptyActionLabel: hasSessionHistory ? "Start New Session" : "Create your first session",
     compact: false,
   });
 
