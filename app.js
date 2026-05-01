@@ -2668,7 +2668,7 @@ function ensureAuthModal() {
       <button type="button" class="modal-close" data-auth-modal-close aria-label="Close sign in">×</button>
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Secure Access</p>
-        <h3 id="auth-modal-title">Sign in to Cannakan Grow</h3>
+        <h3 id="auth-modal-title">Sign in to Cannakan® Grow</h3>
         <p class="muted">Use your email and password to save and manage sessions across devices.</p>
       </div>
       <div id="auth-modal-body"></div>
@@ -12075,7 +12075,7 @@ function render() {
   if (!appState.initialized || appState.loading || !appState.authReady) {
     const shouldRenderAnnouncementDuringLoad = route === "home" || !route;
     app.innerHTML = `
-      <section class="card"><p class="muted">Loading Cannakan Grow...</p></section>
+      <section class="card"><p class="muted">Loading Cannakan® Grow...</p></section>
       ${shouldRenderAnnouncementDuringLoad ? renderHomeAnnouncementCard() : ""}
     `;
     bindMessageBoardImageFallbacks(app);
@@ -13609,7 +13609,7 @@ function renderHomeInstallInfoCardMarkup() {
               <div class="phone-screen home-install-phone-screen">
                 <div class="home-install-phone-screen-head">
                   <span class="home-install-phone-screen-dot"></span>
-                  <span>Cannakan Grow</span>
+                  <span>Cannakan® Grow</span>
                 </div>
                 <div class="home-install-phone-stat">
                   <div class="home-install-progress-ring home-install-phone-stat-ring">
@@ -15228,7 +15228,7 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
       </div>
       <div class="home-announcement-card-body">
         <div class="home-announcement-card-copy">
-          <p class="home-announcement-card-label">Latest from Cannakan</p>
+          <p class="home-announcement-card-label">Latest from Cannakan®</p>
           <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
           ${captionMarkup}
         </div>
