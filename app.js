@@ -179,12 +179,18 @@ const MOCK_DATA_ADMIN_EMAILS = new Set([
 ]);
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
-function isConfiguredAdminEmail(email) {
-  return ADMIN_EMAILS.has(String(email || "").trim().toLowerCase());
+function isAdminUser(user = appState.user) {
+  const normalizedEmail = String(
+    typeof user === "string"
+      ? user
+      : (user?.email || "")
+  ).trim().toLowerCase();
+  return ADMIN_EMAILS.has(normalizedEmail);
 }
 
 function syncAdminNavigationVisibility() {
-  const shouldShowAdminNav = Boolean(appState.user && isAdminUser());
+  const currentUserEmail = String(appState.user?.email || "").trim().toLowerCase();
+  const shouldShowAdminNav = Boolean(appState.user && isAdminUser(appState.user));
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
     link.hidden = !shouldShowAdminNav;
     if (shouldShowAdminNav) {
@@ -192,6 +198,11 @@ function syncAdminNavigationVisibility() {
     } else {
       link.setAttribute("aria-hidden", "true");
     }
+  });
+  console.log("[Cannakan Admin Nav] Navigation visibility evaluated", {
+    currentUserEmail,
+    isAdminUser: shouldShowAdminNav,
+    adminNavRendered: shouldShowAdminNav,
   });
 }
 
@@ -1359,7 +1370,7 @@ function removeSampleSessions() {
 
 function canAccessMockDataControls() {
   const email = String(appState.user?.email || "").trim().toLowerCase();
-  return Boolean(appState.isAdmin || MOCK_DATA_ADMIN_EMAILS.has(email));
+  return Boolean(isAdminUser(appState.user) || MOCK_DATA_ADMIN_EMAILS.has(email));
 }
 
 function isMockDataEnabled() {
@@ -2213,7 +2224,7 @@ async function loadAdminStatus() {
     return false;
   }
 
-  const isAdmin = isConfiguredAdminEmail(appState.user.email);
+  const isAdmin = isAdminUser(appState.user);
   logGrowGalleryDebug("loadAdminStatus:resolved", {
     email: appState.user.email || "",
     userId: appState.user.id || "",
@@ -2282,7 +2293,7 @@ async function refreshRegisteredMemberCount(options = {}) {
 }
 
 function getMemberRole(email = "") {
-  return isConfiguredAdminEmail(email) ? "admin" : "member";
+  return isAdminUser(email) ? "admin" : "member";
 }
 
 function formatMemberDateLabel(value) {
@@ -2636,17 +2647,6 @@ function hasCompletedProfile(profile = appState.profile) {
 
 function getProfileDisplayName() {
   return appState.profile?.username || appState.user?.email || "Signed in";
-}
-
-function isAdminUser(profile = appState.profile) {
-  const isAdmin = Boolean(appState.isAdmin || isConfiguredAdminEmail(appState.user?.email));
-  logGrowGalleryDebug("isAdminUser:checked", {
-    email: appState.user?.email || "",
-    userId: appState.user?.id || "",
-    appStateIsAdmin: Boolean(appState.isAdmin),
-    isAdmin,
-  });
-  return isAdmin;
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -5354,7 +5354,14 @@ function updateAuthStatus() {
   const themeTarget = appState.theme === "dark" ? "light" : "dark";
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
-  const showAdminMenuItem = Boolean(appState.user && isAdminUser());
+  const currentUserEmail = String(appState.user?.email || "").trim().toLowerCase();
+  const currentUserIsAdmin = Boolean(appState.user && isAdminUser(appState.user));
+  const showAdminMenuItem = currentUserIsAdmin;
+  console.log("[Cannakan Admin Nav] Account menu render", {
+    currentUserEmail,
+    isAdminUser: currentUserIsAdmin,
+    adminDropdownItemRendered: showAdminMenuItem,
+  });
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
