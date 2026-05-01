@@ -10012,22 +10012,30 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
   };
 }
 
+function serializeCssUrlValue(value) {
+  return JSON.stringify(String(value || ""));
+}
+
 function renderHomeAnnouncementCard() {
   const cardData = getHomeAnnouncementCardData();
   const isFallback = !getLatestActiveAnnouncement();
-  const visualImageUrl = cardData.imageUrl || "/assets/wow-fallback.png";
+  const primaryVisualImageUrl = cardData.imageUrl || "/assets/wow-fallback.png";
+  const fallbackVisualImageUrl = !cardData.imageUrl ? "/Assets/wow-fallback.png" : "";
+  const visualBackgroundStyle = cardData.imageUrl
+    ? `--home-announcement-card-visual-image:url(${serializeCssUrlValue(primaryVisualImageUrl)});`
+    : `--home-announcement-card-visual-image:url(${serializeCssUrlValue(primaryVisualImageUrl)}), url(${serializeCssUrlValue(fallbackVisualImageUrl)});`;
   console.log("[Cannakan Announcements] Home announcement section rendered", {
     hasActiveAnnouncement: !isFallback,
     title: cardData.title,
   });
+  console.log("[Cannakan Announcements] Home announcement image resolved", {
+    requestedImagePath: primaryVisualImageUrl,
+    fallbackImagePath: fallbackVisualImageUrl,
+    usingAnnouncementImage: Boolean(cardData.imageUrl),
+  });
   const imageMarkup = `
-      <div class="home-announcement-card-visual-shell${cardData.imageUrl ? "" : " home-announcement-card-visual-shell--fallback"}">
-        <img
-          src="${escapeHtml(visualImageUrl)}"
-          alt="Latest Cannakan announcement"
-          class="home-announcement-card-image${cardData.imageUrl ? "" : " home-announcement-card-image--fallback"}"
-        >
-        ${cardData.imageUrl ? "" : '<div class="home-announcement-card-image-overlay" aria-hidden="true"></div>'}
+      <div class="home-announcement-card-visual-shell${cardData.imageUrl ? "" : " home-announcement-card-visual-shell--fallback"}" style="${escapeHtml(visualBackgroundStyle)}">
+        <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
       </div>
     `;
   const captionMarkup = cardData.fallbackType === "joke"
