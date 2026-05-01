@@ -18,6 +18,7 @@
   --field-focus-bg: #ffffff;
   --field-placeholder: #899589;
   --radius: 20px;
+  --page-section-gap: 24px;
   --space-section: 24px;
   --space-card: 24px;
   --space-stack: 12px;
@@ -103,7 +104,7 @@ textarea {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  margin-top: 28px;
+  margin-top: var(--page-section-gap);
   padding: 16px 24px;
   border-top: 1px solid rgba(148, 209, 89, 0.16);
   box-shadow: 0 -1px 0 rgba(148, 209, 89, 0.04);
@@ -650,7 +651,13 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .app-main {
   display: grid;
-  gap: var(--space-section);
+  gap: var(--page-section-gap);
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap);
 }
 
 .card {
@@ -667,11 +674,6 @@ body.theme-dark .install-app-banner-ios-tip {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-}
-
-.dashboard-bar + .spotlight-card,
-.spotlight-card + .summary-grid {
-  margin-top: var(--space-section);
 }
 
 .dashboard-bar h2 {

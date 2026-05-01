@@ -204,101 +204,103 @@
   </template>
 
   <template id="home-template">
-    <section class="dashboard-bar card">
-      <div class="section-title-with-icon">
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <g transform="translate(12 12) scale(1.28) translate(-12 -12)">
-            <path d="M12 18.5v-4.5"></path>
-            <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
-            <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
-            <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
-            <path d="M10.1 21h4.2"></path>
-          </g>
-        </svg>
-        <div>
-          <p class="eyebrow">Session Dashboard</p>
-          <h2>Grow sessions</h2>
-          <p class="dashboard-subtitle">Track what is active, what is performing best, and what needs your attention next.</p>
-        </div>
-      </div>
-      <div class="hero-actions">
-        <a class="button button-new-session" href="#new" data-session-entry="true">New Session</a>
-        <a class="button button-secondary" href="#sessions">All Sessions</a>
-      </div>
-    </section>
-
-    <section id="active-session-spotlight" class="card spotlight-card" aria-labelledby="active-session-spotlight-title">
-      <div class="spotlight-head">
+    <div class="page-content home-page-content">
+      <section class="dashboard-bar card">
         <div class="section-title-with-icon">
           <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M4.5 14h3l2.2-4 3.1 8 2.2-5H19.5"></path>
-            <path d="M4.5 19.5h15"></path>
-            <path d="M7.5 6.5h9"></path>
+            <g transform="translate(12 12) scale(1.28) translate(-12 -12)">
+              <path d="M12 18.5v-4.5"></path>
+              <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
+              <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
+              <path d="M9.6 18.9c.4-1.8 1.6-3 2.9-3s2.4 1.2 2.8 3"></path>
+              <path d="M10.1 21h4.2"></path>
+            </g>
           </svg>
           <div>
-            <p class="eyebrow">Active Session</p>
-            <h3 id="active-session-spotlight-title">Active Session Spotlight</h3>
+            <p class="eyebrow">Session Dashboard</p>
+            <h2>Grow sessions</h2>
+            <p class="dashboard-subtitle">Track what is active, what is performing best, and what needs your attention next.</p>
           </div>
         </div>
-        <span id="active-session-spotlight-stage" class="spotlight-stage-pill">Soaking</span>
-      </div>
-      <div class="spotlight-body">
-        <div class="spotlight-main">
-          <strong id="active-session-spotlight-name" class="spotlight-name">No active sessions</strong>
-          <p id="active-session-spotlight-date" class="spotlight-date"></p>
-          <p id="active-session-spotlight-description" class="spotlight-description"></p>
-          <div class="spotlight-meta">
-            <article class="spotlight-stat">
-              <span>Stage Timer</span>
-              <strong id="active-session-spotlight-timer">0 minutes</strong>
-            </article>
-            <article class="spotlight-stat">
-              <span>Seeds Progress</span>
-              <strong id="active-session-spotlight-seeds">0 / 0</strong>
-            </article>
-            <article class="spotlight-stat">
-              <span>Germination</span>
-              <strong id="active-session-spotlight-rate">0%</strong>
-            </article>
+        <div class="hero-actions">
+          <a class="button button-new-session" href="#new" data-session-entry="true">New Session</a>
+          <a class="button button-secondary" href="#sessions">All Sessions</a>
+        </div>
+      </section>
+
+      <section id="active-session-spotlight" class="card spotlight-card" aria-labelledby="active-session-spotlight-title">
+        <div class="spotlight-head">
+          <div class="section-title-with-icon">
+            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M4.5 14h3l2.2-4 3.1 8 2.2-5H19.5"></path>
+              <path d="M4.5 19.5h15"></path>
+              <path d="M7.5 6.5h9"></path>
+            </svg>
+            <div>
+              <p class="eyebrow">Active Session</p>
+              <h3 id="active-session-spotlight-title">Active Session Spotlight</h3>
+            </div>
+          </div>
+          <span id="active-session-spotlight-stage" class="spotlight-stage-pill">Soaking</span>
+        </div>
+        <div class="spotlight-body">
+          <div class="spotlight-main">
+            <strong id="active-session-spotlight-name" class="spotlight-name">No active sessions</strong>
+            <p id="active-session-spotlight-date" class="spotlight-date"></p>
+            <p id="active-session-spotlight-description" class="spotlight-description"></p>
+            <div class="spotlight-meta">
+              <article class="spotlight-stat">
+                <span>Stage Timer</span>
+                <strong id="active-session-spotlight-timer">0 minutes</strong>
+              </article>
+              <article class="spotlight-stat">
+                <span>Seeds Progress</span>
+                <strong id="active-session-spotlight-seeds">0 / 0</strong>
+              </article>
+              <article class="spotlight-stat">
+                <span>Germination</span>
+                <strong id="active-session-spotlight-rate">0%</strong>
+              </article>
+            </div>
+          </div>
+          <div class="spotlight-actions">
+            <a id="active-session-spotlight-action" class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
           </div>
         </div>
-        <div class="spotlight-actions">
-          <a id="active-session-spotlight-action" class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="summary-grid">
-      <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
-        <span class="stat-label">Active Sessions</span>
-        <strong id="active-session-count" class="stat-value">0</strong>
-        <p id="active-session-subtext" class="summary-subtext">in progress</p>
-      </a>
-      <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
-        <span class="stat-label">Saved Sessions</span>
-        <strong id="session-count" class="stat-value">0</strong>
-        <p class="summary-subtext">total saved</p>
-      </a>
-      <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="#sessions">
-        <div class="best-session-header">
-          <span class="stat-label">Best Session</span>
-          <span class="best-session-indicator">Best</span>
-        </div>
-        <strong id="best-session-name" class="best-session-name">No completed sessions yet</strong>
-        <p id="best-session-date" class="summary-subtext"></p>
-        <p id="best-session-result" class="best-session-result"></p>
-      </a>
-      <article class="card stat-card overall-rate-card card-accent card-accent-brown">
-        <span class="stat-label">All Sessions Germination Rate</span>
-        <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
-        <p id="overall-germination-total" class="overall-rate-total">0 / 0 seeds</p>
-        <div class="overall-rate-bar" aria-label="Overall germination rate">
-          <div id="overall-germination-fill" class="overall-rate-fill"></div>
-        </div>
-      </article>
-    </section>
+      <section class="summary-grid">
+        <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
+          <span class="stat-label">Active Sessions</span>
+          <strong id="active-session-count" class="stat-value">0</strong>
+          <p id="active-session-subtext" class="summary-subtext">in progress</p>
+        </a>
+        <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
+          <span class="stat-label">Saved Sessions</span>
+          <strong id="session-count" class="stat-value">0</strong>
+          <p class="summary-subtext">total saved</p>
+        </a>
+        <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="#sessions">
+          <div class="best-session-header">
+            <span class="stat-label">Best Session</span>
+            <span class="best-session-indicator">Best</span>
+          </div>
+          <strong id="best-session-name" class="best-session-name">No completed sessions yet</strong>
+          <p id="best-session-date" class="summary-subtext"></p>
+          <p id="best-session-result" class="best-session-result"></p>
+        </a>
+        <article class="card stat-card overall-rate-card card-accent card-accent-brown">
+          <span class="stat-label">All Sessions Germination Rate</span>
+          <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
+          <p id="overall-germination-total" class="overall-rate-total">0 / 0 seeds</p>
+          <div class="overall-rate-bar" aria-label="Overall germination rate">
+            <div id="overall-germination-fill" class="overall-rate-fill"></div>
+          </div>
+        </article>
+      </section>
 
-    <div id="home-dashboard-message-board-anchor"></div>
+      <div id="home-dashboard-message-board-anchor"></div>
+    </div>
   </template>
 
   <template id="gallery-template">
