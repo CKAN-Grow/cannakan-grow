@@ -607,6 +607,38 @@ async function resolveSupabaseAuthSession(reason = "unspecified", sessionHint = 
   }
 }
 
+async function getAuthenticatedSupabaseUser(friendlyMessage = "Please sign in to save your session.") {
+  if (!appState.supabase) {
+    throw new Error("Cloud sync is not available right now.");
+  }
+
+  try {
+    const { data, error } = await withTimeout(
+      appState.supabase.auth.getUser(),
+      8000,
+      friendlyMessage,
+    );
+    if (error) {
+      throw error;
+    }
+
+    const user = data?.user || null;
+    if (!user?.id) {
+      throw new Error(friendlyMessage);
+    }
+
+    if (!appState.user || appState.user.id !== user.id) {
+      appState.user = user;
+      appState.currentUserEmail = String(user.email || "").trim();
+    }
+
+    return user;
+  } catch (error) {
+    const fallbackMessage = String(error?.message || "").trim();
+    throw new Error(fallbackMessage || friendlyMessage);
+  }
+}
+
 async function safelyLoadAppData(loader, fallbackValue, errorContext, errorStateKey = "") {
   try {
     return await loader();
@@ -6286,7 +6318,8 @@ function isDeletionScheduled(profile = appState.profile) {
 }
 
 async function createCloudSession(session) {
-  const record = mapSessionToRecord(session, appState.user.id);
+  const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
+  const record = mapSessionToRecord(session, authUser.id);
   const { data, error } = await appState.supabase
     .from("grow_sessions")
     .insert(record)
@@ -6308,7 +6341,8 @@ async function createCloudSession(session) {
 }
 
 async function updateCloudSession(session) {
-  const record = mapSessionToRecord(session, appState.user.id);
+  const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
+  const record = mapSessionToRecord(session, authUser.id);
   const { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
     .select("session_status,completed_at")
