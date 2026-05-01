@@ -730,6 +730,9 @@ function resetSessionScopedAppState() {
   appState.adminMessagesError = "";
   appState.adminMessagesRefreshPromise = null;
   appState.adminMessageStatusFilter = "all";
+  appState.adminMessageIssueTypeFilter = "all";
+  appState.adminMessageExpandedState = {};
+  appState.mockAdminMessages = [];
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -765,6 +768,9 @@ function resetSessionScopedAppState() {
   appState.growNetworkActivityError = "";
   appState.growNetworkActivityRefreshPromise = null;
   appState.communityActivityTableUnavailable = false;
+  if (!isSupabaseRecoveryHash(window.location.hash || "")) {
+    appState.authRecoveryMode = false;
+  }
   appState.siteVisitorAnalyticsRows = [];
   appState.siteVisitorAnalyticsLoaded = false;
   appState.siteVisitorAnalyticsLoadedFilter = "";
