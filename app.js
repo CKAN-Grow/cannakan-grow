@@ -3317,7 +3317,7 @@ function getCurrentSiteAnalyticsPageContext() {
     return buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "grow-network",
-      pageLabel: "My Grow Network",
+      pageLabel: "Grow Network",
       pagePath: rawRoute ? `#${rawRoute}` : "#network",
     });
   }
@@ -5328,12 +5328,30 @@ function buildGrowNetworkActivities(followedMemberIds = []) {
       const avatarUrl = profile?.avatarUrl || String(snapshot?.profileImageUrl || "").trim();
       const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
       const hasSessionContext = Boolean(String(snapshot?.sessionDate || "").trim() || String(snapshot?.title || "").trim());
+      const successPercent = Math.max(0, Number(snapshot?.successPercent) || 0);
+      const totalSeeds = Math.max(0, Number(snapshot?.totalSeeds) || 0);
+      const activityType = hasSessionContext
+        ? (successPercent > 0 || totalSeeds > 0
+          ? "completed-session"
+          : "shared-session")
+        : "approved-snapshot";
+      const typeLabel = activityType === "completed-session"
+        ? "Completed public session"
+        : (activityType === "shared-session"
+          ? "Public session shared"
+          : "New approved Community Grow snapshot");
+      const typeMeta = activityType === "completed-session"
+        ? "Approved in Community Grow"
+        : (activityType === "shared-session"
+          ? "Public session now visible"
+          : "Approved in Community Grow");
       return {
         id: `snapshot-${snapshot.id}`,
-        typeLabel: hasSessionContext ? "Shared a public grow session" : "New approved Community Grow snapshot",
-        typeMeta: hasSessionContext ? "Approved in Community Grow" : "",
+        activityType,
+        typeLabel,
+        typeMeta,
         title: String(snapshot?.title || "").trim() || "Grow Snapshot",
-        successPercent: Math.max(0, Number(snapshot?.successPercent) || 0),
+        successPercent,
         occurredAt: snapshot?.publishedAt || snapshot?.createdAt || "",
         memberId,
         displayName,
@@ -10994,7 +11012,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "grow-network",
-      pageLabel: "My Grow Network",
+      pageLabel: "Grow Network",
       pagePath: "#network",
     }));
     void refreshGallerySnapshots("route:grow-network");
@@ -18831,11 +18849,14 @@ function renderGrowNetworkPage() {
         ${followingEntries.map((entry) => {
           const memberId = entry.memberId;
           const profile = getPublicMemberProfile(memberId);
-          const summary = getPublicMemberFollowSummary(memberId);
           const displayName = profile?.displayName || "Community member";
           const avatarUrl = profile?.avatarUrl || "";
-          const followerCount = summary ? summary.followerCount.toLocaleString() : "--";
-          const followingCount = summary ? summary.followingCount.toLocaleString() : "--";
+          const publicSnapshotCount = getApprovedPublicSnapshotsForMember(memberId).length;
+          const publicSnapshotLabel = isLoadingNetworkActivity
+            ? "Public snapshot count loading..."
+            : (publicSnapshotCount === 1
+              ? "1 public snapshot"
+              : `${publicSnapshotCount.toLocaleString()} public snapshots`);
           return `
             <article class="grow-network-member-card">
               <a class="grow-network-member-identity" href="${escapeHtml(getPublicMemberProfileRoute(memberId))}">
@@ -18844,7 +18865,7 @@ function renderGrowNetworkPage() {
                 </span>
                 <span class="grow-network-member-copy">
                   <strong>${escapeHtml(displayName)}</strong>
-                  <span>${escapeHtml(`${followerCount} followers · ${followingCount} following`)}</span>
+                  <span>${escapeHtml(publicSnapshotLabel)}</span>
                 </span>
               </a>
               <div class="grow-network-member-actions">
@@ -18907,6 +18928,7 @@ function renderGrowNetworkPage() {
             <div class="grow-network-feed-body">
               <strong class="grow-network-feed-title">${escapeHtml(activity.title)}</strong>
               <div class="grow-network-feed-meta">
+                <span class="gallery-card-chip">${escapeHtml(activity.typeLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(`${activity.germinationRateLabel} germination`)}</span>
                 ${activity.sourceLabel && activity.sourceLabel !== "Unknown source" ? `<span class="gallery-card-chip">${escapeHtml(activity.sourceLabel)}</span>` : ""}
                 ${activity.typeMeta ? `<span class="gallery-card-chip">${escapeHtml(activity.typeMeta)}</span>` : ""}
@@ -18933,9 +18955,9 @@ function renderGrowNetworkPage() {
             <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
           </svg>
           <div>
-            <p class="eyebrow">My Grow Network</p>
-            <h2>Following</h2>
-            <p class="muted">Keep up with public Community Grow activity from members you follow.</p>
+            <p class="eyebrow">COMMUNITY</p>
+            <h2>Grow Network</h2>
+            <p class="muted">Follow members and see public grow activity from your network.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -18946,8 +18968,8 @@ function renderGrowNetworkPage() {
         <section class="grow-network-section">
           <div class="section-heading grow-network-section-heading">
             <div>
-              <p class="eyebrow">Network</p>
-              <h3>Members you follow</h3>
+              <p class="eyebrow">Following</p>
+              <h3>People You Follow</h3>
             </div>
           </div>
           ${renderFollowingListMarkup()}
@@ -18955,8 +18977,8 @@ function renderGrowNetworkPage() {
         <section class="grow-network-section">
           <div class="section-heading grow-network-section-heading">
             <div>
-              <p class="eyebrow">Activity Feed</p>
-              <h3>Recent public activity</h3>
+              <p class="eyebrow">Activity</p>
+              <h3>Network Activity</h3>
             </div>
           </div>
           ${renderActivityFeedMarkup()}
