@@ -2344,20 +2344,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-dashboard-secondary-row {
   display: grid;
   gap: var(--space-section);
-  align-items: stretch;
+  align-items: start;
   margin-top: 0;
+}
+
+.home-dashboard-secondary-row-top {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+  gap: var(--space-section);
+  align-items: start;
 }
 
 .home-dashboard-secondary-row-bottom {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-section);
-  align-items: stretch;
+  align-items: start;
 }
 
-.home-dashboard-secondary-row .home-gallery-rankings-card,
-.home-dashboard-secondary-row .home-install-card,
-.home-dashboard-secondary-row .mock-data-admin-section {
+.home-dashboard-secondary-row-top .home-gallery-rankings-card,
+.home-dashboard-secondary-row-top .home-install-card,
+.home-dashboard-secondary-row-bottom .mock-data-admin-section {
   margin-top: 0;
   height: 100%;
 }
@@ -6200,8 +6206,8 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-dashboard-secondary-row {
-    grid-template-columns: minmax(0, 1fr);
+  .home-dashboard-secondary-row-top {
+    grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
   }
 
   .admin-mini-grid {
@@ -6244,6 +6250,15 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-dashboard-secondary-row {
+    gap: 12px;
+  }
+
+  .home-dashboard-secondary-row-top {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .home-dashboard-secondary-row-bottom {
     gap: 12px;
   }
 

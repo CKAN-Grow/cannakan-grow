@@ -8457,14 +8457,15 @@ function renderHomeAdminUtilityCardMarkup() {
 
 function renderHomeSecondaryInfoRowMarkup() {
   const announcementMarkup = renderHomeAnnouncementCard();
+  const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   return `
     <div class="home-dashboard-secondary-row">
-      ${renderHomeGalleryRankingsTeaser()}
-      ${announcementMarkup}
-      <div class="home-dashboard-secondary-row-bottom">
+      <div class="home-dashboard-secondary-row-top">
+        ${renderHomeGalleryRankingsTeaser()}
         ${renderHomeInstallInfoCardMarkup()}
-        ${renderHomeAdminUtilityCardMarkup()}
       </div>
+      ${announcementMarkup}
+      ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
     </div>
   `;
 }
