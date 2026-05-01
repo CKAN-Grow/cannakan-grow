@@ -84,10 +84,14 @@ const authStatus = document.querySelector("#auth-status");
 const appState = {
   initialized: false,
   loading: true,
+  authReady: false,
+  authHydrationPromise: null,
+  lastHydratedAuthSessionKey: "",
   supabase: null,
   authSession: null,
   user: null,
   isAdmin: false,
+  mockDataEnabled: false,
   profile: null,
   profileError: "",
   authNotice: "",
@@ -180,16 +184,35 @@ const MOCK_DATA_ADMIN_EMAILS = new Set([
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
 function isAdminUser(user = appState.user) {
-  const normalizedEmail = String(
+  const normalizedEmail = getNormalizedUserEmail(user);
+  return ADMIN_EMAILS.has(normalizedEmail);
+}
+
+function getNormalizedUserEmail(user = appState.user) {
+  return String(
     typeof user === "string"
       ? user
       : (user?.email || "")
   ).trim().toLowerCase();
-  return ADMIN_EMAILS.has(normalizedEmail);
+}
+
+function getAuthSessionHydrationKey(session) {
+  const userId = String(session?.user?.id || "").trim();
+  const email = getNormalizedUserEmail(session?.user || null);
+  const expiresAt = String(session?.expires_at || "").trim();
+  return `${userId}|${email}|${expiresAt}`;
+}
+
+function setTopbarNavigationReadyState() {
+  const topbarNav = document.querySelector(".topbar-nav");
+  if (topbarNav) {
+    topbarNav.hidden = !appState.authReady;
+    topbarNav.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
+  }
 }
 
 function syncAdminNavigationVisibility() {
-  const currentUserEmail = String(appState.user?.email || "").trim().toLowerCase();
+  const currentUserEmail = getNormalizedUserEmail(appState.user);
   const shouldShowAdminNav = Boolean(appState.user && isAdminUser(appState.user));
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
     link.hidden = !shouldShowAdminNav;
@@ -204,6 +227,70 @@ function syncAdminNavigationVisibility() {
     isAdminUser: shouldShowAdminNav,
     adminNavRendered: shouldShowAdminNav,
   });
+}
+
+function resetSessionScopedAppState() {
+  appState.authSession = null;
+  appState.user = null;
+  appState.isAdmin = false;
+  appState.profile = null;
+  appState.profileError = "";
+  appState.deletionPromptShown = false;
+  appState.accountMenuOpen = false;
+  appState.sourcesLoaded = false;
+  appState.sourcesError = "";
+  appState.sourcesRefreshPromise = null;
+  appState.sourceAdminEditingId = "";
+  appState.sourceAdminMessage = "";
+  appState.announcements = [];
+  appState.announcementsLoaded = false;
+  appState.announcementsError = "";
+  appState.announcementsRefreshPromise = null;
+  appState.announcementAdminMessage = "";
+  appState.members = [];
+  appState.membersLoaded = false;
+  appState.membersError = "";
+  appState.membersRefreshPromise = null;
+  appState.memberAdminFilters = {
+    query: "",
+    role: "all",
+    status: "all",
+  };
+  appState.gallerySnapshotsLoaded = false;
+  appState.homeGalleryRankingsHydrationRequested = false;
+  resetMemberCountState();
+}
+
+async function rehydratePersistentBrowserState(reason = "unspecified") {
+  appState.mockDataEnabled = isMockDataEnabled();
+  appState.announcements = await loadAnnouncements(reason);
+  appState.announcementsLoaded = true;
+  appState.announcementsError = "";
+  const activeAnnouncement = getLatestActiveAnnouncement();
+  console.log("[Cannakan App Init] announcement loaded", {
+    reason,
+    mockDataEnabled: appState.mockDataEnabled,
+    storedAnnouncementCount: appState.announcements.length,
+    activeAnnouncementTitle: activeAnnouncement?.title || "",
+  });
+  if (!activeAnnouncement) {
+    console.log("[Cannakan App Init] announcement fallback used", {
+      title: "Grow Joke of the Day",
+      message: DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE,
+    });
+  }
+}
+
+async function safelyLoadAppData(loader, fallbackValue, errorContext, errorStateKey = "") {
+  try {
+    return await loader();
+  } catch (error) {
+    console.error(errorContext, error);
+    if (errorStateKey && error?.message) {
+      appState[errorStateKey] = error.message;
+    }
+    return fallbackValue;
+  }
 }
 
 function logGrowGalleryDebug(event, details = {}) {
@@ -266,7 +353,9 @@ async function safeBootstrapApp() {
   try {
     await bootstrapApp();
   } catch (error) {
+    appState.authReady = true;
     appState.loading = false;
+    updateAuthStatus();
     reportAppError(error, "Startup failed");
   }
 }
@@ -1866,13 +1955,21 @@ function updateNavState() {
 }
 
 async function bootstrapApp() {
+  console.log("[Cannakan App Init] start", {
+    hash: window.location.hash || "#home",
+    pathname: window.location.pathname || "/",
+  });
   appState.loading = true;
+  appState.authReady = false;
+  appState.lastHydratedAuthSessionKey = "";
+  appState.mockDataEnabled = isMockDataEnabled();
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
   appState.installPromptMode = getInstallPromptMode();
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
   bindBackToTopVisibilityObservers();
+  await rehydratePersistentBrowserState("bootstrap:start");
   updateAuthStatus();
   syncInstallPromptBanner();
   safeRender();
@@ -1880,36 +1977,54 @@ async function bootstrapApp() {
   if (appState.supabase) {
     try {
       const { data } = await withTimeout(appState.supabase.auth.getSession(), 8000, "Supabase session check timed out.");
-      await handleAuthSession(data?.session, { shouldRender: false });
+      console.log("[Cannakan App Init] auth session loaded", {
+        hasSession: Boolean(data?.session),
+        currentUserEmail: getNormalizedUserEmail(data?.session?.user || null),
+      });
+      await handleAuthSession(data?.session, {
+        shouldRender: false,
+        reason: "bootstrap:getSession",
+        force: true,
+      });
       appState.supabase.auth.onAuthStateChange((event, session) => {
         window.setTimeout(async () => {
-          await handleAuthSession(session);
+          console.log("[Cannakan App Init] auth session loaded", {
+            event,
+            hasSession: Boolean(session),
+            currentUserEmail: getNormalizedUserEmail(session?.user || null),
+          });
+          await handleAuthSession(session, {
+            reason: `auth:${String(event || "").toLowerCase()}`,
+            event,
+          });
         }, 0);
       });
     } catch (error) {
       console.error("Falling back to signed-out state after auth bootstrap failure", error);
-      appState.authSession = null;
-      appState.user = null;
+      resetSessionScopedAppState();
+      await rehydratePersistentBrowserState("bootstrap:auth-fallback");
+      appState.authReady = true;
       saveSessions([]);
     }
   } else {
+    resetSessionScopedAppState();
+    await rehydratePersistentBrowserState("local-no-supabase");
     ensureSampleSessions();
     saveSessions(loadLocalSessions());
     appState.sources = [];
     appState.sourcesLoaded = true;
     appState.sourcesError = "";
-    appState.announcements = await loadAnnouncements("local-no-supabase");
-    appState.announcementsLoaded = true;
-    appState.announcementsError = "";
     appState.members = [];
     appState.membersLoaded = true;
     appState.membersError = "";
     appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
     appState.gallerySnapshotsLoaded = true;
+    appState.authReady = true;
   }
 
   appState.initialized = true;
   appState.loading = false;
+  updateAuthStatus();
   safeRender();
 }
 
@@ -1960,69 +2075,110 @@ function loadLocalSessions() {
 }
 
 async function handleAuthSession(session, options = { shouldRender: true }) {
-  appState.authSession = session || null;
-  appState.user = session?.user || null;
-  appState.isAdmin = false;
-  appState.profile = null;
-  appState.profileError = "";
-  appState.deletionPromptShown = false;
-  appState.accountMenuOpen = false;
-  appState.sourcesLoaded = false;
-  appState.sourcesError = "";
-  appState.sourcesRefreshPromise = null;
-  appState.sourceAdminEditingId = "";
-  appState.sourceAdminMessage = "";
-  appState.announcements = [];
-  appState.announcementsLoaded = false;
-  appState.announcementsError = "";
-  appState.announcementsRefreshPromise = null;
-  appState.announcementAdminMessage = "";
-  appState.members = [];
-  appState.membersLoaded = false;
-  appState.membersError = "";
-  appState.membersRefreshPromise = null;
-  appState.memberAdminFilters = {
-    query: "",
-    role: "all",
-    status: "all",
-  };
-  appState.gallerySnapshotsLoaded = false;
-  appState.homeGalleryRankingsHydrationRequested = false;
-  resetMemberCountState();
+  const {
+    shouldRender = true,
+    reason = "auth-change",
+    force = false,
+  } = options || {};
 
-  if (appState.user) {
-    appState.profile = await ensureUserProfile(appState.user);
-    appState.isAdmin = await loadAdminStatus();
-    if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
-      appState.authNotice = "This Cannakan Grow account has been disabled. Contact an administrator for help.";
-      await appState.supabase?.auth.signOut();
-      return;
+  const nextPromise = (appState.authHydrationPromise || Promise.resolve())
+    .catch(() => {})
+    .then(async () => {
+      const sessionKey = getAuthSessionHydrationKey(session);
+      if (!force && appState.authReady && appState.lastHydratedAuthSessionKey === sessionKey) {
+        return;
+      }
+
+      resetSessionScopedAppState();
+      appState.authSession = session || null;
+      appState.user = session?.user || null;
+      appState.isAdmin = isAdminUser(appState.user);
+      await rehydratePersistentBrowserState(reason);
+      console.log("[Cannakan App Init] auth user evaluated", {
+        reason,
+        currentUserEmail: getNormalizedUserEmail(appState.user),
+        isAdminResult: appState.isAdmin,
+      });
+
+      if (appState.user) {
+        appState.profile = await safelyLoadAppData(
+          () => ensureUserProfile(appState.user),
+          null,
+          "Failed to initialize user profile during auth hydration.",
+          "profileError",
+        );
+        if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
+          appState.authNotice = "This Cannakan Grow account has been disabled. Contact an administrator for help.";
+          await appState.supabase?.auth.signOut();
+          return;
+        }
+        if (appState.isAdmin) {
+          await safelyLoadAppData(
+            () => refreshRegisteredMemberCount({ force: true }),
+            null,
+            "Failed to refresh registered member count during auth hydration.",
+            "memberCountError",
+          );
+          appState.members = await safelyLoadAppData(
+            () => loadAdminMembers("auth:signed-in"),
+            [],
+            "Failed to load admin members during auth hydration.",
+            "membersError",
+          );
+          appState.membersLoaded = true;
+        }
+        const sessions = await safelyLoadAppData(
+          () => loadUserSessions(),
+          [],
+          "Failed to load user sessions during auth hydration.",
+        );
+        saveSessions(sessions);
+        appState.sources = await safelyLoadAppData(
+          () => loadSources("auth:signed-in"),
+          [],
+          "Failed to load sources during auth hydration.",
+          "sourcesError",
+        );
+        appState.sourcesLoaded = true;
+        appState.gallerySnapshots = await safelyLoadAppData(
+          () => loadGallerySnapshots(),
+          [],
+          "Failed to load gallery snapshots during auth hydration.",
+        );
+        appState.gallerySnapshotsLoaded = true;
+      } else if (isSupabaseConfigured()) {
+        saveSessions([]);
+        appState.sources = await safelyLoadAppData(
+          () => loadSources("auth:signed-out"),
+          [],
+          "Failed to load public sources during auth hydration.",
+          "sourcesError",
+        );
+        appState.sourcesLoaded = true;
+        appState.gallerySnapshots = await safelyLoadAppData(
+          () => loadGallerySnapshots(),
+          [],
+          "Failed to load public gallery snapshots during auth hydration.",
+        );
+        appState.gallerySnapshotsLoaded = true;
+      }
+
+      appState.lastHydratedAuthSessionKey = sessionKey;
+      appState.authReady = true;
+      updateAuthStatus();
+    });
+
+  appState.authHydrationPromise = nextPromise;
+
+  try {
+    await nextPromise;
+  } finally {
+    if (appState.authHydrationPromise === nextPromise) {
+      appState.authHydrationPromise = null;
     }
-    if (appState.isAdmin) {
-      await refreshRegisteredMemberCount({ force: true });
-      appState.members = await loadAdminMembers("auth:signed-in");
-      appState.membersLoaded = true;
-    }
-    const sessions = await loadUserSessions();
-    saveSessions(sessions);
-    appState.sources = await loadSources("auth:signed-in");
-    appState.sourcesLoaded = true;
-    appState.announcements = await loadAnnouncements("auth:signed-in");
-    appState.announcementsLoaded = true;
-    appState.gallerySnapshots = await loadGallerySnapshots();
-    appState.gallerySnapshotsLoaded = true;
-  } else if (isSupabaseConfigured()) {
-    saveSessions([]);
-    appState.sources = await loadSources("auth:signed-out");
-    appState.sourcesLoaded = true;
-    appState.announcements = await loadAnnouncements("auth:signed-out");
-    appState.announcementsLoaded = true;
-    appState.gallerySnapshots = await loadGallerySnapshots();
-    appState.gallerySnapshotsLoaded = true;
   }
 
-  updateAuthStatus();
-  if (options.shouldRender !== false) {
+  if (shouldRender !== false) {
     appState.loading = false;
     safeRender();
     maybePromptScheduledDeletion();
@@ -2216,21 +2372,6 @@ async function refreshGallerySnapshotLikes(snapshotIds = [], reason = "refresh")
       likedByCurrentUser: likedSnapshotIds.has(snapshot.id),
     };
   });
-}
-
-async function loadAdminStatus() {
-  if (!appState.user) {
-    logGrowGalleryDebug("loadAdminStatus:skipped", { cause: "user-missing" });
-    return false;
-  }
-
-  const isAdmin = isAdminUser(appState.user);
-  logGrowGalleryDebug("loadAdminStatus:resolved", {
-    email: appState.user.email || "",
-    userId: appState.user.id || "",
-    isAdmin,
-  });
-  return isAdmin;
 }
 
 function resetMemberCountState() {
@@ -5348,6 +5489,14 @@ function updateAuthStatus() {
     return;
   }
 
+  setTopbarNavigationReadyState();
+
+  if (isSupabaseConfigured() && !appState.authReady) {
+    authStatus.innerHTML = `<span class="auth-pill">Checking session...</span>`;
+    syncAdminNavigationVisibility();
+    return;
+  }
+
   if (!isSupabaseConfigured()) {
     authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
     syncAdminNavigationVisibility();
@@ -5363,7 +5512,7 @@ function updateAuthStatus() {
   const themeTarget = appState.theme === "dark" ? "light" : "dark";
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
-  const currentUserEmail = String(appState.user?.email || "").trim().toLowerCase();
+  const currentUserEmail = getNormalizedUserEmail(appState.user);
   const currentUserIsAdmin = Boolean(appState.user && isAdminUser(appState.user));
   const showAdminMenuItem = currentUserIsAdmin;
   console.log("[Cannakan Admin Nav] Account menu render", {
@@ -7441,7 +7590,7 @@ function render() {
     requestBackToTopButtonVisibilitySync();
   };
 
-  if (!appState.initialized || appState.loading) {
+  if (!appState.initialized || appState.loading || !appState.authReady) {
     app.innerHTML = `<section class="card"><p class="muted">Loading Cannakan Grow...</p></section>`;
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
@@ -11331,6 +11480,7 @@ function setMockDataEnabledAndRefresh(enabled) {
   }
 
   setMockDataEnabled(enabled);
+  appState.mockDataEnabled = isMockDataEnabled();
   updateAuthStatus();
   syncMockDataBanner();
   safeRender();
