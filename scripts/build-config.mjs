@@ -58,15 +58,22 @@ const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
 };
 `;
 const buildInfoPath = resolve(process.cwd(), "build-info.js");
+const buildInfoJsonPath = resolve(process.cwd(), "build-info.json");
+const buildInfoPayload = {
+  version: String(packageJson.version || "0.0.0"),
+  buildTimestamp,
+  commitHash,
+};
 const buildInfoContents = `window.CANNAKAN_BUILD_INFO = {
-  version: ${JSON.stringify(String(packageJson.version || "0.0.0"))},
-  buildTimestamp: ${JSON.stringify(buildTimestamp)},
-  commitHash: ${JSON.stringify(commitHash)},
+  version: ${JSON.stringify(buildInfoPayload.version)},
+  buildTimestamp: ${JSON.stringify(buildInfoPayload.buildTimestamp)},
+  commitHash: ${JSON.stringify(buildInfoPayload.commitHash)},
 };
 `;
 
 writeFileSync(outputPath, configContents, "utf8");
 writeFileSync(buildInfoPath, buildInfoContents, "utf8");
+writeFileSync(buildInfoJsonPath, `${JSON.stringify(buildInfoPayload, null, 2)}\n`, "utf8");
 
 if (!url || !anonKey) {
   console.warn("Supabase runtime config was generated without values. The app will show the setup screen until config values are provided.");

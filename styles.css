@@ -175,6 +175,56 @@ textarea {
   text-align: right;
 }
 
+.app-update-banner {
+  width: min(100% - 8px, 560px);
+  margin: 0 4px 18px;
+  padding: 12px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(243, 248, 240, 0.94) 0%, rgba(232, 240, 231, 0.84) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
+  box-shadow:
+    0 12px 22px rgba(24, 34, 24, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-update-banner:hover,
+.app-update-banner:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(148, 209, 89, 0.28);
+  box-shadow:
+    0 14px 24px rgba(24, 34, 24, 0.1),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.app-update-banner-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.app-update-banner-label {
+  color: #4f7d33;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.app-update-banner-text {
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .topbar h1,
 .dashboard-bar h2,
 .section-heading h2,
@@ -9327,6 +9377,30 @@ body.theme-dark .build-debug-stamp-list dt {
 
 body.theme-dark .build-debug-stamp-list dd {
   color: #f6f8f5;
+}
+
+body.theme-dark .app-update-banner {
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(29, 37, 31, 0.96) 0%, rgba(22, 29, 24, 0.94) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(148, 209, 89, 0.03) 58%);
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  color: #f6f8f5;
+}
+
+body.theme-dark .app-update-banner:hover,
+body.theme-dark .app-update-banner:focus-visible {
+  border-color: rgba(148, 209, 89, 0.26);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .app-update-banner-label {
+  color: #b8ef84;
 }
 
 body.theme-dark .leaderboard-audit-section {

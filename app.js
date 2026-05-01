@@ -61,6 +61,8 @@ const SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY = "cannakanGrowPwaLaunchLogged";
 const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
 const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 60000;
 const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
+const BUILD_INFO_CHECK_INTERVAL_MS = 120000;
+const BUILD_INFO_ACTIVE_RECHECK_MS = 30000;
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -245,6 +247,12 @@ const appState = {
   mockGalleryReviewStatuses: {},
   deferredInstallPrompt: null,
   installPromptMode: "",
+  currentBuildInfo: null,
+  availableBuildInfo: null,
+  buildUpdateCheckInFlight: false,
+  buildUpdateMonitorInitialized: false,
+  buildUpdateCheckIntervalId: 0,
+  lastBuildInfoCheckAt: 0,
   gallerySort: "date",
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
@@ -638,12 +646,33 @@ function registerServiceWorker() {
 }
 
 function getBuildInfo() {
-  const buildInfo = window.CANNAKAN_BUILD_INFO || {};
+  return normalizeBuildInfo(window.CANNAKAN_BUILD_INFO || {});
+}
+
+function normalizeBuildInfo(buildInfo = {}) {
   return {
     version: String(buildInfo.version || "0.0.0").trim() || "0.0.0",
     buildTimestamp: String(buildInfo.buildTimestamp || "").trim(),
     commitHash: String(buildInfo.commitHash || "").trim(),
   };
+}
+
+function getBuildInfoSignature(buildInfo = getBuildInfo()) {
+  const normalizedBuildInfo = normalizeBuildInfo(buildInfo);
+  return [
+    normalizedBuildInfo.version,
+    normalizedBuildInfo.buildTimestamp,
+    normalizedBuildInfo.commitHash,
+  ].join("|");
+}
+
+function hasUsableBuildInfo(buildInfo = {}) {
+  const normalizedBuildInfo = normalizeBuildInfo(buildInfo);
+  return Boolean(
+    normalizedBuildInfo.version
+    || normalizedBuildInfo.buildTimestamp
+    || normalizedBuildInfo.commitHash,
+  );
 }
 
 function formatBuildTimestampLabel(timestamp = "") {
@@ -678,6 +707,155 @@ function renderBuildDebugStampMarkup() {
       </dl>
     </div>
   `;
+}
+
+function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = appState.currentBuildInfo || getBuildInfo()) {
+  const normalizedCurrentBuildInfo = normalizeBuildInfo(currentBuildInfo);
+  const normalizedLatestBuildInfo = normalizeBuildInfo(latestBuildInfo);
+  const currentSignature = getBuildInfoSignature(normalizedCurrentBuildInfo);
+  const latestSignature = getBuildInfoSignature(normalizedLatestBuildInfo);
+
+  if (!hasUsableBuildInfo(normalizedLatestBuildInfo) || currentSignature === latestSignature) {
+    return false;
+  }
+
+  const currentTimestamp = Date.parse(normalizedCurrentBuildInfo.buildTimestamp || "");
+  const latestTimestamp = Date.parse(normalizedLatestBuildInfo.buildTimestamp || "");
+  if (Number.isFinite(currentTimestamp) && Number.isFinite(latestTimestamp)) {
+    return latestTimestamp > currentTimestamp;
+  }
+
+  return true;
+}
+
+function syncBuildUpdateBanner() {
+  const appShell = document.querySelector(".app-shell");
+  const topbar = document.querySelector(".topbar");
+  if (!appShell || !topbar) {
+    return;
+  }
+
+  const latestBuildInfo = appState.availableBuildInfo;
+  const shouldShowBanner = isBuildInfoNewerThanCurrent(latestBuildInfo, appState.currentBuildInfo || getBuildInfo());
+  const existingBanner = appShell.querySelector("#app-update-banner");
+
+  if (!shouldShowBanner) {
+    existingBanner?.remove();
+    return;
+  }
+
+  const banner = existingBanner || document.createElement("button");
+  banner.id = "app-update-banner";
+  banner.type = "button";
+  banner.className = "card app-update-banner";
+  banner.innerHTML = `
+    <span class="app-update-banner-copy">
+      <span class="app-update-banner-label">Update Ready</span>
+      <span class="app-update-banner-text">New version available - click to refresh</span>
+    </span>
+  `;
+
+  if (!existingBanner) {
+    const updateBanner = appShell.querySelector("#app-update-banner");
+    if (updateBanner) {
+      updateBanner.insertAdjacentElement("afterend", banner);
+    } else {
+      topbar.insertAdjacentElement("afterend", banner);
+    }
+  }
+
+  if (banner.dataset.bound !== "true") {
+    banner.dataset.bound = "true";
+    banner.addEventListener("click", async () => {
+      banner.disabled = true;
+      try {
+        await clearAppCacheAndReloadLatest();
+      } finally {
+        banner.disabled = false;
+      }
+    });
+  }
+}
+
+async function fetchLatestBuildInfo() {
+  const requestUrl = new URL("/build-info.json", window.location.origin);
+  requestUrl.searchParams.set("ts", String(Date.now()));
+  const response = await fetch(requestUrl.toString(), {
+    cache: "no-store",
+    headers: {
+      "cache-control": "no-cache",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Build info request failed with status ${response.status}`);
+  }
+
+  return normalizeBuildInfo(await response.json());
+}
+
+async function checkForAvailableAppUpdate(reason = "background-check", options = {}) {
+  const { minIntervalMs = 0 } = options || {};
+  const now = Date.now();
+  if (appState.buildUpdateCheckInFlight) {
+    return false;
+  }
+
+  if (minIntervalMs > 0 && now - appState.lastBuildInfoCheckAt < minIntervalMs) {
+    return false;
+  }
+
+  appState.buildUpdateCheckInFlight = true;
+  appState.lastBuildInfoCheckAt = now;
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      await registration?.update();
+    }
+
+    const latestBuildInfo = await fetchLatestBuildInfo();
+    appState.availableBuildInfo = isBuildInfoNewerThanCurrent(latestBuildInfo, appState.currentBuildInfo || getBuildInfo())
+      ? latestBuildInfo
+      : null;
+    syncBuildUpdateBanner();
+    return Boolean(appState.availableBuildInfo);
+  } catch (error) {
+    console.warn(`Build update check failed during ${reason}`, error);
+    return false;
+  } finally {
+    appState.buildUpdateCheckInFlight = false;
+  }
+}
+
+function handleBuildUpdateVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    void checkForAvailableAppUpdate("visibilitychange", { minIntervalMs: BUILD_INFO_ACTIVE_RECHECK_MS });
+  }
+}
+
+function initializeBuildUpdateMonitoring() {
+  if (appState.buildUpdateMonitorInitialized) {
+    return;
+  }
+
+  appState.buildUpdateMonitorInitialized = true;
+  appState.currentBuildInfo = getBuildInfo();
+  appState.availableBuildInfo = null;
+  syncBuildUpdateBanner();
+  void checkForAvailableAppUpdate("startup");
+
+  document.addEventListener("visibilitychange", handleBuildUpdateVisibilityChange);
+  window.addEventListener("focus", () => {
+    void checkForAvailableAppUpdate("focus", { minIntervalMs: BUILD_INFO_ACTIVE_RECHECK_MS });
+  });
+
+  if (appState.buildUpdateCheckIntervalId) {
+    window.clearInterval(appState.buildUpdateCheckIntervalId);
+  }
+  appState.buildUpdateCheckIntervalId = window.setInterval(() => {
+    void checkForAvailableAppUpdate("interval");
+  }, BUILD_INFO_CHECK_INTERVAL_MS);
 }
 
 async function clearAppCacheAndReloadLatest() {
@@ -19274,6 +19452,7 @@ if (document.body) {
 
 registerServiceWorker();
 bindInstallPromptEvents();
+initializeBuildUpdateMonitoring();
 
 window.addEventListener("error", (event) => {
   reportAppError(event.error || new Error(event.message || "Unknown script error"), "JavaScript Error");
