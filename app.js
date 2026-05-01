@@ -22231,6 +22231,74 @@ function renderSessionLifecycleTimelineMarkup(state) {
   `;
 }
 
+function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
+  if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
+    return "";
+  }
+
+  if (!(endedAt instanceof Date) || Number.isNaN(endedAt.getTime())) {
+    return "";
+  }
+
+  const totalMinutes = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 60000));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${totalHours}h ${minutes}m`;
+}
+
+function renderPublicSessionLifecycleTimelineMarkup(state) {
+  const soakingDuration = formatPublicTimelineElapsedDuration(state.startedAt, state.germinationStartedAt);
+  const germinationDuration = formatPublicTimelineElapsedDuration(state.germinationStartedAt, state.firstPlantedAt);
+  const completedDuration = formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt);
+
+  const events = [
+    {
+      label: "SOAKING",
+      displayLabel: soakingDuration || "Duration unavailable",
+      tone: "soaking",
+      complete: Boolean(state.startedAt && state.germinationStartedAt),
+    },
+    {
+      label: "GERMINATION",
+      displayLabel: state.germinationStartedAt
+        ? (germinationDuration || "Duration unavailable")
+        : "Not started",
+      tone: "germination",
+      complete: Boolean(state.germinationStartedAt),
+    },
+    {
+      label: "FIRST GERMINATED",
+      displayLabel: soakingDuration && germinationDuration
+        ? `${soakingDuration} + ${germinationDuration}`
+        : "Duration unavailable",
+      tone: "green",
+      complete: Boolean(state.firstPlantedAt),
+    },
+    {
+      label: "COMPLETED",
+      displayLabel: completedDuration || "Duration unavailable",
+      tone: "completed",
+      complete: Boolean(state.completedAt),
+    },
+  ];
+
+  return `
+    <div class="lifecycle-bar">
+      ${events.map((event) => `
+        <span class="lifecycle-segment lifecycle-${event.tone} ${event.complete ? "is-complete" : ""}"></span>
+      `).join("")}
+    </div>
+    <div class="lifecycle-events">
+      ${events.map((event) => `
+        <article class="lifecycle-event lifecycle-event-${event.tone} ${event.complete ? "is-complete" : ""}">
+          <strong>${event.label}</strong>
+          <p>${escapeHtml(event.displayLabel)}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function buildFormLifecycleState(form) {
   const normalizedStatus = normalizeSessionStatus(form.dataset.currentStage || form.elements.sessionStatus?.value || "");
   if (normalizedStatus === "unselected") {
@@ -22301,7 +22369,7 @@ function buildPublicSessionLifecycleState(snapshot) {
 function renderPublicSessionTimelineSection(snapshot) {
   const lifecycleState = buildPublicSessionLifecycleState(snapshot);
   const timelineMarkup = lifecycleState
-    ? renderSessionLifecycleTimelineMarkup(lifecycleState)
+    ? renderPublicSessionLifecycleTimelineMarkup(lifecycleState)
     : '<p class="public-session-timeline-empty">Timeline not shared.</p>';
 
   return `
