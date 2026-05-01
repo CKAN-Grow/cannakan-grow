@@ -256,10 +256,6 @@ const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
 ]);
-const MOCK_DATA_ADMIN_EMAILS = new Set([
-  "don@cannakan.com",
-  "mo@cannakan.com",
-]);
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
 function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
@@ -282,6 +278,39 @@ function getAuthSessionHydrationKey(session) {
   return `${userId}|${email}|${expiresAt}`;
 }
 
+function hasResolvedAdminAccess() {
+  return Boolean(appState.authReady && appState.isAdmin);
+}
+
+function applyResolvedAuthState(session, reason = "auth-change") {
+  const sessionEmail = String(session?.user?.email || "").trim();
+  const normalizedEmail = getNormalizedUserEmail(session?.user || null);
+  const isAdmin = ADMIN_EMAILS.has(normalizedEmail);
+
+  appState.authSession = session || null;
+  appState.user = session?.user || null;
+  appState.currentUserEmail = normalizedEmail;
+  appState.isAdmin = isAdmin;
+
+  console.log("[Cannakan App Init] session email", {
+    reason,
+    sessionEmail,
+  });
+  console.log("[Cannakan App Init] normalized email", {
+    reason,
+    normalizedEmail,
+  });
+  console.log("[Cannakan App Init] isAdmin result", {
+    reason,
+    isAdminResult: isAdmin,
+  });
+}
+
+function markAuthReady(reason = "auth-change") {
+  appState.authReady = true;
+  console.log("[Cannakan App Init] authReady true", { reason });
+}
+
 function setTopbarNavigationReadyState() {
   const topbarNav = document.querySelector(".topbar-nav");
   if (topbarNav) {
@@ -292,7 +321,7 @@ function setTopbarNavigationReadyState() {
 
 function syncAdminNavigationVisibility() {
   const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
-  const shouldShowAdminNav = Boolean(appState.authReady && appState.isAdmin);
+  const shouldShowAdminNav = hasResolvedAdminAccess();
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
     link.hidden = !shouldShowAdminNav;
     if (shouldShowAdminNav) {
@@ -493,7 +522,7 @@ async function safeBootstrapApp() {
   try {
     await bootstrapApp();
   } catch (error) {
-    appState.authReady = true;
+    markAuthReady("startup-error");
     appState.loading = false;
     updateAuthStatus();
     reportAppError(error, "Startup failed");
@@ -1769,8 +1798,7 @@ function removeSampleSessions() {
 }
 
 function canAccessMockDataControls() {
-  const email = String(appState.user?.email || "").trim().toLowerCase();
-  return Boolean(isAdminUser(appState.user) || MOCK_DATA_ADMIN_EMAILS.has(email));
+  return hasResolvedAdminAccess();
 }
 
 function isMockDataEnabled() {
@@ -2306,7 +2334,7 @@ async function bootstrapApp() {
       console.error("Falling back to signed-out state after auth bootstrap failure", error);
       resetSessionScopedAppState();
       await rehydratePersistentBrowserState("bootstrap:auth-fallback");
-      appState.authReady = true;
+      markAuthReady("bootstrap:auth-fallback");
       saveSessions([]);
     }
   } else {
@@ -2322,7 +2350,7 @@ async function bootstrapApp() {
     appState.membersError = "";
     appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
     appState.gallerySnapshotsLoaded = true;
-    appState.authReady = true;
+    markAuthReady("local-no-supabase");
   }
 
   appState.initialized = true;
@@ -2393,11 +2421,8 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
       }
 
       resetSessionScopedAppState();
-      appState.authSession = session || null;
-      appState.user = session?.user || null;
-      appState.currentUserEmail = getNormalizedUserEmail(session?.user || null);
-      appState.isAdmin = isAdminUser(appState.currentUserEmail);
-      appState.authReady = true;
+      applyResolvedAuthState(session, reason);
+      markAuthReady(reason);
       updateAuthStatus();
       await rehydratePersistentBrowserState(reason);
       console.log("[Cannakan App Init] auth user evaluated", {
@@ -2471,7 +2496,6 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
       }
 
       appState.lastHydratedAuthSessionKey = sessionKey;
-      appState.authReady = true;
       updateAuthStatus();
     });
 
@@ -3730,6 +3754,11 @@ function getMessageBoardDisplayMode() {
     return normalizeMessageBoardDisplayMode(localStorage.getItem(MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY) || "");
   } catch (error) {
     console.error("Failed to read message board display mode from localStorage", error);
+    try {
+      localStorage.setItem(MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY, DEFAULT_MESSAGE_BOARD_DISPLAY_MODE);
+    } catch (resetError) {
+      console.error("Failed to reset message board display mode in localStorage", resetError);
+    }
     return DEFAULT_MESSAGE_BOARD_DISPLAY_MODE;
   }
 }
@@ -3749,6 +3778,11 @@ function getMixedImageMode() {
     return normalizeMixedImageMode(localStorage.getItem(MIXED_IMAGE_MODE_STORAGE_KEY) || "");
   } catch (error) {
     console.error("Failed to read mixed fallback image mode from localStorage", error);
+    try {
+      localStorage.setItem(MIXED_IMAGE_MODE_STORAGE_KEY, DEFAULT_MIXED_IMAGE_MODE);
+    } catch (resetError) {
+      console.error("Failed to reset mixed fallback image mode in localStorage", resetError);
+    }
     return DEFAULT_MIXED_IMAGE_MODE;
   }
 }
@@ -3894,6 +3928,11 @@ function readStoredAnnouncementRecord() {
   } catch (error) {
     console.error("Failed to read announcement from localStorage", error);
     appState.announcementsError = "Could not load the saved announcement from this browser.";
+    try {
+      localStorage.removeItem(ANNOUNCEMENT_STORAGE_KEY);
+    } catch (resetError) {
+      console.error("Failed to reset announcement in localStorage", resetError);
+    }
     return null;
   }
 }
@@ -3926,12 +3965,16 @@ function isAnnouncementCurrentlyPublic(announcement) {
   return Boolean(announcement && normalizeAnnouncementStatus(announcement.status) === "active");
 }
 
-async function loadAnnouncements(reason = "unspecified") {
+function loadAnnouncementsFromStorage(reason = "unspecified") {
   void reason;
   appState.announcementsError = "";
   const storedAnnouncement = readStoredAnnouncementRecord();
   const mappedAnnouncement = mapStoredAnnouncementToAnnouncement(storedAnnouncement);
   return mappedAnnouncement ? [mappedAnnouncement].sort(compareAnnouncementsByRecency) : [];
+}
+
+async function loadAnnouncements(reason = "unspecified") {
+  return loadAnnouncementsFromStorage(reason);
 }
 
 async function refreshAnnouncements(options = {}) {
@@ -5998,7 +6041,7 @@ function updateAuthStatus() {
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
   const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
-  const currentUserIsAdmin = Boolean(appState.authReady && appState.isAdmin);
+  const currentUserIsAdmin = hasResolvedAdminAccess();
   const showAdminMenuItem = currentUserIsAdmin;
   console.log("[Cannakan Admin Nav] Account menu render", {
     currentEmail: appState.user?.email || "",
@@ -8126,7 +8169,7 @@ function render() {
       finalizeRender();
       return;
     }
-    if (!isAdminUser()) {
+    if (!hasResolvedAdminAccess()) {
       renderAdminAccessDeniedScreen();
       finalizeRender();
       return;
@@ -8148,7 +8191,7 @@ function render() {
       finalizeRender();
       return;
     }
-    if (!isAdminUser()) {
+    if (!hasResolvedAdminAccess()) {
       renderAdminAccessDeniedScreen();
       finalizeRender();
       return;
@@ -8163,6 +8206,12 @@ function render() {
     renderPublicSessionDetail(subroute);
     finalizeRender();
     void refreshGallerySnapshots("route:public-session", subroute);
+    return;
+  }
+
+  if (route === "home" || !route) {
+    renderHome();
+    finalizeRender();
     return;
   }
 
@@ -8204,9 +8253,6 @@ function render() {
     finalizeRender();
     return;
   }
-
-  renderHome();
-  finalizeRender();
 }
 
 function renderSetupScreen() {
@@ -10227,6 +10273,11 @@ function readStoredFallbackJokes() {
       .filter(Boolean);
   } catch (error) {
     console.error("Failed to read fallback jokes from localStorage", error);
+    try {
+      localStorage.setItem(FALLBACK_JOKES_STORAGE_KEY, JSON.stringify(DEFAULT_GROW_JOKES));
+    } catch (resetError) {
+      console.error("Failed to reset fallback jokes in localStorage", resetError);
+    }
     return [];
   }
 }
@@ -10256,6 +10307,11 @@ function readStoredFallbackFacts() {
       .filter(Boolean);
   } catch (error) {
     console.error("Failed to read fallback facts from localStorage", error);
+    try {
+      localStorage.setItem(FALLBACK_FACTS_STORAGE_KEY, JSON.stringify(DEFAULT_GROW_FACTS.map((text) => ({ text }))));
+    } catch (resetError) {
+      console.error("Failed to reset fallback facts in localStorage", resetError);
+    }
     return [];
   }
 }
@@ -10320,6 +10376,11 @@ function getFallbackContentMode() {
     return normalizeFallbackContentMode(localStorage.getItem(FALLBACK_MODE_STORAGE_KEY) || "");
   } catch (error) {
     console.error("Failed to read fallback content mode from localStorage", error);
+    try {
+      localStorage.setItem(FALLBACK_MODE_STORAGE_KEY, DEFAULT_FALLBACK_CONTENT_MODE);
+    } catch (resetError) {
+      console.error("Failed to reset fallback content mode in localStorage", resetError);
+    }
     return DEFAULT_FALLBACK_CONTENT_MODE;
   }
 }
@@ -10400,6 +10461,11 @@ function readRecentFallbackItemsHistory() {
       .slice(-FALLBACK_CONTENT_HISTORY_LIMIT);
   } catch (error) {
     console.error("Failed to read recent fallback content history from localStorage", error);
+    try {
+      localStorage.setItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY, JSON.stringify([]));
+    } catch (resetError) {
+      console.error("Failed to reset recent fallback content history in localStorage", resetError);
+    }
     return [];
   }
 }
@@ -10514,7 +10580,7 @@ function getDailyFallbackContent(referenceDate = new Date()) {
     { dateKey, itemType: selectedItem.type, itemKey: selectedItem.key },
   ].slice(-FALLBACK_CONTENT_HISTORY_LIMIT);
   writeRecentFallbackItemsHistory(nextHistory);
-  console.log("[Cannakan App Init] fallback item selected", {
+  console.log("[Cannakan App Init] fallback selected", {
     dateKey,
     fallbackMode,
     fallbackType: selectedItem.type,
@@ -10687,7 +10753,7 @@ function bindMessageBoardImageFallbacks(scope = document) {
 function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const visualImageUrl = resolveMessageBoardImageUrl(cardData.imageUrl);
-  console.log("[Cannakan Announcements] Home announcement section rendered", {
+  console.log("[Cannakan Announcements] announcement section render", {
     hasActiveAnnouncement: !isFallback,
     configuredDisplayMode: cardData.configuredDisplayMode,
     effectiveDisplayMode: cardData.effectiveDisplayMode,
@@ -11750,18 +11816,19 @@ function renderAdminPage() {
 }
 
 function renderHome() {
+  console.log("[Cannakan Home] render", {
+    route: window.location.hash || "#home",
+    authReady: appState.authReady,
+    isSignedIn: Boolean(appState.user),
+    isAdmin: appState.isAdmin,
+  });
+  seedFallbackContentStorageIfEmpty();
+  appState.announcements = loadAnnouncementsFromStorage("home:render");
+  appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
     void refreshGallerySnapshots("home-rankings-teaser").then(() => {
-      const currentHash = window.location.hash || "#home";
-      if (currentHash === "#home" || currentHash === "") {
-        safeRender();
-      }
-    });
-  }
-  if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
-    void refreshAnnouncements({ force: true, reason: "home-announcements" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#home" || currentHash === "") {
         safeRender();
