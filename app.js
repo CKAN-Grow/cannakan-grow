@@ -10203,7 +10203,19 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
   removeButton.hidden = false;
 }
 
+function isMainSessionsRoute() {
+  const hashRoute = String(window.location.hash || "#home").replace(/^#/, "");
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const [route, id] = rawRoute.split("/");
+  return route === "sessions" && !id;
+}
+
 function renderFilterPaperCardMarkup() {
+  if (!isMainSessionsRoute()) {
+    return "";
+  }
+
   const inventory = getFilterPaperInventory();
   const status = getFilterPaperStatusMeta(inventory.count);
   const reminder = getFilterPaperReminder(inventory.count);
@@ -13809,7 +13821,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
-  app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
+  document.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
   applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
@@ -16730,10 +16742,13 @@ function renderSessionsList() {
   applySupplyStatusToSessionEntryButtons(app);
   const sessionsHeader = document.querySelector("#grow-sessions-header");
   if (sessionsHeader) {
-    sessionsHeader.insertAdjacentHTML("afterend", renderFilterPaperCardMarkup());
-    bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
-      onSave: () => safeRender(),
-    });
+    const filterPaperCardMarkup = renderFilterPaperCardMarkup();
+    if (filterPaperCardMarkup) {
+      sessionsHeader.insertAdjacentHTML("afterend", filterPaperCardMarkup);
+      bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
+        onSave: () => safeRender(),
+      });
+    }
   }
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
