@@ -4393,6 +4393,72 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.45;
 }
 
+.leaderboard-audit-insights-section {
+  display: grid;
+  gap: var(--space-stack);
+  margin-top: var(--space-section);
+  padding-top: var(--space-card);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.leaderboard-audit-insights-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-stack);
+}
+
+.leaderboard-audit-insights-heading h4,
+.leaderboard-audit-insights-heading p {
+  margin: 0;
+}
+
+.leaderboard-audit-insights-shell {
+  display: grid;
+  gap: var(--space-stack);
+  padding: var(--space-card);
+  border-radius: 20px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.leaderboard-audit-insights-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.leaderboard-audit-insights-toggle:hover,
+.leaderboard-audit-insights-toggle:focus-visible {
+  color: var(--green-700);
+}
+
+.leaderboard-audit-insights-chevron {
+  width: 11px;
+  height: 11px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.18s ease;
+}
+
+.leaderboard-audit-insights-toggle[aria-expanded="true"] .leaderboard-audit-insights-chevron {
+  transform: rotate(225deg);
+}
+
+.leaderboard-audit-insights-content {
+  display: grid;
+}
+
 .leaderboard-audit-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8052,6 +8118,24 @@ body.theme-dark .leaderboard-audit-section {
   background: linear-gradient(180deg, rgba(30, 40, 33, 0.94) 0%, rgba(21, 29, 24, 0.92) 100%);
 }
 
+body.theme-dark .leaderboard-audit-insights-section {
+  border-top-color: rgba(111, 122, 116, 0.24);
+}
+
+body.theme-dark .leaderboard-audit-insights-shell {
+  border-color: rgba(111, 122, 116, 0.26);
+  background: rgba(24, 30, 26, 0.82);
+}
+
+body.theme-dark .leaderboard-audit-insights-toggle {
+  color: #f3f7f1;
+}
+
+body.theme-dark .leaderboard-audit-insights-toggle:hover,
+body.theme-dark .leaderboard-audit-insights-toggle:focus-visible {
+  color: #c8ef8f;
+}
+
 body.theme-dark .admin-sources-list-shell,
 body.theme-dark .admin-source-logo-preview-shell,
 body.theme-dark .admin-sources-empty {
@@ -9387,6 +9471,11 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .leaderboard-audit-chip-row {
     gap: 8px;
+  }
+
+  .leaderboard-audit-insights-heading {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .leaderboard-audit-controls {

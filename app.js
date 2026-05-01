@@ -140,6 +140,7 @@ const appState = {
   sessionHistorySort: "date",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
+  leaderboardAuditInsightsExpanded: false,
   growthStage: null,
   growthStageModalOpen: false,
   growthStageModalDismissed: false,
@@ -10903,6 +10904,45 @@ function renderLeaderboardAuditQuickStatsMarkup(state) {
   `;
 }
 
+function renderLeaderboardAuditInsightsSectionMarkup(state) {
+  const isExpanded = Boolean(appState.leaderboardAuditInsightsExpanded);
+  const toggleLabel = isExpanded ? "Collapse insights" : "Expand insights";
+
+  return `
+    <div class="leaderboard-audit-insights-section">
+      <div class="leaderboard-audit-insights-heading">
+        <div>
+          <h4>Ranking Insights</h4>
+          <p class="muted">Calculated leaderboard results and debug details</p>
+        </div>
+      </div>
+      <div class="leaderboard-audit-insights-shell ${isExpanded ? "is-expanded" : "is-collapsed"}">
+        <button
+          type="button"
+          class="leaderboard-audit-insights-toggle"
+          data-leaderboard-audit-insights-toggle="true"
+          aria-expanded="${isExpanded ? "true" : "false"}"
+        >
+          <span>${escapeHtml(toggleLabel)}</span>
+          <span class="leaderboard-audit-insights-chevron" aria-hidden="true"></span>
+        </button>
+        ${isExpanded ? `
+          <div class="leaderboard-audit-insights-content">
+            <div class="leaderboard-audit-metrics-grid">
+              ${renderLeaderboardAuditCalculationCard(state.calculations.monthSource)}
+              ${renderLeaderboardAuditCalculationCard(state.calculations.allSource)}
+              ${renderLeaderboardAuditCalculationCard(state.calculations.monthSeedType)}
+              ${renderLeaderboardAuditCalculationCard(state.calculations.allSeedType)}
+              ${renderLeaderboardAuditCalculationCard(state.calculations.monthSessions)}
+              ${renderLeaderboardAuditCalculationCard(state.calculations.allSessions)}
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
 function renderLeaderboardAuditActiveFilterChipsMarkup(state) {
   if (!state.activeFilterChips.length) {
     return "";
@@ -11219,18 +11259,11 @@ function renderLeaderboardAuditSection(target = app) {
             <option value="excluded"${state.filters.inclusion === "excluded" ? " selected" : ""}>Excluded only</option>
           </select>
         </label>
-      </div>
-      ${renderLeaderboardAuditActiveFilterChipsMarkup(state)}
     </div>
-    ${renderLeaderboardAuditQuickStatsMarkup(state)}
-    <div class="leaderboard-audit-metrics-grid">
-      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSource)}
-      ${renderLeaderboardAuditCalculationCard(state.calculations.allSource)}
-      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSeedType)}
-      ${renderLeaderboardAuditCalculationCard(state.calculations.allSeedType)}
-      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSessions)}
-      ${renderLeaderboardAuditCalculationCard(state.calculations.allSessions)}
-    </div>
+    ${renderLeaderboardAuditActiveFilterChipsMarkup(state)}
+  </div>
+  ${renderLeaderboardAuditQuickStatsMarkup(state)}
+    ${renderLeaderboardAuditInsightsSectionMarkup(state)}
     <div class="leaderboard-audit-table-shell">
       <table class="leaderboard-audit-table">
         <thead>
@@ -11386,6 +11419,11 @@ function renderLeaderboardAuditSection(target = app) {
 
   section.querySelector("[data-leaderboard-audit-export-summary='true']")?.addEventListener("click", () => {
     exportLeaderboardAuditSummary(state);
+  });
+
+  section.querySelector("[data-leaderboard-audit-insights-toggle='true']")?.addEventListener("click", () => {
+    appState.leaderboardAuditInsightsExpanded = !appState.leaderboardAuditInsightsExpanded;
+    safeRender();
   });
 
   section.querySelector("[data-leaderboard-audit-copy='true']")?.addEventListener("click", async () => {
