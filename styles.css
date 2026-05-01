@@ -9902,6 +9902,103 @@ body.theme-dark #session-history-section {
   border-top-width: 3px;
 }
 
+#grow-sessions-header,
+#active-sessions-section,
+#recent-completed-sessions-section,
+#session-history-section {
+  padding: clamp(20px, 2.25vw, 28px);
+}
+
+#grow-sessions-header .section-heading,
+#active-sessions-section .section-heading,
+#recent-completed-sessions-section .section-heading,
+#session-history-section .section-heading {
+  align-items: flex-start;
+  gap: clamp(16px, 2vw, 24px);
+}
+
+#grow-sessions-header .section-heading > :first-child,
+#active-sessions-section .section-heading > :first-child,
+#recent-completed-sessions-section .section-heading > :first-child,
+#session-history-section .section-heading > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#grow-sessions-header .section-title-with-icon,
+#active-sessions-section .section-title-with-icon,
+#recent-completed-sessions-section .section-title-with-icon,
+#session-history-section .section-title-with-icon {
+  width: 100%;
+  align-items: center;
+  gap: 16px;
+}
+
+#grow-sessions-header .section-title-with-icon > div,
+#active-sessions-section .section-title-with-icon > div,
+#recent-completed-sessions-section .section-title-with-icon > div,
+#session-history-section .section-title-with-icon > div {
+  min-width: 0;
+  gap: 6px;
+}
+
+#grow-sessions-header .section-title-with-icon > div > .eyebrow,
+#active-sessions-section .section-title-with-icon > div > .eyebrow,
+#recent-completed-sessions-section .section-title-with-icon > div > .eyebrow,
+#session-history-section .section-title-with-icon > div > .eyebrow {
+  width: auto;
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+}
+
+#grow-sessions-header .section-title-with-icon > div > h2,
+#grow-sessions-header .section-title-with-icon > div > h3,
+#active-sessions-section .section-title-with-icon > div > h2,
+#active-sessions-section .section-title-with-icon > div > h3,
+#recent-completed-sessions-section .section-title-with-icon > div > h2,
+#recent-completed-sessions-section .section-title-with-icon > div > h3,
+#session-history-section .section-title-with-icon > div > h2,
+#session-history-section .section-title-with-icon > div > h3 {
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(1.45rem, 1.2rem + 1vw, 1.95rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+#grow-sessions-header .section-title-with-icon > div > p:not(.eyebrow),
+#active-sessions-section .section-title-with-icon > div > p:not(.eyebrow),
+#recent-completed-sessions-section .section-title-with-icon > div > p:not(.eyebrow),
+#session-history-section .section-title-with-icon > div > p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
+
+#grow-sessions-header .section-title-icon,
+#active-sessions-section .section-title-icon,
+#recent-completed-sessions-section .section-title-icon,
+#session-history-section .section-title-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  padding: 14px;
+  border-radius: 16px;
+}
+
+#session-history-section .session-history-sort-control {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: auto;
+}
+
 #grow-sessions-header {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.04) 34%, transparent 62%),
@@ -9992,6 +10089,57 @@ body.theme-dark #session-history-section .session-row:hover {
     0 16px 28px rgba(0, 0, 0, 0.24),
     inset 0 0 0 1px rgba(138, 103, 72, 0.08);
   background: rgba(138, 103, 72, 0.04);
+}
+
+@media (max-width: 760px) {
+  #grow-sessions-header,
+  #active-sessions-section,
+  #recent-completed-sessions-section,
+  #session-history-section {
+    padding: 18px;
+  }
+
+  #grow-sessions-header .section-heading,
+  #active-sessions-section .section-heading,
+  #recent-completed-sessions-section .section-heading,
+  #session-history-section .section-heading {
+    gap: 14px;
+  }
+
+  #grow-sessions-header .section-title-with-icon,
+  #active-sessions-section .section-title-with-icon,
+  #recent-completed-sessions-section .section-title-with-icon,
+  #session-history-section .section-title-with-icon {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  #grow-sessions-header .section-title-icon,
+  #active-sessions-section .section-title-icon,
+  #recent-completed-sessions-section .section-title-icon,
+  #session-history-section .section-title-icon {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    padding: 12px;
+  }
+
+  #grow-sessions-header .section-title-with-icon > div > h2,
+  #grow-sessions-header .section-title-with-icon > div > h3,
+  #active-sessions-section .section-title-with-icon > div > h2,
+  #active-sessions-section .section-title-with-icon > div > h3,
+  #recent-completed-sessions-section .section-title-with-icon > div > h2,
+  #recent-completed-sessions-section .section-title-with-icon > div > h3,
+  #session-history-section .section-title-with-icon > div > h2,
+  #session-history-section .section-title-with-icon > div > h3 {
+    font-size: clamp(1.24rem, 1.02rem + 1vw, 1.58rem);
+  }
+
+  #session-history-section .session-history-sort-control {
+    width: 100%;
+    margin-left: 0;
+    align-self: stretch;
+  }
 }
 
 body.theme-dark .session-history-card {
