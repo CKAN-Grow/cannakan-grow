@@ -50,7 +50,7 @@ const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now — he
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
 const DEFAULT_MIXED_IMAGE_MODE = "match-type";
-const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/assets/wow-fallback.png";
+const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/public/assets/wow-fallback.png";
 const DEFAULT_GROW_JOKES = Object.freeze([
   { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
   { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
@@ -10306,18 +10306,41 @@ function bindMessageBoardImageFallbacks(scope = document) {
     }
 
     const fallbackSrc = image.dataset.fallbackSrc || MESSAGE_BOARD_IMAGE_FALLBACK_URL;
-    const applyFallback = () => {
-      if (image.dataset.fallbackApplied === "true") {
+    const visualShell = image.closest(".home-announcement-card-visual-shell");
+    const hideBrokenImage = () => {
+      image.dataset.fallbackApplied = "true";
+      image.dataset.imageFailed = "true";
+      image.alt = "";
+      image.setAttribute("aria-hidden", "true");
+      image.hidden = true;
+      image.classList.add("is-hidden");
+      visualShell?.classList.add("is-image-failed");
+    };
+
+    image.onload = () => {
+      image.dataset.imageFailed = "false";
+      image.hidden = false;
+      image.classList.remove("is-hidden");
+      visualShell?.classList.remove("is-image-failed");
+    };
+
+    image.onerror = () => {
+      if (image.dataset.fallbackApplied !== "true" && fallbackSrc && image.src !== fallbackSrc) {
+        image.dataset.fallbackApplied = "true";
+        image.src = fallbackSrc;
         return;
       }
 
-      image.dataset.fallbackApplied = "true";
-      image.src = fallbackSrc;
+      hideBrokenImage();
     };
 
-    image.onerror = applyFallback;
     if (image.complete && !image.naturalWidth) {
-      applyFallback();
+      if (fallbackSrc && image.src !== fallbackSrc) {
+        image.dataset.fallbackApplied = "true";
+        image.src = fallbackSrc;
+      } else {
+        hideBrokenImage();
+      }
     }
   });
 }
@@ -10325,9 +10348,6 @@ function bindMessageBoardImageFallbacks(scope = document) {
 function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const visualImageUrl = resolveMessageBoardImageUrl(cardData.imageUrl);
-  const imageAlt = isFallback
-    ? (cardData.fallbackType === "fact" ? "Grow fact fallback image" : "Grow joke fallback image")
-    : "Announcement image";
   console.log("[Cannakan Announcements] Home announcement section rendered", {
     hasActiveAnnouncement: !isFallback,
     configuredDisplayMode: cardData.configuredDisplayMode,
@@ -10343,7 +10363,7 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
       <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}">
         <img
           src="${escapeHtml(visualImageUrl)}"
-          alt="${escapeHtml(imageAlt)}"
+          alt=""
           class="home-announcement-card-image"
           data-message-board-image="true"
           data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
