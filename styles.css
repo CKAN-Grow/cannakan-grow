@@ -2374,6 +2374,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   opacity: 0.9;
 }
 
+.home-install-card.is-installed .home-install-card-header {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
 .home-install-card-header {
   padding: 0 0 14px;
   border-bottom: 1px solid rgba(148, 209, 89, 0.14);

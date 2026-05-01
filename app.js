@@ -7165,6 +7165,29 @@ function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
   const cardStateClass = isInstalled ? "is-installed" : "";
+  const bodyContentMarkup = isInstalled
+    ? ""
+    : `
+      <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
+      <div class="home-install-card-directions">
+        <section class="home-install-card-platform">
+          <h4 class="home-install-card-platform-title">iPhone</h4>
+          <ol class="home-install-card-steps">
+            <li>Open in Safari</li>
+            <li>Tap Share</li>
+            <li>Add to Home Screen</li>
+          </ol>
+        </section>
+        <section class="home-install-card-platform">
+          <h4 class="home-install-card-platform-title">Android</h4>
+          <ol class="home-install-card-steps">
+            <li>Open in Chrome</li>
+            <li>Tap Install App or Add to Home Screen</li>
+          </ol>
+        </section>
+        ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
+      </div>
+    `;
   const actionMarkup = isInstalled
     ? `
       <div class="home-install-card-status">
@@ -7199,25 +7222,7 @@ function renderHomeInstallInfoCardMarkup() {
         </div>
       </div>
       <div class="home-install-card-body">
-        <p class="muted home-install-card-description">Add Cannakan Grow to your phone for a full-screen app experience.</p>
-        <div class="home-install-card-directions">
-          <section class="home-install-card-platform">
-            <h4 class="home-install-card-platform-title">iPhone</h4>
-            <ol class="home-install-card-steps">
-              <li>Open in Safari</li>
-              <li>Tap Share</li>
-              <li>Add to Home Screen</li>
-            </ol>
-          </section>
-          <section class="home-install-card-platform">
-            <h4 class="home-install-card-platform-title">Android</h4>
-            <ol class="home-install-card-steps">
-              <li>Open in Chrome</li>
-              <li>Tap Install App or Add to Home Screen</li>
-            </ol>
-          </section>
-          ${mode === "ios" ? '<p class="home-install-card-tip">To install: tap Share, then Add to Home Screen</p>' : ""}
-        </div>
+        ${bodyContentMarkup}
         ${actionMarkup}
       </div>
     </section>
