@@ -58,8 +58,19 @@ function cacheResponse(request, response) {
     return response;
   }
 
+  let responseForCache = null;
+  try {
+    responseForCache = response.clone();
+  } catch (error) {
+    console.warn("[Cannakan SW] Could not clone response for cache storage", {
+      url: request?.url || "",
+      error: error?.message || String(error || "Unknown clone error"),
+    });
+    return response;
+  }
+
   caches.open(CACHE_NAME).then((cache) => {
-    cache.put(request, response.clone());
+    cache.put(request, responseForCache);
   });
   return response;
 }

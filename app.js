@@ -665,11 +665,25 @@ function getBuildInfo() {
   });
 }
 
-function normalizeBuildInfo(buildInfo = {}) {
+function normalizeBuildInfo(buildInfo) {
+  const candidate = buildInfo && typeof buildInfo === "object" && !Array.isArray(buildInfo)
+    ? buildInfo
+    : {};
+  const normalizedVersion = typeof candidate.version === "string" || typeof candidate.version === "number"
+    ? String(candidate.version).trim()
+    : "";
+  const normalizedBuildTimestamp = typeof candidate.buildTimestamp === "string" || typeof candidate.buildTimestamp === "number"
+    ? String(candidate.buildTimestamp).trim()
+    : "";
+  const normalizedCommitHash = typeof candidate.commitHash === "string" || typeof candidate.commitHash === "number"
+    ? String(candidate.commitHash).trim()
+    : "";
+
   return {
-    version: String(buildInfo.version || "0.0.0").trim() || "0.0.0",
-    buildTimestamp: String(buildInfo.buildTimestamp || "").trim(),
-    commitHash: String(buildInfo.commitHash || "").trim(),
+    version: normalizedVersion || "0.0.0",
+    buildTimestamp: normalizedBuildTimestamp,
+    commitHash: normalizedCommitHash,
+    hasUsableMetadata: Boolean(normalizedVersion || normalizedBuildTimestamp || normalizedCommitHash),
   };
 }
 
@@ -684,11 +698,7 @@ function getBuildInfoSignature(buildInfo = getBuildInfo()) {
 
 function hasUsableBuildInfo(buildInfo = {}) {
   const normalizedBuildInfo = normalizeBuildInfo(buildInfo);
-  return Boolean(
-    normalizedBuildInfo.version
-    || normalizedBuildInfo.buildTimestamp
-    || normalizedBuildInfo.commitHash,
-  );
+  return normalizedBuildInfo.hasUsableMetadata === true;
 }
 
 function formatBuildTimestampLabel(timestamp = "") {
@@ -785,10 +795,15 @@ function syncGlobalBuildVersionBadge() {
 function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = appState.currentBuildInfo || getBuildInfo()) {
   const normalizedCurrentBuildInfo = normalizeBuildInfo(currentBuildInfo);
   const normalizedLatestBuildInfo = normalizeBuildInfo(latestBuildInfo);
+
+  if (!hasUsableBuildInfo(normalizedCurrentBuildInfo) || !hasUsableBuildInfo(normalizedLatestBuildInfo)) {
+    return false;
+  }
+
   const currentSignature = getBuildInfoSignature(normalizedCurrentBuildInfo);
   const latestSignature = getBuildInfoSignature(normalizedLatestBuildInfo);
 
-  if (!hasUsableBuildInfo(normalizedLatestBuildInfo) || currentSignature === latestSignature) {
+  if (currentSignature === latestSignature) {
     return false;
   }
 
@@ -808,8 +823,11 @@ function syncBuildUpdateBanner() {
     return;
   }
 
-  const latestBuildInfo = appState.availableBuildInfo;
-  const shouldShowBanner = isBuildInfoNewerThanCurrent(latestBuildInfo, appState.currentBuildInfo || getBuildInfo());
+  const latestBuildInfo = normalizeBuildInfo(appState.availableBuildInfo);
+  const currentBuildInfo = normalizeBuildInfo(appState.currentBuildInfo || getBuildInfo());
+  const shouldShowBanner = hasUsableBuildInfo(latestBuildInfo)
+    && hasUsableBuildInfo(currentBuildInfo)
+    && isBuildInfoNewerThanCurrent(latestBuildInfo, currentBuildInfo);
   const existingBanner = appShell.querySelector("#app-update-banner");
 
   if (!shouldShowBanner) {
