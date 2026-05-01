@@ -144,6 +144,7 @@ const appState = {
   supabase: null,
   authSession: null,
   user: null,
+  currentUserEmail: "",
   isAdmin: false,
   mockDataEnabled: false,
   profile: null,
@@ -238,8 +239,8 @@ const MOCK_DATA_ADMIN_EMAILS = new Set([
 ]);
 // TODO: Keep this UI allowlist in sync with database/RLS admin enforcement before production.
 
-function isAdminUser(user = appState.user) {
-  const normalizedEmail = getNormalizedUserEmail(user);
+function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
+  const normalizedEmail = getNormalizedUserEmail(userOrEmail);
   return ADMIN_EMAILS.has(normalizedEmail);
 }
 
@@ -267,8 +268,8 @@ function setTopbarNavigationReadyState() {
 }
 
 function syncAdminNavigationVisibility() {
-  const currentUserEmail = getNormalizedUserEmail(appState.user);
-  const shouldShowAdminNav = Boolean(appState.user && isAdminUser(appState.user));
+  const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
+  const shouldShowAdminNav = Boolean(appState.authReady && appState.isAdmin);
   document.querySelectorAll("[data-admin-nav]").forEach((link) => {
     link.hidden = !shouldShowAdminNav;
     if (shouldShowAdminNav) {
@@ -278,8 +279,9 @@ function syncAdminNavigationVisibility() {
     }
   });
   console.log("[Cannakan Admin Nav] Navigation visibility evaluated", {
-    currentUserEmail,
-    isAdminUser: shouldShowAdminNav,
+    currentEmail: appState.user?.email || "",
+    normalizedEmail: currentUserEmail,
+    isAdminResult: shouldShowAdminNav,
     adminNavRendered: shouldShowAdminNav,
   });
 }
@@ -287,6 +289,7 @@ function syncAdminNavigationVisibility() {
 function resetSessionScopedAppState() {
   appState.authSession = null;
   appState.user = null;
+  appState.currentUserEmail = "";
   appState.isAdmin = false;
   appState.profile = null;
   appState.profileError = "";
@@ -2037,9 +2040,13 @@ async function bootstrapApp() {
   if (appState.supabase) {
     try {
       const { data } = await withTimeout(appState.supabase.auth.getSession(), 8000, "Supabase session check timed out.");
+      const sessionEmail = data?.session?.user?.email || "";
+      const normalizedSessionEmail = getNormalizedUserEmail(data?.session?.user || null);
       console.log("[Cannakan App Init] auth session loaded", {
         hasSession: Boolean(data?.session),
-        currentUserEmail: getNormalizedUserEmail(data?.session?.user || null),
+        currentEmail: sessionEmail,
+        normalizedEmail: normalizedSessionEmail,
+        isAdminResult: isAdminUser(normalizedSessionEmail),
       });
       await handleAuthSession(data?.session, {
         shouldRender: false,
@@ -2048,10 +2055,14 @@ async function bootstrapApp() {
       });
       appState.supabase.auth.onAuthStateChange((event, session) => {
         window.setTimeout(async () => {
+          const sessionEmail = session?.user?.email || "";
+          const normalizedSessionEmail = getNormalizedUserEmail(session?.user || null);
           console.log("[Cannakan App Init] auth session loaded", {
             event,
             hasSession: Boolean(session),
-            currentUserEmail: getNormalizedUserEmail(session?.user || null),
+            currentEmail: sessionEmail,
+            normalizedEmail: normalizedSessionEmail,
+            isAdminResult: isAdminUser(normalizedSessionEmail),
           });
           await handleAuthSession(session, {
             reason: `auth:${String(event || "").toLowerCase()}`,
@@ -2152,11 +2163,15 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
       resetSessionScopedAppState();
       appState.authSession = session || null;
       appState.user = session?.user || null;
-      appState.isAdmin = isAdminUser(appState.user);
+      appState.currentUserEmail = getNormalizedUserEmail(session?.user || null);
+      appState.isAdmin = isAdminUser(appState.currentUserEmail);
+      appState.authReady = true;
+      updateAuthStatus();
       await rehydratePersistentBrowserState(reason);
       console.log("[Cannakan App Init] auth user evaluated", {
         reason,
-        currentUserEmail: getNormalizedUserEmail(appState.user),
+        currentEmail: appState.user?.email || "",
+        normalizedEmail: appState.currentUserEmail,
         isAdminResult: appState.isAdmin,
       });
 
@@ -5572,12 +5587,13 @@ function updateAuthStatus() {
   const themeTarget = appState.theme === "dark" ? "light" : "dark";
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
-  const currentUserEmail = getNormalizedUserEmail(appState.user);
-  const currentUserIsAdmin = Boolean(appState.user && isAdminUser(appState.user));
+  const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
+  const currentUserIsAdmin = Boolean(appState.authReady && appState.isAdmin);
   const showAdminMenuItem = currentUserIsAdmin;
   console.log("[Cannakan Admin Nav] Account menu render", {
-    currentUserEmail,
-    isAdminUser: currentUserIsAdmin,
+    currentEmail: appState.user?.email || "",
+    normalizedEmail: currentUserEmail,
+    isAdminResult: currentUserIsAdmin,
     adminDropdownItemRendered: showAdminMenuItem,
   });
 
