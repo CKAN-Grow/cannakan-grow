@@ -10233,6 +10233,13 @@ function normalizeLeaderboardAuditFilters(filters = {}) {
   };
 }
 
+function hasActiveLeaderboardAuditFilters(filters = appState.leaderboardAuditFilters) {
+  const normalizedFilters = normalizeLeaderboardAuditFilters(filters);
+  return Object.entries(LEADERBOARD_AUDIT_DEFAULT_FILTERS).some(([key, defaultValue]) => (
+    String(normalizedFilters[key] || "") !== String(defaultValue || "")
+  ));
+}
+
 function getLeaderboardAuditProfileLabel(snapshot) {
   return String(
     snapshot?.profileName
@@ -10307,6 +10314,7 @@ function buildLeaderboardAuditRows() {
       sourceLabel: metadata.sourceName || publicDetails.sourceLabel || "Not shared",
       seedVarietyLabel: metadata.seedVarietyName || publicDetails.seedVarietyLabel || "Not shared",
       seedTypeLabel: metadata.seedTypeName || publicDetails.seedTypeLabel || "Not shared",
+      sexLabel: publicDetails.sexLabel || "Not shared",
       totalSeeds,
       totalPlanted,
       successPercent,
@@ -10645,6 +10653,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
 
   return {
     filters: normalizedFilters,
+    hasActiveFilters: hasActiveLeaderboardAuditFilters(normalizedFilters),
     options,
     allRows,
     rows: visibleRows,
@@ -10715,8 +10724,9 @@ function exportLeaderboardAuditCsv(rows) {
     "source",
     "seed_variety",
     "seed_type",
+    "seed_sex",
     "seeds_started",
-    "seeds_germinated",
+    "seeds_germinated_planted",
     "germination_percentage",
     "gallery_status",
     "included_in_leaderboard",
@@ -10732,6 +10742,7 @@ function exportLeaderboardAuditCsv(rows) {
       row.sourceLabel,
       row.seedVarietyLabel,
       row.seedTypeLabel,
+      row.sexLabel,
       row.totalSeeds,
       row.totalPlanted,
       `${row.successPercent}%`,
@@ -10761,6 +10772,8 @@ function renderLeaderboardAuditSection(target = app) {
         <p class="muted">Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.</p>
       </div>
       <div class="leaderboard-audit-actions">
+        <span class="leaderboard-audit-filter-state">${escapeHtml(state.hasActiveFilters ? "Filtered results" : "All records")}</span>
+        <button type="button" class="button button-secondary" data-leaderboard-audit-clear="true">Clear All</button>
         <button type="button" class="button button-secondary" data-leaderboard-audit-copy="true">Copy Summary</button>
         <button type="button" class="button button-primary" data-leaderboard-audit-export="true">Export CSV</button>
       </div>
@@ -10872,6 +10885,13 @@ function renderLeaderboardAuditSection(target = app) {
       });
       safeRender();
     });
+  });
+
+  section.querySelector("[data-leaderboard-audit-clear='true']")?.addEventListener("click", () => {
+    appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+      ...LEADERBOARD_AUDIT_DEFAULT_FILTERS,
+    });
+    safeRender();
   });
 
   section.querySelector("[data-leaderboard-audit-export='true']")?.addEventListener("click", () => {

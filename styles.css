@@ -4230,6 +4230,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-wrap: wrap;
 }
 
+.leaderboard-audit-filter-state {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .leaderboard-audit-filter-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -7884,6 +7891,7 @@ body.theme-dark .leaderboard-audit-metric-grid strong {
   color: #f6f8f5;
 }
 
+body.theme-dark .leaderboard-audit-filter-state,
 body.theme-dark .leaderboard-audit-metric-grid span,
 body.theme-dark .leaderboard-audit-metric-range,
 body.theme-dark .leaderboard-audit-metric-reasons,
