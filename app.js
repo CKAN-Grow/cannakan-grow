@@ -6215,9 +6215,10 @@ async function togglePublicMemberFollow(memberId = "") {
   if (!normalizedId) {
     throw new Error("Could not find this community member.");
   }
-  if (!appState.supabase || !appState.user?.id) {
+  if (!appState.supabase) {
     throw new Error("Sign in to follow community members.");
   }
+  const authUser = await getAuthenticatedSupabaseUser("Sign in to follow community members.");
   if (isViewingOwnPublicMemberProfile(normalizedId)) {
     throw new Error("You cannot follow your own profile.");
   }
@@ -6245,7 +6246,7 @@ async function togglePublicMemberFollow(memberId = "") {
       const { error } = await appState.supabase
         .from(MEMBER_FOLLOWS_TABLE)
         .delete()
-        .eq("follower_user_id", appState.user.id)
+        .eq("follower_user_id", authUser.id)
         .eq("followed_user_id", normalizedId);
 
       if (error) {
@@ -6256,7 +6257,7 @@ async function togglePublicMemberFollow(memberId = "") {
         .from(MEMBER_FOLLOWS_TABLE)
         .upsert(
           {
-            follower_user_id: appState.user.id,
+            follower_user_id: authUser.id,
             followed_user_id: normalizedId,
           },
           {
@@ -6279,7 +6280,7 @@ async function togglePublicMemberFollow(memberId = "") {
         force: true,
         reason: "follow-toggle:target-summary",
       }),
-      refreshPublicMemberFollowSummary(appState.user.id, {
+      refreshPublicMemberFollowSummary(authUser.id, {
         force: true,
         reason: "follow-toggle:viewer-summary",
       }),
