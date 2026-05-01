@@ -7720,6 +7720,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
 }
 
+.auth-helper-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: -6px;
+}
+
+.auth-forgot-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.auth-forgot-link:hover,
+.auth-forgot-link:focus-visible {
+  color: var(--accent);
+  outline: none;
+}
+
+.auth-forgot-link:disabled {
+  cursor: default;
+  opacity: 0.86;
+}
+
 .profile-avatar-preview {
   display: flex;
   align-items: center;
@@ -7883,6 +7912,15 @@ body.theme-dark .button-secondary:hover {
   border-color: #94d159;
   color: #94d159;
   transform: translateY(-1px);
+}
+
+body.theme-dark .auth-forgot-link {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .auth-forgot-link:hover,
+body.theme-dark .auth-forgot-link:focus-visible {
+  color: #bfe89d;
 }
 
 body.theme-dark .profile-preferences {

@@ -2837,14 +2837,31 @@ function bindAuthForm(form, options = {}) {
   } = options;
   const confirmField = form.querySelector("#confirm-password-field");
   const confirmInput = form.elements.confirmPassword;
+  const emailInput = form.elements.email;
+  const forgotPasswordButton = form.querySelector("[data-auth-forgot-password]");
   let authMode = "login";
 
-  const setMessage = (text = "") => {
+  const setMessage = (text = "", tone = "") => {
     if (!messageElement) {
       return;
     }
 
+    messageElement.className = "form-message";
+    if (tone === "success") {
+      messageElement.classList.add("is-success");
+    } else if (tone === "warning") {
+      messageElement.classList.add("is-warning");
+    }
     messageElement.textContent = text;
+  };
+
+  const resetForgotPasswordState = () => {
+    if (!forgotPasswordButton) {
+      return;
+    }
+    forgotPasswordButton.disabled = false;
+    forgotPasswordButton.dataset.state = "idle";
+    forgotPasswordButton.textContent = "Forgot password?";
   };
 
   const setAuthMode = (mode) => {
@@ -2869,7 +2886,7 @@ function bindAuthForm(form, options = {}) {
     const passwordsMatch = password === confirmPassword;
     if (!passwordsMatch) {
       confirmInput.setCustomValidity("Passwords do not match.");
-      setMessage("Passwords do not match.");
+      setMessage("Passwords do not match.", "warning");
       return false;
     }
 
@@ -2889,11 +2906,44 @@ function bindAuthForm(form, options = {}) {
 
   confirmInput?.addEventListener("input", validatePasswordMatch);
   form.elements.password?.addEventListener("input", validatePasswordMatch);
+  emailInput?.addEventListener("input", () => {
+    if (forgotPasswordButton?.dataset.state === "sent") {
+      resetForgotPasswordState();
+    }
+  });
   setAuthMode("login");
   const authNotice = consumeAuthNotice();
   if (authNotice) {
     setMessage(authNotice);
   }
+
+  forgotPasswordButton?.addEventListener("click", async () => {
+    const email = String(emailInput?.value || "").trim();
+    if (!email) {
+      setMessage("Enter your email first", "warning");
+      emailInput?.focus();
+      return;
+    }
+
+    if (!appState.supabase) {
+      setMessage("Password reset is unavailable right now. Please try again later.");
+      return;
+    }
+
+    forgotPasswordButton.disabled = true;
+    try {
+      const { error } = await appState.supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        throw error;
+      }
+      forgotPasswordButton.dataset.state = "sent";
+      forgotPasswordButton.textContent = "Email sent ✓";
+      setMessage("Password reset email sent. Check your inbox.", "success");
+    } catch (error) {
+      forgotPasswordButton.disabled = false;
+      setMessage(error?.message ? `Could not send reset email. ${error.message}` : "Could not send reset email. Please try again.", "warning");
+    }
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2916,7 +2966,7 @@ function bindAuthForm(form, options = {}) {
         if (error) {
           throw error;
         }
-        setMessage("Check your email to confirm your account, then log in.");
+        setMessage("Check your email to confirm your account, then log in.", "success");
         return;
       }
 
