@@ -589,7 +589,6 @@ function reportAppError(error, context = "App Error") {
 function safeRender() {
   try {
     render();
-    syncGlobalBuildVersionBadge();
   } catch (error) {
     reportAppError(error, "Render failed");
   }
@@ -664,55 +663,12 @@ function registerServiceWorker() {
 }
 
 function getBuildInfo() {
-  const bundledBuildInfo = normalizeBuildInfo(CURRENT_APP_BUILD_INFO);
-  const runtimeBuildInfo = normalizeBuildInfo(window.CANNAKAN_BUILD_INFO || {});
-
-  return normalizeBuildInfo({
-    version: runtimeBuildInfo.version || bundledBuildInfo.version,
-    buildTimestamp: runtimeBuildInfo.buildTimestamp || bundledBuildInfo.buildTimestamp,
-    commitHash: runtimeBuildInfo.commitHash || bundledBuildInfo.commitHash,
-  });
+  return DEFAULT_BUILD_INFO;
 }
 
 function normalizeBuildInfo(info) {
   if (!info || typeof info !== "object") return DEFAULT_BUILD_INFO;
-  if (Array.isArray(info)) return DEFAULT_BUILD_INFO;
-
-  const version = typeof info.version === "string" || typeof info.version === "number"
-    ? String(info.version || DEFAULT_BUILD_INFO.version).trim()
-    : DEFAULT_BUILD_INFO.version;
-  const buildTime = typeof info.buildTime === "string" || typeof info.buildTime === "number"
-    ? String(info.buildTime || DEFAULT_BUILD_INFO.buildTime).trim()
-    : "";
-  const timestamp = typeof info.timestamp === "string" || typeof info.timestamp === "number"
-    ? String(info.timestamp || DEFAULT_BUILD_INFO.timestamp).trim()
-    : "";
-  const buildTimestamp = typeof info.buildTimestamp === "string" || typeof info.buildTimestamp === "number"
-    ? String(info.buildTimestamp || buildTime || timestamp || DEFAULT_BUILD_INFO.buildTimestamp).trim()
-    : (buildTime || timestamp || DEFAULT_BUILD_INFO.buildTimestamp);
-  const commit = typeof info.commit === "string" || typeof info.commit === "number"
-    ? String(info.commit || DEFAULT_BUILD_INFO.commit).trim()
-    : "";
-  const commitHash = typeof info.commitHash === "string" || typeof info.commitHash === "number"
-    ? String(info.commitHash || commit || DEFAULT_BUILD_INFO.commitHash).trim()
-    : (commit || DEFAULT_BUILD_INFO.commitHash);
-
-  return {
-    version: version || DEFAULT_BUILD_INFO.version,
-    buildTime: buildTime || buildTimestamp || DEFAULT_BUILD_INFO.buildTime,
-    buildTimestamp: buildTimestamp || DEFAULT_BUILD_INFO.buildTimestamp,
-    timestamp: timestamp || buildTimestamp || DEFAULT_BUILD_INFO.timestamp,
-    commit: commit || commitHash || DEFAULT_BUILD_INFO.commit,
-    commitHash: commitHash || DEFAULT_BUILD_INFO.commitHash,
-    hasUsableMetadata: Boolean(
-      (version && version !== DEFAULT_BUILD_INFO.version)
-      || buildTime
-      || buildTimestamp
-      || timestamp
-      || commit
-      || commitHash
-    ),
-  };
+  return DEFAULT_BUILD_INFO;
 }
 
 function getBuildInfoSignature(buildInfo = getBuildInfo()) {
@@ -739,146 +695,47 @@ function formatBuildTimestampLabel(timestamp = "") {
 }
 
 function renderBuildDebugStampMarkup() {
-  const buildInfo = getBuildInfo();
-  const commitLabel = buildInfo.commitHash || "Unavailable";
-
-  return `
-    <div class="build-debug-stamp" aria-label="App build information">
-      <p class="build-debug-stamp-label">Build</p>
-      <dl class="build-debug-stamp-list">
-        <div>
-          <dt>Version</dt>
-          <dd>${escapeHtml(buildInfo.version)}</dd>
-        </div>
-        <div>
-          <dt>Built</dt>
-          <dd>${escapeHtml(formatBuildTimestampLabel(buildInfo.buildTimestamp))}</dd>
-        </div>
-        <div>
-          <dt>Commit</dt>
-          <dd>${escapeHtml(commitLabel)}</dd>
-        </div>
-      </dl>
-    </div>
-  `;
+  return "";
 }
 
 function renderDevModeBuildToolsMarkup() {
-  if (!isMockDataEnabled()) {
-    return "";
-  }
-
-  return `
-    ${renderBuildDebugStampMarkup()}
-    <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear Cache + Reload Latest</button>
-  `;
+  return "";
 }
 
 function shouldShowGlobalBuildVersionBadge() {
-  return isMockDataEnabled();
+  return false;
 }
 
 function renderGlobalBuildVersionBadgeMarkup() {
-  const buildInfo = getBuildInfo();
-  const versionLabel = buildInfo.version ? `v${buildInfo.version}` : "Build";
-  const commitLabel = buildInfo.commitHash ? `#${buildInfo.commitHash}` : "Commit unavailable";
-  const timestampLabel = formatBuildTimestampLabel(buildInfo.buildTimestamp);
-
-  return `
-    <div
-      class="build-version-badge"
-      aria-label="Current app build version"
-      title="${escapeHtml(`${versionLabel} · ${timestampLabel} · ${commitLabel}`)}"
-    >
-      <span class="build-version-badge-version">${escapeHtml(versionLabel)}</span>
-      <span class="build-version-badge-separator" aria-hidden="true">•</span>
-      <span class="build-version-badge-timestamp">${escapeHtml(timestampLabel)}</span>
-      <span class="build-version-badge-separator" aria-hidden="true">•</span>
-      <span class="build-version-badge-commit">${escapeHtml(commitLabel)}</span>
-    </div>
-  `;
+  return "";
 }
 
 function syncGlobalBuildVersionBadge() {
-  if (!document.body) {
-    return;
-  }
-
-  const existingBadge = document.body.querySelector("#global-build-version-badge");
-  if (!shouldShowGlobalBuildVersionBadge()) {
-    existingBadge?.remove();
-    return;
-  }
-
-  const badge = existingBadge || document.createElement("div");
-  badge.id = "global-build-version-badge";
-  badge.className = "global-build-version-badge";
-  badge.innerHTML = renderGlobalBuildVersionBadgeMarkup();
-
-  if (!existingBadge) {
-    document.body.appendChild(badge);
-  }
+  document.body?.querySelector("#global-build-version-badge")?.remove();
 }
 
 function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = appState.currentBuildInfo || getBuildInfo()) {
-  const normalizedCurrentBuildInfo = normalizeBuildInfo(currentBuildInfo);
-  const normalizedLatestBuildInfo = normalizeBuildInfo(latestBuildInfo);
-
-  if (!hasUsableBuildInfo(normalizedCurrentBuildInfo) || !hasUsableBuildInfo(normalizedLatestBuildInfo)) {
-    return false;
-  }
-
-  const currentSignature = getBuildInfoSignature(normalizedCurrentBuildInfo);
-  const latestSignature = getBuildInfoSignature(normalizedLatestBuildInfo);
-
-  if (currentSignature === latestSignature) {
-    return false;
-  }
-
-  const currentTimestamp = Date.parse(normalizedCurrentBuildInfo.buildTimestamp || "");
-  const latestTimestamp = Date.parse(normalizedLatestBuildInfo.buildTimestamp || "");
-  if (Number.isFinite(currentTimestamp) && Number.isFinite(latestTimestamp)) {
-    return latestTimestamp > currentTimestamp;
-  }
-
-  return true;
+  return false;
 }
 
 function syncBuildUpdateBanner() {
-  // Build update monitoring is temporarily disabled to protect app startup/render.
   document.querySelector("#app-update-banner")?.remove();
 }
 
 async function fetchLatestBuildInfo() {
-  const requestUrl = new URL("/build-info.json", window.location.origin);
-  requestUrl.searchParams.set("ts", String(Date.now()));
-  const response = await fetch(requestUrl.toString(), {
-    cache: "no-store",
-    headers: {
-      "cache-control": "no-cache",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Build info request failed with status ${response.status}`);
-  }
-
-  return normalizeBuildInfo(await response.json());
+  return DEFAULT_BUILD_INFO;
 }
 
 async function checkForAvailableAppUpdate(reason = "background-check", options = {}) {
-  // Build update monitoring is temporarily disabled to protect app startup/render.
   appState.availableBuildInfo = null;
   return false;
 }
 
 function handleBuildUpdateVisibilityChange() {
-  // Build update monitoring is temporarily disabled to protect app startup/render.
   return;
 }
 
 function initializeBuildUpdateMonitoring() {
-  // Build update monitoring is temporarily disabled to protect app startup/render.
   if (appState.buildUpdateCheckIntervalId) {
     window.clearInterval(appState.buildUpdateCheckIntervalId);
     appState.buildUpdateCheckIntervalId = 0;
@@ -9171,7 +9028,6 @@ function render() {
   syncInstallPromptBanner();
   syncMockDataBanner();
   updateNavState();
-  syncGlobalBuildVersionBadge();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
   const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
   const pathRoute = window.location.pathname.replace(/^\/+/, "");
