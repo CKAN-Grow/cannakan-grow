@@ -637,6 +637,91 @@ function registerServiceWorker() {
   }, { once: true });
 }
 
+function getBuildInfo() {
+  const buildInfo = window.CANNAKAN_BUILD_INFO || {};
+  return {
+    version: String(buildInfo.version || "0.0.0").trim() || "0.0.0",
+    buildTimestamp: String(buildInfo.buildTimestamp || "").trim(),
+    commitHash: String(buildInfo.commitHash || "").trim(),
+  };
+}
+
+function formatBuildTimestampLabel(timestamp = "") {
+  if (!timestamp) {
+    return "Unknown";
+  }
+
+  const parsed = new Date(timestamp);
+  return Number.isNaN(parsed.getTime()) ? timestamp : parsed.toLocaleString();
+}
+
+function renderBuildDebugStampMarkup() {
+  const buildInfo = getBuildInfo();
+  const commitLabel = buildInfo.commitHash || "Unavailable";
+
+  return `
+    <div class="build-debug-stamp" aria-label="App build information">
+      <p class="build-debug-stamp-label">Build</p>
+      <dl class="build-debug-stamp-list">
+        <div>
+          <dt>Version</dt>
+          <dd>${escapeHtml(buildInfo.version)}</dd>
+        </div>
+        <div>
+          <dt>Built</dt>
+          <dd>${escapeHtml(formatBuildTimestampLabel(buildInfo.buildTimestamp))}</dd>
+        </div>
+        <div>
+          <dt>Commit</dt>
+          <dd>${escapeHtml(commitLabel)}</dd>
+        </div>
+      </dl>
+    </div>
+  `;
+}
+
+async function clearAppCacheAndReloadLatest() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+
+    if ("caches" in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    }
+  } catch (error) {
+    console.warn("Failed to fully clear app caches before reload", error);
+  }
+
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("refresh", String(Date.now()));
+  window.location.replace(nextUrl.toString());
+}
+
+function bindBuildDebugActions(scope = document) {
+  if (!scope) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-clear-app-cache='true']").forEach((button) => {
+    if (button.dataset.buildDebugBound === "true") {
+      return;
+    }
+
+    button.dataset.buildDebugBound = "true";
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await clearAppCacheAndReloadLatest();
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+}
+
 function isStandaloneAppDisplay() {
   return Boolean(
     window.matchMedia?.("(display-mode: standalone)")?.matches
@@ -10459,6 +10544,7 @@ function renderHomeAdminUtilityCardMarkup() {
             ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
           </p>
           <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
+          ${renderBuildDebugStampMarkup()}
         </div>
         <div class="mock-data-admin-actions">
           <button
@@ -10477,6 +10563,7 @@ function renderHomeAdminUtilityCardMarkup() {
             </span>
             <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
           </button>
+          <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear App Cache / Reload Latest Version</button>
           <p class="muted">Shift + D</p>
         </div>
       </div>
@@ -13598,6 +13685,7 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
+  bindBuildDebugActions(app);
 
   const spotlightSession = activeSessions[0] || null;
   const updateSpotlight = () => {
@@ -13705,6 +13793,7 @@ function renderMockDataAdminSection(target = app, options = {}) {
           ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
         </p>
         <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
+        ${renderBuildDebugStampMarkup()}
       </div>
       <div class="mock-data-admin-actions">
         <button
@@ -13723,6 +13812,7 @@ function renderMockDataAdminSection(target = app, options = {}) {
           </span>
           <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
         </button>
+        <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear App Cache / Reload Latest Version</button>
         <p class="muted">Shift + D</p>
       </div>
     </div>
@@ -13731,6 +13821,7 @@ function renderMockDataAdminSection(target = app, options = {}) {
   section.querySelector("[data-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
+  bindBuildDebugActions(section);
 
   target.appendChild(section);
   return section;

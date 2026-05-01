@@ -13,7 +13,7 @@
       ]
     },
     {
-      "source": "/(index\\.html|app\\.js|styles\\.css|manifest\\.json)",
+      "source": "/(index\\.html|app\\.js|styles\\.css|build-info\\.js|manifest\\.json)",
       "headers": [
         {
           "key": "Cache-Control",

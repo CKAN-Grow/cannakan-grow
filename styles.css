@@ -4133,6 +4133,56 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(182, 194, 185, 0.78);
 }
 
+.build-debug-stamp {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(109, 124, 113, 0.24);
+  background: rgba(10, 14, 11, 0.28);
+}
+
+.build-debug-stamp-label {
+  margin: 0;
+  color: rgba(182, 194, 185, 0.86);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.build-debug-stamp-list {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.build-debug-stamp-list div {
+  display: grid;
+  gap: 2px;
+}
+
+.build-debug-stamp-list dt,
+.build-debug-stamp-list dd {
+  margin: 0;
+}
+
+.build-debug-stamp-list dt {
+  color: rgba(182, 194, 185, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.build-debug-stamp-list dd {
+  color: #f3f7f1;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
 .mock-data-admin-actions {
   display: grid;
   gap: 8px;
@@ -4142,6 +4192,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .mock-data-admin-actions .muted {
   margin: 0;
   font-size: 0.78rem;
+}
+
+.build-debug-reset-button {
+  width: 100%;
+  max-width: 320px;
 }
 
 .admin-page-hero,
@@ -9258,6 +9313,20 @@ body.theme-dark .mock-data-admin-actions .muted,
 body.theme-dark .mock-data-toggle-sublabel,
 body.theme-dark .mock-data-toggle-state {
   color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .build-debug-stamp {
+  border-color: rgba(111, 122, 116, 0.28);
+  background: rgba(7, 10, 8, 0.34);
+}
+
+body.theme-dark .build-debug-stamp-label,
+body.theme-dark .build-debug-stamp-list dt {
+  color: rgba(189, 204, 192, 0.72);
+}
+
+body.theme-dark .build-debug-stamp-list dd {
+  color: #f6f8f5;
 }
 
 body.theme-dark .leaderboard-audit-section {

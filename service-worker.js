@@ -6,6 +6,7 @@ const APP_SHELL_ASSETS = [
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/build-info.js",
   "/manifest.json",
   "/favicon.ico",
   "/favicon-32x32.png",
@@ -22,6 +23,7 @@ const NETWORK_FIRST_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/build-info.js",
   "/manifest.json",
 ]);
 
