@@ -11010,58 +11010,70 @@ function renderLeaderboardAuditSection(target = app) {
         <h3>Leaderboard Data Audit</h3>
         <p class="muted">Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.</p>
       </div>
+    </div>
+    <div class="leaderboard-audit-controls">
+      <div class="leaderboard-audit-toolbar">
+        <div class="leaderboard-audit-toolbar-group">
+          <span class="leaderboard-audit-toolbar-label">Date Presets</span>
+          ${renderLeaderboardAuditDatePresetButtonsMarkup(state)}
+        </div>
+        <div class="leaderboard-audit-toolbar-group">
+          <span class="leaderboard-audit-toolbar-label">Quick Filters</span>
+          ${renderLeaderboardAuditInclusionQuickFiltersMarkup(state)}
+        </div>
+      </div>
       <div class="leaderboard-audit-actions">
         <span class="leaderboard-audit-filter-state">${escapeHtml(state.hasActiveFilters ? "Filtered results" : "All records")}</span>
         <button type="button" class="button button-secondary" data-leaderboard-audit-clear="true">Clear All</button>
         <button type="button" class="button button-secondary" data-leaderboard-audit-copy="true">Copy Summary</button>
         <button type="button" class="button button-primary" data-leaderboard-audit-export="true">Export CSV</button>
       </div>
+      <div class="leaderboard-audit-filter-grid">
+        <label>
+          <span>Start Date</span>
+          <input type="date" data-audit-filter="startDate" value="${escapeHtml(state.filters.startDate)}">
+        </label>
+        <label>
+          <span>End Date</span>
+          <input type="date" data-audit-filter="endDate" value="${escapeHtml(state.filters.endDate)}">
+        </label>
+        <label>
+          <span>Source</span>
+          <select data-audit-filter="source">${renderLeaderboardAuditSelectOptions(state.options.sources, state.filters.source, "All sources")}</select>
+        </label>
+        <label>
+          <span>Seed Variety</span>
+          <select data-audit-filter="seedVariety">${renderLeaderboardAuditSelectOptions(state.options.seedVarieties, state.filters.seedVariety, "All seed varieties")}</select>
+        </label>
+        <label>
+          <span>Seed Type</span>
+          <select data-audit-filter="seedType">${renderLeaderboardAuditSelectOptions(state.options.seedTypes, state.filters.seedType, "All seed types")}</select>
+        </label>
+        <label>
+          <span>Profile/User</span>
+          <select data-audit-filter="profile">${renderLeaderboardAuditSelectOptions(state.options.profiles, state.filters.profile, "All profiles")}</select>
+        </label>
+        <label>
+          <span>Gallery Status</span>
+          <select data-audit-filter="status">
+            <option value="all"${state.filters.status === "all" ? " selected" : ""}>All statuses</option>
+            <option value="approved"${state.filters.status === "approved" ? " selected" : ""}>Approved</option>
+            <option value="pending_review"${state.filters.status === "pending_review" ? " selected" : ""}>Pending Review</option>
+            <option value="rejected"${state.filters.status === "rejected" ? " selected" : ""}>Rejected</option>
+            <option value="private"${state.filters.status === "private" ? " selected" : ""}>Private</option>
+          </select>
+        </label>
+        <label>
+          <span>Included/Excluded</span>
+          <select data-audit-filter="inclusion">
+            <option value="all"${state.filters.inclusion === "all" ? " selected" : ""}>All records</option>
+            <option value="included"${state.filters.inclusion === "included" ? " selected" : ""}>Included only</option>
+            <option value="excluded"${state.filters.inclusion === "excluded" ? " selected" : ""}>Excluded only</option>
+          </select>
+        </label>
+      </div>
+      ${renderLeaderboardAuditActiveFilterChipsMarkup(state)}
     </div>
-    <div class="leaderboard-audit-filter-grid">
-      <label>
-        <span>Start Date</span>
-        <input type="date" data-audit-filter="startDate" value="${escapeHtml(state.filters.startDate)}">
-      </label>
-      <label>
-        <span>End Date</span>
-        <input type="date" data-audit-filter="endDate" value="${escapeHtml(state.filters.endDate)}">
-      </label>
-      <label>
-        <span>Source</span>
-        <select data-audit-filter="source">${renderLeaderboardAuditSelectOptions(state.options.sources, state.filters.source, "All sources")}</select>
-      </label>
-      <label>
-        <span>Seed Variety</span>
-        <select data-audit-filter="seedVariety">${renderLeaderboardAuditSelectOptions(state.options.seedVarieties, state.filters.seedVariety, "All seed varieties")}</select>
-      </label>
-      <label>
-        <span>Seed Type</span>
-        <select data-audit-filter="seedType">${renderLeaderboardAuditSelectOptions(state.options.seedTypes, state.filters.seedType, "All seed types")}</select>
-      </label>
-      <label>
-        <span>Profile/User</span>
-        <select data-audit-filter="profile">${renderLeaderboardAuditSelectOptions(state.options.profiles, state.filters.profile, "All profiles")}</select>
-      </label>
-      <label>
-        <span>Gallery Status</span>
-        <select data-audit-filter="status">
-          <option value="all"${state.filters.status === "all" ? " selected" : ""}>All statuses</option>
-          <option value="approved"${state.filters.status === "approved" ? " selected" : ""}>Approved</option>
-          <option value="pending_review"${state.filters.status === "pending_review" ? " selected" : ""}>Pending Review</option>
-          <option value="rejected"${state.filters.status === "rejected" ? " selected" : ""}>Rejected</option>
-          <option value="private"${state.filters.status === "private" ? " selected" : ""}>Private</option>
-        </select>
-      </label>
-      <label>
-        <span>Included/Excluded</span>
-        <select data-audit-filter="inclusion">
-          <option value="all"${state.filters.inclusion === "all" ? " selected" : ""}>All records</option>
-          <option value="included"${state.filters.inclusion === "included" ? " selected" : ""}>Included only</option>
-          <option value="excluded"${state.filters.inclusion === "excluded" ? " selected" : ""}>Excluded only</option>
-        </select>
-      </label>
-    </div>
-    ${renderLeaderboardAuditActiveFilterChipsMarkup(state)}
     ${renderLeaderboardAuditQuickStatsMarkup(state)}
     <div class="leaderboard-audit-metrics-grid">
       ${renderLeaderboardAuditCalculationCard(state.calculations.monthSource)}
@@ -11123,6 +11135,38 @@ function renderLeaderboardAuditSection(target = app) {
       appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
         ...appState.leaderboardAuditFilters,
         [auditFilter]: event.currentTarget.value,
+      });
+      safeRender();
+    });
+  });
+
+  section.querySelectorAll("[data-audit-date-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const presetKey = String(button.dataset.auditDatePreset || "").trim();
+      const preset = getLeaderboardAuditDatePresets()[presetKey];
+      if (!preset) {
+        return;
+      }
+
+      appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+        ...appState.leaderboardAuditFilters,
+        startDate: preset.startDate,
+        endDate: preset.endDate,
+      });
+      safeRender();
+    });
+  });
+
+  section.querySelectorAll("[data-audit-inclusion-quick]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const inclusionValue = String(button.dataset.auditInclusionQuick || "").trim();
+      if (!["all", "included", "excluded"].includes(inclusionValue)) {
+        return;
+      }
+
+      appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+        ...appState.leaderboardAuditFilters,
+        inclusion: inclusionValue,
       });
       safeRender();
     });
