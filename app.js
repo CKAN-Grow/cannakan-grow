@@ -716,7 +716,7 @@ function renderBuildDebugStampMarkup() {
 }
 
 function shouldShowGlobalBuildVersionBadge() {
-  return canAccessMockDataControls() || isMockDataEnabled();
+  return isMockDataEnabled();
 }
 
 function renderGlobalBuildVersionBadgeMarkup() {
