@@ -31,6 +31,7 @@ const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
 const MAX_SOURCE_LOGO_DIMENSION = 768;
+const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
@@ -97,6 +98,15 @@ const appState = {
   sourcesRefreshPromise: null,
   sourceAdminEditingId: "",
   sourceAdminMessage: "",
+  members: [],
+  membersLoaded: false,
+  membersError: "",
+  membersRefreshPromise: null,
+  memberAdminFilters: {
+    query: "",
+    role: "all",
+    status: "all",
+  },
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -1082,29 +1092,32 @@ async function ensureUserProfile(user) {
     return null;
   }
 
-  if (existingProfile) {
-    return normalizeProfileRow(existingProfile);
-  }
+  const profilePayload = {
+    id: user.id,
+    username: String(existingProfile?.username || "").trim(),
+    email: String(user.email || existingProfile?.email || "").trim().toLowerCase(),
+    avatar_url: String(existingProfile?.avatar_url || "").trim(),
+    avatar_path: String(existingProfile?.avatar_path || "").trim(),
+    account_status: String(existingProfile?.account_status || "active").trim() || "active",
+    last_active_at: new Date().toISOString(),
+    deletion_requested_at: existingProfile?.deletion_requested_at || null,
+    deletion_scheduled_for: existingProfile?.deletion_scheduled_for || null,
+    deletion_status: String(existingProfile?.deletion_status || "").trim(),
+  };
 
-  const { data: createdProfile, error: insertError } = await appState.supabase
+  const { data: savedProfile, error: upsertError } = await appState.supabase
     .from("profiles")
-    .upsert({
-      id: user.id,
-      username: "",
-      avatar_url: "",
-      avatar_path: "",
-    })
+    .upsert(profilePayload)
     .select("*")
     .single();
 
-  if (insertError) {
-    console.error("Profile create error:", insertError);
-    appState.profileError = insertError.message || "Could not create profile.";
+  if (upsertError) {
+    console.error("Profile create/update error:", upsertError);
+    appState.profileError = upsertError.message || "Could not create profile.";
     return null;
   }
 
-  console.log("Profile created for user:", user.id);
-  return normalizeProfileRow(createdProfile);
+  return normalizeProfileRow(savedProfile);
 }
 
 function getSessions() {
@@ -1855,6 +1868,9 @@ async function bootstrapApp() {
     appState.sources = [];
     appState.sourcesLoaded = true;
     appState.sourcesError = "";
+    appState.members = [];
+    appState.membersLoaded = true;
+    appState.membersError = "";
     appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
     appState.gallerySnapshotsLoaded = true;
   }
@@ -1923,6 +1939,15 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.sourcesRefreshPromise = null;
   appState.sourceAdminEditingId = "";
   appState.sourceAdminMessage = "";
+  appState.members = [];
+  appState.membersLoaded = false;
+  appState.membersError = "";
+  appState.membersRefreshPromise = null;
+  appState.memberAdminFilters = {
+    query: "",
+    role: "all",
+    status: "all",
+  };
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
   resetMemberCountState();
@@ -1930,8 +1955,15 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   if (appState.user) {
     appState.profile = await ensureUserProfile(appState.user);
     appState.isAdmin = await loadAdminStatus();
+    if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
+      appState.authNotice = "This Cannakan Grow account has been disabled. Contact an administrator for help.";
+      await appState.supabase?.auth.signOut();
+      return;
+    }
     if (appState.isAdmin) {
       await refreshRegisteredMemberCount({ force: true });
+      appState.members = await loadAdminMembers("auth:signed-in");
+      appState.membersLoaded = true;
     }
     const sessions = await loadUserSessions();
     saveSessions(sessions);
@@ -2191,7 +2223,8 @@ async function refreshRegisteredMemberCount(options = {}) {
   const refreshPromise = (async () => {
     const { count, error } = await appState.supabase
       .from("profiles")
-      .select("id", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true })
+      .or("deletion_status.is.null,deletion_status.neq.deleted");
 
     if (error) {
       console.error("Failed to load member count", error);
@@ -2201,7 +2234,8 @@ async function refreshRegisteredMemberCount(options = {}) {
       return null;
     }
 
-    appState.memberCount = Number.isFinite(count) ? count : 0;
+    const visibleMemberCount = Number.isFinite(count) ? count : 0;
+    appState.memberCount = visibleMemberCount;
     appState.memberCountLoaded = true;
     appState.memberCountError = "";
     return appState.memberCount;
@@ -2216,6 +2250,334 @@ async function refreshRegisteredMemberCount(options = {}) {
   }
 }
 
+function getMemberRole(email = "") {
+  return isConfiguredAdminEmail(email) ? "admin" : "member";
+}
+
+function formatMemberDateLabel(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  return parsedDate ? formatTimingDateTime(parsedDate) : "Not available";
+}
+
+function getStartOfCurrentMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+function getActiveMemberCutoffDate() {
+  return new Date(Date.now() - (ACTIVE_MEMBER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
+}
+
+function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) {
+  const sessionCountByUserId = new Map();
+  const galleryCountByUserId = new Map();
+
+  (sessionRows || []).forEach((row) => {
+    const userId = String(row?.user_id || "").trim();
+    if (!userId) {
+      return;
+    }
+    sessionCountByUserId.set(userId, (sessionCountByUserId.get(userId) || 0) + 1);
+  });
+
+  (snapshotRows || []).forEach((row) => {
+    const userId = String(row?.user_id || "").trim();
+    if (!userId) {
+      return;
+    }
+    galleryCountByUserId.set(userId, (galleryCountByUserId.get(userId) || 0) + 1);
+  });
+
+  return (profileRows || [])
+    .map(normalizeProfileRow)
+    .filter((profile) => profile && profile.deletionStatus !== "deleted")
+    .map((profile) => ({
+      id: profile.id,
+      profileName: profile.username || "Unnamed member",
+      email: profile.email || "",
+      role: getMemberRole(profile.email),
+      joinedAt: profile.createdAt || "",
+      lastActiveAt: profile.lastActiveAt || "",
+      sessionCount: sessionCountByUserId.get(profile.id) || 0,
+      gallerySubmissionCount: galleryCountByUserId.get(profile.id) || 0,
+      accountStatus: profile.accountStatus || "active",
+      avatarUrl: profile.avatarUrl || "",
+      avatarPath: profile.avatarPath || "",
+      deletionStatus: profile.deletionStatus || "",
+      deletionRequestedAt: profile.deletionRequestedAt || "",
+      deletionScheduledFor: profile.deletionScheduledFor || "",
+      createdAt: profile.createdAt || "",
+      updatedAt: profile.updatedAt || "",
+    }))
+    .sort((left, right) => new Date(right.joinedAt || 0).getTime() - new Date(left.joinedAt || 0).getTime());
+}
+
+async function loadAdminMembers(reason = "unspecified") {
+  if (!appState.supabase || !isAdminUser()) {
+    return [];
+  }
+
+  const [profilesResponse, sessionsResponse, snapshotsResponse] = await Promise.all([
+    appState.supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    appState.supabase
+      .from("grow_sessions")
+      .select("id,user_id,created_at"),
+    appState.supabase
+      .from("grow_gallery_snapshots")
+      .select("id,user_id,created_at,published_at,status"),
+  ]);
+
+  if (profilesResponse.error) {
+    console.error("Failed to load admin members", { reason, error: profilesResponse.error });
+    appState.membersError = profilesResponse.error.message || "Could not load members.";
+    return [];
+  }
+
+  if (sessionsResponse.error) {
+    console.error("Failed to load admin member sessions", { reason, error: sessionsResponse.error });
+    appState.membersError = sessionsResponse.error.message || "Could not load member session counts.";
+    return [];
+  }
+
+  if (snapshotsResponse.error) {
+    console.error("Failed to load admin member gallery submissions", { reason, error: snapshotsResponse.error });
+    appState.membersError = snapshotsResponse.error.message || "Could not load member gallery submission counts.";
+    return [];
+  }
+
+  appState.membersError = "";
+  return mapAdminMembers(profilesResponse.data || [], sessionsResponse.data || [], snapshotsResponse.data || []);
+}
+
+async function refreshAdminMembers(options = {}) {
+  const { force = false, reason = "refresh" } = options;
+
+  if (!appState.supabase || !isAdminUser()) {
+    appState.members = [];
+    appState.membersLoaded = true;
+    appState.membersError = "";
+    return [];
+  }
+
+  if (!force && appState.membersLoaded && !appState.membersRefreshPromise) {
+    return appState.members;
+  }
+
+  if (!force && appState.membersRefreshPromise) {
+    return appState.membersRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const members = await loadAdminMembers(reason);
+    appState.members = members;
+    appState.membersLoaded = true;
+    return members;
+  })();
+
+  appState.membersRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.membersRefreshPromise = null;
+  }
+}
+
+function getAdminMemberSummary(members = appState.members) {
+  const startOfMonth = getStartOfCurrentMonth();
+  const activeCutoff = getActiveMemberCutoffDate();
+
+  return {
+    totalMembers: members.length,
+    newMembersThisMonth: members.filter((member) => {
+      const joinedDate = parseCompletedAtValue(member.joinedAt);
+      return joinedDate && joinedDate >= startOfMonth;
+    }).length,
+    activeMembers: members.filter((member) => {
+      const lastActiveDate = parseCompletedAtValue(member.lastActiveAt);
+      return member.accountStatus === "active" && lastActiveDate && lastActiveDate >= activeCutoff;
+    }).length,
+    adminUsers: members.filter((member) => member.role === "admin").length,
+  };
+}
+
+function getFilteredAdminMembers() {
+  const query = String(appState.memberAdminFilters.query || "").trim().toLowerCase();
+  const roleFilter = String(appState.memberAdminFilters.role || "all").trim().toLowerCase();
+  const statusFilter = String(appState.memberAdminFilters.status || "all").trim().toLowerCase();
+
+  return (appState.members || []).filter((member) => {
+    if (roleFilter !== "all" && member.role !== roleFilter) {
+      return false;
+    }
+
+    if (statusFilter !== "all" && member.accountStatus !== statusFilter) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    return [
+      member.profileName,
+      member.email,
+      member.role,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+}
+
+function getAdminMemberById(memberId) {
+  return (appState.members || []).find((member) => member.id === memberId) || null;
+}
+
+function isCurrentAdminMember(member) {
+  return Boolean(member?.id && member.id === appState.user?.id);
+}
+
+async function updateMemberAccountStatus(member, nextStatus = "disabled") {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage members.");
+  }
+
+  if (!member?.id) {
+    throw new Error("Member not found.");
+  }
+
+  if (isCurrentAdminMember(member)) {
+    throw new Error("You cannot change your own account status from this admin tool.");
+  }
+
+  const { data, error } = await appState.supabase
+    .from("profiles")
+    .update({ account_status: nextStatus === "disabled" ? "disabled" : "active" })
+    .eq("id", member.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message || "Could not update account status.");
+  }
+
+  const updatedProfile = normalizeProfileRow(data);
+  appState.members = appState.members.map((entry) => (
+    entry.id === member.id
+      ? {
+        ...entry,
+        profileName: updatedProfile.username || entry.profileName,
+        email: updatedProfile.email || entry.email,
+        accountStatus: updatedProfile.accountStatus,
+        avatarUrl: updatedProfile.avatarUrl,
+        avatarPath: updatedProfile.avatarPath,
+        lastActiveAt: updatedProfile.lastActiveAt || entry.lastActiveAt,
+        updatedAt: updatedProfile.updatedAt || entry.updatedAt,
+      }
+      : entry
+  ));
+  return updatedProfile;
+}
+
+async function deleteMemberAccount(member) {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage members.");
+  }
+
+  if (!member?.id) {
+    throw new Error("Member not found.");
+  }
+
+  if (isCurrentAdminMember(member)) {
+    throw new Error("You cannot delete your own admin account.");
+  }
+
+  const [sessionsResponse, snapshotsResponse] = await Promise.all([
+    appState.supabase
+      .from("grow_sessions")
+      .select("id,session_images")
+      .eq("user_id", member.id),
+    appState.supabase
+      .from("grow_gallery_snapshots")
+      .select("id,snapshot_image_path")
+      .eq("user_id", member.id),
+  ]);
+
+  if (sessionsResponse.error) {
+    throw new Error(sessionsResponse.error.message || "Could not load member sessions for deletion.");
+  }
+  if (snapshotsResponse.error) {
+    throw new Error(snapshotsResponse.error.message || "Could not load member gallery submissions for deletion.");
+  }
+
+  const sessionImagePaths = (sessionsResponse.data || [])
+    .flatMap((row) => normalizePersistedSessionImages(row.session_images))
+    .map((image) => image.path)
+    .filter(Boolean);
+  const snapshotImagePaths = (snapshotsResponse.data || [])
+    .map((row) => String(row.snapshot_image_path || "").trim())
+    .filter(Boolean);
+
+  if (sessionImagePaths.length) {
+    await appState.supabase.storage.from(SESSION_IMAGE_BUCKET).remove(sessionImagePaths);
+  }
+
+  if (snapshotImagePaths.length) {
+    await appState.supabase.storage.from(GROW_GALLERY_BUCKET).remove(snapshotImagePaths);
+  }
+
+  const deleteLikesResponse = await appState.supabase
+    .from(GROW_GALLERY_LIKES_TABLE)
+    .delete()
+    .eq("user_id", member.id);
+  if (deleteLikesResponse.error) {
+    throw new Error(deleteLikesResponse.error.message || "Could not remove member gallery likes.");
+  }
+
+  const deleteSnapshotsResponse = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .delete()
+    .eq("user_id", member.id);
+  if (deleteSnapshotsResponse.error) {
+    throw new Error(deleteSnapshotsResponse.error.message || "Could not remove member gallery submissions.");
+  }
+
+  const deleteSessionsResponse = await appState.supabase
+    .from("grow_sessions")
+    .delete()
+    .eq("user_id", member.id);
+  if (deleteSessionsResponse.error) {
+    throw new Error(deleteSessionsResponse.error.message || "Could not remove member sessions.");
+  }
+
+  if (member.avatarPath) {
+    await removeProfileAvatarFromStorage(member.avatarPath);
+  }
+
+  const redactProfileResponse = await appState.supabase
+    .from("profiles")
+    .update({
+      username: "Deleted member",
+      avatar_url: "",
+      avatar_path: "",
+      account_status: "disabled",
+      deletion_requested_at: new Date().toISOString(),
+      deletion_scheduled_for: null,
+      deletion_status: "deleted",
+    })
+    .eq("id", member.id)
+    .select("*")
+    .single();
+  if (redactProfileResponse.error) {
+    throw new Error(redactProfileResponse.error.message || "Could not finalize member deletion.");
+  }
+
+  appState.gallerySnapshots = appState.gallerySnapshots.filter((snapshot) => snapshot.userId !== member.id);
+  await refreshAdminMembers({ force: true, reason: "admin:member-delete" });
+  await refreshRegisteredMemberCount({ force: true });
+}
+
 function normalizeProfileRow(row) {
   if (!row) {
     return null;
@@ -2224,8 +2586,11 @@ function normalizeProfileRow(row) {
   return {
     id: row.id,
     username: String(row.username || "").trim(),
+    email: String(row.email || "").trim().toLowerCase(),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
+    accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
+    lastActiveAt: row.last_active_at || "",
     deletionRequestedAt: row.deletion_requested_at || "",
     deletionScheduledFor: row.deletion_scheduled_for || "",
     deletionStatus: String(row.deletion_status || "").trim(),
@@ -2798,8 +3163,17 @@ async function saveUserProfile(profileInput) {
   const payload = {
     id: appState.user.id,
     username: String(profileInput?.username || "").trim(),
+    email: String(profileInput?.email !== undefined ? profileInput.email : (appState.user?.email || existingProfile.email || "")).trim().toLowerCase(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
+    account_status:
+      profileInput?.accountStatus !== undefined
+        ? String(profileInput.accountStatus || "active").trim().toLowerCase()
+        : String(existingProfile.accountStatus || "active").trim().toLowerCase(),
+    last_active_at:
+      profileInput?.lastActiveAt !== undefined
+        ? profileInput.lastActiveAt
+        : (existingProfile.lastActiveAt || new Date().toISOString()),
     deletion_requested_at:
       profileInput?.deletionRequestedAt !== undefined
         ? profileInput.deletionRequestedAt
@@ -8179,6 +8553,381 @@ function bindAdminSourcesSection() {
   });
 }
 
+function renderMemberRolePillMarkup(role = "member") {
+  const normalizedRole = role === "admin" ? "admin" : "member";
+  return `<span class="admin-member-role-pill is-${escapeHtml(normalizedRole)}">${escapeHtml(capitalize(normalizedRole))}</span>`;
+}
+
+function renderMemberStatusPillMarkup(status = "active") {
+  const normalizedStatus = status === "disabled" ? "disabled" : "active";
+  return `<span class="admin-member-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
+}
+
+function renderAdminMembersFiltersMarkup() {
+  return `
+    <div class="admin-members-toolbar">
+      <label class="admin-members-search">
+        <span>Search Members</span>
+        <input
+          type="search"
+          id="admin-members-search"
+          value="${escapeHtml(appState.memberAdminFilters.query || "")}"
+          placeholder="Search by profile name or email"
+        >
+      </label>
+      <label>
+        <span>Role</span>
+        <select id="admin-members-role-filter">
+          <option value="all"${appState.memberAdminFilters.role === "all" ? " selected" : ""}>All roles</option>
+          <option value="admin"${appState.memberAdminFilters.role === "admin" ? " selected" : ""}>Admin</option>
+          <option value="member"${appState.memberAdminFilters.role === "member" ? " selected" : ""}>Member</option>
+        </select>
+      </label>
+      <label>
+        <span>Status</span>
+        <select id="admin-members-status-filter">
+          <option value="all"${appState.memberAdminFilters.status === "all" ? " selected" : ""}>All statuses</option>
+          <option value="active"${appState.memberAdminFilters.status === "active" ? " selected" : ""}>Active</option>
+          <option value="disabled"${appState.memberAdminFilters.status === "disabled" ? " selected" : ""}>Disabled</option>
+        </select>
+      </label>
+    </div>
+  `;
+}
+
+function renderAdminMemberRowMarkup(member) {
+  const isSelf = isCurrentAdminMember(member);
+  const actionLabel = member.accountStatus === "disabled" ? "Enable" : "Disable";
+  return `
+    <tr>
+      <td>${escapeHtml(member.profileName)}</td>
+      <td>${escapeHtml(member.email || "Not available")}</td>
+      <td>${renderMemberRolePillMarkup(member.role)}</td>
+      <td>${escapeHtml(formatMemberDateLabel(member.joinedAt))}</td>
+      <td>${escapeHtml(formatMemberDateLabel(member.lastActiveAt))}</td>
+      <td>${escapeHtml(String(member.sessionCount || 0))}</td>
+      <td>${escapeHtml(String(member.gallerySubmissionCount || 0))}</td>
+      <td>${renderMemberStatusPillMarkup(member.accountStatus)}</td>
+      <td>
+        <div class="admin-member-actions">
+          <button type="button" class="button button-secondary" data-member-view="${escapeHtml(member.id)}">View</button>
+          <button type="button" class="button button-secondary" data-member-toggle-status="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
+          <button type="button" class="button button-secondary gallery-admin-reject" data-member-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete</button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function renderAdminMembersTableMarkup() {
+  if (!appState.supabase) {
+    return `<div class="admin-members-empty"><p>Member management requires Supabase tables and storage to be configured.</p></div>`;
+  }
+
+  if (!appState.membersLoaded && appState.membersRefreshPromise) {
+    return `<div class="admin-members-empty"><p>Loading members...</p></div>`;
+  }
+
+  if (appState.membersError) {
+    return `<div class="admin-members-empty"><p>${escapeHtml(appState.membersError)}</p></div>`;
+  }
+
+  const filteredMembers = getFilteredAdminMembers();
+  if (!filteredMembers.length) {
+    return `<div class="admin-members-empty"><p>No members match the current filters.</p></div>`;
+  }
+
+  return `
+    <div class="admin-members-table-shell">
+      <table class="leaderboard-audit-table admin-members-table">
+        <thead>
+          <tr>
+            <th>Profile Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Joined Date</th>
+            <th>Last Active</th>
+            <th>Sessions</th>
+            <th>Gallery Submissions</th>
+            <th>Account Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filteredMembers.map(renderAdminMemberRowMarkup).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function ensureMemberDeleteConfirmModal() {
+  let modal = document.querySelector("#member-delete-confirm-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "member-delete-confirm-modal";
+  modal.className = "snapshot-modal member-delete-confirm-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card member-delete-confirm-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Delete Member</p>
+        <h3 id="member-delete-confirm-title">Delete member account?</h3>
+        <p id="member-delete-confirm-message">Are you sure you want to delete this member account? This may remove or disconnect their sessions, gallery submissions, and profile data.</p>
+      </div>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-member-delete-cancel>Cancel</button>
+        <button type="button" class="button button-primary gallery-admin-reject" data-member-delete-confirm>Delete Member</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function confirmMemberDeletion(member) {
+  const modal = ensureMemberDeleteConfirmModal();
+  const title = modal.querySelector("#member-delete-confirm-title");
+  const message = modal.querySelector("#member-delete-confirm-message");
+  const cancelButton = modal.querySelector("[data-member-delete-cancel]");
+  const confirmButton = modal.querySelector("[data-member-delete-confirm]");
+
+  if (title) {
+    title.textContent = `Delete ${member?.profileName || "this member"}?`;
+  }
+  if (message) {
+    message.textContent = "Are you sure you want to delete this member account? This may remove or disconnect their sessions, gallery submissions, and profile data.";
+  }
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cancelButton?.removeEventListener("click", onCancel);
+      confirmButton?.removeEventListener("click", onConfirm);
+      modal.removeEventListener("cancel", onCancel);
+      if (modal.open) {
+        modal.close();
+      }
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    cancelButton?.addEventListener("click", onCancel, { once: true });
+    confirmButton?.addEventListener("click", onConfirm, { once: true });
+    modal.addEventListener("cancel", onCancel, { once: true });
+    modal.showModal();
+    cancelButton?.focus();
+  });
+}
+
+function ensureAdminMemberDetailsModal() {
+  let modal = document.querySelector("#admin-member-details-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "admin-member-details-modal";
+  modal.className = "snapshot-modal admin-member-details-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card profile-modal-card admin-member-details-card" role="document">
+      <button type="button" class="modal-close admin-member-details-close" aria-label="Close member details">×</button>
+      <div class="admin-member-details-content"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector(".admin-member-details-close")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  });
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+  return modal;
+}
+
+function openAdminMemberDetails(memberId) {
+  const member = getAdminMemberById(memberId);
+  if (!member) {
+    return;
+  }
+
+  const modal = ensureAdminMemberDetailsModal();
+  const content = modal.querySelector(".admin-member-details-content");
+  const isSelf = isCurrentAdminMember(member);
+  const actionLabel = member.accountStatus === "disabled" ? "Enable Account" : "Disable Account";
+
+  if (!content) {
+    return;
+  }
+
+  content.innerHTML = `
+    <div class="admin-member-details-head">
+      <div>
+        <p class="eyebrow">Member Profile</p>
+        <h3>${escapeHtml(member.profileName)}</h3>
+        <p class="muted">${escapeHtml(member.email || "No email available")}</p>
+      </div>
+      <div class="admin-member-details-badges">
+        ${renderMemberRolePillMarkup(member.role)}
+        ${renderMemberStatusPillMarkup(member.accountStatus)}
+      </div>
+    </div>
+    <div class="admin-member-details-grid">
+      ${renderAdminOverviewCardMarkup({
+    label: "Joined",
+    value: formatMemberDateLabel(member.joinedAt),
+    subtext: "profile created",
+  })}
+      ${renderAdminOverviewCardMarkup({
+    label: "Last Active",
+    value: formatMemberDateLabel(member.lastActiveAt),
+    subtext: `${ACTIVE_MEMBER_LOOKBACK_DAYS}-day activity window`,
+  })}
+      ${renderAdminOverviewCardMarkup({
+    label: "Sessions",
+    value: String(member.sessionCount || 0),
+    subtext: "saved grow sessions",
+  })}
+      ${renderAdminOverviewCardMarkup({
+    label: "Gallery Submissions",
+    value: String(member.gallerySubmissionCount || 0),
+    subtext: "grow gallery records",
+  })}
+    </div>
+    <div class="admin-member-details-meta">
+      <p><strong>Deletion Status:</strong> ${escapeHtml(member.deletionStatus || "None")}</p>
+      <p><strong>Deletion Requested:</strong> ${escapeHtml(formatMemberDateLabel(member.deletionRequestedAt))}</p>
+      <p><strong>Deletion Scheduled:</strong> ${escapeHtml(formatMemberDateLabel(member.deletionScheduledFor))}</p>
+    </div>
+    <div class="snapshot-modal-actions admin-member-details-actions">
+      <button type="button" class="button button-secondary" data-member-detail-toggle="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
+      <button type="button" class="button button-secondary gallery-admin-reject" data-member-detail-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete Member</button>
+    </div>
+    ${isSelf ? '<p class="muted admin-member-self-note">You cannot disable or delete your own admin account from this panel.</p>' : ""}
+  `;
+
+  content.querySelector("[data-member-detail-toggle]")?.addEventListener("click", async () => {
+    try {
+      await updateMemberAccountStatus(member, member.accountStatus === "disabled" ? "active" : "disabled");
+      await refreshAdminMembers({ force: true, reason: "admin:member-status" });
+      safeRender();
+      modal.close();
+    } catch (error) {
+      alert(error.message || "Could not update account status.");
+    }
+  }, { once: true });
+
+  content.querySelector("[data-member-detail-delete]")?.addEventListener("click", async () => {
+    const confirmed = await confirmMemberDeletion(member);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteMemberAccount(member);
+      safeRender();
+      modal.close();
+    } catch (error) {
+      alert(error.message || "Could not delete member.");
+    }
+  }, { once: true });
+
+  modal.showModal();
+  modal.querySelector(".admin-member-details-close")?.focus();
+}
+
+function bindAdminMembersSection() {
+  const searchInput = app.querySelector("#admin-members-search");
+  const roleFilter = app.querySelector("#admin-members-role-filter");
+  const statusFilter = app.querySelector("#admin-members-status-filter");
+  const membersTable = app.querySelector("#admin-members-table-anchor");
+
+  const bindMembersTableActions = () => {
+    membersTable?.querySelectorAll("[data-member-view]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openAdminMemberDetails(button.dataset.memberView || "");
+      });
+    });
+
+    membersTable?.querySelectorAll("[data-member-toggle-status]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const member = getAdminMemberById(button.dataset.memberToggleStatus || "");
+        if (!member) {
+          return;
+        }
+
+        try {
+          await updateMemberAccountStatus(member, member.accountStatus === "disabled" ? "active" : "disabled");
+          await refreshAdminMembers({ force: true, reason: "admin:member-status" });
+          safeRender();
+        } catch (error) {
+          alert(error.message || "Could not update account status.");
+        }
+      });
+    });
+
+    membersTable?.querySelectorAll("[data-member-delete]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const member = getAdminMemberById(button.dataset.memberDelete || "");
+        if (!member) {
+          return;
+        }
+
+        const confirmed = await confirmMemberDeletion(member);
+        if (!confirmed) {
+          return;
+        }
+
+        try {
+          await deleteMemberAccount(member);
+          safeRender();
+        } catch (error) {
+          alert(error.message || "Could not delete member.");
+        }
+      });
+    });
+  };
+
+  const refreshMembersTable = () => {
+    if (!membersTable) {
+      return;
+    }
+
+    membersTable.innerHTML = renderAdminMembersTableMarkup();
+    bindMembersTableActions();
+  };
+
+  searchInput?.addEventListener("input", () => {
+    appState.memberAdminFilters.query = searchInput.value || "";
+    refreshMembersTable();
+  });
+
+  roleFilter?.addEventListener("change", () => {
+    appState.memberAdminFilters.role = roleFilter.value || "all";
+    refreshMembersTable();
+  });
+
+  statusFilter?.addEventListener("change", () => {
+    appState.memberAdminFilters.status = statusFilter.value || "all";
+    refreshMembersTable();
+  });
+
+  bindMembersTableActions();
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -8220,12 +8969,14 @@ function renderAdminPage() {
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">User / Profile Review</p>
-          <h3>Member and profile visibility snapshot</h3>
-          <p class="muted">Quick admin context for registered members and shared Grow Gallery profile attribution.</p>
+          <p class="eyebrow">Members</p>
+          <h3>View and manage Cannakan Grow members.</h3>
+          <p class="muted">Review member growth activity, account access, and admin roles without exposing private member data publicly.</p>
         </div>
       </div>
-      <div class="admin-mini-grid" id="admin-user-review-grid"></div>
+      <div class="summary-grid admin-overview-grid admin-members-summary-grid" id="admin-members-summary-grid"></div>
+      ${renderAdminMembersFiltersMarkup()}
+      <div id="admin-members-table-anchor"></div>
     </section>
     <section class="card admin-section-card">
       <div class="section-heading">
@@ -8277,6 +9028,15 @@ function renderAdminPage() {
     });
   }
 
+  if (isAdminUser() && !appState.membersLoaded && !appState.membersRefreshPromise && appState.supabase) {
+    void refreshAdminMembers({ force: true, reason: "route:admin-dashboard" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
   const displaySnapshots = getGallerySnapshotsForDisplay();
   const approvedSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
   const pendingSnapshots = getAdminReviewPendingSnapshots();
@@ -8314,21 +9074,33 @@ function renderAdminPage() {
   const overviewTools = app.querySelector("#admin-overview-tools");
   renderMockDataAdminSection(overviewTools, { embedded: true });
 
-  const userReviewGrid = app.querySelector("#admin-user-review-grid");
-  if (userReviewGrid) {
-    const privateSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "private").length;
-    userReviewGrid.innerHTML = `
-      ${renderAdminOverviewCardMarkup({
-    label: "Shared Profiles",
-    value: sharedProfileSnapshots.length.toLocaleString(),
-    subtext: "approved public snapshots with shared profile attribution",
-  })}
-      ${renderAdminOverviewCardMarkup({
-    label: "Private Snapshots",
-    value: privateSnapshots.toLocaleString(),
-    subtext: "excluded from public leaderboard calculations",
-  })}
-    `;
+  const membersSummaryGrid = app.querySelector("#admin-members-summary-grid");
+  if (membersSummaryGrid) {
+    const summary = getAdminMemberSummary();
+    const isMembersLoading = Boolean(appState.supabase && !appState.membersLoaded && appState.membersRefreshPromise);
+    const summaryValue = (value) => (isMembersLoading ? "--" : value.toLocaleString());
+    membersSummaryGrid.innerHTML = [
+      renderAdminOverviewCardMarkup({
+        label: "Total Members",
+        value: summaryValue(summary.totalMembers),
+        subtext: "registered member profiles",
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "New Members This Month",
+        value: summaryValue(summary.newMembersThisMonth),
+        subtext: "joined during the current month",
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "Active Members",
+        value: summaryValue(summary.activeMembers),
+        subtext: `${ACTIVE_MEMBER_LOOKBACK_DAYS}-day recent activity window`,
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "Admin Users",
+        value: summaryValue(summary.adminUsers),
+        subtext: "accounts with admin access",
+      }),
+    ].join("");
   }
 
   const systemToolsContainer = app.querySelector("#admin-system-tools");
@@ -8346,6 +9118,13 @@ function renderAdminPage() {
     const editingSource = appState.sources.find((entry) => entry.id === appState.sourceAdminEditingId) || null;
     sourceEditor.innerHTML = renderAdminSourceEditorMarkup(editingSource);
   }
+
+  const membersTableAnchor = app.querySelector("#admin-members-table-anchor");
+  if (membersTableAnchor) {
+    membersTableAnchor.innerHTML = renderAdminMembersTableMarkup();
+  }
+
+  bindAdminMembersSection();
   bindAdminSourcesSection();
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");

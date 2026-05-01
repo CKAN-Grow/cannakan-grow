@@ -24,8 +24,11 @@ create table if not exists public.grow_sessions (
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text not null default '',
+  email text default '',
   avatar_url text default '',
   avatar_path text default '',
+  account_status text not null default 'active',
+  last_active_at timestamptz,
   deletion_requested_at timestamptz,
   deletion_scheduled_for timestamptz,
   deletion_status text default '',
@@ -106,8 +109,23 @@ alter table public.profiles
 alter table public.profiles
   add column if not exists deletion_status text default '';
 
+alter table public.profiles
+  add column if not exists email text default '';
+
+alter table public.profiles
+  add column if not exists account_status text not null default 'active';
+
+alter table public.profiles
+  add column if not exists last_active_at timestamptz;
+
 create index if not exists grow_sessions_user_created_idx
   on public.grow_sessions (user_id, created_at desc);
+
+create index if not exists profiles_account_status_idx
+  on public.profiles (account_status, created_at desc);
+
+create index if not exists profiles_last_active_idx
+  on public.profiles (last_active_at desc);
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
@@ -233,7 +251,15 @@ drop policy if exists "Users can view their own grow sessions" on public.grow_se
 create policy "Users can view their own grow sessions"
 on public.grow_sessions
 for select
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can create their own grow sessions" on public.grow_sessions;
 create policy "Users can create their own grow sessions"
@@ -252,13 +278,29 @@ drop policy if exists "Users can delete their own grow sessions" on public.grow_
 create policy "Users can delete their own grow sessions"
 on public.grow_sessions
 for delete
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can view their own profile" on public.profiles;
 create policy "Users can view their own profile"
 on public.profiles
 for select
-using (auth.uid() = id);
+using (
+  auth.uid() = id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can create their own profile" on public.profiles;
 create policy "Users can create their own profile"
@@ -270,15 +312,48 @@ drop policy if exists "Users can update their own profile" on public.profiles;
 create policy "Users can update their own profile"
 on public.profiles
 for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
+using (
+  auth.uid() = id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can delete their own profile" on public.profiles;
+create policy "Users can delete their own profile"
+on public.profiles
+for delete
+using (
+  auth.uid() = id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Users can view their own admin membership" on public.admin_users;
 create policy "Users can view their own admin membership"
 on public.admin_users
 for select
 to authenticated
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+);
 
 drop policy if exists "Anyone can view active sources" on public.sources;
 create policy "Anyone can view active sources"
@@ -456,7 +531,15 @@ create policy "Users can remove their own gallery likes"
 on public.grow_gallery_snapshot_likes
 for delete
 to authenticated
-using (auth.uid() = user_id);
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 -- Keep this email allowlist in sync with ADMIN_EMAILS in app.js before production.
 
@@ -513,8 +596,21 @@ on storage.objects
 for delete
 to authenticated
 using (
-  bucket_id = 'session-images'
-  and (storage.foldername(name))[1] = auth.uid()::text
+  (
+    bucket_id = 'session-images'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  or (
+    bucket_id = 'session-images'
+    and (
+      lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+      or exists (
+        select 1
+        from public.admin_users
+        where admin_users.user_id = auth.uid()
+      )
+    )
+  )
 );
 
 drop policy if exists "Authenticated users can read profile avatars" on storage.objects;
@@ -554,8 +650,21 @@ on storage.objects
 for delete
 to authenticated
 using (
-  bucket_id = 'profile-avatars'
-  and (storage.foldername(name))[1] = auth.uid()::text
+  (
+    bucket_id = 'profile-avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  or (
+    bucket_id = 'profile-avatars'
+    and (
+      lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+      or exists (
+        select 1
+        from public.admin_users
+        where admin_users.user_id = auth.uid()
+      )
+    )
+  )
 );
 
 drop policy if exists "Anyone can read grow gallery images" on storage.objects;
@@ -600,8 +709,21 @@ on storage.objects
 for delete
 to authenticated
 using (
-  bucket_id = 'grow-gallery'
-  and (storage.foldername(name))[1] = auth.uid()::text
+  (
+    bucket_id = 'grow-gallery'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  or (
+    bucket_id = 'grow-gallery'
+    and (
+      lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+      or exists (
+        select 1
+        from public.admin_users
+        where admin_users.user_id = auth.uid()
+      )
+    )
+  )
 );
 
 drop policy if exists "Admins can upload source logos" on storage.objects;

@@ -3889,6 +3889,135 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 }
 
+.admin-members-summary-grid {
+  margin-bottom: 6px;
+}
+
+.admin-members-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.4fr) repeat(2, minmax(160px, 0.7fr));
+  gap: var(--space-stack);
+  align-items: end;
+}
+
+.admin-members-toolbar label,
+.admin-members-search {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-members-toolbar label > span {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.admin-members-table-shell {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(109, 124, 113, 0.22);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.admin-members-table {
+  min-width: 1080px;
+}
+
+.admin-members-table td:last-child,
+.admin-members-table th:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.admin-members-empty {
+  padding: 22px;
+  border-radius: 16px;
+  border: 1px dashed rgba(109, 124, 113, 0.28);
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--muted);
+}
+
+.admin-members-empty p {
+  margin: 0;
+}
+
+.admin-member-role-pill,
+.admin-member-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.admin-member-role-pill.is-admin {
+  color: #1f5a2b;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.26);
+}
+
+.admin-member-role-pill.is-member {
+  color: #314133;
+  background: rgba(120, 140, 124, 0.12);
+  border-color: rgba(120, 140, 124, 0.2);
+}
+
+.admin-member-status-pill.is-active {
+  color: #1f5a2b;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.26);
+}
+
+.admin-member-status-pill.is-disabled {
+  color: #8b383b;
+  background: rgba(204, 84, 84, 0.12);
+  border-color: rgba(204, 84, 84, 0.22);
+}
+
+.admin-member-actions,
+.admin-member-details-badges,
+.admin-member-details-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-member-details-card,
+.admin-member-details-content {
+  display: grid;
+  gap: var(--space-stack);
+}
+
+.admin-member-details-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-member-details-head h3,
+.admin-member-details-head p,
+.admin-member-details-meta p,
+.admin-member-self-note {
+  margin: 0;
+}
+
+.admin-member-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-stack);
+}
+
+.admin-member-details-meta {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
 .leaderboard-audit-section {
   display: grid;
   gap: var(--space-section);
@@ -7478,6 +7607,36 @@ body.theme-dark .admin-source-status-pill.is-hidden {
   border-color: rgba(230, 180, 90, 0.24);
 }
 
+body.theme-dark .admin-members-table-shell,
+body.theme-dark .admin-members-empty {
+  border-color: rgba(111, 122, 116, 0.24);
+  background: rgba(24, 30, 26, 0.82);
+}
+
+body.theme-dark .admin-members-empty,
+body.theme-dark .admin-member-details-meta {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-member-role-pill.is-admin,
+body.theme-dark .admin-member-status-pill.is-active {
+  color: #bfe89d;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.24);
+}
+
+body.theme-dark .admin-member-role-pill.is-member {
+  color: #d9e0db;
+  background: rgba(120, 140, 124, 0.14);
+  border-color: rgba(120, 140, 124, 0.24);
+}
+
+body.theme-dark .admin-member-status-pill.is-disabled {
+  color: #ffb2b2;
+  background: rgba(204, 84, 84, 0.14);
+  border-color: rgba(204, 84, 84, 0.24);
+}
+
 body.theme-dark .leaderboard-audit-metric-card,
 body.theme-dark .leaderboard-audit-table-shell {
   border-color: rgba(111, 122, 116, 0.22);
@@ -8617,14 +8776,21 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .admin-source-card-head,
   .admin-source-card-brand,
   .admin-source-card-actions,
-  .admin-source-logo-preview-shell {
+  .admin-source-logo-preview-shell,
+  .admin-member-details-head {
     align-items: flex-start;
     flex-direction: column;
   }
 
   .admin-source-card-actions,
-  .admin-source-form-actions {
+  .admin-source-form-actions,
+  .admin-member-details-actions {
     width: 100%;
+  }
+
+  .admin-members-toolbar,
+  .admin-member-details-grid {
+    grid-template-columns: 1fr;
   }
 
   .auth-status {
