@@ -845,6 +845,7 @@ function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = ap
 }
 
 function syncBuildUpdateBanner() {
+  // Build update monitoring is temporarily disabled to protect app startup/render.
   document.querySelector("#app-update-banner")?.remove();
 }
 
@@ -866,15 +867,18 @@ async function fetchLatestBuildInfo() {
 }
 
 async function checkForAvailableAppUpdate(reason = "background-check", options = {}) {
+  // Build update monitoring is temporarily disabled to protect app startup/render.
   appState.availableBuildInfo = null;
   return false;
 }
 
 function handleBuildUpdateVisibilityChange() {
+  // Build update monitoring is temporarily disabled to protect app startup/render.
   return;
 }
 
 function initializeBuildUpdateMonitoring() {
+  // Build update monitoring is temporarily disabled to protect app startup/render.
   if (appState.buildUpdateCheckIntervalId) {
     window.clearInterval(appState.buildUpdateCheckIntervalId);
     appState.buildUpdateCheckIntervalId = 0;
