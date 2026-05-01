@@ -66,8 +66,8 @@ const BUILD_INFO_ACTIVE_RECHECK_MS = 30000;
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const CURRENT_APP_BUILD_INFO = Object.freeze({
   version: "1.0.0",
-  buildTimestamp: "2026-05-01T06:06:39.105Z",
-  commitHash: "4256773",
+  buildTimestamp: "2026-05-01T06:22:13.146Z",
+  commitHash: "e40404f",
 });
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -712,6 +712,17 @@ function renderBuildDebugStampMarkup() {
         </div>
       </dl>
     </div>
+  `;
+}
+
+function renderDevModeBuildToolsMarkup() {
+  if (!isMockDataEnabled()) {
+    return "";
+  }
+
+  return `
+    ${renderBuildDebugStampMarkup()}
+    <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear Cache + Reload Latest</button>
   `;
 }
 
@@ -10777,7 +10788,7 @@ function renderHomeAdminUtilityCardMarkup() {
             ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
           </p>
           <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
-          ${renderBuildDebugStampMarkup()}
+          ${renderDevModeBuildToolsMarkup()}
         </div>
         <div class="mock-data-admin-actions">
           <button
@@ -10796,7 +10807,6 @@ function renderHomeAdminUtilityCardMarkup() {
             </span>
             <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
           </button>
-          <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear App Cache / Reload Latest Version</button>
           <p class="muted">Shift + D</p>
         </div>
       </div>
@@ -14026,7 +14036,7 @@ function renderMockDataAdminSection(target = app, options = {}) {
           ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
         </p>
         <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
-        ${renderBuildDebugStampMarkup()}
+        ${renderDevModeBuildToolsMarkup()}
       </div>
       <div class="mock-data-admin-actions">
         <button
@@ -14045,7 +14055,6 @@ function renderMockDataAdminSection(target = app, options = {}) {
           </span>
           <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
         </button>
-        <button type="button" class="button button-secondary build-debug-reset-button" data-clear-app-cache="true">Clear App Cache / Reload Latest Version</button>
         <p class="muted">Shift + D</p>
       </div>
     </div>
