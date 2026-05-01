@@ -81,6 +81,9 @@ textarea {
   width: min(1280px, calc(100% - 24px));
   margin: 0 auto;
   padding: 16px 0 40px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .topbar {
@@ -89,6 +92,72 @@ textarea {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 4px 18px;
+}
+
+.app-main {
+  flex: 1 0 auto;
+}
+
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(148, 209, 89, 0.16);
+  box-shadow: 0 -1px 0 rgba(148, 209, 89, 0.04);
+  background: rgba(17, 24, 20, 0.72);
+  border-radius: 18px 18px 0 0;
+}
+
+.app-footer-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-footer-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.app-footer-tagline {
+  font-size: 0.8rem;
+}
+
+.app-footer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.app-footer-nav a {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.app-footer-nav a:hover,
+.app-footer-nav a:focus-visible {
+  color: var(--ink);
+  opacity: 1;
+  outline: none;
+}
+
+.app-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.app-footer-contact-button {
+  white-space: nowrap;
 }
 
 .install-app-banner {
@@ -208,6 +277,26 @@ body.theme-dark .app-logo--dark {
   display: block;
 }
 
+body.theme-dark .app-footer {
+  border-top-color: rgba(148, 209, 89, 0.18);
+  box-shadow:
+    0 -1px 0 rgba(148, 209, 89, 0.05),
+    0 0 24px rgba(148, 209, 89, 0.04);
+  background:
+    linear-gradient(180deg, rgba(18, 23, 19, 0.94), rgba(14, 18, 15, 0.98)),
+    rgba(17, 24, 20, 0.94);
+}
+
+body.theme-dark .app-footer-copy p,
+body.theme-dark .app-footer-nav a {
+  color: rgba(189, 204, 192, 0.76);
+}
+
+body.theme-dark .app-footer-nav a:hover,
+body.theme-dark .app-footer-nav a:focus-visible {
+  color: #eef6e8;
+}
+
 .topbar-nav {
   display: flex;
   gap: 10px;
@@ -224,10 +313,6 @@ body.theme-dark .app-logo--dark {
 
 .auth-sign-in-button {
   min-width: 110px;
-  white-space: nowrap;
-}
-
-.auth-contact-admin-button {
   white-space: nowrap;
 }
 
@@ -12048,6 +12133,24 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .button,
   .topbar-nav a {
+    width: 100%;
+  }
+
+  .app-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 16px 18px;
+  }
+
+  .app-footer-copy,
+  .app-footer-nav,
+  .app-footer-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .app-footer-contact-button {
     width: 100%;
   }
 

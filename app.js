@@ -185,6 +185,7 @@ const STAGE_REMINDER_SCHEDULES = {
 };
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
+const appFooter = document.querySelector(".app-footer");
 const appState = {
   initialized: false,
   loading: true,
@@ -9798,12 +9799,10 @@ function updateAuthStatus() {
     authStatus.innerHTML = `
       <span class="auth-pill">Signed out</span>
       <button type="button" class="button button-primary auth-sign-in-button" data-auth-sign-in="true">Sign In</button>
-      <button type="button" class="button button-secondary auth-contact-admin-button" data-contact-admin-open="true">Report / Contact Admin</button>
     `;
     authStatus.querySelector("[data-auth-sign-in='true']")?.addEventListener("click", () => {
       openAuthModal();
     });
-    bindContactAdminButtons(authStatus);
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
     return;
@@ -9854,10 +9853,6 @@ function updateAuthStatus() {
           ${getMenuIconMarkup("profile")}
           <span>Edit Profile</span>
         </button>
-        <button id="account-contact-admin" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup("menu")}
-          <span>Report / Contact Admin</span>
-        </button>
         <button id="account-delete-profile" class="account-menu-item is-danger" type="button" role="menuitem">
           ${getMenuIconMarkup("delete")}
           <span>Delete Profile</span>
@@ -9905,13 +9900,6 @@ function updateAuthStatus() {
     event.stopPropagation();
     closeAccountMenu();
     openProfileEditor();
-  });
-
-  dropdown?.querySelector("#account-contact-admin")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeAccountMenu();
-    openAdminMessageModal({ messageType: "Question" });
   });
 
   dropdown?.querySelector("#account-delete-profile")?.addEventListener("click", async (event) => {
@@ -11921,6 +11909,7 @@ function render() {
     syncMockDataBanner();
     bindContactAdminButtons(app);
     bindContactAdminButtons(authStatus);
+    bindContactAdminButtons(appFooter);
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     trackSiteAnalyticsPageView(pageContext);
