@@ -5353,6 +5353,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 1120px;
 }
 
+.admin-messages-filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
 .admin-members-table td:last-child,
 .admin-members-table th:last-child {
   width: 1%;

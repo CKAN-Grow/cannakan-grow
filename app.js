@@ -57,8 +57,7 @@ const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
-const ADMIN_MESSAGES_TABLE = "admin_messages";
-const LOCAL_ADMIN_REPORTS_STORAGE_KEY = "cannakanGrowAdminReports";
+const ADMIN_REPORTS_TABLE = "admin_reports";
 const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
 const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
 const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
@@ -227,6 +226,7 @@ const appState = {
   adminMessagesLoaded: false,
   adminMessagesError: "",
   adminMessagesRefreshPromise: null,
+  adminMessageStatusFilter: "all",
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -489,6 +489,7 @@ function resetSessionScopedAppState() {
   appState.adminMessagesLoaded = false;
   appState.adminMessagesError = "";
   appState.adminMessagesRefreshPromise = null;
+  appState.adminMessageStatusFilter = "all";
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -2807,12 +2808,11 @@ function normalizeAdminMessageRow(row) {
 
   return {
     id: String(row.id || "").trim(),
-    userEmail: String(row.user_email || "").trim(),
-    messageType: normalizeAdminMessageType(row.message_type),
+    userId: String(row.user_id || "").trim(),
+    name: String(row.name || "").trim(),
+    email: String(row.email || "").trim(),
+    issueType: normalizeAdminMessageType(row.issue_type || row.message_type),
     message: String(row.message || "").trim(),
-    pageContext: String(row.page_context || "").trim(),
-    sessionId: String(row.session_id || "").trim(),
-    snapshotId: String(row.snapshot_id || "").trim(),
     status: normalizeAdminMessageStatus(row.status),
     createdAt: String(row.created_at || "").trim(),
   };
@@ -2820,96 +2820,54 @@ function normalizeAdminMessageRow(row) {
 
 function isAdminMessagesTableMissingError(error) {
   const normalizedMessage = String(error?.message || error?.details || error?.hint || "").toLowerCase();
-  return normalizedMessage.includes("admin_messages")
+  return normalizedMessage.includes("admin_reports")
     && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
 }
 
-function buildAdminMessageBody(message = "", reporterName = "") {
-  const trimmedMessage = String(message || "").trim();
-  const trimmedReporterName = String(reporterName || "").trim();
-  if (!trimmedReporterName) {
-    return trimmedMessage;
+function logAdminReportFallback(record = {}, error = null) {
+  if (error) {
+    console.warn("[Admin Reports Fallback] Could not insert report into Supabase.", error);
   }
-  return `Reporter name: ${trimmedReporterName}\n\n${trimmedMessage}`;
-}
-
-function buildLocalAdminMessageId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `local-report-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function persistAdminMessageLocally(record = {}) {
-  const localRecord = {
-    id: buildLocalAdminMessageId(),
-    reporter_name: String(record.reporter_name || "").trim(),
-    user_email: String(record.user_email || "").trim(),
-    message_type: normalizeAdminMessageType(record.message_type),
-    message: String(record.message || "").trim(),
-    page_context: String(record.page_context || "").trim(),
-    session_id: String(record.session_id || "").trim(),
-    snapshot_id: String(record.snapshot_id || "").trim(),
-    status: "new",
-    created_at: record.created_at || new Date().toISOString(),
-    saved_locally: true,
+  console.info("[Admin Reports Fallback] Report logged to console fallback.", record);
+  return {
+    ...record,
+    loggedToConsole: true,
   };
-
-  try {
-    const existingRows = JSON.parse(window.localStorage.getItem(LOCAL_ADMIN_REPORTS_STORAGE_KEY) || "[]");
-    const nextRows = Array.isArray(existingRows) ? existingRows : [];
-    nextRows.unshift(localRecord);
-    window.localStorage.setItem(
-      LOCAL_ADMIN_REPORTS_STORAGE_KEY,
-      JSON.stringify(nextRows.slice(0, 50)),
-    );
-  } catch (error) {
-    console.warn("[Admin Message Fallback] Could not persist local report.", error);
-  }
-
-  console.info("[Admin Message Fallback] Stored report locally.", localRecord);
-  return localRecord;
 }
 
 async function submitAdminMessage(payload = {}) {
+  let resolvedUserId = null;
+  if (appState.supabase) {
+    try {
+      const { data, error } = await appState.supabase.auth.getUser();
+      if (!error && data?.user?.id) {
+        resolvedUserId = data.user.id;
+      }
+    } catch (authError) {
+      console.warn("[Admin Reports] Could not resolve authenticated user for report submission.", authError);
+    }
+  }
+
   const record = {
-    reporter_name: String(payload.reporterName || "").trim(),
-    user_email: String(payload.userEmail || "").trim(),
-    message_type: normalizeAdminMessageType(payload.messageType),
-    message: buildAdminMessageBody(payload.message, payload.reporterName),
-    page_context: String(payload.pageContext || "").trim(),
-    session_id: String(payload.sessionId || "").trim(),
-    snapshot_id: String(payload.snapshotId || "").trim(),
+    user_id: resolvedUserId,
+    name: String(payload.reporterName || "").trim(),
+    email: String(payload.userEmail || "").trim(),
+    issue_type: normalizeAdminMessageType(payload.messageType),
+    message: String(payload.message || "").trim(),
     status: "new",
     created_at: payload.createdAt || new Date().toISOString(),
   };
 
   if (!appState.supabase) {
-    return persistAdminMessageLocally(record);
+    return logAdminReportFallback(record);
   }
 
-  const supabaseRecord = {
-    user_email: record.user_email,
-    message_type: record.message_type,
-    message: record.message,
-    page_context: record.page_context,
-    session_id: record.session_id,
-    snapshot_id: record.snapshot_id,
-    status: record.status,
-    created_at: record.created_at,
-  };
-
   const { error } = await appState.supabase
-    .from(ADMIN_MESSAGES_TABLE)
-    .insert(supabaseRecord);
+    .from(ADMIN_REPORTS_TABLE)
+    .insert(record);
 
   if (error) {
-    if (isAdminMessagesTableMissingError(error)) {
-      console.warn("[Admin Message Fallback] Messaging table unavailable; saving locally instead.", error);
-      return persistAdminMessageLocally(record);
-    }
-    console.warn("[Admin Message Fallback] Supabase insert failed; saving locally instead.", error);
-    return persistAdminMessageLocally(record);
+    return logAdminReportFallback(record, error);
   }
 
   return record;
@@ -2921,13 +2879,13 @@ async function loadAdminMessages(reason = "refresh") {
   }
 
   const { data, error } = await appState.supabase
-    .from(ADMIN_MESSAGES_TABLE)
+    .from(ADMIN_REPORTS_TABLE)
     .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
     if (isAdminMessagesTableMissingError(error)) {
-      throw new Error("User reports table unavailable. Apply supabase-admin-messages-migration.sql.");
+      throw new Error("User reports table unavailable. Apply supabase-admin-reports-migration.sql.");
     }
     throw new Error(error.message || `Could not load user reports during ${reason}.`);
   }
@@ -2990,7 +2948,7 @@ async function updateAdminMessageStatus(messageId, nextStatus = "reviewed") {
   }
 
   const { data, error } = await appState.supabase
-    .from(ADMIN_MESSAGES_TABLE)
+    .from(ADMIN_REPORTS_TABLE)
     .update({ status: normalizedStatus })
     .eq("id", normalizedMessageId)
     .select("*")
@@ -3179,7 +3137,7 @@ function openAdminMessageModal(options = {}) {
         });
         nextFeedback.classList.add("is-success");
         nextFeedback.textContent = "Thanks - your message has been received.";
-        if (isAdminUser() && appState.supabase && !submission?.saved_locally) {
+        if (isAdminUser() && appState.supabase && !submission?.loggedToConsole) {
           void refreshAdminMessages({ force: true, reason: "submit:admin-message" }).then(() => {
             if ((window.location.hash || "#home") === "#admin") {
               safeRender();
@@ -16427,53 +16385,95 @@ function renderAdminMessageStatusPillMarkup(status = "new") {
   return `<span class="admin-message-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminMessageStatusLabel(normalizedStatus))}</span>`;
 }
 
+function getAdminMessageStatusFilterOptions() {
+  return [
+    { key: "all", label: "All" },
+    { key: "new", label: "New" },
+    { key: "reviewed", label: "Reviewed" },
+    { key: "resolved", label: "Resolved" },
+  ];
+}
+
+function renderAdminMessagesFilterMarkup() {
+  return `
+    <div class="admin-messages-filter-toolbar" aria-label="User reports status filter">
+      ${getAdminMessageStatusFilterOptions().map((option) => `
+        <button
+          type="button"
+          class="button ${appState.adminMessageStatusFilter === option.key ? "button-primary" : "button-secondary"}"
+          data-admin-message-filter="${escapeHtml(option.key)}"
+        >
+          ${escapeHtml(option.label)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getAdminMessagePreview(message = "") {
+  const trimmedMessage = String(message || "").trim();
+  if (trimmedMessage.length <= 180) {
+    return trimmedMessage;
+  }
+  return `${trimmedMessage.slice(0, 177).trimEnd()}...`;
+}
+
 function renderAdminMessagesTableMarkup() {
-  const rows = [...(appState.adminMessages || [])].sort((left, right) => (
+  const filteredRows = (appState.adminMessageStatusFilter === "all"
+    ? (appState.adminMessages || [])
+    : (appState.adminMessages || []).filter((row) => row.status === appState.adminMessageStatusFilter));
+  const rows = [...filteredRows].sort((left, right) => (
     new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()
   ));
   const isLoading = Boolean(appState.supabase && !appState.adminMessagesLoaded && appState.adminMessagesRefreshPromise);
 
   if (isLoading) {
-    return `<div class="admin-messages-empty"><p>Loading user reports...</p></div>`;
+    return `
+      ${renderAdminMessagesFilterMarkup()}
+      <div class="admin-messages-empty"><p>Loading user reports...</p></div>
+    `;
   }
 
   if (appState.adminMessagesError) {
-    return `<div class="admin-messages-empty"><p>${escapeHtml(appState.adminMessagesError)}</p></div>`;
+    return `
+      ${renderAdminMessagesFilterMarkup()}
+      <div class="admin-messages-empty"><p>${escapeHtml(appState.adminMessagesError)}</p></div>
+    `;
   }
 
   if (!rows.length) {
-    return `<div class="admin-messages-empty"><p>No user reports or admin messages yet.</p></div>`;
+    const emptyMessage = appState.adminMessageStatusFilter === "all"
+      ? "No user reports yet."
+      : `No ${appState.adminMessageStatusFilter} reports yet.`;
+    return `
+      ${renderAdminMessagesFilterMarkup()}
+      <div class="admin-messages-empty"><p>${escapeHtml(emptyMessage)}</p></div>
+    `;
   }
 
   return `
+    ${renderAdminMessagesFilterMarkup()}
     <div class="admin-messages-table-shell">
       <table class="leaderboard-audit-table admin-messages-table">
         <thead>
           <tr>
             <th>Status</th>
-            <th>Type</th>
-            <th>Message</th>
-            <th>User Email</th>
-            <th>Context</th>
-            <th>Created</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Issue Type</th>
+            <th>Message Preview</th>
+            <th>Date</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map((row) => {
-            const contextParts = [
-              row.pageContext || "Unknown page",
-              row.sessionId ? `Session: ${row.sessionId}` : "",
-              row.snapshotId ? `Snapshot: ${row.snapshotId}` : "",
-            ].filter(Boolean);
-
-            return `
+          ${rows.map((row) => `
               <tr>
                 <td>${renderAdminMessageStatusPillMarkup(row.status)}</td>
-                <td>${escapeHtml(row.messageType)}</td>
-                <td class="admin-message-cell">${escapeHtml(row.message)}</td>
-                <td>${escapeHtml(row.userEmail || "Not provided")}</td>
-                <td class="admin-message-context">${escapeHtml(contextParts.join(" • "))}</td>
+                <td>${escapeHtml(row.name || "Not provided")}</td>
+                <td>${escapeHtml(row.email || "Not provided")}</td>
+                <td>${escapeHtml(row.issueType)}</td>
+                <td class="admin-message-cell">${escapeHtml(getAdminMessagePreview(row.message))}</td>
                 <td>${escapeHtml(parseCompletedAtValue(row.createdAt) ? formatTimingDateTime(parseCompletedAtValue(row.createdAt)) : "Not available")}</td>
                 <td>
                   <div class="admin-message-actions">
@@ -16482,8 +16482,7 @@ function renderAdminMessagesTableMarkup() {
                   </div>
                 </td>
               </tr>
-            `;
-          }).join("")}
+          `).join("")}
         </tbody>
       </table>
     </div>
@@ -16492,9 +16491,9 @@ function renderAdminMessagesTableMarkup() {
 
 function renderAdminMessagesSectionMarkup() {
   return renderAdminCollapsibleSectionMarkup({
-    eyebrow: "User Reports / Messages",
-    title: "User Reports / Messages",
-    description: "Review bug reports, content flags, and support questions sent from Community Grow and public session views.",
+    eyebrow: "User Reports",
+    title: "User Reports",
+    description: "Review footer contact forms, content flags, technical issues, and support messages.",
     storageKey: ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
     contentId: "admin-user-reports-section-content",
     defaultOpen: false,
@@ -16503,6 +16502,18 @@ function renderAdminMessagesSectionMarkup() {
 }
 
 function bindAdminMessagesSection(scope = app) {
+  scope.querySelectorAll("[data-admin-message-filter]").forEach((button) => {
+    if (button.dataset.adminMessageFilterBound === "true") {
+      return;
+    }
+
+    button.dataset.adminMessageFilterBound = "true";
+    button.addEventListener("click", () => {
+      appState.adminMessageStatusFilter = String(button.dataset.adminMessageFilter || "all").trim() || "all";
+      safeRender();
+    });
+  });
+
   scope.querySelectorAll("[data-admin-message-status]").forEach((button) => {
     if (button.dataset.adminMessageStatusBound === "true") {
       return;
