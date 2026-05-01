@@ -2270,6 +2270,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
 }
 
+.gallery-leaderboard-disclaimer {
+  margin: 14px 0 0;
+  color: color-mix(in srgb, var(--muted) 88%, transparent);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
 .gallery-seedtype-highlights {
   display: grid;
   gap: 10px;
@@ -9037,6 +9044,10 @@ body.theme-dark .gallery-leaderboard-section {
 body.theme-dark .gallery-leaderboard-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.015) 100%);
   border-color: rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .gallery-leaderboard-disclaimer {
+  color: rgba(189, 204, 192, 0.76);
 }
 
 body.theme-dark .home-gallery-rankings-card {

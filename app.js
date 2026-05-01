@@ -6235,6 +6235,7 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
     </div>
+    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
   `;
 
   return section;
