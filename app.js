@@ -121,12 +121,15 @@ const FILTER_PAPER_STORE_URLS = Object.freeze({
   US: "https://cannakan.com/products/filter-papers-90mm",
   EU: "https://cannakan.eu/products/filter-papers-90mm",
 });
+// Button label intentionally generic to avoid SKU lock-in.
+const FILTER_PAPER_REORDER_BUTTON_LABEL = "Reorder Filter Papers";
 const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   count: 0,
   autoSubtract: false,
   storeRegion: "US",
 });
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
+// Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "icons/KAN%20icon.svg",
@@ -1609,7 +1612,7 @@ function getFilterPaperReminder(count) {
 
 function getFilterPaperStoreUrl(region = "US") {
   const normalizedRegion = region === "EU" ? "EU" : "US";
-  // TODO: Auto-detect the best store region for the signed-in user before falling back to manual selection.
+  // Future: auto-detect user region for smarter routing.
   // TODO: Route users to distributor-, country-, or province/state-specific product links when regional rules are defined.
   return FILTER_PAPER_STORE_URLS[normalizedRegion] || FILTER_PAPER_STORE_URLS.US;
 }
@@ -9802,12 +9805,12 @@ function renderFilterPaperCardMarkup() {
         </p>
         <div class="filter-paper-actions">
           <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
-          <button type="button" class="button button-primary" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+          <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
         </div>
         ${reminder ? `
           <div class="filter-paper-reminder filter-paper-reminder--${status.key}" role="status" aria-live="polite">
             <p>${escapeHtml(reminder)}</p>
-            <button type="button" class="button button-secondary filter-paper-reminder-button" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+            <button type="button" class="button button-secondary filter-paper-reminder-button" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
           </div>
         ` : ""}
       </div>
@@ -9832,7 +9835,7 @@ function renderActiveSessionFilterPaperCardMarkup() {
         <div class="active-session-supplies-actions">
           <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(status.label)}</span>
           <div class="active-session-supplies-button-row">
-            <button type="button" class="button button-primary" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+            <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
             <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
           </div>
         </div>
@@ -9895,8 +9898,42 @@ function ensureFilterPaperInventoryModal() {
   return modal;
 }
 
+function ensureFilterPaperPreSessionWarningModal() {
+  let modal = document.querySelector("#filter-paper-pre-session-warning-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "filter-paper-pre-session-warning-modal";
+  modal.className = "snapshot-modal filter-paper-warning-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card filter-paper-warning-modal-card" role="document" aria-labelledby="filter-paper-warning-title">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Supplies</p>
+        <h3 id="filter-paper-warning-title">Filter papers needed</h3>
+        <p>You’re out of filter papers. Reorder before starting your next session, or continue if you already have supplies on hand.</p>
+      </div>
+      <div class="filter-paper-warning-actions">
+        <button type="button" class="button button-primary" data-filter-paper-warning-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
+        <button type="button" class="button button-secondary" data-filter-paper-warning-update="true">Update Count</button>
+        <button type="button" class="button button-secondary filter-paper-warning-continue" data-filter-paper-warning-continue="true">Continue Anyway</button>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
 function openFilterPaperInventoryModal(options = {}) {
-  const { onSave = null } = options || {};
+  const { onSave = null, onCancel = null } = options || {};
   const inventory = getFilterPaperInventory();
   const modal = ensureFilterPaperInventoryModal();
   const form = modal.querySelector("form");
@@ -9919,6 +9956,15 @@ function openFilterPaperInventoryModal(options = {}) {
     message.classList.remove("is-error");
   }
 
+  let didSave = false;
+  const handleClose = () => {
+    modal.removeEventListener("close", handleClose);
+    if (!didSave && typeof onCancel === "function") {
+      onCancel();
+    }
+  };
+  modal.addEventListener("close", handleClose, { once: true });
+
   cancelButton.onclick = () => {
     if (modal.open) {
       modal.close();
@@ -9928,17 +9974,18 @@ function openFilterPaperInventoryModal(options = {}) {
   saveButton.onclick = () => {
     const rawCount = Number(countInput.value);
     const nextCount = Number.isFinite(rawCount) ? Math.max(0, Math.floor(rawCount)) : 0;
-    saveFilterPaperInventory({
+    const savedInventory = saveFilterPaperInventory({
       count: nextCount,
       autoSubtract: autoSubtractInput.checked,
       storeRegion: regionSelect.value === "EU" ? "EU" : "US",
     });
     // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.
+    didSave = true;
     if (modal.open) {
       modal.close();
     }
     if (typeof onSave === "function") {
-      onSave();
+      onSave(savedInventory);
       return;
     }
     safeRender();
@@ -9949,6 +9996,102 @@ function openFilterPaperInventoryModal(options = {}) {
   }
   countInput.focus();
   countInput.select();
+}
+
+function promptFilterPaperPreSessionWarning() {
+  if (getFilterPaperInventory().count > 0) {
+    return Promise.resolve(true);
+  }
+
+  const modal = ensureFilterPaperPreSessionWarningModal();
+  const reorderButton = modal.querySelector('[data-filter-paper-warning-reorder="true"]');
+  const updateButton = modal.querySelector('[data-filter-paper-warning-update="true"]');
+  const continueButton = modal.querySelector('[data-filter-paper-warning-continue="true"]');
+
+  if (!reorderButton || !updateButton || !continueButton) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let suppressCloseResolution = false;
+
+    const cleanup = () => {
+      modal.removeEventListener("close", handleClose);
+      reorderButton.onclick = null;
+      updateButton.onclick = null;
+      continueButton.onclick = null;
+    };
+
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      if (modal.open) {
+        modal.close();
+      }
+      resolve(result);
+    };
+
+    const showWarning = () => {
+      if (settled) {
+        return;
+      }
+
+      if (!modal.open) {
+        modal.showModal();
+      }
+      reorderButton.focus();
+    };
+
+    const handleClose = () => {
+      if (settled) {
+        return;
+      }
+
+      if (suppressCloseResolution) {
+        suppressCloseResolution = false;
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      resolve(false);
+    };
+
+    reorderButton.onclick = () => {
+      openFilterPaperStore();
+    };
+
+    updateButton.onclick = () => {
+      suppressCloseResolution = true;
+      if (modal.open) {
+        modal.close();
+      }
+      openFilterPaperInventoryModal({
+        onSave: (savedInventory) => {
+          if ((savedInventory?.count || 0) > 0) {
+            finish(true);
+            return;
+          }
+          showWarning();
+        },
+        onCancel: () => {
+          showWarning();
+        },
+      });
+    };
+
+    continueButton.onclick = () => {
+      finish(true);
+    };
+
+    modal.addEventListener("close", handleClose);
+    showWarning();
+  });
 }
 
 function renderHomeInstallInfoCardMarkup() {
@@ -15474,6 +15617,10 @@ function renderSessionForm(initialSystemType = "KAN") {
     const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
 
     try {
+      const canProceedWithoutFilterPapers = await promptFilterPaperPreSessionWarning();
+      if (!canProceedWithoutFilterPapers) {
+        return null;
+      }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
       clearNewSessionNotesDraft();

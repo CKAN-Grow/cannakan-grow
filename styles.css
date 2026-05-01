@@ -2885,6 +2885,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 12px;
 }
 
+.filter-paper-warning-modal-card {
+  width: min(94vw, 560px);
+  display: grid;
+  gap: 18px;
+}
+
+.filter-paper-warning-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: stretch;
+}
+
+.filter-paper-warning-actions .button {
+  width: 100%;
+}
+
+.filter-paper-warning-continue {
+  opacity: 0.9;
+}
+
 .active-session-supplies-card {
   --active-supplies-accent: #94d159;
   --active-supplies-accent-soft: rgba(148, 209, 89, 0.16);
@@ -8951,6 +8971,14 @@ body.theme-dark .filter-paper-status-badge,
 body.theme-dark .filter-paper-reminder {
   background: color-mix(in srgb, var(--filter-paper-accent) 14%, rgba(22, 28, 23, 0.92));
   border-color: color-mix(in srgb, var(--filter-paper-accent) 32%, rgba(255, 255, 255, 0.06));
+}
+
+body.theme-dark .filter-paper-warning-modal-card {
+  background:
+    linear-gradient(180deg, rgba(34, 47, 38, 0.98) 0%, rgba(24, 33, 27, 0.9) 100%);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 body.theme-dark .filter-paper-status-badge {
