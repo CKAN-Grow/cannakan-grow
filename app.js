@@ -222,6 +222,9 @@ const appState = {
     role: "all",
     status: "all",
   },
+  publicMemberProfiles: {},
+  publicMemberProfilesRefreshPromises: {},
+  publicMemberProfilesViewUnavailable: false,
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -447,6 +450,9 @@ function resetSessionScopedAppState() {
     role: "all",
     status: "all",
   };
+  appState.publicMemberProfiles = {};
+  appState.publicMemberProfilesRefreshPromises = {};
+  appState.publicMemberProfilesViewUnavailable = false;
   appState.siteVisitorAnalyticsRows = [];
   appState.siteVisitorAnalyticsLoaded = false;
   appState.siteVisitorAnalyticsLoadedFilter = "";
@@ -3253,6 +3259,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
     });
   }
+  if (route === "members") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "member-profile",
+      pageLabel: "Member Profile",
+      pagePath: rawRoute ? `#${rawRoute}` : "#members",
+    });
+  }
   if (route === "sessions" || route === "new") {
     return buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
@@ -4084,6 +4098,19 @@ function formatMemberDateLabel(value) {
   return parsedDate ? formatTimingDateTime(parsedDate) : "Not available";
 }
 
+function formatPublicMemberJoinedDateLabel(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  if (!parsedDate) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
 function getStartOfCurrentMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -4423,6 +4450,163 @@ function normalizeProfileRow(row) {
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
+}
+
+function normalizePublicMemberProfileRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: String(row.id || "").trim(),
+    displayName: String(row.display_name || row.username || "").trim() || "Community member",
+    avatarUrl: String(row.avatar_url || "").trim(),
+    joinedAt: row.joined_at || row.created_at || "",
+  };
+}
+
+function isPublicMemberProfilesViewUnavailableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("public_member_profiles") && (
+    message.includes("relation")
+    || message.includes("permission denied")
+  );
+}
+
+function getPublicMemberProfileRoute(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  return normalizedId ? `#members/${encodeURIComponent(normalizedId)}` : "#gallery";
+}
+
+function getApprovedPublicSnapshotsForMember(memberId = "", snapshots = getApprovedPublicGallerySnapshots()) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return [];
+  }
+
+  return (snapshots || []).filter((snapshot) => String(snapshot?.userId || "").trim() === normalizedId);
+}
+
+function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId)) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const memberSnapshots = Array.isArray(snapshots) ? snapshots : [];
+  if (!memberSnapshots.length) {
+    return null;
+  }
+
+  const sharedProfileSnapshot = memberSnapshots.find(hasGallerySnapshotGrowMember) || memberSnapshots[0];
+  return {
+    id: normalizedId,
+    displayName: getGallerySnapshotMemberLabel(sharedProfileSnapshot),
+    avatarUrl: String(sharedProfileSnapshot?.profileImageUrl || "").trim(),
+    joinedAt: "",
+  };
+}
+
+function getPublicMemberProfile(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return appState.publicMemberProfiles[normalizedId]
+    || buildDerivedPublicMemberProfile(normalizedId)
+    || null;
+}
+
+async function loadPublicMemberProfile(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  const fallbackProfile = buildDerivedPublicMemberProfile(normalizedId);
+  if (!force && appState.publicMemberProfiles[normalizedId]) {
+    return appState.publicMemberProfiles[normalizedId];
+  }
+
+  if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
+    if (fallbackProfile) {
+      appState.publicMemberProfiles[normalizedId] = fallbackProfile;
+    }
+    return fallbackProfile || null;
+  }
+
+  if (!force && appState.publicMemberProfilesRefreshPromises[normalizedId]) {
+    return appState.publicMemberProfilesRefreshPromises[normalizedId];
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const { data, error } = await appState.supabase
+        .from("public_member_profiles")
+        .select("id,display_name,avatar_url,joined_at")
+        .eq("id", normalizedId)
+        .maybeSingle();
+
+      if (error) {
+        if (isPublicMemberProfilesViewUnavailableError(error)) {
+          appState.publicMemberProfilesViewUnavailable = true;
+          console.warn("Public member profiles view unavailable; falling back to snapshot-only profiles.", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        } else {
+          console.error("Failed to load public member profile", {
+            reason,
+            memberId: normalizedId,
+            error,
+          });
+        }
+
+        if (fallbackProfile) {
+          appState.publicMemberProfiles[normalizedId] = fallbackProfile;
+        }
+        return fallbackProfile || null;
+      }
+
+      const loadedProfile = normalizePublicMemberProfileRow(data);
+      const resolvedProfile = loadedProfile
+        ? {
+          ...fallbackProfile,
+          ...loadedProfile,
+          displayName: loadedProfile.displayName || fallbackProfile?.displayName || "Community member",
+          avatarUrl: loadedProfile.avatarUrl || fallbackProfile?.avatarUrl || "",
+          joinedAt: loadedProfile.joinedAt || fallbackProfile?.joinedAt || "",
+        }
+        : (fallbackProfile || null);
+
+      if (resolvedProfile) {
+        appState.publicMemberProfiles[normalizedId] = resolvedProfile;
+      }
+
+      return resolvedProfile;
+    } finally {
+      delete appState.publicMemberProfilesRefreshPromises[normalizedId];
+    }
+  })();
+
+  appState.publicMemberProfilesRefreshPromises[normalizedId] = refreshPromise;
+  return refreshPromise;
+}
+
+async function refreshPublicMemberProfile(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const profile = await loadPublicMemberProfile(normalizedId, options);
+  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+    renderPublicMemberProfile(normalizedId);
+  }
+  return profile;
 }
 
 function hasCompletedProfile(profile = appState.profile) {
@@ -6364,12 +6548,149 @@ function renderGallerySharedProfileMarkup(snapshot) {
     return "";
   }
 
+  const memberId = String(snapshot.userId || "").trim();
+  const memberRoute = memberId ? getPublicMemberProfileRoute(memberId) : "";
+  const profileLabel = profileName || "this member";
+  const wrapperTag = memberRoute ? "a" : "div";
+  const wrapperAttributes = memberRoute
+    ? `class="gallery-card-profile gallery-card-profile-link" href="${escapeHtml(memberRoute)}" aria-label="${escapeHtml(`View ${profileLabel}'s public profile`)}"`
+    : 'class="gallery-card-profile"';
+
   return `
-    <div class="gallery-card-profile">
+    <${wrapperTag} ${wrapperAttributes}>
       ${profileImageUrl ? `<img src="${escapeHtml(profileImageUrl)}" alt="${escapeHtml(profileName || "Shared grower profile image")}" class="gallery-card-profile-avatar">` : ""}
       ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
+    </${wrapperTag}>
+  `;
+}
+
+function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
+  const {
+    allowOwnerManagement = true,
+    linkSharedProfile = true,
+    alwaysShowPublicSessionAction = false,
+  } = options;
+  const isOwner = isGallerySnapshotOwner(snapshot);
+  const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
+  const isPending = snapshotStatus === "pending_review";
+  const isRejected = snapshotStatus === "rejected";
+  const isApproved = snapshotStatus === "approved";
+  const isPrivate = snapshotStatus === "private";
+  const ownerAction = allowOwnerManagement && isOwner ? getOwnerGalleryAction(snapshot) : null;
+  const details = getGallerySnapshotFeedDetails(snapshot);
+  const sharedProfileMarkup = linkSharedProfile
+    ? renderGallerySharedProfileMarkup(snapshot)
+    : "";
+  const openSessionMarkup = allowOwnerManagement && isOwner && snapshot.sessionId
+    ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
+    : "";
+  const shouldShowPublicSessionAction = Boolean(
+    snapshot?.id && (
+      alwaysShowPublicSessionAction
+      || !allowOwnerManagement
+      || !isOwner
+    ),
+  );
+  const publicSessionMarkup = shouldShowPublicSessionAction
+    ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Session</a>`
+    : "";
+  const ownerActionMarkup = ownerAction
+    ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
+    : "";
+  const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
+    ? `
+        <div class="gallery-card-footer-main">
+          ${sharedProfileMarkup}
+          ${(openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
+            ? `
+              <div class="gallery-card-actions">
+                ${openSessionMarkup}
+                ${ownerActionMarkup}
+                ${publicSessionMarkup}
+              </div>
+            `
+            : ""}
+        </div>
+      `
+    : "";
+  const visibilityLabel = isPending
+    ? "Visible to you while under review"
+    : isRejected
+      ? "Rejected submission"
+      : isPrivate
+        ? "Private submission"
+        : "Germination success";
+
+  return `
+    ${renderGallerySnapshotMediaMarkup(snapshot, details)}
+    <div class="gallery-card-body">
+      <div class="gallery-card-top">
+        <div class="gallery-card-copy">
+          <strong>${escapeHtml(snapshot.title)}</strong>
+        </div>
+      </div>
+      <div class="gallery-card-feed-meta">
+        <div class="gallery-card-feed-row gallery-card-feed-row--primary gallery-card-stats-row-1">
+          <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
+          ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
+        </div>
+        <div class="gallery-card-feed-row gallery-card-feed-row--secondary gallery-card-stats-row-2">
+          <div class="gallery-card-pill-pair">
+            <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
+            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+          </div>
+        </div>
+      </div>
+      ${allowOwnerManagement && isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
+      <div class="gallery-card-footer">
+        ${footerMainMarkup}
+        ${renderGalleryLikeButtonMarkup(snapshot)}
+      </div>
     </div>
   `;
+}
+
+function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], rerender = () => {}) {
+  if (!scope) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-gallery-remove]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        const snapshotId = button.dataset.galleryRemove || "";
+        const ownerAction = button.dataset.galleryOwnerAction || "";
+        const snapshot = visibleSnapshots.find((entry) => entry.id === snapshotId);
+        if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
+          throw new Error("You can only manage your own Community Grow snapshots.");
+        }
+        if (ownerAction === "request-removal") {
+          console.info("[GrowGallery] Removal requested for approved snapshot", {
+            snapshotId,
+            userId: appState.user?.id || "",
+          });
+          window.alert("Removal request noted. Contact support for published Community Grow changes.");
+          return;
+        }
+
+        await deleteGallerySnapshot(snapshotId);
+        rerender();
+      } catch (error) {
+        window.alert(error.message || "Could not remove this Community Grow snapshot.");
+      }
+    });
+  });
+
+  scope.querySelectorAll("[data-gallery-like]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
+        rerender();
+      } catch (error) {
+        window.alert(error.message || "Could not update your like right now.");
+      }
+    });
+  });
 }
 
 function ensureGalleryReviewPreviewModal() {
@@ -7193,6 +7514,24 @@ function renderGalleryLikeButtonMarkup(snapshot) {
   `;
 }
 
+function getPublicMemberInitialsLabel(displayName = "") {
+  const parts = String(displayName || "").trim().split(/\s+/).filter(Boolean);
+  const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+  return initials || "CG";
+}
+
+function renderPublicMemberAvatarMarkup(displayName = "", avatarUrl = "", className = "public-member-profile-avatar") {
+  if (avatarUrl) {
+    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}">`;
+  }
+
+  return `
+    <span class="${escapeHtml(`${className} is-fallback`)}" aria-hidden="true">
+      ${escapeHtml(getPublicMemberInitialsLabel(displayName))}
+    </span>
+  `;
+}
+
 function hasGallerySnapshotGrowMember(snapshot) {
   if (!snapshot?.includeProfileInGallery) {
     return false;
@@ -7253,13 +7592,14 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       const pathRoute = window.location.pathname.replace(/^\/+/, "");
       const isGalleryRoute = hashRoute.startsWith("#gallery") || pathRoute === "admin/gallery-moderation";
       const isPublicSessionRoute = hashRoute.startsWith("#sessions/public/");
+      const isPublicMemberRoute = hashRoute.startsWith("#members/");
       if (isGalleryRoute && previousSignature !== nextSignature) {
         logGrowGalleryDebug("refreshGallerySnapshots:rerender", {
           reason,
           targetSnapshotId,
         });
         renderGallery(targetSnapshotId);
-      } else if (isPublicSessionRoute && previousSignature !== nextSignature) {
+      } else if ((isPublicSessionRoute || isPublicMemberRoute) && previousSignature !== nextSignature) {
         render();
       }
 
@@ -9775,6 +10115,20 @@ function render() {
       pagePath: `#sessions/public/${subroute}`,
     }));
     void refreshGallerySnapshots("route:public-session", subroute);
+    return;
+  }
+
+  if (route === "members" && id) {
+    const memberId = decodeURIComponent(id);
+    renderPublicMemberProfile(memberId);
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "member-profile",
+      pageLabel: "Member Profile",
+      pagePath: `#members/${id}`,
+    }));
+    void refreshGallerySnapshots("route:public-member-profile");
+    void refreshPublicMemberProfile(memberId, { reason: "route:public-member-profile" });
     return;
   }
 
@@ -15988,74 +16342,7 @@ function renderGallery(targetSnapshotId = "") {
       card.className = "gallery-card";
       card.dataset.gallerySnapshotId = snapshot.id;
       card.tabIndex = -1;
-      const isOwner = isGallerySnapshotOwner(snapshot);
-      const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
-      const isPending = snapshotStatus === "pending_review";
-      const isRejected = snapshotStatus === "rejected";
-      const isApproved = snapshotStatus === "approved";
-      const isPrivate = snapshotStatus === "private";
-      const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
-      const details = getGallerySnapshotFeedDetails(snapshot);
-      const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
-      const openSessionMarkup = isOwner && snapshot.sessionId
-        ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
-        : "";
-      const publicSessionMarkup = !isOwner
-        ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Session</a>`
-        : "";
-      const ownerActionMarkup = ownerAction
-        ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
-        : "";
-      const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
-        ? `
-            <div class="gallery-card-footer-main">
-              ${sharedProfileMarkup}
-              ${(openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
-                ? `
-                  <div class="gallery-card-actions">
-                    ${openSessionMarkup}
-                    ${ownerActionMarkup}
-                    ${publicSessionMarkup}
-                  </div>
-                `
-                : ""}
-            </div>
-          `
-        : "";
-      const visibilityLabel = isPending
-        ? "Visible to you while under review"
-        : isRejected
-          ? "Rejected submission"
-          : isPrivate
-            ? "Private submission"
-            : "Germination success";
-      card.innerHTML = `
-        ${renderGallerySnapshotMediaMarkup(snapshot, details)}
-        <div class="gallery-card-body">
-          <div class="gallery-card-top">
-            <div class="gallery-card-copy">
-              <strong>${escapeHtml(snapshot.title)}</strong>
-            </div>
-          </div>
-          <div class="gallery-card-feed-meta">
-            <div class="gallery-card-feed-row gallery-card-feed-row--primary gallery-card-stats-row-1">
-              <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
-              ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
-            </div>
-            <div class="gallery-card-feed-row gallery-card-feed-row--secondary gallery-card-stats-row-2">
-              <div class="gallery-card-pill-pair">
-                <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
-                <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-              </div>
-            </div>
-          </div>
-          ${isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
-          <div class="gallery-card-footer">
-            ${footerMainMarkup}
-            ${renderGalleryLikeButtonMarkup(snapshot)}
-          </div>
-        </div>
-      `;
+      card.innerHTML = renderGallerySnapshotCardMarkup(snapshot);
       if (targetSnapshotId && snapshot.id === targetSnapshotId) {
         card.classList.add("is-targeted");
         targetCard = card;
@@ -16071,42 +16358,7 @@ function renderGallery(targetSnapshotId = "") {
       targetCard.focus({ preventScroll: true });
     }
 
-    galleryGrid.querySelectorAll("[data-gallery-remove]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        try {
-          const snapshotId = button.dataset.galleryRemove || "";
-          const ownerAction = button.dataset.galleryOwnerAction || "";
-          const snapshot = gallerySnapshots.find((entry) => entry.id === snapshotId);
-          if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
-            throw new Error("You can only manage your own Community Grow snapshots.");
-          }
-          if (ownerAction === "request-removal") {
-            console.info("[GrowGallery] Removal requested for approved snapshot", {
-              snapshotId,
-              userId: appState.user?.id || "",
-            });
-            window.alert("Removal request noted. Contact support for published Community Grow changes.");
-            return;
-          }
-
-          await deleteGallerySnapshot(snapshotId);
-          renderGallery();
-        } catch (error) {
-          window.alert(error.message || "Could not remove this Community Grow snapshot.");
-        }
-      });
-    });
-
-    galleryGrid.querySelectorAll("[data-gallery-like]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        try {
-          await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
-          renderGallery(targetSnapshotId);
-        } catch (error) {
-          window.alert(error.message || "Could not update your like right now.");
-        }
-      });
-    });
+    bindGallerySnapshotCardInteractions(galleryGrid, gallerySnapshots, () => renderGallery(targetSnapshotId));
   };
 
   const syncGallerySortOrderControl = (resetToDefault = false) => {
@@ -17348,6 +17600,155 @@ function renderPublicSessionDetail(snapshotId) {
       </div>
     </section>
   `;
+}
+
+function renderPublicMemberProfile(memberId) {
+  const normalizedId = String(memberId || "").trim();
+  const isLoadingSnapshots = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
+  const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId]);
+  const approvedSnapshots = sortGallerySnapshotsNewestFirst(getApprovedPublicSnapshotsForMember(normalizedId));
+  const profile = getPublicMemberProfile(normalizedId);
+
+  if (!normalizedId) {
+    app.innerHTML = `
+      <section class="card public-member-profile-page">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Community Member</p>
+            <h2>Public profile</h2>
+            <p class="muted">This public member profile is unavailable.</p>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  if (!profile && !approvedSnapshots.length) {
+    app.innerHTML = `
+      <section class="card public-member-profile-page">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Community Member</p>
+            <h2>Public grow profile</h2>
+            <p class="muted">${isLoadingSnapshots || isLoadingProfile ? "Loading public member profile..." : "This public member profile is unavailable."}</p>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const displayName = profile?.displayName || "Community member";
+  const avatarUrl = profile?.avatarUrl || "";
+  const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
+  const averageRate = approvedSnapshots.length
+    ? (approvedSnapshots.reduce((sum, snapshot) => sum + getGallerySnapshotSuccessRate(snapshot), 0) / approvedSnapshots.length)
+    : null;
+  const roundedAverageRate = averageRate === null
+    ? ""
+    : String(Number((Math.round(averageRate * 10) / 10).toFixed(1))).replace(/\.0$/, "");
+  const stats = [
+    {
+      label: "Approved Snapshots",
+      value: approvedSnapshots.length.toLocaleString(),
+      detail: approvedSnapshots.length === 1 ? "approved public snapshot" : "approved public snapshots",
+    },
+    averageRate === null
+      ? null
+      : {
+        label: "Avg Germination",
+        value: `${roundedAverageRate}%`,
+        detail: "based on approved public snapshots",
+      },
+    joinedLabel
+      ? {
+        label: "Joined",
+        value: joinedLabel,
+        detail: "member since",
+      }
+      : null,
+  ].filter(Boolean);
+
+  app.innerHTML = `
+    <section class="card public-member-profile-page">
+      <div class="public-member-profile-header">
+        <div class="public-member-profile-identity">
+          <div class="public-member-profile-avatar-shell">
+            ${renderPublicMemberAvatarMarkup(displayName, avatarUrl)}
+          </div>
+          <div class="public-member-profile-copy">
+            <p class="eyebrow">Community Member</p>
+            <h2>${escapeHtml(displayName)}</h2>
+            <p class="muted">Public grow profile</p>
+            ${joinedLabel ? `<p class="public-member-profile-joined">Joined ${escapeHtml(joinedLabel)}</p>` : ""}
+          </div>
+        </div>
+        <div class="inline-actions">
+          <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Report content">Report / Contact Admin</button>
+          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+        </div>
+      </div>
+      <div class="public-member-profile-stats">
+        ${stats.map((stat) => `
+          <article class="meta-card public-member-profile-stat-card">
+            <strong>${escapeHtml(stat.label)}</strong>
+            <p class="public-member-profile-stat-value">${escapeHtml(stat.value)}</p>
+            <p class="public-member-profile-stat-detail">${escapeHtml(stat.detail)}</p>
+          </article>
+        `).join("")}
+      </div>
+      <section class="public-member-profile-snapshots">
+        <div class="section-heading">
+          <div class="section-title-with-icon">
+            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <rect x="4" y="6" width="10" height="12" rx="2"></rect>
+              <path d="M14 9h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2"></path>
+              <path d="m8 14 2-2 2 2"></path>
+              <circle cx="10" cy="10" r="1"></circle>
+            </svg>
+            <div>
+              <p class="eyebrow">Shared Sessions</p>
+              <h3>Public snapshots</h3>
+              <p class="muted">Only approved Community Grow snapshots are shown here.</p>
+            </div>
+          </div>
+        </div>
+        ${approvedSnapshots.length
+          ? '<div id="public-member-profile-grid" class="gallery-grid"></div>'
+          : `
+            <div class="empty-state gallery-empty-state public-member-profile-empty-state">
+              <p>This member has not shared any public sessions yet.</p>
+            </div>
+          `}
+      </section>
+    </section>
+  `;
+
+  const profileGrid = app.querySelector("#public-member-profile-grid");
+  if (!profileGrid) {
+    return;
+  }
+
+  approvedSnapshots.forEach((snapshot) => {
+    const card = document.createElement("article");
+    card.className = "gallery-card";
+    card.dataset.gallerySnapshotId = snapshot.id;
+    card.innerHTML = renderGallerySnapshotCardMarkup(snapshot, {
+      allowOwnerManagement: false,
+      linkSharedProfile: false,
+      alwaysShowPublicSessionAction: true,
+    });
+    profileGrid.appendChild(card);
+  });
+
+  bindGallerySnapshotCardInteractions(profileGrid, approvedSnapshots, () => renderPublicMemberProfile(normalizedId));
 }
 
 function renderSessionDetail(sessionId) {

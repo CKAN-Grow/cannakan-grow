@@ -3678,6 +3678,24 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   max-width: 100%;
 }
 
+.gallery-card-profile-link {
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.gallery-card-profile-link:hover,
+.gallery-card-profile-link:focus-visible {
+  transform: translateY(-1px);
+  opacity: 0.96;
+  outline: none;
+}
+
+.gallery-card-profile-link:hover .gallery-card-profile-name,
+.gallery-card-profile-link:focus-visible .gallery-card-profile-name {
+  color: #c7f19a;
+}
+
 .gallery-card-profile-avatar {
   width: 34px;
   height: 34px;
@@ -8484,6 +8502,106 @@ input::placeholder {
   gap: 22px;
 }
 
+.public-member-profile-page {
+  display: grid;
+  gap: 22px;
+}
+
+.public-member-profile-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(33, 45, 36, 0.98) 0%, rgba(24, 34, 27, 0.98) 100%);
+  box-shadow:
+    0 18px 34px rgba(10, 16, 12, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.public-member-profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.public-member-profile-avatar-shell {
+  flex: 0 0 auto;
+}
+
+.public-member-profile-avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  box-shadow: 0 10px 22px rgba(10, 16, 12, 0.18);
+  display: block;
+}
+
+.public-member-profile-avatar.is-fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(148, 209, 89, 0.92), rgba(95, 172, 75, 0.88));
+  color: #152016;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.public-member-profile-copy {
+  min-width: 0;
+}
+
+.public-member-profile-copy h2,
+.public-member-profile-copy p {
+  margin: 0;
+}
+
+.public-member-profile-copy h2 {
+  color: #f6f8f5;
+  overflow-wrap: anywhere;
+}
+
+.public-member-profile-joined {
+  margin-top: 8px !important;
+  color: #d5ddd5;
+  font-size: 0.92rem;
+}
+
+.public-member-profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.public-member-profile-stat-card {
+  min-height: 124px;
+}
+
+.public-member-profile-stat-value {
+  color: var(--ink) !important;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.public-member-profile-stat-detail {
+  margin-top: 10px !important;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.public-member-profile-snapshots {
+  display: grid;
+  gap: 18px;
+}
+
 .public-session-profile {
   display: flex;
   justify-content: flex-start;
@@ -8547,6 +8665,16 @@ input::placeholder {
 
 .public-session-meta-card {
   min-height: 100px;
+}
+
+@media (max-width: 720px) {
+  .public-member-profile-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-member-profile-identity {
+    align-items: flex-start;
+  }
 }
 
 .session-row-bottom {
