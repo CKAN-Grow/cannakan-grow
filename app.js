@@ -58,6 +58,7 @@ const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
 const ADMIN_MESSAGES_TABLE = "admin_messages";
+const LOCAL_ADMIN_REPORTS_STORAGE_KEY = "cannakanGrowAdminReports";
 const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
 const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
 const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
@@ -2730,6 +2731,7 @@ function getAdminMessageContext() {
   const [route, id, subroute] = rawRoute.split("/");
   const routeSuffix = rawRoute ? ` (#${rawRoute})` : "";
   const context = {
+    userName: String(appState.profile?.username || "").trim(),
     userEmail: appState.currentUserEmail || getNormalizedUserEmail(appState.user),
     pageContext: "Home",
     sessionId: "",
@@ -2773,10 +2775,22 @@ function getAdminMessageContext() {
 }
 
 function normalizeAdminMessageType(value = "") {
-  const normalizedValue = String(value || "").trim();
-  return ["Bug", "Report content", "Question", "Other"].includes(normalizedValue)
-    ? normalizedValue
-    : "Other";
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  switch (normalizedValue) {
+    case "technical issue":
+    case "bug":
+      return "Technical issue";
+    case "account issue":
+      return "Account issue";
+    case "report content":
+      return "Report content";
+    case "feedback":
+      return "Feedback";
+    case "question":
+    case "other":
+    default:
+      return "Other";
+  }
 }
 
 function normalizeAdminMessageStatus(value = "") {
@@ -2810,15 +2824,59 @@ function isAdminMessagesTableMissingError(error) {
     && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
 }
 
-async function submitAdminMessage(payload = {}) {
-  if (!appState.supabase) {
-    throw new Error("Messaging is unavailable until Supabase is configured.");
+function buildAdminMessageBody(message = "", reporterName = "") {
+  const trimmedMessage = String(message || "").trim();
+  const trimmedReporterName = String(reporterName || "").trim();
+  if (!trimmedReporterName) {
+    return trimmedMessage;
+  }
+  return `Reporter name: ${trimmedReporterName}\n\n${trimmedMessage}`;
+}
+
+function buildLocalAdminMessageId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `local-report-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function persistAdminMessageLocally(record = {}) {
+  const localRecord = {
+    id: buildLocalAdminMessageId(),
+    reporter_name: String(record.reporter_name || "").trim(),
+    user_email: String(record.user_email || "").trim(),
+    message_type: normalizeAdminMessageType(record.message_type),
+    message: String(record.message || "").trim(),
+    page_context: String(record.page_context || "").trim(),
+    session_id: String(record.session_id || "").trim(),
+    snapshot_id: String(record.snapshot_id || "").trim(),
+    status: "new",
+    created_at: record.created_at || new Date().toISOString(),
+    saved_locally: true,
+  };
+
+  try {
+    const existingRows = JSON.parse(window.localStorage.getItem(LOCAL_ADMIN_REPORTS_STORAGE_KEY) || "[]");
+    const nextRows = Array.isArray(existingRows) ? existingRows : [];
+    nextRows.unshift(localRecord);
+    window.localStorage.setItem(
+      LOCAL_ADMIN_REPORTS_STORAGE_KEY,
+      JSON.stringify(nextRows.slice(0, 50)),
+    );
+  } catch (error) {
+    console.warn("[Admin Message Fallback] Could not persist local report.", error);
   }
 
+  console.info("[Admin Message Fallback] Stored report locally.", localRecord);
+  return localRecord;
+}
+
+async function submitAdminMessage(payload = {}) {
   const record = {
+    reporter_name: String(payload.reporterName || "").trim(),
     user_email: String(payload.userEmail || "").trim(),
     message_type: normalizeAdminMessageType(payload.messageType),
-    message: String(payload.message || "").trim(),
+    message: buildAdminMessageBody(payload.message, payload.reporterName),
     page_context: String(payload.pageContext || "").trim(),
     session_id: String(payload.sessionId || "").trim(),
     snapshot_id: String(payload.snapshotId || "").trim(),
@@ -2826,15 +2884,32 @@ async function submitAdminMessage(payload = {}) {
     created_at: payload.createdAt || new Date().toISOString(),
   };
 
+  if (!appState.supabase) {
+    return persistAdminMessageLocally(record);
+  }
+
+  const supabaseRecord = {
+    user_email: record.user_email,
+    message_type: record.message_type,
+    message: record.message,
+    page_context: record.page_context,
+    session_id: record.session_id,
+    snapshot_id: record.snapshot_id,
+    status: record.status,
+    created_at: record.created_at,
+  };
+
   const { error } = await appState.supabase
     .from(ADMIN_MESSAGES_TABLE)
-    .insert(record);
+    .insert(supabaseRecord);
 
   if (error) {
     if (isAdminMessagesTableMissingError(error)) {
-      throw new Error("Messaging table unavailable. Apply supabase-admin-messages-migration.sql.");
+      console.warn("[Admin Message Fallback] Messaging table unavailable; saving locally instead.", error);
+      return persistAdminMessageLocally(record);
     }
-    throw new Error(error.message || "Could not send this message to admin.");
+    console.warn("[Admin Message Fallback] Supabase insert failed; saving locally instead.", error);
+    return persistAdminMessageLocally(record);
   }
 
   return record;
@@ -2946,26 +3021,38 @@ function ensureAdminMessageModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Support</p>
         <h3 id="admin-message-modal-title">Report / Contact Admin</h3>
-        <p class="muted">Send a note to admin about bugs, public content, or general questions.</p>
+        <p class="muted">Use this form to report an issue, flag content, or contact the Cannakan Grow admin team.</p>
       </div>
       <div class="admin-message-context-note" id="admin-message-context-note"></div>
       <label class="admin-message-field">
-        <span>Reason / Type</span>
+        <span>Name</span>
+        <input id="admin-message-name" type="text" maxlength="120" placeholder="Your name">
+      </label>
+      <label class="admin-message-field">
+        <span>Email</span>
+        <input id="admin-message-email" type="email" maxlength="160" placeholder="you@example.com" required>
+      </label>
+      <label class="admin-message-field">
+        <span>Issue type</span>
         <select id="admin-message-type" required>
-          <option value="Bug">Bug</option>
+          <option value="" selected>Select an issue type</option>
+          <option value="Technical issue">Technical issue</option>
+          <option value="Account issue">Account issue</option>
           <option value="Report content">Report content</option>
-          <option value="Question">Question</option>
+          <option value="Feedback">Feedback</option>
           <option value="Other">Other</option>
         </select>
       </label>
+      <p id="admin-message-type-note" class="form-message is-warning"></p>
       <label class="admin-message-field">
         <span>Message</span>
         <textarea id="admin-message-text" rows="6" maxlength="2000" placeholder="Tell admin what happened or what you need help with." required></textarea>
       </label>
+      <p class="admin-message-help-text">You can also email us at <a href="mailto:info@cannakan.com">info@cannakan.com</a></p>
       <p id="admin-message-modal-feedback" class="form-message" role="alert" aria-live="polite"></p>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-admin-message-cancel="true">Cancel</button>
-        <button type="submit" class="button button-primary" data-admin-message-submit="true">Submit</button>
+        <button type="submit" class="button button-primary" data-admin-message-submit="true">Submit Report</button>
       </div>
     </form>
   `;
@@ -2991,21 +3078,31 @@ function openAdminMessageModal(options = {}) {
     ...getAdminMessageContext(),
     ...options,
   };
+  const form = modal.querySelector("form");
+  const nameField = modal.querySelector("#admin-message-name");
+  const emailField = modal.querySelector("#admin-message-email");
   const typeField = modal.querySelector("#admin-message-type");
+  const typeNote = modal.querySelector("#admin-message-type-note");
   const messageField = modal.querySelector("#admin-message-text");
   const feedback = modal.querySelector("#admin-message-modal-feedback");
   const contextNote = modal.querySelector("#admin-message-context-note");
   const submitButton = modal.querySelector("[data-admin-message-submit='true']");
 
-  if (!typeField || !messageField || !feedback || !contextNote || !submitButton) {
+  if (!form || !nameField || !emailField || !typeField || !typeNote || !messageField || !feedback || !contextNote || !submitButton) {
     return false;
   }
 
   modal.dataset.context = JSON.stringify(context);
-  typeField.value = normalizeAdminMessageType(options.messageType || "Bug");
+  nameField.value = context.userName || "";
+  emailField.value = context.userEmail || "";
+  typeField.value = options.messageType ? normalizeAdminMessageType(options.messageType) : "";
   messageField.value = "";
   feedback.className = "form-message";
   feedback.textContent = "";
+  typeNote.className = "form-message is-warning";
+  typeNote.textContent = typeField.value === "Report content"
+    ? "Report content sends this message to the admin team for review of public community content."
+    : "";
   contextNote.textContent = [
     `Page: ${context.pageContext || "Unknown"}`,
     context.snapshotId ? `Snapshot ID: ${context.snapshotId}` : "",
@@ -3013,35 +3110,76 @@ function openAdminMessageModal(options = {}) {
     context.userEmail ? `Signed in as: ${context.userEmail}` : "Signed in email not available",
   ].filter(Boolean).join(" • ");
 
+  if (typeField.dataset.bound !== "true") {
+    typeField.dataset.bound = "true";
+    typeField.addEventListener("change", () => {
+      const nextTypeNote = modal.querySelector("#admin-message-type-note");
+      if (!nextTypeNote) {
+        return;
+      }
+      nextTypeNote.className = "form-message is-warning";
+      nextTypeNote.textContent = typeField.value === "Report content"
+        ? "Report content sends this message to the admin team for review of public community content."
+        : "";
+    });
+  }
+
   if (modal.dataset.bound !== "true") {
     modal.dataset.bound = "true";
     modal.addEventListener("submit", async (event) => {
       event.preventDefault();
       const boundContext = JSON.parse(modal.dataset.context || "{}");
+      const boundForm = modal.querySelector("form");
+      const nextNameField = modal.querySelector("#admin-message-name");
+      const nextEmailField = modal.querySelector("#admin-message-email");
       const nextTypeField = modal.querySelector("#admin-message-type");
       const nextMessageField = modal.querySelector("#admin-message-text");
       const nextFeedback = modal.querySelector("#admin-message-modal-feedback");
       const nextSubmitButton = modal.querySelector("[data-admin-message-submit='true']");
-      if (!nextTypeField || !nextMessageField || !nextFeedback || !nextSubmitButton) {
+      if (!boundForm || !nextNameField || !nextEmailField || !nextTypeField || !nextMessageField || !nextFeedback || !nextSubmitButton) {
         return;
       }
 
       nextFeedback.className = "form-message";
       nextFeedback.textContent = "";
+      if (!boundForm.reportValidity()) {
+        return;
+      }
+
+      const trimmedEmail = String(nextEmailField.value || "").trim();
+      const trimmedType = String(nextTypeField.value || "").trim();
+      const trimmedMessage = String(nextMessageField.value || "").trim();
+      if (!trimmedEmail) {
+        nextFeedback.textContent = "Please enter your email address.";
+        nextEmailField.focus();
+        return;
+      }
+      if (!trimmedType) {
+        nextFeedback.textContent = "Please choose an issue type.";
+        nextTypeField.focus();
+        return;
+      }
+      if (!trimmedMessage) {
+        nextFeedback.textContent = "Please add a message before submitting.";
+        nextMessageField.focus();
+        return;
+      }
+
       nextSubmitButton.disabled = true;
       try {
-        await submitAdminMessage({
-          userEmail: boundContext.userEmail || "",
-          messageType: nextTypeField.value,
-          message: nextMessageField.value,
+        const submission = await submitAdminMessage({
+          reporterName: nextNameField.value,
+          userEmail: trimmedEmail,
+          messageType: trimmedType,
+          message: trimmedMessage,
           pageContext: boundContext.pageContext || "",
           sessionId: boundContext.sessionId || "",
           snapshotId: boundContext.snapshotId || "",
           createdAt: boundContext.timestamp || new Date().toISOString(),
         });
         nextFeedback.classList.add("is-success");
-        nextFeedback.textContent = "Message sent to admin.";
-        if (isAdminUser() && appState.supabase) {
+        nextFeedback.textContent = "Thanks - your message has been received.";
+        if (isAdminUser() && appState.supabase && !submission?.saved_locally) {
           void refreshAdminMessages({ force: true, reason: "submit:admin-message" }).then(() => {
             if ((window.location.hash || "#home") === "#admin") {
               safeRender();
@@ -3052,7 +3190,7 @@ function openAdminMessageModal(options = {}) {
           if (modal.open) {
             modal.close();
           }
-        }, 700);
+        }, 900);
       } catch (error) {
         nextFeedback.className = "form-message";
         nextFeedback.textContent = error.message || "Could not send this message.";
@@ -3065,7 +3203,7 @@ function openAdminMessageModal(options = {}) {
   if (!modal.open) {
     modal.showModal();
   }
-  messageField.focus();
+  (emailField.value ? messageField : emailField).focus();
   return true;
 }
 
@@ -3085,7 +3223,7 @@ function bindContactAdminButtons(scope = document) {
       event.stopPropagation();
       closeAccountMenu();
       openAdminMessageModal({
-        messageType: button.dataset.contactAdminType || "Bug",
+        messageType: button.dataset.contactAdminType || "",
       });
     });
   });
