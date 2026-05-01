@@ -132,6 +132,7 @@ const FILTER_PAPER_REORDER_BUTTON_LABEL = "Reorder Filter Papers";
 const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   count: 0,
   autoSubtract: true,
+  notifyLowSupply: true,
   storeRegion: "US",
 });
 const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
@@ -1885,11 +1886,15 @@ function getSessions() {
 function normalizeFilterPaperInventory(inventory) {
   const normalizedCount = Math.max(0, Math.floor(Number(inventory?.count) || 0));
   const hasSavedAutoSubtractPreference = Object.prototype.hasOwnProperty.call(inventory || {}, "autoSubtract");
+  const hasSavedNotifyLowSupplyPreference = Object.prototype.hasOwnProperty.call(inventory || {}, "notifyLowSupply");
   return {
     count: normalizedCount,
     autoSubtract: hasSavedAutoSubtractPreference
       ? Boolean(inventory?.autoSubtract)
       : DEFAULT_FILTER_PAPER_INVENTORY.autoSubtract,
+    notifyLowSupply: hasSavedNotifyLowSupplyPreference
+      ? Boolean(inventory?.notifyLowSupply)
+      : DEFAULT_FILTER_PAPER_INVENTORY.notifyLowSupply,
     storeRegion: inventory?.storeRegion === "EU" ? "EU" : "US",
   };
 }
@@ -2061,6 +2066,9 @@ function getSessionEntrySupplyTone(count = getFilterPaperInventory().count) {
 }
 
 function getFilterPaperReminder(count) {
+  if (getFilterPaperInventory().notifyLowSupply === false) {
+    return "";
+  }
   if (count === 2) {
     return "Running low - about 2 sessions left.";
   }
@@ -14097,6 +14105,10 @@ function ensureFilterPaperInventoryModal() {
           <input type="checkbox" name="autoSubtract">
           <span>Auto subtract 1 filter paper when a session is completed</span>
         </label>
+        <label class="filter-paper-toggle-row">
+          <input type="checkbox" name="notifyLowSupply">
+          <span>Notify me when I'm running low</span>
+        </label>
       </div>
       <p class="muted filter-paper-modal-note">You can update this any time without affecting session history.</p>
       <p id="filter-paper-modal-message" class="form-message" role="alert" aria-live="polite"></p>
@@ -14195,17 +14207,19 @@ function openFilterPaperInventoryModal(options = {}) {
   const form = modal.querySelector("form");
   const countInput = form?.querySelector('input[name="filterPaperCount"]');
   const autoSubtractInput = form?.querySelector('input[name="autoSubtract"]');
+  const notifyLowSupplyInput = form?.querySelector('input[name="notifyLowSupply"]');
   const regionSelect = form?.querySelector('select[name="storeRegion"]');
   const message = form?.querySelector("#filter-paper-modal-message");
   const cancelButton = form?.querySelector('[data-filter-paper-modal-cancel="true"]');
   const saveButton = form?.querySelector('[data-filter-paper-modal-save="true"]');
 
-  if (!form || !countInput || !autoSubtractInput || !regionSelect || !cancelButton || !saveButton) {
+  if (!form || !countInput || !autoSubtractInput || !notifyLowSupplyInput || !regionSelect || !cancelButton || !saveButton) {
     return;
   }
 
   countInput.value = String(inventory.count);
   autoSubtractInput.checked = Boolean(inventory.autoSubtract);
+  notifyLowSupplyInput.checked = inventory.notifyLowSupply !== false;
   regionSelect.value = inventory.storeRegion;
   if (message) {
     message.textContent = "";
@@ -14233,6 +14247,7 @@ function openFilterPaperInventoryModal(options = {}) {
     const savedInventory = saveFilterPaperInventory({
       count: nextCount,
       autoSubtract: autoSubtractInput.checked,
+      notifyLowSupply: notifyLowSupplyInput.checked,
       storeRegion: regionSelect.value === "EU" ? "EU" : "US",
     });
     // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.

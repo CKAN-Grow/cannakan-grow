@@ -3445,6 +3445,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .filter-paper-modal-toggle {
   margin-top: 18px;
+  display: grid;
+  gap: 10px;
 }
 
 .filter-paper-toggle-row {
@@ -3464,6 +3466,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .filter-paper-toggle-row span {
   display: inline-block;
+  color: var(--muted);
 }
 
 .filter-paper-modal-note {
