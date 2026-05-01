@@ -2377,6 +2377,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   justify-items: start;
 }
 
+.gallery-leaderboard-summary {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
 .gallery-seedtype-highlight {
   display: inline-grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -2417,6 +2424,110 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.92rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.gallery-top-members-summary-card {
+  display: grid;
+  gap: 12px;
+  min-height: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.025) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.08), transparent 42%);
+}
+
+.gallery-top-members-summary-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.gallery-top-members-summary-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.gallery-top-members-summary-copy h4,
+.gallery-top-members-summary-copy p {
+  margin: 0;
+}
+
+.gallery-top-members-summary-copy h4 {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.gallery-top-members-summary-note {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.gallery-top-members-summary-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gallery-top-members-summary-item {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.gallery-top-members-summary-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.gallery-top-members-summary-name {
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.gallery-top-members-summary-metric {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.gallery-top-members-summary-item.is-gold .gallery-top-members-summary-rank {
+  color: #704d0f;
+  background: rgba(217, 173, 74, 0.2);
+  border: 1px solid rgba(217, 173, 74, 0.28);
+}
+
+.gallery-top-members-summary-item.is-silver .gallery-top-members-summary-rank {
+  color: #51616a;
+  background: rgba(185, 196, 202, 0.2);
+  border: 1px solid rgba(185, 196, 202, 0.28);
+}
+
+.gallery-top-members-summary-item.is-bronze .gallery-top-members-summary-rank {
+  color: #7a5639;
+  background: rgba(179, 122, 77, 0.2);
+  border: 1px solid rgba(179, 122, 77, 0.28);
 }
 
 .gallery-leaderboard-card {
@@ -3835,6 +3946,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .gallery-seedtype-highlight {
     width: 100%;
     border-radius: 18px;
+  }
+
+  .gallery-leaderboard-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-top-members-summary-list {
+    grid-template-columns: 1fr;
   }
 
   .gallery-seedtype-highlight-text {
@@ -10565,6 +10684,39 @@ body.theme-dark .gallery-seedtype-highlight-icon {
   border-color: rgba(217, 173, 74, 0.42);
   background: rgba(217, 173, 74, 0.12);
   color: #f2d58f;
+}
+
+body.theme-dark .gallery-top-members-summary-card,
+body.theme-dark .gallery-top-members-summary-item {
+  border-color: rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .gallery-top-members-summary-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.018) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.08), transparent 42%);
+}
+
+body.theme-dark .gallery-top-members-summary-item {
+  background: rgba(255, 255, 255, 0.028);
+}
+
+body.theme-dark .gallery-top-members-summary-item.is-gold .gallery-top-members-summary-rank {
+  color: #f2d58f;
+  background: rgba(217, 173, 74, 0.16);
+  border-color: rgba(217, 173, 74, 0.24);
+}
+
+body.theme-dark .gallery-top-members-summary-item.is-silver .gallery-top-members-summary-rank {
+  color: #dce6ea;
+  background: rgba(185, 196, 202, 0.14);
+  border-color: rgba(185, 196, 202, 0.22);
+}
+
+body.theme-dark .gallery-top-members-summary-item.is-bronze .gallery-top-members-summary-rank {
+  color: #deb08f;
+  background: rgba(179, 122, 77, 0.16);
+  border-color: rgba(179, 122, 77, 0.24);
 }
 
 body.theme-dark .mock-data-admin-section {

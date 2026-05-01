@@ -140,6 +140,11 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   notifyLike: true,
   updatedAt: "",
 });
+const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
+  { key: "mock-avery-moss", name: "Avery Moss", snapshotCount: 36, totalLikes: 1156 },
+  { key: "mock-don-cannakan", name: "Don-Cannakan", snapshotCount: 24, totalLikes: 842 },
+  { key: "mock-mo", name: "Mo", snapshotCount: 18, totalLikes: 611 },
+]);
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
@@ -9235,6 +9240,38 @@ function renderGalleryTopMemberRows(entries = [], emptyMessage = "Not enough mem
   `;
 }
 
+function getGalleryTopMemberSummaryEntries(monthlySnapshots = []) {
+  const actualEntries = buildGalleryTopMemberEntries(monthlySnapshots).slice(0, 3);
+  if (actualEntries.length) {
+    return actualEntries;
+  }
+  return GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({ ...entry }));
+}
+
+function renderGalleryTopMembersSummary(entries = []) {
+  const summaryEntries = (entries || []).slice(0, 3);
+  return `
+    <article class="gallery-top-members-summary-card" aria-label="Top 3 Monthly Members">
+      <div class="gallery-top-members-summary-head">
+        <div class="gallery-top-members-summary-copy">
+          <p class="eyebrow">Activity-Based</p>
+          <h4>Top 3 Monthly Members</h4>
+          <p class="gallery-top-members-summary-note">Approved public snapshots and likes this month.</p>
+        </div>
+      </div>
+      <ol class="gallery-top-members-summary-list">
+        ${summaryEntries.map((entry, index) => `
+          <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
+            <span class="gallery-top-members-summary-rank">#${index + 1}</span>
+            <span class="gallery-top-members-summary-name">${escapeHtml(entry.name)}</span>
+            <span class="gallery-top-members-summary-metric">${escapeHtml(`${entry.snapshotCount} approved - ${entry.totalLikes} likes`)}</span>
+          </li>
+        `).join("")}
+      </ol>
+    </article>
+  `;
+}
+
 function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
   switch (iconType) {
     case "all-time":
@@ -9310,7 +9347,7 @@ function renderGalleryLeaderboardSection() {
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
   const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
-  const topMembers = buildGalleryTopMemberEntries(approvedSnapshots).slice(0, 3);
+  const topMembers = getGalleryTopMemberSummaryEntries(monthlySnapshots);
 
   const section = document.createElement("section");
   section.className = "card gallery-section gallery-leaderboard-section";
@@ -9330,7 +9367,10 @@ function renderGalleryLeaderboardSection() {
         </div>
       </div>
     </div>
-    ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
+    <div class="gallery-leaderboard-summary">
+      ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
+      ${renderGalleryTopMembersSummary(topMembers)}
+    </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card">
         ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "This Month", "month")}
@@ -9355,11 +9395,6 @@ function renderGalleryLeaderboardSection() {
       <article class="gallery-leaderboard-card">
         ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
-      </article>
-      <article class="gallery-leaderboard-card">
-        ${renderGalleryLeaderboardCardHeading("Top Members", "Activity-Based", "all-time")}
-        <p class="gallery-leaderboard-card-description">Most active community members based on approved snapshot submissions.</p>
-        ${renderGalleryTopMemberRows(topMembers, "Not enough member activity yet.")}
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
