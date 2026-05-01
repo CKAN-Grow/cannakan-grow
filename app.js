@@ -8288,11 +8288,91 @@ function renderGallerySharedProfileMarkup(snapshot) {
   `;
 }
 
+function getGallerySnapshotCardMemberProfile(snapshot) {
+  const memberId = String(snapshot?.userId || "").trim();
+  const cachedProfile = memberId ? getPublicMemberProfile(memberId) : null;
+  const fallbackDisplayName = String(
+    cachedProfile?.displayName
+    || snapshot?.profileName
+    || snapshot?.submittedBy
+    || "Community member",
+  ).trim() || "Community member";
+  const fallbackAvatarUrl = String(
+    cachedProfile?.avatarUrl
+    || snapshot?.profileImageUrl
+    || "",
+  ).trim();
+
+  return {
+    memberId,
+    displayName: fallbackDisplayName,
+    avatarUrl: fallbackAvatarUrl,
+    profileRoute: memberId ? getPublicMemberProfileRoute(memberId) : "",
+  };
+}
+
+function renderGallerySnapshotMemberMarkup(snapshot) {
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  const submittedLabel = getGallerySnapshotSubmittedDateTimeLabel(snapshot);
+  const avatarMarkup = renderPublicMemberAvatarMarkup(member.displayName, member.avatarUrl, "gallery-card-profile-avatar");
+  const wrapperTag = member.profileRoute ? "a" : "div";
+  const wrapperAttributes = member.profileRoute
+    ? `class="gallery-card-profile gallery-card-profile-link" href="${escapeHtml(member.profileRoute)}" aria-label="${escapeHtml(`View ${member.displayName}'s public profile`)}"`
+    : 'class="gallery-card-profile"';
+
+  return `
+    <${wrapperTag} ${wrapperAttributes}>
+      ${avatarMarkup}
+      <span class="gallery-card-profile-copy">
+        <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
+        <span class="gallery-card-profile-meta">${escapeHtml(submittedLabel)}</span>
+      </span>
+    </${wrapperTag}>
+  `;
+}
+
+function renderGalleryFollowButtonMarkup(snapshot, options = {}) {
+  const { showFollowAction = true } = options;
+  if (!showFollowAction || appState.publicMemberFollowsTableUnavailable) {
+    return "";
+  }
+
+  const memberId = String(snapshot?.userId || "").trim();
+  if (!memberId || isViewingOwnPublicMemberProfile(memberId)) {
+    return "";
+  }
+
+  const isSignedIn = Boolean(appState.user?.id);
+  const followState = getViewerPublicMemberFollowState(memberId);
+  const isLoadingFollowState = isSignedIn && followState === null && (
+    Boolean(appState.growNetworkFollowingRefreshPromise)
+    || !appState.growNetworkFollowingLoaded
+  );
+  const isFollowing = followState === true;
+  const isPendingFollow = isPublicMemberFollowPending(memberId);
+  const buttonLabel = !isSignedIn
+    ? "Follow"
+    : isLoadingFollowState
+      ? "Loading..."
+      : (isFollowing ? "Following" : "Follow");
+
+  return `
+    <button
+      type="button"
+      class="button ${isFollowing ? "button-secondary" : "button-primary"} gallery-card-follow-button${isFollowing ? " is-following" : ""}"
+      data-gallery-follow="${escapeHtml(memberId)}"
+      ${(isPendingFollow || isLoadingFollowState || !isSignedIn) ? "disabled" : ""}
+      aria-pressed="${isFollowing ? "true" : "false"}"
+    >${escapeHtml(buttonLabel)}</button>
+  `;
+}
+
 function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   const {
     allowOwnerManagement = true,
     linkSharedProfile = true,
     alwaysShowPublicSessionAction = false,
+    showFollowAction = true,
   } = options;
   const isOwner = isGallerySnapshotOwner(snapshot);
   const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
@@ -8302,6 +8382,9 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   const isPrivate = snapshotStatus === "private";
   const ownerAction = allowOwnerManagement && isOwner ? getOwnerGalleryAction(snapshot) : null;
   const details = getGallerySnapshotFeedDetails(snapshot);
+  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
+  const followButtonMarkup = renderGalleryFollowButtonMarkup(snapshot, { showFollowAction });
   const sharedProfileMarkup = linkSharedProfile
     ? renderGallerySharedProfileMarkup(snapshot)
     : "";
@@ -8316,59 +8399,66 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     ),
   );
   const publicSessionMarkup = shouldShowPublicSessionAction
-    ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Grow Session</a>`
+    ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Session</a>`
     : "";
   const ownerActionMarkup = ownerAction
     ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
     : "";
-  const footerMainMarkup = (sharedProfileMarkup || openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
-    ? `
-        <div class="gallery-card-footer-main">
-          ${sharedProfileMarkup}
-          ${(openSessionMarkup || ownerActionMarkup || publicSessionMarkup)
-            ? `
-              <div class="gallery-card-actions">
-                ${openSessionMarkup}
-                ${ownerActionMarkup}
-                ${publicSessionMarkup}
-              </div>
-            `
-            : ""}
-        </div>
-      `
-    : "";
+  const primaryActionMarkup = publicSessionMarkup || openSessionMarkup;
   const visibilityLabel = isPending
     ? "Visible to you while under review"
     : isRejected
       ? "Rejected submission"
       : isPrivate
         ? "Private submission"
-        : "Germination success";
+        : "Approved public snapshot";
 
   return `
     ${renderGallerySnapshotMediaMarkup(snapshot, details)}
     <div class="gallery-card-body">
+      <div class="gallery-card-feed-header">
+        ${memberMarkup}
+        <div class="gallery-card-performance-badge" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
+          <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
+          <span>Germination</span>
+        </div>
+      </div>
       <div class="gallery-card-top">
         <div class="gallery-card-copy">
           <strong>${escapeHtml(snapshot.title)}</strong>
+          <p class="gallery-card-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
         </div>
       </div>
+      <div class="gallery-card-performance-grid">
+        <article class="gallery-card-performance-stat">
+          <span>Seed Type</span>
+          <strong>${escapeHtml(publicDetails.seedTypeLabel)}</strong>
+        </article>
+        <article class="gallery-card-performance-stat">
+          <span>Source</span>
+          <strong>${escapeHtml(publicDetails.sourceLabel)}</strong>
+        </article>
+        <article class="gallery-card-performance-stat">
+          <span>Seeds</span>
+          <strong>${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel}`)}</strong>
+        </article>
+      </div>
       <div class="gallery-card-feed-meta">
-        <div class="gallery-card-feed-row gallery-card-feed-row--primary gallery-card-stats-row-1">
+        <div class="gallery-card-feed-row gallery-card-feed-row--primary">
           <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
-          ${details.seedCountLabel ? `<span class="gallery-card-chip">${escapeHtml(details.seedCountLabel)}</span>` : ""}
-        </div>
-        <div class="gallery-card-feed-row gallery-card-feed-row--secondary gallery-card-stats-row-2">
-          <div class="gallery-card-pill-pair">
-            <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
-            <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
-          </div>
+          ${publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared" ? `<span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>` : ""}
+          <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
         </div>
       </div>
       ${allowOwnerManagement && isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
       <div class="gallery-card-footer">
-        ${footerMainMarkup}
         ${renderGalleryLikeButtonMarkup(snapshot)}
+        <div class="gallery-card-actions gallery-card-social-actions">
+          ${followButtonMarkup}
+          ${primaryActionMarkup}
+          ${ownerActionMarkup}
+        </div>
+        ${sharedProfileMarkup && !memberMarkup.includes("gallery-card-profile-name") ? sharedProfileMarkup : ""}
       </div>
     </div>
   `;
@@ -8412,6 +8502,20 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
         rerender();
       } catch (error) {
         window.alert(error.message || "Could not update your like right now.");
+      }
+    });
+  });
+
+  scope.querySelectorAll("[data-gallery-follow]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        if (!appState.user?.id) {
+          throw new Error("Sign in to follow community members.");
+        }
+        await togglePublicMemberFollow(button.dataset.galleryFollow || "");
+        rerender();
+      } catch (error) {
+        window.alert(error.message || "Could not update your follow right now.");
       }
     });
   });
@@ -18169,6 +18273,27 @@ function renderGallery(targetSnapshotId = "") {
       ...sortVisibleGallerySnapshots(approvedSnapshots, appState.gallerySort, appState.gallerySortOrder),
       ...nonApprovedSnapshots,
     ];
+    const visibleMemberIds = [...new Set(visibleSnapshots.map((snapshot) => String(snapshot?.userId || "").trim()).filter(Boolean))];
+    const missingMemberProfileIds = visibleMemberIds.filter((memberId) => !appState.publicMemberProfiles[memberId]);
+    if (missingMemberProfileIds.length) {
+      void loadPublicMemberProfilesByIds(visibleMemberIds, { reason: "gallery:feed-profiles" }).then(() => {
+        if (normalizeNavigationHash(window.location.hash || "#home") === "#gallery") {
+          renderGallery(targetSnapshotId);
+        }
+      });
+    }
+    if (
+      appState.user?.id
+      && !appState.growNetworkFollowingLoaded
+      && !appState.growNetworkFollowingRefreshPromise
+      && visibleMemberIds.some((memberId) => !isViewingOwnPublicMemberProfile(memberId))
+    ) {
+      void refreshGrowNetworkFollowing({ reason: "gallery:feed-follow-state" }).then(() => {
+        if (normalizeNavigationHash(window.location.hash || "#home") === "#gallery") {
+          renderGallery(targetSnapshotId);
+        }
+      });
+    }
     let targetCard = null;
     if (!visibleSnapshots.length) {
       galleryGrid.innerHTML = `
@@ -19655,6 +19780,7 @@ function renderPublicMemberProfile(memberId) {
       allowOwnerManagement: false,
       linkSharedProfile: false,
       alwaysShowPublicSessionAction: true,
+      showFollowAction: false,
     });
     profileGrid.appendChild(card);
   });
