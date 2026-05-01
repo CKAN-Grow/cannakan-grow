@@ -10,6 +10,16 @@ const THEME_KEY = "cannakan-grow-theme";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
+const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
+  startDate: "",
+  endDate: "",
+  source: "",
+  seedVariety: "",
+  seedType: "",
+  profile: "",
+  status: "all",
+  inclusion: "all",
+});
 const AUTH_NAVIGATION_KEYS = [
   "cannakan-grow-last-route",
   "cannakan-grow-last-session-id",
@@ -93,6 +103,7 @@ const appState = {
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
+  leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   growthStage: null,
   growthStageModalOpen: false,
   growthStageModalDismissed: false,
@@ -6358,6 +6369,7 @@ function render() {
   }
   const finalizeRender = () => {
     renderMockDataAdminSection();
+    renderLeaderboardAuditSection();
     syncInstallPromptBanner();
     syncMockDataBanner();
     ensureBackToTopButton();
@@ -7493,6 +7505,684 @@ function renderMockDataAdminSection() {
 
   section.querySelector("[data-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
+  });
+
+  app.appendChild(section);
+}
+
+function normalizeLeaderboardAuditFilters(filters = {}) {
+  const normalizedStatus = String(filters.status || "all").trim().toLowerCase();
+  const normalizedInclusion = String(filters.inclusion || "all").trim().toLowerCase();
+
+  return {
+    startDate: String(filters.startDate || "").trim(),
+    endDate: String(filters.endDate || "").trim(),
+    source: String(filters.source || "").trim(),
+    seedVariety: String(filters.seedVariety || "").trim(),
+    seedType: String(filters.seedType || "").trim(),
+    profile: String(filters.profile || "").trim(),
+    status: ["all", "approved", "pending_review", "rejected", "private"].includes(normalizedStatus)
+      ? normalizedStatus
+      : "all",
+    inclusion: ["all", "included", "excluded"].includes(normalizedInclusion)
+      ? normalizedInclusion
+      : "all",
+  };
+}
+
+function getLeaderboardAuditProfileLabel(snapshot) {
+  return String(
+    snapshot?.profileName
+    || snapshot?.submittedBy
+    || snapshot?.submittedByName
+    || snapshot?.userId
+    || "",
+  ).trim() || "Unknown grower";
+}
+
+function getLeaderboardAuditSessionName(snapshot) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  if (linkedSession) {
+    return formatSessionLabel(linkedSession);
+  }
+
+  return String(snapshot?.title || "").trim() || "Untitled snapshot";
+}
+
+function getLeaderboardAuditStatusLabel(status) {
+  switch (String(status || "").trim()) {
+    case "approved":
+      return "Approved";
+    case "pending_review":
+      return "Pending Review";
+    case "rejected":
+      return "Rejected";
+    case "private":
+      return "Private";
+    default:
+      return "Unknown";
+  }
+}
+
+function buildLeaderboardAuditRows() {
+  const rankingSourceSnapshots = getGallerySnapshotsForDisplay();
+  const rankingSourceIds = new Set(rankingSourceSnapshots.map((snapshot) => String(snapshot?.id || "").trim()).filter(Boolean));
+  const reviewSnapshots = isMockDataEnabled() ? MOCK_PENDING_GALLERY_SUBMISSIONS : [];
+  const combinedSnapshots = new Map();
+
+  [...rankingSourceSnapshots, ...reviewSnapshots].forEach((snapshot) => {
+    const snapshotId = String(snapshot?.id || "").trim();
+    if (!snapshotId) {
+      return;
+    }
+    combinedSnapshots.set(snapshotId, snapshot);
+  });
+
+  return sortGallerySnapshotsNewestFirst([...combinedSnapshots.values()]).map((snapshot) => {
+    const submittedAt = parseLeaderboardSnapshotDate(snapshot);
+    const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+    const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
+    const effectiveStatus = isMockGalleryReviewSnapshot(snapshot)
+      ? getMockGalleryReviewStatus(snapshot)
+      : getGallerySnapshotDisplayStatus(snapshot);
+    const totalSeeds = Math.max(0, Number(snapshot?.totalSeeds) || 0);
+    const totalPlanted = Math.max(0, Number(snapshot?.totalPlanted) || 0);
+    const successPercent = Math.max(0, Number(snapshot?.successPercent) || 0);
+    const sessionName = getLeaderboardAuditSessionName(snapshot);
+    const profileLabel = getLeaderboardAuditProfileLabel(snapshot);
+
+    return {
+      id: String(snapshot.id || "").trim(),
+      snapshot,
+      submittedAt,
+      submittedAtLabel: getGallerySnapshotSubmittedDateTimeLabel(snapshot),
+      submittedDateValue: submittedAt && !Number.isNaN(submittedAt.getTime())
+        ? submittedAt.toISOString().slice(0, 10)
+        : "",
+      profileLabel,
+      sessionName,
+      sourceLabel: metadata.sourceName || publicDetails.sourceLabel || "Not shared",
+      seedVarietyLabel: metadata.seedVarietyName || publicDetails.seedVarietyLabel || "Not shared",
+      seedTypeLabel: metadata.seedTypeName || publicDetails.seedTypeLabel || "Not shared",
+      totalSeeds,
+      totalPlanted,
+      successPercent,
+      status: effectiveStatus,
+      statusLabel: getLeaderboardAuditStatusLabel(effectiveStatus),
+      isInActiveRankingSource: rankingSourceIds.has(String(snapshot.id || "").trim()),
+      hasValidSubmittedAt: Boolean(submittedAt && !Number.isNaN(submittedAt.getTime())),
+      hasValidPerformance: totalSeeds > 0 && Number.isFinite(successPercent),
+    };
+  });
+}
+
+function getLeaderboardAuditFilterOptions(rows) {
+  const buildOptions = (values) => [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }));
+
+  return {
+    sources: buildOptions(rows.map((row) => row.sourceLabel)),
+    seedVarieties: buildOptions(rows.map((row) => row.seedVarietyLabel)),
+    seedTypes: buildOptions(rows.map((row) => row.seedTypeLabel)),
+    profiles: buildOptions(rows.map((row) => row.profileLabel)),
+  };
+}
+
+function getLeaderboardAuditDateRangeLabel(rows) {
+  const datedRows = (rows || []).filter((row) => row.submittedAt && !Number.isNaN(row.submittedAt.getTime()));
+  if (!datedRows.length) {
+    return "No qualifying dates";
+  }
+
+  const sortedDates = datedRows
+    .map((row) => row.submittedAt)
+    .sort((left, right) => left.getTime() - right.getTime());
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return `${formatter.format(sortedDates[0])} - ${formatter.format(sortedDates[sortedDates.length - 1])}`;
+}
+
+function summarizeLeaderboardAuditReasons(reasons) {
+  const counts = new Map();
+  (reasons || []).forEach((reason) => {
+    const normalizedReason = String(reason || "").trim();
+    if (!normalizedReason) {
+      return;
+    }
+    counts.set(normalizedReason, (counts.get(normalizedReason) || 0) + 1);
+  });
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "en", { sensitivity: "base" }))
+    .map(([reason, count]) => `${reason} (${count})`);
+}
+
+function buildLeaderboardAuditPerformanceEntries(rows, options = {}) {
+  const groups = new Map();
+  const getLabel = typeof options.getLabel === "function" ? options.getLabel : (row) => row.sourceLabel;
+  const minSnapshots = Math.max(1, Number(options.minSnapshots) || 1);
+
+  (rows || []).forEach((row) => {
+    const label = normalizeLeaderboardLabel(getLabel(row));
+    const normalizedKey = normalizeLeaderboardKey(label);
+    if (!normalizedKey) {
+      return;
+    }
+
+    const currentGroup = groups.get(normalizedKey) || {
+      key: normalizedKey,
+      name: label,
+      snapshotCount: 0,
+      successPercentTotal: 0,
+      totalPlanted: 0,
+      totalSeeds: 0,
+      latestSubmittedAt: "",
+    };
+
+    currentGroup.snapshotCount += 1;
+    currentGroup.successPercentTotal += row.successPercent;
+    currentGroup.totalPlanted += row.totalPlanted;
+    currentGroup.totalSeeds += row.totalSeeds;
+    if (row.submittedAt && (!currentGroup.latestSubmittedAt || row.submittedAt.toISOString() > currentGroup.latestSubmittedAt)) {
+      currentGroup.latestSubmittedAt = row.submittedAt.toISOString();
+    }
+
+    groups.set(normalizedKey, currentGroup);
+  });
+
+  return [...groups.values()]
+    .filter((entry) => entry.snapshotCount >= minSnapshots)
+    .map((entry) => ({
+      ...entry,
+      averagePercent: entry.snapshotCount > 0
+        ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
+        : 0,
+    }))
+    .sort((left, right) => {
+      if (right.averagePercent !== left.averagePercent) {
+        return right.averagePercent - left.averagePercent;
+      }
+      if (right.totalPlanted !== left.totalPlanted) {
+        return right.totalPlanted - left.totalPlanted;
+      }
+      if (right.totalSeeds !== left.totalSeeds) {
+        return right.totalSeeds - left.totalSeeds;
+      }
+      const leftTime = new Date(left.latestSubmittedAt || 0).getTime();
+      const rightTime = new Date(right.latestSubmittedAt || 0).getTime();
+      if (rightTime !== leftTime) {
+        return rightTime - leftTime;
+      }
+      return left.name.localeCompare(right.name, "en", { sensitivity: "base" });
+    });
+}
+
+function buildLeaderboardAuditCalculation(rows, options = {}) {
+  const label = String(options.label || "group").trim() || "group";
+  const minSnapshots = Math.max(1, Number(options.minSnapshots) || 1);
+  const topLimit = Math.max(1, Number(options.topLimit) || 1);
+  const dateMode = options.dateMode === "month" ? "month" : "all";
+  const getLabel = typeof options.getLabel === "function" ? options.getLabel : (row) => row.sourceLabel;
+  const now = new Date();
+  const currentMonthKey = getLeaderboardMonthKey(now);
+  const scopedRows = (rows || []).filter((row) => (
+    dateMode === "month"
+      ? getLeaderboardMonthKey(row.submittedAt) === currentMonthKey
+      : true
+  ));
+
+  const prequalifiedRows = [];
+  const excludedReasonsById = new Map();
+  const excludedReasons = [];
+
+  scopedRows.forEach((row) => {
+    const rowExclusions = [];
+    if (!row.isInActiveRankingSource) {
+      rowExclusions.push("Not part of the active ranking dataset");
+    }
+    if (row.status !== "approved") {
+      rowExclusions.push(`Status is ${row.statusLabel.toLowerCase()}`);
+    }
+    if (!row.hasValidSubmittedAt) {
+      rowExclusions.push("Missing submitted date");
+    }
+    if (!row.hasValidPerformance) {
+      rowExclusions.push("Missing germination performance");
+    }
+
+    const groupLabel = normalizeLeaderboardLabel(getLabel(row));
+    if (!groupLabel) {
+      rowExclusions.push(`Missing ${label}`);
+    }
+
+    if (rowExclusions.length) {
+      excludedReasonsById.set(row.id, rowExclusions);
+      excludedReasons.push(...rowExclusions);
+      return;
+    }
+
+    prequalifiedRows.push(row);
+  });
+
+  const groupCounts = prequalifiedRows.reduce((accumulator, row) => {
+    const groupKey = normalizeLeaderboardKey(getLabel(row));
+    accumulator.set(groupKey, (accumulator.get(groupKey) || 0) + 1);
+    return accumulator;
+  }, new Map());
+
+  const qualifiedRows = prequalifiedRows.filter((row) => {
+    const groupKey = normalizeLeaderboardKey(getLabel(row));
+    const groupCount = groupCounts.get(groupKey) || 0;
+    if (groupCount >= minSnapshots) {
+      return true;
+    }
+
+    const reason = `Fewer than ${minSnapshots} ${label}${minSnapshots === 1 ? "" : " snapshots"}`;
+    const existingReasons = excludedReasonsById.get(row.id) || [];
+    existingReasons.push(reason);
+    excludedReasonsById.set(row.id, existingReasons);
+    excludedReasons.push(reason);
+    return false;
+  });
+
+  const entries = buildLeaderboardAuditPerformanceEntries(qualifiedRows, {
+    getLabel,
+    minSnapshots,
+  }).slice(0, topLimit);
+
+  const eligibleAverage = qualifiedRows.length
+    ? Math.round((qualifiedRows.reduce((sum, row) => sum + row.successPercent, 0) / qualifiedRows.length) * 10) / 10
+    : 0;
+
+  return {
+    title: String(options.title || "").trim() || label,
+    label,
+    minSnapshots,
+    topEntries: entries,
+    topEntry: entries[0] || null,
+    eligibleSnapshotCount: qualifiedRows.length,
+    excludedSnapshotCount: Math.max(0, scopedRows.length - qualifiedRows.length),
+    averageGerminationRate: eligibleAverage,
+    dateRangeLabel: getLeaderboardAuditDateRangeLabel(scopedRows),
+    excludedReasonSummary: summarizeLeaderboardAuditReasons(excludedReasons),
+    scopedRows,
+    qualifiedRows,
+    excludedReasonsById,
+  };
+}
+
+function applyLeaderboardAuditFilters(rows, filters = appState.leaderboardAuditFilters) {
+  const normalizedFilters = normalizeLeaderboardAuditFilters(filters);
+  const startDateValue = normalizedFilters.startDate || "";
+  const endDateValue = normalizedFilters.endDate || "";
+
+  return (rows || []).filter((row) => {
+    if (startDateValue && (!row.submittedDateValue || row.submittedDateValue < startDateValue)) {
+      return false;
+    }
+    if (endDateValue && (!row.submittedDateValue || row.submittedDateValue > endDateValue)) {
+      return false;
+    }
+    if (normalizedFilters.source && row.sourceLabel !== normalizedFilters.source) {
+      return false;
+    }
+    if (normalizedFilters.seedVariety && row.seedVarietyLabel !== normalizedFilters.seedVariety) {
+      return false;
+    }
+    if (normalizedFilters.seedType && row.seedTypeLabel !== normalizedFilters.seedType) {
+      return false;
+    }
+    if (normalizedFilters.profile && row.profileLabel !== normalizedFilters.profile) {
+      return false;
+    }
+    if (normalizedFilters.status !== "all" && row.status !== normalizedFilters.status) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) {
+  const allRows = buildLeaderboardAuditRows();
+  const options = getLeaderboardAuditFilterOptions(allRows);
+  const filteredRowsBeforeInclusion = applyLeaderboardAuditFilters(allRows, filters);
+  const filteredActiveRows = filteredRowsBeforeInclusion.filter((row) => row.isInActiveRankingSource);
+  const calculations = {
+    monthSource: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "This Month Top Source",
+      label: "source",
+      minSnapshots: 3,
+      getLabel: (row) => row.sourceLabel,
+      topLimit: 1,
+      dateMode: "month",
+    }),
+    allSource: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "All-Time Top Source",
+      label: "source",
+      minSnapshots: 3,
+      getLabel: (row) => row.sourceLabel,
+      topLimit: 1,
+      dateMode: "all",
+    }),
+    monthSeedType: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "This Month Top Seed Type",
+      label: "seed type",
+      minSnapshots: 3,
+      getLabel: (row) => row.seedTypeLabel,
+      topLimit: 1,
+      dateMode: "month",
+    }),
+    allSeedType: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "All-Time Top Seed Type",
+      label: "seed type",
+      minSnapshots: 3,
+      getLabel: (row) => row.seedTypeLabel,
+      topLimit: 1,
+      dateMode: "all",
+    }),
+    monthSessions: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "This Month Top 3 Sessions",
+      label: "session",
+      minSnapshots: 1,
+      getLabel: (row) => row.sessionName,
+      topLimit: 3,
+      dateMode: "month",
+    }),
+    allSessions: buildLeaderboardAuditCalculation(filteredActiveRows, {
+      title: "All-Time Top 3 Sessions",
+      label: "session",
+      minSnapshots: 1,
+      getLabel: (row) => row.sessionName,
+      topLimit: 3,
+      dateMode: "all",
+    }),
+  };
+
+  const inclusionMap = new Map();
+  Object.values(calculations).forEach((calculation) => {
+    calculation.qualifiedRows.forEach((row) => {
+      const current = inclusionMap.get(row.id) || { included: false, reasons: [] };
+      inclusionMap.set(row.id, { ...current, included: true });
+    });
+    calculation.excludedReasonsById.forEach((reasons, rowId) => {
+      const current = inclusionMap.get(rowId) || { included: false, reasons: [] };
+      const combinedReasons = [...current.reasons, ...reasons];
+      inclusionMap.set(rowId, {
+        included: current.included,
+        reasons: [...new Set(combinedReasons)],
+      });
+    });
+  });
+
+  const rowsWithInclusion = filteredRowsBeforeInclusion.map((row) => {
+    const inclusion = inclusionMap.get(row.id) || { included: false, reasons: [] };
+    return {
+      ...row,
+      includedInLeaderboard: inclusion.included,
+      exclusionReason: inclusion.included
+        ? ""
+        : (inclusion.reasons[0] || "No qualifying leaderboard group"),
+    };
+  });
+
+  const normalizedFilters = normalizeLeaderboardAuditFilters(filters);
+  const visibleRows = rowsWithInclusion.filter((row) => {
+    if (normalizedFilters.inclusion === "included" && !row.includedInLeaderboard) {
+      return false;
+    }
+    if (normalizedFilters.inclusion === "excluded" && row.includedInLeaderboard) {
+      return false;
+    }
+    return true;
+  });
+
+  return {
+    filters: normalizedFilters,
+    options,
+    allRows,
+    rows: visibleRows,
+    calculations,
+    filteredActiveRowCount: filteredActiveRows.length,
+  };
+}
+
+function formatLeaderboardAuditMetric(entry) {
+  if (!entry) {
+    return "No qualifying data";
+  }
+
+  return `${entry.name} - ${entry.averagePercent}% avg`;
+}
+
+function renderLeaderboardAuditSelectOptions(options, selectedValue, allLabel) {
+  return [
+    `<option value="">${escapeHtml(allLabel)}</option>`,
+    ...options.map((option) => `<option value="${escapeHtml(option)}"${option === selectedValue ? " selected" : ""}>${escapeHtml(option)}</option>`),
+  ].join("");
+}
+
+function renderLeaderboardAuditCalculationCard(calculation) {
+  const topSummary = calculation.topEntries.length
+    ? calculation.topEntries.map((entry, index) => `${index + 1}. ${entry.name} - ${entry.averagePercent}% avg`).join(" | ")
+    : "No qualifying data";
+
+  return `
+    <article class="leaderboard-audit-metric-card">
+      <div class="leaderboard-audit-metric-head">
+        <p class="eyebrow">${escapeHtml(calculation.title)}</p>
+        <strong>${escapeHtml(topSummary)}</strong>
+      </div>
+      <div class="leaderboard-audit-metric-grid">
+        <span><strong>${calculation.eligibleSnapshotCount}</strong> eligible snapshots</span>
+        <span><strong>${calculation.minSnapshots}</strong> minimum required</span>
+        <span><strong>${calculation.averageGerminationRate}%</strong> average germination</span>
+        <span><strong>${calculation.excludedSnapshotCount}</strong> excluded snapshots</span>
+      </div>
+      <p class="leaderboard-audit-metric-range">${escapeHtml(calculation.dateRangeLabel)}</p>
+      <p class="leaderboard-audit-metric-reasons">${escapeHtml(calculation.excludedReasonSummary.join(" • ") || "No exclusions")}</p>
+    </article>
+  `;
+}
+
+function buildLeaderboardAuditSummaryText(state) {
+  const summaryLines = [
+    "Leaderboard Data Audit",
+    `Visible snapshot rows: ${state.rows.length}`,
+    `Active ranking snapshot rows: ${state.filteredActiveRowCount}`,
+    `This Month Top Source: ${formatLeaderboardAuditMetric(state.calculations.monthSource.topEntry)}`,
+    `All-Time Top Source: ${formatLeaderboardAuditMetric(state.calculations.allSource.topEntry)}`,
+    `This Month Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.monthSeedType.topEntry)}`,
+    `All-Time Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.allSeedType.topEntry)}`,
+    `This Month Top 3 Sessions: ${state.calculations.monthSessions.topEntries.length ? state.calculations.monthSessions.topEntries.map((entry) => `${entry.name} (${entry.averagePercent}%)`).join(", ") : "No qualifying data"}`,
+    `All-Time Top 3 Sessions: ${state.calculations.allSessions.topEntries.length ? state.calculations.allSessions.topEntries.map((entry) => `${entry.name} (${entry.averagePercent}%)`).join(", ") : "No qualifying data"}`,
+  ];
+
+  return summaryLines.join("\n");
+}
+
+function exportLeaderboardAuditCsv(rows) {
+  const headers = [
+    "submitted_date",
+    "profile_user",
+    "session_name",
+    "source",
+    "seed_variety",
+    "seed_type",
+    "seeds_started",
+    "seeds_germinated",
+    "germination_percentage",
+    "gallery_status",
+    "included_in_leaderboard",
+    "exclusion_reason",
+  ];
+  const escapeCsv = (value) => `"${String(value ?? "").replace(/"/g, "\"\"")}"`;
+  const csvLines = [
+    headers.join(","),
+    ...rows.map((row) => ([
+      row.submittedAtLabel,
+      row.profileLabel,
+      row.sessionName,
+      row.sourceLabel,
+      row.seedVarietyLabel,
+      row.seedTypeLabel,
+      row.totalSeeds,
+      row.totalPlanted,
+      `${row.successPercent}%`,
+      row.statusLabel,
+      row.includedInLeaderboard ? "Yes" : "No",
+      row.exclusionReason,
+    ].map(escapeCsv).join(","))),
+  ];
+
+  const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8" });
+  downloadSnapshotBlob(blob, "leaderboard-data-audit.csv");
+}
+
+function renderLeaderboardAuditSection() {
+  if (!app || !isAdminUser()) {
+    return;
+  }
+
+  const state = buildLeaderboardAuditState();
+  const section = document.createElement("section");
+  section.className = "card leaderboard-audit-section";
+  section.innerHTML = `
+    <div class="section-heading leaderboard-audit-heading">
+      <div>
+        <p class="eyebrow">Admin Analytics</p>
+        <h3>Leaderboard Data Audit</h3>
+        <p class="muted">Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.</p>
+      </div>
+      <div class="leaderboard-audit-actions">
+        <button type="button" class="button button-secondary" data-leaderboard-audit-copy="true">Copy Summary</button>
+        <button type="button" class="button button-primary" data-leaderboard-audit-export="true">Export CSV</button>
+      </div>
+    </div>
+    <div class="leaderboard-audit-filter-grid">
+      <label>
+        <span>Start Date</span>
+        <input type="date" data-audit-filter="startDate" value="${escapeHtml(state.filters.startDate)}">
+      </label>
+      <label>
+        <span>End Date</span>
+        <input type="date" data-audit-filter="endDate" value="${escapeHtml(state.filters.endDate)}">
+      </label>
+      <label>
+        <span>Source</span>
+        <select data-audit-filter="source">${renderLeaderboardAuditSelectOptions(state.options.sources, state.filters.source, "All sources")}</select>
+      </label>
+      <label>
+        <span>Seed Variety</span>
+        <select data-audit-filter="seedVariety">${renderLeaderboardAuditSelectOptions(state.options.seedVarieties, state.filters.seedVariety, "All seed varieties")}</select>
+      </label>
+      <label>
+        <span>Seed Type</span>
+        <select data-audit-filter="seedType">${renderLeaderboardAuditSelectOptions(state.options.seedTypes, state.filters.seedType, "All seed types")}</select>
+      </label>
+      <label>
+        <span>Profile/User</span>
+        <select data-audit-filter="profile">${renderLeaderboardAuditSelectOptions(state.options.profiles, state.filters.profile, "All profiles")}</select>
+      </label>
+      <label>
+        <span>Gallery Status</span>
+        <select data-audit-filter="status">
+          <option value="all"${state.filters.status === "all" ? " selected" : ""}>All statuses</option>
+          <option value="approved"${state.filters.status === "approved" ? " selected" : ""}>Approved</option>
+          <option value="pending_review"${state.filters.status === "pending_review" ? " selected" : ""}>Pending Review</option>
+          <option value="rejected"${state.filters.status === "rejected" ? " selected" : ""}>Rejected</option>
+          <option value="private"${state.filters.status === "private" ? " selected" : ""}>Private</option>
+        </select>
+      </label>
+      <label>
+        <span>Included/Excluded</span>
+        <select data-audit-filter="inclusion">
+          <option value="all"${state.filters.inclusion === "all" ? " selected" : ""}>All records</option>
+          <option value="included"${state.filters.inclusion === "included" ? " selected" : ""}>Included only</option>
+          <option value="excluded"${state.filters.inclusion === "excluded" ? " selected" : ""}>Excluded only</option>
+        </select>
+      </label>
+    </div>
+    <div class="leaderboard-audit-metrics-grid">
+      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSource)}
+      ${renderLeaderboardAuditCalculationCard(state.calculations.allSource)}
+      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSeedType)}
+      ${renderLeaderboardAuditCalculationCard(state.calculations.allSeedType)}
+      ${renderLeaderboardAuditCalculationCard(state.calculations.monthSessions)}
+      ${renderLeaderboardAuditCalculationCard(state.calculations.allSessions)}
+    </div>
+    <div class="leaderboard-audit-table-shell">
+      <table class="leaderboard-audit-table">
+        <thead>
+          <tr>
+            <th>Submitted</th>
+            <th>Profile/User</th>
+            <th>Session</th>
+            <th>Source</th>
+            <th>Seed Variety</th>
+            <th>Seed Type</th>
+            <th>Seeds Started</th>
+            <th>Germinated</th>
+            <th>Rate</th>
+            <th>Status</th>
+            <th>Included</th>
+            <th>Exclusion Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.rows.length
+      ? state.rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.submittedAtLabel)}</td>
+                <td>${escapeHtml(row.profileLabel)}</td>
+                <td>${escapeHtml(row.sessionName)}</td>
+                <td>${escapeHtml(row.sourceLabel)}</td>
+                <td>${escapeHtml(row.seedVarietyLabel)}</td>
+                <td>${escapeHtml(row.seedTypeLabel)}</td>
+                <td>${escapeHtml(String(row.totalSeeds || 0))}</td>
+                <td>${escapeHtml(String(row.totalPlanted || 0))}</td>
+                <td>${escapeHtml(`${row.successPercent}%`)}</td>
+                <td><span class="leaderboard-audit-status-pill is-${escapeHtml(row.status)}">${escapeHtml(row.statusLabel)}</span></td>
+                <td>${row.includedInLeaderboard ? '<span class="leaderboard-audit-inclusion is-included">Yes</span>' : '<span class="leaderboard-audit-inclusion is-excluded">No</span>'}</td>
+                <td>${escapeHtml(row.exclusionReason || "—")}</td>
+              </tr>
+            `).join("")
+      : `
+            <tr>
+              <td colspan="12" class="leaderboard-audit-empty">No snapshot records match the current audit filters.</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  section.querySelectorAll("[data-audit-filter]").forEach((control) => {
+    control.addEventListener("change", (event) => {
+      const { auditFilter } = event.currentTarget.dataset;
+      appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+        ...appState.leaderboardAuditFilters,
+        [auditFilter]: event.currentTarget.value,
+      });
+      safeRender();
+    });
+  });
+
+  section.querySelector("[data-leaderboard-audit-export='true']")?.addEventListener("click", () => {
+    exportLeaderboardAuditCsv(state.rows);
+  });
+
+  section.querySelector("[data-leaderboard-audit-copy='true']")?.addEventListener("click", async () => {
+    const summaryText = buildLeaderboardAuditSummaryText(state);
+    try {
+      await navigator.clipboard.writeText(summaryText);
+      window.alert("Leaderboard audit summary copied.");
+    } catch (error) {
+      window.alert("Could not copy the leaderboard audit summary.");
+    }
   });
 
   app.appendChild(section);
