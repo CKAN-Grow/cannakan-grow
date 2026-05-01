@@ -7030,6 +7030,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: none !important;
 }
 
+.snapshot-consent-block {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.snapshot-consent-disclaimer {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.snapshot-consent-label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.snapshot-consent-label input {
+  margin-top: 2px;
+  accent-color: #94d159;
+}
+
 @keyframes snapshotFadeSlideIn {
   from {
     opacity: 0;

@@ -7752,6 +7752,7 @@ function mapRowToGallerySnapshot(row) {
     includeProfileInGallery: Boolean(row.include_profile_in_gallery),
     profileName: String(row.submitted_profile_name || "").trim(),
     profileImageUrl: String(row.submitted_profile_avatar_url || "").trim(),
+    usageConsent: Boolean(row.usage_consent),
     status: normalizedStatus,
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
@@ -7921,6 +7922,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     include_profile_in_gallery: includeProfileInGallery,
     submitted_profile_name: profileName,
     submitted_profile_avatar_url: profileImageUrl,
+    usage_consent: Boolean(options.usageConsent),
     status: "pending_review",
     is_published: false,
     include_notes: false,
@@ -10442,6 +10444,7 @@ function initializeSnapshotSection(scope, options) {
     downloadButton: options.downloadButton || null,
     resetButton: options.resetButton || null,
     shareButton: options.shareButton || null,
+    usageConsentCheckbox: options.usageConsentCheckbox || null,
     destinationInputs: options.destinationInputs || [],
     galleryNote: options.galleryNote || null,
     unpublishButton: options.unpublishButton || null,
@@ -10463,6 +10466,12 @@ function initializeSnapshotSection(scope, options) {
   };
 
   scope.__snapshotState = state;
+  if (state.usageConsentCheckbox) {
+    state.usageConsentCheckbox.checked = false;
+    state.usageConsentCheckbox.addEventListener("change", () => {
+      syncSnapshotShareActionAvailability(state);
+    });
+  }
   if (state.includeProfileToggle) {
     state.includeProfileToggle.checked = false;
     state.includeProfileToggle.addEventListener("change", async () => {
@@ -10599,6 +10608,21 @@ function getSnapshotDestination(state) {
 const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
 const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Community Grow.";
 const DUPLICATE_GALLERY_SNAPSHOT_IMAGE_MESSAGE = "This snapshot image is already being used in Community Grow.";
+
+function syncSnapshotShareActionAvailability(state) {
+  if (!state?.shareButton) {
+    return;
+  }
+
+  const hasGeneratedSnapshot = Boolean(state.generatedBlob);
+  const hasConsent = Boolean(state.usageConsentCheckbox?.checked);
+  if (!hasGeneratedSnapshot || !hasConsent) {
+    state.shareButton.setAttribute("disabled", "disabled");
+    return;
+  }
+
+  state.shareButton.removeAttribute("disabled");
+}
 
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
@@ -10913,6 +10937,7 @@ async function maybePublishSnapshotFromState(state, result) {
   try {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
+      usageConsent: Boolean(state.usageConsentCheckbox?.checked),
     });
     logGrowGalleryDebug("maybePublishSnapshotFromState:publish-result", {
       sessionId: session?.id || "",
@@ -11072,12 +11097,12 @@ function setSnapshotPreview(state, payload) {
   if (!payload?.blob) {
     state.downloadButton?.setAttribute("disabled", "disabled");
     state.resetButton?.setAttribute("disabled", "disabled");
-    state.shareButton?.setAttribute("disabled", "disabled");
+    syncSnapshotShareActionAvailability(state);
     return;
   }
   state.downloadButton?.removeAttribute("disabled");
   state.resetButton?.removeAttribute("disabled");
-  state.shareButton?.removeAttribute("disabled");
+  syncSnapshotShareActionAvailability(state);
 }
 
 function renderSnapshotPreviewMarkup({ previewImageUrl = "", fallbackImageUrl = "", data = null }) {
@@ -18760,6 +18785,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const snapshotGalleryNote = document.querySelector("#snapshot-gallery-note");
   const snapshotUnpublishButton = document.querySelector("#snapshot-unpublish");
   const snapshotIncludeProfileToggle = document.querySelector("#snapshot-include-profile");
+  const snapshotUsageConsentCheckbox = document.querySelector("#snapshot-usage-consent");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
   const snapshotIncludeProfileDividerRow = document.querySelector("#snapshot-profile-divider-row");
   const snapshotDestinationInputs = [...document.querySelectorAll('input[name="snapshot-destination"]')];
@@ -18808,6 +18834,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     downloadButton: downloadSnapshotButton,
     resetButton: resetSnapshotButton,
     shareButton: shareSnapshotButton,
+    usageConsentCheckbox: snapshotUsageConsentCheckbox,
     destinationInputs: snapshotDestinationInputs,
     includeProfileToggle: snapshotIncludeProfileToggle,
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
@@ -20306,6 +20333,7 @@ function renderSessionDetail(sessionId) {
   const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
   const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
   const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
+  const detailSnapshotUsageConsentCheckbox = document.querySelector("#detail-snapshot-usage-consent");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
   const detailSnapshotIncludeProfileDividerRow = document.querySelector("#detail-snapshot-profile-divider-row");
   const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
@@ -20385,6 +20413,7 @@ function renderSessionDetail(sessionId) {
     downloadButton: detailDownloadSnapshotButton,
     resetButton: detailResetSnapshotButton,
     shareButton: detailShareSnapshotButton,
+    usageConsentCheckbox: detailSnapshotUsageConsentCheckbox,
     destinationInputs: detailSnapshotDestinationInputs,
     includeProfileToggle: detailSnapshotIncludeProfileToggle,
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,

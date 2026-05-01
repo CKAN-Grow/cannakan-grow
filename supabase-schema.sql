@@ -109,6 +109,7 @@ create table if not exists public.grow_gallery_snapshots (
   include_profile_in_gallery boolean not null default false,
   submitted_profile_name text default '',
   submitted_profile_avatar_url text default '',
+  usage_consent boolean not null default false,
   status text not null default 'private',
   is_published boolean not null default true,
   include_notes boolean not null default false,
@@ -281,6 +282,9 @@ alter table public.grow_gallery_snapshots
 
 alter table public.grow_gallery_snapshots
   add column if not exists submitted_profile_avatar_url text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists usage_consent boolean not null default false;
 
 alter table public.grow_gallery_snapshots
   add column if not exists status text not null default 'private';
