@@ -12,7 +12,6 @@ const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const SOURCE_LOGO_BUCKET = "source-logos";
-const ANNOUNCEMENT_BUCKET = "announcements";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   startDate: "",
   endDate: "",
@@ -33,25 +32,11 @@ const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
 const MAX_SOURCE_LOGO_DIMENSION = 768;
-const MAX_ANNOUNCEMENT_IMAGE_DIMENSION = 1600;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
-const ANNOUNCEMENT_FALLBACK_JOKES = [
-  "Why did the seed bring a blanket? It wanted to stay warm before sprouting.",
-  "What did one seed say to the other? Let's grow through this together.",
-  "Why was the sprout so confident? It knew it was rooted in success.",
-  "Good things take thyme, especially in the garden.",
-  "Why did the gardener stay calm? Because every great grow starts one step at a time.",
-  "Why did the seedling love mornings? Fresh light helped it rise and shine.",
-  "What is a gardener's favorite kind of teamwork? When everyone helps things grow.",
-  "Why did the compost smile? It knew all good growth starts with strong support.",
-  "Why was the greenhouse such a good listener? It always made room for growth.",
-  "What did the tray say to the sprout? I have got you covered while you get started.",
-  "Why did the little root stay focused? It was grounded in the plan.",
-  "Why did the gardener bring a notebook? Great results grow from good tracking.",
-];
+const DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE = "Why did the seed bring a blanket? It wanted to stay warm before sprouting.";
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
@@ -120,7 +105,6 @@ const appState = {
   announcementsLoaded: false,
   announcementsError: "",
   announcementsRefreshPromise: null,
-  announcementAdminEditingId: "",
   announcementAdminMessage: "",
   members: [],
   membersLoaded: false,
@@ -1981,7 +1965,6 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.announcementsLoaded = false;
   appState.announcementsError = "";
   appState.announcementsRefreshPromise = null;
-  appState.announcementAdminEditingId = "";
   appState.announcementAdminMessage = "";
   appState.members = [];
   appState.membersLoaded = false;
@@ -3314,10 +3297,6 @@ function compareAnnouncementsByRecency(left, right) {
   return getAnnouncementSortTimestamp(right) - getAnnouncementSortTimestamp(left);
 }
 
-function getAnnouncementPublishDate(announcement) {
-  return parseCompletedAtValue(announcement?.publishAt || announcement?.updatedAt || announcement?.createdAt || "");
-}
-
 function isAnnouncementCurrentlyPublic(announcement) {
   return Boolean(announcement && normalizeAnnouncementStatus(announcement.status) === "active");
 }
@@ -3394,6 +3373,8 @@ async function saveAnnouncementRecord(announcementInput) {
     console.error("Failed to save announcement to localStorage", error);
     throw new Error("Could not save the announcement to this browser.");
   }
+
+  console.log("[Cannakan Announcements] Announcement saved", storedRecord);
 
   const savedAnnouncement = mapStoredAnnouncementToAnnouncement(storedRecord);
   appState.announcements = savedAnnouncement ? [savedAnnouncement] : [];
@@ -9265,17 +9246,6 @@ function formatAnnouncementDateLabel(value) {
   }).format(parsedDate);
 }
 
-function getAnnouncementFallbackJoke(referenceDate = new Date()) {
-  const normalizedDate = new Date(
-    referenceDate.getFullYear(),
-    referenceDate.getMonth(),
-    referenceDate.getDate(),
-  );
-  const startOfYear = new Date(normalizedDate.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((normalizedDate - startOfYear) / 86400000);
-  return ANNOUNCEMENT_FALLBACK_JOKES[dayOfYear % ANNOUNCEMENT_FALLBACK_JOKES.length];
-}
-
 function getHomeAnnouncementCardData(referenceDate = new Date()) {
   const announcement = getLatestActiveAnnouncement();
   if (announcement) {
@@ -9291,7 +9261,7 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
 
   return {
     title: "Grow Joke of the Day",
-    body: getAnnouncementFallbackJoke(referenceDate),
+    body: DEFAULT_ANNOUNCEMENT_FALLBACK_MESSAGE,
     imageUrl: "",
     linkUrl: "",
     buttonText: "",
@@ -9301,6 +9271,10 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
 
 function renderHomeAnnouncementCard() {
   const cardData = getHomeAnnouncementCardData();
+  console.log("[Cannakan Announcements] Home announcement section rendered", {
+    hasActiveAnnouncement: Boolean(getLatestActiveAnnouncement()),
+    title: cardData.title,
+  });
   const imageMarkup = cardData.imageUrl
     ? `<img src="${escapeHtml(cardData.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
     : `
@@ -9382,6 +9356,10 @@ function renderAdminAnnouncementCardMarkup(announcement) {
 
 function renderAdminAnnouncementEditorMarkup(announcement = null) {
   const isActive = normalizeAnnouncementStatus(announcement?.status) === "active";
+  console.log("[Cannakan Announcements] Admin announcements CMS rendered", {
+    hasStoredAnnouncement: Boolean(announcement),
+    isActive,
+  });
   return `
     <form id="admin-announcement-form" class="admin-source-form">
       <div class="section-heading admin-source-form-heading">
@@ -9397,19 +9375,19 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan" required>
         </label>
         <label class="admin-source-form-full">
-          <span>Message / Body</span>
+          <span>Message</span>
           <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update" required>${escapeHtml(announcement?.body || "")}</textarea>
         </label>
         <label class="admin-source-form-full">
-          <span>Optional Image URL</span>
+          <span>Image URL</span>
           <input type="url" name="imageUrl" value="${escapeHtml(announcement?.imageUrl || "")}" placeholder="https://example.com/post-image.jpg">
         </label>
         <label class="admin-source-form-full">
-          <span>Optional Instagram URL</span>
+          <span>Instagram URL</span>
           <input type="url" name="instagramUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
         </label>
         <label class="admin-source-form-full">
-          <span>Optional Button Text</span>
+          <span>Button Text</span>
           <input type="text" name="buttonText" maxlength="80" value="${escapeHtml(announcement?.buttonText || "")}" placeholder="${escapeHtml(DEFAULT_ANNOUNCEMENT_BUTTON_TEXT)}">
         </label>
         <div class="admin-source-form-full admin-announcement-toggle-field">
@@ -9774,6 +9752,7 @@ function renderHome() {
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const spotlightCard = document.querySelector("#active-session-spotlight");
   const summaryGrid = document.querySelector(".summary-grid");
+  const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
   const spotlightStage = document.querySelector("#active-session-spotlight-stage");
   const spotlightName = document.querySelector("#active-session-spotlight-name");
   const spotlightDate = document.querySelector("#active-session-spotlight-date");
@@ -9839,7 +9818,9 @@ function renderHome() {
   }
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
-  if (summaryGrid) {
+  if (homeAnnouncementAnchor) {
+    homeAnnouncementAnchor.innerHTML = homeSecondaryInfoRowMarkup;
+  } else if (summaryGrid) {
     summaryGrid.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else if (spotlightCard) {
     spotlightCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
