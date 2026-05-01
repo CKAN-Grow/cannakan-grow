@@ -5724,6 +5724,7 @@ function isCommunityActivityTableUnavailableError(error) {
 
 function getCommunityActivityTypeDetails(activityType = "") {
   switch (String(activityType || "").trim()) {
+    case "snapshot_posted":
     case "snapshot_approved":
       return {
         activityType: "approved-snapshot",
@@ -5792,6 +5793,7 @@ function buildCommunityActivityFeedEntry(activity) {
 function normalizeCommunityActivityType(activityType = "") {
   const normalizedType = String(activityType || "").trim().toLowerCase();
   return [
+    "snapshot_posted",
     "snapshot_approved",
     "public_session_shared",
     "public_session_completed",
