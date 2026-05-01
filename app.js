@@ -10240,6 +10240,69 @@ function hasActiveLeaderboardAuditFilters(filters = appState.leaderboardAuditFil
   ));
 }
 
+function formatLeaderboardAuditFilterValue(filterKey, value) {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  if (filterKey === "startDate" || filterKey === "endDate") {
+    const parsedDate = parseCompletedAtValue(normalizedValue);
+    if (parsedDate) {
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(parsedDate);
+    }
+  }
+
+  if (filterKey === "status") {
+    return getLeaderboardAuditStatusLabel(normalizedValue);
+  }
+
+  if (filterKey === "inclusion") {
+    if (normalizedValue === "included") {
+      return "Included only";
+    }
+    if (normalizedValue === "excluded") {
+      return "Excluded only";
+    }
+  }
+
+  return normalizedValue;
+}
+
+function getLeaderboardAuditActiveFilterChips(filters = appState.leaderboardAuditFilters) {
+  const normalizedFilters = normalizeLeaderboardAuditFilters(filters);
+  const chipDefinitions = [
+    { key: "startDate", label: "Start" },
+    { key: "endDate", label: "End" },
+    { key: "source", label: "Source" },
+    { key: "seedVariety", label: "Seed Variety" },
+    { key: "seedType", label: "Seed Type" },
+    { key: "profile", label: "Profile/User" },
+    { key: "status", label: "Status" },
+    { key: "inclusion", label: "Inclusion" },
+  ];
+
+  return chipDefinitions
+    .map(({ key, label }) => {
+      const value = normalizedFilters[key];
+      const defaultValue = LEADERBOARD_AUDIT_DEFAULT_FILTERS[key];
+      if (String(value || "") === String(defaultValue || "")) {
+        return null;
+      }
+
+      return {
+        key,
+        label,
+        value: formatLeaderboardAuditFilterValue(key, value),
+      };
+    })
+    .filter(Boolean);
+}
+
 function getLeaderboardAuditProfileLabel(snapshot) {
   return String(
     snapshot?.profileName
@@ -10651,14 +10714,27 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
     return true;
   });
 
+  const visibleIncludedRows = visibleRows.filter((row) => row.includedInLeaderboard);
+  const visibleExcludedRows = visibleRows.filter((row) => !row.includedInLeaderboard);
+  const visibleAverageRate = visibleRows.length
+    ? Math.round((visibleRows.reduce((sum, row) => sum + (Number(row.successPercent) || 0), 0) / visibleRows.length) * 10) / 10
+    : 0;
+
   return {
     filters: normalizedFilters,
     hasActiveFilters: hasActiveLeaderboardAuditFilters(normalizedFilters),
+    activeFilterChips: getLeaderboardAuditActiveFilterChips(normalizedFilters),
     options,
     allRows,
     rows: visibleRows,
     calculations,
     filteredActiveRowCount: filteredActiveRows.length,
+    quickStats: {
+      visibleRows: visibleRows.length,
+      includedRows: visibleIncludedRows.length,
+      excludedRows: visibleExcludedRows.length,
+      averageRate: visibleAverageRate,
+    },
   };
 }
 
@@ -10697,6 +10773,80 @@ function renderLeaderboardAuditCalculationCard(calculation) {
       <p class="leaderboard-audit-metric-range">${escapeHtml(calculation.dateRangeLabel)}</p>
       <p class="leaderboard-audit-metric-reasons">${escapeHtml(calculation.excludedReasonSummary.join(" • ") || "No exclusions")}</p>
     </article>
+  `;
+}
+
+function renderLeaderboardAuditQuickStatsMarkup(state) {
+  const stats = [
+    {
+      label: "Visible Rows",
+      value: String(state.quickStats.visibleRows),
+      detail: "matching current audit view",
+    },
+    {
+      label: "Included Rows",
+      value: String(state.quickStats.includedRows),
+      detail: "currently counted in leaderboard calculations",
+    },
+    {
+      label: "Excluded Rows",
+      value: String(state.quickStats.excludedRows),
+      detail: "visible rows excluded from leaderboard results",
+    },
+    {
+      label: "Average Rate",
+      value: `${state.quickStats.averageRate}%`,
+      detail: "average germination of visible rows",
+    },
+  ];
+
+  return `
+    <div class="leaderboard-audit-quick-stats" aria-label="Leaderboard audit quick stats">
+      ${stats.map((stat) => `
+        <article class="leaderboard-audit-quick-stat">
+          <span class="leaderboard-audit-quick-stat-label">${escapeHtml(stat.label)}</span>
+          <strong class="leaderboard-audit-quick-stat-value">${escapeHtml(stat.value)}</strong>
+          <p class="leaderboard-audit-quick-stat-detail">${escapeHtml(stat.detail)}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLeaderboardAuditActiveFilterChipsMarkup(state) {
+  if (!state.activeFilterChips.length) {
+    return "";
+  }
+
+  return `
+    <div class="leaderboard-audit-chip-row" aria-label="Active audit filters">
+      ${state.activeFilterChips.map((chip) => `
+        <button type="button" class="leaderboard-audit-chip" data-audit-filter-remove="${escapeHtml(chip.key)}">
+          <span>${escapeHtml(`${chip.label}: ${chip.value}`)}</span>
+          <span aria-hidden="true">×</span>
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLeaderboardAuditEmptyStateMarkup(state) {
+  const title = state.hasActiveFilters
+    ? "No audit rows match the current filters."
+    : "No leaderboard audit records are available yet.";
+  const message = state.hasActiveFilters
+    ? "Try removing one or more filters, widening the date range, or clearing all filters to view more leaderboard audit data."
+    : "Audit rows will appear here after Grow Gallery snapshot records are available for review.";
+  const actionMarkup = state.hasActiveFilters
+    ? '<button type="button" class="button button-secondary" data-leaderboard-audit-clear="true">Clear All Filters</button>'
+    : "";
+
+  return `
+    <div class="leaderboard-audit-empty-state">
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(message)}</p>
+      ${actionMarkup}
+    </div>
   `;
 }
 
@@ -10822,6 +10972,8 @@ function renderLeaderboardAuditSection(target = app) {
         </select>
       </label>
     </div>
+    ${renderLeaderboardAuditActiveFilterChipsMarkup(state)}
+    ${renderLeaderboardAuditQuickStatsMarkup(state)}
     <div class="leaderboard-audit-metrics-grid">
       ${renderLeaderboardAuditCalculationCard(state.calculations.monthSource)}
       ${renderLeaderboardAuditCalculationCard(state.calculations.allSource)}
@@ -10868,7 +11020,7 @@ function renderLeaderboardAuditSection(target = app) {
             `).join("")
       : `
             <tr>
-              <td colspan="12" class="leaderboard-audit-empty">No snapshot records match the current audit filters.</td>
+              <td colspan="12" class="leaderboard-audit-empty">${renderLeaderboardAuditEmptyStateMarkup(state)}</td>
             </tr>
           `}
         </tbody>
@@ -10887,11 +11039,28 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelector("[data-leaderboard-audit-clear='true']")?.addEventListener("click", () => {
-    appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
-      ...LEADERBOARD_AUDIT_DEFAULT_FILTERS,
+  section.querySelectorAll("[data-leaderboard-audit-clear='true']").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+        ...LEADERBOARD_AUDIT_DEFAULT_FILTERS,
+      });
+      safeRender();
     });
-    safeRender();
+  });
+
+  section.querySelectorAll("[data-audit-filter-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const filterKey = String(button.dataset.auditFilterRemove || "").trim();
+      if (!filterKey || !(filterKey in LEADERBOARD_AUDIT_DEFAULT_FILTERS)) {
+        return;
+      }
+
+      appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
+        ...appState.leaderboardAuditFilters,
+        [filterKey]: LEADERBOARD_AUDIT_DEFAULT_FILTERS[filterKey],
+      });
+      safeRender();
+    });
   });
 
   section.querySelector("[data-leaderboard-audit-export='true']")?.addEventListener("click", () => {

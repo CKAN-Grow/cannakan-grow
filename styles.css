@@ -4261,6 +4261,73 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
 }
 
+.leaderboard-audit-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.leaderboard-audit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(109, 124, 113, 0.24);
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.leaderboard-audit-chip:hover,
+.leaderboard-audit-chip:focus-visible {
+  border-color: rgba(148, 209, 89, 0.32);
+  background: rgba(148, 209, 89, 0.12);
+  outline: none;
+}
+
+.leaderboard-audit-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-stack);
+}
+
+.leaderboard-audit-quick-stat {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard-audit-quick-stat-label,
+.leaderboard-audit-quick-stat-detail {
+  color: var(--muted);
+}
+
+.leaderboard-audit-quick-stat-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.leaderboard-audit-quick-stat-value {
+  color: var(--ink);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.leaderboard-audit-quick-stat-detail {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .leaderboard-audit-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4396,6 +4463,29 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .leaderboard-audit-empty {
   color: var(--muted);
   text-align: center;
+}
+
+.leaderboard-audit-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 12px;
+}
+
+.leaderboard-audit-empty-state strong,
+.leaderboard-audit-empty-state p {
+  margin: 0;
+}
+
+.leaderboard-audit-empty-state strong {
+  color: var(--ink);
+  font-size: 1rem;
+}
+
+.leaderboard-audit-empty-state p {
+  max-width: 520px;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .mock-data-toggle {
@@ -5850,6 +5940,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .leaderboard-audit-filter-grid,
+  .leaderboard-audit-quick-stats,
   .leaderboard-audit-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -7881,20 +7972,38 @@ body.theme-dark .admin-member-status-pill.is-disabled {
 }
 
 body.theme-dark .leaderboard-audit-metric-card,
+body.theme-dark .leaderboard-audit-quick-stat,
 body.theme-dark .leaderboard-audit-table-shell {
   border-color: rgba(111, 122, 116, 0.22);
   background: rgba(24, 30, 26, 0.82);
 }
 
+body.theme-dark .leaderboard-audit-chip {
+  border-color: rgba(111, 122, 116, 0.26);
+  background: rgba(31, 40, 35, 0.88);
+  color: #f6f8f5;
+}
+
+body.theme-dark .leaderboard-audit-chip:hover,
+body.theme-dark .leaderboard-audit-chip:focus-visible {
+  border-color: rgba(148, 209, 89, 0.34);
+  background: rgba(148, 209, 89, 0.14);
+}
+
 body.theme-dark .leaderboard-audit-metric-head strong,
-body.theme-dark .leaderboard-audit-metric-grid strong {
+body.theme-dark .leaderboard-audit-metric-grid strong,
+body.theme-dark .leaderboard-audit-quick-stat-value,
+body.theme-dark .leaderboard-audit-empty-state strong {
   color: #f6f8f5;
 }
 
 body.theme-dark .leaderboard-audit-filter-state,
 body.theme-dark .leaderboard-audit-metric-grid span,
+body.theme-dark .leaderboard-audit-quick-stat-label,
+body.theme-dark .leaderboard-audit-quick-stat-detail,
 body.theme-dark .leaderboard-audit-metric-range,
 body.theme-dark .leaderboard-audit-metric-reasons,
+body.theme-dark .leaderboard-audit-empty-state p,
 body.theme-dark .leaderboard-audit-empty {
   color: rgba(189, 200, 191, 0.82);
 }
@@ -9005,6 +9114,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .leaderboard-audit-actions,
   .leaderboard-audit-filter-grid,
+  .leaderboard-audit-quick-stats,
   .leaderboard-audit-metrics-grid {
     grid-template-columns: 1fr;
   }
@@ -9015,6 +9125,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .leaderboard-audit-actions {
     display: grid;
+  }
+
+  .leaderboard-audit-chip-row {
+    gap: 8px;
   }
 
   .admin-source-card-head,
