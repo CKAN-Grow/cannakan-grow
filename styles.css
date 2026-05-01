@@ -175,56 +175,6 @@ textarea {
   text-align: right;
 }
 
-.app-update-banner {
-  width: min(100% - 8px, 560px);
-  margin: 0 4px 18px;
-  padding: 12px 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  border: 1px solid rgba(148, 209, 89, 0.2);
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(243, 248, 240, 0.94) 0%, rgba(232, 240, 231, 0.84) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(43, 111, 65, 0.03) 58%);
-  box-shadow:
-    0 12px 22px rgba(24, 34, 24, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  color: var(--ink);
-  cursor: pointer;
-  text-align: left;
-}
-
-.app-update-banner:hover,
-.app-update-banner:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(148, 209, 89, 0.28);
-  box-shadow:
-    0 14px 24px rgba(24, 34, 24, 0.1),
-    0 0 0 1px rgba(148, 209, 89, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-}
-
-.app-update-banner-copy {
-  display: grid;
-  gap: 2px;
-}
-
-.app-update-banner-label {
-  color: #4f7d33;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.app-update-banner-text {
-  font-size: 0.94rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
 .topbar h1,
 .dashboard-bar h2,
 .section-heading h2,
@@ -1394,17 +1344,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     min-width: 0;
   }
 
-  .global-build-version-badge {
-    right: 12px;
-    bottom: 72px;
-  }
-
-  .build-version-badge {
-    max-width: min(calc(100vw - 24px), 380px);
-    padding: 7px 10px;
-    font-size: 0.68rem;
-  }
-
   .session-history-grid {
     grid-template-columns: 1fr;
   }
@@ -2436,6 +2375,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-dashboard-secondary-row-top .home-gallery-rankings-card,
+.home-dashboard-secondary-row-top .filter-paper-card,
 .home-dashboard-secondary-row-top .home-install-card,
 .home-dashboard-secondary-row-bottom .mock-data-admin-section {
   margin-top: 0;
@@ -4193,96 +4133,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(182, 194, 185, 0.78);
 }
 
-.build-debug-stamp {
-  display: grid;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(109, 124, 113, 0.24);
-  background: rgba(10, 14, 11, 0.28);
-}
-
-.build-debug-stamp-label {
-  margin: 0;
-  color: rgba(182, 194, 185, 0.86);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.build-debug-stamp-list {
-  margin: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.build-debug-stamp-list div {
-  display: grid;
-  gap: 2px;
-}
-
-.build-debug-stamp-list dt,
-.build-debug-stamp-list dd {
-  margin: 0;
-}
-
-.build-debug-stamp-list dt {
-  color: rgba(182, 194, 185, 0.72);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.build-debug-stamp-list dd {
-  color: #f3f7f1;
-  font-size: 0.86rem;
-  font-weight: 600;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  overflow-wrap: anywhere;
-}
-
-.global-build-version-badge {
-  position: fixed;
-  right: 16px;
-  bottom: 20px;
-  z-index: 1200;
-  pointer-events: none;
-}
-
-.build-version-badge {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: min(calc(100vw - 32px), 520px);
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(24, 34, 24, 0.08);
-  background: rgba(247, 250, 245, 0.84);
-  box-shadow:
-    0 10px 18px rgba(24, 34, 24, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  color: rgba(24, 34, 24, 0.72);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-  backdrop-filter: blur(10px);
-}
-
-.build-version-badge-version,
-.build-version-badge-timestamp,
-.build-version-badge-commit {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.build-version-badge-separator {
-  opacity: 0.5;
-}
-
 .mock-data-admin-actions {
   display: grid;
   gap: 8px;
@@ -4292,11 +4142,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .mock-data-admin-actions .muted {
   margin: 0;
   font-size: 0.78rem;
-}
-
-.build-debug-reset-button {
-  width: 100%;
-  max-width: 320px;
 }
 
 .admin-page-hero,
@@ -9415,53 +9260,6 @@ body.theme-dark .mock-data-toggle-state {
   color: rgba(189, 204, 192, 0.82);
 }
 
-body.theme-dark .build-debug-stamp {
-  border-color: rgba(111, 122, 116, 0.28);
-  background: rgba(7, 10, 8, 0.34);
-}
-
-body.theme-dark .build-debug-stamp-label,
-body.theme-dark .build-debug-stamp-list dt {
-  color: rgba(189, 204, 192, 0.72);
-}
-
-body.theme-dark .build-debug-stamp-list dd {
-  color: #f6f8f5;
-}
-
-body.theme-dark .build-version-badge {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(22, 26, 23, 0.88);
-  box-shadow:
-    0 12px 22px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  color: rgba(246, 248, 245, 0.76);
-}
-
-body.theme-dark .app-update-banner {
-  border-color: rgba(148, 209, 89, 0.18);
-  background:
-    linear-gradient(180deg, rgba(29, 37, 31, 0.96) 0%, rgba(22, 29, 24, 0.94) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(148, 209, 89, 0.03) 58%);
-  box-shadow:
-    0 14px 24px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  color: #f6f8f5;
-}
-
-body.theme-dark .app-update-banner:hover,
-body.theme-dark .app-update-banner:focus-visible {
-  border-color: rgba(148, 209, 89, 0.26);
-  box-shadow:
-    0 16px 28px rgba(0, 0, 0, 0.26),
-    0 0 0 1px rgba(148, 209, 89, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-body.theme-dark .app-update-banner-label {
-  color: #b8ef84;
-}
-
 body.theme-dark .leaderboard-audit-section {
   border-color: rgba(111, 122, 116, 0.24);
   background: linear-gradient(180deg, rgba(30, 40, 33, 0.94) 0%, rgba(21, 29, 24, 0.92) 100%);
@@ -10182,10 +9980,6 @@ body.theme-dark #session-history-section {
   color: var(--muted);
   font-size: 0.97rem;
   line-height: 1.45;
-}
-
-.sessions-section-subtitle {
-  max-width: 42rem;
 }
 
 #grow-sessions-header .section-title-icon,

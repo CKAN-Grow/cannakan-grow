@@ -1,14 +1,9 @@
-const CACHE_VERSION = "1.0.0-f787396-20260501T065809322Z";
-const CACHE_PREFIX = "cannakan-grow-shell";
-const CACHE_NAME = `${CACHE_PREFIX}-${CACHE_VERSION}`;
+const CACHE_NAME = "cannakan-grow-shell-v10";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
-  "/supabase-config.js",
-  "/build-info.js",
-  "/build-info.json",
   "/manifest.json",
   "/favicon.ico",
   "/favicon-32x32.png",
@@ -25,32 +20,25 @@ const NETWORK_FIRST_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/app.js",
-  "/supabase-config.js",
-  "/build-info.js",
-  "/build-info.json",
   "/manifest.json",
 ]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_ASSETS)),
-      self.skipWaiting(),
-    ]),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_ASSETS)),
   );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    Promise.all([
-      caches.keys().then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith(`${CACHE_PREFIX}-`) && key !== CACHE_NAME)
-          .map((key) => caches.delete(key)),
-      )),
-      self.clients.claim(),
-    ]),
+    caches.keys().then((keys) => Promise.all(
+      keys
+        .filter((key) => key !== CACHE_NAME)
+        .map((key) => caches.delete(key)),
+    )),
   );
+  self.clients.claim();
 });
 
 function cacheResponse(request, response) {
@@ -58,39 +46,15 @@ function cacheResponse(request, response) {
     return response;
   }
 
-  let responseForCache = null;
-  try {
-    responseForCache = response.clone();
-  } catch (error) {
-    console.warn("[Cannakan SW] Could not clone response for cache storage", {
-      url: request?.url || "",
-      error: error?.message || String(error || "Unknown clone error"),
-    });
-    return response;
-  }
-
   caches.open(CACHE_NAME).then((cache) => {
-    cache.put(request, responseForCache);
+    cache.put(request, response.clone());
   });
   return response;
 }
 
 function fetchNetworkFirst(request, fallbackToIndex = false) {
   return fetch(request)
-    .then((response) => {
-      let responseForClient = response;
-      try {
-        responseForClient = response.clone();
-      } catch (error) {
-        console.warn("[Cannakan SW] Could not clone network response for client delivery", {
-          url: request?.url || "",
-          error: error?.message || String(error || "Unknown clone error"),
-        });
-      }
-
-      cacheResponse(request, response);
-      return responseForClient;
-    })
+    .then((response) => cacheResponse(request, response))
     .catch(async () => {
       const cachedResponse = await caches.match(request);
       if (cachedResponse) {
@@ -127,24 +91,7 @@ self.addEventListener("fetch", (event) => {
       }
 
       return fetch(event.request)
-        .then((response) => {
-          if (!isSameOrigin) {
-            return response;
-          }
-
-          let responseForClient = response;
-          try {
-            responseForClient = response.clone();
-          } catch (error) {
-            console.warn("[Cannakan SW] Could not clone same-origin response for client delivery", {
-              url: event.request?.url || "",
-              error: error?.message || String(error || "Unknown clone error"),
-            });
-          }
-
-          cacheResponse(event.request, response);
-          return responseForClient;
-        })
+        .then((response) => isSameOrigin ? cacheResponse(event.request, response) : response)
         .catch(() => isNavigationRequest ? caches.match("/index.html") : undefined);
     }),
   );

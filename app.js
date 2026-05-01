@@ -61,24 +61,7 @@ const SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY = "cannakanGrowPwaLaunchLogged";
 const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
 const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 60000;
 const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
-const BUILD_INFO_CHECK_INTERVAL_MS = 120000;
-const BUILD_INFO_ACTIVE_RECHECK_MS = 30000;
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
-const CURRENT_APP_BUILD_INFO = Object.freeze({
-  version: "1.0.0",
-  buildTimestamp: "2026-05-01T06:58:09.322Z",
-  commitHash: "f787396",
-});
-const DEFAULT_BUILD_INFO = Object.freeze({
-  version: "0.0.0",
-  buildTime: "",
-  buildTimestamp: "",
-  timestamp: "",
-  commit: "",
-  commitHash: "",
-  hasUsableMetadata: false,
-});
-window.CANNAKAN_GROW_APP_READY = false;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
@@ -149,8 +132,8 @@ const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
 const SYSTEM_LAYOUT_ASSETS = {
-  KAN: "/icons/KAN%20icon.svg",
-  TRA: "/icons/TRA%20icon.svg",
+  KAN: "icons/KAN%20icon.svg",
+  TRA: "icons/TRA%20icon.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "src/assets/kan-partition-icon-v2.png",
@@ -262,12 +245,6 @@ const appState = {
   mockGalleryReviewStatuses: {},
   deferredInstallPrompt: null,
   installPromptMode: "",
-  currentBuildInfo: null,
-  availableBuildInfo: null,
-  buildUpdateCheckInFlight: false,
-  buildUpdateMonitorInitialized: false,
-  buildUpdateCheckIntervalId: 0,
-  lastBuildInfoCheckAt: 0,
   gallerySort: "date",
   gallerySortOrder: "desc",
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
@@ -619,37 +596,15 @@ async function safeBootstrapApp() {
   try {
     await bootstrapApp();
   } catch (error) {
-    console.error("[Cannakan App Init] Startup failed", error);
     markAuthReady("startup-error");
     appState.loading = false;
     updateAuthStatus();
-    window.CANNAKAN_GROW_APP_READY = false;
     reportAppError(error, "Startup failed");
   }
 }
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || !window.isSecureContext) {
-    return;
-  }
-
-  const isDevelopmentHost = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
-  if (isDevelopmentHost) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => Promise.all(
-      registrations.map((registration) => registration.unregister()),
-    )).catch((error) => {
-      console.warn("Service worker cleanup failed in development", error);
-    });
-
-    if ("caches" in window) {
-      caches.keys().then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith("cannakan-grow-shell-"))
-          .map((key) => caches.delete(key)),
-      )).catch((error) => {
-        console.warn("Cache cleanup failed in development", error);
-      });
-    }
     return;
   }
 
@@ -660,132 +615,6 @@ function registerServiceWorker() {
       console.warn("Service worker registration failed", error);
     });
   }, { once: true });
-}
-
-function getBuildInfo() {
-  return DEFAULT_BUILD_INFO;
-}
-
-function normalizeBuildInfo(info) {
-  if (!info || typeof info !== "object") return DEFAULT_BUILD_INFO;
-  return DEFAULT_BUILD_INFO;
-}
-
-function getBuildInfoSignature(buildInfo = getBuildInfo()) {
-  const normalizedBuildInfo = normalizeBuildInfo(buildInfo);
-  return [
-    normalizedBuildInfo.version,
-    normalizedBuildInfo.buildTimestamp,
-    normalizedBuildInfo.commitHash,
-  ].join("|");
-}
-
-function hasUsableBuildInfo(buildInfo = {}) {
-  const normalizedBuildInfo = normalizeBuildInfo(buildInfo);
-  return normalizedBuildInfo.hasUsableMetadata === true;
-}
-
-function formatBuildTimestampLabel(timestamp = "") {
-  if (!timestamp) {
-    return "Unknown";
-  }
-
-  const parsed = new Date(timestamp);
-  return Number.isNaN(parsed.getTime()) ? timestamp : parsed.toLocaleString();
-}
-
-function renderBuildDebugStampMarkup() {
-  return "";
-}
-
-function renderDevModeBuildToolsMarkup() {
-  return "";
-}
-
-function shouldShowGlobalBuildVersionBadge() {
-  return false;
-}
-
-function renderGlobalBuildVersionBadgeMarkup() {
-  return "";
-}
-
-function syncGlobalBuildVersionBadge() {
-  document.body?.querySelector("#global-build-version-badge")?.remove();
-}
-
-function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = appState.currentBuildInfo || getBuildInfo()) {
-  return false;
-}
-
-function syncBuildUpdateBanner() {
-  document.querySelector("#app-update-banner")?.remove();
-}
-
-async function fetchLatestBuildInfo() {
-  return DEFAULT_BUILD_INFO;
-}
-
-async function checkForAvailableAppUpdate(reason = "background-check", options = {}) {
-  appState.availableBuildInfo = null;
-  return false;
-}
-
-function handleBuildUpdateVisibilityChange() {
-  return;
-}
-
-function initializeBuildUpdateMonitoring() {
-  if (appState.buildUpdateCheckIntervalId) {
-    window.clearInterval(appState.buildUpdateCheckIntervalId);
-    appState.buildUpdateCheckIntervalId = 0;
-  }
-
-  appState.buildUpdateMonitorInitialized = false;
-  appState.availableBuildInfo = null;
-  document.querySelector("#app-update-banner")?.remove();
-}
-
-async function clearAppCacheAndReloadLatest() {
-  try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
-
-    if ("caches" in window) {
-      const cacheKeys = await caches.keys();
-      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
-    }
-  } catch (error) {
-    console.warn("Failed to fully clear app caches before reload", error);
-  }
-
-  const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.set("refresh", String(Date.now()));
-  window.location.replace(nextUrl.toString());
-}
-
-function bindBuildDebugActions(scope = document) {
-  if (!scope) {
-    return;
-  }
-
-  scope.querySelectorAll("[data-clear-app-cache='true']").forEach((button) => {
-    if (button.dataset.buildDebugBound === "true") {
-      return;
-    }
-
-    button.dataset.buildDebugBound = "true";
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      try {
-        await clearAppCacheAndReloadLatest();
-      } finally {
-        button.disabled = false;
-      }
-    });
-  });
 }
 
 function isStandaloneAppDisplay() {
@@ -2597,7 +2426,6 @@ async function bootstrapApp() {
     hash: window.location.hash || "#home",
     pathname: window.location.pathname || "/",
   });
-  window.CANNAKAN_GROW_APP_READY = false;
   appState.loading = true;
   appState.authReady = false;
   appState.lastHydratedAuthSessionKey = "";
@@ -2660,7 +2488,6 @@ async function bootstrapApp() {
   appState.loading = false;
   updateAuthStatus();
   safeRender();
-  window.CANNAKAN_GROW_APP_READY = true;
 }
 
 function withTimeout(promise, timeoutMs, timeoutMessage) {
@@ -6449,7 +6276,7 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
     </div>
-    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect KAN System performance results, not the seed source.</p>
+    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
   `;
 
   return section;
@@ -10050,19 +9877,7 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
   removeButton.hidden = false;
 }
 
-function isMainSessionsRoute() {
-  const hashRoute = String(window.location.hash || "#home").replace(/^#/, "");
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
-  const [route, id] = rawRoute.split("/");
-  return route === "sessions" && !id;
-}
-
 function renderFilterPaperCardMarkup() {
-  if (!isMainSessionsRoute()) {
-    return "";
-  }
-
   const inventory = getFilterPaperInventory();
   const status = getFilterPaperStatusMeta(inventory.count);
   const reminder = getFilterPaperReminder(inventory.count);
@@ -10624,7 +10439,6 @@ function renderHomeAdminUtilityCardMarkup() {
             ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
           </p>
           <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
-          ${renderDevModeBuildToolsMarkup()}
         </div>
         <div class="mock-data-admin-actions">
           <button
@@ -13667,7 +13481,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
-  document.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
+  app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
   applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
@@ -13764,7 +13578,6 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
-  bindBuildDebugActions(app);
 
   const spotlightSession = activeSessions[0] || null;
   const updateSpotlight = () => {
@@ -13872,7 +13685,6 @@ function renderMockDataAdminSection(target = app, options = {}) {
           ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
         </p>
         <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
-        ${renderDevModeBuildToolsMarkup()}
       </div>
       <div class="mock-data-admin-actions">
         <button
@@ -13899,7 +13711,6 @@ function renderMockDataAdminSection(target = app, options = {}) {
   section.querySelector("[data-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
-  bindBuildDebugActions(section);
 
   target.appendChild(section);
   return section;
@@ -16587,13 +16398,10 @@ function renderSessionsList() {
   applySupplyStatusToSessionEntryButtons(app);
   const sessionsHeader = document.querySelector("#grow-sessions-header");
   if (sessionsHeader) {
-    const filterPaperCardMarkup = renderFilterPaperCardMarkup();
-    if (filterPaperCardMarkup) {
-      sessionsHeader.insertAdjacentHTML("afterend", filterPaperCardMarkup);
-      bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
-        onSave: () => safeRender(),
-      });
-    }
+    sessionsHeader.insertAdjacentHTML("afterend", renderFilterPaperCardMarkup());
+    bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
+      onSave: () => safeRender(),
+    });
   }
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
@@ -17754,9 +17562,7 @@ async function renderSystemLayoutReference(container, systemType) {
     const markup = await buildSystemLayoutImage(systemType);
     if (container.dataset.pendingSystem === systemType) {
       container.innerHTML = markup;
-      if (container.querySelector("[data-system-layout]")) {
-        attachSystemLayoutReady(container);
-      }
+      attachSystemLayoutReady(container);
     }
     return;
   }
@@ -17768,13 +17574,17 @@ async function renderSystemLayoutReference(container, systemType) {
 
 async function buildSystemLayoutImage(systemType) {
   const svgMarkup = await getInlineSvgMarkup(systemType);
-  if (!svgMarkup) {
-    return buildSystemLayoutUnavailableMarkup(systemType);
-  }
-
+  const content = svgMarkup || `
+    <object
+      class="system-layout-object"
+      data="${SYSTEM_LAYOUT_ASSETS[systemType]}"
+      type="image/svg+xml"
+      aria-label="${systemType} system layout"
+    ></object>
+  `;
   return `
     <div class="system-layout-image system-layout-image-${systemType.toLowerCase()}" data-system-layout="${systemType}">
-      ${svgMarkup}
+      ${content}
     </div>
   `;
 }
@@ -18094,18 +17904,6 @@ function buildSystemLayoutPlaceholder(systemType) {
   `;
 }
 
-function buildSystemLayoutUnavailableMarkup(systemType) {
-  const label = systemType === "TRA" ? "TRā layout unavailable" : "KAN layout unavailable";
-  return `
-    <div class="layout-reference-copy">
-      <p>Layout unavailable</p>
-    </div>
-    <div class="layout-placeholder" aria-label="${label}">
-      <span>${systemType || "System"}</span>
-    </div>
-  `;
-}
-
 async function getInlineSvgMarkup(systemType) {
   if (inlineSvgCache[systemType]) {
     return inlineSvgCache[systemType];
@@ -18113,23 +17911,10 @@ async function getInlineSvgMarkup(systemType) {
 
   try {
     const response = await fetch(SYSTEM_LAYOUT_ASSETS[systemType]);
-    if (!response.ok) {
-      throw new Error(`Layout asset request failed with status ${response.status}`);
-    }
-
-    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.includes("image/svg") && !contentType.includes("text/plain")) {
-      throw new Error(`Unexpected layout asset content type: ${contentType}`);
-    }
-
     const svgMarkup = normalizeInlineSvgMarkup(await response.text());
-    if (!svgMarkup.startsWith("<svg")) {
-      throw new Error("Layout asset did not return SVG markup.");
-    }
     inlineSvgCache[systemType] = svgMarkup;
     return svgMarkup;
-  } catch (error) {
-    console.warn(`Could not load ${systemType} system layout`, error);
+  } catch {
     return "";
   }
 }

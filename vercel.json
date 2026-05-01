@@ -4,15 +4,6 @@
   "outputDirectory": ".",
   "headers": [
     {
-      "source": "/",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
       "source": "/service-worker.js",
       "headers": [
         {
@@ -22,7 +13,7 @@
       ]
     },
     {
-      "source": "/(index\\.html|app\\.js|styles\\.css|supabase-config\\.js|build-info\\.js|build-info\\.json|manifest\\.json)",
+      "source": "/(index\\.html|app\\.js|styles\\.css|manifest\\.json)",
       "headers": [
         {
           "key": "Cache-Control",

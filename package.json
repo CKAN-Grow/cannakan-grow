@@ -4,7 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "build": "node ./scripts/build-config.mjs",
-    "vercel-build": "npm run build",
     "generate:profile-migration": "node ./scripts/generate-profile-columns-migration.mjs"
   }
 }
