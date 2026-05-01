@@ -2345,7 +2345,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-card {
   display: grid;
-  gap: var(--space-stack);
+  gap: 14px;
   margin-top: 0;
   padding: var(--space-card);
   border: 1px solid rgba(148, 209, 89, 0.1);
@@ -2366,7 +2366,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-dashboard-secondary-row-top {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr);
   gap: var(--space-section);
   align-items: start;
 }
@@ -2625,22 +2625,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-shell {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 18px;
-  align-items: start;
+  grid-template-columns: minmax(190px, 220px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
 }
 
 .home-install-card-preview {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-width: 0;
 }
 
 .home-install-card .home-install-card-preview {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   min-width: 0;
 }
 
@@ -2649,7 +2649,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-phone-mockup {
   width: 220px;
   max-width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   padding: 10px;
   border-radius: 24px;
   background: #0f1411;
@@ -2662,7 +2662,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: block;
   width: 220px;
   max-width: 100%;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   padding: 10px;
   border-radius: 24px;
   background: #0f1411;
@@ -2855,8 +2855,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-body {
   display: grid;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
+  align-content: center;
 }
 
 .home-install-card-copy {
@@ -2926,7 +2927,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-directions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   align-content: start;
 }
@@ -3338,10 +3339,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-gallery-rankings-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  gap: 12px;
+  align-items: start;
+  justify-items: start;
 }
 
 .home-gallery-rankings-title-icon {
@@ -3349,7 +3350,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-gallery-rankings-subtitle {
-  margin: 4px 0 0;
+  margin: 3px 0 0;
 }
 
 .home-gallery-rankings-cta {
@@ -3358,8 +3359,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  min-height: 50px;
-  padding: 13px 22px;
+  min-height: 44px;
+  padding: 10px 18px;
   border-radius: 16px;
   border: 2px solid #94d159;
   background: rgba(148, 209, 89, 0.03);
@@ -3427,7 +3428,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-gallery-rankings-list {
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 8px;
   padding: 0;
   margin: 0;
 }
@@ -3436,9 +3437,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  min-height: 52px;
-  padding: 12px 14px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 12px;
   border-radius: 16px;
   border: 1px solid rgba(148, 209, 89, 0.08);
   background: rgba(255, 255, 255, 0.34);
@@ -3478,7 +3479,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   width: 100%;
 }
@@ -3511,7 +3512,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-row-label {
   color: var(--muted);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1.25;
@@ -3519,7 +3520,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-row-value {
   color: var(--ink);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 700;
   text-align: right;
   white-space: nowrap;
@@ -7798,7 +7799,12 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-dashboard-secondary-row-top {
-    grid-template-columns: minmax(0, 2.35fr) minmax(260px, 1fr);
+    grid-template-columns: minmax(0, 1.18fr) minmax(300px, 1fr);
+  }
+
+  .home-install-card-shell {
+    grid-template-columns: minmax(170px, 200px) minmax(0, 1fr);
+    gap: 16px;
   }
 
   .admin-mini-grid {
@@ -7886,6 +7892,10 @@ body.theme-dark .theme-toggle-button:hover {
   .home-install-card-preview {
     order: -1;
     justify-content: center;
+  }
+
+  .home-install-card-body {
+    align-content: start;
   }
 
   .home-install-card-directions {
