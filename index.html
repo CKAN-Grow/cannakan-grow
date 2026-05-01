@@ -55,7 +55,7 @@
       <nav class="topbar-nav" aria-label="Primary">
         <a href="#home">Home</a>
         <a href="#sessions">Sessions</a>
-        <a href="#gallery">Grow Gallery</a>
+        <a href="#gallery">Community Grow</a>
         <a href="#admin" data-admin-nav hidden>Admin</a>
       </nav>
       <div id="auth-status" class="auth-status"></div>
@@ -104,7 +104,7 @@
         <p><strong>1.</strong> For Vercel, set <code>CANNAKAN_SUPABASE_URL</code> and <code>CANNAKAN_SUPABASE_ANON_KEY</code>. For local testing, generate or update <code>supabase-config.js</code>.</p>
         <p><strong>2.</strong> Run <code>supabase-schema.sql</code> in the Supabase SQL editor to create the session table and image storage policies.</p>
         <p><strong>3.</strong> Enable Email auth in your Supabase project.</p>
-        <p><strong>4.</strong> To make yourself an admin for Grow Gallery moderation, add your Supabase auth <code>user_id</code> and email to <code>admin_users</code>.</p>
+        <p><strong>4.</strong> To make yourself an admin for Community Grow moderation, add your Supabase auth <code>user_id</code> and email to <code>admin_users</code>.</p>
       </div>
     </section>
   </template>
@@ -256,9 +256,9 @@
             <path d="m21 3-7 18-4-7-7-4 18-7Z"></path>
           </svg>
           <div>
-            <p class="eyebrow">Grow Gallery</p>
-            <h2>Community Grow Gallery</h2>
-            <p class="muted">Explore shared grow sessions in the Public Gallery</p>
+            <p class="eyebrow">Community Grow</p>
+            <h2>Community Grow</h2>
+            <p class="muted">Explore shared grow sessions in Community Grow</p>
           </div>
         </div>
       </div>
@@ -275,7 +275,7 @@
           </svg>
           <div>
             <p class="eyebrow">Published Snapshots</p>
-            <h3>Community Grow Gallery</h3>
+            <h3>Community Grow</h3>
             <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
           </div>
         </div>
@@ -323,8 +323,8 @@
       <div class="section-heading">
         <div>
           <p class="eyebrow">Admin</p>
-          <h2>Gallery Moderation</h2>
-          <p class="muted">Review submitted grow snapshots before they appear in the Grow Gallery.</p>
+          <h2>Community Grow Moderation</h2>
+          <p class="muted">Review submitted grow snapshots before they appear in Community Grow.</p>
         </div>
       </div>
     </section>
@@ -586,23 +586,23 @@
               </label>
               <label class="snapshot-destination-option">
                 <input id="snapshot-destination-social-gallery" type="radio" name="snapshot-destination" value="social-gallery">
-                <span>Social + Grow Gallery</span>
+                <span>Social + Community Grow</span>
               </label>
               <label class="snapshot-destination-option">
                 <input id="snapshot-destination-gallery" type="radio" name="snapshot-destination" value="gallery">
-                <span>Grow Gallery only</span>
+                <span>Community Grow only</span>
               </label>
             </div>
             <label id="snapshot-profile-toggle-row" class="snapshot-profile-toggle" hidden>
               <input id="snapshot-include-profile" type="checkbox" name="snapshot-include-profile">
               <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
               <span class="snapshot-profile-toggle-text">
-                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in the Grow Gallery</span>
+                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in Community Grow</span>
                 <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
               </span>
             </label>
             <div id="snapshot-profile-divider-row" class="snapshot-profile-divider" hidden aria-hidden="true"></div>
-            <p class="snapshot-destination-info">Grow Gallery snapshots must be approved before being published.</p>
+            <p class="snapshot-destination-info">Community Grow snapshots must be approved before being published.</p>
             <p id="snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.</p>
             <div id="snapshot-preview" class="snapshot-preview" hidden></div>
           </div>
@@ -623,9 +623,9 @@
               <button id="reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
             </div>
             <div class="snapshot-gallery-actions">
-              <p class="eyebrow snapshot-gallery-eyebrow">Community Grow Gallery</p>
+              <p class="eyebrow snapshot-gallery-eyebrow">Community Grow</p>
               <div class="snapshot-gallery-header-row">
-                <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Public Gallery">
+                <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Community Grow">
                   <span class="snapshot-gallery-icon" aria-hidden="true">
                     <span class="snapshot-gallery-collage">
                       <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--left"></span>
@@ -635,13 +635,13 @@
                   </span>
                 </a>
                 <div class="snapshot-gallery-header-content">
-                  <h5 class="snapshot-gallery-title">Visit Public Gallery</h5>
-                  <p class="snapshot-gallery-description">Explore shared grow sessions in the Public Gallery.</p>
+                  <h5 class="snapshot-gallery-title">Visit Community Grow</h5>
+                  <p class="snapshot-gallery-description">Explore shared grow sessions in Community Grow.</p>
                 </div>
               </div>
               <div class="snapshot-gallery-button-row">
                 <a class="button button-secondary snapshot-gallery-link" href="#gallery">
-                  <span>Visit Grow Gallery</span>
+                  <span>Visit Community Grow</span>
                 </a>
               </div>
             </div>
@@ -950,24 +950,24 @@
               </label>
               <label class="snapshot-destination-option">
                 <input id="detail-snapshot-destination-social-gallery" type="radio" name="detail-snapshot-destination" value="social-gallery">
-                <span>Social + Grow Gallery</span>
+                <span>Social + Community Grow</span>
               </label>
               <label class="snapshot-destination-option">
                 <input id="detail-snapshot-destination-gallery" type="radio" name="detail-snapshot-destination" value="gallery">
-                <span>Grow Gallery only</span>
+                <span>Community Grow only</span>
               </label>
             </div>
             <label id="detail-snapshot-profile-toggle-row" class="snapshot-profile-toggle" hidden>
               <input id="detail-snapshot-include-profile" type="checkbox" name="detail-snapshot-include-profile">
               <span class="snapshot-profile-toggle-control" aria-hidden="true"></span>
               <span class="snapshot-profile-toggle-text">
-                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in the Grow Gallery</span>
+                <span class="snapshot-profile-toggle-copy">Include my profile name &amp; image with this snapshot in Community Grow</span>
                 <span class="snapshot-profile-toggle-helper">Only your profile name and image will be shown.</span>
               </span>
             </label>
             <div id="detail-snapshot-profile-divider-row" class="snapshot-profile-divider" hidden aria-hidden="true"></div>
-            <p class="snapshot-destination-info">Grow Gallery snapshots must be approved before being published.</p>
-            <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in the Grow Gallery. Private notes stay private.</p>
+            <p class="snapshot-destination-info">Community Grow snapshots must be approved before being published.</p>
+            <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in Community Grow. Private notes stay private.</p>
             <div id="detail-snapshot-preview" class="snapshot-preview" hidden></div>
           </div>
           <div class="snapshot-actions">
@@ -987,9 +987,9 @@
             <button id="detail-reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
           </div>
           <div class="snapshot-gallery-actions">
-            <p class="eyebrow snapshot-gallery-eyebrow">Community Grow Gallery</p>
+            <p class="eyebrow snapshot-gallery-eyebrow">Community Grow</p>
             <div class="snapshot-gallery-header-row">
-              <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Public Gallery">
+              <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Community Grow">
                 <span class="snapshot-gallery-icon" aria-hidden="true">
                   <span class="snapshot-gallery-collage">
                     <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--left"></span>
@@ -999,13 +999,13 @@
                 </span>
               </a>
               <div class="snapshot-gallery-header-content">
-                <h5 class="snapshot-gallery-title">Visit Public Gallery</h5>
-                <p class="snapshot-gallery-description">Explore shared grow sessions in the Public Gallery.</p>
+                <h5 class="snapshot-gallery-title">Visit Community Grow</h5>
+                <p class="snapshot-gallery-description">Explore shared grow sessions in Community Grow.</p>
               </div>
             </div>
             <div class="snapshot-gallery-button-row">
               <a class="button button-secondary snapshot-gallery-link" href="#gallery">
-                <span>Visit Grow Gallery</span>
+                <span>Visit Community Grow</span>
               </a>
             </div>
           </div>

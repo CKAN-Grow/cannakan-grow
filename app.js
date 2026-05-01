@@ -1911,7 +1911,7 @@ function getMockGallerySourcePalette(sourceName) {
 function buildMockGalleryImageDataUri(record) {
   const palette = getMockGallerySourcePalette(record.source);
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Dev mock grow gallery preview">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Dev mock Community Grow preview">
       <defs>
         <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
           <stop offset="0%" stop-color="${palette.background}" />
@@ -1922,7 +1922,7 @@ function buildMockGalleryImageDataUri(record) {
       <circle cx="960" cy="190" r="180" fill="${palette.accent}" opacity="0.16" />
       <circle cx="250" cy="680" r="220" fill="${palette.accent}" opacity="0.12" />
       <rect x="74" y="74" width="1052" height="752" rx="34" fill="none" stroke="${palette.accent}" stroke-width="4" opacity="0.35" />
-      <text x="96" y="152" fill="${palette.accent}" font-size="36" font-family="Arial, sans-serif" font-weight="700">DEV MOCK GALLERY DATA</text>
+      <text x="96" y="152" fill="${palette.accent}" font-size="36" font-family="Arial, sans-serif" font-weight="700">DEV MOCK COMMUNITY GROW DATA</text>
       <text x="96" y="260" fill="${palette.text}" font-size="74" font-family="Arial, sans-serif" font-weight="700">${record.seedVariety}</text>
       <text x="96" y="330" fill="${palette.text}" font-size="38" font-family="Arial, sans-serif">${record.source}</text>
       <text x="96" y="448" fill="${palette.text}" font-size="118" font-family="Arial, sans-serif" font-weight="700">${record.germinationRate}%</text>
@@ -2561,7 +2561,7 @@ function getCurrentSiteAnalyticsPageContext() {
     return buildSiteAnalyticsPageContext({
       pageGroup: "admin",
       pageKey: "admin-gallery-moderation",
-      pageLabel: "Admin Gallery Moderation",
+      pageLabel: "Admin Community Grow Moderation",
       pagePath: "/admin/gallery-moderation",
     });
   }
@@ -2577,7 +2577,7 @@ function getCurrentSiteAnalyticsPageContext() {
     return buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "gallery",
-      pageLabel: "Grow Gallery",
+      pageLabel: "Community Grow",
       pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
     });
   }
@@ -3111,7 +3111,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
         appState.gallerySnapshots = await safelyLoadAppData(
           () => loadGallerySnapshots(),
           [],
-          "Failed to load gallery snapshots during auth hydration.",
+          "Failed to load Community Grow snapshots during auth hydration.",
         );
         appState.gallerySnapshotsLoaded = true;
       } else if (isSupabaseConfigured()) {
@@ -3126,7 +3126,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
         appState.gallerySnapshots = await safelyLoadAppData(
           () => loadGallerySnapshots(),
           [],
-          "Failed to load public gallery snapshots during auth hydration.",
+          "Failed to load Community Grow snapshots during auth hydration.",
         );
         appState.gallerySnapshotsLoaded = true;
       }
@@ -3495,7 +3495,7 @@ async function loadAdminMembers(reason = "unspecified") {
 
   if (snapshotsResponse.error) {
     console.error("Failed to load admin member gallery submissions", { reason, error: snapshotsResponse.error });
-    appState.membersError = snapshotsResponse.error.message || "Could not load member gallery submission counts.";
+    appState.membersError = snapshotsResponse.error.message || "Could not load member Community Grow submission counts.";
     return [];
   }
 
@@ -3659,7 +3659,7 @@ async function deleteMemberAccount(member) {
     throw new Error(sessionsResponse.error.message || "Could not load member sessions for deletion.");
   }
   if (snapshotsResponse.error) {
-    throw new Error(snapshotsResponse.error.message || "Could not load member gallery submissions for deletion.");
+    throw new Error(snapshotsResponse.error.message || "Could not load member Community Grow submissions for deletion.");
   }
 
   const sessionImagePaths = (sessionsResponse.data || [])
@@ -3683,7 +3683,7 @@ async function deleteMemberAccount(member) {
     .delete()
     .eq("user_id", member.id);
   if (deleteLikesResponse.error) {
-    throw new Error(deleteLikesResponse.error.message || "Could not remove member gallery likes.");
+    throw new Error(deleteLikesResponse.error.message || "Could not remove member Community Grow likes.");
   }
 
   const deleteSnapshotsResponse = await appState.supabase
@@ -3691,7 +3691,7 @@ async function deleteMemberAccount(member) {
     .delete()
     .eq("user_id", member.id);
   if (deleteSnapshotsResponse.error) {
-    throw new Error(deleteSnapshotsResponse.error.message || "Could not remove member gallery submissions.");
+    throw new Error(deleteSnapshotsResponse.error.message || "Could not remove member Community Grow submissions.");
   }
 
   const deleteSessionsResponse = await appState.supabase
@@ -4246,7 +4246,7 @@ async function clearManagedSourceBrandingFromSnapshots(source) {
       .update({ source_logo_url: "" })
       .eq("source_name", sourceName);
     if (sourceNameError) {
-      throw new Error(getSourceErrorMessage(sourceNameError, "Could not detach this source from existing gallery sessions."));
+      throw new Error(getSourceErrorMessage(sourceNameError, "Could not detach this source from existing Community Grow sessions."));
     }
   }
 
@@ -4290,7 +4290,7 @@ async function deleteSourceRecord(source) {
     if (source.logoPath) {
       await removeSourceLogoFromStorage(source.logoPath);
     }
-    throw new Error("Source deleted, but existing gallery branding cleanup could not finish automatically.");
+    throw new Error("Source deleted, but existing Community Grow branding cleanup could not finish automatically.");
   }
 
   if (source.logoPath) {
@@ -4879,7 +4879,7 @@ async function persistSessionImages(session, images) {
 
 async function uploadGallerySnapshotBlob(sessionId, blob) {
   if (!appState.supabase?.storage || !appState.user) {
-    throw new Error("Public gallery publishing is not available until Supabase Storage is ready.");
+    throw new Error("Community Grow publishing is not available until Supabase Storage is ready.");
   }
 
   const scopeId = sessionId || crypto.randomUUID();
@@ -4899,7 +4899,7 @@ async function uploadGallerySnapshotBlob(sessionId, blob) {
       userId: appState.user.id,
       error,
     });
-    throw new Error(getGalleryPublishErrorMessage(error, "Could not upload this snapshot to the Grow Gallery."));
+    throw new Error(getGalleryPublishErrorMessage(error, "Could not upload this snapshot to Community Grow."));
   }
 
   const { data } = appState.supabase.storage.from(GROW_GALLERY_BUCKET).getPublicUrl(path);
@@ -5015,16 +5015,16 @@ function getGalleryPublishErrorMessage(error, fallbackMessage) {
   ).trim().toLowerCase();
 
   if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
-    return "Grow Gallery storage bucket is missing or not configured.";
+    return "Community Grow storage bucket is missing or not configured.";
   }
   if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
-    return "You do not have permission to publish to the Grow Gallery.";
+    return "You do not have permission to publish to Community Grow.";
   }
   if (normalizedMessage.includes("relation") && normalizedMessage.includes("grow_gallery_snapshots")) {
-    return "Grow Gallery data store is missing. Run the latest schema setup.";
+    return "Community Grow data store is missing. Run the latest schema setup.";
   }
   if (normalizedMessage.includes("column") && normalizedMessage.includes("grow_gallery_snapshots")) {
-    return "Grow Gallery schema is out of date. Apply the latest database schema.";
+    return "Community Grow schema is out of date. Apply the latest database schema.";
   }
 
   return fallbackMessage;
@@ -5032,11 +5032,11 @@ function getGalleryPublishErrorMessage(error, fallbackMessage) {
 
 async function publishSnapshotToGallery(session, snapshotData, blob, options = {}) {
   if (!appState.supabase || !appState.user) {
-    throw new Error("You must be signed in to publish to the Grow Gallery.");
+    throw new Error("You must be signed in to publish to Community Grow.");
   }
 
   if (!session?.id) {
-    throw new Error("Save this session before publishing it to the Grow Gallery.");
+    throw new Error("Save this session before publishing it to Community Grow.");
   }
 
   const existing = getGallerySnapshotForSession(session.id);
@@ -5103,7 +5103,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
       error,
     });
     await removeGallerySnapshotImage(upload.path);
-    throw new Error(getGalleryPublishErrorMessage(error, "Could not save this snapshot to the Grow Gallery."));
+    throw new Error(getGalleryPublishErrorMessage(error, "Could not save this snapshot to Community Grow."));
   }
 
   const mapped = mapRowToGallerySnapshot(data);
@@ -5231,7 +5231,7 @@ async function clearGallerySnapshotStateForSession(sessionId) {
 function getOwnerGalleryAction(snapshot) {
   const status = getGallerySnapshotDisplayStatus(snapshot);
   if (status === "pending_review") {
-    return { mode: "delete", label: "Withdraw from Grow Gallery" };
+    return { mode: "delete", label: "Withdraw from Community Grow" };
   }
   if (status === "rejected") {
     return { mode: "delete", label: "Remove & Resubmit" };
@@ -5255,11 +5255,11 @@ async function deleteGallerySnapshot(snapshotId) {
   }
 
   if (!isGallerySnapshotOwner(existing)) {
-    throw new Error("You can only manage your own Grow Gallery snapshots.");
+    throw new Error("You can only manage your own Community Grow snapshots.");
   }
 
   if (getGallerySnapshotDisplayStatus(existing) === "approved") {
-    throw new Error("Approved Grow Gallery snapshots cannot be removed here.");
+    throw new Error("Approved Community Grow snapshots cannot be removed here.");
   }
 
   await removeGallerySnapshotImage(existing.imagePath);
@@ -5269,7 +5269,7 @@ async function deleteGallerySnapshot(snapshotId) {
     .eq("id", snapshotId);
 
   if (error) {
-    throw new Error("Could not remove this snapshot from the Grow Gallery.");
+    throw new Error("Could not remove this snapshot from Community Grow.");
   }
 
   appState.gallerySnapshots = appState.gallerySnapshots.filter((entry) => entry.id !== snapshotId);
@@ -5285,14 +5285,14 @@ async function unpublishGallerySnapshot(snapshotId) {
 async function toggleGallerySnapshotLike(snapshotId) {
   const snapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId);
   if (!snapshot) {
-    throw new Error("Could not find this Grow Gallery snapshot.");
+    throw new Error("Could not find this Community Grow snapshot.");
   }
   if (isMockGallerySnapshot(snapshot)) {
-    throw new Error("Mock gallery likes are preview-only in local development.");
+    throw new Error("Mock Community Grow likes are preview-only in local development.");
   }
 
   if (!appState.supabase || !appState.user?.id) {
-    throw new Error("Sign in to like Grow Gallery snapshots.");
+    throw new Error("Sign in to like Community Grow snapshots.");
   }
 
   if (snapshot.likedByCurrentUser) {
@@ -5652,7 +5652,7 @@ function ensureGalleryReviewPreviewModal() {
 function openGalleryReviewPreview(snapshotId) {
   const snapshot = getGalleryReviewSnapshotById(snapshotId);
   if (!snapshot) {
-    window.alert("Could not find this Grow Gallery submission.");
+    window.alert("Could not find this Community Grow submission.");
     return;
   }
 
@@ -5681,8 +5681,8 @@ function openGalleryReviewPreview(snapshotId) {
     <div class="gallery-review-preview-header">
       <div>
         <p class="eyebrow">${isMockReviewSnapshot ? "DEV MOCK" : "Admin Review"}</p>
-        <h3>${escapeHtml(snapshot.title || "Grow Gallery submission")}</h3>
-        <p class="muted">Preview pending Grow Gallery submission details before moderation.</p>
+        <h3>${escapeHtml(snapshot.title || "Community Grow submission")}</h3>
+        <p class="muted">Preview pending Community Grow submission details before moderation.</p>
       </div>
       <div class="gallery-review-preview-statuses">
         ${isMockReviewSnapshot ? '<span class="gallery-review-status-badge is-dev-mock">DEV MOCK</span>' : ""}
@@ -6148,7 +6148,7 @@ function renderGalleryLeaderboardSection() {
         </svg>
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
-          <h3>Community Grow Gallery Rankings</h3>
+          <h3>Community Grow Rankings</h3>
           <p class="muted">Approved public snapshots only. Rankings use germination performance only, with a 3-snapshot minimum per source or seed variety.</p>
         </div>
       </div>
@@ -6253,12 +6253,12 @@ function renderHomeGalleryRankingsTeaser() {
           </span>
           <div>
             <p class="eyebrow">Leaderboard Preview</p>
-            <h3 id="home-gallery-rankings-title">Community Grow Gallery Rankings</h3>
+            <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
             <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
           </div>
         </div>
         <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
-          <span>View Community Grow Gallery</span>
+          <span>View Community Grow</span>
           <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
               <path d="M5 12h14"></path>
@@ -6268,7 +6268,7 @@ function renderHomeGalleryRankingsTeaser() {
         </a>
       </div>
       ${!shouldShowEmptyState ? `
-        <ul class="home-gallery-rankings-list" aria-label="Community Grow Gallery ranking preview">
+        <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
           ${rankingRows.map((row) => `
             <li class="home-gallery-rankings-row ${row.toneClass}">
               <div class="home-gallery-rankings-row-main">
@@ -6333,7 +6333,7 @@ function renderGalleryLikeButtonMarkup(snapshot) {
       class="gallery-like-button${isLiked ? " is-liked" : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
-      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Grow Gallery snapshot" : "Like this Grow Gallery snapshot")}"
+      aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow snapshot" : "Like this Community Grow snapshot")}"
       ${isMock ? "disabled" : ""}
     >
       <span class="gallery-like-icon" aria-hidden="true">
@@ -7297,7 +7297,7 @@ function initializeSnapshotSection(scope, options) {
           sessionId: existing.sessionId || "",
           userId: appState.user?.id || "",
         });
-        setSnapshotMessage(state, "Removal request noted. Contact support for published Grow Gallery changes.");
+        setSnapshotMessage(state, "Removal request noted. Contact support for published Community Grow changes.");
         return;
       }
 
@@ -7311,11 +7311,11 @@ function initializeSnapshotSection(scope, options) {
       setSnapshotMessage(
         state,
         getGallerySnapshotDisplayStatus(existing) === "rejected"
-          ? "Snapshot removed. You can submit a new Grow Gallery snapshot now."
-          : "Snapshot withdrawn from the Grow Gallery.",
+          ? "Snapshot removed. You can submit a new Community Grow snapshot now."
+          : "Snapshot withdrawn from Community Grow.",
       );
     } catch (error) {
-      setSnapshotMessage(state, error.message || "Could not remove this snapshot from the Grow Gallery.", true);
+      setSnapshotMessage(state, error.message || "Could not remove this snapshot from Community Grow.", true);
     }
   });
 }
@@ -7326,7 +7326,7 @@ function getSnapshotDestination(state) {
 }
 
 const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
-const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Grow Gallery.";
+const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Community Grow.";
 
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
@@ -7579,23 +7579,23 @@ function syncSnapshotGalleryControls(state) {
     } else if (hasConfirmedSubmission) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
     } else if (!canPublish && destination !== "social") {
-      state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
+      state.galleryNote.textContent = "Save this session before submitting anything to Community Grow. Private notes stay private.";
     } else if (destination === "social") {
       state.galleryNote.textContent = "Social only keeps this snapshot private to you. Private notes stay private.";
     } else if (destination === "gallery") {
       state.galleryNote.textContent = currentStatus === "pending_review"
         ? "Submitted for review. This snapshot will not be shared socially. Private notes stay private."
-        : "This snapshot will be submitted to the Grow Gallery for review only. Private notes stay private.";
+        : "This snapshot will be submitted to Community Grow for review only. Private notes stay private.";
     } else if (!canPublish) {
-      state.galleryNote.textContent = "Save this session before submitting anything to the Grow Gallery. Private notes stay private.";
+      state.galleryNote.textContent = "Save this session before submitting anything to Community Grow. Private notes stay private.";
     } else if (currentStatus === "pending_review") {
       state.galleryNote.textContent = "Submitted for review. Social sharing will still work normally. Private notes stay private.";
     } else if (currentStatus === "approved") {
-      state.galleryNote.textContent = "Approved and visible in the Grow Gallery. Social sharing will still work normally. Private notes stay private.";
+      state.galleryNote.textContent = "Approved and visible in Community Grow. Social sharing will still work normally. Private notes stay private.";
     } else if (currentStatus === "rejected") {
-      state.galleryNote.textContent = "This snapshot was rejected. Use Social + Grow Gallery or Grow Gallery only to resubmit. Private notes stay private.";
+      state.galleryNote.textContent = "This snapshot was rejected. Use Social + Community Grow or Community Grow only to resubmit. Private notes stay private.";
     } else {
-      state.galleryNote.textContent = "This snapshot will be shared socially and submitted to the Grow Gallery for review. Private notes stay private.";
+      state.galleryNote.textContent = "This snapshot will be shared socially and submitted to Community Grow for review. Private notes stay private.";
     }
   }
 
@@ -7606,7 +7606,7 @@ function syncSnapshotGalleryControls(state) {
     state.unpublishButton.hidden = !ownerAction;
     state.unpublishButton.disabled = false;
     state.unpublishButton.dataset.galleryOwnerAction = ownerAction?.mode || "";
-    state.unpublishButton.textContent = ownerAction?.label || "Remove from Gallery";
+    state.unpublishButton.textContent = ownerAction?.label || "Remove from Community Grow";
   }
 
   renderSnapshotSavedNotice(state);
@@ -7650,7 +7650,7 @@ async function maybePublishSnapshotFromState(state, result) {
     });
     await persistSnapshotStateForSection(state, buildSessionSnapshotStateFromGallerySnapshot(published, getSnapshotStateForSection(state)));
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, "Snapshot submitted to the Grow Gallery for review.");
+    setSnapshotMessage(state, "Snapshot submitted to Community Grow for review.");
     void refreshGallerySnapshots(`post-publish:${published?.id || "unknown"}`, published?.id || "");
     return { published, blocked: false };
   } catch (error) {
@@ -7660,7 +7660,7 @@ async function maybePublishSnapshotFromState(state, result) {
       snapshotData,
       error,
     });
-    setSnapshotMessage(state, error.message || "Could not publish this snapshot to the Grow Gallery.", true);
+    setSnapshotMessage(state, error.message || "Could not publish this snapshot to Community Grow.", true);
     return { published: null, blocked: true };
   }
 }
@@ -7828,11 +7828,11 @@ function renderSnapshotSubmissionConfirmationMarkup(snapshotState) {
     ? `#gallery/${snapshotState.gallerySnapshotId}`
     : "#gallery";
   return `
-    <article class="snapshot-confirmation-card" aria-label="Grow Gallery submission confirmation">
-      <p class="eyebrow snapshot-confirmation-eyebrow">Grow Gallery</p>
-      <h4 class="snapshot-confirmation-title">Snapshot submitted to Grow Gallery</h4>
+    <article class="snapshot-confirmation-card" aria-label="Community Grow submission confirmation">
+      <p class="eyebrow snapshot-confirmation-eyebrow">Community Grow</p>
+      <h4 class="snapshot-confirmation-title">Snapshot submitted to Community Grow</h4>
       <p class="snapshot-confirmation-time">Submitted ${escapeHtml(submittedDate)}</p>
-      <a class="button button-primary snapshot-confirmation-button" href="${escapeHtml(galleryRoute)}">Go to Grow Gallery</a>
+      <a class="button button-primary snapshot-confirmation-button" href="${escapeHtml(galleryRoute)}">Go to Community Grow</a>
     </article>
   `;
 }
@@ -8030,7 +8030,7 @@ function ensureSnapshotImageModal() {
       <div class="snapshot-modal-profile-option">
         <label class="snapshot-profile-toggle-row">
           <input type="checkbox" id="snapshot-modal-include-profile">
-          <span>Include my profile name & image with this snapshot in the Grow Gallery</span>
+          <span>Include my profile name & image with this snapshot in Community Grow</span>
         </label>
         <p class="snapshot-modal-profile-helper">Only your profile name and image will be shown.</p>
       </div>
@@ -8801,7 +8801,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
       pageKey: "gallery",
-      pageLabel: "Grow Gallery",
+      pageLabel: "Community Grow",
       pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
     }));
     void refreshGallerySnapshots("route:gallery", id || "");
@@ -8885,7 +8885,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
       pageKey: "admin-gallery-moderation",
-      pageLabel: "Admin Gallery Moderation",
+      pageLabel: "Admin Community Grow Moderation",
       pagePath: "/admin/gallery-moderation",
     }));
     void refreshGallerySnapshots("route:admin-gallery-review", subroute || "");
@@ -10010,11 +10010,11 @@ function renderHomeAdminUtilityCardMarkup() {
             class="mock-data-toggle ${isMockDataEnabled() ? "is-on" : "is-off"}"
             data-home-mock-data-toggle="true"
             aria-pressed="${isMockDataEnabled() ? "true" : "false"}"
-            aria-label="Toggle Dev Mode mock gallery data"
+            aria-label="Toggle Dev Mode mock Community Grow data"
           >
             <span class="mock-data-toggle-text">
               <span class="mock-data-toggle-label">Dev Mode</span>
-              <span class="mock-data-toggle-sublabel">Mock gallery data</span>
+              <span class="mock-data-toggle-sublabel">Mock Community Grow data</span>
             </span>
             <span class="mock-data-toggle-switch" aria-hidden="true">
               <span class="mock-data-toggle-thumb"></span>
@@ -10172,7 +10172,7 @@ function renderAdminSourceEditorMarkup(source = null) {
   const title = isEditing ? `Edit ${source.name}` : "Add New Source";
   const subtitle = isEditing
     ? "Update display info, branding, and visibility for this source."
-    : "Create a source company profile for sessions, gallery metadata, and future branding.";
+    : "Create a source company profile for sessions, Community Grow metadata, and future branding.";
 
   return `
     <form id="admin-source-form" class="admin-source-form">
@@ -10626,7 +10626,7 @@ function renderAdminMembersTableMarkup() {
             <th>Joined Date</th>
             <th>Last Active</th>
             <th>Sessions</th>
-            <th>Gallery Submissions</th>
+            <th>Community Grow Submissions</th>
             <th>Account Status</th>
             <th>Actions</th>
           </tr>
@@ -10653,7 +10653,7 @@ function ensureMemberDeleteConfirmModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Delete Member</p>
         <h3 id="member-delete-confirm-title">Delete member account?</h3>
-        <p id="member-delete-confirm-message">Are you sure you want to delete this member account? This may remove or disconnect their sessions, gallery submissions, and profile data.</p>
+        <p id="member-delete-confirm-message">Are you sure you want to delete this member account? This may remove or disconnect their sessions, Community Grow submissions, and profile data.</p>
       </div>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-member-delete-cancel>Cancel</button>
@@ -10676,7 +10676,7 @@ function confirmMemberDeletion(member) {
     title.textContent = `Delete ${member?.profileName || "this member"}?`;
   }
   if (message) {
-    message.textContent = "Are you sure you want to delete this member account? This may remove or disconnect their sessions, gallery submissions, and profile data.";
+    message.textContent = "Are you sure you want to delete this member account? This may remove or disconnect their sessions, Community Grow submissions, and profile data.";
   }
 
   return new Promise((resolve) => {
@@ -10780,9 +10780,9 @@ function openAdminMemberDetails(memberId) {
     subtext: "saved grow sessions",
   })}
       ${renderAdminOverviewCardMarkup({
-    label: "Gallery Submissions",
+    label: "Community Grow Submissions",
     value: String(member.gallerySubmissionCount || 0),
-    subtext: "grow gallery records",
+    subtext: "Community Grow records",
   })}
     </div>
     <div class="admin-member-details-meta">
@@ -12566,9 +12566,9 @@ function renderSiteVisitorAnalyticsSummaryMarkup() {
         subtext: "Sessions and new-session views",
       })}
       ${renderAdminOverviewCardMarkup({
-        label: "Grow Gallery Views",
+        label: "Community Grow Views",
         value: formatValue(summary.galleryViews),
-        subtext: "Gallery route views",
+        subtext: "Community Grow route views",
       })}
       ${renderAdminOverviewCardMarkup({
         label: "Admin Views",
@@ -12798,12 +12798,12 @@ function renderAdminPage() {
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Gallery Moderation</p>
-          <h3>Review Community Grow Gallery submissions</h3>
+          <p class="eyebrow">Community Grow Moderation</p>
+          <h3>Review Community Grow submissions</h3>
           <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
         </div>
         <div class="admin-section-actions">
-          <a class="button button-primary" href="/admin/gallery-moderation">Open Gallery Moderation</a>
+          <a class="button button-primary" href="/admin/gallery-moderation">Open Community Grow Moderation</a>
         </div>
       </div>
     </section>
@@ -12823,7 +12823,7 @@ function renderAdminPage() {
     ${renderAdminCollapsibleSectionMarkup({
       eyebrow: "Sources",
       title: "Manage source companies, logos, and display info.",
-      description: "Add, update, hide, or delete source companies without changing the current public gallery layout.",
+      description: "Add, update, hide, or delete source companies without changing the current Community Grow layout.",
       storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
       contentId: "admin-sources-section-content",
       defaultOpen: false,
@@ -12933,9 +12933,9 @@ function renderAdminPage() {
         subtext: Number.isFinite(memberCount) ? "registered profiles" : (appState.memberCountLoaded ? "Count unavailable" : "Loading members"),
       }),
       renderAdminOverviewCardMarkup({
-        label: "Approved Gallery Snapshots",
+        label: "Approved Community Grow Snapshots",
         value: approvedSnapshots.length.toLocaleString(),
-        subtext: "used in public gallery views",
+        subtext: "used in Community Grow views",
       }),
       renderAdminOverviewCardMarkup({
         label: "Pending Moderation",
@@ -12943,7 +12943,7 @@ function renderAdminPage() {
         subtext: "awaiting admin review",
       }),
       renderAdminOverviewCardMarkup({
-        label: "Shared Gallery Profiles",
+        label: "Shared Community Grow Profiles",
         value: sharedProfileSnapshots.length.toLocaleString(),
         subtext: "approved snapshots with shared profile info",
       }),
@@ -13263,11 +13263,11 @@ function renderMockDataAdminSection(target = app, options = {}) {
           class="mock-data-toggle ${isMockDataEnabled() ? "is-on" : "is-off"}"
           data-mock-data-toggle="true"
           aria-pressed="${isMockDataEnabled() ? "true" : "false"}"
-          aria-label="Toggle Dev Mode mock gallery data"
+          aria-label="Toggle Dev Mode mock Community Grow data"
         >
           <span class="mock-data-toggle-text">
             <span class="mock-data-toggle-label">Dev Mode</span>
-            <span class="mock-data-toggle-sublabel">Mock gallery data</span>
+            <span class="mock-data-toggle-sublabel">Mock Community Grow data</span>
           </span>
           <span class="mock-data-toggle-switch" aria-hidden="true">
             <span class="mock-data-toggle-thumb"></span>
@@ -14038,7 +14038,7 @@ function renderLeaderboardAuditEmptyStateMarkup(state) {
     : "No leaderboard audit records are available yet.";
   const message = state.hasActiveFilters
     ? "Try removing one or more filters, widening the date range, or clearing all filters to view more leaderboard audit data."
-    : "Audit rows will appear here after Grow Gallery snapshot records are available for review.";
+    : "Audit rows will appear here after Community Grow snapshot records are available for review.";
   const actionMarkup = state.hasActiveFilters
     ? '<button type="button" class="button button-secondary" data-leaderboard-audit-clear="true">Clear All Filters</button>'
     : "";
@@ -14265,7 +14265,7 @@ function renderLeaderboardAuditSection(target = app) {
   section.innerHTML = renderAdminCollapsibleSectionMarkup({
     eyebrow: "Admin Analytics",
     title: "Leaderboard Data Audit",
-    description: "Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.",
+    description: "Inspect the snapshot records and ranking calculations used for Community Grow performance insights.",
     storageKey: ADMIN_ANALYTICS_OPEN_STORAGE_KEY,
     contentId: "admin-analytics-section-content",
     defaultOpen: false,
@@ -14315,7 +14315,7 @@ function renderLeaderboardAuditSection(target = app) {
           <select data-audit-filter="profile">${renderLeaderboardAuditSelectOptions(state.options.profiles, state.filters.profile, "All profiles")}</select>
         </label>
         <label>
-          <span>Gallery Status</span>
+          <span>Community Grow Status</span>
           <select data-audit-filter="status">
             <option value="all"${state.filters.status === "all" ? " selected" : ""}>All statuses</option>
             <option value="approved"${state.filters.status === "approved" ? " selected" : ""}>Approved</option>
@@ -14615,10 +14615,10 @@ function renderGallery(targetSnapshotId = "") {
         </span>
         <div class="gallery-inline-review-copy">
           <div class="gallery-inline-review-title-row">
-            <h3>Grow Gallery Submissions</h3>
+            <h3>Community Grow Submissions</h3>
             <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
           </div>
-          <p class="muted">Review pending Grow Gallery snapshots before they become public.</p>
+          <p class="muted">Review pending Community Grow snapshots before they become public.</p>
         </div>
       </div>
       <div class="gallery-review-list"></div>
@@ -14725,7 +14725,7 @@ function renderGallery(targetSnapshotId = "") {
               <path d="m20.5 15-4.5-4.5L11 16l-2.5-2.5L3.5 18"></path>
             </svg>
           </div>
-          <p>No gallery snapshots yet. Publish one from your Share Snapshot section.</p>
+          <p>No Community Grow snapshots yet. Publish one from your Share Snapshot section.</p>
         </div>
       `;
       return;
@@ -14826,21 +14826,21 @@ function renderGallery(targetSnapshotId = "") {
           const ownerAction = button.dataset.galleryOwnerAction || "";
           const snapshot = gallerySnapshots.find((entry) => entry.id === snapshotId);
           if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
-            throw new Error("You can only manage your own Grow Gallery snapshots.");
+            throw new Error("You can only manage your own Community Grow snapshots.");
           }
           if (ownerAction === "request-removal") {
             console.info("[GrowGallery] Removal requested for approved snapshot", {
               snapshotId,
               userId: appState.user?.id || "",
             });
-            window.alert("Removal request noted. Contact support for published Grow Gallery changes.");
+            window.alert("Removal request noted. Contact support for published Community Grow changes.");
             return;
           }
 
           await deleteGallerySnapshot(snapshotId);
           renderGallery();
         } catch (error) {
-          window.alert(error.message || "Could not remove this gallery snapshot.");
+          window.alert(error.message || "Could not remove this Community Grow snapshot.");
         }
       });
     });
@@ -14907,7 +14907,7 @@ function renderGallery(targetSnapshotId = "") {
 }
 
 function renderGalleryReview() {
-  document.title = "Grow Gallery Moderation";
+  document.title = "Community Grow Moderation";
   renderGallery();
 }
 
@@ -16018,7 +16018,7 @@ function renderPublicSessionDetail(snapshotId) {
             <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
           </div>
           <div class="inline-actions">
-            <a class="button button-secondary" href="#gallery">Back to Gallery</a>
+            <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
           </div>
         </div>
       </section>
@@ -16057,7 +16057,7 @@ function renderPublicSessionDetail(snapshotId) {
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#gallery">Back to Gallery</a>
+          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
       </div>
       ${sharedProfileMarkup ? `<div class="public-session-profile">${sharedProfileMarkup}</div>` : ""}
