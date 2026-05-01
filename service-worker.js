@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v12";
 const CACHE_PREFIX = "cannakan-grow-shell";
 const CACHE_NAME = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const APP_SHELL_ASSETS = [
@@ -6,6 +6,7 @@ const APP_SHELL_ASSETS = [
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/supabase-config.js",
   "/build-info.js",
   "/build-info.json",
   "/manifest.json",
@@ -24,6 +25,7 @@ const NETWORK_FIRST_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/supabase-config.js",
   "/build-info.js",
   "/build-info.json",
   "/manifest.json",

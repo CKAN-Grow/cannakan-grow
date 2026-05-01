@@ -52,6 +52,7 @@ if ((!url || !anonKey) && isVercelBuild) {
 }
 
 const outputPath = resolve(process.cwd(), "supabase-config.js");
+const appJsPath = resolve(process.cwd(), "app.js");
 const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   url: ${JSON.stringify(url)},
   anonKey: ${JSON.stringify(anonKey)},
@@ -70,10 +71,20 @@ const buildInfoContents = `window.CANNAKAN_BUILD_INFO = {
   commitHash: ${JSON.stringify(buildInfoPayload.commitHash)},
 };
 `;
+const appJsContents = readFileSync(appJsPath, "utf8");
+const updatedAppJsContents = appJsContents.replace(
+  /const CURRENT_APP_BUILD_INFO = Object\.freeze\(\{\s*version: ".*?",\s*buildTimestamp: ".*?",\s*commitHash: ".*?",\s*\}\);/,
+  `const CURRENT_APP_BUILD_INFO = Object.freeze({
+  version: ${JSON.stringify(buildInfoPayload.version)},
+  buildTimestamp: ${JSON.stringify(buildInfoPayload.buildTimestamp)},
+  commitHash: ${JSON.stringify(buildInfoPayload.commitHash)},
+});`,
+);
 
 writeFileSync(outputPath, configContents, "utf8");
 writeFileSync(buildInfoPath, buildInfoContents, "utf8");
 writeFileSync(buildInfoJsonPath, `${JSON.stringify(buildInfoPayload, null, 2)}\n`, "utf8");
+writeFileSync(appJsPath, updatedAppJsContents, "utf8");
 
 if (!url || !anonKey) {
   console.warn("Supabase runtime config was generated without values. The app will show the setup screen until config values are provided.");

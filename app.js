@@ -64,6 +64,11 @@ const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
 const BUILD_INFO_CHECK_INTERVAL_MS = 120000;
 const BUILD_INFO_ACTIVE_RECHECK_MS = 30000;
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
+const CURRENT_APP_BUILD_INFO = Object.freeze({
+  version: "1.0.0",
+  buildTimestamp: "2026-05-01T06:06:39.105Z",
+  commitHash: "4256773",
+});
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
@@ -646,7 +651,7 @@ function registerServiceWorker() {
 }
 
 function getBuildInfo() {
-  return normalizeBuildInfo(window.CANNAKAN_BUILD_INFO || {});
+  return normalizeBuildInfo(CURRENT_APP_BUILD_INFO);
 }
 
 function normalizeBuildInfo(buildInfo = {}) {
@@ -6559,7 +6564,7 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
     </div>
-    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
+    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect KAN System performance results, not the seed source.</p>
   `;
 
   return section;

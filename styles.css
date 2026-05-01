@@ -2425,7 +2425,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-dashboard-secondary-row-top .home-gallery-rankings-card,
-.home-dashboard-secondary-row-top .filter-paper-card,
 .home-dashboard-secondary-row-top .home-install-card,
 .home-dashboard-secondary-row-bottom .mock-data-admin-section {
   margin-top: 0;
@@ -10123,6 +10122,10 @@ body.theme-dark #session-history-section {
   color: var(--muted);
   font-size: 0.97rem;
   line-height: 1.45;
+}
+
+.sessions-section-subtitle {
+  max-width: 42rem;
 }
 
 #grow-sessions-header .section-title-icon,
