@@ -13597,7 +13597,7 @@ function renderHomeInstallInfoCardMarkup() {
   const footerText = isUnsupported
     ? "Install available on supported browsers like Chrome. Support varies by device."
     : helperText;
-  const installPreviewElapsed = formatInstallPreviewElapsed(2, 14);
+  const installPreviewElapsed = formatInstallPreviewElapsed(2, 2);
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
