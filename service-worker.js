@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v9";
+const CACHE_NAME = "cannakan-grow-shell-v10";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -15,6 +15,13 @@ const APP_SHELL_ASSETS = [
   "/src/assets/Cannakan_GROW_darkmode.png",
   "/src/assets/Cannakan_GROW_lightmode.png",
 ];
+const NETWORK_FIRST_PATHS = new Set([
+  "/",
+  "/index.html",
+  "/styles.css",
+  "/app.js",
+  "/manifest.json",
+]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -34,8 +41,46 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+function cacheResponse(request, response) {
+  if (!response || response.status !== 200 || response.type === "opaque") {
+    return response;
+  }
+
+  caches.open(CACHE_NAME).then((cache) => {
+    cache.put(request, response.clone());
+  });
+  return response;
+}
+
+function fetchNetworkFirst(request, fallbackToIndex = false) {
+  return fetch(request)
+    .then((response) => cacheResponse(request, response))
+    .catch(async () => {
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+
+      if (fallbackToIndex) {
+        return caches.match("/index.html");
+      }
+
+      throw new Error(`Network request failed for ${request.url}`);
+    });
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isNavigationRequest = event.request.mode === "navigate";
+  const shouldUseNetworkFirst = isSameOrigin && (isNavigationRequest || NETWORK_FIRST_PATHS.has(requestUrl.pathname));
+
+  if (shouldUseNetworkFirst) {
+    event.respondWith(fetchNetworkFirst(event.request, isNavigationRequest));
     return;
   }
 
@@ -45,16 +90,9 @@ self.addEventListener("fetch", (event) => {
         return cachedResponse;
       }
 
-      return fetch(event.request).then((networkResponse) => {
-        const requestUrl = new URL(event.request.url);
-        if (requestUrl.origin === self.location.origin) {
-          const clonedResponse = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clonedResponse);
-          });
-        }
-        return networkResponse;
-      }).catch(() => caches.match("/index.html"));
+      return fetch(event.request)
+        .then((response) => isSameOrigin ? cacheResponse(event.request, response) : response)
+        .catch(() => isNavigationRequest ? caches.match("/index.html") : undefined);
     }),
   );
 });

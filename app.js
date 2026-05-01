@@ -609,7 +609,9 @@ function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").catch((error) => {
+    navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+      void registration.update();
+    }).catch((error) => {
       console.warn("Service worker registration failed", error);
     });
   }, { once: true });
@@ -9883,7 +9885,7 @@ function renderFilterPaperCardMarkup() {
   const statusLabel = getFilterPaperStatusDisplayLabel(status.key);
 
   return `
-    <section class="card filter-paper-card filter-paper-card--${status.key}" aria-labelledby="filter-paper-card-title">
+    <section class="card filter-paper-card filter-paper-card--${status.key}" data-filter-paper-sessions-card="true" aria-labelledby="filter-paper-card-title">
       <div class="filter-paper-card-head">
         <div>
           <p class="eyebrow">Supplies</p>
@@ -13479,6 +13481,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
+  app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
   applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
