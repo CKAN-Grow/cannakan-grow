@@ -51,6 +51,16 @@ const ADMIN_MEMBERS_OPEN_STORAGE_KEY = "cannakanAdminMembersOpen";
 const ADMIN_SOURCES_OPEN_STORAGE_KEY = "cannakanAdminSourcesOpen";
 const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
+const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const SITE_ANALYTICS_TABLE = "site_analytics_events";
+const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
+const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
+const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
+const SITE_ANALYTICS_VISIT_LOGGED_SESSION_KEY = "cannakanGrowVisitLogged";
+const SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY = "cannakanGrowPwaLaunchLogged";
+const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
+const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 60000;
+const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -210,6 +220,24 @@ const appState = {
   memberCountLoaded: false,
   memberCountError: "",
   memberCountRefreshPromise: null,
+  siteVisitorAnalyticsRows: [],
+  siteVisitorAnalyticsLoaded: false,
+  siteVisitorAnalyticsLoadedFilter: "",
+  siteVisitorAnalyticsError: "",
+  siteVisitorAnalyticsRefreshPromise: null,
+  siteVisitorAnalyticsFilter: SITE_ANALYTICS_DEFAULT_FILTER,
+  siteVisitorAnalyticsTableUnavailable: false,
+  siteVisitorAnalyticsTrackingBlocked: false,
+  siteVisitorPresenceChannel: null,
+  siteVisitorPresenceAvailable: false,
+  siteVisitorPresenceError: "",
+  siteVisitorPresenceState: {},
+  siteVisitorPresenceHeartbeatId: 0,
+  siteVisitorTrackingInitialized: false,
+  siteVisitorPresenceSubscribed: false,
+  siteVisitorId: "",
+  siteVisitId: "",
+  siteAnalyticsLastTrackedSignature: "",
   mockGalleryReviewStatuses: {},
   deferredInstallPrompt: null,
   installPromptMode: "",
@@ -371,6 +399,11 @@ function resetSessionScopedAppState() {
     role: "all",
     status: "all",
   };
+  appState.siteVisitorAnalyticsRows = [];
+  appState.siteVisitorAnalyticsLoaded = false;
+  appState.siteVisitorAnalyticsLoadedFilter = "";
+  appState.siteVisitorAnalyticsError = "";
+  appState.siteVisitorAnalyticsRefreshPromise = null;
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
   resetMemberCountState();
@@ -2311,6 +2344,7 @@ async function bootstrapApp() {
   appState.installPromptMode = getInstallPromptMode();
   applyTheme(getPreferredTheme(), { persist: false });
   initializeSupabaseClient();
+  initializeSiteVisitorTracking();
   bindBackToTopVisibilityObservers();
   await rehydratePersistentBrowserState("bootstrap:start");
   updateAuthStatus();
@@ -2393,6 +2427,604 @@ function initializeSupabaseClient() {
 
 function isSupabaseConfigured() {
   return Boolean(window.CANNAKAN_SUPABASE_CONFIG?.url && window.CANNAKAN_SUPABASE_CONFIG?.anonKey);
+}
+
+function generateSiteAnalyticsId(prefix = "visitor") {
+  const randomValue = typeof crypto?.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${prefix}-${randomValue}`;
+}
+
+function getOrCreateSiteVisitorId() {
+  if (appState.siteVisitorId) {
+    return appState.siteVisitorId;
+  }
+
+  try {
+    const storedValue = localStorage.getItem(SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY);
+    if (storedValue) {
+      appState.siteVisitorId = storedValue;
+      return storedValue;
+    }
+
+    const nextValue = generateSiteAnalyticsId("visitor");
+    localStorage.setItem(SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY, nextValue);
+    appState.siteVisitorId = nextValue;
+    return nextValue;
+  } catch (error) {
+    const fallbackValue = appState.siteVisitorId || generateSiteAnalyticsId("visitor");
+    appState.siteVisitorId = fallbackValue;
+    return fallbackValue;
+  }
+}
+
+function getOrCreateSiteVisitId() {
+  if (appState.siteVisitId) {
+    return appState.siteVisitId;
+  }
+
+  try {
+    const storedValue = sessionStorage.getItem(SITE_ANALYTICS_VISIT_ID_SESSION_KEY);
+    if (storedValue) {
+      appState.siteVisitId = storedValue;
+      return storedValue;
+    }
+
+    const nextValue = generateSiteAnalyticsId("session");
+    sessionStorage.setItem(SITE_ANALYTICS_VISIT_ID_SESSION_KEY, nextValue);
+    appState.siteVisitId = nextValue;
+    return nextValue;
+  } catch (error) {
+    const fallbackValue = appState.siteVisitId || generateSiteAnalyticsId("session");
+    appState.siteVisitId = fallbackValue;
+    return fallbackValue;
+  }
+}
+
+function isStandalonePwaLaunch() {
+  return Boolean(
+    window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator?.standalone
+  );
+}
+
+function detectSiteVisitorDeviceType() {
+  const userAgent = String(window.navigator?.userAgent || "").toLowerCase();
+  if (/ipad|tablet|playbook|silk|kindle/.test(userAgent) || (/android/.test(userAgent) && !/mobile/.test(userAgent))) {
+    return "tablet";
+  }
+  if (/mobi|iphone|ipod|android/.test(userAgent)) {
+    return "mobile";
+  }
+  return "desktop";
+}
+
+function detectSiteVisitorBrowser() {
+  const userAgent = String(window.navigator?.userAgent || "").toLowerCase();
+  if (userAgent.includes("edg/")) {
+    return "Edge";
+  }
+  if (userAgent.includes("opr/") || userAgent.includes("opera")) {
+    return "Opera";
+  }
+  if (userAgent.includes("samsungbrowser")) {
+    return "Samsung Internet";
+  }
+  if (userAgent.includes("firefox")) {
+    return "Firefox";
+  }
+  if (userAgent.includes("chrome")) {
+    return "Chrome";
+  }
+  if (userAgent.includes("safari")) {
+    return "Safari";
+  }
+  return "Unknown";
+}
+
+function getSiteVisitorReferrer() {
+  const referrer = String(document.referrer || "").trim();
+  if (!referrer) {
+    return "";
+  }
+
+  try {
+    return new URL(referrer).hostname || referrer;
+  } catch (error) {
+    return referrer;
+  }
+}
+
+function buildSiteAnalyticsPageContext({
+  pageGroup = "other",
+  pageKey = "other",
+  pageLabel = "Other",
+  pagePath = "",
+} = {}) {
+  const resolvedPath = String(pagePath || normalizeNavigationHash(window.location.hash || "#home")).trim();
+  return {
+    pageGroup,
+    pageKey,
+    pageLabel,
+    pagePath: resolvedPath || "#home",
+  };
+}
+
+function getCurrentSiteAnalyticsPageContext() {
+  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const [route, id] = rawRoute.split("/");
+
+  if (route === "admin" && id === "gallery-moderation") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin-gallery-moderation",
+      pageLabel: "Admin Gallery Moderation",
+      pagePath: "/admin/gallery-moderation",
+    });
+  }
+  if (route === "admin") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin",
+      pageLabel: "Admin",
+      pagePath: "#admin",
+    });
+  }
+  if (route === "gallery") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "gallery",
+      pageLabel: "Grow Gallery",
+      pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
+    });
+  }
+  if (route === "sessions" || route === "new") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "sessions",
+      pageLabel: "Sessions",
+      pagePath: rawRoute ? `#${rawRoute}` : "#sessions",
+    });
+  }
+  if (route === "home" || !route) {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "home",
+      pageKey: "home",
+      pageLabel: "Home",
+      pagePath: "#home",
+    });
+  }
+
+  return buildSiteAnalyticsPageContext({
+    pageGroup: "other",
+    pageKey: route || "other",
+    pageLabel: capitalize((route || "other").replace(/[-_]+/g, " ")),
+    pagePath: rawRoute ? `#${rawRoute}` : "#home",
+  });
+}
+
+function buildSiteAnalyticsVisitorPayload(pageContext = getCurrentSiteAnalyticsPageContext()) {
+  return {
+    visitorId: getOrCreateSiteVisitorId(),
+    visitId: getOrCreateSiteVisitId(),
+    userId: String(appState.user?.id || "").trim(),
+    profileName: String(appState.profile?.username || "").trim(),
+    userEmail: String(appState.user?.email || "").trim().toLowerCase(),
+    deviceType: detectSiteVisitorDeviceType(),
+    browserName: detectSiteVisitorBrowser(),
+    referrer: getSiteVisitorReferrer(),
+    isPwa: isStandalonePwaLaunch(),
+    pageContext,
+  };
+}
+
+function isSiteAnalyticsTableMissingError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("site_analytics_events") && message.includes("relation");
+}
+
+function isSiteAnalyticsPolicyError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("row-level security") || message.includes("permission denied");
+}
+
+function normalizeSiteAnalyticsEventType(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (["visit", "page_view", "pwa_launch"].includes(normalizedValue)) {
+    return normalizedValue;
+  }
+  return "page_view";
+}
+
+function normalizeSiteAnalyticsRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: String(row.id || "").trim(),
+    occurredAt: row.occurred_at || row.created_at || "",
+    visitorId: String(row.visitor_id || "").trim(),
+    visitId: String(row.visit_id || "").trim(),
+    userId: String(row.user_id || "").trim(),
+    profileName: String(row.profile_name || "").trim(),
+    userEmail: String(row.user_email || "").trim().toLowerCase(),
+    eventType: normalizeSiteAnalyticsEventType(row.event_type),
+    pageGroup: String(row.page_group || "").trim().toLowerCase(),
+    pageKey: String(row.page_key || "").trim().toLowerCase(),
+    pageLabel: String(row.page_label || "").trim(),
+    pagePath: String(row.page_path || "").trim(),
+    deviceType: String(row.device_type || "").trim().toLowerCase(),
+    browserName: String(row.browser_name || "").trim(),
+    referrer: String(row.referrer || "").trim(),
+    isPwa: Boolean(row.is_pwa),
+    metadata: row.metadata && typeof row.metadata === "object" ? row.metadata : {},
+  };
+}
+
+function getSiteVisitorAnalyticsFilterStart(filterKey = SITE_ANALYTICS_DEFAULT_FILTER) {
+  const now = new Date();
+  if (filterKey === "today") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  }
+  if (filterKey === "last7") {
+    return new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+  }
+  if (filterKey === "last30") {
+    return new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+  }
+  return "";
+}
+
+async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
+  if (!appState.supabase || appState.siteVisitorAnalyticsTableUnavailable || appState.siteVisitorAnalyticsTrackingBlocked) {
+    return false;
+  }
+
+  const payload = buildSiteAnalyticsVisitorPayload(pageContext);
+  const { error } = await appState.supabase
+    .from(SITE_ANALYTICS_TABLE)
+    .insert({
+      occurred_at: new Date().toISOString(),
+      visitor_id: payload.visitorId,
+      visit_id: payload.visitId,
+      user_id: payload.userId || null,
+      profile_name: payload.profileName,
+      user_email: payload.userEmail,
+      event_type: normalizeSiteAnalyticsEventType(eventType),
+      page_group: payload.pageContext.pageGroup,
+      page_key: payload.pageContext.pageKey,
+      page_label: payload.pageContext.pageLabel,
+      page_path: payload.pageContext.pagePath,
+      device_type: payload.deviceType,
+      browser_name: payload.browserName,
+      referrer: payload.referrer,
+      is_pwa: payload.isPwa,
+      metadata: metadata && typeof metadata === "object" ? metadata : {},
+    });
+
+  if (!error) {
+    return true;
+  }
+
+  if (isSiteAnalyticsTableMissingError(error)) {
+    appState.siteVisitorAnalyticsTableUnavailable = true;
+    appState.siteVisitorAnalyticsError = "Historical analytics table unavailable. Apply the site analytics migration.";
+    return false;
+  }
+  if (isSiteAnalyticsPolicyError(error)) {
+    appState.siteVisitorAnalyticsTrackingBlocked = true;
+    appState.siteVisitorAnalyticsError = "Historical analytics tracking is blocked by the current Supabase policies.";
+    return false;
+  }
+
+  console.warn("Site analytics event insert failed", error);
+  return false;
+}
+
+function trackSiteAnalyticsVisitOnce() {
+  if (!appState.supabase) {
+    return;
+  }
+
+  let shouldLogVisit = true;
+  try {
+    shouldLogVisit = sessionStorage.getItem(SITE_ANALYTICS_VISIT_LOGGED_SESSION_KEY) !== "true";
+  } catch (error) {
+    shouldLogVisit = true;
+  }
+
+  if (shouldLogVisit) {
+    void recordSiteAnalyticsEvent("visit", getCurrentSiteAnalyticsPageContext(), {
+      launchPath: getCurrentSiteAnalyticsPageContext().pagePath,
+    });
+    try {
+      sessionStorage.setItem(SITE_ANALYTICS_VISIT_LOGGED_SESSION_KEY, "true");
+    } catch (error) {
+      // Ignore storage issues and keep tracking best-effort.
+    }
+  }
+
+  if (!isStandalonePwaLaunch()) {
+    return;
+  }
+
+  let shouldLogPwa = true;
+  try {
+    shouldLogPwa = sessionStorage.getItem(SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY) !== "true";
+  } catch (error) {
+    shouldLogPwa = true;
+  }
+
+  if (shouldLogPwa) {
+    void recordSiteAnalyticsEvent("pwa_launch", getCurrentSiteAnalyticsPageContext(), {
+      launchPath: getCurrentSiteAnalyticsPageContext().pagePath,
+    });
+    try {
+      sessionStorage.setItem(SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY, "true");
+    } catch (error) {
+      // Ignore storage issues and keep tracking best-effort.
+    }
+  }
+}
+
+function trackSiteAnalyticsPageView(pageContext) {
+  if (!appState.supabase || !pageContext) {
+    return;
+  }
+
+  const signature = `${pageContext.pageKey}|${pageContext.pagePath}`;
+  if (appState.siteAnalyticsLastTrackedSignature === signature) {
+    return;
+  }
+
+  appState.siteAnalyticsLastTrackedSignature = signature;
+  void recordSiteAnalyticsEvent("page_view", pageContext, {
+    routeHash: appState.currentRouteHash || window.location.hash || "#home",
+  });
+}
+
+function getSiteVisitorPresencePayload(pageContext = getCurrentSiteAnalyticsPageContext()) {
+  const payload = buildSiteAnalyticsVisitorPayload(pageContext);
+  return {
+    visitorId: payload.visitorId,
+    visitId: payload.visitId,
+    userId: payload.userId,
+    pageKey: payload.pageContext.pageKey,
+    pageLabel: payload.pageContext.pageLabel,
+    pagePath: payload.pageContext.pagePath,
+    deviceType: payload.deviceType,
+    browserName: payload.browserName,
+    lastSeen: new Date().toISOString(),
+  };
+}
+
+function stopSiteVisitorPresenceHeartbeat() {
+  if (appState.siteVisitorPresenceHeartbeatId) {
+    window.clearInterval(appState.siteVisitorPresenceHeartbeatId);
+    appState.siteVisitorPresenceHeartbeatId = 0;
+  }
+}
+
+function startSiteVisitorPresenceHeartbeat() {
+  stopSiteVisitorPresenceHeartbeat();
+  if (!appState.supabase || !appState.siteVisitorPresenceSubscribed) {
+    return;
+  }
+
+  appState.siteVisitorPresenceHeartbeatId = window.setInterval(() => {
+    if (document.visibilityState === "hidden") {
+      return;
+    }
+    void refreshSiteVisitorPresence("heartbeat");
+  }, SITE_ANALYTICS_HEARTBEAT_MS);
+}
+
+function syncSiteVisitorPresenceState(channel) {
+  if (!channel || typeof channel.presenceState !== "function") {
+    appState.siteVisitorPresenceState = {};
+    syncSiteVisitorLiveVisitorsCard();
+    return;
+  }
+
+  appState.siteVisitorPresenceState = channel.presenceState() || {};
+  syncSiteVisitorLiveVisitorsCard();
+}
+
+function initializeSiteVisitorPresence() {
+  if (!appState.supabase || appState.siteVisitorPresenceChannel) {
+    return;
+  }
+
+  const presenceKey = getOrCreateSiteVisitId();
+  const channel = appState.supabase.channel(SITE_ANALYTICS_PRESENCE_CHANNEL, {
+    config: {
+      presence: {
+        key: presenceKey,
+      },
+    },
+  });
+
+  channel
+    .on("presence", { event: "sync" }, () => {
+      syncSiteVisitorPresenceState(channel);
+    })
+    .on("presence", { event: "join" }, () => {
+      syncSiteVisitorPresenceState(channel);
+    })
+    .on("presence", { event: "leave" }, () => {
+      syncSiteVisitorPresenceState(channel);
+    })
+    .subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        appState.siteVisitorPresenceChannel = channel;
+        appState.siteVisitorPresenceAvailable = true;
+        appState.siteVisitorPresenceError = "";
+        appState.siteVisitorPresenceSubscribed = true;
+        startSiteVisitorPresenceHeartbeat();
+        await refreshSiteVisitorPresence("subscribe");
+        return;
+      }
+
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        appState.siteVisitorPresenceAvailable = false;
+        appState.siteVisitorPresenceSubscribed = false;
+        appState.siteVisitorPresenceError = "Live visitor tracking unavailable";
+        stopSiteVisitorPresenceHeartbeat();
+        syncSiteVisitorLiveVisitorsCard();
+      }
+    });
+
+  appState.siteVisitorPresenceChannel = channel;
+}
+
+async function refreshSiteVisitorPresence(reason = "update", pageContext = getCurrentSiteAnalyticsPageContext()) {
+  if (!appState.supabase) {
+    return false;
+  }
+
+  if (!appState.siteVisitorPresenceChannel) {
+    initializeSiteVisitorPresence();
+  }
+
+  if (!appState.siteVisitorPresenceChannel || !appState.siteVisitorPresenceSubscribed) {
+    return false;
+  }
+
+  try {
+    await appState.siteVisitorPresenceChannel.track({
+      ...getSiteVisitorPresencePayload(pageContext),
+      reason,
+    });
+    appState.siteVisitorPresenceAvailable = true;
+    appState.siteVisitorPresenceError = "";
+    return true;
+  } catch (error) {
+    console.warn("Live visitor presence track failed", error);
+    appState.siteVisitorPresenceAvailable = false;
+    appState.siteVisitorPresenceError = "Live visitor tracking unavailable";
+    syncSiteVisitorLiveVisitorsCard();
+    return false;
+  }
+}
+
+function handleSiteVisitorVisibilityChange() {
+  if (document.visibilityState === "visible") {
+    if (appState.siteVisitorPresenceSubscribed) {
+      startSiteVisitorPresenceHeartbeat();
+      void refreshSiteVisitorPresence("visible");
+    }
+    return;
+  }
+
+  stopSiteVisitorPresenceHeartbeat();
+}
+
+function initializeSiteVisitorTracking() {
+  if (!appState.supabase || appState.siteVisitorTrackingInitialized) {
+    return;
+  }
+
+  appState.siteVisitorTrackingInitialized = true;
+  getOrCreateSiteVisitorId();
+  getOrCreateSiteVisitId();
+  trackSiteAnalyticsVisitOnce();
+  initializeSiteVisitorPresence();
+  document.addEventListener("visibilitychange", handleSiteVisitorVisibilityChange);
+}
+
+async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_FILTER, reason = "refresh") {
+  if (!appState.supabase || !isAdminUser()) {
+    return [];
+  }
+
+  const rows = [];
+  const pageSize = 1000;
+  const startDate = getSiteVisitorAnalyticsFilterStart(filterKey);
+  let from = 0;
+
+  while (true) {
+    let query = appState.supabase
+      .from(SITE_ANALYTICS_TABLE)
+      .select("*")
+      .order("occurred_at", { ascending: false })
+      .range(from, from + pageSize - 1);
+
+    if (startDate) {
+      query = query.gte("occurred_at", startDate);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (isSiteAnalyticsTableMissingError(error)) {
+        appState.siteVisitorAnalyticsTableUnavailable = true;
+        throw new Error("Historical analytics table unavailable. Apply the site analytics migration.");
+      }
+      throw new Error(error.message || `Could not load site visitor analytics during ${reason}.`);
+    }
+
+    const pageRows = (data || []).map(normalizeSiteAnalyticsRow).filter(Boolean);
+    rows.push(...pageRows);
+    if (pageRows.length < pageSize) {
+      break;
+    }
+
+    from += pageSize;
+  }
+
+  return rows;
+}
+
+async function refreshSiteVisitorAnalytics(options = {}) {
+  const {
+    force = false,
+    reason = "refresh",
+  } = options || {};
+
+  const activeFilter = appState.siteVisitorAnalyticsFilter || SITE_ANALYTICS_DEFAULT_FILTER;
+  if (!appState.supabase || !isAdminUser()) {
+    appState.siteVisitorAnalyticsRows = [];
+    appState.siteVisitorAnalyticsLoaded = true;
+    appState.siteVisitorAnalyticsLoadedFilter = activeFilter;
+    appState.siteVisitorAnalyticsError = "";
+    return [];
+  }
+
+  if (!force && appState.siteVisitorAnalyticsLoaded && appState.siteVisitorAnalyticsLoadedFilter === activeFilter && !appState.siteVisitorAnalyticsRefreshPromise) {
+    return appState.siteVisitorAnalyticsRows;
+  }
+
+  if (!force && appState.siteVisitorAnalyticsRefreshPromise) {
+    return appState.siteVisitorAnalyticsRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const rows = await loadSiteVisitorAnalyticsRows(activeFilter, reason);
+      appState.siteVisitorAnalyticsRows = rows;
+      appState.siteVisitorAnalyticsLoaded = true;
+      appState.siteVisitorAnalyticsLoadedFilter = activeFilter;
+      appState.siteVisitorAnalyticsError = "";
+      return rows;
+    } catch (error) {
+      appState.siteVisitorAnalyticsRows = [];
+      appState.siteVisitorAnalyticsLoaded = true;
+      appState.siteVisitorAnalyticsLoadedFilter = activeFilter;
+      appState.siteVisitorAnalyticsError = error.message || "Could not load site visitor analytics.";
+      return [];
+    }
+  })();
+
+  appState.siteVisitorAnalyticsRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.siteVisitorAnalyticsRefreshPromise = null;
+  }
 }
 
 function loadLocalSessions() {
@@ -2501,6 +3133,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
 
       appState.lastHydratedAuthSessionKey = sessionKey;
       updateAuthStatus();
+      void refreshSiteVisitorPresence(`auth:${reason}`);
     });
 
   appState.authHydrationPromise = nextPromise;
@@ -8130,11 +8763,13 @@ function render() {
   if (!isEditableSessionRoute) {
     clearUnsavedChangesContext();
   }
-  const finalizeRender = () => {
+  const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
     syncInstallPromptBanner();
     syncMockDataBanner();
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
+    trackSiteAnalyticsPageView(pageContext);
+    void refreshSiteVisitorPresence("render", pageContext);
   };
 
   if (!appState.initialized || appState.loading || !appState.authReady) {
@@ -8146,18 +8781,29 @@ function render() {
     bindMessageBoardImageFallbacks(app);
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
+    void refreshSiteVisitorPresence("loading");
     return;
   }
 
   if (!isSupabaseConfigured()) {
     renderSetupScreen();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "setup",
+      pageKey: "setup",
+      pageLabel: "Setup",
+      pagePath: "#setup",
+    }));
     return;
   }
 
   if (route === "gallery") {
     renderGallery(id || "");
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "gallery",
+      pageLabel: "Grow Gallery",
+      pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
+    }));
     void refreshGallerySnapshots("route:gallery", id || "");
     return;
   }
@@ -8165,21 +8811,41 @@ function render() {
   if (route === "admin" && !id) {
     if (!appState.user) {
       renderAuthScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "auth",
+        pageKey: "auth",
+        pageLabel: "Authentication",
+        pagePath: "#admin",
+      }));
       return;
     }
     if (!hasCompletedProfile()) {
       renderProfileSetupScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: "#admin",
+      }));
       return;
     }
     if (!hasResolvedAdminAccess()) {
       renderAdminAccessDeniedScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "admin",
+        pageKey: "admin-access-denied",
+        pageLabel: "Admin Access Denied",
+        pagePath: "#admin",
+      }));
       return;
     }
     renderAdminPage();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin",
+      pageLabel: "Admin",
+      pagePath: "#admin",
+    }));
     void refreshGallerySnapshots("route:admin-dashboard");
     return;
   }
@@ -8187,47 +8853,87 @@ function render() {
   if (route === "admin" && id === "gallery-moderation") {
     if (!appState.user) {
       renderAuthScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "auth",
+        pageKey: "auth",
+        pageLabel: "Authentication",
+        pagePath: "/admin/gallery-moderation",
+      }));
       return;
     }
     if (!hasCompletedProfile()) {
       renderProfileSetupScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: "/admin/gallery-moderation",
+      }));
       return;
     }
     if (!hasResolvedAdminAccess()) {
       renderAdminAccessDeniedScreen();
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "admin",
+        pageKey: "admin-access-denied",
+        pageLabel: "Admin Access Denied",
+        pagePath: "/admin/gallery-moderation",
+      }));
       return;
     }
     renderGalleryReview();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin-gallery-moderation",
+      pageLabel: "Admin Gallery Moderation",
+      pagePath: "/admin/gallery-moderation",
+    }));
     void refreshGallerySnapshots("route:admin-gallery-review", subroute || "");
     return;
   }
 
   if (route === "sessions" && id === "public" && subroute) {
     renderPublicSessionDetail(subroute);
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "public-session",
+      pageLabel: "Public Session",
+      pagePath: `#sessions/public/${subroute}`,
+    }));
     void refreshGallerySnapshots("route:public-session", subroute);
     return;
   }
 
   if (route === "home" || !route) {
     renderHome();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "home",
+      pageKey: "home",
+      pageLabel: "Home",
+      pagePath: "#home",
+    }));
     return;
   }
 
   if (!appState.user) {
     renderAuthScreen();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "auth",
+      pageKey: "auth",
+      pageLabel: "Authentication",
+      pagePath: rawRoute ? `#${rawRoute}` : "#auth",
+    }));
     return;
   }
 
   if (!hasCompletedProfile()) {
     renderProfileSetupScreen();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "profile",
+      pageKey: "profile-setup",
+      pageLabel: "Profile Setup",
+      pagePath: rawRoute ? `#${rawRoute}` : "#profile",
+    }));
     return;
   }
 
@@ -8235,26 +8941,46 @@ function render() {
     if (id === "KAN" || id === "TRA") {
       appState.newSessionSystemType = id;
       renderSessionForm(id);
-      finalizeRender();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sessions",
+        pageKey: "new-session",
+        pageLabel: "New Session",
+        pagePath: rawRoute ? `#${rawRoute}` : "#new",
+      }));
       return;
     }
 
     appState.newSessionReturnHash = appState.newSessionReturnHash || "#sessions";
     renderSessionsList();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "sessions",
+      pageLabel: "Sessions",
+      pagePath: "#new",
+    }));
     openNewSessionSystemModal();
     return;
   }
 
   if (route === "sessions" && id) {
     renderSessionDetail(id);
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "session-detail",
+      pageLabel: "Session Detail",
+      pagePath: rawRoute ? `#${rawRoute}` : "#sessions",
+    }));
     return;
   }
 
   if (route === "sessions") {
     renderSessionsList();
-    finalizeRender();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "sessions",
+      pageLabel: "Sessions",
+      pagePath: "#sessions",
+    }));
     return;
   }
 }
@@ -11664,6 +12390,384 @@ function bindAdminCollapsibleSections(scope = app) {
   });
 }
 
+function getSiteVisitorAnalyticsFilterOptions() {
+  return [
+    { key: "today", label: "Today" },
+    { key: "last7", label: "Last 7 days" },
+    { key: "last30", label: "Last 30 days" },
+    { key: "all", label: "All time" },
+  ];
+}
+
+function getSiteVisitorAnalyticsFilterLabel(filterKey = SITE_ANALYTICS_DEFAULT_FILTER) {
+  return getSiteVisitorAnalyticsFilterOptions().find((option) => option.key === filterKey)?.label || "Last 7 days";
+}
+
+function formatSiteVisitorShortId(value, fallback = "Unknown") {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return fallback;
+  }
+
+  return normalizedValue.length > 14
+    ? `${normalizedValue.slice(0, 6)}…${normalizedValue.slice(-4)}`
+    : normalizedValue;
+}
+
+function formatSiteVisitorRelativeTime(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  if (!parsedDate) {
+    return "Not available";
+  }
+
+  const diffMs = Date.now() - parsedDate.getTime();
+  if (diffMs < 15000) {
+    return "Just now";
+  }
+  if (diffMs < 60000) {
+    return `${Math.max(1, Math.round(diffMs / 1000))}s ago`;
+  }
+  if (diffMs < 3600000) {
+    return `${Math.max(1, Math.round(diffMs / 60000))}m ago`;
+  }
+  if (diffMs < 86400000) {
+    return `${Math.max(1, Math.round(diffMs / 3600000))}h ago`;
+  }
+
+  return formatTimingDateTime(parsedDate);
+}
+
+function getSiteVisitorAnalyticsSummary(rows = appState.siteVisitorAnalyticsRows) {
+  const filteredRows = Array.isArray(rows) ? rows : [];
+  const pageViews = filteredRows.filter((row) => row.eventType === "page_view");
+  const visits = filteredRows.filter((row) => row.eventType === "visit");
+  const pwaLaunches = filteredRows.filter((row) => row.eventType === "pwa_launch");
+  const uniqueVisitors = new Set(filteredRows.map((row) => row.visitorId).filter(Boolean));
+  const lastVisitRow = [...filteredRows].sort((left, right) => (
+    new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime()
+  ))[0] || null;
+
+  return {
+    totalVisits: visits.length,
+    uniqueVisitors: uniqueVisitors.size,
+    pageViews: pageViews.length,
+    homeViews: pageViews.filter((row) => row.pageGroup === "home").length,
+    sessionsViews: pageViews.filter((row) => row.pageGroup === "sessions").length,
+    galleryViews: pageViews.filter((row) => row.pageGroup === "gallery").length,
+    adminViews: pageViews.filter((row) => row.pageGroup === "admin").length,
+    pwaLaunches: pwaLaunches.length,
+    lastVisitAt: lastVisitRow?.occurredAt || "",
+  };
+}
+
+function getSiteVisitorIdentityLabel(entry) {
+  const userId = String(entry?.userId || "").trim();
+  if (userId && isAdminUser()) {
+    const adminMember = getAdminMemberById(userId);
+    if (adminMember?.profileName && adminMember?.email) {
+      return `${adminMember.profileName} (${adminMember.email})`;
+    }
+    if (adminMember?.profileName) {
+      return adminMember.profileName;
+    }
+    if (adminMember?.email) {
+      return adminMember.email;
+    }
+    if (userId === appState.user?.id) {
+      return appState.profile?.username || appState.user?.email || `Member ${formatSiteVisitorShortId(userId, "Member")}`;
+    }
+  }
+
+  return `Anonymous • ${formatSiteVisitorShortId(entry?.visitorId, "Visitor")}`;
+}
+
+function getActiveSiteVisitorPresenceEntries() {
+  const cutoffTime = Date.now() - SITE_ANALYTICS_ACTIVE_WINDOW_MS;
+
+  return Object.entries(appState.siteVisitorPresenceState || {})
+    .flatMap(([presenceKey, presences]) => {
+      const normalizedPresences = Array.isArray(presences) ? presences : [];
+      const latestPresence = normalizedPresences
+        .map((presence) => ({
+          presenceKey,
+          visitorId: String(presence?.visitorId || "").trim(),
+          visitId: String(presence?.visitId || "").trim(),
+          userId: String(presence?.userId || "").trim(),
+          pageKey: String(presence?.pageKey || "").trim(),
+          pageLabel: String(presence?.pageLabel || "").trim(),
+          pagePath: String(presence?.pagePath || "").trim(),
+          deviceType: String(presence?.deviceType || "").trim().toLowerCase(),
+          browserName: String(presence?.browserName || "").trim(),
+          lastSeen: String(presence?.lastSeen || "").trim(),
+        }))
+        .sort((left, right) => new Date(right.lastSeen || 0).getTime() - new Date(left.lastSeen || 0).getTime())[0];
+
+      if (!latestPresence) {
+        return [];
+      }
+
+      const seenAt = parseCompletedAtValue(latestPresence.lastSeen);
+      if (!seenAt || seenAt.getTime() < cutoffTime) {
+        return [];
+      }
+
+      return [latestPresence];
+    })
+    .sort((left, right) => new Date(right.lastSeen || 0).getTime() - new Date(left.lastSeen || 0).getTime());
+}
+
+function renderSiteVisitorAnalyticsFilterMarkup() {
+  return `
+    <div class="site-visitor-analytics-toolbar" aria-label="Site visitor analytics date range">
+      ${getSiteVisitorAnalyticsFilterOptions().map((option) => `
+        <button
+          type="button"
+          class="button ${appState.siteVisitorAnalyticsFilter === option.key ? "button-primary" : "button-secondary"}"
+          data-site-analytics-filter="${escapeHtml(option.key)}"
+        >
+          ${escapeHtml(option.label)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSiteVisitorAnalyticsSummaryMarkup() {
+  const summary = getSiteVisitorAnalyticsSummary();
+  const activeFilterLabel = getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter);
+  const isLoading = Boolean(appState.supabase && !appState.siteVisitorAnalyticsLoaded);
+  const formatValue = (value) => (isLoading ? "--" : String(value));
+
+  return `
+    <div class="summary-grid admin-overview-grid site-visitor-analytics-summary-grid">
+      ${renderAdminOverviewCardMarkup({
+        label: "Total Visits",
+        value: formatValue(summary.totalVisits),
+        subtext: `${activeFilterLabel} visit starts`,
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Unique Visitors",
+        value: formatValue(summary.uniqueVisitors),
+        subtext: "distinct visitor IDs",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Page Views",
+        value: formatValue(summary.pageViews),
+        subtext: "tracked route views",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Home Views",
+        value: formatValue(summary.homeViews),
+        subtext: "Home route views",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Sessions Views",
+        value: formatValue(summary.sessionsViews),
+        subtext: "Sessions and new-session views",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Grow Gallery Views",
+        value: formatValue(summary.galleryViews),
+        subtext: "Gallery route views",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Admin Views",
+        value: formatValue(summary.adminViews),
+        subtext: "Admin dashboard and tools",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "PWA Launches",
+        value: formatValue(summary.pwaLaunches),
+        subtext: "standalone app launches",
+      })}
+      ${renderAdminOverviewCardMarkup({
+        label: "Last Visit",
+        value: isLoading
+          ? "--"
+          : (parseCompletedAtValue(summary.lastVisitAt) ? formatTimingDateTime(parseCompletedAtValue(summary.lastVisitAt)) : "None"),
+        subtext: "most recent recorded activity",
+      })}
+    </div>
+  `;
+}
+
+function renderSiteVisitorLiveVisitorsCardMarkup() {
+  const activeVisitors = getActiveSiteVisitorPresenceEntries();
+  const unavailableMessage = !appState.siteVisitorPresenceAvailable && appState.siteVisitorPresenceError
+    ? appState.siteVisitorPresenceError
+    : "";
+
+  return `
+    <section class="meta-card site-visitor-live-card">
+      <div class="site-visitor-live-head">
+        <div>
+          <strong>Live Visitors</strong>
+          <p class="muted">Visitors active in the last 60 seconds</p>
+        </div>
+        <span class="site-visitor-live-count">${escapeHtml(String(activeVisitors.length))}</span>
+      </div>
+      ${unavailableMessage ? `
+        <div class="empty-state">
+          <p>${escapeHtml(unavailableMessage)}</p>
+        </div>
+      ` : activeVisitors.length ? `
+        <div class="site-visitor-live-table-shell">
+          <table class="leaderboard-audit-table site-visitor-live-table">
+            <thead>
+              <tr>
+                <th>Visitor</th>
+                <th>Session ID</th>
+                <th>Page</th>
+                <th>Device</th>
+                <th>Browser</th>
+                <th>Last Seen</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activeVisitors.map((entry) => `
+                <tr>
+                  <td>${escapeHtml(getSiteVisitorIdentityLabel(entry))}</td>
+                  <td>${escapeHtml(formatSiteVisitorShortId(entry.visitId || entry.presenceKey, "Session"))}</td>
+                  <td>${escapeHtml(entry.pageLabel || entry.pageKey || "Unknown")}</td>
+                  <td>${escapeHtml(capitalize(entry.deviceType || "unknown"))}</td>
+                  <td>${escapeHtml(entry.browserName || "Unknown")}</td>
+                  <td>${escapeHtml(formatSiteVisitorRelativeTime(entry.lastSeen))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `
+        <div class="empty-state">
+          <p>No active visitors right now.</p>
+        </div>
+      `}
+    </section>
+  `;
+}
+
+function renderSiteVisitorRecentActivityMarkup() {
+  const rows = (appState.siteVisitorAnalyticsRows || []).slice(0, 50);
+  const isLoading = Boolean(appState.supabase && !appState.siteVisitorAnalyticsLoaded);
+
+  if (isLoading) {
+    return `
+      <div class="leaderboard-audit-empty-state">
+        <strong>Loading analytics</strong>
+        <p>Pulling site visitor activity for ${escapeHtml(getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter))}.</p>
+      </div>
+    `;
+  }
+
+  if (appState.siteVisitorAnalyticsError && !rows.length) {
+    return `
+      <div class="leaderboard-audit-empty-state">
+        <strong>Historical analytics unavailable</strong>
+        <p>${escapeHtml(appState.siteVisitorAnalyticsError)}</p>
+      </div>
+    `;
+  }
+
+  if (!rows.length) {
+    return `
+      <div class="leaderboard-audit-empty-state">
+        <strong>No visitor activity yet</strong>
+        <p>Recent site activity will appear here once analytics events are recorded for this date range.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="leaderboard-audit-table-shell">
+      <table class="leaderboard-audit-table site-visitor-analytics-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Event</th>
+            <th>Page</th>
+            <th>Visitor</th>
+            <th>Device</th>
+            <th>Browser</th>
+            <th>Referrer</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>${escapeHtml(parseCompletedAtValue(row.occurredAt) ? formatTimingDateTime(parseCompletedAtValue(row.occurredAt)) : "Not available")}</td>
+              <td>${escapeHtml(capitalize(row.eventType.replace(/_/g, " ")))}</td>
+              <td>${escapeHtml(row.pageLabel || row.pageKey || "Unknown")}</td>
+              <td>${escapeHtml(getSiteVisitorIdentityLabel(row))}</td>
+              <td>${escapeHtml(capitalize(row.deviceType || "unknown"))}</td>
+              <td>${escapeHtml(row.browserName || "Unknown")}</td>
+              <td>${escapeHtml(row.referrer || "Direct")}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderSiteVisitorAnalyticsSectionMarkup() {
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Site Visitor Analytics",
+    title: "Site Visitor Analytics",
+    description: "Track visits, page views, app activity, and live visitors.",
+    storageKey: ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
+    contentId: "admin-site-visitor-analytics-content",
+    defaultOpen: false,
+    bodyMarkup: `
+      ${renderSiteVisitorAnalyticsFilterMarkup()}
+      ${renderSiteVisitorAnalyticsSummaryMarkup()}
+      <div id="admin-site-live-visitors-card">
+        ${renderSiteVisitorLiveVisitorsCardMarkup()}
+      </div>
+      <section class="site-visitor-analytics-activity">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Recent Activity</p>
+            <h3>Recent Activity</h3>
+            <p class="muted">Latest visit starts, page views, and app launches for the selected date range.</p>
+          </div>
+        </div>
+        ${renderSiteVisitorRecentActivityMarkup()}
+      </section>
+    `,
+  });
+}
+
+function syncSiteVisitorLiveVisitorsCard() {
+  const liveCardAnchor = document.querySelector("#admin-site-live-visitors-card");
+  if (!liveCardAnchor) {
+    return;
+  }
+
+  liveCardAnchor.innerHTML = renderSiteVisitorLiveVisitorsCardMarkup();
+}
+
+function bindSiteVisitorAnalyticsSection() {
+  app.querySelectorAll("[data-site-analytics-filter]").forEach((button) => {
+    if (button.dataset.siteAnalyticsFilterBound === "true") {
+      return;
+    }
+
+    button.dataset.siteAnalyticsFilterBound = "true";
+    button.addEventListener("click", () => {
+      const nextFilter = String(button.dataset.siteAnalyticsFilter || "").trim();
+      if (!nextFilter || appState.siteVisitorAnalyticsFilter === nextFilter) {
+        return;
+      }
+
+      appState.siteVisitorAnalyticsFilter = nextFilter;
+      appState.siteVisitorAnalyticsLoaded = false;
+      appState.siteVisitorAnalyticsLoadedFilter = "";
+      appState.siteVisitorAnalyticsError = "";
+      safeRender();
+    });
+  });
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -11690,6 +12794,7 @@ function renderAdminPage() {
       <div id="admin-overview-tools"></div>
       <div class="summary-grid admin-overview-grid"></div>
     </section>
+    ${renderSiteVisitorAnalyticsSectionMarkup()}
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
@@ -11795,6 +12900,15 @@ function renderAdminPage() {
 
   if (isAdminUser() && !appState.membersLoaded && !appState.membersRefreshPromise && appState.supabase) {
     void refreshAdminMembers({ force: true, reason: "route:admin-dashboard" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (isAdminUser() && (!appState.siteVisitorAnalyticsLoaded || appState.siteVisitorAnalyticsLoadedFilter !== appState.siteVisitorAnalyticsFilter) && !appState.siteVisitorAnalyticsRefreshPromise && appState.supabase) {
+    void refreshSiteVisitorAnalytics({ force: true, reason: "route:admin-site-visitor-analytics" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
@@ -11914,6 +13028,7 @@ function renderAdminPage() {
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
   bindAdminFallbackContentSection();
+  bindSiteVisitorAnalyticsSection();
   bindMessageBoardImageFallbacks(app);
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
