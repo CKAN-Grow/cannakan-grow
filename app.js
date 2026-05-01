@@ -69,6 +69,15 @@ const CURRENT_APP_BUILD_INFO = Object.freeze({
   buildTimestamp: "2026-05-01T06:58:09.322Z",
   commitHash: "f787396",
 });
+const DEFAULT_BUILD_INFO = Object.freeze({
+  version: "0.0.0",
+  buildTime: "",
+  buildTimestamp: "",
+  timestamp: "",
+  commit: "",
+  commitHash: "",
+  hasUsableMetadata: false,
+});
 window.CANNAKAN_GROW_APP_READY = false;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -665,25 +674,44 @@ function getBuildInfo() {
   });
 }
 
-function normalizeBuildInfo(buildInfo) {
-  const candidate = buildInfo && typeof buildInfo === "object" && !Array.isArray(buildInfo)
-    ? buildInfo
-    : {};
-  const normalizedVersion = typeof candidate.version === "string" || typeof candidate.version === "number"
-    ? String(candidate.version).trim()
+function normalizeBuildInfo(info) {
+  if (!info || typeof info !== "object") return DEFAULT_BUILD_INFO;
+  if (Array.isArray(info)) return DEFAULT_BUILD_INFO;
+
+  const version = typeof info.version === "string" || typeof info.version === "number"
+    ? String(info.version || DEFAULT_BUILD_INFO.version).trim()
+    : DEFAULT_BUILD_INFO.version;
+  const buildTime = typeof info.buildTime === "string" || typeof info.buildTime === "number"
+    ? String(info.buildTime || DEFAULT_BUILD_INFO.buildTime).trim()
     : "";
-  const normalizedBuildTimestamp = typeof candidate.buildTimestamp === "string" || typeof candidate.buildTimestamp === "number"
-    ? String(candidate.buildTimestamp).trim()
+  const timestamp = typeof info.timestamp === "string" || typeof info.timestamp === "number"
+    ? String(info.timestamp || DEFAULT_BUILD_INFO.timestamp).trim()
     : "";
-  const normalizedCommitHash = typeof candidate.commitHash === "string" || typeof candidate.commitHash === "number"
-    ? String(candidate.commitHash).trim()
+  const buildTimestamp = typeof info.buildTimestamp === "string" || typeof info.buildTimestamp === "number"
+    ? String(info.buildTimestamp || buildTime || timestamp || DEFAULT_BUILD_INFO.buildTimestamp).trim()
+    : (buildTime || timestamp || DEFAULT_BUILD_INFO.buildTimestamp);
+  const commit = typeof info.commit === "string" || typeof info.commit === "number"
+    ? String(info.commit || DEFAULT_BUILD_INFO.commit).trim()
     : "";
+  const commitHash = typeof info.commitHash === "string" || typeof info.commitHash === "number"
+    ? String(info.commitHash || commit || DEFAULT_BUILD_INFO.commitHash).trim()
+    : (commit || DEFAULT_BUILD_INFO.commitHash);
 
   return {
-    version: normalizedVersion || "0.0.0",
-    buildTimestamp: normalizedBuildTimestamp,
-    commitHash: normalizedCommitHash,
-    hasUsableMetadata: Boolean(normalizedVersion || normalizedBuildTimestamp || normalizedCommitHash),
+    version: version || DEFAULT_BUILD_INFO.version,
+    buildTime: buildTime || buildTimestamp || DEFAULT_BUILD_INFO.buildTime,
+    buildTimestamp: buildTimestamp || DEFAULT_BUILD_INFO.buildTimestamp,
+    timestamp: timestamp || buildTimestamp || DEFAULT_BUILD_INFO.timestamp,
+    commit: commit || commitHash || DEFAULT_BUILD_INFO.commit,
+    commitHash: commitHash || DEFAULT_BUILD_INFO.commitHash,
+    hasUsableMetadata: Boolean(
+      (version && version !== DEFAULT_BUILD_INFO.version)
+      || buildTime
+      || buildTimestamp
+      || timestamp
+      || commit
+      || commitHash
+    ),
   };
 }
 
