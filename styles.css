@@ -227,6 +227,10 @@ body.theme-dark .app-logo--dark {
   white-space: nowrap;
 }
 
+.auth-contact-admin-button {
+  white-space: nowrap;
+}
+
 .account-menu-root {
   position: relative;
   display: inline-flex;
@@ -4888,14 +4892,39 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(255, 255, 255, 0.46);
 }
 
+.admin-messages-table-shell {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(109, 124, 113, 0.22);
+  background: rgba(255, 255, 255, 0.46);
+}
+
 .admin-members-table {
   min-width: 1080px;
+}
+
+.admin-messages-table {
+  min-width: 1120px;
 }
 
 .admin-members-table td:last-child,
 .admin-members-table th:last-child {
   width: 1%;
   white-space: nowrap;
+}
+
+.admin-message-cell,
+.admin-message-context {
+  min-width: 220px;
+  white-space: normal;
+  line-height: 1.45;
+  vertical-align: top;
+}
+
+.admin-message-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .admin-members-empty {
@@ -4908,6 +4937,48 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .admin-members-empty p {
   margin: 0;
+}
+
+.admin-messages-empty {
+  padding: 22px;
+  border-radius: 16px;
+  border: 1px dashed rgba(109, 124, 113, 0.28);
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--muted);
+}
+
+.admin-messages-empty p {
+  margin: 0;
+}
+
+.admin-message-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.admin-message-status-pill.is-new {
+  color: #8f5313;
+  background: rgba(217, 139, 43, 0.14);
+  border-color: rgba(217, 139, 43, 0.24);
+}
+
+.admin-message-status-pill.is-reviewed {
+  color: #2e6299;
+  background: rgba(127, 184, 255, 0.16);
+  border-color: rgba(79, 137, 207, 0.26);
+}
+
+.admin-message-status-pill.is-resolved {
+  color: #1f5a2b;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.26);
 }
 
 .admin-member-role-pill,
@@ -6786,6 +6857,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border: 0;
   box-shadow: none;
   background: transparent;
+}
+
+.admin-message-modal-card {
+  width: min(560px, calc(100vw - 32px));
+  display: grid;
+  gap: 14px;
+}
+
+.admin-message-context-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.admin-message-field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-message-field span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.admin-message-field textarea,
+.admin-message-field select {
+  width: 100%;
 }
 
 .auth-form,
@@ -9515,12 +9615,15 @@ body.theme-dark .admin-source-status-pill.is-hidden {
 }
 
 body.theme-dark .admin-members-table-shell,
-body.theme-dark .admin-members-empty {
+body.theme-dark .admin-members-empty,
+body.theme-dark .admin-messages-table-shell,
+body.theme-dark .admin-messages-empty {
   border-color: rgba(111, 122, 116, 0.24);
   background: rgba(24, 30, 26, 0.82);
 }
 
 body.theme-dark .admin-members-empty,
+body.theme-dark .admin-messages-empty,
 body.theme-dark .admin-member-details-meta {
   color: rgba(189, 204, 192, 0.82);
 }
@@ -9536,6 +9639,24 @@ body.theme-dark .admin-member-role-pill.is-member {
   color: #d9e0db;
   background: rgba(120, 140, 124, 0.14);
   border-color: rgba(120, 140, 124, 0.24);
+}
+
+body.theme-dark .admin-message-status-pill.is-new {
+  color: #f0cf8d;
+  background: rgba(230, 180, 90, 0.14);
+  border-color: rgba(230, 180, 90, 0.24);
+}
+
+body.theme-dark .admin-message-status-pill.is-reviewed {
+  color: #b7d7ff;
+  background: rgba(127, 184, 255, 0.16);
+  border-color: rgba(127, 184, 255, 0.24);
+}
+
+body.theme-dark .admin-message-status-pill.is-resolved {
+  color: #bfe89d;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.24);
 }
 
 body.theme-dark .admin-member-status-pill.is-disabled {

@@ -50,9 +50,11 @@ const MIXED_IMAGE_MODE_STORAGE_KEY = "cannakanGrowMixedImageMode";
 const ADMIN_MEMBERS_OPEN_STORAGE_KEY = "cannakanAdminMembersOpen";
 const ADMIN_SOURCES_OPEN_STORAGE_KEY = "cannakanAdminSourcesOpen";
 const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
+const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
+const ADMIN_MESSAGES_TABLE = "admin_messages";
 const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
 const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
 const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
@@ -207,6 +209,10 @@ const appState = {
   announcementsRefreshPromise: null,
   announcementAdminMessage: "",
   fallbackContentAdminMessage: "",
+  adminMessages: [],
+  adminMessagesLoaded: false,
+  adminMessagesError: "",
+  adminMessagesRefreshPromise: null,
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -428,6 +434,10 @@ function resetSessionScopedAppState() {
   appState.announcementsRefreshPromise = null;
   appState.announcementAdminMessage = "";
   appState.fallbackContentAdminMessage = "";
+  appState.adminMessages = [];
+  appState.adminMessagesLoaded = false;
+  appState.adminMessagesError = "";
+  appState.adminMessagesRefreshPromise = null;
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -2587,6 +2597,378 @@ function openAuthModal() {
   }
   body.querySelector('input[name="email"]')?.focus();
   return true;
+}
+
+function getCurrentAppRawRoute() {
+  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  return pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+}
+
+function getAdminMessageContext() {
+  const rawRoute = getCurrentAppRawRoute();
+  const [route, id, subroute] = rawRoute.split("/");
+  const routeSuffix = rawRoute ? ` (#${rawRoute})` : "";
+  const context = {
+    userEmail: appState.currentUserEmail || getNormalizedUserEmail(appState.user),
+    pageContext: "Home",
+    sessionId: "",
+    snapshotId: "",
+    timestamp: new Date().toISOString(),
+  };
+
+  if (route === "gallery") {
+    context.pageContext = `Community Grow${routeSuffix}`;
+    if (id) {
+      const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry?.id === id) || null;
+      context.snapshotId = snapshot?.id || id;
+      context.sessionId = snapshot?.sessionId || "";
+    }
+    return context;
+  }
+
+  if (route === "sessions" && id === "public" && subroute) {
+    const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry?.id === subroute) || null;
+    context.pageContext = `Public Session${routeSuffix}`;
+    context.snapshotId = snapshot?.id || subroute;
+    context.sessionId = snapshot?.sessionId || "";
+    return context;
+  }
+
+  if (route === "sessions") {
+    context.pageContext = `Sessions${routeSuffix}`;
+    context.sessionId = id || "";
+    return context;
+  }
+
+  if (route === "admin") {
+    context.pageContext = `Admin${routeSuffix}`;
+    return context;
+  }
+
+  context.pageContext = route === "home" || !route
+    ? `Home${routeSuffix}`
+    : `${capitalize(String(route).replace(/-/g, " "))}${routeSuffix}`;
+  return context;
+}
+
+function normalizeAdminMessageType(value = "") {
+  const normalizedValue = String(value || "").trim();
+  return ["Bug", "Report content", "Question", "Other"].includes(normalizedValue)
+    ? normalizedValue
+    : "Other";
+}
+
+function normalizeAdminMessageStatus(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return ["new", "reviewed", "resolved"].includes(normalizedValue)
+    ? normalizedValue
+    : "new";
+}
+
+function normalizeAdminMessageRow(row) {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  return {
+    id: String(row.id || "").trim(),
+    userEmail: String(row.user_email || "").trim(),
+    messageType: normalizeAdminMessageType(row.message_type),
+    message: String(row.message || "").trim(),
+    pageContext: String(row.page_context || "").trim(),
+    sessionId: String(row.session_id || "").trim(),
+    snapshotId: String(row.snapshot_id || "").trim(),
+    status: normalizeAdminMessageStatus(row.status),
+    createdAt: String(row.created_at || "").trim(),
+  };
+}
+
+function isAdminMessagesTableMissingError(error) {
+  const normalizedMessage = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+  return normalizedMessage.includes("admin_messages")
+    && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
+}
+
+async function submitAdminMessage(payload = {}) {
+  if (!appState.supabase) {
+    throw new Error("Messaging is unavailable until Supabase is configured.");
+  }
+
+  const record = {
+    user_email: String(payload.userEmail || "").trim(),
+    message_type: normalizeAdminMessageType(payload.messageType),
+    message: String(payload.message || "").trim(),
+    page_context: String(payload.pageContext || "").trim(),
+    session_id: String(payload.sessionId || "").trim(),
+    snapshot_id: String(payload.snapshotId || "").trim(),
+    status: "new",
+    created_at: payload.createdAt || new Date().toISOString(),
+  };
+
+  const { error } = await appState.supabase
+    .from(ADMIN_MESSAGES_TABLE)
+    .insert(record);
+
+  if (error) {
+    if (isAdminMessagesTableMissingError(error)) {
+      throw new Error("Messaging table unavailable. Apply supabase-admin-messages-migration.sql.");
+    }
+    throw new Error(error.message || "Could not send this message to admin.");
+  }
+
+  return record;
+}
+
+async function loadAdminMessages(reason = "refresh") {
+  if (!appState.supabase || !isAdminUser()) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(ADMIN_MESSAGES_TABLE)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isAdminMessagesTableMissingError(error)) {
+      throw new Error("User reports table unavailable. Apply supabase-admin-messages-migration.sql.");
+    }
+    throw new Error(error.message || `Could not load user reports during ${reason}.`);
+  }
+
+  return (data || []).map(normalizeAdminMessageRow).filter(Boolean);
+}
+
+async function refreshAdminMessages(options = {}) {
+  const { force = false, reason = "refresh" } = options || {};
+
+  if (!appState.supabase || !isAdminUser()) {
+    appState.adminMessages = [];
+    appState.adminMessagesLoaded = true;
+    appState.adminMessagesError = "";
+    return [];
+  }
+
+  if (!force && appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise) {
+    return appState.adminMessages;
+  }
+
+  if (!force && appState.adminMessagesRefreshPromise) {
+    return appState.adminMessagesRefreshPromise;
+  }
+
+  appState.adminMessagesError = "";
+  const refreshPromise = (async () => {
+    try {
+      const messages = await loadAdminMessages(reason);
+      appState.adminMessages = messages;
+      appState.adminMessagesLoaded = true;
+      appState.adminMessagesError = "";
+      return messages;
+    } catch (error) {
+      appState.adminMessages = [];
+      appState.adminMessagesLoaded = true;
+      appState.adminMessagesError = error.message || "Could not load user reports.";
+      return [];
+    }
+  })();
+
+  appState.adminMessagesRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.adminMessagesRefreshPromise = null;
+  }
+}
+
+async function updateAdminMessageStatus(messageId, nextStatus = "reviewed") {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage user reports.");
+  }
+
+  const normalizedStatus = normalizeAdminMessageStatus(nextStatus);
+  const normalizedMessageId = String(messageId || "").trim();
+  if (!normalizedMessageId) {
+    throw new Error("Message not found.");
+  }
+
+  const { data, error } = await appState.supabase
+    .from(ADMIN_MESSAGES_TABLE)
+    .update({ status: normalizedStatus })
+    .eq("id", normalizedMessageId)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(error.message || "Could not update message status.");
+  }
+
+  const normalizedRow = normalizeAdminMessageRow(data);
+  appState.adminMessages = appState.adminMessages.map((entry) => (
+    entry.id === normalizedMessageId && normalizedRow ? normalizedRow : entry
+  ));
+  return normalizedRow;
+}
+
+function ensureAdminMessageModal() {
+  let modal = document.querySelector("#admin-message-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "admin-message-modal";
+  modal.className = "snapshot-modal admin-message-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card admin-message-modal-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Support</p>
+        <h3 id="admin-message-modal-title">Report / Contact Admin</h3>
+        <p class="muted">Send a note to admin about bugs, public content, or general questions.</p>
+      </div>
+      <div class="admin-message-context-note" id="admin-message-context-note"></div>
+      <label class="admin-message-field">
+        <span>Reason / Type</span>
+        <select id="admin-message-type" required>
+          <option value="Bug">Bug</option>
+          <option value="Report content">Report content</option>
+          <option value="Question">Question</option>
+          <option value="Other">Other</option>
+        </select>
+      </label>
+      <label class="admin-message-field">
+        <span>Message</span>
+        <textarea id="admin-message-text" rows="6" maxlength="2000" placeholder="Tell admin what happened or what you need help with." required></textarea>
+      </label>
+      <p id="admin-message-modal-feedback" class="form-message" role="alert" aria-live="polite"></p>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-admin-message-cancel="true">Cancel</button>
+        <button type="submit" class="button button-primary" data-admin-message-submit="true">Submit</button>
+      </div>
+    </form>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+  modal.querySelector("[data-admin-message-cancel='true']")?.addEventListener("click", () => {
+    modal.close();
+  });
+  modal.addEventListener("close", () => {
+    modal.dataset.context = "";
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openAdminMessageModal(options = {}) {
+  const modal = ensureAdminMessageModal();
+  const context = {
+    ...getAdminMessageContext(),
+    ...options,
+  };
+  const typeField = modal.querySelector("#admin-message-type");
+  const messageField = modal.querySelector("#admin-message-text");
+  const feedback = modal.querySelector("#admin-message-modal-feedback");
+  const contextNote = modal.querySelector("#admin-message-context-note");
+  const submitButton = modal.querySelector("[data-admin-message-submit='true']");
+
+  if (!typeField || !messageField || !feedback || !contextNote || !submitButton) {
+    return false;
+  }
+
+  modal.dataset.context = JSON.stringify(context);
+  typeField.value = normalizeAdminMessageType(options.messageType || "Bug");
+  messageField.value = "";
+  feedback.className = "form-message";
+  feedback.textContent = "";
+  contextNote.textContent = [
+    `Page: ${context.pageContext || "Unknown"}`,
+    context.snapshotId ? `Snapshot ID: ${context.snapshotId}` : "",
+    context.sessionId ? `Session ID: ${context.sessionId}` : "",
+    context.userEmail ? `Signed in as: ${context.userEmail}` : "Signed in email not available",
+  ].filter(Boolean).join(" • ");
+
+  if (modal.dataset.bound !== "true") {
+    modal.dataset.bound = "true";
+    modal.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const boundContext = JSON.parse(modal.dataset.context || "{}");
+      const nextTypeField = modal.querySelector("#admin-message-type");
+      const nextMessageField = modal.querySelector("#admin-message-text");
+      const nextFeedback = modal.querySelector("#admin-message-modal-feedback");
+      const nextSubmitButton = modal.querySelector("[data-admin-message-submit='true']");
+      if (!nextTypeField || !nextMessageField || !nextFeedback || !nextSubmitButton) {
+        return;
+      }
+
+      nextFeedback.className = "form-message";
+      nextFeedback.textContent = "";
+      nextSubmitButton.disabled = true;
+      try {
+        await submitAdminMessage({
+          userEmail: boundContext.userEmail || "",
+          messageType: nextTypeField.value,
+          message: nextMessageField.value,
+          pageContext: boundContext.pageContext || "",
+          sessionId: boundContext.sessionId || "",
+          snapshotId: boundContext.snapshotId || "",
+          createdAt: boundContext.timestamp || new Date().toISOString(),
+        });
+        nextFeedback.classList.add("is-success");
+        nextFeedback.textContent = "Message sent to admin.";
+        if (isAdminUser() && appState.supabase) {
+          void refreshAdminMessages({ force: true, reason: "submit:admin-message" }).then(() => {
+            if ((window.location.hash || "#home") === "#admin") {
+              safeRender();
+            }
+          });
+        }
+        window.setTimeout(() => {
+          if (modal.open) {
+            modal.close();
+          }
+        }, 700);
+      } catch (error) {
+        nextFeedback.className = "form-message";
+        nextFeedback.textContent = error.message || "Could not send this message.";
+      } finally {
+        nextSubmitButton.disabled = false;
+      }
+    });
+  }
+
+  if (!modal.open) {
+    modal.showModal();
+  }
+  messageField.focus();
+  return true;
+}
+
+function bindContactAdminButtons(scope = document) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-contact-admin-open='true']").forEach((button) => {
+    if (button.dataset.contactAdminBound === "true") {
+      return;
+    }
+
+    button.dataset.contactAdminBound = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeAccountMenu();
+      openAdminMessageModal({
+        messageType: button.dataset.contactAdminType || "Bug",
+      });
+    });
+  });
 }
 
 function updateNavState() {
@@ -7057,10 +7439,12 @@ function updateAuthStatus() {
     authStatus.innerHTML = `
       <span class="auth-pill">Signed out</span>
       <button type="button" class="button button-primary auth-sign-in-button" data-auth-sign-in="true">Sign In</button>
+      <button type="button" class="button button-secondary auth-contact-admin-button" data-contact-admin-open="true">Report / Contact Admin</button>
     `;
     authStatus.querySelector("[data-auth-sign-in='true']")?.addEventListener("click", () => {
       openAuthModal();
     });
+    bindContactAdminButtons(authStatus);
     syncAdminNavigationVisibility();
     return;
   }
@@ -7110,6 +7494,10 @@ function updateAuthStatus() {
           ${getMenuIconMarkup("profile")}
           <span>Edit Profile</span>
         </button>
+        <button id="account-contact-admin" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("menu")}
+          <span>Report / Contact Admin</span>
+        </button>
         <button id="account-delete-profile" class="account-menu-item is-danger" type="button" role="menuitem">
           ${getMenuIconMarkup("delete")}
           <span>Delete Profile</span>
@@ -7156,6 +7544,13 @@ function updateAuthStatus() {
     event.stopPropagation();
     closeAccountMenu();
     openProfileEditor();
+  });
+
+  dropdown?.querySelector("#account-contact-admin")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    openAdminMessageModal({ messageType: "Question" });
   });
 
   dropdown?.querySelector("#account-delete-profile")?.addEventListener("click", async (event) => {
@@ -9162,6 +9557,8 @@ function render() {
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
     syncInstallPromptBanner();
     syncMockDataBanner();
+    bindContactAdminButtons(app);
+    bindContactAdminButtons(authStatus);
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     trackSiteAnalyticsPageView(pageContext);
@@ -13394,6 +13791,118 @@ function renderSiteVisitorAnalyticsSectionMarkup() {
   });
 }
 
+function getAdminMessageStatusLabel(status = "new") {
+  switch (normalizeAdminMessageStatus(status)) {
+    case "reviewed":
+      return "Reviewed";
+    case "resolved":
+      return "Resolved";
+    case "new":
+    default:
+      return "New";
+  }
+}
+
+function renderAdminMessageStatusPillMarkup(status = "new") {
+  const normalizedStatus = normalizeAdminMessageStatus(status);
+  return `<span class="admin-message-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminMessageStatusLabel(normalizedStatus))}</span>`;
+}
+
+function renderAdminMessagesTableMarkup() {
+  const rows = [...(appState.adminMessages || [])].sort((left, right) => (
+    new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime()
+  ));
+  const isLoading = Boolean(appState.supabase && !appState.adminMessagesLoaded && appState.adminMessagesRefreshPromise);
+
+  if (isLoading) {
+    return `<div class="admin-messages-empty"><p>Loading user reports...</p></div>`;
+  }
+
+  if (appState.adminMessagesError) {
+    return `<div class="admin-messages-empty"><p>${escapeHtml(appState.adminMessagesError)}</p></div>`;
+  }
+
+  if (!rows.length) {
+    return `<div class="admin-messages-empty"><p>No user reports or admin messages yet.</p></div>`;
+  }
+
+  return `
+    <div class="admin-messages-table-shell">
+      <table class="leaderboard-audit-table admin-messages-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Type</th>
+            <th>Message</th>
+            <th>User Email</th>
+            <th>Context</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => {
+            const contextParts = [
+              row.pageContext || "Unknown page",
+              row.sessionId ? `Session: ${row.sessionId}` : "",
+              row.snapshotId ? `Snapshot: ${row.snapshotId}` : "",
+            ].filter(Boolean);
+
+            return `
+              <tr>
+                <td>${renderAdminMessageStatusPillMarkup(row.status)}</td>
+                <td>${escapeHtml(row.messageType)}</td>
+                <td class="admin-message-cell">${escapeHtml(row.message)}</td>
+                <td>${escapeHtml(row.userEmail || "Not provided")}</td>
+                <td class="admin-message-context">${escapeHtml(contextParts.join(" • "))}</td>
+                <td>${escapeHtml(parseCompletedAtValue(row.createdAt) ? formatTimingDateTime(parseCompletedAtValue(row.createdAt)) : "Not available")}</td>
+                <td>
+                  <div class="admin-message-actions">
+                    ${row.status !== "reviewed" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="reviewed">Mark Reviewed</button>` : ""}
+                    ${row.status !== "resolved" ? `<button type="button" class="button button-secondary" data-admin-message-status="${escapeHtml(row.id)}" data-admin-message-next-status="resolved">Mark Resolved</button>` : ""}
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAdminMessagesSectionMarkup() {
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "User Reports / Messages",
+    title: "User Reports / Messages",
+    description: "Review bug reports, content flags, and support questions sent from Community Grow and public session views.",
+    storageKey: ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
+    contentId: "admin-user-reports-section-content",
+    defaultOpen: false,
+    bodyMarkup: renderAdminMessagesTableMarkup(),
+  });
+}
+
+function bindAdminMessagesSection(scope = app) {
+  scope.querySelectorAll("[data-admin-message-status]").forEach((button) => {
+    if (button.dataset.adminMessageStatusBound === "true") {
+      return;
+    }
+
+    button.dataset.adminMessageStatusBound = "true";
+    button.addEventListener("click", async () => {
+      const messageId = String(button.dataset.adminMessageStatus || "").trim();
+      const nextStatus = String(button.dataset.adminMessageNextStatus || "").trim();
+      try {
+        await updateAdminMessageStatus(messageId, nextStatus);
+        safeRender();
+      } catch (error) {
+        window.alert(error.message || "Could not update this message.");
+      }
+    });
+  });
+}
+
 function syncSiteVisitorLiveVisitorsCard() {
   const liveCardAnchor = document.querySelector("#admin-site-live-visitors-card");
   if (!liveCardAnchor) {
@@ -13477,6 +13986,7 @@ function renderAdminPage() {
         <div id="admin-members-table-anchor"></div>
       `,
     })}
+    ${renderAdminMessagesSectionMarkup()}
     ${renderAdminCollapsibleSectionMarkup({
       eyebrow: "Sources",
       title: "Manage source companies, logos, and display info.",
@@ -13557,6 +14067,15 @@ function renderAdminPage() {
 
   if (isAdminUser() && !appState.membersLoaded && !appState.membersRefreshPromise && appState.supabase) {
     void refreshAdminMembers({ force: true, reason: "route:admin-dashboard" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (isAdminUser() && !appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise && appState.supabase) {
+    void refreshAdminMessages({ force: true, reason: "route:admin-user-reports" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
@@ -13682,6 +14201,7 @@ function renderAdminPage() {
 
   bindAdminCollapsibleSections(app);
   bindAdminMembersSection();
+  bindAdminMessagesSection();
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
   bindAdminFallbackContentSection();
@@ -16720,6 +17240,7 @@ function renderPublicSessionDetail(snapshotId) {
           </div>
         </div>
         <div class="inline-actions">
+          <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Report content">Report / Contact Admin</button>
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
       </div>
