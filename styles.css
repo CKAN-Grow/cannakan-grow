@@ -2776,6 +2776,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --filter-paper-accent-text: #92342f;
 }
 
+.filter-paper-card--compact {
+  margin-top: 14px;
+  padding: 16px 18px;
+  box-shadow:
+    0 10px 22px rgba(24, 34, 24, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.filter-paper-card--compact .filter-paper-card-body {
+  gap: 8px;
+}
+
+.filter-paper-card--compact .filter-paper-helper,
+.filter-paper-card--compact .filter-paper-store,
+.filter-paper-card--compact .filter-paper-auto-subtract,
+.filter-paper-card--compact .filter-paper-reminder {
+  display: none;
+}
+
 .filter-paper-card-head {
   display: flex;
   align-items: flex-start;

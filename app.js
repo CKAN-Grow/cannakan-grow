@@ -1597,6 +1597,17 @@ function getFilterPaperStatusMeta(count) {
   return { key: "ok", label: "OK" };
 }
 
+function getFilterPaperStatusDisplayLabel(statusKey, options = {}) {
+  const { criticalLabel = "Critical" } = options || {};
+  if (statusKey === "critical") {
+    return criticalLabel;
+  }
+  if (statusKey === "low") {
+    return "Low";
+  }
+  return "OK";
+}
+
 function getSessionEntrySupplyTone(count = getFilterPaperInventory().count) {
   if (count <= 1) {
     return "urgent";
@@ -9813,6 +9824,7 @@ function renderFilterPaperCardMarkup() {
   const status = getFilterPaperStatusMeta(inventory.count);
   const reminder = getFilterPaperReminder(inventory.count);
   const storeLabel = inventory.storeRegion === "EU" ? "cannakan.eu" : "cannakan.com";
+  const statusLabel = getFilterPaperStatusDisplayLabel(status.key);
 
   return `
     <section class="card filter-paper-card filter-paper-card--${status.key}" aria-labelledby="filter-paper-card-title">
@@ -9821,11 +9833,11 @@ function renderFilterPaperCardMarkup() {
           <p class="eyebrow">Supplies</p>
           <h3 id="filter-paper-card-title">Filter Papers</h3>
         </div>
-        <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(status.label)}</span>
+        <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(statusLabel)}</span>
       </div>
       <div class="filter-paper-card-body">
         <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
-        <p class="filter-paper-status-line">Status: <strong>${escapeHtml(status.label)}</strong></p>
+        <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
         <p class="filter-paper-helper">Each completed session can automatically deduct 1 filter paper.</p>
         <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
         <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">
@@ -9846,10 +9858,37 @@ function renderFilterPaperCardMarkup() {
   `;
 }
 
+function renderSessionsFilterPaperCardMarkup() {
+  const inventory = getFilterPaperInventory();
+  const status = getFilterPaperStatusMeta(inventory.count);
+  const statusLabel = getFilterPaperStatusDisplayLabel(status.key, { criticalLabel: "Urgent" });
+
+  return `
+    <section class="card filter-paper-card filter-paper-card--compact filter-paper-card--${status.key}" aria-labelledby="sessions-filter-paper-card-title">
+      <div class="filter-paper-card-head">
+        <div>
+          <p class="eyebrow">Supplies</p>
+          <h3 id="sessions-filter-paper-card-title">Filter Papers</h3>
+        </div>
+        <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(statusLabel)}</span>
+      </div>
+      <div class="filter-paper-card-body">
+        <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
+        <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
+        <div class="filter-paper-actions">
+          <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
+          <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderActiveSessionFilterPaperCardMarkup() {
   const inventory = getFilterPaperInventory();
   const status = getFilterPaperStatusMeta(inventory.count);
   const reminder = inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
+  const statusLabel = getFilterPaperStatusDisplayLabel(status.key);
 
   return `
     <section class="card active-session-supplies-card active-session-supplies-card--${status.key}" aria-labelledby="active-session-supplies-title">
@@ -9861,7 +9900,7 @@ function renderActiveSessionFilterPaperCardMarkup() {
           ${reminder ? `<p class="active-session-supplies-reminder">${escapeHtml(reminder)}</p>` : ""}
         </div>
         <div class="active-session-supplies-actions">
-          <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(status.label)}</span>
+          <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(statusLabel)}</span>
           <div class="active-session-supplies-button-row">
             <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
             <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
@@ -9870,6 +9909,24 @@ function renderActiveSessionFilterPaperCardMarkup() {
       </div>
     </section>
   `;
+}
+
+function bindFilterPaperCardActions(scope, options = {}) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  const { onSave = null } = options || {};
+  scope.querySelectorAll('[data-filter-paper-edit="true"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      openFilterPaperInventoryModal({ onSave });
+    });
+  });
+  scope.querySelectorAll('[data-filter-paper-reorder="true"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      openFilterPaperStore();
+    });
+  });
 }
 
 function ensureFilterPaperInventoryModal() {
@@ -13343,13 +13400,8 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });
-  app.querySelector(".home-dashboard-secondary-row [data-filter-paper-edit='true']")?.addEventListener("click", () => {
-    openFilterPaperInventoryModal({ onSave: () => safeRender() });
-  });
-  app.querySelectorAll(".home-dashboard-secondary-row [data-filter-paper-reorder='true']").forEach((button) => {
-    button.addEventListener("click", () => {
-      openFilterPaperStore();
-    });
+  bindFilterPaperCardActions(app.querySelector(".home-dashboard-secondary-row"), {
+    onSave: () => safeRender(),
   });
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
@@ -16172,6 +16224,13 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   applySupplyStatusToSessionEntryButtons(app);
+  const sessionsHeader = document.querySelector("#grow-sessions-header");
+  if (sessionsHeader) {
+    sessionsHeader.insertAdjacentHTML("afterend", renderSessionsFilterPaperCardMarkup());
+    bindFilterPaperCardActions(sessionsHeader.nextElementSibling, {
+      onSave: () => safeRender(),
+    });
+  }
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
   const activeContainer = document.querySelector("#active-sessions-list");
@@ -16459,11 +16518,8 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
-    detailSuppliesAnchor.querySelector('[data-filter-paper-edit="true"]')?.addEventListener("click", () => {
-      openFilterPaperInventoryModal({ onSave: renderDetailSuppliesCard });
-    });
-    detailSuppliesAnchor.querySelector('[data-filter-paper-reorder="true"]')?.addEventListener("click", () => {
-      openFilterPaperStore();
+    bindFilterPaperCardActions(detailSuppliesAnchor, {
+      onSave: renderDetailSuppliesCard,
     });
   };
   const refreshDetailDerivedViews = () => {
