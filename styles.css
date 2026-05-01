@@ -2796,6 +2796,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: none;
 }
 
+.filter-paper-reminder-copy {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.filter-paper-reminder-copy--low {
+  color: #8f5313;
+}
+
+.filter-paper-reminder-copy--critical {
+  color: #92342f;
+}
+
 .filter-paper-card-head {
   display: flex;
   align-items: flex-start;
@@ -2923,6 +2937,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .filter-paper-warning-continue {
   opacity: 0.9;
+}
+
+.filter-paper-setup-modal-card {
+  width: min(94vw, 560px);
+  display: grid;
+  gap: 18px;
+}
+
+.filter-paper-setup-field {
+  display: grid;
+  gap: 8px;
+}
+
+.filter-paper-setup-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: stretch;
+}
+
+.filter-paper-setup-actions .button {
+  width: 100%;
 }
 
 .active-session-supplies-card {
@@ -9083,12 +9118,21 @@ body.theme-dark .filter-paper-auto-subtract {
   color: rgba(189, 204, 192, 0.82);
 }
 
+body.theme-dark .filter-paper-reminder-copy--low {
+  color: #e7c27a;
+}
+
+body.theme-dark .filter-paper-reminder-copy--critical {
+  color: #ef9d98;
+}
+
 body.theme-dark .filter-paper-status-badge,
 body.theme-dark .filter-paper-reminder {
   background: color-mix(in srgb, var(--filter-paper-accent) 14%, rgba(22, 28, 23, 0.92));
   border-color: color-mix(in srgb, var(--filter-paper-accent) 32%, rgba(255, 255, 255, 0.06));
 }
 
+body.theme-dark .filter-paper-setup-modal-card,
 body.theme-dark .filter-paper-warning-modal-card {
   background:
     linear-gradient(180deg, rgba(34, 47, 38, 0.98) 0%, rgba(24, 33, 27, 0.9) 100%);

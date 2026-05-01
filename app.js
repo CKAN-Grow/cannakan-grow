@@ -1480,6 +1480,15 @@ function getFilterPaperInventory() {
   return normalizeFilterPaperInventory(appState.filterPaperInventory);
 }
 
+function hasFilterPaperInventoryBeenSet() {
+  try {
+    return localStorage.getItem(FILTER_PAPER_INVENTORY_STORAGE_KEY) !== null;
+  } catch (error) {
+    console.error("Failed to check whether filter paper inventory has been set", error);
+    return false;
+  }
+}
+
 function saveFilterPaperInventory(inventory) {
   const normalizedInventory = normalizeFilterPaperInventory(inventory);
   appState.filterPaperInventory = normalizedInventory;
@@ -1609,6 +1618,9 @@ function getFilterPaperStatusDisplayLabel(statusKey, options = {}) {
 }
 
 function getSessionEntrySupplyTone(count = getFilterPaperInventory().count) {
+  if (!hasFilterPaperInventoryBeenSet()) {
+    return "ok";
+  }
   if (count <= 1) {
     return "urgent";
   }
@@ -9860,11 +9872,17 @@ function renderFilterPaperCardMarkup() {
 
 function renderSessionsFilterPaperCardMarkup() {
   const inventory = getFilterPaperInventory();
+  const isInventorySet = hasFilterPaperInventoryBeenSet();
   const status = getFilterPaperStatusMeta(inventory.count);
-  const statusLabel = getFilterPaperStatusDisplayLabel(status.key, { criticalLabel: "Urgent" });
+  const toneKey = isInventorySet ? status.key : "ok";
+  const statusLabel = isInventorySet
+    ? getFilterPaperStatusDisplayLabel(status.key, { criticalLabel: "Urgent" })
+    : "Not set";
+  const reminder = isInventorySet && inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
+  const countLabel = isInventorySet ? `${inventory.count}` : "Not set";
 
   return `
-    <section class="card filter-paper-card filter-paper-card--compact filter-paper-card--${status.key}" aria-labelledby="sessions-filter-paper-card-title">
+    <section class="card filter-paper-card filter-paper-card--compact filter-paper-card--${toneKey}" aria-labelledby="sessions-filter-paper-card-title">
       <div class="filter-paper-card-head">
         <div>
           <p class="eyebrow">Supplies</p>
@@ -9873,8 +9891,9 @@ function renderSessionsFilterPaperCardMarkup() {
         <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(statusLabel)}</span>
       </div>
       <div class="filter-paper-card-body">
-        <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
+        <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(countLabel))}</strong>${isInventorySet ? " remaining" : ""}</p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
+        ${reminder ? `<p class="filter-paper-reminder-copy filter-paper-reminder-copy--${status.key}">${escapeHtml(reminder)}</p>` : ""}
         <div class="filter-paper-actions">
           <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
           <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
@@ -10017,6 +10036,43 @@ function ensureFilterPaperPreSessionWarningModal() {
   return modal;
 }
 
+function ensureFilterPaperSetupModal() {
+  let modal = document.querySelector("#filter-paper-setup-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "filter-paper-setup-modal";
+  modal.className = "snapshot-modal filter-paper-setup-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card filter-paper-setup-modal-card" role="document" aria-labelledby="filter-paper-setup-title">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Supplies</p>
+        <h3 id="filter-paper-setup-title">Filter paper setup</h3>
+        <p>Enter how many filter papers you have on hand. Cannakan Grow will track your usage and notify you when you’re running low.</p>
+      </div>
+      <label class="filter-paper-setup-field">
+        <span>Filter papers on hand</span>
+        <input type="number" name="filterPaperSetupCount" min="0" step="1" inputmode="numeric" placeholder="0">
+      </label>
+      <div class="filter-paper-setup-actions">
+        <button type="button" class="button button-primary" data-filter-paper-setup-save="true">Save & Continue</button>
+        <button type="button" class="button button-secondary" data-filter-paper-setup-skip="true">Skip for Now</button>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
 function openFilterPaperInventoryModal(options = {}) {
   const { onSave = null, onCancel = null } = options || {};
   const inventory = getFilterPaperInventory();
@@ -10084,8 +10140,81 @@ function openFilterPaperInventoryModal(options = {}) {
   countInput.select();
 }
 
+function promptFilterPaperSetupBeforeNewSession() {
+  if (hasFilterPaperInventoryBeenSet()) {
+    return Promise.resolve(true);
+  }
+
+  const inventory = getFilterPaperInventory();
+  const modal = ensureFilterPaperSetupModal();
+  const countInput = modal.querySelector('input[name="filterPaperSetupCount"]');
+  const saveButton = modal.querySelector('[data-filter-paper-setup-save="true"]');
+  const skipButton = modal.querySelector('[data-filter-paper-setup-skip="true"]');
+
+  if (!(countInput instanceof HTMLInputElement) || !(saveButton instanceof HTMLButtonElement) || !(skipButton instanceof HTMLButtonElement)) {
+    return Promise.resolve(true);
+  }
+
+  countInput.value = String(inventory.count || 0);
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const cleanup = () => {
+      modal.removeEventListener("close", handleClose);
+      saveButton.onclick = null;
+      skipButton.onclick = null;
+    };
+
+    const finish = (result) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      if (modal.open) {
+        modal.close();
+      }
+      resolve(result);
+    };
+
+    const handleClose = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      resolve(false);
+    };
+
+    saveButton.onclick = () => {
+      const rawCount = Number(countInput.value);
+      const nextCount = Number.isFinite(rawCount) ? Math.max(0, Math.floor(rawCount)) : 0;
+      saveFilterPaperInventory({
+        ...getFilterPaperInventory(),
+        count: nextCount,
+      });
+      applySupplyStatusToSessionEntryButtons(document);
+      finish(true);
+    };
+
+    skipButton.onclick = () => {
+      finish(true);
+    };
+
+    modal.addEventListener("close", handleClose);
+    if (!modal.open) {
+      modal.showModal();
+    }
+    countInput.focus();
+    countInput.select();
+  });
+}
+
 function promptFilterPaperPreSessionWarning() {
-  if (getFilterPaperInventory().count > 0) {
+  if (!hasFilterPaperInventoryBeenSet() || getFilterPaperInventory().count > 0) {
     return Promise.resolve(true);
   }
 
@@ -19021,7 +19150,12 @@ document.addEventListener("click", (event) => {
   if (newSessionTrigger instanceof HTMLAnchorElement) {
     event.preventDefault();
     appState.newSessionReturnHash = window.location.hash || "#home";
-    openNewSessionSystemModal();
+    void promptFilterPaperSetupBeforeNewSession().then((canProceed) => {
+      if (!canProceed) {
+        return;
+      }
+      openNewSessionSystemModal();
+    });
     return;
   }
 
