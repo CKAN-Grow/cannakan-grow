@@ -4347,6 +4347,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-wrap: wrap;
 }
 
+.admin-member-details-destructive-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .admin-member-details-card,
 .admin-member-details-content {
   display: grid;
@@ -4377,6 +4383,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 8px;
   color: var(--muted);
+}
+
+.admin-member-details-close {
+  top: 14px;
+  right: 14px;
+  width: 48px;
+  height: 48px;
+  color: #eff5ef;
+  background: rgba(24, 34, 24, 0.72);
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  box-shadow:
+    0 10px 20px rgba(8, 12, 9, 0.18),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+.admin-member-details-close:hover,
+.admin-member-details-close:focus-visible {
+  color: #ffffff;
+  background: rgba(31, 43, 34, 0.9);
+  border-color: rgba(148, 209, 89, 0.3);
+  box-shadow:
+    0 12px 24px rgba(8, 12, 9, 0.22),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 0 24px rgba(148, 209, 89, 0.12);
+}
+
+.admin-member-details-safe-close {
+  display: none;
 }
 
 .leaderboard-audit-section {
@@ -6408,6 +6443,45 @@ body.theme-dark .theme-toggle-button:hover {
   .home-install-card-actions,
   .home-install-card-status {
     justify-content: flex-start;
+  }
+
+  .admin-member-details-close {
+    top: 10px;
+    right: 10px;
+    width: 50px;
+    height: 50px;
+    font-size: 30px;
+  }
+
+  .admin-member-details-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+    gap: 18px;
+    margin-top: 20px;
+  }
+
+  .admin-member-details-destructive-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .admin-member-details-destructive-actions .button {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .admin-member-details-safe-close {
+    display: inline-flex;
+    width: auto;
+    min-width: 132px;
+    justify-self: end;
+    justify-content: center;
+    margin-top: 2px;
   }
 
   .install-app-banner-shell {

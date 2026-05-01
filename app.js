@@ -9215,8 +9215,11 @@ function openAdminMemberDetails(memberId) {
       <p><strong>Deletion Scheduled:</strong> ${escapeHtml(formatMemberDateLabel(member.deletionScheduledFor))}</p>
     </div>
     <div class="snapshot-modal-actions admin-member-details-actions">
-      <button type="button" class="button button-secondary" data-member-detail-toggle="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
-      <button type="button" class="button button-secondary gallery-admin-reject" data-member-detail-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete Member</button>
+      <div class="admin-member-details-destructive-actions">
+        <button type="button" class="button button-secondary" data-member-detail-toggle="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
+        <button type="button" class="button button-secondary gallery-admin-reject" data-member-detail-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete Member</button>
+      </div>
+      <button type="button" class="button button-secondary admin-member-details-safe-close" data-member-detail-close>Close</button>
     </div>
     ${isSelf ? '<p class="muted admin-member-self-note">You cannot disable or delete your own admin account from this panel.</p>' : ""}
   `;
@@ -9245,6 +9248,10 @@ function openAdminMemberDetails(memberId) {
     } catch (error) {
       alert(error.message || "Could not delete member.");
     }
+  }, { once: true });
+
+  content.querySelector("[data-member-detail-close]")?.addEventListener("click", () => {
+    modal.close();
   }, { once: true });
 
   modal.showModal();
