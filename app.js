@@ -10240,6 +10240,48 @@ function hasActiveLeaderboardAuditFilters(filters = appState.leaderboardAuditFil
   ));
 }
 
+function formatLeaderboardAuditDateInput(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLeaderboardAuditDatePresets(referenceDate = new Date()) {
+  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const last30Start = new Date(today);
+  last30Start.setDate(last30Start.getDate() - 29);
+
+  return {
+    this_month: {
+      startDate: formatLeaderboardAuditDateInput(monthStart),
+      endDate: formatLeaderboardAuditDateInput(today),
+    },
+    last_30_days: {
+      startDate: formatLeaderboardAuditDateInput(last30Start),
+      endDate: formatLeaderboardAuditDateInput(today),
+    },
+    all_time: {
+      startDate: "",
+      endDate: "",
+    },
+  };
+}
+
+function getActiveLeaderboardAuditDatePresetKey(filters = appState.leaderboardAuditFilters) {
+  const normalizedFilters = normalizeLeaderboardAuditFilters(filters);
+  const presets = getLeaderboardAuditDatePresets();
+  return Object.entries(presets).find(([, preset]) => (
+    normalizedFilters.startDate === preset.startDate
+    && normalizedFilters.endDate === preset.endDate
+  ))?.[0] || "";
+}
+
 function formatLeaderboardAuditFilterValue(filterKey, value) {
   const normalizedValue = String(value || "").trim();
   if (!normalizedValue) {
@@ -10773,6 +10815,53 @@ function renderLeaderboardAuditCalculationCard(calculation) {
       <p class="leaderboard-audit-metric-range">${escapeHtml(calculation.dateRangeLabel)}</p>
       <p class="leaderboard-audit-metric-reasons">${escapeHtml(calculation.excludedReasonSummary.join(" • ") || "No exclusions")}</p>
     </article>
+  `;
+}
+
+function renderLeaderboardAuditDatePresetButtonsMarkup(state) {
+  const activePreset = getActiveLeaderboardAuditDatePresetKey(state.filters);
+  const presets = [
+    { key: "this_month", label: "This Month" },
+    { key: "last_30_days", label: "Last 30 Days" },
+    { key: "all_time", label: "All-Time" },
+  ];
+
+  return `
+    <div class="leaderboard-audit-quick-filter-group" aria-label="Date presets">
+      ${presets.map((preset) => `
+        <button
+          type="button"
+          class="leaderboard-audit-quick-filter${activePreset === preset.key ? " is-active" : ""}"
+          data-audit-date-preset="${escapeHtml(preset.key)}"
+          aria-pressed="${activePreset === preset.key ? "true" : "false"}"
+        >
+          ${escapeHtml(preset.label)}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLeaderboardAuditInclusionQuickFiltersMarkup(state) {
+  const options = [
+    { key: "all", label: "All Records" },
+    { key: "included", label: "Included Only" },
+    { key: "excluded", label: "Excluded Only" },
+  ];
+
+  return `
+    <div class="leaderboard-audit-quick-filter-group" aria-label="Inclusion quick filters">
+      ${options.map((option) => `
+        <button
+          type="button"
+          class="leaderboard-audit-quick-filter${state.filters.inclusion === option.key ? " is-active" : ""}"
+          data-audit-inclusion-quick="${escapeHtml(option.key)}"
+          aria-pressed="${state.filters.inclusion === option.key ? "true" : "false"}"
+        >
+          ${escapeHtml(option.label)}
+        </button>
+      `).join("")}
+    </div>
   `;
 }
 
