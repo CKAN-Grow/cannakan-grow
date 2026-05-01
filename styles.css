@@ -8573,6 +8573,17 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   max-width: 1200px;
 }
 
+.layout-reference-copy {
+  width: 100%;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.layout-reference-copy p {
+  margin: 0 0 10px;
+}
+
 .layout-placeholder {
   display: grid;
   place-items: center;

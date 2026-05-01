@@ -132,8 +132,8 @@ const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
 const SYSTEM_LAYOUT_ASSETS = {
-  KAN: "icons/KAN%20icon.svg",
-  TRA: "icons/TRA%20icon.svg",
+  KAN: "/public/assets/system-layout-kan.svg",
+  TRA: "/public/assets/system-layout-tra.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "src/assets/kan-partition-icon-v2.png",
@@ -17561,30 +17561,26 @@ async function renderSystemLayoutReference(container, systemType) {
   if (SYSTEM_LAYOUT_ASSETS[systemType]) {
     const markup = await buildSystemLayoutImage(systemType);
     if (container.dataset.pendingSystem === systemType) {
-      container.innerHTML = markup;
+      container.innerHTML = markup || buildSystemLayoutUnavailableMarkup(systemType);
       attachSystemLayoutReady(container);
     }
     return;
   }
 
   if (container.dataset.pendingSystem === systemType) {
-    container.innerHTML = buildSystemLayoutPlaceholder(systemType);
+    container.innerHTML = buildSystemLayoutUnavailableMarkup(systemType);
   }
 }
 
 async function buildSystemLayoutImage(systemType) {
   const svgMarkup = await getInlineSvgMarkup(systemType);
-  const content = svgMarkup || `
-    <object
-      class="system-layout-object"
-      data="${SYSTEM_LAYOUT_ASSETS[systemType]}"
-      type="image/svg+xml"
-      aria-label="${systemType} system layout"
-    ></object>
-  `;
+  if (!svgMarkup) {
+    return "";
+  }
+
   return `
     <div class="system-layout-image system-layout-image-${systemType.toLowerCase()}" data-system-layout="${systemType}">
-      ${content}
+      ${svgMarkup}
     </div>
   `;
 }
@@ -17904,6 +17900,17 @@ function buildSystemLayoutPlaceholder(systemType) {
   `;
 }
 
+function buildSystemLayoutUnavailableMarkup(systemType) {
+  return `
+    <div class="layout-reference-copy">
+      <p>Layout image unavailable</p>
+    </div>
+    <div class="layout-placeholder" aria-label="${systemType || "System"} layout image unavailable">
+      <span>${systemType || "System"}</span>
+    </div>
+  `;
+}
+
 async function getInlineSvgMarkup(systemType) {
   if (inlineSvgCache[systemType]) {
     return inlineSvgCache[systemType];
@@ -17911,7 +17918,15 @@ async function getInlineSvgMarkup(systemType) {
 
   try {
     const response = await fetch(SYSTEM_LAYOUT_ASSETS[systemType]);
+    if (!response.ok) {
+      return "";
+    }
+
     const svgMarkup = normalizeInlineSvgMarkup(await response.text());
+    if (!/^<svg[\s>]/i.test(svgMarkup)) {
+      return "";
+    }
+
     inlineSvgCache[systemType] = svgMarkup;
     return svgMarkup;
   } catch {
