@@ -2920,6 +2920,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .filter-paper-toggle-row {
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.filter-paper-toggle-row input {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.filter-paper-toggle-row span {
+  display: inline-block;
 }
 
 .filter-paper-modal-note {

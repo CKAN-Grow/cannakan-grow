@@ -125,7 +125,7 @@ const FILTER_PAPER_STORE_URLS = Object.freeze({
 const FILTER_PAPER_REORDER_BUTTON_LABEL = "Reorder Filter Papers";
 const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   count: 0,
-  autoSubtract: false,
+  autoSubtract: true,
   storeRegion: "US",
 });
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
@@ -1503,9 +1503,12 @@ function getSessions() {
 
 function normalizeFilterPaperInventory(inventory) {
   const normalizedCount = Math.max(0, Math.floor(Number(inventory?.count) || 0));
+  const hasSavedAutoSubtractPreference = Object.prototype.hasOwnProperty.call(inventory || {}, "autoSubtract");
   return {
     count: normalizedCount,
-    autoSubtract: Boolean(inventory?.autoSubtract),
+    autoSubtract: hasSavedAutoSubtractPreference
+      ? Boolean(inventory?.autoSubtract)
+      : DEFAULT_FILTER_PAPER_INVENTORY.autoSubtract,
     storeRegion: inventory?.storeRegion === "EU" ? "EU" : "US",
   };
 }
@@ -10034,7 +10037,7 @@ function ensureFilterPaperInventoryModal() {
         </label>
       </div>
       <div class="filter-paper-modal-toggle">
-        <label class="snapshot-profile-toggle-row filter-paper-toggle-row">
+        <label class="filter-paper-toggle-row">
           <input type="checkbox" name="autoSubtract">
           <span>Auto subtract 1 filter paper when a session is completed</span>
         </label>
