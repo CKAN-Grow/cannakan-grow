@@ -4172,6 +4172,34 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
+.admin-source-form-helper {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.admin-fallback-content-stats {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-fallback-content-stat {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-fallback-content-stat-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-fallback-content-stat-value {
+  color: var(--ink);
+  font-size: 1.1rem;
+}
+
 .admin-source-form-actions {
   justify-content: flex-start;
 }
@@ -8589,6 +8617,10 @@ body.theme-dark .admin-announcement-card-title {
 body.theme-dark .admin-announcement-card-meta,
 body.theme-dark .admin-announcement-card-link-row {
   color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-fallback-content-stat-value {
+  color: #f3f7f1;
 }
 
 body.theme-dark .admin-source-status-pill.is-active {

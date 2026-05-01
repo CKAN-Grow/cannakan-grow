@@ -36,10 +36,14 @@ const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
-const RECENT_GROW_JOKES_STORAGE_KEY = "cannakanGrowRecentJokes";
-const GROW_JOKE_HISTORY_LIMIT = 7;
+const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
+const FALLBACK_FACTS_STORAGE_KEY = "cannakanGrowFallbackFacts";
+const FALLBACK_MODE_STORAGE_KEY = "cannakanGrowFallbackMode";
+const RECENT_FALLBACK_ITEMS_STORAGE_KEY = "cannakanGrowRecentFallbackItems";
+const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now — here’s something to grow on 🌱";
-const GROW_JOKES = Object.freeze([
+const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
+const DEFAULT_GROW_JOKES = Object.freeze([
   { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
   { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
   { question: "Why did the tomato turn red in the garden?", answer: "It saw the salad dressing." },
@@ -64,6 +68,28 @@ const GROW_JOKES = Object.freeze([
   { question: "Why was the greenhouse so popular?", answer: "It was always full of warm welcomes." },
   { question: "What do you call a fast-growing herb garden?", answer: "A mint condition miracle." },
   { question: "Why did the gardener smile at the rain cloud?", answer: "It looked like a shower of support." },
+]);
+const DEFAULT_GROW_FACTS = Object.freeze([
+  "Seeds need moisture, oxygen, and warmth to begin germination.",
+  "Many seeds germinate best when the growing medium stays evenly moist, not soaked.",
+  "Good airflow helps seedlings grow sturdier and reduces damping-off risk.",
+  "Most seedlings stretch when light is too weak or too far away.",
+  "Warm root-zone temperatures often improve germination speed and consistency.",
+  "A clean seed tray helps reduce disease pressure during early growth.",
+  "Bottom watering can help seedlings take up moisture without disturbing the soil surface.",
+  "Different crops have different preferred germination temperatures, so labels matter.",
+  "Fresh seeds usually germinate more reliably than older seeds stored in poor conditions.",
+  "Using a humidity dome can help retain moisture during the earliest stage of germination.",
+  "Removing a humidity dome after sprouting helps improve airflow and prevent excess moisture.",
+  "Seedlings benefit from a light breeze because it encourages stronger stems.",
+  "Overcrowded trays can limit airflow and increase competition for light.",
+  "Roots need oxygen too, which is why compacted or waterlogged media can slow growth.",
+  "Consistent temperatures usually produce more even germination than big swings between hot and cold.",
+  "Labeling trays with the sowing date makes it easier to track germination timing.",
+  "Some seeds germinate faster after soaking, while others prefer to be sown dry.",
+  "A sterile seed-starting mix is lighter and gentler for new roots than heavy garden soil.",
+  "True leaves appear after the first seed leaves and signal that feeding may begin soon.",
+  "Hardening off helps indoor seedlings adjust gradually to outdoor sun, wind, and temperature changes.",
 ]);
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -138,6 +164,7 @@ const appState = {
   announcementsError: "",
   announcementsRefreshPromise: null,
   announcementAdminMessage: "",
+  fallbackContentAdminMessage: "",
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -275,6 +302,7 @@ function resetSessionScopedAppState() {
   appState.announcementsError = "";
   appState.announcementsRefreshPromise = null;
   appState.announcementAdminMessage = "";
+  appState.fallbackContentAdminMessage = "";
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -302,11 +330,12 @@ async function rehydratePersistentBrowserState(reason = "unspecified") {
     activeAnnouncementTitle: activeAnnouncement?.title || "",
   });
   if (!activeAnnouncement) {
-    const dailyJoke = getDailyGrowJoke();
+    const fallbackContent = getDailyFallbackContent();
     console.log("[Cannakan App Init] announcement fallback used", {
       title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
-      joke: dailyJoke.question,
-      answer: dailyJoke.answer,
+      fallbackType: fallbackContent.type,
+      body: fallbackContent.type === "joke" ? fallbackContent.question : fallbackContent.text,
+      answer: fallbackContent.type === "joke" ? fallbackContent.answer : "",
     });
   }
 }
@@ -9544,9 +9573,171 @@ function getLocalCalendarDayIndex(referenceDate = new Date()) {
   ).getTime() / 86400000);
 }
 
-function readRecentGrowJokeHistory() {
+function normalizeFallbackContentMode(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (normalizedValue === "jokes" || normalizedValue === "facts" || normalizedValue === "mixed") {
+    return normalizedValue;
+  }
+  return DEFAULT_FALLBACK_CONTENT_MODE;
+}
+
+function normalizeFallbackJokeRecord(record) {
+  const question = String(record?.question || "").trim();
+  const answer = String(record?.answer || "").trim();
+  if (!question || !answer) {
+    return null;
+  }
+
+  return { question, answer };
+}
+
+function normalizeFallbackFactRecord(record) {
+  const text = String(typeof record === "string" ? record : record?.text || "").trim();
+  if (!text) {
+    return null;
+  }
+
+  return { text };
+}
+
+function getFallbackJokeKey(record) {
+  const normalizedRecord = normalizeFallbackJokeRecord(record);
+  if (!normalizedRecord) {
+    return "";
+  }
+
+  return `joke:${normalizedRecord.question.toLowerCase()}::${normalizedRecord.answer.toLowerCase()}`;
+}
+
+function getFallbackFactKey(record) {
+  const normalizedRecord = normalizeFallbackFactRecord(record);
+  if (!normalizedRecord) {
+    return "";
+  }
+
+  return `fact:${normalizedRecord.text.toLowerCase()}`;
+}
+
+function readStoredFallbackJokes() {
   try {
-    const rawValue = localStorage.getItem(RECENT_GROW_JOKES_STORAGE_KEY);
+    const rawValue = localStorage.getItem(FALLBACK_JOKES_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue
+      .map((entry) => normalizeFallbackJokeRecord(entry))
+      .filter(Boolean);
+  } catch (error) {
+    console.error("Failed to read fallback jokes from localStorage", error);
+    return [];
+  }
+}
+
+function writeStoredFallbackJokes(records = []) {
+  try {
+    localStorage.setItem(FALLBACK_JOKES_STORAGE_KEY, JSON.stringify(records));
+  } catch (error) {
+    console.error("Failed to write fallback jokes to localStorage", error);
+  }
+}
+
+function readStoredFallbackFacts() {
+  try {
+    const rawValue = localStorage.getItem(FALLBACK_FACTS_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!Array.isArray(parsedValue)) {
+      return [];
+    }
+
+    return parsedValue
+      .map((entry) => normalizeFallbackFactRecord(entry))
+      .filter(Boolean);
+  } catch (error) {
+    console.error("Failed to read fallback facts from localStorage", error);
+    return [];
+  }
+}
+
+function writeStoredFallbackFacts(records = []) {
+  try {
+    localStorage.setItem(FALLBACK_FACTS_STORAGE_KEY, JSON.stringify(records));
+  } catch (error) {
+    console.error("Failed to write fallback facts to localStorage", error);
+  }
+}
+
+function getFallbackContentMode() {
+  try {
+    return normalizeFallbackContentMode(localStorage.getItem(FALLBACK_MODE_STORAGE_KEY) || "");
+  } catch (error) {
+    console.error("Failed to read fallback content mode from localStorage", error);
+    return DEFAULT_FALLBACK_CONTENT_MODE;
+  }
+}
+
+function writeFallbackContentMode(mode) {
+  const normalizedMode = normalizeFallbackContentMode(mode);
+  try {
+    localStorage.setItem(FALLBACK_MODE_STORAGE_KEY, normalizedMode);
+  } catch (error) {
+    console.error("Failed to write fallback content mode to localStorage", error);
+  }
+  return normalizedMode;
+}
+
+function mergeUniqueFallbackJokes(baseRecords = [], additionalRecords = []) {
+  const merged = [];
+  const seenKeys = new Set();
+  [...baseRecords, ...additionalRecords].forEach((record) => {
+    const normalizedRecord = normalizeFallbackJokeRecord(record);
+    const recordKey = getFallbackJokeKey(normalizedRecord);
+    if (!normalizedRecord || !recordKey || seenKeys.has(recordKey)) {
+      return;
+    }
+
+    seenKeys.add(recordKey);
+    merged.push(normalizedRecord);
+  });
+  return merged;
+}
+
+function mergeUniqueFallbackFacts(baseRecords = [], additionalRecords = []) {
+  const merged = [];
+  const seenKeys = new Set();
+  [...baseRecords, ...additionalRecords].forEach((record) => {
+    const normalizedRecord = normalizeFallbackFactRecord(record);
+    const recordKey = getFallbackFactKey(normalizedRecord);
+    if (!normalizedRecord || !recordKey || seenKeys.has(recordKey)) {
+      return;
+    }
+
+    seenKeys.add(recordKey);
+    merged.push(normalizedRecord);
+  });
+  return merged;
+}
+
+function getEffectiveFallbackJokes() {
+  return mergeUniqueFallbackJokes(DEFAULT_GROW_JOKES, readStoredFallbackJokes());
+}
+
+function getEffectiveFallbackFacts() {
+  return mergeUniqueFallbackFacts(DEFAULT_GROW_FACTS.map((text) => ({ text })), readStoredFallbackFacts());
+}
+
+function readRecentFallbackItemsHistory() {
+  try {
+    const rawValue = localStorage.getItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
     if (!rawValue) {
       return [];
     }
@@ -9559,65 +9750,210 @@ function readRecentGrowJokeHistory() {
     return parsedValue
       .map((entry) => ({
         dateKey: String(entry?.dateKey || "").trim(),
-        jokeIndex: Number(entry?.jokeIndex),
+        itemType: String(entry?.itemType || "").trim().toLowerCase(),
+        itemKey: String(entry?.itemKey || "").trim(),
       }))
       .filter((entry) => (
         /^\d{4}-\d{2}-\d{2}$/.test(entry.dateKey)
-        && Number.isInteger(entry.jokeIndex)
-        && entry.jokeIndex >= 0
-        && entry.jokeIndex < GROW_JOKES.length
+        && (entry.itemType === "joke" || entry.itemType === "fact")
+        && entry.itemKey
       ))
-      .slice(-GROW_JOKE_HISTORY_LIMIT);
+      .slice(-FALLBACK_CONTENT_HISTORY_LIMIT);
   } catch (error) {
-    console.error("Failed to read recent grow joke history from localStorage", error);
+    console.error("Failed to read recent fallback content history from localStorage", error);
     return [];
   }
 }
 
-function writeRecentGrowJokeHistory(historyEntries = []) {
+function writeRecentFallbackItemsHistory(historyEntries = []) {
   try {
     localStorage.setItem(
-      RECENT_GROW_JOKES_STORAGE_KEY,
-      JSON.stringify(historyEntries.slice(-GROW_JOKE_HISTORY_LIMIT)),
+      RECENT_FALLBACK_ITEMS_STORAGE_KEY,
+      JSON.stringify(historyEntries.slice(-FALLBACK_CONTENT_HISTORY_LIMIT)),
     );
   } catch (error) {
-    console.error("Failed to write recent grow joke history to localStorage", error);
+    console.error("Failed to write recent fallback content history to localStorage", error);
   }
 }
 
-function getDailyGrowJoke(referenceDate = new Date()) {
-  const dateKey = getLocalCalendarDateKey(referenceDate);
-  const history = readRecentGrowJokeHistory();
-  const todayEntry = history.find((entry) => entry.dateKey === dateKey);
-  if (todayEntry && GROW_JOKES[todayEntry.jokeIndex]) {
-    return GROW_JOKES[todayEntry.jokeIndex];
+function getFallbackJokeItems() {
+  return getEffectiveFallbackJokes().map((entry) => ({
+    type: "joke",
+    key: getFallbackJokeKey(entry),
+    question: entry.question,
+    answer: entry.answer,
+  }));
+}
+
+function getFallbackFactItems() {
+  return getEffectiveFallbackFacts().map((entry) => ({
+    type: "fact",
+    key: getFallbackFactKey(entry),
+    text: entry.text,
+  }));
+}
+
+function findFallbackItemByHistoryEntry(entry, jokes = getFallbackJokeItems(), facts = getFallbackFactItems()) {
+  if (!entry?.itemKey) {
+    return null;
   }
 
-  const totalJokes = GROW_JOKES.length;
-  const baseIndex = ((getLocalCalendarDayIndex(referenceDate) % totalJokes) + totalJokes) % totalJokes;
-  const recentJokeIndexes = new Set(
+  const pool = entry.itemType === "fact" ? facts : jokes;
+  return pool.find((item) => item.key === entry.itemKey) || null;
+}
+
+function selectDailyFallbackItem(items = [], baseIndex = 0, recentKeys = new Set()) {
+  if (!items.length) {
+    return null;
+  }
+
+  const normalizedBaseIndex = ((baseIndex % items.length) + items.length) % items.length;
+  if (!recentKeys.has(items[normalizedBaseIndex].key)) {
+    return items[normalizedBaseIndex];
+  }
+
+  for (let offset = 1; offset < items.length; offset += 1) {
+    const candidateItem = items[(normalizedBaseIndex + offset) % items.length];
+    if (!recentKeys.has(candidateItem.key)) {
+      return candidateItem;
+    }
+  }
+
+  return items[normalizedBaseIndex];
+}
+
+function getDailyFallbackContent(referenceDate = new Date()) {
+  const fallbackMode = getFallbackContentMode();
+  const jokes = getFallbackJokeItems();
+  const facts = getFallbackFactItems();
+  const dateKey = getLocalCalendarDateKey(referenceDate);
+  const dayIndex = getLocalCalendarDayIndex(referenceDate);
+  const history = readRecentFallbackItemsHistory();
+  const todayHistoryEntry = history.find((entry) => entry.dateKey === dateKey);
+  const todayItem = findFallbackItemByHistoryEntry(todayHistoryEntry, jokes, facts);
+  const isTodayItemCompatibleWithMode = Boolean(
+    todayItem
+    && (
+      fallbackMode === "mixed"
+      || (fallbackMode === "jokes" && todayItem.type === "joke")
+      || (fallbackMode === "facts" && todayItem.type === "fact")
+    )
+  );
+  if (isTodayItemCompatibleWithMode) {
+    return todayItem;
+  }
+
+  const recentKeys = new Set(
     history
       .filter((entry) => entry.dateKey !== dateKey)
-      .map((entry) => entry.jokeIndex),
+      .map((entry) => entry.itemKey),
   );
 
-  let selectedIndex = baseIndex;
-  if (recentJokeIndexes.has(selectedIndex)) {
-    for (let offset = 1; offset < totalJokes; offset += 1) {
-      const candidateIndex = (baseIndex + offset) % totalJokes;
-      if (!recentJokeIndexes.has(candidateIndex)) {
-        selectedIndex = candidateIndex;
-        break;
-      }
-    }
+  let selectedItem = null;
+  if (fallbackMode === "jokes") {
+    selectedItem = selectDailyFallbackItem(jokes, dayIndex, recentKeys);
+  } else if (fallbackMode === "facts") {
+    selectedItem = selectDailyFallbackItem(facts, dayIndex, recentKeys);
+  } else {
+    const preferredJokesFirst = dayIndex % 2 === 0;
+    const primaryPool = preferredJokesFirst ? jokes : facts;
+    const secondaryPool = preferredJokesFirst ? facts : jokes;
+    selectedItem = selectDailyFallbackItem(primaryPool, dayIndex, recentKeys)
+      || selectDailyFallbackItem(secondaryPool, dayIndex, recentKeys);
+  }
+
+  if (!selectedItem) {
+    selectedItem = jokes[0] || facts[0] || {
+      type: "fact",
+      key: "fact:fallback",
+      text: "Seeds need steady moisture, gentle warmth, and oxygen to begin germination.",
+    };
   }
 
   const nextHistory = [
     ...history.filter((entry) => entry.dateKey !== dateKey),
-    { dateKey, jokeIndex: selectedIndex },
-  ].slice(-GROW_JOKE_HISTORY_LIMIT);
-  writeRecentGrowJokeHistory(nextHistory);
-  return GROW_JOKES[selectedIndex];
+    { dateKey, itemType: selectedItem.type, itemKey: selectedItem.key },
+  ].slice(-FALLBACK_CONTENT_HISTORY_LIMIT);
+  writeRecentFallbackItemsHistory(nextHistory);
+  return selectedItem;
+}
+
+function parseFallbackContentBatchInput(value = "") {
+  const blocks = String(value || "")
+    .split(/\r?\n\s*\r?\n/g)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const jokes = [];
+  const facts = [];
+
+  blocks.forEach((block) => {
+    const lines = block
+      .split(/\r?\n/g)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    let question = "";
+    let answer = "";
+    let fact = "";
+    let currentField = "";
+
+    lines.forEach((line) => {
+      if (/^JOKE:/i.test(line)) {
+        currentField = "question";
+        question = line.replace(/^JOKE:/i, "").trim();
+        return;
+      }
+      if (/^ANSWER:/i.test(line)) {
+        currentField = "answer";
+        answer = line.replace(/^ANSWER:/i, "").trim();
+        return;
+      }
+      if (/^FACT:/i.test(line)) {
+        currentField = "fact";
+        fact = line.replace(/^FACT:/i, "").trim();
+        return;
+      }
+
+      if (currentField === "question") {
+        question = `${question} ${line}`.trim();
+      } else if (currentField === "answer") {
+        answer = `${answer} ${line}`.trim();
+      } else if (currentField === "fact") {
+        fact = `${fact} ${line}`.trim();
+      }
+    });
+
+    const normalizedJoke = normalizeFallbackJokeRecord({ question, answer });
+    if (normalizedJoke) {
+      jokes.push(normalizedJoke);
+      return;
+    }
+
+    const normalizedFact = normalizeFallbackFactRecord({ text: fact });
+    if (normalizedFact) {
+      facts.push(normalizedFact);
+    }
+  });
+
+  return { jokes, facts };
+}
+
+function serializeFallbackContentForExport(jokes = getEffectiveFallbackJokes(), facts = getEffectiveFallbackFacts()) {
+  const jokeBlocks = jokes.map((entry) => `JOKE: ${entry.question}\nANSWER: ${entry.answer}`);
+  const factBlocks = facts.map((entry) => `FACT: ${entry.text}`);
+  return [...jokeBlocks, ...factBlocks].join("\n\n");
+}
+
+function clearStoredFallbackContent() {
+  try {
+    localStorage.removeItem(FALLBACK_JOKES_STORAGE_KEY);
+    localStorage.removeItem(FALLBACK_FACTS_STORAGE_KEY);
+    localStorage.removeItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
+  } catch (error) {
+    console.error("Failed to clear fallback content from localStorage", error);
+    throw new Error("Could not clear fallback content from this browser.");
+  }
 }
 
 function getHomeAnnouncementCardData(referenceDate = new Date()) {
@@ -9633,16 +9969,16 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
     };
   }
 
-  const dailyJoke = getDailyGrowJoke(referenceDate);
+  const fallbackContent = getDailyFallbackContent(referenceDate);
   return {
     title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
-    body: dailyJoke.question,
-    answer: dailyJoke.answer,
+    body: fallbackContent.type === "joke" ? fallbackContent.question : fallbackContent.text,
+    answer: fallbackContent.type === "joke" ? fallbackContent.answer : "",
     imageUrl: "",
     linkUrl: "",
     buttonText: "",
     dateValue: referenceDate.toISOString(),
-    isFallbackJoke: true,
+    fallbackType: fallbackContent.type,
   };
 }
 
@@ -9664,6 +10000,29 @@ function renderHomeAnnouncementCard() {
         ${cardData.imageUrl ? "" : '<div class="home-announcement-card-image-overlay" aria-hidden="true"></div>'}
       </div>
     `;
+  const captionMarkup = cardData.fallbackType === "joke"
+    ? `
+      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Joke:</span>
+          <span>${escapeHtml(cardData.body)}</span>
+        </p>
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Answer:</span>
+          <span>${escapeHtml(cardData.answer || "")}</span>
+        </p>
+      </div>
+    `
+    : (cardData.fallbackType === "fact"
+      ? `
+      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Grow Fact:</span>
+          <span>${escapeHtml(cardData.body)}</span>
+        </p>
+      </div>
+    `
+      : `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`);
 
   return `
     <section class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}" aria-labelledby="home-announcement-title">
@@ -9674,20 +10033,7 @@ function renderHomeAnnouncementCard() {
         <div class="home-announcement-card-copy">
           <p class="home-announcement-card-label">Latest from Cannakan</p>
           <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
-          ${cardData.isFallbackJoke
-    ? `
-          <div class="home-announcement-card-caption home-announcement-card-caption--joke">
-            <p class="home-announcement-card-caption-line">
-              <span class="home-announcement-card-caption-kicker">Joke:</span>
-              <span>${escapeHtml(cardData.body)}</span>
-            </p>
-            <p class="home-announcement-card-caption-line">
-              <span class="home-announcement-card-caption-kicker">Answer:</span>
-              <span>${escapeHtml(cardData.answer || "")}</span>
-            </p>
-          </div>
-          `
-    : `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`}
+          ${captionMarkup}
         </div>
         <div class="home-announcement-card-footer">
           <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(cardData.dateValue))}</p>
@@ -9736,7 +10082,7 @@ function renderAdminAnnouncementCardMarkup(announcement) {
           <strong class="admin-announcement-card-title">${escapeHtml(title)}</strong>
           <p class="admin-announcement-card-caption">${escapeHtml(body)}</p>
         </div>
-        <p class="admin-announcement-card-meta">${escapeHtml(isAnnouncementCurrentlyPublic(announcement) ? "This message board item is currently live on Home." : "This message board item is saved but inactive, so Home will show the Grow Joke of the Day.")}</p>
+        <p class="admin-announcement-card-meta">${escapeHtml(isAnnouncementCurrentlyPublic(announcement) ? "This message board item is currently live on Home." : "This message board item is saved but inactive, so Home will show the configured fallback content.")}</p>
         <p class="admin-announcement-card-link-row">
           ${announcement.instagramPostUrl
     ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(normalizeAnnouncementButtonText(announcement.buttonText || ""))}</a>`
@@ -9759,7 +10105,7 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
         <div>
           <p class="eyebrow">Announcements</p>
           <h4>Manage the Home message board</h4>
-          <p class="muted">Save one public announcement for the Home dashboard, or clear it to fall back to the daily grow joke.</p>
+          <p class="muted">Save one public announcement for the Home dashboard, or clear it to fall back to the configured fallback content.</p>
         </div>
       </div>
       <div class="admin-source-form-grid">
@@ -9818,7 +10164,7 @@ function renderAdminAnnouncementsListMarkup() {
           <span class="muted">Fallback mode</span>
         </div>
         <div class="admin-sources-empty">
-          <p>No saved announcement is active. The Home dashboard will show the Grow Joke of the Day until an active announcement is saved.</p>
+          <p>No saved announcement is active. The Home dashboard will show the configured fallback content until an active announcement is saved.</p>
         </div>
       </div>
     `;
@@ -9876,11 +10222,170 @@ function bindAdminAnnouncementsSection() {
   clearButton?.addEventListener("click", async () => {
     try {
       await clearAnnouncementRecord();
-      appState.announcementAdminMessage = "Announcement cleared. Home will show the Grow Joke of the Day.";
+      appState.announcementAdminMessage = "Announcement cleared. Home will show the configured fallback content.";
       safeRender();
     } catch (error) {
       if (message) {
         message.textContent = error.message || "Could not clear announcement.";
+      }
+    }
+  });
+}
+
+function renderFallbackContentCountsMarkup() {
+  const jokes = getEffectiveFallbackJokes();
+  const facts = getEffectiveFallbackFacts();
+  const currentModeLabel = ({
+    jokes: "Jokes only",
+    facts: "Grow facts only",
+    mixed: "Mixed",
+  })[getFallbackContentMode()] || "Mixed";
+
+  return `
+    <div class="admin-fallback-content-stats">
+      <article class="meta-card admin-fallback-content-stat">
+        <span class="admin-fallback-content-stat-label">Content Mode</span>
+        <strong class="admin-fallback-content-stat-value">${escapeHtml(currentModeLabel)}</strong>
+      </article>
+      <article class="meta-card admin-fallback-content-stat">
+        <span class="admin-fallback-content-stat-label">Current Jokes</span>
+        <strong class="admin-fallback-content-stat-value">${escapeHtml(jokes.length.toLocaleString())}</strong>
+      </article>
+      <article class="meta-card admin-fallback-content-stat">
+        <span class="admin-fallback-content-stat-label">Current Grow Facts</span>
+        <strong class="admin-fallback-content-stat-value">${escapeHtml(facts.length.toLocaleString())}</strong>
+      </article>
+    </div>
+  `;
+}
+
+function renderAdminFallbackContentEditorMarkup() {
+  const fallbackMode = getFallbackContentMode();
+  return `
+    <form id="admin-fallback-content-form" class="admin-source-form">
+      <div class="section-heading admin-source-form-heading">
+        <div>
+          <p class="eyebrow">Fallback Content</p>
+          <h4>Manage the Home fallback library</h4>
+          <p class="muted">Choose whether Home rotates jokes, grow facts, or both when no announcement is active. Imported content is added to the seeded default library.</p>
+        </div>
+      </div>
+      <div class="admin-source-form-grid">
+        <label class="admin-source-form-full">
+          <span>Content Mode</span>
+          <select name="fallbackMode">
+            <option value="jokes"${fallbackMode === "jokes" ? " selected" : ""}>Jokes only</option>
+            <option value="facts"${fallbackMode === "facts" ? " selected" : ""}>Grow facts only</option>
+            <option value="mixed"${fallbackMode === "mixed" ? " selected" : ""}>Mixed</option>
+          </select>
+        </label>
+        <label class="admin-source-form-full">
+          <span>Batch Upload</span>
+          <textarea name="fallbackBatch" rows="12" placeholder="JOKE: Why did the seed bring a blanket?&#10;ANSWER: It wanted to stay warm before sprouting.&#10;&#10;FACT: Seeds need moisture, oxygen, and warmth to begin germination."></textarea>
+        </label>
+      </div>
+      <p class="admin-source-form-helper muted">Use blank lines between entries. Joke entries need both a <strong>JOKE:</strong> line and an <strong>ANSWER:</strong> line. Fact entries use a single <strong>FACT:</strong> line.</p>
+      <p id="admin-fallback-content-message" class="snapshot-message">${escapeHtml(appState.fallbackContentAdminMessage || "")}</p>
+      <div class="form-actions admin-source-form-actions">
+        <button type="submit" class="button button-primary">Import Batch</button>
+        <button type="button" class="button button-secondary" id="admin-fallback-content-export">Export Fallback Content</button>
+        <button type="button" class="button button-secondary" id="admin-fallback-content-clear">Clear All Fallback Content</button>
+      </div>
+    </form>
+  `;
+}
+
+function bindAdminFallbackContentSection() {
+  const form = app.querySelector("#admin-fallback-content-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const modeSelect = form.elements.fallbackMode;
+  const batchField = form.elements.fallbackBatch;
+  const message = form.querySelector("#admin-fallback-content-message");
+  const exportButton = form.querySelector("#admin-fallback-content-export");
+  const clearButton = form.querySelector("#admin-fallback-content-clear");
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  modeSelect?.addEventListener("change", () => {
+    writeFallbackContentMode(modeSelect.value || DEFAULT_FALLBACK_CONTENT_MODE);
+    try {
+      localStorage.removeItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
+    } catch (error) {
+      console.error("Failed to reset recent fallback content history after mode change", error);
+    }
+    appState.fallbackContentAdminMessage = "Fallback mode saved.";
+    safeRender();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true;
+    }
+
+    const parsedBatch = parseFallbackContentBatchInput(batchField?.value || "");
+    if (!parsedBatch.jokes.length && !parsedBatch.facts.length) {
+      if (message) {
+        message.textContent = "No valid jokes or grow facts were found in that batch.";
+      }
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+      return;
+    }
+
+    try {
+      const nextStoredJokes = mergeUniqueFallbackJokes(readStoredFallbackJokes(), parsedBatch.jokes);
+      const nextStoredFacts = mergeUniqueFallbackFacts(readStoredFallbackFacts(), parsedBatch.facts);
+      writeStoredFallbackJokes(nextStoredJokes);
+      writeStoredFallbackFacts(nextStoredFacts);
+      localStorage.removeItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
+      appState.fallbackContentAdminMessage = `Imported ${parsedBatch.jokes.length} joke${parsedBatch.jokes.length === 1 ? "" : "s"} and ${parsedBatch.facts.length} grow fact${parsedBatch.facts.length === 1 ? "" : "s"}.`;
+      safeRender();
+    } catch (error) {
+      console.error("Failed to import fallback content batch", error);
+      if (message) {
+        message.textContent = "Could not import fallback content.";
+      }
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+    }
+  });
+
+  exportButton?.addEventListener("click", async () => {
+    const exportValue = serializeFallbackContentForExport();
+    if (batchField) {
+      batchField.value = exportValue;
+      batchField.focus();
+      batchField.select();
+    }
+
+    let exportMessage = "Fallback content exported to the batch field.";
+    try {
+      await navigator.clipboard.writeText(exportValue);
+      exportMessage = "Fallback content exported to the batch field and copied to the clipboard.";
+    } catch (error) {
+      console.warn("Could not copy fallback content export to clipboard", error);
+    }
+
+    if (message) {
+      message.textContent = exportMessage;
+    }
+    appState.fallbackContentAdminMessage = exportMessage;
+  });
+
+  clearButton?.addEventListener("click", () => {
+    try {
+      clearStoredFallbackContent();
+      appState.fallbackContentAdminMessage = "Custom fallback content cleared. Seeded defaults remain available.";
+      safeRender();
+    } catch (error) {
+      if (message) {
+        message.textContent = error.message || "Could not clear fallback content.";
       }
     }
   });
@@ -9966,6 +10471,19 @@ function renderAdminPage() {
       <div class="admin-sources-layout">
         <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
         <div id="admin-announcements-list"></div>
+      </div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Fallback Content</p>
+          <h3>Fallback Content</h3>
+          <p class="muted">Manage the jokes and grow facts shown on Home whenever no public announcement is active.</p>
+        </div>
+      </div>
+      <div class="admin-sources-layout">
+        <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
+        <div id="admin-fallback-content-stats"></div>
       </div>
     </section>
     <section class="card admin-section-card">
@@ -10109,6 +10627,16 @@ function renderAdminPage() {
     announcementEditor.innerHTML = renderAdminAnnouncementEditorMarkup(appState.announcements[0] || null);
   }
 
+  const fallbackContentEditor = app.querySelector("#admin-fallback-content-editor");
+  if (fallbackContentEditor) {
+    fallbackContentEditor.innerHTML = renderAdminFallbackContentEditorMarkup();
+  }
+
+  const fallbackContentStats = app.querySelector("#admin-fallback-content-stats");
+  if (fallbackContentStats) {
+    fallbackContentStats.innerHTML = renderFallbackContentCountsMarkup();
+  }
+
   const membersTableAnchor = app.querySelector("#admin-members-table-anchor");
   if (membersTableAnchor) {
     membersTableAnchor.innerHTML = renderAdminMembersTableMarkup();
@@ -10117,6 +10645,7 @@ function renderAdminPage() {
   bindAdminMembersSection();
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
+  bindAdminFallbackContentSection();
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
