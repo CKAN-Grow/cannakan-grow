@@ -222,6 +222,11 @@ body.theme-dark .app-logo--dark {
   justify-content: flex-end;
 }
 
+.auth-sign-in-button {
+  min-width: 110px;
+  white-space: nowrap;
+}
+
 .account-menu-root {
   position: relative;
   display: inline-flex;
@@ -6764,6 +6769,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .profile-card-inline {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.auth-card-inline {
   max-width: none;
   width: 100%;
   margin: 0;

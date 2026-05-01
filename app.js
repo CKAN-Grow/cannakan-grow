@@ -2405,6 +2405,190 @@ function redirectToHomeAfterLogin() {
   safeRender();
 }
 
+function consumeAuthNotice() {
+  const nextNotice = String(appState.authNotice || "").trim();
+  appState.authNotice = "";
+  return nextNotice;
+}
+
+function bindAuthForm(form, options = {}) {
+  if (!form) {
+    return;
+  }
+
+  const {
+    messageElement = form.querySelector("#auth-message"),
+    onLoginSuccess = redirectToHomeAfterLogin,
+  } = options;
+  const confirmField = form.querySelector("#confirm-password-field");
+  const confirmInput = form.elements.confirmPassword;
+  let authMode = "login";
+
+  const setMessage = (text = "") => {
+    if (!messageElement) {
+      return;
+    }
+
+    messageElement.textContent = text;
+  };
+
+  const setAuthMode = (mode) => {
+    authMode = mode;
+    const isSignup = mode === "signup";
+    confirmField.hidden = !isSignup;
+    confirmInput.toggleAttribute("required", isSignup);
+    if (!isSignup) {
+      confirmInput.value = "";
+      confirmInput.setCustomValidity("");
+    }
+  };
+
+  const validatePasswordMatch = () => {
+    if (authMode !== "signup") {
+      confirmInput.setCustomValidity("");
+      return true;
+    }
+
+    const password = String(form.elements.password.value || "");
+    const confirmPassword = String(confirmInput.value || "");
+    const passwordsMatch = password === confirmPassword;
+    if (!passwordsMatch) {
+      confirmInput.setCustomValidity("Passwords do not match.");
+      setMessage("Passwords do not match.");
+      return false;
+    }
+
+    confirmInput.setCustomValidity("");
+    if (messageElement?.textContent === "Passwords do not match.") {
+      setMessage("");
+    }
+    return true;
+  };
+
+  form.querySelectorAll('button[name="action"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      setAuthMode(button.value);
+      setMessage("");
+    });
+  });
+
+  confirmInput?.addEventListener("input", validatePasswordMatch);
+  form.elements.password?.addEventListener("input", validatePasswordMatch);
+  setAuthMode("login");
+  const authNotice = consumeAuthNotice();
+  if (authNotice) {
+    setMessage(authNotice);
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitter = event.submitter;
+    const action = submitter?.value || "login";
+    setAuthMode(action);
+    const formData = new FormData(form);
+    const email = String(formData.get("email") || "").trim();
+    const password = String(formData.get("password") || "");
+
+    setMessage("");
+
+    try {
+      if (action === "signup") {
+        if (!validatePasswordMatch()) {
+          confirmInput.reportValidity();
+          return;
+        }
+        const { error } = await appState.supabase.auth.signUp({ email, password });
+        if (error) {
+          throw error;
+        }
+        setMessage("Check your email to confirm your account, then log in.");
+        return;
+      }
+
+      const { error } = await appState.supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        throw error;
+      }
+
+      onLoginSuccess();
+    } catch (error) {
+      setMessage(error.message || "Authentication failed.");
+    }
+  });
+}
+
+function ensureAuthModal() {
+  let modal = document.querySelector("#auth-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "auth-modal";
+  modal.className = "snapshot-modal auth-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card auth-modal-card" role="document" aria-labelledby="auth-modal-title">
+      <button type="button" class="modal-close" data-auth-modal-close aria-label="Close sign in">×</button>
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Secure Access</p>
+        <h3 id="auth-modal-title">Sign in to Cannakan Grow</h3>
+        <p class="muted">Use your email and password to save and manage sessions across devices.</p>
+      </div>
+      <div id="auth-modal-body"></div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+  modal.querySelector("[data-auth-modal-close]")?.addEventListener("click", () => {
+    modal.close();
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function closeAuthModal() {
+  const modal = document.querySelector("#auth-modal");
+  if (modal instanceof HTMLDialogElement && modal.open) {
+    modal.close();
+  }
+}
+
+function openAuthModal() {
+  if (!isSupabaseConfigured() || !appState.authReady || appState.loading || appState.user) {
+    return false;
+  }
+
+  const modal = ensureAuthModal();
+  const body = modal.querySelector("#auth-modal-body");
+  if (!body) {
+    return false;
+  }
+
+  body.replaceChildren(cloneTemplate(templates.auth));
+  body.querySelector(".auth-card")?.classList.add("auth-card-inline");
+  const modalTitle = body.querySelector(".auth-card h2");
+  if (modalTitle) {
+    modalTitle.textContent = "Sign in to your grow sessions";
+  }
+  bindAuthForm(body.querySelector("#auth-form"), {
+    messageElement: body.querySelector("#auth-message"),
+    onLoginSuccess: () => {
+      closeAuthModal();
+      redirectToHomeAfterLogin();
+    },
+  });
+
+  if (!modal.open) {
+    modal.showModal();
+  }
+  body.querySelector('input[name="email"]')?.focus();
+  return true;
+}
+
 function updateNavState() {
   const navLinks = document.querySelectorAll(".topbar-nav a");
   syncAdminNavigationVisibility();
@@ -6870,11 +7054,18 @@ function updateAuthStatus() {
   }
 
   if (!appState.user) {
-    authStatus.innerHTML = `<span class="auth-pill">Signed out</span>`;
+    authStatus.innerHTML = `
+      <span class="auth-pill">Signed out</span>
+      <button type="button" class="button button-primary auth-sign-in-button" data-auth-sign-in="true">Sign In</button>
+    `;
+    authStatus.querySelector("[data-auth-sign-in='true']")?.addEventListener("click", () => {
+      openAuthModal();
+    });
     syncAdminNavigationVisibility();
     return;
   }
 
+  closeAuthModal();
   const themeTarget = appState.theme === "dark" ? "light" : "dark";
   const themeLabel = `Switch to ${themeTarget} mode`;
   const themeIcon = themeTarget === "dark" ? "moon" : "sun";
@@ -9015,7 +9206,7 @@ function render() {
 
   if (route === "admin" && !id) {
     if (!appState.user) {
-      renderAuthScreen();
+      renderAuthScreen({ autoOpenModal: true });
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "auth",
         pageKey: "auth",
@@ -9057,7 +9248,7 @@ function render() {
 
   if (route === "admin" && id === "gallery-moderation") {
     if (!appState.user) {
-      renderAuthScreen();
+      renderAuthScreen({ autoOpenModal: true });
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "auth",
         pageKey: "auth",
@@ -9121,7 +9312,7 @@ function render() {
   }
 
   if (!appState.user) {
-    renderAuthScreen();
+    renderAuthScreen({ autoOpenModal: true });
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "auth",
       pageKey: "auth",
@@ -9295,97 +9486,17 @@ function openNewSessionSystemModal() {
   overlay.querySelector(".modal-close")?.focus();
 }
 
-function renderAuthScreen() {
+function renderAuthScreen(options = {}) {
+  const { autoOpenModal = false } = options;
   app.replaceChildren(cloneTemplate(templates.auth));
-  const form = document.querySelector("#auth-form");
-  const message = document.querySelector("#auth-message");
-  const confirmField = document.querySelector("#confirm-password-field");
-  const confirmInput = form.elements.confirmPassword;
-  let authMode = "login";
-
-  const setAuthMode = (mode) => {
-    authMode = mode;
-    const isSignup = mode === "signup";
-    confirmField.hidden = !isSignup;
-    confirmInput.toggleAttribute("required", isSignup);
-    if (!isSignup) {
-      confirmInput.value = "";
-      confirmInput.setCustomValidity("");
-    }
-  };
-
-  const validatePasswordMatch = () => {
-    if (authMode !== "signup") {
-      confirmInput.setCustomValidity("");
-      return true;
-    }
-
-    const password = String(form.elements.password.value || "");
-    const confirmPassword = String(confirmInput.value || "");
-    const passwordsMatch = password === confirmPassword;
-    if (!passwordsMatch) {
-      confirmInput.setCustomValidity("Passwords do not match.");
-      message.textContent = "Passwords do not match.";
-      return false;
-    }
-
-    confirmInput.setCustomValidity("");
-    if (message.textContent === "Passwords do not match.") {
-      message.textContent = "";
-    }
-    return true;
-  };
-
-  form.querySelectorAll('button[name="action"]').forEach((button) => {
-    button.addEventListener("click", () => {
-      setAuthMode(button.value);
-      message.textContent = "";
+  bindAuthForm(document.querySelector("#auth-form"), {
+    messageElement: document.querySelector("#auth-message"),
+  });
+  if (autoOpenModal) {
+    queueMicrotask(() => {
+      openAuthModal();
     });
-  });
-
-  confirmInput.addEventListener("input", validatePasswordMatch);
-  form.elements.password.addEventListener("input", validatePasswordMatch);
-  setAuthMode("login");
-  if (appState.authNotice) {
-    message.textContent = appState.authNotice;
-    appState.authNotice = "";
   }
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const submitter = event.submitter;
-    const action = submitter?.value || "login";
-    setAuthMode(action);
-    const formData = new FormData(form);
-    const email = String(formData.get("email") || "").trim();
-    const password = String(formData.get("password") || "");
-
-    message.textContent = "";
-
-    try {
-      if (action === "signup") {
-        if (!validatePasswordMatch()) {
-          confirmInput.reportValidity();
-          return;
-        }
-        const { error } = await appState.supabase.auth.signUp({ email, password });
-        if (error) {
-          throw error;
-        }
-        message.textContent = "Check your email to confirm your account, then log in.";
-        return;
-      }
-
-      const { error } = await appState.supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        throw error;
-      }
-
-      redirectToHomeAfterLogin();
-    } catch (error) {
-      message.textContent = error.message || "Authentication failed.";
-    }
-  });
 }
 
 function renderProfileSetupScreen() {
