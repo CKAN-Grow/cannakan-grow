@@ -7347,6 +7347,7 @@ function renderAdminPage() {
           <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
         </div>
       </div>
+      <div id="admin-overview-tools"></div>
       <div class="summary-grid admin-overview-grid"></div>
     </section>
     <section class="card admin-section-card">
@@ -7376,7 +7377,7 @@ function renderAdminPage() {
         <div>
           <p class="eyebrow">System Tools</p>
           <h3>Admin-only utilities</h3>
-          <p class="muted">Use dev-only tools here without surfacing them on the public dashboard.</p>
+          <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
         </div>
       </div>
       <div id="admin-system-tools"></div>
@@ -7427,6 +7428,9 @@ function renderAdminPage() {
     ].join("");
   }
 
+  const overviewTools = app.querySelector("#admin-overview-tools");
+  renderMockDataAdminSection(overviewTools, { embedded: true });
+
   const userReviewGrid = app.querySelector("#admin-user-review-grid");
   if (userReviewGrid) {
     const privateSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "private").length;
@@ -7445,7 +7449,9 @@ function renderAdminPage() {
   }
 
   const systemToolsContainer = app.querySelector("#admin-system-tools");
-  renderMockDataAdminSection(systemToolsContainer);
+  if (systemToolsContainer) {
+    systemToolsContainer.innerHTML = `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`;
+  }
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
@@ -7630,19 +7636,23 @@ function syncMockDataBanner() {
   }
 }
 
-function renderMockDataAdminSection(target = app) {
+function renderMockDataAdminSection(target = app, options = {}) {
   if (!target || !canAccessMockDataControls()) {
     return null;
   }
 
+  const embedded = Boolean(options.embedded);
   const section = document.createElement("section");
-  section.className = `card mock-data-admin-section ${isMockDataEnabled() ? "is-on" : "is-off"}`;
+  section.className = `${embedded ? "mock-data-admin-section mock-data-admin-section--embedded" : "card mock-data-admin-section"} ${isMockDataEnabled() ? "is-on" : "is-off"}`;
   section.innerHTML = `
     <div class="mock-data-admin-shell">
       <div class="mock-data-admin-copy">
         <p class="eyebrow">Admin Utility</p>
-        <h3>Dev Mode</h3>
-        <p class="mock-data-admin-subtitle">Mock gallery data</p>
+        <h3>Dev Mode (Mock Data)</h3>
+        <p class="mock-data-admin-subtitle">
+          <span>Admin-only preview controls</span>
+          ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
+        </p>
         <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
       </div>
       <div class="mock-data-admin-actions">
