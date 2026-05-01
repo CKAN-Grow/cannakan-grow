@@ -7974,6 +7974,20 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     width: 100%;
   }
 
+  .dashboard-bar .hero-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .dashboard-bar .hero-actions .button {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
   .snapshot-actions {
     justify-items: stretch;
   }
