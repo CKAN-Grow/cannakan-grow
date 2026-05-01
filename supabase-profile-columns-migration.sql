@@ -1,0 +1,38 @@
+alter table public.profiles
+  add column if not exists username text not null default '';
+
+alter table public.profiles
+  add column if not exists email text default '';
+
+alter table public.profiles
+  add column if not exists avatar_url text default '';
+
+alter table public.profiles
+  add column if not exists avatar_path text default '';
+
+alter table public.profiles
+  add column if not exists account_status text not null default 'active';
+
+alter table public.profiles
+  add column if not exists last_active_at timestamptz;
+
+alter table public.profiles
+  add column if not exists deletion_requested_at timestamptz;
+
+alter table public.profiles
+  add column if not exists deletion_scheduled_for timestamptz;
+
+alter table public.profiles
+  add column if not exists deletion_status text default '';
+
+alter table public.profiles
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.profiles
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+create index if not exists profiles_account_status_idx
+  on public.profiles (account_status, created_at desc);
+
+create index if not exists profiles_last_active_idx
+  on public.profiles (last_active_at desc);

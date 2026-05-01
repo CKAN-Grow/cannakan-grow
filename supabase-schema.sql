@@ -117,6 +117,9 @@ create index if not exists grow_gallery_snapshot_likes_snapshot_idx
   on public.grow_gallery_snapshot_likes (snapshot_id, created_at desc);
 
 alter table public.profiles
+  add column if not exists username text not null default '';
+
+alter table public.profiles
   add column if not exists deletion_requested_at timestamptz;
 
 alter table public.profiles
@@ -129,10 +132,22 @@ alter table public.profiles
   add column if not exists email text default '';
 
 alter table public.profiles
+  add column if not exists avatar_url text default '';
+
+alter table public.profiles
+  add column if not exists avatar_path text default '';
+
+alter table public.profiles
   add column if not exists account_status text not null default 'active';
 
 alter table public.profiles
   add column if not exists last_active_at timestamptz;
+
+alter table public.profiles
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.profiles
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
 create index if not exists grow_sessions_user_created_idx
   on public.grow_sessions (user_id, created_at desc);
