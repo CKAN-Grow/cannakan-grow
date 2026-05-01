@@ -37,7 +37,7 @@ const MAX_SOURCE_LOGO_DIMENSION = 768;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
-const MEMBER_FOLLOWS_TABLE = "member_follows";
+const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
@@ -4928,9 +4928,9 @@ function isPublicMemberFollowMembersUnavailableError(error) {
   );
 }
 
-function isMemberFollowsTableUnavailableError(error) {
+function isGrowFollowsTableUnavailableError(error) {
   const message = String(error?.message || error?.details || "").toLowerCase();
-  return message.includes("member_follows") && (
+  return message.includes("grow_follows") && (
     message.includes("relation")
     || message.includes("permission denied")
   );
@@ -4951,9 +4951,33 @@ function normalizeGrowNetworkFollowingRow(row) {
   }
 
   return {
-    memberId: String(row.followed_user_id || "").trim(),
+    memberId: String(row.following_id || "").trim(),
     followedAt: row.created_at || "",
+    isMock: Boolean(row.isMock),
   };
+}
+
+function buildFallbackGrowNetworkFollowingEntries(limit = 6) {
+  const seenMemberIds = new Set();
+  const approvedSnapshots = getGallerySnapshotsForDisplay()
+    .filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const fallbackEntries = [];
+
+  approvedSnapshots.forEach((snapshot) => {
+    const memberId = String(snapshot?.userId || "").trim();
+    if (!memberId || memberId === appState.user?.id || seenMemberIds.has(memberId)) {
+      return;
+    }
+
+    seenMemberIds.add(memberId);
+    fallbackEntries.push({
+      memberId,
+      followedAt: snapshot?.publishedAt || snapshot?.createdAt || "",
+      isMock: true,
+    });
+  });
+
+  return fallbackEntries.slice(0, Math.max(0, Number(limit) || 0));
 }
 
 function getActivePublicMemberProfileRouteId() {
@@ -5575,16 +5599,16 @@ async function loadPublicMemberFollowState(memberId = "", options = {}) {
   const refreshPromise = (async () => {
     try {
       const { data, error } = await appState.supabase
-        .from(MEMBER_FOLLOWS_TABLE)
+        .from(GROW_FOLLOWS_TABLE)
         .select("id")
-        .eq("follower_user_id", appState.user.id)
-        .eq("followed_user_id", normalizedId)
+        .eq("follower_id", appState.user.id)
+        .eq("following_id", normalizedId)
         .maybeSingle();
 
       if (error) {
-        if (isMemberFollowsTableUnavailableError(error)) {
+        if (isGrowFollowsTableUnavailableError(error)) {
           appState.publicMemberFollowsTableUnavailable = true;
-          console.warn("Member follows table unavailable.", {
+          console.warn("Grow follows table unavailable.", {
             reason,
             memberId: normalizedId,
             error,
@@ -5637,35 +5661,66 @@ async function loadGrowNetworkFollowing(reason = "unspecified") {
     return [];
   }
 
+  const applyFallbackFollowingEntries = () => {
+    const fallbackFollowing = buildFallbackGrowNetworkFollowingEntries();
+    appState.growNetworkFollowing = fallbackFollowing;
+    appState.growNetworkFollowingLoaded = true;
+    appState.growNetworkFollowingError = "";
+    return fallbackFollowing;
+  };
+
+  if (isMockDataEnabled()) {
+    const fallbackFollowing = applyFallbackFollowingEntries();
+    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
+    await Promise.allSettled([
+      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:mock-profiles` }),
+      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:mock-summaries` }),
+    ]);
+    return fallbackFollowing;
+  }
+
   if (!appState.supabase) {
-    return appState.growNetworkFollowing || [];
+    const fallbackFollowing = applyFallbackFollowingEntries();
+    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
+    await Promise.allSettled([
+      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:fallback-profiles` }),
+      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:fallback-summaries` }),
+    ]);
+    return fallbackFollowing;
   }
 
   const { data, error } = await appState.supabase
-    .from(MEMBER_FOLLOWS_TABLE)
-    .select("followed_user_id,created_at")
-    .eq("follower_user_id", appState.user.id)
+    .from(GROW_FOLLOWS_TABLE)
+    .select("following_id,created_at")
+    .eq("follower_id", appState.user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
-    if (isMemberFollowsTableUnavailableError(error)) {
+    if (isGrowFollowsTableUnavailableError(error)) {
       appState.publicMemberFollowsTableUnavailable = true;
-      appState.growNetworkFollowingError = "Grow Network follows table unavailable. Apply the latest follow migration.";
-    } else {
-      appState.growNetworkFollowingError = error.message || "Could not load your Grow Network.";
     }
-    console.error("Failed to load Grow Network follows", {
-      reason,
-      userId: appState.user.id,
-      error,
-    });
-    appState.growNetworkFollowingLoaded = true;
-    return appState.growNetworkFollowing || [];
+    const fallbackFollowing = applyFallbackFollowingEntries();
+    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
+    await Promise.allSettled([
+      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:error-profiles` }),
+      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:error-summaries` }),
+    ]);
+    return fallbackFollowing;
   }
 
   const following = (data || [])
     .map(normalizeGrowNetworkFollowingRow)
     .filter((entry) => entry?.memberId);
+  if (!following.length) {
+    const fallbackFollowing = applyFallbackFollowingEntries();
+    const followedIds = fallbackFollowing.map((entry) => entry.memberId);
+    await Promise.allSettled([
+      loadPublicMemberProfilesByIds(followedIds, { force: true, reason: `${reason}:empty-profiles` }),
+      loadPublicMemberFollowSummariesByIds(followedIds, { force: true, reason: `${reason}:empty-summaries` }),
+    ]);
+    return fallbackFollowing;
+  }
+
   appState.growNetworkFollowing = following;
   appState.growNetworkFollowingLoaded = true;
   appState.growNetworkFollowingError = "";
@@ -6244,24 +6299,24 @@ async function togglePublicMemberFollow(memberId = "") {
 
     if (isFollowing) {
       const { error } = await appState.supabase
-        .from(MEMBER_FOLLOWS_TABLE)
+        .from(GROW_FOLLOWS_TABLE)
         .delete()
-        .eq("follower_user_id", authUser.id)
-        .eq("followed_user_id", normalizedId);
+        .eq("follower_id", authUser.id)
+        .eq("following_id", normalizedId);
 
       if (error) {
         throw new Error("Could not unfollow this member right now.");
       }
     } else {
       const { error } = await appState.supabase
-        .from(MEMBER_FOLLOWS_TABLE)
+        .from(GROW_FOLLOWS_TABLE)
         .upsert(
           {
-            follower_user_id: authUser.id,
-            followed_user_id: normalizedId,
+            follower_id: authUser.id,
+            following_id: normalizedId,
           },
           {
-            onConflict: "follower_user_id,followed_user_id",
+            onConflict: "follower_id,following_id",
             ignoreDuplicates: true,
           },
         );
@@ -19869,6 +19924,7 @@ function renderGrowNetworkPage() {
       <div class="grow-network-member-list">
         ${followingEntries.map((entry) => {
           const memberId = entry.memberId;
+          const isMockEntry = Boolean(entry.isMock);
           const profile = getPublicMemberProfile(memberId);
           const displayName = profile?.displayName || "Community member";
           const avatarUrl = profile?.avatarUrl || "";
@@ -19891,12 +19947,16 @@ function renderGrowNetworkPage() {
               </a>
               <div class="grow-network-member-actions">
                 <a class="button button-secondary" href="${escapeHtml(getPublicMemberProfileRoute(memberId))}">View Profile</a>
-                <button
-                  type="button"
-                  class="button button-secondary grow-network-unfollow-button"
-                  data-grow-network-unfollow="${escapeHtml(memberId)}"
-                  ${isPublicMemberFollowPending(memberId) ? "disabled" : ""}
-                >Unfollow</button>
+                ${isMockEntry
+                  ? ""
+                  : `
+                    <button
+                      type="button"
+                      class="button button-secondary grow-network-unfollow-button"
+                      data-grow-network-unfollow="${escapeHtml(memberId)}"
+                      ${isPublicMemberFollowPending(memberId) ? "disabled" : ""}
+                    >Unfollow</button>
+                  `}
               </div>
             </article>
           `;

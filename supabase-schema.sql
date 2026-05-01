@@ -113,10 +113,10 @@ create table if not exists public.grow_gallery_snapshot_likes (
   created_at timestamptz not null default timezone('utc', now())
 );
 
-create table if not exists public.member_follows (
+create table if not exists public.grow_follows (
   id uuid primary key default gen_random_uuid(),
-  follower_user_id uuid not null references auth.users(id) on delete cascade,
-  followed_user_id uuid not null references auth.users(id) on delete cascade,
+  follower_id uuid not null references auth.users(id) on delete cascade,
+  following_id uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -149,14 +149,14 @@ create unique index if not exists grow_gallery_snapshot_likes_snapshot_user_idx
 create index if not exists grow_gallery_snapshot_likes_snapshot_idx
   on public.grow_gallery_snapshot_likes (snapshot_id, created_at desc);
 
-create unique index if not exists member_follows_follower_followed_idx
-  on public.member_follows (follower_user_id, followed_user_id);
+create unique index if not exists grow_follows_follower_following_idx
+  on public.grow_follows (follower_id, following_id);
 
-create index if not exists member_follows_followed_created_idx
-  on public.member_follows (followed_user_id, created_at desc);
+create index if not exists grow_follows_following_created_idx
+  on public.grow_follows (following_id, created_at desc);
 
-create index if not exists member_follows_follower_created_idx
-  on public.member_follows (follower_user_id, created_at desc);
+create index if not exists grow_follows_follower_created_idx
+  on public.grow_follows (follower_id, created_at desc);
 
 create unique index if not exists community_activity_user_type_session_snapshot_idx
   on public.community_activity (user_id, activity_type, session_id, snapshot_id);
@@ -355,17 +355,17 @@ as $$
   select
     (
       select count(*)::bigint
-      from public.member_follows
+      from public.grow_follows
       inner join public.public_member_profiles
-        on public_member_profiles.id = member_follows.follower_user_id
-      where member_follows.followed_user_id = target_user_id
+        on public_member_profiles.id = grow_follows.follower_id
+      where grow_follows.following_id = target_user_id
     ) as follower_count,
     (
       select count(*)::bigint
-      from public.member_follows
+      from public.grow_follows
       inner join public.public_member_profiles
-        on public_member_profiles.id = member_follows.followed_user_id
-      where member_follows.follower_user_id = target_user_id
+        on public_member_profiles.id = grow_follows.following_id
+      where grow_follows.follower_id = target_user_id
     ) as following_count;
 $$;
 
@@ -393,24 +393,24 @@ as $$
   from requested_users
   left join (
     select
-      member_follows.followed_user_id as user_id,
+      grow_follows.following_id as user_id,
       count(*)::bigint as follower_count
-    from public.member_follows
+    from public.grow_follows
     inner join public.public_member_profiles
-      on public_member_profiles.id = member_follows.follower_user_id
-    where member_follows.followed_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
-    group by member_follows.followed_user_id
+      on public_member_profiles.id = grow_follows.follower_id
+    where grow_follows.following_id = any (coalesce(target_user_ids, '{}'::uuid[]))
+    group by grow_follows.following_id
   ) as follower_counts
     on follower_counts.user_id = requested_users.user_id
   left join (
     select
-      member_follows.follower_user_id as user_id,
+      grow_follows.follower_id as user_id,
       count(*)::bigint as following_count
-    from public.member_follows
+    from public.grow_follows
     inner join public.public_member_profiles
-      on public_member_profiles.id = member_follows.followed_user_id
-    where member_follows.follower_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
-    group by member_follows.follower_user_id
+      on public_member_profiles.id = grow_follows.following_id
+    where grow_follows.follower_id = any (coalesce(target_user_ids, '{}'::uuid[]))
+    group by grow_follows.follower_id
   ) as following_counts
     on following_counts.user_id = requested_users.user_id;
 $$;
@@ -441,19 +441,19 @@ as $$
   requested_members as (
     select
       case
-        when normalized_relationship.relationship_type = 'following' then member_follows.followed_user_id
-        else member_follows.follower_user_id
+        when normalized_relationship.relationship_type = 'following' then grow_follows.following_id
+        else grow_follows.follower_id
       end as member_id,
       normalized_relationship.relationship_type,
-      member_follows.created_at
-    from public.member_follows
+      grow_follows.created_at
+    from public.grow_follows
     cross join normalized_relationship
     where (
       normalized_relationship.relationship_type = 'following'
-      and member_follows.follower_user_id = target_user_id
+      and grow_follows.follower_id = target_user_id
     ) or (
       normalized_relationship.relationship_type = 'followers'
-      and member_follows.followed_user_id = target_user_id
+      and grow_follows.following_id = target_user_id
     )
   )
   select
@@ -725,7 +725,7 @@ alter table public.sources enable row level security;
 alter table public.announcements enable row level security;
 alter table public.grow_gallery_snapshots enable row level security;
 alter table public.grow_gallery_snapshot_likes enable row level security;
-alter table public.member_follows enable row level security;
+alter table public.grow_follows enable row level security;
 alter table public.community_activity enable row level security;
 
 drop policy if exists "Users can view their own grow sessions" on public.grow_sessions;
@@ -1136,14 +1136,14 @@ using (
   )
 );
 
-drop policy if exists "Users can view their own follow relationships" on public.member_follows;
+drop policy if exists "Users can view their own follow relationships" on public.grow_follows;
 create policy "Users can view their own follow relationships"
-on public.member_follows
+on public.grow_follows
 for select
 to authenticated
 using (
-  auth.uid() = follower_user_id
-  or auth.uid() = followed_user_id
+  auth.uid() = follower_id
+  or auth.uid() = following_id
   or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
@@ -1152,23 +1152,23 @@ using (
   )
 );
 
-drop policy if exists "Users can follow other members" on public.member_follows;
+drop policy if exists "Users can follow other members" on public.grow_follows;
 create policy "Users can follow other members"
-on public.member_follows
+on public.grow_follows
 for insert
 to authenticated
 with check (
-  auth.uid() = follower_user_id
-  and follower_user_id is distinct from followed_user_id
+  auth.uid() = follower_id
+  and follower_id is distinct from following_id
 );
 
-drop policy if exists "Users can unfollow members" on public.member_follows;
+drop policy if exists "Users can unfollow members" on public.grow_follows;
 create policy "Users can unfollow members"
-on public.member_follows
+on public.grow_follows
 for delete
 to authenticated
 using (
-  auth.uid() = follower_user_id
+  auth.uid() = follower_id
   or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1
