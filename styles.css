@@ -1136,6 +1136,17 @@ body.theme-dark .spotlight-stat strong {
   min-width: 0;
 }
 
+.section-title-with-icon > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title-with-icon > div > .eyebrow {
+  width: calc(100% + 80px);
+  margin-left: -80px;
+}
+
 .section-title-icon {
   width: 64px;
   height: 64px;
