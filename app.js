@@ -38,6 +38,7 @@ const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const MEMBER_FOLLOWS_TABLE = "member_follows";
+const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -241,6 +242,11 @@ const appState = {
   growNetworkFollowingLoaded: false,
   growNetworkFollowingError: "",
   growNetworkFollowingRefreshPromise: null,
+  growNetworkActivity: [],
+  growNetworkActivityLoaded: false,
+  growNetworkActivityError: "",
+  growNetworkActivityRefreshPromise: null,
+  communityActivityTableUnavailable: false,
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -496,6 +502,11 @@ function resetSessionScopedAppState() {
   appState.growNetworkFollowingLoaded = false;
   appState.growNetworkFollowingError = "";
   appState.growNetworkFollowingRefreshPromise = null;
+  appState.growNetworkActivity = [];
+  appState.growNetworkActivityLoaded = false;
+  appState.growNetworkActivityError = "";
+  appState.growNetworkActivityRefreshPromise = null;
+  appState.communityActivityTableUnavailable = false;
   appState.siteVisitorAnalyticsRows = [];
   appState.siteVisitorAnalyticsLoaded = false;
   appState.siteVisitorAnalyticsLoadedFilter = "";
@@ -5569,6 +5580,10 @@ async function refreshGrowNetworkFollowing(options = {}) {
   appState.growNetworkFollowingRefreshPromise = refreshPromise;
   try {
     const following = await refreshPromise;
+    await refreshGrowNetworkActivity({
+      force: true,
+      reason: `${reason}:activity`,
+    });
     if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
       renderGrowNetworkPage();
     }
@@ -5583,57 +5598,487 @@ function getGrowNetworkFollowingEntries() {
   return appState.growNetworkFollowing || [];
 }
 
-function buildGrowNetworkActivities(followedMemberIds = []) {
-  const followedIdSet = new Set((followedMemberIds || []).map((memberId) => String(memberId || "").trim()).filter(Boolean));
-  if (!followedIdSet.size) {
+function normalizeCommunityActivityMetadata(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return {};
+  }
+
+  return {
+    germinationRate: Math.max(0, Number(metadata.germinationRate) || 0),
+    germinationRateLabel: String(metadata.germinationRateLabel || "").trim(),
+    sourceLabel: String(metadata.sourceLabel || "").trim(),
+    sessionDateLabel: String(metadata.sessionDateLabel || "").trim(),
+    systemLabel: String(metadata.systemLabel || "").trim(),
+    activityTypeLabel: String(metadata.activityTypeLabel || "").trim(),
+  };
+}
+
+function normalizeCommunityActivityRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: String(row.id || "").trim(),
+    userId: String(row.user_id || row.userId || "").trim(),
+    activityType: String(row.activity_type || row.activityType || "").trim(),
+    sessionId: String(row.session_id || row.sessionId || "").trim(),
+    snapshotId: String(row.snapshot_id || row.snapshotId || "").trim(),
+    title: String(row.title || "").trim() || "Grow activity",
+    summary: String(row.summary || "").trim(),
+    metadata: normalizeCommunityActivityMetadata(row.metadata),
+    visibility: String(row.visibility || "").trim() || "public",
+    createdAt: row.created_at || row.createdAt || "",
+  };
+}
+
+function isCommunityActivityTableUnavailableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("community_activity") && (
+    message.includes("relation")
+    || message.includes("permission denied")
+    || message.includes("schema cache")
+    || message.includes("column")
+    || message.includes("function")
+  );
+}
+
+function getCommunityActivityTypeDetails(activityType = "") {
+  switch (String(activityType || "").trim()) {
+    case "snapshot_approved":
+      return {
+        activityType: "approved-snapshot",
+        typeLabel: "New approved Community Grow snapshot",
+        typeMeta: "Approved in Community Grow",
+      };
+    case "public_session_shared":
+      return {
+        activityType: "shared-session",
+        typeLabel: "Public session shared",
+        typeMeta: "Public session now visible",
+      };
+    case "public_session_completed":
+      return {
+        activityType: "completed-session",
+        typeLabel: "Completed public session",
+        typeMeta: "Approved in Community Grow",
+      };
+    default:
+      return {
+        activityType: "approved-snapshot",
+        typeLabel: "Public grow activity",
+        typeMeta: "",
+      };
+  }
+}
+
+function getGrowNetworkActivityEntries() {
+  return appState.growNetworkActivity || [];
+}
+
+function buildCommunityActivityFeedEntry(activity) {
+  const normalizedActivity = normalizeCommunityActivityRow(activity);
+  if (!normalizedActivity?.id || !normalizedActivity.userId || normalizedActivity.visibility !== "public") {
+    return null;
+  }
+
+  const profile = getPublicMemberProfile(normalizedActivity.userId);
+  const typeDetails = getCommunityActivityTypeDetails(normalizedActivity.activityType);
+  const displayName = profile?.displayName || "Community member";
+  const avatarUrl = profile?.avatarUrl || "";
+  const metadata = normalizedActivity.metadata || {};
+  const fallbackRateLabel = `${Math.max(0, Number(metadata.germinationRate) || 0)}%`;
+
+  return {
+    id: normalizedActivity.id,
+    activityType: typeDetails.activityType,
+    typeLabel: metadata.activityTypeLabel || typeDetails.typeLabel,
+    typeMeta: typeDetails.typeMeta,
+    title: normalizedActivity.title || "Grow activity",
+    summary: normalizedActivity.summary || "",
+    successPercent: Math.max(0, Number(metadata.germinationRate) || 0),
+    occurredAt: normalizedActivity.createdAt || "",
+    memberId: normalizedActivity.userId,
+    displayName,
+    avatarUrl,
+    profileRoute: getPublicMemberProfileRoute(normalizedActivity.userId),
+    sessionRoute: normalizedActivity.snapshotId ? `#sessions/public/${normalizedActivity.snapshotId}` : "#gallery",
+    sessionDateLabel: metadata.sessionDateLabel || "",
+    sourceLabel: metadata.sourceLabel || "",
+    germinationRateLabel: metadata.germinationRateLabel || fallbackRateLabel,
+    systemLabel: metadata.systemLabel || "",
+  };
+}
+
+function normalizeCommunityActivityType(activityType = "") {
+  const normalizedType = String(activityType || "").trim().toLowerCase();
+  return [
+    "snapshot_approved",
+    "public_session_shared",
+    "public_session_completed",
+  ].includes(normalizedType)
+    ? normalizedType
+    : "snapshot_approved";
+}
+
+async function loadCommunityActivitySessionContext(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+
+  const existingSession = getSessions().find((entry) => entry.id === normalizedSessionId);
+  if (existingSession) {
+    return {
+      id: existingSession.id,
+      sessionStatus: existingSession.sessionStatus || "",
+      completedAt: existingSession.completedAt || "",
+      sessionName: existingSession.sessionName || "",
+      date: existingSession.date || "",
+      time: existingSession.time || "",
+    };
+  }
+
+  if (!appState.supabase) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase
+    .from("grow_sessions")
+    .select("id,session_status,completed_at,session_name,date,time")
+    .eq("id", normalizedSessionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load session context for community activity", {
+      sessionId: normalizedSessionId,
+      error,
+    });
+    return null;
+  }
+
+  return data
+    ? {
+      id: data.id,
+      sessionStatus: data.session_status || "",
+      completedAt: data.completed_at || "",
+      sessionName: data.session_name || "",
+      date: data.date || "",
+      time: data.time || "",
+    }
+    : null;
+}
+
+async function loadApprovedGallerySnapshotForSession(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+
+  const existingSnapshot = getGallerySnapshotForSession(normalizedSessionId);
+  if (existingSnapshot && getGallerySnapshotDisplayStatus(existingSnapshot) === "approved") {
+    return existingSnapshot;
+  }
+
+  if (!appState.supabase) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .select("*")
+    .eq("session_id", normalizedSessionId)
+    .eq("status", "approved")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to load approved gallery snapshot for session", {
+      sessionId: normalizedSessionId,
+      error,
+    });
+    return null;
+  }
+
+  return mapRowToGallerySnapshot(data);
+}
+
+function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
+  const normalizedSnapshot = snapshot && getGallerySnapshotDisplayStatus(snapshot) === "approved"
+    ? snapshot
+    : null;
+  if (!normalizedSnapshot?.id || !normalizedSnapshot.userId) {
     return [];
   }
 
-  return getApprovedPublicGallerySnapshots()
-    .filter((snapshot) => followedIdSet.has(String(snapshot?.userId || "").trim()))
-    .map((snapshot) => {
-      const memberId = String(snapshot?.userId || "").trim();
-      const profile = getPublicMemberProfile(memberId);
-      const displayName = profile?.displayName || getGallerySnapshotMemberLabel(snapshot);
-      const avatarUrl = profile?.avatarUrl || String(snapshot?.profileImageUrl || "").trim();
-      const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
-      const hasSessionContext = Boolean(String(snapshot?.sessionDate || "").trim() || String(snapshot?.title || "").trim());
-      const successPercent = Math.max(0, Number(snapshot?.successPercent) || 0);
-      const totalSeeds = Math.max(0, Number(snapshot?.totalSeeds) || 0);
-      const activityType = hasSessionContext
-        ? (successPercent > 0 || totalSeeds > 0
-          ? "completed-session"
-          : "shared-session")
-        : "approved-snapshot";
-      const typeLabel = activityType === "completed-session"
-        ? "Completed public session"
-        : (activityType === "shared-session"
-          ? "Public session shared"
-          : "New approved Community Grow snapshot");
-      const typeMeta = activityType === "completed-session"
-        ? "Approved in Community Grow"
-        : (activityType === "shared-session"
-          ? "Public session now visible"
-          : "Approved in Community Grow");
-      return {
-        id: `snapshot-${snapshot.id}`,
-        activityType,
-        typeLabel,
-        typeMeta,
-        title: String(snapshot?.title || "").trim() || "Grow Snapshot",
-        successPercent,
-        occurredAt: snapshot?.publishedAt || snapshot?.createdAt || "",
-        memberId,
-        displayName,
-        avatarUrl,
-        profileRoute: getPublicMemberProfileRoute(memberId),
-        sessionRoute: snapshot?.id ? `#sessions/public/${snapshot.id}` : "#gallery",
-        sessionDateLabel: publicDetails.sessionDateLabel || "",
-        sourceLabel: publicDetails.sourceLabel || "",
-        germinationRateLabel: publicDetails.germinationRateLabel || `${Math.max(0, Number(snapshot?.successPercent) || 0)}%`,
-      };
-    })
+  const safeTitle = String(normalizedSnapshot.title || sessionContext?.sessionName || "Grow Snapshot").trim() || "Grow Snapshot";
+  const safeDateLabel = getGallerySnapshotSubmittedDateLabel({
+    publishedAt: normalizedSnapshot.publishedAt || "",
+    createdAt: normalizedSnapshot.createdAt || "",
+  });
+  const safeSourceLabel = normalizeLeaderboardLabel(normalizedSnapshot.sourceName || "") || "Not shared";
+  const safeRate = Math.max(0, Number(normalizedSnapshot.successPercent) || 0);
+  const metadata = {
+    activityTypeLabel: "",
+    germinationRate: safeRate,
+    germinationRateLabel: `${safeRate}%`,
+    sourceLabel: safeSourceLabel,
+    sessionDateLabel: safeDateLabel,
+    systemLabel: formatSnapshotSystemLabel(normalizedSnapshot.systemType || "KAN"),
+  };
+  const payloads = [
+    {
+      userId: normalizedSnapshot.userId,
+      activityType: "snapshot_approved",
+      sessionId: String(normalizedSnapshot.sessionId || "").trim(),
+      snapshotId: String(normalizedSnapshot.id || "").trim(),
+      title: safeTitle,
+      summary: "Approved public Community Grow snapshot.",
+      metadata: {
+        ...metadata,
+        activityTypeLabel: "New approved Community Grow snapshot",
+      },
+    },
+    {
+      userId: normalizedSnapshot.userId,
+      activityType: "public_session_shared",
+      sessionId: String(normalizedSnapshot.sessionId || "").trim(),
+      snapshotId: String(normalizedSnapshot.id || "").trim(),
+      title: safeTitle,
+      summary: "Public grow session shared.",
+      metadata: {
+        ...metadata,
+        activityTypeLabel: "Public session shared",
+      },
+    },
+  ];
+
+  if (normalizeSessionStatus(sessionContext?.sessionStatus || "") === "completed") {
+    payloads.push({
+      userId: normalizedSnapshot.userId,
+      activityType: "public_session_completed",
+      sessionId: String(normalizedSnapshot.sessionId || "").trim(),
+      snapshotId: String(normalizedSnapshot.id || "").trim(),
+      title: safeTitle,
+      summary: "Completed public grow session.",
+      metadata: {
+        ...metadata,
+        activityTypeLabel: "Completed public session",
+      },
+    });
+  }
+
+  return payloads;
+}
+
+async function recordCommunityActivity(payload = {}) {
+  if (!appState.supabase) {
+    return null;
+  }
+
+  const normalizedUserId = String(payload.userId || "").trim();
+  const normalizedType = normalizeCommunityActivityType(payload.activityType || "");
+  if (!normalizedUserId || !normalizedType) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase.rpc("record_community_activity", {
+    activity_user_id: normalizedUserId,
+    activity_type: normalizedType,
+    activity_session_id: String(payload.sessionId || "").trim(),
+    activity_snapshot_id: String(payload.snapshotId || "").trim(),
+    activity_title: String(payload.title || "").trim(),
+    activity_summary: String(payload.summary || "").trim(),
+    activity_metadata: payload.metadata && typeof payload.metadata === "object" && !Array.isArray(payload.metadata)
+      ? payload.metadata
+      : {},
+    activity_visibility: "public",
+  });
+
+  if (error) {
+    if (isCommunityActivityTableUnavailableError(error)) {
+      appState.communityActivityTableUnavailable = true;
+      console.warn("Community activity table unavailable.", {
+        payload,
+        error,
+      });
+      return null;
+    }
+
+    console.error("Failed to record community activity", {
+      payload,
+      error,
+    });
+    return null;
+  }
+
+  return String(data || "").trim() || null;
+}
+
+async function clearCommunityActivityForSnapshot(snapshotId = "") {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  if (!normalizedSnapshotId || !appState.supabase || appState.communityActivityTableUnavailable) {
+    return 0;
+  }
+
+  const { data, error } = await appState.supabase.rpc("clear_community_activity_for_snapshot", {
+    activity_snapshot_id: normalizedSnapshotId,
+  });
+
+  if (error) {
+    if (isCommunityActivityTableUnavailableError(error)) {
+      appState.communityActivityTableUnavailable = true;
+      console.warn("Community activity cleanup function unavailable.", {
+        snapshotId: normalizedSnapshotId,
+        error,
+      });
+      return 0;
+    }
+
+    console.error("Failed to clear community activity for snapshot", {
+      snapshotId: normalizedSnapshotId,
+      error,
+    });
+    return 0;
+  }
+
+  if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+    void refreshGrowNetworkActivity({ force: true, reason: "community-activity:clear-snapshot" });
+  }
+  return Math.max(0, Number(data) || 0);
+}
+
+async function syncCommunityActivityForApprovedSnapshot(snapshot, options = {}) {
+  const normalizedSnapshot = snapshot && getGallerySnapshotDisplayStatus(snapshot) === "approved"
+    ? snapshot
+    : null;
+  if (!normalizedSnapshot?.id || !normalizedSnapshot.userId || appState.communityActivityTableUnavailable) {
+    return [];
+  }
+
+  const sessionContext = options.sessionContext || await loadCommunityActivitySessionContext(normalizedSnapshot.sessionId || "");
+  const payloads = buildCommunityActivityPayloads(normalizedSnapshot, sessionContext);
+  const results = await Promise.all(payloads.map((payload) => recordCommunityActivity(payload)));
+  if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+    void refreshGrowNetworkActivity({ force: true, reason: "community-activity:approved-snapshot" });
+  }
+  return results.filter(Boolean);
+}
+
+async function syncCommunityActivityForCompletedSession(session, options = {}) {
+  const normalizedSessionId = String(session?.id || "").trim();
+  if (!normalizedSessionId || appState.communityActivityTableUnavailable) {
+    return null;
+  }
+
+  const sessionStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  if (sessionStatus !== "completed") {
+    return null;
+  }
+
+  const approvedSnapshot = options.snapshot || await loadApprovedGallerySnapshotForSession(normalizedSessionId);
+  if (!approvedSnapshot?.id || getGallerySnapshotDisplayStatus(approvedSnapshot) !== "approved") {
+    return null;
+  }
+
+  const [payload] = buildCommunityActivityPayloads(approvedSnapshot, session).filter((entry) => entry.activityType === "public_session_completed");
+  if (!payload) {
+    return null;
+  }
+
+  const result = await recordCommunityActivity(payload);
+  if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+    void refreshGrowNetworkActivity({ force: true, reason: "community-activity:completed-session" });
+  }
+  return result;
+}
+
+async function loadGrowNetworkActivity(reason = "unspecified") {
+  const followedIds = getGrowNetworkFollowingEntries().map((entry) => String(entry?.memberId || "").trim()).filter(Boolean);
+  if (!followedIds.length) {
+    appState.growNetworkActivity = [];
+    appState.growNetworkActivityLoaded = true;
+    appState.growNetworkActivityError = "";
+    return [];
+  }
+
+  if (!appState.supabase) {
+    return appState.growNetworkActivity || [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(COMMUNITY_ACTIVITY_TABLE)
+    .select("*")
+    .eq("visibility", "public")
+    .in("user_id", followedIds)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (isCommunityActivityTableUnavailableError(error)) {
+      appState.communityActivityTableUnavailable = true;
+      appState.growNetworkActivityError = "Community activity is unavailable. Apply the latest community activity migration.";
+    } else {
+      appState.growNetworkActivityError = error.message || "Could not load your Grow Network activity.";
+    }
+    console.error("Failed to load community activity feed", {
+      reason,
+      followedIds,
+      error,
+    });
+    appState.growNetworkActivityLoaded = true;
+    return appState.growNetworkActivity || [];
+  }
+
+  const activities = (data || [])
+    .map(buildCommunityActivityFeedEntry)
+    .filter(Boolean)
     .sort((left, right) => new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime());
+  appState.growNetworkActivity = activities;
+  appState.growNetworkActivityLoaded = true;
+  appState.growNetworkActivityError = "";
+
+  await loadPublicMemberProfilesByIds(activities.map((activity) => activity.memberId), {
+    force: true,
+    reason: `${reason}:activity-profiles`,
+  });
+  appState.growNetworkActivity = activities.map((activity) => {
+    const profile = getPublicMemberProfile(activity.memberId);
+    return {
+      ...activity,
+      displayName: profile?.displayName || activity.displayName,
+      avatarUrl: profile?.avatarUrl || activity.avatarUrl,
+    };
+  });
+  return appState.growNetworkActivity;
+}
+
+async function refreshGrowNetworkActivity(options = {}) {
+  const { force = false, reason = "unspecified" } = options;
+  if (!appState.user?.id) {
+    appState.growNetworkActivity = [];
+    appState.growNetworkActivityLoaded = true;
+    appState.growNetworkActivityError = "";
+    return [];
+  }
+
+  if (!force && appState.growNetworkActivityLoaded && !appState.growNetworkActivityRefreshPromise) {
+    return appState.growNetworkActivity;
+  }
+
+  if (!force && appState.growNetworkActivityRefreshPromise) {
+    return appState.growNetworkActivityRefreshPromise;
+  }
+
+  const refreshPromise = loadGrowNetworkActivity(reason);
+  appState.growNetworkActivityRefreshPromise = refreshPromise;
+  try {
+    const activity = await refreshPromise;
+    if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+      renderGrowNetworkPage();
+    }
+    return activity;
+  } finally {
+    appState.growNetworkActivityRefreshPromise = null;
+  }
 }
 
 async function togglePublicMemberFollow(memberId = "") {
@@ -5767,6 +6212,16 @@ async function createCloudSession(session) {
 
 async function updateCloudSession(session) {
   const record = mapSessionToRecord(session, appState.user.id);
+  const { data: previousRow, error: previousRowError } = await appState.supabase
+    .from("grow_sessions")
+    .select("session_status,completed_at")
+    .eq("id", session.id)
+    .maybeSingle();
+
+  if (previousRowError) {
+    throw previousRowError;
+  }
+
   const { data, error } = await appState.supabase
     .from("grow_sessions")
     .update(record)
@@ -5781,6 +6236,10 @@ async function updateCloudSession(session) {
   const savedSession = mapRowToSession(data);
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
+  if (normalizeSessionStatus(previousRow?.session_status || "") !== "completed"
+    && normalizeSessionStatus(savedSession.sessionStatus || "") === "completed") {
+    void syncCommunityActivityForCompletedSession(savedSession);
+  }
   return savedSession;
 }
 
@@ -7184,6 +7643,8 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
     throw new Error("Invalid moderation status.");
   }
 
+  const previousSnapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId) || null;
+
   const { data, error } = await appState.supabase
     .from("grow_gallery_snapshots")
     .update({
@@ -7209,6 +7670,14 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
     mapped,
     ...appState.gallerySnapshots.filter((entry) => entry.id !== mapped.id),
   ]);
+
+  if (nextStatus === "approved") {
+    const sessionContext = await loadCommunityActivitySessionContext(mapped.sessionId || "");
+    await syncCommunityActivityForApprovedSnapshot(mapped, { sessionContext });
+  } else if (!previousSnapshot || getGallerySnapshotDisplayStatus(previousSnapshot) === "approved") {
+    await clearCommunityActivityForSnapshot(snapshotId);
+  }
+
   return mapped;
 }
 
@@ -7324,6 +7793,7 @@ async function deleteGallerySnapshot(snapshotId) {
     throw new Error("Could not remove this snapshot from Community Grow.");
   }
 
+  await clearCommunityActivityForSnapshot(snapshotId);
   appState.gallerySnapshots = appState.gallerySnapshots.filter((entry) => entry.id !== snapshotId);
   if (existing.sessionId) {
     await clearGallerySnapshotStateForSession(existing.sessionId);
@@ -18974,9 +19444,8 @@ function renderPublicMemberProfile(memberId) {
 
 function renderGrowNetworkPage() {
   const followingEntries = getGrowNetworkFollowingEntries();
-  const followedIds = followingEntries.map((entry) => entry.memberId);
-  const isLoadingNetworkActivity = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
-  const activities = buildGrowNetworkActivities(followedIds);
+  const isLoadingNetworkActivity = Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id));
+  const activities = getGrowNetworkActivityEntries();
   const isLoadingFollowing = Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id));
   const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
 
@@ -19054,6 +19523,14 @@ function renderGrowNetworkPage() {
       `;
     }
 
+    if (appState.growNetworkActivityError) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <p>${escapeHtml(appState.growNetworkActivityError)}</p>
+        </div>
+      `;
+    }
+
     if (isLoadingNetworkActivity) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state">
@@ -19088,6 +19565,7 @@ function renderGrowNetworkPage() {
             </div>
             <div class="grow-network-feed-body">
               <strong class="grow-network-feed-title">${escapeHtml(activity.title)}</strong>
+              ${activity.summary ? `<p class="muted">${escapeHtml(activity.summary)}</p>` : ""}
               <div class="grow-network-feed-meta">
                 <span class="gallery-card-chip">${escapeHtml(activity.typeLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(`${activity.germinationRateLabel} germination`)}</span>
