@@ -652,7 +652,14 @@ function registerServiceWorker() {
 }
 
 function getBuildInfo() {
-  return normalizeBuildInfo(CURRENT_APP_BUILD_INFO);
+  const bundledBuildInfo = normalizeBuildInfo(CURRENT_APP_BUILD_INFO);
+  const runtimeBuildInfo = normalizeBuildInfo(window.CANNAKAN_BUILD_INFO || {});
+
+  return normalizeBuildInfo({
+    version: runtimeBuildInfo.version || bundledBuildInfo.version,
+    buildTimestamp: runtimeBuildInfo.buildTimestamp || bundledBuildInfo.buildTimestamp,
+    commitHash: runtimeBuildInfo.commitHash || bundledBuildInfo.commitHash,
+  });
 }
 
 function normalizeBuildInfo(buildInfo = {}) {
@@ -732,11 +739,21 @@ function shouldShowGlobalBuildVersionBadge() {
 
 function renderGlobalBuildVersionBadgeMarkup() {
   const buildInfo = getBuildInfo();
+  const versionLabel = buildInfo.version ? `v${buildInfo.version}` : "Build";
+  const commitLabel = buildInfo.commitHash ? `#${buildInfo.commitHash}` : "Commit unavailable";
+  const timestampLabel = formatBuildTimestampLabel(buildInfo.buildTimestamp);
+
   return `
-    <div class="build-version-badge" aria-label="Current app build version">
-      <span class="build-version-badge-version">${escapeHtml(`v${buildInfo.version}`)}</span>
+    <div
+      class="build-version-badge"
+      aria-label="Current app build version"
+      title="${escapeHtml(`${versionLabel} · ${timestampLabel} · ${commitLabel}`)}"
+    >
+      <span class="build-version-badge-version">${escapeHtml(versionLabel)}</span>
       <span class="build-version-badge-separator" aria-hidden="true">•</span>
-      <span class="build-version-badge-timestamp">${escapeHtml(formatBuildTimestampLabel(buildInfo.buildTimestamp))}</span>
+      <span class="build-version-badge-timestamp">${escapeHtml(timestampLabel)}</span>
+      <span class="build-version-badge-separator" aria-hidden="true">•</span>
+      <span class="build-version-badge-commit">${escapeHtml(commitLabel)}</span>
     </div>
   `;
 }
