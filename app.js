@@ -3441,9 +3441,18 @@ async function saveUserProfile(profileInput) {
     .single();
 
   if (error) {
+    console.error("[Cannakan Profile] Supabase profile upsert failed", {
+      payload,
+      error,
+    });
     throw error;
   }
 
+  console.log("[Cannakan Profile] Supabase profile upsert succeeded", {
+    userId: appState.user.id,
+    email: payload.email,
+    username: payload.username,
+  });
   return normalizeProfileRow(data);
 }
 
@@ -7773,6 +7782,7 @@ function renderProfileSetupScreen() {
     mode: "setup",
     initialProfile: appState.profile,
     onSaved: () => {
+      window.location.hash = "#home";
       safeRender();
     },
   });
@@ -7862,11 +7872,23 @@ function bindProfileForm(form, options = {}) {
   const removeButton = form.querySelector("#profile-remove-avatar");
   const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
+  const defaultSubmitLabel = submitButton?.textContent || "Save Profile";
   const state = {
     profile,
     removeAvatar: false,
     pendingFile: null,
     previewUrl: "",
+  };
+
+  const setProfileFormMessage = (text = "", tone = "") => {
+    if (!message) {
+      return;
+    }
+    message.textContent = text;
+    message.classList.remove("is-error", "is-success", "is-warning");
+    if (tone) {
+      message.classList.add(`is-${tone}`);
+    }
   };
 
   usernameInput.value = profile?.username || "";
@@ -7882,12 +7904,12 @@ function bindProfileForm(form, options = {}) {
     }
 
     if (!file.type.startsWith("image/")) {
-      message.textContent = "Images only. Please choose a valid profile picture.";
+      setProfileFormMessage("Images only. Please choose a valid profile picture.", "error");
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      message.textContent = "Image is too large. Please choose an image under 12 MB.";
+      setProfileFormMessage("Image is too large. Please choose an image under 12 MB.", "error");
       return;
     }
 
@@ -7898,7 +7920,7 @@ function bindProfileForm(form, options = {}) {
     state.pendingFile = file;
     state.removeAvatar = false;
     state.previewUrl = URL.createObjectURL(file);
-    message.textContent = "";
+    setProfileFormMessage("");
     renderProfileAvatarPreview(preview, removeButton, state, profile);
   });
 
@@ -7924,7 +7946,7 @@ function bindProfileForm(form, options = {}) {
     if (submitButton) {
       submitButton.disabled = true;
     }
-    message.textContent = "";
+    setProfileFormMessage("");
 
     try {
       const scheduledProfile = await scheduleUserDeletion();
@@ -7932,7 +7954,8 @@ function bindProfileForm(form, options = {}) {
       appState.authNotice = `Account deletion is scheduled for ${scheduledForLabel}. Your app data has not been permanently removed yet. Contact support to fully remove login credentials.`;
       await appState.supabase?.auth.signOut();
     } catch (error) {
-      message.textContent = error.message || "Could not delete your account data.";
+      console.error("[Cannakan Profile] Delete profile failed", error);
+      setProfileFormMessage(error.message || "Could not delete your account data.", "error");
     } finally {
       deleteButton.disabled = false;
       if (submitButton) {
@@ -7943,55 +7966,121 @@ function bindProfileForm(form, options = {}) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    console.log("[Cannakan Profile] Save Profile clicked", {
+      mode: options.mode || "setup",
+      username: String(usernameInput.value || "").trim(),
+      hasPendingAvatar: Boolean(state.pendingFile),
+      removeAvatar: state.removeAvatar,
+    });
     const username = String(usernameInput.value || "").trim();
 
     if (!username) {
-      message.textContent = "Please enter a username before saving.";
+      setProfileFormMessage("Please enter a username before saving.", "error");
       usernameInput.reportValidity();
       return;
     }
 
     if (submitButton) {
       submitButton.disabled = true;
+      submitButton.textContent = "Saving...";
     }
-    message.textContent = "";
+    if (deleteButton) {
+      deleteButton.disabled = true;
+    }
+    setProfileFormMessage("");
 
     try {
-      let avatarUrl = profile?.avatarUrl || "";
-      let avatarPath = profile?.avatarPath || "";
+      const warnings = [];
+      let avatarUrl = state.profile?.avatarUrl || "";
+      let avatarPath = state.profile?.avatarPath || "";
 
-      if (state.removeAvatar && avatarPath) {
-        await removeProfileAvatarFromStorage(avatarPath);
-        avatarUrl = "";
-        avatarPath = "";
-      }
-
-      if (state.pendingFile) {
-        if (avatarPath) {
-          await removeProfileAvatarFromStorage(avatarPath);
-        }
-        const uploadedAvatar = await uploadProfileAvatar(state.pendingFile);
-        avatarUrl = uploadedAvatar.url;
-        avatarPath = uploadedAvatar.path;
-      }
-
+      // Save the profile name first so avatar storage problems do not block the main profile save.
       appState.profile = await saveUserProfile({
         username,
         avatarUrl,
         avatarPath,
       });
+      state.profile = appState.profile;
+
+      if (state.removeAvatar) {
+        const removedAvatarPath = avatarPath;
+        avatarUrl = "";
+        avatarPath = "";
+        appState.profile = await saveUserProfile({
+          username,
+          avatarUrl,
+          avatarPath,
+        });
+        state.profile = appState.profile;
+
+        if (removedAvatarPath) {
+          try {
+            await removeProfileAvatarFromStorage(removedAvatarPath);
+          } catch (error) {
+            console.error("[Cannakan Profile] Avatar removal cleanup failed", error);
+            warnings.push("Profile saved, but we could not remove the previous profile image from storage.");
+          }
+        }
+      }
+
+      if (state.pendingFile) {
+        try {
+          const previousAvatarPath = avatarPath;
+          const uploadedAvatar = await uploadProfileAvatar(state.pendingFile);
+          avatarUrl = uploadedAvatar.url;
+          avatarPath = uploadedAvatar.path;
+          appState.profile = await saveUserProfile({
+            username,
+            avatarUrl,
+            avatarPath,
+          });
+          state.profile = appState.profile;
+
+          if (previousAvatarPath) {
+            try {
+              await removeProfileAvatarFromStorage(previousAvatarPath);
+            } catch (error) {
+              console.error("[Cannakan Profile] Previous avatar cleanup failed", error);
+              warnings.push("Profile saved and new image applied, but we could not clean up the previous image.");
+            }
+          }
+        } catch (error) {
+          console.error("[Cannakan Profile] Avatar upload/save warning", error);
+          warnings.push(`Profile saved, but the profile image could not be saved: ${error.message || "Unknown image error."}`);
+        }
+      }
 
       if (state.previewUrl) {
         URL.revokeObjectURL(state.previewUrl);
         state.previewUrl = "";
       }
+      state.pendingFile = null;
+      state.removeAvatar = false;
+      avatarInput.value = "";
+      updateFileUploadName(avatarInput, []);
+      renderProfileAvatarPreview(preview, removeButton, state, state.profile);
 
-      options.onSaved?.(appState.profile);
+      if (warnings.length) {
+        setProfileFormMessage(warnings.join(" "), "warning");
+      } else {
+        setProfileFormMessage("Profile saved.", "success");
+      }
+
+      window.setTimeout(() => {
+        options.onSaved?.(appState.profile, {
+          warnings,
+        });
+      }, 650);
     } catch (error) {
-      message.textContent = error.message || "Could not save your profile.";
+      console.error("[Cannakan Profile] Save profile failed", error);
+      setProfileFormMessage(error.message || "Could not save your profile.", "error");
     } finally {
       if (submitButton) {
         submitButton.disabled = false;
+        submitButton.textContent = defaultSubmitLabel;
+      }
+      if (deleteButton) {
+        deleteButton.disabled = false;
       }
     }
   });

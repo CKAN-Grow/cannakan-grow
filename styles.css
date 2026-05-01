@@ -7049,6 +7049,18 @@ input::placeholder {
   font-size: 0.95rem;
 }
 
+.form-message.is-success {
+  border-color: rgba(43, 111, 65, 0.18);
+  background: rgba(43, 111, 65, 0.08);
+  color: #1f5a2b;
+}
+
+.form-message.is-warning {
+  border-color: rgba(176, 118, 20, 0.2);
+  background: rgba(176, 118, 20, 0.1);
+  color: #7a5610;
+}
+
 .form-message:not(:empty) {
   display: block;
 }
@@ -8891,6 +8903,18 @@ body.theme-dark .form-message {
   background: rgba(166, 61, 64, 0.16);
   border-color: rgba(213, 107, 112, 0.28);
   color: #f1b8ba;
+}
+
+body.theme-dark .form-message.is-success {
+  background: rgba(84, 177, 98, 0.16);
+  border-color: rgba(132, 212, 141, 0.28);
+  color: #b8efc0;
+}
+
+body.theme-dark .form-message.is-warning {
+  background: rgba(214, 168, 68, 0.16);
+  border-color: rgba(227, 192, 110, 0.28);
+  color: #f3dd9a;
 }
 
 body.theme-dark .session-status-error {
