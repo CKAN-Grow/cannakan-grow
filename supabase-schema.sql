@@ -58,6 +58,17 @@ create table if not exists public.sources (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.announcements (
+  id uuid primary key default gen_random_uuid(),
+  image_url text default '',
+  image_path text default '',
+  caption text default '',
+  instagram_post_url text default '',
+  status text not null default 'inactive',
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.grow_gallery_snapshots (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -126,6 +137,9 @@ create index if not exists profiles_account_status_idx
 
 create index if not exists profiles_last_active_idx
   on public.profiles (last_active_at desc);
+
+create index if not exists announcements_status_updated_idx
+  on public.announcements (status, updated_at desc, created_at desc);
 
 alter table public.grow_sessions
   add column if not exists session_images jsonb not null default '[]'::jsonb;
@@ -206,6 +220,16 @@ begin
 end;
 $$;
 
+create or replace function public.set_announcements_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
 create or replace function public.set_grow_gallery_snapshots_updated_at()
 returns trigger
 language plpgsql
@@ -234,6 +258,12 @@ before update on public.sources
 for each row
 execute procedure public.set_sources_updated_at();
 
+drop trigger if exists announcements_set_updated_at on public.announcements;
+create trigger announcements_set_updated_at
+before update on public.announcements
+for each row
+execute procedure public.set_announcements_updated_at();
+
 drop trigger if exists grow_gallery_snapshots_set_updated_at on public.grow_gallery_snapshots;
 create trigger grow_gallery_snapshots_set_updated_at
 before update on public.grow_gallery_snapshots
@@ -244,6 +274,7 @@ alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.sources enable row level security;
+alter table public.announcements enable row level security;
 alter table public.grow_gallery_snapshots enable row level security;
 alter table public.grow_gallery_snapshot_likes enable row level security;
 
@@ -419,6 +450,70 @@ using (
   )
 );
 
+drop policy if exists "Anyone can view active announcements" on public.announcements;
+create policy "Anyone can view active announcements"
+on public.announcements
+for select
+using (
+  status = 'active'
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can create announcements" on public.announcements;
+create policy "Admins can create announcements"
+on public.announcements
+for insert
+to authenticated
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can update announcements" on public.announcements;
+create policy "Admins can update announcements"
+on public.announcements
+for update
+to authenticated
+using (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+)
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can delete announcements" on public.announcements;
+create policy "Admins can delete announcements"
+on public.announcements
+for delete
+to authenticated
+using (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
 drop policy if exists "Anyone can view published gallery snapshots" on public.grow_gallery_snapshots;
 create policy "Anyone can view published gallery snapshots"
 on public.grow_gallery_snapshots
@@ -559,6 +654,10 @@ insert into storage.buckets (id, name, public)
 values ('source-logos', 'source-logos', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('announcements', 'announcements', true)
+on conflict (id) do nothing;
+
 drop policy if exists "Authenticated users can read session images" on storage.objects;
 create policy "Authenticated users can read session images"
 on storage.objects
@@ -679,6 +778,12 @@ on storage.objects
 for select
 using (bucket_id = 'source-logos');
 
+drop policy if exists "Anyone can read announcement images" on storage.objects;
+create policy "Anyone can read announcement images"
+on storage.objects
+for select
+using (bucket_id = 'announcements');
+
 drop policy if exists "Authenticated users can upload their own grow gallery images" on storage.objects;
 create policy "Authenticated users can upload their own grow gallery images"
 on storage.objects
@@ -778,6 +883,68 @@ for delete
 to authenticated
 using (
   bucket_id = 'source-logos'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Admins can upload announcement images" on storage.objects;
+create policy "Admins can upload announcement images"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'announcements'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Admins can update announcement images" on storage.objects;
+create policy "Admins can update announcement images"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'announcements'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+)
+with check (
+  bucket_id = 'announcements'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Admins can delete announcement images" on storage.objects;
+create policy "Admins can delete announcement images"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'announcements'
   and (
     lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
     or exists (

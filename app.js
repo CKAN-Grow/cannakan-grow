@@ -11,6 +11,7 @@ const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const SOURCE_LOGO_BUCKET = "source-logos";
+const ANNOUNCEMENT_BUCKET = "announcements";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   startDate: "",
   endDate: "",
@@ -31,6 +32,7 @@ const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
 const MAX_SOURCE_LOGO_DIMENSION = 768;
+const MAX_ANNOUNCEMENT_IMAGE_DIMENSION = 1600;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
@@ -98,6 +100,12 @@ const appState = {
   sourcesRefreshPromise: null,
   sourceAdminEditingId: "",
   sourceAdminMessage: "",
+  announcements: [],
+  announcementsLoaded: false,
+  announcementsError: "",
+  announcementsRefreshPromise: null,
+  announcementAdminEditingId: "",
+  announcementAdminMessage: "",
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -1868,6 +1876,9 @@ async function bootstrapApp() {
     appState.sources = [];
     appState.sourcesLoaded = true;
     appState.sourcesError = "";
+    appState.announcements = [];
+    appState.announcementsLoaded = true;
+    appState.announcementsError = "";
     appState.members = [];
     appState.membersLoaded = true;
     appState.membersError = "";
@@ -1939,6 +1950,12 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.sourcesRefreshPromise = null;
   appState.sourceAdminEditingId = "";
   appState.sourceAdminMessage = "";
+  appState.announcements = [];
+  appState.announcementsLoaded = false;
+  appState.announcementsError = "";
+  appState.announcementsRefreshPromise = null;
+  appState.announcementAdminEditingId = "";
+  appState.announcementAdminMessage = "";
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -1969,12 +1986,16 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
     saveSessions(sessions);
     appState.sources = await loadSources("auth:signed-in");
     appState.sourcesLoaded = true;
+    appState.announcements = await loadAnnouncements("auth:signed-in");
+    appState.announcementsLoaded = true;
     appState.gallerySnapshots = await loadGallerySnapshots();
     appState.gallerySnapshotsLoaded = true;
   } else if (isSupabaseConfigured()) {
     saveSessions([]);
     appState.sources = await loadSources("auth:signed-out");
     appState.sourcesLoaded = true;
+    appState.announcements = await loadAnnouncements("auth:signed-out");
+    appState.announcementsLoaded = true;
     appState.gallerySnapshots = await loadGallerySnapshots();
     appState.gallerySnapshotsLoaded = true;
   }
@@ -3152,6 +3173,237 @@ async function deleteSourceRecord(source) {
   if (source.logoPath) {
     await removeSourceLogoFromStorage(source.logoPath);
   }
+}
+
+function normalizeAnnouncementStatus(status) {
+  return String(status || "").trim().toLowerCase() === "active" ? "active" : "inactive";
+}
+
+function normalizeExternalUrl(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(rawValue)) {
+    return rawValue;
+  }
+
+  return `https://${rawValue}`;
+}
+
+function mapRowToAnnouncement(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    imageUrl: String(row.image_url || "").trim(),
+    imagePath: String(row.image_path || "").trim(),
+    caption: String(row.caption || "").trim(),
+    instagramPostUrl: normalizeExternalUrl(row.instagram_post_url || ""),
+    status: normalizeAnnouncementStatus(row.status),
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+function getAnnouncementErrorMessage(error, fallbackMessage) {
+  const normalizedMessage = String(
+    error?.message
+    || error?.error_description
+    || error?.details
+    || "",
+  ).trim().toLowerCase();
+
+  if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
+    return "Announcement image storage is missing or not configured.";
+  }
+  if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
+    return "You do not have permission to manage announcements.";
+  }
+  if (normalizedMessage.includes("relation") && normalizedMessage.includes("announcements")) {
+    return "Announcements data store is missing. Run the latest schema setup.";
+  }
+  if (normalizedMessage.includes("column") && normalizedMessage.includes("announcements")) {
+    return "Announcements schema is out of date. Apply the latest database schema.";
+  }
+
+  return fallbackMessage;
+}
+
+async function loadAnnouncements(reason = "unspecified") {
+  if (!appState.supabase) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from("announcements")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to load announcements", { reason, error });
+    appState.announcementsError = getAnnouncementErrorMessage(error, "Could not load announcements.");
+    return [];
+  }
+
+  appState.announcementsError = "";
+  return (data || []).map(mapRowToAnnouncement).filter(Boolean);
+}
+
+async function refreshAnnouncements(options = {}) {
+  const { force = false, reason = "refresh" } = options;
+
+  if (!appState.supabase) {
+    appState.announcements = [];
+    appState.announcementsLoaded = true;
+    appState.announcementsError = "";
+    return [];
+  }
+
+  if (!force && appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
+    return appState.announcements;
+  }
+
+  if (!force && appState.announcementsRefreshPromise) {
+    return appState.announcementsRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const announcements = await loadAnnouncements(reason);
+    appState.announcements = announcements;
+    appState.announcementsLoaded = true;
+    return announcements;
+  })();
+
+  appState.announcementsRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.announcementsRefreshPromise = null;
+  }
+}
+
+function getLatestActiveAnnouncement() {
+  return (appState.announcements || []).find((announcement) => announcement.status === "active") || null;
+}
+
+async function uploadAnnouncementImage(file, announcementId = "") {
+  if (!appState.supabase?.storage || !appState.user || !isAdminUser()) {
+    throw new Error("Announcement image uploads are not available until admin storage is ready.");
+  }
+
+  const preparedImage = await prepareImageForUpload(file, MAX_ANNOUNCEMENT_IMAGE_DIMENSION, 0.88);
+  const path = `announcements/${announcementId || "new"}/image-${crypto.randomUUID()}.jpg`;
+  const { error } = await appState.supabase.storage
+    .from(ANNOUNCEMENT_BUCKET)
+    .upload(path, preparedImage.blob, {
+      contentType: preparedImage.contentType,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(getAnnouncementErrorMessage(error, "Could not upload announcement image."));
+  }
+
+  const { data } = appState.supabase.storage.from(ANNOUNCEMENT_BUCKET).getPublicUrl(path);
+  return {
+    path,
+    url: data.publicUrl,
+  };
+}
+
+async function removeAnnouncementImageFromStorage(path) {
+  if (!path || !appState.supabase?.storage) {
+    return;
+  }
+
+  await appState.supabase.storage.from(ANNOUNCEMENT_BUCKET).remove([path]);
+}
+
+async function saveAnnouncementRecord(announcementInput, options = {}) {
+  const existingAnnouncement = options.existingAnnouncement || null;
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage announcements.");
+  }
+
+  let uploadedImage = null;
+  let imageUrl = String(existingAnnouncement?.imageUrl || "").trim();
+  let imagePath = String(existingAnnouncement?.imagePath || "").trim();
+
+  if (announcementInput.removeImage) {
+    imageUrl = "";
+    imagePath = "";
+  }
+
+  if (announcementInput.imageFile) {
+    uploadedImage = await uploadAnnouncementImage(announcementInput.imageFile, existingAnnouncement?.id || "");
+    imageUrl = uploadedImage.url;
+    imagePath = uploadedImage.path;
+  } else if (announcementInput.imageUrlInput) {
+    imageUrl = normalizeExternalUrl(announcementInput.imageUrlInput);
+    imagePath = "";
+  }
+
+  const payload = {
+    image_url: imageUrl,
+    image_path: imagePath,
+    caption: String(announcementInput.caption || "").trim(),
+    instagram_post_url: normalizeExternalUrl(announcementInput.instagramPostUrl),
+    status: normalizeAnnouncementStatus(announcementInput.status),
+  };
+
+  const query = existingAnnouncement?.id
+    ? appState.supabase.from("announcements").update(payload).eq("id", existingAnnouncement.id).select("*").single()
+    : appState.supabase.from("announcements").insert(payload).select("*").single();
+  const { data, error } = await query;
+
+  if (error) {
+    if (uploadedImage?.path) {
+      await removeAnnouncementImageFromStorage(uploadedImage.path);
+    }
+    throw new Error(getAnnouncementErrorMessage(error, existingAnnouncement ? "Could not update announcement." : "Could not add announcement."));
+  }
+
+  if ((announcementInput.removeImage || announcementInput.imageFile || announcementInput.imageUrlInput) && existingAnnouncement?.imagePath && existingAnnouncement.imagePath !== imagePath) {
+    await removeAnnouncementImageFromStorage(existingAnnouncement.imagePath);
+  }
+
+  const savedAnnouncement = mapRowToAnnouncement(data);
+  appState.announcements = [
+    savedAnnouncement,
+    ...appState.announcements.filter((announcement) => announcement.id !== savedAnnouncement.id),
+  ].sort((left, right) => new Date(right.updatedAt || right.createdAt || 0).getTime() - new Date(left.updatedAt || left.createdAt || 0).getTime());
+  appState.announcementsLoaded = true;
+  appState.announcementsError = "";
+  return savedAnnouncement;
+}
+
+async function deleteAnnouncementRecord(announcement) {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage announcements.");
+  }
+
+  const { error } = await appState.supabase
+    .from("announcements")
+    .delete()
+    .eq("id", announcement.id);
+
+  if (error) {
+    throw new Error(getAnnouncementErrorMessage(error, "Could not delete announcement."));
+  }
+
+  if (announcement.imagePath) {
+    await removeAnnouncementImageFromStorage(announcement.imagePath);
+  }
+
+  appState.announcements = appState.announcements.filter((entry) => entry.id !== announcement.id);
+  appState.announcementsLoaded = true;
+  appState.announcementsError = "";
 }
 
 async function saveUserProfile(profileInput) {
@@ -8056,13 +8308,14 @@ function renderHomeInstallInfoCardMarkup() {
 }
 
 function renderHomeSecondaryInfoRowMarkup() {
+  const announcementMarkup = renderHomeAnnouncementCard();
   return `
     <div class="home-dashboard-secondary-row">
       <div class="home-dashboard-secondary-row-main">
         ${renderHomeGalleryRankingsTeaser()}
       </div>
       <div class="home-dashboard-secondary-row-side">
-        ${renderHomeInstallInfoCardMarkup()}
+        ${announcementMarkup ? `<div class="home-dashboard-side-stack">${announcementMarkup}${renderHomeInstallInfoCardMarkup()}</div>` : renderHomeInstallInfoCardMarkup()}
       </div>
     </div>
   `;
@@ -8928,6 +9181,374 @@ function bindAdminMembersSection() {
   bindMembersTableActions();
 }
 
+function formatAnnouncementDateLabel(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  if (!(parsedDate instanceof Date) || Number.isNaN(parsedDate.getTime())) {
+    return "Latest update";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
+function renderHomeAnnouncementCard() {
+  const announcement = getLatestActiveAnnouncement();
+  if (!announcement) {
+    return "";
+  }
+
+  const caption = announcement.caption || "Latest update from Cannakan.";
+  const announcementUrl = announcement.instagramPostUrl || "https://www.instagram.com/cannakan/";
+  const imageMarkup = announcement.imageUrl
+    ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
+    : `
+      <div class="home-announcement-card-image home-announcement-card-image--placeholder" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
+          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
+          <circle cx="9" cy="9" r="1.2"></circle>
+        </svg>
+      </div>
+    `;
+
+  return `
+    <section class="card home-announcement-card" aria-labelledby="home-announcement-title">
+      <div class="home-announcement-card-media">
+        ${imageMarkup}
+      </div>
+      <div class="home-announcement-card-body">
+        <div class="home-announcement-card-copy">
+          <p class="eyebrow">Latest from Cannakan</p>
+          <h3 id="home-announcement-title">Latest from Cannakan</h3>
+          <p class="home-announcement-card-caption" title="${escapeHtml(caption)}">${escapeHtml(caption)}</p>
+          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(announcement.updatedAt || announcement.createdAt))}</p>
+        </div>
+        <div class="home-announcement-card-actions">
+          <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(announcementUrl)}" target="_blank" rel="noreferrer">
+            <span>View on Instagram →</span>
+          </a>
+          <a class="home-announcement-card-follow" href="https://www.instagram.com/cannakan/" target="_blank" rel="noreferrer">Follow @cannakan</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminAnnouncementStatusPillMarkup(status) {
+  const normalizedStatus = normalizeAnnouncementStatus(status);
+  return `<span class="admin-source-status-pill is-${escapeHtml(normalizedStatus === "active" ? "active" : "hidden")}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
+}
+
+function renderAdminAnnouncementCardMarkup(announcement) {
+  const caption = announcement.caption || "No caption added yet.";
+  const imageMarkup = announcement.imageUrl
+    ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Announcement preview" class="admin-announcement-card-image">`
+    : `
+      <div class="admin-announcement-card-image admin-announcement-card-image--placeholder" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
+          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
+          <circle cx="9" cy="9" r="1.2"></circle>
+        </svg>
+      </div>
+    `;
+
+  return `
+    <article class="meta-card admin-announcement-card">
+      <div class="admin-announcement-card-media">${imageMarkup}</div>
+      <div class="admin-announcement-card-copy">
+        <div class="admin-announcement-card-head">
+          ${renderAdminAnnouncementStatusPillMarkup(announcement.status)}
+          <span class="muted">${escapeHtml(formatAdminTimestamp(announcement.updatedAt || announcement.createdAt))}</span>
+        </div>
+        <p class="admin-announcement-card-caption">${escapeHtml(caption)}</p>
+        <p class="admin-announcement-card-link-row">
+          ${announcement.instagramPostUrl
+    ? `<a href="${escapeHtml(announcement.instagramPostUrl)}" target="_blank" rel="noreferrer">${escapeHtml(announcement.instagramPostUrl)}</a>`
+    : '<span class="muted">No Instagram URL added</span>'}
+        </p>
+        <div class="admin-source-card-actions">
+          <button type="button" class="button button-secondary" data-announcement-edit="${escapeHtml(announcement.id)}">Edit</button>
+          <button type="button" class="button button-secondary gallery-admin-reject" data-announcement-delete="${escapeHtml(announcement.id)}">Delete</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminAnnouncementEditorMarkup(announcement = null) {
+  const isEditing = Boolean(announcement?.id);
+  return `
+    <form id="admin-announcement-form" class="admin-source-form">
+      <div class="section-heading admin-source-form-heading">
+        <div>
+          <p class="eyebrow">Announcement Editor</p>
+          <h4>${escapeHtml(isEditing ? "Edit Announcement" : "Add Announcement")}</h4>
+          <p class="muted">Upload an image or paste an image URL, add a caption, and choose whether the announcement is active on the dashboard.</p>
+        </div>
+      </div>
+      <div class="admin-source-form-grid">
+        <div class="admin-source-form-full admin-source-logo-field">
+          <span class="admin-source-field-label">Announcement Image</span>
+          <div id="admin-announcement-image-preview" class="admin-source-logo-preview"></div>
+          <span class="file-upload-control">
+            <span class="file-upload-button">Choose Image</span>
+            <span class="file-upload-name">No file selected</span>
+            <input class="file-upload-input" type="file" name="announcementImage" accept="image/*">
+          </span>
+          <label class="admin-source-form-full">
+            <span>Or Paste Image URL</span>
+            <input type="url" name="imageUrlInput" value="${escapeHtml(announcement?.imagePath ? "" : (announcement?.imageUrl || ""))}" placeholder="https://example.com/post-image.jpg">
+          </label>
+          <div class="admin-source-logo-actions">
+            <button type="button" class="button button-secondary" id="admin-announcement-remove-image">Remove Image</button>
+          </div>
+        </div>
+        <label class="admin-source-form-full">
+          <span>Caption</span>
+          <textarea name="caption" rows="4" maxlength="500" placeholder="Latest Cannakan update caption">${escapeHtml(announcement?.caption || "")}</textarea>
+        </label>
+        <label class="admin-source-form-full">
+          <span>Instagram Post URL</span>
+          <input type="url" name="instagramPostUrl" value="${escapeHtml(announcement?.instagramPostUrl || "")}" placeholder="https://www.instagram.com/p/...">
+        </label>
+        <label>
+          <span>Publish Status</span>
+          <select name="status">
+            <option value="active"${normalizeAnnouncementStatus(announcement?.status) === "active" ? " selected" : ""}>Active</option>
+            <option value="inactive"${normalizeAnnouncementStatus(announcement?.status) === "inactive" ? " selected" : ""}>Inactive</option>
+          </select>
+        </label>
+      </div>
+      <p id="admin-announcement-form-message" class="snapshot-message">${escapeHtml(appState.announcementAdminMessage || "")}</p>
+      <div class="form-actions admin-source-form-actions">
+        <button type="submit" class="button button-primary">${escapeHtml(isEditing ? "Update Announcement" : "Add Announcement")}</button>
+        ${isEditing ? '<button type="button" class="button button-secondary" id="admin-announcement-cancel-edit">Cancel</button>' : ""}
+      </div>
+    </form>
+  `;
+}
+
+function renderAdminAnnouncementsListMarkup() {
+  if (!appState.supabase) {
+    return `<div class="admin-sources-empty"><p>Announcements require Supabase tables and storage to be configured.</p></div>`;
+  }
+
+  if (!appState.announcementsLoaded && appState.announcementsRefreshPromise) {
+    return `<div class="admin-sources-empty"><p>Loading announcements...</p></div>`;
+  }
+
+  if (appState.announcementsError) {
+    return `<div class="admin-sources-empty"><p>${escapeHtml(appState.announcementsError)}</p></div>`;
+  }
+
+  if (!appState.announcements.length) {
+    return `<div class="admin-sources-empty"><p>No announcements have been added yet.</p></div>`;
+  }
+
+  return appState.announcements.map(renderAdminAnnouncementCardMarkup).join("");
+}
+
+function renderAdminAnnouncementImagePreview(container, state, existingAnnouncement = null) {
+  if (!container) {
+    return;
+  }
+
+  const displayUrl = state.previewUrl || (state.removeImage ? "" : existingAnnouncement?.imageUrl || "");
+  container.innerHTML = `
+    <div class="admin-source-logo-preview-shell">
+      ${displayUrl
+    ? `<img src="${escapeHtml(displayUrl)}" alt="Announcement preview" class="admin-announcement-preview-image">`
+    : `
+      <div class="admin-announcement-preview-image admin-announcement-preview-image--placeholder" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
+          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
+          <circle cx="9" cy="9" r="1.2"></circle>
+        </svg>
+      </div>
+    `}
+      <div class="admin-source-logo-preview-copy">
+        <strong>${escapeHtml(displayUrl ? "Image ready" : "No image added")}</strong>
+        <p>${escapeHtml(displayUrl ? "This image will be used in the Latest from Cannakan dashboard card." : "You can upload an image or paste an image URL for the dashboard card.")}</p>
+      </div>
+    </div>
+  `;
+}
+
+function bindAdminAnnouncementsSection() {
+  const list = app.querySelector("#admin-announcements-list");
+  const editor = app.querySelector("#admin-announcement-editor");
+  if (!list || !editor) {
+    return;
+  }
+
+  list.querySelectorAll("[data-announcement-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.announcementAdminEditingId = button.dataset.announcementEdit || "";
+      appState.announcementAdminMessage = "";
+      safeRender();
+    });
+  });
+
+  list.querySelectorAll("[data-announcement-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const announcement = appState.announcements.find((entry) => entry.id === button.dataset.announcementDelete);
+      if (!announcement) {
+        return;
+      }
+
+      const confirmed = window.confirm("Delete this announcement?");
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteAnnouncementRecord(announcement);
+        if (appState.announcementAdminEditingId === announcement.id) {
+          appState.announcementAdminEditingId = "";
+        }
+        appState.announcementAdminMessage = "Announcement deleted.";
+        safeRender();
+      } catch (error) {
+        appState.announcementAdminMessage = error.message || "Could not delete announcement.";
+        safeRender();
+      }
+    });
+  });
+
+  const form = editor.querySelector("#admin-announcement-form");
+  if (!form) {
+    return;
+  }
+
+  const existingAnnouncement = appState.announcements.find((entry) => entry.id === appState.announcementAdminEditingId) || null;
+  const imageInput = form.elements.announcementImage;
+  const imageUrlInput = form.elements.imageUrlInput;
+  const preview = form.querySelector("#admin-announcement-image-preview");
+  const removeImageButton = form.querySelector("#admin-announcement-remove-image");
+  const cancelEditButton = form.querySelector("#admin-announcement-cancel-edit");
+  const message = form.querySelector("#admin-announcement-form-message");
+  const submitButton = form.querySelector('button[type="submit"]');
+  const state = {
+    previewUrl: "",
+    pendingFile: null,
+    removeImage: false,
+  };
+
+  bindFileUploadControl(imageInput);
+  updateFileUploadName(imageInput);
+  renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
+
+  imageInput?.addEventListener("change", () => {
+    const file = imageInput.files?.[0];
+    updateFileUploadName(imageInput);
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      message.textContent = "Images only. Please choose a valid announcement image.";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      message.textContent = "Image is too large. Please choose an image under 12 MB.";
+      return;
+    }
+
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+    }
+
+    state.pendingFile = file;
+    state.removeImage = false;
+    state.previewUrl = URL.createObjectURL(file);
+    if (imageUrlInput) {
+      imageUrlInput.value = "";
+    }
+    message.textContent = "";
+    renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
+  });
+
+  imageUrlInput?.addEventListener("input", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = "";
+    }
+    state.pendingFile = null;
+    state.removeImage = false;
+    renderAdminAnnouncementImagePreview(preview, {
+      ...state,
+      previewUrl: normalizeExternalUrl(imageUrlInput.value || ""),
+    }, existingAnnouncement);
+  });
+
+  removeImageButton?.addEventListener("click", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = "";
+    }
+    state.pendingFile = null;
+    state.removeImage = true;
+    if (imageInput) {
+      imageInput.value = "";
+      updateFileUploadName(imageInput, []);
+    }
+    if (imageUrlInput) {
+      imageUrlInput.value = "";
+    }
+    renderAdminAnnouncementImagePreview(preview, state, existingAnnouncement);
+  });
+
+  cancelEditButton?.addEventListener("click", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+    }
+    appState.announcementAdminEditingId = "";
+    appState.announcementAdminMessage = "";
+    safeRender();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true;
+    }
+    message.textContent = "";
+
+    try {
+      const savedAnnouncement = await saveAnnouncementRecord({
+        imageFile: state.pendingFile,
+        imageUrlInput: imageUrlInput?.value || "",
+        removeImage: state.removeImage,
+        caption: form.elements.caption?.value || "",
+        instagramPostUrl: form.elements.instagramPostUrl?.value || "",
+        status: form.elements.status?.value || "inactive",
+      }, {
+        existingAnnouncement,
+      });
+
+      if (state.previewUrl) {
+        URL.revokeObjectURL(state.previewUrl);
+      }
+
+      appState.announcementAdminEditingId = "";
+      appState.announcementAdminMessage = `${existingAnnouncement ? "Updated" : "Added"} announcement.`;
+      safeRender();
+    } catch (error) {
+      message.textContent = error.message || "Could not save announcement.";
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+    }
+  });
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -9000,6 +9621,25 @@ function renderAdminPage() {
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
+          <p class="eyebrow">Announcements</p>
+          <h3>Manage dashboard announcements.</h3>
+          <p class="muted">Create admin-controlled updates for the home dashboard without using the Instagram API.</p>
+        </div>
+      </div>
+      <div class="admin-sources-layout">
+        <div class="admin-sources-list-shell">
+          <div class="admin-sources-list-head">
+            <strong>Saved Announcements</strong>
+            <span class="muted">${escapeHtml(`${appState.announcements.length} total`)}</span>
+          </div>
+          <div id="admin-announcements-list" class="admin-sources-list"></div>
+        </div>
+        <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
+      </div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
           <p class="eyebrow">System Tools</p>
           <h3>Admin-only utilities</h3>
           <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
@@ -9021,6 +9661,15 @@ function renderAdminPage() {
 
   if (!appState.sourcesLoaded && !appState.sourcesRefreshPromise && appState.supabase) {
     void refreshSources({ force: true, reason: "route:admin-dashboard" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise && appState.supabase) {
+    void refreshAnnouncements({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
@@ -9119,6 +9768,17 @@ function renderAdminPage() {
     sourceEditor.innerHTML = renderAdminSourceEditorMarkup(editingSource);
   }
 
+  const announcementsList = app.querySelector("#admin-announcements-list");
+  if (announcementsList) {
+    announcementsList.innerHTML = renderAdminAnnouncementsListMarkup();
+  }
+
+  const announcementEditor = app.querySelector("#admin-announcement-editor");
+  if (announcementEditor) {
+    const editingAnnouncement = appState.announcements.find((entry) => entry.id === appState.announcementAdminEditingId) || null;
+    announcementEditor.innerHTML = renderAdminAnnouncementEditorMarkup(editingAnnouncement);
+  }
+
   const membersTableAnchor = app.querySelector("#admin-members-table-anchor");
   if (membersTableAnchor) {
     membersTableAnchor.innerHTML = renderAdminMembersTableMarkup();
@@ -9126,6 +9786,7 @@ function renderAdminPage() {
 
   bindAdminMembersSection();
   bindAdminSourcesSection();
+  bindAdminAnnouncementsSection();
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
@@ -9136,6 +9797,14 @@ function renderHome() {
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
     void refreshGallerySnapshots("home-rankings-teaser").then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#home" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+  if (appState.supabase && !appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
+    void refreshAnnouncements({ force: true, reason: "home-announcements" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#home" || currentHash === "") {
         safeRender();
