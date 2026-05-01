@@ -118,8 +118,8 @@ const DEFAULT_GROW_FACTS = Object.freeze([
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const FILTER_PAPER_STORE_URLS = Object.freeze({
-  US: "https://cannakan.com",
-  EU: "https://cannakan.eu",
+  US: "https://cannakan.com/products/filter-papers-90mm",
+  EU: "https://cannakan.eu/products/filter-papers-90mm",
 });
 const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   count: 0,
@@ -1596,20 +1596,21 @@ function getFilterPaperStatusMeta(count) {
 
 function getFilterPaperReminder(count) {
   if (count === 2) {
-    return "You're running low on filter papers - about 2 sessions left.";
+    return "Running low - about 2 sessions left.";
   }
   if (count === 1) {
-    return "You only have 1 filter paper left. Reorder before your next session.";
+    return "Only 1 filter paper left.";
   }
   if (count === 0) {
-    return "You're out of filter papers. Reorder before starting your next session.";
+    return "Out of filter papers - reorder before next session.";
   }
   return "";
 }
 
 function getFilterPaperStoreUrl(region = "US") {
   const normalizedRegion = region === "EU" ? "EU" : "US";
-  // TODO: Route users to distributor- or province/state-specific supply links when regional rules are defined.
+  // TODO: Auto-detect the best store region for the signed-in user before falling back to manual selection.
+  // TODO: Route users to distributor-, country-, or province/state-specific product links when regional rules are defined.
   return FILTER_PAPER_STORE_URLS[normalizedRegion] || FILTER_PAPER_STORE_URLS.US;
 }
 
@@ -9814,6 +9815,32 @@ function renderFilterPaperCardMarkup() {
   `;
 }
 
+function renderActiveSessionFilterPaperCardMarkup() {
+  const inventory = getFilterPaperInventory();
+  const status = getFilterPaperStatusMeta(inventory.count);
+  const reminder = inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
+
+  return `
+    <section class="card active-session-supplies-card active-session-supplies-card--${status.key}" aria-labelledby="active-session-supplies-title">
+      <div class="active-session-supplies-head">
+        <div class="active-session-supplies-copy">
+          <p class="eyebrow">Supplies</p>
+          <h4 id="active-session-supplies-title">Supplies</h4>
+          <p class="active-session-supplies-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
+          ${reminder ? `<p class="active-session-supplies-reminder">${escapeHtml(reminder)}</p>` : ""}
+        </div>
+        <div class="active-session-supplies-actions">
+          <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(status.label)}</span>
+          <div class="active-session-supplies-button-row">
+            <button type="button" class="button button-primary" data-filter-paper-reorder="true">Reorder 6-Pack</button>
+            <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function ensureFilterPaperInventoryModal() {
   let modal = document.querySelector("#filter-paper-inventory-modal");
   if (modal instanceof HTMLDialogElement) {
@@ -9868,7 +9895,8 @@ function ensureFilterPaperInventoryModal() {
   return modal;
 }
 
-function openFilterPaperInventoryModal() {
+function openFilterPaperInventoryModal(options = {}) {
+  const { onSave = null } = options || {};
   const inventory = getFilterPaperInventory();
   const modal = ensureFilterPaperInventoryModal();
   const form = modal.querySelector("form");
@@ -9908,6 +9936,10 @@ function openFilterPaperInventoryModal() {
     // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.
     if (modal.open) {
       modal.close();
+    }
+    if (typeof onSave === "function") {
+      onSave();
+      return;
     }
     safeRender();
   };
@@ -13139,7 +13171,7 @@ function renderHome() {
     await promptInstallGrowApp();
   });
   app.querySelector(".home-dashboard-secondary-row [data-filter-paper-edit='true']")?.addEventListener("click", () => {
-    openFilterPaperInventoryModal();
+    openFilterPaperInventoryModal({ onSave: () => safeRender() });
   });
   app.querySelectorAll(".home-dashboard-secondary-row [data-filter-paper-reorder='true']").forEach((button) => {
     button.addEventListener("click", () => {
@@ -16102,6 +16134,7 @@ function renderSessionDetail(sessionId) {
   const detailStatusField = document.querySelector("#detail-session-status-control");
   const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
   const detailReminder = document.querySelector("#detail-session-status-reminder");
+  const detailSuppliesAnchor = document.querySelector("#detail-supplies-anchor");
   const detailNotesField = document.querySelector("#detail-session-notes");
   const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
   const detailNotesMessage = document.querySelector("#detail-session-notes-message");
@@ -16237,6 +16270,24 @@ function renderSessionDetail(sessionId) {
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
   syncPartitionButtonStates(partitions, detailStatusField.value);
   applyStageEditingMode(app, detailStatusField.value);
+  const renderDetailSuppliesCard = () => {
+    if (!detailSuppliesAnchor) {
+      return;
+    }
+
+    const isActiveSession = normalizeSessionStatus(detailStatusField.value) !== "completed";
+    detailSuppliesAnchor.innerHTML = isActiveSession ? renderActiveSessionFilterPaperCardMarkup() : "";
+    if (!isActiveSession) {
+      return;
+    }
+
+    detailSuppliesAnchor.querySelector('[data-filter-paper-edit="true"]')?.addEventListener("click", () => {
+      openFilterPaperInventoryModal({ onSave: renderDetailSuppliesCard });
+    });
+    detailSuppliesAnchor.querySelector('[data-filter-paper-reorder="true"]')?.addEventListener("click", () => {
+      openFilterPaperStore();
+    });
+  };
   const refreshDetailDerivedViews = () => {
     updatePartitionProgressChart(
       session.partitions.map((partition) => ({
@@ -16266,6 +16317,7 @@ function renderSessionDetail(sessionId) {
       detailLifecycleSection,
       buildSessionLifecycleState(session),
     );
+    renderDetailSuppliesCard();
   };
   const refreshDetailUnsavedChanges = () => {
     refreshUnsavedChangesState();
