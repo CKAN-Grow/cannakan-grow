@@ -36,13 +36,21 @@ const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
+const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
 const FALLBACK_FACTS_STORAGE_KEY = "cannakanGrowFallbackFacts";
 const FALLBACK_MODE_STORAGE_KEY = "cannakanGrowFallbackMode";
 const RECENT_FALLBACK_ITEMS_STORAGE_KEY = "cannakanGrowRecentFallbackItems";
+const DEFAULT_ANNOUNCEMENT_IMAGE_STORAGE_KEY = "cannakanGrowDefaultAnnouncementImage";
+const DEFAULT_JOKE_IMAGE_STORAGE_KEY = "cannakanGrowDefaultJokeImage";
+const DEFAULT_FACT_IMAGE_STORAGE_KEY = "cannakanGrowDefaultFactImage";
+const MIXED_IMAGE_MODE_STORAGE_KEY = "cannakanGrowMixedImageMode";
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now — here’s something to grow on 🌱";
+const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
+const DEFAULT_MIXED_IMAGE_MODE = "match-type";
+const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/assets/wow-fallback.png";
 const DEFAULT_GROW_JOKES = Object.freeze([
   { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
   { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
@@ -326,17 +334,21 @@ async function rehydratePersistentBrowserState(reason = "unspecified") {
   appState.announcements = await loadAnnouncements(reason);
   appState.announcementsLoaded = true;
   appState.announcementsError = "";
+  const displayMode = getMessageBoardDisplayMode();
   const fallbackMode = getFallbackContentMode();
+  const mixedImageMode = getMixedImageMode();
   const activeAnnouncement = getLatestActiveAnnouncement();
   console.log("[Cannakan App Init] announcement loaded", {
     reason,
     mockDataEnabled: appState.mockDataEnabled,
+    displayMode,
     storedAnnouncementCount: appState.announcements.length,
     activeAnnouncementTitle: activeAnnouncement?.title || "",
   });
   console.log("[Cannakan App Init] fallback mode loaded", {
     reason,
     fallbackMode,
+    mixedImageMode,
     storedJokesCount: readStoredFallbackJokes().length,
     storedFactsCount: readStoredFallbackFacts().length,
     hasRecentFallbackHistory: readRecentFallbackItemsHistory().length > 0,
@@ -3455,6 +3467,169 @@ function normalizeExternalUrl(value) {
   return `https://${rawValue}`;
 }
 
+function normalizeMediaUrl(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return "";
+  }
+
+  if (/^(https?:\/\/|\/\/|\/|\.\.?\/|data:|blob:)/i.test(rawValue)) {
+    return rawValue;
+  }
+
+  return `https://${rawValue}`;
+}
+
+function normalizeMessageBoardDisplayMode(value) {
+  return String(value || "").trim().toLowerCase() === "fallback"
+    ? "fallback"
+    : DEFAULT_MESSAGE_BOARD_DISPLAY_MODE;
+}
+
+function normalizeMixedImageMode(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (
+    normalizedValue === "match-type"
+    || normalizedValue === "joke"
+    || normalizedValue === "fact"
+    || normalizedValue === "announcement"
+  ) {
+    return normalizedValue;
+  }
+
+  return DEFAULT_MIXED_IMAGE_MODE;
+}
+
+function getMessageBoardDisplayModeLabel(mode = getMessageBoardDisplayMode()) {
+  return ({
+    announcement: "Show Announcement",
+    fallback: "Show Default Fallback",
+  })[normalizeMessageBoardDisplayMode(mode)] || "Show Announcement";
+}
+
+function getFallbackContentModeLabel(mode = getFallbackContentMode()) {
+  return ({
+    jokes: "Jokes only",
+    facts: "Grow facts only",
+    mixed: "Mixed jokes + facts",
+  })[normalizeFallbackContentMode(mode)] || "Mixed jokes + facts";
+}
+
+function getMixedImageModeLabel(mode = getMixedImageMode()) {
+  return ({
+    "match-type": "Use matching item type image",
+    joke: "Always use joke image",
+    fact: "Always use grow fact image",
+    announcement: "Use announcement default image",
+  })[normalizeMixedImageMode(mode)] || "Use matching item type image";
+}
+
+function getMessageBoardDisplayMode() {
+  try {
+    return normalizeMessageBoardDisplayMode(localStorage.getItem(MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY) || "");
+  } catch (error) {
+    console.error("Failed to read message board display mode from localStorage", error);
+    return DEFAULT_MESSAGE_BOARD_DISPLAY_MODE;
+  }
+}
+
+function writeMessageBoardDisplayMode(mode) {
+  const normalizedMode = normalizeMessageBoardDisplayMode(mode);
+  try {
+    localStorage.setItem(MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY, normalizedMode);
+  } catch (error) {
+    console.error("Failed to write message board display mode to localStorage", error);
+  }
+  return normalizedMode;
+}
+
+function getMixedImageMode() {
+  try {
+    return normalizeMixedImageMode(localStorage.getItem(MIXED_IMAGE_MODE_STORAGE_KEY) || "");
+  } catch (error) {
+    console.error("Failed to read mixed fallback image mode from localStorage", error);
+    return DEFAULT_MIXED_IMAGE_MODE;
+  }
+}
+
+function writeMixedImageMode(mode) {
+  const normalizedMode = normalizeMixedImageMode(mode);
+  try {
+    localStorage.setItem(MIXED_IMAGE_MODE_STORAGE_KEY, normalizedMode);
+  } catch (error) {
+    console.error("Failed to write mixed fallback image mode to localStorage", error);
+  }
+  return normalizedMode;
+}
+
+function readStoredMessageBoardImageUrl(storageKey) {
+  try {
+    return normalizeMediaUrl(localStorage.getItem(storageKey) || "");
+  } catch (error) {
+    console.error("Failed to read message board image setting from localStorage", error);
+    return "";
+  }
+}
+
+function writeStoredMessageBoardImageUrl(storageKey, value) {
+  try {
+    localStorage.setItem(storageKey, normalizeMediaUrl(value));
+  } catch (error) {
+    console.error("Failed to write message board image setting to localStorage", error);
+  }
+}
+
+function getDefaultAnnouncementImageUrl() {
+  return readStoredMessageBoardImageUrl(DEFAULT_ANNOUNCEMENT_IMAGE_STORAGE_KEY);
+}
+
+function getDefaultJokeImageUrl() {
+  return readStoredMessageBoardImageUrl(DEFAULT_JOKE_IMAGE_STORAGE_KEY);
+}
+
+function getDefaultFactImageUrl() {
+  return readStoredMessageBoardImageUrl(DEFAULT_FACT_IMAGE_STORAGE_KEY);
+}
+
+function resolveMessageBoardImageUrl(value) {
+  return normalizeMediaUrl(value) || MESSAGE_BOARD_IMAGE_FALLBACK_URL;
+}
+
+function getResolvedDefaultAnnouncementImageUrl() {
+  return resolveMessageBoardImageUrl(getDefaultAnnouncementImageUrl());
+}
+
+function getResolvedDefaultJokeImageUrl() {
+  return resolveMessageBoardImageUrl(getDefaultJokeImageUrl());
+}
+
+function getResolvedDefaultFactImageUrl() {
+  return resolveMessageBoardImageUrl(getDefaultFactImageUrl());
+}
+
+function resolveAnnouncementCardImageUrl(value) {
+  return resolveMessageBoardImageUrl(normalizeMediaUrl(value) || getDefaultAnnouncementImageUrl());
+}
+
+function resolveFallbackCardImageUrl(fallbackType, fallbackMode = getFallbackContentMode()) {
+  if (normalizeFallbackContentMode(fallbackMode) === "mixed") {
+    const mixedImageMode = getMixedImageMode();
+    if (mixedImageMode === "joke") {
+      return getResolvedDefaultJokeImageUrl();
+    }
+    if (mixedImageMode === "fact") {
+      return getResolvedDefaultFactImageUrl();
+    }
+    if (mixedImageMode === "announcement") {
+      return getResolvedDefaultAnnouncementImageUrl();
+    }
+  }
+
+  return fallbackType === "fact"
+    ? getResolvedDefaultFactImageUrl()
+    : getResolvedDefaultJokeImageUrl();
+}
+
 function mapStoredAnnouncementToAnnouncement(record) {
   if (!record) {
     return null;
@@ -3483,7 +3658,7 @@ function normalizeStoredAnnouncementRecord(record) {
 
   const title = String(record.title || "").trim();
   const message = String(record.message || record.body || "").trim();
-  const imageUrl = normalizeExternalUrl(record.imageUrl || "");
+  const imageUrl = normalizeMediaUrl(record.imageUrl || "");
   const instagramUrl = normalizeExternalUrl(record.instagramUrl || record.instagramPostUrl || "");
   const buttonText = String(record.buttonText || "").trim();
   const parsedUpdatedAt = parseCompletedAtValue(record.updatedAt || "");
@@ -3608,7 +3783,7 @@ async function saveAnnouncementRecord(announcementInput) {
   const storedRecord = {
     title,
     message,
-    imageUrl: normalizeExternalUrl(announcementInput.imageUrl || announcementInput.imageUrlInput || ""),
+    imageUrl: normalizeMediaUrl(announcementInput.imageUrl || announcementInput.imageUrlInput || ""),
     instagramUrl: normalizeExternalUrl(announcementInput.instagramUrl || announcementInput.instagramPostUrl || ""),
     buttonText: String(announcementInput.buttonText || "").trim(),
     active: Boolean(announcementInput.active),
@@ -7704,6 +7879,7 @@ function render() {
       <section class="card"><p class="muted">Loading Cannakan Grow...</p></section>
       ${shouldRenderAnnouncementDuringLoad ? renderHomeAnnouncementCard() : ""}
     `;
+    bindMessageBoardImageFallbacks(app);
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     return;
@@ -9731,6 +9907,15 @@ function writeStoredFallbackFacts(records = []) {
 
 function seedFallbackContentStorageIfEmpty() {
   try {
+    const storedDisplayMode = getMessageBoardDisplayMode();
+    if (!localStorage.getItem(MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY)) {
+      writeMessageBoardDisplayMode(storedDisplayMode || DEFAULT_MESSAGE_BOARD_DISPLAY_MODE);
+    }
+  } catch (error) {
+    console.error("Failed to seed message board display mode into localStorage", error);
+  }
+
+  try {
     const storedJokes = readStoredFallbackJokes();
     if (!storedJokes.length) {
       writeStoredFallbackJokes(DEFAULT_GROW_JOKES);
@@ -9755,6 +9940,15 @@ function seedFallbackContentStorageIfEmpty() {
     }
   } catch (error) {
     console.error("Failed to seed fallback content mode into localStorage", error);
+  }
+
+  try {
+    const storedMixedImageMode = getMixedImageMode();
+    if (!localStorage.getItem(MIXED_IMAGE_MODE_STORAGE_KEY)) {
+      writeMixedImageMode(storedMixedImageMode || DEFAULT_MIXED_IMAGE_MODE);
+    }
+  } catch (error) {
+    console.error("Failed to seed mixed fallback image mode into localStorage", error);
   }
 }
 
@@ -10046,53 +10240,90 @@ function clearStoredFallbackContent() {
 
 function getHomeAnnouncementCardData(referenceDate = new Date()) {
   const announcement = getLatestActiveAnnouncement();
-  if (announcement) {
+  const displayMode = getMessageBoardDisplayMode();
+  if (displayMode === "announcement" && announcement) {
     return {
       title: announcement.title || "Latest from Cannakan",
       body: announcement.body || "Latest update from Cannakan.",
-      imageUrl: announcement.imageUrl || "",
+      imageUrl: resolveAnnouncementCardImageUrl(announcement.imageUrl || ""),
       linkUrl: announcement.instagramPostUrl || "",
       buttonText: normalizeAnnouncementButtonText(announcement.buttonText || ""),
       dateValue: announcement.publishAt || announcement.updatedAt || announcement.createdAt || referenceDate.toISOString(),
+      configuredDisplayMode: displayMode,
+      effectiveDisplayMode: "announcement",
     };
   }
 
   const fallbackContent = getDailyFallbackContent(referenceDate);
+  const fallbackMode = getFallbackContentMode();
   return {
     title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
     body: fallbackContent.type === "joke" ? fallbackContent.question : fallbackContent.text,
     answer: fallbackContent.type === "joke" ? fallbackContent.answer : "",
-    imageUrl: "",
+    imageUrl: resolveFallbackCardImageUrl(fallbackContent.type, fallbackMode),
     linkUrl: "",
     buttonText: "",
     dateValue: referenceDate.toISOString(),
     fallbackType: fallbackContent.type,
+    configuredDisplayMode: displayMode,
+    effectiveDisplayMode: "fallback",
+    fallbackMode,
   };
 }
 
-function serializeCssUrlValue(value) {
-  return JSON.stringify(String(value || ""));
+function bindMessageBoardImageFallbacks(scope = document) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-message-board-image]").forEach((image) => {
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+
+    const fallbackSrc = image.dataset.fallbackSrc || MESSAGE_BOARD_IMAGE_FALLBACK_URL;
+    const applyFallback = () => {
+      if (image.dataset.fallbackApplied === "true") {
+        return;
+      }
+
+      image.dataset.fallbackApplied = "true";
+      image.src = fallbackSrc;
+    };
+
+    image.onerror = applyFallback;
+    if (image.complete && !image.naturalWidth) {
+      applyFallback();
+    }
+  });
 }
 
-function renderHomeAnnouncementCard() {
-  const cardData = getHomeAnnouncementCardData();
-  const isFallback = !getLatestActiveAnnouncement();
-  const primaryVisualImageUrl = cardData.imageUrl || "/assets/wow-fallback.png";
-  const fallbackVisualImageUrl = !cardData.imageUrl ? "/Assets/wow-fallback.png" : "";
-  const visualBackgroundStyle = cardData.imageUrl
-    ? `--home-announcement-card-visual-image:url(${serializeCssUrlValue(primaryVisualImageUrl)});`
-    : `--home-announcement-card-visual-image:url(${serializeCssUrlValue(primaryVisualImageUrl)}), url(${serializeCssUrlValue(fallbackVisualImageUrl)});`;
+function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
+  const isFallback = cardData.effectiveDisplayMode !== "announcement";
+  const visualImageUrl = resolveMessageBoardImageUrl(cardData.imageUrl);
+  const imageAlt = isFallback
+    ? (cardData.fallbackType === "fact" ? "Grow fact fallback image" : "Grow joke fallback image")
+    : "Announcement image";
   console.log("[Cannakan Announcements] Home announcement section rendered", {
     hasActiveAnnouncement: !isFallback,
+    configuredDisplayMode: cardData.configuredDisplayMode,
+    effectiveDisplayMode: cardData.effectiveDisplayMode,
     title: cardData.title,
   });
   console.log("[Cannakan Announcements] Home announcement image resolved", {
-    requestedImagePath: primaryVisualImageUrl,
-    fallbackImagePath: fallbackVisualImageUrl,
-    usingAnnouncementImage: Boolean(cardData.imageUrl),
+    requestedImagePath: visualImageUrl,
+    fallbackImagePath: MESSAGE_BOARD_IMAGE_FALLBACK_URL,
+    usingAnnouncementImage: !isFallback,
   });
   const imageMarkup = `
-      <div class="home-announcement-card-visual-shell${cardData.imageUrl ? "" : " home-announcement-card-visual-shell--fallback"}" style="${escapeHtml(visualBackgroundStyle)}">
+      <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}">
+        <img
+          src="${escapeHtml(visualImageUrl)}"
+          alt="${escapeHtml(imageAlt)}"
+          class="home-announcement-card-image"
+          data-message-board-image="true"
+          data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
+        >
         <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
       </div>
     `;
@@ -10136,13 +10367,58 @@ function renderHomeAnnouncementCard() {
           ${cardData.linkUrl ? `
             <div class="home-announcement-card-actions">
               <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
-                <span>View on Instagram →</span>
+                <span>${escapeHtml(normalizeAnnouncementButtonText(cardData.buttonText || ""))}</span>
               </a>
             </div>
           ` : ""}
         </div>
       </div>
     </section>
+  `;
+}
+
+function renderAdminMessageBoardRadioSelectorMarkup({
+  name,
+  legend,
+  selectedValue,
+  options = [],
+}) {
+  return `
+    <fieldset class="admin-source-form-full admin-message-board-radio-group">
+      <legend>${escapeHtml(legend)}</legend>
+      <div class="admin-message-board-radio-grid">
+        ${options.map((option) => `
+          <label class="admin-message-board-radio-option${selectedValue === option.value ? " is-selected" : ""}">
+            <input type="radio" name="${escapeHtml(name)}" value="${escapeHtml(option.value)}"${selectedValue === option.value ? " checked" : ""}${option.required ? " required" : ""}>
+            <span class="admin-message-board-radio-copy">
+              <strong>${escapeHtml(option.label)}</strong>
+              <span>${escapeHtml(option.description)}</span>
+            </span>
+          </label>
+        `).join("")}
+      </div>
+    </fieldset>
+  `;
+}
+
+function renderAdminMessageBoardImagePreviewMarkup({ title, description, imageUrl }) {
+  const resolvedImageUrl = resolveMessageBoardImageUrl(imageUrl);
+  return `
+    <article class="admin-message-board-image-preview">
+      <div class="admin-announcement-preview-image">
+        <img
+          src="${escapeHtml(resolvedImageUrl)}"
+          alt="${escapeHtml(title)}"
+          class="admin-announcement-card-image"
+          data-message-board-image="true"
+          data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
+        >
+      </div>
+      <div class="admin-source-logo-preview-copy">
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(description)}</p>
+      </div>
+    </article>
   `;
 }
 
@@ -10154,17 +10430,15 @@ function renderAdminAnnouncementStatusPillMarkup(status) {
 function renderAdminAnnouncementCardMarkup(announcement) {
   const title = announcement.title || "Untitled announcement";
   const body = announcement.body || "No message added yet.";
-  const imageMarkup = announcement.imageUrl
-    ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Announcement preview" class="admin-announcement-card-image">`
-    : `
-      <div class="admin-announcement-card-image admin-announcement-card-image--placeholder" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="4.5" y="4.5" width="15" height="15" rx="3.5"></rect>
-          <path d="M9 13.5 11 11.5l2 2 3-3 2 3.5"></path>
-          <circle cx="9" cy="9" r="1.2"></circle>
-        </svg>
-      </div>
-    `;
+  const imageMarkup = `
+    <img
+      src="${escapeHtml(resolveAnnouncementCardImageUrl(announcement.imageUrl || ""))}"
+      alt="Announcement preview"
+      class="admin-announcement-card-image"
+      data-message-board-image="true"
+      data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
+    >
+  `;
 
   return `
     <article class="meta-card admin-announcement-card">
@@ -10191,31 +10465,62 @@ function renderAdminAnnouncementCardMarkup(announcement) {
 
 function renderAdminAnnouncementEditorMarkup(announcement = null) {
   const isActive = normalizeAnnouncementStatus(announcement?.status) === "active";
+  const displayMode = getMessageBoardDisplayMode();
+  const fallbackMode = getFallbackContentMode();
+  const mixedImageMode = getMixedImageMode();
+  const defaultAnnouncementImageUrl = getDefaultAnnouncementImageUrl();
+  const defaultJokeImageUrl = getDefaultJokeImageUrl();
+  const defaultFactImageUrl = getDefaultFactImageUrl();
   console.log("[Cannakan Announcements] Admin announcements CMS rendered", {
     hasStoredAnnouncement: Boolean(announcement),
     isActive,
+    displayMode,
+    fallbackMode,
+    mixedImageMode,
   });
   return `
-    <form id="admin-announcement-form" class="admin-source-form">
+    <form id="admin-message-board-settings-form" class="admin-source-form">
       <div class="section-heading admin-source-form-heading">
         <div>
-          <p class="eyebrow">Announcements</p>
-          <h4>Manage the Home message board</h4>
-          <p class="muted">Save one public announcement for the Home dashboard, or clear it to fall back to the configured fallback content.</p>
+          <p class="eyebrow">Message Board CMS</p>
+          <h4>Control the Home message board</h4>
+          <p class="muted">Choose whether Home shows the saved announcement or the default fallback rotation, then manage the images that support each state.</p>
         </div>
       </div>
       <div class="admin-source-form-grid">
+        ${renderAdminMessageBoardRadioSelectorMarkup({
+    name: "displayMode",
+    legend: "Display Mode",
+    selectedValue: displayMode,
+    options: [
+      {
+        value: "announcement",
+        label: "Show Announcement",
+        description: "Use the active saved announcement when one is available.",
+        required: true,
+      },
+      {
+        value: "fallback",
+        label: "Show Default Fallback",
+        description: "Ignore announcement display and show the fallback content rotation.",
+      },
+    ],
+  })}
+        <div class="admin-source-form-full admin-message-board-subsection">
+          <strong>Announcement Content</strong>
+          <p class="muted">Title and message are only required when you want to save or update an announcement.</p>
+        </div>
         <label class="admin-source-form-full">
           <span>Title</span>
-          <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan" required>
+          <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan">
         </label>
         <label class="admin-source-form-full">
           <span>Message</span>
-          <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update" required>${escapeHtml(announcement?.body || "")}</textarea>
+          <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update">${escapeHtml(announcement?.body || "")}</textarea>
         </label>
         <label class="admin-source-form-full">
           <span>Image URL</span>
-          <input type="url" name="imageUrl" value="${escapeHtml(announcement?.imageUrl || "")}" placeholder="https://example.com/post-image.jpg">
+          <input type="text" name="imageUrl" value="${escapeHtml(announcement?.imageUrl || "")}" placeholder="https://example.com/post-image.jpg or /assets/custom-image.png">
         </label>
         <label class="admin-source-form-full">
           <span>Instagram URL</span>
@@ -10229,13 +10534,97 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <span class="admin-source-field-label">Active</span>
           <label class="admin-announcement-toggle-row">
             <input type="checkbox" name="active"${isActive ? " checked" : ""}>
-            <span>Show this announcement on the Home dashboard</span>
+            <span>Allow this announcement to appear when Display Mode is set to Show Announcement</span>
           </label>
         </div>
+        ${renderAdminMessageBoardRadioSelectorMarkup({
+    name: "fallbackMode",
+    legend: "Fallback Content Type",
+    selectedValue: fallbackMode,
+    options: [
+      {
+        value: "jokes",
+        label: "Jokes only",
+        description: "Use the daily joke rotation when fallback mode is active.",
+        required: true,
+      },
+      {
+        value: "facts",
+        label: "Grow facts only",
+        description: "Use only grow facts on the Home card.",
+      },
+      {
+        value: "mixed",
+        label: "Mixed jokes + facts",
+        description: "Rotate between jokes and grow facts over time.",
+      },
+    ],
+  })}
+        <div class="admin-source-form-full admin-message-board-subsection">
+          <strong>Default Image Manager</strong>
+          <p class="muted">If a custom image is missing or fails, the Home card falls back to the built-in wow image.</p>
+        </div>
+        <label class="admin-source-form-full">
+          <span>Announcement default image</span>
+          <input type="text" name="defaultAnnouncementImageUrl" value="${escapeHtml(defaultAnnouncementImageUrl)}" placeholder="https://example.com/announcement-default.jpg or /assets/custom-image.png">
+        </label>
+        <label class="admin-source-form-full">
+          <span>Joke fallback image</span>
+          <input type="text" name="defaultJokeImageUrl" value="${escapeHtml(defaultJokeImageUrl)}" placeholder="https://example.com/joke-default.jpg or /assets/custom-image.png">
+        </label>
+        <label class="admin-source-form-full">
+          <span>Grow fact fallback image</span>
+          <input type="text" name="defaultFactImageUrl" value="${escapeHtml(defaultFactImageUrl)}" placeholder="https://example.com/fact-default.jpg or /assets/custom-image.png">
+        </label>
+        ${renderAdminMessageBoardRadioSelectorMarkup({
+    name: "mixedImageMode",
+    legend: "Mixed image behavior",
+    selectedValue: mixedImageMode,
+    options: [
+      {
+        value: "match-type",
+        label: "Use matching item type image",
+        description: "Jokes use the joke image and facts use the grow fact image.",
+        required: true,
+      },
+      {
+        value: "joke",
+        label: "Always use joke image",
+        description: "Mixed fallback items always use the joke fallback image.",
+      },
+      {
+        value: "fact",
+        label: "Always use grow fact image",
+        description: "Mixed fallback items always use the grow fact fallback image.",
+      },
+      {
+        value: "announcement",
+        label: "Use announcement default image",
+        description: "Mixed fallback items always use the announcement default image.",
+      },
+    ],
+  })}
+        <div class="admin-source-form-full admin-message-board-image-preview-grid">
+          ${renderAdminMessageBoardImagePreviewMarkup({
+    title: "Announcement default image",
+    description: "Used when an active announcement has no custom image.",
+    imageUrl: getResolvedDefaultAnnouncementImageUrl(),
+  })}
+          ${renderAdminMessageBoardImagePreviewMarkup({
+    title: "Joke fallback image",
+    description: "Used for joke fallback cards unless mixed mode overrides it.",
+    imageUrl: getResolvedDefaultJokeImageUrl(),
+  })}
+          ${renderAdminMessageBoardImagePreviewMarkup({
+    title: "Grow fact fallback image",
+    description: "Used for grow fact fallback cards unless mixed mode overrides it.",
+    imageUrl: getResolvedDefaultFactImageUrl(),
+  })}
+        </div>
       </div>
-      <p id="admin-announcement-form-message" class="snapshot-message">${escapeHtml(appState.announcementAdminMessage || "")}</p>
+      <p id="admin-message-board-settings-message" class="snapshot-message">${escapeHtml(appState.announcementAdminMessage || "")}</p>
       <div class="form-actions admin-source-form-actions">
-        <button type="submit" class="button button-primary">Save Announcement</button>
+        <button type="submit" class="button button-primary">Save Message Board Settings</button>
         <button type="button" class="button button-secondary" id="admin-announcement-clear">Clear Announcement</button>
       </div>
     </form>
@@ -10252,38 +10641,46 @@ function renderAdminAnnouncementsListMarkup() {
   }
 
   const announcement = appState.announcements[0] || null;
-  if (!announcement) {
-    return `
-      <div class="admin-sources-list-shell">
-        <div class="admin-sources-list-head">
-          <strong>Current Dashboard Preview</strong>
-          <span class="muted">Fallback mode</span>
-        </div>
-        <div class="admin-sources-empty">
-          <p>No saved announcement is active. The Home dashboard will show the configured fallback content until an active announcement is saved.</p>
-        </div>
-      </div>
-    `;
-  }
+  const cardData = getHomeAnnouncementCardData();
+  const previewStatus = cardData.effectiveDisplayMode === "announcement"
+    ? "Showing active announcement"
+    : (cardData.fallbackType === "fact" ? "Showing daily grow fact fallback" : "Showing daily joke fallback");
 
   return `
     <div class="admin-sources-list-shell">
       <div class="admin-sources-list-head">
-        <strong>Current Dashboard Preview</strong>
-        <span class="muted">${escapeHtml(normalizeAnnouncementStatus(announcement.status) === "active" ? "Live" : "Inactive")}</span>
+        <strong>Current Home Preview</strong>
+        <span class="muted">${escapeHtml(previewStatus)}</span>
       </div>
-      ${renderAdminAnnouncementCardMarkup(announcement)}
+      ${renderHomeAnnouncementCard(cardData)}
+      <div class="admin-message-board-preview-meta">
+        <p class="muted"><strong>Display Mode:</strong> ${escapeHtml(getMessageBoardDisplayModeLabel(cardData.configuredDisplayMode))}</p>
+        <p class="muted"><strong>Fallback Type:</strong> ${escapeHtml(getFallbackContentModeLabel(cardData.fallbackMode || getFallbackContentMode()))}</p>
+      </div>
+      ${announcement ? `
+        <div class="admin-message-board-saved-announcement">
+          <div class="admin-sources-list-head">
+            <strong>Saved Announcement</strong>
+            <span class="muted">${escapeHtml(normalizeAnnouncementStatus(announcement.status) === "active" ? "Active" : "Inactive")}</span>
+          </div>
+          ${renderAdminAnnouncementCardMarkup(announcement)}
+        </div>
+      ` : `
+        <div class="admin-sources-empty">
+          <p>No announcement is currently saved. Home will still render the fallback message board content.</p>
+        </div>
+      `}
     </div>
   `;
 }
 
 function bindAdminAnnouncementsSection() {
-  const form = app.querySelector("#admin-announcement-form");
-  if (!form) {
+  const form = app.querySelector("#admin-message-board-settings-form");
+  if (!(form instanceof HTMLFormElement)) {
     return;
   }
 
-  const message = form.querySelector("#admin-announcement-form-message");
+  const message = form.querySelector("#admin-message-board-settings-message");
   const submitButton = form.querySelector('button[type="submit"]');
   const clearButton = form.querySelector("#admin-announcement-clear");
 
@@ -10295,16 +10692,90 @@ function bindAdminAnnouncementsSection() {
     message.textContent = "";
 
     try {
-      await saveAnnouncementRecord({
-        title: form.elements.title?.value || "",
-        message: form.elements.message?.value || "",
-        imageUrl: form.elements.imageUrl?.value || "",
-        instagramUrl: form.elements.instagramUrl?.value || "",
-        buttonText: form.elements.buttonText?.value || "",
-        active: Boolean(form.elements.active?.checked),
-      });
+      const formData = new FormData(form);
+      const previousFallbackMode = getFallbackContentMode();
+      const displayMode = writeMessageBoardDisplayMode(
+        String(formData.get("displayMode") || DEFAULT_MESSAGE_BOARD_DISPLAY_MODE),
+      );
+      const fallbackMode = writeFallbackContentMode(
+        String(formData.get("fallbackMode") || DEFAULT_FALLBACK_CONTENT_MODE),
+      );
+      writeMixedImageMode(
+        String(formData.get("mixedImageMode") || DEFAULT_MIXED_IMAGE_MODE),
+      );
+      writeStoredMessageBoardImageUrl(
+        DEFAULT_ANNOUNCEMENT_IMAGE_STORAGE_KEY,
+        form.elements.defaultAnnouncementImageUrl?.value || "",
+      );
+      writeStoredMessageBoardImageUrl(
+        DEFAULT_JOKE_IMAGE_STORAGE_KEY,
+        form.elements.defaultJokeImageUrl?.value || "",
+      );
+      writeStoredMessageBoardImageUrl(
+        DEFAULT_FACT_IMAGE_STORAGE_KEY,
+        form.elements.defaultFactImageUrl?.value || "",
+      );
 
-      appState.announcementAdminMessage = "Announcement saved.";
+      if (previousFallbackMode !== fallbackMode) {
+        try {
+          localStorage.removeItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
+        } catch (historyError) {
+          console.error("Failed to reset recent fallback content history after fallback mode change", historyError);
+        }
+      }
+
+      const announcementTitle = String(form.elements.title?.value || "").trim();
+      const announcementMessage = String(form.elements.message?.value || "").trim();
+      const announcementImageUrl = String(form.elements.imageUrl?.value || "").trim();
+      const instagramUrl = String(form.elements.instagramUrl?.value || "").trim();
+      const buttonText = String(form.elements.buttonText?.value || "").trim();
+      const announcementActive = Boolean(form.elements.active?.checked);
+      const existingAnnouncement = appState.announcements[0] || null;
+      const hasAnnouncementInput = Boolean(
+        announcementTitle
+        || announcementMessage
+        || announcementImageUrl
+        || instagramUrl
+        || buttonText
+        || announcementActive,
+      );
+      const announcementChanged = Boolean(existingAnnouncement) && (
+        announcementTitle !== String(existingAnnouncement.title || "").trim()
+        || announcementMessage !== String(existingAnnouncement.body || "").trim()
+        || normalizeMediaUrl(announcementImageUrl) !== String(existingAnnouncement.imageUrl || "").trim()
+        || normalizeExternalUrl(instagramUrl) !== String(existingAnnouncement.instagramPostUrl || "").trim()
+        || buttonText !== String(existingAnnouncement.buttonText || "").trim()
+        || announcementActive !== isAnnouncementCurrentlyPublic(existingAnnouncement)
+      );
+      const shouldSaveAnnouncement = hasAnnouncementInput || announcementChanged;
+
+      if (shouldSaveAnnouncement) {
+        if (!announcementTitle) {
+          throw new Error("Announcement title is required when saving an announcement.");
+        }
+        if (!announcementMessage) {
+          throw new Error("Announcement message is required when saving an announcement.");
+        }
+
+        await saveAnnouncementRecord({
+          title: announcementTitle,
+          message: announcementMessage,
+          imageUrl: announcementImageUrl,
+          instagramUrl,
+          buttonText,
+          active: announcementActive,
+        });
+      }
+
+      const savedAnnouncementIsLive = shouldSaveAnnouncement
+        ? announcementActive
+        : Boolean(existingAnnouncement && isAnnouncementCurrentlyPublic(existingAnnouncement));
+      appState.announcementAdminMessage = shouldSaveAnnouncement
+        ? "Message board settings and announcement saved."
+        : "Message board settings saved.";
+      if (displayMode === "announcement" && !savedAnnouncementIsLive) {
+        appState.announcementAdminMessage = `${appState.announcementAdminMessage} No active announcement is available, so Home will show fallback content.`;
+      }
       safeRender();
     } catch (error) {
       message.textContent = error.message || "Could not save announcement.";
@@ -10318,7 +10789,7 @@ function bindAdminAnnouncementsSection() {
   clearButton?.addEventListener("click", async () => {
     try {
       await clearAnnouncementRecord();
-      appState.announcementAdminMessage = "Announcement cleared. Home will show the configured fallback content.";
+      appState.announcementAdminMessage = "Announcement cleared. Home will show the configured fallback content when needed.";
       safeRender();
     } catch (error) {
       if (message) {
@@ -10331,24 +10802,30 @@ function bindAdminAnnouncementsSection() {
 function renderFallbackContentCountsMarkup() {
   const jokes = getEffectiveFallbackJokes();
   const facts = getEffectiveFallbackFacts();
-  const currentModeLabel = ({
-    jokes: "Jokes only",
-    facts: "Grow facts only",
-    mixed: "Mixed",
-  })[getFallbackContentMode()] || "Mixed";
+  const currentDisplayModeLabel = getMessageBoardDisplayModeLabel();
+  const currentModeLabel = getFallbackContentModeLabel();
+  const currentMixedImageModeLabel = getMixedImageModeLabel();
 
   return `
     <div class="admin-fallback-content-stats">
       <article class="meta-card admin-fallback-content-stat">
-        <span class="admin-fallback-content-stat-label">Content Mode</span>
+        <span class="admin-fallback-content-stat-label">Display Mode</span>
+        <strong class="admin-fallback-content-stat-value">${escapeHtml(currentDisplayModeLabel)}</strong>
+      </article>
+      <article class="meta-card admin-fallback-content-stat">
+        <span class="admin-fallback-content-stat-label">Fallback Type</span>
         <strong class="admin-fallback-content-stat-value">${escapeHtml(currentModeLabel)}</strong>
       </article>
       <article class="meta-card admin-fallback-content-stat">
-        <span class="admin-fallback-content-stat-label">Current Jokes</span>
+        <span class="admin-fallback-content-stat-label">Mixed Image Mode</span>
+        <strong class="admin-fallback-content-stat-value">${escapeHtml(currentMixedImageModeLabel)}</strong>
+      </article>
+      <article class="meta-card admin-fallback-content-stat">
+        <span class="admin-fallback-content-stat-label">Jokes</span>
         <strong class="admin-fallback-content-stat-value">${escapeHtml(jokes.length.toLocaleString())}</strong>
       </article>
       <article class="meta-card admin-fallback-content-stat">
-        <span class="admin-fallback-content-stat-label">Current Grow Facts</span>
+        <span class="admin-fallback-content-stat-label">Grow facts</span>
         <strong class="admin-fallback-content-stat-value">${escapeHtml(facts.length.toLocaleString())}</strong>
       </article>
     </div>
@@ -10356,25 +10833,16 @@ function renderFallbackContentCountsMarkup() {
 }
 
 function renderAdminFallbackContentEditorMarkup() {
-  const fallbackMode = getFallbackContentMode();
   return `
     <form id="admin-fallback-content-form" class="admin-source-form">
       <div class="section-heading admin-source-form-heading">
         <div>
           <p class="eyebrow">Fallback Content</p>
-          <h4>Manage the Home fallback library</h4>
-          <p class="muted">Choose whether Home rotates jokes, grow facts, or both when no announcement is active. Imported content is added to the seeded default library.</p>
+          <h4>Manage jokes and grow facts</h4>
+          <p class="muted">Batch import the content used by the Home message board fallback library. Imported content is added to the seeded default set.</p>
         </div>
       </div>
       <div class="admin-source-form-grid">
-        <label class="admin-source-form-full">
-          <span>Content Mode</span>
-          <select name="fallbackMode">
-            <option value="jokes"${fallbackMode === "jokes" ? " selected" : ""}>Jokes only</option>
-            <option value="facts"${fallbackMode === "facts" ? " selected" : ""}>Grow facts only</option>
-            <option value="mixed"${fallbackMode === "mixed" ? " selected" : ""}>Mixed</option>
-          </select>
-        </label>
         <label class="admin-source-form-full">
           <span>Batch Upload</span>
           <textarea name="fallbackBatch" rows="12" placeholder="JOKE: Why did the seed bring a blanket?&#10;ANSWER: It wanted to stay warm before sprouting.&#10;&#10;FACT: Seeds need moisture, oxygen, and warmth to begin germination."></textarea>
@@ -10385,7 +10853,7 @@ function renderAdminFallbackContentEditorMarkup() {
       <div class="form-actions admin-source-form-actions">
         <button type="submit" class="button button-primary">Import Batch</button>
         <button type="button" class="button button-secondary" id="admin-fallback-content-export">Export Fallback Content</button>
-        <button type="button" class="button button-secondary" id="admin-fallback-content-clear">Clear All Fallback Content</button>
+        <button type="button" class="button button-secondary" id="admin-fallback-content-clear">Clear All Jokes/Facts</button>
       </div>
     </form>
   `;
@@ -10397,23 +10865,11 @@ function bindAdminFallbackContentSection() {
     return;
   }
 
-  const modeSelect = form.elements.fallbackMode;
   const batchField = form.elements.fallbackBatch;
   const message = form.querySelector("#admin-fallback-content-message");
   const exportButton = form.querySelector("#admin-fallback-content-export");
   const clearButton = form.querySelector("#admin-fallback-content-clear");
   const submitButton = form.querySelector('button[type="submit"]');
-
-  modeSelect?.addEventListener("change", () => {
-    writeFallbackContentMode(modeSelect.value || DEFAULT_FALLBACK_CONTENT_MODE);
-    try {
-      localStorage.removeItem(RECENT_FALLBACK_ITEMS_STORAGE_KEY);
-    } catch (error) {
-      console.error("Failed to reset recent fallback content history after mode change", error);
-    }
-    appState.fallbackContentAdminMessage = "Fallback mode saved.";
-    safeRender();
-  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -10477,7 +10933,7 @@ function bindAdminFallbackContentSection() {
   clearButton?.addEventListener("click", () => {
     try {
       clearStoredFallbackContent();
-      appState.fallbackContentAdminMessage = "Custom fallback content cleared. Seeded defaults remain available.";
+      appState.fallbackContentAdminMessage = "Custom jokes and grow facts cleared. Seeded defaults remain available.";
       safeRender();
     } catch (error) {
       if (message) {
@@ -10559,27 +11015,18 @@ function renderAdminPage() {
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Announcements</p>
-          <h3>Announcements</h3>
-          <p class="muted">Manage the public message board shown on the Home dashboard.</p>
+          <p class="eyebrow">Message Board CMS</p>
+          <h3>Message Board CMS</h3>
+          <p class="muted">Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.</p>
         </div>
       </div>
       <div class="admin-sources-layout">
         <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
-        <div id="admin-announcements-list"></div>
-      </div>
-    </section>
-    <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Fallback Content</p>
-          <h3>Fallback Content</h3>
-          <p class="muted">Manage the jokes and grow facts shown on Home whenever no public announcement is active.</p>
+        <div class="admin-message-board-sidebar">
+          <div id="admin-announcements-list"></div>
+          <div id="admin-fallback-content-stats"></div>
+          <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
         </div>
-      </div>
-      <div class="admin-sources-layout">
-        <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
-        <div id="admin-fallback-content-stats"></div>
       </div>
     </section>
     <section class="card admin-section-card">
@@ -10742,6 +11189,7 @@ function renderAdminPage() {
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
   bindAdminFallbackContentSection();
+  bindMessageBoardImageFallbacks(app);
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
@@ -10845,6 +11293,7 @@ function renderHome() {
   } else {
     app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
   }
+  bindMessageBoardImageFallbacks(app);
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });
