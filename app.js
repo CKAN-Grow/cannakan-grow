@@ -38,11 +38,18 @@ const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
 const ANNOUNCEMENT_FALLBACK_JOKES = [
-  "Why did the seed bring a blanket? Because it wanted to stay warm before sprouting.",
+  "Why did the seed bring a blanket? It wanted to stay warm before sprouting.",
   "What did one seed say to the other? Let's grow through this together.",
   "Why was the sprout so confident? It knew it was rooted in success.",
-  "Why did the gardener trust the seedling? It was showing real growth potential.",
-  "What is a grower's favorite kind of progress? The kind you can see one leaf at a time.",
+  "Good things take thyme, especially in the garden.",
+  "Why did the gardener stay calm? Because every great grow starts one step at a time.",
+  "Why did the seedling love mornings? Fresh light helped it rise and shine.",
+  "What is a gardener's favorite kind of teamwork? When everyone helps things grow.",
+  "Why did the compost smile? It knew all good growth starts with strong support.",
+  "Why was the greenhouse such a good listener? It always made room for growth.",
+  "What did the tray say to the sprout? I have got you covered while you get started.",
+  "Why did the little root stay focused? It was grounded in the plan.",
+  "Why did the gardener bring a notebook? Great results grow from good tracking.",
 ];
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -9328,27 +9335,43 @@ function formatAnnouncementDateLabel(value) {
 }
 
 function getAnnouncementFallbackJoke(referenceDate = new Date()) {
-  const startOfYear = new Date(referenceDate.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((referenceDate - startOfYear) / 86400000);
+  const normalizedDate = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  );
+  const startOfYear = new Date(normalizedDate.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((normalizedDate - startOfYear) / 86400000);
   return ANNOUNCEMENT_FALLBACK_JOKES[dayOfYear % ANNOUNCEMENT_FALLBACK_JOKES.length];
 }
 
-function renderHomeAnnouncementCard() {
+function getHomeAnnouncementCardData(referenceDate = new Date()) {
   const announcement = getLatestActiveAnnouncement();
-  const isFallback = !announcement;
-  const cardTitle = isFallback
-    ? "Grow Joke of the Day"
-    : (announcement.title || "Latest from Cannakan");
-  const bodyText = isFallback
-    ? getAnnouncementFallbackJoke()
-    : (announcement.body || "Latest update from Cannakan.");
-  const announcementUrl = announcement?.instagramPostUrl || "";
-  const buttonText = normalizeAnnouncementButtonText(announcement?.buttonText || "");
-  const dateValue = isFallback
-    ? new Date().toISOString()
-    : (announcement.publishAt || announcement.updatedAt || announcement.createdAt);
-  const imageMarkup = announcement?.imageUrl
-    ? `<img src="${escapeHtml(announcement.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
+  if (announcement) {
+    return {
+      title: announcement.title || "Latest from Cannakan",
+      body: announcement.body || "Latest update from Cannakan.",
+      imageUrl: announcement.imageUrl || "",
+      linkUrl: announcement.instagramPostUrl || "",
+      buttonText: normalizeAnnouncementButtonText(announcement.buttonText || ""),
+      dateValue: announcement.publishAt || announcement.updatedAt || announcement.createdAt || referenceDate.toISOString(),
+    };
+  }
+
+  return {
+    title: "Grow Joke of the Day",
+    body: getAnnouncementFallbackJoke(referenceDate),
+    imageUrl: "",
+    linkUrl: "",
+    buttonText: "",
+    dateValue: referenceDate.toISOString(),
+  };
+}
+
+function renderHomeAnnouncementCard() {
+  const cardData = getHomeAnnouncementCardData();
+  const imageMarkup = cardData.imageUrl
+    ? `<img src="${escapeHtml(cardData.imageUrl)}" alt="Latest Cannakan announcement" class="home-announcement-card-image">`
     : `
       <div class="home-announcement-card-image home-announcement-card-image--placeholder" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -9367,14 +9390,14 @@ function renderHomeAnnouncementCard() {
       <div class="home-announcement-card-body">
         <div class="home-announcement-card-copy">
           <p class="eyebrow">Latest from Cannakan</p>
-          <h3 id="home-announcement-title">${escapeHtml(cardTitle)}</h3>
-          <p class="home-announcement-card-caption" title="${escapeHtml(bodyText)}">${escapeHtml(bodyText)}</p>
-          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(dateValue))}</p>
+          <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
+          <p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>
+          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(cardData.dateValue))}</p>
         </div>
-        ${announcementUrl ? `
+        ${cardData.linkUrl ? `
           <div class="home-announcement-card-actions">
-            <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(announcementUrl)}" target="_blank" rel="noreferrer">
-              <span>${escapeHtml(buttonText)}</span>
+            <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
+              <span>${escapeHtml(cardData.buttonText)}</span>
             </a>
           </div>
         ` : ""}
