@@ -9342,7 +9342,8 @@ function renderHomeGalleryRankingsTeaser() {
   return `
     <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
       <div class="home-gallery-rankings-head">
-        <div class="section-title-with-icon">
+        <div class="home-leaderboard-header">
+          <div class="section-title-with-icon home-leaderboard-header-main">
           <span class="gallery-leaderboard-section-icon home-gallery-rankings-title-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
               <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
@@ -9358,16 +9359,17 @@ function renderHomeGalleryRankingsTeaser() {
             <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
             <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
           </div>
+          </div>
+          <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
+            <span>View Community Grow</span>
+            <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M5 12h14"></path>
+                <path d="m13 7 5 5-5 5"></path>
+              </svg>
+            </span>
+          </a>
         </div>
-        <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
-          <span>View Community Grow</span>
-          <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M5 12h14"></path>
-              <path d="m13 7 5 5-5 5"></path>
-            </svg>
-          </span>
-        </a>
       </div>
       ${!shouldShowEmptyState ? `
         <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
