@@ -27,16 +27,21 @@ create table if not exists public.profiles (
   email text default '',
   avatar_url text default '',
   avatar_path text default '',
-  notify_followed_snapshot boolean not null default true,
-  notify_followed_session_complete boolean not null default true,
-  notify_new_follower boolean not null default true,
-  notify_snapshot_like boolean not null default true,
   account_status text not null default 'active',
   last_active_at timestamptz,
   deletion_requested_at timestamptz,
   deletion_scheduled_for timestamptz,
   deletion_status text default '',
   created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.user_notification_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  notify_snapshot boolean not null default true,
+  notify_completion boolean not null default true,
+  notify_follow boolean not null default true,
+  notify_like boolean not null default true,
   updated_at timestamptz not null default timezone('utc', now())
 );
 
@@ -184,18 +189,6 @@ alter table public.profiles
   add column if not exists avatar_path text default '';
 
 alter table public.profiles
-  add column if not exists notify_followed_snapshot boolean not null default true;
-
-alter table public.profiles
-  add column if not exists notify_followed_session_complete boolean not null default true;
-
-alter table public.profiles
-  add column if not exists notify_new_follower boolean not null default true;
-
-alter table public.profiles
-  add column if not exists notify_snapshot_like boolean not null default true;
-
-alter table public.profiles
   add column if not exists account_status text not null default 'active';
 
 alter table public.profiles
@@ -215,6 +208,21 @@ create index if not exists profiles_account_status_idx
 
 create index if not exists profiles_last_active_idx
   on public.profiles (last_active_at desc);
+
+alter table public.user_notification_preferences
+  add column if not exists notify_snapshot boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_completion boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_follow boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_like boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
 alter table public.announcements
   add column if not exists title text default '';
@@ -573,6 +581,16 @@ begin
 end;
 $$;
 
+create or replace function public.set_user_notification_preferences_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
 create or replace function public.set_sources_updated_at()
 returns trigger
 language plpgsql
@@ -615,6 +633,12 @@ before update on public.profiles
 for each row
 execute procedure public.set_profiles_updated_at();
 
+drop trigger if exists user_notification_preferences_set_updated_at on public.user_notification_preferences;
+create trigger user_notification_preferences_set_updated_at
+before update on public.user_notification_preferences
+for each row
+execute procedure public.set_user_notification_preferences_updated_at();
+
 drop trigger if exists sources_set_updated_at on public.sources;
 create trigger sources_set_updated_at
 before update on public.sources
@@ -635,6 +659,7 @@ execute procedure public.set_grow_gallery_snapshots_updated_at();
 
 alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
+alter table public.user_notification_preferences enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.sources enable row level security;
 alter table public.announcements enable row level security;
@@ -733,6 +758,49 @@ on public.profiles
 for delete
 using (
   auth.uid() = id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can view their own notification preferences" on public.user_notification_preferences;
+create policy "Users can view their own notification preferences"
+on public.user_notification_preferences
+for select
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create their own notification preferences" on public.user_notification_preferences;
+create policy "Users can create their own notification preferences"
+on public.user_notification_preferences
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own notification preferences" on public.user_notification_preferences;
+create policy "Users can update their own notification preferences"
+on public.user_notification_preferences
+for update
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
   or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
     select 1

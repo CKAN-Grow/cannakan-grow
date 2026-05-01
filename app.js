@@ -39,6 +39,7 @@ const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const MEMBER_FOLLOWS_TABLE = "member_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
+const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -132,6 +133,13 @@ const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   autoSubtract: true,
   storeRegion: "US",
 });
+const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
+  notifySnapshot: true,
+  notifyCompletion: true,
+  notifyFollow: true,
+  notifyLike: true,
+  updatedAt: "",
+});
 const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
 // TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
@@ -192,6 +200,8 @@ const appState = {
   mockDataEnabled: false,
   profile: null,
   profileError: "",
+  notificationPreferences: null,
+  notificationPreferencesError: "",
   authNotice: "",
   deletionPromptShown: false,
   accountMenuOpen: false,
@@ -458,6 +468,8 @@ function resetSessionScopedAppState() {
   appState.isAdmin = false;
   appState.profile = null;
   appState.profileError = "";
+  appState.notificationPreferences = null;
+  appState.notificationPreferencesError = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
   appState.sourcesLoaded = false;
@@ -3826,6 +3838,12 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           "Failed to initialize user profile during auth hydration.",
           "profileError",
         );
+        appState.notificationPreferences = await safelyLoadAppData(
+          () => ensureUserNotificationPreferences(appState.user),
+          { ...DEFAULT_NOTIFICATION_PREFERENCES },
+          "Failed to initialize notification preferences during auth hydration.",
+          "notificationPreferencesError",
+        );
         applyResolvedAuthState(session, `${reason}:profile`, appState.profile);
         updateAuthStatus();
         if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
@@ -3941,6 +3959,53 @@ async function loadUserProfile() {
   }
 
   return normalizeProfileRow(data);
+}
+
+async function ensureUserNotificationPreferences(user) {
+  if (!appState.supabase || !user?.id) {
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  }
+
+  appState.notificationPreferencesError = "";
+
+  const { data: existingPreferences, error: selectError } = await appState.supabase
+    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error("Notification preference check error:", selectError);
+    appState.notificationPreferencesError = selectError.message || "Could not check notification preferences.";
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  }
+
+  if (existingPreferences) {
+    return normalizeUserNotificationPreferencesRow(existingPreferences);
+  }
+
+  const preferencePayload = {
+    user_id: user.id,
+    notify_snapshot: true,
+    notify_completion: true,
+    notify_follow: true,
+    notify_like: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: savedPreferences, error: upsertError } = await appState.supabase
+    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+    .upsert(preferencePayload)
+    .select("*")
+    .single();
+
+  if (upsertError) {
+    console.error("Notification preference create/update error:", upsertError);
+    appState.notificationPreferencesError = upsertError.message || "Could not create notification preferences.";
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  }
+
+  return normalizeUserNotificationPreferencesRow(savedPreferences);
 }
 
 async function loadGallerySnapshots(reason = "unspecified") {
@@ -4507,16 +4572,26 @@ function normalizeProfileRow(row) {
     role: normalizeUserRole(row.role),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
-    notifyOnFollowedSnapshot: row.notify_followed_snapshot !== false,
-    notifyOnFollowedSessionComplete: row.notify_followed_session_complete !== false,
-    notifyOnNewFollower: row.notify_new_follower !== false,
-    notifyOnSnapshotLike: row.notify_snapshot_like !== false,
     accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
     lastActiveAt: row.last_active_at || "",
     deletionRequestedAt: row.deletion_requested_at || "",
     deletionScheduledFor: row.deletion_scheduled_for || "",
     deletionStatus: String(row.deletion_status || "").trim(),
     createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+function normalizeUserNotificationPreferencesRow(row) {
+  if (!row) {
+    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+  }
+
+  return {
+    notifySnapshot: row.notify_snapshot !== false,
+    notifyCompletion: row.notify_completion !== false,
+    notifyFollow: row.notify_follow !== false,
+    notifyLike: row.notify_like !== false,
     updatedAt: row.updated_at || "",
   };
 }
@@ -7152,22 +7227,6 @@ async function saveUserProfile(profileInput) {
     email: String(profileInput?.email !== undefined ? profileInput.email : (appState.user?.email || existingProfile.email || "")).trim().toLowerCase(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
-    notify_followed_snapshot:
-      profileInput?.notifyOnFollowedSnapshot !== undefined
-        ? Boolean(profileInput.notifyOnFollowedSnapshot)
-        : existingProfile.notifyOnFollowedSnapshot !== false,
-    notify_followed_session_complete:
-      profileInput?.notifyOnFollowedSessionComplete !== undefined
-        ? Boolean(profileInput.notifyOnFollowedSessionComplete)
-        : existingProfile.notifyOnFollowedSessionComplete !== false,
-    notify_new_follower:
-      profileInput?.notifyOnNewFollower !== undefined
-        ? Boolean(profileInput.notifyOnNewFollower)
-        : existingProfile.notifyOnNewFollower !== false,
-    notify_snapshot_like:
-      profileInput?.notifyOnSnapshotLike !== undefined
-        ? Boolean(profileInput.notifyOnSnapshotLike)
-        : existingProfile.notifyOnSnapshotLike !== false,
     account_status:
       profileInput?.accountStatus !== undefined
         ? String(profileInput.accountStatus || "active").trim().toLowerCase()
@@ -7210,6 +7269,50 @@ async function saveUserProfile(profileInput) {
     username: payload.username,
   });
   return normalizeProfileRow(data);
+}
+
+async function saveUserNotificationPreferences(preferencesInput) {
+  if (!appState.supabase || !appState.user) {
+    throw new Error("You must be signed in to save notification preferences.");
+  }
+
+  const existingPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const payload = {
+    user_id: appState.user.id,
+    notify_snapshot:
+      preferencesInput?.notifySnapshot !== undefined
+        ? Boolean(preferencesInput.notifySnapshot)
+        : existingPreferences.notifySnapshot !== false,
+    notify_completion:
+      preferencesInput?.notifyCompletion !== undefined
+        ? Boolean(preferencesInput.notifyCompletion)
+        : existingPreferences.notifyCompletion !== false,
+    notify_follow:
+      preferencesInput?.notifyFollow !== undefined
+        ? Boolean(preferencesInput.notifyFollow)
+        : existingPreferences.notifyFollow !== false,
+    notify_like:
+      preferencesInput?.notifyLike !== undefined
+        ? Boolean(preferencesInput.notifyLike)
+        : existingPreferences.notifyLike !== false,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await appState.supabase
+    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+    .upsert(payload)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("[Cannakan Profile] Supabase notification preference upsert failed", {
+      payload,
+      error,
+    });
+    throw error;
+  }
+
+  return normalizeUserNotificationPreferencesRow(data);
 }
 
 async function scheduleUserDeletion() {
@@ -12008,6 +12111,7 @@ function renderProfileSetupScreen() {
   bindProfileForm(document.querySelector("#profile-form"), {
     mode: "setup",
     initialProfile: appState.profile,
+    initialNotificationPreferences: appState.notificationPreferences,
     onSaved: () => {
       window.location.hash = "#home";
       safeRender();
@@ -12068,6 +12172,7 @@ function openProfileEditor() {
   bindProfileForm(body.querySelector("#profile-form"), {
     mode: "edit",
     initialProfile: appState.profile,
+    initialNotificationPreferences: appState.notificationPreferences,
     onSaved: () => {
       updateAuthStatus();
       safeRender();
@@ -12092,6 +12197,7 @@ function bindProfileForm(form, options = {}) {
   }
 
   const profile = options.initialProfile || appState.profile || null;
+  const notificationPreferences = options.initialNotificationPreferences || appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const usernameInput = form.elements.username;
   const avatarInput = form.elements.avatar;
   const message = form.querySelector("#profile-message");
@@ -12124,16 +12230,16 @@ function bindProfileForm(form, options = {}) {
 
   usernameInput.value = profile?.username || "";
   if (notifyOnFollowedSnapshotInput) {
-    notifyOnFollowedSnapshotInput.checked = profile?.notifyOnFollowedSnapshot !== false;
+    notifyOnFollowedSnapshotInput.checked = notificationPreferences.notifySnapshot !== false;
   }
   if (notifyOnFollowedSessionCompleteInput) {
-    notifyOnFollowedSessionCompleteInput.checked = profile?.notifyOnFollowedSessionComplete !== false;
+    notifyOnFollowedSessionCompleteInput.checked = notificationPreferences.notifyCompletion !== false;
   }
   if (notifyOnNewFollowerInput) {
-    notifyOnNewFollowerInput.checked = profile?.notifyOnNewFollower !== false;
+    notifyOnNewFollowerInput.checked = notificationPreferences.notifyFollow !== false;
   }
   if (notifyOnSnapshotLikeInput) {
-    notifyOnSnapshotLikeInput.checked = profile?.notifyOnSnapshotLike !== false;
+    notifyOnSnapshotLikeInput.checked = notificationPreferences.notifyLike !== false;
   }
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
@@ -12236,16 +12342,18 @@ function bindProfileForm(form, options = {}) {
       const warnings = [];
       let avatarUrl = state.profile?.avatarUrl || "";
       let avatarPath = state.profile?.avatarPath || "";
+      const notificationPreferencePayload = {
+        notifySnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
+        notifyCompletion: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
+        notifyFollow: Boolean(notifyOnNewFollowerInput?.checked),
+        notifyLike: Boolean(notifyOnSnapshotLikeInput?.checked),
+      };
 
       // Save the profile name first so avatar storage problems do not block the main profile save.
       appState.profile = await saveUserProfile({
         username,
         avatarUrl,
         avatarPath,
-        notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
-        notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
-        notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
-        notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
       });
       state.profile = appState.profile;
 
@@ -12257,10 +12365,6 @@ function bindProfileForm(form, options = {}) {
           username,
           avatarUrl,
           avatarPath,
-          notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
-          notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
-          notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
-          notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
         });
         state.profile = appState.profile;
 
@@ -12284,10 +12388,6 @@ function bindProfileForm(form, options = {}) {
             username,
             avatarUrl,
             avatarPath,
-            notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
-            notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
-            notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
-            notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
           });
           state.profile = appState.profile;
 
@@ -12303,6 +12403,13 @@ function bindProfileForm(form, options = {}) {
           console.error("[Cannakan Profile] Avatar upload/save warning", error);
           warnings.push(`Profile saved, but the profile image could not be saved: ${error.message || "Unknown image error."}`);
         }
+      }
+
+      try {
+        appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
+      } catch (error) {
+        console.error("[Cannakan Profile] Notification preference save warning", error);
+        warnings.push(`Profile saved, but notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
       }
 
       if (state.previewUrl) {
