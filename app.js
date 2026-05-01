@@ -13455,75 +13455,77 @@ function renderHomeInstallInfoCardMarkup() {
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
-        <div class="home-install-card-preview" aria-hidden="true">
-          <div class="phone-mock home-install-phone home-install-phone-mockup">
-            <div class="home-install-phone-notch"></div>
-            <div class="phone-screen home-install-phone-screen">
-              <div class="home-install-phone-screen-head">
-                <span class="home-install-phone-screen-dot"></span>
-                <span>Cannakan Grow</span>
-              </div>
-              <div class="home-install-phone-stat">
-                <div class="home-install-progress-ring home-install-phone-stat-ring">
-                  <span>98%</span>
-                </div>
-                <p class="home-install-phone-stat-label">Germination</p>
-              </div>
-              <div class="home-install-phone-metrics">
-                <div class="home-install-phone-metric">
-                  <span>Stage</span>
-                  <strong>Germination</strong>
-                </div>
-                <div class="home-install-phone-metric">
-                  <span>Seeds</span>
-                  <strong>98 / 100</strong>
-                </div>
-                <div class="home-install-phone-metric">
-                  <span>Time Elapsed</span>
-                  <strong>${escapeHtml(installPreviewElapsed)}</strong>
-                </div>
-              </div>
-              <div class="home-install-phone-actions">
-                <span class="home-install-phone-button">View Session</span>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="home-install-card-body">
-          <div class="home-install-card-copy">
-            <div class="home-install-card-copy-block">
-              <p class="eyebrow">Install App</p>
-              <h3 id="home-install-card-title">Install the Grow App</h3>
-              <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+          <div class="home-install-card-preview" aria-hidden="true">
+            <div class="phone-mock home-install-phone home-install-phone-mockup">
+              <div class="home-install-phone-notch"></div>
+              <div class="phone-screen home-install-phone-screen">
+                <div class="home-install-phone-screen-head">
+                  <span class="home-install-phone-screen-dot"></span>
+                  <span>Cannakan Grow</span>
+                </div>
+                <div class="home-install-phone-stat">
+                  <div class="home-install-progress-ring home-install-phone-stat-ring">
+                    <span>98%</span>
+                  </div>
+                  <p class="home-install-phone-stat-label">Germination</p>
+                </div>
+                <div class="home-install-phone-metrics">
+                  <div class="home-install-phone-metric">
+                    <span>Stage</span>
+                    <strong>Germination</strong>
+                  </div>
+                  <div class="home-install-phone-metric">
+                    <span>Seeds</span>
+                    <strong>98 / 100</strong>
+                  </div>
+                  <div class="home-install-phone-metric">
+                    <span>Time Elapsed</span>
+                    <strong>${escapeHtml(installPreviewElapsed)}</strong>
+                  </div>
+                </div>
+                <div class="home-install-phone-actions">
+                  <span class="home-install-phone-button">View Session</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="home-install-card-directions">
-            <section class="home-install-card-platform">
-              <h4 class="home-install-card-platform-title">iPhone</h4>
-              <ol class="home-install-card-steps">
-                <li>Open in Safari</li>
-                <li>Tap Share</li>
-                <li>Add to Home Screen</li>
-              </ol>
-            </section>
-            <section class="home-install-card-platform">
-              <h4 class="home-install-card-platform-title">Android</h4>
-              <ol class="home-install-card-steps">
-                <li>Open in Chrome</li>
-                <li>Tap Install App or Add to Home Screen</li>
-              </ol>
-            </section>
+          <div class="home-install-card-content">
+            <div class="home-install-card-copy">
+              <div class="home-install-card-copy-block">
+                <p class="eyebrow">Install App</p>
+                <h3 id="home-install-card-title">Install the Grow App</h3>
+                <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+              </div>
+            </div>
+            <div class="home-install-card-directions">
+              <section class="home-install-card-platform">
+                <h4 class="home-install-card-platform-title">iPhone</h4>
+                <ol class="home-install-card-steps">
+                  <li>Open in Safari</li>
+                  <li>Tap Share</li>
+                  <li>Add to Home Screen</li>
+                </ol>
+              </section>
+              <section class="home-install-card-platform">
+                <h4 class="home-install-card-platform-title">Android</h4>
+                <ol class="home-install-card-steps">
+                  <li>Open in Chrome</li>
+                  <li>Tap Install App or Add to Home Screen</li>
+                </ol>
+              </section>
+            </div>
+            <div class="home-install-card-actions">
+              <button
+                type="button"
+                class="button button-primary install-app-button"
+                data-install-grow-app="true"
+                ${buttonEnabled ? "" : "disabled"}
+                aria-disabled="${buttonEnabled ? "false" : "true"}"
+              >${escapeHtml(buttonLabel)}</button>
+            </div>
+            <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(footerText)}</p>
           </div>
-          <div class="home-install-card-actions">
-            <button
-              type="button"
-              class="button button-primary install-app-button"
-              data-install-grow-app="true"
-              ${buttonEnabled ? "" : "disabled"}
-              aria-disabled="${buttonEnabled ? "false" : "true"}"
-            >${escapeHtml(buttonLabel)}</button>
-          </div>
-          <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(footerText)}</p>
         </div>
       </div>
     </section>
