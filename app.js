@@ -579,6 +579,7 @@ function reportAppError(error, context = "App Error") {
 function safeRender() {
   try {
     render();
+    syncGlobalBuildVersionBadge();
   } catch (error) {
     reportAppError(error, "Render failed");
   }
@@ -712,6 +713,42 @@ function renderBuildDebugStampMarkup() {
       </dl>
     </div>
   `;
+}
+
+function shouldShowGlobalBuildVersionBadge() {
+  return canAccessMockDataControls() || isMockDataEnabled();
+}
+
+function renderGlobalBuildVersionBadgeMarkup() {
+  const buildInfo = getBuildInfo();
+  return `
+    <div class="build-version-badge" aria-label="Current app build version">
+      <span class="build-version-badge-version">${escapeHtml(`v${buildInfo.version}`)}</span>
+      <span class="build-version-badge-separator" aria-hidden="true">•</span>
+      <span class="build-version-badge-timestamp">${escapeHtml(formatBuildTimestampLabel(buildInfo.buildTimestamp))}</span>
+    </div>
+  `;
+}
+
+function syncGlobalBuildVersionBadge() {
+  if (!document.body) {
+    return;
+  }
+
+  const existingBadge = document.body.querySelector("#global-build-version-badge");
+  if (!shouldShowGlobalBuildVersionBadge()) {
+    existingBadge?.remove();
+    return;
+  }
+
+  const badge = existingBadge || document.createElement("div");
+  badge.id = "global-build-version-badge";
+  badge.className = "global-build-version-badge";
+  badge.innerHTML = renderGlobalBuildVersionBadgeMarkup();
+
+  if (!existingBadge) {
+    document.body.appendChild(badge);
+  }
 }
 
 function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = appState.currentBuildInfo || getBuildInfo()) {
@@ -9143,6 +9180,7 @@ function render() {
   syncInstallPromptBanner();
   syncMockDataBanner();
   updateNavState();
+  syncGlobalBuildVersionBadge();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
   const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
   const pathRoute = window.location.pathname.replace(/^\/+/, "");
