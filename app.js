@@ -10,6 +10,7 @@ const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
+const USER_ROLE_STORAGE_KEY = "cannakanGrowUserRole";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
@@ -183,6 +184,7 @@ const appState = {
   authSession: null,
   user: null,
   currentUserEmail: "",
+  userRole: "user",
   isAdmin: false,
   mockDataEnabled: false,
   profile: null,
@@ -313,19 +315,61 @@ function getAuthSessionHydrationKey(session) {
   return `${userId}|${email}|${expiresAt}`;
 }
 
+function normalizePersistedUserRole(role) {
+  return String(role || "").trim().toLowerCase() === "admin" ? "admin" : "user";
+}
+
+function loadPersistedUserRole() {
+  try {
+    return normalizePersistedUserRole(localStorage.getItem(USER_ROLE_STORAGE_KEY) || "user");
+  } catch (error) {
+    console.error("Failed to read persisted user role", error);
+    return "user";
+  }
+}
+
+function persistUserRole(role) {
+  const normalizedRole = normalizePersistedUserRole(role);
+  appState.userRole = normalizedRole;
+  try {
+    localStorage.setItem(USER_ROLE_STORAGE_KEY, normalizedRole);
+  } catch (error) {
+    console.error("Failed to persist user role", error);
+  }
+  return normalizedRole;
+}
+
+function clearPersistedUserRole() {
+  appState.userRole = "user";
+  try {
+    localStorage.removeItem(USER_ROLE_STORAGE_KEY);
+  } catch (error) {
+    console.error("Failed to clear persisted user role", error);
+  }
+}
+
 function hasResolvedAdminAccess() {
-  return Boolean(appState.authReady && appState.isAdmin);
+  // Admin visibility tied to persistent auth state
+  // Prevents UI disappearing on refresh
+  return appState.userRole === "admin";
 }
 
 function applyResolvedAuthState(session, reason = "auth-change") {
   const sessionEmail = String(session?.user?.email || "").trim();
   const normalizedEmail = getNormalizedUserEmail(session?.user || null);
-  const isAdmin = ADMIN_EMAILS.has(normalizedEmail);
+  const resolvedRole = session ? (isAdminUser(normalizedEmail) ? "admin" : "user") : "user";
+  const isAdmin = resolvedRole === "admin";
 
   appState.authSession = session || null;
   appState.user = session?.user || null;
   appState.currentUserEmail = normalizedEmail;
+  appState.userRole = resolvedRole;
   appState.isAdmin = isAdmin;
+  if (session) {
+    persistUserRole(resolvedRole);
+  } else {
+    clearPersistedUserRole();
+  }
 
   console.log("[Cannakan App Init] session email", {
     reason,
@@ -338,6 +382,7 @@ function applyResolvedAuthState(session, reason = "auth-change") {
   console.log("[Cannakan App Init] isAdmin result", {
     reason,
     isAdminResult: isAdmin,
+    userRole: resolvedRole,
   });
 }
 
@@ -374,10 +419,12 @@ function syncAdminNavigationVisibility() {
 }
 
 function resetSessionScopedAppState() {
+  const persistedUserRole = loadPersistedUserRole();
   appState.authSession = null;
   appState.user = null;
   appState.currentUserEmail = "";
-  appState.isAdmin = false;
+  appState.userRole = persistedUserRole;
+  appState.isAdmin = persistedUserRole === "admin";
   appState.profile = null;
   appState.profileError = "";
   appState.deletionPromptShown = false;
@@ -2393,6 +2440,8 @@ async function bootstrapApp() {
   appState.loading = true;
   appState.authReady = false;
   appState.lastHydratedAuthSessionKey = "";
+  appState.userRole = loadPersistedUserRole();
+  appState.isAdmin = appState.userRole === "admin";
   appState.mockDataEnabled = isMockDataEnabled();
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
