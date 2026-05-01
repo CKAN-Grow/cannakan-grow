@@ -16741,6 +16741,7 @@ function renderPublicSessionDetail(snapshotId) {
               </article>
             `).join("")}
           </div>
+          ${renderPublicSessionTimelineSection(snapshot)}
         </div>
       </div>
     </section>
@@ -18637,10 +18638,34 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
 
 function renderSessionLifecycleTimelineMarkup(state) {
   const events = [
-    { label: "SOAKING", timestamp: state.startedAt, tone: "soaking", complete: Boolean(state.startedAt) },
-    { label: "GERMINATION STARTED", timestamp: state.germinationStartedAt, tone: "germination", complete: Boolean(state.germinationStartedAt) },
-    { label: "FIRST GERMINATED", timestamp: state.firstPlantedAt, tone: "green", complete: Boolean(state.firstPlantedAt) },
-    { label: "COMPLETED", timestamp: state.completedAt, tone: "completed", complete: Boolean(state.completedAt) },
+    {
+      label: "SOAKING",
+      timestamp: state.startedAt,
+      displayLabel: state.startedDisplayLabel || "",
+      tone: "soaking",
+      complete: state.startedComplete !== undefined ? state.startedComplete : Boolean(state.startedAt),
+    },
+    {
+      label: "GERMINATION STARTED",
+      timestamp: state.germinationStartedAt,
+      displayLabel: state.germinationStartedDisplayLabel || "",
+      tone: "germination",
+      complete: state.germinationStartedComplete !== undefined ? state.germinationStartedComplete : Boolean(state.germinationStartedAt),
+    },
+    {
+      label: "FIRST GERMINATED",
+      timestamp: state.firstPlantedAt,
+      displayLabel: state.firstPlantedDisplayLabel || "",
+      tone: "green",
+      complete: state.firstPlantedComplete !== undefined ? state.firstPlantedComplete : Boolean(state.firstPlantedAt),
+    },
+    {
+      label: "COMPLETED",
+      timestamp: state.completedAt,
+      displayLabel: state.completedDisplayLabel || "",
+      tone: "completed",
+      complete: state.completedComplete !== undefined ? state.completedComplete : Boolean(state.completedAt),
+    },
   ];
 
   return `
@@ -18653,7 +18678,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
       ${events.map((event) => `
         <article class="lifecycle-event lifecycle-event-${event.tone} ${event.complete ? "is-complete" : ""}">
           <strong>${event.label}</strong>
-          <p>${event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"}</p>
+          <p>${event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet")}</p>
         </article>
         `).join("")}
       </div>
@@ -18689,6 +18714,67 @@ function buildSessionLifecycleState(session) {
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || ""),
     completedAt: parseCompletedAtValue(session.completedAt || ""),
   };
+}
+
+function buildPublicSessionLifecycleState(snapshot) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  if (linkedSession) {
+    return buildSessionLifecycleState(linkedSession);
+  }
+
+  const sessionDate = String(snapshot?.sessionDate || "").trim();
+  const sessionTime = String(snapshot?.sessionTime || snapshot?.session_time || "").trim();
+  const startedAt = sessionDate && sessionTime ? parseSessionStartDateTime(sessionDate, sessionTime) : null;
+  const germinationStartedAt = parseCompletedAtValue(snapshot?.germinationStartedAt || snapshot?.germination_started_at || "");
+  const firstPlantedAt = parseCompletedAtValue(snapshot?.firstPlantedAt || snapshot?.first_planted_at || "");
+  const completedAt = parseCompletedAtValue(snapshot?.completedAt || snapshot?.completed_at || "");
+  const startedDisplayLabel = !startedAt && sessionDate ? getGallerySnapshotSubmittedDateLabel(snapshot) : "";
+  const hasTimelineData = Boolean(
+    startedAt
+    || startedDisplayLabel
+    || germinationStartedAt
+    || firstPlantedAt
+    || completedAt
+  );
+
+  if (!hasTimelineData) {
+    return null;
+  }
+
+  return {
+    showEmptyTimeline: false,
+    startedAt,
+    startedDisplayLabel,
+    startedComplete: Boolean(startedAt || startedDisplayLabel),
+    germinationStartedAt,
+    firstPlantedAt,
+    completedAt,
+  };
+}
+
+function renderPublicSessionTimelineSection(snapshot) {
+  const lifecycleState = buildPublicSessionLifecycleState(snapshot);
+  const timelineMarkup = lifecycleState
+    ? renderSessionLifecycleTimelineMarkup(lifecycleState)
+    : '<p class="public-session-timeline-empty">Timeline not shared.</p>';
+
+  return `
+    <section class="session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
+      <div class="progress-chart-heading">
+        <p class="eyebrow">Timeline</p>
+        <h4 id="public-session-progress-title" class="section-title-with-icon">
+          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
+            <path d="M5 6v12"></path>
+          </svg>
+          <span>Session Progress</span>
+        </h4>
+      </div>
+      <div class="session-lifecycle-summary">
+        ${timelineMarkup}
+      </div>
+    </section>
+  `;
 }
 
 function captureFirstPlantedEventForForm(form) {
