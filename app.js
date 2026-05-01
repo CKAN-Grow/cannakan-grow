@@ -845,55 +845,7 @@ function isBuildInfoNewerThanCurrent(latestBuildInfo = {}, currentBuildInfo = ap
 }
 
 function syncBuildUpdateBanner() {
-  const appShell = document.querySelector(".app-shell");
-  const topbar = document.querySelector(".topbar");
-  if (!appShell || !topbar) {
-    return;
-  }
-
-  const latestBuildInfo = normalizeBuildInfo(appState.availableBuildInfo);
-  const currentBuildInfo = normalizeBuildInfo(appState.currentBuildInfo || getBuildInfo());
-  const shouldShowBanner = hasUsableBuildInfo(latestBuildInfo)
-    && hasUsableBuildInfo(currentBuildInfo)
-    && isBuildInfoNewerThanCurrent(latestBuildInfo, currentBuildInfo);
-  const existingBanner = appShell.querySelector("#app-update-banner");
-
-  if (!shouldShowBanner) {
-    existingBanner?.remove();
-    return;
-  }
-
-  const banner = existingBanner || document.createElement("button");
-  banner.id = "app-update-banner";
-  banner.type = "button";
-  banner.className = "card app-update-banner";
-  banner.innerHTML = `
-    <span class="app-update-banner-copy">
-      <span class="app-update-banner-label">Update Ready</span>
-      <span class="app-update-banner-text">New version available - click to refresh</span>
-    </span>
-  `;
-
-  if (!existingBanner) {
-    const updateBanner = appShell.querySelector("#app-update-banner");
-    if (updateBanner) {
-      updateBanner.insertAdjacentElement("afterend", banner);
-    } else {
-      topbar.insertAdjacentElement("afterend", banner);
-    }
-  }
-
-  if (banner.dataset.bound !== "true") {
-    banner.dataset.bound = "true";
-    banner.addEventListener("click", async () => {
-      banner.disabled = true;
-      try {
-        await clearAppCacheAndReloadLatest();
-      } finally {
-        banner.disabled = false;
-      }
-    });
-  }
+  document.querySelector("#app-update-banner")?.remove();
 }
 
 async function fetchLatestBuildInfo() {
@@ -914,67 +866,23 @@ async function fetchLatestBuildInfo() {
 }
 
 async function checkForAvailableAppUpdate(reason = "background-check", options = {}) {
-  const { minIntervalMs = 0 } = options || {};
-  const now = Date.now();
-  if (appState.buildUpdateCheckInFlight) {
-    return false;
-  }
-
-  if (minIntervalMs > 0 && now - appState.lastBuildInfoCheckAt < minIntervalMs) {
-    return false;
-  }
-
-  appState.buildUpdateCheckInFlight = true;
-  appState.lastBuildInfoCheckAt = now;
-
-  try {
-    if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker.getRegistration();
-      await registration?.update();
-    }
-
-    const latestBuildInfo = await fetchLatestBuildInfo();
-    appState.availableBuildInfo = isBuildInfoNewerThanCurrent(latestBuildInfo, appState.currentBuildInfo || getBuildInfo())
-      ? latestBuildInfo
-      : null;
-    syncBuildUpdateBanner();
-    return Boolean(appState.availableBuildInfo);
-  } catch (error) {
-    console.warn(`Build update check failed during ${reason}`, error);
-    return false;
-  } finally {
-    appState.buildUpdateCheckInFlight = false;
-  }
+  appState.availableBuildInfo = null;
+  return false;
 }
 
 function handleBuildUpdateVisibilityChange() {
-  if (document.visibilityState === "visible") {
-    void checkForAvailableAppUpdate("visibilitychange", { minIntervalMs: BUILD_INFO_ACTIVE_RECHECK_MS });
-  }
+  return;
 }
 
 function initializeBuildUpdateMonitoring() {
-  if (appState.buildUpdateMonitorInitialized) {
-    return;
-  }
-
-  appState.buildUpdateMonitorInitialized = true;
-  appState.currentBuildInfo = getBuildInfo();
-  appState.availableBuildInfo = null;
-  syncBuildUpdateBanner();
-  void checkForAvailableAppUpdate("startup");
-
-  document.addEventListener("visibilitychange", handleBuildUpdateVisibilityChange);
-  window.addEventListener("focus", () => {
-    void checkForAvailableAppUpdate("focus", { minIntervalMs: BUILD_INFO_ACTIVE_RECHECK_MS });
-  });
-
   if (appState.buildUpdateCheckIntervalId) {
     window.clearInterval(appState.buildUpdateCheckIntervalId);
+    appState.buildUpdateCheckIntervalId = 0;
   }
-  appState.buildUpdateCheckIntervalId = window.setInterval(() => {
-    void checkForAvailableAppUpdate("interval");
-  }, BUILD_INFO_CHECK_INTERVAL_MS);
+
+  appState.buildUpdateMonitorInitialized = false;
+  appState.availableBuildInfo = null;
+  document.querySelector("#app-update-banner")?.remove();
 }
 
 async function clearAppCacheAndReloadLatest() {
@@ -19610,7 +19518,6 @@ if (document.body) {
 
 registerServiceWorker();
 bindInstallPromptEvents();
-initializeBuildUpdateMonitoring();
 
 window.addEventListener("error", (event) => {
   reportAppError(event.error || new Error(event.message || "Unknown script error"), "JavaScript Error");

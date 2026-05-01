@@ -77,7 +77,20 @@ function cacheResponse(request, response) {
 
 function fetchNetworkFirst(request, fallbackToIndex = false) {
   return fetch(request)
-    .then((response) => cacheResponse(request, response))
+    .then((response) => {
+      let responseForClient = response;
+      try {
+        responseForClient = response.clone();
+      } catch (error) {
+        console.warn("[Cannakan SW] Could not clone network response for client delivery", {
+          url: request?.url || "",
+          error: error?.message || String(error || "Unknown clone error"),
+        });
+      }
+
+      cacheResponse(request, response);
+      return responseForClient;
+    })
     .catch(async () => {
       const cachedResponse = await caches.match(request);
       if (cachedResponse) {
@@ -114,7 +127,24 @@ self.addEventListener("fetch", (event) => {
       }
 
       return fetch(event.request)
-        .then((response) => isSameOrigin ? cacheResponse(event.request, response) : response)
+        .then((response) => {
+          if (!isSameOrigin) {
+            return response;
+          }
+
+          let responseForClient = response;
+          try {
+            responseForClient = response.clone();
+          } catch (error) {
+            console.warn("[Cannakan SW] Could not clone same-origin response for client delivery", {
+              url: event.request?.url || "",
+              error: error?.message || String(error || "Unknown clone error"),
+            });
+          }
+
+          cacheResponse(event.request, response);
+          return responseForClient;
+        })
         .catch(() => isNavigationRequest ? caches.match("/index.html") : undefined);
     }),
   );
