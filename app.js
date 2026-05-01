@@ -47,6 +47,10 @@ const DEFAULT_ANNOUNCEMENT_IMAGE_STORAGE_KEY = "cannakanGrowDefaultAnnouncementI
 const DEFAULT_JOKE_IMAGE_STORAGE_KEY = "cannakanGrowDefaultJokeImage";
 const DEFAULT_FACT_IMAGE_STORAGE_KEY = "cannakanGrowDefaultFactImage";
 const MIXED_IMAGE_MODE_STORAGE_KEY = "cannakanGrowMixedImageMode";
+const ADMIN_MEMBERS_OPEN_STORAGE_KEY = "cannakanAdminMembersOpen";
+const ADMIN_SOURCES_OPEN_STORAGE_KEY = "cannakanAdminSourcesOpen";
+const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
+const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -11563,6 +11567,103 @@ function bindAdminFallbackContentSection() {
   });
 }
 
+function getAdminSectionOpenState(storageKey, defaultOpen = false) {
+  try {
+    const storedValue = localStorage.getItem(storageKey);
+    if (storedValue === null) {
+      return Boolean(defaultOpen);
+    }
+
+    return storedValue === "true";
+  } catch (error) {
+    console.warn("Could not read admin section state", { storageKey, error });
+    return Boolean(defaultOpen);
+  }
+}
+
+function setAdminSectionOpenState(storageKey, isOpen) {
+  try {
+    localStorage.setItem(storageKey, isOpen ? "true" : "false");
+  } catch (error) {
+    console.warn("Could not save admin section state", { storageKey, error });
+  }
+}
+
+function renderAdminCollapsibleSectionMarkup({
+  eyebrow,
+  title,
+  description,
+  storageKey,
+  contentId,
+  bodyMarkup,
+  defaultOpen = false,
+  sectionClassName = "card admin-section-card",
+}) {
+  const isOpen = getAdminSectionOpenState(storageKey, defaultOpen);
+
+  return `
+    <section class="${escapeHtml(sectionClassName)} admin-collapsible-section${isOpen ? " is-open" : " is-collapsed"}">
+      <button
+        type="button"
+        class="admin-collapsible-toggle"
+        data-admin-section-toggle="true"
+        data-admin-section-storage-key="${escapeHtml(storageKey)}"
+        data-admin-section-content-id="${escapeHtml(contentId)}"
+        aria-controls="${escapeHtml(contentId)}"
+        aria-expanded="${isOpen ? "true" : "false"}"
+      >
+        <span class="admin-collapsible-copy">
+          <span class="eyebrow">${escapeHtml(eyebrow)}</span>
+          <span class="admin-collapsible-title" role="heading" aria-level="3">${escapeHtml(title)}</span>
+          <span class="muted admin-collapsible-description">${escapeHtml(description)}</span>
+        </span>
+        <span class="admin-collapsible-chevron" aria-hidden="true"></span>
+      </button>
+      <div id="${escapeHtml(contentId)}" class="admin-collapsible-content"${isOpen ? "" : " hidden"}>
+        ${bodyMarkup}
+      </div>
+    </section>
+  `;
+}
+
+function syncAdminCollapsibleSection(button, content, isOpen) {
+  if (!button || !content) {
+    return;
+  }
+
+  button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  content.hidden = !isOpen;
+  const section = button.closest(".admin-collapsible-section");
+  section?.classList.toggle("is-open", isOpen);
+  section?.classList.toggle("is-collapsed", !isOpen);
+}
+
+function bindAdminCollapsibleSections(scope = app) {
+  if (!scope) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-admin-section-toggle='true']").forEach((button) => {
+    if (button.dataset.adminSectionBound === "true") {
+      return;
+    }
+
+    button.dataset.adminSectionBound = "true";
+    button.addEventListener("click", () => {
+      const storageKey = String(button.dataset.adminSectionStorageKey || "").trim();
+      const contentId = String(button.dataset.adminSectionContentId || "").trim();
+      const content = contentId ? document.getElementById(contentId) : null;
+      if (!storageKey || !content) {
+        return;
+      }
+
+      const isOpen = button.getAttribute("aria-expanded") !== "true";
+      syncAdminCollapsibleSection(button, content, isOpen);
+      setAdminSectionOpenState(storageKey, isOpen);
+    });
+  });
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -11601,54 +11702,57 @@ function renderAdminPage() {
         </div>
       </div>
     </section>
-    <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Members</p>
-          <h3>View and manage Cannakan Grow members.</h3>
-          <p class="muted">Review member growth activity, account access, and admin roles without exposing private member data publicly.</p>
-        </div>
-      </div>
-      <div class="summary-grid admin-overview-grid admin-members-summary-grid" id="admin-members-summary-grid"></div>
-      ${renderAdminMembersFiltersMarkup()}
-      <div id="admin-members-table-anchor"></div>
-    </section>
-    <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Sources</p>
-          <h3>Manage source companies, logos, and display info.</h3>
-          <p class="muted">Add, update, hide, or delete source companies without changing the current public gallery layout.</p>
-        </div>
-      </div>
-      <div class="admin-sources-layout">
-        <div class="admin-sources-list-shell">
-          <div class="admin-sources-list-head">
-            <strong>Saved Sources</strong>
-            <span class="muted">${escapeHtml(`${appState.sources.length} total`)}</span>
+    ${renderAdminCollapsibleSectionMarkup({
+      eyebrow: "Members",
+      title: "View and manage Cannakan Grow members.",
+      description: "Review member growth activity, account access, and admin roles without exposing private member data publicly.",
+      storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
+      contentId: "admin-members-section-content",
+      defaultOpen: false,
+      bodyMarkup: `
+        <div class="summary-grid admin-overview-grid admin-members-summary-grid" id="admin-members-summary-grid"></div>
+        ${renderAdminMembersFiltersMarkup()}
+        <div id="admin-members-table-anchor"></div>
+      `,
+    })}
+    ${renderAdminCollapsibleSectionMarkup({
+      eyebrow: "Sources",
+      title: "Manage source companies, logos, and display info.",
+      description: "Add, update, hide, or delete source companies without changing the current public gallery layout.",
+      storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
+      contentId: "admin-sources-section-content",
+      defaultOpen: false,
+      bodyMarkup: `
+        <div class="admin-sources-layout">
+          <div class="admin-sources-list-shell">
+            <div class="admin-sources-list-head">
+              <strong>Saved Sources</strong>
+              <span class="muted">${escapeHtml(`${appState.sources.length} total`)}</span>
+            </div>
+            <div id="admin-sources-list" class="admin-sources-list"></div>
           </div>
-          <div id="admin-sources-list" class="admin-sources-list"></div>
+          <div id="admin-source-editor" class="meta-card admin-source-editor"></div>
         </div>
-        <div id="admin-source-editor" class="meta-card admin-source-editor"></div>
-      </div>
-    </section>
-    <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Message Board CMS</p>
-          <h3>Message Board CMS</h3>
-          <p class="muted">Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.</p>
+      `,
+    })}
+    ${renderAdminCollapsibleSectionMarkup({
+      eyebrow: "Message Board CMS",
+      title: "Message Board CMS",
+      description: "Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.",
+      storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
+      contentId: "admin-message-board-section-content",
+      defaultOpen: false,
+      bodyMarkup: `
+        <div class="admin-sources-layout">
+          <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
+          <div class="admin-message-board-sidebar">
+            <div id="admin-announcements-list"></div>
+            <div id="admin-fallback-content-stats"></div>
+            <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
+          </div>
         </div>
-      </div>
-      <div class="admin-sources-layout">
-        <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
-        <div class="admin-message-board-sidebar">
-          <div id="admin-announcements-list"></div>
-          <div id="admin-fallback-content-stats"></div>
-          <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
-        </div>
-      </div>
-    </section>
+      `,
+    })}
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
@@ -11805,6 +11909,7 @@ function renderAdminPage() {
     membersTableAnchor.innerHTML = renderAdminMembersTableMarkup();
   }
 
+  bindAdminCollapsibleSections(app);
   bindAdminMembersSection();
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
@@ -13041,15 +13146,16 @@ function renderLeaderboardAuditSection(target = app) {
 
   const state = buildLeaderboardAuditState();
   const section = document.createElement("section");
-  section.className = "card leaderboard-audit-section";
-  section.innerHTML = `
-    <div class="section-heading leaderboard-audit-heading">
-      <div>
-        <p class="eyebrow">Admin Analytics</p>
-        <h3>Leaderboard Data Audit</h3>
-        <p class="muted">Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.</p>
-      </div>
-    </div>
+  section.className = "admin-leaderboard-audit-shell";
+  section.innerHTML = renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Admin Analytics",
+    title: "Leaderboard Data Audit",
+    description: "Inspect the snapshot records and ranking calculations used for Grow Gallery performance insights.",
+    storageKey: ADMIN_ANALYTICS_OPEN_STORAGE_KEY,
+    contentId: "admin-analytics-section-content",
+    defaultOpen: false,
+    sectionClassName: "card leaderboard-audit-section",
+    bodyMarkup: `
     <div class="leaderboard-audit-controls">
       <div class="leaderboard-audit-toolbar">
         <div class="leaderboard-audit-toolbar-group">
@@ -13175,9 +13281,15 @@ function renderLeaderboardAuditSection(target = app) {
         </tbody>
       </table>
     </div>
-  `;
+  `,
+  });
 
-  section.querySelectorAll("[data-audit-filter]").forEach((control) => {
+  const card = section.querySelector(".leaderboard-audit-section");
+  if (!card) {
+    return null;
+  }
+
+  card.querySelectorAll("[data-audit-filter]").forEach((control) => {
     control.addEventListener("change", (event) => {
       const { auditFilter } = event.currentTarget.dataset;
       appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
@@ -13188,7 +13300,7 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelectorAll("[data-audit-date-preset]").forEach((button) => {
+  card.querySelectorAll("[data-audit-date-preset]").forEach((button) => {
     button.addEventListener("click", () => {
       const presetKey = String(button.dataset.auditDatePreset || "").trim();
       const preset = getLeaderboardAuditDatePresets()[presetKey];
@@ -13205,7 +13317,7 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelectorAll("[data-audit-inclusion-quick]").forEach((button) => {
+  card.querySelectorAll("[data-audit-inclusion-quick]").forEach((button) => {
     button.addEventListener("click", () => {
       const inclusionValue = String(button.dataset.auditInclusionQuick || "").trim();
       if (!["all", "included", "excluded"].includes(inclusionValue)) {
@@ -13220,7 +13332,7 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelectorAll("[data-leaderboard-audit-clear='true']").forEach((button) => {
+  card.querySelectorAll("[data-leaderboard-audit-clear='true']").forEach((button) => {
     button.addEventListener("click", () => {
       appState.leaderboardAuditFilters = normalizeLeaderboardAuditFilters({
         ...LEADERBOARD_AUDIT_DEFAULT_FILTERS,
@@ -13229,7 +13341,7 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelectorAll("[data-audit-filter-remove]").forEach((button) => {
+  card.querySelectorAll("[data-audit-filter-remove]").forEach((button) => {
     button.addEventListener("click", () => {
       const filterKey = String(button.dataset.auditFilterRemove || "").trim();
       if (!filterKey || !(filterKey in LEADERBOARD_AUDIT_DEFAULT_FILTERS)) {
@@ -13244,7 +13356,7 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelectorAll("[data-audit-row]").forEach((rowElement) => {
+  card.querySelectorAll("[data-audit-row]").forEach((rowElement) => {
     const toggleExpandedState = () => {
       const rowId = String(rowElement.dataset.auditRow || "").trim();
       if (!rowId) {
@@ -13265,20 +13377,20 @@ function renderLeaderboardAuditSection(target = app) {
     });
   });
 
-  section.querySelector("[data-leaderboard-audit-export-raw='true']")?.addEventListener("click", () => {
+  card.querySelector("[data-leaderboard-audit-export-raw='true']")?.addEventListener("click", () => {
     exportLeaderboardAuditCsv(state.rows, state.hasActiveFilters);
   });
 
-  section.querySelector("[data-leaderboard-audit-export-summary='true']")?.addEventListener("click", () => {
+  card.querySelector("[data-leaderboard-audit-export-summary='true']")?.addEventListener("click", () => {
     exportLeaderboardAuditSummary(state);
   });
 
-  section.querySelector("[data-leaderboard-audit-insights-toggle='true']")?.addEventListener("click", () => {
+  card.querySelector("[data-leaderboard-audit-insights-toggle='true']")?.addEventListener("click", () => {
     appState.leaderboardAuditInsightsExpanded = !appState.leaderboardAuditInsightsExpanded;
     safeRender();
   });
 
-  section.querySelector("[data-leaderboard-audit-copy='true']")?.addEventListener("click", async () => {
+  card.querySelector("[data-leaderboard-audit-copy='true']")?.addEventListener("click", async () => {
     const summaryText = buildLeaderboardAuditSummaryText(state);
     try {
       await navigator.clipboard.writeText(summaryText);
@@ -13288,8 +13400,9 @@ function renderLeaderboardAuditSection(target = app) {
     }
   });
 
+  bindAdminCollapsibleSections(section);
   target.appendChild(section);
-  return section;
+  return card;
 }
 
 function setMockDataEnabledAndRefresh(enabled) {

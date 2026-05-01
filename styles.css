@@ -3995,6 +3995,71 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-wrap: wrap;
 }
 
+.admin-collapsible-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-collapsible-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-collapsible-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-collapsible-description {
+  margin: 0;
+}
+
+.admin-collapsible-chevron {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.admin-collapsible-toggle[aria-expanded="true"] .admin-collapsible-chevron {
+  transform: rotate(225deg);
+}
+
+.admin-collapsible-toggle:hover .admin-collapsible-chevron,
+.admin-collapsible-toggle:focus-visible .admin-collapsible-chevron {
+  color: var(--green-700);
+}
+
+.admin-collapsible-toggle:focus-visible {
+  outline: 2px solid rgba(148, 209, 89, 0.45);
+  outline-offset: 4px;
+  border-radius: 14px;
+}
+
+.admin-collapsible-content {
+  display: grid;
+  gap: var(--space-stack);
+}
+
+.admin-collapsible-content[hidden] {
+  display: none;
+}
+
 .admin-mini-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
