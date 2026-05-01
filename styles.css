@@ -6933,6 +6933,109 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
 }
 
+.profile-preferences {
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(38, 75, 54, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 250, 241, 0.92)),
+    rgba(255, 255, 255, 0.78);
+}
+
+.profile-preferences h3,
+.profile-preferences p {
+  margin: 0;
+}
+
+.profile-preferences h3 {
+  margin-top: 6px;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.profile-preferences-list {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-preference-toggle {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(38, 75, 54, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  color: var(--ink);
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.profile-preference-toggle:hover,
+.profile-preference-toggle:focus-within {
+  border-color: rgba(115, 170, 55, 0.28);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(19, 43, 29, 0.08);
+}
+
+.profile-preference-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.profile-preference-toggle-control {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: 0 0 46px;
+  border-radius: 999px;
+  background: rgba(31, 58, 42, 0.14);
+  border: 1px solid rgba(31, 58, 42, 0.12);
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.profile-preference-toggle-control::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 19, 14, 0.16);
+  transition: transform 0.18s ease;
+}
+
+.profile-preference-toggle-text {
+  display: grid;
+  gap: 4px;
+  padding-top: 1px;
+}
+
+.profile-preference-toggle-copy {
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
+.profile-preference-toggle input:checked + .profile-preference-toggle-control {
+  background: rgba(148, 209, 89, 0.88);
+  border-color: rgba(115, 170, 55, 0.8);
+}
+
+.profile-preference-toggle input:checked + .profile-preference-toggle-control::after {
+  transform: translateX(20px);
+}
+
+.profile-preference-toggle input:focus-visible + .profile-preference-toggle-control {
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.2);
+}
+
 .profile-danger-zone {
   margin-top: 8px;
   padding-top: 16px;
@@ -6972,6 +7075,28 @@ body.theme-dark .button-secondary:hover {
   border-color: #94d159;
   color: #94d159;
   transform: translateY(-1px);
+}
+
+body.theme-dark .profile-preferences {
+  border-color: rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(17, 24, 20, 0.9), rgba(24, 34, 27, 0.96)),
+    rgba(19, 26, 21, 0.94);
+}
+
+body.theme-dark .profile-preferences h3 {
+  color: #f6f8f5;
+}
+
+body.theme-dark .profile-preference-toggle {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .profile-preference-toggle:hover,
+body.theme-dark .profile-preference-toggle:focus-within {
+  border-color: rgba(148, 209, 89, 0.32);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
 }
 
 body.theme-dark .dashboard-bar .hero-actions .button-secondary {

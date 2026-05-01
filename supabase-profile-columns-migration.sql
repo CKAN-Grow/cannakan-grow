@@ -15,6 +15,18 @@ alter table public.profiles
   add column if not exists avatar_path text default '';
 
 alter table public.profiles
+  add column if not exists notify_followed_snapshot boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_followed_session_complete boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_new_follower boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_snapshot_like boolean not null default true;
+
+alter table public.profiles
   add column if not exists account_status text not null default 'active';
 
 alter table public.profiles

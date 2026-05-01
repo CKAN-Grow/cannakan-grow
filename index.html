@@ -134,6 +134,43 @@
         <div class="profile-avatar-actions">
           <button id="profile-remove-avatar" type="button" class="button button-secondary" hidden>Remove Picture</button>
         </div>
+        <section class="profile-preferences" aria-labelledby="profile-preferences-title">
+          <div>
+            <p class="eyebrow">Preferences</p>
+            <h3 id="profile-preferences-title">Notifications</h3>
+            <p class="muted">Set the public activity alerts you want Cannakan Grow to use later. Push and browser notifications are still off for now.</p>
+          </div>
+          <div class="profile-preferences-list">
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifyOnFollowedSnapshot">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Notify when someone I follow posts a snapshot</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifyOnFollowedSessionComplete">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Notify when someone I follow completes a public session</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifyOnNewFollower">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Notify when someone follows me</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifyOnSnapshotLike">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Notify when someone likes my public snapshot</span>
+              </span>
+            </label>
+          </div>
+        </section>
         <p id="profile-message" class="form-message" role="alert" aria-live="polite"></p>
         <div class="form-actions">
           <button id="profile-submit" type="submit" class="button button-primary">Save Profile</button>

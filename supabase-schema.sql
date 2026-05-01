@@ -27,6 +27,10 @@ create table if not exists public.profiles (
   email text default '',
   avatar_url text default '',
   avatar_path text default '',
+  notify_followed_snapshot boolean not null default true,
+  notify_followed_session_complete boolean not null default true,
+  notify_new_follower boolean not null default true,
+  notify_snapshot_like boolean not null default true,
   account_status text not null default 'active',
   last_active_at timestamptz,
   deletion_requested_at timestamptz,
@@ -178,6 +182,18 @@ alter table public.profiles
 
 alter table public.profiles
   add column if not exists avatar_path text default '';
+
+alter table public.profiles
+  add column if not exists notify_followed_snapshot boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_followed_session_complete boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_new_follower boolean not null default true;
+
+alter table public.profiles
+  add column if not exists notify_snapshot_like boolean not null default true;
 
 alter table public.profiles
   add column if not exists account_status text not null default 'active';

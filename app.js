@@ -4507,6 +4507,10 @@ function normalizeProfileRow(row) {
     role: normalizeUserRole(row.role),
     avatarUrl: String(row.avatar_url || "").trim(),
     avatarPath: String(row.avatar_path || "").trim(),
+    notifyOnFollowedSnapshot: row.notify_followed_snapshot !== false,
+    notifyOnFollowedSessionComplete: row.notify_followed_session_complete !== false,
+    notifyOnNewFollower: row.notify_new_follower !== false,
+    notifyOnSnapshotLike: row.notify_snapshot_like !== false,
     accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
     lastActiveAt: row.last_active_at || "",
     deletionRequestedAt: row.deletion_requested_at || "",
@@ -7148,6 +7152,22 @@ async function saveUserProfile(profileInput) {
     email: String(profileInput?.email !== undefined ? profileInput.email : (appState.user?.email || existingProfile.email || "")).trim().toLowerCase(),
     avatar_url: String(profileInput?.avatarUrl || "").trim(),
     avatar_path: String(profileInput?.avatarPath || "").trim(),
+    notify_followed_snapshot:
+      profileInput?.notifyOnFollowedSnapshot !== undefined
+        ? Boolean(profileInput.notifyOnFollowedSnapshot)
+        : existingProfile.notifyOnFollowedSnapshot !== false,
+    notify_followed_session_complete:
+      profileInput?.notifyOnFollowedSessionComplete !== undefined
+        ? Boolean(profileInput.notifyOnFollowedSessionComplete)
+        : existingProfile.notifyOnFollowedSessionComplete !== false,
+    notify_new_follower:
+      profileInput?.notifyOnNewFollower !== undefined
+        ? Boolean(profileInput.notifyOnNewFollower)
+        : existingProfile.notifyOnNewFollower !== false,
+    notify_snapshot_like:
+      profileInput?.notifyOnSnapshotLike !== undefined
+        ? Boolean(profileInput.notifyOnSnapshotLike)
+        : existingProfile.notifyOnSnapshotLike !== false,
     account_status:
       profileInput?.accountStatus !== undefined
         ? String(profileInput.accountStatus || "active").trim().toLowerCase()
@@ -11971,7 +11991,7 @@ function renderProfileSetupScreen() {
     title.textContent = "Set up your profile";
   }
   if (copy) {
-    copy.textContent = "Choose the username you want Cannakan Grow to show in the app. You can also add an optional profile picture.";
+    copy.textContent = "Choose the username you want Cannakan Grow to show in the app. You can also add an optional profile picture and set notification preferences.";
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile Setup";
@@ -12036,7 +12056,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = "Choose the name and avatar you want shown in the app header.";
+    copy.textContent = "Update the name, avatar, and notification preferences used in Cannakan Grow.";
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -12079,6 +12099,10 @@ function bindProfileForm(form, options = {}) {
   const removeButton = form.querySelector("#profile-remove-avatar");
   const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
+  const notifyOnFollowedSnapshotInput = form.elements.notifyOnFollowedSnapshot;
+  const notifyOnFollowedSessionCompleteInput = form.elements.notifyOnFollowedSessionComplete;
+  const notifyOnNewFollowerInput = form.elements.notifyOnNewFollower;
+  const notifyOnSnapshotLikeInput = form.elements.notifyOnSnapshotLike;
   const defaultSubmitLabel = submitButton?.textContent || "Save Profile";
   const state = {
     profile,
@@ -12099,6 +12123,18 @@ function bindProfileForm(form, options = {}) {
   };
 
   usernameInput.value = profile?.username || "";
+  if (notifyOnFollowedSnapshotInput) {
+    notifyOnFollowedSnapshotInput.checked = profile?.notifyOnFollowedSnapshot !== false;
+  }
+  if (notifyOnFollowedSessionCompleteInput) {
+    notifyOnFollowedSessionCompleteInput.checked = profile?.notifyOnFollowedSessionComplete !== false;
+  }
+  if (notifyOnNewFollowerInput) {
+    notifyOnNewFollowerInput.checked = profile?.notifyOnNewFollower !== false;
+  }
+  if (notifyOnSnapshotLikeInput) {
+    notifyOnSnapshotLikeInput.checked = profile?.notifyOnSnapshotLike !== false;
+  }
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
@@ -12206,6 +12242,10 @@ function bindProfileForm(form, options = {}) {
         username,
         avatarUrl,
         avatarPath,
+        notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
+        notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
+        notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
+        notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
       });
       state.profile = appState.profile;
 
@@ -12217,6 +12257,10 @@ function bindProfileForm(form, options = {}) {
           username,
           avatarUrl,
           avatarPath,
+          notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
+          notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
+          notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
+          notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
         });
         state.profile = appState.profile;
 
@@ -12240,6 +12284,10 @@ function bindProfileForm(form, options = {}) {
             username,
             avatarUrl,
             avatarPath,
+            notifyOnFollowedSnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
+            notifyOnFollowedSessionComplete: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
+            notifyOnNewFollower: Boolean(notifyOnNewFollowerInput?.checked),
+            notifyOnSnapshotLike: Boolean(notifyOnSnapshotLikeInput?.checked),
           });
           state.profile = appState.profile;
 
