@@ -310,11 +310,15 @@ as $$
     (
       select count(*)::bigint
       from public.member_follows
+      inner join public.public_member_profiles
+        on public_member_profiles.id = member_follows.follower_user_id
       where member_follows.followed_user_id = target_user_id
     ) as follower_count,
     (
       select count(*)::bigint
       from public.member_follows
+      inner join public.public_member_profiles
+        on public_member_profiles.id = member_follows.followed_user_id
       where member_follows.follower_user_id = target_user_id
     ) as following_count;
 $$;
@@ -346,6 +350,8 @@ as $$
       member_follows.followed_user_id as user_id,
       count(*)::bigint as follower_count
     from public.member_follows
+    inner join public.public_member_profiles
+      on public_member_profiles.id = member_follows.follower_user_id
     where member_follows.followed_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by member_follows.followed_user_id
   ) as follower_counts
@@ -355,6 +361,8 @@ as $$
       member_follows.follower_user_id as user_id,
       count(*)::bigint as following_count
     from public.member_follows
+    inner join public.public_member_profiles
+      on public_member_profiles.id = member_follows.followed_user_id
     where member_follows.follower_user_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by member_follows.follower_user_id
   ) as following_counts
@@ -364,6 +372,60 @@ $$;
 revoke all on function public.get_public_member_follow_summaries(uuid[]) from public;
 grant execute on function public.get_public_member_follow_summaries(uuid[]) to anon;
 grant execute on function public.get_public_member_follow_summaries(uuid[]) to authenticated;
+
+create or replace function public.get_public_member_follow_members(target_user_id uuid, relationship_type text default 'followers')
+returns table (
+  member_id uuid,
+  display_name text,
+  avatar_url text,
+  joined_at timestamptz,
+  relationship_type text,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = public
+as $$
+  with normalized_relationship as (
+    select case
+      when lower(coalesce(relationship_type, '')) = 'following' then 'following'
+      else 'followers'
+    end as relationship_type
+  ),
+  requested_members as (
+    select
+      case
+        when normalized_relationship.relationship_type = 'following' then member_follows.followed_user_id
+        else member_follows.follower_user_id
+      end as member_id,
+      normalized_relationship.relationship_type,
+      member_follows.created_at
+    from public.member_follows
+    cross join normalized_relationship
+    where (
+      normalized_relationship.relationship_type = 'following'
+      and member_follows.follower_user_id = target_user_id
+    ) or (
+      normalized_relationship.relationship_type = 'followers'
+      and member_follows.followed_user_id = target_user_id
+    )
+  )
+  select
+    requested_members.member_id,
+    public_member_profiles.display_name,
+    public_member_profiles.avatar_url,
+    public_member_profiles.joined_at,
+    requested_members.relationship_type,
+    requested_members.created_at
+  from requested_members
+  inner join public.public_member_profiles
+    on public_member_profiles.id = requested_members.member_id
+  order by requested_members.created_at desc, lower(public_member_profiles.display_name) asc;
+$$;
+
+revoke all on function public.get_public_member_follow_members(uuid, text) from public;
+grant execute on function public.get_public_member_follow_members(uuid, text) to anon;
+grant execute on function public.get_public_member_follow_members(uuid, text) to authenticated;
 
 create or replace function public.set_grow_sessions_updated_at()
 returns trigger

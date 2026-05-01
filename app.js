@@ -229,6 +229,10 @@ const appState = {
   publicMemberFollowSummaries: {},
   publicMemberFollowSummaryRefreshPromises: {},
   publicMemberFollowSummaryUnavailable: false,
+  publicMemberFollowLists: {},
+  publicMemberFollowListsRefreshPromises: {},
+  publicMemberFollowListsUnavailable: false,
+  publicMemberProfileActiveTabs: {},
   publicMemberFollowStates: {},
   publicMemberFollowStateRefreshPromises: {},
   publicMemberFollowPendingActions: {},
@@ -480,6 +484,10 @@ function resetSessionScopedAppState() {
   appState.publicMemberFollowSummaries = {};
   appState.publicMemberFollowSummaryRefreshPromises = {};
   appState.publicMemberFollowSummaryUnavailable = false;
+  appState.publicMemberFollowLists = {};
+  appState.publicMemberFollowListsRefreshPromises = {};
+  appState.publicMemberFollowListsUnavailable = false;
+  appState.publicMemberProfileActiveTabs = {};
   appState.publicMemberFollowStates = {};
   appState.publicMemberFollowStateRefreshPromises = {};
   appState.publicMemberFollowPendingActions = {};
@@ -4736,6 +4744,24 @@ function normalizePublicMemberFollowSummaryRow(row) {
   };
 }
 
+function normalizePublicMemberFollowListRow(row) {
+  const memberId = String(row?.member_id || row?.memberId || "").trim();
+  if (!memberId) {
+    return null;
+  }
+
+  return {
+    memberId,
+    displayName: String(row?.display_name || row?.displayName || "").trim() || "Community member",
+    avatarUrl: String(row?.avatar_url || row?.avatarUrl || "").trim(),
+    joinedAt: row?.joined_at || row?.joinedAt || "",
+    createdAt: row?.created_at || row?.createdAt || "",
+    relationshipType: String(row?.relationship_type || row?.relationshipType || "").trim() === "following"
+      ? "following"
+      : "followers",
+  };
+}
+
 function normalizePublicMemberFollowSummariesRows(rows = []) {
   const summaries = {};
   (rows || []).forEach((row) => {
@@ -4751,6 +4777,14 @@ function normalizePublicMemberFollowSummariesRows(rows = []) {
 function isPublicMemberFollowSummaryUnavailableError(error) {
   const message = String(error?.message || error?.details || "").toLowerCase();
   return message.includes("get_public_member_follow_summary") && (
+    message.includes("function")
+    || message.includes("permission denied")
+  );
+}
+
+function isPublicMemberFollowMembersUnavailableError(error) {
+  const message = String(error?.message || error?.details || "").toLowerCase();
+  return message.includes("get_public_member_follow_members") && (
     message.includes("function")
     || message.includes("permission denied")
   );
@@ -4784,6 +4818,55 @@ function normalizeGrowNetworkFollowingRow(row) {
   };
 }
 
+function getActivePublicMemberProfileRouteId() {
+  const currentHash = normalizeNavigationHash(window.location.hash || "#home");
+  if (!currentHash.startsWith("#members/")) {
+    return "";
+  }
+
+  return decodeURIComponent(currentHash.replace(/^#members\//, ""));
+}
+
+function getPublicMemberFollowLists(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return appState.publicMemberFollowLists[normalizedId] || null;
+}
+
+function getPublicMemberFollowList(memberId = "", listType = "followers") {
+  const normalizedType = String(listType || "").trim() === "following" ? "following" : "followers";
+  const lists = getPublicMemberFollowLists(memberId);
+  return Array.isArray(lists?.[normalizedType]) ? lists[normalizedType] : null;
+}
+
+function getPublicMemberProfileActiveTab(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return "followers";
+  }
+
+  return appState.publicMemberProfileActiveTabs[normalizedId] === "following"
+    ? "following"
+    : "followers";
+}
+
+function setPublicMemberProfileActiveTab(memberId = "", tab = "followers") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return;
+  }
+
+  appState.publicMemberProfileActiveTabs[normalizedId] = String(tab || "").trim() === "following"
+    ? "following"
+    : "followers";
+  if (getActivePublicMemberProfileRouteId() === normalizedId) {
+    renderPublicMemberProfile(normalizedId);
+  }
+}
+
 function hasPublicMemberFollowState(memberId = "") {
   const normalizedId = String(memberId || "").trim();
   return normalizedId
@@ -4806,6 +4889,24 @@ function isViewingOwnPublicMemberProfile(memberId = "", user = appState.user) {
   const normalizedId = String(memberId || "").trim();
   const currentUserId = String(user?.id || "").trim();
   return Boolean(normalizedId && currentUserId && normalizedId === currentUserId);
+}
+
+function getViewerPublicMemberFollowState(memberId = "") {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId || !appState.user?.id || isViewingOwnPublicMemberProfile(normalizedId)) {
+    return false;
+  }
+
+  const cachedState = getPublicMemberFollowState(normalizedId);
+  if (cachedState !== null) {
+    return cachedState;
+  }
+
+  if (!appState.growNetworkFollowingLoaded) {
+    return null;
+  }
+
+  return getGrowNetworkFollowingEntries().some((entry) => String(entry?.memberId || "").trim() === normalizedId);
 }
 
 async function loadPublicMemberFollowSummary(memberId = "", options = {}) {
@@ -4925,10 +5026,123 @@ async function refreshPublicMemberFollowSummary(memberId = "", options = {}) {
   }
 
   const summary = await loadPublicMemberFollowSummary(normalizedId, options);
-  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+  if (getActivePublicMemberProfileRouteId() === normalizedId) {
     renderPublicMemberProfile(normalizedId);
   }
   return summary;
+}
+
+async function loadPublicMemberFollowLists(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return {
+      followers: [],
+      following: [],
+    };
+  }
+
+  const { force = false, reason = "unspecified" } = options;
+  const existingLists = appState.publicMemberFollowLists[normalizedId];
+  const hasLoadedLists = Array.isArray(existingLists?.followers) && Array.isArray(existingLists?.following);
+  if (!force && hasLoadedLists) {
+    return existingLists;
+  }
+
+  if (!appState.supabase || appState.publicMemberFollowListsUnavailable) {
+    return existingLists || {
+      followers: [],
+      following: [],
+    };
+  }
+
+  if (!force && appState.publicMemberFollowListsRefreshPromises[normalizedId]) {
+    return appState.publicMemberFollowListsRefreshPromises[normalizedId];
+  }
+
+  const refreshPromise = (async () => {
+    try {
+      const [followersResult, followingResult] = await Promise.all([
+        appState.supabase.rpc("get_public_member_follow_members", {
+          target_user_id: normalizedId,
+          relationship_type: "followers",
+        }),
+        appState.supabase.rpc("get_public_member_follow_members", {
+          target_user_id: normalizedId,
+          relationship_type: "following",
+        }),
+      ]);
+
+      const nextLists = {
+        followers: Array.isArray(existingLists?.followers) ? existingLists.followers : [],
+        following: Array.isArray(existingLists?.following) ? existingLists.following : [],
+      };
+      const handleListResult = (result, listType) => {
+        if (result?.error) {
+          if (isPublicMemberFollowMembersUnavailableError(result.error)) {
+            appState.publicMemberFollowListsUnavailable = true;
+            console.warn("Public member follow members function unavailable.", {
+              reason,
+              memberId: normalizedId,
+              listType,
+              error: result.error,
+            });
+          } else {
+            console.error("Failed to load public member follow list", {
+              reason,
+              memberId: normalizedId,
+              listType,
+              error: result.error,
+            });
+          }
+          return;
+        }
+
+        nextLists[listType] = (result?.data || [])
+          .map(normalizePublicMemberFollowListRow)
+          .filter((row) => row?.memberId);
+      };
+
+      handleListResult(followersResult, "followers");
+      handleListResult(followingResult, "following");
+
+      appState.publicMemberFollowLists[normalizedId] = nextLists;
+
+      const discoveredProfiles = [...nextLists.followers, ...nextLists.following];
+      discoveredProfiles.forEach((row) => {
+        const existingProfile = appState.publicMemberProfiles[row.memberId] || buildDerivedPublicMemberProfile(row.memberId) || {};
+        appState.publicMemberProfiles[row.memberId] = {
+          ...existingProfile,
+          id: row.memberId,
+          displayName: row.displayName || existingProfile.displayName || "Community member",
+          avatarUrl: row.avatarUrl || existingProfile.avatarUrl || "",
+          joinedAt: row.joinedAt || existingProfile.joinedAt || "",
+        };
+      });
+
+      return nextLists;
+    } finally {
+      delete appState.publicMemberFollowListsRefreshPromises[normalizedId];
+    }
+  })();
+
+  appState.publicMemberFollowListsRefreshPromises[normalizedId] = refreshPromise;
+  return refreshPromise;
+}
+
+async function refreshPublicMemberFollowLists(memberId = "", options = {}) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId) {
+    return {
+      followers: [],
+      following: [],
+    };
+  }
+
+  const lists = await loadPublicMemberFollowLists(normalizedId, options);
+  if (getActivePublicMemberProfileRouteId() === normalizedId) {
+    renderPublicMemberProfile(normalizedId);
+  }
+  return lists;
 }
 
 async function loadPublicMemberFollowState(memberId = "", options = {}) {
@@ -5001,7 +5215,7 @@ async function refreshPublicMemberFollowState(memberId = "", options = {}) {
   }
 
   const isFollowing = await loadPublicMemberFollowState(normalizedId, options);
-  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
+  if (getActivePublicMemberProfileRouteId() === normalizedId) {
     renderPublicMemberProfile(normalizedId);
   }
   return isFollowing;
@@ -5012,6 +5226,7 @@ async function loadGrowNetworkFollowing(reason = "unspecified") {
     appState.growNetworkFollowing = [];
     appState.growNetworkFollowingLoaded = true;
     appState.growNetworkFollowingError = "";
+    appState.publicMemberFollowStates = {};
     return [];
   }
 
@@ -5047,6 +5262,13 @@ async function loadGrowNetworkFollowing(reason = "unspecified") {
   appState.growNetworkFollowing = following;
   appState.growNetworkFollowingLoaded = true;
   appState.growNetworkFollowingError = "";
+  const followedIdSet = new Set(following.map((entry) => entry.memberId));
+  Object.keys(appState.publicMemberFollowStates || {}).forEach((memberId) => {
+    appState.publicMemberFollowStates[memberId] = followedIdSet.has(memberId);
+  });
+  followedIdSet.forEach((memberId) => {
+    appState.publicMemberFollowStates[memberId] = true;
+  });
 
   const followedIds = following.map((entry) => entry.memberId);
   await Promise.allSettled([
@@ -5141,10 +5363,14 @@ async function togglePublicMemberFollow(memberId = "") {
     return false;
   }
 
+  const rerenderActivePublicMemberProfile = () => {
+    const activeProfileRouteId = getActivePublicMemberProfileRouteId();
+    if (activeProfileRouteId) {
+      renderPublicMemberProfile(activeProfileRouteId);
+    }
+  };
   appState.publicMemberFollowPendingActions[normalizedId] = true;
-  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
-    renderPublicMemberProfile(normalizedId);
-  }
+  rerenderActivePublicMemberProfile();
 
   try {
     const isFollowing = await loadPublicMemberFollowState(normalizedId, {
@@ -5203,9 +5429,7 @@ async function togglePublicMemberFollow(memberId = "") {
     return !isFollowing;
   } finally {
     delete appState.publicMemberFollowPendingActions[normalizedId];
-    if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
-      renderPublicMemberProfile(normalizedId);
-    }
+    rerenderActivePublicMemberProfile();
   }
 }
 
@@ -10735,6 +10959,10 @@ function render() {
     void refreshGallerySnapshots("route:public-member-profile");
     void refreshPublicMemberProfile(memberId, { reason: "route:public-member-profile" });
     void refreshPublicMemberFollowSummary(memberId, { reason: "route:public-member-profile" });
+    void refreshPublicMemberFollowLists(memberId, { reason: "route:public-member-profile" });
+    if (appState.user?.id) {
+      void refreshGrowNetworkFollowing({ force: true, reason: "route:public-member-profile" });
+    }
     if (appState.user?.id && appState.user.id !== memberId) {
       void refreshPublicMemberFollowState(memberId, { reason: "route:public-member-profile" });
     }
@@ -18250,6 +18478,10 @@ function renderPublicMemberProfile(memberId) {
   const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId]);
   const followSummary = getPublicMemberFollowSummary(normalizedId);
   const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
+  const followLists = getPublicMemberFollowLists(normalizedId);
+  const isLoadingFollowLists = Boolean(appState.publicMemberFollowListsRefreshPromises[normalizedId]);
+  const activeConnectionTab = getPublicMemberProfileActiveTab(normalizedId);
+  const activeConnectionRows = getPublicMemberFollowList(normalizedId, activeConnectionTab);
   const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedId);
   const canShowFollowButton = Boolean(appState.user?.id) && !isOwnProfile && !appState.publicMemberFollowsTableUnavailable;
   const followState = getPublicMemberFollowState(normalizedId);
@@ -18300,16 +18532,22 @@ function renderPublicMemberProfile(memberId) {
   const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
   const followerCountValue = followSummary
     ? followSummary.followerCount.toLocaleString()
-    : (isLoadingFollowSummary ? "--" : "0");
+    : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
   const followingCountValue = followSummary
     ? followSummary.followingCount.toLocaleString()
-    : (isLoadingFollowSummary ? "--" : "0");
+    : (Array.isArray(followLists?.following) ? followLists.following.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
   const averageRate = approvedSnapshots.length
     ? (approvedSnapshots.reduce((sum, snapshot) => sum + getGallerySnapshotSuccessRate(snapshot), 0) / approvedSnapshots.length)
     : null;
   const roundedAverageRate = averageRate === null
     ? ""
     : String(Number((Math.round(averageRate * 10) / 10).toFixed(1))).replace(/\.0$/, "");
+  const followersTabCount = followSummary
+    ? followSummary.followerCount.toLocaleString()
+    : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
+  const followingTabCount = followSummary
+    ? followSummary.followingCount.toLocaleString()
+    : (Array.isArray(followLists?.following) ? followLists.following.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
   const stats = [
     {
       label: "Followers",
@@ -18341,6 +18579,73 @@ function renderPublicMemberProfile(memberId) {
       }
       : null,
   ].filter(Boolean);
+  const renderConnectionRowsMarkup = () => {
+    if (isLoadingFollowLists && !Array.isArray(activeConnectionRows)) {
+      return `
+        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
+          <p>Loading public member connections...</p>
+        </div>
+      `;
+    }
+
+    if (appState.publicMemberFollowListsUnavailable) {
+      return `
+        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
+          <p>Follower and following lists are unavailable right now.</p>
+        </div>
+      `;
+    }
+
+    if (!Array.isArray(activeConnectionRows) || !activeConnectionRows.length) {
+      return `
+        <div class="empty-state gallery-empty-state public-member-profile-connections-empty">
+          <p>${escapeHtml(activeConnectionTab === "followers" ? "No followers yet." : "Not following anyone yet.")}</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="public-member-profile-connections-list">
+        ${activeConnectionRows.map((row) => {
+          const rowFollowState = getViewerPublicMemberFollowState(row.memberId);
+          const isRowFollowPending = isPublicMemberFollowPending(row.memberId);
+          const canShowRowFollowButton = Boolean(appState.user?.id)
+            && !isOwnProfile
+            && !appState.publicMemberFollowsTableUnavailable
+            && !isViewingOwnPublicMemberProfile(row.memberId);
+          const isRowFollowing = rowFollowState === true;
+          const isLoadingRowFollowState = canShowRowFollowButton && rowFollowState === null && Boolean(appState.growNetworkFollowingRefreshPromise);
+          const rowMetaLabel = formatPublicMemberJoinedDateLabel(row.joinedAt || "")
+            ? `Joined ${formatPublicMemberJoinedDateLabel(row.joinedAt || "")}`
+            : "View public grow profile";
+          return `
+            <article class="public-member-profile-connection-card">
+              <a class="public-member-profile-connection-link" href="${escapeHtml(getPublicMemberProfileRoute(row.memberId))}">
+                <span class="public-member-profile-connection-avatar-shell">
+                  ${renderPublicMemberAvatarMarkup(row.displayName, row.avatarUrl, "public-member-profile-connection-avatar")}
+                </span>
+                <span class="public-member-profile-connection-copy">
+                  <strong>${escapeHtml(row.displayName)}</strong>
+                  <span>${escapeHtml(rowMetaLabel)}</span>
+                </span>
+              </a>
+              ${canShowRowFollowButton ? `
+                <div class="public-member-profile-connection-actions">
+                  <button
+                    type="button"
+                    class="button ${isRowFollowing ? "button-secondary" : "button-primary"} public-member-profile-connection-follow-button${isRowFollowing ? " is-following" : ""}"
+                    data-public-member-list-follow="${escapeHtml(row.memberId)}"
+                    ${(isRowFollowPending || isLoadingRowFollowState) ? "disabled" : ""}
+                    aria-pressed="${isRowFollowing ? "true" : "false"}"
+                  >${escapeHtml(isLoadingRowFollowState ? "Loading..." : (isRowFollowing ? "Following" : "Follow"))}</button>
+                </div>
+              ` : ""}
+            </article>
+          `;
+        }).join("")}
+      </div>
+    `;
+  };
 
   app.innerHTML = `
     <section class="card public-member-profile-page">
@@ -18379,6 +18684,46 @@ function renderPublicMemberProfile(memberId) {
           </article>
         `).join("")}
       </div>
+      <section class="public-member-profile-connections">
+        <div class="section-heading">
+          <div class="section-title-with-icon">
+            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M16 19a4 4 0 0 0-8 0"></path>
+              <circle cx="12" cy="10" r="3.5"></circle>
+              <path d="M5.5 18.5a3.5 3.5 0 0 1 2.25-3.27"></path>
+              <path d="M18.5 18.5a3.5 3.5 0 0 0-2.25-3.27"></path>
+            </svg>
+            <div>
+              <p class="eyebrow">Grow Network</p>
+              <h3>Followers and following</h3>
+              <p class="muted">Explore this member’s public social graph.</p>
+            </div>
+          </div>
+        </div>
+        <div class="public-member-profile-connections-tabs" role="tablist" aria-label="Followers and following">
+          <button
+            type="button"
+            class="public-member-profile-connections-tab${activeConnectionTab === "followers" ? " is-active" : ""}"
+            data-public-member-profile-tab="followers"
+            role="tab"
+            aria-selected="${activeConnectionTab === "followers" ? "true" : "false"}"
+          >
+            <span>Followers</span>
+            <strong>${escapeHtml(followersTabCount)}</strong>
+          </button>
+          <button
+            type="button"
+            class="public-member-profile-connections-tab${activeConnectionTab === "following" ? " is-active" : ""}"
+            data-public-member-profile-tab="following"
+            role="tab"
+            aria-selected="${activeConnectionTab === "following" ? "true" : "false"}"
+          >
+            <span>Following</span>
+            <strong>${escapeHtml(followingTabCount)}</strong>
+          </button>
+        </div>
+        ${renderConnectionRowsMarkup()}
+      </section>
       <section class="public-member-profile-snapshots">
         <div class="section-heading">
           <div class="section-title-with-icon">
@@ -18412,6 +18757,20 @@ function renderPublicMemberProfile(memberId) {
     } catch (error) {
       window.alert(error.message || "Could not update this follow right now.");
     }
+  });
+  app.querySelectorAll("[data-public-member-profile-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setPublicMemberProfileActiveTab(normalizedId, button.dataset.publicMemberProfileTab || "followers");
+    });
+  });
+  app.querySelectorAll("[data-public-member-list-follow]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await togglePublicMemberFollow(button.dataset.publicMemberListFollow || "");
+      } catch (error) {
+        window.alert(error.message || "Could not update this follow right now.");
+      }
+    });
   });
 
   const profileGrid = app.querySelector("#public-member-profile-grid");
