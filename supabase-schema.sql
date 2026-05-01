@@ -40,6 +40,21 @@ create table if not exists public.admin_users (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.sources (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  logo_url text default '',
+  logo_path text default '',
+  website_url text default '',
+  description text default '',
+  contact_name text default '',
+  contact_email text default '',
+  notes text default '',
+  status text not null default 'active',
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.grow_gallery_snapshots (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -72,6 +87,9 @@ create table if not exists public.grow_gallery_snapshot_likes (
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
+
+create unique index if not exists sources_name_lower_idx
+  on public.sources (lower(name));
 
 create unique index if not exists grow_gallery_snapshot_likes_snapshot_user_idx
   on public.grow_gallery_snapshot_likes (snapshot_id, user_id);
@@ -112,6 +130,27 @@ alter table public.grow_gallery_snapshots
 alter table public.grow_gallery_snapshots
   add column if not exists status text not null default 'private';
 
+alter table public.grow_gallery_snapshots
+  add column if not exists unit_id text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists total_seeds integer not null default 0;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists total_planted integer not null default 0;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists source_id uuid references public.sources(id) on delete set null;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists source_name text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists source_logo_url text default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists seed_variety_name text default '';
+
 update public.grow_gallery_snapshots
 set status = case
   when coalesce(is_published, false) then 'approved'
@@ -130,6 +169,16 @@ end;
 $$;
 
 create or replace function public.set_profiles_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+create or replace function public.set_sources_updated_at()
 returns trigger
 language plpgsql
 as $$
@@ -161,6 +210,12 @@ before update on public.profiles
 for each row
 execute procedure public.set_profiles_updated_at();
 
+drop trigger if exists sources_set_updated_at on public.sources;
+create trigger sources_set_updated_at
+before update on public.sources
+for each row
+execute procedure public.set_sources_updated_at();
+
 drop trigger if exists grow_gallery_snapshots_set_updated_at on public.grow_gallery_snapshots;
 create trigger grow_gallery_snapshots_set_updated_at
 before update on public.grow_gallery_snapshots
@@ -170,6 +225,7 @@ execute procedure public.set_grow_gallery_snapshots_updated_at();
 alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.admin_users enable row level security;
+alter table public.sources enable row level security;
 alter table public.grow_gallery_snapshots enable row level security;
 alter table public.grow_gallery_snapshot_likes enable row level security;
 
@@ -223,6 +279,70 @@ on public.admin_users
 for select
 to authenticated
 using (auth.uid() = user_id);
+
+drop policy if exists "Anyone can view active sources" on public.sources;
+create policy "Anyone can view active sources"
+on public.sources
+for select
+using (
+  status = 'active'
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can create sources" on public.sources;
+create policy "Admins can create sources"
+on public.sources
+for insert
+to authenticated
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can update sources" on public.sources;
+create policy "Admins can update sources"
+on public.sources
+for update
+to authenticated
+using (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+)
+with check (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Admins can delete sources" on public.sources;
+create policy "Admins can delete sources"
+on public.sources
+for delete
+to authenticated
+using (
+  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
 
 drop policy if exists "Anyone can view published gallery snapshots" on public.grow_gallery_snapshots;
 create policy "Anyone can view published gallery snapshots"
@@ -352,6 +472,10 @@ insert into storage.buckets (id, name, public)
 values ('grow-gallery', 'grow-gallery', true)
 on conflict (id) do nothing;
 
+insert into storage.buckets (id, name, public)
+values ('source-logos', 'source-logos', true)
+on conflict (id) do nothing;
+
 drop policy if exists "Authenticated users can read session images" on storage.objects;
 create policy "Authenticated users can read session images"
 on storage.objects
@@ -440,6 +564,12 @@ on storage.objects
 for select
 using (bucket_id = 'grow-gallery');
 
+drop policy if exists "Anyone can read source logos" on storage.objects;
+create policy "Anyone can read source logos"
+on storage.objects
+for select
+using (bucket_id = 'source-logos');
+
 drop policy if exists "Authenticated users can upload their own grow gallery images" on storage.objects;
 create policy "Authenticated users can upload their own grow gallery images"
 on storage.objects
@@ -472,4 +602,66 @@ to authenticated
 using (
   bucket_id = 'grow-gallery'
   and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "Admins can upload source logos" on storage.objects;
+create policy "Admins can upload source logos"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'source-logos'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Admins can update source logos" on storage.objects;
+create policy "Admins can update source logos"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'source-logos'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+)
+with check (
+  bucket_id = 'source-logos'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
+);
+
+drop policy if exists "Admins can delete source logos" on storage.objects;
+create policy "Admins can delete source logos"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'source-logos'
+  and (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  )
 );

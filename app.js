@@ -10,6 +10,7 @@ const THEME_KEY = "cannakan-grow-theme";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
+const SOURCE_LOGO_BUCKET = "source-logos";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   startDate: "",
   endDate: "",
@@ -29,8 +30,10 @@ const MAX_SESSION_IMAGES = 3;
 const MAX_IMAGE_SIZE_BYTES = 12 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_AVATAR_DIMENSION = 512;
+const MAX_SOURCE_LOGO_DIMENSION = 768;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
+const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "icons/KAN%20icon.svg",
@@ -88,6 +91,12 @@ const appState = {
   accountMenuOpen: false,
   customSelectOpenKey: "",
   sessions: [],
+  sources: [],
+  sourcesLoaded: false,
+  sourcesError: "",
+  sourcesRefreshPromise: null,
+  sourceAdminEditingId: "",
+  sourceAdminMessage: "",
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
@@ -143,7 +152,6 @@ const templates = {
 const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
-  "admin",
 ]);
 const MOCK_DATA_ADMIN_EMAILS = new Set([
   "don@cannakan.com",
@@ -1844,6 +1852,9 @@ async function bootstrapApp() {
   } else {
     ensureSampleSessions();
     saveSessions(loadLocalSessions());
+    appState.sources = [];
+    appState.sourcesLoaded = true;
+    appState.sourcesError = "";
     appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
     appState.gallerySnapshotsLoaded = true;
   }
@@ -1907,6 +1918,11 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   appState.profileError = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
+  appState.sourcesLoaded = false;
+  appState.sourcesError = "";
+  appState.sourcesRefreshPromise = null;
+  appState.sourceAdminEditingId = "";
+  appState.sourceAdminMessage = "";
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
   resetMemberCountState();
@@ -1919,10 +1935,14 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
     }
     const sessions = await loadUserSessions();
     saveSessions(sessions);
+    appState.sources = await loadSources("auth:signed-in");
+    appState.sourcesLoaded = true;
     appState.gallerySnapshots = await loadGallerySnapshots();
     appState.gallerySnapshotsLoaded = true;
   } else if (isSupabaseConfigured()) {
     saveSessions([]);
+    appState.sources = await loadSources("auth:signed-out");
+    appState.sourcesLoaded = true;
     appState.gallerySnapshots = await loadGallerySnapshots();
     appState.gallerySnapshotsLoaded = true;
   }
@@ -2392,6 +2412,383 @@ async function removeProfileAvatarFromStorage(path) {
   await appState.supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([path]);
 }
 
+function normalizeSourceStatus(status) {
+  return String(status || "").trim().toLowerCase() === "hidden" ? "hidden" : "active";
+}
+
+function normalizeSourceWebsiteUrl(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(rawValue)) {
+    return rawValue;
+  }
+
+  return `https://${rawValue}`;
+}
+
+function mapRowToSource(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    name: normalizeLeaderboardLabel(row.name),
+    logoUrl: String(row.logo_url || "").trim(),
+    logoPath: String(row.logo_path || "").trim(),
+    websiteUrl: normalizeSourceWebsiteUrl(row.website_url || ""),
+    description: String(row.description || "").trim(),
+    contactName: String(row.contact_name || "").trim(),
+    contactEmail: String(row.contact_email || "").trim(),
+    notes: String(row.notes || "").trim(),
+    status: normalizeSourceStatus(row.status),
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+function getSourceErrorMessage(error, fallbackMessage) {
+  const normalizedMessage = String(
+    error?.message
+    || error?.error_description
+    || error?.details
+    || "",
+  ).trim().toLowerCase();
+
+  if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
+    return "Source logo storage is missing or not configured.";
+  }
+  if (normalizedMessage.includes("duplicate key") || normalizedMessage.includes("sources_name_lower_idx")) {
+    return "A source with this name already exists.";
+  }
+  if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
+    return "You do not have permission to manage sources.";
+  }
+  if (normalizedMessage.includes("relation") && normalizedMessage.includes("sources")) {
+    return "Source management data store is missing. Run the latest schema setup.";
+  }
+  if (normalizedMessage.includes("column") && normalizedMessage.includes("sources")) {
+    return "Source management schema is out of date. Apply the latest database schema.";
+  }
+
+  return fallbackMessage;
+}
+
+async function loadSources(reason = "unspecified") {
+  if (!appState.supabase) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from("sources")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Failed to load sources", { reason, error });
+    appState.sourcesError = getSourceErrorMessage(error, "Could not load sources.");
+    return [];
+  }
+
+  appState.sourcesError = "";
+  return (data || [])
+    .map(mapRowToSource)
+    .filter(Boolean)
+    .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+}
+
+async function refreshSources(options = {}) {
+  const { force = false, reason = "refresh" } = options;
+
+  if (!appState.supabase) {
+    appState.sources = [];
+    appState.sourcesLoaded = true;
+    appState.sourcesError = "";
+    return [];
+  }
+
+  if (!force && appState.sourcesLoaded && !appState.sourcesRefreshPromise) {
+    return appState.sources;
+  }
+
+  if (!force && appState.sourcesRefreshPromise) {
+    return appState.sourcesRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const sources = await loadSources(reason);
+    appState.sources = sources;
+    appState.sourcesLoaded = true;
+    ensureSourceCatalogDatalist();
+    return sources;
+  })();
+
+  appState.sourcesRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.sourcesRefreshPromise = null;
+  }
+}
+
+function getSourceCatalogRecords(options = {}) {
+  const { includeHidden = false } = options;
+  return (appState.sources || []).filter((source) => (
+    includeHidden || normalizeSourceStatus(source?.status) === "active"
+  ));
+}
+
+function findSourceById(sourceId, options = {}) {
+  const normalizedId = String(sourceId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  return getSourceCatalogRecords(options).find((source) => source.id === normalizedId) || null;
+}
+
+function findSourceByName(name, options = {}) {
+  const normalizedKey = normalizeLeaderboardKey(name);
+  if (!normalizedKey) {
+    return null;
+  }
+
+  return getSourceCatalogRecords(options).find((source) => normalizeLeaderboardKey(source.name) === normalizedKey) || null;
+}
+
+function getManagedSourceRecordForSnapshot(snapshot, options = {}) {
+  const { includeHidden = false } = options;
+  const sourceId = String(snapshot?.sourceId || "").trim();
+  if (sourceId) {
+    return findSourceById(sourceId, { includeHidden });
+  }
+
+  return findSourceByName(snapshot?.sourceName || "", { includeHidden });
+}
+
+function getSourceDisplayMetadata(snapshotOrSource = null, options = {}) {
+  const { includeHidden = false } = options;
+  if (!snapshotOrSource) {
+    return {
+      name: "",
+      logoUrl: "",
+      websiteUrl: "",
+      description: "",
+      isManaged: false,
+    };
+  }
+
+  const sourceRecord = typeof snapshotOrSource === "string"
+    ? findSourceByName(snapshotOrSource, { includeHidden })
+    : getManagedSourceRecordForSnapshot(snapshotOrSource, { includeHidden });
+  const fallbackName = typeof snapshotOrSource === "string"
+    ? normalizeLeaderboardLabel(snapshotOrSource)
+    : normalizeLeaderboardLabel(snapshotOrSource?.sourceName || "");
+  const fallbackLogoUrl = typeof snapshotOrSource === "string"
+    ? ""
+    : String(snapshotOrSource?.sourceLogoUrl || "").trim();
+  const hasSourceIdentity = typeof snapshotOrSource === "string"
+    ? Boolean(fallbackName)
+    : Boolean(String(snapshotOrSource?.sourceId || "").trim() || fallbackName);
+
+  if (sourceRecord && normalizeSourceStatus(sourceRecord.status) === "active") {
+    return {
+      name: sourceRecord.name,
+      logoUrl: sourceRecord.logoUrl,
+      websiteUrl: sourceRecord.websiteUrl,
+      description: sourceRecord.description,
+      isManaged: true,
+    };
+  }
+
+  return {
+    name: fallbackName,
+    logoUrl: hasSourceIdentity && sourceRecord ? "" : fallbackLogoUrl,
+    websiteUrl: "",
+    description: "",
+    isManaged: Boolean(sourceRecord),
+  };
+}
+
+function getPrimaryPartitionSourceDetails(partitions = []) {
+  const firstPartition = (partitions || []).find((partition) => (
+    normalizeLeaderboardLabel(formatPartitionSource(partition))
+    || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
+  )) || partitions[0] || null;
+  const sourceName = normalizeLeaderboardLabel(formatPartitionSource(firstPartition));
+  const sourceRecord = findSourceByName(sourceName, { includeHidden: true });
+
+  return {
+    sourceId: String(sourceRecord?.id || "").trim(),
+    sourceName: sourceRecord?.name || sourceName,
+    sourceLogoUrl: normalizeSourceStatus(sourceRecord?.status) === "active"
+      ? String(sourceRecord?.logoUrl || "").trim()
+      : "",
+    seedVarietyName: normalizeLeaderboardLabel(formatPartitionSeedVariety(firstPartition)),
+  };
+}
+
+async function uploadSourceLogo(file, sourceId = "") {
+  if (!appState.supabase?.storage || !appState.user || !isAdminUser()) {
+    throw new Error("Source logo uploads are not available until admin storage is ready.");
+  }
+
+  const preparedImage = await prepareImageForUpload(file, MAX_SOURCE_LOGO_DIMENSION, 0.88);
+  const path = `sources/${sourceId || "new"}/logo-${crypto.randomUUID()}.jpg`;
+  const { error } = await appState.supabase.storage
+    .from(SOURCE_LOGO_BUCKET)
+    .upload(path, preparedImage.blob, {
+      contentType: preparedImage.contentType,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(getSourceErrorMessage(error, "Could not upload source logo."));
+  }
+
+  const { data } = appState.supabase.storage.from(SOURCE_LOGO_BUCKET).getPublicUrl(path);
+  return {
+    path,
+    url: data.publicUrl,
+  };
+}
+
+async function removeSourceLogoFromStorage(path) {
+  if (!path || !appState.supabase?.storage) {
+    return;
+  }
+
+  await appState.supabase.storage.from(SOURCE_LOGO_BUCKET).remove([path]);
+}
+
+async function saveSourceRecord(sourceInput, options = {}) {
+  const existingSource = options.existingSource || null;
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage sources.");
+  }
+
+  let uploadedLogo = null;
+  let logoUrl = String(existingSource?.logoUrl || "").trim();
+  let logoPath = String(existingSource?.logoPath || "").trim();
+
+  if (sourceInput.removeLogo) {
+    logoUrl = "";
+    logoPath = "";
+  }
+
+  if (sourceInput.logoFile) {
+    uploadedLogo = await uploadSourceLogo(sourceInput.logoFile, existingSource?.id || "");
+    logoUrl = uploadedLogo.url;
+    logoPath = uploadedLogo.path;
+  }
+
+  const payload = {
+    name: normalizeLeaderboardLabel(sourceInput.name),
+    logo_url: logoUrl,
+    logo_path: logoPath,
+    website_url: normalizeSourceWebsiteUrl(sourceInput.websiteUrl),
+    description: String(sourceInput.description || "").trim(),
+    contact_name: String(sourceInput.contactName || "").trim(),
+    contact_email: String(sourceInput.contactEmail || "").trim(),
+    notes: String(sourceInput.notes || "").trim(),
+    status: normalizeSourceStatus(sourceInput.status),
+  };
+
+  const query = existingSource?.id
+    ? appState.supabase.from("sources").update(payload).eq("id", existingSource.id).select("*").single()
+    : appState.supabase.from("sources").insert(payload).select("*").single();
+  const { data, error } = await query;
+
+  if (error) {
+    if (uploadedLogo?.path) {
+      await removeSourceLogoFromStorage(uploadedLogo.path);
+    }
+    throw new Error(getSourceErrorMessage(error, existingSource ? "Could not update source." : "Could not add source."));
+  }
+
+  if ((sourceInput.removeLogo || sourceInput.logoFile) && existingSource?.logoPath && existingSource.logoPath !== logoPath) {
+    await removeSourceLogoFromStorage(existingSource.logoPath);
+  }
+
+  const savedSource = mapRowToSource(data);
+  appState.sources = [...appState.sources.filter((source) => source.id !== savedSource.id), savedSource]
+    .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+  appState.sourcesLoaded = true;
+  appState.sourcesError = "";
+  ensureSourceCatalogDatalist();
+  return savedSource;
+}
+
+async function clearManagedSourceBrandingFromSnapshots(source) {
+  if (!appState.supabase || !source) {
+    return;
+  }
+
+  const sourceId = String(source.id || "").trim();
+  const sourceName = normalizeLeaderboardLabel(source.name);
+
+  if (sourceName) {
+    const { error: sourceNameError } = await appState.supabase
+      .from("grow_gallery_snapshots")
+      .update({ source_logo_url: "" })
+      .eq("source_name", sourceName);
+    if (sourceNameError) {
+      throw new Error(getSourceErrorMessage(sourceNameError, "Could not detach this source from existing gallery sessions."));
+    }
+  }
+
+  appState.gallerySnapshots = appState.gallerySnapshots.map((snapshot) => {
+    const matchesSourceId = sourceId && String(snapshot?.sourceId || "").trim() === sourceId;
+    const matchesSourceName = sourceName && normalizeLeaderboardKey(snapshot?.sourceName || "") === normalizeLeaderboardKey(sourceName);
+    if (!matchesSourceId && !matchesSourceName) {
+      return snapshot;
+    }
+
+    return {
+      ...snapshot,
+      sourceId: "",
+      sourceLogoUrl: "",
+    };
+  });
+}
+
+async function deleteSourceRecord(source) {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage sources.");
+  }
+
+  const { error } = await appState.supabase
+    .from("sources")
+    .delete()
+    .eq("id", source.id);
+
+  if (error) {
+    throw new Error(getSourceErrorMessage(error, "Could not delete source."));
+  }
+
+  appState.sources = appState.sources.filter((entry) => entry.id !== source.id);
+  appState.sourcesLoaded = true;
+  appState.sourcesError = "";
+  ensureSourceCatalogDatalist();
+
+  try {
+    await clearManagedSourceBrandingFromSnapshots(source);
+  } catch (cleanupError) {
+    if (source.logoPath) {
+      await removeSourceLogoFromStorage(source.logoPath);
+    }
+    throw new Error("Source deleted, but existing gallery branding cleanup could not finish automatically.");
+  }
+
+  if (source.logoPath) {
+    await removeSourceLogoFromStorage(source.logoPath);
+  }
+}
+
 async function saveUserProfile(profileInput) {
   if (!appState.supabase || !appState.user) {
     throw new Error("You must be signed in to save a profile.");
@@ -2610,6 +3007,7 @@ function mapRowToGallerySnapshot(row) {
     totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
     submittedBy: String(row.submitted_by || "").trim(),
+    sourceId: String(row.source_id || "").trim(),
     sourceName: String(row.source_name || "").trim(),
     sourceLogoUrl: String(row.source_logo_url || "").trim(),
     seedVarietyName: String(row.seed_variety_name || "").trim(),
@@ -2733,8 +3131,15 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     snapshot_image_path: upload.path,
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
+    unit_id: String(session.unitId || "").trim(),
+    total_seeds: Math.max(0, Number(snapshotData?.totalSeeds) || 0),
+    total_planted: Math.max(0, Number(snapshotData?.totalPlanted) || 0),
     success_percent: Number(snapshotData?.percentage) || 0,
     submitted_by: profileName,
+    source_id: String(snapshotData?.sourceId || "").trim() || null,
+    source_name: normalizeLeaderboardLabel(snapshotData?.sourceName || ""),
+    source_logo_url: String(snapshotData?.sourceLogoUrl || "").trim(),
+    seed_variety_name: normalizeLeaderboardLabel(snapshotData?.seedVarietyName || ""),
     include_profile_in_gallery: includeProfileInGallery,
     submitted_profile_name: profileName,
     submitted_profile_avatar_url: profileImageUrl,
@@ -3408,10 +3813,12 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
     normalizeLeaderboardLabel(partition?.seedType)
   )) || linkedSession?.partitions?.[0] || null;
   const normalizedSeedType = normalizeLeaderboardLabel(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
+  const sourceDisplay = getSourceDisplayMetadata(snapshot);
+  const fallbackSourceName = normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity));
 
   return {
-    sourceName: normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity)),
-    sourceLogoUrl: String(snapshot?.sourceLogoUrl || "").trim(),
+    sourceName: sourceDisplay.name || fallbackSourceName,
+    sourceLogoUrl: String(sourceDisplay.logoUrl || "").trim(),
     seedVarietyName: normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity)),
     seedTypeName: normalizedSeedType ? capitalize(normalizedSeedType) : "",
   };
@@ -5767,12 +6174,17 @@ function buildSnapshotData(source) {
   const percentage = totals.totalSeeds > 0
     ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
     : 0;
+  const sourceDetails = getPrimaryPartitionSourceDetails(source.partitions || []);
 
   return {
     sessionName: source.sessionName || "Session",
     dateLabel: formatSessionNameDate(source.date),
     systemType: source.systemType || "KAN",
     systemLabel: formatSnapshotSystemLabel(source.systemType || "KAN"),
+    sourceId: sourceDetails.sourceId,
+    sourceName: sourceDetails.sourceName,
+    sourceLogoUrl: sourceDetails.sourceLogoUrl,
+    seedVarietyName: sourceDetails.seedVarietyName,
     totalSeeds: totals.totalSeeds,
     totalPlanted: totals.totalPlanted,
     percentage,
@@ -7324,6 +7736,449 @@ function renderAdminOverviewCardMarkup({ label, value, subtext = "" }) {
   `;
 }
 
+function formatAdminTimestamp(value) {
+  const parsedDate = parseCompletedAtValue(value);
+  return parsedDate ? formatTimingDateTime(parsedDate) : "Not available";
+}
+
+function renderSourceLogoPlaceholderMarkup() {
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <circle cx="12" cy="12" r="9"></circle>
+      <path d="M9 14.5h6"></path>
+      <path d="M10 10.5h4"></path>
+      <path d="M12 7.5v9"></path>
+    </svg>
+  `;
+}
+
+function renderSourceLogoMarkup(source = {}, options = {}) {
+  const {
+    className = "admin-source-logo",
+    imageClassName = "admin-source-logo-image",
+    placeholderClassName = "admin-source-logo-placeholder",
+    alt = source?.name || "Source logo",
+  } = options;
+  const logoUrl = String(source?.logoUrl || "").trim();
+
+  if (logoUrl) {
+    return `
+      <span class="${escapeHtml(className)}">
+        <img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(imageClassName)}">
+      </span>
+    `;
+  }
+
+  return `
+    <span class="${escapeHtml(className)} ${escapeHtml(placeholderClassName)}" aria-hidden="true">
+      ${renderSourceLogoPlaceholderMarkup()}
+    </span>
+  `;
+}
+
+function renderSourceStatusPillMarkup(status) {
+  const normalizedStatus = normalizeSourceStatus(status);
+  return `<span class="admin-source-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
+}
+
+function renderAdminSourceCardMarkup(source) {
+  const websiteMarkup = source.websiteUrl
+    ? `<a href="${escapeHtml(source.websiteUrl)}" target="_blank" rel="noreferrer">${escapeHtml(source.websiteUrl)}</a>`
+    : '<span class="muted">No website added</span>';
+  const description = source.description || "No description added yet.";
+  const contactLabel = [source.contactName, source.contactEmail].filter(Boolean).join(" · ");
+
+  return `
+    <article class="meta-card admin-source-card">
+      <div class="admin-source-card-head">
+        <div class="admin-source-card-brand">
+          ${renderSourceLogoMarkup(source)}
+          <div class="admin-source-card-copy">
+            <strong>${escapeHtml(source.name || "Unnamed source")}</strong>
+            <p>${websiteMarkup}</p>
+          </div>
+        </div>
+        <div class="admin-source-card-actions">
+          ${renderSourceStatusPillMarkup(source.status)}
+          <button type="button" class="button button-secondary" data-source-edit="${escapeHtml(source.id)}">Edit</button>
+          <button type="button" class="button button-secondary gallery-admin-reject" data-source-delete="${escapeHtml(source.id)}">Delete</button>
+        </div>
+      </div>
+      <p class="admin-source-card-description">${escapeHtml(description)}</p>
+      <div class="admin-source-card-meta">
+        <span><strong>Created:</strong> ${escapeHtml(formatAdminTimestamp(source.createdAt))}</span>
+        <span><strong>Updated:</strong> ${escapeHtml(formatAdminTimestamp(source.updatedAt))}</span>
+        <span><strong>Contact:</strong> ${escapeHtml(contactLabel || "Not provided")}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminSourceEditorMarkup(source = null) {
+  const isEditing = Boolean(source?.id);
+  const submitLabel = isEditing ? "Update Source" : "Add Source";
+  const title = isEditing ? `Edit ${source.name}` : "Add New Source";
+  const subtitle = isEditing
+    ? "Update display info, branding, and visibility for this source."
+    : "Create a source company profile for sessions, gallery metadata, and future branding.";
+
+  return `
+    <form id="admin-source-form" class="admin-source-form">
+      <div class="section-heading admin-source-form-heading">
+        <div>
+          <p class="eyebrow">Source Editor</p>
+          <h4>${escapeHtml(title)}</h4>
+          <p class="muted">${escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+      <div class="admin-source-form-grid">
+        <label>
+          <span>Company / Source Name</span>
+          <input type="text" name="sourceName" value="${escapeHtml(source?.name || "")}" placeholder="Seedsman" required>
+        </label>
+        <label>
+          <span>Website</span>
+          <input type="url" name="websiteUrl" value="${escapeHtml(source?.websiteUrl || "")}" placeholder="https://example.com">
+        </label>
+        <label class="admin-source-form-full">
+          <span>Short Description</span>
+          <textarea name="description" rows="3" placeholder="Short summary for admins and future source branding.">${escapeHtml(source?.description || "")}</textarea>
+        </label>
+        <label>
+          <span>Contact Name</span>
+          <input type="text" name="contactName" value="${escapeHtml(source?.contactName || "")}" placeholder="Optional">
+        </label>
+        <label>
+          <span>Contact Email</span>
+          <input type="email" name="contactEmail" value="${escapeHtml(source?.contactEmail || "")}" placeholder="Optional">
+        </label>
+        <label class="admin-source-form-full">
+          <span>Notes</span>
+          <textarea name="notes" rows="4" placeholder="Optional internal notes.">${escapeHtml(source?.notes || "")}</textarea>
+        </label>
+        <label>
+          <span>Status</span>
+          <select name="status">
+            <option value="active"${normalizeSourceStatus(source?.status) === "active" ? " selected" : ""}>Active</option>
+            <option value="hidden"${normalizeSourceStatus(source?.status) === "hidden" ? " selected" : ""}>Hidden</option>
+          </select>
+        </label>
+        <div class="admin-source-form-full admin-source-logo-field">
+          <span class="admin-source-field-label">Logo</span>
+          <div id="admin-source-logo-preview" class="admin-source-logo-preview"></div>
+          <span class="file-upload-control">
+            <span class="file-upload-button">Choose Logo</span>
+            <span class="file-upload-name">No file selected</span>
+            <input class="file-upload-input" type="file" name="sourceLogo" accept="image/*">
+          </span>
+          <div class="admin-source-logo-actions">
+            <button type="button" class="button button-secondary" id="admin-source-remove-logo">Remove Logo</button>
+          </div>
+          <p class="muted admin-source-logo-helper">Logos will be available for future gallery cards, leaderboard rankings, source filters, and session detail views. Hidden sources are not exposed publicly.</p>
+        </div>
+      </div>
+      <p id="admin-source-form-message" class="snapshot-message">${escapeHtml(appState.sourceAdminMessage || "")}</p>
+      <div class="form-actions admin-source-form-actions">
+        <button type="submit" class="button button-primary">${escapeHtml(submitLabel)}</button>
+        ${isEditing ? '<button type="button" class="button button-secondary" id="admin-source-cancel-edit">Cancel</button>' : ""}
+      </div>
+    </form>
+  `;
+}
+
+function renderAdminSourcesListMarkup() {
+  if (!appState.supabase) {
+    return `
+      <div class="admin-sources-empty">
+        <p>Source management requires Supabase tables and storage to be configured.</p>
+      </div>
+    `;
+  }
+
+  if (!appState.sourcesLoaded && appState.sourcesRefreshPromise) {
+    return `
+      <div class="admin-sources-empty">
+        <p>Loading sources...</p>
+      </div>
+    `;
+  }
+
+  if (appState.sourcesError) {
+    return `
+      <div class="admin-sources-empty">
+        <p>${escapeHtml(appState.sourcesError)}</p>
+      </div>
+    `;
+  }
+
+  if (!appState.sources.length) {
+    return `
+      <div class="admin-sources-empty">
+        <p>No sources have been added yet.</p>
+      </div>
+    `;
+  }
+
+  return appState.sources.map(renderAdminSourceCardMarkup).join("");
+}
+
+function renderAdminSourceLogoPreview(container, state, existingSource = null) {
+  if (!container) {
+    return;
+  }
+
+  const displayUrl = state.previewUrl || (state.removeLogo ? "" : existingSource?.logoUrl || "");
+  container.innerHTML = `
+    <div class="admin-source-logo-preview-shell">
+      ${displayUrl
+    ? renderSourceLogoMarkup({ logoUrl: displayUrl, name: existingSource?.name || "Source logo" }, {
+      className: "admin-source-logo admin-source-logo--preview",
+      imageClassName: "admin-source-logo-image admin-source-logo-image--preview",
+    })
+    : renderSourceLogoMarkup({}, {
+      className: "admin-source-logo admin-source-logo--preview",
+      placeholderClassName: "admin-source-logo-placeholder admin-source-logo-placeholder--preview",
+    })}
+      <div class="admin-source-logo-preview-copy">
+        <strong>${escapeHtml(displayUrl ? "Logo ready" : "No logo uploaded")}</strong>
+        <p>${escapeHtml(displayUrl ? "This logo will be used anywhere source branding is available." : "A clean placeholder icon will be used until a logo is added.")}</p>
+      </div>
+    </div>
+  `;
+}
+
+function ensureSourceDeleteConfirmModal() {
+  let modal = document.querySelector("#source-delete-confirm-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "source-delete-confirm-modal";
+  modal.className = "snapshot-modal source-delete-confirm-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card source-delete-confirm-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Delete Source</p>
+        <h3 id="source-delete-confirm-title">Delete source?</h3>
+        <p id="source-delete-confirm-message">Are you sure? Existing sessions using this source will keep the source name, but the logo/profile info may no longer appear.</p>
+      </div>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-source-delete-cancel>Cancel</button>
+        <button type="button" class="button button-primary gallery-admin-reject" data-source-delete-confirm>Delete Source</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function confirmSourceDeletion(source) {
+  const modal = ensureSourceDeleteConfirmModal();
+  const title = modal.querySelector("#source-delete-confirm-title");
+  const message = modal.querySelector("#source-delete-confirm-message");
+  const cancelButton = modal.querySelector("[data-source-delete-cancel]");
+  const confirmButton = modal.querySelector("[data-source-delete-confirm]");
+
+  if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
+    return Promise.resolve(window.confirm("Are you sure? Existing sessions using this source will keep the source name, but the logo/profile info may no longer appear."));
+  }
+
+  if (title) {
+    title.textContent = `Delete ${source?.name || "this source"}?`;
+  }
+  if (message) {
+    message.textContent = "Are you sure? Existing sessions using this source will keep the source name, but the logo/profile info may no longer appear.";
+  }
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cancelButton.removeEventListener("click", onCancel);
+      confirmButton.removeEventListener("click", onConfirm);
+      modal.removeEventListener("cancel", onCancel);
+      if (modal.open) {
+        modal.close();
+      }
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    cancelButton.addEventListener("click", onCancel, { once: true });
+    confirmButton.addEventListener("click", onConfirm, { once: true });
+    modal.addEventListener("cancel", onCancel, { once: true });
+    modal.showModal();
+    cancelButton.focus();
+  });
+}
+
+function bindAdminSourcesSection() {
+  const list = app.querySelector("#admin-sources-list");
+  const editor = app.querySelector("#admin-source-editor");
+  if (!list || !editor) {
+    return;
+  }
+
+  list.querySelectorAll("[data-source-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.sourceAdminEditingId = button.dataset.sourceEdit || "";
+      appState.sourceAdminMessage = "";
+      safeRender();
+    });
+  });
+
+  list.querySelectorAll("[data-source-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const source = appState.sources.find((entry) => entry.id === button.dataset.sourceDelete);
+      if (!source) {
+        return;
+      }
+
+      const confirmed = await confirmSourceDeletion(source);
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteSourceRecord(source);
+        if (appState.sourceAdminEditingId === source.id) {
+          appState.sourceAdminEditingId = "";
+        }
+        appState.sourceAdminMessage = `Deleted ${source.name}.`;
+        safeRender();
+      } catch (error) {
+        appState.sourceAdminMessage = error.message || "Could not delete source.";
+        safeRender();
+      }
+    });
+  });
+
+  const form = editor.querySelector("#admin-source-form");
+  if (!form) {
+    return;
+  }
+
+  const existingSource = appState.sources.find((entry) => entry.id === appState.sourceAdminEditingId) || null;
+  const logoInput = form.elements.sourceLogo;
+  const preview = form.querySelector("#admin-source-logo-preview");
+  const removeLogoButton = form.querySelector("#admin-source-remove-logo");
+  const cancelEditButton = form.querySelector("#admin-source-cancel-edit");
+  const message = form.querySelector("#admin-source-form-message");
+  const submitButton = form.querySelector('button[type="submit"]');
+  const state = {
+    previewUrl: "",
+    pendingFile: null,
+    removeLogo: false,
+  };
+
+  bindFileUploadControl(logoInput);
+  updateFileUploadName(logoInput);
+  renderAdminSourceLogoPreview(preview, state, existingSource);
+
+  logoInput?.addEventListener("change", () => {
+    const file = logoInput.files?.[0];
+    updateFileUploadName(logoInput);
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      message.textContent = "Images only. Please choose a valid source logo.";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      message.textContent = "Image is too large. Please choose an image under 12 MB.";
+      return;
+    }
+
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+    }
+
+    state.pendingFile = file;
+    state.removeLogo = false;
+    state.previewUrl = URL.createObjectURL(file);
+    message.textContent = "";
+    renderAdminSourceLogoPreview(preview, state, existingSource);
+  });
+
+  removeLogoButton?.addEventListener("click", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = "";
+    }
+    state.pendingFile = null;
+    state.removeLogo = true;
+    if (logoInput) {
+      logoInput.value = "";
+      updateFileUploadName(logoInput, []);
+    }
+    renderAdminSourceLogoPreview(preview, state, existingSource);
+  });
+
+  cancelEditButton?.addEventListener("click", () => {
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+    }
+    appState.sourceAdminEditingId = "";
+    appState.sourceAdminMessage = "";
+    safeRender();
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = normalizeLeaderboardLabel(form.elements.sourceName?.value || "");
+    if (!name) {
+      message.textContent = "Please enter a source name before saving.";
+      form.elements.sourceName?.focus();
+      return;
+    }
+
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true;
+    }
+    message.textContent = "";
+
+    try {
+      const savedSource = await saveSourceRecord({
+        name,
+        websiteUrl: form.elements.websiteUrl?.value || "",
+        description: form.elements.description?.value || "",
+        contactName: form.elements.contactName?.value || "",
+        contactEmail: form.elements.contactEmail?.value || "",
+        notes: form.elements.notes?.value || "",
+        status: form.elements.status?.value || "active",
+        logoFile: state.pendingFile,
+        removeLogo: state.removeLogo,
+      }, {
+        existingSource,
+      });
+
+      if (state.previewUrl) {
+        URL.revokeObjectURL(state.previewUrl);
+      }
+
+      appState.sourceAdminEditingId = "";
+      appState.sourceAdminMessage = `${existingSource ? "Updated" : "Added"} ${savedSource.name}.`;
+      safeRender();
+    } catch (error) {
+      message.textContent = error.message || "Could not save source.";
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+    }
+  });
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -7375,6 +8230,25 @@ function renderAdminPage() {
     <section class="card admin-section-card">
       <div class="section-heading">
         <div>
+          <p class="eyebrow">Sources</p>
+          <h3>Manage source companies, logos, and display info.</h3>
+          <p class="muted">Add, update, hide, or delete source companies without changing the current public gallery layout.</p>
+        </div>
+      </div>
+      <div class="admin-sources-layout">
+        <div class="admin-sources-list-shell">
+          <div class="admin-sources-list-head">
+            <strong>Saved Sources</strong>
+            <span class="muted">${escapeHtml(`${appState.sources.length} total`)}</span>
+          </div>
+          <div id="admin-sources-list" class="admin-sources-list"></div>
+        </div>
+        <div id="admin-source-editor" class="meta-card admin-source-editor"></div>
+      </div>
+    </section>
+    <section class="card admin-section-card">
+      <div class="section-heading">
+        <div>
           <p class="eyebrow">System Tools</p>
           <h3>Admin-only utilities</h3>
           <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
@@ -7387,6 +8261,15 @@ function renderAdminPage() {
 
   if (!appState.memberCountLoaded && !appState.memberCountRefreshPromise && appState.supabase) {
     void refreshRegisteredMemberCount().then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (!appState.sourcesLoaded && !appState.sourcesRefreshPromise && appState.supabase) {
+    void refreshSources({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
@@ -7452,6 +8335,18 @@ function renderAdminPage() {
   if (systemToolsContainer) {
     systemToolsContainer.innerHTML = `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`;
   }
+
+  const sourceList = app.querySelector("#admin-sources-list");
+  if (sourceList) {
+    sourceList.innerHTML = renderAdminSourcesListMarkup();
+  }
+
+  const sourceEditor = app.querySelector("#admin-source-editor");
+  if (sourceEditor) {
+    const editingSource = appState.sources.find((entry) => entry.id === appState.sourceAdminEditingId) || null;
+    sourceEditor.innerHTML = renderAdminSourceEditorMarkup(editingSource);
+  }
+  bindAdminSourcesSection();
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
@@ -8906,6 +9801,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   if (partitionWorkTitle) {
     updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
   }
+  ensureSourceCatalogDatalist();
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
@@ -9306,7 +10202,7 @@ function buildPartitionFormCard(partition, index) {
     <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
     <label>
       <span class="mobile-field-label">Source</span>
-        <input type="text" name="source-${index}" class="partition-input" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source">
+        <input type="text" name="source-${index}" class="partition-input" list="${SOURCE_CATALOG_DATALIST_ID}" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source">
     </label>
     <label>
       <span class="mobile-field-label">Seed Variety</span>
@@ -9364,6 +10260,25 @@ function buildPartitionFormCard(partition, index) {
     </div>
   `;
   return row;
+}
+
+function ensureSourceCatalogDatalist() {
+  if (!(document.body instanceof HTMLBodyElement)) {
+    return null;
+  }
+
+  let datalist = document.querySelector(`#${SOURCE_CATALOG_DATALIST_ID}`);
+  if (!(datalist instanceof HTMLDataListElement)) {
+    datalist = document.createElement("datalist");
+    datalist.id = SOURCE_CATALOG_DATALIST_ID;
+    document.body.appendChild(datalist);
+  }
+
+  datalist.innerHTML = getSourceCatalogRecords()
+    .map((source) => `<option value="${escapeHtml(source.name)}"></option>`)
+    .join("");
+
+  return datalist;
 }
 
 function renderPartitionRows(form, systemType, sessionStatus) {
@@ -10032,6 +10947,7 @@ function renderSessionDetail(sessionId) {
     partitions.appendChild(buildPartitionFormCard(partition, index));
     hydratePartitionRow(partitions.lastElementChild, partition);
   });
+  ensureSourceCatalogDatalist();
   initializeCustomSelects(partitions);
   bindPartitionRowVisualState(partitions);
   applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
