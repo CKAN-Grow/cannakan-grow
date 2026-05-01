@@ -4224,6 +4224,41 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-bottom: 0;
 }
 
+.leaderboard-audit-controls {
+  position: sticky;
+  top: 12px;
+  z-index: 3;
+  display: grid;
+  gap: var(--space-stack);
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(109, 124, 113, 0.18);
+  background: rgba(248, 250, 247, 0.92);
+  box-shadow:
+    0 14px 24px rgba(24, 34, 24, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(10px);
+}
+
+.leaderboard-audit-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-stack);
+}
+
+.leaderboard-audit-toolbar-group {
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-audit-toolbar-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .leaderboard-audit-actions {
   display: flex;
   gap: var(--space-stack);
@@ -4259,6 +4294,36 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .leaderboard-audit-filter-grid input,
 .leaderboard-audit-filter-grid select {
   width: 100%;
+}
+
+.leaderboard-audit-quick-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.leaderboard-audit-quick-filter {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(109, 124, 113, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.leaderboard-audit-quick-filter:hover,
+.leaderboard-audit-quick-filter:focus-visible {
+  border-color: rgba(148, 209, 89, 0.32);
+  background: rgba(148, 209, 89, 0.12);
+  outline: none;
+}
+
+.leaderboard-audit-quick-filter.is-active {
+  border-color: rgba(148, 209, 89, 0.34);
+  background: rgba(148, 209, 89, 0.18);
+  color: var(--accent-dark);
 }
 
 .leaderboard-audit-chip-row {
@@ -5939,6 +6004,7 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: 1fr;
   }
 
+  .leaderboard-audit-toolbar,
   .leaderboard-audit-filter-grid,
   .leaderboard-audit-quick-stats,
   .leaderboard-audit-metrics-grid {
@@ -7978,6 +8044,14 @@ body.theme-dark .leaderboard-audit-table-shell {
   background: rgba(24, 30, 26, 0.82);
 }
 
+body.theme-dark .leaderboard-audit-controls {
+  border-color: rgba(111, 122, 116, 0.24);
+  background: rgba(24, 30, 26, 0.92);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 body.theme-dark .leaderboard-audit-chip {
   border-color: rgba(111, 122, 116, 0.26);
   background: rgba(31, 40, 35, 0.88);
@@ -7990,6 +8064,24 @@ body.theme-dark .leaderboard-audit-chip:focus-visible {
   background: rgba(148, 209, 89, 0.14);
 }
 
+body.theme-dark .leaderboard-audit-quick-filter {
+  border-color: rgba(111, 122, 116, 0.26);
+  background: rgba(31, 40, 35, 0.88);
+  color: #f6f8f5;
+}
+
+body.theme-dark .leaderboard-audit-quick-filter:hover,
+body.theme-dark .leaderboard-audit-quick-filter:focus-visible {
+  border-color: rgba(148, 209, 89, 0.34);
+  background: rgba(148, 209, 89, 0.14);
+}
+
+body.theme-dark .leaderboard-audit-quick-filter.is-active {
+  border-color: rgba(148, 209, 89, 0.38);
+  background: rgba(148, 209, 89, 0.22);
+  color: #d8f2bf;
+}
+
 body.theme-dark .leaderboard-audit-metric-head strong,
 body.theme-dark .leaderboard-audit-metric-grid strong,
 body.theme-dark .leaderboard-audit-quick-stat-value,
@@ -7998,6 +8090,7 @@ body.theme-dark .leaderboard-audit-empty-state strong {
 }
 
 body.theme-dark .leaderboard-audit-filter-state,
+body.theme-dark .leaderboard-audit-toolbar-label,
 body.theme-dark .leaderboard-audit-metric-grid span,
 body.theme-dark .leaderboard-audit-quick-stat-label,
 body.theme-dark .leaderboard-audit-quick-stat-detail,
@@ -9113,6 +9206,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .leaderboard-audit-actions,
+  .leaderboard-audit-toolbar,
   .leaderboard-audit-filter-grid,
   .leaderboard-audit-quick-stats,
   .leaderboard-audit-metrics-grid {
@@ -9123,12 +9217,18 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     display: grid;
   }
 
+  .leaderboard-audit-controls,
   .leaderboard-audit-actions {
     display: grid;
   }
 
   .leaderboard-audit-chip-row {
     gap: 8px;
+  }
+
+  .leaderboard-audit-controls {
+    top: 8px;
+    padding: 14px;
   }
 
   .admin-source-card-head,
