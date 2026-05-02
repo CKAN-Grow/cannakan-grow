@@ -12306,6 +12306,15 @@ function renderAppSectionHeaderIcon(iconType = "overview") {
           <path d="M13.8 17.2c.5-1.3 1.7-2.2 3.2-2.2 1.2 0 2.2.4 3 .9"></path>
         </svg>
       `;
+    case "plant":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 19.5V11"></path>
+          <path d="M7.5 19.5h9"></path>
+          <path d="M12 11c0-3 2-5.5 5-6 0 3.2-1.8 6.4-5 7.5"></path>
+          <path d="M12 13c0-2.8-1.7-5.2-4.5-6.2-.2 3.2 1.1 6 4.5 7.4"></path>
+        </svg>
+      `;
     case "reports":
       return `
         <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -12342,6 +12351,13 @@ function renderAppSectionHeaderIcon(iconType = "overview") {
           <path d="m5.5 9.5 4-3 3 2 6-4"></path>
         </svg>
       `;
+    case "trending":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5.5 18.5 11 13l3.2 3.2 4.3-6.2"></path>
+          <path d="M14.5 10h4.5v4.5"></path>
+        </svg>
+      `;
     case "moderation":
     case "review":
       return `
@@ -12361,6 +12377,12 @@ function renderAppSectionHeaderIcon(iconType = "overview") {
           <path d="M4.5 14h3l2.2-4 3.1 8 2.2-5H19.5"></path>
           <path d="M4.5 19.5h15"></path>
           <path d="M7.5 6.5h9"></path>
+        </svg>
+      `;
+    case "heart":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="m12 19-1.2-1.1C6.4 13.9 4 11.7 4 8.8 4 6.5 5.8 5 8 5c1.5 0 2.9.7 4 2 1.1-1.3 2.5-2 4-2 2.2 0 4 1.5 4 3.8 0 2.9-2.4 5.1-6.8 9.1Z"></path>
         </svg>
       `;
     case "following":
@@ -24412,21 +24434,21 @@ function renderGrowNetworkPage() {
       detail: showPreviewStats ? "preview network reach" : "following your profile",
     },
     {
-      icon: "snapshots",
+      icon: "plant",
       tone: "green",
       value: formatGrowNetworkStatValue(activeGrowersCount),
       label: "Active Growers",
       detail: showPreviewStats ? "with recent public activity" : "recent public growers",
     },
     {
-      icon: "activity",
+      icon: "heart",
       tone: "red",
       value: formatGrowNetworkStatValue(likesReceivedCount),
       label: "Likes Received",
       detail: appState.gallerySnapshotLikesTableUnavailable ? "likes fallback active" : "across your public grow",
     },
     {
-      icon: "analytics",
+      icon: "trending",
       tone: "orange",
       value: formatGrowNetworkStatValue(sessionsTrendingCount),
       label: "Sessions Trending",
