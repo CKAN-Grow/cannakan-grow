@@ -4602,7 +4602,13 @@ function isUserNotificationPreferencesSchemaModeError(error) {
   );
 }
 
+function getDefaultNotificationPreferences() {
+  return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+}
+
 function markUserNotificationPreferencesTableUnavailable() {
+  // TODO: Apply `supabase-notification-preferences-migration.sql` in Supabase
+  // so these preferences can persist instead of falling back to session defaults.
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
@@ -4640,6 +4646,15 @@ function setUserNotificationPreferencesSchemaMode(modeOrRow = "") {
   appState.notificationPreferencesSchemaMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(nextMode)
     ? nextMode
     : "";
+}
+
+async function safelyEnsureUserNotificationPreferences(user) {
+  try {
+    return await ensureUserNotificationPreferences(user);
+  } catch (error) {
+    markUserNotificationPreferencesTableUnavailable();
+    return getDefaultNotificationPreferences();
+  }
 }
 
 function getUserNotificationPreferencesBooleanValue(row, keys = [], fallbackValue = true) {
@@ -5267,8 +5282,8 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           "profileError",
         );
         appState.notificationPreferences = await safelyLoadAppData(
-          () => ensureUserNotificationPreferences(appState.user),
-          { ...DEFAULT_NOTIFICATION_PREFERENCES },
+          () => safelyEnsureUserNotificationPreferences(appState.user),
+          getDefaultNotificationPreferences(),
           "Failed to initialize notification preferences during auth hydration.",
           "notificationPreferencesError",
         );
@@ -5391,7 +5406,7 @@ async function loadUserProfile() {
 
 async function ensureUserNotificationPreferences(user) {
   if (!appState.supabase || !user?.id || appState.notificationPreferencesTableUnavailable) {
-    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    return getDefaultNotificationPreferences();
   }
 
   appState.notificationPreferencesError = "";
@@ -5405,16 +5420,10 @@ async function ensureUserNotificationPreferences(user) {
   if (selectError) {
     if (isUserNotificationPreferencesTableMissingError(selectError)) {
       markUserNotificationPreferencesTableUnavailable();
-      return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+      return getDefaultNotificationPreferences();
     }
-    logRuntimeIssueOnce(
-      "warn",
-      "notification-preferences-check-failed",
-      "Notification preferences unavailable; using defaults for this session.",
-      selectError,
-    );
-    appState.notificationPreferencesError = selectError.message || "Could not check notification preferences.";
-    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    markUserNotificationPreferencesTableUnavailable();
+    return getDefaultNotificationPreferences();
   }
 
   if (existingPreferences) {
@@ -5433,16 +5442,10 @@ async function ensureUserNotificationPreferences(user) {
   if (upsertError) {
     if (isUserNotificationPreferencesTableMissingError(upsertError)) {
       markUserNotificationPreferencesTableUnavailable();
-      return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+      return getDefaultNotificationPreferences();
     }
-    logRuntimeIssueOnce(
-      "warn",
-      "notification-preferences-create-failed",
-      "Notification preferences unavailable; using defaults for this session.",
-      upsertError,
-    );
-    appState.notificationPreferencesError = upsertError.message || "Could not create notification preferences.";
-    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    markUserNotificationPreferencesTableUnavailable();
+    return getDefaultNotificationPreferences();
   }
 
   setUserNotificationPreferencesSchemaMode(savedPreferences);
@@ -9304,11 +9307,19 @@ async function saveUserNotificationPreferences(preferencesInput) {
       existingPreferences,
       writeMode,
     );
-    const { data, error } = await appState.supabase
-      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-      .upsert(payload, { onConflict: "user_id" })
-      .select("*")
-      .single();
+    let data = null;
+    let error = null;
+    try {
+      const response = await appState.supabase
+        .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+        .upsert(payload, { onConflict: "user_id" })
+        .select("*")
+        .single();
+      data = response?.data || null;
+      error = response?.error || null;
+    } catch (requestError) {
+      error = requestError;
+    }
 
     if (!error) {
       setUserNotificationPreferencesSchemaMode(data || writeMode);
@@ -9325,11 +9336,8 @@ async function saveUserNotificationPreferences(preferencesInput) {
       return normalizeUserNotificationPreferencesRow(fallbackPayload);
     }
 
-    console.error("[Cannakan Profile] Supabase notification preference upsert failed", {
-      payload,
-      error,
-    });
-    throw error;
+    markUserNotificationPreferencesTableUnavailable();
+    return normalizeUserNotificationPreferencesRow(fallbackPayload);
   }
 
   if (isUserNotificationPreferencesSchemaModeError(lastError)) {
