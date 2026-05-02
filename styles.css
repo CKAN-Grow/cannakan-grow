@@ -2985,7 +2985,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card {
   display: block;
   margin-top: 0;
-  padding: 18px 20px;
+  padding: 16px 18px;
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.16), transparent 38%),
@@ -3482,19 +3482,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-body {
   display: grid;
-  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  grid-template-columns: minmax(190px, 228px) minmax(0, 1fr);
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
 }
 
 .home-install-card-content {
-  display: flex;
+  display: grid;
   min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 14px;
+  align-content: center;
+  gap: 12px;
 }
 
 .home-install-card-copy {
@@ -3544,7 +3542,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-directions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   align-content: start;
 }
@@ -3553,7 +3551,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 6px;
   min-width: 0;
-  padding: 10px 12px;
+  padding: 10px 11px;
   border-radius: 16px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.42);
@@ -3604,6 +3602,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-card-tip.is-disabled {
   color: var(--muted);
+}
+
+@media (max-width: 980px) {
+  .home-install-card-body {
+    grid-template-columns: minmax(178px, 210px) minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .home-install-card-directions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .filter-paper-card {

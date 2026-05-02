@@ -1160,7 +1160,7 @@ function syncInstallPromptBanner() {
   const bodyMarkup = mode === "prompt"
     ? `
       <div class="install-app-banner-actions">
-        <button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Grow App</button>
+        <button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Now</button>
       </div>
     `
     : `
@@ -14994,7 +14994,7 @@ function renderHomeInstallInfoCardMarkup() {
     : isIOS
       ? "Use Share → Add to Home Screen"
       : hasDeferredPrompt
-        ? "Install Grow App"
+        ? "Install Now"
         : "Install available on supported browsers";
   const buttonEnabled = hasDeferredPrompt && !isInstalled;
   const statusToneClass = isInstalled
