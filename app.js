@@ -15008,14 +15008,9 @@ function renderHomeInstallInfoCardMarkup() {
           <div class="home-install-card-content">
             <div class="home-install-card-copy">
               <div class="home-install-card-copy-block">
-                <div class="section-title-with-icon app-section-header-main">
-                  ${renderAppSectionHeaderIcon("install")}
-                  <div>
-                    <p class="eyebrow">Install App</p>
-                    <h3 id="home-install-card-title">Install the Grow App</h3>
-                    <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
-                  </div>
-                </div>
+                <p class="eyebrow">Install App</p>
+                <h3 id="home-install-card-title">Install the Grow App</h3>
+                <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
               </div>
             </div>
             <div class="home-install-card-directions">

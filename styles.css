@@ -3019,16 +3019,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 1 clamp(200px, 26vw, 240px);
   min-width: 0;
-  height: 100%;
+  height: auto;
+  align-self: center;
 }
 
 .home-install-card .home-install-card-preview {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 1 clamp(200px, 26vw, 240px);
   min-width: 0;
-  height: 100%;
+  height: auto;
+  align-self: center;
 }
 
 .phone-mock,
@@ -3038,10 +3042,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: auto;
+  width: min(100%, clamp(190px, 22vw, 220px));
   max-width: 100%;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: none;
   aspect-ratio: 9 / 18;
   margin-bottom: 0;
   padding: 10px;
@@ -3057,10 +3061,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: auto;
+  width: min(100%, clamp(190px, 22vw, 220px));
   max-width: 100%;
-  height: 100%;
-  max-height: 100%;
+  height: auto;
+  max-height: none;
   aspect-ratio: 9 / 18;
   margin-bottom: 0;
   padding: 10px;
@@ -3522,8 +3526,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-install-card-body {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  align-items: center;
   gap: 24px;
   min-width: 0;
 }
@@ -3531,10 +3536,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card-content {
   display: flex;
   min-width: 0;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   flex-direction: column;
   justify-content: space-between;
-  gap: 10px;
+  gap: 14px;
 }
 
 .home-install-card-copy {
@@ -3551,12 +3556,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card-copy-block {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  align-content: start;
+}
+
+.home-install-card-copy-block h3 {
+  max-width: 18ch;
+  text-wrap: balance;
+  line-height: 1.1;
 }
 
 .home-install-card-description {
   margin: 0;
-  max-width: 42ch;
+  max-width: 44ch;
   color: var(--muted);
   font-size: 0.94rem;
   line-height: 1.42;
@@ -3566,24 +3578,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  width: 100%;
 }
 
 .home-install-card-actions .install-app-button {
   width: 100%;
-  min-width: 100%;
+  min-width: 0;
   justify-content: center;
 }
 
 .home-install-card-directions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 12px;
   align-content: start;
 }
 
 .home-install-card-platform {
   display: grid;
   gap: 6px;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 16px;
   border: 1px solid rgba(148, 209, 89, 0.12);
@@ -8818,7 +8832,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-install-card-body {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
     gap: 18px;
   }
