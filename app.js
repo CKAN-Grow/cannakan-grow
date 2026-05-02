@@ -22762,19 +22762,110 @@ function renderGrowNetworkPage() {
     </a>
   `;
 
-  const growNetworkStats = showPreviewStats
-    ? [
-      { icon: "members", tone: "white", value: "128", label: "Total Followers", detail: "+12 this week" },
-      { icon: "snapshots", tone: "green", value: "76", label: "Active Growers", detail: "+8 this week" },
-      { icon: "activity", tone: "red", value: "2.4K", label: "Likes Received", detail: "+156 this week" },
-      { icon: "analytics", tone: "orange", value: "15", label: "Sessions Trending", detail: "+3 this week" },
-    ]
-    : [
-      { icon: "members", tone: "white", value: followingEntries.length.toLocaleString(), label: "Growers You Follow", detail: isLoadingFollowing ? "loading network" : "active connections" },
-      { icon: "snapshots", tone: "green", value: new Set(activities.map((activity) => activity.memberId)).size.toLocaleString(), label: "Active Growers", detail: isLoadingNetworkActivity ? "loading activity" : "with recent updates" },
-      { icon: "activity", tone: "red", value: activities.length.toLocaleString(), label: "Activity Events", detail: isLoadingNetworkActivity ? "loading feed" : "recent network events" },
-      { icon: "analytics", tone: "orange", value: followingEntries.length ? Math.max(1, Math.min(activities.length, followingEntries.length)).toLocaleString() : "0", label: "Trending Sessions", detail: "public growth shared" },
-    ];
+  const recentWindowMs = 14 * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  const currentUserId = String(appState.user?.id || "").trim();
+  const currentUserFollowList = currentUserId ? getPublicMemberFollowList(currentUserId, "followers") : null;
+  const approvedPublicSnapshots = getGallerySnapshotsForDisplay().filter((snapshot) => (
+    getGallerySnapshotDisplayStatus(snapshot) === "approved"
+  ));
+  const currentUserPublicSnapshots = approvedPublicSnapshots.filter((snapshot) => (
+    String(snapshot?.userId || "").trim() === currentUserId
+  ));
+  const isWithinRecentWindow = (value = "") => {
+    const dateMs = parseCompletedAtValue(value)?.getTime() || 0;
+    return dateMs > 0 && (nowMs - dateMs) <= recentWindowMs;
+  };
+  const formatGrowNetworkStatValue = (value = 0) => {
+    const normalizedValue = Math.max(0, Number(value) || 0);
+    if (normalizedValue >= 1000) {
+      return new Intl.NumberFormat("en-US", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(normalizedValue);
+    }
+    return normalizedValue.toLocaleString();
+  };
+
+  let totalFollowersCount = 0;
+  let activeGrowersCount = 0;
+  let likesReceivedCount = 0;
+  let sessionsTrendingCount = 0;
+
+  if (showPreviewStats) {
+    const mockPrimaryProfile = getMockGrowNetworkProfiles().find((profile) => profile.id === "mock-don-cannakan")
+      || getMockGrowNetworkProfiles()[0]
+      || null;
+    const mockActivityEntries = buildMockGrowNetworkActivityEntries();
+    const mockRecentNotifications = getMockGrowNetworkNotifications().filter((notification) => isWithinRecentWindow(notification.occurredAt));
+
+    // Temporary preview fallback: until live social aggregates exist for the signed-in account,
+    // Grow Network preview mode uses the canonical mock profile and mock notification feed.
+    totalFollowersCount = Math.max(0, Number(mockPrimaryProfile?.followerCount) || 0);
+    likesReceivedCount = Math.max(0, Number(mockPrimaryProfile?.likes) || 0);
+    activeGrowersCount = new Set(mockActivityEntries.map((activity) => activity.memberId).filter(Boolean)).size;
+    sessionsTrendingCount = new Set(mockRecentNotifications
+      .filter((notification) => (
+        ["like", "system"].includes(String(notification?.type || "").trim().toLowerCase())
+        && ["session", "snapshot"].includes(String(notification?.targetType || "").trim().toLowerCase())
+        && String(notification?.targetId || "").trim()
+      ))
+      .map((notification) => String(notification.targetId || "").trim())).size;
+  } else {
+    totalFollowersCount = currentUserFollowSummary
+      ? Math.max(0, Number(currentUserFollowSummary.followerCount) || 0)
+      : (Array.isArray(currentUserFollowList) ? currentUserFollowList.length : 0);
+
+    const recentActivityEntries = activities.filter((activity) => isWithinRecentWindow(activity.occurredAt));
+    const recentApprovedSnapshots = approvedPublicSnapshots.filter((snapshot) => (
+      isWithinRecentWindow(snapshot.publishedAt || snapshot.createdAt || "")
+    ));
+    activeGrowersCount = recentActivityEntries.length
+      ? new Set(recentActivityEntries.map((activity) => activity.memberId).filter(Boolean)).size
+      : new Set(recentApprovedSnapshots.map((snapshot) => String(snapshot?.userId || "").trim()).filter(Boolean)).size;
+
+    likesReceivedCount = currentUserPublicSnapshots.reduce((sum, snapshot) => (
+      sum + Math.max(0, Number(snapshot?.likeCount) || 0)
+    ), 0);
+
+    // Temporary engagement proxy: the app does not yet store like timestamps, so "trending"
+    // uses recently published public snapshots with at least one like.
+    sessionsTrendingCount = currentUserPublicSnapshots.filter((snapshot) => (
+      isWithinRecentWindow(snapshot.publishedAt || snapshot.createdAt || "")
+      && Math.max(0, Number(snapshot?.likeCount) || 0) > 0
+    )).length;
+  }
+
+  const growNetworkStats = [
+    {
+      icon: "members",
+      tone: "white",
+      value: formatGrowNetworkStatValue(totalFollowersCount),
+      label: "Total Followers",
+      detail: showPreviewStats ? "preview network reach" : "following your profile",
+    },
+    {
+      icon: "snapshots",
+      tone: "green",
+      value: formatGrowNetworkStatValue(activeGrowersCount),
+      label: "Active Growers",
+      detail: showPreviewStats ? "with recent public activity" : "recent public growers",
+    },
+    {
+      icon: "activity",
+      tone: "red",
+      value: formatGrowNetworkStatValue(likesReceivedCount),
+      label: "Likes Received",
+      detail: appState.gallerySnapshotLikesTableUnavailable ? "likes fallback active" : "across your public grow",
+    },
+    {
+      icon: "analytics",
+      tone: "orange",
+      value: formatGrowNetworkStatValue(sessionsTrendingCount),
+      label: "Sessions Trending",
+      detail: showPreviewStats ? "recent engagement signals" : "recent public sessions with likes",
+    },
+  ];
 
   const renderFollowingListMarkup = () => {
     if (isLoadingFollowing) {
