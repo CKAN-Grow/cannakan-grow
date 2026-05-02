@@ -4342,22 +4342,25 @@ function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
   return normalizedValue || fallback;
 }
 
+function isSupabaseUuidLike(value = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
 function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
   void metadata;
   const payload = buildSiteAnalyticsVisitorPayload(pageContext);
-  const normalizedPageContext = {
-    pageGroup: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageGroup, "other").toLowerCase(),
-    pageKey: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "other").toLowerCase(),
-  };
-  // Keep inserts compatible with older Supabase projects that may still have a reduced
-  // site_analytics_events schema; richer columns can be backfilled by the additive SQL migration.
+  const page = normalizeSiteAnalyticsTextValue(
+    payload.pageContext?.pagePath,
+    normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "/"),
+  );
   const insertPayload = {
-    occurred_at: new Date().toISOString(),
-    visitor_id: normalizeSiteAnalyticsTextValue(payload.visitorId, getOrCreateSiteVisitorId()),
     event_type: normalizeSiteAnalyticsEventType(eventType),
-    page_group: normalizedPageContext.pageGroup,
-    page_key: normalizedPageContext.pageKey,
+    page,
+    created_at: new Date().toISOString(),
   };
+  if (isSupabaseUuidLike(payload.userId)) {
+    insertPayload.user_id = payload.userId;
+  }
   return insertPayload;
 }
 
@@ -4379,7 +4382,6 @@ function disableSiteAnalyticsForSession(userMessage = "") {
   if (userMessage) {
     appState.siteVisitorAnalyticsError = userMessage;
   }
-  logRuntimeIssueOnce("warn", "site-analytics-disabled", "Site analytics disabled");
 }
 
 function markSiteAnalyticsTableUnavailable() {
@@ -4420,10 +4422,10 @@ function normalizeSiteAnalyticsRow(row) {
     profileName: String(row.profile_name || "").trim(),
     userEmail: String(row.user_email || "").trim().toLowerCase(),
     eventType: normalizeSiteAnalyticsEventType(row.event_type),
-    pageGroup: String(row.page_group || "").trim().toLowerCase(),
-    pageKey: String(row.page_key || "").trim().toLowerCase(),
-    pageLabel: String(row.page_label || "").trim(),
-    pagePath: String(row.page_path || "").trim(),
+    pageGroup: String(row.page_group || row.page || "").trim().toLowerCase(),
+    pageKey: String(row.page_key || row.page || "").trim().toLowerCase(),
+    pageLabel: String(row.page_label || row.page || "").trim(),
+    pagePath: String(row.page_path || row.page || "").trim(),
     deviceType: String(row.device_type || "").trim().toLowerCase(),
     browserName: String(row.browser_name || "").trim(),
     referrer: String(row.referrer || "").trim(),
@@ -4459,6 +4461,7 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
   appState.siteAnalyticsEventInFlight = true;
   try {
     const insertPayload = buildSiteAnalyticsInsertPayload(eventType, pageContext, metadata);
+    console.info("[Site Analytics] Insert payload", insertPayload);
     const { error } = await appState.supabase
       .from(SITE_ANALYTICS_TABLE)
       .insert(insertPayload);
@@ -4712,11 +4715,11 @@ async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_F
     let query = appState.supabase
       .from(SITE_ANALYTICS_TABLE)
       .select("*")
-      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .range(from, from + pageSize - 1);
 
     if (startDate) {
-      query = query.gte("occurred_at", startDate);
+      query = query.gte("created_at", startDate);
     }
 
     const { data, error } = await query;

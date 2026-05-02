@@ -148,27 +148,23 @@ create table if not exists public.community_activity (
 
 create table if not exists public.site_analytics_events (
   id uuid primary key default gen_random_uuid(),
-  visitor_id text not null,
-  visit_id text not null default '',
   user_id uuid references auth.users(id) on delete set null,
-  profile_name text default '',
-  user_email text default '',
   event_type text not null default 'page_view',
-  page_group text not null default 'other',
-  page_key text not null default 'other',
-  page_label text default '',
-  page_path text default '',
-  device_type text default 'desktop',
-  browser_name text default '',
-  referrer text default '',
-  is_pwa boolean not null default false,
-  metadata jsonb not null default '{}'::jsonb,
-  occurred_at timestamptz not null default timezone('utc', now()),
+  page text not null default '',
   created_at timestamptz not null default timezone('utc', now())
 );
 
 alter table public.site_analytics_events
-  add column if not exists visitor_id text;
+  add column if not exists page text not null default '';
+
+alter table public.site_analytics_events
+  add column if not exists visitor_id text default '';
+
+alter table public.site_analytics_events
+  alter column visitor_id set default '';
+
+alter table public.site_analytics_events
+  alter column visitor_id drop not null;
 
 alter table public.site_analytics_events
   add column if not exists visit_id text default '';
@@ -258,20 +254,20 @@ create index if not exists community_activity_visibility_created_idx
 create index if not exists community_activity_user_visibility_created_idx
   on public.community_activity (user_id, visibility, created_at desc);
 
-create index if not exists site_analytics_events_occurred_at_idx
-  on public.site_analytics_events (occurred_at desc);
+create index if not exists site_analytics_events_created_at_idx
+  on public.site_analytics_events (created_at desc);
 
-create index if not exists site_analytics_events_event_type_idx
-  on public.site_analytics_events (event_type, occurred_at desc);
+create index if not exists site_analytics_events_event_type_created_at_idx
+  on public.site_analytics_events (event_type, created_at desc);
 
-create index if not exists site_analytics_events_page_group_idx
-  on public.site_analytics_events (page_group, occurred_at desc);
+create index if not exists site_analytics_events_page_created_at_idx
+  on public.site_analytics_events (page, created_at desc);
 
 create index if not exists site_analytics_events_visitor_idx
-  on public.site_analytics_events (visitor_id, occurred_at desc);
+  on public.site_analytics_events (visitor_id, created_at desc);
 
 create index if not exists site_analytics_events_user_idx
-  on public.site_analytics_events (user_id, occurred_at desc);
+  on public.site_analytics_events (user_id, created_at desc);
 
 alter table public.profiles
   add column if not exists username text not null default '';
