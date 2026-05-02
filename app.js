@@ -148,6 +148,7 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   notifyCompletion: true,
   notifyFollow: true,
   notifyLike: true,
+  notifyCommunityActivity: false,
   createdAt: "",
   updatedAt: "",
 });
@@ -166,9 +167,10 @@ const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
 ]);
 const USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS = Object.freeze([
   "email_notifications",
-  "low_filter_alerts",
-  "session_reminders",
-  "community_updates",
+  "push_notifications",
+  "follow_notifications",
+  "like_notifications",
+  "community_activity_notifications",
 ]);
 const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
@@ -4831,6 +4833,14 @@ function logUserNotificationPreferencesFallback(error, details = {}) {
   );
 }
 
+function logProfileSettingsDebug(eventName = "unknown", details = {}, isError = false) {
+  const logger = isError ? console.warn : console.log;
+  logger("[Profile Settings Debug]", {
+    event: eventName,
+    ...details,
+  });
+}
+
 function markUserNotificationPreferencesTableUnavailable() {
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
@@ -4900,6 +4910,11 @@ function getUserNotificationPreferencesBooleanValue(row, keys = [], fallbackValu
 function buildUserNotificationPreferencesSeedPayload(userId = "", existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES) {
   return {
     user_id: userId,
+    email_notifications: existingPreferences.notifySnapshot !== false,
+    push_notifications: existingPreferences.notifyCompletion !== false,
+    follow_notifications: existingPreferences.notifyFollow !== false,
+    like_notifications: existingPreferences.notifyLike !== false,
+    community_activity_notifications: existingPreferences.notifyCommunityActivity === true,
     created_at: existingPreferences.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -4930,6 +4945,10 @@ function buildUserNotificationPreferencesUpsertPayload(
     preferencesInput?.notifyLike !== undefined
       ? Boolean(preferencesInput.notifyLike)
       : existingPreferences.notifyLike !== false;
+  const notifyCommunityActivity =
+    preferencesInput?.notifyCommunityActivity !== undefined
+      ? Boolean(preferencesInput.notifyCommunityActivity)
+      : existingPreferences.notifyCommunityActivity === true;
   const payload = {
     user_id: userId,
     created_at: existingPreferences.createdAt || new Date().toISOString(),
@@ -4945,9 +4964,10 @@ function buildUserNotificationPreferencesUpsertPayload(
 
   if (effectiveMode === "modern" || effectiveMode === "hybrid") {
     payload.email_notifications = notifySnapshot;
-    payload.session_reminders = notifyCompletion;
-    payload.community_updates = notifyFollow;
-    payload.low_filter_alerts = notifyLike;
+    payload.push_notifications = notifyCompletion;
+    payload.follow_notifications = notifyFollow;
+    payload.like_notifications = notifyLike;
+    payload.community_activity_notifications = notifyCommunityActivity;
   }
 
   return payload;
@@ -4958,9 +4978,9 @@ function getUserNotificationPreferencesWriteModes(preferredMode = "") {
     return ["legacy", "modern", "hybrid"];
   }
   if (preferredMode === "modern") {
-    return ["modern", "legacy", "hybrid"];
+    return ["modern", "hybrid", "legacy"];
   }
-  return ["hybrid", "legacy", "modern"];
+  return ["modern", "hybrid", "legacy"];
 }
 
 function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
@@ -6281,9 +6301,10 @@ function normalizeUserNotificationPreferencesRow(row) {
 
   return {
     notifySnapshot: getUserNotificationPreferencesBooleanValue(row, ["notify_snapshot", "email_notifications"]),
-    notifyCompletion: getUserNotificationPreferencesBooleanValue(row, ["notify_completion", "session_reminders"]),
-    notifyFollow: getUserNotificationPreferencesBooleanValue(row, ["notify_follow", "community_updates"]),
-    notifyLike: getUserNotificationPreferencesBooleanValue(row, ["notify_like", "low_filter_alerts"]),
+    notifyCompletion: getUserNotificationPreferencesBooleanValue(row, ["notify_completion", "push_notifications", "session_reminders"]),
+    notifyFollow: getUserNotificationPreferencesBooleanValue(row, ["notify_follow", "follow_notifications", "community_updates"]),
+    notifyLike: getUserNotificationPreferencesBooleanValue(row, ["notify_like", "like_notifications", "low_filter_alerts"]),
+    notifyCommunityActivity: getUserNotificationPreferencesBooleanValue(row, ["community_activity_notifications"], false),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -8719,6 +8740,7 @@ function buildPublicMemberProfileUpsertPayload(
 
   return {
     id: normalizedUserId,
+    user_id: normalizedUserId,
     display_name: displayName || null,
     avatar_url: String(profileInput?.avatarUrl || existingProfile?.avatarUrl || "").trim(),
     notify_community_activity: normalizedSettings.notifyCommunityActivity === true,
@@ -8744,10 +8766,13 @@ async function upsertCurrentUserPublicMemberProfile(
     existingProfile = null,
     persistLocal = true,
     requirePersistence = false,
+    debugContext = "",
+    verifyAfterSave = false,
   } = options || {};
   const fallbackSettings = normalizeProfilePageSettings(settingsInput, loadStoredProfilePageSettings(normalizedUserId));
   const localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, fallbackSettings);
   const fallbackProfile = mergePublicMemberProfileRecord(existingProfile, localFallbackProfile) || localFallbackProfile;
+  const upsertPayload = buildPublicMemberProfileUpsertPayload(user, profile, fallbackSettings, fallbackProfile);
   const throwPublicMemberProfileSaveError = (message, error = null) => {
     if (!requirePersistence) {
       return false;
@@ -8771,18 +8796,41 @@ async function upsertCurrentUserPublicMemberProfile(
   let data = null;
   let error = null;
   try {
+    if (debugContext === "profile-settings") {
+      logProfileSettingsDebug("public-member-profiles:upsert:request", {
+        table: PUBLIC_MEMBER_PROFILES_TABLE,
+        userId: normalizedUserId,
+        payload: upsertPayload,
+      });
+    }
     const response = await appState.supabase
       .from(PUBLIC_MEMBER_PROFILES_TABLE)
       .upsert(
-        buildPublicMemberProfileUpsertPayload(user, profile, fallbackSettings, fallbackProfile),
+        upsertPayload,
         { onConflict: "id" },
       )
       .select("*")
       .single();
     data = response?.data || null;
     error = response?.error || null;
+    if (debugContext === "profile-settings") {
+      logProfileSettingsDebug("public-member-profiles:upsert:response", {
+        table: PUBLIC_MEMBER_PROFILES_TABLE,
+        userId: normalizedUserId,
+        row: data,
+        error,
+      }, Boolean(error));
+    }
   } catch (requestError) {
     error = requestError;
+    if (debugContext === "profile-settings") {
+      logProfileSettingsDebug("public-member-profiles:upsert:request-error", {
+        table: PUBLIC_MEMBER_PROFILES_TABLE,
+        userId: normalizedUserId,
+        payload: upsertPayload,
+        error,
+      }, true);
+    }
   }
 
   if (error) {
@@ -8817,11 +8865,58 @@ async function upsertCurrentUserPublicMemberProfile(
     normalizePublicMemberProfileRow(data, fallbackSettings),
     fallbackProfile,
   );
-  if (resolvedProfile) {
-    appState.publicMemberProfiles[normalizedUserId] = resolvedProfile;
-    syncProfilePageSettingsCache(normalizedUserId, resolvedProfile, { persistLocal });
+  let verifiedProfile = resolvedProfile;
+
+  if (verifyAfterSave) {
+    let readbackData = null;
+    let readbackError = null;
+    try {
+      const response = await appState.supabase
+        .from(PUBLIC_MEMBER_PROFILES_TABLE)
+        .select("*")
+        .eq("id", normalizedUserId)
+        .maybeSingle();
+      readbackData = response?.data || null;
+      readbackError = response?.error || null;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("public-member-profiles:readback", {
+          table: PUBLIC_MEMBER_PROFILES_TABLE,
+          userId: normalizedUserId,
+          row: readbackData,
+          error: readbackError,
+        }, Boolean(readbackError));
+      }
+    } catch (requestError) {
+      readbackError = requestError;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("public-member-profiles:readback:request-error", {
+          table: PUBLIC_MEMBER_PROFILES_TABLE,
+          userId: normalizedUserId,
+          error: readbackError,
+        }, true);
+      }
+    }
+
+    if (readbackError) {
+      throwPublicMemberProfileSaveError(
+        "Profile settings saved, but we could not verify the latest values from Supabase.",
+        readbackError,
+      );
+    }
+
+    if (readbackData) {
+      verifiedProfile = mergePublicMemberProfileRecord(
+        normalizePublicMemberProfileRow(readbackData, fallbackSettings),
+        fallbackProfile,
+      );
+    }
   }
-  return resolvedProfile;
+
+  if (verifiedProfile) {
+    appState.publicMemberProfiles[normalizedUserId] = verifiedProfile;
+    syncProfilePageSettingsCache(normalizedUserId, verifiedProfile, { persistLocal });
+  }
+  return verifiedProfile;
 }
 
 async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user, options = {}) {
@@ -8923,7 +9018,11 @@ async function savePublicMemberProfileSettings(settingsInput = {}, options = {})
     throw new Error("You must be signed in to save profile settings.");
   }
 
-  const { requirePersistence = false } = options || {};
+  const {
+    requirePersistence = false,
+    debugContext = "",
+    verifyAfterSave = false,
+  } = options || {};
 
   let savedProfile = null;
   try {
@@ -8935,6 +9034,8 @@ async function savePublicMemberProfileSettings(settingsInput = {}, options = {})
         existingProfile: appState.publicMemberProfiles[String(appState.user.id || "").trim()] || null,
         reason: "profile-settings:save",
         requirePersistence,
+        debugContext,
+        verifyAfterSave,
       },
     );
   } catch (error) {
@@ -10031,13 +10132,17 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
     throw new Error("You must be signed in to save notification preferences.");
   }
 
-  const { requirePersistence = false } = options || {};
+  const {
+    requirePersistence = false,
+    debugContext = "",
+    verifyAfterSave = false,
+  } = options || {};
   const existingPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const fallbackPayload = buildUserNotificationPreferencesUpsertPayload(
     appState.user.id,
     preferencesInput,
     existingPreferences,
-    "legacy",
+    "modern",
   );
   const fallbackPreferences = normalizeUserNotificationPreferencesRow(fallbackPayload);
   const throwNotificationPreferencesSaveError = (message, error = null) => {
@@ -10069,6 +10174,14 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
     let data = null;
     let error = null;
     try {
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("user-notification-preferences:upsert:request", {
+          table: USER_NOTIFICATION_PREFERENCES_TABLE,
+          userId: String(appState.user?.id || "").trim(),
+          payload,
+          writeMode,
+        });
+      }
       const response = await appState.supabase
         .from(USER_NOTIFICATION_PREFERENCES_TABLE)
         .upsert(payload, { onConflict: "user_id" })
@@ -10076,13 +10189,77 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         .single();
       data = response?.data || null;
       error = response?.error || null;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("user-notification-preferences:upsert:response", {
+          table: USER_NOTIFICATION_PREFERENCES_TABLE,
+          userId: String(appState.user?.id || "").trim(),
+          row: data,
+          error,
+          writeMode,
+        }, Boolean(error));
+      }
     } catch (requestError) {
       error = requestError;
+      if (debugContext === "profile-settings") {
+        logProfileSettingsDebug("user-notification-preferences:upsert:request-error", {
+          table: USER_NOTIFICATION_PREFERENCES_TABLE,
+          userId: String(appState.user?.id || "").trim(),
+          payload,
+          error,
+          writeMode,
+        }, true);
+      }
     }
 
     if (!error) {
-      setUserNotificationPreferencesSchemaMode(data || writeMode);
-      return normalizeUserNotificationPreferencesRow(data);
+      let resolvedRow = data;
+      if (verifyAfterSave) {
+        let readbackData = null;
+        let readbackError = null;
+        try {
+          const readbackResponse = await appState.supabase
+            .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+            .select("*")
+            .eq("user_id", String(appState.user?.id || "").trim())
+            .maybeSingle();
+          readbackData = readbackResponse?.data || null;
+          readbackError = readbackResponse?.error || null;
+          if (debugContext === "profile-settings") {
+            logProfileSettingsDebug("user-notification-preferences:readback", {
+              table: USER_NOTIFICATION_PREFERENCES_TABLE,
+              userId: String(appState.user?.id || "").trim(),
+              row: readbackData,
+              error: readbackError,
+              writeMode,
+            }, Boolean(readbackError));
+          }
+        } catch (requestError) {
+          readbackError = requestError;
+          if (debugContext === "profile-settings") {
+            logProfileSettingsDebug("user-notification-preferences:readback:request-error", {
+              table: USER_NOTIFICATION_PREFERENCES_TABLE,
+              userId: String(appState.user?.id || "").trim(),
+              error: readbackError,
+              writeMode,
+            }, true);
+          }
+        }
+
+        if (readbackError) {
+          throwNotificationPreferencesSaveError(
+            "Notification preferences saved, but we could not verify the latest values from Supabase.",
+            readbackError,
+          );
+          return fallbackPreferences;
+        }
+
+        if (readbackData) {
+          resolvedRow = readbackData;
+        }
+      }
+
+      setUserNotificationPreferencesSchemaMode(resolvedRow || writeMode);
+      return normalizeUserNotificationPreferencesRow(resolvedRow);
     }
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
@@ -15486,6 +15663,25 @@ function bindProfilePageForm(form) {
     }
   };
 
+  const applyFormState = (nextValues = {}) => {
+    const fieldNames = [
+      "notifySnapshot",
+      "notifyCompletion",
+      "notifyFollow",
+      "notifyLike",
+      "notifyCommunityActivity",
+      "showProfileInCommunityGrow",
+      "allowFollowers",
+      "showGrowStatsPublicly",
+    ];
+    fieldNames.forEach((fieldName) => {
+      const field = form.elements[fieldName];
+      if (field instanceof HTMLInputElement && field.type === "checkbox" && nextValues[fieldName] !== undefined) {
+        field.checked = Boolean(nextValues[fieldName]);
+      }
+    });
+  };
+
   const syncLocalProfileState = (nextValues = getFormState()) => {
     const normalizedUserId = String(appState.user?.id || "").trim();
     appState.notificationPreferences = normalizeUserNotificationPreferencesRow({
@@ -15494,6 +15690,7 @@ function bindProfilePageForm(form) {
       notifyCompletion: nextValues.notifyCompletion,
       notifyFollow: nextValues.notifyFollow,
       notifyLike: nextValues.notifyLike,
+      notifyCommunityActivity: nextValues.notifyCommunityActivity,
     });
     appState.profilePageSettings = normalizeProfilePageSettings({
       ...getCurrentProfilePageSettings(),
@@ -15549,6 +15746,7 @@ function bindProfilePageForm(form) {
       notifyCompletion: pendingValues.notifyCompletion,
       notifyFollow: pendingValues.notifyFollow,
       notifyLike: pendingValues.notifyLike,
+      notifyCommunityActivity: pendingValues.notifyCommunityActivity,
     };
     const profilePageSettingsPayload = {
       notifyCommunityActivity: pendingValues.notifyCommunityActivity,
@@ -15571,7 +15769,11 @@ function bindProfilePageForm(form) {
       try {
         appState.notificationPreferences = await saveUserNotificationPreferences(
           notificationPreferencesPayload,
-          { requirePersistence: true },
+          {
+            requirePersistence: true,
+            debugContext: "profile-settings",
+            verifyAfterSave: true,
+          },
         );
         notificationSaveSucceeded = true;
       } catch (error) {
@@ -15582,7 +15784,11 @@ function bindProfilePageForm(form) {
       try {
         appState.profilePageSettings = await savePublicMemberProfileSettings(
           profilePageSettingsPayload,
-          { requirePersistence: true },
+          {
+            requirePersistence: true,
+            debugContext: "profile-settings",
+            verifyAfterSave: true,
+          },
         );
         appState.profilePageSettingsUserId = String(appState.user?.id || "").trim();
         privacySaveSucceeded = true;
@@ -15592,12 +15798,23 @@ function bindProfilePageForm(form) {
       }
 
       if (notificationSaveSucceeded) {
-        patchSavedFieldsIntoBaseline(notificationFieldNames, pendingValues);
+        patchSavedFieldsIntoBaseline(notificationFieldNames, appState.notificationPreferences || pendingValues);
       }
       if (privacySaveSucceeded) {
-        patchSavedFieldsIntoBaseline(privacyFieldNames, pendingValues);
+        patchSavedFieldsIntoBaseline(privacyFieldNames, appState.profilePageSettings || pendingValues);
       }
 
+      applyFormState({
+        notifySnapshot: appState.notificationPreferences?.notifySnapshot,
+        notifyCompletion: appState.notificationPreferences?.notifyCompletion,
+        notifyFollow: appState.notificationPreferences?.notifyFollow,
+        notifyLike: appState.notificationPreferences?.notifyLike,
+        notifyCommunityActivity: appState.profilePageSettings?.notifyCommunityActivity,
+        showProfileInCommunityGrow: appState.profilePageSettings?.showProfileInCommunityGrow,
+        allowFollowers: appState.profilePageSettings?.allowFollowers,
+        showGrowStatsPublicly: appState.profilePageSettings?.showGrowStatsPublicly,
+      });
+      syncLocalProfileState();
       updateUnsavedState();
 
       if (errors.length) {
