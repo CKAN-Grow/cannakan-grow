@@ -7727,6 +7727,39 @@ function hasCompletedProfile(profile = appState.profile) {
   return Boolean(String(profile?.username || "").trim());
 }
 
+function getSignedInMemberFirstName() {
+  const profileName = String(appState.profile?.username || "").trim();
+  if (profileName) {
+    return profileName.split(/\s+/).filter(Boolean)[0] || "";
+  }
+
+  const metadataFirstName = String(
+    appState.user?.user_metadata?.first_name
+    || appState.user?.user_metadata?.full_name
+    || appState.user?.user_metadata?.name
+    || "",
+  ).trim();
+  if (metadataFirstName) {
+    return metadataFirstName.split(/\s+/).filter(Boolean)[0] || "";
+  }
+
+  const email = String(appState.user?.email || "").trim();
+  if (!email.includes("@")) {
+    return "";
+  }
+
+  return email.split("@")[0].trim();
+}
+
+function getGrowSessionsSectionTitle() {
+  if (!appState.user) {
+    return "Grow Sessions";
+  }
+
+  const firstName = getSignedInMemberFirstName();
+  return firstName ? `${firstName}'s Grow Sessions` : "Grow Sessions";
+}
+
 function getProfileDisplayName() {
   return appState.profile?.username || appState.user?.email || "Signed in";
 }
@@ -18870,6 +18903,10 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
+  const growSessionsHeading = app.querySelector(".dashboard-bar .app-section-header-main h2");
+  if (growSessionsHeading) {
+    growSessionsHeading.textContent = getGrowSessionsSectionTitle();
+  }
   app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
   applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
