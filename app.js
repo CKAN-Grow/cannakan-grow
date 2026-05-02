@@ -308,6 +308,16 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     sessionRoute: "#members/mock-kan-trial-user",
   },
 ]);
+const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
+  { id: "mock-notification-john-follow", displayName: "John D.", avatarUrl: "https://i.pravatar.cc/96?u=john-d", actionText: "started following you", timeLabel: "2m", isUnseen: true },
+  { id: "mock-notification-sarah-session-like", displayName: "Sarah K.", avatarUrl: "https://i.pravatar.cc/96?u=sarah-k", actionText: "liked your Grow Session", timeLabel: "8m", isUnseen: true },
+  { id: "mock-notification-mike-snapshot-like", displayName: "Mike R.", avatarUrl: "https://i.pravatar.cc/96?u=mike-r", actionText: "liked your snapshot", timeLabel: "21m", isUnseen: true },
+  { id: "mock-notification-emily-follow", displayName: "Emily T.", avatarUrl: "https://i.pravatar.cc/96?u=emily-t", actionText: "started following you", timeLabel: "1h", isUnseen: false },
+  { id: "mock-notification-network-trending", displayName: "Grow Network", avatarUrl: "", actionText: "Your session is trending", timeLabel: "3h", isUnseen: true },
+  { id: "mock-notification-alex-session-like", displayName: "Alex P.", avatarUrl: "https://i.pravatar.cc/96?u=alex-p", actionText: "liked your Grow Session", timeLabel: "6h", isUnseen: false },
+  { id: "mock-notification-tina-snapshot-like", displayName: "Tina L.", avatarUrl: "", actionText: "liked your snapshot", timeLabel: "1d", isUnseen: false },
+  { id: "mock-notification-carlos-follow", displayName: "Carlos M.", avatarUrl: "https://i.pravatar.cc/96?u=carlos-m", actionText: "started following you", timeLabel: "3d", isUnseen: false },
+]);
 const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   {
     key: "perfect-run",
@@ -6320,6 +6330,17 @@ function buildMockGrowNetworkActivityEntries() {
         systemLabel: "KAN",
       };
     });
+}
+
+function getMockGrowNetworkNotifications() {
+  return GROW_NETWORK_MOCK_NOTIFICATIONS.map((notification) => ({
+    ...notification,
+    displayName: String(notification.displayName || "").trim() || "Grow Network",
+    avatarUrl: String(notification.avatarUrl || "").trim(),
+    actionText: String(notification.actionText || "").trim(),
+    timeLabel: String(notification.timeLabel || "").trim() || "now",
+    isUnseen: Boolean(notification.isUnseen),
+  }));
 }
 
 function toggleMockGrowNetworkFollowState(memberId = "") {
@@ -22159,6 +22180,7 @@ function renderGrowNetworkPage() {
   const isLoadingFollowing = !isMockNetwork && (Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id)));
   const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
   const mockMembers = isMockNetwork ? buildMockGrowNetworkMemberCards(activeTab) : [];
+  const mockNotifications = isMockNetwork ? getMockGrowNetworkNotifications() : [];
 
   const renderMemberMetaMarkup = (member) => {
     if (!isMockNetwork) {
@@ -22404,6 +22426,36 @@ function renderGrowNetworkPage() {
     `;
   };
 
+  const renderMockNotificationFeedMarkup = () => {
+    if (!mockNotifications.length) {
+      return `
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-notification-empty-state">
+          <strong>No activity yet</strong>
+          <p>Follow growers and share sessions to start seeing activity</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="grow-network-notification-list" aria-label="Mock Grow Network notifications">
+        ${mockNotifications.map((notification) => `
+          <article class="grow-network-notification-card${notification.isUnseen ? " is-unseen" : ""}">
+            <span class="grow-network-notification-avatar-shell">
+              ${renderPublicMemberAvatarMarkup(notification.displayName, notification.avatarUrl, "grow-network-notification-avatar")}
+            </span>
+            <div class="grow-network-notification-copy">
+              <p class="grow-network-notification-text">
+                <strong>${escapeHtml(notification.displayName)}</strong>
+                <span>${escapeHtml(notification.actionText)}</span>
+              </p>
+            </div>
+            <span class="grow-network-notification-time">${escapeHtml(notification.timeLabel)}</span>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  };
+
   const mockSectionCopy = getMockSectionCopy();
 
   app.innerHTML = `
@@ -22441,12 +22493,13 @@ function renderGrowNetworkPage() {
             <div class="section-title-with-icon app-section-header-main">
               ${renderAppSectionHeaderIcon("activity")}
               <div>
-                <p class="eyebrow">Activity</p>
-                <h3>Network Activity</h3>
+                <p class="eyebrow">${escapeHtml(isMockNetwork ? "Notifications" : "Activity")}</p>
+                <h3>${escapeHtml(isMockNetwork ? "Activity Notifications" : "Network Activity")}</h3>
+                ${isMockNetwork ? '<p class="muted grow-network-section-subtitle">Mock follower and like alerts for Dev Mode only. No backend activity is connected yet.</p>' : ""}
               </div>
             </div>
           </div>
-          ${renderActivityFeedMarkup()}
+          ${isMockNetwork ? renderMockNotificationFeedMarkup() : renderActivityFeedMarkup()}
         </section>
       </div>
     </section>
