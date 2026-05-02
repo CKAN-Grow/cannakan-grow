@@ -9713,6 +9713,27 @@ function getElapsedDurationMs(startedAt, endedAt) {
   return durationMs >= 0 ? durationMs : null;
 }
 
+function formatElapsedMinutesShorthand(totalMinutes) {
+  const safeTotalMinutes = Number(totalMinutes);
+  if (!Number.isFinite(safeTotalMinutes) || safeTotalMinutes < 0) {
+    return "";
+  }
+
+  let remainingMinutes = Math.floor(safeTotalMinutes);
+  const days = Math.floor(remainingMinutes / (24 * 60));
+  remainingMinutes -= days * 24 * 60;
+  const hours = Math.floor(remainingMinutes / 60);
+  const minutes = remainingMinutes % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+}
+
 function formatDurationMsShort(durationMs) {
   const safeDurationMs = Number(durationMs);
   if (!Number.isFinite(safeDurationMs) || safeDurationMs < 0) {
@@ -9720,9 +9741,7 @@ function formatDurationMsShort(durationMs) {
   }
 
   const totalMinutes = Math.floor(safeDurationMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  return formatElapsedMinutesShorthand(totalMinutes);
 }
 
 function compareOptionalDurationMs(leftDurationMs, rightDurationMs) {
@@ -10503,20 +10522,11 @@ function buildHomeGalleryRankingsTeaserState() {
   };
 }
 
-function formatInstallPreviewElapsed(days, hours) {
+function formatInstallPreviewElapsed(days, hours, minutes = 0) {
   const normalizedDays = Number.isFinite(Number(days)) ? Math.max(0, Math.floor(Number(days))) : 0;
   const normalizedHours = Number.isFinite(Number(hours)) ? Math.max(0, Math.floor(Number(hours))) : 0;
-  const parts = [];
-
-  if (normalizedDays > 0) {
-    parts.push(`${normalizedDays} day${normalizedDays === 1 ? "" : "s"}`);
-  }
-
-  if (normalizedHours > 0 || !parts.length) {
-    parts.push(`${normalizedHours} hour${normalizedHours === 1 ? "" : "s"}`);
-  }
-
-  return parts.join(" ");
+  const normalizedMinutes = Number.isFinite(Number(minutes)) ? Math.max(0, Math.floor(Number(minutes))) : 0;
+  return formatElapsedMinutesShorthand((normalizedDays * 24 * 60) + (normalizedHours * 60) + normalizedMinutes);
 }
 
 function renderHomeGalleryRankingsTeaser() {
@@ -23716,9 +23726,7 @@ function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
   }
 
   const totalMinutes = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 60000));
-  const totalHours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return `${totalHours}h ${minutes}m`;
+  return formatElapsedMinutesShorthand(totalMinutes);
 }
 
 function renderPublicSessionLifecycleTimelineMarkup(state) {
@@ -24108,21 +24116,8 @@ function formatSpotlightElapsed(startedAt) {
     return "--";
   }
 
-  let totalMinutes = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
-  if (totalMinutes < 60) {
-    return `${totalMinutes} minute${totalMinutes === 1 ? "" : "s"}`;
-  }
-
-  const days = Math.floor(totalMinutes / (24 * 60));
-  totalMinutes -= days * 24 * 60;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-
-  return `${hours}h ${minutes}m`;
+  const totalMinutes = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  return formatElapsedMinutesShorthand(totalMinutes);
 }
 
 function formatDurationBetween(startedAt, endedAt) {
@@ -24134,24 +24129,8 @@ function formatDurationBetween(startedAt, endedAt) {
     return "";
   }
 
-  let totalMinutes = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 60000));
-  const days = Math.floor(totalMinutes / (24 * 60));
-  totalMinutes -= days * 24 * 60;
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const parts = [];
-
-  if (days > 0) {
-    parts.push(`${days} day${days === 1 ? "" : "s"}`);
-  }
-  if (hours > 0) {
-    parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
-  }
-  if (minutes > 0 || !parts.length) {
-    parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
-  }
-
-  return parts.slice(0, 2).join(" ");
+  const totalMinutes = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 60000));
+  return formatElapsedMinutesShorthand(totalMinutes);
 }
 
 function startSessionTimer(callback) {
