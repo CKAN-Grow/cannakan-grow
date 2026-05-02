@@ -141,6 +141,36 @@ textarea {
       radial-gradient(circle at center, rgba(0, 0, 0, 0) 0 34%, rgba(0, 0, 0, 0.2) 72%, rgba(0, 0, 0, 0.4) 100%),
       linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0.08) 82%, rgba(0, 0, 0, 0.46) 100%);
   }
+
+  body.theme-dark .app-shell {
+    isolation: isolate;
+  }
+
+  /* Keep the desktop condensation texture on the page background while letting
+     the dashboard gaps read a little more open around the dark glass cards. */
+  body.theme-dark .app-shell::before {
+    content: "";
+    position: absolute;
+    inset: 78px -12px 88px;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 36px;
+    background:
+      radial-gradient(circle at top center, rgba(255, 255, 255, 0.028) 0%, transparent 34%),
+      linear-gradient(180deg, rgba(6, 9, 8, 0.16) 0%, rgba(6, 9, 8, 0.08) 28%, rgba(6, 9, 8, 0.04) 62%, rgba(6, 9, 8, 0.14) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.03),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.012);
+  }
+
+  body.theme-dark .app-main,
+  body.theme-dark .page-content,
+  body.theme-dark .home-dashboard-secondary-row,
+  body.theme-dark .home-dashboard-secondary-row-top,
+  body.theme-dark .home-dashboard-secondary-side-column,
+  body.theme-dark .home-dashboard-secondary-row-bottom {
+    background: transparent;
+  }
 }
 
 .topbar {
