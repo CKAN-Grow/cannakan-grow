@@ -10232,6 +10232,7 @@ function buildHomeGalleryRankingsTeaserState() {
     getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
   ));
   const rankings = {
+    topMember: buildGalleryTopMemberEntries(monthlySnapshots)[0] || null,
     topSource: buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null,
     topVariety: buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null,
     topSeedType: buildGallerySeedTypeHighlightEntry(monthlySnapshots),
@@ -10263,29 +10264,37 @@ function formatInstallPreviewElapsed(days, hours) {
 
 function renderHomeGalleryRankingsTeaser() {
   const teaserState = buildHomeGalleryRankingsTeaserState();
-  const { snapshots, approvedPublicSnapshots, monthlySnapshots, rankings } = teaserState;
+  const { rankings } = teaserState;
   const rankingRows = [
+    {
+      label: "#1 Monthly Grow Member",
+      toneClass: "is-gold",
+      iconType: "member",
+      entry: rankings.topMember,
+      formatValue: (entry) => entry.name,
+    },
     {
       label: "This Month Top Source",
       toneClass: "is-gold",
       iconType: "source",
       entry: rankings.topSource,
+      formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
       label: "This Month Top Seed Variety",
       toneClass: "is-silver",
       iconType: "variety",
       entry: rankings.topVariety,
+      formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
       label: "This Month Top Seed Type",
       toneClass: "is-bronze",
       iconType: "seed-type",
       entry: rankings.topSeedType,
+      formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
   ];
-  const hasRankingData = rankingRows.some((row) => row.entry);
-  const shouldShowEmptyState = snapshots.length === 0 || approvedPublicSnapshots.length === 0 || monthlySnapshots.length === 0 || !hasRankingData;
 
   return `
     <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
@@ -10319,9 +10328,10 @@ function renderHomeGalleryRankingsTeaser() {
           </a>
         </div>
       </div>
-      ${!shouldShowEmptyState ? `
-        <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
-          ${rankingRows.map((row) => `
+      <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
+        ${rankingRows.map((row) => {
+          const valueText = row.entry ? row.formatValue(row.entry) : "Not enough data yet";
+          return `
             <li class="home-gallery-rankings-row ${row.toneClass}">
               <div class="home-gallery-rankings-row-main">
                 <span class="home-gallery-rankings-row-icon" aria-hidden="true">
@@ -10329,21 +10339,25 @@ function renderHomeGalleryRankingsTeaser() {
                 </span>
                 <span class="home-gallery-rankings-row-label">${escapeHtml(row.label)}</span>
               </div>
-              <strong class="home-gallery-rankings-row-value">${row.entry
-                ? `${escapeHtml(row.entry.name)} - ${escapeHtml(formatHomeGalleryRankingMetric(row.entry))}`
-                : "Not enough data yet"}</strong>
+              <strong class="home-gallery-rankings-row-value">${escapeHtml(valueText)}</strong>
             </li>
-          `).join("")}
-        </ul>
-      ` : `
-        <p class="home-gallery-rankings-empty">Rankings will appear as more snapshots are shared.</p>
-      `}
+          `;
+        }).join("")}
+      </ul>
     </section>
   `;
 }
 
 function renderHomeGalleryRankingRowIcon(iconType = "source") {
   switch (iconType) {
+    case "member":
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4.5 8.5 8.2 11.3 12 6.5l3.8 4.8 3.7-2.8-1.8 8H6.3Z"></path>
+          <path d="M8.5 17.5h7"></path>
+          <path d="M9.5 20h5"></path>
+        </svg>
+      `;
     case "variety":
       return `
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">

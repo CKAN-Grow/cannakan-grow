@@ -2564,7 +2564,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: var(--space-3);
   margin-top: 0;
-  padding: var(--space-card);
+  padding: clamp(18px, 2vw, 22px) var(--space-card) var(--space-card);
   border: 1px solid rgba(148, 209, 89, 0.1);
   background:
     linear-gradient(180deg, rgba(244, 248, 243, 0.56) 0%, rgba(234, 241, 233, 0.4) 100%),
@@ -3596,18 +3596,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-gallery-rankings-head {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .home-leaderboard-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
 }
 
 .home-leaderboard-header-main {
+  align-items: flex-start;
   min-width: 0;
   flex: 1 1 280px;
 }
