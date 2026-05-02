@@ -11953,19 +11953,22 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
 function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType) {
   const cards = [
     {
-      title: "This Month Top Seed Type",
+      badge: "This Month",
+      title: "Top Seed Type",
       value: thisMonthTopSeedType?.name || "Not enough data yet",
       isEmpty: !thisMonthTopSeedType?.name,
     },
     {
-      title: "All-Time Top Seed Type",
+      badge: "All-Time",
+      title: "Top Seed Type",
       value: allTimeTopSeedType?.name || "Not enough data yet",
       isEmpty: !allTimeTopSeedType?.name,
     },
   ];
 
   return `
-    <div class="gallery-seedtype-highlights" aria-label="Top seed type highlights">
+    <article class="gallery-seedtype-highlights" aria-label="Top seed type highlights">
+      <div class="gallery-seedtype-highlights-grid">
       ${cards.map((card) => `
         <div class="gallery-seedtype-highlight${card.isEmpty ? " is-empty" : ""}">
           <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
@@ -11979,12 +11982,15 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
             </svg>
           </span>
           <span class="gallery-seedtype-highlight-copy">
+            <span class="gallery-seedtype-highlight-badge">${escapeHtml(card.badge)}</span>
             <span class="gallery-seedtype-highlight-label">${escapeHtml(card.title)}</span>
             <span class="gallery-seedtype-highlight-value">${escapeHtml(card.value)}</span>
           </span>
         </div>
       `).join("")}
-    </div>
+      </div>
+      <p class="gallery-seedtype-highlights-note">By germination performance</p>
+    </article>
   `;
 }
 
@@ -12104,7 +12110,10 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
             ${renderGalleryLeaderboardIcon(type, entry)}
           </span>
           <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
-          <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.averagePercent}% avg${entry.fastestCompletedDurationLabel ? ` · fastest ${entry.fastestCompletedDurationLabel}` : ""}`)}</span>
+          <span class="gallery-leaderboard-metric">
+            <span class="gallery-leaderboard-metric-primary">${escapeHtml(`${entry.averagePercent}%`)}</span>
+            ${entry.fastestCompletedDurationLabel ? `<span class="gallery-leaderboard-metric-secondary">${escapeHtml(entry.fastestCompletedDurationLabel)}</span>` : ""}
+          </span>
         </li>
       `).join("")}
     </ol>
@@ -12254,13 +12263,17 @@ function renderGalleryTopMembersSummary(entries = []) {
           <h4>Top 3 Monthly Members</h4>
           <p class="gallery-top-members-summary-note">Approved public snapshots and likes this month.</p>
         </div>
+        ${renderGalleryLeaderboardViewAllButton()}
       </div>
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.map((entry, index) => `
           <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
             <span class="gallery-top-members-summary-rank">#${index + 1}</span>
-            <span class="gallery-top-members-summary-name">${renderLeaderboardMemberIdentityMarkup(entry)}</span>
-            <span class="gallery-top-members-summary-metric">${escapeHtml(`${entry.snapshotCount} approved - ${entry.totalLikes} likes`)}</span>
+            <span class="gallery-top-members-summary-name">${renderLeaderboardMemberIdentityMarkup(entry, "leaderboard-member-identity leaderboard-member-identity--compact")}</span>
+            <span class="gallery-top-members-summary-metric">
+              <span>${escapeHtml(`${entry.snapshotCount} approved`)}</span>
+              <span>${escapeHtml(`${entry.totalLikes || 0} likes`)}</span>
+            </span>
           </li>
         `).join("")}
       </ol>
@@ -12453,8 +12466,18 @@ function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
 }
 
 function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "month") {
+  return renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType);
+}
+
+function renderGalleryLeaderboardViewAllButton(href = "#gallery") {
   return `
-    <div class="gallery-leaderboard-card-heading">
+    <a class="gallery-leaderboard-viewall button button-secondary" href="${escapeHtml(href)}">View all</a>
+  `;
+}
+
+function renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType = "month", actionMarkup = "") {
+  return `
+    <div class="gallery-leaderboard-card-heading${actionMarkup ? " has-action" : ""}">
       <div class="gallery-leaderboard-card-heading-row">
         <span class="gallery-leaderboard-section-icon" aria-hidden="true">
           ${renderGalleryLeaderboardSectionHeadingIcon(iconType)}
@@ -12464,6 +12487,7 @@ function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "month"
           <p class="eyebrow">${escapeHtml(subtitle)}</p>
         </div>
       </div>
+      ${actionMarkup}
     </div>
   `;
 }
@@ -12477,14 +12501,19 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
     `;
   }
 
+  const streakMonthsLabel = `${streakEntry.length} ${streakEntry.length === 1 ? "month" : "months"}`;
   return `
-    <div class="gallery-leaderboard-row ${getLeaderboardRankTone(0)}">
-      <span class="gallery-leaderboard-rank">#1</span>
-      <span class="gallery-leaderboard-icon" aria-hidden="true">
+    <div class="gallery-leaderboard-row gallery-leaderboard-row--streak ${getLeaderboardRankTone(0)}">
+      <span class="gallery-leaderboard-icon gallery-leaderboard-icon--feature" aria-hidden="true">
         ${renderGalleryLeaderboardIcon(type, streakEntry)}
       </span>
-      <span class="gallery-leaderboard-name">${escapeHtml(streakEntry.name)}</span>
-      <span class="gallery-leaderboard-metric">${escapeHtml(`${streakEntry.averagePercent}% avg · ${streakEntry.length} mo`)}</span>
+      <span class="gallery-leaderboard-streak-copy">
+        <span class="gallery-leaderboard-name">${escapeHtml(streakEntry.name)}</span>
+        <span class="gallery-leaderboard-metric gallery-leaderboard-metric--stack">
+          <span class="gallery-leaderboard-metric-primary">${escapeHtml(`${streakEntry.averagePercent}% avg`)}</span>
+          <span class="gallery-leaderboard-metric-secondary">${escapeHtml(streakMonthsLabel)}</span>
+        </span>
+      </span>
     </div>
   `;
 }
@@ -12492,6 +12521,7 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
 function renderGalleryLeaderboardSection() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
+  // TODO: Top Seed Type should be calculated by popularity/usage - what members are popping most - not just performance.
   const thisMonthTopSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
   const allTimeTopSeedType = buildGallerySeedTypeHighlightEntry(approvedSnapshots);
   const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
@@ -12520,29 +12550,29 @@ function renderGalleryLeaderboardSection() {
       ${renderGalleryTopMembersSummary(topMembers)}
     </div>
     <div class="gallery-leaderboard-grid">
-      <article class="gallery-leaderboard-card">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "This Month", "month")}
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Sources", "This Month", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
-      <article class="gallery-leaderboard-card">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "This Month", "month")}
-        ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
-      </article>
-      <article class="gallery-leaderboard-card">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All Time", "all-time")}
-        ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
-      </article>
-      <article class="gallery-leaderboard-card">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All Time", "all-time")}
-        ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
-      </article>
-      <article class="gallery-leaderboard-card">
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
         ${renderGalleryLeaderboardCardHeading("#1 Source", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
       </article>
-      <article class="gallery-leaderboard-card">
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
         ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest Streak on Top", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
+      </article>
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Seed Varieties", "This Month", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
+      </article>
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
+        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All Time", "all-time")}
+        ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
+      </article>
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
+        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All Time", "all-time")}
+        ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
