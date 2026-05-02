@@ -1105,7 +1105,8 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .dashboard-bar h2 {
-  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-size: clamp(1.24rem, 2.65vw, 1.76rem);
+  line-height: 1.08;
 }
 
 .dashboard-subtitle {
@@ -1749,9 +1750,9 @@ body.theme-dark .spotlight-stat strong {
 .app-section-header-main > div > .app-section-header-title {
   margin: 0;
   min-width: 0;
-  font-size: clamp(1.35rem, 1.12rem + 1vw, 2rem);
+  font-size: clamp(1.2rem, 1.03rem + 0.9vw, 1.74rem);
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.04;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
   text-wrap: balance;
@@ -1805,7 +1806,7 @@ body.theme-dark .spotlight-stat strong {
   .app-section-header-main > div > h5,
   .app-section-header-main > div > .admin-collapsible-title,
   .app-section-header-main > div > .app-section-header-title {
-    font-size: clamp(1.2rem, 1.02rem + 0.9vw, 1.65rem);
+    font-size: clamp(1.08rem, 0.94rem + 0.74vw, 1.46rem);
   }
 }
 
@@ -10793,6 +10794,18 @@ input::placeholder {
   color: var(--grow-network-ink);
 }
 
+.grow-network-hero-copy h2 {
+  font-size: clamp(1.6rem, 1.34rem + 1vw, 2rem);
+  line-height: 1.03;
+  letter-spacing: -0.02em;
+}
+
+.grow-network-section-heading h3 {
+  font-size: clamp(1rem, 0.94rem + 0.28vw, 1.12rem);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+
 .grow-network-hero-copy .muted,
 .grow-network-section-subtitle {
   color: var(--grow-network-muted);
@@ -11857,6 +11870,18 @@ body.theme-dark .public-member-profile-stat-button:focus-visible .public-member-
 .profile-section-heading h3 {
   margin: 0;
   color: var(--profile-ink);
+}
+
+.profile-page-copy h2 {
+  font-size: clamp(1.5rem, 1.28rem + 0.82vw, 1.86rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.profile-section-heading h3 {
+  font-size: clamp(1rem, 0.95rem + 0.24vw, 1.1rem);
+  line-height: 1.14;
+  letter-spacing: -0.01em;
 }
 
 .profile-page-email {
@@ -13991,9 +14016,9 @@ body.theme-dark #session-history-section {
 #session-history-section .section-title-with-icon > div > h3 {
   margin: 0;
   min-width: 0;
-  font-size: clamp(1.45rem, 1.2rem + 1vw, 1.95rem);
+  font-size: clamp(1.28rem, 1.08rem + 0.88vw, 1.7rem);
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.04;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
   text-wrap: balance;
