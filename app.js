@@ -3127,11 +3127,28 @@ function getLocationRouteHash() {
   return currentHash.replace(/^#/, "");
 }
 
+function getCurrentAppPathRoute() {
+  const pathRoute = window.location.pathname.replace(/^\/+/, "");
+  return pathRoute === "admin/gallery-moderation" || pathRoute === "profile"
+    ? pathRoute
+    : "";
+}
+
+function isUsingPathRoute(route = "") {
+  const normalizedRoute = String(route || "").trim().replace(/^\/+/, "");
+  const currentHash = window.location.hash || "";
+  return Boolean(
+    normalizedRoute
+    && getCurrentAppPathRoute() === normalizedRoute
+    && (!currentHash || isSupabaseAuthFragmentHash(currentHash)),
+  );
+}
+
 function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "network" || route === "new" || route === "members") {
+  if (route === "admin" || route === "network" || route === "new" || route === "members" || route === "profile") {
     return true;
   }
 
@@ -3577,9 +3594,18 @@ function openAuthModal(options = {}) {
 }
 
 function getCurrentAppRawRoute() {
-  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  return pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const currentHash = window.location.hash || "";
+  const pathRoute = getCurrentAppPathRoute();
+
+  if (pathRoute === "admin/gallery-moderation") {
+    return pathRoute;
+  }
+
+  if (currentHash && !isSupabaseAuthFragmentHash(currentHash)) {
+    return currentHash.replace(/^#/, "");
+  }
+
+  return pathRoute || "home";
 }
 
 function getAdminMessageContext() {
@@ -4123,9 +4149,7 @@ function updateNavState() {
     return;
   }
 
-  const hashRoute = getLocationRouteHash();
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const rawRoute = getCurrentAppRawRoute();
   const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
@@ -4382,9 +4406,7 @@ function buildSiteAnalyticsPageContext({
 }
 
 function getCurrentSiteAnalyticsPageContext() {
-  const hashRoute = (window.location.hash || "#home").replace(/^#/, "");
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const rawRoute = getCurrentAppRawRoute();
   const [route, id] = rawRoute.split("/");
 
   if (route === "admin" && id === "gallery-moderation") {
@@ -4425,6 +4447,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "grow-network",
       pageLabel: "Grow Network",
       pagePath: rawRoute ? `#${rawRoute}` : "#network",
+    });
+  }
+  if (route === "profile") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "profile",
+      pageKey: "profile",
+      pageLabel: "Profile",
+      pagePath: isUsingPathRoute("profile") ? "/profile" : "#profile",
     });
   }
   if (route === "sessions" || route === "new") {
@@ -12158,6 +12188,10 @@ function updateAuthStatus() {
             <span>Admin</span>
           </button>
         ` : ""}
+        <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("profile")}
+          <span>Profile</span>
+        </button>
         <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("profile")}
           <span>Edit Profile</span>
@@ -12202,6 +12236,13 @@ function updateAuthStatus() {
     event.stopPropagation();
     closeAccountMenu();
     window.location.hash = "#admin";
+  });
+
+  dropdown?.querySelector("#account-profile-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    window.location.hash = "#profile";
   });
 
   dropdown?.querySelector("#account-edit-profile")?.addEventListener("click", (event) => {
@@ -14228,9 +14269,8 @@ function render() {
   syncMockDataBanner();
   updateNavState();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
-  const hashRoute = getLocationRouteHash();
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  const rawRoute = pathRoute === "admin/gallery-moderation" ? pathRoute : hashRoute;
+  const pathRoute = getCurrentAppPathRoute();
+  const rawRoute = getCurrentAppRawRoute();
   const [route, id, subroute] = rawRoute.split("/");
   const isEditableSessionRoute = route === "new" || (route === "sessions" && id && id !== "public");
   if (!isEditableSessionRoute) {
@@ -14436,6 +14476,21 @@ function render() {
     return;
   }
 
+  if (route === "profile") {
+    if (!appState.user) {
+      renderProtectedRouteSignInPrompt();
+      return;
+    }
+    renderProfilePage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "profile",
+      pageKey: "profile",
+      pageLabel: "Profile",
+      pagePath: pathRoute === "profile" && isUsingPathRoute("profile") ? "/profile" : "#profile",
+    }));
+    return;
+  }
+
   if (route === "home" || !route) {
     renderHome();
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -14627,6 +14682,105 @@ function renderAuthScreen(options = {}) {
       openAuthModal();
     });
   }
+}
+
+function renderProfilePage() {
+  if (!appState.user) {
+    renderAuthScreen({ autoOpenModal: true });
+    return;
+  }
+
+  const displayName = String(appState.profile?.username || "").trim();
+  const email = String(appState.user?.email || appState.profile?.email || "").trim() || "No email on file";
+  const notificationPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const profileSetupComplete = hasCompletedProfile();
+  const notificationPreviewItems = [
+    {
+      label: "Email notifications",
+      enabled: notificationPreferences.notifySnapshot !== false,
+    },
+    {
+      label: "Session reminders",
+      enabled: notificationPreferences.notifyCompletion !== false,
+    },
+    {
+      label: "Follow activity",
+      enabled: notificationPreferences.notifyFollow !== false,
+    },
+    {
+      label: "Like activity",
+      enabled: notificationPreferences.notifyLike !== false,
+    },
+  ];
+
+  app.innerHTML = `
+    <section class="card profile-page" aria-label="Profile and settings">
+      <div class="profile-page-glow" aria-hidden="true"></div>
+      <header class="profile-page-header">
+        <div class="profile-page-hero">
+          <span class="profile-page-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path>
+            </svg>
+          </span>
+          <div class="profile-page-copy">
+            <p class="eyebrow">Account</p>
+            <h2>Profile</h2>
+            <p class="muted">Manage your Cannakan Grow account details and keep a dedicated home ready for settings as profile tools expand.</p>
+          </div>
+        </div>
+        <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
+      </header>
+      <div class="profile-page-layout">
+        <article class="profile-section-card">
+          <div class="profile-section-heading">
+            <div>
+              <p class="eyebrow">Account Info</p>
+              <h3>Account Info</h3>
+              <p class="profile-section-subtitle">Your signed-in Cannakan Grow identity and account status.</p>
+            </div>
+            <span class="profile-status-badge ${profileSetupComplete ? "is-complete" : "is-pending"}">${escapeHtml(profileSetupComplete ? "Profile ready" : "Setup incomplete")}</span>
+          </div>
+          <div class="profile-account-grid">
+            <div class="profile-detail-card">
+              <span class="profile-detail-label">Email</span>
+              <strong class="profile-detail-value">${escapeHtml(email)}</strong>
+            </div>
+            <div class="profile-detail-card">
+              <span class="profile-detail-label">Display Name</span>
+              <strong class="profile-detail-value">${escapeHtml(displayName || "Not set yet")}</strong>
+            </div>
+          </div>
+          <p class="profile-section-note">${profileSetupComplete
+            ? "Your display name and avatar can be updated any time with the current profile editor."
+            : "Finish your display name and avatar so Grow Network and future settings can use your full profile."}</p>
+        </article>
+        <article class="profile-section-card">
+          <div class="profile-section-heading">
+            <div>
+              <p class="eyebrow">Notifications</p>
+              <h3>Notification Preferences</h3>
+              <p class="profile-section-subtitle">This section is ready for the dedicated settings controls that will live here next.</p>
+            </div>
+          </div>
+          <div class="profile-placeholder-card">
+            <strong>Preference controls are coming here.</strong>
+            <p>For now, Cannakan Grow continues using your saved notification defaults and safe fallbacks so this area never blocks the app.</p>
+            <div class="profile-preference-preview" aria-label="Current notification preference preview">
+              ${notificationPreviewItems.map((item) => `
+                <span class="profile-preference-chip ${item.enabled ? "is-enabled" : "is-disabled"}">${escapeHtml(item.label)}</span>
+              `).join("")}
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+
+  app.querySelector("[data-profile-open-editor='true']")?.addEventListener("click", () => {
+    openProfileEditor();
+  });
 }
 
 function renderProfileSetupScreen() {
