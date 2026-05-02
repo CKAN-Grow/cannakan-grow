@@ -38,6 +38,7 @@ const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
 const SOURCES_TABLE = "sources";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
+const LEGACY_GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_like";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
@@ -68,6 +69,7 @@ const SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY = "cannakanGrowPwaLaunchLogged";
 const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
 const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 60000;
 const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
+const SUPABASE_MISSING_TABLE_ERROR_CODES = new Set(["PGRST116", "PGRST205", "42P01"]);
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -122,6 +124,7 @@ const DEFAULT_GROW_FACTS = Object.freeze([
   "True leaves appear after the first seed leaves and signal that feeding may begin soon.",
   "Hardening off helps indoor seedlings adjust gradually to outdoor sun, wind, and temperature changes.",
 ]);
+const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const FILTER_PAPER_STORE_URLS = Object.freeze({
@@ -526,6 +529,7 @@ const appState = {
   siteVisitorPresenceHeartbeatId: 0,
   siteVisitorTrackingInitialized: false,
   siteVisitorPresenceSubscribed: false,
+  siteAnalyticsEventInFlight: false,
   siteVisitorId: "",
   siteVisitId: "",
   siteAnalyticsLastTrackedSignature: "",
@@ -782,6 +786,7 @@ function resetSessionScopedAppState() {
   appState.siteVisitorAnalyticsLoadedFilter = "";
   appState.siteVisitorAnalyticsError = "";
   appState.siteVisitorAnalyticsRefreshPromise = null;
+  appState.siteAnalyticsEventInFlight = false;
   appState.gallerySnapshotsLoaded = false;
   appState.homeGalleryRankingsHydrationRequested = false;
   resetMemberCountState();
@@ -935,6 +940,50 @@ function reportAppError(error, context = "App Error") {
     </section>
   `;
 }
+
+function shouldSuppressExternalStylesheetInspectionError(event) {
+  const message = String(event?.message || "").trim().toLowerCase();
+  const filename = String(event?.filename || "").trim().toLowerCase();
+  if (!message.includes("cssrules") || !message.includes("cannot read properties of null")) {
+    return false;
+  }
+
+  if (!filename) {
+    return false;
+  }
+
+  const sameOrigin = String(window.location.origin || "").trim().toLowerCase();
+  return (
+    filename.startsWith("chrome-extension://")
+    || filename.startsWith("moz-extension://")
+    || filename.startsWith("safari-web-extension://")
+    || filename.includes("/vendor")
+    || (filename.startsWith("http") && sameOrigin && !filename.startsWith(sameOrigin))
+  );
+}
+
+function installRuntimeErrorGuards() {
+  if (window.__cannakanRuntimeGuardsInstalled) {
+    return;
+  }
+
+  window.__cannakanRuntimeGuardsInstalled = true;
+  window.addEventListener("error", (event) => {
+    if (!shouldSuppressExternalStylesheetInspectionError(event)) {
+      return;
+    }
+
+    event.preventDefault();
+    logRuntimeIssueOnce(
+      "warn",
+      "external-cssrules-inspection-error",
+      "Ignored external stylesheet inspection error while reading cssRules.",
+      { filename: event?.filename || "" },
+    );
+  }, true);
+}
+
+installRuntimeErrorGuards();
 
 function safeRender() {
   try {
@@ -4224,33 +4273,78 @@ function getSupabaseErrorSearchText(error) {
   ).trim().toLowerCase();
 }
 
-function isSupabaseTableMissingError(error, tableName = "") {
-  const normalizedTableName = String(tableName || "").trim().toLowerCase();
-  if (!normalizedTableName) {
+function logRuntimeIssueOnce(level = "warn", key = "", message = "", details) {
+  const normalizedKey = String(key || message || "").trim().toLowerCase();
+  if (!normalizedKey || loggedRuntimeIssueKeys.has(normalizedKey)) {
+    return;
+  }
+
+  loggedRuntimeIssueKeys.add(normalizedKey);
+  const logger = typeof console?.[level] === "function"
+    ? console[level].bind(console)
+    : console.warn.bind(console);
+
+  if (typeof details === "undefined") {
+    logger(message);
+    return;
+  }
+
+  logger(message, details);
+}
+
+function isSupabaseTableMissingError(error, tableNames = "") {
+  const normalizedTableNames = (Array.isArray(tableNames) ? tableNames : [tableNames])
+    .map((tableName) => String(tableName || "").trim().toLowerCase())
+    .filter(Boolean);
+  if (!normalizedTableNames.length) {
     return false;
   }
 
   const message = getSupabaseErrorSearchText(error);
   const code = String(error?.code || "").trim().toUpperCase();
-  return (
-    message.includes(normalizedTableName)
-    && (
-      message.includes("relation")
-      || message.includes("schema cache")
-      || message.includes("could not find table")
-      || message.includes("could not find the table")
-      || code === "PGRST205"
-    )
+  const referencesKnownTable = normalizedTableNames.some((tableName) => message.includes(tableName));
+  const missingTableSignature = (
+    message.includes("relation")
+    || message.includes("schema cache")
+    || message.includes("could not find table")
+    || message.includes("could not find the table")
+    || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code)
   );
+  if (!missingTableSignature) {
+    return false;
+  }
+
+  return referencesKnownTable || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code);
 }
 
 function isSiteAnalyticsTableMissingError(error) {
   return isSupabaseTableMissingError(error, SITE_ANALYTICS_TABLE);
 }
 
+function markSiteAnalyticsTableUnavailable() {
+  appState.siteVisitorAnalyticsTableUnavailable = true;
+  appState.siteVisitorAnalyticsError = "Historical analytics table unavailable. Apply the site analytics migration.";
+  logRuntimeIssueOnce(
+    "warn",
+    "site-analytics-table-unavailable",
+    "Site analytics disabled because the Supabase table is missing.",
+    { table: SITE_ANALYTICS_TABLE },
+  );
+}
+
 function isSiteAnalyticsPolicyError(error) {
   const message = String(error?.message || error?.details || "").toLowerCase();
   return message.includes("row-level security") || message.includes("permission denied");
+}
+
+function markSiteAnalyticsTrackingBlocked() {
+  appState.siteVisitorAnalyticsTrackingBlocked = true;
+  appState.siteVisitorAnalyticsError = "Historical analytics tracking is blocked by the current Supabase policies.";
+  logRuntimeIssueOnce(
+    "warn",
+    "site-analytics-tracking-blocked",
+    "Site analytics disabled because the current Supabase policies block inserts.",
+  );
 }
 
 function normalizeSiteAnalyticsEventType(value = "") {
@@ -4302,49 +4396,57 @@ function getSiteVisitorAnalyticsFilterStart(filterKey = SITE_ANALYTICS_DEFAULT_F
 }
 
 async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
-  if (!appState.supabase || appState.siteVisitorAnalyticsTableUnavailable || appState.siteVisitorAnalyticsTrackingBlocked) {
+  if (
+    !appState.supabase
+    || appState.siteVisitorAnalyticsTableUnavailable
+    || appState.siteVisitorAnalyticsTrackingBlocked
+    || appState.siteAnalyticsEventInFlight
+  ) {
     return false;
   }
 
-  const payload = buildSiteAnalyticsVisitorPayload(pageContext);
-  const { error } = await appState.supabase
-    .from(SITE_ANALYTICS_TABLE)
-    .insert({
-      occurred_at: new Date().toISOString(),
-      visitor_id: payload.visitorId,
-      visit_id: payload.visitId,
-      user_id: payload.userId || null,
-      profile_name: payload.profileName,
-      user_email: payload.userEmail,
-      event_type: normalizeSiteAnalyticsEventType(eventType),
-      page_group: payload.pageContext.pageGroup,
-      page_key: payload.pageContext.pageKey,
-      page_label: payload.pageContext.pageLabel,
-      page_path: payload.pageContext.pagePath,
-      device_type: payload.deviceType,
-      browser_name: payload.browserName,
-      referrer: payload.referrer,
-      is_pwa: payload.isPwa,
-      metadata: metadata && typeof metadata === "object" ? metadata : {},
-    });
+  appState.siteAnalyticsEventInFlight = true;
+  try {
+    const payload = buildSiteAnalyticsVisitorPayload(pageContext);
+    const { error } = await appState.supabase
+      .from(SITE_ANALYTICS_TABLE)
+      .insert({
+        occurred_at: new Date().toISOString(),
+        visitor_id: payload.visitorId,
+        visit_id: payload.visitId,
+        user_id: payload.userId || null,
+        profile_name: payload.profileName,
+        user_email: payload.userEmail,
+        event_type: normalizeSiteAnalyticsEventType(eventType),
+        page_group: payload.pageContext.pageGroup,
+        page_key: payload.pageContext.pageKey,
+        page_label: payload.pageContext.pageLabel,
+        page_path: payload.pageContext.pagePath,
+        device_type: payload.deviceType,
+        browser_name: payload.browserName,
+        referrer: payload.referrer,
+        is_pwa: payload.isPwa,
+        metadata: metadata && typeof metadata === "object" ? metadata : {},
+      });
 
-  if (!error) {
-    return true;
-  }
+    if (!error) {
+      return true;
+    }
 
-  if (isSiteAnalyticsTableMissingError(error)) {
-    appState.siteVisitorAnalyticsTableUnavailable = true;
-    appState.siteVisitorAnalyticsError = "Historical analytics table unavailable. Apply the site analytics migration.";
+    if (isSiteAnalyticsTableMissingError(error)) {
+      markSiteAnalyticsTableUnavailable();
+      return false;
+    }
+    if (isSiteAnalyticsPolicyError(error)) {
+      markSiteAnalyticsTrackingBlocked();
+      return false;
+    }
+
+    logRuntimeIssueOnce("warn", "site-analytics-event-insert-failed", "Site analytics event insert failed", error);
     return false;
+  } finally {
+    appState.siteAnalyticsEventInFlight = false;
   }
-  if (isSiteAnalyticsPolicyError(error)) {
-    appState.siteVisitorAnalyticsTrackingBlocked = true;
-    appState.siteVisitorAnalyticsError = "Historical analytics tracking is blocked by the current Supabase policies.";
-    return false;
-  }
-
-  console.warn("Site analytics event insert failed", error);
-  return false;
 }
 
 function trackSiteAnalyticsVisitOnce() {
@@ -4582,7 +4684,7 @@ async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_F
     const { data, error } = await query;
     if (error) {
       if (isSiteAnalyticsTableMissingError(error)) {
-        appState.siteVisitorAnalyticsTableUnavailable = true;
+        markSiteAnalyticsTableUnavailable();
         throw new Error("Historical analytics table unavailable. Apply the site analytics migration.");
       }
       throw new Error(error.message || `Could not load site visitor analytics during ${reason}.`);
@@ -4933,10 +5035,10 @@ async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified"
 
   if (error) {
     if (isGallerySnapshotLikesTableMissingError(error)) {
-      appState.gallerySnapshotLikesTableUnavailable = true;
+      markGallerySnapshotLikesTableUnavailable();
       return [];
     }
-    console.error("Failed to load gallery likes", { reason, error });
+    logRuntimeIssueOnce("error", "gallery-snapshot-likes-load-failed", "Failed to load gallery likes", { reason, error });
     return [];
   }
 
@@ -7481,10 +7583,26 @@ function isSourcesTableMissingError(error) {
 function markSourcesTableUnavailable() {
   appState.sourcesTableUnavailable = true;
   appState.sourcesError = "Source management data store is missing. Run the latest schema setup.";
+  logRuntimeIssueOnce(
+    "warn",
+    "sources-table-unavailable",
+    "Source loading disabled because the Supabase table is missing.",
+    { table: SOURCES_TABLE },
+  );
 }
 
 function isGallerySnapshotLikesTableMissingError(error) {
-  return isSupabaseTableMissingError(error, GROW_GALLERY_LIKES_TABLE);
+  return isSupabaseTableMissingError(error, [GROW_GALLERY_LIKES_TABLE, LEGACY_GROW_GALLERY_LIKES_TABLE]);
+}
+
+function markGallerySnapshotLikesTableUnavailable() {
+  appState.gallerySnapshotLikesTableUnavailable = true;
+  logRuntimeIssueOnce(
+    "warn",
+    "gallery-snapshot-likes-table-unavailable",
+    "Community Grow likes disabled because the Supabase table is missing.",
+    { table: GROW_GALLERY_LIKES_TABLE },
+  );
 }
 
 function normalizeSourceWebsiteUrl(value) {
@@ -7563,7 +7681,7 @@ async function loadSources(reason = "unspecified") {
       markSourcesTableUnavailable();
       return [];
     }
-    console.error("Failed to load sources", { reason, error });
+    logRuntimeIssueOnce("error", "sources-load-failed", "Failed to load sources", { reason, error });
     appState.sourcesError = getSourceErrorMessage(error, "Could not load sources.");
     return [];
   }
@@ -9025,7 +9143,7 @@ async function toggleGallerySnapshotLike(snapshotId) {
 
     if (error) {
       if (isGallerySnapshotLikesTableMissingError(error)) {
-        appState.gallerySnapshotLikesTableUnavailable = true;
+        markGallerySnapshotLikesTableUnavailable();
         throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
       }
       throw new Error("Could not remove your like right now.");
@@ -9046,7 +9164,7 @@ async function toggleGallerySnapshotLike(snapshotId) {
 
     if (error) {
       if (isGallerySnapshotLikesTableMissingError(error)) {
-        appState.gallerySnapshotLikesTableUnavailable = true;
+        markGallerySnapshotLikesTableUnavailable();
         throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
       }
       throw new Error("Could not save your like right now.");
