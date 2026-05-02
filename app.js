@@ -148,12 +148,12 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   notifyCompletion: true,
   notifyFollow: true,
   notifyLike: true,
-  notifyCommunityActivity: false,
+  notifyCommunityActivity: true,
   createdAt: "",
   updatedAt: "",
 });
 const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
-  notifyCommunityActivity: false,
+  notifyCommunityActivity: true,
   showProfileInCommunityGrow: true,
   allowFollowers: true,
   showGrowStatsPublicly: true,
@@ -15766,7 +15766,7 @@ function bindProfilePageForm(form) {
       notifyLike: nextValues.notifyLike,
       notifyCommunityActivity: nextValues.notifyCommunityActivity,
     });
-    appState.profilePageSettings = normalizeProfilePageSettings({
+    appState.profilePageSettings = syncProfilePageSettingsCache(normalizedUserId, {
       ...getCurrentProfilePageSettings(),
       notifyCommunityActivity: nextValues.notifyCommunityActivity,
       showProfileInCommunityGrow: nextValues.showProfileInCommunityGrow,
@@ -15836,10 +15836,7 @@ function bindProfilePageForm(form) {
 
     state.saving = true;
     state.savePromise = (async () => {
-      const errors = [];
-      let notificationSaveSucceeded = false;
-      let privacySaveSucceeded = false;
-
+      let cloudSyncUnavailable = false;
       try {
         appState.notificationPreferences = await saveUserNotificationPreferences(
           notificationPreferencesPayload,
@@ -15849,10 +15846,9 @@ function bindProfilePageForm(form) {
             verifyAfterSave: true,
           },
         );
-        notificationSaveSucceeded = true;
       } catch (error) {
         console.warn("[Profile Settings] Notification preferences save failed.", error);
-        errors.push(error?.message || "Notification preferences could not be saved right now.");
+        cloudSyncUnavailable = true;
       }
 
       try {
@@ -15865,18 +15861,13 @@ function bindProfilePageForm(form) {
           },
         );
         appState.profilePageSettingsUserId = String(appState.user?.id || "").trim();
-        privacySaveSucceeded = true;
       } catch (error) {
         console.warn("[Profile Settings] Privacy settings save failed.", error);
-        errors.push(error?.message || "Privacy settings could not be saved right now.");
+        cloudSyncUnavailable = true;
       }
 
-      if (notificationSaveSucceeded) {
-        patchSavedFieldsIntoBaseline(notificationFieldNames, appState.notificationPreferences || pendingValues);
-      }
-      if (privacySaveSucceeded) {
-        patchSavedFieldsIntoBaseline(privacyFieldNames, appState.profilePageSettings || pendingValues);
-      }
+      patchSavedFieldsIntoBaseline(notificationFieldNames, appState.notificationPreferences || pendingValues);
+      patchSavedFieldsIntoBaseline(privacyFieldNames, appState.profilePageSettings || pendingValues);
 
       applyFormState({
         notifySnapshot: appState.notificationPreferences?.notifySnapshot,
@@ -15891,9 +15882,9 @@ function bindProfilePageForm(form) {
       syncLocalProfileState();
       updateUnsavedState();
 
-      if (errors.length) {
-        setMessage(errors.join(" "), true);
-        return false;
+      if (cloudSyncUnavailable) {
+        setMessage("Preferences saved locally. Cloud sync unavailable.");
+        return true;
       }
 
       setMessage(source === "auto" ? "Saved" : "Profile settings saved.");
