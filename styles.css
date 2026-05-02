@@ -429,6 +429,7 @@ body.theme-dark .app-footer-nav a:focus-visible {
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   max-width: min(100%, 340px);
 }
 
@@ -460,6 +461,13 @@ body.theme-dark .app-footer-nav a:focus-visible {
   color: var(--muted);
 }
 
+.auth-user-email {
+  max-width: min(100%, 220px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .account-menu-trigger {
   width: 44px;
   min-width: 44px;
@@ -477,45 +485,15 @@ body.theme-dark .app-footer-nav a:focus-visible {
     color 0.18s ease;
 }
 
-.account-menu-trigger--profile {
-  width: auto;
-  min-width: 0;
-  max-width: min(100%, 340px);
-  height: auto;
-  padding: 6px 10px 6px 6px;
-  gap: 10px;
-  justify-content: flex-start;
-  border-radius: 999px;
-}
-
-.account-menu-trigger-copy {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-  text-align: left;
-}
-
-.account-menu-trigger-copy strong {
-  color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1.1;
-  white-space: nowrap;
+.account-menu-trigger--avatar {
+  padding: 3px;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.account-menu-trigger-copy span {
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.account-menu-trigger--profile .account-menu-icon {
-  margin-left: 2px;
-  color: var(--muted);
+.account-menu-trigger--avatar .auth-avatar {
+  width: 36px;
+  height: 36px;
+  border-color: transparent;
 }
 
 .account-menu-trigger:hover {
@@ -889,23 +867,6 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
   }
 
   .auth-status {
-    width: auto;
-    justify-content: flex-end;
-  }
-
-  .account-menu-root {
-    width: auto;
-    display: inline-flex;
-  }
-
-  .account-menu-trigger--profile {
-    width: 48px;
-    min-width: 48px;
-    padding: 6px;
-    justify-content: center;
-  }
-
-  .account-menu-trigger-copy {
     display: none;
   }
 
@@ -14951,29 +14912,11 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .auth-status {
-    width: auto;
-    justify-content: flex-end;
-  }
-
-  .account-menu-root {
-    width: auto;
-    display: inline-flex;
-  }
-
-  .account-menu-trigger--profile {
-    width: 48px;
-    min-width: 48px;
-    padding: 6px;
-    justify-content: center;
-  }
-
-  .account-menu-trigger-copy,
-  .topbar-nav {
     display: none;
   }
 
-  .account-menu-trigger {
-    align-self: start;
+  .topbar-nav {
+    display: none;
   }
 
   .mobile-nav-toggle {

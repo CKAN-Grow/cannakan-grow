@@ -12390,24 +12390,20 @@ function updateAuthStatus() {
   }
 
   closeAuthModal();
-  const themeTarget = appState.theme === "dark" ? "light" : "dark";
-  const themeLabel = `Switch to ${themeTarget} mode`;
-  const themeIcon = themeTarget === "dark" ? "moon" : "sun";
   const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
-  const currentUserIsAdmin = hasResolvedAdminAccess();
-  const showAdminMenuItem = currentUserIsAdmin;
   console.log("[Cannakan Admin Nav] Account menu render", {
     currentEmail: appState.user?.email || "",
     normalizedEmail: currentUserEmail,
-    isAdminResult: currentUserIsAdmin,
-    adminDropdownItemRendered: showAdminMenuItem,
+    isAdminResult: hasResolvedAdminAccess(),
+    adminDropdownItemRendered: false,
   });
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
+      <span class="auth-pill auth-user-email">${escapeHtml(appState.user?.email || getProfileDisplayName())}</span>
       <button
         id="account-menu-trigger"
-        class="button button-secondary account-menu-trigger account-menu-trigger--profile"
+        class="button button-secondary account-menu-trigger account-menu-trigger--avatar"
         type="button"
         aria-label="Open profile menu"
         aria-haspopup="menu"
@@ -12419,34 +12415,11 @@ function updateAuthStatus() {
           className: "auth-avatar",
           fallbackClassName: "auth-avatar auth-avatar-fallback",
         })}
-        <span class="account-menu-trigger-copy">
-          <strong>${escapeHtml(getProfileDisplayName())}</strong>
-          <span>${escapeHtml(appState.user?.email || "")}</span>
-        </span>
-        ${getMenuIconMarkup("chevronDown")}
       </button>
       <div class="account-dropdown ${appState.accountMenuOpen ? "is-open" : ""}" ${appState.accountMenuOpen ? "" : "hidden"} role="menu" aria-label="Account menu">
         <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("profile")}
           <span>Profile</span>
-        </button>
-        <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup("profile")}
-          <span>Edit Profile</span>
-        </button>
-        <button id="account-theme-toggle" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup(themeIcon)}
-          <span>${themeLabel}</span>
-        </button>
-        ${showAdminMenuItem ? `
-          <button id="account-admin-link" class="account-menu-item" type="button" role="menuitem">
-            ${getMenuIconMarkup("menu")}
-            <span>Admin</span>
-          </button>
-        ` : ""}
-        <button id="account-delete-profile" class="account-menu-item is-danger" type="button" role="menuitem">
-          ${getMenuIconMarkup("delete")}
-          <span>Delete Profile</span>
         </button>
         <button id="account-sign-out" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("signout")}
@@ -12473,37 +12446,10 @@ function updateAuthStatus() {
     toggleAccountMenu();
   });
 
-  dropdown?.querySelector("#account-theme-toggle")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeAccountMenu();
-    toggleTheme();
-  });
-
-  dropdown?.querySelector("#account-admin-link")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeAccountMenu();
-    window.location.hash = "#admin";
-  });
-
   dropdown?.querySelector("#account-profile-link")?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
     navigateToProfileRoute();
-  });
-
-  dropdown?.querySelector("#account-edit-profile")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    closeAccountMenu();
-    openProfileEditor();
-  });
-
-  dropdown?.querySelector("#account-delete-profile")?.addEventListener("click", async (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    await handleAccountMenuDelete();
   });
 
   dropdown?.querySelector("#account-sign-out")?.addEventListener("click", async (event) => {
