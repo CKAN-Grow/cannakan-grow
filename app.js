@@ -3299,10 +3299,15 @@ function getLocationRouteHash() {
 }
 
 function getCurrentAppPathRoute() {
-  const pathRoute = window.location.pathname.replace(/^\/+/, "");
-  return pathRoute === "admin/gallery-moderation" || pathRoute === "profile"
-    ? pathRoute
-    : "";
+  const pathRoute = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  return ({
+    "": "",
+    profile: "profile",
+    sessions: "sessions",
+    "community-grow": "gallery",
+    "grow-network": "network",
+    "admin/gallery-moderation": "admin/gallery-moderation",
+  })[pathRoute] || "";
 }
 
 function isUsingPathRoute(route = "") {

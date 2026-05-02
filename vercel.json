@@ -34,6 +34,10 @@
     {
       "source": "/icon-maskable-512.png",
       "destination": "/public/icon-maskable-512.png"
+    },
+    {
+      "source": "/((?!api/|.*\\..*).*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
