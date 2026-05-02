@@ -10354,6 +10354,31 @@ input::placeholder {
     inset 0 -1px 0 rgba(24, 34, 24, 0.05);
 }
 
+.grow-network-notification-button {
+  width: 100%;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grow-network-notification-card.is-interactive {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.grow-network-notification-card.is-interactive:hover,
+.grow-network-notification-card.is-interactive:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 20px rgba(29, 49, 33, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(24, 34, 24, 0.05);
+}
+
+.grow-network-notification-card.is-interactive:focus-visible {
+  outline: 2px solid rgba(148, 209, 89, 0.28);
+  outline-offset: 2px;
+}
+
 .grow-network-notification-card.is-unseen {
   background:
     linear-gradient(90deg, rgba(148, 209, 89, 0.12) 0%, rgba(148, 209, 89, 0.04) 26%, rgba(255, 255, 255, 0.72) 100%);
@@ -10405,6 +10430,31 @@ input::placeholder {
   border: 1px solid rgba(148, 209, 89, 0.16);
   box-shadow: 0 8px 18px rgba(29, 49, 33, 0.1);
   display: block;
+}
+
+.grow-network-notification-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.grow-network-notification-avatar-stack-item {
+  position: relative;
+  display: inline-flex;
+  margin-left: calc(var(--notification-avatar-index, 0) * -14px);
+}
+
+.grow-network-notification-avatar-stack-item:first-child {
+  margin-left: 0;
+}
+
+.grow-network-notification-avatar-stack-item .grow-network-notification-avatar {
+  width: 42px;
+  height: 42px;
+  box-shadow:
+    0 0 0 2px rgba(246, 248, 245, 0.95),
+    0 8px 18px rgba(29, 49, 33, 0.1);
 }
 
 .grow-network-member-avatar.is-fallback,
@@ -10482,6 +10532,51 @@ input::placeholder {
 .grow-network-notification-empty-state strong,
 .grow-network-notification-empty-state p {
   margin: 0;
+}
+
+.grow-network-notification-group-modal-card {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+}
+
+.grow-network-notification-group-modal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.grow-network-notification-group-modal-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(148, 209, 89, 0.1);
+}
+
+.grow-network-notification-group-modal-item-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.grow-network-notification-group-modal-item-copy strong,
+.grow-network-notification-group-modal-item-time {
+  color: var(--ink);
+}
+
+.grow-network-notification-group-modal-item-copy span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.grow-network-notification-group-modal-item-time {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .grow-network-member-caption {
@@ -10569,6 +10664,14 @@ body.theme-dark .grow-network-notification-card.is-unseen {
     linear-gradient(90deg, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.03) 26%, rgba(22, 31, 25, 0.98) 100%);
 }
 
+body.theme-dark .grow-network-notification-card.is-interactive:hover,
+body.theme-dark .grow-network-notification-card.is-interactive:focus-visible {
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+}
+
 body.theme-dark .grow-network-member-copy strong,
 body.theme-dark .grow-network-feed-member-copy strong,
 body.theme-dark .grow-network-feed-title {
@@ -10580,6 +10683,26 @@ body.theme-dark .grow-network-notification-text {
 }
 
 body.theme-dark .grow-network-notification-time {
+  color: #a9b4ab;
+}
+
+body.theme-dark .grow-network-notification-avatar-stack-item .grow-network-notification-avatar {
+  box-shadow:
+    0 0 0 2px rgba(21, 24, 21, 0.96),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .grow-network-notification-group-modal-item {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .grow-network-notification-group-modal-item-copy strong {
+  color: #f6f8f5;
+}
+
+body.theme-dark .grow-network-notification-group-modal-item-copy span,
+body.theme-dark .grow-network-notification-group-modal-item-time {
   color: #a9b4ab;
 }
 

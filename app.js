@@ -203,6 +203,9 @@ const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
   { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Mixed", followerCount: 79, followingCount: 24, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
+const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
+const GROW_NETWORK_NOTIFICATION_MAX_STACKED_AVATARS = 3;
+const GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT = "2026-05-02T12:00:00.000Z";
 const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
   {
     id: "mock-activity-avery-snapshot",
@@ -310,14 +313,100 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
   },
 ]);
 const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
-  { id: "mock-notification-avery-follow", displayName: "Avery Moss", avatarUrl: "https://i.pravatar.cc/96?u=avery-moss", actionText: "started following you", timeLabel: "2m", isUnseen: true },
-  { id: "mock-notification-humboldt-grow-session-like", displayName: "Humboldt Seed Co", avatarUrl: "", actionText: "liked your Grow Session", timeLabel: "8m", isUnseen: true },
-  { id: "mock-notification-sarah-snapshot-like", displayName: "Sarah K.", avatarUrl: "https://i.pravatar.cc/96?u=sarah-k", actionText: "liked your snapshot", timeLabel: "21m", isUnseen: true },
-  { id: "mock-notification-mike-group-like", displayName: "Mike R.", avatarUrl: "https://i.pravatar.cc/96?u=mike-r", actionText: "and 2 others liked your session", timeLabel: "1h", isUnseen: true },
-  { id: "mock-notification-network-trending", displayName: "Grow Network", avatarUrl: "", actionText: "Your session is trending", timeLabel: "3h", isUnseen: true },
-  { id: "mock-notification-emily-follow", displayName: "Emily T.", avatarUrl: "https://i.pravatar.cc/96?u=emily-t", actionText: "started following you", timeLabel: "6h", isUnseen: false },
-  { id: "mock-notification-alex-grow-session-like", displayName: "Alex P.", avatarUrl: "https://i.pravatar.cc/96?u=alex-p", actionText: "liked your Grow Session", timeLabel: "1d", isUnseen: false },
-  { id: "mock-notification-tina-snapshot-like", displayName: "Tina L.", avatarUrl: "", actionText: "liked your snapshot", timeLabel: "3d", isUnseen: false },
+  {
+    id: "mock-notification-avery-follow",
+    type: "follow",
+    displayName: "Avery Moss",
+    avatarUrl: "https://i.pravatar.cc/96?u=avery-moss",
+    occurredAt: "2026-05-02T11:58:00.000Z",
+    isUnseen: true,
+    targetId: "self-follow",
+    targetLabel: "you",
+    targetRoute: "#network",
+  },
+  {
+    id: "mock-notification-sarah-follow",
+    type: "follow",
+    displayName: "Sarah K.",
+    avatarUrl: "https://i.pravatar.cc/96?u=sarah-k",
+    occurredAt: "2026-05-02T11:54:30.000Z",
+    isUnseen: true,
+    targetId: "self-follow",
+    targetLabel: "you",
+    targetRoute: "#network",
+  },
+  {
+    id: "mock-notification-mike-follow",
+    type: "follow",
+    displayName: "Mike R.",
+    avatarUrl: "https://i.pravatar.cc/96?u=mike-r",
+    occurredAt: "2026-05-02T11:51:30.000Z",
+    isUnseen: false,
+    targetId: "self-follow",
+    targetLabel: "you",
+    targetRoute: "#network",
+  },
+  {
+    id: "mock-notification-humboldt-grow-session-like",
+    type: "like",
+    displayName: "Humboldt Seed Co",
+    avatarUrl: "",
+    occurredAt: "2026-05-02T11:49:00.000Z",
+    isUnseen: true,
+    targetId: "grow-session-demo",
+    targetType: "session",
+    targetLabel: "Grow Session",
+    targetRoute: "#sessions",
+  },
+  {
+    id: "mock-notification-alex-grow-session-like",
+    type: "like",
+    displayName: "Alex P.",
+    avatarUrl: "https://i.pravatar.cc/96?u=alex-p",
+    occurredAt: "2026-05-02T11:46:30.000Z",
+    isUnseen: true,
+    targetId: "grow-session-demo",
+    targetType: "session",
+    targetLabel: "Grow Session",
+    targetRoute: "#sessions",
+  },
+  {
+    id: "mock-notification-tina-grow-session-like",
+    type: "like",
+    displayName: "Tina L.",
+    avatarUrl: "",
+    occurredAt: "2026-05-02T11:43:30.000Z",
+    isUnseen: false,
+    targetId: "grow-session-demo",
+    targetType: "session",
+    targetLabel: "session",
+    targetRoute: "#sessions",
+  },
+  {
+    id: "mock-notification-sarah-snapshot-like",
+    type: "like",
+    displayName: "Sarah K.",
+    avatarUrl: "https://i.pravatar.cc/96?u=sarah-k-snapshot",
+    occurredAt: "2026-05-02T11:22:00.000Z",
+    isUnseen: true,
+    targetId: "snapshot-demo",
+    targetType: "snapshot",
+    targetLabel: "snapshot",
+    targetRoute: "#gallery",
+  },
+  {
+    id: "mock-notification-network-trending",
+    type: "system",
+    displayName: "Grow Network",
+    avatarUrl: "",
+    occurredAt: "2026-05-02T09:00:00.000Z",
+    isUnseen: true,
+    actionText: "Your session is trending",
+    targetId: "grow-session-demo",
+    targetType: "session",
+    targetLabel: "Grow Session",
+    targetRoute: "#sessions",
+  },
 ]);
 const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   {
@@ -6345,12 +6434,178 @@ function buildMockGrowNetworkActivityEntries() {
 function getMockGrowNetworkNotifications() {
   return GROW_NETWORK_MOCK_NOTIFICATIONS.map((notification) => ({
     ...notification,
+    type: ["follow", "like", "system"].includes(String(notification.type || "").trim().toLowerCase())
+      ? String(notification.type || "").trim().toLowerCase()
+      : "system",
     displayName: String(notification.displayName || "").trim() || "Grow Network",
     avatarUrl: String(notification.avatarUrl || "").trim(),
     actionText: String(notification.actionText || "").trim(),
-    timeLabel: String(notification.timeLabel || "").trim() || "now",
+    occurredAt: String(notification.occurredAt || "").trim() || GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT,
     isUnseen: Boolean(notification.isUnseen),
-  }));
+    targetId: String(notification.targetId || "").trim(),
+    targetType: String(notification.targetType || "").trim().toLowerCase(),
+    targetLabel: String(notification.targetLabel || "").trim() || "activity",
+    targetRoute: String(notification.targetRoute || "").trim() || "#network",
+  })).sort((left, right) => {
+    const leftTime = parseCompletedAtValue(left.occurredAt)?.getTime() || 0;
+    const rightTime = parseCompletedAtValue(right.occurredAt)?.getTime() || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function formatGrowNetworkNotificationRelativeTime(
+  occurredAt = "",
+  referenceAt = GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT,
+) {
+  const occurredAtDate = parseCompletedAtValue(occurredAt);
+  const referenceDate = parseCompletedAtValue(referenceAt) || new Date();
+  if (!occurredAtDate) {
+    return "now";
+  }
+
+  const diffMs = Math.max(0, referenceDate.getTime() - occurredAtDate.getTime());
+  const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h`;
+  }
+
+  return `${Math.floor(diffHours / 24)}d`;
+}
+
+function getGrowNetworkNotificationGroupKey(notification) {
+  const normalizedType = String(notification?.type || "").trim().toLowerCase();
+  if (normalizedType === "follow") {
+    return `follow:${String(notification?.targetId || "self-follow").trim()}`;
+  }
+  if (normalizedType === "like" && notification?.targetId) {
+    return `like:${String(notification.targetType || "activity").trim().toLowerCase()}:${String(notification.targetId).trim()}`;
+  }
+  return "";
+}
+
+function formatGrowNetworkNotificationActorText(notifications = [], type = "") {
+  const names = notifications
+    .map((notification) => String(notification?.displayName || "").trim())
+    .filter(Boolean);
+  if (!names.length) {
+    return "Grow Network";
+  }
+
+  if (type === "follow") {
+    if (names.length === 1) {
+      return names[0];
+    }
+    if (names.length === 2) {
+      return `${names[0]} and ${names[1]}`;
+    }
+    return `${names[0]}, ${names[1]} and ${names.length - 2} other${names.length - 2 === 1 ? "" : "s"}`;
+  }
+
+  if (type === "like") {
+    if (names.length === 1) {
+      return names[0];
+    }
+    if (names.length === 2) {
+      return `${names[0]} and ${names[1]}`;
+    }
+    return `${names[0]} and ${names.length - 1} other${names.length - 1 === 1 ? "" : "s"}`;
+  }
+
+  return names[0];
+}
+
+function buildGrowNetworkNotificationFeedGroup(notifications = []) {
+  const groupedNotifications = [...notifications].sort((left, right) => {
+    const leftTime = parseCompletedAtValue(left?.occurredAt)?.getTime() || 0;
+    const rightTime = parseCompletedAtValue(right?.occurredAt)?.getTime() || 0;
+    return rightTime - leftTime;
+  });
+  const primaryNotification = groupedNotifications[0] || {};
+  const normalizedType = String(primaryNotification.type || "system").trim().toLowerCase();
+  const isGrouped = groupedNotifications.length > 1 && ["follow", "like"].includes(normalizedType);
+  const actorText = formatGrowNetworkNotificationActorText(groupedNotifications, normalizedType);
+  const actionText = normalizedType === "follow"
+    ? "started following you"
+    : normalizedType === "like"
+      ? `liked your ${primaryNotification.targetLabel || "activity"}`
+      : String(primaryNotification.actionText || "sent an update").trim();
+
+  return {
+    id: isGrouped
+      ? `group-${getGrowNetworkNotificationGroupKey(primaryNotification)}-${String(primaryNotification.occurredAt || "").trim()}`
+      : String(primaryNotification.id || crypto.randomUUID()).trim(),
+    type: normalizedType,
+    isGrouped,
+    isUnseen: groupedNotifications.some((notification) => notification.isUnseen),
+    actorText,
+    actionText,
+    timeLabel: formatGrowNetworkNotificationRelativeTime(primaryNotification.occurredAt),
+    occurredAt: primaryNotification.occurredAt || "",
+    targetLabel: String(primaryNotification.targetLabel || "activity").trim(),
+    targetRoute: String(primaryNotification.targetRoute || "#network").trim() || "#network",
+    avatarMembers: groupedNotifications.slice(0, GROW_NETWORK_NOTIFICATION_MAX_STACKED_AVATARS),
+    notifications: groupedNotifications,
+    modalTitle: normalizedType === "follow"
+      ? "Followers"
+      : normalizedType === "like"
+        ? `Likes on your ${String(primaryNotification.targetLabel || "activity").trim()}`
+        : "Grow Network notification",
+  };
+}
+
+function buildMockGrowNetworkNotificationFeedGroups(
+  notifications = [],
+  groupWindowMs = GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS,
+) {
+  const sortedNotifications = [...notifications].sort((left, right) => {
+    const leftTime = parseCompletedAtValue(left?.occurredAt)?.getTime() || 0;
+    const rightTime = parseCompletedAtValue(right?.occurredAt)?.getTime() || 0;
+    return rightTime - leftTime;
+  });
+  const consumedIds = new Set();
+  const groups = [];
+
+  sortedNotifications.forEach((notification, index) => {
+    const normalizedId = String(notification?.id || "").trim();
+    if (!normalizedId || consumedIds.has(normalizedId)) {
+      return;
+    }
+
+    consumedIds.add(normalizedId);
+    const nextGroup = [notification];
+    const groupKey = getGrowNetworkNotificationGroupKey(notification);
+    const baseTime = parseCompletedAtValue(notification.occurredAt)?.getTime() || 0;
+
+    if (groupKey) {
+      for (let cursor = index + 1; cursor < sortedNotifications.length; cursor += 1) {
+        const candidate = sortedNotifications[cursor];
+        const candidateId = String(candidate?.id || "").trim();
+        if (!candidateId || consumedIds.has(candidateId)) {
+          continue;
+        }
+        if (getGrowNetworkNotificationGroupKey(candidate) !== groupKey) {
+          continue;
+        }
+
+        const candidateTime = parseCompletedAtValue(candidate.occurredAt)?.getTime() || 0;
+        if (Math.abs(baseTime - candidateTime) > groupWindowMs) {
+          continue;
+        }
+
+        nextGroup.push(candidate);
+        consumedIds.add(candidateId);
+      }
+    }
+
+    groups.push(buildGrowNetworkNotificationFeedGroup(nextGroup));
+  });
+
+  return groups;
 }
 
 function isGrowNetworkMockNotificationTestAccount() {
@@ -6371,6 +6626,80 @@ function hasUnseenMockGrowNetworkNotifications() {
   }
 
   return getMockGrowNetworkNotifications().some((notification) => notification.isUnseen);
+}
+
+function ensureGrowNetworkNotificationGroupModal() {
+  let modal = document.querySelector("#grow-network-notification-group-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "grow-network-notification-group-modal";
+  modal.className = "snapshot-modal grow-network-notification-group-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card grow-network-notification-group-modal-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Grow Network</p>
+        <h3 id="grow-network-notification-group-modal-title">Notification details</h3>
+        <p id="grow-network-notification-group-modal-copy"></p>
+      </div>
+      <div id="grow-network-notification-group-modal-list" class="grow-network-notification-group-modal-list"></div>
+      <div class="snapshot-modal-actions">
+        <a id="grow-network-notification-group-modal-link" class="button button-secondary" href="#network">Open Target</a>
+        <button type="submit" class="button button-primary">Close</button>
+      </div>
+    </form>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close();
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function openGrowNetworkNotificationGroupModal(notificationGroup) {
+  if (!notificationGroup?.isGrouped) {
+    return;
+  }
+
+  const modal = ensureGrowNetworkNotificationGroupModal();
+  const title = modal.querySelector("#grow-network-notification-group-modal-title");
+  const copy = modal.querySelector("#grow-network-notification-group-modal-copy");
+  const list = modal.querySelector("#grow-network-notification-group-modal-list");
+  const link = modal.querySelector("#grow-network-notification-group-modal-link");
+
+  if (!title || !copy || !list || !link) {
+    return;
+  }
+
+  title.textContent = notificationGroup.modalTitle || "Notification details";
+  copy.textContent = notificationGroup.type === "follow"
+    ? "Grouped follows within the current notification window."
+    : "Grouped likes within the current notification window.";
+  list.innerHTML = notificationGroup.notifications.map((notification) => {
+    const timeLabel = formatGrowNetworkNotificationRelativeTime(notification.occurredAt);
+    return `
+      <div class="grow-network-notification-group-modal-item">
+        ${renderPublicMemberAvatarMarkup(notification.displayName, notification.avatarUrl, "grow-network-notification-avatar")}
+        <div class="grow-network-notification-group-modal-item-copy">
+          <strong>${escapeHtml(notification.displayName)}</strong>
+          <span>${escapeHtml(notification.type === "follow" ? "Started following you" : `Liked your ${notification.targetLabel || "activity"}`)}</span>
+        </div>
+        <span class="grow-network-notification-group-modal-item-time">${escapeHtml(timeLabel)}</span>
+      </div>
+    `;
+  }).join("");
+  link.href = notificationGroup.targetRoute || "#network";
+  link.hidden = !notificationGroup.targetRoute;
+
+  if (!modal.open) {
+    modal.showModal();
+  }
 }
 
 function toggleMockGrowNetworkFollowState(memberId = "") {
@@ -22211,7 +22540,9 @@ function renderGrowNetworkPage() {
   const isLoadingFollowing = !isMockNetwork && (Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id)));
   const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
   const mockMembers = isMockNetwork ? buildMockGrowNetworkMemberCards(activeTab) : [];
-  const mockNotifications = useMockNotifications ? getMockGrowNetworkNotifications() : [];
+  const mockNotificationGroups = useMockNotifications
+    ? buildMockGrowNetworkNotificationFeedGroups(getMockGrowNetworkNotifications())
+    : [];
 
   const renderMemberMetaMarkup = (member) => {
     if (!isMockNetwork) {
@@ -22458,7 +22789,7 @@ function renderGrowNetworkPage() {
   };
 
   const renderMockNotificationFeedMarkup = () => {
-    if (!mockNotifications.length) {
+    if (!mockNotificationGroups.length) {
       return `
         <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-notification-empty-state">
           <strong>No activity yet</strong>
@@ -22469,19 +22800,27 @@ function renderGrowNetworkPage() {
 
     return `
       <div class="grow-network-notification-list" aria-label="Mock Grow Network notifications">
-        ${mockNotifications.map((notification) => `
-          <article class="grow-network-notification-card${notification.isUnseen ? " is-unseen" : ""}">
-            <span class="grow-network-notification-avatar-shell">
-              ${renderPublicMemberAvatarMarkup(notification.displayName, notification.avatarUrl, "grow-network-notification-avatar")}
+        ${mockNotificationGroups.map((notificationGroup) => `
+          <${notificationGroup.isGrouped ? "button" : "article"}
+            ${notificationGroup.isGrouped ? 'type="button"' : ""}
+            class="grow-network-notification-card${notificationGroup.isUnseen ? " is-unseen" : ""}${notificationGroup.isGrouped ? " is-interactive grow-network-notification-button" : ""}"
+            ${notificationGroup.isGrouped ? `data-grow-network-notification-group="${escapeHtml(notificationGroup.id)}"` : ""}
+          >
+            <span class="${escapeHtml(notificationGroup.avatarMembers.length > 1 ? "grow-network-notification-avatar-stack" : "grow-network-notification-avatar-shell")}">
+              ${notificationGroup.avatarMembers.map((member, index) => `
+                <span class="grow-network-notification-avatar-stack-item" style="--notification-avatar-index:${index}">
+                  ${renderPublicMemberAvatarMarkup(member.displayName, member.avatarUrl, "grow-network-notification-avatar")}
+                </span>
+              `).join("")}
             </span>
             <div class="grow-network-notification-copy">
               <p class="grow-network-notification-text">
-                <strong>${escapeHtml(notification.displayName)}</strong>
-                <span>${escapeHtml(notification.actionText)}</span>
+                <strong>${escapeHtml(notificationGroup.actorText)}</strong>
+                <span>${escapeHtml(notificationGroup.actionText)}</span>
               </p>
             </div>
-            <span class="grow-network-notification-time">${escapeHtml(notification.timeLabel)}</span>
-          </article>
+            <span class="grow-network-notification-time">${escapeHtml(notificationGroup.timeLabel)}</span>
+          </${notificationGroup.isGrouped ? "button" : "article"}>
         `).join("")}
       </div>
     `;
@@ -22557,6 +22896,15 @@ function renderGrowNetworkPage() {
     button.addEventListener("click", () => {
       toggleMockGrowNetworkFollowState(button.dataset.growNetworkMockFollow || "");
       renderGrowNetworkPage();
+    });
+  });
+
+  app.querySelectorAll("[data-grow-network-notification-group]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const notificationGroup = mockNotificationGroups.find((entry) => entry.id === (button.dataset.growNetworkNotificationGroup || ""));
+      if (notificationGroup) {
+        openGrowNetworkNotificationGroupModal(notificationGroup);
+      }
     });
   });
 }
