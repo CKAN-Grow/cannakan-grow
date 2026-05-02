@@ -147,9 +147,30 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   updatedAt: "",
 });
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
-  { key: "mock-avery-moss", name: "Avery Moss", snapshotCount: 36, totalLikes: 1156 },
-  { key: "mock-don-cannakan", name: "Don-Cannakan", snapshotCount: 24, totalLikes: 842 },
-  { key: "mock-mo", name: "Mo", snapshotCount: 18, totalLikes: 611 },
+  {
+    key: "mock-avery-moss",
+    name: "Avery Moss",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Avery Moss", "Humboldt Seed Co", 0),
+    snapshotCount: 36,
+    totalLikes: 1156,
+    averageGermination: 97,
+  },
+  {
+    key: "mock-don-cannakan",
+    name: "Don-Cannakan",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Don-Cannakan", "Royal Queen Seeds", 1),
+    snapshotCount: 24,
+    totalLikes: 842,
+    averageGermination: 98,
+  },
+  {
+    key: "mock-mo",
+    name: "Mo",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Mo", "Barney's Farm", 2),
+    snapshotCount: 18,
+    totalLikes: 611,
+    averageGermination: 94,
+  },
 ]);
 const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
   { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photo", followerCount: 218, followingCount: 64, isFollowing: true },
@@ -10254,6 +10275,24 @@ function getGallerySnapshotMemberLabel(snapshot = {}) {
   ).trim() || "Community member";
 }
 
+function getGallerySnapshotMemberAvatarUrl(snapshot = {}) {
+  return String(
+    snapshot?.profileImageUrl
+    || snapshot?.submittedProfileAvatarUrl
+    || snapshot?.avatarUrl
+    || "",
+  ).trim();
+}
+
+function findMockGalleryTopMemberEntry(entry = {}) {
+  const entryKey = String(entry?.key || "").trim().toLowerCase();
+  const entryName = String(entry?.name || "").trim().toLowerCase();
+  return GALLERY_TOP_MEMBERS_MOCK_ENTRIES.find((mockEntry) => (
+    (entryKey && String(mockEntry?.key || "").trim().toLowerCase() === entryKey)
+    || (entryName && String(mockEntry?.name || "").trim().toLowerCase() === entryName)
+  )) || null;
+}
+
 function buildGalleryTopMemberEntries(snapshots = []) {
   const entriesByMemberKey = new Map();
 
@@ -10266,28 +10305,50 @@ function buildGalleryTopMemberEntries(snapshots = []) {
     const existingEntry = entriesByMemberKey.get(memberKey) || {
       key: memberKey,
       name: getGallerySnapshotMemberLabel(snapshot),
+      avatarUrl: "",
       snapshotCount: 0,
       totalLikes: 0,
       latestPublishedAt: 0,
+      totalSuccessPercent: 0,
     };
 
     existingEntry.name = existingEntry.name === "Community member"
       ? getGallerySnapshotMemberLabel(snapshot)
       : existingEntry.name;
+    existingEntry.avatarUrl = existingEntry.avatarUrl || getGallerySnapshotMemberAvatarUrl(snapshot);
     existingEntry.snapshotCount += 1;
     existingEntry.totalLikes += Math.max(0, Number(snapshot?.likeCount) || 0);
+    existingEntry.totalSuccessPercent += Math.max(0, Number(snapshot?.successPercent) || 0);
     const publishedAtMs = parseLeaderboardSnapshotDate(snapshot)?.getTime() || 0;
     existingEntry.latestPublishedAt = Math.max(existingEntry.latestPublishedAt, publishedAtMs);
     entriesByMemberKey.set(memberKey, existingEntry);
   });
 
   return [...entriesByMemberKey.values()]
+    .map((entry) => ({
+      ...entry,
+      avatarUrl: entry.avatarUrl || (isMockDataEnabled() ? findMockGalleryTopMemberEntry(entry)?.avatarUrl || "" : ""),
+      averageGermination: entry.snapshotCount
+        ? Math.round(entry.totalSuccessPercent / entry.snapshotCount)
+        : (isMockDataEnabled() ? findMockGalleryTopMemberEntry(entry)?.averageGermination || 0 : 0),
+    }))
     .sort((left, right) => (
       (right.snapshotCount - left.snapshotCount)
       || (right.totalLikes - left.totalLikes)
       || (right.latestPublishedAt - left.latestPublishedAt)
       || left.name.localeCompare(right.name)
     ));
+}
+
+function renderLeaderboardMemberIdentityMarkup(entry = {}, className = "leaderboard-member-identity") {
+  const displayName = String(entry?.name || "Community member").trim() || "Community member";
+  const avatarUrl = String(entry?.avatarUrl || "").trim();
+  return `
+    <span class="${escapeHtml(className)}">
+      ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "leaderboard-member-avatar")}
+      <span class="leaderboard-member-name">${escapeHtml(displayName)}</span>
+    </span>
+  `;
 }
 
 function renderGalleryTopMemberRows(entries = [], emptyMessage = "Not enough member activity yet.") {
@@ -10312,7 +10373,7 @@ function renderGalleryTopMemberRows(entries = [], emptyMessage = "Not enough mem
               <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
             </svg>
           </span>
-          <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
+          <span class="gallery-leaderboard-name">${renderLeaderboardMemberIdentityMarkup(entry)}</span>
           <span class="gallery-leaderboard-metric">${escapeHtml(`${entry.snapshotCount} approved${entry.totalLikes ? ` · ${entry.totalLikes} likes` : ""}`)}</span>
         </li>
       `).join("")}
@@ -10343,7 +10404,7 @@ function renderGalleryTopMembersSummary(entries = []) {
         ${summaryEntries.map((entry, index) => `
           <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
             <span class="gallery-top-members-summary-rank">#${index + 1}</span>
-            <span class="gallery-top-members-summary-name">${escapeHtml(entry.name)}</span>
+            <span class="gallery-top-members-summary-name">${renderLeaderboardMemberIdentityMarkup(entry)}</span>
             <span class="gallery-top-members-summary-metric">${escapeHtml(`${entry.snapshotCount} approved - ${entry.totalLikes} likes`)}</span>
           </li>
         `).join("")}
@@ -10625,8 +10686,10 @@ function buildHomeGalleryRankingsTeaserState() {
   const monthlySnapshots = approvedPublicSnapshots.filter((snapshot) => (
     getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
   ));
+  const topMemberEntry = buildGalleryTopMemberEntries(monthlySnapshots)[0]
+    || (isMockDataEnabled() ? { ...GALLERY_TOP_MEMBERS_MOCK_ENTRIES[0] } : null);
   const rankings = {
-    topMember: buildGalleryTopMemberEntries(monthlySnapshots)[0] || null,
+    topMember: topMemberEntry,
     topSource: buildGalleryLeaderboardEntries(monthlySnapshots, "source")[0] || null,
     topVariety: buildGalleryLeaderboardEntries(monthlySnapshots, "variety")[0] || null,
     topSeedType: buildGallerySeedTypeHighlightEntry(monthlySnapshots),
@@ -10707,6 +10770,9 @@ function renderHomeGalleryRankingsTeaser() {
       <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
         ${rankingRows.map((row) => {
           const valueText = row.entry ? row.formatValue(row.entry) : "Not enough data yet";
+          const valueMarkup = row.iconType === "member" && row.entry
+            ? renderLeaderboardMemberIdentityMarkup(row.entry, "leaderboard-member-identity leaderboard-member-identity--compact")
+            : escapeHtml(valueText);
           return `
             <li class="home-gallery-rankings-row ${row.toneClass}">
               <div class="home-gallery-rankings-row-main">
@@ -10715,7 +10781,7 @@ function renderHomeGalleryRankingsTeaser() {
                 </span>
                 <span class="home-gallery-rankings-row-label">${escapeHtml(row.label)}</span>
               </div>
-              <strong class="home-gallery-rankings-row-value">${escapeHtml(valueText)}</strong>
+              <strong class="home-gallery-rankings-row-value${row.iconType === "member" && row.entry ? " home-gallery-rankings-row-value--member" : ""}">${valueMarkup}</strong>
             </li>
           `;
         }).join("")}
@@ -10794,16 +10860,17 @@ function getPublicMemberInitialsLabel(displayName = "") {
   return initials || "CG";
 }
 
+function renderPublicMemberAvatarFallbackMarkup(displayName = "", className = "public-member-profile-avatar") {
+  return `<span class="${escapeHtml(`${className} is-fallback`)}" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(displayName))}</span>`;
+}
+
 function renderPublicMemberAvatarMarkup(displayName = "", avatarUrl = "", className = "public-member-profile-avatar") {
   if (avatarUrl) {
-    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}">`;
+    const fallbackMarkup = renderPublicMemberAvatarFallbackMarkup(displayName, className);
+    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
   }
 
-  return `
-    <span class="${escapeHtml(`${className} is-fallback`)}" aria-hidden="true">
-      ${escapeHtml(getPublicMemberInitialsLabel(displayName))}
-    </span>
-  `;
+  return renderPublicMemberAvatarFallbackMarkup(displayName, className);
 }
 
 function hasGallerySnapshotGrowMember(snapshot) {

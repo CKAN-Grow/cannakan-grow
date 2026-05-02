@@ -2637,11 +2637,64 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   letter-spacing: 0.02em;
 }
 
+.leaderboard-member-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.leaderboard-member-identity--compact {
+  gap: 8px;
+}
+
+.leaderboard-member-avatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard-member-identity--compact .leaderboard-member-avatar {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+
+.leaderboard-member-avatar.is-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.leaderboard-member-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .gallery-top-members-summary-name {
   color: var(--ink);
   font-size: 0.95rem;
   font-weight: 700;
   line-height: 1.3;
+}
+
+.gallery-top-members-summary-name .leaderboard-member-name {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .gallery-top-members-summary-metric {
@@ -4133,6 +4186,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   flex-shrink: 0;
 }
 
+.home-gallery-rankings-row-value--member {
+  white-space: normal;
+}
+
+.home-gallery-rankings-row-value--member .leaderboard-member-identity {
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.home-gallery-rankings-row-value--member .leaderboard-member-name {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
 .home-gallery-rankings-empty {
   margin: 0;
   color: var(--muted);
@@ -4275,6 +4344,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   white-space: nowrap;
   color: var(--ink);
   font-weight: 600;
+}
+
+.gallery-leaderboard-name .leaderboard-member-name {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .gallery-leaderboard-metric {
