@@ -43,6 +43,7 @@ const LEGACY_GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_like";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
+const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "View on Instagram →";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -4809,17 +4810,27 @@ function getDefaultNotificationPreferences() {
   return { ...DEFAULT_NOTIFICATION_PREFERENCES };
 }
 
+function logUserNotificationPreferencesFallback(error, details = {}) {
+  appState.notificationPreferencesError = error?.message || "Notification preferences temporarily unavailable.";
+  logRuntimeIssueOnce(
+    "warn",
+    "notification-preferences-backend-fallback",
+    "Notification preferences backend unavailable; using safe defaults.",
+    {
+      ...details,
+      error,
+    },
+  );
+}
+
 function markUserNotificationPreferencesTableUnavailable() {
-  // TODO: Apply `supabase-notification-preferences-migration.sql` in Supabase
-  // so these preferences can persist instead of falling back to session defaults.
-  // This is intentionally session-scoped and resets on full reload.
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-table-unavailable",
-    "Notification preferences unavailable; using defaults for this session.",
+    "Notification preferences backend unavailable; using safe defaults for this session.",
   );
 }
 
@@ -4856,7 +4867,14 @@ async function safelyEnsureUserNotificationPreferences(user) {
   try {
     return await ensureUserNotificationPreferences(user);
   } catch (error) {
-    markUserNotificationPreferencesTableUnavailable();
+    if (isUserNotificationPreferencesTableMissingError(error)) {
+      markUserNotificationPreferencesTableUnavailable();
+    } else {
+      logUserNotificationPreferencesFallback(error, {
+        phase: "load",
+        userId: String(user?.id || "").trim(),
+      });
+    }
     return getDefaultNotificationPreferences();
   }
 }
@@ -5491,6 +5509,14 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           "Failed to initialize notification preferences during auth hydration.",
           "notificationPreferencesError",
         );
+        appState.profilePageSettings = await safelyLoadAppData(
+          () => ensureCurrentUserPublicMemberProfileSettings(appState.user, {
+            reason: `${reason}:profile-settings`,
+          }),
+          loadStoredProfilePageSettings(appState.user.id),
+          "Failed to initialize profile settings during auth hydration.",
+        );
+        appState.profilePageSettingsUserId = String(appState.user.id || "").trim();
         applyResolvedAuthState(session, `${reason}:profile`, appState.profile);
         updateAuthStatus();
         if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
@@ -5626,7 +5652,10 @@ async function ensureUserNotificationPreferences(user) {
       markUserNotificationPreferencesTableUnavailable();
       return getDefaultNotificationPreferences();
     }
-    markUserNotificationPreferencesTableUnavailable();
+    logUserNotificationPreferencesFallback(selectError, {
+      phase: "select",
+      userId: String(user?.id || "").trim(),
+    });
     return getDefaultNotificationPreferences();
   }
 
@@ -5648,7 +5677,10 @@ async function ensureUserNotificationPreferences(user) {
       markUserNotificationPreferencesTableUnavailable();
       return getDefaultNotificationPreferences();
     }
-    markUserNotificationPreferencesTableUnavailable();
+    logUserNotificationPreferencesFallback(upsertError, {
+      phase: "seed",
+      userId: String(user?.id || "").trim(),
+    });
     return getDefaultNotificationPreferences();
   }
 
@@ -6249,34 +6281,86 @@ function normalizeUserNotificationPreferencesRow(row) {
   };
 }
 
-function normalizePublicMemberProfileRow(row) {
+function getDefaultProfilePageSettings() {
+  return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+}
+
+function getProfilePageSettingsBooleanValue(settings = {}, keys = [], fallbackValue = false) {
+  const normalizedKeys = Array.isArray(keys) ? keys : [keys];
+  for (const key of normalizedKeys) {
+    if (
+      Object.prototype.hasOwnProperty.call(settings || {}, key)
+      && settings[key] !== undefined
+      && settings[key] !== null
+    ) {
+      return fallbackValue ? settings[key] !== false : settings[key] === true;
+    }
+  }
+  return fallbackValue;
+}
+
+function normalizeProfilePageSettings(settings = {}, fallbackSettings = DEFAULT_PROFILE_PAGE_SETTINGS) {
+  const normalizedFallbackSettings = {
+    ...DEFAULT_PROFILE_PAGE_SETTINGS,
+    ...(fallbackSettings || {}),
+  };
+
+  return {
+    notifyCommunityActivity: getProfilePageSettingsBooleanValue(
+      settings,
+      ["notifyCommunityActivity", "notify_community_activity"],
+      normalizedFallbackSettings.notifyCommunityActivity === true,
+    ),
+    showProfileInCommunityGrow: getProfilePageSettingsBooleanValue(
+      settings,
+      ["showProfileInCommunityGrow", "show_profile_in_community_grow"],
+      normalizedFallbackSettings.showProfileInCommunityGrow !== false,
+    ),
+    allowFollowers: getProfilePageSettingsBooleanValue(
+      settings,
+      ["allowFollowers", "allow_followers"],
+      normalizedFallbackSettings.allowFollowers !== false,
+    ),
+    showGrowStatsPublicly: getProfilePageSettingsBooleanValue(
+      settings,
+      ["showGrowStatsPublicly", "show_grow_stats_publicly"],
+      normalizedFallbackSettings.showGrowStatsPublicly !== false,
+    ),
+  };
+}
+
+function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE_PAGE_SETTINGS) {
   if (!row) {
     return null;
   }
 
+  const normalizedSettings = normalizeProfilePageSettings(row, fallbackSettings);
   return {
     id: String(row.id || "").trim(),
     displayName: String(row.display_name || row.username || "").trim() || "Community member",
     avatarUrl: String(row.avatar_url || "").trim(),
     joinedAt: row.joined_at || row.created_at || "",
+    ...normalizedSettings,
   };
 }
 
 function isPublicMemberProfilesViewUnavailableError(error) {
-  return isSupabaseTableMissingError(error, "public_member_profiles")
+  return isSupabaseTableMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE)
     || getSupabaseErrorStatusCode(error) === 404;
 }
 
 function markPublicMemberProfilesViewUnavailable(details = {}) {
-  // TODO: Create the Supabase `public_member_profiles` table/view so gallery member
-  // profiles can load from the backend instead of falling back to snapshot-only data.
   appState.publicMemberProfilesViewUnavailable = true;
   logRuntimeIssueOnce(
     "warn",
     "public-member-profiles-view-unavailable",
-    "Public member profiles view unavailable; falling back to snapshot-only profiles.",
+    "Public member profiles backend unavailable; falling back to cached or snapshot-only profiles.",
     details,
   );
+}
+
+function logPublicMemberProfilesFallback(key = "public-member-profiles-fallback", message = "Public member profiles request failed; using safe fallback data.", details = {}) {
+  logRuntimeIssueOnce("warn", key, message, details);
 }
 
 function getPublicMemberProfileRoute(memberId = "") {
@@ -6310,7 +6394,48 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     displayName: getGallerySnapshotMemberLabel(sharedProfileSnapshot),
     avatarUrl: String(sharedProfileSnapshot?.profileImageUrl || "").trim(),
     joinedAt: "",
+    ...getDefaultProfilePageSettings(),
   };
+}
+
+function buildCurrentUserPublicMemberProfileFallback(
+  user = appState.user,
+  profile = appState.profile,
+  settings = DEFAULT_PROFILE_PAGE_SETTINGS,
+) {
+  const normalizedUserId = String(user?.id || profile?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const normalizedSettings = normalizeProfilePageSettings(settings, DEFAULT_PROFILE_PAGE_SETTINGS);
+  return {
+    id: normalizedUserId,
+    displayName: String(profile?.username || "").trim() || "Community member",
+    avatarUrl: String(profile?.avatarUrl || "").trim(),
+    joinedAt: profile?.createdAt || user?.created_at || "",
+    ...normalizedSettings,
+  };
+}
+
+function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile = null) {
+  if (!primaryProfile && !fallbackProfile) {
+    return null;
+  }
+
+  const fallbackSettings = normalizeProfilePageSettings(fallbackProfile || {}, DEFAULT_PROFILE_PAGE_SETTINGS);
+  const resolvedSettings = normalizeProfilePageSettings(primaryProfile || {}, fallbackSettings);
+  const resolvedProfile = {
+    ...(fallbackProfile || {}),
+    ...(primaryProfile || {}),
+    id: String(primaryProfile?.id || fallbackProfile?.id || "").trim(),
+    displayName: String(primaryProfile?.displayName || fallbackProfile?.displayName || "Community member").trim() || "Community member",
+    avatarUrl: String(primaryProfile?.avatarUrl || fallbackProfile?.avatarUrl || "").trim(),
+    joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
+    ...resolvedSettings,
+  };
+
+  return resolvedProfile.id ? resolvedProfile : null;
 }
 
 function getPublicMemberProfile(memberId = "") {
@@ -6350,18 +6475,30 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
   const refreshPromise = (async () => {
     try {
       const { data, error } = await appState.supabase
-        .from("public_member_profiles")
-        .select("id,display_name,avatar_url,joined_at")
+        .from(PUBLIC_MEMBER_PROFILES_TABLE)
+        .select("*")
         .eq("id", normalizedId)
         .maybeSingle();
 
       if (error) {
-        markPublicMemberProfilesViewUnavailable({
-          reason,
-          memberId: normalizedId,
-          error,
-          unavailable: isPublicMemberProfilesViewUnavailableError(error),
-        });
+        if (isPublicMemberProfilesViewUnavailableError(error)) {
+          markPublicMemberProfilesViewUnavailable({
+            reason,
+            memberId: normalizedId,
+            error,
+            unavailable: true,
+          });
+        } else {
+          logPublicMemberProfilesFallback(
+            "public-member-profiles-read-fallback",
+            "Public member profile lookup failed; using snapshot-only fallback data.",
+            {
+              reason,
+              memberId: normalizedId,
+              error,
+            },
+          );
+        }
 
         if (fallbackProfile) {
           appState.publicMemberProfiles[normalizedId] = fallbackProfile;
@@ -6370,15 +6507,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
       }
 
       const loadedProfile = normalizePublicMemberProfileRow(data);
-      const resolvedProfile = loadedProfile
-        ? {
-          ...fallbackProfile,
-          ...loadedProfile,
-          displayName: loadedProfile.displayName || fallbackProfile?.displayName || "Community member",
-          avatarUrl: loadedProfile.avatarUrl || fallbackProfile?.avatarUrl || "",
-          joinedAt: loadedProfile.joinedAt || fallbackProfile?.joinedAt || "",
-        }
-        : (fallbackProfile || null);
+      const resolvedProfile = mergePublicMemberProfileRecord(loadedProfile, fallbackProfile) || fallbackProfile || null;
 
       if (resolvedProfile) {
         appState.publicMemberProfiles[normalizedId] = resolvedProfile;
@@ -6386,12 +6515,24 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
 
       return resolvedProfile;
     } catch (error) {
-      markPublicMemberProfilesViewUnavailable({
-        reason,
-        memberId: normalizedId,
-        error,
-        unavailable: isPublicMemberProfilesViewUnavailableError(error),
-      });
+      if (isPublicMemberProfilesViewUnavailableError(error)) {
+        markPublicMemberProfilesViewUnavailable({
+          reason,
+          memberId: normalizedId,
+          error,
+          unavailable: true,
+        });
+      } else {
+        logPublicMemberProfilesFallback(
+          "public-member-profiles-read-fallback",
+          "Public member profile lookup failed; using snapshot-only fallback data.",
+          {
+            reason,
+            memberId: normalizedId,
+            error,
+          },
+        );
+      }
       if (fallbackProfile) {
         appState.publicMemberProfiles[normalizedId] = fallbackProfile;
       }
@@ -6443,18 +6584,30 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
   let data = null;
   try {
     const response = await appState.supabase
-      .from("public_member_profiles")
-      .select("id,display_name,avatar_url,joined_at")
+      .from(PUBLIC_MEMBER_PROFILES_TABLE)
+      .select("*")
       .in("id", missingIds);
     data = response.data;
 
     if (response.error) {
-      markPublicMemberProfilesViewUnavailable({
-        reason,
-        memberIds: missingIds,
-        error: response.error,
-        unavailable: isPublicMemberProfilesViewUnavailableError(response.error),
-      });
+      if (isPublicMemberProfilesViewUnavailableError(response.error)) {
+        markPublicMemberProfilesViewUnavailable({
+          reason,
+          memberIds: missingIds,
+          error: response.error,
+          unavailable: true,
+        });
+      } else {
+        logPublicMemberProfilesFallback(
+          "public-member-profiles-read-fallback",
+          "Public member profile lookup failed; using snapshot-only fallback data.",
+          {
+            reason,
+            memberIds: missingIds,
+            error: response.error,
+          },
+        );
+      }
 
       missingIds.forEach((memberId) => {
         const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
@@ -6466,12 +6619,24 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
       return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
     }
   } catch (error) {
-    markPublicMemberProfilesViewUnavailable({
-      reason,
-      memberIds: missingIds,
-      error,
-      unavailable: isPublicMemberProfilesViewUnavailableError(error),
-    });
+    if (isPublicMemberProfilesViewUnavailableError(error)) {
+      markPublicMemberProfilesViewUnavailable({
+        reason,
+        memberIds: missingIds,
+        error,
+        unavailable: true,
+      });
+    } else {
+      logPublicMemberProfilesFallback(
+        "public-member-profiles-read-fallback",
+        "Public member profile lookup failed; using snapshot-only fallback data.",
+        {
+          reason,
+          memberIds: missingIds,
+          error,
+        },
+      );
+    }
 
     missingIds.forEach((memberId) => {
       const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
@@ -6487,15 +6652,7 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
   missingIds.forEach((memberId) => {
     const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
     const loadedProfile = normalizePublicMemberProfileRow(rowsById.get(memberId));
-    const resolvedProfile = loadedProfile
-      ? {
-        ...fallbackProfile,
-        ...loadedProfile,
-        displayName: loadedProfile.displayName || fallbackProfile?.displayName || "Community member",
-        avatarUrl: loadedProfile.avatarUrl || fallbackProfile?.avatarUrl || "",
-        joinedAt: loadedProfile.joinedAt || fallbackProfile?.joinedAt || "",
-      }
-      : fallbackProfile;
+    const resolvedProfile = mergePublicMemberProfileRecord(loadedProfile, fallbackProfile) || fallbackProfile;
     if (resolvedProfile) {
       appState.publicMemberProfiles[memberId] = resolvedProfile;
     }
@@ -8459,15 +8616,6 @@ function renderProfileAvatarMarkup({
   return fallbackMarkup;
 }
 
-function normalizeProfilePageSettings(settings = {}) {
-  return {
-    notifyCommunityActivity: settings.notifyCommunityActivity === true,
-    showProfileInCommunityGrow: settings.showProfileInCommunityGrow !== false,
-    allowFollowers: settings.allowFollowers !== false,
-    showGrowStatsPublicly: settings.showGrowStatsPublicly !== false,
-  };
-}
-
 function getProfilePageSettingsStorageKey(userId = "") {
   const normalizedUserId = String(userId || "").trim();
   return normalizedUserId
@@ -8478,7 +8626,7 @@ function getProfilePageSettingsStorageKey(userId = "") {
 function loadStoredProfilePageSettings(userId = "") {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) {
-    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+    return getDefaultProfilePageSettings();
   }
 
   try {
@@ -8486,14 +8634,14 @@ function loadStoredProfilePageSettings(userId = "") {
     return normalizeProfilePageSettings(JSON.parse(storedValue || "null") || DEFAULT_PROFILE_PAGE_SETTINGS);
   } catch (error) {
     console.warn("[Profile Settings] Failed to read local profile page settings.", error);
-    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+    return getDefaultProfilePageSettings();
   }
 }
 
 function getCurrentProfilePageSettings() {
   const currentUserId = String(appState.user?.id || "").trim();
   if (!currentUserId) {
-    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+    return getDefaultProfilePageSettings();
   }
 
   if (!appState.profilePageSettings || appState.profilePageSettingsUserId !== currentUserId) {
@@ -8502,6 +8650,28 @@ function getCurrentProfilePageSettings() {
   }
 
   return normalizeProfilePageSettings(appState.profilePageSettings);
+}
+
+function syncProfilePageSettingsCache(userId = "", settings = {}, options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  const { persistLocal = true } = options || {};
+  const normalizedSettings = normalizeProfilePageSettings(settings, DEFAULT_PROFILE_PAGE_SETTINGS);
+
+  appState.profilePageSettings = normalizedSettings;
+  appState.profilePageSettingsUserId = normalizedUserId;
+
+  if (persistLocal && normalizedUserId) {
+    try {
+      localStorage.setItem(
+        getProfilePageSettingsStorageKey(normalizedUserId),
+        JSON.stringify(normalizedSettings),
+      );
+    } catch (error) {
+      console.warn("[Profile Settings] Failed to persist local fallback copy.", error);
+    }
+  }
+
+  return normalizedSettings;
 }
 
 function saveStoredProfilePageSettings(userId = "", settings = {}) {
@@ -8521,9 +8691,230 @@ function saveStoredProfilePageSettings(userId = "", settings = {}) {
     throw new Error("Profile settings could not be saved in this browser.");
   }
 
-  appState.profilePageSettings = normalizedSettings;
-  appState.profilePageSettingsUserId = normalizedUserId;
-  return normalizedSettings;
+  return syncProfilePageSettingsCache(normalizedUserId, normalizedSettings, { persistLocal: false });
+}
+
+function buildPublicMemberProfileUpsertPayload(
+  user = appState.user,
+  profileInput = appState.profile,
+  settingsInput = DEFAULT_PROFILE_PAGE_SETTINGS,
+  existingProfile = null,
+) {
+  const normalizedUserId = String(user?.id || existingProfile?.id || "").trim();
+  if (!normalizedUserId) {
+    throw new Error("You must be signed in to save community profile settings.");
+  }
+
+  const existingSettings = normalizeProfilePageSettings(existingProfile || {}, loadStoredProfilePageSettings(normalizedUserId));
+  const normalizedSettings = normalizeProfilePageSettings(settingsInput, existingSettings);
+  const displayName = String(profileInput?.username || existingProfile?.displayName || "").trim();
+
+  return {
+    id: normalizedUserId,
+    display_name: displayName || null,
+    avatar_url: String(profileInput?.avatarUrl || existingProfile?.avatarUrl || "").trim(),
+    notify_community_activity: normalizedSettings.notifyCommunityActivity === true,
+    show_profile_in_community_grow: normalizedSettings.showProfileInCommunityGrow !== false,
+    allow_followers: normalizedSettings.allowFollowers !== false,
+    show_grow_stats_publicly: normalizedSettings.showGrowStatsPublicly !== false,
+  };
+}
+
+async function upsertCurrentUserPublicMemberProfile(
+  user = appState.user,
+  settingsInput = DEFAULT_PROFILE_PAGE_SETTINGS,
+  options = {},
+) {
+  const normalizedUserId = String(user?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const {
+    profile = appState.profile,
+    reason = "profile-settings",
+    existingProfile = null,
+    persistLocal = true,
+  } = options || {};
+  const fallbackSettings = normalizeProfilePageSettings(settingsInput, loadStoredProfilePageSettings(normalizedUserId));
+  const localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, fallbackSettings);
+  const fallbackProfile = mergePublicMemberProfileRecord(existingProfile, localFallbackProfile) || localFallbackProfile;
+
+  if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
+    if (fallbackProfile) {
+      appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+      syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
+    }
+    return fallbackProfile;
+  }
+
+  let data = null;
+  let error = null;
+  try {
+    const response = await appState.supabase
+      .from(PUBLIC_MEMBER_PROFILES_TABLE)
+      .upsert(
+        buildPublicMemberProfileUpsertPayload(user, profile, fallbackSettings, fallbackProfile),
+        { onConflict: "id" },
+      )
+      .select("*")
+      .single();
+    data = response?.data || null;
+    error = response?.error || null;
+  } catch (requestError) {
+    error = requestError;
+  }
+
+  if (error) {
+    if (isPublicMemberProfilesViewUnavailableError(error)) {
+      markPublicMemberProfilesViewUnavailable({
+        reason,
+        memberId: normalizedUserId,
+        error,
+        unavailable: true,
+      });
+    } else {
+      logPublicMemberProfilesFallback(
+        "public-member-profile-settings-write-fallback",
+        "Community profile settings save failed; using a safe local fallback.",
+        {
+          reason,
+          memberId: normalizedUserId,
+          error,
+        },
+      );
+    }
+
+    if (fallbackProfile) {
+      appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+      syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
+    }
+    return fallbackProfile;
+  }
+
+  const resolvedProfile = mergePublicMemberProfileRecord(
+    normalizePublicMemberProfileRow(data, fallbackSettings),
+    fallbackProfile,
+  );
+  if (resolvedProfile) {
+    appState.publicMemberProfiles[normalizedUserId] = resolvedProfile;
+    syncProfilePageSettingsCache(normalizedUserId, resolvedProfile, { persistLocal });
+  }
+  return resolvedProfile;
+}
+
+async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user, options = {}) {
+  const normalizedUserId = String(user?.id || "").trim();
+  if (!normalizedUserId) {
+    return getDefaultProfilePageSettings();
+  }
+
+  const { reason = "profile-settings:load", force = false } = options || {};
+  const fallbackSettings = loadStoredProfilePageSettings(normalizedUserId);
+  const fallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, appState.profile, fallbackSettings);
+
+  if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
+    if (fallbackProfile) {
+      appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+    }
+    return syncProfilePageSettingsCache(normalizedUserId, fallbackSettings);
+  }
+
+  if (!force && appState.publicMemberProfiles[normalizedUserId]) {
+    const cachedSettings = normalizeProfilePageSettings(appState.publicMemberProfiles[normalizedUserId], fallbackSettings);
+    return syncProfilePageSettingsCache(normalizedUserId, cachedSettings);
+  }
+
+  try {
+    const { data, error } = await appState.supabase
+      .from(PUBLIC_MEMBER_PROFILES_TABLE)
+      .select("*")
+      .eq("id", normalizedUserId)
+      .maybeSingle();
+
+    if (error) {
+      if (isPublicMemberProfilesViewUnavailableError(error)) {
+        markPublicMemberProfilesViewUnavailable({
+          reason,
+          memberId: normalizedUserId,
+          error,
+          unavailable: true,
+        });
+      } else {
+        logPublicMemberProfilesFallback(
+          "public-member-profile-settings-read-fallback",
+          "Community profile settings load failed; using a safe local fallback.",
+          {
+            reason,
+            memberId: normalizedUserId,
+            error,
+          },
+        );
+      }
+
+      if (fallbackProfile) {
+        appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+      }
+      return syncProfilePageSettingsCache(normalizedUserId, fallbackSettings);
+    }
+
+    if (data) {
+      const resolvedProfile = mergePublicMemberProfileRecord(
+        normalizePublicMemberProfileRow(data, fallbackSettings),
+        fallbackProfile,
+      );
+      if (resolvedProfile) {
+        appState.publicMemberProfiles[normalizedUserId] = resolvedProfile;
+        return syncProfilePageSettingsCache(normalizedUserId, resolvedProfile);
+      }
+
+      return syncProfilePageSettingsCache(normalizedUserId, fallbackSettings);
+    }
+
+    const seededProfile = await upsertCurrentUserPublicMemberProfile(user, fallbackSettings, {
+      profile: appState.profile,
+      existingProfile: fallbackProfile,
+      reason: `${reason}:seed`,
+    });
+    return syncProfilePageSettingsCache(
+      normalizedUserId,
+      seededProfile || fallbackProfile || fallbackSettings,
+    );
+  } catch (error) {
+    logPublicMemberProfilesFallback(
+      "public-member-profile-settings-read-fallback",
+      "Community profile settings load failed; using a safe local fallback.",
+      {
+        reason,
+        memberId: normalizedUserId,
+        error,
+      },
+    );
+    if (fallbackProfile) {
+      appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
+    }
+    return syncProfilePageSettingsCache(normalizedUserId, fallbackSettings);
+  }
+}
+
+async function savePublicMemberProfileSettings(settingsInput = {}) {
+  if (!appState.user) {
+    throw new Error("You must be signed in to save profile settings.");
+  }
+
+  const savedProfile = await upsertCurrentUserPublicMemberProfile(
+    appState.user,
+    settingsInput,
+    {
+      profile: appState.profile,
+      existingProfile: appState.publicMemberProfiles[String(appState.user.id || "").trim()] || null,
+      reason: "profile-settings:save",
+    },
+  );
+  return syncProfilePageSettingsCache(
+    appState.user.id,
+    savedProfile || settingsInput,
+  );
 }
 
 function isDeletionScheduled(profile = appState.profile) {
@@ -9590,7 +9981,17 @@ async function saveUserProfile(profileInput) {
     email: payload.email,
     username: payload.username,
   });
-  return normalizeProfileRow(data);
+  const normalizedProfile = normalizeProfileRow(data);
+  await upsertCurrentUserPublicMemberProfile(
+    appState.user,
+    getCurrentProfilePageSettings(),
+    {
+      profile: normalizedProfile,
+      existingProfile: appState.publicMemberProfiles[String(appState.user.id || "").trim()] || null,
+      reason: "profile:sync-public-member-profile",
+    },
+  );
+  return normalizedProfile;
 }
 
 async function saveUserNotificationPreferences(preferencesInput) {
@@ -9649,12 +10050,19 @@ async function saveUserNotificationPreferences(preferencesInput) {
       return normalizeUserNotificationPreferencesRow(fallbackPayload);
     }
 
-    markUserNotificationPreferencesTableUnavailable();
+    logUserNotificationPreferencesFallback(error, {
+      phase: "save",
+      userId: String(appState.user?.id || "").trim(),
+      writeMode,
+    });
     return normalizeUserNotificationPreferencesRow(fallbackPayload);
   }
 
   if (isUserNotificationPreferencesSchemaModeError(lastError)) {
-    markUserNotificationPreferencesTableUnavailable();
+    logUserNotificationPreferencesFallback(lastError, {
+      phase: "save-schema",
+      userId: String(appState.user?.id || "").trim(),
+    });
     return normalizeUserNotificationPreferencesRow(fallbackPayload);
   }
 
@@ -15065,7 +15473,7 @@ function bindProfilePageForm(form) {
     }
 
     try {
-      saveStoredProfilePageSettings(appState.user.id, profilePageSettingsPayload);
+      appState.profilePageSettings = await savePublicMemberProfileSettings(profilePageSettingsPayload);
     } catch (error) {
       warnings.push(error.message || "Privacy settings could not be saved in this browser.");
     }
@@ -15188,7 +15596,7 @@ function renderProfilePage() {
               })}
             </div>
             <p class="profile-section-note">${usesNotificationFallback
-              ? "Notification preferences are currently using safe defaults or fallback storage because the settings table is unavailable."
+              ? "Notification preferences are currently using safe defaults while the backend is unavailable."
               : "Notification settings are connected to your saved Cannakan Grow preferences."}</p>
           </article>
           <article class="profile-section-card" id="profile-privacy-community-card">
@@ -15219,7 +15627,7 @@ function renderProfilePage() {
                 checked: profilePageSettings.showGrowStatsPublicly !== false,
               })}
             </div>
-            <p class="profile-section-note">These community preferences are saved safely in this browser until broader backend profile settings are added.</p>
+            <p class="profile-section-note">These community preferences save to your Grow Network profile when available, with a safe local fallback if needed.</p>
           </article>
           <article class="profile-section-card">
             <div class="profile-section-heading">
@@ -15607,7 +16015,7 @@ function bindProfileForm(form, options = {}) {
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
         syncNotificationPreferenceAvailability();
         if (appState.notificationPreferencesTableUnavailable) {
-          warnings.push("Profile saved. Notification preferences are using defaults until preferences are enabled.");
+          warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
         }
       } catch (error) {
         console.error("[Cannakan Profile] Notification preference save warning", error);
