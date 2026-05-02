@@ -11939,21 +11939,24 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
   });
 
   return [...groups.values()]
-    .filter((entry) => entry.snapshotCount >= 3)
     .map((entry) => ({
       ...entry,
+      usageCount: entry.snapshotCount,
       averagePercent: entry.snapshotCount > 0
         ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
         : 0,
+      germinationRate: entry.totalSeeds > 0
+        ? Math.round((entry.totalPlanted / entry.totalSeeds) * 1000) / 10
+        : 0,
       fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
-    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
-      getRate: (entry) => entry.averagePercent,
-      getDurationMs: (entry) => entry.fastestCompletedDurationMs,
-      getSortTime: (entry) => new Date(entry.latestPublishedAt || 0).getTime(),
-      getFallbackLabel: (entry) => entry.name,
-      sortDirection: "desc",
-    }))[0] || null;
+    .sort((left, right) => (
+      (right.usageCount - left.usageCount)
+      || (right.totalSeeds - left.totalSeeds)
+      || (right.germinationRate - left.germinationRate)
+      || (new Date(right.latestPublishedAt || 0).getTime() - new Date(left.latestPublishedAt || 0).getTime())
+      || left.name.localeCompare(right.name)
+    ))[0] || null;
 }
 
 function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType) {
@@ -11995,7 +11998,7 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
         </div>
       `).join("")}
       </div>
-      <p class="gallery-seedtype-highlights-note">By germination performance</p>
+      <p class="gallery-seedtype-highlights-note">Calculated by popularity</p>
     </article>
   `;
 }
@@ -12527,7 +12530,6 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
 function renderGalleryLeaderboardSection() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
-  // TODO: Top Seed Type should be calculated by popularity/usage - what members are popping most - not just performance.
   const thisMonthTopSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
   const allTimeTopSeedType = buildGallerySeedTypeHighlightEntry(approvedSnapshots);
   const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
