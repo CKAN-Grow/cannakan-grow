@@ -438,6 +438,7 @@ const appState = {
   profileError: "",
   notificationPreferences: null,
   notificationPreferencesError: "",
+  authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
   accountMenuOpen: false,
@@ -716,6 +717,7 @@ function resetSessionScopedAppState() {
   appState.profileError = "";
   appState.notificationPreferences = null;
   appState.notificationPreferencesError = "";
+  appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
   appState.sourcesLoaded = false;
@@ -2872,6 +2874,45 @@ function getLocationRouteHash() {
   return currentHash.replace(/^#/, "");
 }
 
+function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
+  const normalizedHash = normalizeNavigationHash(hash);
+  const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
+
+  if (route === "admin" || route === "network" || route === "new" || route === "members") {
+    return true;
+  }
+
+  if (route === "sessions") {
+    return !(id === "public" && Boolean(subroute));
+  }
+
+  return false;
+}
+
+function replaceLocationHashWithoutNavigation(nextHash = "#home") {
+  const normalizedHash = normalizeNavigationHash(nextHash);
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${normalizedHash}`);
+  return normalizedHash;
+}
+
+function dismissAuthModal() {
+  const modal = document.querySelector("#auth-modal");
+  const dismissHash = !appState.user && appState.authModalDismissHash
+    ? normalizeNavigationHash(appState.authModalDismissHash)
+    : "";
+
+  appState.authModalDismissHash = "";
+  if (modal instanceof HTMLDialogElement && modal.open) {
+    modal.close();
+  }
+
+  if (dismissHash) {
+    replaceLocationHashWithoutNavigation(dismissHash);
+    appState.currentRouteHash = dismissHash;
+    safeRender();
+  }
+}
+
 function clearSupabaseAuthFragmentHash() {
   if (!isSupabaseAuthFragmentHash(window.location.hash || "")) {
     return;
@@ -3241,11 +3282,15 @@ function ensureAuthModal() {
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) {
-      modal.close();
+      dismissAuthModal();
     }
   });
+  modal.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dismissAuthModal();
+  });
   modal.querySelector("[data-auth-modal-close]")?.addEventListener("click", () => {
-    modal.close();
+    dismissAuthModal();
   });
   document.body.appendChild(modal);
   return modal;
@@ -3253,12 +3298,14 @@ function ensureAuthModal() {
 
 function closeAuthModal() {
   const modal = document.querySelector("#auth-modal");
+  appState.authModalDismissHash = "";
   if (modal instanceof HTMLDialogElement && modal.open) {
     modal.close();
   }
 }
 
-function openAuthModal() {
+function openAuthModal(options = {}) {
+  const { dismissHash = "" } = options;
   if (!isSupabaseConfigured() || !appState.authReady || appState.loading) {
     return false;
   }
@@ -3271,6 +3318,7 @@ function openAuthModal() {
     return false;
   }
 
+  appState.authModalDismissHash = dismissHash ? normalizeNavigationHash(dismissHash) : "";
   const modal = ensureAuthModal();
   return Boolean(renderAuthModalLoginContent(modal, { focusField: "email" }));
 }
@@ -13152,6 +13200,21 @@ function render() {
     trackSiteAnalyticsPageView(pageContext);
     void refreshSiteVisitorPresence("render", pageContext);
   };
+  const renderProtectedRouteSignInPrompt = () => {
+    const homeHash = replaceLocationHashWithoutNavigation("#home");
+    appState.currentRouteHash = homeHash;
+    updateNavState();
+    renderHome();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "home",
+      pageKey: "home",
+      pageLabel: "Home",
+      pagePath: "#home",
+    }));
+    queueMicrotask(() => {
+      openAuthModal({ dismissHash: "#home" });
+    });
+  };
 
   if (!appState.initialized || appState.loading || !appState.authReady) {
     const shouldRenderAnnouncementDuringLoad = route === "home" || !route;
@@ -13191,13 +13254,7 @@ function render() {
 
   if (route === "admin" && !id) {
     if (!appState.user) {
-      renderAuthScreen({ autoOpenModal: true });
-      finalizeRender(buildSiteAnalyticsPageContext({
-        pageGroup: "auth",
-        pageKey: "auth",
-        pageLabel: "Authentication",
-        pagePath: "#admin",
-      }));
+      renderProtectedRouteSignInPrompt();
       return;
     }
     if (!hasCompletedProfile()) {
@@ -13233,13 +13290,7 @@ function render() {
 
   if (route === "admin" && id === "gallery-moderation") {
     if (!appState.user) {
-      renderAuthScreen({ autoOpenModal: true });
-      finalizeRender(buildSiteAnalyticsPageContext({
-        pageGroup: "auth",
-        pageKey: "auth",
-        pageLabel: "Authentication",
-        pagePath: "/admin/gallery-moderation",
-      }));
+      renderProtectedRouteSignInPrompt();
       return;
     }
     if (!hasCompletedProfile()) {
@@ -13286,6 +13337,10 @@ function render() {
   }
 
   if (route === "members" && id) {
+    if (!appState.user) {
+      renderProtectedRouteSignInPrompt();
+      return;
+    }
     const memberId = decodeURIComponent(id);
     renderPublicMemberProfile(memberId);
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -13309,13 +13364,7 @@ function render() {
 
   if (route === "network") {
     if (!appState.user) {
-      renderAuthScreen({ autoOpenModal: true });
-      finalizeRender(buildSiteAnalyticsPageContext({
-        pageGroup: "auth",
-        pageKey: "auth",
-        pageLabel: "Authentication",
-        pagePath: "#network",
-      }));
+      renderProtectedRouteSignInPrompt();
       return;
     }
     if (!hasCompletedProfile()) {
@@ -13351,14 +13400,8 @@ function render() {
     return;
   }
 
-  if (!appState.user) {
-    renderAuthScreen({ autoOpenModal: true });
-    finalizeRender(buildSiteAnalyticsPageContext({
-      pageGroup: "auth",
-      pageKey: "auth",
-      pageLabel: "Authentication",
-      pagePath: rawRoute ? `#${rawRoute}` : "#auth",
-    }));
+  if (!appState.user && routeRequiresSignedInUser(window.location.hash || "#home")) {
+    renderProtectedRouteSignInPrompt();
     return;
   }
 
