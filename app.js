@@ -4356,7 +4356,7 @@ function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = 
   const insertPayload = {
     event_type: normalizeSiteAnalyticsEventType(eventType),
     page,
-    created_at: new Date().toISOString(),
+    session_id: normalizeSiteAnalyticsTextValue(payload.visitId, getOrCreateSiteVisitId()),
   };
   if (isSupabaseUuidLike(payload.userId)) {
     insertPayload.user_id = payload.userId;
@@ -4417,7 +4417,7 @@ function normalizeSiteAnalyticsRow(row) {
     id: String(row.id || "").trim(),
     occurredAt: row.occurred_at || row.created_at || "",
     visitorId: String(row.visitor_id || "").trim(),
-    visitId: String(row.visit_id || "").trim(),
+    visitId: String(row.visit_id || row.session_id || "").trim(),
     userId: String(row.user_id || "").trim(),
     profileName: String(row.profile_name || "").trim(),
     userEmail: String(row.user_email || "").trim().toLowerCase(),
@@ -4461,7 +4461,7 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
   appState.siteAnalyticsEventInFlight = true;
   try {
     const insertPayload = buildSiteAnalyticsInsertPayload(eventType, pageContext, metadata);
-    console.info("[Site Analytics] Insert payload", insertPayload);
+    console.log("[Site Analytics] Insert payload", insertPayload);
     const { error } = await appState.supabase
       .from(SITE_ANALYTICS_TABLE)
       .insert(insertPayload);

@@ -273,11 +273,15 @@ create table if not exists public.site_analytics_events (
   user_id uuid references auth.users(id) on delete set null,
   event_type text not null default 'page_view',
   page text not null default '',
+  session_id text not null default '',
   created_at timestamptz not null default timezone('utc', now())
 );
 
 alter table public.site_analytics_events
   add column if not exists page text not null default '';
+
+alter table public.site_analytics_events
+  add column if not exists session_id text not null default '';
 
 alter table public.site_analytics_events
   add column if not exists visitor_id text default '';
@@ -344,6 +348,9 @@ create index if not exists site_analytics_events_event_type_created_at_idx
 
 create index if not exists site_analytics_events_page_created_at_idx
   on public.site_analytics_events (page, created_at desc);
+
+create index if not exists site_analytics_events_session_idx
+  on public.site_analytics_events (session_id, created_at desc);
 
 create index if not exists site_analytics_events_visitor_idx
   on public.site_analytics_events (visitor_id, created_at desc);
