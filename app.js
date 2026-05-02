@@ -6060,10 +6060,19 @@ function normalizePublicMemberProfileRow(row) {
 }
 
 function isPublicMemberProfilesViewUnavailableError(error) {
-  const message = String(error?.message || error?.details || "").toLowerCase();
-  return message.includes("public_member_profiles") && (
-    message.includes("relation")
-    || message.includes("permission denied")
+  return isSupabaseTableMissingError(error, "public_member_profiles")
+    || getSupabaseErrorStatusCode(error) === 404;
+}
+
+function markPublicMemberProfilesViewUnavailable(details = {}) {
+  // TODO: Create the Supabase `public_member_profiles` table/view so gallery member
+  // profiles can load from the backend instead of falling back to snapshot-only data.
+  appState.publicMemberProfilesViewUnavailable = true;
+  logRuntimeIssueOnce(
+    "warn",
+    "public-member-profiles-view-unavailable",
+    "Public member profiles view unavailable; falling back to snapshot-only profiles.",
+    details,
   );
 }
 
@@ -6144,20 +6153,12 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
         .maybeSingle();
 
       if (error) {
-        if (isPublicMemberProfilesViewUnavailableError(error)) {
-          appState.publicMemberProfilesViewUnavailable = true;
-          console.warn("Public member profiles view unavailable; falling back to snapshot-only profiles.", {
-            reason,
-            memberId: normalizedId,
-            error,
-          });
-        } else {
-          console.error("Failed to load public member profile", {
-            reason,
-            memberId: normalizedId,
-            error,
-          });
-        }
+        markPublicMemberProfilesViewUnavailable({
+          reason,
+          memberId: normalizedId,
+          error,
+          unavailable: isPublicMemberProfilesViewUnavailableError(error),
+        });
 
         if (fallbackProfile) {
           appState.publicMemberProfiles[normalizedId] = fallbackProfile;
@@ -6181,6 +6182,17 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
       }
 
       return resolvedProfile;
+    } catch (error) {
+      markPublicMemberProfilesViewUnavailable({
+        reason,
+        memberId: normalizedId,
+        error,
+        unavailable: isPublicMemberProfilesViewUnavailableError(error),
+      });
+      if (fallbackProfile) {
+        appState.publicMemberProfiles[normalizedId] = fallbackProfile;
+      }
+      return fallbackProfile || null;
     } finally {
       delete appState.publicMemberProfilesRefreshPromises[normalizedId];
     }
@@ -6225,26 +6237,38 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
     return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
   }
 
-  const { data, error } = await appState.supabase
-    .from("public_member_profiles")
-    .select("id,display_name,avatar_url,joined_at")
-    .in("id", missingIds);
+  let data = null;
+  try {
+    const response = await appState.supabase
+      .from("public_member_profiles")
+      .select("id,display_name,avatar_url,joined_at")
+      .in("id", missingIds);
+    data = response.data;
 
-  if (error) {
-    if (isPublicMemberProfilesViewUnavailableError(error)) {
-      appState.publicMemberProfilesViewUnavailable = true;
-      console.warn("Public member profiles view unavailable; falling back to snapshot-only profiles.", {
+    if (response.error) {
+      markPublicMemberProfilesViewUnavailable({
         reason,
         memberIds: missingIds,
-        error,
+        error: response.error,
+        unavailable: isPublicMemberProfilesViewUnavailableError(response.error),
       });
-    } else {
-      console.error("Failed to load public member profiles", {
-        reason,
-        memberIds: missingIds,
-        error,
+
+      missingIds.forEach((memberId) => {
+        const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
+        if (fallbackProfile) {
+          appState.publicMemberProfiles[memberId] = fallbackProfile;
+        }
       });
+
+      return Object.fromEntries(normalizedIds.map((memberId) => [memberId, appState.publicMemberProfiles[memberId] || buildDerivedPublicMemberProfile(memberId)]));
     }
+  } catch (error) {
+    markPublicMemberProfilesViewUnavailable({
+      reason,
+      memberIds: missingIds,
+      error,
+      unavailable: isPublicMemberProfilesViewUnavailableError(error),
+    });
 
     missingIds.forEach((memberId) => {
       const fallbackProfile = buildDerivedPublicMemberProfile(memberId);
