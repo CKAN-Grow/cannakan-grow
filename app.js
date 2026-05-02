@@ -982,24 +982,53 @@ function reportAppError(error, context = "App Error") {
   `;
 }
 
-function shouldSuppressExternalStylesheetInspectionError(event) {
-  const message = String(event?.message || "").trim().toLowerCase();
-  const filename = String(event?.filename || "").trim().toLowerCase();
-  if (!message.includes("cssrules") || !message.includes("cannot read properties of null")) {
-    return false;
-  }
+function isSuppressedExternalStylesheetInspectionFailure({
+  message = "",
+  filename = "",
+  stack = "",
+} = {}) {
+  const normalizedMessage = String(message || "").trim().toLowerCase();
+  const normalizedFilename = String(filename || "").trim().toLowerCase();
+  const normalizedStack = String(stack || "").trim().toLowerCase();
+  const mentionsCssRules = normalizedMessage.includes("cssrules")
+    || normalizedStack.includes("cssrules");
+  const isNullAccessError = normalizedMessage.includes("cannot read properties of null")
+    || normalizedMessage.includes("cannot read property 'cssrules' of null")
+    || normalizedStack.includes("cannot read properties of null")
+    || normalizedStack.includes("cannot read property 'cssrules' of null");
 
-  if (!filename) {
+  if (!mentionsCssRules || !isNullAccessError) {
     return false;
   }
 
   const sameOrigin = String(window.location.origin || "").trim().toLowerCase();
+  const isVendorLikeSource = (
+    normalizedFilename.startsWith("chrome-extension://")
+    || normalizedFilename.startsWith("moz-extension://")
+    || normalizedFilename.startsWith("safari-web-extension://")
+    || normalizedFilename.includes("/vendor")
+    || normalizedFilename.includes("vendor.js")
+    || normalizedFilename.includes("vm")
+    || normalizedStack.includes("vendor.js")
+    || normalizedStack.includes(" insertrule ")
+    || normalizedStack.includes(" at insertrule ")
+    || normalizedStack.includes("(vm")
+    || (normalizedFilename.startsWith("http") && sameOrigin && !normalizedFilename.startsWith(sameOrigin))
+  );
+
+  return isVendorLikeSource;
+}
+
+function shouldSuppressExternalStylesheetInspectionError(event) {
+  const message = String(event?.message || "").trim();
+  const filename = String(event?.filename || "").trim();
+  const stack = String(event?.error?.stack || "").trim();
   return (
-    filename.startsWith("chrome-extension://")
-    || filename.startsWith("moz-extension://")
-    || filename.startsWith("safari-web-extension://")
-    || filename.includes("/vendor")
-    || (filename.startsWith("http") && sameOrigin && !filename.startsWith(sameOrigin))
+    isSuppressedExternalStylesheetInspectionFailure({
+      message,
+      filename,
+      stack,
+    })
   );
 }
 
@@ -1022,6 +1051,31 @@ function installRuntimeErrorGuards() {
       { filename: event?.filename || "" },
     );
   }, true);
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event?.reason;
+    const message = String(
+      reason?.message
+      || reason?.error?.message
+      || reason
+      || "",
+    ).trim();
+    const stack = String(
+      reason?.stack
+      || reason?.error?.stack
+      || "",
+    ).trim();
+    if (!isSuppressedExternalStylesheetInspectionFailure({ message, stack })) {
+      return;
+    }
+
+    event.preventDefault();
+    logRuntimeIssueOnce(
+      "warn",
+      "external-cssrules-inspection-rejection",
+      "Ignored external stylesheet injection failure while reading cssRules.",
+    );
+  });
 }
 
 installRuntimeErrorGuards();
