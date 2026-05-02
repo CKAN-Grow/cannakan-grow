@@ -1276,6 +1276,12 @@ body.theme-dark .spotlight-stat strong {
   opacity: 1;
 }
 
+.section-title-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .section-title-icon * {
   fill: none;
   stroke: currentColor;
@@ -1286,6 +1292,118 @@ body.theme-dark .spotlight-stat strong {
 
 .section-title-with-icon > span:last-child {
   min-width: 0;
+}
+
+.app-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: clamp(16px, 2vw, 24px);
+  flex-wrap: wrap;
+}
+
+.app-section-header-main {
+  width: 100%;
+  flex: 1 1 360px;
+  min-width: 0;
+  align-items: flex-start;
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.app-section-header-main > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-section-header-main > div > .eyebrow {
+  width: auto;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+}
+
+.app-section-header-main > div > h1,
+.app-section-header-main > div > h2,
+.app-section-header-main > div > h3,
+.app-section-header-main > div > h4,
+.app-section-header-main > div > h5,
+.app-section-header-main > div > .admin-collapsible-title,
+.app-section-header-main > div > .app-section-header-title {
+  margin: 0;
+  min-width: 0;
+  font-size: clamp(1.35rem, 1.12rem + 1vw, 2rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.app-section-header-main > div > p:not(.eyebrow),
+.app-section-header-main > div > .admin-collapsible-description,
+.app-section-header-main > div > .app-section-header-subtitle,
+.app-section-header-main > div > .dashboard-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  max-width: 72ch;
+}
+
+.app-section-header-main .section-title-icon {
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  padding: 10px;
+  border-radius: 20px;
+}
+
+.app-section-header > :not(.app-section-header-main) {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .app-section-header {
+    gap: 14px;
+  }
+
+  .app-section-header-main {
+    gap: 14px;
+  }
+
+  .app-section-header-main .section-title-icon {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+    padding: 9px;
+    border-radius: 18px;
+  }
+
+  .app-section-header-main > div > h1,
+  .app-section-header-main > div > h2,
+  .app-section-header-main > div > h3,
+  .app-section-header-main > div > h4,
+  .app-section-header-main > div > h5,
+  .app-section-header-main > div > .admin-collapsible-title,
+  .app-section-header-main > div > .app-section-header-title {
+    font-size: clamp(1.2rem, 1.02rem + 0.9vw, 1.65rem);
+  }
+}
+
+@media (max-width: 460px) {
+  .app-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-section-header > :not(.app-section-header-main) {
+    margin-left: 0;
+  }
 }
 
 .session-images-limit {
@@ -4947,7 +5065,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .admin-collapsible-toggle {
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
   padding: 0;
@@ -4959,9 +5077,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font: inherit;
 }
 
+.admin-collapsible-header-main {
+  flex: 1 1 auto;
+}
+
 .admin-collapsible-copy {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .admin-collapsible-title {
@@ -6658,22 +6781,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-inline-review-section .gallery-inline-review-heading {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 18px;
-  row-gap: 10px;
   margin-bottom: 18px;
 }
 
 .gallery-inline-review-section .gallery-inline-review-icon {
-  width: 64px;
-  height: 64px;
+  width: 78px;
+  height: 78px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 15px;
-  border-radius: 18px;
+  padding: 10px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 140, 0, 0.22);
   background: linear-gradient(180deg, rgba(18, 27, 23, 0.98) 0%, rgba(8, 14, 12, 0.98) 100%);
   box-shadow:
@@ -8378,6 +8496,17 @@ body.theme-dark .theme-toggle-button:hover {
   align-items: center;
   gap: 16px;
   margin-bottom: var(--space-stack);
+}
+
+.section-heading.app-section-header,
+.dashboard-bar.app-section-header {
+  align-items: flex-start;
+  gap: clamp(16px, 2vw, 24px);
+}
+
+.section-heading.app-section-header > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 @media (max-width: 1080px) {
@@ -12004,11 +12133,11 @@ body.theme-dark #session-history-section {
 #active-sessions-section .section-title-icon,
 #recent-completed-sessions-section .section-title-icon,
 #session-history-section .section-title-icon {
-  width: 58px;
-  height: 58px;
-  flex: 0 0 58px;
-  padding: 14px;
-  border-radius: 16px;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  padding: 10px;
+  border-radius: 20px;
 }
 
 #session-history-section .session-history-sort-control {
@@ -12136,10 +12265,10 @@ body.theme-dark #session-history-section .session-row:hover {
   #active-sessions-section .section-title-icon,
   #recent-completed-sessions-section .section-title-icon,
   #session-history-section .section-title-icon {
-    width: 52px;
-    height: 52px;
-    flex-basis: 52px;
-    padding: 12px;
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+    padding: 9px;
   }
 
   #grow-sessions-header .section-title-with-icon > div > h2,
@@ -13197,4 +13326,24 @@ body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custo
   color: #f6f8f5 !important;
   -webkit-text-fill-color: #f6f8f5 !important;
   border-color: rgba(148, 209, 89, 0.22) !important;
+}
+
+@media (max-width: 640px) {
+  .section-heading.app-section-header,
+  .dashboard-bar.app-section-header,
+  .spotlight-head.app-section-header,
+  .home-leaderboard-header.app-section-header {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 460px) {
+  .section-heading.app-section-header,
+  .dashboard-bar.app-section-header,
+  .spotlight-head.app-section-header,
+  .home-leaderboard-header.app-section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

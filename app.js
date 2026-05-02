@@ -10088,6 +10088,141 @@ function renderGalleryTopMembersSummary(entries = []) {
   `;
 }
 
+function renderAppSectionHeaderIcon(iconType = "overview") {
+  switch (iconType) {
+    case "install":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="7" y="3.5" width="10" height="17" rx="2.5"></rect>
+          <path d="M12 7.5v7"></path>
+          <path d="m9.5 12 2.5 2.5 2.5-2.5"></path>
+          <path d="M10.5 17.5h3"></path>
+        </svg>
+      `;
+    case "community":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+          <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
+          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+          <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
+          <path d="M11.2 18.8c1.2.9 2.7 1.4 4.3 1.4"></path>
+          <path d="M12 5.5c2.8.2 5.1 1.5 6.4 3.7"></path>
+        </svg>
+      `;
+    case "leaderboard":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5 17.5h14"></path>
+          <path d="M7.5 17.5V11"></path>
+          <path d="M12 17.5V7.5"></path>
+          <path d="M16.5 17.5v-4"></path>
+        </svg>
+      `;
+    case "members":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+          <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
+          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+          <path d="M13.8 17.2c.5-1.3 1.7-2.2 3.2-2.2 1.2 0 2.2.4 3 .9"></path>
+        </svg>
+      `;
+    case "reports":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5.5 6.5A2.5 2.5 0 0 1 8 4h8a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 16 15H11l-4.5 4v-4H8A2.5 2.5 0 0 1 5.5 12.5Z"></path>
+          <path d="M12 7.5v3.5"></path>
+          <path d="M12 13.5h.01"></path>
+        </svg>
+      `;
+    case "sources":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4.5 19.5h15"></path>
+          <path d="M6.5 19.5V9.5"></path>
+          <path d="M12 19.5V5.5"></path>
+          <path d="M17.5 19.5v-7"></path>
+          <path d="M5.5 9.5h2M11 5.5h2M16.5 12.5h2"></path>
+        </svg>
+      `;
+    case "message-board":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v8a2.5 2.5 0 0 1-2.5 2.5H9L5 20v-3.5A2.5 2.5 0 0 1 2.5 14V9"></path>
+          <path d="M8 8.5h8"></path>
+          <path d="M8 12h5"></path>
+        </svg>
+      `;
+    case "analytics":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4.5 19.5h15"></path>
+          <path d="M6.5 19.5V13"></path>
+          <path d="M11.5 19.5V8"></path>
+          <path d="M16.5 19.5V10.5"></path>
+          <path d="m5.5 9.5 4-3 3 2 6-4"></path>
+        </svg>
+      `;
+    case "moderation":
+    case "review":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M8 4.75h8"></path>
+          <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z"></path>
+          <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5"></path>
+          <path d="M8.5 10.25h5.25"></path>
+          <path d="M8.5 13.25h3.5"></path>
+          <path d="M13.75 15.5 15 16.75l2.75-3"></path>
+          <circle cx="16" cy="15.5" r="3.5"></circle>
+        </svg>
+      `;
+    case "activity":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4.5 14h3l2.2-4 3.1 8 2.2-5H19.5"></path>
+          <path d="M4.5 19.5h15"></path>
+          <path d="M7.5 6.5h9"></path>
+        </svg>
+      `;
+    case "following":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
+          <path d="M16.5 8v6"></path>
+          <path d="M13.5 11h6"></path>
+        </svg>
+      `;
+    case "public-session":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M8 4.5h6l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-7A2.5 2.5 0 0 1 6 18.5v-11A3 3 0 0 1 9 4.5"></path>
+          <path d="M14 4.5v3h3"></path>
+          <path d="M9 12h6"></path>
+          <path d="M9 15h4"></path>
+        </svg>
+      `;
+    case "snapshots":
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4" y="6" width="10" height="12" rx="2"></rect>
+          <path d="M14 9h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2"></path>
+          <path d="m8 14 2-2 2 2"></path>
+          <circle cx="10" cy="10" r="1"></circle>
+        </svg>
+      `;
+    case "admin":
+    default:
+      return `
+        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 3.5 4.5 7.2V12c0 4.1 2.7 7.8 7.5 8.8 4.8-1 7.5-4.7 7.5-8.8V7.2L12 3.5Z"></path>
+          <path d="M9.5 12.2 11 13.7l3.6-3.9"></path>
+        </svg>
+      `;
+  }
+}
+
 function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
   switch (iconType) {
     case "all-time":
@@ -10168,14 +10303,9 @@ function renderGalleryLeaderboardSection() {
   const section = document.createElement("section");
   section.className = "card gallery-section gallery-leaderboard-section";
   section.innerHTML = `
-    <div class="section-heading">
-      <div class="section-title-with-icon">
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5 17.5h14"></path>
-          <path d="M7.5 17.5V11"></path>
-          <path d="M12 17.5V7.5"></path>
-          <path d="M16.5 17.5v-4"></path>
-        </svg>
+    <div class="section-heading app-section-header">
+      <div class="section-title-with-icon app-section-header-main">
+        ${renderAppSectionHeaderIcon("leaderboard")}
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
           <h3>Community Grow Rankings</h3>
@@ -10299,23 +10429,14 @@ function renderHomeGalleryRankingsTeaser() {
   return `
     <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
       <div class="home-gallery-rankings-head">
-        <div class="home-leaderboard-header">
-          <div class="section-title-with-icon home-leaderboard-header-main">
-          <span class="gallery-leaderboard-section-icon home-gallery-rankings-title-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-              <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
-              <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
-              <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
-              <path d="M11.2 18.8c1.2.9 2.7 1.4 4.3 1.4"></path>
-              <path d="M12 5.5c2.8.2 5.1 1.5 6.4 3.7"></path>
-            </svg>
-          </span>
-          <div>
-            <p class="eyebrow">Leaderboard Preview</p>
-            <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
-            <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
-          </div>
+        <div class="home-leaderboard-header app-section-header">
+          <div class="section-title-with-icon home-leaderboard-header-main app-section-header-main">
+            ${renderAppSectionHeaderIcon("community")}
+            <div>
+              <p class="eyebrow">Leaderboard Preview</p>
+              <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
+              <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
+            </div>
           </div>
           <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
             <span>View Community Grow</span>
@@ -14528,9 +14649,14 @@ function renderHomeInstallInfoCardMarkup() {
           <div class="home-install-card-content">
             <div class="home-install-card-copy">
               <div class="home-install-card-copy-block">
-                <p class="eyebrow">Install App</p>
-                <h3 id="home-install-card-title">Install the Grow App</h3>
-                <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+                <div class="section-title-with-icon app-section-header-main">
+                  ${renderAppSectionHeaderIcon("install")}
+                  <div>
+                    <p class="eyebrow">Install App</p>
+                    <h3 id="home-install-card-title">Install the Grow App</h3>
+                    <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="home-install-card-directions">
@@ -14576,13 +14702,18 @@ function renderHomeAdminUtilityCardMarkup() {
     <section class="card mock-data-admin-section ${isMockDataEnabled() ? "is-on" : "is-off"}">
       <div class="mock-data-admin-shell">
         <div class="mock-data-admin-copy">
-          <p class="eyebrow">Admin Utility</p>
-          <h3>Dev Mode (Mock Data)</h3>
-          <p class="mock-data-admin-subtitle">
-            <span>Admin-only preview controls</span>
-            ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
-          </p>
-          <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("admin")}
+            <div>
+              <p class="eyebrow">Admin Utility</p>
+              <h3>Dev Mode (Mock Data)</h3>
+              <p class="mock-data-admin-subtitle">
+                <span>Admin-only preview controls</span>
+                ${isMockDataEnabled() ? '<span class="mock-data-admin-indicator">Mock Data Active</span>' : ""}
+              </p>
+              <p class="muted">Admin-only preview controls. Mock data never submits to the database or overwrites real user data.</p>
+            </div>
+          </div>
         </div>
         <div class="mock-data-admin-actions">
           <button
@@ -14755,11 +14886,14 @@ function renderAdminSourceEditorMarkup(source = null) {
 
   return `
     <form id="admin-source-form" class="admin-source-form">
-      <div class="section-heading admin-source-form-heading">
-        <div>
-          <p class="eyebrow">Source Editor</p>
-          <h4>${escapeHtml(title)}</h4>
-          <p class="muted">${escapeHtml(subtitle)}</p>
+      <div class="section-heading admin-source-form-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Source Editor</p>
+            <h4>${escapeHtml(title)}</h4>
+            <p class="muted">${escapeHtml(subtitle)}</p>
+          </div>
         </div>
       </div>
       <div class="admin-source-form-grid">
@@ -16270,11 +16404,14 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
   });
   return `
     <form id="admin-message-board-settings-form" class="admin-source-form">
-      <div class="section-heading admin-source-form-heading">
-        <div>
-          <p class="eyebrow">Message Board CMS</p>
-          <h4>Control the Home message board</h4>
-          <p class="muted">Choose whether Home shows the saved announcement or the default fallback rotation, then manage the images that support each state.</p>
+      <div class="section-heading admin-source-form-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("message-board")}
+          <div>
+            <p class="eyebrow">Message Board CMS</p>
+            <h4>Control the Home message board</h4>
+            <p class="muted">Choose whether Home shows the saved announcement or the default fallback rotation, then manage the images that support each state.</p>
+          </div>
         </div>
       </div>
       <div class="admin-source-form-grid">
@@ -16764,11 +16901,14 @@ function renderFallbackContentCountsMarkup() {
 function renderAdminFallbackContentEditorMarkup() {
   return `
     <form id="admin-fallback-content-form" class="admin-source-form">
-      <div class="section-heading admin-source-form-heading">
-        <div>
-          <p class="eyebrow">Fallback Content</p>
-          <h4>Manage jokes and grow facts</h4>
-          <p class="muted">Batch import the content used by the Home message board fallback library. Imported content is added to the seeded default set.</p>
+      <div class="section-heading admin-source-form-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("message-board")}
+          <div>
+            <p class="eyebrow">Fallback Content</p>
+            <h4>Manage jokes and grow facts</h4>
+            <p class="muted">Batch import the content used by the Home message board fallback library. Imported content is added to the seeded default set.</p>
+          </div>
         </div>
       </div>
       <div class="admin-source-form-grid">
@@ -16903,6 +17043,7 @@ function renderAdminCollapsibleSectionMarkup({
   bodyMarkup,
   defaultOpen = false,
   sectionClassName = "card admin-section-card",
+  iconType = "admin",
 }) {
   const isOpen = getAdminSectionOpenState(storageKey, defaultOpen);
 
@@ -16917,10 +17058,13 @@ function renderAdminCollapsibleSectionMarkup({
         aria-controls="${escapeHtml(contentId)}"
         aria-expanded="${isOpen ? "true" : "false"}"
       >
-        <span class="admin-collapsible-copy">
-          <span class="eyebrow">${escapeHtml(eyebrow)}</span>
-          <span class="admin-collapsible-title" role="heading" aria-level="3">${escapeHtml(title)}</span>
-          <span class="muted admin-collapsible-description">${escapeHtml(description)}</span>
+        <span class="section-title-with-icon app-section-header-main admin-collapsible-header-main">
+          ${renderAppSectionHeaderIcon(iconType)}
+          <div class="admin-collapsible-copy">
+            <span class="eyebrow">${escapeHtml(eyebrow)}</span>
+            <span class="admin-collapsible-title" role="heading" aria-level="3">${escapeHtml(title)}</span>
+            <span class="muted admin-collapsible-description">${escapeHtml(description)}</span>
+          </div>
         </span>
         <span class="admin-collapsible-chevron" aria-hidden="true"></span>
       </button>
@@ -17293,6 +17437,7 @@ function renderSiteVisitorAnalyticsSectionMarkup() {
     eyebrow: "Site Visitor Analytics",
     title: "Site Visitor Analytics",
     description: "Track visits, page views, app activity, and live visitors.",
+    iconType: "analytics",
     storageKey: ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
     contentId: "admin-site-visitor-analytics-content",
     defaultOpen: false,
@@ -17303,11 +17448,14 @@ function renderSiteVisitorAnalyticsSectionMarkup() {
         ${renderSiteVisitorLiveVisitorsCardMarkup()}
       </div>
       <section class="site-visitor-analytics-activity">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Recent Activity</p>
-            <h3>Recent Activity</h3>
-            <p class="muted">Latest visit starts, page views, and app launches for the selected date range.</p>
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("activity")}
+            <div>
+              <p class="eyebrow">Recent Activity</p>
+              <h3>Recent Activity</h3>
+              <p class="muted">Latest visit starts, page views, and app launches for the selected date range.</p>
+            </div>
           </div>
         </div>
         ${renderSiteVisitorRecentActivityMarkup()}
@@ -17543,6 +17691,7 @@ function renderAdminMessagesSectionMarkup() {
     eyebrow: "User Reports",
     title: "User Reports",
     description: "Review footer contact forms, content flags, technical issues, and support messages.",
+    iconType: "reports",
     storageKey: ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
     contentId: "admin-user-reports-section-content",
     defaultOpen: false,
@@ -17648,11 +17797,8 @@ function bindSiteVisitorAnalyticsSection() {
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
-      <div class="section-title-with-icon">
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 3.5 4.5 7.2V12c0 4.1 2.7 7.8 7.5 8.8 4.8-1 7.5-4.7 7.5-8.8V7.2L12 3.5Z"></path>
-          <path d="M9.5 12.2 11 13.7l3.6-3.9"></path>
-        </svg>
+      <div class="section-title-with-icon app-section-header-main">
+        ${renderAppSectionHeaderIcon("admin")}
         <div>
           <p class="eyebrow">Admin</p>
           <h2>Admin Tools</h2>
@@ -17661,11 +17807,14 @@ function renderAdminPage() {
       </div>
     </section>
     <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Admin Overview</p>
-          <h3>High-level system snapshot</h3>
-          <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("analytics")}
+          <div>
+            <p class="eyebrow">Admin Overview</p>
+            <h3>High-level system snapshot</h3>
+            <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
+          </div>
         </div>
       </div>
       <div id="admin-overview-tools"></div>
@@ -17673,11 +17822,14 @@ function renderAdminPage() {
     </section>
     ${renderSiteVisitorAnalyticsSectionMarkup()}
     <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Community Grow Moderation</p>
-          <h3>Review Community Grow submissions</h3>
-          <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("moderation")}
+          <div>
+            <p class="eyebrow">Community Grow Moderation</p>
+            <h3>Review Community Grow submissions</h3>
+            <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
+          </div>
         </div>
         <div class="admin-section-actions">
           <a class="button button-primary" href="/admin/gallery-moderation">Open Community Grow Moderation</a>
@@ -17688,6 +17840,7 @@ function renderAdminPage() {
       eyebrow: "Members",
       title: "View and manage Cannakan Grow members.",
       description: "Review member growth activity, account access, and admin roles without exposing private member data publicly.",
+      iconType: "members",
       storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
       contentId: "admin-members-section-content",
       defaultOpen: false,
@@ -17702,6 +17855,7 @@ function renderAdminPage() {
       eyebrow: "Sources",
       title: "Manage source companies, logos, and display info.",
       description: "Add, update, hide, or delete source companies without changing the current Community Grow layout.",
+      iconType: "sources",
       storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
       contentId: "admin-sources-section-content",
       defaultOpen: false,
@@ -17722,6 +17876,7 @@ function renderAdminPage() {
       eyebrow: "Message Board CMS",
       title: "Message Board CMS",
       description: "Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.",
+      iconType: "message-board",
       storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
       contentId: "admin-message-board-section-content",
       defaultOpen: false,
@@ -17737,11 +17892,14 @@ function renderAdminPage() {
       `,
     })}
     <section class="card admin-section-card">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">System Tools</p>
-          <h3>Admin-only utilities</h3>
-          <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("admin")}
+          <div>
+            <p class="eyebrow">System Tools</p>
+            <h3>Admin-only utilities</h3>
+            <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
+          </div>
         </div>
       </div>
       <div id="admin-system-tools"></div>
@@ -19149,6 +19307,7 @@ function renderLeaderboardAuditSection(target = app) {
     eyebrow: "Admin Analytics",
     title: "Leaderboard Data Audit",
     description: "Inspect the snapshot records and ranking calculations used for Community Grow performance insights.",
+    iconType: "leaderboard",
     storageKey: ADMIN_ANALYTICS_OPEN_STORAGE_KEY,
     contentId: "admin-analytics-section-content",
     defaultOpen: false,
@@ -19490,24 +19649,27 @@ function renderGallery(targetSnapshotId = "") {
     const pendingReviewLabel =
       pendingReviewCount === 1 ? "1 Pending Review" : `${pendingReviewCount} Pending Reviews`;
     adminSection.innerHTML = `
-      <div class="section-heading gallery-inline-review-heading">
-        <span class="gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M8 4.75h8" />
-            <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z" />
-            <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5" />
-            <path d="M8.5 10.25h5.25" />
-            <path d="M8.5 13.25h3.5" />
-            <path d="M13.75 15.5 15 16.75l2.75-3" />
-            <circle cx="16" cy="15.5" r="3.5"></circle>
-          </svg>
-        </span>
-        <div class="gallery-inline-review-copy">
-          <div class="gallery-inline-review-title-row">
-            <h3>Community Grow Submissions</h3>
-            <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
+      <div class="section-heading gallery-inline-review-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          <span class="section-title-icon gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M8 4.75h8" />
+              <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z" />
+              <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5" />
+              <path d="M8.5 10.25h5.25" />
+              <path d="M8.5 13.25h3.5" />
+              <path d="M13.75 15.5 15 16.75l2.75-3" />
+              <circle cx="16" cy="15.5" r="3.5"></circle>
+            </svg>
+          </span>
+          <div class="gallery-inline-review-copy">
+            <p class="eyebrow">Admin Review</p>
+            <div class="gallery-inline-review-title-row">
+              <h3>Community Grow Submissions</h3>
+              <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
+            </div>
+            <p class="muted">Review pending Community Grow snapshots before they become public.</p>
           </div>
-          <p class="muted">Review pending Community Grow snapshots before they become public.</p>
         </div>
       </div>
       <div class="gallery-review-list"></div>
@@ -20839,11 +21001,14 @@ function renderPublicSessionDetail(snapshotId) {
   if (!snapshot) {
     app.innerHTML = `
       <section class="card public-session-card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Public Session</p>
-            <h2>Grow session view</h2>
-            <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("public-session")}
+            <div>
+              <p class="eyebrow">Public Session</p>
+              <h2>Grow session view</h2>
+              <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
+            </div>
           </div>
           <div class="inline-actions">
             <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
@@ -20888,14 +21053,9 @@ function renderPublicSessionDetail(snapshotId) {
 
   app.innerHTML = `
     <section class="card public-session-card">
-      <div class="section-heading">
-        <div class="section-title-with-icon">
-          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M8 4.5h6l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-7A2.5 2.5 0 0 1 6 18.5v-11A3 3 0 0 1 9 4.5"></path>
-            <path d="M14 4.5v3h3"></path>
-            <path d="M9 12h6"></path>
-            <path d="M9 15h4"></path>
-          </svg>
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("public-session")}
           <div>
             <p class="eyebrow">Public Session</p>
             <h2>${escapeHtml(sessionTitle)}</h2>
@@ -20959,11 +21119,14 @@ function renderPublicMemberProfile(memberId) {
   if (!normalizedId) {
     app.innerHTML = `
       <section class="card public-member-profile-page">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Community Member</p>
-            <h2>Public profile</h2>
-            <p class="muted">This public member profile is unavailable.</p>
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("members")}
+            <div>
+              <p class="eyebrow">Community Member</p>
+              <h2>Public profile</h2>
+              <p class="muted">This public member profile is unavailable.</p>
+            </div>
           </div>
           <div class="inline-actions">
             <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
@@ -20977,11 +21140,14 @@ function renderPublicMemberProfile(memberId) {
   if (!profile && !approvedSnapshots.length) {
     app.innerHTML = `
       <section class="card public-member-profile-page">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Community Member</p>
-            <h2>Public grow profile</h2>
-            <p class="muted">${isLoadingSnapshots || isLoadingProfile ? "Loading public member profile..." : "This public member profile is unavailable."}</p>
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("members")}
+            <div>
+              <p class="eyebrow">Community Member</p>
+              <h2>Public grow profile</h2>
+              <p class="muted">${isLoadingSnapshots || isLoadingProfile ? "Loading public member profile..." : "This public member profile is unavailable."}</p>
+            </div>
           </div>
           <div class="inline-actions">
             <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
@@ -21092,14 +21258,9 @@ function renderPublicMemberProfile(memberId) {
         `).join("")}
       </div>
       <section class="public-member-profile-snapshots">
-        <div class="section-heading">
-          <div class="section-title-with-icon">
-            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <rect x="4" y="6" width="10" height="12" rx="2"></rect>
-              <path d="M14 9h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2"></path>
-              <path d="m8 14 2-2 2 2"></path>
-              <circle cx="10" cy="10" r="1"></circle>
-            </svg>
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("snapshots")}
             <div>
               <p class="eyebrow">Shared Sessions</p>
               <h3>Public snapshots</h3>
@@ -21410,14 +21571,9 @@ function renderGrowNetworkPage() {
 
   app.innerHTML = `
     <section class="card grow-network-page">
-      <div class="section-heading grow-network-page-heading">
-        <div class="section-title-with-icon">
-          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-            <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
-            <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
-            <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
-          </svg>
+      <div class="section-heading grow-network-page-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("community")}
           <div>
             <p class="eyebrow">COMMUNITY</p>
             <h2>Grow Network</h2>
@@ -21431,20 +21587,26 @@ function renderGrowNetworkPage() {
       <div class="grow-network-layout">
         <section class="grow-network-section">
           ${renderMockTabsMarkup()}
-          <div class="section-heading grow-network-section-heading">
-            <div>
-              <p class="eyebrow">${escapeHtml(isMockNetwork ? mockSectionCopy.eyebrow : "Following")}</p>
-              <h3>${escapeHtml(isMockNetwork ? mockSectionCopy.title : "People You Follow")}</h3>
-              ${isMockNetwork ? `<p class="muted grow-network-section-subtitle">${escapeHtml(mockSectionCopy.subtitle)}</p>` : ""}
+          <div class="section-heading grow-network-section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("following")}
+              <div>
+                <p class="eyebrow">${escapeHtml(isMockNetwork ? mockSectionCopy.eyebrow : "Following")}</p>
+                <h3>${escapeHtml(isMockNetwork ? mockSectionCopy.title : "People You Follow")}</h3>
+                ${isMockNetwork ? `<p class="muted grow-network-section-subtitle">${escapeHtml(mockSectionCopy.subtitle)}</p>` : ""}
+              </div>
             </div>
           </div>
           ${renderFollowingListMarkup()}
         </section>
         <section class="grow-network-section">
-          <div class="section-heading grow-network-section-heading">
-            <div>
-              <p class="eyebrow">Activity</p>
-              <h3>Network Activity</h3>
+          <div class="section-heading grow-network-section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("activity")}
+              <div>
+                <p class="eyebrow">Activity</p>
+                <h3>Network Activity</h3>
+              </div>
             </div>
           </div>
           ${renderActivityFeedMarkup()}
