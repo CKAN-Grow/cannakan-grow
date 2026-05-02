@@ -22651,6 +22651,17 @@ function renderGrowNetworkPage() {
       ? "Real-time activity from your network. Mock alerts stay isolated from production data."
       : "Recent public grow activity from the growers in your network.",
   };
+  const currentUserFollowSummary = appState.user?.id ? getPublicMemberFollowSummary(appState.user.id) : null;
+  const headerFollowersValue = useMockPresentation
+    ? "128"
+    : (currentUserFollowSummary ? currentUserFollowSummary.followerCount.toLocaleString() : "0");
+  const headerLikesValue = useMockPresentation
+    ? "2.4K"
+    : "0";
+  const headerStats = [
+    { label: "Total Followers", value: headerFollowersValue },
+    { label: "Total Likes", value: headerLikesValue },
+  ];
 
   const renderGrowNetworkNotificationTypeIcon = (type = "follow") => {
     if (type === "like") {
@@ -23018,6 +23029,14 @@ function renderGrowNetworkPage() {
             <h2>Grow Network</h2>
             <p class="muted">Follow members and see public grow activity from your network.</p>
           </div>
+        </div>
+        <div class="grow-network-header-stats" aria-label="Grow Network quick stats">
+          ${headerStats.map((stat) => `
+            <article class="grow-network-header-stat">
+              <strong>${escapeHtml(stat.value)}</strong>
+              <span>${escapeHtml(stat.label)}</span>
+            </article>
+          `).join("")}
         </div>
         <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
       </div>
