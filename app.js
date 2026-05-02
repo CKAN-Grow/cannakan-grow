@@ -14995,7 +14995,7 @@ function renderHomeInstallInfoCardMarkup() {
       ? "Use Share → Add to Home Screen"
       : hasDeferredPrompt
         ? "Install Now"
-        : "Install available on supported browsers";
+        : "Install Now";
   const buttonEnabled = hasDeferredPrompt && !isInstalled;
   const statusToneClass = isInstalled
     ? "is-installed"
