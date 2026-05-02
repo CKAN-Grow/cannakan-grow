@@ -3204,6 +3204,140 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-install-phone-actions {
   margin-top: auto;
+  display: grid;
+  gap: 10px;
+}
+
+.home-install-phone-progress-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.home-install-phone-progress-label {
+  margin: 0;
+  color: rgba(189, 204, 192, 0.78);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-install-phone-stage-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.home-install-phone-stage-segment {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.home-install-phone-stage-fill {
+  display: block;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+}
+
+.home-install-phone-stage-name {
+  color: rgba(189, 204, 192, 0.72);
+  font-size: 0.54rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.home-install-phone-stage-segment.stage-soaking {
+  --phone-stage-color: #6fa8dc;
+}
+
+.home-install-phone-stage-segment.stage-germinating {
+  --phone-stage-color: #dd8045;
+}
+
+.home-install-phone-stage-segment.stage-planted {
+  --phone-stage-color: #94d159;
+}
+
+.home-install-phone-stage-segment.stage-completed {
+  --phone-stage-color: #8a6748;
+}
+
+.home-install-phone-stage-segment.is-complete .home-install-phone-stage-fill,
+.home-install-phone-stage-segment.is-current .home-install-phone-stage-fill {
+  background: var(--phone-stage-color, #94d159);
+}
+
+.home-install-phone-stage-segment.is-complete .home-install-phone-stage-name,
+.home-install-phone-stage-segment.is-current .home-install-phone-stage-name {
+  color: #eef8e4;
+}
+
+.home-install-phone-stage-segment.is-current .home-install-phone-stage-fill {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--phone-stage-color, #94d159) 22%, transparent),
+    0 0 8px color-mix(in srgb, var(--phone-stage-color, #94d159) 18%, transparent);
+}
+
+.home-install-phone-stage-segment.is-future .home-install-phone-stage-fill {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.home-install-phone-stage-segment.is-future .home-install-phone-stage-name {
+  color: rgba(167, 182, 171, 0.5);
+}
+
+.home-install-phone-partition-graph {
+  display: grid;
+  gap: 8px;
+}
+
+.home-install-phone-partition-row {
+  display: grid;
+  gap: 5px;
+}
+
+.home-install-phone-partition-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: rgba(189, 204, 192, 0.78);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.home-install-phone-partition-meta strong {
+  color: #eef8e4;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.home-install-phone-partition-track {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.04);
+}
+
+.home-install-phone-partition-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #94d159 0%, #75b545 100%);
 }
 
 .home-install-phone-button {
