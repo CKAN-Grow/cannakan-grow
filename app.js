@@ -14970,15 +14970,10 @@ function renderHomeInstallInfoCardMarkup() {
     ? "Install available on supported browsers like Chrome. Support varies by device."
     : helperText;
   const installPreviewElapsed = formatInstallPreviewElapsed(2, 2);
-  const installPreviewPartitions = [
-    { label: "Partition A", germinated: 10, total: 12 },
-    { label: "Partition B", germinated: 8, total: 10 },
-  ];
-  const installPreviewTotalSeeds = installPreviewPartitions.reduce((sum, partition) => sum + partition.total, 0);
-  const installPreviewGerminatedSeeds = installPreviewPartitions.reduce((sum, partition) => sum + partition.germinated, 0);
-  const installPreviewSuccessRate = installPreviewTotalSeeds > 0
-    ? Math.round((installPreviewGerminatedSeeds / installPreviewTotalSeeds) * 100)
-    : 0;
+  const installPreviewSuccessRate = 98;
+  const installPreviewTotalSeeds = 50;
+  const installPreviewGerminatedSeeds = 49;
+  const installPreviewPartitionBars = [98, 96];
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
@@ -15014,36 +15009,24 @@ function renderHomeInstallInfoCardMarkup() {
                 </div>
                 <div class="home-install-phone-actions">
                   <div class="home-install-phone-progress-panel">
-                    <p class="home-install-phone-progress-label">Session timeline</p>
                     <div class="home-install-phone-stage-timeline">
                       <div class="home-install-phone-stage-segment stage-soaking is-complete">
                         <span class="home-install-phone-stage-fill"></span>
-                        <span class="home-install-phone-stage-name">Soaking</span>
                       </div>
                       <div class="home-install-phone-stage-segment stage-germinating is-current">
                         <span class="home-install-phone-stage-fill"></span>
-                        <span class="home-install-phone-stage-name">Germinating</span>
                       </div>
                       <div class="home-install-phone-stage-segment stage-planted is-future">
                         <span class="home-install-phone-stage-fill"></span>
-                        <span class="home-install-phone-stage-name">Planted</span>
                       </div>
                       <div class="home-install-phone-stage-segment stage-completed is-future">
                         <span class="home-install-phone-stage-fill"></span>
-                        <span class="home-install-phone-stage-name">Completed</span>
                       </div>
                     </div>
                     <div class="home-install-phone-partition-graph">
-                      ${installPreviewPartitions.map((partition) => {
-                        const progressPercent = partition.total > 0
-                          ? Math.max(0, Math.min(100, Math.round((partition.germinated / partition.total) * 100)))
-                          : 0;
+                      ${installPreviewPartitionBars.map((progressPercent) => {
                         return `
                           <div class="home-install-phone-partition-row">
-                            <div class="home-install-phone-partition-meta">
-                              <span>${escapeHtml(partition.label)}</span>
-                              <strong>${escapeHtml(`${partition.germinated} / ${partition.total}`)}</strong>
-                            </div>
                             <div class="home-install-phone-partition-track">
                               <span class="home-install-phone-partition-fill" style="width:${progressPercent}%"></span>
                             </div>
