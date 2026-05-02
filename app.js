@@ -158,6 +158,7 @@ const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
   allowFollowers: true,
   showGrowStatsPublicly: true,
 });
+const USER_NOTIFICATION_PREFERENCES_STORAGE_KEY = "cannakanGrowNotificationPreferences";
 const PROFILE_PAGE_SETTINGS_STORAGE_KEY = "cannakanGrowProfilePageSettings";
 const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
   "notify_snapshot",
@@ -4820,12 +4821,58 @@ function getDefaultNotificationPreferences() {
   return { ...DEFAULT_NOTIFICATION_PREFERENCES };
 }
 
+function getUserNotificationPreferencesStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${USER_NOTIFICATION_PREFERENCES_STORAGE_KEY}:${normalizedUserId}`
+    : USER_NOTIFICATION_PREFERENCES_STORAGE_KEY;
+}
+
+function loadStoredUserNotificationPreferences(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return getDefaultNotificationPreferences();
+  }
+
+  try {
+    const storedValue = localStorage.getItem(getUserNotificationPreferencesStorageKey(normalizedUserId));
+    return normalizeUserNotificationPreferencesRow(JSON.parse(storedValue || "null") || DEFAULT_NOTIFICATION_PREFERENCES);
+  } catch (error) {
+    console.warn("[Profile Settings] Failed to read local notification preferences.", error);
+    return getDefaultNotificationPreferences();
+  }
+}
+
+function syncUserNotificationPreferencesCache(userId = "", preferences = {}, options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  const { persistLocal = true } = options || {};
+  const normalizedPreferences = normalizeUserNotificationPreferencesRow(
+    preferences,
+    loadStoredUserNotificationPreferences(normalizedUserId),
+  );
+
+  appState.notificationPreferences = normalizedPreferences;
+
+  if (persistLocal && normalizedUserId) {
+    try {
+      localStorage.setItem(
+        getUserNotificationPreferencesStorageKey(normalizedUserId),
+        JSON.stringify(normalizedPreferences),
+      );
+    } catch (error) {
+      console.warn("[Profile Settings] Failed to persist local notification preferences.", error);
+    }
+  }
+
+  return normalizedPreferences;
+}
+
 function logUserNotificationPreferencesFallback(error, details = {}) {
   appState.notificationPreferencesError = error?.message || "Notification preferences temporarily unavailable.";
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-backend-fallback",
-    "Notification preferences backend unavailable; using safe defaults.",
+    "Notification preferences backend unavailable; using the latest safe local fallback.",
     {
       ...details,
       error,
@@ -4848,7 +4895,7 @@ function markUserNotificationPreferencesTableUnavailable() {
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-table-unavailable",
-    "Notification preferences backend unavailable; using safe defaults for this session.",
+    "Notification preferences backend unavailable; using the latest safe local fallback for this session.",
   );
 }
 
@@ -4893,7 +4940,11 @@ async function safelyEnsureUserNotificationPreferences(user) {
         userId: String(user?.id || "").trim(),
       });
     }
-    return getDefaultNotificationPreferences();
+    return syncUserNotificationPreferencesCache(
+      String(user?.id || "").trim(),
+      loadStoredUserNotificationPreferences(String(user?.id || "").trim()),
+      { persistLocal: false },
+    );
   }
 }
 
@@ -5663,8 +5714,10 @@ async function loadUserProfile() {
 }
 
 async function ensureUserNotificationPreferences(user) {
-  if (!appState.supabase || !user?.id || appState.notificationPreferencesTableUnavailable) {
-    return getDefaultNotificationPreferences();
+  const normalizedUserId = String(user?.id || "").trim();
+  const storedPreferences = loadStoredUserNotificationPreferences(normalizedUserId);
+  if (!appState.supabase || !normalizedUserId || appState.notificationPreferencesTableUnavailable) {
+    return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
   }
 
   appState.notificationPreferencesError = "";
@@ -5672,27 +5725,27 @@ async function ensureUserNotificationPreferences(user) {
   const { data: existingPreferences, error: selectError } = await appState.supabase
     .from(USER_NOTIFICATION_PREFERENCES_TABLE)
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", normalizedUserId)
     .maybeSingle();
 
   if (selectError) {
     if (isUserNotificationPreferencesTableMissingError(selectError)) {
       markUserNotificationPreferencesTableUnavailable();
-      return getDefaultNotificationPreferences();
+      return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
     }
     logUserNotificationPreferencesFallback(selectError, {
       phase: "select",
-      userId: String(user?.id || "").trim(),
+      userId: normalizedUserId,
     });
-    return getDefaultNotificationPreferences();
+    return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
   }
 
   if (existingPreferences) {
     setUserNotificationPreferencesSchemaMode(existingPreferences);
-    return normalizeUserNotificationPreferencesRow(existingPreferences);
+    return syncUserNotificationPreferencesCache(normalizedUserId, existingPreferences);
   }
 
-  const preferencePayload = buildUserNotificationPreferencesSeedPayload(user.id);
+  const preferencePayload = buildUserNotificationPreferencesSeedPayload(normalizedUserId, storedPreferences);
 
   const { data: savedPreferences, error: upsertError } = await appState.supabase
     .from(USER_NOTIFICATION_PREFERENCES_TABLE)
@@ -5703,17 +5756,17 @@ async function ensureUserNotificationPreferences(user) {
   if (upsertError) {
     if (isUserNotificationPreferencesTableMissingError(upsertError)) {
       markUserNotificationPreferencesTableUnavailable();
-      return getDefaultNotificationPreferences();
+      return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
     }
     logUserNotificationPreferencesFallback(upsertError, {
       phase: "seed",
-      userId: String(user?.id || "").trim(),
+      userId: normalizedUserId,
     });
-    return getDefaultNotificationPreferences();
+    return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
   }
 
   setUserNotificationPreferencesSchemaMode(savedPreferences);
-  return normalizeUserNotificationPreferencesRow(savedPreferences);
+  return syncUserNotificationPreferencesCache(normalizedUserId, savedPreferences);
 }
 
 async function loadGallerySnapshots(reason = "unspecified") {
@@ -6294,17 +6347,44 @@ function normalizeProfileRow(row) {
   };
 }
 
-function normalizeUserNotificationPreferencesRow(row) {
+function normalizeUserNotificationPreferencesRow(row, fallbackPreferences = DEFAULT_NOTIFICATION_PREFERENCES) {
   if (!row) {
-    return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    return {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      ...(fallbackPreferences || {}),
+    };
   }
 
+  const normalizedFallbackPreferences = {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...(fallbackPreferences || {}),
+  };
   return {
-    notifySnapshot: getUserNotificationPreferencesBooleanValue(row, ["notify_snapshot", "email_notifications"]),
-    notifyCompletion: getUserNotificationPreferencesBooleanValue(row, ["notify_completion", "push_notifications", "session_reminders"]),
-    notifyFollow: getUserNotificationPreferencesBooleanValue(row, ["notify_follow", "follow_notifications", "community_updates"]),
-    notifyLike: getUserNotificationPreferencesBooleanValue(row, ["notify_like", "like_notifications", "low_filter_alerts"]),
-    notifyCommunityActivity: getUserNotificationPreferencesBooleanValue(row, ["community_activity_notifications"], false),
+    notifySnapshot: getUserNotificationPreferencesBooleanValue(
+      row,
+      ["notifySnapshot", "notify_snapshot", "email_notifications"],
+      normalizedFallbackPreferences.notifySnapshot !== false,
+    ),
+    notifyCompletion: getUserNotificationPreferencesBooleanValue(
+      row,
+      ["notifyCompletion", "notify_completion", "push_notifications", "session_reminders"],
+      normalizedFallbackPreferences.notifyCompletion !== false,
+    ),
+    notifyFollow: getUserNotificationPreferencesBooleanValue(
+      row,
+      ["notifyFollow", "notify_follow", "follow_notifications", "community_updates"],
+      normalizedFallbackPreferences.notifyFollow !== false,
+    ),
+    notifyLike: getUserNotificationPreferencesBooleanValue(
+      row,
+      ["notifyLike", "notify_like", "like_notifications", "low_filter_alerts"],
+      normalizedFallbackPreferences.notifyLike !== false,
+    ),
+    notifyCommunityActivity: getUserNotificationPreferencesBooleanValue(
+      row,
+      ["notifyCommunityActivity", "community_activity_notifications"],
+      normalizedFallbackPreferences.notifyCommunityActivity === true,
+    ),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -10137,14 +10217,18 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
     debugContext = "",
     verifyAfterSave = false,
   } = options || {};
-  const existingPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const existingPreferences = appState.notificationPreferences || loadStoredUserNotificationPreferences(normalizedUserId);
   const fallbackPayload = buildUserNotificationPreferencesUpsertPayload(
-    appState.user.id,
+    normalizedUserId,
     preferencesInput,
     existingPreferences,
     "modern",
   );
-  const fallbackPreferences = normalizeUserNotificationPreferencesRow(fallbackPayload);
+  const fallbackPreferences = syncUserNotificationPreferencesCache(
+    normalizedUserId,
+    normalizeUserNotificationPreferencesRow(fallbackPayload, existingPreferences),
+  );
   const throwNotificationPreferencesSaveError = (message, error = null) => {
     if (!requirePersistence) {
       return false;
@@ -10177,7 +10261,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       if (debugContext === "profile-settings") {
         logProfileSettingsDebug("user-notification-preferences:upsert:request", {
           table: USER_NOTIFICATION_PREFERENCES_TABLE,
-          userId: String(appState.user?.id || "").trim(),
+          userId: normalizedUserId,
           payload,
           writeMode,
         });
@@ -10192,7 +10276,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       if (debugContext === "profile-settings") {
         logProfileSettingsDebug("user-notification-preferences:upsert:response", {
           table: USER_NOTIFICATION_PREFERENCES_TABLE,
-          userId: String(appState.user?.id || "").trim(),
+          userId: normalizedUserId,
           row: data,
           error,
           writeMode,
@@ -10203,7 +10287,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       if (debugContext === "profile-settings") {
         logProfileSettingsDebug("user-notification-preferences:upsert:request-error", {
           table: USER_NOTIFICATION_PREFERENCES_TABLE,
-          userId: String(appState.user?.id || "").trim(),
+          userId: normalizedUserId,
           payload,
           error,
           writeMode,
@@ -10220,14 +10304,14 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
           const readbackResponse = await appState.supabase
             .from(USER_NOTIFICATION_PREFERENCES_TABLE)
             .select("*")
-            .eq("user_id", String(appState.user?.id || "").trim())
+            .eq("user_id", normalizedUserId)
             .maybeSingle();
           readbackData = readbackResponse?.data || null;
           readbackError = readbackResponse?.error || null;
           if (debugContext === "profile-settings") {
             logProfileSettingsDebug("user-notification-preferences:readback", {
               table: USER_NOTIFICATION_PREFERENCES_TABLE,
-              userId: String(appState.user?.id || "").trim(),
+              userId: normalizedUserId,
               row: readbackData,
               error: readbackError,
               writeMode,
@@ -10238,7 +10322,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
           if (debugContext === "profile-settings") {
             logProfileSettingsDebug("user-notification-preferences:readback:request-error", {
               table: USER_NOTIFICATION_PREFERENCES_TABLE,
-              userId: String(appState.user?.id || "").trim(),
+              userId: normalizedUserId,
               error: readbackError,
               writeMode,
             }, true);
@@ -10259,7 +10343,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       }
 
       setUserNotificationPreferencesSchemaMode(resolvedRow || writeMode);
-      return normalizeUserNotificationPreferencesRow(resolvedRow);
+      return syncUserNotificationPreferencesCache(normalizedUserId, resolvedRow || fallbackPreferences);
     }
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
@@ -10275,7 +10359,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
 
     logUserNotificationPreferencesFallback(error, {
       phase: "save",
-      userId: String(appState.user?.id || "").trim(),
+      userId: normalizedUserId,
       writeMode,
     });
     throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", error);
@@ -10285,7 +10369,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
   if (isUserNotificationPreferencesSchemaModeError(lastError)) {
     logUserNotificationPreferencesFallback(lastError, {
       phase: "save-schema",
-      userId: String(appState.user?.id || "").trim(),
+      userId: normalizedUserId,
     });
     throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", lastError);
     return fallbackPreferences;
@@ -15684,8 +15768,8 @@ function bindProfilePageForm(form) {
 
   const syncLocalProfileState = (nextValues = getFormState()) => {
     const normalizedUserId = String(appState.user?.id || "").trim();
-    appState.notificationPreferences = normalizeUserNotificationPreferencesRow({
-      ...(appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES),
+    appState.notificationPreferences = syncUserNotificationPreferencesCache(normalizedUserId, {
+      ...(appState.notificationPreferences || loadStoredUserNotificationPreferences(normalizedUserId)),
       notifySnapshot: nextValues.notifySnapshot,
       notifyCompletion: nextValues.notifyCompletion,
       notifyFollow: nextValues.notifyFollow,
@@ -15974,7 +16058,7 @@ function renderProfilePage() {
               })}
             </div>
             <p class="profile-section-note">${usesNotificationFallback
-              ? "Notification preferences are currently using safe defaults while the backend is unavailable."
+              ? "Notification preferences are currently using your latest saved browser fallback while the backend is unavailable."
               : "Notification settings are connected to your saved Cannakan Grow preferences."}</p>
           </article>
           <article class="profile-section-card" id="profile-privacy-community-card">
