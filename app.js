@@ -4342,23 +4342,15 @@ function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
   return normalizedValue || fallback;
 }
 
-function isSupabaseUuidLike(value = "") {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
-}
-
 function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
   void metadata;
-  const payload = buildSiteAnalyticsVisitorPayload(pageContext);
   const page = normalizeSiteAnalyticsTextValue(
-    payload.pageContext?.pagePath,
-    normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "/"),
+    pageContext?.pagePath,
+    normalizeSiteAnalyticsTextValue(pageContext?.pageKey, "/"),
   );
   return {
-    user_id: isSupabaseUuidLike(payload.userId) ? payload.userId : null,
     event_type: normalizeSiteAnalyticsEventType(eventType),
     page,
-    session_id: normalizeSiteAnalyticsTextValue(payload.visitId, getOrCreateSiteVisitId()) || null,
-    created_at: new Date().toISOString(),
   };
 }
 
@@ -4459,9 +4451,15 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
   appState.siteAnalyticsEventInFlight = true;
   try {
     const insertPayload = buildSiteAnalyticsInsertPayload(eventType, pageContext, metadata);
-    const { error } = await appState.supabase
-      .from(SITE_ANALYTICS_TABLE)
-      .insert(insertPayload);
+    let error = null;
+    try {
+      const response = await appState.supabase
+        .from(SITE_ANALYTICS_TABLE)
+        .insert(insertPayload);
+      error = response?.error || null;
+    } catch (insertError) {
+      error = insertError;
+    }
 
     if (!error) {
       return true;
