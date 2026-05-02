@@ -10446,7 +10446,6 @@ input::placeholder {
 }
 
 .grow-network-hero-button,
-.grow-network-mark-read-button,
 .grow-network-member-follow-button,
 .grow-network-panel .button-secondary {
   border-color: rgba(181, 232, 111, 0.18);
@@ -10457,8 +10456,6 @@ input::placeholder {
 
 .grow-network-hero-button:hover,
 .grow-network-hero-button:focus-visible,
-.grow-network-mark-read-button:hover,
-.grow-network-mark-read-button:focus-visible,
 .grow-network-member-follow-button:hover,
 .grow-network-member-follow-button:focus-visible,
 .grow-network-panel .button-secondary:hover,
@@ -10471,11 +10468,44 @@ input::placeholder {
 .grow-network-mark-read-button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  margin-left: auto;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(244, 247, 242, 0.74);
+  box-shadow: none;
+  white-space: nowrap;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.grow-network-mark-read-button span[aria-hidden="true"] {
+  font-size: 0.88rem;
+  opacity: 0.72;
+}
+
+.grow-network-mark-read-button:hover,
+.grow-network-mark-read-button:focus-visible {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(148, 209, 89, 0.08);
+  color: #eef7e6;
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.08);
+}
+
+.grow-network-mark-read-button:hover span[aria-hidden="true"],
+.grow-network-mark-read-button:focus-visible span[aria-hidden="true"] {
+  opacity: 0.9;
 }
 
 .grow-network-mark-read-button[disabled] {
-  opacity: 0.55;
+  opacity: 0.46;
   cursor: default;
 }
 
