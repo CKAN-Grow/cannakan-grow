@@ -719,6 +719,9 @@ const appState = {
   unsavedChanges: {
     active: false,
     hasUnsavedChanges: false,
+    contextType: "",
+    sessionDirty: false,
+    profileDirty: false,
     pageHash: "",
     baselineSignature: "",
     getSignature: null,
@@ -15620,6 +15623,7 @@ function bindProfilePageForm(form) {
 
   registerUnsavedChangesContext({
     pageHash: "#profile",
+    contextType: "profile",
     getSignature: () => JSON.stringify(getFormState()),
     saveFn: () => persistProfileSettings({ source: "manual" }),
   });
@@ -23000,6 +23004,7 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
+    contextType: "session",
     getSignature: () => buildNewSessionDraftSignature(form),
     saveFn: persistNewSession,
   });
@@ -24885,6 +24890,7 @@ function renderSessionDetail(sessionId) {
 
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
+    contextType: "session",
     getSignature: () => buildSessionDetailDraftSignature(session, partitions, detailStatusField, detailNotesField),
     saveFn: persistDetailSession,
   });
@@ -27140,49 +27146,103 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
   });
 }
 
+function normalizeUnsavedChangesContextType(contextType) {
+  const normalizedType = String(contextType || "").trim().toLowerCase();
+  if (normalizedType === "profile") {
+    return "profile";
+  }
+  if (normalizedType === "session") {
+    return "session";
+  }
+  return "generic";
+}
+
+function syncUnsavedChangesDirtyFlags() {
+  const activeContextType = normalizeUnsavedChangesContextType(appState.unsavedChanges.contextType);
+  const hasUnsavedChanges = Boolean(appState.unsavedChanges.active && appState.unsavedChanges.hasUnsavedChanges);
+  appState.unsavedChanges.sessionDirty = activeContextType === "session" && hasUnsavedChanges;
+  appState.unsavedChanges.profileDirty = activeContextType === "profile" && hasUnsavedChanges;
+}
+
+function getUnsavedChangesPromptCopy() {
+  const contextType = normalizeUnsavedChangesContextType(appState.unsavedChanges.contextType);
+  if (contextType === "profile") {
+    return {
+      title: "You have unsaved profile changes. Save before leaving?",
+      body: "You have unsaved profile changes. Are you sure you want to leave?",
+      saveError: "Could not save your profile changes before leaving.",
+      beforeUnload: "You have unsaved profile changes. Are you sure you want to leave?",
+    };
+  }
+
+  if (contextType === "session") {
+    return {
+      title: "You have unsaved grow session changes. Save before leaving?",
+      body: "You have unsaved grow session changes. Are you sure you want to leave?",
+      saveError: "Could not save this session before leaving.",
+      beforeUnload: "You have unsaved grow session changes. Are you sure you want to leave?",
+    };
+  }
+
+  return {
+    title: "You have unsaved changes. Save before leaving?",
+    body: "You have unsaved changes. Are you sure you want to leave?",
+    saveError: "Could not save your changes before leaving.",
+    beforeUnload: "You have unsaved changes. Are you sure you want to leave?",
+  };
+}
+
 function clearUnsavedChangesContext() {
   appState.unsavedChanges.active = false;
   appState.unsavedChanges.hasUnsavedChanges = false;
+  appState.unsavedChanges.contextType = "";
   appState.unsavedChanges.pageHash = "";
   appState.unsavedChanges.baselineSignature = "";
   appState.unsavedChanges.getSignature = null;
   appState.unsavedChanges.saveFn = null;
   appState.unsavedChanges.promptOpen = false;
+  syncUnsavedChangesDirtyFlags();
 }
 
-function registerUnsavedChangesContext({ pageHash, getSignature, saveFn }) {
+function registerUnsavedChangesContext({ pageHash, getSignature, saveFn, contextType = "generic" }) {
   if (typeof getSignature !== "function" || typeof saveFn !== "function") {
     clearUnsavedChangesContext();
     return;
   }
 
   appState.unsavedChanges.active = true;
+  appState.unsavedChanges.contextType = normalizeUnsavedChangesContextType(contextType);
   appState.unsavedChanges.pageHash = normalizeNavigationHash(pageHash || window.location.hash || "#home");
   appState.unsavedChanges.getSignature = getSignature;
   appState.unsavedChanges.saveFn = saveFn;
   appState.unsavedChanges.baselineSignature = getSignature();
   appState.unsavedChanges.hasUnsavedChanges = false;
+  syncUnsavedChangesDirtyFlags();
 }
 
 function refreshUnsavedChangesState() {
   if (!appState.unsavedChanges.active || typeof appState.unsavedChanges.getSignature !== "function") {
     appState.unsavedChanges.hasUnsavedChanges = false;
+    syncUnsavedChangesDirtyFlags();
     return false;
   }
 
   const currentSignature = appState.unsavedChanges.getSignature();
   appState.unsavedChanges.hasUnsavedChanges = currentSignature !== appState.unsavedChanges.baselineSignature;
+  syncUnsavedChangesDirtyFlags();
   return appState.unsavedChanges.hasUnsavedChanges;
 }
 
 function markUnsavedChangesSaved() {
   if (!appState.unsavedChanges.active || typeof appState.unsavedChanges.getSignature !== "function") {
     appState.unsavedChanges.hasUnsavedChanges = false;
+    syncUnsavedChangesDirtyFlags();
     return;
   }
 
   appState.unsavedChanges.baselineSignature = appState.unsavedChanges.getSignature();
   appState.unsavedChanges.hasUnsavedChanges = false;
+  syncUnsavedChangesDirtyFlags();
 }
 
 function patchUnsavedChangesBaseline(mutator) {
@@ -27201,8 +27261,12 @@ function patchUnsavedChangesBaseline(mutator) {
   }
 }
 
-function hasPendingUnsavedSessionChanges() {
+function hasPendingUnsavedChanges() {
   return refreshUnsavedChangesState();
+}
+
+function hasPendingUnsavedSessionChanges() {
+  return hasPendingUnsavedChanges();
 }
 
 function shouldBlockNavigationForUnsavedChanges(nextHash = window.location.hash || "#home") {
@@ -27216,7 +27280,7 @@ function shouldBlockNavigationForUnsavedChanges(nextHash = window.location.hash 
     return false;
   }
 
-  return hasPendingUnsavedSessionChanges();
+  return hasPendingUnsavedChanges();
 }
 
 function navigateWithUnsavedChangesBypass(nextHash) {
@@ -27243,8 +27307,8 @@ function ensureUnsavedChangesDialog() {
     <form method="dialog" class="snapshot-modal-card profile-modal-card unsaved-changes-dialog-card">
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Unsaved Changes</p>
-        <h3>You have unsaved changes. Save before leaving?</h3>
-        <p class="muted">You have unsaved changes. Are you sure you want to leave?</p>
+        <h3 id="unsaved-changes-dialog-title">You have unsaved changes. Save before leaving?</h3>
+        <p id="unsaved-changes-dialog-body" class="muted">You have unsaved changes. Are you sure you want to leave?</p>
       </div>
       <p id="unsaved-changes-dialog-message" class="form-message" role="alert" aria-live="polite"></p>
       <div class="snapshot-modal-actions">
@@ -27265,6 +27329,8 @@ function promptForUnsavedChangesNavigation(nextHash) {
   }
 
   const modal = ensureUnsavedChangesDialog();
+  const title = modal.querySelector("#unsaved-changes-dialog-title");
+  const body = modal.querySelector("#unsaved-changes-dialog-body");
   const message = modal.querySelector("#unsaved-changes-dialog-message");
   const saveButton = modal.querySelector('[data-unsaved-action="save"]');
   const leaveButton = modal.querySelector('[data-unsaved-action="leave"]');
@@ -27272,8 +27338,15 @@ function promptForUnsavedChangesNavigation(nextHash) {
   if (!(saveButton instanceof HTMLButtonElement) || !(leaveButton instanceof HTMLButtonElement) || !(cancelButton instanceof HTMLButtonElement)) {
     return;
   }
+  const promptCopy = getUnsavedChangesPromptCopy();
 
   appState.unsavedChanges.promptOpen = true;
+  if (title) {
+    title.textContent = promptCopy.title;
+  }
+  if (body) {
+    body.textContent = promptCopy.body;
+  }
   if (message) {
     message.textContent = "";
     message.classList.remove("is-error");
@@ -27316,7 +27389,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
     try {
       const didSave = await appState.unsavedChanges.saveFn({ navigateOnSuccess: false, destinationHash: targetHash });
       if (!didSave) {
-        throw new Error("Could not save this session before leaving.");
+        throw new Error(promptCopy.saveError);
       }
 
       markUnsavedChangesSaved();
@@ -27327,7 +27400,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
       navigateWithUnsavedChangesBypass(targetHash);
     } catch (error) {
       if (message) {
-        message.textContent = error.message || "Could not save this session before leaving.";
+        message.textContent = error.message || promptCopy.saveError;
         message.classList.add("is-error");
       }
       saveButton.disabled = false;
@@ -27442,12 +27515,12 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  if (!hasPendingUnsavedSessionChanges()) {
+  if (!hasPendingUnsavedChanges()) {
     return;
   }
 
   event.preventDefault();
-  event.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+  event.returnValue = getUnsavedChangesPromptCopy().beforeUnload;
 });
 
 window.addEventListener("resize", requestOpenCustomSelectMenuPositionSync, { passive: true });
