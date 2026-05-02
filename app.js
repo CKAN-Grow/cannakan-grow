@@ -15397,13 +15397,13 @@ function renderHomeInstallInfoCardMarkup() {
                       <div class="home-install-phone-stage-segment stage-soaking is-complete">
                         <span class="home-install-phone-stage-fill"></span>
                       </div>
-                      <div class="home-install-phone-stage-segment stage-germinating is-current">
+                      <div class="home-install-phone-stage-segment stage-germinating is-complete">
                         <span class="home-install-phone-stage-fill"></span>
                       </div>
-                      <div class="home-install-phone-stage-segment stage-planted is-future">
+                      <div class="home-install-phone-stage-segment stage-planted is-complete">
                         <span class="home-install-phone-stage-fill"></span>
                       </div>
-                      <div class="home-install-phone-stage-segment stage-completed is-future">
+                      <div class="home-install-phone-stage-segment stage-completed is-current">
                         <span class="home-install-phone-stage-fill"></span>
                       </div>
                     </div>
