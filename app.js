@@ -2,6 +2,7 @@ const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
 const SAMPLE_SEED_VERSION = "history-preview-v3";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
+const GALLERY_SNAPSHOT_PAGE_SIZE = 12;
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
 const ANNOUNCEMENT_STORAGE_KEY = "cannakanGrowAnnouncement";
 const FILTER_PAPER_INVENTORY_STORAGE_KEY = "cannakanGrowFilterPaperInventory";
@@ -684,6 +685,7 @@ const appState = {
   installPromptMode: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
+  galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
@@ -20860,6 +20862,9 @@ function renderGallery(targetSnapshotId = "") {
   const gallerySortControl = document.querySelector("#gallery-sort");
   const gallerySortOrderControl = document.querySelector("#gallery-sort-order");
   const gallerySortState = document.querySelector("#gallery-sort-state");
+  const galleryCountState = document.querySelector("#gallery-count-state");
+  const galleryLoadMoreShell = document.querySelector("#gallery-load-more-shell");
+  const galleryLoadMoreButton = document.querySelector("#gallery-load-more-button");
   const galleryFeedSection = document.querySelector(".gallery-feed-section");
   if (!galleryGrid) {
     return;
@@ -20867,6 +20872,10 @@ function renderGallery(targetSnapshotId = "") {
 
   appState.gallerySort = normalizeGallerySort(appState.gallerySort);
   appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
+  appState.galleryVisibleSnapshotCount = Math.max(
+    GALLERY_SNAPSHOT_PAGE_SIZE,
+    Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
+  );
   if (gallerySortState) {
     gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
   }
@@ -21029,14 +21038,31 @@ function renderGallery(targetSnapshotId = "") {
 
   const renderVisibleGallerySnapshots = () => {
     galleryGrid.innerHTML = "";
-    const approvedSnapshots = gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+    const approvedSnapshots = sortVisibleGallerySnapshots(
+      gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved"),
+      appState.gallerySort,
+      appState.gallerySortOrder,
+    );
     const nonApprovedSnapshots = sortGallerySnapshotsNewestFirst(
       gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
     );
+    const targetApprovedIndex = targetSnapshotId
+      ? approvedSnapshots.findIndex((snapshot) => snapshot.id === targetSnapshotId)
+      : -1;
+    if (targetApprovedIndex >= appState.galleryVisibleSnapshotCount) {
+      appState.galleryVisibleSnapshotCount = Math.ceil((targetApprovedIndex + 1) / GALLERY_SNAPSHOT_PAGE_SIZE) * GALLERY_SNAPSHOT_PAGE_SIZE;
+    }
+    const visibleApprovedSnapshots = approvedSnapshots.slice(0, appState.galleryVisibleSnapshotCount);
     const visibleSnapshots = [
-      ...sortVisibleGallerySnapshots(approvedSnapshots, appState.gallerySort, appState.gallerySortOrder),
+      ...visibleApprovedSnapshots,
       ...nonApprovedSnapshots,
     ];
+    if (galleryCountState) {
+      galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} snapshots`;
+    }
+    if (galleryLoadMoreShell) {
+      galleryLoadMoreShell.hidden = visibleApprovedSnapshots.length >= approvedSnapshots.length;
+    }
     const visibleMemberIds = [...new Set(visibleSnapshots.map((snapshot) => String(snapshot?.userId || "").trim()).filter(Boolean))];
     const missingMemberProfileIds = visibleMemberIds.filter((memberId) => !appState.publicMemberProfiles[memberId]);
     if (missingMemberProfileIds.length) {
@@ -21126,6 +21152,7 @@ function renderGallery(targetSnapshotId = "") {
     gallerySortControl.value = normalizeGallerySort(appState.gallerySort);
     gallerySortControl.addEventListener("change", () => {
       appState.gallerySort = normalizeGallerySort(gallerySortControl.value);
+      appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       syncGallerySortOrderControl(true);
       if (gallerySortState) {
         gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
@@ -21138,12 +21165,18 @@ function renderGallery(targetSnapshotId = "") {
     syncGallerySortOrderControl(false);
     gallerySortOrderControl.addEventListener("change", () => {
       appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, gallerySortOrderControl.value);
+      appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       if (gallerySortState) {
         gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
       }
       renderVisibleGallerySnapshots();
     });
   }
+
+  galleryLoadMoreButton?.addEventListener("click", () => {
+    appState.galleryVisibleSnapshotCount += GALLERY_SNAPSHOT_PAGE_SIZE;
+    renderVisibleGallerySnapshots();
+  });
 
   renderVisibleGallerySnapshots();
 }

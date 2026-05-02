@@ -2598,11 +2598,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.88rem;
 }
 
+.gallery-count-state {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+}
+
 .gallery-sort-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: flex-end;
+}
+
+.gallery-load-more-shell {
+  display: flex;
+  justify-content: center;
 }
 
 .gallery-section {
