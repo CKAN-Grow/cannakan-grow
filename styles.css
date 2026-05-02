@@ -10910,7 +10910,8 @@ input::placeholder {
 }
 
 .grow-network-stat-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   min-width: 0;
@@ -11193,11 +11194,31 @@ body.theme-dark .public-member-profile-stat-button:focus-visible .public-member-
   }
 
   .grow-network-stats-strip {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .grow-network-stat-card {
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .grow-network-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
   }
 
   .grow-network-stat-copy strong {
     font-size: 1.7rem;
+  }
+
+  .grow-network-stat-copy span {
+    font-size: 0.94rem;
+  }
+
+  .grow-network-stat-copy p {
+    font-size: 0.84rem;
   }
 }
 
