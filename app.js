@@ -4294,6 +4294,17 @@ function getSupabaseErrorSearchText(error) {
   ).trim().toLowerCase();
 }
 
+function getSafeCssRules(sheet) {
+  try {
+    if (!sheet) {
+      return [];
+    }
+    return sheet.cssRules || sheet.rules || [];
+  } catch {
+    return [];
+  }
+}
+
 function logRuntimeIssueOnce(level = "warn", key = "", message = "", details) {
   const normalizedKey = String(key || message || "").trim().toLowerCase();
   if (!normalizedKey || loggedRuntimeIssueKeys.has(normalizedKey)) {
@@ -4342,15 +4353,113 @@ function isSiteAnalyticsTableMissingError(error) {
   return isSupabaseTableMissingError(error, SITE_ANALYTICS_TABLE);
 }
 
+function isSupabaseUuidLike(value = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue || fallback;
+}
+
+function normalizeSiteAnalyticsBoolean(value) {
+  return Boolean(value);
+}
+
+function normalizeSiteAnalyticsMetadata(metadata = {}) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(metadata)
+      .filter(([key, value]) => String(key || "").trim() && typeof value !== "undefined"),
+  );
+}
+
+function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
+  const payload = buildSiteAnalyticsVisitorPayload(pageContext);
+  const normalizedPageContext = {
+    pageGroup: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageGroup, "other").toLowerCase(),
+    pageKey: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "other").toLowerCase(),
+    pageLabel: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageLabel, ""),
+    pagePath: normalizeSiteAnalyticsTextValue(payload.pageContext?.pagePath, window.location.pathname || "/"),
+  };
+  const insertPayload = {
+    occurred_at: new Date().toISOString(),
+    visitor_id: normalizeSiteAnalyticsTextValue(payload.visitorId, getOrCreateSiteVisitorId()),
+    event_type: normalizeSiteAnalyticsEventType(eventType),
+    page_group: normalizedPageContext.pageGroup,
+    page_key: normalizedPageContext.pageKey,
+  };
+  const visitId = normalizeSiteAnalyticsTextValue(payload.visitId, "");
+  if (visitId) {
+    insertPayload.visit_id = visitId;
+  }
+  if (isSupabaseUuidLike(payload.userId)) {
+    insertPayload.user_id = payload.userId;
+  }
+  const profileName = normalizeSiteAnalyticsTextValue(payload.profileName, "");
+  if (profileName) {
+    insertPayload.profile_name = profileName;
+  }
+  const userEmail = normalizeSiteAnalyticsTextValue(payload.userEmail, "").toLowerCase();
+  if (userEmail) {
+    insertPayload.user_email = userEmail;
+  }
+  if (normalizedPageContext.pageLabel) {
+    insertPayload.page_label = normalizedPageContext.pageLabel;
+  }
+  if (normalizedPageContext.pagePath) {
+    insertPayload.page_path = normalizedPageContext.pagePath;
+  }
+  const deviceType = normalizeSiteAnalyticsTextValue(payload.deviceType, "desktop").toLowerCase();
+  if (deviceType) {
+    insertPayload.device_type = deviceType;
+  }
+  const browserName = normalizeSiteAnalyticsTextValue(payload.browserName, "");
+  if (browserName) {
+    insertPayload.browser_name = browserName;
+  }
+  const referrer = normalizeSiteAnalyticsTextValue(payload.referrer, "");
+  if (referrer) {
+    insertPayload.referrer = referrer;
+  }
+  if (normalizeSiteAnalyticsBoolean(payload.isPwa)) {
+    insertPayload.is_pwa = true;
+  }
+  const normalizedMetadata = normalizeSiteAnalyticsMetadata(metadata);
+  if (Object.keys(normalizedMetadata).length) {
+    insertPayload.metadata = normalizedMetadata;
+  }
+  return insertPayload;
+}
+
+function isSiteAnalyticsInsertRequestError(error) {
+  const status = Number(error?.status || error?.statusCode || 0);
+  const code = String(error?.code || "").trim().toUpperCase();
+  const message = getSupabaseErrorSearchText(error);
+  return (
+    status === 400
+    || status === 404
+    || code === "400"
+    || code === "404"
+    || message.includes("bad request")
+  );
+}
+
+function disableSiteAnalyticsForSession(userMessage = "") {
+  appState.siteVisitorAnalyticsTrackingBlocked = true;
+  if (userMessage) {
+    appState.siteVisitorAnalyticsError = userMessage;
+  }
+  logRuntimeIssueOnce("warn", "site-analytics-disabled", "Site analytics disabled");
+}
+
 function markSiteAnalyticsTableUnavailable() {
   appState.siteVisitorAnalyticsTableUnavailable = true;
   appState.siteVisitorAnalyticsError = "Historical analytics table unavailable. Apply the site analytics migration.";
-  logRuntimeIssueOnce(
-    "warn",
-    "site-analytics-table-unavailable",
-    "Site analytics disabled because the Supabase table is missing.",
-    { table: SITE_ANALYTICS_TABLE },
-  );
+  disableSiteAnalyticsForSession(appState.siteVisitorAnalyticsError);
 }
 
 function isSiteAnalyticsPolicyError(error) {
@@ -4359,13 +4468,8 @@ function isSiteAnalyticsPolicyError(error) {
 }
 
 function markSiteAnalyticsTrackingBlocked() {
-  appState.siteVisitorAnalyticsTrackingBlocked = true;
   appState.siteVisitorAnalyticsError = "Historical analytics tracking is blocked by the current Supabase policies.";
-  logRuntimeIssueOnce(
-    "warn",
-    "site-analytics-tracking-blocked",
-    "Site analytics disabled because the current Supabase policies block inserts.",
-  );
+  disableSiteAnalyticsForSession(appState.siteVisitorAnalyticsError);
 }
 
 function normalizeSiteAnalyticsEventType(value = "") {
@@ -4428,27 +4532,10 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
 
   appState.siteAnalyticsEventInFlight = true;
   try {
-    const payload = buildSiteAnalyticsVisitorPayload(pageContext);
+    const insertPayload = buildSiteAnalyticsInsertPayload(eventType, pageContext, metadata);
     const { error } = await appState.supabase
       .from(SITE_ANALYTICS_TABLE)
-      .insert({
-        occurred_at: new Date().toISOString(),
-        visitor_id: payload.visitorId,
-        visit_id: payload.visitId,
-        user_id: payload.userId || null,
-        profile_name: payload.profileName,
-        user_email: payload.userEmail,
-        event_type: normalizeSiteAnalyticsEventType(eventType),
-        page_group: payload.pageContext.pageGroup,
-        page_key: payload.pageContext.pageKey,
-        page_label: payload.pageContext.pageLabel,
-        page_path: payload.pageContext.pagePath,
-        device_type: payload.deviceType,
-        browser_name: payload.browserName,
-        referrer: payload.referrer,
-        is_pwa: payload.isPwa,
-        metadata: metadata && typeof metadata === "object" ? metadata : {},
-      });
+      .insert(insertPayload);
 
     if (!error) {
       return true;
@@ -4462,8 +4549,12 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
       markSiteAnalyticsTrackingBlocked();
       return false;
     }
+    if (isSiteAnalyticsInsertRequestError(error)) {
+      disableSiteAnalyticsForSession("Historical analytics tracking is unavailable in this browser session.");
+      return false;
+    }
 
-    logRuntimeIssueOnce("warn", "site-analytics-event-insert-failed", "Site analytics event insert failed", error);
+    disableSiteAnalyticsForSession("Historical analytics tracking is unavailable in this browser session.");
     return false;
   } finally {
     appState.siteAnalyticsEventInFlight = false;
