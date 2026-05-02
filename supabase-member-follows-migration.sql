@@ -69,19 +69,33 @@ language sql
 security definer
 set search_path = public
 as $$
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  )
   select
     (
       select count(*)::bigint
       from public.grow_follows
-      inner join public.public_member_profiles
-        on public_member_profiles.id = grow_follows.follower_id
+      inner join visible_public_member_profiles
+        on visible_public_member_profiles.id = grow_follows.follower_id
       where grow_follows.following_id = target_user_id
     ) as follower_count,
     (
       select count(*)::bigint
       from public.grow_follows
-      inner join public.public_member_profiles
-        on public_member_profiles.id = grow_follows.following_id
+      inner join visible_public_member_profiles
+        on visible_public_member_profiles.id = grow_follows.following_id
       where grow_follows.follower_id = target_user_id
     ) as following_count;
 $$;
@@ -100,7 +114,21 @@ language sql
 security definer
 set search_path = public
 as $$
-  with requested_users as (
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  ),
+  requested_users as (
     select distinct unnest(coalesce(target_user_ids, '{}'::uuid[])) as user_id
   )
   select
@@ -113,8 +141,8 @@ as $$
       grow_follows.following_id as user_id,
       count(*)::bigint as follower_count
     from public.grow_follows
-    inner join public.public_member_profiles
-      on public_member_profiles.id = grow_follows.follower_id
+    inner join visible_public_member_profiles
+      on visible_public_member_profiles.id = grow_follows.follower_id
     where grow_follows.following_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by grow_follows.following_id
   ) as follower_counts
@@ -124,8 +152,8 @@ as $$
       grow_follows.follower_id as user_id,
       count(*)::bigint as following_count
     from public.grow_follows
-    inner join public.public_member_profiles
-      on public_member_profiles.id = grow_follows.following_id
+    inner join visible_public_member_profiles
+      on visible_public_member_profiles.id = grow_follows.following_id
     where grow_follows.follower_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by grow_follows.follower_id
   ) as following_counts
@@ -149,7 +177,21 @@ language sql
 security definer
 set search_path = public
 as $$
-  with normalized_relationship as (
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  ),
+  normalized_relationship as (
     select case
       when lower(coalesce(relationship_type, '')) = 'following' then 'following'
       else 'followers'
@@ -175,15 +217,15 @@ as $$
   )
   select
     requested_members.member_id,
-    public_member_profiles.display_name,
-    public_member_profiles.avatar_url,
-    public_member_profiles.joined_at,
+    visible_public_member_profiles.display_name,
+    visible_public_member_profiles.avatar_url,
+    visible_public_member_profiles.joined_at,
     requested_members.relationship_type,
     requested_members.created_at
   from requested_members
-  inner join public.public_member_profiles
-    on public_member_profiles.id = requested_members.member_id
-  order by requested_members.created_at desc, lower(public_member_profiles.display_name) asc;
+  inner join visible_public_member_profiles
+    on visible_public_member_profiles.id = requested_members.member_id
+  order by requested_members.created_at desc, lower(visible_public_member_profiles.display_name) asc;
 $$;
 
 revoke all on function public.get_public_member_follow_members(uuid, text) from public;

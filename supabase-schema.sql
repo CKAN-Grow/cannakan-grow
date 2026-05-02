@@ -46,6 +46,22 @@ create table if not exists public.user_notification_preferences (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+-- Replaces the old view-based public_member_profiles surface with a writable table
+-- so the app can preserve Community Grow lookups while saving Grow Network settings.
+create table if not exists public.public_member_profiles (
+  id uuid primary key,
+  user_id uuid not null unique references auth.users(id) on delete cascade,
+  display_name text,
+  avatar_url text default '',
+  joined_at timestamptz not null default timezone('utc', now()),
+  notify_community_activity boolean not null default true,
+  show_profile_in_community_grow boolean not null default true,
+  allow_followers boolean not null default true,
+  show_grow_stats_publicly boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.admin_users (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
@@ -267,6 +283,12 @@ create index if not exists profiles_account_status_idx
 create index if not exists profiles_last_active_idx
   on public.profiles (last_active_at desc);
 
+create unique index if not exists public_member_profiles_user_id_idx
+  on public.public_member_profiles (user_id);
+
+create index if not exists public_member_profiles_display_name_idx
+  on public.public_member_profiles (lower(coalesce(display_name, '')));
+
 alter table public.user_notification_preferences
   add column if not exists notify_snapshot boolean not null default true;
 
@@ -283,6 +305,36 @@ alter table public.user_notification_preferences
   add column if not exists created_at timestamptz not null default timezone('utc', now());
 
 alter table public.user_notification_preferences
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+alter table public.public_member_profiles
+  add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+alter table public.public_member_profiles
+  add column if not exists display_name text;
+
+alter table public.public_member_profiles
+  add column if not exists avatar_url text default '';
+
+alter table public.public_member_profiles
+  add column if not exists joined_at timestamptz not null default timezone('utc', now());
+
+alter table public.public_member_profiles
+  add column if not exists notify_community_activity boolean not null default true;
+
+alter table public.public_member_profiles
+  add column if not exists show_profile_in_community_grow boolean not null default true;
+
+alter table public.public_member_profiles
+  add column if not exists allow_followers boolean not null default true;
+
+alter table public.public_member_profiles
+  add column if not exists show_grow_stats_publicly boolean not null default true;
+
+alter table public.public_member_profiles
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.public_member_profiles
   add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
 alter table public.announcements
@@ -392,20 +444,12 @@ $$;
 revoke all on function public.find_duplicate_grow_gallery_snapshot_by_hash(text, uuid) from public;
 grant execute on function public.find_duplicate_grow_gallery_snapshot_by_hash(text, uuid) to authenticated;
 
-create or replace view public.public_member_profiles as
-select
-  profiles.id,
-  nullif(btrim(profiles.username), '') as display_name,
-  coalesce(profiles.avatar_url, '') as avatar_url,
-  profiles.created_at as joined_at
-from public.profiles
-where coalesce(profiles.account_status, 'active') = 'active'
-  and coalesce(profiles.deletion_status, '') <> 'deleted'
-  and nullif(btrim(profiles.username), '') is not null;
+comment on table public.public_member_profiles is
+  'Writable replacement for the old public_member_profiles view. Stores public profile and Grow Network preference fields while keeping Community Grow lookups on the same surface.';
 
 revoke all on table public.public_member_profiles from public;
 grant select on table public.public_member_profiles to anon;
-grant select on table public.public_member_profiles to authenticated;
+grant select, insert, update on table public.public_member_profiles to authenticated;
 
 create or replace function public.get_public_member_follow_summary(target_user_id uuid)
 returns table (
@@ -416,19 +460,33 @@ language sql
 security definer
 set search_path = public
 as $$
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  )
   select
     (
       select count(*)::bigint
       from public.grow_follows
-      inner join public.public_member_profiles
-        on public_member_profiles.id = grow_follows.follower_id
+      inner join visible_public_member_profiles
+        on visible_public_member_profiles.id = grow_follows.follower_id
       where grow_follows.following_id = target_user_id
     ) as follower_count,
     (
       select count(*)::bigint
       from public.grow_follows
-      inner join public.public_member_profiles
-        on public_member_profiles.id = grow_follows.following_id
+      inner join visible_public_member_profiles
+        on visible_public_member_profiles.id = grow_follows.following_id
       where grow_follows.follower_id = target_user_id
     ) as following_count;
 $$;
@@ -447,7 +505,21 @@ language sql
 security definer
 set search_path = public
 as $$
-  with requested_users as (
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  ),
+  requested_users as (
     select distinct unnest(coalesce(target_user_ids, '{}'::uuid[])) as user_id
   )
   select
@@ -460,8 +532,8 @@ as $$
       grow_follows.following_id as user_id,
       count(*)::bigint as follower_count
     from public.grow_follows
-    inner join public.public_member_profiles
-      on public_member_profiles.id = grow_follows.follower_id
+    inner join visible_public_member_profiles
+      on visible_public_member_profiles.id = grow_follows.follower_id
     where grow_follows.following_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by grow_follows.following_id
   ) as follower_counts
@@ -471,8 +543,8 @@ as $$
       grow_follows.follower_id as user_id,
       count(*)::bigint as following_count
     from public.grow_follows
-    inner join public.public_member_profiles
-      on public_member_profiles.id = grow_follows.following_id
+    inner join visible_public_member_profiles
+      on visible_public_member_profiles.id = grow_follows.following_id
     where grow_follows.follower_id = any (coalesce(target_user_ids, '{}'::uuid[]))
     group by grow_follows.follower_id
   ) as following_counts
@@ -496,7 +568,21 @@ language sql
 security definer
 set search_path = public
 as $$
-  with normalized_relationship as (
+  with visible_public_member_profiles as (
+    select
+      public_member_profiles.id,
+      public_member_profiles.display_name,
+      public_member_profiles.avatar_url,
+      public_member_profiles.joined_at
+    from public.public_member_profiles
+    inner join public.profiles
+      on profiles.id = public_member_profiles.id
+    where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  ),
+  normalized_relationship as (
     select case
       when lower(coalesce(relationship_type, '')) = 'following' then 'following'
       else 'followers'
@@ -522,15 +608,15 @@ as $$
   )
   select
     requested_members.member_id,
-    public_member_profiles.display_name,
-    public_member_profiles.avatar_url,
-    public_member_profiles.joined_at,
+    visible_public_member_profiles.display_name,
+    visible_public_member_profiles.avatar_url,
+    visible_public_member_profiles.joined_at,
     requested_members.relationship_type,
     requested_members.created_at
   from requested_members
-  inner join public.public_member_profiles
-    on public_member_profiles.id = requested_members.member_id
-  order by requested_members.created_at desc, lower(public_member_profiles.display_name) asc;
+  inner join visible_public_member_profiles
+    on visible_public_member_profiles.id = requested_members.member_id
+  order by requested_members.created_at desc, lower(visible_public_member_profiles.display_name) asc;
 $$;
 
 revoke all on function public.get_public_member_follow_members(uuid, text) from public;
@@ -715,6 +801,41 @@ begin
 end;
 $$;
 
+create or replace function public.sync_public_member_profiles_identity()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.id is null and new.user_id is not null then
+    new.id = new.user_id;
+  elsif new.user_id is null and new.id is not null then
+    new.user_id = new.id;
+  elsif new.id is not null and new.user_id is not null and new.id is distinct from new.user_id then
+    new.user_id = new.id;
+  end if;
+
+  if new.created_at is null then
+    new.created_at = timezone('utc', now());
+  end if;
+
+  if new.joined_at is null then
+    new.joined_at = coalesce(new.created_at, timezone('utc', now()));
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.set_public_member_profiles_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
 create or replace function public.set_sources_updated_at()
 returns trigger
 language plpgsql
@@ -763,6 +884,18 @@ before update on public.user_notification_preferences
 for each row
 execute procedure public.set_user_notification_preferences_updated_at();
 
+drop trigger if exists public_member_profiles_identity_sync on public.public_member_profiles;
+create trigger public_member_profiles_identity_sync
+before insert or update on public.public_member_profiles
+for each row
+execute procedure public.sync_public_member_profiles_identity();
+
+drop trigger if exists public_member_profiles_set_updated_at on public.public_member_profiles;
+create trigger public_member_profiles_set_updated_at
+before update on public.public_member_profiles
+for each row
+execute procedure public.set_public_member_profiles_updated_at();
+
 drop trigger if exists sources_set_updated_at on public.sources;
 create trigger sources_set_updated_at
 before update on public.sources
@@ -784,6 +917,7 @@ execute procedure public.set_grow_gallery_snapshots_updated_at();
 alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.user_notification_preferences enable row level security;
+alter table public.public_member_profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.admin_reports enable row level security;
 alter table public.sources enable row level security;
@@ -890,6 +1024,54 @@ using (
     from public.admin_users
     where admin_users.user_id = auth.uid()
   )
+);
+
+drop policy if exists "Visible public member profiles can be read" on public.public_member_profiles;
+create policy "Visible public member profiles can be read"
+on public.public_member_profiles
+for select
+to public
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+  or (
+    coalesce(show_profile_in_community_grow, true) = true
+    and nullif(btrim(coalesce(display_name, '')), '') is not null
+    and exists (
+      select 1
+      from public.profiles
+      where profiles.id = public_member_profiles.user_id
+        and coalesce(profiles.account_status, 'active') = 'active'
+        and coalesce(profiles.deletion_status, '') <> 'deleted'
+    )
+  )
+);
+
+drop policy if exists "Users can create their own public member profile" on public.public_member_profiles;
+create policy "Users can create their own public member profile"
+on public.public_member_profiles
+for insert
+to authenticated
+with check (
+  auth.uid() = coalesce(user_id, id)
+);
+
+drop policy if exists "Users can update their own public member profile" on public.public_member_profiles;
+create policy "Users can update their own public member profile"
+on public.public_member_profiles
+for update
+to authenticated
+using (
+  auth.uid() = user_id
+  or auth.uid() = id
+)
+with check (
+  auth.uid() = coalesce(user_id, id)
 );
 
 drop policy if exists "Users can view their own notification preferences" on public.user_notification_preferences;
