@@ -13635,6 +13635,7 @@ function initializeSnapshotSection(scope, options) {
     includeProfileToggle: options.includeProfileToggle || null,
     includeProfileToggleRow: options.includeProfileToggleRow || null,
     includeProfileDividerRow: options.includeProfileDividerRow || null,
+    actionRow: options.actionRow || null,
     actionTitle: options.actionTitle || null,
     actionDescription: options.actionDescription || null,
     emptyExploreCard: options.emptyExploreCard || null,
@@ -13863,7 +13864,13 @@ function syncSnapshotActionSurface(state, { hasConfirmedSubmission = false, hasG
     return;
   }
 
-  const isEmptyState = !hasConfirmedSubmission && !hasGeneratedPreview;
+  const surfaceState = hasConfirmedSubmission
+    ? "submitted"
+    : (hasGeneratedPreview ? "generated" : "empty");
+  const isEmptyState = surfaceState === "empty";
+  state.scope?.setAttribute("data-snapshot-surface-state", surfaceState);
+  state.actionRow?.setAttribute("data-snapshot-card-role", isEmptyState ? "primary" : "secondary");
+  state.emptyExploreCard?.setAttribute("data-snapshot-card-role", "secondary");
   if (state.actionTitle) {
     state.actionTitle.textContent = isEmptyState ? "Create a Snapshot" : "Generate a New Snapshot";
   }
@@ -22854,6 +22861,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const snapshotUsageConsentCheckbox = document.querySelector("#snapshot-usage-consent");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
   const snapshotIncludeProfileDividerRow = document.querySelector("#snapshot-profile-divider-row");
+  const snapshotActionRow = snapshotSection?.querySelector("[data-snapshot-action-row]") || null;
   const snapshotActionTitle = snapshotSection?.querySelector("[data-snapshot-action-title]") || null;
   const snapshotActionDescription = snapshotSection?.querySelector("[data-snapshot-action-description]") || null;
   const snapshotEmptyExploreCard = snapshotSection?.querySelector("[data-snapshot-empty-explore]") || null;
@@ -22908,6 +22916,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     includeProfileToggle: snapshotIncludeProfileToggle,
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
     includeProfileDividerRow: snapshotIncludeProfileDividerRow,
+    actionRow: snapshotActionRow,
     actionTitle: snapshotActionTitle,
     actionDescription: snapshotActionDescription,
     emptyExploreCard: snapshotEmptyExploreCard,
@@ -24883,6 +24892,7 @@ function renderSessionDetail(sessionId) {
   const detailSnapshotUsageConsentCheckbox = document.querySelector("#detail-snapshot-usage-consent");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
   const detailSnapshotIncludeProfileDividerRow = document.querySelector("#detail-snapshot-profile-divider-row");
+  const detailSnapshotActionRow = detailSnapshotSection?.querySelector("[data-snapshot-action-row]") || null;
   const detailSnapshotActionTitle = detailSnapshotSection?.querySelector("[data-snapshot-action-title]") || null;
   const detailSnapshotActionDescription = detailSnapshotSection?.querySelector("[data-snapshot-action-description]") || null;
   const detailSnapshotEmptyExploreCard = detailSnapshotSection?.querySelector("[data-snapshot-empty-explore]") || null;
@@ -24968,6 +24978,7 @@ function renderSessionDetail(sessionId) {
     includeProfileToggle: detailSnapshotIncludeProfileToggle,
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
     includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
+    actionRow: detailSnapshotActionRow,
     actionTitle: detailSnapshotActionTitle,
     actionDescription: detailSnapshotActionDescription,
     emptyExploreCard: detailSnapshotEmptyExploreCard,

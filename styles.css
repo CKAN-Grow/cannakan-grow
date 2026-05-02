@@ -2708,7 +2708,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --snapshot-primary-width: 220px;
 }
 
-.snapshot-action-row {
+.snapshot-action-row,
+.snapshot-explore-card,
+.snapshot-confirmation-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -2764,18 +2766,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--muted);
-}
-
-.snapshot-explore-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  padding: 16px 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.02);
 }
 
 .snapshot-explore-card[hidden] {
@@ -2927,21 +2917,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-confirmation-card {
-  width: 100%;
   max-width: none;
-  display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 18px;
   padding: 20px 22px;
-  border-radius: 22px;
-  border: 1px solid rgba(148, 209, 89, 0.24);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 48%);
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.18),
-    0 0 18px rgba(148, 209, 89, 0.08);
 }
 
 .snapshot-confirmation-meta {
@@ -3001,8 +2981,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   justify-self: end;
   min-height: 46px;
   padding: 11px 20px;
+  box-shadow: 0 12px 20px rgba(24, 34, 24, 0.14);
+}
+
+.share-snapshot-section[data-snapshot-surface-state="empty"] .snapshot-action-row,
+.snapshot-confirmation-card {
+  border-color: rgba(148, 209, 89, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 48%);
   box-shadow:
-    0 12px 20px rgba(24, 34, 24, 0.14);
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+.share-snapshot-section[data-snapshot-surface-state="submitted"] .snapshot-action-row,
+.share-snapshot-section[data-snapshot-surface-state="generated"] .snapshot-action-row,
+.snapshot-explore-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.12);
 }
 
 .gallery-hero-section {
@@ -14108,6 +14106,24 @@ body.theme-dark .snapshot-confirmation-card {
   box-shadow:
     0 16px 30px rgba(0, 0, 0, 0.24),
     0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .share-snapshot-section[data-snapshot-surface-state="empty"] .snapshot-action-row {
+  border-color: rgba(148, 209, 89, 0.28);
+  background:
+    linear-gradient(180deg, rgba(19, 24, 21, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 48%);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .share-snapshot-section[data-snapshot-surface-state="submitted"] .snapshot-action-row,
+body.theme-dark .share-snapshot-section[data-snapshot-surface-state="generated"] .snapshot-action-row,
+body.theme-dark .snapshot-explore-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.16);
 }
 
 body.theme-dark .snapshot-confirmation-icon {
