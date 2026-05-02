@@ -8740,16 +8740,28 @@ async function upsertCurrentUserPublicMemberProfile(
     reason = "profile-settings",
     existingProfile = null,
     persistLocal = true,
+    requirePersistence = false,
   } = options || {};
   const fallbackSettings = normalizeProfilePageSettings(settingsInput, loadStoredProfilePageSettings(normalizedUserId));
   const localFallbackProfile = buildCurrentUserPublicMemberProfileFallback(user, profile, fallbackSettings);
   const fallbackProfile = mergePublicMemberProfileRecord(existingProfile, localFallbackProfile) || localFallbackProfile;
+  const throwPublicMemberProfileSaveError = (message, error = null) => {
+    if (!requirePersistence) {
+      return false;
+    }
+    const saveError = new Error(message || "Community profile settings could not be saved right now.");
+    if (error) {
+      saveError.cause = error;
+    }
+    throw saveError;
+  };
 
   if (!appState.supabase || appState.publicMemberProfilesViewUnavailable) {
     if (fallbackProfile) {
       appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
       syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
     }
+    throwPublicMemberProfileSaveError("Community profile settings are temporarily unavailable.");
     return fallbackProfile;
   }
 
@@ -8794,6 +8806,7 @@ async function upsertCurrentUserPublicMemberProfile(
       appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
       syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
     }
+    throwPublicMemberProfileSaveError("Community profile settings could not be saved right now.", error);
     return fallbackProfile;
   }
 
@@ -8902,20 +8915,31 @@ async function ensureCurrentUserPublicMemberProfileSettings(user = appState.user
   }
 }
 
-async function savePublicMemberProfileSettings(settingsInput = {}) {
+async function savePublicMemberProfileSettings(settingsInput = {}, options = {}) {
   if (!appState.user) {
     throw new Error("You must be signed in to save profile settings.");
   }
 
-  const savedProfile = await upsertCurrentUserPublicMemberProfile(
-    appState.user,
-    settingsInput,
-    {
-      profile: appState.profile,
-      existingProfile: appState.publicMemberProfiles[String(appState.user.id || "").trim()] || null,
-      reason: "profile-settings:save",
-    },
-  );
+  const { requirePersistence = false } = options || {};
+
+  let savedProfile = null;
+  try {
+    savedProfile = await upsertCurrentUserPublicMemberProfile(
+      appState.user,
+      settingsInput,
+      {
+        profile: appState.profile,
+        existingProfile: appState.publicMemberProfiles[String(appState.user.id || "").trim()] || null,
+        reason: "profile-settings:save",
+        requirePersistence,
+      },
+    );
+  } catch (error) {
+    if (requirePersistence) {
+      throw error;
+    }
+    savedProfile = null;
+  }
   return syncProfilePageSettingsCache(
     appState.user.id,
     savedProfile || settingsInput,
@@ -9999,11 +10023,12 @@ async function saveUserProfile(profileInput) {
   return normalizedProfile;
 }
 
-async function saveUserNotificationPreferences(preferencesInput) {
+async function saveUserNotificationPreferences(preferencesInput, options = {}) {
   if (!appState.supabase || !appState.user) {
     throw new Error("You must be signed in to save notification preferences.");
   }
 
+  const { requirePersistence = false } = options || {};
   const existingPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const fallbackPayload = buildUserNotificationPreferencesUpsertPayload(
     appState.user.id,
@@ -10011,9 +10036,21 @@ async function saveUserNotificationPreferences(preferencesInput) {
     existingPreferences,
     "legacy",
   );
+  const fallbackPreferences = normalizeUserNotificationPreferencesRow(fallbackPayload);
+  const throwNotificationPreferencesSaveError = (message, error = null) => {
+    if (!requirePersistence) {
+      return false;
+    }
+    const saveError = new Error(message || "Notification preferences could not be saved right now.");
+    if (error) {
+      saveError.cause = error;
+    }
+    throw saveError;
+  };
 
   if (appState.notificationPreferencesTableUnavailable) {
-    return normalizeUserNotificationPreferencesRow(fallbackPayload);
+    throwNotificationPreferencesSaveError("Notification preferences are temporarily unavailable.");
+    return fallbackPreferences;
   }
 
   const writeModes = getUserNotificationPreferencesWriteModes(appState.notificationPreferencesSchemaMode);
@@ -10052,7 +10089,8 @@ async function saveUserNotificationPreferences(preferencesInput) {
 
     if (isUserNotificationPreferencesTableMissingError(error)) {
       markUserNotificationPreferencesTableUnavailable();
-      return normalizeUserNotificationPreferencesRow(fallbackPayload);
+      throwNotificationPreferencesSaveError("Notification preferences are temporarily unavailable.", error);
+      return fallbackPreferences;
     }
 
     logUserNotificationPreferencesFallback(error, {
@@ -10060,7 +10098,8 @@ async function saveUserNotificationPreferences(preferencesInput) {
       userId: String(appState.user?.id || "").trim(),
       writeMode,
     });
-    return normalizeUserNotificationPreferencesRow(fallbackPayload);
+    throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", error);
+    return fallbackPreferences;
   }
 
   if (isUserNotificationPreferencesSchemaModeError(lastError)) {
@@ -10068,10 +10107,11 @@ async function saveUserNotificationPreferences(preferencesInput) {
       phase: "save-schema",
       userId: String(appState.user?.id || "").trim(),
     });
-    return normalizeUserNotificationPreferencesRow(fallbackPayload);
+    throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", lastError);
+    return fallbackPreferences;
   }
 
-  return normalizeUserNotificationPreferencesRow(fallbackPayload);
+  return fallbackPreferences;
 }
 
 async function scheduleUserDeletion() {
@@ -15394,7 +15434,16 @@ function bindProfilePageForm(form) {
   const submitButton = form.querySelector("#profile-settings-submit");
   const state = {
     saving: false,
+    resaveRequested: false,
+    savePromise: null,
   };
+  const notificationFieldNames = ["notifySnapshot", "notifyCompletion", "notifyFollow", "notifyLike"];
+  const privacyFieldNames = [
+    "notifyCommunityActivity",
+    "showProfileInCommunityGrow",
+    "allowFollowers",
+    "showGrowStatsPublicly",
+  ];
 
   const getFormState = () => ({
     notifySnapshot: Boolean(form.elements.notifySnapshot?.checked),
@@ -15425,73 +15474,176 @@ function bindProfilePageForm(form) {
 
   const updateUnsavedState = () => {
     refreshUnsavedChangesState();
-    if (!state.saving && !appState.unsavedChanges.hasUnsavedChanges && messageElement?.textContent === "You have unsaved changes.") {
+    if (
+      !state.saving
+      && !appState.unsavedChanges.hasUnsavedChanges
+      && messageElement?.textContent === "Changes are waiting to be saved."
+    ) {
       setMessage("");
     }
+  };
+
+  const syncLocalProfileState = (nextValues = getFormState()) => {
+    const normalizedUserId = String(appState.user?.id || "").trim();
+    appState.notificationPreferences = normalizeUserNotificationPreferencesRow({
+      ...(appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES),
+      notifySnapshot: nextValues.notifySnapshot,
+      notifyCompletion: nextValues.notifyCompletion,
+      notifyFollow: nextValues.notifyFollow,
+      notifyLike: nextValues.notifyLike,
+    });
+    appState.profilePageSettings = normalizeProfilePageSettings({
+      ...getCurrentProfilePageSettings(),
+      notifyCommunityActivity: nextValues.notifyCommunityActivity,
+      showProfileInCommunityGrow: nextValues.showProfileInCommunityGrow,
+      allowFollowers: nextValues.allowFollowers,
+      showGrowStatsPublicly: nextValues.showGrowStatsPublicly,
+    });
+    appState.profilePageSettingsUserId = normalizedUserId;
+  };
+
+  const patchSavedFieldsIntoBaseline = (fieldNames, savedValues) => {
+    if (!Array.isArray(fieldNames) || !fieldNames.length) {
+      return;
+    }
+
+    patchUnsavedChangesBaseline((baseline) => {
+      const nextBaseline = { ...baseline };
+      fieldNames.forEach((fieldName) => {
+        if (Object.prototype.hasOwnProperty.call(savedValues, fieldName)) {
+          nextBaseline[fieldName] = Boolean(savedValues[fieldName]);
+        }
+      });
+      return nextBaseline;
+    });
+  };
+
+  const waitForProfileSaveIdle = async () => {
+    let lastResult = !appState.unsavedChanges.hasUnsavedChanges;
+
+    while (state.savePromise || state.saving || state.resaveRequested) {
+      if (state.savePromise) {
+        lastResult = await state.savePromise;
+        continue;
+      }
+      await Promise.resolve();
+    }
+
+    return Boolean(lastResult) && !appState.unsavedChanges.hasUnsavedChanges;
+  };
+
+  const persistProfileSettings = async ({ source = "manual" } = {}) => {
+    if (state.saving) {
+      state.resaveRequested = true;
+      return source === "manual"
+        ? waitForProfileSaveIdle()
+        : (state.savePromise || Promise.resolve(false));
+    }
+
+    const pendingValues = getFormState();
+    const notificationPreferencesPayload = {
+      notifySnapshot: pendingValues.notifySnapshot,
+      notifyCompletion: pendingValues.notifyCompletion,
+      notifyFollow: pendingValues.notifyFollow,
+      notifyLike: pendingValues.notifyLike,
+    };
+    const profilePageSettingsPayload = {
+      notifyCommunityActivity: pendingValues.notifyCommunityActivity,
+      showProfileInCommunityGrow: pendingValues.showProfileInCommunityGrow,
+      allowFollowers: pendingValues.allowFollowers,
+      showGrowStatsPublicly: pendingValues.showGrowStatsPublicly,
+    };
+
+    syncLocalProfileState(pendingValues);
+    updateUnsavedState();
+    setSavingState(true);
+    setMessage("Saving...");
+
+    state.saving = true;
+    state.savePromise = (async () => {
+      const errors = [];
+      let notificationSaveSucceeded = false;
+      let privacySaveSucceeded = false;
+
+      try {
+        appState.notificationPreferences = await saveUserNotificationPreferences(
+          notificationPreferencesPayload,
+          { requirePersistence: true },
+        );
+        notificationSaveSucceeded = true;
+      } catch (error) {
+        console.warn("[Profile Settings] Notification preferences save failed.", error);
+        errors.push(error?.message || "Notification preferences could not be saved right now.");
+      }
+
+      try {
+        appState.profilePageSettings = await savePublicMemberProfileSettings(
+          profilePageSettingsPayload,
+          { requirePersistence: true },
+        );
+        appState.profilePageSettingsUserId = String(appState.user?.id || "").trim();
+        privacySaveSucceeded = true;
+      } catch (error) {
+        console.warn("[Profile Settings] Privacy settings save failed.", error);
+        errors.push(error?.message || "Privacy settings could not be saved right now.");
+      }
+
+      if (notificationSaveSucceeded) {
+        patchSavedFieldsIntoBaseline(notificationFieldNames, pendingValues);
+      }
+      if (privacySaveSucceeded) {
+        patchSavedFieldsIntoBaseline(privacyFieldNames, pendingValues);
+      }
+
+      updateUnsavedState();
+
+      if (errors.length) {
+        setMessage(errors.join(" "), true);
+        return false;
+      }
+
+      setMessage(source === "auto" ? "Saved" : "Profile settings saved.");
+      return true;
+    })().finally(() => {
+      setSavingState(false);
+      state.saving = false;
+      state.savePromise = null;
+
+      if (state.resaveRequested) {
+        state.resaveRequested = false;
+        void persistProfileSettings({ source: "auto" });
+      }
+    });
+
+    return source === "manual" ? waitForProfileSaveIdle() : state.savePromise;
   };
 
   registerUnsavedChangesContext({
     pageHash: "#profile",
     getSignature: () => JSON.stringify(getFormState()),
-    saveFn: async () => {
-      form.requestSubmit();
-    },
+    saveFn: () => persistProfileSettings({ source: "manual" }),
   });
 
   form.addEventListener("input", () => {
+    syncLocalProfileState();
     updateUnsavedState();
-    if (!state.saving && appState.unsavedChanges.hasUnsavedChanges) {
-      setMessage("You have unsaved changes.");
+    if (!state.saving && appState.unsavedChanges.hasUnsavedChanges && !messageElement?.classList.contains("is-error")) {
+      setMessage("Changes are waiting to be saved.");
     }
+  });
+
+  form.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement) || event.target.type !== "checkbox") {
+      return;
+    }
+    syncLocalProfileState();
+    updateUnsavedState();
+    void persistProfileSettings({ source: "auto" });
   });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (state.saving) {
-      return;
-    }
-
-    const nextValues = getFormState();
-    const notificationPreferencesPayload = {
-      notifySnapshot: nextValues.notifySnapshot,
-      notifyCompletion: nextValues.notifyCompletion,
-      notifyFollow: nextValues.notifyFollow,
-      notifyLike: nextValues.notifyLike,
-    };
-    const profilePageSettingsPayload = {
-      notifyCommunityActivity: nextValues.notifyCommunityActivity,
-      showProfileInCommunityGrow: nextValues.showProfileInCommunityGrow,
-      allowFollowers: nextValues.allowFollowers,
-      showGrowStatsPublicly: nextValues.showGrowStatsPublicly,
-    };
-
-    setSavingState(true);
-    setMessage("");
-
-    const warnings = [];
-
-    try {
-      appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencesPayload);
-    } catch (error) {
-      warnings.push(`Notification preferences used a safe fallback: ${error.message || "Settings are unavailable right now."}`);
-      appState.notificationPreferences = normalizeUserNotificationPreferencesRow(notificationPreferencesPayload);
-    }
-
-    try {
-      appState.profilePageSettings = await savePublicMemberProfileSettings(profilePageSettingsPayload);
-    } catch (error) {
-      warnings.push(error.message || "Privacy settings could not be saved in this browser.");
-    }
-
-    if (!warnings.length) {
-      markUnsavedChangesSaved();
-      setMessage("Profile settings saved.");
-    } else {
-      markUnsavedChangesSaved();
-      setMessage(warnings.join(" "), false);
-    }
-
-    setSavingState(false);
+    await persistProfileSettings({ source: "manual" });
   });
 }
 
