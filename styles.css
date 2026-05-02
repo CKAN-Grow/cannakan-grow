@@ -3019,6 +3019,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-card .home-install-card-preview .home-install-progress-ring.is-animated,
 .home-install-card .home-install-card-preview .home-install-phone-stat-ring.is-animated {
   --install-ring-angle: 0deg;
+  animation: home-install-ring-pulse 4.5s ease-in-out infinite;
 }
 
 .home-install-card .home-install-card-preview .home-install-progress-ring.is-animated::before,
@@ -3140,10 +3141,51 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 }
 
+@keyframes home-install-ring-pulse {
+  0% {
+    box-shadow:
+      inset 0 0 16px rgba(148, 209, 89, 0.1),
+      0 0 16px rgba(148, 209, 89, 0.1);
+  }
+
+  26% {
+    box-shadow:
+      inset 0 0 18px rgba(148, 209, 89, 0.13),
+      0 0 20px rgba(148, 209, 89, 0.14),
+      0 0 28px rgba(148, 209, 89, 0.07);
+  }
+
+  44.44% {
+    box-shadow:
+      inset 0 0 22px rgba(148, 209, 89, 0.18),
+      0 0 24px rgba(148, 209, 89, 0.2),
+      0 0 36px rgba(148, 209, 89, 0.1);
+  }
+
+  66.67% {
+    box-shadow:
+      inset 0 0 18px rgba(148, 209, 89, 0.12),
+      0 0 18px rgba(148, 209, 89, 0.12);
+  }
+
+  77.78% {
+    box-shadow:
+      inset 0 0 15px rgba(148, 209, 89, 0.08),
+      0 0 14px rgba(148, 209, 89, 0.08);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 0 16px rgba(148, 209, 89, 0.1),
+      0 0 16px rgba(148, 209, 89, 0.1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-install-card .home-install-card-preview .home-install-progress-ring.is-animated,
   .home-install-card .home-install-card-preview .home-install-phone-stat-ring.is-animated {
     --install-ring-angle: var(--install-ring-target-angle);
+    animation: none;
   }
 
   .home-install-card .home-install-card-preview .home-install-progress-ring.is-animated::before,
