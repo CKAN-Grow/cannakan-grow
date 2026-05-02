@@ -21770,6 +21770,7 @@ function renderSessionsList() {
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
   const activeContainer = document.querySelector("#active-sessions-list");
+  const activeSessionsTitle = document.querySelector("#active-sessions-section .section-title-with-icon h3");
   const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
   const historyContainer = document.querySelector("#sessions-list");
   const historySortControl = document.querySelector("#session-history-sort");
@@ -21777,10 +21778,17 @@ function renderSessionsList() {
   const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
+  if (activeSessionsTitle) {
+    activeSessionsTitle.textContent = activeSessions.length === 1
+      ? "Active Session Spotlight"
+      : "Active Sessions";
+  }
+
   renderSessionCollection(activeContainer, activeSessions, {
     emptyMessage: hasSessionHistory ? "No active sessions." : "No sessions yet.",
     emptyActionLabel: hasSessionHistory ? "Start New Session" : "Create your first session",
     compact: false,
+    variant: "active-grid",
   });
 
   renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 2), sessions, {
@@ -22886,6 +22894,12 @@ function renderSessionCollection(container, sessions, options) {
   container.innerHTML = "";
   container.classList.toggle("compact-list", options.compact);
   container.classList.toggle("session-history-grid", options.variant === "history-grid");
+  container.classList.toggle("active-sessions-grid", options.variant === "active-grid");
+  if (options.variant === "active-grid") {
+    container.dataset.sessionCount = String(sessions.length);
+  } else {
+    delete container.dataset.sessionCount;
+  }
 
   if (!sessions.length) {
     const empty = document.createElement("div");
