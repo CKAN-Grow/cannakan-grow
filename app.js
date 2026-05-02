@@ -11951,37 +11951,39 @@ function buildGallerySeedTypeHighlightEntry(snapshots) {
 }
 
 function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType) {
-  const thisMonthLabel = thisMonthTopSeedType?.name || "Not enough data yet";
-  const allTimeLabel = allTimeTopSeedType?.name || "Not enough data yet";
+  const cards = [
+    {
+      title: "This Month Top Seed Type",
+      value: thisMonthTopSeedType?.name || "Not enough data yet",
+      isEmpty: !thisMonthTopSeedType?.name,
+    },
+    {
+      title: "All-Time Top Seed Type",
+      value: allTimeTopSeedType?.name || "Not enough data yet",
+      isEmpty: !allTimeTopSeedType?.name,
+    },
+  ];
 
   return `
     <div class="gallery-seedtype-highlights" aria-label="Top seed type highlights">
-      <div class="gallery-seedtype-highlight">
-        <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M8 4.5h8"></path>
-            <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
-            <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
-            <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
-            <path d="M12 12v3.5"></path>
-            <path d="M9.5 19.5 12 15.5l2.5 4"></path>
-          </svg>
-        </span>
-        <span class="gallery-seedtype-highlight-text">${escapeHtml(`This Month Top Seed Type: ${thisMonthLabel}`)}</span>
-      </div>
-      <div class="gallery-seedtype-highlight">
-        <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M8 4.5h8"></path>
-            <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
-            <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
-            <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
-            <path d="M12 12v3.5"></path>
-            <path d="M9.5 19.5 12 15.5l2.5 4"></path>
-          </svg>
-        </span>
-        <span class="gallery-seedtype-highlight-text">${escapeHtml(`All-Time Top Seed Type: ${allTimeLabel}`)}</span>
-      </div>
+      ${cards.map((card) => `
+        <div class="gallery-seedtype-highlight${card.isEmpty ? " is-empty" : ""}">
+          <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M8 4.5h8"></path>
+              <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
+              <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
+              <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
+              <path d="M12 12v3.5"></path>
+              <path d="M9.5 19.5 12 15.5l2.5 4"></path>
+            </svg>
+          </span>
+          <span class="gallery-seedtype-highlight-copy">
+            <span class="gallery-seedtype-highlight-label">${escapeHtml(card.title)}</span>
+            <span class="gallery-seedtype-highlight-value">${escapeHtml(card.value)}</span>
+          </span>
+        </div>
+      `).join("")}
     </div>
   `;
 }
