@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v11";
+const CACHE_NAME = "cannakan-grow-shell-v12";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -22,11 +22,42 @@ const NETWORK_FIRST_PATHS = new Set([
   "/app.js",
   "/manifest.json",
 ]);
+const loggedPrecacheWarnings = new Set();
+
+function logPrecacheWarningOnce(assetPath, error) {
+  const normalizedAssetPath = String(assetPath || "").trim();
+  if (!normalizedAssetPath || loggedPrecacheWarnings.has(normalizedAssetPath)) {
+    return;
+  }
+
+  loggedPrecacheWarnings.add(normalizedAssetPath);
+  console.warn("[Service Worker] Skipped missing precache asset", {
+    assetPath: normalizedAssetPath,
+    message: String(error?.message || error || "").trim(),
+  });
+}
+
+async function precacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+
+  await Promise.all(APP_SHELL_ASSETS.map(async (assetPath) => {
+    try {
+      const request = new Request(assetPath, { cache: "reload" });
+      const response = await fetch(request);
+      if (!response || !response.ok) {
+        logPrecacheWarningOnce(assetPath, `HTTP ${response?.status || "missing"}`);
+        return;
+      }
+
+      await cache.put(request, response.clone());
+    } catch (error) {
+      logPrecacheWarningOnce(assetPath, error);
+    }
+  }));
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_ASSETS)),
-  );
+  event.waitUntil(precacheAppShell());
   self.skipWaiting();
 });
 
