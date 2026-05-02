@@ -2766,6 +2766,74 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: var(--muted);
 }
 
+.snapshot-explore-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.snapshot-explore-card[hidden] {
+  display: none !important;
+}
+
+.snapshot-explore-icon {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94d159;
+  flex: 0 0 auto;
+}
+
+.snapshot-explore-icon svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.snapshot-explore-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.snapshot-explore-title,
+.snapshot-explore-description {
+  margin: 0;
+}
+
+.snapshot-explore-title {
+  font-size: 0.98rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.snapshot-explore-description {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.snapshot-explore-button {
+  min-height: 46px;
+  padding: 11px 18px;
+  border-radius: 16px;
+}
+
 .snapshot-primary-action-button {
   width: var(--snapshot-primary-width);
   min-width: var(--snapshot-primary-width);
@@ -8039,7 +8107,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .snapshot-confirmation-card,
-  .snapshot-action-row {
+  .snapshot-action-row,
+  .snapshot-explore-card {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -13979,6 +14048,38 @@ body.theme-dark .snapshot-action-description {
   color: #b7c0b7;
 }
 
+body.theme-dark .snapshot-explore-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+body.theme-dark .snapshot-explore-icon {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.025);
+  color: #94d159;
+}
+
+body.theme-dark .snapshot-explore-title {
+  color: #f6f8f5;
+}
+
+body.theme-dark .snapshot-explore-description {
+  color: #b7c0b7;
+}
+
+body.theme-dark .snapshot-explore-button {
+  border-color: rgba(148, 209, 89, 0.26);
+  background: rgba(30, 34, 31, 0.92);
+  color: #f6f8f5;
+}
+
+body.theme-dark .snapshot-explore-button:hover,
+body.theme-dark .snapshot-explore-button:focus-visible {
+  border-color: rgba(148, 209, 89, 0.42);
+  background: rgba(148, 209, 89, 0.06);
+  color: #f6f8f5;
+}
+
 body.theme-dark .snapshot-generate-button {
   border-color: #94d159;
   color: #eef8e7;
@@ -15095,9 +15196,18 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     gap: 14px;
   }
 
+  .snapshot-explore-card {
+    gap: 14px;
+  }
+
   .snapshot-action-icon {
     width: 52px;
     height: 52px;
+  }
+
+  .snapshot-explore-icon {
+    width: 50px;
+    height: 50px;
   }
 
   .topbar-controls {

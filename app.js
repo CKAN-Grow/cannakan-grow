@@ -13635,6 +13635,9 @@ function initializeSnapshotSection(scope, options) {
     includeProfileToggle: options.includeProfileToggle || null,
     includeProfileToggleRow: options.includeProfileToggleRow || null,
     includeProfileDividerRow: options.includeProfileDividerRow || null,
+    actionTitle: options.actionTitle || null,
+    actionDescription: options.actionDescription || null,
+    emptyExploreCard: options.emptyExploreCard || null,
     savedSnapshotNotice: options.savedSnapshotNotice || null,
     savedSnapshotText: options.savedSnapshotText || null,
     savedSnapshotLink: options.savedSnapshotLink || null,
@@ -13853,6 +13856,25 @@ function renderSnapshotSavedNotice(state) {
     return;
   }
   renderSnapshotPreviewSurface(state);
+}
+
+function syncSnapshotActionSurface(state, { hasConfirmedSubmission = false, hasGeneratedPreview = false } = {}) {
+  if (!state) {
+    return;
+  }
+
+  const isEmptyState = !hasConfirmedSubmission && !hasGeneratedPreview;
+  if (state.actionTitle) {
+    state.actionTitle.textContent = isEmptyState ? "Create a Snapshot" : "Generate a New Snapshot";
+  }
+  if (state.actionDescription) {
+    state.actionDescription.textContent = isEmptyState
+      ? "Capture and share your grow session."
+      : "Capture a new snapshot for this session.";
+  }
+  if (state.emptyExploreCard) {
+    state.emptyExploreCard.hidden = !isEmptyState;
+  }
 }
 
 function prefersReducedSnapshotMotion() {
@@ -14294,17 +14316,29 @@ function renderSnapshotPreviewSurface(state) {
 
   const snapshotState = getSnapshotStateForSection(state);
   if (hasConfirmedGallerySubmissionForState(state)) {
+    syncSnapshotActionSurface(state, {
+      hasConfirmedSubmission: true,
+      hasGeneratedPreview: false,
+    });
     state.preview.hidden = false;
     state.preview.innerHTML = renderSnapshotSubmissionConfirmationMarkup(snapshotState);
     return;
   }
 
   if (!state.generatedUrl) {
+    syncSnapshotActionSurface(state, {
+      hasConfirmedSubmission: false,
+      hasGeneratedPreview: false,
+    });
     state.preview.hidden = true;
     state.preview.innerHTML = "";
     return;
   }
 
+  syncSnapshotActionSurface(state, {
+    hasConfirmedSubmission: false,
+    hasGeneratedPreview: true,
+  });
   state.preview.hidden = false;
   state.preview.innerHTML = renderSnapshotPreviewMarkup({
     previewImageUrl: state.generatedUrl,
@@ -22820,6 +22854,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const snapshotUsageConsentCheckbox = document.querySelector("#snapshot-usage-consent");
   const snapshotIncludeProfileToggleRow = document.querySelector("#snapshot-profile-toggle-row");
   const snapshotIncludeProfileDividerRow = document.querySelector("#snapshot-profile-divider-row");
+  const snapshotActionTitle = snapshotSection?.querySelector("[data-snapshot-action-title]") || null;
+  const snapshotActionDescription = snapshotSection?.querySelector("[data-snapshot-action-description]") || null;
+  const snapshotEmptyExploreCard = snapshotSection?.querySelector("[data-snapshot-empty-explore]") || null;
   const snapshotDestinationInputs = [...document.querySelectorAll('input[name="snapshot-destination"]')];
   const timingSection = document.querySelector("#session-timing-section");
   const timingSummary = document.querySelector("#session-timing-summary");
@@ -22871,6 +22908,9 @@ function renderSessionForm(initialSystemType = "KAN") {
     includeProfileToggle: snapshotIncludeProfileToggle,
     includeProfileToggleRow: snapshotIncludeProfileToggleRow,
     includeProfileDividerRow: snapshotIncludeProfileDividerRow,
+    actionTitle: snapshotActionTitle,
+    actionDescription: snapshotActionDescription,
+    emptyExploreCard: snapshotEmptyExploreCard,
     galleryNote: snapshotGalleryNote,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
@@ -24843,6 +24883,9 @@ function renderSessionDetail(sessionId) {
   const detailSnapshotUsageConsentCheckbox = document.querySelector("#detail-snapshot-usage-consent");
   const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
   const detailSnapshotIncludeProfileDividerRow = document.querySelector("#detail-snapshot-profile-divider-row");
+  const detailSnapshotActionTitle = detailSnapshotSection?.querySelector("[data-snapshot-action-title]") || null;
+  const detailSnapshotActionDescription = detailSnapshotSection?.querySelector("[data-snapshot-action-description]") || null;
+  const detailSnapshotEmptyExploreCard = detailSnapshotSection?.querySelector("[data-snapshot-empty-explore]") || null;
   const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
   const detailChartShell = document.querySelector("#detail-chart-shell");
   const detailChartHeader = document.querySelector("#detail-chart-header");
@@ -24925,6 +24968,9 @@ function renderSessionDetail(sessionId) {
     includeProfileToggle: detailSnapshotIncludeProfileToggle,
     includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
     includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
+    actionTitle: detailSnapshotActionTitle,
+    actionDescription: detailSnapshotActionDescription,
+    emptyExploreCard: detailSnapshotEmptyExploreCard,
     galleryNote: detailSnapshotGalleryNote,
     unpublishButton: detailSnapshotUnpublishButton,
     canPublish: true,
