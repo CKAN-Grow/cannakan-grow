@@ -144,6 +144,7 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   notifyCompletion: true,
   notifyFollow: true,
   notifyLike: true,
+  createdAt: "",
   updatedAt: "",
 });
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
@@ -462,6 +463,7 @@ const appState = {
   profileError: "",
   notificationPreferences: null,
   notificationPreferencesError: "",
+  notificationPreferencesTableUnavailable: false,
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -742,6 +744,7 @@ function resetSessionScopedAppState() {
   appState.profileError = "";
   appState.notificationPreferences = null;
   appState.notificationPreferencesError = "";
+  appState.notificationPreferencesTableUnavailable = false;
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
@@ -4320,8 +4323,18 @@ function isSiteAnalyticsTableMissingError(error) {
   return isSupabaseTableMissingError(error, SITE_ANALYTICS_TABLE);
 }
 
-function isSupabaseUuidLike(value = "") {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+function isUserNotificationPreferencesTableMissingError(error) {
+  return isSupabaseTableMissingError(error, USER_NOTIFICATION_PREFERENCES_TABLE);
+}
+
+function markUserNotificationPreferencesTableUnavailable() {
+  appState.notificationPreferencesTableUnavailable = true;
+  appState.notificationPreferencesError = "";
+  logRuntimeIssueOnce(
+    "warn",
+    "notification-preferences-table-unavailable",
+    "Notification preferences unavailable; using defaults for this session.",
+  );
 }
 
 function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
@@ -4329,29 +4342,15 @@ function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
   return normalizedValue || fallback;
 }
 
-function normalizeSiteAnalyticsBoolean(value) {
-  return Boolean(value);
-}
-
-function normalizeSiteAnalyticsMetadata(metadata = {}) {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(metadata)
-      .filter(([key, value]) => String(key || "").trim() && typeof value !== "undefined"),
-  );
-}
-
 function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
+  void metadata;
   const payload = buildSiteAnalyticsVisitorPayload(pageContext);
   const normalizedPageContext = {
     pageGroup: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageGroup, "other").toLowerCase(),
     pageKey: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "other").toLowerCase(),
-    pageLabel: normalizeSiteAnalyticsTextValue(payload.pageContext?.pageLabel, ""),
-    pagePath: normalizeSiteAnalyticsTextValue(payload.pageContext?.pagePath, window.location.pathname || "/"),
   };
+  // Keep inserts compatible with older Supabase projects that may still have a reduced
+  // site_analytics_events schema; richer columns can be backfilled by the additive SQL migration.
   const insertPayload = {
     occurred_at: new Date().toISOString(),
     visitor_id: normalizeSiteAnalyticsTextValue(payload.visitorId, getOrCreateSiteVisitorId()),
@@ -4359,46 +4358,6 @@ function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = 
     page_group: normalizedPageContext.pageGroup,
     page_key: normalizedPageContext.pageKey,
   };
-  const visitId = normalizeSiteAnalyticsTextValue(payload.visitId, "");
-  if (visitId) {
-    insertPayload.visit_id = visitId;
-  }
-  if (isSupabaseUuidLike(payload.userId)) {
-    insertPayload.user_id = payload.userId;
-  }
-  const profileName = normalizeSiteAnalyticsTextValue(payload.profileName, "");
-  if (profileName) {
-    insertPayload.profile_name = profileName;
-  }
-  const userEmail = normalizeSiteAnalyticsTextValue(payload.userEmail, "").toLowerCase();
-  if (userEmail) {
-    insertPayload.user_email = userEmail;
-  }
-  if (normalizedPageContext.pageLabel) {
-    insertPayload.page_label = normalizedPageContext.pageLabel;
-  }
-  if (normalizedPageContext.pagePath) {
-    insertPayload.page_path = normalizedPageContext.pagePath;
-  }
-  const deviceType = normalizeSiteAnalyticsTextValue(payload.deviceType, "desktop").toLowerCase();
-  if (deviceType) {
-    insertPayload.device_type = deviceType;
-  }
-  const browserName = normalizeSiteAnalyticsTextValue(payload.browserName, "");
-  if (browserName) {
-    insertPayload.browser_name = browserName;
-  }
-  const referrer = normalizeSiteAnalyticsTextValue(payload.referrer, "");
-  if (referrer) {
-    insertPayload.referrer = referrer;
-  }
-  if (normalizeSiteAnalyticsBoolean(payload.isPwa)) {
-    insertPayload.is_pwa = true;
-  }
-  const normalizedMetadata = normalizeSiteAnalyticsMetadata(metadata);
-  if (Object.keys(normalizedMetadata).length) {
-    insertPayload.metadata = normalizedMetadata;
-  }
   return insertPayload;
 }
 
@@ -5006,7 +4965,7 @@ async function loadUserProfile() {
 }
 
 async function ensureUserNotificationPreferences(user) {
-  if (!appState.supabase || !user?.id) {
+  if (!appState.supabase || !user?.id || appState.notificationPreferencesTableUnavailable) {
     return { ...DEFAULT_NOTIFICATION_PREFERENCES };
   }
 
@@ -5019,7 +4978,16 @@ async function ensureUserNotificationPreferences(user) {
     .maybeSingle();
 
   if (selectError) {
-    console.error("Notification preference check error:", selectError);
+    if (isUserNotificationPreferencesTableMissingError(selectError)) {
+      markUserNotificationPreferencesTableUnavailable();
+      return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    }
+    logRuntimeIssueOnce(
+      "warn",
+      "notification-preferences-check-failed",
+      "Notification preferences unavailable; using defaults for this session.",
+      selectError,
+    );
     appState.notificationPreferencesError = selectError.message || "Could not check notification preferences.";
     return { ...DEFAULT_NOTIFICATION_PREFERENCES };
   }
@@ -5034,6 +5002,7 @@ async function ensureUserNotificationPreferences(user) {
     notify_completion: true,
     notify_follow: true,
     notify_like: true,
+    created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
@@ -5044,7 +5013,16 @@ async function ensureUserNotificationPreferences(user) {
     .single();
 
   if (upsertError) {
-    console.error("Notification preference create/update error:", upsertError);
+    if (isUserNotificationPreferencesTableMissingError(upsertError)) {
+      markUserNotificationPreferencesTableUnavailable();
+      return { ...DEFAULT_NOTIFICATION_PREFERENCES };
+    }
+    logRuntimeIssueOnce(
+      "warn",
+      "notification-preferences-create-failed",
+      "Notification preferences unavailable; using defaults for this session.",
+      upsertError,
+    );
     appState.notificationPreferencesError = upsertError.message || "Could not create notification preferences.";
     return { ...DEFAULT_NOTIFICATION_PREFERENCES };
   }
@@ -5640,6 +5618,7 @@ function normalizeUserNotificationPreferencesRow(row) {
     notifyCompletion: row.notify_completion !== false,
     notifyFollow: row.notify_follow !== false,
     notifyLike: row.notify_like !== false,
+    createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
 }
@@ -8563,8 +8542,13 @@ async function saveUserNotificationPreferences(preferencesInput) {
       preferencesInput?.notifyLike !== undefined
         ? Boolean(preferencesInput.notifyLike)
         : existingPreferences.notifyLike !== false,
+    created_at: existingPreferences.createdAt || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  if (appState.notificationPreferencesTableUnavailable) {
+    return normalizeUserNotificationPreferencesRow(payload);
+  }
 
   const { data, error } = await appState.supabase
     .from(USER_NOTIFICATION_PREFERENCES_TABLE)
@@ -8573,6 +8557,10 @@ async function saveUserNotificationPreferences(preferencesInput) {
     .single();
 
   if (error) {
+    if (isUserNotificationPreferencesTableMissingError(error)) {
+      markUserNotificationPreferencesTableUnavailable();
+      return normalizeUserNotificationPreferencesRow(payload);
+    }
     console.error("[Cannakan Profile] Supabase notification preference upsert failed", {
       payload,
       error,

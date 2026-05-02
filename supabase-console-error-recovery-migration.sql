@@ -1,6 +1,7 @@
 -- Recovery migration for the console errors caused by missing Supabase tables.
--- Apply this in Supabase SQL editor when `site_analytics_events`, `sources`,
--- or `grow_gallery_snapshot_likes` are missing from the project schema.
+-- Apply this in Supabase SQL editor when `user_notification_preferences`,
+-- `site_analytics_events`, `sources`, or `grow_gallery_snapshot_likes`
+-- are missing from the project schema or still use an older shape.
 
 create table if not exists public.sources (
   id uuid primary key default gen_random_uuid(),
@@ -178,6 +179,95 @@ using (
   )
 );
 
+create table if not exists public.user_notification_preferences (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  notify_snapshot boolean not null default true,
+  notify_completion boolean not null default true,
+  notify_follow boolean not null default true,
+  notify_like boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.user_notification_preferences
+  add column if not exists notify_snapshot boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_completion boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_follow boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists notify_like boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.user_notification_preferences
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+create or replace function public.set_user_notification_preferences_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists user_notification_preferences_set_updated_at on public.user_notification_preferences;
+create trigger user_notification_preferences_set_updated_at
+before update on public.user_notification_preferences
+for each row
+execute procedure public.set_user_notification_preferences_updated_at();
+
+alter table public.user_notification_preferences enable row level security;
+
+drop policy if exists "Users can view their own notification preferences" on public.user_notification_preferences;
+create policy "Users can view their own notification preferences"
+on public.user_notification_preferences
+for select
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Users can create their own notification preferences" on public.user_notification_preferences;
+create policy "Users can create their own notification preferences"
+on public.user_notification_preferences
+for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update their own notification preferences" on public.user_notification_preferences;
+create policy "Users can update their own notification preferences"
+on public.user_notification_preferences
+for update
+using (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
+  or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+  or exists (
+    select 1
+    from public.admin_users
+    where admin_users.user_id = auth.uid()
+  )
+);
+
 create table if not exists public.site_analytics_events (
   id uuid primary key default gen_random_uuid(),
   visitor_id text not null,
@@ -198,6 +288,57 @@ create table if not exists public.site_analytics_events (
   occurred_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.site_analytics_events
+  add column if not exists visitor_id text;
+
+alter table public.site_analytics_events
+  add column if not exists visit_id text default '';
+
+alter table public.site_analytics_events
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+
+alter table public.site_analytics_events
+  add column if not exists profile_name text default '';
+
+alter table public.site_analytics_events
+  add column if not exists user_email text default '';
+
+alter table public.site_analytics_events
+  add column if not exists event_type text default 'page_view';
+
+alter table public.site_analytics_events
+  add column if not exists page_group text default 'other';
+
+alter table public.site_analytics_events
+  add column if not exists page_key text default 'other';
+
+alter table public.site_analytics_events
+  add column if not exists page_label text default '';
+
+alter table public.site_analytics_events
+  add column if not exists page_path text default '';
+
+alter table public.site_analytics_events
+  add column if not exists device_type text default 'desktop';
+
+alter table public.site_analytics_events
+  add column if not exists browser_name text default '';
+
+alter table public.site_analytics_events
+  add column if not exists referrer text default '';
+
+alter table public.site_analytics_events
+  add column if not exists is_pwa boolean default false;
+
+alter table public.site_analytics_events
+  add column if not exists metadata jsonb default '{}'::jsonb;
+
+alter table public.site_analytics_events
+  add column if not exists occurred_at timestamptz default timezone('utc', now());
+
+alter table public.site_analytics_events
+  add column if not exists created_at timestamptz default timezone('utc', now());
 
 create index if not exists site_analytics_events_occurred_at_idx
   on public.site_analytics_events (occurred_at desc);

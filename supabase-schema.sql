@@ -42,6 +42,7 @@ create table if not exists public.user_notification_preferences (
   notify_completion boolean not null default true,
   notify_follow boolean not null default true,
   notify_like boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
@@ -166,6 +167,57 @@ create table if not exists public.site_analytics_events (
   created_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.site_analytics_events
+  add column if not exists visitor_id text;
+
+alter table public.site_analytics_events
+  add column if not exists visit_id text default '';
+
+alter table public.site_analytics_events
+  add column if not exists user_id uuid references auth.users(id) on delete set null;
+
+alter table public.site_analytics_events
+  add column if not exists profile_name text default '';
+
+alter table public.site_analytics_events
+  add column if not exists user_email text default '';
+
+alter table public.site_analytics_events
+  add column if not exists event_type text default 'page_view';
+
+alter table public.site_analytics_events
+  add column if not exists page_group text default 'other';
+
+alter table public.site_analytics_events
+  add column if not exists page_key text default 'other';
+
+alter table public.site_analytics_events
+  add column if not exists page_label text default '';
+
+alter table public.site_analytics_events
+  add column if not exists page_path text default '';
+
+alter table public.site_analytics_events
+  add column if not exists device_type text default 'desktop';
+
+alter table public.site_analytics_events
+  add column if not exists browser_name text default '';
+
+alter table public.site_analytics_events
+  add column if not exists referrer text default '';
+
+alter table public.site_analytics_events
+  add column if not exists is_pwa boolean default false;
+
+alter table public.site_analytics_events
+  add column if not exists metadata jsonb default '{}'::jsonb;
+
+alter table public.site_analytics_events
+  add column if not exists occurred_at timestamptz default timezone('utc', now());
+
+alter table public.site_analytics_events
+  add column if not exists created_at timestamptz default timezone('utc', now());
+
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
@@ -274,6 +326,9 @@ alter table public.user_notification_preferences
 
 alter table public.user_notification_preferences
   add column if not exists notify_like boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
 
 alter table public.user_notification_preferences
   add column if not exists updated_at timestamptz not null default timezone('utc', now());
