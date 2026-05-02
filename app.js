@@ -13164,11 +13164,7 @@ function updateAuthStatus() {
         </div>
         <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("profile")}
-          <span>Profile</span>
-        </button>
-        <button id="account-profile-notifications-link" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup("notification")}
-          <span>Notification Preferences</span>
+          <span>Profile Preferences</span>
         </button>
         <button id="account-sign-out" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("signout")}
@@ -13199,12 +13195,6 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     navigateToProfileRoute();
-  });
-
-  dropdown?.querySelector("#account-profile-notifications-link")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    navigateToProfilePreferences();
   });
 
   dropdown?.querySelector("#account-sign-out")?.addEventListener("click", async (event) => {
