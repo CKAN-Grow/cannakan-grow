@@ -181,35 +181,40 @@
           <div>
             <p class="eyebrow">Preferences</p>
             <h3 id="profile-preferences-title">Notifications</h3>
-            <p class="muted">Set the public activity alerts you want Cannakan Grow to use later. Push, browser, and email notifications are still off for now.</p>
+            <p class="muted">Choose which account alerts Cannakan Grow should use for your profile as notification delivery rolls out.</p>
+            <p id="profile-preferences-default-note" class="profile-preferences-helper muted" hidden>Notification preferences are using defaults until preferences are enabled.</p>
           </div>
           <div class="profile-preferences-list">
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyOnFollowedSnapshot">
+              <input type="checkbox" name="notifyEmail">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Notify when someone I follow posts a snapshot</span>
+                <span class="profile-preference-toggle-copy">Email notifications</span>
+                <span class="profile-preference-toggle-detail">General account email alerts when notification delivery is enabled.</span>
               </span>
             </label>
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyOnFollowedSessionComplete">
+              <input type="checkbox" name="notifyPush">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Notify when someone I follow completes a public session</span>
+                <span class="profile-preference-toggle-copy">Push notifications</span>
+                <span class="profile-preference-toggle-detail">Browser or device alert preferences for future push notification support.</span>
               </span>
             </label>
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyOnNewFollower">
+              <input type="checkbox" name="notifyFollow">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Notify when someone follows me</span>
+                <span class="profile-preference-toggle-copy">Follow notifications</span>
+                <span class="profile-preference-toggle-detail">Get notified when someone follows your public grow profile.</span>
               </span>
             </label>
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyOnSnapshotLike">
+              <input type="checkbox" name="notifyLike">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Notify when someone likes my public snapshot</span>
+                <span class="profile-preference-toggle-copy">Like notifications</span>
+                <span class="profile-preference-toggle-detail">Get notified when someone likes your shared Community Grow snapshot.</span>
               </span>
             </label>
           </div>

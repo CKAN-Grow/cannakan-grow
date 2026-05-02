@@ -14751,10 +14751,11 @@ function bindProfileForm(form, options = {}) {
   const removeButton = form.querySelector("#profile-remove-avatar");
   const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
-  const notifyOnFollowedSnapshotInput = form.elements.notifyOnFollowedSnapshot;
-  const notifyOnFollowedSessionCompleteInput = form.elements.notifyOnFollowedSessionComplete;
-  const notifyOnNewFollowerInput = form.elements.notifyOnNewFollower;
-  const notifyOnSnapshotLikeInput = form.elements.notifyOnSnapshotLike;
+  const notificationDefaultsNote = form.querySelector("#profile-preferences-default-note");
+  const notifyEmailInput = form.elements.notifyEmail;
+  const notifyPushInput = form.elements.notifyPush;
+  const notifyFollowInput = form.elements.notifyFollow;
+  const notifyLikeInput = form.elements.notifyLike;
   const defaultSubmitLabel = submitButton?.textContent || "Save Profile";
   const state = {
     profile,
@@ -14774,19 +14775,26 @@ function bindProfileForm(form, options = {}) {
     }
   };
 
+  const syncNotificationPreferenceAvailability = () => {
+    if (notificationDefaultsNote) {
+      notificationDefaultsNote.hidden = !appState.notificationPreferencesTableUnavailable;
+    }
+  };
+
   usernameInput.value = profile?.username || "";
-  if (notifyOnFollowedSnapshotInput) {
-    notifyOnFollowedSnapshotInput.checked = notificationPreferences.notifySnapshot !== false;
+  if (notifyEmailInput) {
+    notifyEmailInput.checked = notificationPreferences.notifySnapshot !== false;
   }
-  if (notifyOnFollowedSessionCompleteInput) {
-    notifyOnFollowedSessionCompleteInput.checked = notificationPreferences.notifyCompletion !== false;
+  if (notifyPushInput) {
+    notifyPushInput.checked = notificationPreferences.notifyCompletion !== false;
   }
-  if (notifyOnNewFollowerInput) {
-    notifyOnNewFollowerInput.checked = notificationPreferences.notifyFollow !== false;
+  if (notifyFollowInput) {
+    notifyFollowInput.checked = notificationPreferences.notifyFollow !== false;
   }
-  if (notifyOnSnapshotLikeInput) {
-    notifyOnSnapshotLikeInput.checked = notificationPreferences.notifyLike !== false;
+  if (notifyLikeInput) {
+    notifyLikeInput.checked = notificationPreferences.notifyLike !== false;
   }
+  syncNotificationPreferenceAvailability();
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
@@ -14889,10 +14897,10 @@ function bindProfileForm(form, options = {}) {
       let avatarUrl = state.profile?.avatarUrl || "";
       let avatarPath = state.profile?.avatarPath || "";
       const notificationPreferencePayload = {
-        notifySnapshot: Boolean(notifyOnFollowedSnapshotInput?.checked),
-        notifyCompletion: Boolean(notifyOnFollowedSessionCompleteInput?.checked),
-        notifyFollow: Boolean(notifyOnNewFollowerInput?.checked),
-        notifyLike: Boolean(notifyOnSnapshotLikeInput?.checked),
+        notifySnapshot: Boolean(notifyEmailInput?.checked),
+        notifyCompletion: Boolean(notifyPushInput?.checked),
+        notifyFollow: Boolean(notifyFollowInput?.checked),
+        notifyLike: Boolean(notifyLikeInput?.checked),
       };
 
       // Save the profile name first so avatar storage problems do not block the main profile save.
@@ -14953,9 +14961,14 @@ function bindProfileForm(form, options = {}) {
 
       try {
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
+        syncNotificationPreferenceAvailability();
+        if (appState.notificationPreferencesTableUnavailable) {
+          warnings.push("Profile saved. Notification preferences are using defaults until preferences are enabled.");
+        }
       } catch (error) {
         console.error("[Cannakan Profile] Notification preference save warning", error);
         warnings.push(`Profile saved, but notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
+        syncNotificationPreferenceAvailability();
       }
 
       if (state.previewUrl) {

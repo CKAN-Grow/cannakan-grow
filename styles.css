@@ -8359,6 +8359,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 12px;
 }
 
+.profile-preferences-helper {
+  margin-top: 10px !important;
+  font-size: 0.88rem;
+}
+
 .profile-preference-toggle {
   position: relative;
   display: flex;
@@ -8371,6 +8376,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   cursor: pointer;
   color: var(--ink);
   transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.profile-preference-toggle-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-preference-toggle-detail {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .profile-preference-toggle:hover,
