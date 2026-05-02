@@ -4353,15 +4353,13 @@ function buildSiteAnalyticsInsertPayload(eventType = "page_view", pageContext = 
     payload.pageContext?.pagePath,
     normalizeSiteAnalyticsTextValue(payload.pageContext?.pageKey, "/"),
   );
-  const insertPayload = {
+  return {
+    user_id: isSupabaseUuidLike(payload.userId) ? payload.userId : null,
     event_type: normalizeSiteAnalyticsEventType(eventType),
     page,
-    session_id: normalizeSiteAnalyticsTextValue(payload.visitId, getOrCreateSiteVisitId()),
+    session_id: normalizeSiteAnalyticsTextValue(payload.visitId, getOrCreateSiteVisitId()) || null,
+    created_at: new Date().toISOString(),
   };
-  if (isSupabaseUuidLike(payload.userId)) {
-    insertPayload.user_id = payload.userId;
-  }
-  return insertPayload;
 }
 
 function isSiteAnalyticsInsertRequestError(error) {
@@ -4461,7 +4459,6 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
   appState.siteAnalyticsEventInFlight = true;
   try {
     const insertPayload = buildSiteAnalyticsInsertPayload(eventType, pageContext, metadata);
-    console.log("[Site Analytics] Insert payload", insertPayload);
     const { error } = await appState.supabase
       .from(SITE_ANALYTICS_TABLE)
       .insert(insertPayload);
