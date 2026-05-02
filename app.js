@@ -189,18 +189,18 @@ const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   },
 ]);
 const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
-  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photo", followerCount: 218, followingCount: 64, isFollowing: true },
-  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photo", followerCount: 194, followingCount: 58, isFollowing: true },
-  { id: "mock-mo", displayName: "Mo", averageGermination: 94, approvedSnapshots: 18, likes: 611, favoriteSeedType: "Auto", followerCount: 167, followingCount: 46, isFollowing: true },
-  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photo", followerCount: 123, followingCount: 35, isFollowing: true },
-  { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", followerCount: 176, followingCount: 40, isFollowing: true },
-  { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", followerCount: 72, followingCount: 22, isFollowing: true },
-  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photo", followerCount: 144, followingCount: 39, isFollowing: true },
-  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", followerCount: 58, followingCount: 18, isFollowing: true },
-  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Regular", followerCount: 86, followingCount: 28, isFollowing: false },
-  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photo", followerCount: 162, followingCount: 44, isFollowing: false },
-  { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", followerCount: 108, followingCount: 32, isFollowing: false },
-  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Mixed", followerCount: 79, followingCount: 24, isFollowing: false },
+  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photo", favoriteSource: "Humboldt Seed Co", followerCount: 218, followingCount: 64, isFollowing: true },
+  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photo", favoriteSource: "Royal Queen Seeds", followerCount: 194, followingCount: 58, isFollowing: true },
+  { id: "mock-mo", displayName: "Mo", averageGermination: 94, approvedSnapshots: 18, likes: 611, favoriteSeedType: "Auto", favoriteSource: "Barney's Farm", followerCount: 167, followingCount: 46, isFollowing: true },
+  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photo", favoriteSource: "Green House", followerCount: 123, followingCount: 35, isFollowing: true },
+  { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", favoriteSource: "Fast Buds", followerCount: 176, followingCount: 40, isFollowing: true },
+  { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", favoriteSource: "Fast Buds", followerCount: 72, followingCount: 22, isFollowing: true },
+  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photo", favoriteSource: "Ethos Genetics", followerCount: 144, followingCount: 39, isFollowing: true },
+  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", favoriteSource: "Cannakan Labs", followerCount: 58, followingCount: 18, isFollowing: true },
+  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Regular", favoriteSource: "Archive Seeds", followerCount: 86, followingCount: 28, isFollowing: false },
+  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photo", favoriteSource: "Humboldt Seed Co", followerCount: 162, followingCount: 44, isFollowing: false },
+  { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", favoriteSource: "Sweet Seeds", followerCount: 108, followingCount: 32, isFollowing: false },
+  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Mixed", favoriteSource: "Multi-Source", followerCount: 79, followingCount: 24, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
@@ -641,8 +641,9 @@ const appState = {
   growNetworkFollowingLoaded: false,
   growNetworkFollowingError: "",
   growNetworkFollowingRefreshPromise: null,
-  growNetworkActiveTab: "following",
+  growNetworkActiveTab: "followers",
   mockGrowNetworkFollowStates: {},
+  mockGrowNetworkSeenNotificationIds: {},
   mockPublicSessionScenarioKey: "perfect-run",
   growNetworkActivity: [],
   growNetworkActivityLoaded: false,
@@ -6383,11 +6384,11 @@ function getMockGrowNetworkProfiles() {
 
 function syncMockGrowNetworkCaches() {
   const mockProfiles = getMockGrowNetworkProfiles();
-  mockProfiles.forEach((profile) => {
+  mockProfiles.forEach((profile, index) => {
     appState.publicMemberProfiles[profile.id] = {
       id: profile.id,
       displayName: profile.displayName,
-      avatarUrl: "",
+      avatarUrl: profile.avatarUrl || buildMockGalleryProfileAvatarDataUri(profile.displayName, profile.favoriteSource || profile.favoriteSeedType || "Grow Network", index),
       joinedAt: "2026-01-01T12:00:00.000Z",
     };
     appState.publicMemberFollowSummaries[profile.id] = {
@@ -6462,7 +6463,7 @@ function getMockGrowNetworkNotifications() {
     avatarUrl: String(notification.avatarUrl || "").trim(),
     actionText: String(notification.actionText || "").trim(),
     occurredAt: String(notification.occurredAt || "").trim() || GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT,
-    isUnseen: Boolean(notification.isUnseen),
+    isUnseen: Boolean(notification.isUnseen) && !appState.mockGrowNetworkSeenNotificationIds[String(notification.id || "").trim()],
     targetId: String(notification.targetId || "").trim(),
     targetType: String(notification.targetType || "").trim().toLowerCase(),
     targetLabel: String(notification.targetLabel || "").trim() || "activity",
@@ -6669,6 +6670,20 @@ function formatGrowNetworkNotificationBadgeCount(count = 0) {
     return "99+";
   }
   return String(normalizedCount);
+}
+
+function markMockGrowNetworkNotificationsSeen(notificationIds = []) {
+  notificationIds.forEach((notificationId) => {
+    const normalizedId = String(notificationId || "").trim();
+    if (!normalizedId) {
+      return;
+    }
+    appState.mockGrowNetworkSeenNotificationIds[normalizedId] = true;
+  });
+}
+
+function markAllMockGrowNetworkNotificationsSeen() {
+  markMockGrowNetworkNotificationsSeen(GROW_NETWORK_MOCK_NOTIFICATIONS.map((notification) => notification.id));
 }
 
 function ensureGrowNetworkNotificationGroupModal() {
@@ -22575,35 +22590,91 @@ function renderPublicMemberProfile(memberId) {
 
 function renderGrowNetworkPage() {
   const followingEntries = getGrowNetworkFollowingEntries();
-  const isMockNetwork = isMockDataEnabled();
   const useMockNotifications = shouldUseMockGrowNetworkNotifications();
-  const activeTab = isMockNetwork ? getGrowNetworkActiveTab() : "following";
-  const isLoadingNetworkActivity = !isMockNetwork && (Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id)));
+  const useMockPresentation = isMockDataEnabled() || useMockNotifications;
+  const activeTab = useMockPresentation ? getGrowNetworkActiveTab() : "following";
+  const isLoadingNetworkActivity = !useMockPresentation && (Boolean(appState.growNetworkActivityRefreshPromise) || (!appState.growNetworkActivityLoaded && Boolean(appState.user?.id)));
   const activities = getGrowNetworkActivityEntries();
-  const isLoadingFollowing = !isMockNetwork && (Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id)));
+  const isLoadingFollowing = !useMockPresentation && (Boolean(appState.growNetworkFollowingRefreshPromise) || (!appState.growNetworkFollowingLoaded && Boolean(appState.user?.id)));
   const hasNoFollows = !isLoadingFollowing && !followingEntries.length;
-  const mockMembers = isMockNetwork ? buildMockGrowNetworkMemberCards(activeTab) : [];
+  const mockMembers = useMockPresentation ? buildMockGrowNetworkMemberCards(activeTab) : [];
   const mockNotificationGroups = useMockNotifications
     ? buildMockGrowNetworkNotificationFeedGroups(getMockGrowNetworkNotifications())
     : [];
+  const showPreviewStats = useMockPresentation;
+  const unseenNotificationCount = useMockNotifications ? getUnseenMockGrowNetworkNotificationCount() : 0;
 
-  const renderMemberMetaMarkup = (member) => {
-    if (!isMockNetwork) {
-      return "";
+  const memberPanelCopy = (() => {
+    if (!useMockPresentation) {
+      return {
+        eyebrow: "Following",
+        title: "People You Follow",
+        subtitle: "Public growers you follow, with quick access to profile stats and shared activity.",
+      };
+    }
+
+    if (activeTab === "discover") {
+      return {
+        eyebrow: "Discover",
+        title: "Discover Growers",
+        subtitle: "Explore performance-focused mock profiles and test follow interactions visually.",
+      };
+    }
+
+    if (activeTab === "followers") {
+      return {
+        eyebrow: "Followers",
+        title: "Members Following You",
+        subtitle: "See who's following you in the Grow Network and how they are performing.",
+      };
+    }
+
+    return {
+      eyebrow: "Following",
+      title: "People You Follow",
+      subtitle: "Your followed growers, with enough mock depth to test card behavior and spacing.",
+    };
+  })();
+
+  const notificationPanelCopy = {
+    eyebrow: useMockNotifications ? "Notifications" : "Activity",
+    title: useMockNotifications ? "Activity Notifications" : "Network Activity",
+    subtitle: useMockNotifications
+      ? "Real-time activity from your network. Mock alerts stay isolated from production data."
+      : "Recent public grow activity from the growers in your network.",
+  };
+
+  const renderGrowNetworkNotificationTypeIcon = (type = "follow") => {
+    if (type === "like") {
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="m12 20-1.1-1C5.8 14.3 3 11.8 3 8.8 3 6.6 4.8 5 7 5c1.4 0 2.8.7 3.7 1.8C11.6 5.7 13 5 14.4 5 16.6 5 18.4 6.6 18.4 8.8c0 3-2.8 5.5-7.9 10.2Z"></path>
+        </svg>
+      `;
+    }
+
+    if (type === "system") {
+      return `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5 19h14"></path>
+          <path d="M6 16.5 11 11.5l3 3L19 9.5"></path>
+          <path d="M14.5 9.5H19v4.5"></path>
+        </svg>
+      `;
     }
 
     return `
-      <p class="grow-network-member-caption">${escapeHtml(`${member.averageGermination}% avg germination · ${member.favoriteSeedType}`)}</p>
-      <div class="grow-network-member-stats" aria-label="${escapeHtml(`${member.displayName} performance`)}">
-        <span class="grow-network-member-stat-chip">${escapeHtml(`${member.approvedSnapshots} approved`)}</span>
-        <span class="grow-network-member-stat-chip">${escapeHtml(`${member.likes} likes`)}</span>
-        <span class="grow-network-member-stat-chip">${escapeHtml(member.favoriteSeedType)}</span>
-      </div>
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+        <path d="M5.5 18c.6-2.1 2.2-3.5 4.5-3.5 2.1 0 3.7 1.2 4.4 3.1"></path>
+        <path d="M17 8v8"></path>
+        <path d="M13 12h8"></path>
+      </svg>
     `;
   };
 
   const renderMockTabsMarkup = () => {
-    if (!isMockNetwork) {
+    if (!useMockPresentation) {
       return "";
     }
 
@@ -22631,34 +22702,66 @@ function renderGrowNetworkPage() {
     `;
   };
 
-  const getMockSectionCopy = () => {
-    if (activeTab === "discover") {
-      return {
-        eyebrow: "Discover",
-        title: "Discover Growers",
-        subtitle: "Explore performance-focused mock profiles and test follow interactions visually.",
-      };
+  const renderMemberMetaMarkup = (member) => `
+    <p class="grow-network-member-caption">${escapeHtml(`${member.averageGermination}% avg germination · ${member.favoriteSeedType} · ${member.favoriteSource || "Grow Network"}`)}</p>
+    <div class="grow-network-member-stats" aria-label="${escapeHtml(`${member.displayName} performance`)}">
+      <span class="grow-network-member-stat-chip">${escapeHtml(`${member.approvedSnapshots} approved`)}</span>
+      <span class="grow-network-member-stat-chip">${escapeHtml(`${member.likes} likes`)}</span>
+      <span class="grow-network-member-stat-chip">${escapeHtml(member.favoriteSeedType)}</span>
+    </div>
+  `;
+
+  const renderMembersFooterMarkup = () => {
+    if (useMockPresentation) {
+      const footerTab = activeTab === "discover" ? "discover" : (activeTab === "following" ? "following" : "followers");
+      const footerLabel = activeTab === "discover"
+        ? "Discover More Growers"
+        : (activeTab === "following" ? "View All Following" : "View All Followers");
+      return `
+        <button
+          type="button"
+          class="grow-network-panel-footer grow-network-panel-footer-button"
+          data-grow-network-tab="${escapeHtml(footerTab)}"
+        >
+          <span>${escapeHtml(footerLabel)}</span>
+          <span class="grow-network-panel-footer-arrow" aria-hidden="true">›</span>
+        </button>
+      `;
     }
 
-    if (activeTab === "followers") {
-      return {
-        eyebrow: "Followers",
-        title: "Members Following You",
-        subtitle: "Preview how followers will appear in the Grow Network social layer.",
-      };
-    }
-
-    return {
-      eyebrow: "Following",
-      title: "People You Follow",
-      subtitle: "Your followed growers, with enough mock depth to test card behavior and spacing.",
-    };
+    return `
+      <a class="grow-network-panel-footer" href="#gallery">
+        <span>Browse Community Grow</span>
+        <span class="grow-network-panel-footer-arrow" aria-hidden="true">›</span>
+      </a>
+    `;
   };
+
+  const renderNotificationFooterMarkup = () => `
+    <a class="grow-network-panel-footer" href="#network">
+      <span>View All Notifications</span>
+      <span class="grow-network-panel-footer-arrow" aria-hidden="true">›</span>
+    </a>
+  `;
+
+  const growNetworkStats = showPreviewStats
+    ? [
+      { icon: "members", value: "128", label: "Total Followers", detail: "+12 this week" },
+      { icon: "snapshots", value: "76", label: "Active Growers", detail: "+8 this week" },
+      { icon: "activity", value: "2.4K", label: "Likes Received", detail: "+156 this week" },
+      { icon: "analytics", value: "15", label: "Sessions Trending", detail: "+3 this week" },
+    ]
+    : [
+      { icon: "members", value: followingEntries.length.toLocaleString(), label: "Growers You Follow", detail: isLoadingFollowing ? "loading network" : "active connections" },
+      { icon: "snapshots", value: new Set(activities.map((activity) => activity.memberId)).size.toLocaleString(), label: "Active Growers", detail: isLoadingNetworkActivity ? "loading activity" : "with recent updates" },
+      { icon: "activity", value: activities.length.toLocaleString(), label: "Activity Events", detail: isLoadingNetworkActivity ? "loading feed" : "recent network events" },
+      { icon: "analytics", value: followingEntries.length ? Math.max(1, Math.min(activities.length, followingEntries.length)).toLocaleString() : "0", label: "Trending Sessions", detail: "public growth shared" },
+    ];
 
   const renderFollowingListMarkup = () => {
     if (isLoadingFollowing) {
       return `
-        <div class="empty-state gallery-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>Loading your Grow Network...</p>
         </div>
       `;
@@ -22666,16 +22769,16 @@ function renderGrowNetworkPage() {
 
     if (appState.growNetworkFollowingError) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>Follow members to build your Grow Network.</p>
         </div>
       `;
     }
 
-    if (isMockNetwork) {
+    if (useMockPresentation) {
       if (!mockMembers.length) {
         return `
-          <div class="empty-state gallery-empty-state grow-network-empty-state">
+          <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
             <p>Follow members to build your Grow Network.</p>
           </div>
         `;
@@ -22687,7 +22790,11 @@ function renderGrowNetworkPage() {
             <article class="grow-network-member-card grow-network-member-card--mock">
               <a class="grow-network-member-identity" href="${escapeHtml(getPublicMemberProfileRoute(member.id))}">
                 <span class="grow-network-member-avatar-shell">
-                  ${renderPublicMemberAvatarMarkup(member.displayName, "", "grow-network-member-avatar")}
+                  ${renderPublicMemberAvatarMarkup(
+                    member.displayName,
+                    getPublicMemberProfile(member.id)?.avatarUrl || "",
+                    "grow-network-member-avatar",
+                  )}
                 </span>
                 <div class="grow-network-member-copy">
                   <strong>${escapeHtml(member.displayName)}</strong>
@@ -22698,7 +22805,7 @@ function renderGrowNetworkPage() {
                 <a class="button button-secondary" href="${escapeHtml(getPublicMemberProfileRoute(member.id))}">View Profile</a>
                 <button
                   type="button"
-                  class="button ${member.isFollowing ? "button-secondary" : "button-primary"} grow-network-mock-follow-button${member.isFollowing ? " is-following" : ""}"
+                  class="button ${member.isFollowing ? "button-secondary" : "button-primary"} grow-network-mock-follow-button grow-network-member-follow-button${member.isFollowing ? " is-following" : ""}"
                   data-grow-network-mock-follow="${escapeHtml(member.id)}"
                   aria-pressed="${member.isFollowing ? "true" : "false"}"
                 >${escapeHtml(member.isFollowing ? "Following" : "Follow")}</button>
@@ -22711,7 +22818,7 @@ function renderGrowNetworkPage() {
 
     if (!followingEntries.length) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>Follow members to build your Grow Network.</p>
         </div>
       `;
@@ -22725,6 +22832,7 @@ function renderGrowNetworkPage() {
           const profile = getPublicMemberProfile(memberId);
           const displayName = profile?.displayName || "Community member";
           const avatarUrl = profile?.avatarUrl || "";
+          const followSummary = appState.publicMemberFollowSummaries[memberId] || null;
           const publicSnapshotCount = getApprovedPublicSnapshotsForMember(memberId).length;
           const publicSnapshotLabel = isLoadingNetworkActivity
             ? "Public snapshot count loading..."
@@ -22740,6 +22848,11 @@ function renderGrowNetworkPage() {
                 <div class="grow-network-member-copy">
                   <strong>${escapeHtml(displayName)}</strong>
                   <span class="grow-network-member-caption">${escapeHtml(publicSnapshotLabel)}</span>
+                  <div class="grow-network-member-stats">
+                    <span class="grow-network-member-stat-chip">${escapeHtml(`${publicSnapshotCount.toLocaleString()} approved`)}</span>
+                    ${followSummary ? `<span class="grow-network-member-stat-chip">${escapeHtml(`${followSummary.followerCount.toLocaleString()} followers`)}</span>` : ""}
+                    <span class="grow-network-member-stat-chip">Community Grow</span>
+                  </div>
                 </div>
               </a>
               <div class="grow-network-member-actions">
@@ -22749,10 +22862,11 @@ function renderGrowNetworkPage() {
                   : `
                     <button
                       type="button"
-                      class="button button-secondary grow-network-unfollow-button"
+                      class="button button-secondary grow-network-unfollow-button grow-network-member-follow-button is-following"
                       data-grow-network-unfollow="${escapeHtml(memberId)}"
+                      aria-pressed="true"
                       ${isPublicMemberFollowPending(memberId) ? "disabled" : ""}
-                    >Unfollow</button>
+                    >Following</button>
                   `}
               </div>
             </article>
@@ -22765,7 +22879,7 @@ function renderGrowNetworkPage() {
   const renderActivityFeedMarkup = () => {
     if (hasNoFollows) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>Follow members to build your Grow Network.</p>
         </div>
       `;
@@ -22773,7 +22887,7 @@ function renderGrowNetworkPage() {
 
     if (appState.growNetworkActivityError) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>No public activity from your Grow Network yet.</p>
         </div>
       `;
@@ -22781,7 +22895,7 @@ function renderGrowNetworkPage() {
 
     if (isLoadingNetworkActivity) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>Loading public activity from your Grow Network...</p>
         </div>
       `;
@@ -22789,7 +22903,7 @@ function renderGrowNetworkPage() {
 
     if (!activities.length) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-panel-empty">
           <p>No public activity from your Grow Network yet.</p>
         </div>
       `;
@@ -22834,7 +22948,7 @@ function renderGrowNetworkPage() {
   const renderMockNotificationFeedMarkup = () => {
     if (!mockNotificationGroups.length) {
       return `
-        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-notification-empty-state">
+        <div class="empty-state gallery-empty-state grow-network-empty-state grow-network-notification-empty-state grow-network-panel-empty">
           <strong>No activity yet</strong>
           <p>Follow growers and share sessions to start seeing activity</p>
         </div>
@@ -22871,7 +22985,12 @@ function renderGrowNetworkPage() {
                 </p>
                 ${notificationGroup.targetName ? `<p class="grow-network-notification-target">${escapeHtml(notificationGroup.targetName)}</p>` : ""}
               </div>
-              <span class="grow-network-notification-time">${escapeHtml(notificationGroup.timeLabel)}</span>
+              <div class="grow-network-notification-meta">
+                <span class="grow-network-notification-time">${escapeHtml(notificationGroup.timeLabel)}</span>
+                <span class="grow-network-notification-type-icon is-${escapeHtml(notificationGroup.type)}" aria-hidden="true">
+                  ${renderGrowNetworkNotificationTypeIcon(notificationGroup.type)}
+                </span>
+              </div>
             </div>
           </${notificationGroup.isGrouped ? "button" : "article"}>
         `).join("")}
@@ -22879,51 +22998,81 @@ function renderGrowNetworkPage() {
     `;
   };
 
-  const mockSectionCopy = getMockSectionCopy();
-
   app.innerHTML = `
     <section class="card grow-network-page">
-      <div class="section-heading grow-network-page-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("community")}
-          <div>
+      <div class="grow-network-page-glow" aria-hidden="true"></div>
+      <div class="grow-network-page-heading">
+        <div class="grow-network-hero">
+          <div class="grow-network-hero-badge" aria-hidden="true">
+            ${renderAppSectionHeaderIcon("community")}
+          </div>
+          <div class="grow-network-hero-copy">
             <p class="eyebrow">COMMUNITY</p>
             <h2>Grow Network</h2>
             <p class="muted">Follow members and see public grow activity from your network.</p>
           </div>
         </div>
-        <div class="inline-actions">
-          <a class="button button-secondary" href="#gallery">Browse Community Grow</a>
-        </div>
+        <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
       </div>
       <div class="grow-network-layout">
-        <section class="grow-network-section">
+        <section class="grow-network-panel grow-network-panel--members grow-network-section">
           ${renderMockTabsMarkup()}
-          <div class="section-heading grow-network-section-heading app-section-header">
-            <div class="section-title-with-icon app-section-header-main">
-              ${renderAppSectionHeaderIcon("following")}
+          <div class="grow-network-section-heading">
+            <div class="grow-network-panel-header">
+              <div class="grow-network-panel-icon" aria-hidden="true">
+                ${renderAppSectionHeaderIcon("following")}
+              </div>
               <div>
-                <p class="eyebrow">${escapeHtml(isMockNetwork ? mockSectionCopy.eyebrow : "Following")}</p>
-                <h3>${escapeHtml(isMockNetwork ? mockSectionCopy.title : "People You Follow")}</h3>
-                ${isMockNetwork ? `<p class="muted grow-network-section-subtitle">${escapeHtml(mockSectionCopy.subtitle)}</p>` : ""}
+                <p class="eyebrow">${escapeHtml(memberPanelCopy.eyebrow)}</p>
+                <h3>${escapeHtml(memberPanelCopy.title)}</h3>
+                <p class="muted grow-network-section-subtitle">${escapeHtml(memberPanelCopy.subtitle)}</p>
               </div>
             </div>
           </div>
           ${renderFollowingListMarkup()}
+          ${renderMembersFooterMarkup()}
         </section>
-        <section class="grow-network-section">
-          <div class="section-heading grow-network-section-heading app-section-header">
-            <div class="section-title-with-icon app-section-header-main">
-              ${renderAppSectionHeaderIcon("activity")}
+        <section class="grow-network-panel grow-network-panel--notifications grow-network-section">
+          <div class="grow-network-section-heading grow-network-section-heading--featured">
+            <div class="grow-network-panel-header">
+              <div class="grow-network-panel-icon" aria-hidden="true">
+                ${renderAppSectionHeaderIcon("activity")}
+              </div>
               <div>
-                <p class="eyebrow">${escapeHtml(useMockNotifications ? "Notifications" : "Activity")}</p>
-                <h3>${escapeHtml(useMockNotifications ? "Activity Notifications" : "Network Activity")}</h3>
-                ${useMockNotifications ? '<p class="muted grow-network-section-subtitle">Mock follower and like alerts are shown for this test account only and remain separate from production notification data.</p>' : ""}
+                <p class="eyebrow">${escapeHtml(notificationPanelCopy.eyebrow)}</p>
+                <h3>${escapeHtml(notificationPanelCopy.title)}</h3>
+                <p class="muted grow-network-section-subtitle">${escapeHtml(notificationPanelCopy.subtitle)}</p>
               </div>
             </div>
+            ${useMockNotifications ? `
+              <button
+                type="button"
+                class="button button-secondary grow-network-mark-read-button"
+                data-grow-network-mark-all-read="true"
+                ${unseenNotificationCount ? "" : "disabled"}
+              >
+                <span aria-hidden="true">✓</span>
+                <span>Mark all as read</span>
+              </button>
+            ` : ""}
           </div>
           ${useMockNotifications ? renderMockNotificationFeedMarkup() : renderActivityFeedMarkup()}
+          ${renderNotificationFooterMarkup()}
         </section>
+      </div>
+      <div class="grow-network-stats-strip" aria-label="Grow Network highlights">
+        ${growNetworkStats.map((stat) => `
+          <article class="grow-network-stat-card">
+            <div class="grow-network-stat-icon" aria-hidden="true">
+              ${renderAppSectionHeaderIcon(stat.icon)}
+            </div>
+            <div class="grow-network-stat-copy">
+              <strong>${escapeHtml(stat.value)}</strong>
+              <span>${escapeHtml(stat.label)}</span>
+              <p>${escapeHtml(stat.detail)}</p>
+            </div>
+          </article>
+        `).join("")}
       </div>
     </section>
   `;
@@ -22952,6 +23101,11 @@ function renderGrowNetworkPage() {
     });
   });
 
+  app.querySelector("[data-grow-network-mark-all-read='true']")?.addEventListener("click", () => {
+    markAllMockGrowNetworkNotificationsSeen();
+    renderGrowNetworkPage();
+  });
+
   app.querySelectorAll("[data-grow-network-notification-group]").forEach((button) => {
     button.addEventListener("click", () => {
       const notificationGroup = mockNotificationGroups.find((entry) => entry.id === (button.dataset.growNetworkNotificationGroup || ""));
@@ -22960,6 +23114,8 @@ function renderGrowNetworkPage() {
       }
     });
   });
+
+  updateNavState();
 }
 
 function renderSessionDetail(sessionId) {
