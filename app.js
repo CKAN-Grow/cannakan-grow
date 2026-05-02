@@ -36,6 +36,7 @@ const MAX_AVATAR_DIMENSION = 512;
 const MAX_SOURCE_LOGO_DIMENSION = 768;
 const ACTIVE_MEMBER_LOOKBACK_DAYS = 30;
 const GROW_GALLERY_BUCKET = "grow-gallery";
+const SOURCES_TABLE = "sources";
 const GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_likes";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
@@ -448,6 +449,7 @@ const appState = {
   sourcesLoaded: false,
   sourcesError: "",
   sourcesRefreshPromise: null,
+  sourcesTableUnavailable: false,
   sourceAdminEditingId: "",
   sourceAdminMessage: "",
   announcements: [],
@@ -502,6 +504,7 @@ const appState = {
   gallerySnapshots: [],
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
+  gallerySnapshotLikesTableUnavailable: false,
   homeGalleryRankingsHydrationRequested: false,
   memberCount: null,
   memberCountLoaded: false,
@@ -4163,9 +4166,38 @@ function buildSiteAnalyticsVisitorPayload(pageContext = getCurrentSiteAnalyticsP
   };
 }
 
+function getSupabaseErrorSearchText(error) {
+  return String(
+    error?.message
+    || error?.details
+    || error?.hint
+    || error?.error_description
+    || "",
+  ).trim().toLowerCase();
+}
+
+function isSupabaseTableMissingError(error, tableName = "") {
+  const normalizedTableName = String(tableName || "").trim().toLowerCase();
+  if (!normalizedTableName) {
+    return false;
+  }
+
+  const message = getSupabaseErrorSearchText(error);
+  const code = String(error?.code || "").trim().toUpperCase();
+  return (
+    message.includes(normalizedTableName)
+    && (
+      message.includes("relation")
+      || message.includes("schema cache")
+      || message.includes("could not find table")
+      || message.includes("could not find the table")
+      || code === "PGRST205"
+    )
+  );
+}
+
 function isSiteAnalyticsTableMissingError(error) {
-  const message = String(error?.message || error?.details || "").toLowerCase();
-  return message.includes("site_analytics_events") && message.includes("relation");
+  return isSupabaseTableMissingError(error, SITE_ANALYTICS_TABLE);
 }
 
 function isSiteAnalyticsPolicyError(error) {
@@ -4479,7 +4511,7 @@ function initializeSiteVisitorTracking() {
 }
 
 async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_FILTER, reason = "refresh") {
-  if (!appState.supabase || !isAdminUser()) {
+  if (!appState.supabase || !isAdminUser() || appState.siteVisitorAnalyticsTableUnavailable) {
     return [];
   }
 
@@ -4842,7 +4874,7 @@ async function loadGallerySnapshots(reason = "unspecified") {
 
 async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified") {
   const uniqueSnapshotIds = [...new Set((snapshotIds || []).filter(Boolean))];
-  if (!appState.supabase || !uniqueSnapshotIds.length) {
+  if (!appState.supabase || !uniqueSnapshotIds.length || appState.gallerySnapshotLikesTableUnavailable) {
     return [];
   }
 
@@ -4852,6 +4884,10 @@ async function loadGallerySnapshotLikes(snapshotIds = [], reason = "unspecified"
     .in("snapshot_id", uniqueSnapshotIds);
 
   if (error) {
+    if (isGallerySnapshotLikesTableMissingError(error)) {
+      appState.gallerySnapshotLikesTableUnavailable = true;
+      return [];
+    }
     console.error("Failed to load gallery likes", { reason, error });
     return [];
   }
@@ -7390,6 +7426,19 @@ function normalizeSourceStatus(status) {
   return String(status || "").trim().toLowerCase() === "hidden" ? "hidden" : "active";
 }
 
+function isSourcesTableMissingError(error) {
+  return isSupabaseTableMissingError(error, SOURCES_TABLE);
+}
+
+function markSourcesTableUnavailable() {
+  appState.sourcesTableUnavailable = true;
+  appState.sourcesError = "Source management data store is missing. Run the latest schema setup.";
+}
+
+function isGallerySnapshotLikesTableMissingError(error) {
+  return isSupabaseTableMissingError(error, GROW_GALLERY_LIKES_TABLE);
+}
+
 function normalizeSourceWebsiteUrl(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
@@ -7441,7 +7490,7 @@ function getSourceErrorMessage(error, fallbackMessage) {
   if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
     return "You do not have permission to manage sources.";
   }
-  if (normalizedMessage.includes("relation") && normalizedMessage.includes("sources")) {
+  if (isSourcesTableMissingError(error)) {
     return "Source management data store is missing. Run the latest schema setup.";
   }
   if (normalizedMessage.includes("column") && normalizedMessage.includes("sources")) {
@@ -7452,16 +7501,20 @@ function getSourceErrorMessage(error, fallbackMessage) {
 }
 
 async function loadSources(reason = "unspecified") {
-  if (!appState.supabase) {
+  if (!appState.supabase || appState.sourcesTableUnavailable) {
     return [];
   }
 
   const { data, error } = await appState.supabase
-    .from("sources")
+    .from(SOURCES_TABLE)
     .select("*")
     .order("name", { ascending: true });
 
   if (error) {
+    if (isSourcesTableMissingError(error)) {
+      markSourcesTableUnavailable();
+      return [];
+    }
     console.error("Failed to load sources", { reason, error });
     appState.sourcesError = getSourceErrorMessage(error, "Could not load sources.");
     return [];
@@ -7477,10 +7530,13 @@ async function loadSources(reason = "unspecified") {
 async function refreshSources(options = {}) {
   const { force = false, reason = "refresh" } = options;
 
-  if (!appState.supabase) {
+  if (!appState.supabase || appState.sourcesTableUnavailable) {
     appState.sources = [];
     appState.sourcesLoaded = true;
-    appState.sourcesError = "";
+    if (!appState.sourcesTableUnavailable) {
+      appState.sourcesError = "";
+    }
+    ensureSourceCatalogDatalist();
     return [];
   }
 
@@ -7644,6 +7700,9 @@ async function saveSourceRecord(sourceInput, options = {}) {
   if (!appState.supabase || !isAdminUser()) {
     throw new Error("You must be an admin to manage sources.");
   }
+  if (appState.sourcesTableUnavailable) {
+    throw new Error("Source management data store is missing. Run the latest schema setup.");
+  }
 
   let uploadedLogo = null;
   let logoUrl = String(existingSource?.logoUrl || "").trim();
@@ -7673,11 +7732,14 @@ async function saveSourceRecord(sourceInput, options = {}) {
   };
 
   const query = existingSource?.id
-    ? appState.supabase.from("sources").update(payload).eq("id", existingSource.id).select("*").single()
-    : appState.supabase.from("sources").insert(payload).select("*").single();
+    ? appState.supabase.from(SOURCES_TABLE).update(payload).eq("id", existingSource.id).select("*").single()
+    : appState.supabase.from(SOURCES_TABLE).insert(payload).select("*").single();
   const { data, error } = await query;
 
   if (error) {
+    if (isSourcesTableMissingError(error)) {
+      markSourcesTableUnavailable();
+    }
     if (uploadedLogo?.path) {
       await removeSourceLogoFromStorage(uploadedLogo.path);
     }
@@ -7734,13 +7796,19 @@ async function deleteSourceRecord(source) {
   if (!appState.supabase || !isAdminUser()) {
     throw new Error("You must be an admin to manage sources.");
   }
+  if (appState.sourcesTableUnavailable) {
+    throw new Error("Source management data store is missing. Run the latest schema setup.");
+  }
 
   const { error } = await appState.supabase
-    .from("sources")
+    .from(SOURCES_TABLE)
     .delete()
     .eq("id", source.id);
 
   if (error) {
+    if (isSourcesTableMissingError(error)) {
+      markSourcesTableUnavailable();
+    }
     throw new Error(getSourceErrorMessage(error, "Could not delete source."));
   }
 
@@ -8896,6 +8964,9 @@ async function toggleGallerySnapshotLike(snapshotId) {
   if (!appState.supabase || !appState.user?.id) {
     throw new Error("Sign in to like Community Grow snapshots.");
   }
+  if (appState.gallerySnapshotLikesTableUnavailable) {
+    throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+  }
 
   if (snapshot.likedByCurrentUser) {
     const { error } = await appState.supabase
@@ -8905,6 +8976,10 @@ async function toggleGallerySnapshotLike(snapshotId) {
       .eq("user_id", appState.user.id);
 
     if (error) {
+      if (isGallerySnapshotLikesTableMissingError(error)) {
+        appState.gallerySnapshotLikesTableUnavailable = true;
+        throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+      }
       throw new Error("Could not remove your like right now.");
     }
   } else {
@@ -8922,6 +8997,10 @@ async function toggleGallerySnapshotLike(snapshotId) {
       );
 
     if (error) {
+      if (isGallerySnapshotLikesTableMissingError(error)) {
+        appState.gallerySnapshotLikesTableUnavailable = true;
+        throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+      }
       throw new Error("Could not save your like right now.");
     }
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v10";
+const CACHE_NAME = "cannakan-grow-shell-v11";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -46,9 +46,16 @@ function cacheResponse(request, response) {
     return response;
   }
 
-  caches.open(CACHE_NAME).then((cache) => {
-    cache.put(request, response.clone());
-  });
+  let responseClone = null;
+  try {
+    responseClone = response.clone();
+  } catch (error) {
+    return response;
+  }
+
+  void caches.open(CACHE_NAME).then((cache) => {
+    return cache.put(request, responseClone);
+  }).catch(() => {});
   return response;
 }
 
