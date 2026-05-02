@@ -10342,9 +10342,8 @@ input::placeholder {
 
 .grow-network-notification-card {
   position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: 14px;
   padding: 14px 16px;
   border-radius: 18px;
@@ -10357,6 +10356,10 @@ input::placeholder {
 .grow-network-notification-button {
   width: 100%;
   border: none;
+  padding: 14px 16px;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.7);
   text-align: left;
   cursor: pointer;
 }
@@ -10393,7 +10396,6 @@ input::placeholder {
   width: 4px;
   border-radius: 999px;
   background: #94d159;
-  box-shadow: 0 0 14px rgba(148, 209, 89, 0.34);
 }
 
 .grow-network-member-card {
@@ -10423,38 +10425,49 @@ input::placeholder {
 }
 
 .grow-network-notification-avatar {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
   object-fit: cover;
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  box-shadow: 0 8px 18px rgba(29, 49, 33, 0.1);
+  border: 2px solid rgba(246, 248, 245, 0.94);
+  box-shadow: 0 6px 14px rgba(29, 49, 33, 0.08);
   display: block;
+}
+
+.grow-network-notification-avatar-shell {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .grow-network-notification-avatar-stack {
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  padding-right: 8px;
+  padding-right: 4px;
+}
+
+.grow-network-notification-avatar-stack.is-single {
+  padding-right: 0;
 }
 
 .grow-network-notification-avatar-stack-item {
   position: relative;
   display: inline-flex;
-  margin-left: calc(var(--notification-avatar-index, 0) * -14px);
 }
 
-.grow-network-notification-avatar-stack-item:first-child {
-  margin-left: 0;
+.grow-network-notification-avatar-stack-item + .grow-network-notification-avatar-stack-item {
+  margin-left: -8px;
 }
 
-.grow-network-notification-avatar-stack-item .grow-network-notification-avatar {
-  width: 42px;
-  height: 42px;
-  box-shadow:
-    0 0 0 2px rgba(246, 248, 245, 0.95),
-    0 8px 18px rgba(29, 49, 33, 0.1);
+.grow-network-notification-avatar-count {
+  display: grid;
+  place-items: center;
+  background: rgba(228, 234, 226, 0.92);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .grow-network-member-avatar.is-fallback,
@@ -10472,6 +10485,7 @@ input::placeholder {
   background: linear-gradient(135deg, rgba(148, 209, 89, 0.92), rgba(95, 172, 75, 0.88));
   color: #152016;
   font-weight: 800;
+  font-size: 0.72rem;
 }
 
 .grow-network-member-copy,
@@ -10494,8 +10508,19 @@ input::placeholder {
   font-size: 0.88rem;
 }
 
+.grow-network-notification-main {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .grow-network-notification-copy {
   min-width: 0;
+  flex: 1 1 auto;
+  display: grid;
+  gap: 3px;
 }
 
 .grow-network-notification-text {
@@ -10515,13 +10540,22 @@ input::placeholder {
   font-weight: 500;
 }
 
+.grow-network-notification-target {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
 .grow-network-notification-time {
-  justify-self: end;
+  flex: 0 0 auto;
+  margin-left: auto;
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  text-align: right;
 }
 
 .grow-network-notification-empty-state {
@@ -10686,10 +10720,14 @@ body.theme-dark .grow-network-notification-time {
   color: #a9b4ab;
 }
 
-body.theme-dark .grow-network-notification-avatar-stack-item .grow-network-notification-avatar {
-  box-shadow:
-    0 0 0 2px rgba(21, 24, 21, 0.96),
-    0 8px 18px rgba(0, 0, 0, 0.22);
+body.theme-dark .grow-network-notification-avatar {
+  border-color: rgba(21, 24, 21, 0.96);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .grow-network-notification-avatar-count {
+  background: rgba(58, 64, 59, 0.96);
+  color: #f6f8f5;
 }
 
 body.theme-dark .grow-network-notification-group-modal-item {
@@ -10701,6 +10739,7 @@ body.theme-dark .grow-network-notification-group-modal-item-copy strong {
   color: #f6f8f5;
 }
 
+body.theme-dark .grow-network-notification-target,
 body.theme-dark .grow-network-notification-group-modal-item-copy span,
 body.theme-dark .grow-network-notification-group-modal-item-time {
   color: #a9b4ab;
@@ -10843,14 +10882,22 @@ body.theme-dark .public-member-profile-stat-button:focus-visible .public-member-
   }
 
   .grow-network-notification-card {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .grow-network-notification-main {
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+
+  .grow-network-notification-copy {
+    width: 100%;
   }
 
   .grow-network-notification-time {
-    grid-column: 2;
-    justify-self: start;
-    margin-top: -4px;
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
   }
 
   .public-member-profile-connection-actions {

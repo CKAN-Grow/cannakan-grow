@@ -356,6 +356,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
+    targetName: "KAN Session - May 2",
     targetRoute: "#sessions",
   },
   {
@@ -368,6 +369,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
+    targetName: "KAN Session - May 2",
     targetRoute: "#sessions",
   },
   {
@@ -380,6 +382,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "session",
+    targetName: "KAN Session - May 2",
     targetRoute: "#sessions",
   },
   {
@@ -392,6 +395,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "snapshot-demo",
     targetType: "snapshot",
     targetLabel: "snapshot",
+    targetName: "Snapshot - May 2",
     targetRoute: "#gallery",
   },
   {
@@ -405,6 +409,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
+    targetName: "KAN Session - May 2",
     targetRoute: "#sessions",
   },
 ]);
@@ -6445,6 +6450,7 @@ function getMockGrowNetworkNotifications() {
     targetId: String(notification.targetId || "").trim(),
     targetType: String(notification.targetType || "").trim().toLowerCase(),
     targetLabel: String(notification.targetLabel || "").trim() || "activity",
+    targetName: String(notification.targetName || "").trim(),
     targetRoute: String(notification.targetRoute || "").trim() || "#network",
   })).sort((left, right) => {
     const leftTime = parseCompletedAtValue(left.occurredAt)?.getTime() || 0;
@@ -6547,8 +6553,10 @@ function buildGrowNetworkNotificationFeedGroup(notifications = []) {
     timeLabel: formatGrowNetworkNotificationRelativeTime(primaryNotification.occurredAt),
     occurredAt: primaryNotification.occurredAt || "",
     targetLabel: String(primaryNotification.targetLabel || "activity").trim(),
+    targetName: String(primaryNotification.targetName || "").trim(),
     targetRoute: String(primaryNotification.targetRoute || "#network").trim() || "#network",
     avatarMembers: groupedNotifications.slice(0, GROW_NETWORK_NOTIFICATION_MAX_STACKED_AVATARS),
+    overflowAvatarCount: Math.max(0, groupedNotifications.length - GROW_NETWORK_NOTIFICATION_MAX_STACKED_AVATARS),
     notifications: groupedNotifications,
     modalTitle: normalizedType === "follow"
       ? "Followers"
@@ -22806,20 +22814,30 @@ function renderGrowNetworkPage() {
             class="grow-network-notification-card${notificationGroup.isUnseen ? " is-unseen" : ""}${notificationGroup.isGrouped ? " is-interactive grow-network-notification-button" : ""}"
             ${notificationGroup.isGrouped ? `data-grow-network-notification-group="${escapeHtml(notificationGroup.id)}"` : ""}
           >
-            <span class="${escapeHtml(notificationGroup.avatarMembers.length > 1 ? "grow-network-notification-avatar-stack" : "grow-network-notification-avatar-shell")}">
-              ${notificationGroup.avatarMembers.map((member, index) => `
-                <span class="grow-network-notification-avatar-stack-item" style="--notification-avatar-index:${index}">
-                  ${renderPublicMemberAvatarMarkup(member.displayName, member.avatarUrl, "grow-network-notification-avatar")}
-                </span>
-              `).join("")}
+            <span class="grow-network-notification-avatar-shell">
+              <span class="${escapeHtml(notificationGroup.avatarMembers.length > 1 || notificationGroup.overflowAvatarCount ? "grow-network-notification-avatar-stack" : "grow-network-notification-avatar-stack is-single")}">
+                ${notificationGroup.avatarMembers.map((member) => `
+                  <span class="grow-network-notification-avatar-stack-item">
+                    ${renderPublicMemberAvatarMarkup(member.displayName, member.avatarUrl, "grow-network-notification-avatar")}
+                  </span>
+                `).join("")}
+                ${notificationGroup.overflowAvatarCount ? `
+                  <span class="grow-network-notification-avatar-stack-item grow-network-notification-avatar-stack-count" aria-hidden="true">
+                    <span class="grow-network-notification-avatar grow-network-notification-avatar-count">+${escapeHtml(String(notificationGroup.overflowAvatarCount))}</span>
+                  </span>
+                ` : ""}
+              </span>
             </span>
-            <div class="grow-network-notification-copy">
-              <p class="grow-network-notification-text">
-                <strong>${escapeHtml(notificationGroup.actorText)}</strong>
-                <span>${escapeHtml(notificationGroup.actionText)}</span>
-              </p>
+            <div class="grow-network-notification-main">
+              <div class="grow-network-notification-copy">
+                <p class="grow-network-notification-text">
+                  <strong>${escapeHtml(notificationGroup.actorText)}</strong>
+                  <span>${escapeHtml(notificationGroup.actionText)}</span>
+                </p>
+                ${notificationGroup.targetName ? `<p class="grow-network-notification-target">${escapeHtml(notificationGroup.targetName)}</p>` : ""}
+              </div>
+              <span class="grow-network-notification-time">${escapeHtml(notificationGroup.timeLabel)}</span>
             </div>
-            <span class="grow-network-notification-time">${escapeHtml(notificationGroup.timeLabel)}</span>
           </${notificationGroup.isGrouped ? "button" : "article"}>
         `).join("")}
       </div>
