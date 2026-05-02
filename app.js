@@ -71,6 +71,7 @@ const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
 const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
 const SITE_ANALYTICS_DEFAULT_FILTER = "today";
 const SUPABASE_MISSING_TABLE_ERROR_CODES = new Set(["PGRST116", "PGRST205", "42P01"]);
+const SUPABASE_MISSING_COLUMN_ERROR_CODES = new Set(["PGRST204", "42703"]);
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
 const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
@@ -148,6 +149,19 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   createdAt: "",
   updatedAt: "",
 });
+const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
+  "notify_snapshot",
+  "notify_completion",
+  "notify_follow",
+  "notify_like",
+]);
+const USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS = Object.freeze([
+  "email_notifications",
+  "low_filter_alerts",
+  "session_reminders",
+  "community_updates",
+]);
+const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   {
     key: "mock-avery-moss",
@@ -465,6 +479,7 @@ const appState = {
   notificationPreferences: null,
   notificationPreferencesError: "",
   notificationPreferencesTableUnavailable: false,
+  notificationPreferencesSchemaMode: "",
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -746,6 +761,7 @@ function resetSessionScopedAppState() {
   appState.notificationPreferences = null;
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesTableUnavailable = false;
+  appState.notificationPreferencesSchemaMode = "";
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
@@ -4260,18 +4276,40 @@ function getSupabaseErrorSearchText(error) {
     error?.message
     || error?.details
     || error?.hint
+    || error?.error
     || error?.error_description
+    || error?.statusText
     || "",
   ).trim().toLowerCase();
 }
 
+function getSupabaseErrorStatusCode(error) {
+  const statusCode = Number(
+    error?.status
+    || error?.statusCode
+    || error?.response?.status
+    || 0,
+  );
+  return Number.isFinite(statusCode) ? statusCode : 0;
+}
+
 function getSafeCssRules(sheet) {
+  if (!sheet || typeof sheet !== "object") {
+    return [];
+  }
+
   try {
-    if (!sheet) {
-      return [];
-    }
-    return sheet.cssRules || sheet.rules || [];
-  } catch {
+    const rules = "cssRules" in sheet
+      ? sheet.cssRules
+      : ("rules" in sheet ? sheet.rules : null);
+    return rules || [];
+  } catch (error) {
+    logRuntimeIssueOnce(
+      "warn",
+      "safe-cssrules-read-failed",
+      "Ignored stylesheet inspection error while reading cssRules.",
+      { message: String(error?.message || "").trim() },
+    );
     return [];
   }
 }
@@ -4305,37 +4343,186 @@ function isSupabaseTableMissingError(error, tableNames = "") {
 
   const message = getSupabaseErrorSearchText(error);
   const code = String(error?.code || "").trim().toUpperCase();
+  const statusCode = getSupabaseErrorStatusCode(error);
   const referencesKnownTable = normalizedTableNames.some((tableName) => message.includes(tableName));
   const missingTableSignature = (
     message.includes("relation")
     || message.includes("schema cache")
     || message.includes("could not find table")
     || message.includes("could not find the table")
+    || statusCode === 404
     || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code)
   );
   if (!missingTableSignature) {
     return false;
   }
 
-  return referencesKnownTable || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code);
+  return referencesKnownTable || statusCode === 404 || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code);
 }
 
 function isSiteAnalyticsTableMissingError(error) {
   return isSupabaseTableMissingError(error, SITE_ANALYTICS_TABLE);
 }
 
+function isSupabaseColumnMissingError(error, tableName = "", columnNames = []) {
+  const normalizedTableName = String(tableName || "").trim().toLowerCase();
+  const normalizedColumnNames = (Array.isArray(columnNames) ? columnNames : [columnNames])
+    .map((columnName) => String(columnName || "").trim().toLowerCase())
+    .filter(Boolean);
+  if (!normalizedTableName || !normalizedColumnNames.length) {
+    return false;
+  }
+
+  const message = getSupabaseErrorSearchText(error);
+  const code = String(error?.code || "").trim().toUpperCase();
+  const missingColumnSignature = (
+    (message.includes("column") && (
+      message.includes("does not exist")
+      || message.includes("could not find")
+      || message.includes("schema cache")
+    ))
+    || SUPABASE_MISSING_COLUMN_ERROR_CODES.has(code)
+  );
+  if (!missingColumnSignature || !message.includes(normalizedTableName)) {
+    return false;
+  }
+
+  return normalizedColumnNames.some((columnName) => message.includes(columnName));
+}
+
 function isUserNotificationPreferencesTableMissingError(error) {
   return isSupabaseTableMissingError(error, USER_NOTIFICATION_PREFERENCES_TABLE);
+}
+
+function isUserNotificationPreferencesSchemaModeError(error) {
+  return (
+    isSupabaseColumnMissingError(
+      error,
+      USER_NOTIFICATION_PREFERENCES_TABLE,
+      USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS,
+    )
+    || isSupabaseColumnMissingError(
+      error,
+      USER_NOTIFICATION_PREFERENCES_TABLE,
+      USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS,
+    )
+  );
 }
 
 function markUserNotificationPreferencesTableUnavailable() {
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
+  appState.notificationPreferencesSchemaMode = "";
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-table-unavailable",
     "Notification preferences unavailable; using defaults for this session.",
   );
+}
+
+function getUserNotificationPreferencesSchemaModeFromRow(row) {
+  if (!row || typeof row !== "object") {
+    return "";
+  }
+
+  const rowKeys = Object.keys(row);
+  const hasLegacyColumns = USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS.some((columnName) => rowKeys.includes(columnName));
+  const hasModernColumns = USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS.some((columnName) => rowKeys.includes(columnName));
+  if (hasLegacyColumns && hasModernColumns) {
+    return "hybrid";
+  }
+  if (hasModernColumns) {
+    return "modern";
+  }
+  if (hasLegacyColumns) {
+    return "legacy";
+  }
+  return "";
+}
+
+function setUserNotificationPreferencesSchemaMode(modeOrRow = "") {
+  const nextMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(modeOrRow)
+    ? modeOrRow
+    : getUserNotificationPreferencesSchemaModeFromRow(modeOrRow);
+  appState.notificationPreferencesSchemaMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(nextMode)
+    ? nextMode
+    : "";
+}
+
+function getUserNotificationPreferencesBooleanValue(row, keys = [], fallbackValue = true) {
+  const normalizedKeys = Array.isArray(keys) ? keys : [keys];
+  for (const key of normalizedKeys) {
+    if (Object.prototype.hasOwnProperty.call(row || {}, key)) {
+      return row[key] !== false;
+    }
+  }
+  return fallbackValue;
+}
+
+function buildUserNotificationPreferencesSeedPayload(userId = "", existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES) {
+  return {
+    user_id: userId,
+    created_at: existingPreferences.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function buildUserNotificationPreferencesUpsertPayload(
+  userId = "",
+  preferencesInput = {},
+  existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  schemaMode = "",
+) {
+  const effectiveMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(schemaMode)
+    ? schemaMode
+    : "hybrid";
+  const notifySnapshot =
+    preferencesInput?.notifySnapshot !== undefined
+      ? Boolean(preferencesInput.notifySnapshot)
+      : existingPreferences.notifySnapshot !== false;
+  const notifyCompletion =
+    preferencesInput?.notifyCompletion !== undefined
+      ? Boolean(preferencesInput.notifyCompletion)
+      : existingPreferences.notifyCompletion !== false;
+  const notifyFollow =
+    preferencesInput?.notifyFollow !== undefined
+      ? Boolean(preferencesInput.notifyFollow)
+      : existingPreferences.notifyFollow !== false;
+  const notifyLike =
+    preferencesInput?.notifyLike !== undefined
+      ? Boolean(preferencesInput.notifyLike)
+      : existingPreferences.notifyLike !== false;
+  const payload = {
+    user_id: userId,
+    created_at: existingPreferences.createdAt || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (effectiveMode === "legacy" || effectiveMode === "hybrid") {
+    payload.notify_snapshot = notifySnapshot;
+    payload.notify_completion = notifyCompletion;
+    payload.notify_follow = notifyFollow;
+    payload.notify_like = notifyLike;
+  }
+
+  if (effectiveMode === "modern" || effectiveMode === "hybrid") {
+    payload.email_notifications = notifySnapshot;
+    payload.session_reminders = notifyCompletion;
+    payload.community_updates = notifyFollow;
+    payload.low_filter_alerts = notifyLike;
+  }
+
+  return payload;
+}
+
+function getUserNotificationPreferencesWriteModes(preferredMode = "") {
+  if (preferredMode === "legacy") {
+    return ["legacy", "modern", "hybrid"];
+  }
+  if (preferredMode === "modern") {
+    return ["modern", "legacy", "hybrid"];
+  }
+  return ["hybrid", "legacy", "modern"];
 }
 
 function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
@@ -5038,22 +5225,15 @@ async function ensureUserNotificationPreferences(user) {
   }
 
   if (existingPreferences) {
+    setUserNotificationPreferencesSchemaMode(existingPreferences);
     return normalizeUserNotificationPreferencesRow(existingPreferences);
   }
 
-  const preferencePayload = {
-    user_id: user.id,
-    notify_snapshot: true,
-    notify_completion: true,
-    notify_follow: true,
-    notify_like: true,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  const preferencePayload = buildUserNotificationPreferencesSeedPayload(user.id);
 
   const { data: savedPreferences, error: upsertError } = await appState.supabase
     .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-    .upsert(preferencePayload)
+    .upsert(preferencePayload, { onConflict: "user_id" })
     .select("*")
     .single();
 
@@ -5072,6 +5252,7 @@ async function ensureUserNotificationPreferences(user) {
     return { ...DEFAULT_NOTIFICATION_PREFERENCES };
   }
 
+  setUserNotificationPreferencesSchemaMode(savedPreferences);
   return normalizeUserNotificationPreferencesRow(savedPreferences);
 }
 
@@ -5659,10 +5840,10 @@ function normalizeUserNotificationPreferencesRow(row) {
   }
 
   return {
-    notifySnapshot: row.notify_snapshot !== false,
-    notifyCompletion: row.notify_completion !== false,
-    notifyFollow: row.notify_follow !== false,
-    notifyLike: row.notify_like !== false,
+    notifySnapshot: getUserNotificationPreferencesBooleanValue(row, ["notify_snapshot", "email_notifications"]),
+    notifyCompletion: getUserNotificationPreferencesBooleanValue(row, ["notify_completion", "session_reminders"]),
+    notifyFollow: getUserNotificationPreferencesBooleanValue(row, ["notify_follow", "community_updates"]),
+    notifyLike: getUserNotificationPreferencesBooleanValue(row, ["notify_like", "low_filter_alerts"]),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -8569,43 +8750,48 @@ async function saveUserNotificationPreferences(preferencesInput) {
   }
 
   const existingPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
-  const payload = {
-    user_id: appState.user.id,
-    notify_snapshot:
-      preferencesInput?.notifySnapshot !== undefined
-        ? Boolean(preferencesInput.notifySnapshot)
-        : existingPreferences.notifySnapshot !== false,
-    notify_completion:
-      preferencesInput?.notifyCompletion !== undefined
-        ? Boolean(preferencesInput.notifyCompletion)
-        : existingPreferences.notifyCompletion !== false,
-    notify_follow:
-      preferencesInput?.notifyFollow !== undefined
-        ? Boolean(preferencesInput.notifyFollow)
-        : existingPreferences.notifyFollow !== false,
-    notify_like:
-      preferencesInput?.notifyLike !== undefined
-        ? Boolean(preferencesInput.notifyLike)
-        : existingPreferences.notifyLike !== false,
-    created_at: existingPreferences.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
+  const fallbackPayload = buildUserNotificationPreferencesUpsertPayload(
+    appState.user.id,
+    preferencesInput,
+    existingPreferences,
+    "legacy",
+  );
 
   if (appState.notificationPreferencesTableUnavailable) {
-    return normalizeUserNotificationPreferencesRow(payload);
+    return normalizeUserNotificationPreferencesRow(fallbackPayload);
   }
 
-  const { data, error } = await appState.supabase
-    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-    .upsert(payload)
-    .select("*")
-    .single();
+  const writeModes = getUserNotificationPreferencesWriteModes(appState.notificationPreferencesSchemaMode);
+  let lastError = null;
 
-  if (error) {
+  for (const writeMode of writeModes) {
+    const payload = buildUserNotificationPreferencesUpsertPayload(
+      appState.user.id,
+      preferencesInput,
+      existingPreferences,
+      writeMode,
+    );
+    const { data, error } = await appState.supabase
+      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+      .upsert(payload, { onConflict: "user_id" })
+      .select("*")
+      .single();
+
+    if (!error) {
+      setUserNotificationPreferencesSchemaMode(data || writeMode);
+      return normalizeUserNotificationPreferencesRow(data);
+    }
+
+    if (isUserNotificationPreferencesSchemaModeError(error)) {
+      lastError = error;
+      continue;
+    }
+
     if (isUserNotificationPreferencesTableMissingError(error)) {
       markUserNotificationPreferencesTableUnavailable();
-      return normalizeUserNotificationPreferencesRow(payload);
+      return normalizeUserNotificationPreferencesRow(fallbackPayload);
     }
+
     console.error("[Cannakan Profile] Supabase notification preference upsert failed", {
       payload,
       error,
@@ -8613,7 +8799,12 @@ async function saveUserNotificationPreferences(preferencesInput) {
     throw error;
   }
 
-  return normalizeUserNotificationPreferencesRow(data);
+  if (isUserNotificationPreferencesSchemaModeError(lastError)) {
+    markUserNotificationPreferencesTableUnavailable();
+    return normalizeUserNotificationPreferencesRow(fallbackPayload);
+  }
+
+  return normalizeUserNotificationPreferencesRow(fallbackPayload);
 }
 
 async function scheduleUserDeletion() {
