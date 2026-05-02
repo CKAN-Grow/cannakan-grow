@@ -4492,17 +4492,16 @@ function getSafeCssRules(sheet) {
   }
 
   try {
-    const rules = "cssRules" in sheet
-      ? sheet.cssRules
-      : ("rules" in sheet ? sheet.rules : null);
-    return rules || [];
-  } catch (error) {
-    logRuntimeIssueOnce(
-      "warn",
-      "safe-cssrules-read-failed",
-      "Ignored stylesheet inspection error while reading cssRules.",
-      { message: String(error?.message || "").trim() },
-    );
+    // Some extension-injected or cross-origin stylesheets block cssRules access.
+    // Skip those sheets quietly so style inspection never breaks the app.
+    if ("cssRules" in sheet && sheet.cssRules) {
+      return sheet.cssRules;
+    }
+    if ("rules" in sheet && sheet.rules) {
+      return sheet.rules;
+    }
+    return [];
+  } catch {
     return [];
   }
 }
