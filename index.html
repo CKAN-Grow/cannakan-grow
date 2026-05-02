@@ -45,7 +45,7 @@
   </script>
   <div class="app-shell">
     <header class="topbar">
-      <div>
+      <div class="topbar-brand">
         <p class="eyebrow">Grow Session Tracker</p>
         <div class="app-logo-wrap" aria-label="Cannakan® Grow">
           <img class="app-logo app-logo--light" src="src/assets/Cannakan_GROW_lightmode.png" alt="Cannakan® Grow">
@@ -59,8 +59,37 @@
         <a href="#network" data-network-nav hidden>Grow Network</a>
         <a href="#admin" data-admin-nav hidden>Admin</a>
       </nav>
-      <div id="auth-status" class="auth-status"></div>
+      <div class="topbar-controls">
+        <div id="auth-status" class="auth-status"></div>
+        <button
+          id="mobile-nav-toggle"
+          class="mobile-nav-toggle"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded="false"
+          aria-controls="mobile-nav-drawer"
+        >
+          <span class="mobile-nav-toggle-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4 7h16M4 12h16M4 17h16"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
     </header>
+    <div id="mobile-nav-drawer" class="mobile-nav-drawer" hidden>
+      <div class="mobile-nav-backdrop" data-mobile-nav-close="true"></div>
+      <aside class="mobile-nav-panel" aria-label="Mobile navigation">
+        <div class="mobile-nav-panel-header">
+          <div>
+            <p class="eyebrow">Navigation</p>
+            <h2>Menu</h2>
+          </div>
+          <button type="button" class="mobile-nav-close" aria-label="Close navigation menu" data-mobile-nav-close="true">×</button>
+        </div>
+        <div id="mobile-nav-content" class="mobile-nav-content"></div>
+      </aside>
+    </div>
 
     <main id="app" class="app-main"></main>
 

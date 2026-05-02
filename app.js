@@ -150,6 +150,13 @@ const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
   createdAt: "",
   updatedAt: "",
 });
+const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
+  notifyCommunityActivity: false,
+  showProfileInCommunityGrow: true,
+  allowFollowers: true,
+  showGrowStatsPublicly: true,
+});
+const PROFILE_PAGE_SETTINGS_STORAGE_KEY = "cannakanGrowProfilePageSettings";
 const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
   "notify_snapshot",
   "notify_completion",
@@ -565,6 +572,9 @@ const MOCK_ADMIN_REPORTS = Object.freeze([
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
 const appFooter = document.querySelector(".app-footer");
+const mobileNavToggle = document.querySelector("#mobile-nav-toggle");
+const mobileNavDrawer = document.querySelector("#mobile-nav-drawer");
+const mobileNavContent = document.querySelector("#mobile-nav-content");
 const appState = {
   initialized: false,
   loading: true,
@@ -590,6 +600,9 @@ const appState = {
   authNotice: "",
   deletionPromptShown: false,
   accountMenuOpen: false,
+  mobileNavOpen: false,
+  profilePageSettings: null,
+  profilePageSettingsUserId: "",
   customSelectOpenKey: "",
   sessions: [],
   filterPaperInventory: null,
@@ -819,11 +832,35 @@ function markAuthReady(reason = "auth-change") {
   console.log("[Cannakan App Init] authReady true", { reason });
 }
 
+function initializeTopbarControls() {
+  if (mobileNavToggle && mobileNavToggle.dataset.bound !== "true") {
+    mobileNavToggle.dataset.bound = "true";
+    mobileNavToggle.addEventListener("click", () => {
+      toggleMobileNavigation();
+    });
+  }
+
+  if (mobileNavDrawer && mobileNavDrawer.dataset.bound !== "true") {
+    mobileNavDrawer.dataset.bound = "true";
+    mobileNavDrawer.querySelectorAll("[data-mobile-nav-close='true']").forEach((button) => {
+      button.addEventListener("click", () => {
+        closeMobileNavigation();
+      });
+    });
+  }
+
+  syncMobileNavigationMenu();
+}
+
 function setTopbarNavigationReadyState() {
   const topbarNav = document.querySelector(".topbar-nav");
   if (topbarNav) {
     topbarNav.hidden = !appState.authReady;
     topbarNav.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
+  }
+  if (mobileNavToggle) {
+    mobileNavToggle.hidden = !appState.authReady;
+    mobileNavToggle.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
   }
 }
 
@@ -899,6 +936,9 @@ function resetSessionScopedAppState() {
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
+  appState.mobileNavOpen = false;
+  appState.profilePageSettings = null;
+  appState.profilePageSettingsUserId = "";
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -2054,6 +2094,114 @@ function toggleAccountMenu() {
   updateAuthStatus();
 }
 
+function closeMobileNavigation() {
+  if (!appState.mobileNavOpen) {
+    if (mobileNavDrawer) {
+      mobileNavDrawer.hidden = true;
+      mobileNavDrawer.setAttribute("aria-hidden", "true");
+    }
+    mobileNavToggle?.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("mobile-nav-open");
+    return;
+  }
+
+  appState.mobileNavOpen = false;
+  if (mobileNavDrawer) {
+    mobileNavDrawer.hidden = true;
+    mobileNavDrawer.setAttribute("aria-hidden", "true");
+  }
+  mobileNavToggle?.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("mobile-nav-open");
+}
+
+function openMobileNavigation() {
+  if (!mobileNavDrawer) {
+    return;
+  }
+
+  appState.mobileNavOpen = true;
+  mobileNavDrawer.hidden = false;
+  mobileNavDrawer.setAttribute("aria-hidden", "false");
+  mobileNavToggle?.setAttribute("aria-expanded", "true");
+  document.body.classList.add("mobile-nav-open");
+}
+
+function toggleMobileNavigation() {
+  if (appState.mobileNavOpen) {
+    closeMobileNavigation();
+    return;
+  }
+  openMobileNavigation();
+}
+
+function navigateToProfileRoute() {
+  closeAccountMenu();
+  closeMobileNavigation();
+  window.history.pushState(null, "", "/profile");
+  appState.currentRouteHash = "#profile";
+  safeRender();
+}
+
+function navigateToHashRoute(nextHash = "#home") {
+  const normalizedHash = normalizeNavigationHash(nextHash);
+  closeAccountMenu();
+  closeMobileNavigation();
+  const pathPrefix = getCurrentAppPathRoute() ? "/" : window.location.pathname;
+  window.history.pushState(null, "", `${pathPrefix}${window.location.search}${normalizedHash}`);
+  appState.currentRouteHash = normalizedHash;
+  safeRender();
+}
+
+function syncMobileNavigationMenu() {
+  if (!mobileNavContent) {
+    return;
+  }
+
+  const isSignedIn = Boolean(appState.user);
+  const unseenNotificationCount = isSignedIn ? getUnseenMockGrowNetworkNotificationCount() : 0;
+  const growNetworkBadge = unseenNotificationCount > 0
+    ? `<span class="mobile-nav-link-badge" aria-hidden="true">${escapeHtml(formatGrowNetworkNotificationBadgeCount(unseenNotificationCount))}</span>`
+    : "";
+
+  mobileNavContent.innerHTML = `
+    <nav class="mobile-nav-links" aria-label="Mobile primary navigation">
+      <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
+      <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
+      <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
+      ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
+      ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
+      ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
+    </nav>
+  `;
+
+  mobileNavContent.querySelectorAll("[data-mobile-nav-link='true']").forEach((link) => {
+    link.addEventListener("click", () => {
+      closeMobileNavigation();
+    });
+  });
+
+  mobileNavContent.querySelector("[data-mobile-profile-link='true']")?.addEventListener("click", () => {
+    navigateToProfileRoute();
+  });
+
+  mobileNavContent.querySelector("[data-mobile-sign-in='true']")?.addEventListener("click", () => {
+    closeMobileNavigation();
+    openAuthModal();
+  });
+
+  mobileNavContent.querySelector("[data-mobile-sign-out='true']")?.addEventListener("click", async () => {
+    closeMobileNavigation();
+    appState.userRole = "user";
+    appState.isAdmin = false;
+    updateAuthStatus();
+    safeRender();
+    await appState.supabase?.auth.signOut();
+  });
+
+  syncAdminNavigationVisibility();
+  syncGrowNetworkNavigationVisibility();
+}
+
 function getMenuIconMarkup(icon) {
   const icons = {
     menu: `
@@ -2091,6 +2239,11 @@ function getMenuIconMarkup(icon) {
         <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path>
         <path d="M14 16l5-4-5-4"></path>
         <path d="M19 12H9"></path>
+      </svg>
+    `,
+    chevronDown: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="m7 10 5 5 5-5"></path>
       </svg>
     `,
   };
@@ -4190,6 +4343,7 @@ async function bootstrapApp() {
   initializeSupabaseClient();
   initializeSiteVisitorTracking();
   bindBackToTopVisibilityObservers();
+  initializeTopbarControls();
   await rehydratePersistentBrowserState("bootstrap:start");
   updateAuthStatus();
   syncInstallPromptBanner();
@@ -8270,6 +8424,91 @@ function getProfileDisplayName() {
   return appState.profile?.username || appState.user?.email || "Signed in";
 }
 
+function getProfileAvatarFallbackLabel() {
+  return getPublicMemberInitialsLabel(getProfileDisplayName());
+}
+
+function renderProfileAvatarMarkup({
+  avatarUrl = "",
+  displayName = getProfileDisplayName(),
+  className = "profile-page-avatar",
+  fallbackClassName = "profile-page-avatar is-fallback",
+} = {}) {
+  const normalizedDisplayName = String(displayName || "").trim() || "Member";
+  const fallbackMarkup = `<span class="${escapeHtml(fallbackClassName)}" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(normalizedDisplayName))}</span>`;
+  if (avatarUrl) {
+    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(normalizedDisplayName)}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
+  }
+  return fallbackMarkup;
+}
+
+function normalizeProfilePageSettings(settings = {}) {
+  return {
+    notifyCommunityActivity: settings.notifyCommunityActivity === true,
+    showProfileInCommunityGrow: settings.showProfileInCommunityGrow !== false,
+    allowFollowers: settings.allowFollowers !== false,
+    showGrowStatsPublicly: settings.showGrowStatsPublicly !== false,
+  };
+}
+
+function getProfilePageSettingsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${PROFILE_PAGE_SETTINGS_STORAGE_KEY}:${normalizedUserId}`
+    : PROFILE_PAGE_SETTINGS_STORAGE_KEY;
+}
+
+function loadStoredProfilePageSettings(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+  }
+
+  try {
+    const storedValue = localStorage.getItem(getProfilePageSettingsStorageKey(normalizedUserId));
+    return normalizeProfilePageSettings(JSON.parse(storedValue || "null") || DEFAULT_PROFILE_PAGE_SETTINGS);
+  } catch (error) {
+    console.warn("[Profile Settings] Failed to read local profile page settings.", error);
+    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+  }
+}
+
+function getCurrentProfilePageSettings() {
+  const currentUserId = String(appState.user?.id || "").trim();
+  if (!currentUserId) {
+    return { ...DEFAULT_PROFILE_PAGE_SETTINGS };
+  }
+
+  if (!appState.profilePageSettings || appState.profilePageSettingsUserId !== currentUserId) {
+    appState.profilePageSettings = loadStoredProfilePageSettings(currentUserId);
+    appState.profilePageSettingsUserId = currentUserId;
+  }
+
+  return normalizeProfilePageSettings(appState.profilePageSettings);
+}
+
+function saveStoredProfilePageSettings(userId = "", settings = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    throw new Error("You must be signed in to save profile settings.");
+  }
+
+  const normalizedSettings = normalizeProfilePageSettings(settings);
+  try {
+    localStorage.setItem(
+      getProfilePageSettingsStorageKey(normalizedUserId),
+      JSON.stringify(normalizedSettings),
+    );
+  } catch (error) {
+    console.warn("[Profile Settings] Failed to persist local profile page settings.", error);
+    throw new Error("Profile settings could not be saved in this browser.");
+  }
+
+  appState.profilePageSettings = normalizedSettings;
+  appState.profilePageSettingsUserId = normalizedUserId;
+  return normalizedSettings;
+}
+
 function isDeletionScheduled(profile = appState.profile) {
   if (!profile) {
     return false;
@@ -12124,6 +12363,7 @@ function updateAuthStatus() {
     authStatus.innerHTML = `<span class="auth-pill">Checking session...</span>`;
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
+    syncMobileNavigationMenu();
     return;
   }
 
@@ -12131,6 +12371,7 @@ function updateAuthStatus() {
     authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
+    syncMobileNavigationMenu();
     return;
   }
 
@@ -12144,6 +12385,7 @@ function updateAuthStatus() {
     });
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
+    syncMobileNavigationMenu();
     return;
   }
 
@@ -12163,21 +12405,35 @@ function updateAuthStatus() {
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
-      <div class="auth-profile-chip">
-        ${appState.profile?.avatarUrl ? `<img src="${escapeHtml(appState.profile.avatarUrl)}" alt="${escapeHtml(getProfileDisplayName())}" class="auth-avatar">` : '<span class="auth-avatar auth-avatar-fallback" aria-hidden="true"></span>'}
-        <span class="auth-pill">${escapeHtml(getProfileDisplayName())}</span>
-      </div>
       <button
         id="account-menu-trigger"
-        class="button button-secondary account-menu-trigger"
+        class="button button-secondary account-menu-trigger account-menu-trigger--profile"
         type="button"
-        aria-label="Open account menu"
+        aria-label="Open profile menu"
         aria-haspopup="menu"
         aria-expanded="${appState.accountMenuOpen ? "true" : "false"}"
       >
-        ${getMenuIconMarkup("menu")}
+        ${renderProfileAvatarMarkup({
+          avatarUrl: appState.profile?.avatarUrl || "",
+          displayName: getProfileDisplayName(),
+          className: "auth-avatar",
+          fallbackClassName: "auth-avatar auth-avatar-fallback",
+        })}
+        <span class="account-menu-trigger-copy">
+          <strong>${escapeHtml(getProfileDisplayName())}</strong>
+          <span>${escapeHtml(appState.user?.email || "")}</span>
+        </span>
+        ${getMenuIconMarkup("chevronDown")}
       </button>
       <div class="account-dropdown ${appState.accountMenuOpen ? "is-open" : ""}" ${appState.accountMenuOpen ? "" : "hidden"} role="menu" aria-label="Account menu">
+        <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("profile")}
+          <span>Profile</span>
+        </button>
+        <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("profile")}
+          <span>Edit Profile</span>
+        </button>
         <button id="account-theme-toggle" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup(themeIcon)}
           <span>${themeLabel}</span>
@@ -12188,14 +12444,6 @@ function updateAuthStatus() {
             <span>Admin</span>
           </button>
         ` : ""}
-        <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup("profile")}
-          <span>Profile</span>
-        </button>
-        <button id="account-edit-profile" class="account-menu-item" type="button" role="menuitem">
-          ${getMenuIconMarkup("profile")}
-          <span>Edit Profile</span>
-        </button>
         <button id="account-delete-profile" class="account-menu-item is-danger" type="button" role="menuitem">
           ${getMenuIconMarkup("delete")}
           <span>Delete Profile</span>
@@ -12213,6 +12461,7 @@ function updateAuthStatus() {
   const dropdown = authStatus.querySelector(".account-dropdown");
   syncAdminNavigationVisibility();
   syncGrowNetworkNavigationVisibility();
+  syncMobileNavigationMenu();
 
   menuRoot?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -12241,8 +12490,7 @@ function updateAuthStatus() {
   dropdown?.querySelector("#account-profile-link")?.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    closeAccountMenu();
-    window.location.hash = "#profile";
+    navigateToProfileRoute();
   });
 
   dropdown?.querySelector("#account-edit-profile")?.addEventListener("click", (event) => {
@@ -14264,6 +14512,7 @@ async function shareSnapshotBlob(blob, fileName, text) {
 function render() {
   closeAllCustomSelects();
   clearSessionTimerInterval();
+  closeMobileNavigation();
   updateAuthStatus();
   syncInstallPromptBanner();
   syncMockDataBanner();
@@ -14477,10 +14726,6 @@ function render() {
   }
 
   if (route === "profile") {
-    if (!appState.user) {
-      renderProtectedRouteSignInPrompt();
-      return;
-    }
     renderProfilePage();
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "profile",
@@ -14684,37 +14929,30 @@ function renderAuthScreen(options = {}) {
   }
 }
 
-function renderProfilePage() {
-  if (!appState.user) {
-    renderAuthScreen({ autoOpenModal: true });
-    return;
-  }
+function renderProfileSettingsToggleMarkup({
+  name = "",
+  title = "",
+  description = "",
+  checked = false,
+  disabled = false,
+} = {}) {
+  return `
+    <label class="profile-toggle-row${disabled ? " is-disabled" : ""}">
+      <span class="profile-toggle-copy">
+        <strong>${escapeHtml(title)}</strong>
+        <span>${escapeHtml(description)}</span>
+      </span>
+      <span class="profile-toggle-control">
+        <input type="checkbox" name="${escapeHtml(name)}" ${checked ? "checked" : ""} ${disabled ? "disabled" : ""}>
+        <span class="profile-toggle-switch" aria-hidden="true"></span>
+      </span>
+    </label>
+  `;
+}
 
-  const displayName = String(appState.profile?.username || "").trim();
-  const email = String(appState.user?.email || appState.profile?.email || "").trim() || "No email on file";
-  const notificationPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
-  const profileSetupComplete = hasCompletedProfile();
-  const notificationPreviewItems = [
-    {
-      label: "Email notifications",
-      enabled: notificationPreferences.notifySnapshot !== false,
-    },
-    {
-      label: "Session reminders",
-      enabled: notificationPreferences.notifyCompletion !== false,
-    },
-    {
-      label: "Follow activity",
-      enabled: notificationPreferences.notifyFollow !== false,
-    },
-    {
-      label: "Like activity",
-      enabled: notificationPreferences.notifyLike !== false,
-    },
-  ];
-
+function renderProfileSignInPrompt() {
   app.innerHTML = `
-    <section class="card profile-page" aria-label="Profile and settings">
+    <section class="card profile-page profile-page--sign-in" aria-label="Profile sign-in prompt">
       <div class="profile-page-glow" aria-hidden="true"></div>
       <header class="profile-page-header">
         <div class="profile-page-hero">
@@ -14727,60 +14965,317 @@ function renderProfilePage() {
           <div class="profile-page-copy">
             <p class="eyebrow">Account</p>
             <h2>Profile</h2>
-            <p class="muted">Manage your Cannakan Grow account details and keep a dedicated home ready for settings as profile tools expand.</p>
+            <p class="muted">Sign in to open your Cannakan Grow control center and manage account, notification, and community preferences.</p>
           </div>
         </div>
-        <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
       </header>
-      <div class="profile-page-layout">
-        <article class="profile-section-card">
-          <div class="profile-section-heading">
-            <div>
-              <p class="eyebrow">Account Info</p>
-              <h3>Account Info</h3>
-              <p class="profile-section-subtitle">Your signed-in Cannakan Grow identity and account status.</p>
-            </div>
-            <span class="profile-status-badge ${profileSetupComplete ? "is-complete" : "is-pending"}">${escapeHtml(profileSetupComplete ? "Profile ready" : "Setup incomplete")}</span>
+      <div class="profile-sign-in-card">
+        <strong>Your profile settings are waiting for you.</strong>
+        <p>Sign in to manage notification preferences, privacy controls, and the settings that will power future profile tools.</p>
+        <div class="profile-page-actions">
+          <p class="profile-page-message">Only signed-in members can access the Profile page.</p>
+          <div class="inline-actions">
+            <button type="button" class="button button-primary" data-profile-sign-in="true">Sign In</button>
+            <a class="button button-secondary" href="#home">Go Home</a>
           </div>
-          <div class="profile-account-grid">
-            <div class="profile-detail-card">
-              <span class="profile-detail-label">Email</span>
-              <strong class="profile-detail-value">${escapeHtml(email)}</strong>
-            </div>
-            <div class="profile-detail-card">
-              <span class="profile-detail-label">Display Name</span>
-              <strong class="profile-detail-value">${escapeHtml(displayName || "Not set yet")}</strong>
-            </div>
+        </div>
+      </div>
+    </section>
+  `;
+
+  app.querySelector("[data-profile-sign-in='true']")?.addEventListener("click", () => {
+    openAuthModal();
+  });
+}
+
+function bindProfilePageForm(form) {
+  if (!form || !appState.user) {
+    return;
+  }
+
+  const messageElement = form.querySelector("#profile-settings-message");
+  const submitButton = form.querySelector("#profile-settings-submit");
+  const state = {
+    saving: false,
+  };
+
+  const getFormState = () => ({
+    notifySnapshot: Boolean(form.elements.notifySnapshot?.checked),
+    notifyCompletion: Boolean(form.elements.notifyCompletion?.checked),
+    notifyFollow: Boolean(form.elements.notifyFollow?.checked),
+    notifyLike: Boolean(form.elements.notifyLike?.checked),
+    notifyCommunityActivity: Boolean(form.elements.notifyCommunityActivity?.checked),
+    showProfileInCommunityGrow: Boolean(form.elements.showProfileInCommunityGrow?.checked),
+    allowFollowers: Boolean(form.elements.allowFollowers?.checked),
+    showGrowStatsPublicly: Boolean(form.elements.showGrowStatsPublicly?.checked),
+  });
+
+  const setMessage = (message, isError = false) => {
+    if (!messageElement) {
+      return;
+    }
+    messageElement.textContent = message;
+    messageElement.classList.toggle("is-error", Boolean(message && isError));
+  };
+
+  const setSavingState = (isSaving) => {
+    state.saving = isSaving;
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = isSaving;
+      submitButton.textContent = isSaving ? "Saving..." : "Save Changes";
+    }
+  };
+
+  const updateUnsavedState = () => {
+    refreshUnsavedChangesState();
+    if (!state.saving && !appState.unsavedChanges.hasUnsavedChanges && messageElement?.textContent === "You have unsaved changes.") {
+      setMessage("");
+    }
+  };
+
+  registerUnsavedChangesContext({
+    pageHash: "#profile",
+    getSignature: () => JSON.stringify(getFormState()),
+    saveFn: async () => {
+      form.requestSubmit();
+    },
+  });
+
+  form.addEventListener("input", () => {
+    updateUnsavedState();
+    if (!state.saving && appState.unsavedChanges.hasUnsavedChanges) {
+      setMessage("You have unsaved changes.");
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (state.saving) {
+      return;
+    }
+
+    const nextValues = getFormState();
+    const notificationPreferencesPayload = {
+      notifySnapshot: nextValues.notifySnapshot,
+      notifyCompletion: nextValues.notifyCompletion,
+      notifyFollow: nextValues.notifyFollow,
+      notifyLike: nextValues.notifyLike,
+    };
+    const profilePageSettingsPayload = {
+      notifyCommunityActivity: nextValues.notifyCommunityActivity,
+      showProfileInCommunityGrow: nextValues.showProfileInCommunityGrow,
+      allowFollowers: nextValues.allowFollowers,
+      showGrowStatsPublicly: nextValues.showGrowStatsPublicly,
+    };
+
+    setSavingState(true);
+    setMessage("");
+
+    const warnings = [];
+
+    try {
+      appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencesPayload);
+    } catch (error) {
+      warnings.push(`Notification preferences used a safe fallback: ${error.message || "Settings are unavailable right now."}`);
+      appState.notificationPreferences = normalizeUserNotificationPreferencesRow(notificationPreferencesPayload);
+    }
+
+    try {
+      saveStoredProfilePageSettings(appState.user.id, profilePageSettingsPayload);
+    } catch (error) {
+      warnings.push(error.message || "Privacy settings could not be saved in this browser.");
+    }
+
+    if (!warnings.length) {
+      markUnsavedChangesSaved();
+      setMessage("Profile settings saved.");
+    } else {
+      markUnsavedChangesSaved();
+      setMessage(warnings.join(" "), false);
+    }
+
+    setSavingState(false);
+  });
+}
+
+function renderProfilePage() {
+  if (!appState.user) {
+    renderProfileSignInPrompt();
+    return;
+  }
+
+  const displayName = String(appState.profile?.username || "").trim();
+  const email = String(appState.user?.email || appState.profile?.email || "").trim() || "No email on file";
+  const notificationPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const profilePageSettings = getCurrentProfilePageSettings();
+  const profileSetupComplete = hasCompletedProfile();
+  const memberSinceValue = appState.profile?.createdAt || appState.user?.created_at || "";
+  const memberSinceLabel = memberSinceValue ? formatPublicMemberJoinedDateLabel(memberSinceValue) : "Not available yet";
+  const accountInfoRows = [
+    { label: "Email", value: email },
+    { label: "Display Name", value: displayName || "Choose a display name in Edit Profile" },
+    { label: "Member Since", value: memberSinceLabel },
+  ];
+  const usesNotificationFallback = Boolean(appState.notificationPreferencesTableUnavailable);
+
+  app.innerHTML = `
+    <section class="card profile-page" aria-label="Profile and settings">
+      <div class="profile-page-glow" aria-hidden="true"></div>
+      <header class="profile-page-header">
+        <div class="profile-page-hero">
+          ${renderProfileAvatarMarkup({
+            avatarUrl: appState.profile?.avatarUrl || "",
+            displayName: getProfileDisplayName(),
+            className: "profile-page-avatar",
+            fallbackClassName: "profile-page-avatar is-fallback",
+          })}
+          <div class="profile-page-copy">
+            <p class="eyebrow">Control Center</p>
+            <h2>${escapeHtml(getProfileDisplayName())}</h2>
+            <p class="profile-page-email">${escapeHtml(email)}</p>
           </div>
-          <p class="profile-section-note">${profileSetupComplete
-            ? "Your display name and avatar can be updated any time with the current profile editor."
-            : "Finish your display name and avatar so Grow Network and future settings can use your full profile."}</p>
-        </article>
-        <article class="profile-section-card">
-          <div class="profile-section-heading">
-            <div>
-              <p class="eyebrow">Notifications</p>
-              <h3>Notification Preferences</h3>
-              <p class="profile-section-subtitle">This section is ready for the dedicated settings controls that will live here next.</p>
+        </div>
+        <div class="profile-page-header-actions">
+          <span class="profile-status-badge is-member">Member</span>
+          <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
+        </div>
+      </header>
+      <form id="profile-settings-form" class="profile-settings-form">
+        <div class="profile-page-layout">
+          <article class="profile-section-card">
+            <div class="profile-section-heading">
+              <div>
+                <p class="eyebrow">Account Info</p>
+                <h3>Account Info</h3>
+                <p class="profile-section-subtitle">Your Cannakan Grow identity details.</p>
+              </div>
+              <span class="profile-status-badge ${profileSetupComplete ? "is-complete" : "is-pending"}">${escapeHtml(profileSetupComplete ? "Profile ready" : "Setup incomplete")}</span>
             </div>
-          </div>
-          <div class="profile-placeholder-card">
-            <strong>Preference controls are coming here.</strong>
-            <p>For now, Cannakan Grow continues using your saved notification defaults and safe fallbacks so this area never blocks the app.</p>
-            <div class="profile-preference-preview" aria-label="Current notification preference preview">
-              ${notificationPreviewItems.map((item) => `
-                <span class="profile-preference-chip ${item.enabled ? "is-enabled" : "is-disabled"}">${escapeHtml(item.label)}</span>
+            <div class="profile-account-grid">
+              ${accountInfoRows.map((row) => `
+                <div class="profile-detail-card">
+                  <span class="profile-detail-label">${escapeHtml(row.label)}</span>
+                  <strong class="profile-detail-value">${escapeHtml(row.value)}</strong>
+                </div>
               `).join("")}
             </div>
+            <p class="profile-section-note">${profileSetupComplete
+              ? "Update your display name and avatar any time with Edit Profile."
+              : "Complete your display name and avatar so your public and community profile can stay consistent."}</p>
+          </article>
+          <article class="profile-section-card">
+            <div class="profile-section-heading">
+              <div>
+                <p class="eyebrow">Notifications</p>
+                <h3>Notification Preferences</h3>
+                <p class="profile-section-subtitle">Control the alerts Cannakan Grow sends and previews for your account.</p>
+              </div>
+            </div>
+            <div class="profile-toggle-list">
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifySnapshot",
+                title: "Email notifications",
+                description: "Receive account and grow updates by email.",
+                checked: notificationPreferences.notifySnapshot !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifyCompletion",
+                title: "Push notifications",
+                description: "Stay on top of reminders and grow milestones.",
+                checked: notificationPreferences.notifyCompletion !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifyFollow",
+                title: "Follow notifications",
+                description: "Know when growers start following you.",
+                checked: notificationPreferences.notifyFollow !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifyLike",
+                title: "Like notifications",
+                description: "Get notified when your sessions or snapshots are liked.",
+                checked: notificationPreferences.notifyLike !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifyCommunityActivity",
+                title: "Community activity",
+                description: "Preview upcoming Community Grow activity alerts in this browser.",
+                checked: profilePageSettings.notifyCommunityActivity === true,
+              })}
+            </div>
+            <p class="profile-section-note">${usesNotificationFallback
+              ? "Notification preferences are currently using safe defaults or fallback storage because the settings table is unavailable."
+              : "Notification settings are connected to your saved Cannakan Grow preferences."}</p>
+          </article>
+          <article class="profile-section-card">
+            <div class="profile-section-heading">
+              <div>
+                <p class="eyebrow">Privacy</p>
+                <h3>Privacy & Community</h3>
+                <p class="profile-section-subtitle">Choose how visible your profile is in Community Grow and Grow Network.</p>
+              </div>
+            </div>
+            <div class="profile-toggle-list">
+              ${renderProfileSettingsToggleMarkup({
+                name: "showProfileInCommunityGrow",
+                title: "Show profile in Community Grow",
+                description: "Display your identity when you share public grow activity.",
+                checked: profilePageSettings.showProfileInCommunityGrow !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "allowFollowers",
+                title: "Allow followers",
+                description: "Let other growers follow your public profile.",
+                checked: profilePageSettings.allowFollowers !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "showGrowStatsPublicly",
+                title: "Show grow stats publicly",
+                description: "Include high-level grow performance in public-facing profile surfaces.",
+                checked: profilePageSettings.showGrowStatsPublicly !== false,
+              })}
+            </div>
+            <p class="profile-section-note">These community preferences are saved safely in this browser until broader backend profile settings are added.</p>
+          </article>
+          <article class="profile-section-card">
+            <div class="profile-section-heading">
+              <div>
+                <p class="eyebrow">Future Settings</p>
+                <h3>Future Settings</h3>
+                <p class="profile-section-subtitle">Reserved slots for profile tools already planned into the settings structure.</p>
+              </div>
+            </div>
+            <div class="profile-future-list" aria-label="Future settings placeholders">
+              <div class="profile-future-item is-disabled">
+                <strong>Avatar Upload</strong>
+                <span>Coming soon</span>
+              </div>
+              <div class="profile-future-item is-disabled">
+                <strong>Bio</strong>
+                <span>Coming soon</span>
+              </div>
+              <div class="profile-future-item is-disabled">
+                <strong>Linked Socials</strong>
+                <span>Coming soon</span>
+              </div>
+            </div>
+          </article>
+        </div>
+        <div class="profile-page-actions">
+          <p id="profile-settings-message" class="profile-page-message" role="status" aria-live="polite"></p>
+          <div class="inline-actions">
+            <button id="profile-settings-submit" type="submit" class="button button-primary">Save Changes</button>
           </div>
-        </article>
-      </div>
+        </div>
+      </form>
     </section>
   `;
 
   app.querySelector("[data-profile-open-editor='true']")?.addEventListener("click", () => {
     openProfileEditor();
   });
+
+  bindProfilePageForm(app.querySelector("#profile-settings-form"));
 }
 
 function renderProfileSetupScreen() {
@@ -26317,6 +26812,12 @@ document.addEventListener("click", (event) => {
       promptForUnsavedChangesNavigation(targetHash);
       return;
     }
+    if (getCurrentAppPathRoute()) {
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToHashRoute(targetHash);
+      return;
+    }
   }
 
   const newSessionTrigger = event.target instanceof Element
@@ -26360,6 +26861,10 @@ document.addEventListener("keydown", (event) => {
     closeAccountMenu();
   }
 
+  if (event.key === "Escape" && appState.mobileNavOpen) {
+    closeMobileNavigation();
+  }
+
   const target = event.target;
   const isTypingTarget = target instanceof HTMLElement && (
     target.matches("input, textarea, select")
@@ -26387,6 +26892,7 @@ window.addEventListener("beforeunload", (event) => {
 
 window.addEventListener("resize", requestOpenCustomSelectMenuPositionSync, { passive: true });
 document.addEventListener("scroll", requestOpenCustomSelectMenuPositionSync, true);
+window.addEventListener("popstate", safeRender);
 window.addEventListener("hashchange", handleHashChange);
 window.addEventListener("DOMContentLoaded", safeBootstrapApp);
 window.removeCannakanSampleSessions = removeSampleSessions;
