@@ -3216,6 +3216,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(148, 209, 89, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  cursor: default;
+  pointer-events: none;
 }
 
 .home-install-phone-progress-label {
@@ -3237,6 +3239,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 5px;
   min-width: 0;
+  cursor: inherit;
 }
 
 .home-install-phone-stage-fill {
@@ -3305,6 +3308,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-install-phone-partition-row {
   display: grid;
   gap: 5px;
+  cursor: inherit;
 }
 
 .home-install-phone-partition-meta {
