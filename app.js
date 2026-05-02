@@ -14168,51 +14168,14 @@ function renderSnapshotSourceSummary(state) {
 
   if (!images.length) {
     state.picker.innerHTML = `
-      <div class="snapshot-source-card snapshot-source-card--preview">
-        <div class="snapshot-source-media" aria-hidden="true">
-          ${getSnapshotFeatureIconMarkup("photo")}
-        </div>
-        <div class="snapshot-source-copy">
-          <strong>Share-ready preview</strong>
-          <small>Your session summary and images are styled into a polished post.</small>
-        </div>
-      </div>
+      <p class="snapshot-source-inline-note">Add a session image above if you want a photo included in your snapshot.</p>
     `;
     return;
   }
 
-  const previewMessage = "Your session summary and images are styled into a polished post.";
-  const shouldShowChoiceCard = images.length > 1;
-
-  const choiceCard = shouldShowChoiceCard
-    ? `
-      <div class="snapshot-source-card snapshot-source-card--choice">
-        <div class="snapshot-source-media" aria-hidden="true">
-          ${getSnapshotFeatureIconMarkup("layers")}
-        </div>
-        <div class="snapshot-source-copy">
-          <strong>Choose image at generation time</strong>
-          <small>${images.length} uploaded images are available. You'll pick one in the snapshot modal before generating.</small>
-        </div>
-        <div class="snapshot-source-placeholder" aria-hidden="true">
-          ${getSnapshotFeatureIconMarkup("preview")}
-        </div>
-      </div>
-    `
-    : "";
-
-  state.picker.innerHTML = `
-    <div class="snapshot-source-card snapshot-source-card--preview">
-      <div class="snapshot-source-media" aria-hidden="true">
-        ${getSnapshotFeatureIconMarkup("photo")}
-      </div>
-      <div class="snapshot-source-copy">
-        <strong>Share-ready preview</strong>
-        <small>${previewMessage}</small>
-      </div>
-    </div>
-    ${choiceCard}
-  `;
+  state.picker.innerHTML = images.length > 1
+    ? `<p class="snapshot-source-inline-note">${escapeHtml(`${images.length} uploaded images are ready. You'll choose one when generating the snapshot.`)}</p>`
+    : '<p class="snapshot-source-inline-note">Your uploaded session image will be included in the generated snapshot.</p>';
 }
 
 function getSnapshotFeatureIconMarkup(kind) {
@@ -14306,9 +14269,19 @@ function renderSnapshotSubmissionConfirmationMarkup(snapshotState) {
     : "#gallery";
   return `
     <article class="snapshot-confirmation-card" aria-label="Community Grow submission confirmation">
-      <p class="eyebrow snapshot-confirmation-eyebrow">Community Grow</p>
-      <h4 class="snapshot-confirmation-title">Snapshot submitted to Community Grow</h4>
-      <p class="snapshot-confirmation-time">Submitted ${escapeHtml(submittedDate)}</p>
+      <div class="snapshot-confirmation-meta">
+        <span class="snapshot-confirmation-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="m8.6 12.3 2.2 2.2 4.6-5"></path>
+          </svg>
+        </span>
+        <div class="snapshot-confirmation-copy">
+          <p class="eyebrow snapshot-confirmation-eyebrow">Community Grow Status</p>
+          <h4 class="snapshot-confirmation-title">Snapshot submitted to Community Grow</h4>
+          <p class="snapshot-confirmation-time">Submitted ${escapeHtml(submittedDate)}</p>
+        </div>
+      </div>
       <a class="button button-primary snapshot-confirmation-button" href="${escapeHtml(galleryRoute)}">Go to Community Grow</a>
     </article>
   `;

@@ -735,7 +735,6 @@
                 <p class="snapshot-help">Turn your session into a shareable snapshot</p>
               </div>
             </div>
-          <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
             <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
@@ -763,10 +762,24 @@
             <div id="snapshot-profile-divider-row" class="snapshot-profile-divider" hidden aria-hidden="true"></div>
             <p class="snapshot-destination-info">Community Grow snapshots must be approved before being published.</p>
             <p id="snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Save this session before publishing publicly. Private notes stay private.</p>
-            <div id="snapshot-preview" class="snapshot-preview" hidden></div>
           </div>
+          <div id="snapshot-preview" class="snapshot-preview" hidden></div>
           <div class="snapshot-actions">
-            <button id="generate-snapshot" type="button" class="button button-secondary snapshot-generate-button snapshot-primary-action-button">Generate Snapshot</button>
+            <div class="snapshot-action-row">
+              <span class="snapshot-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="4" y="7" width="16" height="12" rx="2.5"></rect>
+                  <path d="M9 7 10.4 5h3.2L15 7"></path>
+                  <circle cx="12" cy="13" r="3"></circle>
+                </svg>
+              </span>
+              <div class="snapshot-action-copy">
+                <h5 class="snapshot-action-title">Generate a New Snapshot</h5>
+                <p class="snapshot-action-description">Capture a new snapshot for this session.</p>
+                <div id="snapshot-image-picker" class="snapshot-source-summary"></div>
+              </div>
+              <button id="generate-snapshot" type="button" class="button button-secondary snapshot-generate-button snapshot-primary-action-button">Generate Snapshot</button>
+            </div>
           </div>
           <p id="snapshot-message" class="snapshot-message" aria-live="polite"></p>
             <div id="snapshot-post-actions" class="snapshot-share-row snapshot-post-actions" hidden>
@@ -788,29 +801,6 @@
               <button id="download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
               <button id="reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
             </div>
-            <div class="snapshot-gallery-actions">
-              <p class="eyebrow snapshot-gallery-eyebrow">Community Grow</p>
-              <div class="snapshot-gallery-header-row">
-                <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Community Grow">
-                  <span class="snapshot-gallery-icon" aria-hidden="true">
-                    <span class="snapshot-gallery-collage">
-                      <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--left"></span>
-                      <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--center"></span>
-                      <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--right"></span>
-                    </span>
-                  </span>
-                </a>
-                <div class="snapshot-gallery-header-content">
-                  <h5 class="snapshot-gallery-title">Visit Community Grow</h5>
-                  <p class="snapshot-gallery-description">Explore shared grow sessions in Community Grow.</p>
-                </div>
-              </div>
-              <div class="snapshot-gallery-button-row">
-                <a class="button button-secondary snapshot-gallery-link" href="#gallery">
-                  <span>Visit Community Grow</span>
-                </a>
-              </div>
-            </div>
           </section>
         </section>
 
@@ -818,7 +808,7 @@
 
         <div class="form-actions">
           <button type="submit" class="button button-primary">Save Session</button>
-          <a class="button button-secondary" href="#sessions">Cancel</a>
+          <a class="button button-secondary" href="#sessions">Back</a>
         </div>
       </form>
     </section>
@@ -1110,7 +1100,6 @@
               <p class="snapshot-help">Turn your session into a shareable snapshot</p>
             </div>
           </div>
-          <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
           <div class="snapshot-gallery-controls">
             <p class="snapshot-destination-label">Share to</p>
             <div class="snapshot-destination-group" role="radiogroup" aria-label="Snapshot share destination">
@@ -1138,10 +1127,24 @@
             <div id="detail-snapshot-profile-divider-row" class="snapshot-profile-divider" hidden aria-hidden="true"></div>
             <p class="snapshot-destination-info">Community Grow snapshots must be approved before being published.</p>
             <p id="detail-snapshot-gallery-note" class="snapshot-gallery-note">Snapshots stay private by default. Publish only if you want this session shown in Community Grow. Private notes stay private.</p>
-            <div id="detail-snapshot-preview" class="snapshot-preview" hidden></div>
           </div>
+          <div id="detail-snapshot-preview" class="snapshot-preview" hidden></div>
           <div class="snapshot-actions">
-            <button id="detail-generate-snapshot" type="button" class="button button-secondary snapshot-generate-button snapshot-primary-action-button">Generate Snapshot</button>
+            <div class="snapshot-action-row">
+              <span class="snapshot-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <rect x="4" y="7" width="16" height="12" rx="2.5"></rect>
+                  <path d="M9 7 10.4 5h3.2L15 7"></path>
+                  <circle cx="12" cy="13" r="3"></circle>
+                </svg>
+              </span>
+              <div class="snapshot-action-copy">
+                <h5 class="snapshot-action-title">Generate a New Snapshot</h5>
+                <p class="snapshot-action-description">Capture a new snapshot for this session.</p>
+                <div id="detail-snapshot-image-picker" class="snapshot-source-summary"></div>
+              </div>
+              <button id="detail-generate-snapshot" type="button" class="button button-secondary snapshot-generate-button snapshot-primary-action-button">Generate Snapshot</button>
+            </div>
           </div>
           <p id="detail-snapshot-message" class="snapshot-message" aria-live="polite"></p>
           <div id="detail-snapshot-post-actions" class="snapshot-share-row snapshot-post-actions" hidden>
@@ -1162,29 +1165,6 @@
             </button>
             <button id="detail-download-snapshot" type="button" class="button button-secondary" disabled>Download Image</button>
             <button id="detail-reset-snapshot" type="button" class="button button-secondary" disabled>Create New Snapshot</button>
-          </div>
-          <div class="snapshot-gallery-actions">
-            <p class="eyebrow snapshot-gallery-eyebrow">Community Grow</p>
-            <div class="snapshot-gallery-header-row">
-              <a class="snapshot-gallery-icon-link" href="#gallery" aria-label="Open Community Grow">
-                <span class="snapshot-gallery-icon" aria-hidden="true">
-                  <span class="snapshot-gallery-collage">
-                    <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--left"></span>
-                    <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--center"></span>
-                    <span class="snapshot-gallery-collage-tile snapshot-gallery-collage-tile--right"></span>
-                  </span>
-                </span>
-              </a>
-              <div class="snapshot-gallery-header-content">
-                <h5 class="snapshot-gallery-title">Visit Community Grow</h5>
-                <p class="snapshot-gallery-description">Explore shared grow sessions in Community Grow.</p>
-              </div>
-            </div>
-            <div class="snapshot-gallery-button-row">
-              <a class="button button-secondary snapshot-gallery-link" href="#gallery">
-                <span>Visit Community Grow</span>
-              </a>
-            </div>
           </div>
         </section>
         <p id="detail-save-message" class="form-message" role="alert" aria-live="polite"></p>

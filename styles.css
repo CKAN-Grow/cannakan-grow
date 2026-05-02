@@ -2204,12 +2204,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .snapshot-source-summary {
   display: grid;
-  gap: 22px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .snapshot-gallery-controls {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .snapshot-destination-label {
@@ -2305,12 +2306,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin: 0;
   color: var(--muted);
   font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .snapshot-destination-info {
   margin: 0;
   color: var(--muted);
   font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.snapshot-source-inline-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
   line-height: 1.45;
 }
 
@@ -2686,30 +2695,75 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-actions {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 0;
   width: 100%;
-  justify-items: start;
+  justify-items: stretch;
 }
 
 .snapshot-actions + .snapshot-message {
   margin-top: 4px;
 }
 
-.snapshot-actions .button {
-  width: auto;
-}
-
-.snapshot-actions .button-primary {
-  min-width: 0;
-  min-height: 46px;
-  padding: 11px 18px;
-  box-shadow:
-    0 10px 18px rgba(24, 34, 24, 0.1),
-    0 0 0 1px rgba(148, 209, 89, 0.14);
-}
-
 .snapshot-actions {
   --snapshot-primary-width: 220px;
+}
+
+.snapshot-action-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.snapshot-action-icon {
+  width: 56px;
+  height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  flex: 0 0 auto;
+}
+
+.snapshot-action-icon svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.snapshot-action-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.snapshot-action-title,
+.snapshot-action-description {
+  margin: 0;
+}
+
+.snapshot-action-title {
+  font-size: 1rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.snapshot-action-description {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .snapshot-primary-action-button {
@@ -2728,12 +2782,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.98rem;
   border-color: #94d159;
   color: #1f3a2a;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(232, 244, 221, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 237, 0.98) 100%);
   box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.6),
-    0 10px 18px rgba(24, 34, 24, 0.08),
+    0 8px 14px rgba(24, 34, 24, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.24);
+    inset 0 0 0 1px rgba(148, 209, 89, 0.2);
 }
 
 .snapshot-share-row {
@@ -2765,8 +2818,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .snapshot-generate-button:focus-visible {
   border-color: #94d159;
   box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.72),
-    0 12px 22px rgba(24, 34, 24, 0.1),
+    0 10px 18px rgba(24, 34, 24, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     inset 0 0 0 1px rgba(148, 209, 89, 0.28);
 }
@@ -2801,24 +2853,64 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
   display: block;
   padding: 0;
-  margin: 16px 0;
+  margin: 0;
   justify-content: flex-start;
   align-items: flex-start;
 }
 
 .snapshot-confirmation-card {
   width: 100%;
-  max-width: 400px;
+  max-width: none;
   display: grid;
-  gap: 10px;
-  padding: 22px 20px;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 209, 89, 0.22);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(24, 34, 27, 0.96) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 48%);
   box-shadow:
-    0 0 18px rgba(148, 209, 89, 0.12),
-    0 14px 28px rgba(0, 0, 0, 0.18);
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+.snapshot-confirmation-meta {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.snapshot-confirmation-icon {
+  width: 62px;
+  height: 62px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.12);
+  color: #94d159;
+  box-shadow: 0 0 0 10px rgba(148, 209, 89, 0.04);
+}
+
+.snapshot-confirmation-icon svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.snapshot-confirmation-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .snapshot-confirmation-eyebrow {
@@ -2838,11 +2930,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .snapshot-confirmation-button {
-  justify-self: start;
+  justify-self: end;
   min-height: 46px;
-  padding: 11px 18px;
+  padding: 11px 20px;
   box-shadow:
-    0 0 10px rgba(148, 209, 89, 0.5),
     0 12px 20px rgba(24, 34, 24, 0.14);
 }
 
@@ -7945,6 +8036,16 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .snapshot-social-icon--hero {
     width: 84px;
     height: 84px;
+  }
+
+  .snapshot-confirmation-card,
+  .snapshot-action-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .snapshot-confirmation-button {
+    justify-self: stretch;
+    width: 100%;
   }
 }
 
@@ -13650,6 +13751,10 @@ body.theme-dark .snapshot-gallery-note {
   color: #b7c0b7;
 }
 
+body.theme-dark .snapshot-source-inline-note {
+  color: #a9b5aa;
+}
+
 body.theme-dark .section-title-icon {
   border-color: rgba(148, 209, 89, 0.18);
   background: rgba(30, 34, 31, 0.92);
@@ -13789,14 +13894,12 @@ body.theme-dark .run-progress-section {
 }
 
 body.theme-dark .share-snapshot-section {
-  border: 1px solid transparent;
+  border: 1px solid rgba(148, 209, 89, 0.14);
   background:
-    linear-gradient(180deg, rgba(31, 36, 32, 0.98) 0%, rgba(25, 29, 26, 0.98) 100%) padding-box,
-    linear-gradient(135deg, rgba(131, 58, 180, 0.88) 0%, rgba(253, 29, 29, 0.82) 52%, rgba(252, 176, 69, 0.88) 100%) border-box;
+    linear-gradient(180deg, rgba(24, 29, 26, 0.98) 0%, rgba(18, 22, 20, 0.98) 100%);
   box-shadow:
     0 18px 32px rgba(0, 0, 0, 0.22),
-    0 0 24px rgba(253, 108, 79, 0.06),
-    0 0 40px rgba(131, 58, 180, 0.04),
+    0 0 24px rgba(148, 209, 89, 0.04),
     inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
@@ -13812,11 +13915,11 @@ body.theme-dark .share-snapshot-section .snapshot-social-icon {
 body.theme-dark .share-snapshot-section .snapshot-social-icon--hero {
   background:
     linear-gradient(180deg, rgba(18, 22, 19, 0.98) 0%, rgba(22, 26, 23, 0.98) 100%) padding-box,
-    linear-gradient(135deg, rgba(131, 58, 180, 0.92) 0%, rgba(253, 29, 29, 0.88) 52%, rgba(252, 176, 69, 0.92) 100%) border-box;
+    linear-gradient(135deg, rgba(148, 209, 89, 0.72) 0%, rgba(88, 126, 57, 0.9) 100%) border-box;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
-    0 0 24px rgba(253, 108, 79, 0.08),
-    0 0 34px rgba(131, 58, 180, 0.06);
+    0 0 18px rgba(148, 209, 89, 0.08),
+    0 0 28px rgba(148, 209, 89, 0.04);
 }
 
 body.theme-dark .share-snapshot-section .snapshot-hero-copy h4 {
@@ -13857,15 +13960,33 @@ body.theme-dark .share-snapshot-section .snapshot-preview-card {
   box-shadow: none !important;
 }
 
+body.theme-dark .snapshot-action-row {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+body.theme-dark .snapshot-action-icon {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f6f8f5;
+}
+
+body.theme-dark .snapshot-action-title {
+  color: #f6f8f5;
+}
+
+body.theme-dark .snapshot-action-description {
+  color: #b7c0b7;
+}
+
 body.theme-dark .snapshot-generate-button {
   border-color: #94d159;
   color: #eef8e7;
   background: linear-gradient(180deg, rgba(34, 43, 35, 0.98) 0%, rgba(25, 32, 26, 0.98) 100%);
   box-shadow:
-    0 0 10px rgba(148, 209, 89, 0.52),
-    0 14px 24px rgba(0, 0, 0, 0.2),
+    0 12px 20px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.2);
+    inset 0 0 0 1px rgba(148, 209, 89, 0.16);
 }
 
 body.theme-dark .snapshot-generate-button:hover,
@@ -13873,10 +13994,25 @@ body.theme-dark .snapshot-generate-button:focus-visible {
   border-color: #a7df72;
   color: #f6f8f5;
   box-shadow:
-    0 0 14px rgba(148, 209, 89, 0.66),
-    0 16px 28px rgba(0, 0, 0, 0.22),
+    0 14px 24px rgba(0, 0, 0, 0.22),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.24);
+    inset 0 0 0 1px rgba(148, 209, 89, 0.22);
+}
+
+body.theme-dark .snapshot-confirmation-card {
+  border-color: rgba(148, 209, 89, 0.28);
+  background:
+    linear-gradient(180deg, rgba(19, 24, 21, 0.98) 0%, rgba(16, 20, 17, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 48%);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .snapshot-confirmation-icon {
+  border-color: rgba(148, 209, 89, 0.32);
+  background: rgba(148, 209, 89, 0.12);
+  color: #94d159;
 }
 
 body.theme-dark .session-lifecycle-section h4,
@@ -14943,10 +15079,8 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .snapshot-actions .button,
-  .snapshot-gallery-header-row,
   .snapshot-share-row,
-  .snapshot-share-row .button,
-  .snapshot-gallery-actions .button {
+  .snapshot-share-row .button {
     width: 100%;
   }
 
@@ -14955,6 +15089,15 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     min-width: 0;
     max-width: none;
     flex-basis: 100%;
+  }
+
+  .snapshot-action-row {
+    gap: 14px;
+  }
+
+  .snapshot-action-icon {
+    width: 52px;
+    height: 52px;
   }
 
   .topbar-controls {
