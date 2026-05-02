@@ -105,6 +105,10 @@ textarea {
 }
 
 @media (min-width: 1024px) {
+  body.theme-dark {
+    --condensation-opacity: 0.18;
+  }
+
   body::before,
   body::after {
     content: "";
@@ -135,6 +139,10 @@ textarea {
     opacity: 0.92;
   }
 
+  body.theme-dark::before {
+    opacity: calc(0.82 + var(--condensation-opacity));
+  }
+
   body::after {
     z-index: 0;
     background:
@@ -144,10 +152,13 @@ textarea {
 
   body.theme-dark .app-shell {
     isolation: isolate;
+    background: transparent;
   }
 
-  /* Keep the desktop condensation texture on the page background while letting
-     the dashboard gaps read a little more open around the dark glass cards. */
+  /* The body-level condensation texture is already loaded above; the broad
+     app-shell glaze was flattening it across desktop dashboard gaps. Keep the
+     shell itself transparent, and tune `--condensation-opacity` above if the
+     droplets need to read a little more or less between sections and margins. */
   body.theme-dark .app-shell::before {
     content: "";
     position: absolute;
@@ -156,11 +167,11 @@ textarea {
     pointer-events: none;
     border-radius: 36px;
     background:
-      radial-gradient(circle at top center, rgba(255, 255, 255, 0.028) 0%, transparent 34%),
-      linear-gradient(180deg, rgba(6, 9, 8, 0.16) 0%, rgba(6, 9, 8, 0.08) 28%, rgba(6, 9, 8, 0.04) 62%, rgba(6, 9, 8, 0.14) 100%);
+      radial-gradient(circle at top center, rgba(255, 255, 255, 0.035) 0%, transparent 38%),
+      linear-gradient(180deg, rgba(6, 9, 8, 0.08) 0%, rgba(6, 9, 8, 0.03) 24%, rgba(6, 9, 8, 0.01) 58%, rgba(6, 9, 8, 0.06) 100%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.012);
+      inset 0 1px 0 rgba(255, 255, 255, 0.018),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.008);
   }
 
   body.theme-dark .app-main,
