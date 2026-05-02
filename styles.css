@@ -66,6 +66,7 @@ body.theme-dark {
 body {
   margin: 0;
   min-height: 100vh;
+  position: relative;
   font-family: "Segoe UI", "Trebuchet MS", "Helvetica Neue", sans-serif;
   color: var(--ink);
   background:
@@ -96,9 +97,50 @@ textarea {
   width: min(1280px, calc(100% - var(--space-5)));
   margin: 0 auto;
   padding: var(--space-4) 0 calc(var(--space-6) + var(--space-2));
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  body::before,
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  body::before {
+    z-index: 0;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.11) 0 1px, rgba(255, 255, 255, 0.05) 1.5px, transparent 8px),
+      radial-gradient(circle at 22% 34%, rgba(255, 255, 255, 0.08) 0 1.2px, rgba(255, 255, 255, 0.04) 1.6px, transparent 10px),
+      radial-gradient(circle at 31% 12%, rgba(255, 255, 255, 0.1) 0 1.1px, rgba(255, 255, 255, 0.045) 1.6px, transparent 9px),
+      radial-gradient(circle at 44% 26%, rgba(255, 255, 255, 0.09) 0 1px, rgba(255, 255, 255, 0.04) 1.4px, transparent 7px),
+      radial-gradient(circle at 58% 16%, rgba(255, 255, 255, 0.1) 0 1.2px, rgba(255, 255, 255, 0.045) 1.8px, transparent 10px),
+      radial-gradient(circle at 68% 32%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0.035) 1.5px, transparent 8px),
+      radial-gradient(circle at 82% 20%, rgba(255, 255, 255, 0.11) 0 1.3px, rgba(255, 255, 255, 0.05) 1.9px, transparent 11px),
+      radial-gradient(circle at 91% 38%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0.03) 1.5px, transparent 9px),
+      radial-gradient(circle at 15% 62%, rgba(255, 255, 255, 0.09) 0 1.1px, rgba(255, 255, 255, 0.035) 1.7px, transparent 10px),
+      radial-gradient(circle at 34% 56%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0.035) 1.5px, transparent 8px),
+      radial-gradient(circle at 53% 68%, rgba(255, 255, 255, 0.1) 0 1.2px, rgba(255, 255, 255, 0.04) 1.8px, transparent 10px),
+      radial-gradient(circle at 72% 58%, rgba(255, 255, 255, 0.09) 0 1px, rgba(255, 255, 255, 0.035) 1.5px, transparent 8px),
+      radial-gradient(circle at 86% 74%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0.03) 1.4px, transparent 8px),
+      radial-gradient(circle at 26% 84%, rgba(255, 255, 255, 0.09) 0 1.1px, rgba(255, 255, 255, 0.035) 1.6px, transparent 9px),
+      radial-gradient(circle at 61% 86%, rgba(255, 255, 255, 0.08) 0 1px, rgba(255, 255, 255, 0.03) 1.5px, transparent 8px),
+      linear-gradient(180deg, rgba(10, 12, 12, 0.94) 0%, rgba(16, 20, 19, 0.98) 42%, rgba(9, 11, 11, 1) 100%);
+    opacity: 0.92;
+  }
+
+  body::after {
+    z-index: 0;
+    background:
+      radial-gradient(circle at center, rgba(0, 0, 0, 0) 0 34%, rgba(0, 0, 0, 0.2) 72%, rgba(0, 0, 0, 0.4) 100%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.12) 18%, rgba(0, 0, 0, 0.08) 82%, rgba(0, 0, 0, 0.46) 100%);
+  }
 }
 
 .topbar {
