@@ -893,7 +893,8 @@ function resetSessionScopedAppState() {
   appState.profileError = "";
   appState.notificationPreferences = null;
   appState.notificationPreferencesError = "";
-  appState.notificationPreferencesTableUnavailable = false;
+  // Preserve the missing-table latch for the rest of this browser session so
+  // auth resets do not re-trigger repeated 404 requests to Supabase.
   appState.notificationPreferencesSchemaMode = "";
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
@@ -4610,6 +4611,7 @@ function getDefaultNotificationPreferences() {
 function markUserNotificationPreferencesTableUnavailable() {
   // TODO: Apply `supabase-notification-preferences-migration.sql` in Supabase
   // so these preferences can persist instead of falling back to session defaults.
+  // This is intentionally session-scoped and resets on full reload.
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
