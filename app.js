@@ -1,6 +1,6 @@
 const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
-const SAMPLE_SEED_VERSION = "history-preview-v2";
+const SAMPLE_SEED_VERSION = "history-preview-v3";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
 const ANNOUNCEMENT_STORAGE_KEY = "cannakanGrowAnnouncement";
@@ -300,8 +300,8 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     sourceName: "Humboldt Seed Co",
     seedTypeName: "Photo",
     sexLabel: "Feminized",
-    totalSeeds: 10,
-    totalPlanted: 10,
+    totalSeeds: 24,
+    totalPlanted: 24,
     successPercent: 100,
     timeline: {
       startedAt: "2026-04-28T08:14:00.000Z",
@@ -317,9 +317,9 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     sourceName: "Seedsman",
     seedTypeName: "Photo",
     sexLabel: "Feminized",
-    totalSeeds: 12,
-    totalPlanted: 10,
-    successPercent: 83,
+    totalSeeds: 26,
+    totalPlanted: 22,
+    successPercent: 85,
     timeline: {
       startedAt: "2026-04-22T07:10:00.000Z",
       germinationStartedAt: "2026-04-23T03:15:00.000Z",
@@ -334,9 +334,9 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     sourceName: "SeedVault",
     seedTypeName: "Regular",
     sexLabel: "Not shared",
-    totalSeeds: 8,
-    totalPlanted: 5,
-    successPercent: 63,
+    totalSeeds: 24,
+    totalPlanted: 17,
+    successPercent: 71,
     timeline: {
       startedAt: "2026-04-18T09:00:00.000Z",
       germinationStartedAt: "2026-04-19T09:00:00.000Z",
@@ -2267,14 +2267,9 @@ function buildSampleSessions() {
       firstPlantedAt: "2026-04-22T09:05:00",
       sessionNotes: "Moved to paper towel after 11 hours soaking. Dome is holding steady humidity and the Blue Dream partitions are opening first.",
       partitionSeeds: [
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 2],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 3],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 1],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 2],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 0],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 1],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 0],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 4, 2],
+        ["Blue Dream", "Seedsman", "photo", "feminized", 12, 9],
+        ["Blue Dream", "Seedsman", "photo", "feminized", 10, 8],
+        ["Blue Dream", "Seedsman", "photo", "feminized", 14, 11],
       ],
     }),
     createSampleSession({
@@ -2288,16 +2283,12 @@ function buildSampleSessions() {
       germinationStartedAt: "2026-04-19T07:15:00",
       firstPlantedAt: "2026-04-19T22:40:00",
       completedAt: "2026-04-20T09:18:00",
-      sessionNotes: "Strong early tails on partitions 2, 3, and 6. Two slower seeds stayed in the dome an extra half day before planting.",
+      sessionNotes: "Strong early tails on partitions 2, 3, and 4. One slower pocket stayed in the dome an extra half day before planting.",
       partitionSeeds: [
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 3],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 2],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 3],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 2],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 1],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 3],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 2],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 3, 2],
+        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 10, 10],
+        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 12, 11],
+        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 8, 7],
+        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 9, 8],
       ],
     }),
     createSampleSession({
@@ -2312,22 +2303,10 @@ function buildSampleSessions() {
       firstPlantedAt: "2026-04-18T08:30:00",
       sessionNotes: "Tray sections A and B were warmed first. Outer edge partitions are a little slower, so keeping the lid cracked slightly for airflow.",
       partitionSeeds: [
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 2, 1],
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 2, 2],
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 2, 1],
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 2, 0],
-        ["Sour Stomper", "Mephisto", "auto", "feminized", 2, 1],
-        ["Sour Stomper", "Mephisto", "auto", "feminized", 2, 2],
-        ["Sour Stomper", "Mephisto", "auto", "feminized", 2, 1],
-        ["Sour Stomper", "Mephisto", "auto", "feminized", 2, 1],
-        ["Strawberry Nuggets", "Mephisto", "auto", "feminized", 2, 0],
-        ["Strawberry Nuggets", "Mephisto", "auto", "feminized", 2, 1],
-        ["Strawberry Nuggets", "Mephisto", "auto", "feminized", 2, 1],
-        ["Strawberry Nuggets", "Mephisto", "auto", "feminized", 2, 0],
-        ["Double Grape", "Mephisto", "auto", "feminized", 2, 1],
-        ["Double Grape", "Mephisto", "auto", "feminized", 2, 1],
-        ["Double Grape", "Mephisto", "auto", "feminized", 2, 0],
-        ["Double Grape", "Mephisto", "auto", "feminized", 2, 1],
+        ["Cosmic Queen", "Mephisto", "auto", "feminized", 12, 10],
+        ["Cosmic Queen", "Mephisto", "auto", "feminized", 10, 8],
+        ["Sour Stomper", "Mephisto", "auto", "feminized", 9, 7],
+        ["Double Grape", "Mephisto", "auto", "feminized", 11, 8],
       ],
     }),
     createSampleSession({
@@ -2343,22 +2322,10 @@ function buildSampleSessions() {
       completedAt: "2026-04-14T09:42:00",
       sessionNotes: "",
       partitionSeeds: [
-        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 2, 1],
-        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 2, 1],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 2, 1],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 2, 1],
-        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 2, 2],
-        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 2, 1],
-        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 2, 2],
+        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 15, 14],
+        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 12, 11],
+        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 10, 8],
+        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 9, 8],
       ],
     }),
   ];
@@ -2618,7 +2585,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   const sourceAdjustments = [4, 2, -1, -4, 1, -7];
   const rowAdjustments = [6, 1, -4, 3, -8, 0];
   const seedTypePattern = ["photo", "photo", "auto", "photo", "auto", "photo"];
-  const seedCountPattern = [5, 6, 8, 10, 12, 8];
+  const seedCountPattern = [18, 22, 24, 28, 32, 36];
   const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
   const hourPattern = [8, 10, 12, 15, 17, 19];
 
@@ -15016,9 +14983,14 @@ function renderHomeInstallInfoCardMarkup() {
     : helperText;
   const installPreviewElapsed = formatInstallPreviewElapsed(2, 2);
   const installPreviewPartitions = [
-    { label: "Partition A", germinated: 50, total: 50 },
-    { label: "Partition B", germinated: 48, total: 50 },
+    { label: "Partition A", germinated: 10, total: 12 },
+    { label: "Partition B", germinated: 8, total: 10 },
   ];
+  const installPreviewTotalSeeds = installPreviewPartitions.reduce((sum, partition) => sum + partition.total, 0);
+  const installPreviewGerminatedSeeds = installPreviewPartitions.reduce((sum, partition) => sum + partition.germinated, 0);
+  const installPreviewSuccessRate = installPreviewTotalSeeds > 0
+    ? Math.round((installPreviewGerminatedSeeds / installPreviewTotalSeeds) * 100)
+    : 0;
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
@@ -15034,7 +15006,7 @@ function renderHomeInstallInfoCardMarkup() {
                 </div>
                 <div class="home-install-phone-stat">
                   <div class="home-install-progress-ring home-install-phone-stat-ring is-animated">
-                    <span>98%</span>
+                    <span>${installPreviewSuccessRate}%</span>
                   </div>
                   <p class="home-install-phone-stat-label">Germination</p>
                 </div>
@@ -15045,7 +15017,7 @@ function renderHomeInstallInfoCardMarkup() {
                   </div>
                   <div class="home-install-phone-metric">
                     <span>Seeds</span>
-                    <strong>98 / 100</strong>
+                    <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
                   </div>
                   <div class="home-install-phone-metric">
                     <span>Time Elapsed</span>
