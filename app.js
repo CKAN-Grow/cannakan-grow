@@ -67,8 +67,8 @@ const SITE_ANALYTICS_VISIT_ID_SESSION_KEY = "cannakanGrowVisitId";
 const SITE_ANALYTICS_VISIT_LOGGED_SESSION_KEY = "cannakanGrowVisitLogged";
 const SITE_ANALYTICS_PWA_LOGGED_SESSION_KEY = "cannakanGrowPwaLaunchLogged";
 const SITE_ANALYTICS_HEARTBEAT_MS = 30000;
-const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 60000;
-const SITE_ANALYTICS_DEFAULT_FILTER = "last7";
+const SITE_ANALYTICS_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
+const SITE_ANALYTICS_DEFAULT_FILTER = "today";
 const SUPABASE_MISSING_TABLE_ERROR_CODES = new Set(["PGRST116", "PGRST205", "42P01"]);
 const FALLBACK_CONTENT_HISTORY_LIMIT = 7;
 const DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT = "No announcements right now. Here’s something to grow on.";
@@ -17509,12 +17509,11 @@ function getSiteVisitorAnalyticsFilterOptions() {
     { key: "today", label: "Today" },
     { key: "last7", label: "Last 7 days" },
     { key: "last30", label: "Last 30 days" },
-    { key: "all", label: "All time" },
   ];
 }
 
 function getSiteVisitorAnalyticsFilterLabel(filterKey = SITE_ANALYTICS_DEFAULT_FILTER) {
-  return getSiteVisitorAnalyticsFilterOptions().find((option) => option.key === filterKey)?.label || "Last 7 days";
+  return getSiteVisitorAnalyticsFilterOptions().find((option) => option.key === filterKey)?.label || "Today";
 }
 
 function formatSiteVisitorShortId(value, fallback = "Unknown") {
@@ -17551,26 +17550,41 @@ function formatSiteVisitorRelativeTime(value) {
   return formatTimingDateTime(parsedDate);
 }
 
-function getSiteVisitorAnalyticsSummary(rows = appState.siteVisitorAnalyticsRows) {
+function getTodaySiteVisitorAnalyticsRows(rows = appState.siteVisitorAnalyticsRows) {
   const filteredRows = Array.isArray(rows) ? rows : [];
-  const pageViews = filteredRows.filter((row) => row.eventType === "page_view");
-  const visits = filteredRows.filter((row) => row.eventType === "visit");
-  const pwaLaunches = filteredRows.filter((row) => row.eventType === "pwa_launch");
-  const uniqueVisitors = new Set(filteredRows.map((row) => row.visitorId).filter(Boolean));
-  const lastVisitRow = [...filteredRows].sort((left, right) => (
-    new Date(right.occurredAt || 0).getTime() - new Date(left.occurredAt || 0).getTime()
-  ))[0] || null;
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return filteredRows.filter((row) => {
+    const occurredAt = parseCompletedAtValue(row?.occurredAt);
+    return occurredAt && occurredAt.getTime() >= todayStart.getTime();
+  });
+}
+
+function getSiteVisitorAnalyticsFriendlyErrorMessage() {
+  if (!appState.supabase) {
+    return "Analytics are unavailable in this environment.";
+  }
+  if (appState.siteVisitorAnalyticsTableUnavailable) {
+    return "Analytics history is not set up yet. Apply the site analytics migration to populate this dashboard.";
+  }
+  if (appState.siteVisitorAnalyticsTrackingBlocked) {
+    return "Site analytics are currently disabled for this session.";
+  }
+  return String(appState.siteVisitorAnalyticsError || "").trim();
+}
+
+function getSiteVisitorAnalyticsSummary(rows = appState.siteVisitorAnalyticsRows) {
+  const todayRows = getTodaySiteVisitorAnalyticsRows(rows);
+  const pageViewsToday = todayRows.filter((row) => row.eventType === "page_view");
+  const visitorKeys = new Set(todayRows.map((row) => (
+    String(row?.visitorId || row?.userId || row?.visitId || row?.id || "").trim()
+  )).filter(Boolean));
 
   return {
-    totalVisits: visits.length,
-    uniqueVisitors: uniqueVisitors.size,
-    pageViews: pageViews.length,
-    homeViews: pageViews.filter((row) => row.pageGroup === "home").length,
-    sessionsViews: pageViews.filter((row) => row.pageGroup === "sessions").length,
-    galleryViews: pageViews.filter((row) => row.pageGroup === "gallery").length,
-    adminViews: pageViews.filter((row) => row.pageGroup === "admin").length,
-    pwaLaunches: pwaLaunches.length,
-    lastVisitAt: lastVisitRow?.occurredAt || "",
+    liveVisitors: getActiveSiteVisitorPresenceEntries().length,
+    uniqueVisitorsToday: visitorKeys.size,
+    pageViewsToday: pageViewsToday.length,
+    totalEventsToday: todayRows.length,
   };
 }
 
@@ -17593,6 +17607,94 @@ function getSiteVisitorIdentityLabel(entry) {
   }
 
   return `Anonymous • ${formatSiteVisitorShortId(entry?.visitorId, "Visitor")}`;
+}
+
+function getSiteVisitorAnalyticsPageLabel(entry) {
+  return String(
+    entry?.pageLabel
+    || entry?.pagePath
+    || entry?.pageKey
+    || entry?.pageGroup
+    || "Unknown",
+  ).trim();
+}
+
+function formatSiteAnalyticsEventTypeLabel(value = "page_view") {
+  return capitalize(normalizeSiteAnalyticsEventType(value).replace(/_/g, " "));
+}
+
+function getSiteVisitorAnalyticsUserDisplay(entry) {
+  const profileName = String(entry?.profileName || "").trim();
+  const userEmail = String(entry?.userEmail || "").trim().toLowerCase();
+  if (profileName && userEmail) {
+    return { primary: profileName, secondary: userEmail };
+  }
+  if (userEmail) {
+    return { primary: userEmail, secondary: "" };
+  }
+  if (profileName) {
+    return { primary: profileName, secondary: "" };
+  }
+
+  const userId = String(entry?.userId || "").trim();
+  if (userId && isAdminUser()) {
+    const adminMember = getAdminMemberById(userId);
+    if (adminMember?.profileName && adminMember?.email) {
+      return { primary: adminMember.profileName, secondary: adminMember.email };
+    }
+    if (adminMember?.profileName) {
+      return { primary: adminMember.profileName, secondary: "" };
+    }
+    if (adminMember?.email) {
+      return { primary: adminMember.email, secondary: "" };
+    }
+  }
+
+  return { primary: "", secondary: "" };
+}
+
+function getSiteVisitorAnalyticsAnonymousDisplay(entry) {
+  const userDisplay = getSiteVisitorAnalyticsUserDisplay(entry);
+  const visitId = String(entry?.visitId || "").trim();
+  const visitorId = String(entry?.visitorId || "").trim();
+  const idParts = [];
+  if (visitId) {
+    idParts.push(`Session ${formatSiteVisitorShortId(visitId, "Session")}`);
+  }
+  if (visitorId) {
+    idParts.push(`Visitor ${formatSiteVisitorShortId(visitorId, "Visitor")}`);
+  }
+
+  if (!userDisplay.primary) {
+    return {
+      primary: idParts.length ? "Anonymous" : "—",
+      secondary: idParts.join(" • "),
+    };
+  }
+
+  return {
+    primary: idParts[0] || "—",
+    secondary: idParts.slice(1).join(" • "),
+  };
+}
+
+function renderSiteVisitorAnalyticsCellMarkup(primary = "", secondary = "") {
+  const normalizedPrimary = String(primary || "").trim();
+  const normalizedSecondary = String(secondary || "").trim();
+  if (!normalizedPrimary && !normalizedSecondary) {
+    return "—";
+  }
+
+  if (!normalizedSecondary) {
+    return `<span class="site-visitor-activity-inline">${escapeHtml(normalizedPrimary)}</span>`;
+  }
+
+  return `
+    <div class="site-visitor-activity-cell">
+      <strong>${escapeHtml(normalizedPrimary)}</strong>
+      <span>${escapeHtml(normalizedSecondary)}</span>
+    </div>
+  `;
 }
 
 function getActiveSiteVisitorPresenceEntries() {
@@ -17648,58 +17750,36 @@ function renderSiteVisitorAnalyticsFilterMarkup() {
 
 function renderSiteVisitorAnalyticsSummaryMarkup() {
   const summary = getSiteVisitorAnalyticsSummary();
-  const activeFilterLabel = getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter);
   const isLoading = Boolean(appState.supabase && !appState.siteVisitorAnalyticsLoaded);
-  const formatValue = (value) => (isLoading ? "--" : String(value));
+  const historyUnavailable = Boolean(
+    getSiteVisitorAnalyticsFriendlyErrorMessage()
+    && !appState.siteVisitorAnalyticsRows.length
+    && (appState.siteVisitorAnalyticsLoaded || !appState.supabase),
+  );
+  const formatLiveValue = (value) => (isLoading ? "--" : String(value));
+  const formatHistoryValue = (value) => (isLoading ? "--" : (historyUnavailable ? "—" : String(value)));
 
   return `
     <div class="summary-grid admin-overview-grid site-visitor-analytics-summary-grid">
       ${renderAdminOverviewCardMarkup({
-        label: "Total Visits",
-        value: formatValue(summary.totalVisits),
-        subtext: `${activeFilterLabel} visit starts`,
+        label: "Live Visitors",
+        value: formatLiveValue(summary.liveVisitors),
+        subtext: "active in the last 5 minutes",
       })}
       ${renderAdminOverviewCardMarkup({
-        label: "Unique Visitors",
-        value: formatValue(summary.uniqueVisitors),
-        subtext: "distinct visitor IDs",
+        label: "Visitors Today",
+        value: formatHistoryValue(summary.uniqueVisitorsToday),
+        subtext: "distinct visitor IDs today",
       })}
       ${renderAdminOverviewCardMarkup({
-        label: "Page Views",
-        value: formatValue(summary.pageViews),
-        subtext: "tracked route views",
+        label: "Page Views Today",
+        value: formatHistoryValue(summary.pageViewsToday),
+        subtext: "tracked route views today",
       })}
       ${renderAdminOverviewCardMarkup({
-        label: "Home Views",
-        value: formatValue(summary.homeViews),
-        subtext: "Home route views",
-      })}
-      ${renderAdminOverviewCardMarkup({
-        label: "Sessions Views",
-        value: formatValue(summary.sessionsViews),
-        subtext: "Sessions and new-session views",
-      })}
-      ${renderAdminOverviewCardMarkup({
-        label: "Community Grow Views",
-        value: formatValue(summary.galleryViews),
-        subtext: "Community Grow route views",
-      })}
-      ${renderAdminOverviewCardMarkup({
-        label: "Admin Views",
-        value: formatValue(summary.adminViews),
-        subtext: "Admin dashboard and tools",
-      })}
-      ${renderAdminOverviewCardMarkup({
-        label: "PWA Launches",
-        value: formatValue(summary.pwaLaunches),
-        subtext: "standalone app launches",
-      })}
-      ${renderAdminOverviewCardMarkup({
-        label: "Last Visit",
-        value: isLoading
-          ? "--"
-          : (parseCompletedAtValue(summary.lastVisitAt) ? formatTimingDateTime(parseCompletedAtValue(summary.lastVisitAt)) : "None"),
-        subtext: "most recent recorded activity",
+        label: "Total Events Today",
+        value: formatHistoryValue(summary.totalEventsToday),
+        subtext: "all recorded events today",
       })}
     </div>
   `;
@@ -17716,7 +17796,7 @@ function renderSiteVisitorLiveVisitorsCardMarkup() {
       <div class="site-visitor-live-head">
         <div>
           <strong>Live Visitors</strong>
-          <p class="muted">Visitors active in the last 60 seconds</p>
+          <p class="muted">Visitors active in the last 5 minutes</p>
         </div>
         <span class="site-visitor-live-count">${escapeHtml(String(activeVisitors.length))}</span>
       </div>
@@ -17763,21 +17843,22 @@ function renderSiteVisitorLiveVisitorsCardMarkup() {
 function renderSiteVisitorRecentActivityMarkup() {
   const rows = (appState.siteVisitorAnalyticsRows || []).slice(0, 50);
   const isLoading = Boolean(appState.supabase && !appState.siteVisitorAnalyticsLoaded);
+  const friendlyErrorMessage = getSiteVisitorAnalyticsFriendlyErrorMessage();
 
   if (isLoading) {
     return `
       <div class="leaderboard-audit-empty-state">
         <strong>Loading analytics</strong>
-        <p>Pulling site visitor activity for ${escapeHtml(getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter))}.</p>
+        <p>Pulling recent site activity for ${escapeHtml(getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter))}.</p>
       </div>
     `;
   }
 
-  if (appState.siteVisitorAnalyticsError && !rows.length) {
+  if (friendlyErrorMessage && !rows.length) {
     return `
       <div class="leaderboard-audit-empty-state">
-        <strong>Historical analytics unavailable</strong>
-        <p>${escapeHtml(appState.siteVisitorAnalyticsError)}</p>
+        <strong>Analytics unavailable</strong>
+        <p>${escapeHtml(friendlyErrorMessage)}</p>
       </div>
     `;
   }
@@ -17797,26 +17878,26 @@ function renderSiteVisitorRecentActivityMarkup() {
         <thead>
           <tr>
             <th>Time</th>
-            <th>Event</th>
+            <th>Event Type</th>
             <th>Page</th>
-            <th>Visitor</th>
-            <th>Device</th>
-            <th>Browser</th>
-            <th>Referrer</th>
+            <th>User / Email</th>
+            <th>Anonymous / Session</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map((row) => `
-            <tr>
-              <td>${escapeHtml(parseCompletedAtValue(row.occurredAt) ? formatTimingDateTime(parseCompletedAtValue(row.occurredAt)) : "Not available")}</td>
-              <td>${escapeHtml(capitalize(row.eventType.replace(/_/g, " ")))}</td>
-              <td>${escapeHtml(row.pageLabel || row.pageKey || "Unknown")}</td>
-              <td>${escapeHtml(getSiteVisitorIdentityLabel(row))}</td>
-              <td>${escapeHtml(capitalize(row.deviceType || "unknown"))}</td>
-              <td>${escapeHtml(row.browserName || "Unknown")}</td>
-              <td>${escapeHtml(row.referrer || "Direct")}</td>
-            </tr>
-          `).join("")}
+          ${rows.map((row) => {
+            const userDisplay = getSiteVisitorAnalyticsUserDisplay(row);
+            const anonymousDisplay = getSiteVisitorAnalyticsAnonymousDisplay(row);
+            return `
+              <tr>
+                <td>${escapeHtml(parseCompletedAtValue(row.occurredAt) ? formatTimingDateTime(parseCompletedAtValue(row.occurredAt)) : "Not available")}</td>
+                <td>${escapeHtml(formatSiteAnalyticsEventTypeLabel(row.eventType))}</td>
+                <td>${escapeHtml(getSiteVisitorAnalyticsPageLabel(row))}</td>
+                <td>${renderSiteVisitorAnalyticsCellMarkup(userDisplay.primary, userDisplay.secondary)}</td>
+                <td>${renderSiteVisitorAnalyticsCellMarkup(anonymousDisplay.primary, anonymousDisplay.secondary)}</td>
+              </tr>
+            `;
+          }).join("")}
         </tbody>
       </table>
     </div>
@@ -17825,9 +17906,9 @@ function renderSiteVisitorRecentActivityMarkup() {
 
 function renderSiteVisitorAnalyticsSectionMarkup() {
   return renderAdminCollapsibleSectionMarkup({
-    eyebrow: "Site Visitor Analytics",
-    title: "Site Visitor Analytics",
-    description: "Track visits, page views, app activity, and live visitors.",
+    eyebrow: "Admin Analytics",
+    title: "Analytics Dashboard",
+    description: "See live visitors, daily usage, and recent site activity without leaving Admin.",
     iconType: "analytics",
     storageKey: ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
     contentId: "admin-site-visitor-analytics-content",
@@ -17845,7 +17926,7 @@ function renderSiteVisitorAnalyticsSectionMarkup() {
             <div>
               <p class="eyebrow">Recent Activity</p>
               <h3>Recent Activity</h3>
-              <p class="muted">Latest visit starts, page views, and app launches for the selected date range.</p>
+              <p class="muted">Latest page views, visits, and app launches for ${escapeHtml(getSiteVisitorAnalyticsFilterLabel(appState.siteVisitorAnalyticsFilter))}.</p>
             </div>
           </div>
         </div>

@@ -5356,6 +5356,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   white-space: nowrap;
 }
 
+.site-visitor-analytics-table td {
+  vertical-align: top;
+}
+
+.site-visitor-activity-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  white-space: normal;
+}
+
+.site-visitor-activity-cell strong {
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.site-visitor-activity-cell span,
+.site-visitor-activity-inline {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  white-space: normal;
+}
+
 .admin-mini-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
