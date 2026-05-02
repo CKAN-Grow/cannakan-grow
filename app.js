@@ -22754,16 +22754,16 @@ function renderGrowNetworkPage() {
 
   const growNetworkStats = showPreviewStats
     ? [
-      { icon: "members", value: "128", label: "Total Followers", detail: "+12 this week" },
-      { icon: "snapshots", value: "76", label: "Active Growers", detail: "+8 this week" },
-      { icon: "activity", value: "2.4K", label: "Likes Received", detail: "+156 this week" },
-      { icon: "analytics", value: "15", label: "Sessions Trending", detail: "+3 this week" },
+      { icon: "members", tone: "white", value: "128", label: "Total Followers", detail: "+12 this week" },
+      { icon: "snapshots", tone: "green", value: "76", label: "Active Growers", detail: "+8 this week" },
+      { icon: "activity", tone: "red", value: "2.4K", label: "Likes Received", detail: "+156 this week" },
+      { icon: "analytics", tone: "orange", value: "15", label: "Sessions Trending", detail: "+3 this week" },
     ]
     : [
-      { icon: "members", value: followingEntries.length.toLocaleString(), label: "Growers You Follow", detail: isLoadingFollowing ? "loading network" : "active connections" },
-      { icon: "snapshots", value: new Set(activities.map((activity) => activity.memberId)).size.toLocaleString(), label: "Active Growers", detail: isLoadingNetworkActivity ? "loading activity" : "with recent updates" },
-      { icon: "activity", value: activities.length.toLocaleString(), label: "Activity Events", detail: isLoadingNetworkActivity ? "loading feed" : "recent network events" },
-      { icon: "analytics", value: followingEntries.length ? Math.max(1, Math.min(activities.length, followingEntries.length)).toLocaleString() : "0", label: "Trending Sessions", detail: "public growth shared" },
+      { icon: "members", tone: "white", value: followingEntries.length.toLocaleString(), label: "Growers You Follow", detail: isLoadingFollowing ? "loading network" : "active connections" },
+      { icon: "snapshots", tone: "green", value: new Set(activities.map((activity) => activity.memberId)).size.toLocaleString(), label: "Active Growers", detail: isLoadingNetworkActivity ? "loading activity" : "with recent updates" },
+      { icon: "activity", tone: "red", value: activities.length.toLocaleString(), label: "Activity Events", detail: isLoadingNetworkActivity ? "loading feed" : "recent network events" },
+      { icon: "analytics", tone: "orange", value: followingEntries.length ? Math.max(1, Math.min(activities.length, followingEntries.length)).toLocaleString() : "0", label: "Trending Sessions", detail: "public growth shared" },
     ];
 
   const renderFollowingListMarkup = () => {
@@ -23071,7 +23071,7 @@ function renderGrowNetworkPage() {
       <div class="grow-network-stats-strip" aria-label="Grow Network highlights">
         ${growNetworkStats.map((stat) => `
           <article class="grow-network-stat-card">
-            <div class="grow-network-stat-icon" aria-hidden="true">
+            <div class="grow-network-stat-icon icon-${escapeHtml(stat.tone || "green")}" aria-hidden="true">
               ${renderAppSectionHeaderIcon(stat.icon)}
             </div>
             <div class="grow-network-stat-copy">

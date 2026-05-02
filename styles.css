@@ -10516,6 +10516,22 @@ input::placeholder {
   flex: 0 0 auto;
 }
 
+.grow-network-stat-icon.icon-white {
+  color: #ffffff;
+}
+
+.grow-network-stat-icon.icon-green {
+  color: #94d159;
+}
+
+.grow-network-stat-icon.icon-red {
+  color: #ff4d4d;
+}
+
+.grow-network-stat-icon.icon-orange {
+  color: #ffa500;
+}
+
 .grow-network-section-subtitle {
   margin: 6px 0 0;
   max-width: 54ch;
