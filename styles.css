@@ -7716,8 +7716,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #111612;
   border-color: rgba(18, 24, 19, 0.42);
   box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+    0 0 4px rgba(148, 209, 89, 0.25),
+    0 0 8px rgba(148, 209, 89, 0.15);
   transition:
     transform 0.18s ease,
     background 0.18s ease,
@@ -7743,8 +7743,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #101510;
   transform: translateY(-1px);
   box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+    0 0 6px rgba(148, 209, 89, 0.35),
+    0 0 12px rgba(148, 209, 89, 0.2);
 }
 
 .button-primary:active,
@@ -8182,8 +8182,8 @@ body.theme-dark .button-new-session {
   border-color: rgba(13, 18, 14, 0.68);
   color: #101510;
   box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+    0 0 4px rgba(148, 209, 89, 0.25),
+    0 0 8px rgba(148, 209, 89, 0.15);
 }
 
 body.theme-dark .button-primary:hover,
@@ -8194,8 +8194,8 @@ body.theme-dark .button-new-session:focus-visible {
   border-color: rgba(13, 18, 14, 0.68);
   color: #0f140f;
   box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+    0 0 6px rgba(148, 209, 89, 0.35),
+    0 0 12px rgba(148, 209, 89, 0.2);
 }
 
 body.theme-dark .button-primary:active,
