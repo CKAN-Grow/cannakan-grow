@@ -12378,8 +12378,9 @@ body.theme-dark #session-history-section {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.04) 34%, transparent 62%),
     linear-gradient(145deg, rgba(21, 26, 22, 0.96) 0%, rgba(28, 34, 29, 0.94) 54%, rgba(19, 24, 21, 0.97) 100%);
-  border: 1px solid rgba(148, 209, 89, 0.14);
+  border: 1px solid rgba(148, 209, 89, 0.35);
   box-shadow:
+    0 0 8px rgba(148, 209, 89, 0.15),
     0 18px 34px rgba(0, 0, 0, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 -18px 30px rgba(7, 10, 8, 0.18);
@@ -12388,6 +12389,7 @@ body.theme-dark #session-history-section {
 
 #grow-sessions-header:hover {
   box-shadow:
+    0 0 10px rgba(148, 209, 89, 0.17),
     0 20px 38px rgba(0, 0, 0, 0.2),
     0 0 0 1px rgba(148, 209, 89, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -12399,9 +12401,20 @@ body.theme-dark #session-history-section {
   color: #f5f8f1;
 }
 
-#grow-sessions-header p:not(.eyebrow),
-#grow-sessions-header .section-title-icon {
+#grow-sessions-header p:not(.eyebrow) {
   color: rgba(230, 237, 226, 0.84);
+}
+
+#grow-sessions-header .section-title-icon {
+  color: #0f140f;
+  background: #94d159;
+  border-color: rgba(15, 20, 15, 0.14);
+  box-shadow:
+    0 8px 18px rgba(10, 16, 11, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+#grow-sessions-header .section-title-icon * {
   stroke: currentColor;
 }
 
@@ -12409,8 +12422,9 @@ body.theme-dark #grow-sessions-header {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.05) 32%, transparent 58%),
     linear-gradient(145deg, rgba(18, 22, 19, 0.98) 0%, rgba(23, 28, 24, 0.97) 52%, rgba(13, 17, 14, 0.99) 100%);
-  border-color: rgba(148, 209, 89, 0.12);
+  border-color: rgba(148, 209, 89, 0.35);
   box-shadow:
+    0 0 8px rgba(148, 209, 89, 0.15),
     0 22px 40px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -18px 30px rgba(0, 0, 0, 0.24);
@@ -12418,6 +12432,7 @@ body.theme-dark #grow-sessions-header {
 
 body.theme-dark #grow-sessions-header:hover {
   box-shadow:
+    0 0 10px rgba(148, 209, 89, 0.17),
     0 24px 42px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(148, 209, 89, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
