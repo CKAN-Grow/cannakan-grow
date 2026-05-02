@@ -601,6 +601,7 @@ const appState = {
   deletionPromptShown: false,
   accountMenuOpen: false,
   mobileNavOpen: false,
+  profilePagePendingFocusSection: "",
   profilePageSettings: null,
   profilePageSettingsUserId: "",
   customSelectOpenKey: "",
@@ -2135,6 +2136,16 @@ function toggleMobileNavigation() {
 }
 
 function navigateToProfileRoute() {
+  appState.profilePagePendingFocusSection = "";
+  closeAccountMenu();
+  closeMobileNavigation();
+  window.history.pushState(null, "", "/profile");
+  appState.currentRouteHash = "#profile";
+  safeRender();
+}
+
+function navigateToProfilePreferences() {
+  appState.profilePagePendingFocusSection = "notification-preferences";
   closeAccountMenu();
   closeMobileNavigation();
   window.history.pushState(null, "", "/profile");
@@ -2239,6 +2250,12 @@ function getMenuIconMarkup(icon) {
         <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path>
         <path d="M14 16l5-4-5-4"></path>
         <path d="M19 12H9"></path>
+      </svg>
+    `,
+    notification: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M7.5 9a4.5 4.5 0 1 1 9 0v3.2c0 .7.2 1.4.58 1.98L18.5 16H5.5l1.42-1.82c.38-.58.58-1.28.58-1.98Z"></path>
+        <path d="M10 18a2 2 0 0 0 4 0"></path>
       </svg>
     `,
     chevronDown: `
@@ -12400,7 +12417,6 @@ function updateAuthStatus() {
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
-      <span class="auth-pill auth-user-email">${escapeHtml(appState.user?.email || getProfileDisplayName())}</span>
       <button
         id="account-menu-trigger"
         class="button button-secondary account-menu-trigger account-menu-trigger--avatar"
@@ -12417,9 +12433,25 @@ function updateAuthStatus() {
         })}
       </button>
       <div class="account-dropdown ${appState.accountMenuOpen ? "is-open" : ""}" ${appState.accountMenuOpen ? "" : "hidden"} role="menu" aria-label="Account menu">
+        <div class="account-dropdown-header" aria-hidden="true">
+          ${renderProfileAvatarMarkup({
+            avatarUrl: appState.profile?.avatarUrl || "",
+            displayName: getProfileDisplayName(),
+            className: "account-dropdown-avatar",
+            fallbackClassName: "account-dropdown-avatar auth-avatar-fallback",
+          })}
+          <div class="account-dropdown-copy">
+            <strong>${escapeHtml(getProfileDisplayName())}</strong>
+            <span>${escapeHtml(appState.user?.email || "")}</span>
+          </div>
+        </div>
         <button id="account-profile-link" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("profile")}
           <span>Profile</span>
+        </button>
+        <button id="account-profile-notifications-link" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("notification")}
+          <span>Notification Preferences</span>
         </button>
         <button id="account-sign-out" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("signout")}
@@ -12450,6 +12482,12 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     navigateToProfileRoute();
+  });
+
+  dropdown?.querySelector("#account-profile-notifications-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigateToProfilePreferences();
   });
 
   dropdown?.querySelector("#account-sign-out")?.addEventListener("click", async (event) => {
@@ -15088,7 +15126,7 @@ function renderProfilePage() {
       </header>
       <form id="profile-settings-form" class="profile-settings-form">
         <div class="profile-page-layout">
-          <article class="profile-section-card">
+          <article class="profile-section-card" id="profile-account-info-card">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Account Info</p>
@@ -15109,7 +15147,7 @@ function renderProfilePage() {
               ? "Update your display name and avatar any time with Edit Profile."
               : "Complete your display name and avatar so your public and community profile can stay consistent."}</p>
           </article>
-          <article class="profile-section-card">
+          <article class="profile-section-card" id="profile-notification-preferences-card" tabindex="-1">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Notifications</p>
@@ -15153,7 +15191,7 @@ function renderProfilePage() {
               ? "Notification preferences are currently using safe defaults or fallback storage because the settings table is unavailable."
               : "Notification settings are connected to your saved Cannakan Grow preferences."}</p>
           </article>
-          <article class="profile-section-card">
+          <article class="profile-section-card" id="profile-privacy-community-card">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Privacy</p>
@@ -15222,6 +15260,17 @@ function renderProfilePage() {
   });
 
   bindProfilePageForm(app.querySelector("#profile-settings-form"));
+
+  if (appState.profilePagePendingFocusSection === "notification-preferences") {
+    appState.profilePagePendingFocusSection = "";
+    const notificationCard = app.querySelector("#profile-notification-preferences-card");
+    if (notificationCard instanceof HTMLElement) {
+      queueMicrotask(() => {
+        notificationCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        notificationCard.focus({ preventScroll: true });
+      });
+    }
+  }
 }
 
 function renderProfileSetupScreen() {
