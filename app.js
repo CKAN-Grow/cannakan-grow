@@ -2282,6 +2282,13 @@ function normalizeStoredSession(session) {
     partitions: Array.isArray(session.partitions) ? session.partitions : [],
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
     createdAt: String(session.createdAt || "").trim(),
+    updatedAt: String(
+      session.updatedAt
+      || session.lastUpdatedAt
+      || session.updated_at
+      || session.last_updated_at
+      || "",
+    ).trim(),
   };
 }
 
@@ -2422,6 +2429,7 @@ function createSampleSession(config) {
     firstPlantedAt: config.firstPlantedAt || "",
     completedAt: config.completedAt || "",
     createdAt: `${config.date}T${config.time}:00`,
+    updatedAt: config.updatedAt || `${config.date}T${config.time}:00`,
     isSample: true,
     partitions: config.partitionSeeds.map((partition, index) => ({
       id: index + 1,
@@ -11575,6 +11583,7 @@ function mapSessionToRecord(session, userId) {
     completed_at: session.completedAt || null,
     partitions: session.partitions || [],
     created_at: session.createdAt,
+    updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
 }
 
@@ -11597,6 +11606,7 @@ function mapRowToSession(row) {
     filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
     partitions: Array.isArray(row.partitions) ? row.partitions : [],
     createdAt: row.created_at,
+    updatedAt: row.updated_at || row.last_updated_at || "",
   };
 }
 
@@ -18919,7 +18929,9 @@ function renderHome() {
     });
   }
   const sessions = sortSessionsNewestFirst(getSessions());
-  const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
+  const activeSessions = sortActiveSessionsNewestFirst(
+    sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+  );
   const spotlightCard = document.querySelector("#active-session-spotlight");
   const summaryGrid = document.querySelector(".summary-grid");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
@@ -21775,7 +21787,9 @@ function renderSessionsList() {
   const historyContainer = document.querySelector("#sessions-list");
   const historySortControl = document.querySelector("#session-history-sort");
 
-  const activeSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed");
+  const activeSessions = sortActiveSessionsNewestFirst(
+    sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+  );
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
   if (activeSessionsTitle) {
@@ -23067,13 +23081,41 @@ function sortSessionsNewestFirst(sessions) {
   });
 }
 
-function getSessionSortTime(session) {
-  const createdAt = parseCompletedAtValue(session.createdAt);
+function sortActiveSessionsNewestFirst(sessions) {
+  return [...sessions].sort((left, right) => {
+    const leftTime = getActiveSessionSortTime(left);
+    const rightTime = getActiveSessionSortTime(right);
+    return rightTime - leftTime;
+  });
+}
+
+function getActiveSessionSortTime(session) {
+  const updatedAt = parseCompletedAtValue(
+    session?.lastUpdatedAt
+    || session?.last_updated_at
+    || session?.updatedAt
+    || session?.updated_at,
+  );
+  if (updatedAt) {
+    return updatedAt.getTime();
+  }
+
+  const createdAt = parseCompletedAtValue(session?.createdAt || session?.created_at);
   if (createdAt) {
     return createdAt.getTime();
   }
 
-  const startedAt = parseSessionStartDateTime(session.date, session.time);
+  const startedAt = parseSessionStartDateTime(session?.date, session?.time);
+  return startedAt ? startedAt.getTime() : 0;
+}
+
+function getSessionSortTime(session) {
+  const createdAt = parseCompletedAtValue(session?.createdAt || session?.created_at);
+  if (createdAt) {
+    return createdAt.getTime();
+  }
+
+  const startedAt = parseSessionStartDateTime(session?.date, session?.time);
   return startedAt ? startedAt.getTime() : 0;
 }
 
