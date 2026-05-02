@@ -58,6 +58,7 @@ const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
 const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const SITE_ANALYTICS_ENABLED = false;
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
 const ADMIN_REPORTS_TABLE = "admin_reports";
 const AUTH_FORGOT_PASSWORD_COOLDOWN_MS = 15000;
@@ -4374,6 +4375,20 @@ function disableSiteAnalyticsForSession(userMessage = "") {
   }
 }
 
+function applySiteAnalyticsDisabledState() {
+  const disabledMessage = "Analytics tracking is currently disabled";
+  appState.siteVisitorAnalyticsTrackingBlocked = true;
+  appState.siteVisitorAnalyticsLoaded = true;
+  appState.siteVisitorAnalyticsLoadedFilter = appState.siteVisitorAnalyticsFilter || SITE_ANALYTICS_DEFAULT_FILTER;
+  appState.siteVisitorAnalyticsRows = [];
+  appState.siteVisitorAnalyticsError = disabledMessage;
+  appState.siteVisitorPresenceAvailable = false;
+  appState.siteVisitorPresenceSubscribed = false;
+  appState.siteVisitorPresenceError = disabledMessage;
+  appState.siteVisitorPresenceState = {};
+  stopSiteVisitorPresenceHeartbeat();
+}
+
 function markSiteAnalyticsTableUnavailable() {
   appState.siteVisitorAnalyticsTableUnavailable = true;
   appState.siteVisitorAnalyticsError = "Historical analytics table unavailable. Apply the site analytics migration.";
@@ -4439,6 +4454,10 @@ function getSiteVisitorAnalyticsFilterStart(filterKey = SITE_ANALYTICS_DEFAULT_F
 }
 
 async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = getCurrentSiteAnalyticsPageContext(), metadata = {}) {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return false;
+  }
   if (
     !appState.supabase
     || appState.siteVisitorAnalyticsTableUnavailable
@@ -4486,6 +4505,10 @@ async function recordSiteAnalyticsEvent(eventType = "page_view", pageContext = g
 }
 
 function trackSiteAnalyticsVisitOnce() {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return;
+  }
   if (!appState.supabase) {
     return;
   }
@@ -4532,6 +4555,10 @@ function trackSiteAnalyticsVisitOnce() {
 }
 
 function trackSiteAnalyticsPageView(pageContext) {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return;
+  }
   if (!appState.supabase || !pageContext) {
     return;
   }
@@ -4595,6 +4622,10 @@ function syncSiteVisitorPresenceState(channel) {
 }
 
 function initializeSiteVisitorPresence() {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return;
+  }
   if (!appState.supabase || appState.siteVisitorPresenceChannel) {
     return;
   }
@@ -4642,6 +4673,10 @@ function initializeSiteVisitorPresence() {
 }
 
 async function refreshSiteVisitorPresence(reason = "update", pageContext = getCurrentSiteAnalyticsPageContext()) {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return false;
+  }
   if (!appState.supabase) {
     return false;
   }
@@ -4684,6 +4719,10 @@ function handleSiteVisitorVisibilityChange() {
 }
 
 function initializeSiteVisitorTracking() {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return;
+  }
   if (!appState.supabase || appState.siteVisitorTrackingInitialized) {
     return;
   }
@@ -4697,6 +4736,10 @@ function initializeSiteVisitorTracking() {
 }
 
 async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_FILTER, reason = "refresh") {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return [];
+  }
   if (!appState.supabase || !isAdminUser() || appState.siteVisitorAnalyticsTableUnavailable) {
     return [];
   }
@@ -4739,6 +4782,10 @@ async function loadSiteVisitorAnalyticsRows(filterKey = SITE_ANALYTICS_DEFAULT_F
 }
 
 async function refreshSiteVisitorAnalytics(options = {}) {
+  if (!SITE_ANALYTICS_ENABLED) {
+    applySiteAnalyticsDisabledState();
+    return [];
+  }
   const {
     force = false,
     reason = "refresh",
@@ -17556,6 +17603,9 @@ function getTodaySiteVisitorAnalyticsRows(rows = appState.siteVisitorAnalyticsRo
 }
 
 function getSiteVisitorAnalyticsFriendlyErrorMessage() {
+  if (!SITE_ANALYTICS_ENABLED) {
+    return "Analytics tracking is currently disabled";
+  }
   if (!appState.supabase) {
     return "Analytics are unavailable in this environment.";
   }
@@ -17781,6 +17831,22 @@ function renderSiteVisitorAnalyticsSummaryMarkup() {
 }
 
 function renderSiteVisitorLiveVisitorsCardMarkup() {
+  if (!SITE_ANALYTICS_ENABLED) {
+    return `
+      <section class="meta-card site-visitor-live-card">
+        <div class="site-visitor-live-head">
+          <div>
+            <strong>Live Visitors</strong>
+            <p class="muted">Visitors active in the last 5 minutes</p>
+          </div>
+          <span class="site-visitor-live-count">0</span>
+        </div>
+        <div class="empty-state">
+          <p>Analytics tracking is currently disabled</p>
+        </div>
+      </section>
+    `;
+  }
   const activeVisitors = getActiveSiteVisitorPresenceEntries();
   const unavailableMessage = !appState.siteVisitorPresenceAvailable && appState.siteVisitorPresenceError
     ? appState.siteVisitorPresenceError
