@@ -22715,7 +22715,6 @@ function renderGrowNetworkPage() {
     <div class="grow-network-member-stats" aria-label="${escapeHtml(`${member.displayName} performance`)}">
       <span class="grow-network-member-stat-chip">${escapeHtml(`${member.approvedSnapshots} approved`)}</span>
       <span class="grow-network-member-stat-chip">${escapeHtml(`${member.likes} likes`)}</span>
-      <span class="grow-network-member-stat-chip">${escapeHtml(member.favoriteSeedType)}</span>
     </div>
   `;
 
