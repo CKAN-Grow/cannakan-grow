@@ -845,16 +845,32 @@ function syncAdminNavigationVisibility() {
 
 function syncGrowNetworkNavigationVisibility() {
   const shouldShowNetworkNav = Boolean(appState.user);
-  const hasUnseenNotifications = hasUnseenMockGrowNetworkNotifications();
+  const unseenNotificationCount = shouldShowNetworkNav ? getUnseenMockGrowNetworkNotificationCount() : 0;
+  const hasUnseenNotifications = unseenNotificationCount > 0;
+  const badgeLabel = formatGrowNetworkNotificationBadgeCount(unseenNotificationCount);
   document.querySelectorAll("[data-network-nav]").forEach((link) => {
+    let badge = link.querySelector(".topbar-nav-notification-badge");
+    if (!(badge instanceof HTMLSpanElement) && shouldShowNetworkNav && hasUnseenNotifications) {
+      badge = document.createElement("span");
+      badge.className = "topbar-nav-notification-badge";
+      badge.setAttribute("aria-hidden", "true");
+      link.append(badge);
+    }
+
     link.hidden = !shouldShowNetworkNav;
     link.classList.toggle("has-unseen-notifications", shouldShowNetworkNav && hasUnseenNotifications);
     if (shouldShowNetworkNav && hasUnseenNotifications) {
       link.setAttribute("data-unseen-notifications", "true");
-      link.setAttribute("aria-label", "Grow Network (unseen notifications)");
+      link.setAttribute("aria-label", `Grow Network (${unseenNotificationCount} unseen notification${unseenNotificationCount === 1 ? "" : "s"})`);
+      if (badge instanceof HTMLSpanElement) {
+        badge.textContent = badgeLabel;
+      }
     } else {
       link.removeAttribute("data-unseen-notifications");
       link.removeAttribute("aria-label");
+      if (badge instanceof HTMLSpanElement) {
+        badge.remove();
+      }
     }
     if (shouldShowNetworkNav) {
       link.removeAttribute("aria-hidden");
@@ -6634,6 +6650,25 @@ function hasUnseenMockGrowNetworkNotifications() {
   }
 
   return getMockGrowNetworkNotifications().some((notification) => notification.isUnseen);
+}
+
+function getUnseenMockGrowNetworkNotificationCount() {
+  if (!shouldUseMockGrowNetworkNotifications()) {
+    return 0;
+  }
+
+  return getMockGrowNetworkNotifications().filter((notification) => notification.isUnseen).length;
+}
+
+function formatGrowNetworkNotificationBadgeCount(count = 0) {
+  const normalizedCount = Math.max(0, Number(count) || 0);
+  if (!normalizedCount) {
+    return "";
+  }
+  if (normalizedCount > 99) {
+    return "99+";
+  }
+  return String(normalizedCount);
 }
 
 function ensureGrowNetworkNotificationGroupModal() {
