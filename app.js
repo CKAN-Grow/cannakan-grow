@@ -2244,6 +2244,12 @@ function getMenuIconMarkup(icon) {
         <path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path>
       </svg>
     `,
+    admin: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M12 3.5 5 6.8V12c0 4 2.6 7.7 7 8.8 4.4-1.1 7-4.8 7-8.8V6.8Z"></path>
+        <path d="M9.5 12.5 11 14l3.5-4"></path>
+      </svg>
+    `,
     delete: `
       <svg viewBox="0 0 24 24" focusable="false">
         <path d="M4 7h16"></path>
@@ -13179,11 +13185,18 @@ function updateAuthStatus() {
 
   closeAuthModal();
   const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
+  const shouldRenderAdminDropdownItem = hasResolvedAdminAccess() || appState.isAdmin;
+  const isDonCannakanAdminEmail = currentUserEmail === "don@cannakan.com";
   console.log("[Cannakan Admin Nav] Account menu render", {
     currentEmail: appState.user?.email || "",
     normalizedEmail: currentUserEmail,
+    isAdmin: appState.isAdmin,
+    userRole: appState.userRole,
     isAdminResult: hasResolvedAdminAccess(),
-    adminDropdownItemRendered: false,
+    shouldRenderAdminDropdownItem,
+    isDonCannakanAdminEmail,
+    donCannakanAdminConditionConfirmed: isDonCannakanAdminEmail ? shouldRenderAdminDropdownItem : null,
+    adminDropdownItemRendered: shouldRenderAdminDropdownItem,
   });
 
   authStatus.innerHTML = `
@@ -13220,6 +13233,12 @@ function updateAuthStatus() {
           ${getMenuIconMarkup("profile")}
           <span>Profile Preferences</span>
         </button>
+        ${shouldRenderAdminDropdownItem ? `
+          <button id="account-admin-link" class="account-menu-item" type="button" role="menuitem">
+            ${getMenuIconMarkup("admin")}
+            <span>Admin</span>
+          </button>
+        ` : ""}
         <button id="account-sign-out" class="account-menu-item" type="button" role="menuitem">
           ${getMenuIconMarkup("signout")}
           <span>Sign Out</span>
@@ -13249,6 +13268,12 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     navigateToProfileRoute();
+  });
+
+  dropdown?.querySelector("#account-admin-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    navigateToHashRoute("#admin");
   });
 
   dropdown?.querySelector("#account-sign-out")?.addEventListener("click", async (event) => {
