@@ -56,10 +56,12 @@ const DEFAULT_FACT_IMAGE_STORAGE_KEY = "cannakanGrowDefaultFactImage";
 const MIXED_IMAGE_MODE_STORAGE_KEY = "cannakanGrowMixedImageMode";
 const ADMIN_MEMBERS_OPEN_STORAGE_KEY = "cannakanAdminMembersOpen";
 const ADMIN_SOURCES_OPEN_STORAGE_KEY = "cannakanAdminSourcesOpen";
+const ADMIN_SOURCE_REVIEW_OPEN_STORAGE_KEY = "cannakanAdminSourceReviewOpen";
 const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
 const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const ADMIN_SOURCE_REVIEW_STORAGE_KEY = "cannakanAdminSourceReviewRecords";
 const SITE_ANALYTICS_ENABLED = false;
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
 const ADMIN_REPORTS_TABLE = "admin_reports";
@@ -794,6 +796,18 @@ const appState = {
   sourcesTableUnavailable: false,
   sourceAdminEditingId: "",
   sourceAdminMessage: "",
+  sourceReviewSessionRows: [],
+  sourceReviewLoaded: false,
+  sourceReviewError: "",
+  sourceReviewRefreshPromise: null,
+  sourceReviewFilters: {
+    status: "pending",
+    query: "",
+  },
+  sourceReviewRecords: {},
+  sourceReviewRecordsLoaded: false,
+  sourceReviewEditingKey: "",
+  sourceReviewMessage: "",
   announcements: [],
   announcementsLoaded: false,
   announcementsError: "",
@@ -6331,6 +6345,380 @@ async function refreshAdminMembers(options = {}) {
   } finally {
     appState.membersRefreshPromise = null;
   }
+}
+
+function getAdminSourceReviewStatusOptions() {
+  return [
+    { key: "pending", label: "Pending Review" },
+    { key: "confirmed", label: "Confirmed" },
+    { key: "needs-correction", label: "Needs Correction" },
+    { key: "merged", label: "Merged / Alias" },
+    { key: "rejected", label: "Rejected / Fake" },
+  ];
+}
+
+function normalizeAdminSourceReviewStatus(status = "") {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  return getAdminSourceReviewStatusOptions().some((option) => option.key === normalizedStatus)
+    ? normalizedStatus
+    : "pending";
+}
+
+function getAdminSourceReviewStatusLabel(status = "") {
+  return getAdminSourceReviewStatusOptions().find((option) => option.key === normalizeAdminSourceReviewStatus(status))?.label || "Pending Review";
+}
+
+function normalizeAdminSourceReviewRecord(record = null) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return null;
+  }
+
+  const submittedKey = normalizeLeaderboardKey(record.submittedKey || record.originalSubmittedSourceName || "");
+  if (!submittedKey) {
+    return null;
+  }
+
+  const normalizeAuditEntry = (entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return null;
+    }
+    return {
+      reviewedBy: String(entry.reviewedBy || "").trim(),
+      reviewed_by: String(entry.reviewed_by || entry.reviewedBy || "").trim(),
+      reviewedAt: String(entry.reviewedAt || "").trim(),
+      reviewed_at: String(entry.reviewed_at || entry.reviewedAt || "").trim(),
+      actionTaken: normalizeAdminSourceReviewStatus(entry.actionTaken),
+      action_taken: normalizeAdminSourceReviewStatus(entry.action_taken || entry.actionTaken),
+      originalSubmittedSourceName: normalizeLeaderboardLabel(entry.originalSubmittedSourceName || record.originalSubmittedSourceName || ""),
+      original_submitted_source_name: normalizeLeaderboardLabel(entry.original_submitted_source_name || entry.originalSubmittedSourceName || record.originalSubmittedSourceName || ""),
+      canonicalSourceName: normalizeLeaderboardLabel(entry.canonicalSourceName || ""),
+      canonical_source_name: normalizeLeaderboardLabel(entry.canonical_source_name || entry.canonicalSourceName || ""),
+      aliasOfSourceName: normalizeLeaderboardLabel(entry.aliasOfSourceName || ""),
+      alias_of_source_name: normalizeLeaderboardLabel(entry.alias_of_source_name || entry.aliasOfSourceName || ""),
+      notes: String(entry.notes || "").trim(),
+    };
+  };
+
+  return {
+    submittedKey,
+    originalSubmittedSourceName: normalizeLeaderboardLabel(record.originalSubmittedSourceName || ""),
+    original_submitted_source_name: normalizeLeaderboardLabel(record.original_submitted_source_name || record.originalSubmittedSourceName || ""),
+    status: normalizeAdminSourceReviewStatus(record.status),
+    canonicalSourceName: normalizeLeaderboardLabel(record.canonicalSourceName || ""),
+    canonical_source_name: normalizeLeaderboardLabel(record.canonical_source_name || record.canonicalSourceName || ""),
+    aliasOfSourceName: normalizeLeaderboardLabel(record.aliasOfSourceName || ""),
+    alias_of_source_name: normalizeLeaderboardLabel(record.alias_of_source_name || record.aliasOfSourceName || ""),
+    notes: String(record.notes || "").trim(),
+    reviewedBy: String(record.reviewedBy || "").trim(),
+    reviewed_by: String(record.reviewed_by || record.reviewedBy || "").trim(),
+    reviewedAt: String(record.reviewedAt || "").trim(),
+    reviewed_at: String(record.reviewed_at || record.reviewedAt || "").trim(),
+    actionTaken: normalizeAdminSourceReviewStatus(record.actionTaken || record.status),
+    action_taken: normalizeAdminSourceReviewStatus(record.action_taken || record.actionTaken || record.status),
+    auditTrail: (Array.isArray(record.auditTrail) ? record.auditTrail : [])
+      .map(normalizeAuditEntry)
+      .filter(Boolean),
+  };
+}
+
+function loadAdminSourceReviewRecordsFromStorage() {
+  try {
+    const rawValue = localStorage.getItem(ADMIN_SOURCE_REVIEW_STORAGE_KEY);
+    if (!rawValue) {
+      return {};
+    }
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.values(parsed).reduce((accumulator, entry) => {
+      const normalizedEntry = normalizeAdminSourceReviewRecord(entry);
+      if (normalizedEntry) {
+        accumulator[normalizedEntry.submittedKey] = normalizedEntry;
+      }
+      return accumulator;
+    }, {});
+  } catch (error) {
+    console.error("Failed to read admin source review records from localStorage", error);
+    return {};
+  }
+}
+
+function saveAdminSourceReviewRecordsToStorage(records = {}) {
+  try {
+    localStorage.setItem(ADMIN_SOURCE_REVIEW_STORAGE_KEY, JSON.stringify(records || {}));
+  } catch (error) {
+    console.error("Failed to write admin source review records to localStorage", error);
+  }
+}
+
+function ensureAdminSourceReviewRecordsLoaded() {
+  if (appState.sourceReviewRecordsLoaded) {
+    return appState.sourceReviewRecords;
+  }
+  appState.sourceReviewRecords = loadAdminSourceReviewRecordsFromStorage();
+  appState.sourceReviewRecordsLoaded = true;
+  return appState.sourceReviewRecords;
+}
+
+function getAdminSourceReviewRecords() {
+  return ensureAdminSourceReviewRecordsLoaded();
+}
+
+function upsertAdminSourceReviewRecord(record = {}) {
+  const normalizedRecord = normalizeAdminSourceReviewRecord(record);
+  if (!normalizedRecord) {
+    return;
+  }
+  const nextRecords = {
+    ...getAdminSourceReviewRecords(),
+    [normalizedRecord.submittedKey]: normalizedRecord,
+  };
+  appState.sourceReviewRecords = nextRecords;
+  appState.sourceReviewRecordsLoaded = true;
+  saveAdminSourceReviewRecordsToStorage(nextRecords);
+}
+
+async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
+  if (!appState.supabase || !isAdminUser()) {
+    const localSessions = getSessions();
+    return localSessions.map((session) => ({
+      id: session.id,
+      userId: appState.user?.id || "",
+      sessionDate: session.date || "",
+      createdAt: session.createdAt || "",
+      partitions: Array.isArray(session.partitions) ? session.partitions : [],
+    }));
+  }
+
+  const { data, error } = await appState.supabase
+    .from("grow_sessions")
+    .select("id,user_id,date,created_at,partitions");
+
+  if (error) {
+    console.error("Failed to load admin source review sessions", { reason, error });
+    appState.sourceReviewError = error.message || "Could not load source review submissions.";
+    return [];
+  }
+
+  appState.sourceReviewError = "";
+  return (data || []).map((row) => ({
+    id: row.id,
+    userId: String(row.user_id || "").trim(),
+    sessionDate: String(row.date || "").trim(),
+    createdAt: String(row.created_at || "").trim(),
+    partitions: Array.isArray(row.partitions) ? row.partitions : [],
+  }));
+}
+
+async function refreshAdminSourceReviewSessionRows(options = {}) {
+  const { force = false, reason = "refresh" } = options;
+
+  if ((!appState.supabase || !isAdminUser()) && !getSessions().length) {
+    appState.sourceReviewSessionRows = [];
+    appState.sourceReviewLoaded = true;
+    appState.sourceReviewError = "";
+    return [];
+  }
+
+  if (!force && appState.sourceReviewLoaded && !appState.sourceReviewRefreshPromise) {
+    return appState.sourceReviewSessionRows;
+  }
+
+  if (!force && appState.sourceReviewRefreshPromise) {
+    return appState.sourceReviewRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const rows = await loadAdminSourceReviewSessionRows(reason);
+    appState.sourceReviewSessionRows = rows;
+    appState.sourceReviewLoaded = true;
+    return rows;
+  })();
+
+  appState.sourceReviewRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.sourceReviewRefreshPromise = null;
+  }
+}
+
+function getAdminSourceReviewSubmittedByLabel(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return "Unknown member";
+  }
+  const member = (appState.members || []).find((entry) => entry.id === normalizedUserId) || null;
+  if (member) {
+    return member.profileName || member.email || "Unknown member";
+  }
+  return "Member";
+}
+
+function getAdminSourceReviewCanonicalOptions() {
+  const seen = new Set();
+  const combinedNames = [
+    ...Object.values(SOURCE_PROFILE_MOCK_DATA).map((source) => source?.name || ""),
+    ...getSourceCatalogRecords({ includeHidden: true }).map((source) => source?.name || ""),
+  ];
+
+  return combinedNames
+    .map((value) => normalizeLeaderboardLabel(value))
+    .filter((value) => {
+      const key = normalizeLeaderboardKey(value);
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => left.localeCompare(right, "en", { sensitivity: "base" }));
+}
+
+function buildAdminSourceReviewEntries() {
+  const reviewRecords = getAdminSourceReviewRecords();
+  const grouped = new Map();
+
+  (appState.sourceReviewSessionRows || []).forEach((sessionRow) => {
+    (sessionRow.partitions || []).forEach((partition) => {
+      const submittedSourceName = normalizeLeaderboardLabel(formatPartitionSource(partition));
+      if (!submittedSourceName) {
+        return;
+      }
+
+      const submittedKey = normalizeLeaderboardKey(submittedSourceName);
+      const occurrenceCreatedAt = sessionRow.createdAt || `${String(sessionRow.sessionDate || "").trim()}T00:00:00`;
+      const nextOccurrence = {
+        sessionId: String(sessionRow.id || "").trim(),
+        userId: String(sessionRow.userId || "").trim(),
+        submittedSourceName,
+        submittedVarietyName: normalizeLeaderboardLabel(formatPartitionSeedVariety(partition)),
+        sessionDate: String(sessionRow.sessionDate || "").trim(),
+        createdAt: occurrenceCreatedAt,
+      };
+
+      const existing = grouped.get(submittedKey);
+      if (!existing) {
+        grouped.set(submittedKey, {
+          submittedKey,
+          submittedSourceName,
+          submittedVarietyName: nextOccurrence.submittedVarietyName,
+          submittedBy: getAdminSourceReviewSubmittedByLabel(nextOccurrence.userId),
+          submittedByUserId: nextOccurrence.userId,
+          sessionDate: nextOccurrence.sessionDate,
+          createdAt: occurrenceCreatedAt,
+          occurrenceCount: 1,
+        });
+        return;
+      }
+
+      existing.occurrenceCount += 1;
+      const existingTime = new Date(existing.createdAt || 0).getTime();
+      const nextTime = new Date(occurrenceCreatedAt || 0).getTime();
+      if (nextTime >= existingTime) {
+        existing.submittedVarietyName = nextOccurrence.submittedVarietyName || existing.submittedVarietyName;
+        existing.submittedBy = getAdminSourceReviewSubmittedByLabel(nextOccurrence.userId);
+        existing.submittedByUserId = nextOccurrence.userId;
+        existing.sessionDate = nextOccurrence.sessionDate;
+        existing.createdAt = occurrenceCreatedAt;
+      }
+    });
+  });
+
+  return Array.from(grouped.values())
+    .map((entry) => {
+      const reviewRecord = reviewRecords[entry.submittedKey] || null;
+      return {
+        ...entry,
+        reviewRecord,
+        reviewStatus: reviewRecord?.status || "pending",
+      };
+    })
+    .sort((left, right) => {
+      const statusPriority = {
+        pending: 0,
+        "needs-correction": 1,
+        merged: 2,
+        confirmed: 3,
+        rejected: 4,
+      };
+      const priorityDelta = (statusPriority[left.reviewStatus] ?? 99) - (statusPriority[right.reviewStatus] ?? 99);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      if (right.occurrenceCount !== left.occurrenceCount) {
+        return right.occurrenceCount - left.occurrenceCount;
+      }
+      return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+    });
+}
+
+function getFilteredAdminSourceReviewEntries() {
+  const normalizedQuery = String(appState.sourceReviewFilters.query || "").trim().toLowerCase();
+  const statusFilter = normalizeAdminSourceReviewStatus(appState.sourceReviewFilters.status || "pending");
+  return buildAdminSourceReviewEntries().filter((entry) => {
+    const matchesStatus = statusFilter === "pending"
+      ? entry.reviewStatus === "pending"
+      : entry.reviewStatus === statusFilter;
+    if (!matchesStatus) {
+      return false;
+    }
+    if (!normalizedQuery) {
+      return true;
+    }
+    return [
+      entry.submittedSourceName,
+      entry.submittedVarietyName,
+      entry.submittedBy,
+      entry.reviewRecord?.canonicalSourceName,
+      entry.reviewRecord?.aliasOfSourceName,
+    ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+  });
+}
+
+function renderAdminSourceReviewStatusPillMarkup(status = "pending") {
+  const normalizedStatus = normalizeAdminSourceReviewStatus(status);
+  return `<span class="admin-source-review-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminSourceReviewStatusLabel(normalizedStatus))}</span>`;
+}
+
+async function syncCanonicalSourceRecordForReview(reviewRecord) {
+  const normalizedStatus = normalizeAdminSourceReviewStatus(reviewRecord?.status);
+  if (!["confirmed", "needs-correction", "merged"].includes(normalizedStatus)) {
+    return null;
+  }
+
+  const canonicalSourceName = normalizeLeaderboardLabel(
+    reviewRecord?.canonicalSourceName
+    || reviewRecord?.aliasOfSourceName
+    || reviewRecord?.originalSubmittedSourceName,
+  );
+  if (!canonicalSourceName || !appState.supabase || !isAdminUser() || appState.sourcesTableUnavailable) {
+    return null;
+  }
+
+  const existingSource = findSourceByName(canonicalSourceName, { includeHidden: true });
+  if (existingSource) {
+    return existingSource;
+  }
+
+  const savedSource = await saveSourceRecord({
+    name: canonicalSourceName,
+    websiteUrl: "",
+    description: "",
+    contactName: "",
+    contactEmail: "",
+    notes: "",
+    status: "active",
+    logoFile: null,
+    removeLogo: false,
+  }, {
+    existingSource: null,
+  });
+
+  await refreshSources({ force: true, reason: "admin:source-review-sync" });
+  return savedSource;
 }
 
 function getAdminMemberSummary(members = appState.members) {
@@ -18936,6 +19324,323 @@ function bindAdminSourcesSection() {
   });
 }
 
+function renderAdminSourceReviewFiltersMarkup() {
+  return `
+    <div class="admin-source-review-toolbar">
+      <div class="admin-source-review-filter-row" aria-label="Source review status filters">
+        ${getAdminSourceReviewStatusOptions().map((option) => `
+          <button
+            type="button"
+            class="button ${normalizeAdminSourceReviewStatus(appState.sourceReviewFilters.status) === option.key ? "button-primary" : "button-secondary"}"
+            data-admin-source-review-filter="${escapeHtml(option.key)}"
+          >
+            ${escapeHtml(option.label)}
+          </button>
+        `).join("")}
+      </div>
+      <label class="admin-source-review-search">
+        <span>Search Submitted Sources</span>
+        <input
+          type="search"
+          id="admin-source-review-search"
+          value="${escapeHtml(appState.sourceReviewFilters.query || "")}"
+          placeholder="Search submitted source names"
+        >
+      </label>
+    </div>
+  `;
+}
+
+function renderAdminSourceReviewListMarkup() {
+  const entries = getFilteredAdminSourceReviewEntries();
+  const isLoading = Boolean(appState.supabase && !appState.sourceReviewLoaded && appState.sourceReviewRefreshPromise);
+
+  if (isLoading) {
+    return `
+      <div class="admin-sources-empty">
+        <p>Loading source submissions...</p>
+      </div>
+    `;
+  }
+
+  if (appState.sourceReviewError) {
+    return `
+      <div class="admin-sources-empty">
+        <p>${escapeHtml(appState.sourceReviewError)}</p>
+      </div>
+    `;
+  }
+
+  if (!entries.length) {
+    return `
+      <div class="admin-sources-empty">
+        <p>No source submissions match the current review filter.</p>
+      </div>
+    `;
+  }
+
+  return entries.map((entry) => `
+    <article class="meta-card admin-source-review-card ${entry.reviewStatus === "pending" ? "is-pending" : ""}">
+      <div class="admin-source-review-card-head">
+        <div class="admin-source-review-card-copy">
+          <strong>${escapeHtml(entry.submittedSourceName)}</strong>
+          <p>${escapeHtml(entry.submittedVarietyName || "No variety name provided")}</p>
+        </div>
+        ${renderAdminSourceReviewStatusPillMarkup(entry.reviewStatus)}
+      </div>
+      <div class="admin-source-review-card-meta">
+        <span><strong>Submitted by:</strong> ${escapeHtml(entry.submittedBy || "Unknown member")}</span>
+        <span><strong>Session date:</strong> ${escapeHtml(formatSessionNameDate(entry.sessionDate || "") || "Not available")}</span>
+        <span><strong>Occurrences:</strong> ${escapeHtml(String(entry.occurrenceCount || 0))}</span>
+      </div>
+      ${entry.reviewRecord?.canonicalSourceName || entry.reviewRecord?.aliasOfSourceName ? `
+        <p class="admin-source-review-card-linkage">
+          <strong>Canonical:</strong> ${escapeHtml(entry.reviewRecord.canonicalSourceName || entry.reviewRecord.aliasOfSourceName)}
+        </p>
+      ` : ""}
+      <div class="admin-source-review-card-actions">
+        <button type="button" class="button button-secondary" data-admin-source-review-open="${escapeHtml(entry.submittedKey)}">Review Entry</button>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderAdminSourceReviewEditorMarkup() {
+  const entries = buildAdminSourceReviewEntries();
+  const activeEntry = entries.find((entry) => entry.submittedKey === appState.sourceReviewEditingKey) || entries[0] || null;
+  if (!activeEntry) {
+    return `
+      <div class="admin-sources-empty">
+        <p>No source submissions are ready for review yet.</p>
+      </div>
+    `;
+  }
+
+  const reviewRecord = activeEntry.reviewRecord || {};
+  const activeStatus = normalizeAdminSourceReviewStatus(reviewRecord.status || activeEntry.reviewStatus || "pending");
+  const canonicalValue = reviewRecord.canonicalSourceName || (
+    activeStatus === "needs-correction"
+    || activeStatus === "confirmed"
+    || activeStatus === "merged"
+      ? activeEntry.submittedSourceName
+      : ""
+  );
+  const aliasValue = reviewRecord.aliasOfSourceName || "";
+  const canonicalOptions = getAdminSourceReviewCanonicalOptions()
+    .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+    .join("");
+  const latestAudit = Array.isArray(reviewRecord.auditTrail) && reviewRecord.auditTrail.length
+    ? reviewRecord.auditTrail[reviewRecord.auditTrail.length - 1]
+    : null;
+
+  return `
+    <form id="admin-source-review-form" class="admin-source-review-form">
+      <div class="section-heading admin-source-form-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Source Review</p>
+            <h3>Review Submitted Source</h3>
+            <p class="muted">Confirm, correct, merge, alias, or reject session-submitted source names without editing approved snapshots.</p>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" name="submittedKey" value="${escapeHtml(activeEntry.submittedKey)}">
+      <label>
+        <span>Original Submitted Source Name</span>
+        <input type="text" name="originalSubmittedSourceName" value="${escapeHtml(activeEntry.submittedSourceName)}" readonly>
+      </label>
+      <label>
+        <span>Submitted Variety Name</span>
+        <input type="text" value="${escapeHtml(activeEntry.submittedVarietyName || "Not provided")}" readonly>
+      </label>
+      <label>
+        <span>Review Status</span>
+        <select name="reviewStatus">
+          ${getAdminSourceReviewStatusOptions().map((option) => `
+            <option value="${escapeHtml(option.key)}" ${activeStatus === option.key ? "selected" : ""}>${escapeHtml(option.label)}</option>
+          `).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Canonical / Corrected Source Name</span>
+        <input type="text" name="canonicalSourceName" list="admin-source-review-canonical-options" value="${escapeHtml(canonicalValue)}" placeholder="Enter or confirm canonical source name">
+      </label>
+      <label>
+        <span>Merge / Alias Target</span>
+        <input type="text" name="aliasOfSourceName" list="admin-source-review-canonical-options" value="${escapeHtml(aliasValue)}" placeholder="Existing canonical source for merged or alias entries">
+      </label>
+      <datalist id="admin-source-review-canonical-options">
+        ${canonicalOptions}
+      </datalist>
+      <label>
+        <span>Review Notes</span>
+        <textarea name="reviewNotes" rows="4" placeholder="Add context for this source review decision">${escapeHtml(reviewRecord.notes || "")}</textarea>
+      </label>
+      <div class="admin-source-review-editor-meta">
+        <span><strong>Occurrences:</strong> ${escapeHtml(String(activeEntry.occurrenceCount || 0))}</span>
+        <span><strong>Latest submitter:</strong> ${escapeHtml(activeEntry.submittedBy || "Unknown member")}</span>
+        <span><strong>Latest session date:</strong> ${escapeHtml(formatSessionNameDate(activeEntry.sessionDate || "") || "Not available")}</span>
+      </div>
+      ${latestAudit ? `
+        <div class="admin-source-review-audit-note">
+          <strong>Last review:</strong>
+          <span>${escapeHtml(getAdminSourceReviewStatusLabel(latestAudit.actionTaken))} by ${escapeHtml(latestAudit.reviewedBy || "Admin")} on ${escapeHtml(formatTimingDateTime(parseCompletedAtValue(latestAudit.reviewedAt)) || latestAudit.reviewedAt || "Not available")}</span>
+        </div>
+      ` : ""}
+      <p id="admin-source-review-message" class="snapshot-message">${escapeHtml(appState.sourceReviewMessage || "")}</p>
+      <div class="form-actions">
+        <button type="submit" class="button button-primary">Save Review</button>
+      </div>
+    </form>
+  `;
+}
+
+function renderAdminSourceReviewSectionMarkup() {
+  const filteredEntries = getFilteredAdminSourceReviewEntries();
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Source Review",
+    title: "Source Review",
+    description: "Review session-submitted source names, confirm trusted directory records, and preserve approved snapshot text.",
+    iconType: "sources",
+    storageKey: ADMIN_SOURCE_REVIEW_OPEN_STORAGE_KEY,
+    contentId: "admin-source-review-section-content",
+    defaultOpen: false,
+    bodyMarkup: `
+      ${renderAdminSourceReviewFiltersMarkup()}
+      <div class="admin-sources-layout admin-source-review-layout">
+        <div class="admin-sources-list-shell">
+          <div class="admin-sources-list-head">
+            <strong>Submitted Source Entries</strong>
+            <span class="muted">${escapeHtml(`${filteredEntries.length} shown`)}</span>
+          </div>
+          <div id="admin-source-review-list" class="admin-sources-list">
+            ${renderAdminSourceReviewListMarkup()}
+          </div>
+        </div>
+        <div id="admin-source-review-editor" class="meta-card admin-source-editor">
+          ${renderAdminSourceReviewEditorMarkup()}
+        </div>
+      </div>
+    `,
+  });
+}
+
+function bindAdminSourceReviewSection() {
+  const searchInput = app.querySelector("#admin-source-review-search");
+  const editor = app.querySelector("#admin-source-review-editor");
+  if (!editor) {
+    return;
+  }
+
+  app.querySelectorAll("[data-admin-source-review-filter]").forEach((button) => {
+    if (button.dataset.adminSourceReviewFilterBound === "true") {
+      return;
+    }
+    button.dataset.adminSourceReviewFilterBound = "true";
+    button.addEventListener("click", () => {
+      appState.sourceReviewFilters.status = String(button.dataset.adminSourceReviewFilter || "pending").trim() || "pending";
+      safeRender();
+    });
+  });
+
+  if (searchInput && searchInput.dataset.adminSourceReviewSearchBound !== "true") {
+    searchInput.dataset.adminSourceReviewSearchBound = "true";
+    searchInput.addEventListener("input", () => {
+      appState.sourceReviewFilters.query = String(searchInput.value || "");
+      safeRender();
+    });
+  }
+
+  app.querySelectorAll("[data-admin-source-review-open]").forEach((button) => {
+    if (button.dataset.adminSourceReviewOpenBound === "true") {
+      return;
+    }
+    button.dataset.adminSourceReviewOpenBound = "true";
+    button.addEventListener("click", () => {
+      appState.sourceReviewEditingKey = String(button.dataset.adminSourceReviewOpen || "").trim();
+      appState.sourceReviewMessage = "";
+      safeRender();
+    });
+  });
+
+  const form = editor.querySelector("#admin-source-review-form");
+  if (!form) {
+    return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submittedKey = normalizeLeaderboardKey(form.elements.submittedKey?.value || "");
+    const originalSubmittedSourceName = normalizeLeaderboardLabel(form.elements.originalSubmittedSourceName?.value || "");
+    const reviewStatus = normalizeAdminSourceReviewStatus(form.elements.reviewStatus?.value || "pending");
+    const canonicalSourceName = normalizeLeaderboardLabel(form.elements.canonicalSourceName?.value || "");
+    const aliasOfSourceName = normalizeLeaderboardLabel(form.elements.aliasOfSourceName?.value || "");
+    const notes = String(form.elements.reviewNotes?.value || "").trim();
+
+    if (["confirmed", "needs-correction"].includes(reviewStatus) && !canonicalSourceName) {
+      appState.sourceReviewMessage = "Please enter a canonical source name before saving this review.";
+      safeRender();
+      return;
+    }
+
+    if (reviewStatus === "merged" && !(aliasOfSourceName || canonicalSourceName)) {
+      appState.sourceReviewMessage = "Please choose an existing canonical source for merged or alias entries.";
+      safeRender();
+      return;
+    }
+
+    const reviewedBy = getProfileDisplayName() || appState.user?.email || "Admin";
+    const reviewedAt = new Date().toISOString();
+    const nextRecord = {
+      submittedKey,
+      originalSubmittedSourceName,
+      original_submitted_source_name: originalSubmittedSourceName,
+      status: reviewStatus,
+      canonicalSourceName,
+      canonical_source_name: canonicalSourceName,
+      aliasOfSourceName,
+      alias_of_source_name: aliasOfSourceName,
+      notes,
+      reviewedBy,
+      reviewed_by: reviewedBy,
+      reviewedAt,
+      reviewed_at: reviewedAt,
+      actionTaken: reviewStatus,
+      action_taken: reviewStatus,
+      auditTrail: [
+        ...(getAdminSourceReviewRecords()[submittedKey]?.auditTrail || []),
+        {
+          reviewedBy,
+          reviewed_by: reviewedBy,
+          reviewedAt,
+          reviewed_at: reviewedAt,
+          actionTaken: reviewStatus,
+          action_taken: reviewStatus,
+          originalSubmittedSourceName,
+          original_submitted_source_name: originalSubmittedSourceName,
+          canonicalSourceName,
+          canonical_source_name: canonicalSourceName,
+          aliasOfSourceName,
+          alias_of_source_name: aliasOfSourceName,
+          notes,
+        },
+      ],
+    };
+
+    try {
+      await syncCanonicalSourceRecordForReview(nextRecord);
+      upsertAdminSourceReviewRecord(nextRecord);
+      appState.sourceReviewEditingKey = submittedKey;
+      appState.sourceReviewMessage = `${getAdminSourceReviewStatusLabel(reviewStatus)} saved for ${originalSubmittedSourceName}.`;
+      safeRender();
+    } catch (error) {
+      appState.sourceReviewMessage = error.message || "Could not save this source review right now.";
+      safeRender();
+    }
+  });
+}
+
 function renderMemberRolePillMarkup(role = "member") {
   const normalizedRole = role === "admin" ? "admin" : "member";
   return `<span class="admin-member-role-pill is-${escapeHtml(normalizedRole)}">${escapeHtml(capitalize(normalizedRole))}</span>`;
@@ -21642,6 +22347,7 @@ function renderAdminPage() {
         <div id="admin-members-table-anchor"></div>
       `,
     })}
+    ${renderAdminSourceReviewSectionMarkup()}
     ${renderAdminMessagesSectionMarkup()}
     ${renderAdminCollapsibleSectionMarkup({
       eyebrow: "Sources",
@@ -21737,6 +22443,15 @@ function renderAdminPage() {
 
   if (isAdminUser() && !appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise && appState.supabase) {
     void refreshAdminMessages({ force: true, reason: "route:admin-user-reports" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (isAdminUser() && (!appState.sourceReviewLoaded || !appState.sourceReviewSessionRows.length) && !appState.sourceReviewRefreshPromise) {
+    void refreshAdminSourceReviewSessionRows({ force: true, reason: "route:admin-source-review" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
@@ -21862,6 +22577,7 @@ function renderAdminPage() {
 
   bindAdminCollapsibleSections(app);
   bindAdminMembersSection();
+  bindAdminSourceReviewSection();
   bindAdminMessagesSection();
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();

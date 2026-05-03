@@ -6295,6 +6295,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 14px;
 }
 
+.admin-source-review-layout {
+  align-items: start;
+}
+
+.admin-source-review-toolbar {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.admin-source-review-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-source-review-search {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-source-review-search input {
+  width: 100%;
+}
+
 .admin-sources-empty {
   padding: 22px;
   border-radius: 16px;
@@ -6305,6 +6330,116 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .admin-sources-empty p {
   margin: 0;
+}
+
+.admin-source-review-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-source-review-card.is-pending {
+  border-color: rgba(148, 209, 89, 0.22);
+}
+
+.admin-source-review-card-head,
+.admin-source-review-card-actions,
+.admin-source-review-card-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-source-review-card-head {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.admin-source-review-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-source-review-card-copy strong,
+.admin-source-review-card-copy p,
+.admin-source-review-card-linkage {
+  margin: 0;
+}
+
+.admin-source-review-card-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-source-review-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(109, 124, 113, 0.18);
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-source-review-status-pill.is-pending {
+  border-color: rgba(148, 209, 89, 0.22);
+  background: rgba(148, 209, 89, 0.12);
+  color: #476527;
+}
+
+.admin-source-review-status-pill.is-confirmed {
+  border-color: rgba(84, 141, 86, 0.2);
+  background: rgba(92, 170, 99, 0.1);
+  color: #2f6134;
+}
+
+.admin-source-review-status-pill.is-needs-correction {
+  border-color: rgba(218, 171, 84, 0.2);
+  background: rgba(225, 190, 117, 0.12);
+  color: #7b5c1e;
+}
+
+.admin-source-review-status-pill.is-merged {
+  border-color: rgba(103, 134, 198, 0.18);
+  background: rgba(103, 134, 198, 0.1);
+  color: #435b96;
+}
+
+.admin-source-review-status-pill.is-rejected {
+  border-color: rgba(188, 92, 92, 0.18);
+  background: rgba(188, 92, 92, 0.1);
+  color: #8a4343;
+}
+
+.admin-source-review-form {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-source-review-editor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-source-review-audit-note {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(109, 124, 113, 0.16);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .admin-source-card {
@@ -14737,6 +14872,53 @@ body.theme-dark .admin-source-logo-preview-copy p,
 body.theme-dark .admin-source-logo-helper,
 body.theme-dark .admin-sources-empty {
   color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-source-review-status-pill {
+  border-color: rgba(123, 134, 124, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f6f8f5;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-pending {
+  border-color: rgba(129, 182, 92, 0.22);
+  background: rgba(148, 209, 89, 0.12);
+  color: #b7e385;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-confirmed {
+  border-color: rgba(92, 170, 99, 0.2);
+  background: rgba(92, 170, 99, 0.1);
+  color: #b6e0b8;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-needs-correction {
+  border-color: rgba(212, 176, 101, 0.22);
+  background: rgba(212, 176, 101, 0.12);
+  color: #f0d28c;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-merged {
+  border-color: rgba(111, 142, 206, 0.2);
+  background: rgba(111, 142, 206, 0.1);
+  color: #c5d4ff;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-rejected {
+  border-color: rgba(188, 92, 92, 0.2);
+  background: rgba(188, 92, 92, 0.1);
+  color: #f0b1b1;
+}
+
+body.theme-dark .admin-source-review-card-meta,
+body.theme-dark .admin-source-review-audit-note,
+body.theme-dark .admin-source-review-editor-meta {
+  color: rgba(189, 204, 192, 0.72);
+}
+
+body.theme-dark .admin-source-review-audit-note {
+  border-color: rgba(123, 134, 124, 0.16);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 body.theme-dark .admin-announcement-card-media,
