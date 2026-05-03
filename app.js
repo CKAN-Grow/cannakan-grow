@@ -13206,7 +13206,7 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
-    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect KAN system session data, not source quality alone.</p>
+    <p class="gallery-leaderboard-disclaimer">Results reflect KAN system session data, not source performance alone.</p>
   `;
 
   return section;
@@ -18669,7 +18669,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
       <div class="home-tested-sources-preview-row" role="list" aria-label="Tested Sources preview">
         ${previewCardsMarkup}
       </div>
-      <p class="home-tested-sources-disclaimer muted">Community-tested sources. CSTP verification available where applicable.</p>
+      <p class="home-tested-sources-disclaimer muted">Community-tested sources. CSTP verification shown where applicable.</p>
     </section>
   `;
 }
@@ -18964,7 +18964,7 @@ function renderSourcesLandingPage() {
             <p class="eyebrow">Tested Sources</p>
             <h2>Tested Sources</h2>
             <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
-            <p class="source-directory-trust-note">Listings are based on community data and CSTP testing. Results may vary.</p>
+            <p class="source-directory-trust-note">Listings reflect community data and CSTP testing. Results may vary.</p>
           </div>
         </div>
       </div>
@@ -19132,7 +19132,7 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">${escapeHtml("Community data is based on user sessions and may vary.")}</p>
+        <p class="source-profile-trust-note">${escapeHtml("Community data is user-submitted and may vary.")}</p>
       </article>
 
       <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
@@ -19169,7 +19169,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
         </div>
-        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>Certification is batch-based and time-limited.<br>Results do not guarantee future performance.</p>
+        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>CSTP results are batch-based and do not guarantee future performance.</p>
       </article>
 
       <article class="card source-profile-track-record-card">
@@ -19216,22 +19216,32 @@ function renderDataTestingDisclaimerPage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Community Data</p>
           <h3>Community results may vary</h3>
-          <p class="muted">Community data comes from real user KAN system sessions and can vary based on grower inputs, handling, environment, and reporting volume.</p>
+          <p class="muted">Community data is user-submitted and can vary based on grower inputs, handling, environment, reporting volume, and other real-world factors.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">CSTP Scope</p>
           <h3>CSTP is batch-based</h3>
-          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time. Results do not guarantee future performance.</p>
+          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time and do not guarantee future performance across other batches or conditions.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Neutrality</p>
           <h3>No source endorsement</h3>
-          <p class="muted">Listings, rankings, and CSTP badges are informational signals only. They do not endorse any source.</p>
+          <p class="muted">Listings, rankings, and CSTP badges are informational signals only. They do not endorse, sponsor, or recommend any source.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Use</p>
           <h3>Informational use only</h3>
-          <p class="muted">Use community and CSTP data as reference alongside your own judgment, batch details, and grow conditions.</p>
+          <p class="muted">Use community and CSTP data as reference alongside your own judgment, batch details, and grow conditions. Nothing in the app is professional, legal, or performance advice.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Liability</p>
+          <h3>Limited responsibility</h3>
+          <p class="muted">To the fullest extent allowed by applicable law, Cannakan provides this data for informational use and is not responsible for losses, outcomes, or decisions based solely on these results.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Jurisdiction</p>
+          <h3>Applies flexibly by region</h3>
+          <p class="muted">This disclaimer is intended to operate with applicable local law. Where regional consumer or liability protections apply, those protections continue to apply.</p>
         </article>
       </div>
     </section>
