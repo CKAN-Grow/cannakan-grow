@@ -18512,41 +18512,6 @@ function renderSourceProfileMetricCard({ label, value, detail = "" }) {
   `;
 }
 
-function getSourceCstpReportMock(sourceProfile = {}) {
-  const cstp = sourceProfile?.cstp || {};
-  const status = String(cstp.status || "").trim().toLowerCase();
-  const measuredRate = cstp.resultPercent || sourceProfile?.community?.avgRate || "Not available";
-  const totalTime = cstp.avgTime || "Not available";
-  const sampleSize = cstp.sampleSize || "Not available";
-  const batchLot = String(cstp.batchLot || `Batch ${String(sourceProfile.id || "mock").replace(/-/g, " ").toUpperCase()}`).trim();
-  return {
-    sourceName: sourceProfile?.name || "Source",
-    batchLot,
-    testDate: cstp.testedDate || "Not available",
-    sampleSize,
-    germinationRate: measuredRate,
-    totalGerminationTime: totalTime,
-    statusLabel: status === "gold"
-      ? "CSTP Gold Certified"
-      : (status === "silver"
-        ? "CSTP Silver Certified"
-        : (status === "tested"
-          ? "Tested (No Certification Earned)"
-          : (status === "not-tested" ? "Not CSTP Tested" : "Certification Expired"))),
-    badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS[status]
-      || (status === "expired" ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.expired : ""),
-    badgeAlt: status === "gold"
-      ? "CSTP Gold Certified badge"
-      : (status === "silver"
-        ? "CSTP Silver Certified badge"
-        : (status === "expired" ? "Expired CSTP certification badge" : "")),
-    showBadge: ["gold", "silver", "expired"].includes(status),
-    temperature: String(cstp.temperature || "75 F controlled environment").trim(),
-    moistureMethod: String(cstp.moistureMethod || "Standardized moist paper method").trim(),
-    duration: String(cstp.duration || totalTime || "Not available").trim(),
-  };
-}
-
 function getSourceProfileCstpState(sourceProfile = {}) {
   const cstp = sourceProfile?.cstp || {};
   const status = String(cstp.status || "").trim().toLowerCase();
@@ -19434,16 +19399,15 @@ function renderSourceCstpReportPage(sourceId = "") {
     return;
   }
 
-  const report = getSourceCstpReportMock(sourceProfile);
   app.innerHTML = `
-    <section class="source-profile-page source-cstp-report-page">
+    <section class="source-profile-page">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("sources")}
           <div>
             <p class="eyebrow">CSTP Report</p>
-            <h2>CSTP Test Report</h2>
-            <p class="muted">Controlled batch testing results under standardized conditions.</p>
+            <h2>CSTP Test Report (Coming Soon)</h2>
+            <p class="muted">Detailed CSTP batch testing reports will be available here.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -19451,111 +19415,14 @@ function renderSourceCstpReportPage(sourceId = "") {
         </div>
       </div>
 
-      <article class="card source-cstp-report-card">
+      <article class="card source-profile-track-record-card">
         <div class="source-profile-section-head">
           <div>
-            <p class="eyebrow">Test Summary</p>
-            <h3>Batch Test Summary</h3>
+            <p class="eyebrow">Placeholder</p>
+            <h3>CSTP Test Report (Coming Soon)</h3>
+            <p class="muted">Detailed CSTP batch testing reports will be available here.</p>
           </div>
         </div>
-        <div class="source-profile-detail-grid source-cstp-report-grid">
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Source Name</span>
-            <strong>${escapeHtml(report.sourceName)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Batch / Lot</span>
-            <strong>${escapeHtml(report.batchLot)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Test Date</span>
-            <strong>${escapeHtml(report.testDate)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Sample Size</span>
-            <strong>${escapeHtml(report.sampleSize)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Germination Rate</span>
-            <strong>${escapeHtml(report.germinationRate)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Total Germination Time</span>
-            <strong>${escapeHtml(report.totalGerminationTime)}</strong>
-          </article>
-        </div>
-        <p class="source-profile-trust-note">Results apply only to the tested batch under CSTP conditions.</p>
-      </article>
-
-      <article class="card source-cstp-report-card">
-        <div class="source-profile-section-head">
-          <div>
-            <p class="eyebrow">Test Conditions</p>
-            <h3>Standardized Test Conditions</h3>
-          </div>
-        </div>
-        <div class="source-profile-detail-grid source-cstp-report-grid">
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Controlled Environment</span>
-            <strong>Standardized indoor lab setting</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Temperature</span>
-            <strong>${escapeHtml(report.temperature)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Moisture Method</span>
-            <strong>${escapeHtml(report.moistureMethod)}</strong>
-          </article>
-          <article class="meta-card source-profile-detail-card">
-            <span class="stat-label">Duration</span>
-            <strong>${escapeHtml(report.duration)}</strong>
-          </article>
-        </div>
-        <p class="source-profile-trust-note">Results may vary under different growing conditions.</p>
-      </article>
-
-      <article class="card source-cstp-report-card">
-        <div class="source-profile-section-head">
-          <div>
-            <p class="eyebrow">CSTP Status</p>
-            <h3>Test Status</h3>
-          </div>
-        </div>
-        <div class="source-cstp-report-status">
-          ${report.showBadge ? `
-            <div class="source-cstp-report-badge-shell${String(sourceProfile.cstp?.status || "").trim().toLowerCase() === "expired" ? " is-expired" : ""}">
-              <img
-                src="${escapeHtml(report.badgeAsset)}"
-                alt="${escapeHtml(report.badgeAlt)}"
-                class="source-cstp-report-badge"
-                loading="lazy"
-                decoding="async"
-              >
-            </div>
-          ` : `
-            <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${escapeHtml(getSourceProfileCstpState(sourceProfile).toneClass || "")}">
-              <span class="source-profile-cstp-visual-label">CSTP</span>
-              <strong>${escapeHtml(report.statusLabel)}</strong>
-            </div>
-          `}
-          <div class="source-cstp-report-status-copy">
-            <h4>${escapeHtml(report.statusLabel)}</h4>
-            <p class="muted">Certification is based on measured results from this specific test.</p>
-          </div>
-        </div>
-      </article>
-
-      <article class="card source-cstp-report-card source-cstp-report-notice">
-        <div class="source-profile-section-head">
-          <div>
-            <p class="eyebrow">Important Notice</p>
-            <h3>Important Notice</h3>
-          </div>
-        </div>
-        <p class="muted">This report reflects observed results from a controlled test of a specific seed batch.</p>
-        <p class="muted">Results do not guarantee future performance and may vary due to environmental and handling factors.</p>
-        <p class="muted">This report does not constitute an endorsement of the source or product.</p>
       </article>
     </section>
   `;
