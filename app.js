@@ -18610,9 +18610,10 @@ function renderAdminAccessDeniedScreen() {
   `;
 }
 
-function renderAdminOverviewCardMarkup({ label, value, subtext = "" }) {
+function renderAdminOverviewCardMarkup({ label, value, subtext = "", className = "" }) {
+  const cardClassName = `card stat-card card-accent card-accent-green admin-overview-card ${String(className || "").trim()}`.trim();
   return `
-    <article class="card stat-card card-accent card-accent-green admin-overview-card">
+    <article class="${escapeHtml(cardClassName)}">
       <span class="stat-label">${escapeHtml(label)}</span>
       <strong class="stat-value">${escapeHtml(value)}</strong>
       <p class="summary-subtext">${escapeHtml(subtext)}</p>
@@ -28526,6 +28527,7 @@ function renderAdminPage() {
   const overviewGrid = app.querySelector(".admin-overview-grid");
   if (overviewGrid) {
     const memberCount = getRegisteredMemberCount();
+    const cstpCertificationMetrics = getAdminCstpCertificationMetrics();
     const memberValue = Number.isFinite(memberCount)
       ? memberCount.toLocaleString()
       : (appState.memberCountLoaded ? "—" : "--");
@@ -28549,6 +28551,12 @@ function renderAdminPage() {
         label: "Shared Community Grow Profiles",
         value: sharedProfileSnapshots.length.toLocaleString(),
         subtext: "approved snapshots with shared profile info",
+      }),
+      renderAdminOverviewCardMarkup({
+        label: "CSTP Certified",
+        value: cstpCertificationMetrics.totalPublishedSeals.toLocaleString(),
+        subtext: "Gold & Silver certified batches",
+        className: "admin-overview-card--cstp",
       }),
     ].join("");
   }
