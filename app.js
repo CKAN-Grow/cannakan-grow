@@ -2291,6 +2291,7 @@ function syncMobileNavigationMenu() {
   }
 
   const isSignedIn = Boolean(appState.user);
+  const shouldShowAdminReviewLink = hasResolvedAdminAccess() || appState.isAdmin;
   const unseenNotificationCount = isSignedIn ? getUnseenMockGrowNetworkNotificationCount() : 0;
   const growNetworkBadge = unseenNotificationCount > 0
     ? `<span class="mobile-nav-link-badge" aria-hidden="true">${escapeHtml(formatGrowNetworkNotificationBadgeCount(unseenNotificationCount))}</span>`
@@ -2302,6 +2303,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
+      ${shouldShowAdminReviewLink ? `<a class="mobile-nav-link" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}" data-mobile-nav-link="true">Source Profile</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
     </nav>
