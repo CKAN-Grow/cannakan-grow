@@ -145,11 +145,11 @@ const DEFAULT_GROW_JOKES = JOKES;
 const DEFAULT_GROW_FACTS = CANNAKAN_FACTS;
 const HOME_ANNOUNCEMENT_ROTATION_SEQUENCE = Object.freeze(["joke", "hint", "hint", "hint", "fact"]);
 const HOME_ANNOUNCEMENT_ROTATION_DURATION_MS = Object.freeze({
-  joke: 5000,
-  hint: 5000,
-  fact: 15000,
+  joke: 20000,
+  hint: 25000,
+  fact: 30000,
 });
-const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 260;
+const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 420;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";

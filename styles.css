@@ -3920,15 +3920,15 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-announcement-card.is-rotating .home-announcement-card-media,
 .home-announcement-card.is-rotating .home-announcement-card-body {
-  transition: opacity 0.26s ease, transform 0.26s ease, filter 0.26s ease;
+  transition: opacity 0.42s ease, transform 0.42s ease, filter 0.42s ease;
   will-change: opacity, transform, filter;
 }
 
 .home-announcement-card.is-rotating.is-transitioning .home-announcement-card-media,
 .home-announcement-card.is-rotating.is-transitioning .home-announcement-card-body {
-  opacity: 0.18;
-  transform: translateY(4px);
-  filter: saturate(0.94);
+  opacity: 0.34;
+  transform: translateY(2px);
+  filter: saturate(0.98);
 }
 
 .home-announcement-card-media {
