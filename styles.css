@@ -1917,32 +1917,85 @@ body.theme-dark .spotlight-stat strong {
   margin-left: -80px;
 }
 
-.section-title-icon {
-  width: 64px;
-  height: 64px;
-  flex: 0 0 64px;
+.cg-icon {
+  --cg-icon-size: 22px;
+  --cg-icon-stroke: 1.7;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  background: rgba(24, 34, 24, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   color: #94d159;
+  line-height: 0;
+}
+
+.cg-icon-svg {
+  width: var(--cg-icon-size);
+  height: var(--cg-icon-size);
+  display: block;
+  overflow: visible;
+}
+
+.cg-icon-svg * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--cg-icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.cg-icon--plate {
+  --cg-icon-size: 24px;
+  position: relative;
+  isolation: isolate;
+  width: 64px;
+  height: 64px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at 50% 30%, rgba(148, 209, 89, 0.08), transparent 58%),
+    linear-gradient(180deg, rgba(27, 35, 29, 0.98) 0%, rgba(14, 19, 16, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 18px rgba(148, 209, 89, 0.05),
+    0 0 0 1px rgba(148, 209, 89, 0.05),
+    0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.cg-icon--plate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 18px rgba(148, 209, 89, 0.08);
+  pointer-events: none;
+}
+
+.cg-icon--plain {
+  --cg-icon-size: 20px;
+  --cg-icon-stroke: 1.75;
+  color: currentColor;
+}
+
+.section-title-icon {
+  flex: 0 0 64px;
   opacity: 1;
 }
 
+.section-title-icon .cg-icon-svg,
 .section-title-icon svg {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-.section-title-icon * {
+.section-title-icon .cg-icon-svg *,
+svg.section-title-icon * {
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.85;
+  stroke-width: 1.72;
   stroke-linecap: round;
   stroke-linejoin: round;
 }

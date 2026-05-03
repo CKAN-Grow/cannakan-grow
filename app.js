@@ -13141,22 +13141,10 @@ function renderGalleryLeaderboardIcon(type, entry = {}) {
   }
 
   if (type === "source") {
-    return `
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <circle cx="12" cy="12" r="9"></circle>
-        <path d="M8.5 14.5h7"></path>
-        <path d="M9 10.5h6"></path>
-        <path d="M12 7.5v9"></path>
-      </svg>
-    `;
+    return renderAppIconSvgMarkup("sourceDirectoryBars");
   }
 
-  return `
-    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-      <path d="M12 18c-2.8 0-5-2.1-5-4.8 0-2.9 2.2-5.3 5.6-7.5.2-.1.5-.1.7 0 3.4 2.2 5.7 4.6 5.7 7.5 0 2.7-2.3 4.8-5 4.8Z"></path>
-      <path d="M12 10.5c0 3.6-1.2 6.1-3.5 7.5"></path>
-    </svg>
-  `;
+  return renderAppIconSvgMarkup("mySessionsSprout");
 }
 
 function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessage = "Not enough approved public data yet.") {
@@ -13348,187 +13336,363 @@ function renderGalleryTopMembersSummary(entries = []) {
   `;
 }
 
-function renderAppSectionHeaderIcon(iconType = "overview") {
+const APP_ICON_LIBRARY = Object.freeze({
+  mySessionsSprout: `
+    <path d="M12 20v-5.2"></path>
+    <path d="M12 14.8c0-3 1.9-5.4 4.8-6.6.1 3.1-1.6 5.7-4.8 6.9Z"></path>
+    <path d="M12 13.8c-2.8-1-4.5-3.5-4.7-6.4 2.8 1 4.7 3.4 4.7 6.4Z"></path>
+    <path d="M9.2 20.5h5.6"></path>
+  `,
+  activeSessionWaveform: `
+    <path d="M3.5 13.5H7l2.4-4.5 3.2 8 2.2-5h5.7"></path>
+    <path d="M5 18.5h14"></path>
+  `,
+  communityGroup: `
+    <circle cx="9" cy="9" r="2.5"></circle>
+    <circle cx="16.3" cy="8.2" r="2"></circle>
+    <path d="M4.8 18c.6-2.2 2.4-3.6 4.9-3.6 2.4 0 4.2 1.4 4.8 3.6"></path>
+    <path d="M14.2 17.3c.5-1.5 1.9-2.4 3.6-2.4 1 0 1.9.2 2.7.8"></path>
+  `,
+  sourceDirectoryBars: `
+    <path d="M4.5 19.5h15"></path>
+    <path d="M7 19.5V10"></path>
+    <path d="M12 19.5V6"></path>
+    <path d="M17 19.5v-7"></path>
+  `,
+  growNetworkNodes: `
+    <circle cx="6" cy="12" r="2"></circle>
+    <circle cx="18" cy="7" r="2"></circle>
+    <circle cx="18" cy="17" r="2"></circle>
+    <path d="M8 11.2 16 7.8"></path>
+    <path d="M8 12.8 16 16.2"></path>
+  `,
+  adminShield: `
+    <path d="M12 3.5 5.5 6.5v5.2c0 4.1 2.6 7.5 6.5 8.8 3.9-1.3 6.5-4.7 6.5-8.8V6.5Z"></path>
+    <path d="m9.2 12.1 1.9 1.9 3.9-4.2"></path>
+  `,
+  profileUser: `
+    <circle cx="12" cy="8.2" r="3"></circle>
+    <path d="M5.2 19c.8-3 3.1-4.8 6.8-4.8 3.7 0 6 1.8 6.8 4.8"></path>
+  `,
+  settingsGear: `
+    <circle cx="12" cy="12" r="2.7"></circle>
+    <path d="M12 4.2v2.2"></path>
+    <path d="M12 17.6v2.2"></path>
+    <path d="m6.5 6.5 1.6 1.6"></path>
+    <path d="m15.9 15.9 1.6 1.6"></path>
+    <path d="M4.2 12h2.2"></path>
+    <path d="M17.6 12h2.2"></path>
+    <path d="m6.5 17.5 1.6-1.6"></path>
+    <path d="m15.9 8.1 1.6-1.6"></path>
+  `,
+  signOut: `
+    <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path>
+    <path d="M13 8.5 18 12l-5 3.5"></path>
+    <path d="M18 12H9"></path>
+  `,
+  backArrow: `
+    <path d="m10 6-6 6 6 6"></path>
+    <path d="M20 12H4.5"></path>
+  `,
+  addPlus: `
+    <path d="M12 5v14"></path>
+    <path d="M5 12h14"></path>
+  `,
+  editPencil: `
+    <path d="m5 19 3.8-.8L18.2 8.8a1.8 1.8 0 0 0-2.6-2.6L6.2 15.6 5 19Z"></path>
+    <path d="m13.9 7.9 2.2 2.2"></path>
+  `,
+  deleteTrash: `
+    <path d="M5.5 7.5h13"></path>
+    <path d="M9 4.8h6"></path>
+    <path d="M8 7.5v10.2c0 .7.6 1.3 1.3 1.3h5.4c.7 0 1.3-.6 1.3-1.3V7.5"></path>
+    <path d="M10 10.5v5"></path>
+    <path d="M14 10.5v5"></path>
+  `,
+  uploadImage: `
+    <rect x="4" y="6" width="16" height="12" rx="2.5"></rect>
+    <path d="M12 14V8.5"></path>
+    <path d="m9.5 11 2.5-2.5 2.5 2.5"></path>
+    <path d="M7 18.5h10"></path>
+  `,
+  filter: `
+    <path d="M4.5 6h15l-6 7v4.5l-3 1V13Z"></path>
+  `,
+  search: `
+    <circle cx="11" cy="11" r="5.5"></circle>
+    <path d="m15.2 15.2 4.3 4.3"></path>
+  `,
+  calendar: `
+    <rect x="4.5" y="5.5" width="15" height="14" rx="2.5"></rect>
+    <path d="M8 3.5v4"></path>
+    <path d="M16 3.5v4"></path>
+    <path d="M4.5 9.5h15"></path>
+  `,
+  clock: `
+    <circle cx="12" cy="12" r="7.5"></circle>
+    <path d="M12 8v4.4l2.8 1.8"></path>
+  `,
+  check: `
+    <path d="m5.5 12.5 4 4 9-9"></path>
+  `,
+  warning: `
+    <path d="M12 4.8 20 19H4Z"></path>
+    <path d="M12 9v4.5"></path>
+    <path d="M12 16.5h.01"></path>
+  `,
+  info: `
+    <circle cx="12" cy="12" r="8"></circle>
+    <path d="M12 10.2v5"></path>
+    <path d="M12 7.6h.01"></path>
+  `,
+  lock: `
+    <rect x="5.5" y="10.5" width="13" height="9" rx="2"></rect>
+    <path d="M8.5 10.5V8.4A3.5 3.5 0 0 1 12 5a3.5 3.5 0 0 1 3.5 3.4v2.1"></path>
+  `,
+  mail: `
+    <rect x="4" y="6.5" width="16" height="11" rx="2"></rect>
+    <path d="m5.5 8 6.5 5 6.5-5"></path>
+  `,
+  externalLink: `
+    <path d="M13.5 5.5H19v5.5"></path>
+    <path d="M10 14 19 5"></path>
+    <path d="M18 13.5v4A1.5 1.5 0 0 1 16.5 19h-10A1.5 1.5 0 0 1 5 17.5v-10A1.5 1.5 0 0 1 6.5 6h4"></path>
+  `,
+  chart: `
+    <path d="M4.5 19.5h15"></path>
+    <path d="m6 15 4-4 3 2.5 5-6"></path>
+    <path d="M14.5 7.5H18V11"></path>
+  `,
+  leaderboard: `
+    <path d="M5 19.5h14"></path>
+    <path d="M7 19.5v-6"></path>
+    <path d="M12 19.5V8"></path>
+    <path d="M17 19.5v-9"></path>
+    <path d="M9 5.5h6"></path>
+  `,
+  heartLike: `
+    <path d="m12 20-1.2-1.1C6.2 14.8 4 12.8 4 9.9 4 7.6 5.7 6 7.9 6c1.5 0 2.9.7 4.1 2 1.2-1.3 2.6-2 4.1-2 2.2 0 3.9 1.6 3.9 3.9 0 2.9-2.2 4.9-6.8 9Z"></path>
+  `,
+  notificationBell: `
+    <path d="M7.5 16.5h9"></path>
+    <path d="M9 19a3 3 0 0 0 6 0"></path>
+    <path d="M18 16.5H6c1.2-1.1 2-2.7 2-4.6V10a4 4 0 1 1 8 0v1.9c0 1.9.8 3.5 2 4.6Z"></path>
+  `,
+  reportDocument: `
+    <path d="M8 4.5h7l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 7 19.5v-13A2 2 0 0 1 9 4.5"></path>
+    <path d="M15 4.5v3h3"></path>
+    <path d="M10 12h5"></path>
+    <path d="M10 15h5"></path>
+  `,
+  labFlask: `
+    <path d="M10 4.5h4"></path>
+    <path d="M11 4.5v4.2l-4.5 7.6A2 2 0 0 0 8.2 19h7.6a2 2 0 0 0 1.7-3l-4.5-7.3V4.5"></path>
+    <path d="M9.3 13.8h5.4"></path>
+  `,
+  certificationShield: `
+    <path d="M12 3.5 5.5 6.5v5.2c0 4.1 2.6 7.5 6.5 8.8 3.9-1.3 6.5-4.7 6.5-8.8V6.5Z"></path>
+    <path d="m9.4 12.2 1.8 1.8 3.4-3.7"></path>
+    <path d="M8.2 18.2 7.6 21l4.4-2.2 4.4 2.2-.6-2.8"></path>
+  `,
+  installDevice: `
+    <rect x="7" y="3.5" width="10" height="17" rx="2.5"></rect>
+    <path d="M12 7.5v7"></path>
+    <path d="m9.5 12 2.5 2.5 2.5-2.5"></path>
+    <path d="M10.5 17.5h3"></path>
+  `,
+});
+
+function renderAppIconSvgMarkup(iconName = "info", options = {}) {
+  const {
+    className = "",
+    label = "",
+    decorative = true,
+  } = options;
+  const symbolMarkup = APP_ICON_LIBRARY[iconName] || APP_ICON_LIBRARY.info;
+  const svgClasses = ["cg-icon-svg", className].filter(Boolean).join(" ");
+  const ariaAttributes = decorative
+    ? 'aria-hidden="true" focusable="false"'
+    : `role="img" aria-label="${escapeHtml(label || iconName)}" focusable="false"`;
+  return `
+    <svg class="${escapeHtml(svgClasses)}" viewBox="0 0 24 24" ${ariaAttributes}>
+      ${symbolMarkup}
+    </svg>
+  `;
+}
+
+function renderAppIconMarkup(iconName = "info", options = {}) {
+  const {
+    variant = "plain",
+    className = "",
+    label = "",
+    decorative = true,
+  } = options;
+  const wrapperClasses = [
+    "cg-icon",
+    variant === "plate" ? "cg-icon--plate" : "cg-icon--plain",
+    className,
+  ].filter(Boolean).join(" ");
+  const wrapperAttributes = decorative
+    ? 'aria-hidden="true"'
+    : `role="img" aria-label="${escapeHtml(label || iconName)}"`;
+  return `
+    <span class="${escapeHtml(wrapperClasses)}" ${wrapperAttributes}>
+      ${renderAppIconSvgMarkup(iconName, { decorative: true })}
+    </span>
+  `;
+}
+
+function hydrateAppIconSlots(root = document) {
+  if (!root || typeof root.querySelectorAll !== "function") {
+    return;
+  }
+
+  root.querySelectorAll("[data-app-icon]").forEach((slot) => {
+    const iconName = String(slot.dataset.appIcon || "").trim() || "info";
+    const variant = String(slot.dataset.iconVariant || "plain").trim() === "plate" ? "plate" : "plain";
+    const label = String(slot.dataset.iconLabel || "").trim();
+    const decorative = slot.dataset.iconDecorative !== "false";
+    slot.classList.add("cg-icon", variant === "plate" ? "cg-icon--plate" : "cg-icon--plain");
+    slot.innerHTML = renderAppIconSvgMarkup(iconName, { decorative: true });
+    if (decorative) {
+      slot.setAttribute("aria-hidden", "true");
+      slot.removeAttribute("role");
+      slot.removeAttribute("aria-label");
+    } else {
+      slot.removeAttribute("aria-hidden");
+      slot.setAttribute("role", "img");
+      slot.setAttribute("aria-label", label || iconName);
+    }
+  });
+}
+
+function inferAppIconNameForLegacySectionIcon(iconElement) {
+  const contextText = String(
+    iconElement?.closest(".section-title-with-icon, .app-section-header-main, .section-heading, .app-section-header")?.textContent
+    || iconElement?.closest("section, article, div")?.textContent
+    || "",
+  ).toLowerCase();
+
+  if (!contextText) {
+    return "";
+  }
+  if (contextText.includes("community grow moderation")) {
+    return "certificationShield";
+  }
+  if (contextText.includes("source profile") || contextText.includes("source directory") || contextText.includes("source")) {
+    return "sourceDirectoryBars";
+  }
+  if (contextText.includes("active session")) {
+    return "activeSessionWaveform";
+  }
+  if (contextText.includes("recent completed")) {
+    return "check";
+  }
+  if (contextText.includes("history")) {
+    return "clock";
+  }
+  if (contextText.includes("session detail")) {
+    return "reportDocument";
+  }
+  if (contextText.includes("new session") || contextText.includes("my sessions") || contextText.includes("grow tracking")) {
+    return "mySessionsSprout";
+  }
+  if (contextText.includes("published snapshots") || contextText.includes("submitted snapshots") || contextText.includes("snapshots")) {
+    return "uploadImage";
+  }
+  if (contextText.includes("community grow")) {
+    return "communityGroup";
+  }
+  if (contextText.includes("analytics") || contextText.includes("trend")) {
+    return "chart";
+  }
+  if (contextText.includes("members") || contextText.includes("profile")) {
+    return "profileUser";
+  }
+  if (contextText.includes("admin")) {
+    return "adminShield";
+  }
+  return "";
+}
+
+function upgradeLegacySectionTitleIcons(root = document) {
+  if (!root || typeof root.querySelectorAll !== "function") {
+    return;
+  }
+
+  root.querySelectorAll("svg.section-title-icon").forEach((legacyIcon) => {
+    const iconName = inferAppIconNameForLegacySectionIcon(legacyIcon);
+    if (!iconName) {
+      return;
+    }
+    const wrapper = document.createElement("span");
+    wrapper.innerHTML = renderAppIconMarkup(iconName, {
+      variant: "plate",
+      className: "section-title-icon",
+    }).trim();
+    const replacement = wrapper.firstElementChild;
+    if (replacement) {
+      legacyIcon.replaceWith(replacement);
+    }
+  });
+}
+
+function getAppSectionHeaderIconName(iconType = "overview") {
   switch (iconType) {
     case "install":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="7" y="3.5" width="10" height="17" rx="2.5"></rect>
-          <path d="M12 7.5v7"></path>
-          <path d="m9.5 12 2.5 2.5 2.5-2.5"></path>
-          <path d="M10.5 17.5h3"></path>
-        </svg>
-      `;
+      return "installDevice";
     case "community":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-          <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
-          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
-          <path d="M13.6 16.8c.4-1.5 1.7-2.5 3.4-2.5 1 0 1.9.3 2.6.9"></path>
-          <path d="M11.2 18.8c1.2.9 2.7 1.4 4.3 1.4"></path>
-          <path d="M12 5.5c2.8.2 5.1 1.5 6.4 3.7"></path>
-        </svg>
-      `;
+      return "communityGroup";
     case "leaderboard":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5 17.5h14"></path>
-          <path d="M7.5 17.5V11"></path>
-          <path d="M12 17.5V7.5"></path>
-          <path d="M16.5 17.5v-4"></path>
-        </svg>
-      `;
+      return "leaderboard";
     case "members":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-          <path d="M15.5 10.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"></path>
-          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
-          <path d="M13.8 17.2c.5-1.3 1.7-2.2 3.2-2.2 1.2 0 2.2.4 3 .9"></path>
-        </svg>
-      `;
+      return "profileUser";
     case "plant":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 19.5V11"></path>
-          <path d="M7.5 19.5h9"></path>
-          <path d="M12 11c0-3 2-5.5 5-6 0 3.2-1.8 6.4-5 7.5"></path>
-          <path d="M12 13c0-2.8-1.7-5.2-4.5-6.2-.2 3.2 1.1 6 4.5 7.4"></path>
-        </svg>
-      `;
+      return "mySessionsSprout";
     case "reports":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5.5 6.5A2.5 2.5 0 0 1 8 4h8a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 16 15H11l-4.5 4v-4H8A2.5 2.5 0 0 1 5.5 12.5Z"></path>
-          <path d="M12 7.5v3.5"></path>
-          <path d="M12 13.5h.01"></path>
-        </svg>
-      `;
+      return "reportDocument";
     case "sources":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M4.5 19.5h15"></path>
-          <path d="M6.5 19.5V9.5"></path>
-          <path d="M12 19.5V5.5"></path>
-          <path d="M17.5 19.5v-7"></path>
-          <path d="M5.5 9.5h2M11 5.5h2M16.5 12.5h2"></path>
-        </svg>
-      `;
+      return "sourceDirectoryBars";
     case "message-board":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v8a2.5 2.5 0 0 1-2.5 2.5H9L5 20v-3.5A2.5 2.5 0 0 1 2.5 14V9"></path>
-          <path d="M8 8.5h8"></path>
-          <path d="M8 12h5"></path>
-        </svg>
-      `;
+      return "mail";
     case "analytics":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M4.5 19.5h15"></path>
-          <path d="M6.5 19.5V13"></path>
-          <path d="M11.5 19.5V8"></path>
-          <path d="M16.5 19.5V10.5"></path>
-          <path d="m5.5 9.5 4-3 3 2 6-4"></path>
-        </svg>
-      `;
     case "trending":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5.5 18.5 11 13l3.2 3.2 4.3-6.2"></path>
-          <path d="M14.5 10h4.5v4.5"></path>
-        </svg>
-      `;
+      return "chart";
     case "moderation":
     case "review":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M8 4.75h8"></path>
-          <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z"></path>
-          <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5"></path>
-          <path d="M8.5 10.25h5.25"></path>
-          <path d="M8.5 13.25h3.5"></path>
-          <path d="M13.75 15.5 15 16.75l2.75-3"></path>
-          <circle cx="16" cy="15.5" r="3.5"></circle>
-        </svg>
-      `;
+      return "certificationShield";
     case "activity":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M4.5 14h3l2.2-4 3.1 8 2.2-5H19.5"></path>
-          <path d="M4.5 19.5h15"></path>
-          <path d="M7.5 6.5h9"></path>
-        </svg>
-      `;
+      return "activeSessionWaveform";
     case "heart":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="m12 19-1.2-1.1C6.4 13.9 4 11.7 4 8.8 4 6.5 5.8 5 8 5c1.5 0 2.9.7 4 2 1.1-1.3 2.5-2 4-2 2.2 0 4 1.5 4 3.8 0 2.9-2.4 5.1-6.8 9.1Z"></path>
-        </svg>
-      `;
+      return "heartLike";
     case "following":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-          <path d="M5.5 17.5c.5-2 2.1-3.3 4.3-3.3s3.8 1.3 4.3 3.3"></path>
-          <path d="M16.5 8v6"></path>
-          <path d="M13.5 11h6"></path>
-        </svg>
-      `;
+      return "growNetworkNodes";
     case "public-session":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M8 4.5h6l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-7A2.5 2.5 0 0 1 6 18.5v-11A3 3 0 0 1 9 4.5"></path>
-          <path d="M14 4.5v3h3"></path>
-          <path d="M9 12h6"></path>
-          <path d="M9 15h4"></path>
-        </svg>
-      `;
+      return "reportDocument";
     case "snapshots":
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="4" y="6" width="10" height="12" rx="2"></rect>
-          <path d="M14 9h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2"></path>
-          <path d="m8 14 2-2 2 2"></path>
-          <circle cx="10" cy="10" r="1"></circle>
-        </svg>
-      `;
+      return "uploadImage";
     case "admin":
     default:
-      return `
-        <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 3.5 4.5 7.2V12c0 4.1 2.7 7.8 7.5 8.8 4.8-1 7.5-4.7 7.5-8.8V7.2L12 3.5Z"></path>
-          <path d="M9.5 12.2 11 13.7l3.6-3.9"></path>
-        </svg>
-      `;
+      return "adminShield";
   }
+}
+
+function renderAppSectionHeaderIcon(iconType = "overview") {
+  return renderAppIconMarkup(getAppSectionHeaderIconName(iconType), {
+    variant: "plate",
+    className: "section-title-icon",
+  });
 }
 
 function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
   switch (iconType) {
     case "all-time":
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <circle cx="12" cy="12" r="8"></circle>
-          <path d="M12 7v5l3 2"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("clock");
     case "streak":
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M13 3 6 14h5l-1 7 8-12h-5l0-6Z"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("chart");
     case "month":
     default:
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <rect x="4.5" y="5.5" width="15" height="14" rx="2.5"></rect>
-          <path d="M8 3.5v4M16 3.5v4M4.5 9.5h15"></path>
-          <path d="M8.5 13h3M8.5 16h7"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("calendar");
   }
 }
 
@@ -13766,40 +13930,14 @@ function renderHomeGalleryRankingsTeaser() {
 function renderHomeGalleryRankingRowIcon(iconType = "source") {
   switch (iconType) {
     case "member":
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M4.5 8.5 8.2 11.3 12 6.5l3.8 4.8 3.7-2.8-1.8 8H6.3Z"></path>
-          <path d="M8.5 17.5h7"></path>
-          <path d="M9.5 20h5"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("leaderboard");
     case "variety":
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 19v-4.5"></path>
-          <path d="M12 14.5c0-3 1.9-5.5 4.5-6.7-.2 3.2-1.7 5.6-4.5 6.7Z"></path>
-          <path d="M12 13.5c-2.6-1-4.1-3.4-4.3-6.4 2.5 1.1 4.3 3.5 4.3 6.4Z"></path>
-          <path d="M9.6 19.1c.4-1.6 1.5-2.6 2.7-2.6s2.3 1 2.7 2.6"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("mySessionsSprout");
     case "seed-type":
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 5.5 14.3 10l4.9.7-3.6 3.5.9 4.8-4.5-2.3-4.5 2.3.9-4.8-3.6-3.5 4.9-.7Z"></path>
-          <path d="M9.5 20.5h5"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("communityGroup");
     case "source":
     default:
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M4.5 19.5h15"></path>
-          <path d="M6.5 19.5V9.5"></path>
-          <path d="M12 19.5V5.5"></path>
-          <path d="M17.5 19.5v-7"></path>
-          <path d="M5.5 9.5h2M11 5.5h2M16.5 12.5h2"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("sourceDirectoryBars");
   }
 }
 
@@ -13817,11 +13955,7 @@ function renderGalleryLikeButtonMarkup(snapshot) {
       aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow snapshot" : "Like this Community Grow snapshot")}"
       ${isMock ? "disabled" : ""}
     >
-      <span class="gallery-like-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M12 20.2 4.95 13.7a4.96 4.96 0 0 1 0-7.11 4.85 4.85 0 0 1 6.97 0L12 7.08l.08-.49a4.85 4.85 0 0 1 6.97 0 4.96 4.96 0 0 1 0 7.11Z"></path>
-        </svg>
-      </span>
+      ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon" })}
       <span class="gallery-like-count">${escapeHtml(String(likeCount))}</span>
     </button>
   `;
@@ -16405,6 +16539,12 @@ function render() {
     clearUnsavedChangesContext();
   }
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
+    hydrateAppIconSlots(app);
+    hydrateAppIconSlots(authStatus);
+    hydrateAppIconSlots(appFooter);
+    upgradeLegacySectionTitleIcons(app);
+    upgradeLegacySectionTitleIcons(authStatus);
+    upgradeLegacySectionTitleIcons(appFooter);
     syncDebugUiVisibility(app);
     syncInstallPromptBanner();
     syncMockDataBanner();
@@ -19511,17 +19651,10 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
 }
 
 function renderHomeCstpTestingIconMarkup() {
-  return `
-    <span class="home-cstp-overview-icon home-cstp-overview-icon-glyph" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false">
-        <path d="M9 3h6"></path>
-        <path d="M10 3v4l-4.6 7.18A4.4 4.4 0 0 0 9.1 21h5.8a4.4 4.4 0 0 0 3.7-6.82L14 7V3"></path>
-        <path d="M9 14h6"></path>
-        <circle cx="10" cy="16.5" r="0.8" fill="currentColor" stroke="none"></circle>
-        <circle cx="13.5" cy="17.5" r="0.8" fill="currentColor" stroke="none"></circle>
-      </svg>
-    </span>
-  `;
+  return renderAppIconMarkup("labFlask", {
+    variant: "plate",
+    className: "home-cstp-overview-icon home-cstp-overview-icon-glyph",
+  });
 }
 
 function renderHomeCstpOverviewFeatureMarkup({
@@ -26489,22 +26622,10 @@ function renderAdminCstpDeviceImageUploadSectionMarkup(session = null) {
 
 function renderAdminCstpReportImageIconMarkup(kind = "") {
   if (kind === "first-germinated") {
-    return `
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <path d="M12 20c3.8 0 6-2.8 6-6.8C18 8 15 5.5 12 4c-3 1.5-6 4-6 9.2C6 17.2 8.2 20 12 20Z"></path>
-        <path d="M12 19V9"></path>
-        <path d="M12 13c1.2-1.8 2.6-2.8 4.4-3.3"></path>
-      </svg>
-    `;
+    return renderAppIconSvgMarkup("mySessionsSprout");
   }
 
-  return `
-    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="12" rx="2"></rect>
-      <circle cx="9" cy="10" r="1.5"></circle>
-      <path d="m20 15-4.5-4.5L8 18"></path>
-    </svg>
-  `;
+  return renderAppIconSvgMarkup("uploadImage");
 }
 
 function renderAdminCstpReportImageRecordsMarkup(session = null) {
@@ -33003,31 +33124,14 @@ function renderGrowNetworkPage() {
 
   const renderGrowNetworkNotificationTypeIcon = (type = "follow") => {
     if (type === "like") {
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="m12 20-1.1-1C5.8 14.3 3 11.8 3 8.8 3 6.6 4.8 5 7 5c1.4 0 2.8.7 3.7 1.8C11.6 5.7 13 5 14.4 5 16.6 5 18.4 6.6 18.4 8.8c0 3-2.8 5.5-7.9 10.2Z"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("heartLike");
     }
 
     if (type === "system") {
-      return `
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <path d="M5 19h14"></path>
-          <path d="M6 16.5 11 11.5l3 3L19 9.5"></path>
-          <path d="M14.5 9.5H19v4.5"></path>
-        </svg>
-      `;
+      return renderAppIconSvgMarkup("chart");
     }
 
-    return `
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <path d="M8.5 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
-        <path d="M5.5 18c.6-2.1 2.2-3.5 4.5-3.5 2.1 0 3.7 1.2 4.4 3.1"></path>
-        <path d="M17 8v8"></path>
-        <path d="M13 12h8"></path>
-      </svg>
-    `;
+    return renderAppIconSvgMarkup("growNetworkNodes");
   };
 
   const renderMockTabsMarkup = () => {
