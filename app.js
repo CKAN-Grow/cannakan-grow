@@ -28729,7 +28729,7 @@ function renderAdminPage() {
           </div>
         </div>
         <div class="admin-section-actions">
-          <a class="button button-primary" href="/admin/gallery-moderation">Open Community Grow Moderation</a>
+          <a class="button button-primary" href="#admin/gallery-moderation">Open Community Grow Moderation</a>
         </div>
       </div>
     </section>
