@@ -356,7 +356,6 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All" }),
   Object.freeze({ key: "gold", label: "CSTP Gold" }),
   Object.freeze({ key: "silver", label: "CSTP Silver" }),
-  Object.freeze({ key: "not-published", label: "No Published Certification" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: "popularity", label: "Popularity Rank" }),
@@ -18758,14 +18757,7 @@ function parseSourceDirectoryMonthYearToTime(value = "") {
 function getSourceDirectoryCstpPreview(source = {}) {
   const publishedCertification = getPublishedAdminCstpCertificationForSource(source);
   if (!publishedCertification) {
-    return {
-      filterKey: "not-published",
-      label: "No Published Certification",
-      badgeAsset: "",
-      badgeAlt: "",
-      isExpired: false,
-      testedTime: 0,
-    };
+    return null;
   }
 
   const qualificationResult = normalizeAdminCstpQualificationResult(publishedCertification.qualificationResult);
@@ -18782,11 +18774,8 @@ function getSourceDirectoryCstpPreview(source = {}) {
 
 function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
   const cstpPreview = getSourceDirectoryCstpPreview(source);
-  const usesBadge = cstpPreview.filterKey === "gold" || cstpPreview.filterKey === "silver";
-  let statusMarkup = "";
-
-  if (usesBadge) {
-    statusMarkup = `
+  const statusMarkup = cstpPreview
+    ? `
       <span class="home-tested-source-cstp-status is-badge" aria-label="${escapeHtml(cstpPreview.label)}">
         <img
           src="${escapeHtml(cstpPreview.badgeAsset)}"
@@ -18796,14 +18785,8 @@ function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
           decoding="async"
         >
       </span>
-    `;
-  } else {
-    statusMarkup = `
-      <span class="home-tested-source-cstp-status-text is-not-tested">
-        No Published Certification
-      </span>
-    `;
-  }
+    `
+    : "";
 
   return `
     <article class="card home-tested-source-card">
@@ -18820,9 +18803,11 @@ function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
             <p class="home-tested-source-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
           </div>
         </div>
-        <div class="home-tested-source-card-status">
-          ${statusMarkup}
-        </div>
+        ${statusMarkup ? `
+          <div class="home-tested-source-card-status">
+            ${statusMarkup}
+          </div>
+        ` : ""}
       </div>
       <div class="home-tested-source-stats">
         <article class="home-tested-source-stat">
@@ -18982,7 +18967,7 @@ function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEF
     case "seeds-tracked":
       return parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
     case "recently-tested":
-      return getSourceDirectoryCstpPreview(source).testedTime;
+      return getSourceDirectoryCstpPreview(source)?.testedTime || 0;
     case "popularity":
     default: {
       const rank = parseSourceDirectoryMetricNumber(source?.community?.rank);
@@ -19001,7 +18986,8 @@ function getFilteredAndSortedSourceDirectoryRecords({
   const normalizedSortKey = String(sortKey || SOURCE_DIRECTORY_DEFAULT_SORT).trim().toLowerCase();
   return getSourceDirectoryMockRecords()
     .filter((source) => {
-      if (normalizedFilterKey !== "all" && getSourceDirectoryCstpPreview(source).filterKey !== normalizedFilterKey) {
+      const cstpPreview = getSourceDirectoryCstpPreview(source);
+      if (normalizedFilterKey !== "all" && cstpPreview?.filterKey !== normalizedFilterKey) {
         return false;
       }
       if (!normalizedQuery) {
@@ -19011,7 +18997,7 @@ function getFilteredAndSortedSourceDirectoryRecords({
         source.name,
         source.sourceTypeLabel,
         source.establishedLabel,
-        getSourceDirectoryCstpPreview(source).label,
+        cstpPreview?.label || "",
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
@@ -19070,10 +19056,10 @@ function renderSourceDirectoryCardMarkup(source = {}) {
           <strong>${escapeHtml(source.community?.seedsTracked || "—")}</strong>
         </article>
       </div>
-      <div class="source-directory-cstp-preview">
-        <span class="source-directory-cstp-label">CSTP Verification</span>
-        <div class="source-directory-cstp-status">
-          ${cstpPreview.badgeAsset ? `
+      ${cstpPreview ? `
+        <div class="source-directory-cstp-preview">
+          <span class="source-directory-cstp-label">CSTP Verification</span>
+          <div class="source-directory-cstp-status">
             <img
               src="${escapeHtml(cstpPreview.badgeAsset)}"
               alt="${escapeHtml(cstpPreview.badgeAlt)}"
@@ -19081,10 +19067,10 @@ function renderSourceDirectoryCardMarkup(source = {}) {
               loading="lazy"
               decoding="async"
             >
-          ` : ""}
-          <span class="source-directory-cstp-text${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
+            <span class="source-directory-cstp-text${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
+          </div>
         </div>
-      </div>
+      ` : ""}
       <div class="inline-actions">
         <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
       </div>
