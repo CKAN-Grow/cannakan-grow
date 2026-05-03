@@ -12990,11 +12990,11 @@ function getGalleryTopMemberSummaryEntries(monthlySnapshots = []) {
 function renderGalleryTopMembersSummary(entries = []) {
   const summaryEntries = (entries || []).slice(0, 3);
   return `
-    <article class="gallery-top-members-summary-card" aria-label="Top 3 Monthly Members">
+    <article class="gallery-top-members-summary-card" aria-label="Most Active Members This Month">
       <div class="gallery-top-members-summary-head">
         <div class="gallery-top-members-summary-copy">
           <p class="eyebrow">Activity-Based</p>
-          <h4>Top 3 Monthly Members</h4>
+          <h4>Most Active Members (This Month)</h4>
           <p class="gallery-top-members-summary-note">Approved public snapshots and likes this month.</p>
         </div>
         ${renderGalleryLeaderboardViewAllButton()}
@@ -13273,8 +13273,8 @@ function renderGalleryLeaderboardSection() {
         ${renderAppSectionHeaderIcon("leaderboard")}
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
-          <h3>Community Grow Rankings</h3>
-          <p class="muted">Approved public snapshots only. Rankings are based on recorded community session data, using germination performance with a 3-snapshot minimum per source or seed variety.</p>
+          <h3>Community Grow Insights</h3>
+          <p class="muted">Approved public snapshots only. Rankings use germination performance with a 3-snapshot minimum per source or seed variety.<br>Rankings are based on recorded session data and may vary.</p>
         </div>
       </div>
     </div>
@@ -13284,27 +13284,27 @@ function renderGalleryLeaderboardSection() {
     </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Sources", "This month based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Highest Avg Germ Rate (This Month)", "Based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("#1 Source", "Longest streak on top based on recorded sessions", "streak")}
+        ${renderGalleryLeaderboardCardHeading("Longest Consistent Performance (Source)", "Based on recorded sessions", "streak")}
         ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest streak on top based on recorded sessions", "streak")}
+        ${renderGalleryLeaderboardCardHeading("Longest Consistent Performance (Variety)", "Based on recorded sessions", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Seed Varieties", "This month based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Highest Avg Germ Rate by Variety (This Month)", "Based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All-time based on recorded sessions", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Highest Avg Germ Rate (All-Time)", "All-time based on recorded sessions", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All-time based on recorded sessions", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Highest Avg Germ Rate by Variety (All-Time)", "All-time based on recorded sessions", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
