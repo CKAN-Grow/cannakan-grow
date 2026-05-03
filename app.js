@@ -19276,6 +19276,66 @@ function getSourceProfileMockRecord(sourceId = "") {
   return matchedSource ? normalizeTestedSourceMockRecord(matchedSource) : null;
 }
 
+function buildRealSourceProfileRecord(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const sourceRecord = findSourceById(normalizedId) || null;
+  if (!sourceRecord) {
+    return null;
+  }
+
+  const { sourceMap } = buildSourceDirectorySessionAggregate();
+  const sessionAggregate = sourceMap.get(normalizeComparableSourceKey(sourceRecord.name || sourceRecord.id || "")) || null;
+  const totalSeeds = Math.max(0, Number(sessionAggregate?.totalSeeds) || 0);
+  const totalGerminated = Math.max(0, Number(sessionAggregate?.totalGerminated) || 0);
+  const averageRate = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : 0;
+  const rankedSources = Array.from(sourceMap.values())
+    .sort((left, right) => {
+      const sessionDelta = Math.max(0, Number(right?.sessionsLogged) || 0) - Math.max(0, Number(left?.sessionsLogged) || 0);
+      if (sessionDelta !== 0) {
+        return sessionDelta;
+      }
+      return String(left?.name || "").localeCompare(String(right?.name || ""));
+    });
+  const rankIndex = rankedSources.findIndex((entry) => normalizeComparableSourceKey(entry?.name || "") === normalizeComparableSourceKey(sourceRecord.name || ""));
+  const trackRecord = getSourceDirectoryTrackRecordForSource(sourceRecord.name || "", {});
+
+  return normalizeTestedSourceMockRecord({
+    id: sourceRecord.id,
+    name: sourceRecord.name,
+    type: "Breeder / Seed Source",
+    sourceTypeLabel: "Breeder / Seed Source",
+    logoUrl: sourceRecord.logoUrl || "",
+    websiteUrl: sourceRecord.websiteUrl || "",
+    description: sourceRecord.description || "",
+    community: {
+      avgRate: averageRate,
+      sessions: Math.max(0, Number(sessionAggregate?.sessionsLogged) || 0),
+      rank: rankIndex >= 0 ? rankIndex + 1 : 0,
+      seedsTracked: totalSeeds,
+    },
+    cstp: {},
+    trackRecord,
+    directoryStats: {
+      sessionsLogged: Math.max(0, Number(sessionAggregate?.sessionsLogged) || 0),
+      varietiesLogged: sessionAggregate?.varieties instanceof Map ? sessionAggregate.varieties.size : 0,
+      lastLoggedAt: String(sessionAggregate?.lastLoggedAt || "").trim(),
+    },
+  });
+}
+
+function getSourceProfileRecord(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  const mockDataEnabled = isMockDataEnabled();
+  if (mockDataEnabled) {
+    return getSourceProfileMockRecord(normalizedId);
+  }
+  return buildRealSourceProfileRecord(normalizedId);
+}
+
 function formatSourceProfileMonthYear(value = "", fallback = "Not available") {
   const parsedDate = parseCompletedAtValue(String(value || "").trim());
   if (!parsedDate) {
@@ -20152,7 +20212,7 @@ function renderSourcesLandingPage() {
 
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
-  const sourceProfile = getSourceProfileMockRecord(requestedId);
+  const sourceProfile = getSourceProfileRecord(requestedId);
 
   if (!sourceProfile) {
     app.innerHTML = `
@@ -20359,7 +20419,7 @@ function renderSourceProfilePage(sourceId = "") {
 
 function renderSourceCstpReportPage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
-  const sourceProfile = getSourceProfileMockRecord(requestedId);
+  const sourceProfile = getSourceProfileRecord(requestedId);
   const publishedCertification = sourceProfile ? getPublishedAdminCstpCertificationForSource(sourceProfile) : null;
   if (!sourceProfile) {
     app.innerHTML = `
