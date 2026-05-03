@@ -1359,9 +1359,7 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 }
 
 .spotlight-body {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
+  display: grid;
   gap: 20px;
 }
 
@@ -1596,6 +1594,12 @@ body.theme-dark .spotlight-stat strong {
 
 .spotlight-actions {
   flex: 0 0 auto;
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.spotlight-actions .button {
+  white-space: nowrap;
 }
 
 .progress-chart-section {
@@ -12276,7 +12280,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .spotlight-actions {
-    width: 100%;
+    margin-left: auto;
   }
 }
 
@@ -12510,6 +12514,16 @@ body.theme-dark .theme-toggle-button:hover {
 
   .home-gallery-rankings-cta {
     width: 100%;
+  }
+
+  .spotlight-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .spotlight-actions .button {
+    width: 100%;
+    justify-content: center;
   }
 
   .spotlight-lifecycle-grid {
