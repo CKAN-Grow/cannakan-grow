@@ -12581,6 +12581,60 @@ input::placeholder {
   gap: 10px;
 }
 
+.source-cstp-report-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: linear-gradient(180deg, rgba(250, 251, 249, 0.96) 0%, rgba(244, 247, 242, 0.94) 100%);
+  box-shadow:
+    0 12px 24px rgba(29, 49, 33, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.source-cstp-report-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.source-cstp-report-status {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+}
+
+.source-cstp-report-badge-shell {
+  width: 148px;
+  aspect-ratio: 1;
+}
+
+.source-cstp-report-badge-shell.is-expired {
+  opacity: 0.48;
+}
+
+.source-cstp-report-badge {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.source-cstp-report-status-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.source-cstp-report-status-copy h4,
+.source-cstp-report-status-copy p,
+.source-cstp-report-notice p {
+  margin: 0;
+}
+
+.source-cstp-report-notice {
+  gap: 10px;
+}
+
 .source-profile-trust-note {
   margin: 0;
   padding-top: 12px;
@@ -13774,6 +13828,16 @@ body.theme-dark .source-profile-request-card {
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+body.theme-dark .source-cstp-report-card {
+  border-color: rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(23, 30, 25, 0.96) 0%, rgba(17, 23, 19, 0.94) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.04), transparent 38%);
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
 body.theme-dark .source-profile-logo {
   border-color: rgba(148, 209, 89, 0.2);
   background: rgba(255, 255, 255, 0.04);
@@ -14023,6 +14087,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .source-profile-request-actions {
     justify-content: flex-start;
+  }
+
+  .source-cstp-report-status {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .public-member-profile-header {
