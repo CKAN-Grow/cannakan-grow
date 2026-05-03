@@ -29496,6 +29496,7 @@ function renderHome() {
       const requiresSignIn = !appState.user;
       spotlightName.textContent = requiresSignIn ? "Sign in required" : "No active session";
       spotlightDate.textContent = "";
+      spotlightDate.hidden = true;
       spotlightDescription.textContent = requiresSignIn
         ? "Sign in to start and continue tracking your grow sessions."
         : "Start a new grow session to begin tracking.";
@@ -29527,7 +29528,8 @@ function renderHome() {
     spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
     spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
     spotlightName.textContent = formatSessionLabel(spotlightSession);
-    spotlightDate.textContent = spotlightSession.date || "";
+    spotlightDate.textContent = "";
+    spotlightDate.hidden = true;
     spotlightDescription.textContent = normalizedStage === "soaking"
       ? "Soaking is underway. Keep this run moving toward germination."
       : "Germination is active. Review progress and continue this session.";

@@ -1388,6 +1388,8 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
   align-self: flex-start;
   align-content: start;
   justify-content: start;
+  position: relative;
+  top: -18px;
 }
 
 .spotlight-card.is-empty-state .spotlight-body {
@@ -12309,6 +12311,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .spotlight-progress {
+    top: 0;
     margin-top: 0;
   }
 
