@@ -25699,6 +25699,33 @@ function upsertAdminCstpTestSession(record = null) {
   return normalizedRecord;
 }
 
+function deleteAdminCstpTestSession(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return false;
+  }
+
+  const existingSession = getAdminCstpTestSessionById(normalizedSessionId);
+  if (!existingSession) {
+    return false;
+  }
+
+  const nextRecords = loadAdminCstpTestSessionsFromStorage()
+    .filter((entry) => entry.id !== normalizedSessionId);
+  saveAdminCstpTestSessionsToStorage(nextRecords);
+
+  getAdminCstpLabRecords()
+    .filter((record) => String(record.assignedSessionId || "").trim() === normalizedSessionId)
+    .forEach((record) => {
+      upsertAdminCstpLabRecord({
+        ...record,
+        assignedSessionId: "",
+      });
+    });
+
+  return true;
+}
+
 function createAssignedAdminCstpTestSession(record = null) {
   const normalizedRecord = normalizeAdminCstpLabRecord(record);
   if (!normalizedRecord) {
@@ -26635,6 +26662,11 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   const sessionStageValue = getAdminCstpStageControlValue(session);
   const detailLayoutSection = detail.layoutReference?.closest(".system-layout-block") || null;
   const detailPartitionHeader = detail.partitionWorkTitle?.closest(".partition-work-header") || null;
+  const detailCard = app.querySelector(".card");
+  const detailHeader = detail.topBackLink?.closest(".app-section-header") || null;
+  const detailHeaderMain = detail.title?.closest(".app-section-header-main") || null;
+  const detailActionGroup = detail.topBackLink?.closest(".inline-actions") || null;
+  const detailTopGrid = detail.meta?.closest(".session-top-grid") || null;
 
   applySessionDetailHeaderOptions(detail, {
     title: detailSummaryTitle,
@@ -26643,10 +26675,25 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     backHref: "#admin",
     backLabel: "Back to Admin",
     backClasses: ["admin-cstp-button", "admin-cstp-button--utility"],
-    hideDeleteButton: true,
+    hideDeleteButton: false,
     hideLifecycleDebug: true,
     hideSnapshotSection: false,
   });
+  detailCard?.classList.add("admin-cstp-detail-page");
+  detailHeader?.classList.add("admin-cstp-detail-header");
+  detailHeaderMain?.classList.add("admin-cstp-detail-header-main");
+  detail.headerCopy?.classList.add("admin-cstp-detail-header-copy");
+  detail.title?.classList.add("admin-cstp-detail-title");
+  detailActionGroup?.classList.add("admin-cstp-detail-actions");
+  detailTopGrid?.classList.add("admin-cstp-detail-top-grid");
+  detail.meta?.classList.add("admin-cstp-detail-meta");
+  detail.topBackLink?.classList.add("admin-cstp-detail-header-action");
+  if (detail.deleteButton) {
+    detail.deleteButton.textContent = "Delete";
+    detail.deleteButton.classList.remove("button-danger");
+    detail.deleteButton.classList.add("admin-cstp-button", "admin-cstp-button--warning", "admin-cstp-detail-header-action");
+    detail.deleteButton.dataset.adminCstpDeleteSession = session.id;
+  }
   applySessionDetailNotesOptions(detail, {
     label: "Observations",
     value: session.observations || "",
@@ -26716,11 +26763,16 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     { label: "Germinated Count", value: session.germinatedCount || "0" },
     { label: "Final Germination %", value: getAdminCstpSessionDisplayPercent(session) },
     { label: "Total Germination Time", value: session.totalGerminationTime || "Not recorded" },
-    { label: "Qualification Result", value: getAdminCstpQualificationLabel(session.qualificationResult) },
+    {
+      label: "Qualification Result",
+      value: getAdminCstpQualificationLabel(session.qualificationResult),
+      className: "admin-cstp-detail-meta-card admin-cstp-detail-meta-card--wide",
+    },
   ]);
 
   if (detailLayoutSection) {
     detailLayoutSection.hidden = true;
+    detailLayoutSection.setAttribute("aria-hidden", "true");
   }
   if (detailPartitionHeader) {
     detailPartitionHeader.hidden = false;
@@ -26960,6 +27012,25 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
 
   detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
   detailSaveButton?.addEventListener("click", handleSaveClick);
+
+  detail.deleteButton?.addEventListener("click", () => {
+    if (String(detail.deleteButton.dataset.adminCstpDeleteSession || "").trim() !== sessionId) {
+      return;
+    }
+
+    const confirmed = window.confirm("Delete this CSTP session? This removes only the local CSTP lab session and disconnects it from the request.");
+    if (!confirmed) {
+      return;
+    }
+
+    const deleted = deleteAdminCstpTestSession(sessionId);
+    if (!deleted) {
+      window.alert("Could not delete CSTP session.");
+      return;
+    }
+
+    window.location.hash = "#admin";
+  });
 
   detail.statusTrigger?.addEventListener("click", () => {
     appState.growthStageModalDismissed = false;
@@ -31715,7 +31786,7 @@ function renderSessionDetailMetaCards(container, cards = []) {
   }
 
   container.innerHTML = cards.map((card) => `
-    <article class="meta-card">
+    <article class="meta-card ${escapeHtml(card.className || "").trim()}">
       <strong>${escapeHtml(card.label || "")}</strong>
       <p>${escapeHtml(card.value || "")}</p>
     </article>

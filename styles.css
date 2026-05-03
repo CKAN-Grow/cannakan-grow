@@ -18307,6 +18307,82 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   min-height: 76px;
 }
 
+.admin-cstp-detail-header {
+  align-items: flex-start;
+}
+
+.admin-cstp-detail-header-main {
+  max-width: min(100%, 920px);
+}
+
+.admin-cstp-detail-header-copy {
+  max-width: min(100%, 760px);
+}
+
+.admin-cstp-detail-title {
+  max-width: 20ch;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.admin-cstp-detail-actions {
+  margin-left: auto;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-cstp-detail-header-action {
+  min-height: 46px;
+}
+
+.admin-cstp-detail-top-grid {
+  display: block;
+}
+
+.admin-cstp-detail-meta.detail-header {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.admin-cstp-detail-meta .meta-card {
+  min-height: 92px;
+  height: 100%;
+  align-content: start;
+  gap: 10px;
+}
+
+.admin-cstp-detail-meta .meta-card strong {
+  line-height: 1.12;
+}
+
+.admin-cstp-detail-meta .meta-card p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-cstp-detail-meta-card--wide {
+  grid-column: span 2;
+}
+
+.admin-cstp-detail-page .system-layout-block[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 1240px) {
+  .admin-cstp-detail-meta.detail-header {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .admin-cstp-detail-meta.detail-header {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .meta-card {
   padding: 14px;
   border-radius: 14px;
@@ -18341,9 +18417,37 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .admin-report-card-date {
     text-align: left;
   }
+
+  .admin-cstp-detail-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .admin-cstp-detail-title,
+  .admin-cstp-detail-header-copy,
+  .admin-cstp-detail-header-main {
+    max-width: 100%;
+  }
+
+  .admin-cstp-detail-meta.detail-header {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-cstp-detail-meta-card--wide {
+    grid-column: span 2;
+  }
 }
 
 @media (max-width: 640px) {
+  .admin-cstp-detail-meta.detail-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-cstp-detail-meta-card--wide {
+    grid-column: auto;
+  }
+
   :root {
     --page-section-gap: var(--space-4);
     --space-section: var(--page-section-gap);
