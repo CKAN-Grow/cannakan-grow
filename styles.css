@@ -6802,7 +6802,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .admin-source-review-status-pill.is-request-received,
-.admin-source-review-status-pill.is-active-test {
+.admin-source-review-status-pill.is-active-test,
+.admin-source-review-status-pill.is-scheduled {
   border-color: rgba(148, 209, 89, 0.22);
   background: rgba(148, 209, 89, 0.12);
   color: #476527;
@@ -6813,7 +6814,8 @@ body.theme-dark .contact-reason-card.is-active {
 .admin-source-review-status-pill.is-test-scheduled,
 .admin-source-review-status-pill.is-completed,
 .admin-source-review-status-pill.is-report-prepared,
-.admin-source-review-status-pill.is-published {
+.admin-source-review-status-pill.is-published,
+.admin-source-review-status-pill.is-draft {
   border-color: rgba(84, 141, 86, 0.2);
   background: rgba(92, 170, 99, 0.1);
   color: #2f6134;
@@ -7854,6 +7856,12 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-cstp-lab-filter-row {
   flex-wrap: wrap;
+}
+
+.admin-cstp-assigned-session,
+.admin-cstp-session-page-card {
+  display: grid;
+  gap: 14px;
 }
 
 .admin-member-role-pill,
@@ -15919,7 +15927,8 @@ body.theme-dark .admin-source-review-status-pill.is-rejected {
 }
 
 body.theme-dark .admin-source-review-status-pill.is-request-received,
-body.theme-dark .admin-source-review-status-pill.is-active-test {
+body.theme-dark .admin-source-review-status-pill.is-active-test,
+body.theme-dark .admin-source-review-status-pill.is-scheduled {
   border-color: rgba(129, 182, 92, 0.22);
   background: rgba(148, 209, 89, 0.12);
   color: #b7e385;
@@ -15930,7 +15939,8 @@ body.theme-dark .admin-source-review-status-pill.is-seeds-received,
 body.theme-dark .admin-source-review-status-pill.is-test-scheduled,
 body.theme-dark .admin-source-review-status-pill.is-completed,
 body.theme-dark .admin-source-review-status-pill.is-report-prepared,
-body.theme-dark .admin-source-review-status-pill.is-published {
+body.theme-dark .admin-source-review-status-pill.is-published,
+body.theme-dark .admin-source-review-status-pill.is-draft {
   border-color: rgba(92, 170, 99, 0.2);
   background: rgba(92, 170, 99, 0.1);
   color: #b6e0b8;

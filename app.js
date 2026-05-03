@@ -755,6 +755,7 @@ const ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY = "cannakanAdminCommunicationsOpen";
 const ADMIN_COMMUNICATIONS_STORAGE_KEY = "cannakanAdminCommunicationsRecords";
 const ADMIN_CSTP_LAB_OPEN_STORAGE_KEY = "cannakanAdminCstpLabOpen";
 const ADMIN_CSTP_LAB_STORAGE_KEY = "cannakanAdminCstpLabRecords";
+const ADMIN_CSTP_TEST_SESSIONS_STORAGE_KEY = "cannakanAdminCstpTestSessions";
 const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
 const CONTACT_PREFILL_STORAGE_KEY = "cannakanContactPrefill";
 const ADMIN_COMMUNICATIONS_STATUS_FILTERS = Object.freeze([
@@ -780,6 +781,14 @@ const ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS = Object.freeze([
   Object.freeze({ key: "silver", label: "Silver" }),
   Object.freeze({ key: "tested-no-certification", label: "Tested - No Certification" }),
   Object.freeze({ key: "not-qualified", label: "Not Qualified" }),
+]);
+const ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ key: "draft", label: "Draft" }),
+  Object.freeze({ key: "scheduled", label: "Scheduled" }),
+  Object.freeze({ key: "active-test", label: "Active Test" }),
+  Object.freeze({ key: "completed", label: "Completed" }),
+  Object.freeze({ key: "report-prepared", label: "Report Prepared" }),
+  Object.freeze({ key: "published", label: "Published" }),
 ]);
 const ADMIN_COMMUNICATIONS_MOCK_MESSAGES = Object.freeze([
   Object.freeze({
@@ -16190,8 +16199,43 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
       pageKey: "admin-cstp-report-placeholder",
-      pageLabel: "CSTP Test Report - Coming Soon",
+      pageLabel: "CSTP Test Report",
       pagePath: `#admin/cstp-report-placeholder/${subroute || ""}`,
+    }));
+    return;
+  }
+
+  if (route === "admin" && id === "cstp-session") {
+    if (!appState.user) {
+      renderProtectedRouteSignInPrompt();
+      return;
+    }
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: `#admin/cstp-session/${subroute || ""}`,
+      }));
+      return;
+    }
+    if (!hasResolvedAdminAccess()) {
+      renderAdminAccessDeniedScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "admin",
+        pageKey: "admin-access-denied",
+        pageLabel: "Admin Access Denied",
+        pagePath: `#admin/cstp-session/${subroute || ""}`,
+      }));
+      return;
+    }
+    renderAdminCstpTestSessionPage(subroute || "");
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin-cstp-test-session",
+      pageLabel: "CSTP Test Session",
+      pagePath: `#admin/cstp-session/${subroute || ""}`,
     }));
     return;
   }
@@ -18572,6 +18616,30 @@ function renderSourceProfileMetricCard({ label, value, detail = "" }) {
 }
 
 function getSourceProfileCstpState(sourceProfile = {}) {
+  const publishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
+  if (publishedCertification) {
+    const qualificationLabel = capitalize(publishedCertification.qualificationResult);
+    return {
+      status: publishedCertification.qualificationResult,
+      eyebrow: "CSTP Verification",
+      heading: "CSTP Verification",
+      statusLabel: `CSTP Certified - ${qualificationLabel}`,
+      toneClass: publishedCertification.qualificationResult === "gold" ? "is-gold" : "is-silver",
+      usesBadge: true,
+      isMuted: false,
+      expiringSoon: false,
+      pills: [
+        { label: "Published Certification", toneClass: "is-active" },
+      ],
+      rows: [
+        { label: "Qualification Level", value: qualificationLabel },
+        { label: "Tested Variety", value: publishedCertification.variety || "Not available" },
+        { label: "Batch / Lot", value: publishedCertification.batchLot || "Not available" },
+        { label: "Published Date", value: publishedCertification.publishedAt ? formatAdminTimestamp(publishedCertification.publishedAt) : "Not available" },
+      ],
+    };
+  }
+
   const cstp = sourceProfile?.cstp || {};
   const status = String(cstp.status || "").trim().toLowerCase();
   const expiringSoon = cstp.expiringSoon === true;
@@ -24251,6 +24319,18 @@ function getAdminCstpQualificationLabel(value = "") {
     || "Not set";
 }
 
+function normalizeAdminCstpTestSessionStatus(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS.some((option) => option.key === normalizedValue)
+    ? normalizedValue
+    : "draft";
+}
+
+function getAdminCstpTestSessionStatusLabel(value = "") {
+  return ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS.find((option) => option.key === normalizeAdminCstpTestSessionStatus(value))?.label
+    || "Draft";
+}
+
 function extractLabeledMessageValue(message = "", label = "") {
   const normalizedLabel = String(label || "").trim();
   if (!normalizedLabel) {
@@ -24287,6 +24367,41 @@ function normalizeAdminCstpTestSession(session = null, fallbackSession = {}) {
   };
 }
 
+function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord = {}) {
+  const source = record && typeof record === "object" && !Array.isArray(record) ? record : {};
+  const fallback = fallbackRecord && typeof fallbackRecord === "object" && !Array.isArray(fallbackRecord) ? fallbackRecord : {};
+  const id = String(source.id || fallback.id || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    requestId: String(source.requestId || source.request_id || fallback.requestId || fallback.request_id || "").trim(),
+    sourceName: String(source.sourceName || source.source_name || fallback.sourceName || fallback.source_name || "").trim(),
+    variety: String(source.variety || fallback.variety || "").trim(),
+    batchLot: String(source.batchLot || source.batch_lot || fallback.batchLot || fallback.batch_lot || "").trim(),
+    sampleSize: String(source.sampleSize || source.sample_size || fallback.sampleSize || fallback.sample_size || "").trim(),
+    deviceId: String(source.deviceId || source.device_id || fallback.deviceId || fallback.device_id || "").trim(),
+    testMethod: String(source.testMethod || source.test_method || fallback.testMethod || fallback.test_method || "").trim(),
+    temperature: String(source.temperature || fallback.temperature || "").trim(),
+    status: normalizeAdminCstpTestSessionStatus(source.status || fallback.status || ""),
+    startedAt: String(source.startedAt || source.started_at || fallback.startedAt || fallback.started_at || "").trim(),
+    completedAt: String(source.completedAt || source.completed_at || fallback.completedAt || fallback.completed_at || "").trim(),
+    reportPreparedAt: String(source.reportPreparedAt || source.report_prepared_at || fallback.reportPreparedAt || fallback.report_prepared_at || "").trim(),
+    publishedAt: String(source.publishedAt || source.published_at || fallback.publishedAt || fallback.published_at || "").trim(),
+    certificationPublished: source.certificationPublished === true || fallback.certificationPublished === true,
+    germinatedCount: String(source.germinatedCount || source.germinated_count || fallback.germinatedCount || fallback.germinated_count || "").trim(),
+    finalGerminationPercent: String(source.finalGerminationPercent || source.final_germination_percent || fallback.finalGerminationPercent || fallback.final_germination_percent || "").trim(),
+    totalGerminationTime: String(source.totalGerminationTime || source.total_germination_time || fallback.totalGerminationTime || fallback.total_germination_time || "").trim(),
+    qualificationResult: normalizeAdminCstpQualificationResult(
+      source.qualificationResult || source.qualification_result || fallback.qualificationResult || fallback.qualification_result || "",
+    ),
+    observations: String(source.observations || fallback.observations || "").trim(),
+    createdAt: String(source.createdAt || source.created_at || fallback.createdAt || fallback.created_at || "").trim() || new Date().toISOString(),
+  };
+}
+
 function buildAdminCstpLabBaseRecordFromCommunication(record = {}) {
   const sourceName = String(record.company || extractLabeledMessageValue(record.message, "Company / Source Name") || record.subject || "Source not provided").trim();
   const variety = String(extractLabeledMessageValue(record.message, "Seed Type / Category") || "").trim();
@@ -24297,6 +24412,7 @@ function buildAdminCstpLabBaseRecordFromCommunication(record = {}) {
     id: `cstp-lab-${String(record.id || "").trim()}`,
     requestId: String(record.id || "").trim(),
     submittedAt: String(record.submittedAt || record.submitted_at || "").trim(),
+    assignedSessionId: "",
     sourceName,
     contactName: String(record.name || "").trim(),
     email: String(record.email || "").trim(),
@@ -24340,6 +24456,7 @@ function normalizeAdminCstpLabRecord(record = null, fallbackRecord = {}) {
     id,
     requestId: String(source.requestId || source.request_id || fallback.requestId || fallback.request_id || "").trim(),
     submittedAt: String(source.submittedAt || source.submitted_at || fallback.submittedAt || fallback.submitted_at || "").trim(),
+    assignedSessionId: String(source.assignedSessionId || source.assigned_session_id || fallback.assignedSessionId || fallback.assigned_session_id || "").trim(),
     sourceName,
     contactName: String(source.contactName || source.contact_name || fallback.contactName || fallback.contact_name || "").trim(),
     email: String(source.email || fallback.email || "").trim(),
@@ -24395,6 +24512,122 @@ function saveAdminCstpLabRecordsToStorage(records = []) {
   } catch (error) {
     console.error("Failed to write CSTP lab records to localStorage", error);
   }
+}
+
+function loadAdminCstpTestSessionsFromStorage() {
+  try {
+    const rawValue = localStorage.getItem(ADMIN_CSTP_TEST_SESSIONS_STORAGE_KEY);
+    if (!rawValue) {
+      return [];
+    }
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((record) => normalizeAdminCstpAssignedSessionRecord(record))
+      .filter(Boolean);
+  } catch (error) {
+    console.error("Failed to read CSTP test sessions from localStorage", error);
+    return [];
+  }
+}
+
+function saveAdminCstpTestSessionsToStorage(records = []) {
+  try {
+    localStorage.setItem(ADMIN_CSTP_TEST_SESSIONS_STORAGE_KEY, JSON.stringify(records || []));
+  } catch (error) {
+    console.error("Failed to write CSTP test sessions to localStorage", error);
+  }
+}
+
+function getAdminCstpTestSessions() {
+  return loadAdminCstpTestSessionsFromStorage()
+    .sort((left, right) => (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0));
+}
+
+function getAdminCstpTestSessionById(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  return getAdminCstpTestSessions().find((session) => session.id === normalizedSessionId) || null;
+}
+
+function upsertAdminCstpTestSession(record = null) {
+  const normalizedRecord = normalizeAdminCstpAssignedSessionRecord(record);
+  if (!normalizedRecord) {
+    return null;
+  }
+
+  const nextRecords = loadAdminCstpTestSessionsFromStorage()
+    .filter((entry) => entry.id !== normalizedRecord.id);
+  nextRecords.push(normalizedRecord);
+  saveAdminCstpTestSessionsToStorage(nextRecords);
+  return normalizedRecord;
+}
+
+function createAssignedAdminCstpTestSession(record = null) {
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  if (!normalizedRecord) {
+    return null;
+  }
+  if (normalizedRecord.assignedSessionId) {
+    return getAdminCstpTestSessionById(normalizedRecord.assignedSessionId);
+  }
+
+  const timestamp = new Date().toISOString();
+  const sessionId = `cstp-session-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const sessionStatus = ["test-scheduled", "active-test", "completed", "report-prepared", "published"].includes(normalizedRecord.status)
+    ? "scheduled"
+    : "draft";
+  const createdSession = upsertAdminCstpTestSession({
+    id: sessionId,
+    requestId: normalizedRecord.requestId,
+    sourceName: normalizedRecord.sourceName,
+    variety: normalizedRecord.variety,
+    batchLot: normalizedRecord.batchLot,
+    sampleSize: normalizedRecord.testSession?.sampleSize || normalizedRecord.seedsAvailable || "",
+    deviceId: normalizedRecord.testSession?.deviceId || "",
+    testMethod: normalizedRecord.testSession?.testMethod || "",
+    temperature: normalizedRecord.testSession?.temperature || "",
+    status: sessionStatus,
+    startedAt: "",
+    completedAt: "",
+    reportPreparedAt: "",
+    publishedAt: "",
+    certificationPublished: false,
+    germinatedCount: normalizedRecord.testSession?.germinatedCount || "",
+    finalGerminationPercent: normalizedRecord.testSession?.finalGerminationPercent || "",
+    totalGerminationTime: normalizedRecord.testSession?.totalGerminationTime || "",
+    qualificationResult: normalizedRecord.testSession?.qualificationResult || "",
+    observations: normalizedRecord.testSession?.observations || "",
+    createdAt: timestamp,
+  });
+
+  upsertAdminCstpLabRecord({
+    ...normalizedRecord,
+    assignedSessionId: createdSession?.id || "",
+  });
+
+  return createdSession;
+}
+
+function disconnectAssignedAdminCstpTestSession(record = null) {
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  if (!normalizedRecord?.assignedSessionId) {
+    return null;
+  }
+
+  const existingSession = getAdminCstpTestSessionById(normalizedRecord.assignedSessionId);
+  if (existingSession) {
+    upsertAdminCstpTestSession({
+      ...existingSession,
+      requestId: "",
+    });
+  }
+
+  return upsertAdminCstpLabRecord({
+    ...normalizedRecord,
+    assignedSessionId: "",
+  });
 }
 
 function getAdminCstpLabRecords() {
@@ -24466,9 +24699,119 @@ function getFilteredAdminCstpLabRecords(statusFilter = "all") {
     .filter((record) => normalizedFilter === "all" || record.status === normalizedFilter);
 }
 
+function getAdminCstpAssignedSessionForRecord(record = null) {
+  return record?.assignedSessionId
+    ? getAdminCstpTestSessionById(record.assignedSessionId)
+    : null;
+}
+
+function getAdminCstpLabQualificationResult(record = null) {
+  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+  if (assignedSession?.qualificationResult) {
+    return normalizeAdminCstpQualificationResult(assignedSession.qualificationResult);
+  }
+  return normalizeAdminCstpQualificationResult(record?.testSession?.qualificationResult || "");
+}
+
+function normalizeComparableSourceKey(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
+  const sourceIdKey = normalizeComparableSourceKey(sourceProfile?.id || "");
+  const sourceNameKey = normalizeComparableSourceKey(sourceProfile?.name || "");
+  if (!sourceIdKey && !sourceNameKey) {
+    return null;
+  }
+
+  const matchingSession = getAdminCstpTestSessions()
+    .filter((session) => (
+      session?.certificationPublished === true
+      && Boolean(session?.publishedAt)
+      && ["gold", "silver"].includes(normalizeAdminCstpQualificationResult(session?.qualificationResult))
+      && (
+        normalizeComparableSourceKey(session?.sourceName || "") === sourceIdKey
+        || normalizeComparableSourceKey(session?.sourceName || "") === sourceNameKey
+      )
+    ))
+    .sort((left, right) => (Date.parse(right.publishedAt || "") || 0) - (Date.parse(left.publishedAt || "") || 0))[0] || null;
+
+  if (!matchingSession) {
+    return null;
+  }
+
+  return {
+    qualificationResult: normalizeAdminCstpQualificationResult(matchingSession.qualificationResult),
+    sourceName: matchingSession.sourceName,
+    variety: matchingSession.variety,
+    batchLot: matchingSession.batchLot,
+    publishedAt: matchingSession.publishedAt,
+    sampleSize: matchingSession.sampleSize,
+    completedAt: matchingSession.completedAt,
+  };
+}
+
+function syncAdminCstpLabRecordFromAssignedSession(record = null, session = null) {
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedRecord || !normalizedSession) {
+    return null;
+  }
+
+  let nextStatus = normalizedRecord.status;
+  if (normalizedSession.status === "active-test") {
+    nextStatus = "active-test";
+  } else if (normalizedSession.status === "completed") {
+    nextStatus = "completed";
+  } else if (normalizedSession.status === "report-prepared") {
+    nextStatus = "report-prepared";
+  } else if (normalizedSession.status === "published") {
+    nextStatus = "published";
+  } else if (normalizedSession.status === "scheduled" && ["request-received", "accepted-awaiting-seeds", "seeds-received"].includes(normalizedRecord.status)) {
+    nextStatus = "test-scheduled";
+  }
+
+  return upsertAdminCstpLabRecord({
+    ...normalizedRecord,
+    assignedSessionId: normalizedSession.id,
+    status: nextStatus,
+    testStartedAt: normalizedSession.startedAt || normalizedRecord.testStartedAt,
+    testCompletedAt: normalizedSession.completedAt || normalizedRecord.testCompletedAt,
+    reportPreparedAt: normalizedSession.reportPreparedAt
+      || (normalizedSession.status === "report-prepared" ? (normalizedRecord.reportPreparedAt || new Date().toISOString()) : normalizedRecord.reportPreparedAt),
+    publishedAt: normalizedSession.publishedAt || normalizedRecord.publishedAt,
+    testSession: {
+      ...normalizedRecord.testSession,
+      sourceName: normalizedSession.sourceName,
+      variety: normalizedSession.variety,
+      batchLot: normalizedSession.batchLot,
+      sampleSize: normalizedSession.sampleSize,
+      deviceId: normalizedSession.deviceId,
+      testMethod: normalizedSession.testMethod,
+      temperature: normalizedSession.temperature,
+      startDateTime: normalizedSession.startedAt || normalizedRecord.testSession?.startDateTime || "",
+      observations: normalizedSession.observations,
+      germinatedCount: normalizedSession.germinatedCount,
+      finalGerminationPercent: normalizedSession.finalGerminationPercent,
+      totalGerminationTime: normalizedSession.totalGerminationTime,
+      qualificationResult: normalizedSession.qualificationResult,
+    },
+  });
+}
+
 function renderAdminCstpLabStatusPillMarkup(status = "") {
   const normalizedStatus = normalizeAdminCstpLabStatus(status);
   return `<span class="admin-source-review-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminCstpLabStatusLabel(normalizedStatus))}</span>`;
+}
+
+function renderAdminCstpTestSessionStatusPillMarkup(status = "") {
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(status);
+  return `<span class="admin-source-review-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminCstpTestSessionStatusLabel(normalizedStatus))}</span>`;
 }
 
 function renderAdminCstpLabFiltersMarkup(activeStatus = "all") {
@@ -24531,9 +24874,10 @@ function renderAdminCstpLabActionButtons(record = null) {
     return "";
   }
 
-  const qualificationResult = normalizeAdminCstpQualificationResult(record.testSession?.qualificationResult || "");
-  const canPublish = ["gold", "silver"].includes(qualificationResult)
-    && ["completed", "report-prepared", "published"].includes(record.status);
+  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+  const prepareReportHref = assignedSession
+    ? `#admin/cstp-report-placeholder/${encodeURIComponent(assignedSession.id)}`
+    : "";
 
   return `
     <div class="admin-communications-quick-actions admin-cstp-lab-actions">
@@ -24544,10 +24888,66 @@ function renderAdminCstpLabActionButtons(record = null) {
       <button type="button" class="button button-secondary" data-admin-cstp-lab-action="schedule-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Schedule test</button>
       <button type="button" class="button button-secondary" data-admin-cstp-lab-action="start-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Start CSTP test</button>
       <button type="button" class="button button-secondary" data-admin-cstp-lab-action="mark-completed" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark completed</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="prepare-report" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Prepare report</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="publish" data-admin-cstp-lab-id="${escapeHtml(record.id)}"${canPublish ? "" : " disabled"}>Publish certification if qualified</button>
-      <a class="button button-secondary" href="#admin/cstp-report-placeholder/${escapeHtml(record.id)}">Prepare CSTP Report</a>
+      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="prepare-report" data-admin-cstp-lab-id="${escapeHtml(record.id)}"${assignedSession ? "" : " disabled"}>Prepare report</button>
+      ${assignedSession
+        ? `<a class="button button-secondary" href="${escapeHtml(prepareReportHref)}">Prepare CSTP Report</a>`
+        : '<button type="button" class="button button-secondary" disabled>Prepare CSTP Report</button>'}
     </div>
+  `;
+}
+
+function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
+  if (!record) {
+    return "";
+  }
+
+  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+  const isConnected = Boolean(assignedSession);
+  return `
+    <section class="admin-cstp-assigned-session card">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">Assigned CSTP Test Session</p>
+          <h4>${isConnected ? "Connected session ready" : "No session connected yet"}</h4>
+        </div>
+      </div>
+      <div class="admin-communications-detail-grid">
+        <div class="admin-communications-detail-item">
+          <span>Connected</span>
+          <strong>${isConnected ? "Yes" : "No"}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Assigned session ID</span>
+          <strong>${escapeHtml(assignedSession?.id || "Not connected")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Session status</span>
+          <strong>${escapeHtml(assignedSession ? getAdminCstpTestSessionStatusLabel(assignedSession.status) : "Not connected")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Source name</span>
+          <strong>${escapeHtml(assignedSession?.sourceName || record.sourceName || "Not provided")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Variety</span>
+          <strong>${escapeHtml(assignedSession?.variety || record.variety || "Not provided")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Batch / lot</span>
+          <strong>${escapeHtml(assignedSession?.batchLot || record.batchLot || "Not provided")}</strong>
+        </div>
+      </div>
+      <div class="admin-communications-quick-actions admin-cstp-lab-actions">
+        ${isConnected
+          ? `
+            <a class="button button-secondary" href="#admin/cstp-session/${escapeHtml(assignedSession.id)}">Open Assigned CSTP Session</a>
+            <button type="button" class="button button-secondary" data-admin-cstp-lab-action="disconnect-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Disconnect Session</button>
+          `
+          : `
+            <button type="button" class="button button-secondary" data-admin-cstp-lab-action="create-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Create Assigned CSTP Session</button>
+          `}
+      </div>
+    </section>
   `;
 }
 
@@ -24620,6 +25020,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         </div>
       </div>
       ${renderAdminCstpLabActionButtons(selectedRecord)}
+      ${renderAdminCstpAssignedSessionSectionMarkup(selectedRecord)}
       <div class="admin-communications-detail-grid admin-cstp-lab-timeline-grid">
         ${renderAdminCstpLabTimingItem("Accepted", selectedRecord.acceptedAt)}
         ${renderAdminCstpLabTimingItem("Seeds received", selectedRecord.seedsReceivedAt)}
@@ -24629,71 +25030,14 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         ${renderAdminCstpLabTimingItem("Report prepared", selectedRecord.reportPreparedAt)}
         ${renderAdminCstpLabTimingItem("Published", selectedRecord.publishedAt)}
       </div>
-      <form class="admin-communications-editor admin-cstp-lab-session-form" data-admin-cstp-lab-session-form="${escapeHtml(selectedRecord.id)}">
+      <form class="admin-communications-editor admin-cstp-lab-session-form" data-admin-cstp-lab-notes-form="${escapeHtml(selectedRecord.id)}">
         <div class="admin-communications-editor-head">
           <div>
-            <p class="eyebrow">CSTP Test Session</p>
-            <p class="muted">Separate from member grow sessions. Use this only for controlled CSTP testing records.</p>
+            <p class="eyebrow">Internal Notes</p>
+            <p class="muted">Request notes stay on the CSTP workflow record. Assigned CSTP session data stays separate from member grow sessions.</p>
           </div>
         </div>
-        <div class="admin-communications-editor-grid">
-          <label class="admin-message-field">
-            <span>Source name</span>
-            <input name="sourceName" type="text" maxlength="160" value="${escapeHtml(selectedRecord.testSession.sourceName || selectedRecord.sourceName || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Variety</span>
-            <input name="variety" type="text" maxlength="160" value="${escapeHtml(selectedRecord.testSession.variety || selectedRecord.variety || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Batch / lot</span>
-            <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(selectedRecord.testSession.batchLot || selectedRecord.batchLot || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Sample size</span>
-            <input name="sampleSize" type="text" maxlength="80" value="${escapeHtml(selectedRecord.testSession.sampleSize || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Device ID</span>
-            <input name="deviceId" type="text" maxlength="120" value="${escapeHtml(selectedRecord.testSession.deviceId || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Start date/time</span>
-            <input name="startDateTime" type="text" maxlength="120" placeholder="May 3, 2026 10:00 AM" value="${escapeHtml(selectedRecord.testSession.startDateTime || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Test method</span>
-            <input name="testMethod" type="text" maxlength="160" value="${escapeHtml(selectedRecord.testSession.testMethod || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Temperature</span>
-            <input name="temperature" type="text" maxlength="120" value="${escapeHtml(selectedRecord.testSession.temperature || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Germinated count</span>
-            <input name="germinatedCount" type="text" maxlength="80" value="${escapeHtml(selectedRecord.testSession.germinatedCount || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Final germination %</span>
-            <input name="finalGerminationPercent" type="text" maxlength="80" value="${escapeHtml(selectedRecord.testSession.finalGerminationPercent || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Total germination time</span>
-            <input name="totalGerminationTime" type="text" maxlength="120" value="${escapeHtml(selectedRecord.testSession.totalGerminationTime || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Qualification result</span>
-            <select name="qualificationResult">
-              <option value="">Select a result</option>
-              ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
-                <option value="${escapeHtml(option.key)}"${option.key === selectedRecord.testSession.qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
-              `).join("")}
-            </select>
-          </label>
-          <label class="admin-message-field admin-cstp-lab-field-full">
-            <span>Observations</span>
-            <textarea name="observations" rows="4" maxlength="2000">${escapeHtml(selectedRecord.testSession.observations || "")}</textarea>
-          </label>
+        <div class="admin-communications-editor-grid admin-communications-editor-grid-single">
           <label class="admin-message-field admin-cstp-lab-field-full">
             <span>Internal notes</span>
             <textarea name="internalNotes" rows="4" maxlength="2000">${escapeHtml(selectedRecord.internalNotes || "")}</textarea>
@@ -24746,6 +25090,7 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
 
   const timestamp = new Date().toISOString();
   const nextRecord = normalizeAdminCstpLabRecord(record) || record;
+  const assignedSession = getAdminCstpAssignedSessionForRecord(nextRecord);
   switch (String(actionKey || "").trim()) {
     case "accept":
       nextRecord.status = "accepted-awaiting-seeds";
@@ -24769,6 +25114,12 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
     case "schedule-test":
       nextRecord.status = "test-scheduled";
       nextRecord.testScheduledAt = timestamp;
+      if (assignedSession) {
+        upsertAdminCstpTestSession({
+          ...assignedSession,
+          status: "scheduled",
+        });
+      }
       break;
     case "start-test":
       nextRecord.status = "active-test";
@@ -24776,19 +25127,40 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
       if (!nextRecord.testSession.startDateTime) {
         nextRecord.testSession.startDateTime = formatAdminTimestamp(timestamp);
       }
+      if (assignedSession) {
+        upsertAdminCstpTestSession({
+          ...assignedSession,
+          status: "active-test",
+          startedAt: assignedSession.startedAt || timestamp,
+        });
+      }
       break;
     case "mark-completed":
       nextRecord.status = "completed";
       nextRecord.testCompletedAt = timestamp;
+      if (assignedSession) {
+        upsertAdminCstpTestSession({
+          ...assignedSession,
+          status: "completed",
+          completedAt: assignedSession.completedAt || timestamp,
+        });
+      }
       break;
     case "prepare-report":
       nextRecord.status = "report-prepared";
-      nextRecord.reportPreparedAt = timestamp;
+      nextRecord.reportPreparedAt = nextRecord.reportPreparedAt || timestamp;
+      if (assignedSession) {
+        upsertAdminCstpTestSession({
+          ...assignedSession,
+          status: "report-prepared",
+          reportPreparedAt: assignedSession.reportPreparedAt || timestamp,
+        });
+      }
       break;
     case "publish":
       if (["gold", "silver"].includes(normalizeAdminCstpQualificationResult(nextRecord.testSession.qualificationResult))) {
         nextRecord.status = "published";
-        nextRecord.publishedAt = timestamp;
+        nextRecord.publishedAt = nextRecord.publishedAt || timestamp;
       }
       break;
     default:
@@ -24827,48 +25199,55 @@ function bindAdminCstpLabSection(scope = app) {
         if (!record) {
           return;
         }
+        if (actionKey === "create-session") {
+          const assignedSession = createAssignedAdminCstpTestSession(record);
+          renderWorkspace(activeStatus, recordId);
+          if (assignedSession?.id) {
+            window.location.hash = `#admin/cstp-session/${encodeURIComponent(assignedSession.id)}`;
+          }
+          return;
+        }
+        if (actionKey === "disconnect-session") {
+          const shouldDisconnect = window.confirm("Disconnect this assigned CSTP session from the request? This will not add it to member sessions or Community Grow.");
+          if (!shouldDisconnect) {
+            return;
+          }
+          disconnectAssignedAdminCstpTestSession(record);
+          renderWorkspace(activeStatus, recordId);
+          return;
+        }
+        if (actionKey === "prepare-report") {
+          const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+          if (!assignedSession) {
+            return;
+          }
+          applyAdminCstpLabAction(record, actionKey);
+          window.location.hash = `#admin/cstp-report-placeholder/${encodeURIComponent(assignedSession.id)}`;
+          return;
+        }
         applyAdminCstpLabAction(record, actionKey);
         renderWorkspace(activeStatus, recordId);
       });
     });
 
-    const sessionForm = detailShell.querySelector("[data-admin-cstp-lab-session-form]");
-    if (!(sessionForm instanceof HTMLFormElement) || sessionForm.dataset.adminCstpLabBound === "true") {
+    const notesForm = detailShell.querySelector("[data-admin-cstp-lab-notes-form]");
+    if (!(notesForm instanceof HTMLFormElement) || notesForm.dataset.adminCstpLabBound === "true") {
       return;
     }
 
-    sessionForm.dataset.adminCstpLabBound = "true";
-    sessionForm.addEventListener("submit", (event) => {
+    notesForm.dataset.adminCstpLabBound = "true";
+    notesForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      const recordId = String(sessionForm.dataset.adminCstpLabSessionForm || "").trim();
+      const recordId = String(notesForm.dataset.adminCstpLabNotesForm || "").trim();
       const existingRecord = getAdminCstpLabRecords().find((entry) => entry.id === recordId) || null;
       if (!existingRecord) {
         return;
       }
 
-      const formData = new FormData(sessionForm);
+      const formData = new FormData(notesForm);
       upsertAdminCstpLabRecord({
         ...existingRecord,
-        sourceName: String(formData.get("sourceName") || existingRecord.sourceName || "").trim(),
-        variety: String(formData.get("variety") || existingRecord.variety || "").trim(),
-        batchLot: String(formData.get("batchLot") || existingRecord.batchLot || "").trim(),
         internalNotes: String(formData.get("internalNotes") || "").trim(),
-        testSession: {
-          ...existingRecord.testSession,
-          sourceName: String(formData.get("sourceName") || existingRecord.testSession.sourceName || "").trim(),
-          variety: String(formData.get("variety") || existingRecord.testSession.variety || "").trim(),
-          batchLot: String(formData.get("batchLot") || existingRecord.testSession.batchLot || "").trim(),
-          sampleSize: String(formData.get("sampleSize") || "").trim(),
-          deviceId: String(formData.get("deviceId") || "").trim(),
-          startDateTime: String(formData.get("startDateTime") || "").trim(),
-          testMethod: String(formData.get("testMethod") || "").trim(),
-          temperature: String(formData.get("temperature") || "").trim(),
-          observations: String(formData.get("observations") || "").trim(),
-          germinatedCount: String(formData.get("germinatedCount") || "").trim(),
-          finalGerminationPercent: String(formData.get("finalGerminationPercent") || "").trim(),
-          totalGerminationTime: String(formData.get("totalGerminationTime") || "").trim(),
-          qualificationResult: String(formData.get("qualificationResult") || "").trim(),
-        },
       });
       renderWorkspace(activeStatus, recordId);
     });
@@ -24918,8 +25297,54 @@ function bindAdminCstpLabSection(scope = app) {
   renderWorkspace(activeStatus, selectedId);
 }
 
-function renderAdminCstpReportPlaceholderPage(recordId = "") {
-  const matchingRecord = getAdminCstpLabRecords().find((record) => record.id === String(recordId || "").trim()) || null;
+function updateAdminCstpAssignedSession(sessionId = "", updates = {}) {
+  const existingSession = getAdminCstpTestSessionById(sessionId);
+  if (!existingSession) {
+    return null;
+  }
+
+  const normalizedSession = upsertAdminCstpTestSession({
+    ...existingSession,
+    ...updates,
+  });
+  if (!normalizedSession) {
+    return null;
+  }
+
+  if (normalizedSession.requestId) {
+    const linkedRecord = getAdminCstpLabRecords().find((record) => record.requestId === normalizedSession.requestId) || null;
+    if (linkedRecord) {
+      syncAdminCstpLabRecordFromAssignedSession(linkedRecord, normalizedSession);
+    }
+  }
+
+  return normalizedSession;
+}
+
+function renderAdminCstpTestSessionPage(sessionId = "") {
+  const session = getAdminCstpTestSessionById(sessionId);
+  if (!session) {
+    app.innerHTML = `
+      <section class="card disclaimer-page">
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("activity")}
+            <div>
+              <p class="eyebrow">CSTP Testing Lab</p>
+              <h2>CSTP Test Session</h2>
+              <p class="muted">This assigned CSTP session could not be found.</p>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-secondary" href="#admin">Back to Admin</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const linkedRequest = getAdminCstpLabRecords().find((record) => record.requestId === session.requestId) || null;
   app.innerHTML = `
     <section class="card disclaimer-page">
       <div class="section-heading app-section-header">
@@ -24927,8 +25352,239 @@ function renderAdminCstpReportPlaceholderPage(recordId = "") {
           ${renderAppSectionHeaderIcon("activity")}
           <div>
             <p class="eyebrow">CSTP Testing Lab</p>
-            <h2>CSTP Test Report - Coming Soon</h2>
-            <p class="muted">Detailed controlled CSTP report preparation will be available here.</p>
+            <h2>CSTP Test Session</h2>
+            <p class="muted">Separate mock/local CSTP test session. This does not appear in member Sessions, Community Grow, or leaderboard insights.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#admin">Back to Admin</a>
+        </div>
+      </div>
+      <section class="card admin-cstp-session-page-card">
+        <div class="admin-communications-detail-head">
+          <div>
+            <p class="eyebrow">Assigned Session</p>
+            <h3>${escapeHtml(session.id)}</h3>
+            <div class="admin-report-card-badges">
+              <span class="admin-message-issue-pill">CSTP Test Session</span>
+              ${renderAdminCstpTestSessionStatusPillMarkup(session.status)}
+            </div>
+          </div>
+        </div>
+        <div class="admin-communications-detail-grid">
+          <div class="admin-communications-detail-item">
+            <span>Linked request ID</span>
+            <strong>${escapeHtml(session.requestId || "Not linked")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Source name</span>
+            <strong>${escapeHtml(session.sourceName || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Variety</span>
+            <strong>${escapeHtml(session.variety || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Batch / lot</span>
+            <strong>${escapeHtml(session.batchLot || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Status</span>
+            <strong>${escapeHtml(getAdminCstpTestSessionStatusLabel(session.status))}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Request source</span>
+            <strong>${escapeHtml(linkedRequest?.sourceName || "Not available")}</strong>
+          </div>
+        </div>
+        <div class="admin-communications-quick-actions admin-cstp-lab-actions">
+          <button type="button" class="button button-secondary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(session.id)}">Start Test</button>
+          <button type="button" class="button button-secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(session.id)}">Mark Completed</button>
+          <button type="button" class="button button-secondary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(session.id)}">Prepare Report</button>
+        </div>
+        <form class="admin-communications-editor" data-admin-cstp-session-form="${escapeHtml(session.id)}">
+          <div class="admin-communications-editor-head">
+            <div>
+              <p class="eyebrow">Session Detail</p>
+              <p class="muted">Controlled CSTP session fields only. These do not alter member grow-session logic or public community data.</p>
+            </div>
+          </div>
+          <div class="admin-communications-editor-grid">
+            <label class="admin-message-field">
+              <span>Source name</span>
+              <input name="sourceName" type="text" maxlength="160" value="${escapeHtml(session.sourceName || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Variety</span>
+              <input name="variety" type="text" maxlength="160" value="${escapeHtml(session.variety || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Batch / lot</span>
+              <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(session.batchLot || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Sample size</span>
+              <input name="sampleSize" type="text" maxlength="80" value="${escapeHtml(session.sampleSize || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Device ID</span>
+              <input name="deviceId" type="text" maxlength="120" value="${escapeHtml(session.deviceId || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Test method</span>
+              <input name="testMethod" type="text" maxlength="160" value="${escapeHtml(session.testMethod || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Temperature</span>
+              <input name="temperature" type="text" maxlength="120" value="${escapeHtml(session.temperature || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Status</span>
+              <select name="status">
+                ${ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS.map((option) => `
+                  <option value="${escapeHtml(option.key)}"${option.key === session.status ? " selected" : ""}>${escapeHtml(option.label)}</option>
+                `).join("")}
+              </select>
+            </label>
+            <label class="admin-message-field">
+              <span>Started at</span>
+              <input name="startedAt" type="text" maxlength="120" placeholder="May 3, 2026 10:00 AM" value="${escapeHtml(session.startedAt || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Completed at</span>
+              <input name="completedAt" type="text" maxlength="120" placeholder="May 6, 2026 2:00 PM" value="${escapeHtml(session.completedAt || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Germinated count</span>
+              <input name="germinatedCount" type="text" maxlength="80" value="${escapeHtml(session.germinatedCount || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Final germination %</span>
+              <input name="finalGerminationPercent" type="text" maxlength="80" value="${escapeHtml(session.finalGerminationPercent || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Total germination time</span>
+              <input name="totalGerminationTime" type="text" maxlength="120" value="${escapeHtml(session.totalGerminationTime || "")}">
+            </label>
+            <label class="admin-message-field">
+              <span>Qualification result</span>
+              <select name="qualificationResult">
+                <option value="">Select a result</option>
+                ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
+                  <option value="${escapeHtml(option.key)}"${option.key === session.qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
+                `).join("")}
+              </select>
+            </label>
+            <label class="admin-message-field admin-cstp-lab-field-full">
+              <span>Observations</span>
+              <textarea name="observations" rows="5" maxlength="2000">${escapeHtml(session.observations || "")}</textarea>
+            </label>
+          </div>
+          <div class="inline-actions">
+            <button type="submit" class="button button-secondary">Save CSTP Session</button>
+          </div>
+        </form>
+      </section>
+    </section>
+  `;
+
+  bindAdminCstpTestSessionPage(session.id);
+}
+
+function bindAdminCstpTestSessionPage(sessionId = "") {
+  const form = app.querySelector("[data-admin-cstp-session-form]");
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  app.querySelectorAll("[data-admin-cstp-session-action]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpSessionBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpSessionBound = "true";
+    button.addEventListener("click", () => {
+      const actionKey = String(button.dataset.adminCstpSessionAction || "").trim();
+      const existingSession = getAdminCstpTestSessionById(sessionId);
+      if (!existingSession) {
+        return;
+      }
+      const timestamp = new Date().toISOString();
+      if (actionKey === "start") {
+        updateAdminCstpAssignedSession(sessionId, {
+          ...existingSession,
+          status: "active-test",
+          startedAt: existingSession.startedAt || timestamp,
+        });
+      } else if (actionKey === "complete") {
+        updateAdminCstpAssignedSession(sessionId, {
+          ...existingSession,
+          status: "completed",
+          completedAt: existingSession.completedAt || timestamp,
+        });
+      } else if (actionKey === "prepare-report") {
+        updateAdminCstpAssignedSession(sessionId, {
+          ...existingSession,
+          status: "report-prepared",
+          reportPreparedAt: existingSession.reportPreparedAt || timestamp,
+        });
+        window.location.hash = `#admin/cstp-report-placeholder/${encodeURIComponent(sessionId)}`;
+        return;
+      }
+      renderAdminCstpTestSessionPage(sessionId);
+    });
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const existingSession = getAdminCstpTestSessionById(sessionId);
+    if (!existingSession) {
+      return;
+    }
+
+    const formData = new FormData(form);
+    updateAdminCstpAssignedSession(sessionId, {
+      ...existingSession,
+      sourceName: String(formData.get("sourceName") || "").trim(),
+      variety: String(formData.get("variety") || "").trim(),
+      batchLot: String(formData.get("batchLot") || "").trim(),
+      sampleSize: String(formData.get("sampleSize") || "").trim(),
+      deviceId: String(formData.get("deviceId") || "").trim(),
+      testMethod: String(formData.get("testMethod") || "").trim(),
+      temperature: String(formData.get("temperature") || "").trim(),
+      status: String(formData.get("status") || "").trim(),
+      startedAt: String(formData.get("startedAt") || "").trim(),
+      completedAt: String(formData.get("completedAt") || "").trim(),
+      germinatedCount: String(formData.get("germinatedCount") || "").trim(),
+      finalGerminationPercent: String(formData.get("finalGerminationPercent") || "").trim(),
+      totalGerminationTime: String(formData.get("totalGerminationTime") || "").trim(),
+      qualificationResult: String(formData.get("qualificationResult") || "").trim(),
+      observations: String(formData.get("observations") || "").trim(),
+    });
+    renderAdminCstpTestSessionPage(sessionId);
+  });
+}
+
+function renderAdminCstpReportPlaceholderPage(recordId = "") {
+  const normalizedRecordId = String(recordId || "").trim();
+  const matchingRecord = getAdminCstpLabRecords().find((record) => (
+    record.id === normalizedRecordId || record.assignedSessionId === normalizedRecordId
+  )) || null;
+  const matchingSession = getAdminCstpTestSessionById(normalizedRecordId);
+  const reportSession = matchingSession || getAdminCstpAssignedSessionForRecord(matchingRecord);
+  const qualificationResult = normalizeAdminCstpQualificationResult(reportSession?.qualificationResult || "");
+  const canPublish = Boolean(reportSession?.completedAt)
+    && Boolean(reportSession?.reportPreparedAt)
+    && ["gold", "silver"].includes(qualificationResult)
+    && reportSession?.certificationPublished !== true;
+  app.innerHTML = `
+    <section class="card disclaimer-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("activity")}
+          <div>
+            <p class="eyebrow">CSTP Testing Lab</p>
+            <h2>CSTP Test Report</h2>
+            <p class="muted">Controlled batch testing report builder for mock CSTP workflow records.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -24936,32 +25592,140 @@ function renderAdminCstpReportPlaceholderPage(recordId = "") {
         </div>
       </div>
       <section class="card source-cstp-report-card">
-        <p class="eyebrow">Placeholder</p>
-        <h3>CSTP Test Report - Coming Soon</h3>
-        <p class="muted">This placeholder keeps report preparation separate from member grow sessions while the full CSTP report workflow is still being built.</p>
-        ${matchingRecord ? `
+        <p class="eyebrow">Report Builder</p>
+        <h3>CSTP Test Report</h3>
+        <p class="muted">This admin-only report builder stays separate from member grow sessions, Community Grow snapshots, and leaderboard calculations.</p>
+        ${matchingRecord || reportSession ? `
           <div class="admin-communications-detail-grid">
             <div class="admin-communications-detail-item">
-              <span>Source</span>
-              <strong>${escapeHtml(matchingRecord.sourceName || "Not provided")}</strong>
+              <span>Source name</span>
+              <strong>${escapeHtml(reportSession?.sourceName || matchingRecord?.sourceName || "Not provided")}</strong>
             </div>
             <div class="admin-communications-detail-item">
               <span>Variety</span>
-              <strong>${escapeHtml(matchingRecord.variety || "Not provided")}</strong>
+              <strong>${escapeHtml(reportSession?.variety || matchingRecord?.variety || "Not provided")}</strong>
             </div>
             <div class="admin-communications-detail-item">
               <span>Batch / Lot</span>
-              <strong>${escapeHtml(matchingRecord.batchLot || "Not provided")}</strong>
+              <strong>${escapeHtml(reportSession?.batchLot || matchingRecord?.batchLot || "Not provided")}</strong>
             </div>
             <div class="admin-communications-detail-item">
-              <span>Qualification</span>
-              <strong>${escapeHtml(getAdminCstpQualificationLabel(matchingRecord.testSession?.qualificationResult || ""))}</strong>
+              <span>Sample size</span>
+              <strong>${escapeHtml(reportSession?.sampleSize || matchingRecord?.testSession?.sampleSize || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Device ID</span>
+              <strong>${escapeHtml(reportSession?.deviceId || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Test method</span>
+              <strong>${escapeHtml(reportSession?.testMethod || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Temperature</span>
+              <strong>${escapeHtml(reportSession?.temperature || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Started</span>
+              <strong>${escapeHtml(reportSession?.startedAt ? formatAdminTimestamp(reportSession.startedAt) : "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Completed</span>
+              <strong>${escapeHtml(reportSession?.completedAt ? formatAdminTimestamp(reportSession.completedAt) : "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Germinated count</span>
+              <strong>${escapeHtml(reportSession?.germinatedCount || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Final germination %</span>
+              <strong>${escapeHtml(reportSession?.finalGerminationPercent || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Total germination time</span>
+              <strong>${escapeHtml(reportSession?.totalGerminationTime || "Not provided")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Qualification Result</span>
+              <strong>${escapeHtml(getAdminCstpQualificationLabel(qualificationResult || ""))}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Report prepared</span>
+              <strong>${escapeHtml(reportSession?.reportPreparedAt ? formatAdminTimestamp(reportSession.reportPreparedAt) : "Not prepared yet")}</strong>
+            </div>
+            <div class="admin-communications-detail-item">
+              <span>Published</span>
+              <strong>${escapeHtml(reportSession?.publishedAt ? formatAdminTimestamp(reportSession.publishedAt) : "Not published")}</strong>
             </div>
           </div>
-        ` : ""}
+          <div class="admin-communications-message-shell">
+            <p class="eyebrow">Observations</p>
+            <div class="admin-communications-message-body">
+              <p>${escapeHtml(reportSession?.observations || "No observations recorded yet.").replace(/\n/g, "<br>")}</p>
+            </div>
+          </div>
+          <div class="admin-communications-quick-actions admin-cstp-lab-actions">
+            <button
+              type="button"
+              class="button button-secondary"
+              data-admin-cstp-report-publish="${escapeHtml(reportSession?.id || "")}"
+              ${canPublish ? "" : "disabled"}
+            >
+              Publish Certification
+            </button>
+          </div>
+          <p class="muted">Publishing is enabled only after the CSTP session is completed, the report is prepared, and the qualification result is Gold or Silver.</p>
+        ` : `
+          <p class="muted">No linked CSTP session data is available for this report yet.</p>
+        `}
       </section>
     </section>
   `;
+
+  if (reportSession?.id) {
+    bindAdminCstpReportBuilderPage(reportSession.id);
+  }
+}
+
+function bindAdminCstpReportBuilderPage(sessionId = "") {
+  const publishButton = app.querySelector("[data-admin-cstp-report-publish]");
+  if (!(publishButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  publishButton.addEventListener("click", () => {
+    const existingSession = getAdminCstpTestSessionById(sessionId);
+    if (!existingSession) {
+      return;
+    }
+
+    const normalizedQualification = normalizeAdminCstpQualificationResult(existingSession.qualificationResult || "");
+    const canPublish = Boolean(existingSession.completedAt)
+      && Boolean(existingSession.reportPreparedAt)
+      && ["gold", "silver"].includes(normalizedQualification);
+    if (!canPublish) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    updateAdminCstpAssignedSession(sessionId, {
+      ...existingSession,
+      status: "published",
+      publishedAt: existingSession.publishedAt || timestamp,
+      certificationPublished: true,
+    });
+
+    const linkedRecord = getAdminCstpLabRecords().find((record) => record.assignedSessionId === sessionId) || null;
+    if (linkedRecord) {
+      upsertAdminCstpLabRecord({
+        ...linkedRecord,
+        status: "published",
+        publishedAt: linkedRecord.publishedAt || timestamp,
+      });
+    }
+
+    renderAdminCstpReportPlaceholderPage(sessionId);
+  });
 }
 
 function renderAdminDevAccessSectionMarkup() {
