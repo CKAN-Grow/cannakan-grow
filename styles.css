@@ -7624,9 +7624,87 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 4px;
 }
 
+.admin-communications-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-communications-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-communications-list-item {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  border-radius: 18px;
+  border: 1px solid rgba(109, 124, 113, 0.22);
+  background: rgba(255, 255, 255, 0.56);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.admin-communications-list-item:hover,
+.admin-communications-list-item:focus-visible {
+  border-color: rgba(148, 209, 89, 0.34);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.admin-communications-list-item.is-active {
+  border-color: rgba(148, 209, 89, 0.42);
+  box-shadow: 0 14px 30px rgba(19, 33, 22, 0.08);
+}
+
+.admin-communications-list-item.is-new {
+  background: rgba(255, 251, 242, 0.94);
+}
+
+.admin-communications-list-item.is-in-progress {
+  background: rgba(246, 250, 255, 0.92);
+}
+
+.admin-communications-list-item.is-closed {
+  opacity: 0.74;
+}
+
+.admin-communications-list-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.admin-communications-list-item-body {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-communications-list-item-body strong {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.admin-communications-list-item.is-new .admin-communications-list-item-body strong {
+  font-weight: 800;
+}
+
+.admin-communications-list-item-body p,
+.admin-communications-list-item-body span {
+  margin: 0;
+  color: var(--muted);
+}
+
 .admin-communications-detail-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -7652,6 +7730,55 @@ body.theme-dark .contact-reason-card.is-active {
   line-height: 1.4;
 }
 
+.admin-communications-detail-card {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+
+.admin-communications-detail-empty {
+  min-height: 280px;
+  align-items: center;
+  justify-items: center;
+}
+
+.admin-communications-detail-head {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-communications-detail-head h4 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.admin-communications-message-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-communications-message-shell p {
+  margin: 0;
+}
+
+.admin-communications-message-body {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(109, 124, 113, 0.2);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.admin-communications-message-body p {
+  line-height: 1.6;
+}
+
+.admin-communications-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .admin-communications-editor {
   display: grid;
   gap: 12px;
@@ -7671,6 +7798,10 @@ body.theme-dark .contact-reason-card.is-active {
   grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+
+.admin-communications-editor-grid-single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .admin-member-role-pill,
@@ -15693,7 +15824,37 @@ body.theme-dark .admin-message-review-pill {
   border-color: rgba(212, 170, 70, 0.26);
 }
 
+body.theme-dark .admin-communications-list-item {
+  background: rgba(18, 24, 20, 0.86);
+  border-color: rgba(148, 209, 89, 0.1);
+}
+
+body.theme-dark .admin-communications-list-item:hover,
+body.theme-dark .admin-communications-list-item:focus-visible,
+body.theme-dark .admin-communications-list-item.is-active {
+  border-color: rgba(148, 209, 89, 0.28);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-communications-list-item.is-new {
+  background: rgba(42, 34, 18, 0.76);
+}
+
+body.theme-dark .admin-communications-list-item.is-in-progress {
+  background: rgba(16, 31, 43, 0.78);
+}
+
+body.theme-dark .admin-communications-list-item-body p,
+body.theme-dark .admin-communications-list-item-body span {
+  color: rgba(189, 204, 192, 0.82);
+}
+
 body.theme-dark .admin-communications-detail-item {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(148, 209, 89, 0.1);
+}
+
+body.theme-dark .admin-communications-message-body {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(148, 209, 89, 0.1);
 }
@@ -17213,12 +17374,16 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     display: grid;
   }
 
+  .admin-communications-workspace {
+    grid-template-columns: 1fr;
+  }
+
   .admin-dev-access-grid {
     grid-template-columns: 1fr;
   }
 
   .admin-communications-detail-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .admin-communications-editor-grid {

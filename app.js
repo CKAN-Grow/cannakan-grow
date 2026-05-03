@@ -749,14 +749,8 @@ const MOCK_ADMIN_REPORTS = Object.freeze([
 const ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY = "cannakanAdminCommunicationsOpen";
 const ADMIN_COMMUNICATIONS_STORAGE_KEY = "cannakanAdminCommunicationsRecords";
 const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
-const ADMIN_COMMUNICATIONS_TABS = Object.freeze([
-  Object.freeze({ key: "all", label: "All Messages" }),
-  Object.freeze({ key: "cstp", label: "CSTP Requests" }),
-  Object.freeze({ key: "support", label: "Support" }),
-  Object.freeze({ key: "source-corrections", label: "Source Corrections" }),
-]);
 const ADMIN_COMMUNICATIONS_STATUS_FILTERS = Object.freeze([
-  Object.freeze({ key: "all", label: "All Statuses" }),
+  Object.freeze({ key: "all", label: "All" }),
   Object.freeze({ key: "new", label: "New" }),
   Object.freeze({ key: "in-progress", label: "In Progress" }),
   Object.freeze({ key: "closed", label: "Closed" }),
@@ -23713,12 +23707,16 @@ function getAdminCommunicationRows(filterKey = "all") {
     .sort((left, right) => (Date.parse(right.submittedAt || "") || 0) - (Date.parse(left.submittedAt || "") || 0));
 }
 
-function renderAdminCommunicationStatusPillMarkup(status = "new") {
+function getAdminCommunicationStatusLabel(status = "new") {
   const normalizedStatus = normalizeAdminCommunicationStatus(status);
-  const statusLabel = normalizedStatus === "in-progress"
+  return normalizedStatus === "in-progress"
     ? "In Progress"
     : capitalize(normalizedStatus);
-  return `<span class="admin-message-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(statusLabel)}</span>`;
+}
+
+function renderAdminCommunicationStatusPillMarkup(status = "new") {
+  const normalizedStatus = normalizeAdminCommunicationStatus(status);
+  return `<span class="admin-message-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminCommunicationStatusLabel(normalizedStatus))}</span>`;
 }
 
 function renderAdminCommunicationsStatusFiltersMarkup(activeStatus = "all") {
@@ -23734,22 +23732,13 @@ function renderAdminCommunicationsStatusFiltersMarkup(activeStatus = "all") {
   `).join("");
 }
 
-function renderAdminCommunicationsTabsMarkup(activeTab = "all") {
-  return ADMIN_COMMUNICATIONS_TABS.map((tab) => `
-    <button
-      type="button"
-      class="source-directory-filter-pill ${tab.key === activeTab ? "is-active" : ""}"
-      data-admin-communications-tab="${escapeHtml(tab.key)}"
-      aria-pressed="${tab.key === activeTab ? "true" : "false"}"
-    >
-      ${escapeHtml(tab.label)}
-    </button>
-  `).join("");
+function getFilteredAdminCommunicationRows(activeStatus = "all") {
+  return getAdminCommunicationRows("all")
+    .filter((row) => activeStatus === "all" || normalizeAdminCommunicationStatus(row.status) === activeStatus);
 }
 
-function renderAdminCommunicationsListMarkup(activeTab = "all", activeStatus = "all") {
-  const rows = getAdminCommunicationRows(activeTab)
-    .filter((row) => activeStatus === "all" || normalizeAdminCommunicationStatus(row.status) === activeStatus);
+function renderAdminCommunicationsListMarkup(activeStatus = "all", selectedId = "") {
+  const rows = getFilteredAdminCommunicationRows(activeStatus);
   if (!rows.length) {
     return `
       <div class="admin-messages-empty">
@@ -23759,70 +23748,109 @@ function renderAdminCommunicationsListMarkup(activeTab = "all", activeStatus = "
   }
 
   return `
-    <div class="admin-report-card-list">
+    <div class="admin-communications-list">
       ${rows.map((row) => `
-        <article class="meta-card admin-report-card admin-communication-card ${normalizeAdminCommunicationStatus(row.status) === "new" ? "is-new" : ""}">
-          <div class="admin-report-card-header">
-            <div class="admin-report-card-badges">
-              <span class="admin-message-issue-pill">${escapeHtml(row.type)}</span>
-              ${renderAdminCommunicationStatusPillMarkup(row.status)}
-              ${normalizeAdminCommunicationStatus(row.status) === "new"
-                ? '<span class="admin-message-review-pill">Needs Review</span>'
-                : ""}
-            </div>
-            <p class="admin-report-card-date">${escapeHtml(formatAdminTimestamp(row.submittedAt))}</p>
+        <button
+          type="button"
+          class="admin-communications-list-item ${normalizeAdminCommunicationStatus(row.status) === "new" ? "is-new" : ""} ${normalizeAdminCommunicationStatus(row.status) === "in-progress" ? "is-in-progress" : ""} ${normalizeAdminCommunicationStatus(row.status) === "closed" ? "is-closed" : ""} ${row.id === selectedId ? "is-active" : ""}"
+          data-admin-communication-open="${escapeHtml(row.id)}"
+        >
+          <div class="admin-communications-list-item-head">
+            <span class="admin-message-issue-pill">${escapeHtml(row.type)}</span>
+            ${renderAdminCommunicationStatusPillMarkup(row.status)}
           </div>
-          <div class="admin-report-card-meta admin-report-card-meta-stacked">
-            <strong>${escapeHtml(row.subject)}</strong>
-            <p>${escapeHtml(row.name)} • ${escapeHtml(row.email)}</p>
+          <div class="admin-communications-list-item-body">
+            <strong>${escapeHtml(row.name || row.subject)}</strong>
+            <p>${escapeHtml(row.subject)}</p>
+            <span>${escapeHtml(formatAdminTimestamp(row.submittedAt))}</span>
           </div>
-          <div class="admin-communications-detail-grid">
-            <div class="admin-communications-detail-item">
-              <span>Submission type</span>
-              <strong>${escapeHtml(row.type)}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Routed to</span>
-              <strong>${escapeHtml(row.routedTo)}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Submitted</span>
-              <strong>${escapeHtml(formatAdminTimestamp(row.submittedAt))}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Status</span>
-              <strong>${escapeHtml(normalizeAdminCommunicationStatus(row.status) === "in-progress" ? "In Progress" : capitalize(normalizeAdminCommunicationStatus(row.status)))}</strong>
-            </div>
-          </div>
-          <div class="admin-report-card-message">
-            <p>${escapeHtml(row.message || "No message provided.")}</p>
-          </div>
-          <form class="admin-communications-editor" data-admin-communication-form="${escapeHtml(row.id)}">
-            <div class="admin-communications-editor-head">
-              <p class="eyebrow">Internal Notes</p>
-              <p class="muted">Admin-only notes stay on this message record for follow-up.</p>
-            </div>
-            <div class="admin-communications-editor-grid">
-              <label class="admin-messages-issue-filter">
-                <span>Status</span>
-                <select name="status">
-                  <option value="new"${row.status === "new" ? " selected" : ""}>New</option>
-                  <option value="in-progress"${row.status === "in-progress" ? " selected" : ""}>In Progress</option>
-                  <option value="closed"${row.status === "closed" ? " selected" : ""}>Closed</option>
-                </select>
-              </label>
-              <label class="admin-message-field">
-                <span>Internal notes</span>
-                <textarea name="internalNotes" rows="3" maxlength="1500" placeholder="Add admin-only notes for this message.">${escapeHtml(row.internalNotes || "")}</textarea>
-              </label>
-            </div>
-            <div class="inline-actions">
-              <button type="submit" class="button button-secondary">Save Message</button>
-            </div>
-          </form>
-        </article>
+          ${normalizeAdminCommunicationStatus(row.status) === "new"
+            ? '<span class="admin-message-review-pill">Needs Review</span>'
+            : ""}
+        </button>
       `).join("")}
     </div>
+  `;
+}
+
+function renderAdminCommunicationDetailMarkup(selectedId = "", activeStatus = "all") {
+  const rows = getFilteredAdminCommunicationRows(activeStatus);
+  const selectedRecord = rows.find((row) => row.id === selectedId) || rows[0] || null;
+  if (!selectedRecord) {
+    return `
+      <section class="card admin-communications-detail-card admin-communications-detail-empty">
+        <p class="muted">Select a message to review its details.</p>
+      </section>
+    `;
+  }
+
+  const normalizedStatus = normalizeAdminCommunicationStatus(selectedRecord.status);
+  return `
+    <section class="card admin-communications-detail-card" data-admin-communications-detail="${escapeHtml(selectedRecord.id)}">
+      <div class="admin-communications-detail-head">
+        <div>
+          <p class="eyebrow">Message Detail</p>
+          <h4>${escapeHtml(selectedRecord.subject)}</h4>
+          <div class="admin-report-card-badges">
+            <span class="admin-message-issue-pill">${escapeHtml(selectedRecord.type)}</span>
+            ${renderAdminCommunicationStatusPillMarkup(selectedRecord.status)}
+            ${normalizedStatus === "new" ? '<span class="admin-message-review-pill">Needs Review</span>' : ""}
+          </div>
+        </div>
+      </div>
+      <div class="admin-communications-detail-grid">
+        <div class="admin-communications-detail-item">
+          <span>Name</span>
+          <strong>${escapeHtml(selectedRecord.name || "Unknown")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Email</span>
+          <strong>${escapeHtml(selectedRecord.email || "Not provided")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Type</span>
+          <strong>${escapeHtml(selectedRecord.type)}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Submitted</span>
+          <strong>${escapeHtml(formatAdminTimestamp(selectedRecord.submittedAt))}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Routed to</span>
+          <strong>${escapeHtml(selectedRecord.routedTo)}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Status</span>
+          <strong>${escapeHtml(getAdminCommunicationStatusLabel(normalizedStatus))}</strong>
+        </div>
+      </div>
+      <div class="admin-communications-message-shell">
+        <p class="eyebrow">Message</p>
+        <div class="admin-communications-message-body">
+          <p>${escapeHtml(selectedRecord.message || "No message provided.").replace(/\n/g, "<br>")}</p>
+        </div>
+      </div>
+      <div class="admin-communications-quick-actions">
+        <button type="button" class="button button-secondary" data-admin-communication-quick-action="in-progress" data-admin-communication-id="${escapeHtml(selectedRecord.id)}">Mark as In Progress</button>
+        <button type="button" class="button button-secondary" data-admin-communication-quick-action="closed" data-admin-communication-id="${escapeHtml(selectedRecord.id)}">Mark as Closed</button>
+        <button type="button" class="button button-secondary" data-admin-communication-quick-action="new" data-admin-communication-id="${escapeHtml(selectedRecord.id)}">Reopen</button>
+      </div>
+      <form class="admin-communications-editor" data-admin-communication-form="${escapeHtml(selectedRecord.id)}">
+        <div class="admin-communications-editor-head">
+          <p class="eyebrow">Internal Notes</p>
+          <p class="muted">Admin-only notes stay on this message record for follow-up.</p>
+        </div>
+        <div class="admin-communications-editor-grid admin-communications-editor-grid-single">
+          <label class="admin-message-field">
+            <span>Internal notes</span>
+            <textarea name="internalNotes" rows="5" maxlength="1500" placeholder="Add admin-only notes for this message.">${escapeHtml(selectedRecord.internalNotes || "")}</textarea>
+          </label>
+        </div>
+        <div class="inline-actions">
+          <button type="submit" class="button button-secondary">Save Notes</button>
+        </div>
+      </form>
+    </section>
   `;
 }
 
@@ -23830,6 +23858,8 @@ function renderAdminCommunicationsSectionMarkup() {
   const fallbackNote = appState.adminCommunicationRecordsError && appState.supabase
     ? `Showing local fallback records. ${appState.adminCommunicationRecordsError}`
     : "Contact submissions will appear here. Supabase-backed records are used when available, with local fallback during development.";
+  const initialRows = getFilteredAdminCommunicationRows("all");
+  const initialSelectedId = initialRows[0]?.id || "";
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "Communications",
     title: "Communications",
@@ -23841,16 +23871,18 @@ function renderAdminCommunicationsSectionMarkup() {
     bodyMarkup: `
       <div class="admin-communications-shell">
         <div class="admin-communications-toolbar">
-          <div class="source-directory-filter-row" role="group" aria-label="Communication message tabs">
-            ${renderAdminCommunicationsTabsMarkup("all")}
-          </div>
           <div class="source-directory-filter-row" role="group" aria-label="Communication review status filters">
             ${renderAdminCommunicationsStatusFiltersMarkup("all")}
           </div>
           <p class="muted">${escapeHtml(fallbackNote)}</p>
         </div>
-        <div id="admin-communications-list">
-          ${renderAdminCommunicationsListMarkup("all", "all")}
+        <div class="admin-communications-workspace">
+          <div id="admin-communications-list">
+            ${renderAdminCommunicationsListMarkup("all", initialSelectedId)}
+          </div>
+          <div id="admin-communications-detail">
+            ${renderAdminCommunicationDetailMarkup(initialSelectedId, "all")}
+          </div>
         </div>
       </div>
     `,
@@ -23863,68 +23895,95 @@ function bindAdminCommunicationsSection(scope = app) {
   }
 
   const listShell = scope.querySelector("#admin-communications-list");
-  const tabButtons = Array.from(scope.querySelectorAll("[data-admin-communications-tab]"));
+  const detailShell = scope.querySelector("#admin-communications-detail");
   const statusButtons = Array.from(scope.querySelectorAll("[data-admin-communications-status]"));
-  if (!listShell || !tabButtons.length || !statusButtons.length) {
+  if (!listShell || !detailShell || !statusButtons.length) {
     return;
   }
 
-  let activeTab = "all";
   let activeStatus = "all";
+  let selectedId = getFilteredAdminCommunicationRows(activeStatus)[0]?.id || "";
 
-  const renderTab = (nextTab = activeTab, nextStatus = activeStatus) => {
-    activeTab = nextTab;
+  const renderWorkspace = (nextStatus = activeStatus, nextSelectedId = selectedId) => {
     activeStatus = nextStatus;
-    listShell.innerHTML = renderAdminCommunicationsListMarkup(activeTab, activeStatus);
-    tabButtons.forEach((button) => {
-      const isActive = button.dataset.adminCommunicationsTab === activeTab;
-      button.classList.toggle("is-active", isActive);
-      button.setAttribute("aria-pressed", isActive ? "true" : "false");
-    });
+    const rows = getFilteredAdminCommunicationRows(activeStatus);
+    selectedId = rows.some((row) => row.id === nextSelectedId)
+      ? nextSelectedId
+      : (rows[0]?.id || "");
+    listShell.innerHTML = renderAdminCommunicationsListMarkup(activeStatus, selectedId);
+    detailShell.innerHTML = renderAdminCommunicationDetailMarkup(selectedId, activeStatus);
     statusButtons.forEach((button) => {
       const isActive = button.dataset.adminCommunicationsStatus === activeStatus;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
-    bindEditors(activeTab, activeStatus);
+    bindMessageSelection();
+    bindQuickActions();
+    bindNotesEditor(activeStatus, selectedId);
   };
 
-  const bindEditors = (tabKey = "all", statusKey = "all") => {
-    listShell.querySelectorAll("[data-admin-communication-form]").forEach((form) => {
-      if (!(form instanceof HTMLFormElement) || form.dataset.adminCommunicationBound === "true") {
+  const bindMessageSelection = () => {
+    listShell.querySelectorAll("[data-admin-communication-open]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.dataset.adminCommunicationBound === "true") {
         return;
       }
 
-      form.dataset.adminCommunicationBound = "true";
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const messageId = String(form.dataset.adminCommunicationForm || "").trim();
-        const existingRecord = getAdminCommunicationRecords().find((row) => row.id === messageId) || null;
-        if (!existingRecord) {
-          return;
-        }
-
-        const formData = new FormData(form);
-        await updateAdminCommunicationRecord(messageId, {
-          ...existingRecord,
-          status: String(formData.get("status") || "").trim(),
-          internalNotes: String(formData.get("internalNotes") || "").trim(),
-        });
-        renderTab(tabKey, statusKey);
+      button.dataset.adminCommunicationBound = "true";
+      button.addEventListener("click", () => {
+        renderWorkspace(activeStatus, String(button.dataset.adminCommunicationOpen || "").trim());
       });
     });
   };
 
-  tabButtons.forEach((button) => {
-    if (button.dataset.adminCommunicationsBound === "true") {
+  const bindQuickActions = () => {
+    detailShell.querySelectorAll("[data-admin-communication-quick-action]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.dataset.adminCommunicationBound === "true") {
+        return;
+      }
+
+      button.dataset.adminCommunicationBound = "true";
+      button.addEventListener("click", async () => {
+        const messageId = String(button.dataset.adminCommunicationId || "").trim();
+        const nextStatus = String(button.dataset.adminCommunicationQuickAction || "").trim();
+        const existingRecord = getAdminCommunicationRecords().find((row) => row.id === messageId) || null;
+        if (!existingRecord || !nextStatus) {
+          return;
+        }
+
+        await updateAdminCommunicationRecord(messageId, {
+          ...existingRecord,
+          status: nextStatus,
+          internalNotes: existingRecord.internalNotes || "",
+        });
+        renderWorkspace(activeStatus, messageId);
+      });
+    });
+  };
+
+  const bindNotesEditor = (statusKey = "all", currentSelectedId = "") => {
+    const form = detailShell.querySelector("[data-admin-communication-form]");
+    if (!(form instanceof HTMLFormElement) || form.dataset.adminCommunicationBound === "true") {
       return;
     }
 
-    button.dataset.adminCommunicationsBound = "true";
-    button.addEventListener("click", () => {
-      renderTab(button.dataset.adminCommunicationsTab || "all", activeStatus);
+    form.dataset.adminCommunicationBound = "true";
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const messageId = String(form.dataset.adminCommunicationForm || "").trim();
+      const existingRecord = getAdminCommunicationRecords().find((row) => row.id === messageId) || null;
+      if (!existingRecord) {
+        return;
+      }
+
+      const formData = new FormData(form);
+      await updateAdminCommunicationRecord(messageId, {
+        ...existingRecord,
+        status: existingRecord.status,
+        internalNotes: String(formData.get("internalNotes") || "").trim(),
+      });
+      renderWorkspace(statusKey, currentSelectedId || messageId);
     });
-  });
+  };
 
   statusButtons.forEach((button) => {
     if (button.dataset.adminCommunicationsBound === "true") {
@@ -23933,11 +23992,11 @@ function bindAdminCommunicationsSection(scope = app) {
 
     button.dataset.adminCommunicationsBound = "true";
     button.addEventListener("click", () => {
-      renderTab(activeTab, button.dataset.adminCommunicationsStatus || "all");
+      renderWorkspace(button.dataset.adminCommunicationsStatus || "all");
     });
   });
 
-  bindEditors("all", "all");
+  renderWorkspace("all", selectedId);
 }
 
 function renderAdminDevAccessSectionMarkup() {
