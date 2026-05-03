@@ -6801,6 +6801,30 @@ body.theme-dark .contact-reason-card.is-active {
   color: #8a4343;
 }
 
+.admin-source-review-status-pill.is-request-received,
+.admin-source-review-status-pill.is-active-test {
+  border-color: rgba(148, 209, 89, 0.22);
+  background: rgba(148, 209, 89, 0.12);
+  color: #476527;
+}
+
+.admin-source-review-status-pill.is-accepted-awaiting-seeds,
+.admin-source-review-status-pill.is-seeds-received,
+.admin-source-review-status-pill.is-test-scheduled,
+.admin-source-review-status-pill.is-completed,
+.admin-source-review-status-pill.is-report-prepared,
+.admin-source-review-status-pill.is-published {
+  border-color: rgba(84, 141, 86, 0.2);
+  background: rgba(92, 170, 99, 0.1);
+  color: #2f6134;
+}
+
+.admin-source-review-status-pill.is-declined {
+  border-color: rgba(188, 92, 92, 0.18);
+  background: rgba(188, 92, 92, 0.1);
+  color: #8a4343;
+}
+
 .admin-source-review-form {
   display: grid;
   gap: 14px;
@@ -7802,6 +7826,34 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-communications-editor-grid-single {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-cstp-lab-list-item.is-new {
+  border-color: rgba(148, 209, 89, 0.28);
+}
+
+.admin-cstp-lab-helper {
+  margin: 0 0 1rem;
+}
+
+.admin-cstp-lab-actions {
+  margin-block: 1.1rem 1.25rem;
+}
+
+.admin-cstp-lab-timeline-grid {
+  margin-bottom: 1.25rem;
+}
+
+.admin-cstp-lab-session-form {
+  margin-top: 0.5rem;
+}
+
+.admin-cstp-lab-field-full {
+  grid-column: 1 / -1;
+}
+
+.admin-cstp-lab-filter-row {
+  flex-wrap: wrap;
 }
 
 .admin-member-role-pill,
@@ -15861,6 +15913,30 @@ body.theme-dark .admin-source-review-status-pill.is-merged {
 }
 
 body.theme-dark .admin-source-review-status-pill.is-rejected {
+  border-color: rgba(188, 92, 92, 0.2);
+  background: rgba(188, 92, 92, 0.1);
+  color: #f0b1b1;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-request-received,
+body.theme-dark .admin-source-review-status-pill.is-active-test {
+  border-color: rgba(129, 182, 92, 0.22);
+  background: rgba(148, 209, 89, 0.12);
+  color: #b7e385;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-accepted-awaiting-seeds,
+body.theme-dark .admin-source-review-status-pill.is-seeds-received,
+body.theme-dark .admin-source-review-status-pill.is-test-scheduled,
+body.theme-dark .admin-source-review-status-pill.is-completed,
+body.theme-dark .admin-source-review-status-pill.is-report-prepared,
+body.theme-dark .admin-source-review-status-pill.is-published {
+  border-color: rgba(92, 170, 99, 0.2);
+  background: rgba(92, 170, 99, 0.1);
+  color: #b6e0b8;
+}
+
+body.theme-dark .admin-source-review-status-pill.is-declined {
   border-color: rgba(188, 92, 92, 0.2);
   background: rgba(188, 92, 92, 0.1);
   color: #f0b1b1;
