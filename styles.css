@@ -6528,6 +6528,18 @@ body.theme-dark .contact-reason-card.is-active {
   font: inherit;
 }
 
+.admin-collapsible-section.is-open {
+  border-color: rgba(148, 209, 89, 0.24);
+  box-shadow:
+    0 18px 34px rgba(15, 20, 15, 0.12),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
+.admin-collapsible-section.is-open .admin-collapsible-toggle {
+  gap: 16px;
+}
+
 .admin-collapsible-header-main {
   flex: 1 1 auto;
 }
@@ -6538,6 +6550,17 @@ body.theme-dark .contact-reason-card.is-active {
   min-width: 0;
 }
 
+.admin-collapsible-section.is-open .admin-collapsible-copy {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(22, 29, 24, 0.96) 0%, rgba(15, 20, 17, 0.94) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
 .admin-collapsible-title {
   font-size: 1.3rem;
   font-weight: 700;
@@ -6546,6 +6569,16 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-collapsible-description {
   margin: 0;
+}
+
+.admin-collapsible-section.is-open .admin-collapsible-title {
+  color: #f5f8f4;
+}
+
+.admin-collapsible-section.is-open .admin-collapsible-description,
+.admin-collapsible-section.is-open .eyebrow,
+.admin-collapsible-section.is-open .muted {
+  color: rgba(225, 233, 225, 0.82);
 }
 
 .admin-collapsible-chevron {
@@ -6572,6 +6605,10 @@ body.theme-dark .contact-reason-card.is-active {
   outline: 2px solid rgba(148, 209, 89, 0.45);
   outline-offset: 4px;
   border-radius: 14px;
+}
+
+.admin-collapsible-section.is-open .admin-collapsible-chevron {
+  color: rgba(195, 241, 139, 0.88);
 }
 
 .admin-collapsible-content {
@@ -7563,8 +7600,8 @@ body.theme-dark .contact-reason-card.is-active {
   overflow: hidden;
   border: 2px solid #94d159;
   background:
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.2), transparent 32%),
-    radial-gradient(circle at top left, rgba(201, 244, 154, 0.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 30%),
+    radial-gradient(circle at top left, rgba(201, 244, 154, 0.1), transparent 24%),
     linear-gradient(160deg, rgba(17, 26, 19, 0.98) 0%, rgba(23, 34, 27, 0.96) 52%, rgba(18, 27, 22, 0.98) 100%);
   box-shadow:
     0 22px 42px rgba(15, 20, 15, 0.16),
@@ -7578,8 +7615,8 @@ body.theme-dark .contact-reason-card.is-active {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.16), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%);
+    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.08), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 20%);
 }
 
 .admin-section-card--featured-cstp > * {
@@ -7616,6 +7653,15 @@ body.theme-dark .contact-reason-card.is-active {
 .admin-section-card--featured-cstp .muted,
 .admin-section-card--featured-cstp .eyebrow {
   color: rgba(238, 247, 233, 0.82);
+}
+
+.admin-section-card--featured-cstp.is-open .admin-collapsible-copy {
+  border-color: rgba(148, 209, 89, 0.16);
+  background:
+    linear-gradient(180deg, rgba(18, 24, 20, 0.97) 0%, rgba(12, 17, 14, 0.95) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 24px rgba(0, 0, 0, 0.16);
 }
 
 .admin-cstp-featured-toolbar {
@@ -11121,13 +11167,40 @@ body.theme-dark .admin-cstp-badge-summary-empty {
 body.theme-dark .admin-section-card--featured-cstp {
   border-color: #94d159;
   background:
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.22), transparent 32%),
-    radial-gradient(circle at top left, rgba(182, 236, 119, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.14), transparent 28%),
+    radial-gradient(circle at top left, rgba(182, 236, 119, 0.1), transparent 22%),
     linear-gradient(160deg, rgba(13, 20, 16, 0.98) 0%, rgba(17, 27, 22, 0.98) 52%, rgba(13, 20, 16, 0.99) 100%);
   box-shadow:
     0 24px 46px rgba(0, 0, 0, 0.28),
     0 0 0 1px rgba(148, 209, 89, 0.18),
     0 0 30px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .admin-collapsible-section.is-open {
+  border-color: rgba(148, 209, 89, 0.28);
+  box-shadow:
+    0 22px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.1),
+    0 0 22px rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .admin-collapsible-section.is-open .admin-collapsible-copy {
+  border-color: rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(20, 26, 22, 0.98) 0%, rgba(13, 18, 15, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .admin-collapsible-section.is-open .admin-collapsible-title {
+  color: #f4f8f2;
+}
+
+body.theme-dark .admin-collapsible-section.is-open .admin-collapsible-description,
+body.theme-dark .admin-collapsible-section.is-open .eyebrow,
+body.theme-dark .admin-collapsible-section.is-open .muted {
+  color: rgba(225, 234, 225, 0.84);
 }
 
 body.theme-dark .admin-section-card--featured-cstp .section-title-icon {
