@@ -18720,7 +18720,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
     rows: [
       { label: "Qualification Level", value: getAdminCstpQualificationLabel(publishedCertification.qualificationResult) },
       { label: "Tested Variety", value: publishedCertification.variety || "Not available" },
-      { label: "Batch / Lot", value: publishedCertification.batchLot || "Not available" },
+      { label: "Batch / Lot", value: getAdminCstpBatchLotDisplayValue(publishedCertification.batchLot || "") },
       { label: "Published Date", value: publishedCertification.publishedAt ? formatAdminTimestamp(publishedCertification.publishedAt) : "Not available" },
     ],
   };
@@ -19519,7 +19519,7 @@ function renderSourceCstpReportPage(sourceId = "") {
           </div>
           <div class="admin-communications-detail-item">
             <span>Batch / Lot</span>
-            <strong>${escapeHtml(publishedCertification.batchLot || "Not provided")}</strong>
+            <strong>${escapeHtml(getAdminCstpBatchLotDisplayValue(publishedCertification.batchLot || ""))}</strong>
           </div>
           <div class="admin-communications-detail-item">
             <span>Sample size</span>
@@ -24889,6 +24889,11 @@ function getAdminCstpSuggestedQualificationSummaryText(session = null) {
     : "Suggested qualification appears automatically after partition totals are recorded.";
 }
 
+function getAdminCstpBatchLotDisplayValue(value = "") {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue || "Batch / Lot # not provided by source";
+}
+
 function renderAdminCstpQualificationBadgeSummaryMarkup(qualificationResult = "") {
   return renderAdminCstpQualificationBadgeMarkup(qualificationResult) || `
     <div class="admin-cstp-badge-summary-empty">
@@ -24906,9 +24911,18 @@ function syncAdminCstpSessionSummaryForm(form, session = null) {
   const finalPercentValue = form.querySelector("[data-admin-cstp-final-percent]");
   const suggestedQualification = form.querySelector("[data-admin-cstp-suggested-qualification]");
   const badgeDisplay = form.querySelector("[data-admin-cstp-badge-display]");
+  const batchLotValue = form.querySelector("[data-admin-cstp-batch-lot-value]");
+  const batchLotCard = form.querySelector("[data-admin-cstp-batch-lot-card]");
+  const batchLotMissing = !String(workingSession?.batchLot || "").trim();
 
   if (finalPercentValue) {
     finalPercentValue.textContent = getAdminCstpSessionDisplayPercent(workingSession);
+  }
+  if (batchLotValue) {
+    batchLotValue.textContent = getAdminCstpBatchLotDisplayValue(workingSession?.batchLot || "");
+  }
+  if (batchLotCard) {
+    batchLotCard.classList.toggle("is-warning", batchLotMissing);
   }
   if (suggestedQualification) {
     suggestedQualification.textContent = getAdminCstpSuggestedQualificationSummaryText(workingSession);
@@ -24962,7 +24976,6 @@ function buildAdminCstpDraftSessionFromDetail(existingSession = null, options = 
 
   if (form) {
     const formData = new FormData(form);
-    draftSession.batchLot = String(formData.get("batchLot") || "").trim();
     draftSession.qualificationResult = normalizeAdminCstpQualificationResult(
       formData.get("qualificationResult") || "",
     );
@@ -25334,6 +25347,8 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
     return "";
   }
   syncAdminCstpSessionDerivedValues(normalizedSession);
+  const batchLotDisplayValue = getAdminCstpBatchLotDisplayValue(normalizedSession.batchLot || "");
+  const isBatchLotMissing = !String(normalizedSession.batchLot || "").trim();
 
   const canPrepareReport = Boolean(options.canPrepareReport);
   const canPublishCertification = canPublishAdminCstpCertification(normalizedSession);
@@ -25374,10 +25389,11 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
           </div>
         </div>
         <div class="admin-communications-editor-grid admin-cstp-session-summary-grid">
-          <label class="admin-message-field">
+          <div class="admin-message-field admin-cstp-summary-readout${isBatchLotMissing ? " is-warning" : ""}" data-admin-cstp-batch-lot-card>
             <span>Batch / Lot Number</span>
-            <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(normalizedSession.batchLot || "")}">
-          </label>
+            <div class="admin-cstp-summary-readout-value" data-admin-cstp-batch-lot-value>${escapeHtml(batchLotDisplayValue)}</div>
+            <p class="admin-message-help-text">${escapeHtml(isBatchLotMissing ? "This batch / lot value must come from the original CSTP request and cannot be edited during testing." : "Copied from the original CSTP request. Batch / lot cannot be edited during testing.")}</p>
+          </div>
           <div class="admin-message-field admin-cstp-summary-readout">
             <span>Final germination %</span>
             <div class="admin-cstp-summary-readout-value" data-admin-cstp-final-percent>${escapeHtml(getAdminCstpSessionDisplayPercent(normalizedSession))}</div>
@@ -27101,7 +27117,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     { label: "Linked Request ID", value: session.requestId || "Not linked" },
     { label: "Source Name", value: session.sourceName || linkedRequest?.sourceName || "Not provided" },
     { label: "Variety", value: session.variety || "Not provided" },
-    { label: "Batch / Lot", value: session.batchLot || "Not provided" },
+    { label: "Batch / Lot", value: getAdminCstpBatchLotDisplayValue(session.batchLot || "") },
     { label: "Sample Size", value: session.sampleSize || "Not recorded" },
     { label: "Device ID", value: session.deviceId || "Not recorded" },
     { label: "Test Method", value: session.testMethod || "Not recorded" },
@@ -27506,7 +27522,7 @@ function renderAdminCstpReportPage(recordId = "") {
                 </article>
                 <article class="meta-card">
                   <strong>Batch / Lot</strong>
-                  <p>${escapeHtml(reportSession.batchLot || matchingRecord?.batchLot || "Not provided")}</p>
+                  <p>${escapeHtml(getAdminCstpBatchLotDisplayValue(reportSession.batchLot || matchingRecord?.batchLot || ""))}</p>
                 </article>
                 <article class="meta-card">
                   <strong>Sample Size</strong>

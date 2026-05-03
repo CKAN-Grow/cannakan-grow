@@ -8119,6 +8119,14 @@ body.theme-dark .contact-reason-card.is-active {
     0 12px 24px rgba(15, 20, 15, 0.06);
 }
 
+.admin-cstp-summary-readout.is-warning .admin-cstp-summary-readout-value {
+  border-color: rgba(217, 139, 43, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 242, 0.98), rgba(252, 246, 230, 0.94)),
+    rgba(217, 139, 43, 0.06);
+  color: #7a5610;
+}
+
 .admin-cstp-badge-summary-card [data-admin-cstp-badge-display] {
   display: grid;
   gap: 10px;
