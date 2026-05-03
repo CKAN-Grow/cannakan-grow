@@ -28081,7 +28081,9 @@ function setAdminCstpDeviceImageSlot(deviceImages = null, groupKey = "", deviceK
   return normalizedImages;
 }
 
-function renderAdminCstpTestSessionPage(sessionId = "") {
+function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
+  const normalizedOptions = options && typeof options === "object" ? options : {};
+  const scrollTarget = normalizedOptions.scrollTarget === "images" ? "images" : "header";
   const session = getAdminCstpTestSessionById(sessionId);
   if (!session) {
     app.innerHTML = `
@@ -28268,7 +28270,10 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   syncAdminCstpLiveResultSections(detail, session);
   updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
   bindAdminCstpTestSessionPage(session.id);
-  scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
+  const scrollTargetElement = scrollTarget === "images"
+    ? (detail.imageSection || detail.topBackLink?.closest(".app-section-header") || app.firstElementChild)
+    : (detail.topBackLink?.closest(".app-section-header") || app.firstElementChild);
+  scrollElementIntoViewAfterLayout(scrollTargetElement, {
     delayMs: 140,
   });
 }
@@ -28498,7 +28503,7 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
           nextImage,
         );
         updateAdminCstpAssignedSession(sessionId, draftSession);
-        renderAdminCstpTestSessionPage(sessionId);
+        renderAdminCstpTestSessionPage(sessionId, { scrollTarget: "images" });
       } catch (error) {
         window.alert(error?.message || "Could not save this CSTP device image.");
       }
@@ -28527,7 +28532,7 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
           null,
         );
         updateAdminCstpAssignedSession(sessionId, draftSession);
-        renderAdminCstpTestSessionPage(sessionId);
+        renderAdminCstpTestSessionPage(sessionId, { scrollTarget: "images" });
       } catch (error) {
         window.alert(error?.message || "Could not remove this CSTP device image.");
       }
