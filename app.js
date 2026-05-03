@@ -26072,231 +26072,110 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   const linkedRequest = getAdminCstpLabRecords().find((record) => record.requestId === session.requestId) || null;
   const canPrepareReport = canPrepareAdminCstpReport(session);
   app.replaceChildren(cloneTemplate(templates.detail));
-
-  const headerCopy = document.querySelector(".app-section-header-main div");
-  const headerEyebrow = headerCopy?.querySelector(".eyebrow");
-  const detailTitle = document.querySelector("#detail-title");
-  const topBackLink = document.querySelector(".app-section-header .inline-actions a");
-  const deleteButton = document.querySelector("#delete-session");
-  const bottomBackLink = document.querySelector(".form-actions a");
-  const meta = document.querySelector("#detail-meta");
-  const layoutReference = document.querySelector("#detail-layout-reference");
-  const detailPartitionWorkTitle = document.querySelector("#detail-partition-work-title");
-  const detailStatusField = document.querySelector("#detail-session-status-control");
-  const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
-  const detailStatusReminder = document.querySelector("#detail-session-status-reminder");
-  const detailSuppliesAnchor = document.querySelector("#detail-supplies-anchor");
-  const detailChartShell = document.querySelector("#detail-chart-shell");
-  const detailChartHeader = document.querySelector("#detail-chart-header");
-  const detailPartitions = document.querySelector("#detail-partitions");
-  const detailLifecycleSection = document.querySelector("#detail-lifecycle-section");
-  const detailLifecycleSummary = document.querySelector("#detail-lifecycle-summary");
-  const detailTimingSection = document.querySelector("#detail-timing-section");
-  const detailTimingSummary = document.querySelector("#detail-timing-summary");
-  const detailProgressSection = document.querySelector("#detail-progress-section");
-  const detailProgressChart = document.querySelector("#detail-progress-chart");
-  const detailRunProgressSection = document.querySelector("#detail-run-progress-section");
-  const detailRunProgressSummary = document.querySelector("#detail-run-progress-summary");
-  const detailNotesField = document.querySelector("#detail-session-notes");
-  const detailNotesLabel = document.querySelector("#detail-session-notes-label span:last-child");
-  const detailNotesHelp = document.querySelector(".session-notes-help");
-  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
-  const detailImageSection = document.querySelector(".session-images-section");
-  const detailImageHeading = document.querySelector("#detail-session-images-label span:last-child");
-  const detailImageLimit = detailImageSection?.querySelector(".session-images-limit");
-  const detailImageUploadLabel = detailImageSection?.querySelector(".session-images-upload > span");
-  const detailImageInput = document.querySelector("#detail-session-images-input");
-  const detailImageGrid = document.querySelector("#detail-session-images-grid");
-  const detailImageMessage = document.querySelector("#detail-session-images-message");
-  const detailSnapshotSection = document.querySelector("#detail-share-snapshot-section");
-  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
-  const detailSaveButton = document.querySelector("#detail-save-session");
-  const detailStatusHelp = document.querySelector(".session-status-help");
-  const detailStatusLabel = document.querySelector(".session-status-label");
-  const detailLifecycleDebug = document.querySelector(".timeline-debug-panel");
-  const detailDescription = document.createElement("p");
+  const detail = getSessionDetailElements(app);
   const detailSummaryTitle = getAdminCstpSessionDisplayTitle(session);
   const sessionStageValue = mapAdminCstpStatusToSessionStatus(session.status);
   const hasStartedState = ["active-test", "completed", "report-prepared", "published"].includes(normalizeAdminCstpTestSessionStatus(session.status));
 
-  if (headerEyebrow) {
-    headerEyebrow.textContent = "CSTP Testing Lab";
+  applySessionDetailHeaderOptions(detail, {
+    title: detailSummaryTitle,
+    eyebrow: "CSTP Testing Lab",
+    description: "Controlled lab session stored in mock/local CSTP data only. It does not appear in member Sessions, Community Grow, or leaderboard insights.",
+    backHref: "#admin",
+    backLabel: "Back to Admin",
+    backClasses: ["admin-cstp-button", "admin-cstp-button--utility"],
+    hideDeleteButton: true,
+    hideLifecycleDebug: true,
+    hideSnapshotSection: true,
+  });
+  applySessionDetailNotesOptions(detail, {
+    label: "Observations",
+    value: session.observations || "",
+    placeholder: "Add controlled lab observations, environment notes, or certification context...",
+    helpText: "Observations stay local to the CSTP lab workflow and are never shown publicly until certification is published.",
+    buttonText: "Save Observations",
+    buttonClasses: ["admin-cstp-button", "admin-cstp-button--secondary"],
+  });
+  applySessionDetailImageOptions(detail, {
+    heading: "CSTP Test Images",
+    limitText: "Mock/local only · Up to 3 images",
+    uploadLabel: "Add CSTP images",
+  });
+  if (detail.saveShortcutButton) {
+    detail.saveShortcutButton.textContent = "Save CSTP Session";
+    detail.saveShortcutButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
   }
-  if (detailTitle) {
-    detailTitle.textContent = detailSummaryTitle;
+  if (detail.saveButton) {
+    detail.saveButton.textContent = "Save CSTP Session";
+    detail.saveButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
   }
-  if (headerCopy) {
-    detailDescription.className = "muted";
-    detailDescription.textContent = "Controlled lab session stored in mock/local CSTP data only. It does not appear in member Sessions, Community Grow, or leaderboard insights.";
-    headerCopy.appendChild(detailDescription);
+  if (detail.statusLabel) {
+    detail.statusLabel.textContent = "CSTP Workflow Status";
   }
-  if (topBackLink) {
-    topBackLink.textContent = "Back to Admin";
-    topBackLink.setAttribute("href", "#admin");
-    topBackLink.classList.add("admin-cstp-button", "admin-cstp-button--utility");
-  }
-  if (bottomBackLink) {
-    bottomBackLink.textContent = "Back to Admin";
-    bottomBackLink.setAttribute("href", "#admin");
-    bottomBackLink.classList.add("admin-cstp-button", "admin-cstp-button--utility");
-  }
-  if (deleteButton) {
-    deleteButton.hidden = true;
-  }
-  if (detailLifecycleDebug) {
-    detailLifecycleDebug.hidden = true;
-  }
-  if (detailSnapshotSection) {
-    detailSnapshotSection.hidden = true;
-  }
-  if (detailNotesLabel) {
-    detailNotesLabel.textContent = "Observations";
-  }
-  if (detailNotesField) {
-    detailNotesField.value = session.observations || "";
-    detailNotesField.placeholder = "Add controlled lab observations, environment notes, or certification context...";
-  }
-  if (detailNotesHelp) {
-    detailNotesHelp.textContent = "Observations stay local to the CSTP lab workflow and are never shown publicly until certification is published.";
-  }
-  if (detailNotesSaveButton) {
-    detailNotesSaveButton.textContent = "Save Observations";
-    detailNotesSaveButton.classList.add("admin-cstp-button", "admin-cstp-button--secondary");
-  }
-  if (detailImageHeading) {
-    detailImageHeading.textContent = "CSTP Test Images";
-  }
-  if (detailImageLimit) {
-    detailImageLimit.textContent = "Mock/local only · Up to 3 images";
-  }
-  if (detailImageUploadLabel) {
-    detailImageUploadLabel.textContent = "Add CSTP images";
-  }
-  if (detailSaveShortcutButton) {
-    detailSaveShortcutButton.textContent = "Save CSTP Session";
-    detailSaveShortcutButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
-  }
-  if (detailSaveButton) {
-    detailSaveButton.textContent = "Save CSTP Session";
-    detailSaveButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
-  }
-  if (detailStatusLabel) {
-    detailStatusLabel.textContent = "CSTP Workflow Status";
-  }
-  if (detailStatusField) {
-    detailStatusField.value = sessionStageValue;
-    syncSessionStatusControlDatasets(detailStatusField, {
+  if (detail.statusField) {
+    detail.statusField.value = sessionStageValue;
+    syncSessionStatusControlDatasets(detail.statusField, {
       germinationStartedAt: hasStartedState ? (session.startedAt || "started") : "",
       firstPlantedAt: Number(session.germinatedCount) > 0 ? (session.completedAt || session.startedAt || "recorded") : "",
       completedAt: session.completedAt || "",
     });
-    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+    updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
   }
-  if (detailStatusTrigger) {
-    detailStatusTrigger.textContent = getAdminCstpTestSessionStatusLabel(session.status);
-    detailStatusTrigger.disabled = true;
-    detailStatusTrigger.classList.add("admin-cstp-session-status-trigger");
+  if (detail.statusTrigger) {
+    detail.statusTrigger.textContent = getAdminCstpTestSessionStatusLabel(session.status);
+    detail.statusTrigger.disabled = true;
+    detail.statusTrigger.classList.add("admin-cstp-session-status-trigger");
   }
   const statusCurrentValue = document.querySelector(".session-status-current-value");
   if (statusCurrentValue) {
     statusCurrentValue.textContent = getAdminCstpTestSessionStatusLabel(session.status);
   }
-  if (detailStatusHelp) {
-    detailStatusHelp.textContent = "Advance this lab run with the CSTP workflow buttons below. Member growth stage controls stay disconnected from CSTP.";
+  if (detail.statusHelp) {
+    detail.statusHelp.textContent = "Advance this lab run with the CSTP workflow buttons below. Member growth stage controls stay disconnected from CSTP.";
   }
-  if (detailStatusReminder) {
-    detailStatusReminder.textContent = "Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.";
-    detailStatusReminder.classList.add("is-guidance");
+  if (detail.statusReminder) {
+    detail.statusReminder.textContent = "Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.";
+    detail.statusReminder.classList.add("is-guidance");
   }
-  if (detailSuppliesAnchor) {
-    detailSuppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
-  }
-
-  if (meta) {
-    meta.innerHTML = `
-      <article class="meta-card">
-        <strong>CSTP Session ID</strong>
-        <p>${escapeHtml(session.id)}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Linked Request ID</strong>
-        <p>${escapeHtml(session.requestId || "Not linked")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Source Name</strong>
-        <p>${escapeHtml(session.sourceName || linkedRequest?.sourceName || "Not provided")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Variety</strong>
-        <p>${escapeHtml(session.variety || "Not provided")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Batch / Lot</strong>
-        <p>${escapeHtml(session.batchLot || "Not provided")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Sample Size</strong>
-        <p>${escapeHtml(session.sampleSize || "Not recorded")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Device ID</strong>
-        <p>${escapeHtml(session.deviceId || "Not recorded")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Test Method</strong>
-        <p>${escapeHtml(session.testMethod || "Not recorded")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Temperature</strong>
-        <p>${escapeHtml(session.temperature || "Not recorded")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Status</strong>
-        <p>${escapeHtml(getAdminCstpTestSessionStatusLabel(session.status))}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Started At</strong>
-        <p>${escapeHtml(formatAdminCstpSessionDateTime(session.startedAt))}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Completed At</strong>
-        <p>${escapeHtml(formatAdminCstpSessionDateTime(session.completedAt))}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Germinated Count</strong>
-        <p>${escapeHtml(session.germinatedCount || "0")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Final Germination %</strong>
-        <p>${escapeHtml(getAdminCstpSessionDisplayPercent(session))}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Total Germination Time</strong>
-        <p>${escapeHtml(session.totalGerminationTime || "Not recorded")}</p>
-      </article>
-      <article class="meta-card">
-        <strong>Qualification Result</strong>
-        <p>${escapeHtml(getAdminCstpQualificationLabel(session.qualificationResult))}</p>
-      </article>
-    `;
+  if (detail.suppliesAnchor) {
+    detail.suppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
   }
 
-  renderSystemLayoutReference(layoutReference, session.systemType);
-  if (detailPartitionWorkTitle) {
-    updatePartitionWorkHeading(detailPartitionWorkTitle, session.systemType);
+  renderSessionDetailMetaCards(detail.meta, [
+    { label: "CSTP Session ID", value: session.id },
+    { label: "Linked Request ID", value: session.requestId || "Not linked" },
+    { label: "Source Name", value: session.sourceName || linkedRequest?.sourceName || "Not provided" },
+    { label: "Variety", value: session.variety || "Not provided" },
+    { label: "Batch / Lot", value: session.batchLot || "Not provided" },
+    { label: "Sample Size", value: session.sampleSize || "Not recorded" },
+    { label: "Device ID", value: session.deviceId || "Not recorded" },
+    { label: "Test Method", value: session.testMethod || "Not recorded" },
+    { label: "Temperature", value: session.temperature || "Not recorded" },
+    { label: "Status", value: getAdminCstpTestSessionStatusLabel(session.status) },
+    { label: "Started At", value: formatAdminCstpSessionDateTime(session.startedAt) },
+    { label: "Completed At", value: formatAdminCstpSessionDateTime(session.completedAt) },
+    { label: "Germinated Count", value: session.germinatedCount || "0" },
+    { label: "Final Germination %", value: getAdminCstpSessionDisplayPercent(session) },
+    { label: "Total Germination Time", value: session.totalGerminationTime || "Not recorded" },
+    { label: "Qualification Result", value: getAdminCstpQualificationLabel(session.qualificationResult) },
+  ]);
+
+  renderSystemLayoutReference(detail.layoutReference, session.systemType);
+  if (detail.partitionWorkTitle) {
+    updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
   }
-  if (detailPartitions) {
-    renderAdminCstpPartitionDetailRows(detailPartitions, session);
+  if (detail.partitions) {
+    renderAdminCstpPartitionDetailRows(detail.partitions, session);
   }
-  applySessionStatusLayout(detailChartShell, detailChartHeader, detailPartitions, sessionStageValue);
-  updatePartitionProgressChart(session.partitions || [], detailProgressChart, detailProgressSection);
-  updateAdminCstpSessionTimingSummary(detailTimingSummary, detailTimingSection, session);
-  updateRunProgressSummary(detailRunProgressSummary, detailRunProgressSection, sessionStageValue, session.partitions || []);
-  updateSessionLifecycleTimeline(detailLifecycleSummary, detailLifecycleSection, buildAdminCstpLifecycleState(session));
-  initializeSessionImageState(detailImageSection, {
-    input: detailImageInput,
-    grid: detailImageGrid,
-    message: detailImageMessage,
+  applySessionStatusLayout(detail.chartShell, detail.chartHeader, detail.partitions, sessionStageValue);
+  updatePartitionProgressChart(session.partitions || [], detail.progressChart, detail.progressSection);
+  updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, session);
+  updateRunProgressSummary(detail.runProgressSummary, detail.runProgressSection, sessionStageValue, session.partitions || []);
+  updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
+  initializeSessionImageState(detail.imageSection, {
+    input: detail.imageInput,
+    grid: detail.imageGrid,
+    message: detail.imageMessage,
     images: session.sessionImages || [],
     editable: true,
     persistFiles: (files, existingImages) => addAdminCstpSessionImageFiles(session.id, files, existingImages),
@@ -31053,6 +30932,178 @@ function renderGrowNetworkPage() {
   updateNavState();
 }
 
+function getSessionDetailElements(scope = document) {
+  return {
+    title: scope.querySelector("#detail-title"),
+    meta: scope.querySelector("#detail-meta"),
+    layoutReference: scope.querySelector("#detail-layout-reference"),
+    partitionWorkTitle: scope.querySelector("#detail-partition-work-title"),
+    statusField: scope.querySelector("#detail-session-status-control"),
+    statusTrigger: scope.querySelector("#detail-session-status-trigger"),
+    statusReminder: scope.querySelector("#detail-session-status-reminder"),
+    statusLabel: scope.querySelector(".session-status-label"),
+    statusHelp: scope.querySelector(".session-status-help"),
+    suppliesAnchor: scope.querySelector("#detail-supplies-anchor"),
+    notesField: scope.querySelector("#detail-session-notes"),
+    notesLabel: scope.querySelector("#detail-session-notes-label span:last-child"),
+    notesHelp: scope.querySelector(".session-notes-help"),
+    notesSaveButton: scope.querySelector("#detail-session-notes-save"),
+    notesMessage: scope.querySelector("#detail-session-notes-message"),
+    saveShortcutButton: scope.querySelector("#detail-save-shortcut"),
+    saveButton: scope.querySelector("#detail-save-session"),
+    saveMessage: scope.querySelector("#detail-save-message"),
+    imageSection: scope.querySelector(".session-images-section"),
+    imageHeading: scope.querySelector("#detail-session-images-label span:last-child"),
+    imageLimit: scope.querySelector(".session-images-section .session-images-limit"),
+    imageUploadLabel: scope.querySelector(".session-images-section .session-images-upload > span"),
+    imageInput: scope.querySelector("#detail-session-images-input"),
+    imageGrid: scope.querySelector("#detail-session-images-grid"),
+    imageMessage: scope.querySelector("#detail-session-images-message"),
+    snapshotSection: scope.querySelector("#detail-share-snapshot-section"),
+    snapshotPicker: scope.querySelector("#detail-snapshot-image-picker"),
+    snapshotMessage: scope.querySelector("#detail-snapshot-message"),
+    snapshotPreview: scope.querySelector("#detail-snapshot-preview"),
+    snapshotPostActions: scope.querySelector("#detail-snapshot-post-actions"),
+    generateSnapshotButton: scope.querySelector("#detail-generate-snapshot"),
+    downloadSnapshotButton: scope.querySelector("#detail-download-snapshot"),
+    resetSnapshotButton: scope.querySelector("#detail-reset-snapshot"),
+    shareSnapshotButton: scope.querySelector("#detail-share-snapshot"),
+    snapshotGalleryNote: scope.querySelector("#detail-snapshot-gallery-note"),
+    snapshotUnpublishButton: scope.querySelector("#detail-snapshot-unpublish"),
+    snapshotIncludeProfileToggle: scope.querySelector("#detail-snapshot-include-profile"),
+    snapshotUsageConsentCheckbox: scope.querySelector("#detail-snapshot-usage-consent"),
+    snapshotIncludeProfileToggleRow: scope.querySelector("#detail-snapshot-profile-toggle-row"),
+    snapshotIncludeProfileDividerRow: scope.querySelector("#detail-snapshot-profile-divider-row"),
+    snapshotActionRow: scope.querySelector("#detail-share-snapshot-section [data-snapshot-action-row]"),
+    snapshotActionTitle: scope.querySelector("#detail-share-snapshot-section [data-snapshot-action-title]"),
+    snapshotActionDescription: scope.querySelector("#detail-share-snapshot-section [data-snapshot-action-description]"),
+    snapshotEmptyExploreCard: scope.querySelector("#detail-share-snapshot-section [data-snapshot-empty-explore]"),
+    snapshotDestinationInputs: [...scope.querySelectorAll('input[name="detail-snapshot-destination"]')],
+    chartShell: scope.querySelector("#detail-chart-shell"),
+    chartHeader: scope.querySelector("#detail-chart-header"),
+    progressSection: scope.querySelector("#detail-progress-section"),
+    progressChart: scope.querySelector("#detail-progress-chart"),
+    timingSection: scope.querySelector("#detail-timing-section"),
+    timingSummary: scope.querySelector("#detail-timing-summary"),
+    runProgressSection: scope.querySelector("#detail-run-progress-section"),
+    runProgressSummary: scope.querySelector("#detail-run-progress-summary"),
+    lifecycleSection: scope.querySelector("#detail-lifecycle-section"),
+    lifecycleSummary: scope.querySelector("#detail-lifecycle-summary"),
+    partitions: scope.querySelector("#detail-partitions"),
+    topBackLink: scope.querySelector(".app-section-header .inline-actions a"),
+    bottomBackLink: scope.querySelector(".form-actions a"),
+    deleteButton: scope.querySelector("#delete-session"),
+    lifecycleDebug: scope.querySelector(".timeline-debug-panel"),
+    headerCopy: scope.querySelector(".app-section-header-main div"),
+    headerEyebrow: scope.querySelector(".app-section-header-main .eyebrow"),
+  };
+}
+
+function renderSessionDetailMetaCards(container, cards = []) {
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = cards.map((card) => `
+    <article class="meta-card">
+      <strong>${escapeHtml(card.label || "")}</strong>
+      <p>${escapeHtml(card.value || "")}</p>
+    </article>
+  `).join("");
+}
+
+function applySessionDetailHeaderOptions(elements, options = {}) {
+  if (!elements) {
+    return;
+  }
+
+  if (elements.title && Object.prototype.hasOwnProperty.call(options, "title")) {
+    elements.title.textContent = options.title || "Session";
+  }
+  if (elements.headerEyebrow && Object.prototype.hasOwnProperty.call(options, "eyebrow")) {
+    elements.headerEyebrow.textContent = options.eyebrow || "";
+  }
+  if (elements.headerCopy && Object.prototype.hasOwnProperty.call(options, "description")) {
+    const existingDescription = elements.headerCopy.querySelector("[data-session-detail-description='true']");
+    if (existingDescription) {
+      existingDescription.remove();
+    }
+    if (options.description) {
+      const description = document.createElement("p");
+      description.className = "muted";
+      description.dataset.sessionDetailDescription = "true";
+      description.textContent = options.description;
+      elements.headerCopy.appendChild(description);
+    }
+  }
+
+  [elements.topBackLink, elements.bottomBackLink].forEach((link) => {
+    if (!link) {
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(options, "backLabel")) {
+      link.textContent = options.backLabel || "Back";
+    }
+    if (Object.prototype.hasOwnProperty.call(options, "backHref")) {
+      link.setAttribute("href", options.backHref || "#sessions");
+    }
+    if (Array.isArray(options.backClasses) && options.backClasses.length) {
+      link.classList.add(...options.backClasses);
+    }
+  });
+
+  if (elements.deleteButton && options.hideDeleteButton === true) {
+    elements.deleteButton.hidden = true;
+  }
+  if (elements.lifecycleDebug && options.hideLifecycleDebug === true) {
+    elements.lifecycleDebug.hidden = true;
+  }
+  if (elements.snapshotSection && options.hideSnapshotSection === true) {
+    elements.snapshotSection.hidden = true;
+  }
+}
+
+function applySessionDetailNotesOptions(elements, options = {}) {
+  if (!elements) {
+    return;
+  }
+
+  if (elements.notesLabel && Object.prototype.hasOwnProperty.call(options, "label")) {
+    elements.notesLabel.textContent = options.label || "";
+  }
+  if (elements.notesField && Object.prototype.hasOwnProperty.call(options, "value")) {
+    elements.notesField.value = options.value || "";
+  }
+  if (elements.notesField && Object.prototype.hasOwnProperty.call(options, "placeholder")) {
+    elements.notesField.placeholder = options.placeholder || "";
+  }
+  if (elements.notesHelp && Object.prototype.hasOwnProperty.call(options, "helpText")) {
+    elements.notesHelp.textContent = options.helpText || "";
+  }
+  if (elements.notesSaveButton && Object.prototype.hasOwnProperty.call(options, "buttonText")) {
+    elements.notesSaveButton.textContent = options.buttonText || "";
+  }
+  if (elements.notesSaveButton && Array.isArray(options.buttonClasses) && options.buttonClasses.length) {
+    elements.notesSaveButton.classList.add(...options.buttonClasses);
+  }
+}
+
+function applySessionDetailImageOptions(elements, options = {}) {
+  if (!elements) {
+    return;
+  }
+
+  if (elements.imageHeading && Object.prototype.hasOwnProperty.call(options, "heading")) {
+    elements.imageHeading.textContent = options.heading || "";
+  }
+  if (elements.imageLimit && Object.prototype.hasOwnProperty.call(options, "limitText")) {
+    elements.imageLimit.textContent = options.limitText || "";
+  }
+  if (elements.imageUploadLabel && Object.prototype.hasOwnProperty.call(options, "uploadLabel")) {
+    elements.imageUploadLabel.textContent = options.uploadLabel || "";
+  }
+}
+
 function renderSessionDetail(sessionId) {
   const session = getSessions().find((item) => item.id === sessionId);
 
@@ -31062,94 +31113,35 @@ function renderSessionDetail(sessionId) {
   }
 
   app.replaceChildren(cloneTemplate(templates.detail));
+  const detail = getSessionDetailElements(app);
 
-  document.querySelector("#detail-title").textContent = formatSessionLabel(session);
-
-  const meta = document.querySelector("#detail-meta");
-  const layoutReference = document.querySelector("#detail-layout-reference");
-  const detailPartitionWorkTitle = document.querySelector("#detail-partition-work-title");
-  const detailStatusField = document.querySelector("#detail-session-status-control");
-  const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
-  const detailReminder = document.querySelector("#detail-session-status-reminder");
-  const detailSuppliesAnchor = document.querySelector("#detail-supplies-anchor");
-  const detailNotesField = document.querySelector("#detail-session-notes");
-  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
-  const detailNotesMessage = document.querySelector("#detail-session-notes-message");
-  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
-  const detailSaveButton = document.querySelector("#detail-save-session");
-  const detailSaveMessage = document.querySelector("#detail-save-message");
-  const detailImageSection = document.querySelector(".session-images-section");
-  const detailImageInput = document.querySelector("#detail-session-images-input");
-  const detailImageGrid = document.querySelector("#detail-session-images-grid");
-  const detailImageMessage = document.querySelector("#detail-session-images-message");
-  const detailSnapshotSection = document.querySelector("#detail-share-snapshot-section");
-  const detailSnapshotPicker = document.querySelector("#detail-snapshot-image-picker");
-  const detailSnapshotMessage = document.querySelector("#detail-snapshot-message");
-  const detailSnapshotPreview = document.querySelector("#detail-snapshot-preview");
-  const detailSnapshotPostActions = document.querySelector("#detail-snapshot-post-actions");
-  const detailGenerateSnapshotButton = document.querySelector("#detail-generate-snapshot");
-  const detailDownloadSnapshotButton = document.querySelector("#detail-download-snapshot");
-  const detailResetSnapshotButton = document.querySelector("#detail-reset-snapshot");
-  const detailShareSnapshotButton = document.querySelector("#detail-share-snapshot");
-  const detailSnapshotGalleryNote = document.querySelector("#detail-snapshot-gallery-note");
-  const detailSnapshotUnpublishButton = document.querySelector("#detail-snapshot-unpublish");
-  const detailSnapshotIncludeProfileToggle = document.querySelector("#detail-snapshot-include-profile");
-  const detailSnapshotUsageConsentCheckbox = document.querySelector("#detail-snapshot-usage-consent");
-  const detailSnapshotIncludeProfileToggleRow = document.querySelector("#detail-snapshot-profile-toggle-row");
-  const detailSnapshotIncludeProfileDividerRow = document.querySelector("#detail-snapshot-profile-divider-row");
-  const detailSnapshotActionRow = detailSnapshotSection?.querySelector("[data-snapshot-action-row]") || null;
-  const detailSnapshotActionTitle = detailSnapshotSection?.querySelector("[data-snapshot-action-title]") || null;
-  const detailSnapshotActionDescription = detailSnapshotSection?.querySelector("[data-snapshot-action-description]") || null;
-  const detailSnapshotEmptyExploreCard = detailSnapshotSection?.querySelector("[data-snapshot-empty-explore]") || null;
-  const detailSnapshotDestinationInputs = [...document.querySelectorAll('input[name="detail-snapshot-destination"]')];
-  const detailChartShell = document.querySelector("#detail-chart-shell");
-  const detailChartHeader = document.querySelector("#detail-chart-header");
-  const detailProgressSection = document.querySelector("#detail-progress-section");
-  const detailProgressChart = document.querySelector("#detail-progress-chart");
-  const detailTimingSection = document.querySelector("#detail-timing-section");
-  const detailTimingSummary = document.querySelector("#detail-timing-summary");
-  const detailRunProgressSection = document.querySelector("#detail-run-progress-section");
-  const detailRunProgressSummary = document.querySelector("#detail-run-progress-summary");
-  const detailLifecycleSection = document.querySelector("#detail-lifecycle-section");
-  const detailLifecycleSummary = document.querySelector("#detail-lifecycle-summary");
-  meta.innerHTML = `
-    <article class="meta-card">
-      <strong>Session Name</strong>
-      <p>${escapeHtml(formatSessionLabel(session))}</p>
-    </article>
-    <article class="meta-card">
-      <strong>System Type</strong>
-      <p>${session.systemType}</p>
-    </article>
-    <article class="meta-card">
-      <strong>Unit ID</strong>
-      <p>${escapeHtml(session.unitId)}</p>
-    </article>
-    <article class="meta-card">
-      <strong>Date</strong>
-      <p>${session.date}</p>
-    </article>
-    <article class="meta-card">
-      <strong>Time</strong>
-      <p>${formatStoredTime(session.time)}</p>
-    </article>
-  `;
-
-  renderSystemLayoutReference(layoutReference, session.systemType);
-  if (detailPartitionWorkTitle) {
-    updatePartitionWorkHeading(detailPartitionWorkTitle, session.systemType);
+  applySessionDetailHeaderOptions(detail, {
+    title: formatSessionLabel(session),
+  });
+  renderSessionDetailMetaCards(detail.meta, [
+    { label: "Session Name", value: formatSessionLabel(session) },
+    { label: "System Type", value: session.systemType },
+    { label: "Unit ID", value: String(session.unitId || "").trim() },
+    { label: "Date", value: session.date },
+    { label: "Time", value: formatStoredTime(session.time) },
+  ]);
+  applySessionDetailNotesOptions(detail, {
+    value: session.sessionNotes || "",
+  });
+  renderSystemLayoutReference(detail.layoutReference, session.systemType);
+  if (detail.partitionWorkTitle) {
+    updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
   }
-  detailStatusField.value = session.sessionStatus || "soaking";
-  syncSessionStatusControlDatasets(detailStatusField, {
+  detail.statusField.value = session.sessionStatus || "soaking";
+  syncSessionStatusControlDatasets(detail.statusField, {
     germinationStartedAt: session.germinationStartedAt || "",
     firstPlantedAt: session.firstPlantedAt || "",
     completedAt: session.completedAt || "",
   });
-  detailNotesField.value = session.sessionNotes || "";
-  initializeSessionImageState(detailImageSection, {
-    input: detailImageInput,
-    grid: detailImageGrid,
-    message: detailImageMessage,
+  initializeSessionImageState(detail.imageSection, {
+    input: detail.imageInput,
+    grid: detail.imageGrid,
+    message: detail.imageMessage,
     images: session.sessionImages || [],
     editable: true,
     session,
@@ -31157,56 +31149,56 @@ function renderSessionDetail(sessionId) {
       try {
         session.sessionImages = await persistSessionImages(session, nextImages);
       } catch (error) {
-        detailImageMessage.textContent = error.message || "Could not save session images.";
-        detailImageMessage.classList.add("is-error");
+        detail.imageMessage.textContent = error.message || "Could not save session images.";
+        detail.imageMessage.classList.add("is-error");
       }
     },
     onRender: () => {
-      if (detailSnapshotSection?.__snapshotState) {
-        setSnapshotPreview(detailSnapshotSection.__snapshotState, null);
-        setSnapshotMessage(detailSnapshotSection.__snapshotState, "");
-        renderSnapshotSourceSummary(detailSnapshotSection.__snapshotState);
+      if (detail.snapshotSection?.__snapshotState) {
+        setSnapshotPreview(detail.snapshotSection.__snapshotState, null);
+        setSnapshotMessage(detail.snapshotSection.__snapshotState, "");
+        renderSnapshotSourceSummary(detail.snapshotSection.__snapshotState);
       }
     },
   });
-  initializeSnapshotSection(detailSnapshotSection, {
-    picker: detailSnapshotPicker,
-    preview: detailSnapshotPreview,
-    postActions: detailSnapshotPostActions,
-    message: detailSnapshotMessage,
-    generateButton: detailGenerateSnapshotButton,
-    downloadButton: detailDownloadSnapshotButton,
-    resetButton: detailResetSnapshotButton,
-    shareButton: detailShareSnapshotButton,
-    usageConsentCheckbox: detailSnapshotUsageConsentCheckbox,
-    destinationInputs: detailSnapshotDestinationInputs,
-    includeProfileToggle: detailSnapshotIncludeProfileToggle,
-    includeProfileToggleRow: detailSnapshotIncludeProfileToggleRow,
-    includeProfileDividerRow: detailSnapshotIncludeProfileDividerRow,
-    actionRow: detailSnapshotActionRow,
-    actionTitle: detailSnapshotActionTitle,
-    actionDescription: detailSnapshotActionDescription,
-    emptyExploreCard: detailSnapshotEmptyExploreCard,
-    galleryNote: detailSnapshotGalleryNote,
-    unpublishButton: detailSnapshotUnpublishButton,
+  initializeSnapshotSection(detail.snapshotSection, {
+    picker: detail.snapshotPicker,
+    preview: detail.snapshotPreview,
+    postActions: detail.snapshotPostActions,
+    message: detail.snapshotMessage,
+    generateButton: detail.generateSnapshotButton,
+    downloadButton: detail.downloadSnapshotButton,
+    resetButton: detail.resetSnapshotButton,
+    shareButton: detail.shareSnapshotButton,
+    usageConsentCheckbox: detail.snapshotUsageConsentCheckbox,
+    destinationInputs: detail.snapshotDestinationInputs,
+    includeProfileToggle: detail.snapshotIncludeProfileToggle,
+    includeProfileToggleRow: detail.snapshotIncludeProfileToggleRow,
+    includeProfileDividerRow: detail.snapshotIncludeProfileDividerRow,
+    actionRow: detail.snapshotActionRow,
+    actionTitle: detail.snapshotActionTitle,
+    actionDescription: detail.snapshotActionDescription,
+    emptyExploreCard: detail.snapshotEmptyExploreCard,
+    galleryNote: detail.snapshotGalleryNote,
+    unpublishButton: detail.snapshotUnpublishButton,
     canPublish: true,
     getGallerySession: () => session,
     getSnapshotData: () => getSessionSnapshotData(session),
     getImageEntries: () => {
-      const imageState = detailImageSection.__sessionImageState;
+      const imageState = detail.imageSection.__sessionImageState;
       return imageState ? [...imageState.images, ...imageState.pendingFiles] : [];
     },
   });
-  updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+  updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
   updateSessionStatusReminder(
-    detailReminder,
+    detail.statusReminder,
     session.date,
     session.time,
-    detailStatusField.value,
+    detail.statusField.value,
     session.germinationStartedAt || "",
   );
 
-  const partitions = document.querySelector("#detail-partitions");
+  const partitions = detail.partitions;
   session.partitions.forEach((partition, index) => {
     partitions.appendChild(buildPartitionFormCard(partition, index));
     hydratePartitionRow(partitions.lastElementChild, partition);
@@ -31214,21 +31206,21 @@ function renderSessionDetail(sessionId) {
   ensureSourceCatalogDatalist();
   initializeCustomSelects(partitions);
   bindPartitionRowVisualState(partitions);
-  applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
-  syncPartitionButtonStates(partitions, detailStatusField.value);
-  applyStageEditingMode(app, detailStatusField.value);
+  applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
+  syncPartitionButtonStates(partitions, detail.statusField.value);
+  applyStageEditingMode(app, detail.statusField.value);
   const renderDetailSuppliesCard = () => {
-    if (!detailSuppliesAnchor) {
+    if (!detail.suppliesAnchor) {
       return;
     }
 
-    const isActiveSession = normalizeSessionStatus(detailStatusField.value) !== "completed";
-    detailSuppliesAnchor.innerHTML = isActiveSession ? renderActiveSessionFilterPaperCardMarkup() : "";
+    const isActiveSession = normalizeSessionStatus(detail.statusField.value) !== "completed";
+    detail.suppliesAnchor.innerHTML = isActiveSession ? renderActiveSessionFilterPaperCardMarkup() : "";
     if (!isActiveSession) {
       return;
     }
 
-    bindFilterPaperCardActions(detailSuppliesAnchor, {
+    bindFilterPaperCardActions(detail.suppliesAnchor, {
       onSave: renderDetailSuppliesCard,
     });
   };
@@ -31239,26 +31231,26 @@ function renderSessionDetail(sessionId) {
         seedCount: Number(partition.seedCount) || 0,
         plantedCount: Number(partition.plantedCount) || 0,
       })),
-      detailProgressChart,
-      detailProgressSection,
+      detail.progressChart,
+      detail.progressSection,
     );
     updateSessionTimingSummary(
-      detailTimingSummary,
-      detailTimingSection,
+      detail.timingSummary,
+      detail.timingSection,
       session.date,
       session.time,
-      detailStatusField.value,
+      detail.statusField.value,
       session.completedAt,
     );
     updateRunProgressSummary(
-      detailRunProgressSummary,
-      detailRunProgressSection,
-      detailStatusField.value,
+      detail.runProgressSummary,
+      detail.runProgressSection,
+      detail.statusField.value,
       session.partitions,
     );
     updateSessionLifecycleTimeline(
-      detailLifecycleSummary,
-      detailLifecycleSection,
+      detail.lifecycleSummary,
+      detail.lifecycleSection,
       buildSessionLifecycleState(session),
     );
     renderDetailSuppliesCard();
@@ -31273,26 +31265,26 @@ function renderSessionDetail(sessionId) {
         validatePartitionRow(row);
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
-        syncSessionStatusControlDatasets(detailStatusField, {
+        syncSessionStatusControlDatasets(detail.statusField, {
           germinationStartedAt: session.germinationStartedAt || "",
           firstPlantedAt: session.firstPlantedAt || "",
           completedAt: session.completedAt || "",
         });
-        updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+        updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
         refreshDetailDerivedViews();
-        detailSaveMessage.textContent = "";
+        detail.saveMessage.textContent = "";
         refreshDetailUnsavedChanges();
       });
       field.addEventListener("blur", () => {
         validatePartitionRow(row);
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
-        syncSessionStatusControlDatasets(detailStatusField, {
+        syncSessionStatusControlDatasets(detail.statusField, {
           germinationStartedAt: session.germinationStartedAt || "",
           firstPlantedAt: session.firstPlantedAt || "",
           completedAt: session.completedAt || "",
         });
-        updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+        updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
         refreshDetailDerivedViews();
         refreshDetailUnsavedChanges();
       });
@@ -31300,31 +31292,31 @@ function renderSessionDetail(sessionId) {
     validatePartitionRow(row);
   });
   refreshDetailDerivedViews();
-  bindSessionTimelineDebugTools(detailLifecycleSection, (action) => {
+  bindSessionTimelineDebugTools(detail.lifecycleSection, (action) => {
     const previousStatus = session.sessionStatus || "";
-    applyDebugEventToSession(session, detailStatusField, action);
-    syncSessionStatusControlDatasets(detailStatusField, {
+    applyDebugEventToSession(session, detail.statusField, action);
+    syncSessionStatusControlDatasets(detail.statusField, {
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
     });
-    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+    updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
     updateSessionStatusReminder(
-      detailReminder,
+      detail.statusReminder,
       session.date,
       session.time,
-      detailStatusField.value,
+      detail.statusField.value,
       session.germinationStartedAt || "",
     );
     updateRunProgressSummary(
-      detailRunProgressSummary,
-      detailRunProgressSection,
-      detailStatusField.value,
+      detail.runProgressSummary,
+      detail.runProgressSection,
+      detail.statusField.value,
       session.partitions,
     );
     updateSessionLifecycleTimeline(
-      detailLifecycleSummary,
-      detailLifecycleSection,
+      detail.lifecycleSummary,
+      detail.lifecycleSection,
       buildSessionLifecycleState(session),
     );
     const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
@@ -31340,67 +31332,67 @@ function renderSessionDetail(sessionId) {
   });
   startSessionTimer(() => {
     updateSessionStatusReminder(
-      detailReminder,
+      detail.statusReminder,
       session.date,
       session.time,
-      detailStatusField.value,
+      detail.statusField.value,
       session.germinationStartedAt || "",
     );
     updateSessionTimingSummary(
-      detailTimingSummary,
-      detailTimingSection,
+      detail.timingSummary,
+      detail.timingSection,
       session.date,
       session.time,
-      detailStatusField.value,
+      detail.statusField.value,
       session.completedAt,
     );
     updateRunProgressSummary(
-      detailRunProgressSummary,
-      detailRunProgressSection,
-      detailStatusField.value,
+      detail.runProgressSummary,
+      detail.runProgressSection,
+      detail.statusField.value,
       session.partitions,
     );
     updateSessionLifecycleTimeline(
-      detailLifecycleSummary,
-      detailLifecycleSection,
+      detail.lifecycleSummary,
+      detail.lifecycleSection,
       buildSessionLifecycleState(session),
     );
   });
 
-    detailStatusTrigger?.addEventListener("click", () => {
+    detail.statusTrigger?.addEventListener("click", () => {
       appState.growthStageModalDismissed = false;
-      openGrowthStageModal({ stageField: detailStatusField, stageTrigger: detailStatusTrigger });
+      openGrowthStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
     });
 
-  detailStatusField.addEventListener("change", async () => {
+  detail.statusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
-    session.sessionStatus = detailStatusField.value;
-    if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detailStatusField.value) === "germinating") {
+    session.sessionStatus = detail.statusField.value;
+    if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detail.statusField.value) === "germinating") {
       session.germinationStartedAt = new Date().toISOString();
     }
-    if (detailStatusField.value === "completed" && previousStatus !== "completed") {
+    if (detail.statusField.value === "completed" && previousStatus !== "completed") {
       session.completedAt = new Date().toISOString();
     }
-    if (previousStatus === "completed" && detailStatusField.value !== "completed") {
+    if (previousStatus === "completed" && detail.statusField.value !== "completed") {
       session.completedAt = "";
     }
-    syncSessionStatusControlDatasets(detailStatusField, {
+    syncSessionStatusControlDatasets(detail.statusField, {
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
     });
-    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+    updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
     updateSessionStatusReminder(
-      detailReminder,
+      detail.statusReminder,
       session.date,
       session.time,
-      detailStatusField.value,
+      detail.statusField.value,
       session.germinationStartedAt || "",
     );
     bindPartitionRowVisualState(partitions);
-    applySessionStatusLayout(detailChartShell, detailChartHeader, partitions, detailStatusField.value);
-    syncPartitionButtonStates(partitions, detailStatusField.value);
-    applyStageEditingMode(app, detailStatusField.value);
+    applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
+    syncPartitionButtonStates(partitions, detail.statusField.value);
+    applyStageEditingMode(app, detail.statusField.value);
     syncSessionPartitionsFromContainer(session, partitions);
     refreshDetailDerivedViews();
 
@@ -31418,11 +31410,11 @@ function renderSessionDetail(sessionId) {
   const persistDetailSession = async () => {
     syncSessionPartitionsFromContainer(session, partitions);
     captureFirstPlantedEventForSession(session);
-    session.sessionNotes = detailNotesField.value.trim();
-    detailSaveMessage.textContent = "";
+    session.sessionNotes = detail.notesField.value.trim();
+    detail.saveMessage.textContent = "";
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
-    detailSaveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
+    detail.saveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
     if (savedSession) {
       markUnsavedChangesSaved();
     }
@@ -31432,49 +31424,49 @@ function renderSessionDetail(sessionId) {
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
     contextType: "session",
-    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detailStatusField, detailNotesField),
+    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detail.statusField, detail.notesField),
     saveFn: persistDetailSession,
   });
 
-  detailSaveShortcutButton?.addEventListener("click", persistDetailSession);
-  detailSaveButton?.addEventListener("click", persistDetailSession);
+  detail.saveShortcutButton?.addEventListener("click", persistDetailSession);
+  detail.saveButton?.addEventListener("click", persistDetailSession);
 
   const persistDetailNote = async () => {
     try {
-      const savedSession = await updateCloudSessionNotes(session.id, detailNotesField.value);
+      const savedSession = await updateCloudSessionNotes(session.id, detail.notesField.value);
       Object.assign(session, savedSession);
-      if (detailNotesField) {
-        detailNotesField.value = session.sessionNotes || "";
+      if (detail.notesField) {
+        detail.notesField.value = session.sessionNotes || "";
       }
       patchUnsavedChangesBaseline((baseline, current) => ({
         ...baseline,
         sessionNotes: current.sessionNotes,
       }));
-      if (detailNotesMessage) {
-        detailNotesMessage.textContent = "Note saved.";
-        detailNotesMessage.classList.remove("is-error");
+      if (detail.notesMessage) {
+        detail.notesMessage.textContent = "Note saved.";
+        detail.notesMessage.classList.remove("is-error");
       }
     } catch (error) {
       console.error("Failed to save session note", error);
-      if (detailNotesMessage) {
-        detailNotesMessage.textContent = "Could not save note.";
-        detailNotesMessage.classList.add("is-error");
+      if (detail.notesMessage) {
+        detail.notesMessage.textContent = "Could not save note.";
+        detail.notesMessage.classList.add("is-error");
       }
     }
   };
 
-  detailNotesSaveButton?.addEventListener("click", persistDetailNote);
-  detailNotesField.addEventListener("input", () => {
-    if (!detailNotesMessage?.textContent) {
+  detail.notesSaveButton?.addEventListener("click", persistDetailNote);
+  detail.notesField.addEventListener("input", () => {
+    if (!detail.notesMessage?.textContent) {
       return;
     }
 
-    detailNotesMessage.textContent = "";
-    detailNotesMessage.classList.remove("is-error");
+    detail.notesMessage.textContent = "";
+    detail.notesMessage.classList.remove("is-error");
     refreshDetailUnsavedChanges();
   });
 
-  document.querySelector("#delete-session").addEventListener("click", async () => {
+  detail.deleteButton.addEventListener("click", async () => {
     const confirmed = window.confirm("Delete this session?");
     if (!confirmed) {
       return;
