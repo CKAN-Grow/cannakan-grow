@@ -348,9 +348,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
 ]);
 const SOURCE_PROFILE_DEFAULT_MOCK_ID = "humboldt-seed-co";
 const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
-  gold: "src/assets/CSTP-gold-badge.png",
-  silver: "src/assets/CSTP-silver-badge.png",
-  expired: "src/assets/CSTP-gold-badge.png",
+  gold: "/src/assets/CSTP-gold-badge.png",
+  silver: "/src/assets/CSTP-silver-badge.png",
+  expired: "/src/assets/CSTP-gold-badge.png",
 });
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Sources" }),
@@ -686,8 +686,8 @@ const SYSTEM_LAYOUT_ASSETS = {
   TRA: "/public/assets/system-layout-tra.svg",
 };
 const PARTITION_HEADER_ICON_ASSETS = {
-  KAN: "src/assets/kan-partition-icon-v2.png",
-  TRA: "src/assets/tra-partition-icon.png",
+  KAN: "/src/assets/kan-partition-icon-v2.png",
+  TRA: "/src/assets/tra-partition-icon.png",
 };
 const GROW_GALLERY_DEBUG = true;
 const SESSION_STAGE_OPTIONS = [
@@ -15914,7 +15914,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
 
 async function loadSnapshotBrandLogo() {
   try {
-    return await loadImageElement("src/assets/Cannakan_GROW_darkmode.png");
+    return await loadImageElement("/src/assets/Cannakan_GROW_darkmode.png");
   } catch {
     return null;
   }
