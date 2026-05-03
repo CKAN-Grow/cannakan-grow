@@ -1229,6 +1229,12 @@ body.theme-dark .install-app-banner-ios-tip {
   border-top-color: #DD8045;
 }
 
+.spotlight-card.is-empty-state {
+  gap: 16px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
 .spotlight-head {
   display: flex;
   align-items: flex-start;
@@ -1377,6 +1383,19 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
   gap: 16px;
   min-width: 0;
   align-content: start;
+}
+
+.spotlight-card.is-empty-state .spotlight-body {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.spotlight-card.is-empty-state .spotlight-main {
+  gap: 8px;
+}
+
+.spotlight-card.is-empty-state .spotlight-progress {
+  display: none;
 }
 
 .spotlight-name {

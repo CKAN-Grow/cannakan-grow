@@ -29490,18 +29490,22 @@ function renderHome() {
 
   const spotlightSession = activeSessions[0] || null;
   const updateSpotlight = () => {
-    if (!spotlightSession) {
+    if (!appState.user || !spotlightSession) {
       spotlightCard?.classList.remove("stage-soaking", "stage-germinating", "stage-completed");
-      spotlightName.textContent = "No active session";
+      spotlightCard?.classList.add("is-empty-state");
+      const requiresSignIn = !appState.user;
+      spotlightName.textContent = requiresSignIn ? "Sign in required" : "No active session";
       spotlightDate.textContent = "";
-      spotlightDescription.textContent = "Start a new grow session to begin tracking.";
+      spotlightDescription.textContent = requiresSignIn
+        ? "Sign in to start and continue tracking your grow sessions."
+        : "Start a new grow session to begin tracking.";
       if (spotlightLifecycle) {
-        spotlightLifecycle.innerHTML = renderSpotlightLifecycleMarkup();
+        spotlightLifecycle.innerHTML = "";
       }
       spotlightTimer.textContent = "--";
       spotlightSeeds.textContent = "--";
       spotlightRate.textContent = "--";
-      spotlightAction.textContent = "Start New Session";
+      spotlightAction.textContent = requiresSignIn ? "Sign In to Start Session" : "Start New Session";
       spotlightAction.href = "#new";
       return;
     }
@@ -29518,6 +29522,7 @@ function renderHome() {
       spotlightSession.germinationStartedAt || "",
     );
 
+    spotlightCard?.classList.remove("is-empty-state");
     spotlightCard?.classList.toggle("stage-soaking", normalizedStage === "soaking");
     spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
     spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
