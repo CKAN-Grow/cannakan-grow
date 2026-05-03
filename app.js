@@ -821,6 +821,11 @@ const ADMIN_CSTP_TESTER_OPTIONS = Object.freeze([
   Object.freeze({ id: "tester-mo", name: "Mo", email: "mo@cannakan.com" }),
   Object.freeze({ id: "tester-joe-john", name: "Joe John", email: "joe.john@cannakan.com" }),
 ]);
+const ADMIN_CSTP_DEVICE_IMAGE_GROUPS = Object.freeze([
+  Object.freeze({ key: "firstGerminated", label: "First Germinated (Per Device)" }),
+  Object.freeze({ key: "completedTest", label: "Completed Test (Per Device)" }),
+]);
+const ADMIN_CSTP_DEVICE_IMAGE_KEYS = Object.freeze(["A", "B", "C"]);
 const ADMIN_COMMUNICATIONS_MOCK_MESSAGES = Object.freeze([
   Object.freeze({
     id: "admin-comm-cstp-1",
@@ -18766,6 +18771,10 @@ function getSourceDirectoryMockRecords() {
     .filter(Boolean);
 }
 
+function normalizePersistedSessionImageEntry(image) {
+  return normalizePersistedSessionImages(image ? [image] : [])[0] || null;
+}
+
 function parseSourceDirectoryMetricNumber(value = "") {
   const digitsOnly = String(value || "").replace(/[^0-9.]/g, "");
   const parsed = Number(digitsOnly);
@@ -24655,6 +24664,21 @@ function normalizeAdminCstpTestSession(session = null, fallbackSession = {}) {
   };
 }
 
+function normalizeAdminCstpDeviceImages(deviceImages = null, fallbackDeviceImages = {}) {
+  const source = deviceImages && typeof deviceImages === "object" && !Array.isArray(deviceImages) ? deviceImages : {};
+  const fallback = fallbackDeviceImages && typeof fallbackDeviceImages === "object" && !Array.isArray(fallbackDeviceImages) ? fallbackDeviceImages : {};
+
+  return ADMIN_CSTP_DEVICE_IMAGE_GROUPS.reduce((groups, group) => {
+    const sourceGroup = source[group.key] && typeof source[group.key] === "object" ? source[group.key] : {};
+    const fallbackGroup = fallback[group.key] && typeof fallback[group.key] === "object" ? fallback[group.key] : {};
+    groups[group.key] = ADMIN_CSTP_DEVICE_IMAGE_KEYS.reduce((slots, deviceKey) => {
+      slots[deviceKey] = normalizePersistedSessionImageEntry(sourceGroup[deviceKey] || fallbackGroup[deviceKey]);
+      return slots;
+    }, {});
+    return groups;
+  }, {});
+}
+
 function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord = {}) {
   const source = record && typeof record === "object" && !Array.isArray(record) ? record : {};
   const fallback = fallbackRecord && typeof fallbackRecord === "object" && !Array.isArray(fallbackRecord) ? fallbackRecord : {};
@@ -24701,6 +24725,8 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
   };
   const sourceReportImages = source.reportImages || source.report_images || {};
   const fallbackReportImages = fallback.reportImages || fallback.report_images || {};
+  const sourceDeviceImages = source.cstpDeviceImages || source.cstp_device_images || {};
+  const fallbackDeviceImages = fallback.cstpDeviceImages || fallback.cstp_device_images || {};
 
   return syncAdminCstpSessionDerivedValues({
     id,
@@ -24743,6 +24769,7 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       || fallback.session_images
       || [],
     ),
+    cstpDeviceImages: normalizeAdminCstpDeviceImages(sourceDeviceImages, fallbackDeviceImages),
     reportImages: {
       firstGerminated: normalizeReportImageRecord(
         sourceReportImages.firstGerminated || sourceReportImages.first_germinated,
@@ -25421,6 +25448,70 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
   `;
 }
 
+function renderAdminCstpDeviceImageUploadSectionMarkup(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  const deviceImages = normalizedSession?.cstpDeviceImages || normalizeAdminCstpDeviceImages();
+
+  return `
+    <div class="admin-cstp-device-images-shell">
+      <div class="session-images-heading">
+        <div>
+          <p class="eyebrow">Images</p>
+          <h4 class="section-title-with-icon">
+            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+              <circle cx="9" cy="10" r="1.5"></circle>
+              <path d="m20 15-4.5-4.5L8 18"></path>
+            </svg>
+            <span>CSTP Device Test Images</span>
+          </h4>
+        </div>
+        <span class="session-images-limit">Mock/local only · 6 device images total</span>
+      </div>
+      <p class="admin-cstp-device-images-note">Missing device images are highlighted for follow-up, but they do not block the CSTP workflow yet.</p>
+      <div class="admin-cstp-device-image-groups">
+        ${ADMIN_CSTP_DEVICE_IMAGE_GROUPS.map((group) => `
+          <section class="admin-cstp-device-image-group" aria-labelledby="admin-cstp-device-group-${escapeHtml(group.key)}">
+            <div class="admin-cstp-device-image-group-head">
+              <h5 id="admin-cstp-device-group-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h5>
+              <span class="admin-cstp-device-image-group-status">${ADMIN_CSTP_DEVICE_IMAGE_KEYS.filter((deviceKey) => !deviceImages?.[group.key]?.[deviceKey]).length} missing</span>
+            </div>
+            <div class="admin-cstp-device-image-grid">
+              ${ADMIN_CSTP_DEVICE_IMAGE_KEYS.map((deviceKey) => {
+                const image = deviceImages?.[group.key]?.[deviceKey] || null;
+                const slotLabel = `KAN ${deviceKey}`;
+                return `
+                  <article class="admin-cstp-device-image-slot${image ? " has-image" : " is-missing"}" data-admin-cstp-device-slot="${escapeHtml(`${group.key}:${deviceKey}`)}">
+                    <div class="admin-cstp-device-image-slot-head">
+                      <strong>${escapeHtml(slotLabel)}</strong>
+                      <span>${escapeHtml(image ? "Uploaded" : "Missing image")}</span>
+                    </div>
+                    <div class="admin-cstp-device-image-preview">
+                      ${image
+                        ? `<img src="${escapeHtml(image.url || "")}" alt="${escapeHtml(`${group.label} ${slotLabel}`)}" class="admin-cstp-device-image-preview-image">`
+                        : `<div class="admin-cstp-device-image-placeholder">No image uploaded</div>`}
+                    </div>
+                    <p class="admin-cstp-device-image-caption">${escapeHtml(image?.name || image?.filename || `${group.label} ${slotLabel}`)}</p>
+                    <div class="admin-cstp-device-image-actions">
+                      <label class="button button-secondary admin-cstp-button admin-cstp-button--secondary admin-cstp-device-image-upload">
+                        <span>${escapeHtml(image ? "Replace Image" : "Upload Image")}</span>
+                        <input type="file" accept="image/*" data-admin-cstp-device-image-input="${escapeHtml(`${group.key}:${deviceKey}`)}">
+                      </label>
+                      ${image
+                        ? `<button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--warning" data-admin-cstp-device-image-remove="${escapeHtml(`${group.key}:${deviceKey}`)}">Remove</button>`
+                        : ""}
+                    </div>
+                  </article>
+                `;
+              }).join("")}
+            </div>
+          </section>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderAdminCstpReportImageIconMarkup(kind = "") {
   if (kind === "first-germinated") {
     return `
@@ -25443,27 +25534,40 @@ function renderAdminCstpReportImageIconMarkup(kind = "") {
 
 function renderAdminCstpReportImageRecordsMarkup(session = null) {
   const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
-  const records = [
-    normalizedSession?.reportImages?.firstGerminated,
-    normalizedSession?.reportImages?.completedTestSnapshot,
-  ].filter(Boolean);
+  const deviceImages = normalizedSession?.cstpDeviceImages || normalizeAdminCstpDeviceImages();
+  const hasAnyImage = ADMIN_CSTP_DEVICE_IMAGE_GROUPS.some((group) => (
+    ADMIN_CSTP_DEVICE_IMAGE_KEYS.some((deviceKey) => Boolean(deviceImages?.[group.key]?.[deviceKey]))
+  ));
 
-  if (!records.length) {
-    return `<p class="muted">No CSTP report images generated yet.</p>`;
+  if (!hasAnyImage) {
+    return `<p class="muted">No CSTP device images uploaded yet.</p>`;
   }
 
-  return records.map((record) => `
-    <article class="snapshot-confirmation-card admin-cstp-report-output-card">
-      <span class="snapshot-action-icon admin-cstp-report-output-icon" aria-hidden="true">
-        ${renderAdminCstpReportImageIconMarkup(record.kind)}
-      </span>
-      <div class="snapshot-action-copy">
-        <h5 class="snapshot-action-title">${escapeHtml(record.label || "CSTP Report Image")}</h5>
-        <p class="snapshot-action-description">Captured ${escapeHtml(formatAdminCstpSessionDateTime(record.capturedAt || record.generatedAt, "Not recorded"))}</p>
-        <p class="admin-cstp-report-output-meta">Stored in local CSTP report data only.</p>
+  return ADMIN_CSTP_DEVICE_IMAGE_GROUPS.map((group) => `
+    <section class="admin-cstp-report-device-group" aria-labelledby="admin-cstp-report-${escapeHtml(group.key)}">
+      <div class="admin-cstp-device-image-group-head">
+        <h5 id="admin-cstp-report-${escapeHtml(group.key)}">${escapeHtml(group.label)}</h5>
       </div>
-      <span class="admin-cstp-report-output-stamp">${escapeHtml(record.kind === "first-germinated" ? "Internal" : "Report Ready")}</span>
-    </article>
+      <div class="admin-cstp-device-image-grid admin-cstp-report-device-grid">
+        ${ADMIN_CSTP_DEVICE_IMAGE_KEYS.map((deviceKey) => {
+          const image = deviceImages?.[group.key]?.[deviceKey] || null;
+          return `
+            <article class="admin-cstp-device-image-slot admin-cstp-report-device-slot${image ? " has-image" : " is-missing"}">
+              <div class="admin-cstp-device-image-slot-head">
+                <strong>${escapeHtml(`KAN ${deviceKey}`)}</strong>
+                <span>${escapeHtml(image ? "Included" : "Missing image")}</span>
+              </div>
+              <div class="admin-cstp-device-image-preview">
+                ${image
+                  ? `<img src="${escapeHtml(image.url || "")}" alt="${escapeHtml(`${group.label} KAN ${deviceKey}`)}" class="admin-cstp-device-image-preview-image">`
+                  : `<div class="admin-cstp-device-image-placeholder">No image uploaded</div>`}
+              </div>
+              <p class="admin-cstp-device-image-caption">${escapeHtml(image?.name || image?.filename || `${group.label} KAN ${deviceKey}`)}</p>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
   `).join("");
 }
 
@@ -25918,6 +26022,7 @@ function createAssignedAdminCstpTestSession(record = null) {
     qualificationResult: normalizedRecord.testSession?.qualificationResult || "",
     observations: normalizedRecord.testSession?.observations || "",
     sessionImages: [],
+    cstpDeviceImages: normalizeAdminCstpDeviceImages(),
     partitions: buildAdminCstpDefaultPartitions({
       systemType: "KAN",
       sourceName: normalizedRecord.sourceName,
@@ -26996,6 +27101,26 @@ async function removeAdminCstpSessionImage(sessionId = "", imageToRemove = null,
   return saveAdminCstpSessionImages(sessionId, nextImages);
 }
 
+function buildAdminCstpDeviceImageEntry(file, groupLabel = "", deviceKey = "", dataUrl = "") {
+  const baseName = String(file?.name || `${groupLabel} KAN ${deviceKey}`).trim() || `${groupLabel} KAN ${deviceKey}`;
+  return {
+    path: "",
+    url: dataUrl,
+    filename: baseName,
+    name: baseName,
+  };
+}
+
+function setAdminCstpDeviceImageSlot(deviceImages = null, groupKey = "", deviceKey = "", imageEntry = null) {
+  const normalizedImages = normalizeAdminCstpDeviceImages(deviceImages);
+  if (!normalizedImages[groupKey] || !ADMIN_CSTP_DEVICE_IMAGE_KEYS.includes(deviceKey)) {
+    return normalizedImages;
+  }
+
+  normalizedImages[groupKey][deviceKey] = normalizePersistedSessionImageEntry(imageEntry);
+  return normalizedImages;
+}
+
 function renderAdminCstpTestSessionPage(sessionId = "") {
   const session = getAdminCstpTestSessionById(sessionId);
   if (!session) {
@@ -27068,9 +27193,9 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     buttonClasses: ["admin-cstp-button", "admin-cstp-button--secondary"],
   });
   applySessionDetailImageOptions(detail, {
-    heading: "CSTP Test Images",
-    limitText: "Mock/local only · Up to 3 images",
-    uploadLabel: "Add CSTP images",
+    heading: "CSTP Device Test Images",
+    limitText: "Mock/local only · 6 images total",
+    uploadLabel: "Upload device images",
   });
   if (detail.saveShortcutButton) {
     detail.saveShortcutButton.textContent = "Save CSTP Session";
@@ -27107,9 +27232,12 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   if (detail.suppliesAnchor) {
     detail.suppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
   }
+  if (detail.imageSection) {
+    detail.imageSection.innerHTML = renderAdminCstpDeviceImageUploadSectionMarkup(session);
+  }
   if (detail.snapshotSection) {
-    detail.snapshotSection.hidden = false;
-    detail.snapshotSection.innerHTML = renderAdminCstpSessionReportImagesSectionMarkup(session);
+    detail.snapshotSection.hidden = true;
+    detail.snapshotSection.innerHTML = "";
   }
 
   renderSessionDetailMetaCards(detail.meta, [
@@ -27172,16 +27300,6 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   }
   syncAdminCstpLiveResultSections(detail, session);
   updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
-  initializeSessionImageState(detail.imageSection, {
-    input: detail.imageInput,
-    grid: detail.imageGrid,
-    message: detail.imageMessage,
-    images: session.sessionImages || [],
-    editable: true,
-    persistFiles: (files, existingImages) => addAdminCstpSessionImageFiles(session.id, files, existingImages),
-    removeImage: (imageToRemove, existingImages) => removeAdminCstpSessionImage(session.id, imageToRemove, existingImages),
-  });
-
   bindAdminCstpTestSessionPage(session.id);
   scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
     delayMs: 140,
@@ -27383,6 +27501,71 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
 
   detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
   detailSaveButton?.addEventListener("click", handleSaveClick);
+
+  app.querySelectorAll("[data-admin-cstp-device-image-input]").forEach((input) => {
+    if (!(input instanceof HTMLInputElement) || input.dataset.adminCstpDeviceBound === "true") {
+      return;
+    }
+
+    input.dataset.adminCstpDeviceBound = "true";
+    input.addEventListener("change", async () => {
+      const slotKey = String(input.dataset.adminCstpDeviceImageInput || "").trim();
+      const [groupKey = "", deviceKey = ""] = slotKey.split(":");
+      const file = input.files?.[0] || null;
+      if (!file || !groupKey || !deviceKey) {
+        return;
+      }
+      try {
+        const groupLabel = ADMIN_CSTP_DEVICE_IMAGE_GROUPS.find((group) => group.key === groupKey)?.label || "CSTP Device Image";
+        const dataUrl = await prepareImageDataUrlForStorage(file);
+        const nextImage = buildAdminCstpDeviceImageEntry(file, groupLabel, deviceKey, dataUrl);
+        const draftSession = buildDraftSession() || getAdminCstpTestSessionById(sessionId);
+        if (!draftSession) {
+          return;
+        }
+
+        draftSession.cstpDeviceImages = setAdminCstpDeviceImageSlot(
+          draftSession.cstpDeviceImages,
+          groupKey,
+          deviceKey,
+          nextImage,
+        );
+        updateAdminCstpAssignedSession(sessionId, draftSession);
+        renderAdminCstpTestSessionPage(sessionId);
+      } catch (error) {
+        window.alert(error?.message || "Could not save this CSTP device image.");
+      }
+    });
+  });
+
+  app.querySelectorAll("[data-admin-cstp-device-image-remove]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpDeviceBound === "true") {
+      return;
+    }
+
+    button.dataset.adminCstpDeviceBound = "true";
+    button.addEventListener("click", () => {
+      const slotKey = String(button.dataset.adminCstpDeviceImageRemove || "").trim();
+      const [groupKey = "", deviceKey = ""] = slotKey.split(":");
+      try {
+        const draftSession = buildDraftSession() || getAdminCstpTestSessionById(sessionId);
+        if (!draftSession || !groupKey || !deviceKey) {
+          return;
+        }
+
+        draftSession.cstpDeviceImages = setAdminCstpDeviceImageSlot(
+          draftSession.cstpDeviceImages,
+          groupKey,
+          deviceKey,
+          null,
+        );
+        updateAdminCstpAssignedSession(sessionId, draftSession);
+        renderAdminCstpTestSessionPage(sessionId);
+      } catch (error) {
+        window.alert(error?.message || "Could not remove this CSTP device image.");
+      }
+    });
+  });
 
   detail.deleteButton?.addEventListener("click", () => {
     if (String(detail.deleteButton.dataset.adminCstpDeleteSession || "").trim() !== sessionId) {
@@ -27712,10 +27895,10 @@ function renderAdminCstpReportPage(recordId = "") {
                       <circle cx="9" cy="10" r="1.5"></circle>
                       <path d="m20 15-4.5-4.5L8 18"></path>
                     </svg>
-                    <span>CSTP Report Image Outputs</span>
+                    <span>CSTP Device Test Images</span>
                   </h4>
                 </div>
-                <span class="session-images-limit">Internal CSTP report records</span>
+                <span class="session-images-limit">Grouped by stage · KAN A, B, and C</span>
               </div>
               <div class="admin-cstp-report-output-list">
                 ${renderAdminCstpReportImageRecordsMarkup(reportSession)}
