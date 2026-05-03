@@ -1212,7 +1212,7 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .spotlight-card {
   display: grid;
-  gap: 18px;
+  gap: 12px;
   padding: 22px 24px;
   border: 1px solid var(--card-border);
   border-top: 4px solid rgba(24, 34, 24, 0.08);
@@ -1367,23 +1367,26 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 .spotlight-body {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
-  align-items: start;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .spotlight-main {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: start;
   min-width: 0;
 }
 
 .spotlight-progress {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
+  min-height: 0;
+  padding-top: 0;
+  margin-top: 0;
+  align-self: flex-start;
   align-content: start;
-  margin-top: -10px;
 }
 
 .spotlight-card.is-empty-state .spotlight-body {
@@ -1419,13 +1422,13 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 
 .spotlight-lifecycle {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .spotlight-lifecycle-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .spotlight-lifecycle-stage {
@@ -1543,7 +1546,7 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 .spotlight-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .spotlight-stat {
