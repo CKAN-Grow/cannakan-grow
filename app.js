@@ -24962,7 +24962,7 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
             <button type="button" class="button button-secondary" data-admin-cstp-lab-action="disconnect-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Disconnect Session</button>
           `
           : `
-            <button type="button" class="button button-secondary" data-admin-cstp-lab-action="create-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Create Assigned CSTP Session</button>
+            <button type="button" class="button button-secondary admin-cstp-create-session-cta" data-admin-cstp-lab-action="create-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">+ Create Assigned CSTP Session</button>
           `}
       </div>
     </section>
