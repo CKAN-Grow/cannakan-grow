@@ -14062,6 +14062,8 @@ function initializeSessionImageState(scope, options) {
     session: options.session || null,
     onImagesChange: options.onImagesChange || null,
     onRender: options.onRender || null,
+    persistFiles: typeof options.persistFiles === "function" ? options.persistFiles : null,
+    removeImage: typeof options.removeImage === "function" ? options.removeImage : null,
     images: normalizeSessionImages(normalizePersistedSessionImages(options.images || [])),
     pendingFiles: [],
     dots: ensureSessionImageDots(scope, options.grid),
@@ -14172,6 +14174,18 @@ async function handleSessionImageSelection(state, fileList) {
     }
   }
 
+  if (state.persistFiles) {
+    try {
+      const nextImages = await state.persistFiles(files, [...state.images]);
+      state.images = normalizeSessionImages(normalizePersistedSessionImages(nextImages || []));
+      renderSessionImageGrid(state);
+      await state.onImagesChange?.(state.images);
+    } catch (error) {
+      setSessionImageMessage(state, error.message || "Could not upload image.");
+    }
+    return;
+  }
+
   if (state.session) {
     try {
       for (const file of files) {
@@ -14250,6 +14264,21 @@ async function removeSessionImageEntry(state, imageKey, triggerButton = null) {
 
   if (triggerButton) {
     triggerButton.disabled = true;
+  }
+
+  if (state.removeImage) {
+    try {
+      const nextImages = await state.removeImage(persistedImage, [...state.images]);
+      state.images = normalizeSessionImages(normalizePersistedSessionImages(nextImages || []));
+      renderSessionImageGrid(state);
+      await state.onImagesChange?.(state.images);
+    } catch (error) {
+      setSessionImageMessage(state, error.message || "Could not remove image.");
+      if (triggerButton) {
+        triggerButton.disabled = false;
+      }
+    }
+    return;
   }
 
   if (state.session) {
@@ -24268,6 +24297,77 @@ function getAdminCstpQualificationLabel(value = "") {
     || "Not set";
 }
 
+function normalizeAdminCstpSystemType(value = "") {
+  return String(value || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+}
+
+function distributeAdminCstpPartitionCount(total = 0, partitionCount = 0) {
+  const safeTotal = Math.max(0, Math.floor(Number(total) || 0));
+  const safePartitionCount = Math.max(0, Math.floor(Number(partitionCount) || 0));
+  if (!safePartitionCount) {
+    return [];
+  }
+
+  const baseCount = Math.floor(safeTotal / safePartitionCount);
+  let remainder = safeTotal % safePartitionCount;
+  return Array.from({ length: safePartitionCount }, () => {
+    const value = baseCount + (remainder > 0 ? 1 : 0);
+    remainder = Math.max(0, remainder - 1);
+    return value;
+  });
+}
+
+function buildAdminCstpDefaultPartitions({
+  systemType = "KAN",
+  sourceName = "",
+  variety = "",
+  sampleSize = "",
+  germinatedCount = "",
+} = {}) {
+  const normalizedSystemType = normalizeAdminCstpSystemType(systemType);
+  const basePartitions = createPartitionsForSystem(normalizedSystemType);
+  const partitionCount = basePartitions.length;
+  const seededCounts = distributeAdminCstpPartitionCount(sampleSize, partitionCount);
+  const germinatedCounts = distributeAdminCstpPartitionCount(
+    Math.min(Math.max(0, Number(germinatedCount) || 0), Math.max(0, Number(sampleSize) || 0) || Math.max(0, Number(germinatedCount) || 0)),
+    partitionCount,
+  );
+
+  return basePartitions.map((partition, index) => ({
+    ...partition,
+    source: String(sourceName || "").trim(),
+    seedVariety: String(variety || "").trim(),
+    seedCount: seededCounts[index] || 0,
+    plantedCount: germinatedCounts[index] > 0 ? String(germinatedCounts[index]) : "",
+  }));
+}
+
+function normalizeAdminCstpSessionPartitions(partitions = [], systemType = "KAN", fallbackValues = {}) {
+  const normalizedSystemType = normalizeAdminCstpSystemType(systemType);
+  const basePartitions = createPartitionsForSystem(normalizedSystemType);
+  const defaults = buildAdminCstpDefaultPartitions({
+    ...fallbackValues,
+    systemType: normalizedSystemType,
+  });
+  const sourcePartitions = Array.isArray(partitions) && partitions.length ? partitions : defaults;
+
+  return basePartitions.map((partition, index) => {
+    const source = sourcePartitions[index] || {};
+    const fallback = defaults[index] || partition;
+    const plantedValue = source.plantedCount ?? fallback.plantedCount ?? "";
+    return {
+      id: partition.id,
+      source: String(source.source || fallback.source || "").trim(),
+      seedVariety: String(source.seedVariety || fallback.seedVariety || "").trim(),
+      breeder: String(source.breeder || fallback.breeder || "").trim(),
+      seedType: String(source.seedType || fallback.seedType || "").trim(),
+      feminized: String(source.feminized || fallback.feminized || "").trim(),
+      seedCount: Math.max(0, Number(source.seedCount ?? fallback.seedCount ?? 0) || 0),
+      plantedCount: plantedValue === "" ? "" : String(Math.max(0, Number(plantedValue) || 0)),
+    };
+  });
+}
+
 function isAdminCstpCertificationEligible(value = "") {
   return ["gold", "silver"].includes(normalizeAdminCstpQualificationResult(value));
 }
@@ -24328,6 +24428,19 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
     return null;
   }
 
+  const systemType = normalizeAdminCstpSystemType(source.systemType || source.system_type || fallback.systemType || fallback.system_type || "KAN");
+  const unitId = String(
+    source.unitId
+    || source.unit_id
+    || fallback.unitId
+    || fallback.unit_id
+    || source.deviceId
+    || source.device_id
+    || fallback.deviceId
+    || fallback.device_id
+    || "A",
+  ).trim() || "A";
+
   return {
     id,
     requestId: String(source.requestId || source.request_id || fallback.requestId || fallback.request_id || "").trim(),
@@ -24338,6 +24451,8 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
     deviceId: String(source.deviceId || source.device_id || fallback.deviceId || fallback.device_id || "").trim(),
     testMethod: String(source.testMethod || source.test_method || fallback.testMethod || fallback.test_method || "").trim(),
     temperature: String(source.temperature || fallback.temperature || "").trim(),
+    systemType,
+    unitId,
     status: normalizeAdminCstpTestSessionStatus(source.status || fallback.status || ""),
     startedAt: String(source.startedAt || source.started_at || fallback.startedAt || fallback.started_at || "").trim(),
     completedAt: String(source.completedAt || source.completed_at || fallback.completedAt || fallback.completed_at || "").trim(),
@@ -24351,8 +24466,299 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       source.qualificationResult || source.qualification_result || fallback.qualificationResult || fallback.qualification_result || "",
     ),
     observations: String(source.observations || fallback.observations || "").trim(),
+    sessionImages: normalizePersistedSessionImages(
+      source.sessionImages
+      || source.session_images
+      || fallback.sessionImages
+      || fallback.session_images
+      || [],
+    ),
+    partitions: normalizeAdminCstpSessionPartitions(
+      source.partitions || fallback.partitions || [],
+      systemType,
+      {
+        sourceName: source.sourceName || source.source_name || fallback.sourceName || fallback.source_name || "",
+        variety: source.variety || fallback.variety || "",
+        sampleSize: source.sampleSize || source.sample_size || fallback.sampleSize || fallback.sample_size || "",
+        germinatedCount: source.germinatedCount || source.germinated_count || fallback.germinatedCount || fallback.germinated_count || "",
+      },
+    ),
     createdAt: String(source.createdAt || source.created_at || fallback.createdAt || fallback.created_at || "").trim() || new Date().toISOString(),
   };
+}
+
+function formatAdminCstpSessionDateTime(value = "", emptyLabel = "Not recorded") {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return emptyLabel;
+  }
+
+  const parsedValue = parseCompletedAtValue(normalizedValue);
+  return parsedValue ? formatTimingDateTime(parsedValue) : normalizedValue;
+}
+
+function getAdminCstpSessionDisplayTitle(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return "CSTP Test Session";
+  }
+
+  const titleParts = [normalizedSession.sourceName, normalizedSession.variety].filter(Boolean);
+  return titleParts.length ? titleParts.join(" - ") : "CSTP Test Session";
+}
+
+function getAdminCstpSessionDisplayPercent(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return "Not calculated";
+  }
+
+  const explicitPercent = String(normalizedSession.finalGerminationPercent || "").trim();
+  if (explicitPercent) {
+    return explicitPercent.includes("%") ? explicitPercent : `${explicitPercent}%`;
+  }
+
+  const sampleSize = Math.max(0, Number(normalizedSession.sampleSize) || 0);
+  const germinatedCount = Math.max(0, Number(normalizedSession.germinatedCount) || 0);
+  if (sampleSize <= 0) {
+    return "Not calculated";
+  }
+
+  return `${Math.round((germinatedCount / sampleSize) * 100)}%`;
+}
+
+function mapAdminCstpStatusToSessionStatus(status = "") {
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(status);
+  if (["completed", "report-prepared", "published"].includes(normalizedStatus)) {
+    return "completed";
+  }
+  if (normalizedStatus === "active-test") {
+    return "germinating";
+  }
+  if (["draft", "scheduled"].includes(normalizedStatus)) {
+    return "soaking";
+  }
+  return "unselected";
+}
+
+function buildAdminCstpLifecycleState(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return {
+      showEmptyTimeline: true,
+      startedAt: null,
+      germinationStartedAt: null,
+      firstPlantedAt: null,
+      completedAt: null,
+    };
+  }
+
+  const startedAt = parseCompletedAtValue(normalizedSession.startedAt || "");
+  const completedAt = parseCompletedAtValue(normalizedSession.completedAt || "");
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(normalizedSession.status);
+  const germinatedCount = Math.max(0, Number(normalizedSession.germinatedCount) || 0);
+  const startedLabel = String(normalizedSession.startedAt || "").trim();
+  const completedLabel = String(normalizedSession.completedAt || "").trim();
+  const hasActiveTimeline = ["active-test", "completed", "report-prepared", "published"].includes(normalizedStatus);
+
+  return {
+    showEmptyTimeline: true,
+    startedAt,
+    startedDisplayLabel: startedAt ? "" : startedLabel,
+    startedComplete: Boolean(startedAt || startedLabel),
+    germinationStartedAt: hasActiveTimeline ? startedAt : null,
+    germinationStartedDisplayLabel: hasActiveTimeline
+      ? (startedAt ? "" : (startedLabel || "Lab test started"))
+      : "",
+    germinationStartedComplete: hasActiveTimeline,
+    firstPlantedAt: germinatedCount > 0 ? (completedAt || startedAt || null) : null,
+    firstPlantedDisplayLabel: germinatedCount > 0
+      ? `${germinatedCount} germinated recorded`
+      : "",
+    firstPlantedComplete: germinatedCount > 0,
+    completedAt,
+    completedDisplayLabel: completedAt ? "" : completedLabel,
+    completedComplete: Boolean(completedAt || completedLabel || ["completed", "report-prepared", "published"].includes(normalizedStatus)),
+  };
+}
+
+function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, session = null) {
+  if (!summaryElement || !sectionElement) {
+    return;
+  }
+
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    summaryElement.innerHTML = "";
+    sectionElement.hidden = true;
+    return;
+  }
+
+  const startedLabel = String(normalizedSession.startedAt || "").trim();
+  const completedLabel = String(normalizedSession.completedAt || "").trim();
+  const startedAt = parseCompletedAtValue(startedLabel);
+  const completedAt = parseCompletedAtValue(completedLabel);
+  const hasTimingData = Boolean(startedLabel || completedLabel || startedAt || completedAt);
+
+  if (!hasTimingData) {
+    summaryElement.innerHTML = "";
+    sectionElement.hidden = true;
+    return;
+  }
+
+  summaryElement.innerHTML = `
+    ${startedLabel ? `
+      <article class="timing-card timing-card-started">
+        <strong>Started</strong>
+        <p>${escapeHtml(formatAdminCstpSessionDateTime(startedLabel))}</p>
+      </article>
+    ` : ""}
+    ${completedLabel ? `
+      <article class="timing-card">
+        <strong>Completed On</strong>
+        <p>${escapeHtml(formatAdminCstpSessionDateTime(completedLabel))}</p>
+      </article>
+    ` : ""}
+    ${startedAt && completedAt ? `
+      <article class="timing-card">
+        <strong>Total Duration</strong>
+        <p>${escapeHtml(formatDurationBetween(startedAt, completedAt))}</p>
+      </article>
+    ` : ""}
+  `;
+  sectionElement.hidden = false;
+}
+
+function renderAdminCstpPartitionDetailRows(container, session = null) {
+  if (!container) {
+    return;
+  }
+
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  const partitions = normalizedSession?.partitions || [];
+  container.innerHTML = "";
+
+  if (!partitions.length) {
+    container.innerHTML = `<p class="muted">No CSTP partitions recorded yet.</p>`;
+    return;
+  }
+
+  const sessionStatus = mapAdminCstpStatusToSessionStatus(normalizedSession.status);
+  if (normalizedSession.systemType === "TRA") {
+    const sections = [
+      { label: "A", start: 0, end: 4 },
+      { label: "B", start: 4, end: 8 },
+      { label: "C", start: 8, end: 12 },
+      { label: "D", start: 12, end: 16 },
+    ];
+
+    sections.forEach((section) => {
+      const wrapper = document.createElement("section");
+      wrapper.className = "tra-section";
+      wrapper.innerHTML = `
+        <div class="tra-section-label">Section ${section.label}</div>
+        <div class="tra-section-body"></div>
+      `;
+
+      const body = wrapper.querySelector(".tra-section-body");
+      partitions.slice(section.start, section.end).forEach((partition) => {
+        body.appendChild(buildPartitionDetailRow(partition, sessionStatus));
+      });
+      container.appendChild(wrapper);
+    });
+    return;
+  }
+
+  partitions.forEach((partition) => {
+    container.appendChild(buildPartitionDetailRow(partition, sessionStatus));
+  });
+}
+
+function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return "";
+  }
+
+  const canPrepareReport = Boolean(options.canPrepareReport);
+  const prepareLabel = normalizedSession.reportPreparedAt || normalizedSession.publishedAt ? "Open Report" : "Prepare Report";
+
+  return `
+    <section class="admin-cstp-session-workspace">
+      <div class="admin-cstp-lab-actions admin-cstp-session-actions">
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
+      </div>
+      <form class="admin-communications-editor admin-cstp-session-editor-panel" data-admin-cstp-session-form="${escapeHtml(normalizedSession.id)}">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">CSTP Lab Controls</p>
+            <p class="muted">Mock/local CSTP session fields only. These do not modify member sessions, Community Grow, or leaderboard data.</p>
+          </div>
+        </div>
+        <div class="admin-communications-editor-grid">
+          <label class="admin-message-field">
+            <span>Source name</span>
+            <input name="sourceName" type="text" maxlength="160" value="${escapeHtml(normalizedSession.sourceName || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Variety</span>
+            <input name="variety" type="text" maxlength="160" value="${escapeHtml(normalizedSession.variety || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Batch / lot</span>
+            <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(normalizedSession.batchLot || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Sample size</span>
+            <input name="sampleSize" type="text" maxlength="80" value="${escapeHtml(normalizedSession.sampleSize || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Device ID</span>
+            <input name="deviceId" type="text" maxlength="120" value="${escapeHtml(normalizedSession.deviceId || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Test method</span>
+            <input name="testMethod" type="text" maxlength="160" value="${escapeHtml(normalizedSession.testMethod || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Temperature</span>
+            <input name="temperature" type="text" maxlength="120" value="${escapeHtml(normalizedSession.temperature || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Started at</span>
+            <input name="startedAt" type="text" maxlength="120" placeholder="May 3, 2026 10:00 AM" value="${escapeHtml(normalizedSession.startedAt || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Completed at</span>
+            <input name="completedAt" type="text" maxlength="120" placeholder="May 6, 2026 2:00 PM" value="${escapeHtml(normalizedSession.completedAt || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Germinated count</span>
+            <input name="germinatedCount" type="text" maxlength="80" value="${escapeHtml(normalizedSession.germinatedCount || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Final germination %</span>
+            <input name="finalGerminationPercent" type="text" maxlength="80" value="${escapeHtml(normalizedSession.finalGerminationPercent || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Total germination time</span>
+            <input name="totalGerminationTime" type="text" maxlength="120" value="${escapeHtml(normalizedSession.totalGerminationTime || "")}">
+          </label>
+          <label class="admin-message-field">
+            <span>Qualification result</span>
+            <select name="qualificationResult">
+              <option value="">Select a result</option>
+              ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === normalizedSession.qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+        </div>
+      </form>
+    </section>
+  `;
 }
 
 function buildAdminCstpLabBaseRecordFromCommunication(record = {}) {
@@ -24541,6 +24947,8 @@ function createAssignedAdminCstpTestSession(record = null) {
     deviceId: normalizedRecord.testSession?.deviceId || "",
     testMethod: normalizedRecord.testSession?.testMethod || "",
     temperature: normalizedRecord.testSession?.temperature || "",
+    systemType: "KAN",
+    unitId: normalizedRecord.testSession?.deviceId || "A",
     status: sessionStatus,
     startedAt: "",
     completedAt: "",
@@ -24552,6 +24960,14 @@ function createAssignedAdminCstpTestSession(record = null) {
     totalGerminationTime: normalizedRecord.testSession?.totalGerminationTime || "",
     qualificationResult: normalizedRecord.testSession?.qualificationResult || "",
     observations: normalizedRecord.testSession?.observations || "",
+    sessionImages: [],
+    partitions: buildAdminCstpDefaultPartitions({
+      systemType: "KAN",
+      sourceName: normalizedRecord.sourceName,
+      variety: normalizedRecord.variety,
+      sampleSize: normalizedRecord.testSession?.sampleSize || normalizedRecord.seedsAvailable || "",
+      germinatedCount: normalizedRecord.testSession?.germinatedCount || "",
+    }),
     createdAt: timestamp,
   });
 
@@ -25339,6 +25755,44 @@ function updateAdminCstpAssignedSession(sessionId = "", updates = {}) {
   return normalizedSession;
 }
 
+async function saveAdminCstpSessionImages(sessionId = "", images = []) {
+  const existingSession = getAdminCstpTestSessionById(sessionId);
+  if (!existingSession) {
+    throw new Error("CSTP session not found.");
+  }
+
+  const normalizedImages = normalizePersistedSessionImages(images);
+  const updatedSession = updateAdminCstpAssignedSession(sessionId, {
+    ...existingSession,
+    sessionImages: normalizedImages,
+  });
+
+  return updatedSession?.sessionImages || [];
+}
+
+async function addAdminCstpSessionImageFiles(sessionId = "", files = [], existingImages = []) {
+  const nextImages = [...normalizePersistedSessionImages(existingImages)];
+  for (const file of files) {
+    const dataUrl = await prepareImageDataUrlForStorage(file);
+    nextImages.push({
+      path: "",
+      url: dataUrl,
+      filename: String(file?.name || "CSTP test image").trim() || "CSTP test image",
+      name: String(file?.name || "CSTP test image").trim() || "CSTP test image",
+    });
+  }
+
+  return saveAdminCstpSessionImages(sessionId, nextImages);
+}
+
+async function removeAdminCstpSessionImage(sessionId = "", imageToRemove = null, existingImages = []) {
+  const targetKey = getSessionImageEntryKey(imageToRemove);
+  const nextImages = normalizePersistedSessionImages(existingImages)
+    .filter((image, index) => getSessionImageEntryKey(image, index) !== targetKey);
+
+  return saveAdminCstpSessionImages(sessionId, nextImages);
+}
+
 function renderAdminCstpTestSessionPage(sessionId = "") {
   const session = getAdminCstpTestSessionById(sessionId);
   if (!session) {
@@ -25364,158 +25818,242 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
 
   const linkedRequest = getAdminCstpLabRecords().find((record) => record.requestId === session.requestId) || null;
   const canPrepareReport = canPrepareAdminCstpReport(session);
-  app.innerHTML = `
-    <section class="card disclaimer-page">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("activity")}
-          <div>
-            <p class="eyebrow">CSTP Testing Lab</p>
-            <h2>CSTP Test Session</h2>
-            <p class="muted">Separate mock/local CSTP test session. This does not appear in member Sessions, Community Grow, or leaderboard insights.</p>
-          </div>
-        </div>
-        <div class="inline-actions">
-          <a class="button button-secondary admin-cstp-button admin-cstp-button--utility" href="#admin">Back to Admin</a>
-        </div>
-      </div>
-      <section class="card admin-cstp-session-page-card">
-        <div class="admin-communications-detail-head">
-          <div>
-            <p class="eyebrow">Assigned Session</p>
-            <h3>${escapeHtml(session.id)}</h3>
-            <div class="admin-report-card-badges">
-              <span class="admin-message-issue-pill">CSTP Test Session</span>
-              ${renderAdminCstpTestSessionStatusPillMarkup(session.status)}
-            </div>
-          </div>
-        </div>
-        <div class="admin-communications-detail-grid">
-          <div class="admin-communications-detail-item">
-            <span>Linked request ID</span>
-            <strong>${escapeHtml(session.requestId || "Not linked")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Source name</span>
-            <strong>${escapeHtml(session.sourceName || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Variety</span>
-            <strong>${escapeHtml(session.variety || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Batch / lot</span>
-            <strong>${escapeHtml(session.batchLot || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Status</span>
-            <strong>${escapeHtml(getAdminCstpTestSessionStatusLabel(session.status))}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Request source</span>
-            <strong>${escapeHtml(linkedRequest?.sourceName || "Not available")}</strong>
-          </div>
-        </div>
-        <div class="admin-communications-quick-actions admin-cstp-lab-actions">
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(session.id)}">Start Test</button>
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(session.id)}">Mark Completed</button>
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(session.id)}"${canPrepareReport ? "" : " disabled"}>${session.reportPreparedAt || session.publishedAt ? "Open Report" : "Prepare Report"}</button>
-        </div>
-        <form class="admin-communications-editor" data-admin-cstp-session-form="${escapeHtml(session.id)}">
-          <div class="admin-communications-editor-head">
-            <div>
-              <p class="eyebrow">Session Detail</p>
-              <p class="muted">Controlled CSTP session fields only. These do not alter member grow-session logic or public community data.</p>
-            </div>
-          </div>
-          <div class="admin-communications-editor-grid">
-            <label class="admin-message-field">
-              <span>Source name</span>
-              <input name="sourceName" type="text" maxlength="160" value="${escapeHtml(session.sourceName || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Variety</span>
-              <input name="variety" type="text" maxlength="160" value="${escapeHtml(session.variety || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Batch / lot</span>
-              <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(session.batchLot || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Sample size</span>
-              <input name="sampleSize" type="text" maxlength="80" value="${escapeHtml(session.sampleSize || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Device ID</span>
-              <input name="deviceId" type="text" maxlength="120" value="${escapeHtml(session.deviceId || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Test method</span>
-              <input name="testMethod" type="text" maxlength="160" value="${escapeHtml(session.testMethod || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Temperature</span>
-              <input name="temperature" type="text" maxlength="120" value="${escapeHtml(session.temperature || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Status</span>
-              <select name="status">
-                ${ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS.map((option) => `
-                  <option value="${escapeHtml(option.key)}"${option.key === session.status ? " selected" : ""}>${escapeHtml(option.label)}</option>
-                `).join("")}
-              </select>
-            </label>
-            <label class="admin-message-field">
-              <span>Started at</span>
-              <input name="startedAt" type="text" maxlength="120" placeholder="May 3, 2026 10:00 AM" value="${escapeHtml(session.startedAt || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Completed at</span>
-              <input name="completedAt" type="text" maxlength="120" placeholder="May 6, 2026 2:00 PM" value="${escapeHtml(session.completedAt || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Germinated count</span>
-              <input name="germinatedCount" type="text" maxlength="80" value="${escapeHtml(session.germinatedCount || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Final germination %</span>
-              <input name="finalGerminationPercent" type="text" maxlength="80" value="${escapeHtml(session.finalGerminationPercent || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Total germination time</span>
-              <input name="totalGerminationTime" type="text" maxlength="120" value="${escapeHtml(session.totalGerminationTime || "")}">
-            </label>
-            <label class="admin-message-field">
-              <span>Qualification result</span>
-              <select name="qualificationResult">
-                <option value="">Select a result</option>
-                ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
-                  <option value="${escapeHtml(option.key)}"${option.key === session.qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
-                `).join("")}
-              </select>
-            </label>
-            <label class="admin-message-field admin-cstp-lab-field-full">
-              <span>Observations</span>
-              <textarea name="observations" rows="5" maxlength="2000">${escapeHtml(session.observations || "")}</textarea>
-            </label>
-          </div>
-          <div class="inline-actions">
-            <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--primary">Save CSTP Session</button>
-          </div>
-        </form>
-      </section>
-    </section>
-  `;
+  app.replaceChildren(cloneTemplate(templates.detail));
+
+  const headerCopy = document.querySelector(".app-section-header-main div");
+  const headerEyebrow = headerCopy?.querySelector(".eyebrow");
+  const detailTitle = document.querySelector("#detail-title");
+  const topBackLink = document.querySelector(".app-section-header .inline-actions a");
+  const deleteButton = document.querySelector("#delete-session");
+  const bottomBackLink = document.querySelector(".form-actions a");
+  const meta = document.querySelector("#detail-meta");
+  const layoutReference = document.querySelector("#detail-layout-reference");
+  const detailPartitionWorkTitle = document.querySelector("#detail-partition-work-title");
+  const detailStatusField = document.querySelector("#detail-session-status-control");
+  const detailStatusTrigger = document.querySelector("#detail-session-status-trigger");
+  const detailStatusReminder = document.querySelector("#detail-session-status-reminder");
+  const detailSuppliesAnchor = document.querySelector("#detail-supplies-anchor");
+  const detailChartShell = document.querySelector("#detail-chart-shell");
+  const detailChartHeader = document.querySelector("#detail-chart-header");
+  const detailPartitions = document.querySelector("#detail-partitions");
+  const detailLifecycleSection = document.querySelector("#detail-lifecycle-section");
+  const detailLifecycleSummary = document.querySelector("#detail-lifecycle-summary");
+  const detailTimingSection = document.querySelector("#detail-timing-section");
+  const detailTimingSummary = document.querySelector("#detail-timing-summary");
+  const detailProgressSection = document.querySelector("#detail-progress-section");
+  const detailProgressChart = document.querySelector("#detail-progress-chart");
+  const detailRunProgressSection = document.querySelector("#detail-run-progress-section");
+  const detailRunProgressSummary = document.querySelector("#detail-run-progress-summary");
+  const detailNotesField = document.querySelector("#detail-session-notes");
+  const detailNotesLabel = document.querySelector("#detail-session-notes-label span:last-child");
+  const detailNotesHelp = document.querySelector(".session-notes-help");
+  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
+  const detailImageSection = document.querySelector(".session-images-section");
+  const detailImageHeading = document.querySelector("#detail-session-images-label span:last-child");
+  const detailImageLimit = detailImageSection?.querySelector(".session-images-limit");
+  const detailImageUploadLabel = detailImageSection?.querySelector(".session-images-upload > span");
+  const detailImageInput = document.querySelector("#detail-session-images-input");
+  const detailImageGrid = document.querySelector("#detail-session-images-grid");
+  const detailImageMessage = document.querySelector("#detail-session-images-message");
+  const detailSnapshotSection = document.querySelector("#detail-share-snapshot-section");
+  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
+  const detailSaveButton = document.querySelector("#detail-save-session");
+  const detailStatusHelp = document.querySelector(".session-status-help");
+  const detailStatusLabel = document.querySelector(".session-status-label");
+  const detailLifecycleDebug = document.querySelector(".timeline-debug-panel");
+  const detailDescription = document.createElement("p");
+  const detailSummaryTitle = getAdminCstpSessionDisplayTitle(session);
+  const sessionStageValue = mapAdminCstpStatusToSessionStatus(session.status);
+  const hasStartedState = ["active-test", "completed", "report-prepared", "published"].includes(normalizeAdminCstpTestSessionStatus(session.status));
+
+  if (headerEyebrow) {
+    headerEyebrow.textContent = "CSTP Testing Lab";
+  }
+  if (detailTitle) {
+    detailTitle.textContent = detailSummaryTitle;
+  }
+  if (headerCopy) {
+    detailDescription.className = "muted";
+    detailDescription.textContent = "Controlled lab session stored in mock/local CSTP data only. It does not appear in member Sessions, Community Grow, or leaderboard insights.";
+    headerCopy.appendChild(detailDescription);
+  }
+  if (topBackLink) {
+    topBackLink.textContent = "Back to Admin";
+    topBackLink.setAttribute("href", "#admin");
+    topBackLink.classList.add("admin-cstp-button", "admin-cstp-button--utility");
+  }
+  if (bottomBackLink) {
+    bottomBackLink.textContent = "Back to Admin";
+    bottomBackLink.setAttribute("href", "#admin");
+    bottomBackLink.classList.add("admin-cstp-button", "admin-cstp-button--utility");
+  }
+  if (deleteButton) {
+    deleteButton.hidden = true;
+  }
+  if (detailLifecycleDebug) {
+    detailLifecycleDebug.hidden = true;
+  }
+  if (detailSnapshotSection) {
+    detailSnapshotSection.hidden = true;
+  }
+  if (detailNotesLabel) {
+    detailNotesLabel.textContent = "Observations";
+  }
+  if (detailNotesField) {
+    detailNotesField.value = session.observations || "";
+    detailNotesField.placeholder = "Add controlled lab observations, environment notes, or certification context...";
+  }
+  if (detailNotesHelp) {
+    detailNotesHelp.textContent = "Observations stay local to the CSTP lab workflow and are never shown publicly until certification is published.";
+  }
+  if (detailNotesSaveButton) {
+    detailNotesSaveButton.textContent = "Save Observations";
+    detailNotesSaveButton.classList.add("admin-cstp-button", "admin-cstp-button--secondary");
+  }
+  if (detailImageHeading) {
+    detailImageHeading.textContent = "CSTP Test Images";
+  }
+  if (detailImageLimit) {
+    detailImageLimit.textContent = "Mock/local only · Up to 3 images";
+  }
+  if (detailImageUploadLabel) {
+    detailImageUploadLabel.textContent = "Add CSTP images";
+  }
+  if (detailSaveShortcutButton) {
+    detailSaveShortcutButton.textContent = "Save CSTP Session";
+    detailSaveShortcutButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
+  }
+  if (detailSaveButton) {
+    detailSaveButton.textContent = "Save CSTP Session";
+    detailSaveButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
+  }
+  if (detailStatusLabel) {
+    detailStatusLabel.textContent = "CSTP Workflow Status";
+  }
+  if (detailStatusField) {
+    detailStatusField.value = sessionStageValue;
+    syncSessionStatusControlDatasets(detailStatusField, {
+      germinationStartedAt: hasStartedState ? (session.startedAt || "started") : "",
+      firstPlantedAt: Number(session.germinatedCount) > 0 ? (session.completedAt || session.startedAt || "recorded") : "",
+      completedAt: session.completedAt || "",
+    });
+    updateSessionStatusAppearance(detailStatusField, detailStatusTrigger);
+  }
+  if (detailStatusTrigger) {
+    detailStatusTrigger.textContent = getAdminCstpTestSessionStatusLabel(session.status);
+    detailStatusTrigger.disabled = true;
+    detailStatusTrigger.classList.add("admin-cstp-session-status-trigger");
+  }
+  const statusCurrentValue = document.querySelector(".session-status-current-value");
+  if (statusCurrentValue) {
+    statusCurrentValue.textContent = getAdminCstpTestSessionStatusLabel(session.status);
+  }
+  if (detailStatusHelp) {
+    detailStatusHelp.textContent = "Advance this lab run with the CSTP workflow buttons below. Member growth stage controls stay disconnected from CSTP.";
+  }
+  if (detailStatusReminder) {
+    detailStatusReminder.textContent = "Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.";
+    detailStatusReminder.classList.add("is-guidance");
+  }
+  if (detailSuppliesAnchor) {
+    detailSuppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
+  }
+
+  if (meta) {
+    meta.innerHTML = `
+      <article class="meta-card">
+        <strong>CSTP Session ID</strong>
+        <p>${escapeHtml(session.id)}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Linked Request ID</strong>
+        <p>${escapeHtml(session.requestId || "Not linked")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Source Name</strong>
+        <p>${escapeHtml(session.sourceName || linkedRequest?.sourceName || "Not provided")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Variety</strong>
+        <p>${escapeHtml(session.variety || "Not provided")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Batch / Lot</strong>
+        <p>${escapeHtml(session.batchLot || "Not provided")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Sample Size</strong>
+        <p>${escapeHtml(session.sampleSize || "Not recorded")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Device ID</strong>
+        <p>${escapeHtml(session.deviceId || "Not recorded")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Test Method</strong>
+        <p>${escapeHtml(session.testMethod || "Not recorded")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Temperature</strong>
+        <p>${escapeHtml(session.temperature || "Not recorded")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Status</strong>
+        <p>${escapeHtml(getAdminCstpTestSessionStatusLabel(session.status))}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Started At</strong>
+        <p>${escapeHtml(formatAdminCstpSessionDateTime(session.startedAt))}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Completed At</strong>
+        <p>${escapeHtml(formatAdminCstpSessionDateTime(session.completedAt))}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Germinated Count</strong>
+        <p>${escapeHtml(session.germinatedCount || "0")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Final Germination %</strong>
+        <p>${escapeHtml(getAdminCstpSessionDisplayPercent(session))}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Total Germination Time</strong>
+        <p>${escapeHtml(session.totalGerminationTime || "Not recorded")}</p>
+      </article>
+      <article class="meta-card">
+        <strong>Qualification Result</strong>
+        <p>${escapeHtml(getAdminCstpQualificationLabel(session.qualificationResult))}</p>
+      </article>
+    `;
+  }
+
+  renderSystemLayoutReference(layoutReference, session.systemType);
+  if (detailPartitionWorkTitle) {
+    updatePartitionWorkHeading(detailPartitionWorkTitle, session.systemType);
+  }
+  if (detailPartitions) {
+    renderAdminCstpPartitionDetailRows(detailPartitions, session);
+  }
+  applySessionStatusLayout(detailChartShell, detailChartHeader, detailPartitions, sessionStageValue);
+  updatePartitionProgressChart(session.partitions || [], detailProgressChart, detailProgressSection);
+  updateAdminCstpSessionTimingSummary(detailTimingSummary, detailTimingSection, session);
+  updateRunProgressSummary(detailRunProgressSummary, detailRunProgressSection, sessionStageValue, session.partitions || []);
+  updateSessionLifecycleTimeline(detailLifecycleSummary, detailLifecycleSection, buildAdminCstpLifecycleState(session));
+  initializeSessionImageState(detailImageSection, {
+    input: detailImageInput,
+    grid: detailImageGrid,
+    message: detailImageMessage,
+    images: session.sessionImages || [],
+    editable: true,
+    persistFiles: (files, existingImages) => addAdminCstpSessionImageFiles(session.id, files, existingImages),
+    removeImage: (imageToRemove, existingImages) => removeAdminCstpSessionImage(session.id, imageToRemove, existingImages),
+  });
 
   bindAdminCstpTestSessionPage(session.id);
 }
 
 function bindAdminCstpTestSessionPage(sessionId = "") {
-  const form = app.querySelector("[data-admin-cstp-session-form]");
-  if (!(form instanceof HTMLFormElement)) {
-    return;
-  }
-
   app.querySelectorAll("[data-admin-cstp-session-action]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpSessionBound === "true") {
       return;
@@ -25551,35 +26089,97 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       renderAdminCstpTestSessionPage(sessionId);
     });
   });
+  const form = app.querySelector("[data-admin-cstp-session-form]");
+  const detailNotesField = document.querySelector("#detail-session-notes");
+  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
+  const detailNotesMessage = document.querySelector("#detail-session-notes-message");
+  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
+  const detailSaveButton = document.querySelector("#detail-save-session");
+  const detailSaveMessage = document.querySelector("#detail-save-message");
 
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
+  const persistAdminCstpSession = () => {
     const existingSession = getAdminCstpTestSessionById(sessionId);
-    if (!existingSession) {
-      return;
+    if (!existingSession || !(form instanceof HTMLFormElement)) {
+      return null;
     }
 
     const formData = new FormData(form);
-    updateAdminCstpAssignedSession(sessionId, {
+    const sourceName = String(formData.get("sourceName") || "").trim();
+    const variety = String(formData.get("variety") || "").trim();
+    const sampleSize = String(formData.get("sampleSize") || "").trim();
+    const germinatedCount = String(formData.get("germinatedCount") || "").trim();
+
+    return updateAdminCstpAssignedSession(sessionId, {
       ...existingSession,
-      sourceName: String(formData.get("sourceName") || "").trim(),
-      variety: String(formData.get("variety") || "").trim(),
+      sourceName,
+      variety,
       batchLot: String(formData.get("batchLot") || "").trim(),
-      sampleSize: String(formData.get("sampleSize") || "").trim(),
+      sampleSize,
       deviceId: String(formData.get("deviceId") || "").trim(),
       testMethod: String(formData.get("testMethod") || "").trim(),
       temperature: String(formData.get("temperature") || "").trim(),
-      status: String(formData.get("status") || "").trim(),
       startedAt: String(formData.get("startedAt") || "").trim(),
       completedAt: String(formData.get("completedAt") || "").trim(),
-      germinatedCount: String(formData.get("germinatedCount") || "").trim(),
+      germinatedCount,
       finalGerminationPercent: String(formData.get("finalGerminationPercent") || "").trim(),
       totalGerminationTime: String(formData.get("totalGerminationTime") || "").trim(),
       qualificationResult: String(formData.get("qualificationResult") || "").trim(),
-      observations: String(formData.get("observations") || "").trim(),
+      observations: String(detailNotesField?.value || "").trim(),
+      partitions: normalizeAdminCstpSessionPartitions(
+        existingSession.partitions || [],
+        existingSession.systemType,
+        {
+          sourceName,
+          variety,
+          sampleSize,
+          germinatedCount,
+        },
+      ),
     });
-    renderAdminCstpTestSessionPage(sessionId);
+  };
+
+  if (form instanceof HTMLFormElement) {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      persistAdminCstpSession();
+      renderAdminCstpTestSessionPage(sessionId);
+    });
+  }
+
+  detailNotesField?.addEventListener("input", () => {
+    if (detailNotesMessage) {
+      detailNotesMessage.textContent = "";
+      detailNotesMessage.classList.remove("is-error");
+    }
   });
+
+  detailNotesSaveButton?.addEventListener("click", () => {
+    const existingSession = getAdminCstpTestSessionById(sessionId);
+    if (!existingSession || !detailNotesField) {
+      return;
+    }
+
+    updateAdminCstpAssignedSession(sessionId, {
+      ...existingSession,
+      observations: detailNotesField.value.trim(),
+    });
+    if (detailNotesMessage) {
+      detailNotesMessage.textContent = "Observations saved.";
+      detailNotesMessage.classList.remove("is-error");
+    }
+  });
+
+  const handleSaveClick = () => {
+    const savedSession = persistAdminCstpSession();
+    if (detailSaveMessage) {
+      detailSaveMessage.textContent = savedSession ? "CSTP session saved." : "Could not save CSTP session.";
+      detailSaveMessage.classList.toggle("is-error", !savedSession);
+    }
+    renderAdminCstpTestSessionPage(sessionId);
+  };
+
+  detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
+  detailSaveButton?.addEventListener("click", handleSaveClick);
 }
 
 function renderAdminCstpReportPage(recordId = "") {

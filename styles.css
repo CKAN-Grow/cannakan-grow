@@ -7866,6 +7866,23 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 14px;
 }
 
+.admin-cstp-session-workspace {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 1.35rem;
+}
+
+.admin-cstp-session-editor-panel {
+  margin: 0;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  box-shadow: 0 14px 36px rgba(15, 20, 15, 0.08);
+}
+
+.admin-cstp-session-status-trigger:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
 .admin-cstp-button {
   display: inline-flex;
   align-items: center;
@@ -10299,6 +10316,13 @@ body.theme-dark .admin-cstp-button--utility:focus-visible {
   box-shadow:
     0 0 10px rgba(148, 209, 89, 0.14),
     0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-session-editor-panel {
+  border-color: rgba(148, 209, 89, 0.24);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.06);
 }
 
 body.theme-dark .admin-cstp-button[disabled],
