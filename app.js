@@ -111,7 +111,7 @@ const DEFAULT_GROW_JOKES = Object.freeze([
 ]);
 const DEFAULT_GROW_FACTS = Object.freeze([
   "Seeds need moisture, oxygen, and warmth to begin germination.",
-  "Many seeds germinate best when the growing medium stays evenly moist, not soaked.",
+  "Many seeds germinate more consistently when the growing medium stays evenly moist, not soaked.",
   "Good airflow helps seedlings grow sturdier and reduces damping-off risk.",
   "Most seedlings stretch when light is too weak or too far away.",
   "Warm root-zone temperatures often improve germination speed and consistency.",
@@ -293,8 +293,8 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     activityType: "approved-snapshot",
     typeLabel: "Grow Network update",
     typeMeta: "Leaderboard highlight",
-    title: "SeedVault became this month’s top source tester",
-    summary: "Auto-heavy runs are leading this month’s source chart.",
+    title: "SeedVault logged the highest recorded source activity this month",
+    summary: "Auto-heavy runs are currently leading this month’s source chart based on recorded sessions.",
     germinationRateLabel: "96%",
     sourceLabel: "Auto",
     occurredAt: "2026-04-30T13:38:00.000Z",
@@ -12688,13 +12688,13 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
   const cards = [
     {
       badge: "This Month",
-      title: "Top Seed Type",
+      title: "Most-used Seed Type",
       value: thisMonthTopSeedType?.name || "Not enough data yet",
       isEmpty: !thisMonthTopSeedType?.name,
     },
     {
       badge: "All-Time",
-      title: "Top Seed Type",
+      title: "Most-used Seed Type",
       value: allTimeTopSeedType?.name || "Not enough data yet",
       isEmpty: !allTimeTopSeedType?.name,
     },
@@ -13274,7 +13274,7 @@ function renderGalleryLeaderboardSection() {
         <div>
           <p class="eyebrow">Leaderboard Insights</p>
           <h3>Community Grow Rankings</h3>
-          <p class="muted">Approved public snapshots only. Rankings use germination performance only, with a 3-snapshot minimum per source or seed variety.</p>
+          <p class="muted">Approved public snapshots only. Rankings are based on recorded community session data, using germination performance with a 3-snapshot minimum per source or seed variety.</p>
         </div>
       </div>
     </div>
@@ -13284,31 +13284,31 @@ function renderGalleryLeaderboardSection() {
     </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Sources", "This Month", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Sources", "This month based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("#1 Source", "Longest Streak on Top", "streak")}
+        ${renderGalleryLeaderboardCardHeading("#1 Source", "Longest streak on top based on recorded sessions", "streak")}
         ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest Streak on Top", "streak")}
+        ${renderGalleryLeaderboardCardHeading("#1 Seed Variety", "Longest streak on top based on recorded sessions", "streak")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Seed Varieties", "This Month", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top 3 Seed Varieties", "This month based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All Time", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Top 3 Sources", "All-time based on recorded sessions", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
-        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All Time", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Top 3 Seed Varieties", "All-time based on recorded sessions", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
-    <p class="gallery-leaderboard-disclaimer">Results reflect KAN system session data, not source performance alone.</p>
+    <p class="gallery-leaderboard-disclaimer">Results reflect KAN system community session data, not source performance alone. Informational only. Results may vary.</p>
   `;
 
   return section;
@@ -13362,21 +13362,21 @@ function renderHomeGalleryRankingsTeaser() {
       formatValue: (entry) => entry.name,
     },
     {
-      label: "This Month Top Source",
+      label: "This Month Leading Source",
       toneClass: "is-gold",
       iconType: "source",
       entry: rankings.topSource,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "This Month Top Seed Variety",
+      label: "This Month Leading Seed Variety",
       toneClass: "is-silver",
       iconType: "variety",
       entry: rankings.topVariety,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "This Month Top Seed Type",
+      label: "This Month Most-used Seed Type",
       toneClass: "is-bronze",
       iconType: "seed-type",
       entry: rankings.topSeedType,
@@ -13393,7 +13393,7 @@ function renderHomeGalleryRankingsTeaser() {
             <div>
               <p class="eyebrow">Leaderboard Preview</p>
               <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
-              <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only.</p>
+              <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only, based on community session data this month.</p>
             </div>
           </div>
           <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
@@ -18898,7 +18898,7 @@ function renderHomeCstpOverviewSectionMarkup() {
         <div class="home-cstp-overview-intro">
           <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
           <h2>Cannakan Seed Testing Program (CSTP)</h2>
-          <p class="home-cstp-overview-description">Controlled, batch-based seed testing for verified germination performance.</p>
+          <p class="home-cstp-overview-description">Controlled, batch-based seed testing for measured germination results.</p>
           <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
@@ -19108,9 +19108,9 @@ function renderSourcesLandingPage() {
             <p class="eyebrow">Tested Sources</p>
             <h2>Tested Sources</h2>
             <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
-            <p class="source-directory-trust-note">Listings reflect community data and CSTP testing. Results may vary.</p>
+            <p class="source-directory-trust-note">Listings reflect community data and CSTP testing. Based on user-submitted sessions. Results may vary. Informational only.</p>
             <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
-            <p class="source-directory-helper-note">CSTP testing can be requested, but certification is never guaranteed.</p>
+            <p class="source-directory-helper-note">CSTP testing can be requested, but certification depends on batch-specific measured results.</p>
           </div>
         </div>
       </div>
@@ -19184,22 +19184,22 @@ function renderSourceProfilePage(sourceId = "") {
     {
       label: "Avg Germ Rate",
       value: sourceProfile.community.avgRate,
-      detail: "approved public Community Grow sessions",
+      detail: "based on user-submitted public sessions",
     },
     {
       label: "Total Sessions",
       value: sourceProfile.community.sessions,
-      detail: "approved public sessions counted",
+      detail: "user-submitted public sessions counted",
     },
     {
       label: "Popularity Rank",
       value: sourceProfile.community.rank,
-      detail: "relative to tracked source activity",
+      detail: "based on recorded user-submitted sessions",
     },
     {
       label: "Seeds Tracked",
       value: sourceProfile.community.seedsTracked,
-      detail: "seeds counted in community data",
+      detail: "seeds counted from user-submitted sessions",
     },
   ];
   const cstpState = getSourceProfileCstpState(sourceProfile);
@@ -19239,7 +19239,7 @@ function renderSourceProfilePage(sourceId = "") {
           <div>
             <p class="eyebrow">Source Profile</p>
             <h2>${escapeHtml(sourceProfile.name)}</h2>
-            <p class="muted">Community performance appears first, with CSTP shown as validation for this specific source record.</p>
+            <p class="muted">Community data appears first, with CSTP shown as batch-specific testing context for this source record.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -19286,7 +19286,7 @@ function renderSourceProfilePage(sourceId = "") {
           <div>
             <p class="eyebrow">${escapeHtml(cstpState.eyebrow)}</p>
             <h3>${escapeHtml(cstpState.heading)}</h3>
-            <p class="muted">Independent validation shown after community data.</p>
+            <p class="muted">Independent batch-specific test data shown after community data.</p>
           </div>
         </div>
         <div class="source-profile-verification-layout">
@@ -19315,7 +19315,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
         </div>
-        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>CSTP results are batch-based and do not guarantee future performance.</p>
+        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>CSTP results are batch-specific, reflect measured test outcomes, and may not match future performance. Informational only.</p>
       </article>
 
       <article class="card source-profile-track-record-card">
@@ -19335,7 +19335,7 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="source-profile-request-copy">
           <p class="eyebrow">Source Actions</p>
           <h3>Need to update or review this source?</h3>
-          <p class="muted">CSTP testing can be requested, but certification is never guaranteed.</p>
+          <p class="muted">CSTP testing can be requested, but certification depends on batch-specific measured results. Informational only.</p>
         </div>
         <div class="source-profile-request-actions">
           <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
@@ -19389,12 +19389,12 @@ function renderDataTestingDisclaimerPage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Community Data</p>
           <h3>Community results may vary</h3>
-          <p class="muted">Community data is user-submitted and can vary based on grower inputs, handling, environment, reporting volume, and other real-world factors.</p>
+          <p class="muted">Community data is user-submitted and can vary based on grower inputs, handling, environment, reporting volume, and other real-world factors. Informational only.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">CSTP Scope</p>
           <h3>CSTP is batch-based</h3>
-          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time and do not guarantee future performance across other batches or conditions.</p>
+          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time and may not match future performance across other batches or conditions.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Neutrality</p>
@@ -19442,12 +19442,12 @@ function renderTermsOfServicePage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Use of Platform</p>
           <h3>Informational tool</h3>
-          <p class="muted">Cannakan is provided as an informational platform for germination tracking, community comparison, and CSTP reference data. It is not a guarantee tool or professional advisory service.</p>
+          <p class="muted">Cannakan is provided as an informational platform for germination tracking, community comparison, and CSTP reference data. It is not an assurance tool or professional advisory service.</p>
         </article>
         <article class="card disclaimer-card">
-          <p class="eyebrow">Guarantees</p>
-          <h3>No guarantees</h3>
-          <p class="muted">We do not guarantee germination outcomes, source performance, CSTP results, uptime, or the completeness of any community-submitted information.</p>
+          <p class="eyebrow">Outcome Limits</p>
+          <h3>No outcome assurances</h3>
+          <p class="muted">We do not assure germination outcomes, source performance, CSTP results, uptime, or the completeness of any community-submitted information.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Community Data</p>
@@ -19457,7 +19457,7 @@ function renderTermsOfServicePage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">CSTP Scope</p>
           <h3>Batch-based testing only</h3>
-          <p class="muted">CSTP results apply to tested batches under controlled conditions at a point in time. They do not guarantee future performance across other batches, storage conditions, or user environments.</p>
+          <p class="muted">CSTP results apply to tested batches under controlled conditions at a point in time. They may not match future performance across other batches, storage conditions, or user environments.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Neutrality</p>
@@ -19739,7 +19739,7 @@ function renderContactFormFieldsMarkup(reasonKey = "") {
           <span>Message</span>
           <textarea name="message" rows="6" maxlength="2000" required></textarea>
         </label>
-        <p class="contact-form-note">CSTP testing can be requested, but certification is not guaranteed. Badges are earned only through qualifying controlled test results.</p>
+        <p class="contact-form-note">CSTP testing can be requested, but certification depends on batch-specific measured results. Badges are earned only through qualifying controlled test results.</p>
       `;
     case "source-correction":
       return `
@@ -25148,7 +25148,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
   const filteredActiveRows = filteredRowsBeforeInclusion.filter((row) => row.isInActiveRankingSource);
   const calculations = {
     monthSource: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "This Month Top Source",
+      title: "This Month Leading Source",
       label: "source",
       minSnapshots: 3,
       getLabel: (row) => row.sourceLabel,
@@ -25156,7 +25156,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
       dateMode: "month",
     }),
     allSource: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "All-Time Top Source",
+      title: "All-Time Leading Source",
       label: "source",
       minSnapshots: 3,
       getLabel: (row) => row.sourceLabel,
@@ -25164,7 +25164,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
       dateMode: "all",
     }),
     monthSeedType: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "This Month Top Seed Type",
+      title: "This Month Most-used Seed Type",
       label: "seed type",
       minSnapshots: 3,
       getLabel: (row) => row.seedTypeLabel,
@@ -25172,7 +25172,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
       dateMode: "month",
     }),
     allSeedType: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "All-Time Top Seed Type",
+      title: "All-Time Most-used Seed Type",
       label: "seed type",
       minSnapshots: 3,
       getLabel: (row) => row.seedTypeLabel,
@@ -25180,7 +25180,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
       dateMode: "all",
     }),
     monthSessions: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "This Month Top 3 Sessions",
+      title: "This Month Leading 3 Sessions",
       label: "session",
       minSnapshots: 1,
       getLabel: (row) => row.sessionName,
@@ -25188,7 +25188,7 @@ function buildLeaderboardAuditState(filters = appState.leaderboardAuditFilters) 
       dateMode: "month",
     }),
     allSessions: buildLeaderboardAuditCalculation(filteredActiveRows, {
-      title: "All-Time Top 3 Sessions",
+      title: "All-Time Leading 3 Sessions",
       label: "session",
       minSnapshots: 1,
       getLabel: (row) => row.sessionName,
@@ -25599,12 +25599,12 @@ function buildLeaderboardAuditSummaryText(state) {
     `Active filters: ${filtersLabel}`,
     `Visible snapshot rows: ${state.rows.length}`,
     `Active ranking snapshot rows: ${state.filteredActiveRowCount}`,
-    `This Month Top Source: ${formatLeaderboardAuditMetric(state.calculations.monthSource.topEntry)}`,
-    `All-Time Top Source: ${formatLeaderboardAuditMetric(state.calculations.allSource.topEntry)}`,
-    `This Month Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.monthSeedType.topEntry)}`,
-    `All-Time Top Seed Type: ${formatLeaderboardAuditMetric(state.calculations.allSeedType.topEntry)}`,
-    `This Month Top 3 Sessions: ${state.calculations.monthSessions.topEntries.length ? state.calculations.monthSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
-    `All-Time Top 3 Sessions: ${state.calculations.allSessions.topEntries.length ? state.calculations.allSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
+    `This Month Leading Source (based on community session data): ${formatLeaderboardAuditMetric(state.calculations.monthSource.topEntry)}`,
+    `All-Time Leading Source (based on recorded sessions): ${formatLeaderboardAuditMetric(state.calculations.allSource.topEntry)}`,
+    `This Month Most-used Seed Type (based on community session data): ${formatLeaderboardAuditMetric(state.calculations.monthSeedType.topEntry)}`,
+    `All-Time Most-used Seed Type (based on recorded sessions): ${formatLeaderboardAuditMetric(state.calculations.allSeedType.topEntry)}`,
+    `This Month Leading 3 Sessions (based on community session data): ${state.calculations.monthSessions.topEntries.length ? state.calculations.monthSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
+    `All-Time Leading 3 Sessions (based on recorded sessions): ${state.calculations.allSessions.topEntries.length ? state.calculations.allSessions.topEntries.map((entry) => formatLeaderboardAuditMetric(entry)).join(", ") : "No qualifying data"}`,
   ];
 
   return summaryLines.join("\n");
