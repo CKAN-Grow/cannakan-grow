@@ -816,6 +816,11 @@ const ADMIN_CSTP_TEST_SESSION_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "report-prepared", label: "Report Prepared" }),
   Object.freeze({ key: "published", label: "Published" }),
 ]);
+const ADMIN_CSTP_TESTER_OPTIONS = Object.freeze([
+  Object.freeze({ id: "tester-don", name: "Don", email: "don@cannakan.com" }),
+  Object.freeze({ id: "tester-mo", name: "Mo", email: "mo@cannakan.com" }),
+  Object.freeze({ id: "tester-joe-john", name: "Joe John", email: "joe.john@cannakan.com" }),
+]);
 const ADMIN_COMMUNICATIONS_MOCK_MESSAGES = Object.freeze([
   Object.freeze({
     id: "admin-comm-cstp-1",
@@ -24641,6 +24646,12 @@ function normalizeAdminCstpTestSession(session = null, fallbackSession = {}) {
     qualificationResult: normalizeAdminCstpQualificationResult(
       source.qualificationResult || source.qualification_result || fallback.qualificationResult || fallback.qualification_result || "",
     ),
+    assignedTesterId: String(source.assignedTesterId || source.assigned_tester_id || fallback.assignedTesterId || fallback.assigned_tester_id || "").trim(),
+    assignedTesterName: String(source.assignedTesterName || source.assigned_tester_name || fallback.assignedTesterName || fallback.assigned_tester_name || "").trim(),
+    assignedTesterEmail: String(source.assignedTesterEmail || source.assigned_tester_email || fallback.assignedTesterEmail || fallback.assigned_tester_email || "").trim(),
+    assignedAt: String(source.assignedAt || source.assigned_at || fallback.assignedAt || fallback.assigned_at || "").trim(),
+    assignedBy: String(source.assignedBy || source.assigned_by || fallback.assignedBy || fallback.assigned_by || "").trim(),
+    testPerformedBy: String(source.testPerformedBy || source.test_performed_by || fallback.testPerformedBy || fallback.test_performed_by || "").trim(),
   };
 }
 
@@ -24712,6 +24723,12 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
     reportPreparedAt: String(source.reportPreparedAt || source.report_prepared_at || fallback.reportPreparedAt || fallback.report_prepared_at || "").trim(),
     publishedAt: String(source.publishedAt || source.published_at || fallback.publishedAt || fallback.published_at || "").trim(),
     certificationPublished: source.certificationPublished === true || fallback.certificationPublished === true,
+    assignedTesterId: String(source.assignedTesterId || source.assigned_tester_id || fallback.assignedTesterId || fallback.assigned_tester_id || "").trim(),
+    assignedTesterName: String(source.assignedTesterName || source.assigned_tester_name || fallback.assignedTesterName || fallback.assigned_tester_name || "").trim(),
+    assignedTesterEmail: String(source.assignedTesterEmail || source.assigned_tester_email || fallback.assignedTesterEmail || fallback.assigned_tester_email || "").trim(),
+    assignedAt: String(source.assignedAt || source.assigned_at || fallback.assignedAt || fallback.assigned_at || "").trim(),
+    assignedBy: String(source.assignedBy || source.assigned_by || fallback.assignedBy || fallback.assigned_by || "").trim(),
+    testPerformedBy: String(source.testPerformedBy || source.test_performed_by || fallback.testPerformedBy || fallback.test_performed_by || "").trim(),
     germinatedCount: String(source.germinatedCount || source.germinated_count || fallback.germinatedCount || fallback.germinated_count || "").trim(),
     finalGerminationPercent: String(source.finalGerminationPercent || source.final_germination_percent || fallback.finalGerminationPercent || fallback.final_germination_percent || "").trim(),
     totalGerminationTime: String(source.totalGerminationTime || source.total_germination_time || fallback.totalGerminationTime || fallback.total_germination_time || "").trim(),
@@ -25352,6 +25369,8 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
           <div>
             <p class="eyebrow">CSTP Summary</p>
             <p class="muted">Use the partition chart below as the primary lab input. This summary only keeps the essential batch and certification controls.</p>
+            <p class="muted">Test performed by: ${escapeHtml(normalizedSession.testPerformedBy || normalizedSession.assignedTesterName || "Not assigned")}</p>
+            <p class="muted">Future CSTP Tester accounts may access only assigned CSTP tests, not full admin controls.</p>
           </div>
         </div>
         <div class="admin-communications-editor-grid admin-cstp-session-summary-grid">
@@ -25576,6 +25595,12 @@ function buildAdminCstpLabBaseRecordFromCommunication(record = {}) {
     requestId: String(record.id || "").trim(),
     submittedAt: String(record.submittedAt || record.submitted_at || "").trim(),
     assignedSessionId: "",
+    assignedTesterId: "",
+    assignedTesterName: "",
+    assignedTesterEmail: "",
+    assignedAt: "",
+    assignedBy: "",
+    testPerformedBy: "",
     sourceName,
     contactName: String(record.name || "").trim(),
     email: String(record.email || "").trim(),
@@ -25620,6 +25645,12 @@ function normalizeAdminCstpLabRecord(record = null, fallbackRecord = {}) {
     requestId: String(source.requestId || source.request_id || fallback.requestId || fallback.request_id || "").trim(),
     submittedAt: String(source.submittedAt || source.submitted_at || fallback.submittedAt || fallback.submitted_at || "").trim(),
     assignedSessionId: String(source.assignedSessionId || source.assigned_session_id || fallback.assignedSessionId || fallback.assigned_session_id || "").trim(),
+    assignedTesterId: String(source.assignedTesterId || source.assigned_tester_id || fallback.assignedTesterId || fallback.assigned_tester_id || "").trim(),
+    assignedTesterName: String(source.assignedTesterName || source.assigned_tester_name || fallback.assignedTesterName || fallback.assigned_tester_name || "").trim(),
+    assignedTesterEmail: String(source.assignedTesterEmail || source.assigned_tester_email || fallback.assignedTesterEmail || fallback.assigned_tester_email || "").trim(),
+    assignedAt: String(source.assignedAt || source.assigned_at || fallback.assignedAt || fallback.assigned_at || "").trim(),
+    assignedBy: String(source.assignedBy || source.assigned_by || fallback.assignedBy || fallback.assigned_by || "").trim(),
+    testPerformedBy: String(source.testPerformedBy || source.test_performed_by || fallback.testPerformedBy || fallback.test_performed_by || "").trim(),
     sourceName,
     contactName: String(source.contactName || source.contact_name || fallback.contactName || fallback.contact_name || "").trim(),
     email: String(source.email || fallback.email || "").trim(),
@@ -25727,6 +25758,79 @@ function upsertAdminCstpTestSession(record = null) {
   return normalizedRecord;
 }
 
+function getAdminCstpTesterById(testerId = "") {
+  const normalizedTesterId = String(testerId || "").trim();
+  return ADMIN_CSTP_TESTER_OPTIONS.find((tester) => tester.id === normalizedTesterId) || null;
+}
+
+function getAdminCstpAssignmentActorLabel() {
+  return String(getProfileDisplayName() || appState.currentUserEmail || appState.user?.email || "Admin").trim() || "Admin";
+}
+
+function assignAdminCstpTester(record = null, testerId = "") {
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  const tester = getAdminCstpTesterById(testerId);
+  if (!normalizedRecord || !tester) {
+    return null;
+  }
+
+  const timestamp = new Date().toISOString();
+  const assignment = {
+    assignedTesterId: tester.id,
+    assignedTesterName: tester.name,
+    assignedTesterEmail: tester.email,
+    assignedAt: timestamp,
+    assignedBy: getAdminCstpAssignmentActorLabel(),
+    testPerformedBy: tester.name,
+  };
+
+  const updatedRecord = upsertAdminCstpLabRecord({
+    ...normalizedRecord,
+    ...assignment,
+  });
+
+  const assignedSession = getAdminCstpAssignedSessionForRecord(updatedRecord || normalizedRecord);
+  if (assignedSession) {
+    updateAdminCstpAssignedSession(assignedSession.id, {
+      ...assignedSession,
+      ...assignment,
+    });
+  }
+
+  return updatedRecord;
+}
+
+function unassignAdminCstpTester(record = null) {
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  if (!normalizedRecord) {
+    return null;
+  }
+
+  const clearedAssignment = {
+    assignedTesterId: "",
+    assignedTesterName: "",
+    assignedTesterEmail: "",
+    assignedAt: "",
+    assignedBy: "",
+    testPerformedBy: "",
+  };
+
+  const updatedRecord = upsertAdminCstpLabRecord({
+    ...normalizedRecord,
+    ...clearedAssignment,
+  });
+
+  const assignedSession = getAdminCstpAssignedSessionForRecord(updatedRecord || normalizedRecord);
+  if (assignedSession) {
+    updateAdminCstpAssignedSession(assignedSession.id, {
+      ...assignedSession,
+      ...clearedAssignment,
+    });
+  }
+
+  return updatedRecord;
+}
+
 function deleteAdminCstpTestSession(sessionId = "") {
   const normalizedSessionId = String(sessionId || "").trim();
   if (!normalizedSessionId) {
@@ -25786,6 +25890,12 @@ function createAssignedAdminCstpTestSession(record = null) {
     reportPreparedAt: "",
     publishedAt: "",
     certificationPublished: false,
+    assignedTesterId: normalizedRecord.assignedTesterId || "",
+    assignedTesterName: normalizedRecord.assignedTesterName || "",
+    assignedTesterEmail: normalizedRecord.assignedTesterEmail || "",
+    assignedAt: normalizedRecord.assignedAt || "",
+    assignedBy: normalizedRecord.assignedBy || "",
+    testPerformedBy: normalizedRecord.testPerformedBy || normalizedRecord.assignedTesterName || "",
     germinatedCount: normalizedRecord.testSession?.germinatedCount || "",
     finalGerminationPercent: normalizedRecord.testSession?.finalGerminationPercent || "",
     totalGerminationTime: normalizedRecord.testSession?.totalGerminationTime || "",
@@ -26094,6 +26204,12 @@ function syncAdminCstpLabRecordFromAssignedSession(record = null, session = null
   return upsertAdminCstpLabRecord({
     ...normalizedRecord,
     assignedSessionId: normalizedSession.id,
+    assignedTesterId: normalizedSession.assignedTesterId || normalizedRecord.assignedTesterId,
+    assignedTesterName: normalizedSession.assignedTesterName || normalizedRecord.assignedTesterName,
+    assignedTesterEmail: normalizedSession.assignedTesterEmail || normalizedRecord.assignedTesterEmail,
+    assignedAt: normalizedSession.assignedAt || normalizedRecord.assignedAt,
+    assignedBy: normalizedSession.assignedBy || normalizedRecord.assignedBy,
+    testPerformedBy: normalizedSession.testPerformedBy || normalizedRecord.testPerformedBy,
     status: nextStatus,
     testStartedAt: normalizedSession.startedAt || normalizedRecord.testStartedAt,
     testCompletedAt: normalizedSession.completedAt || normalizedRecord.testCompletedAt,
@@ -26115,6 +26231,12 @@ function syncAdminCstpLabRecordFromAssignedSession(record = null, session = null
       finalGerminationPercent: normalizedSession.finalGerminationPercent,
       totalGerminationTime: normalizedSession.totalGerminationTime,
       qualificationResult: normalizedSession.qualificationResult,
+      assignedTesterId: normalizedSession.assignedTesterId || normalizedRecord.testSession?.assignedTesterId || "",
+      assignedTesterName: normalizedSession.assignedTesterName || normalizedRecord.testSession?.assignedTesterName || "",
+      assignedTesterEmail: normalizedSession.assignedTesterEmail || normalizedRecord.testSession?.assignedTesterEmail || "",
+      assignedAt: normalizedSession.assignedAt || normalizedRecord.testSession?.assignedAt || "",
+      assignedBy: normalizedSession.assignedBy || normalizedRecord.testSession?.assignedBy || "",
+      testPerformedBy: normalizedSession.testPerformedBy || normalizedRecord.testSession?.testPerformedBy || "",
     },
   });
 }
@@ -26268,6 +26390,69 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
   `;
 }
 
+function renderAdminCstpAssignedTesterSectionMarkup(record = null) {
+  if (!record) {
+    return "";
+  }
+
+  const selectedTesterId = String(record.assignedTesterId || "").trim();
+  const isAssigned = Boolean(selectedTesterId && record.assignedTesterName);
+  const assignButtonLabel = isAssigned ? "Reassign Tester" : "Assign Tester";
+
+  return `
+    <section class="admin-cstp-assigned-session card">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">Assigned Tester</p>
+          <h4>${isAssigned ? "Tester assigned to this CSTP workflow" : "No tester assigned yet"}</h4>
+        </div>
+      </div>
+      <div class="admin-communications-detail-grid">
+        <div class="admin-communications-detail-item">
+          <span>Assigned</span>
+          <strong>${isAssigned ? "Yes" : "No"}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Tester name</span>
+          <strong>${escapeHtml(record.assignedTesterName || "Not assigned")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Tester email</span>
+          <strong>${escapeHtml(record.assignedTesterEmail || "Not assigned")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Assigned date</span>
+          <strong>${escapeHtml(record.assignedAt ? formatAdminTimestamp(record.assignedAt) : "Not assigned")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Assigned by</span>
+          <strong>${escapeHtml(record.assignedBy || "Not assigned")}</strong>
+        </div>
+      </div>
+      <form class="admin-communications-editor admin-cstp-assigned-tester-form" data-admin-cstp-tester-form="${escapeHtml(record.id)}">
+        <div class="admin-communications-editor-grid">
+          <label class="admin-message-field">
+            <span>Assign Tester</span>
+            <select name="assignedTesterId">
+              <option value="">Select a tester</option>
+              ${ADMIN_CSTP_TESTER_OPTIONS.map((tester) => `
+                <option value="${escapeHtml(tester.id)}"${tester.id === selectedTesterId ? " selected" : ""}>${escapeHtml(`${tester.name} (${tester.email})`)}</option>
+              `).join("")}
+            </select>
+            <p class="admin-message-help-text">Future CSTP Tester accounts may access only assigned CSTP tests, not full admin controls.</p>
+          </label>
+        </div>
+        <div class="inline-actions admin-cstp-lab-actions">
+          <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--secondary">${assignButtonLabel}</button>
+          ${isAssigned
+            ? `<button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--warning" data-admin-cstp-lab-action="unassign-tester" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Unassign Tester</button>`
+            : ""}
+        </div>
+      </form>
+    </section>
+  `;
+}
+
 function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
   const rows = getFilteredAdminCstpLabRecords(activeStatus);
   const selectedRecord = rows.find((row) => row.id === selectedId) || rows[0] || null;
@@ -26337,6 +26522,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         </div>
       </div>
       ${renderAdminCstpLabActionButtons(selectedRecord)}
+      ${renderAdminCstpAssignedTesterSectionMarkup(selectedRecord)}
       ${renderAdminCstpAssignedSessionSectionMarkup(selectedRecord)}
       <div class="admin-communications-detail-grid admin-cstp-lab-timeline-grid">
         ${renderAdminCstpLabTimingItem("Accepted", selectedRecord.acceptedAt)}
@@ -26566,6 +26752,15 @@ function bindAdminCstpLabSection(scope = app) {
           renderWorkspace(activeStatus, recordId);
           return;
         }
+        if (actionKey === "unassign-tester") {
+          const shouldUnassign = window.confirm("Unassign this CSTP tester from the request and any connected CSTP session?");
+          if (!shouldUnassign) {
+            return;
+          }
+          unassignAdminCstpTester(record);
+          renderWorkspace(activeStatus, recordId);
+          return;
+        }
         if (actionKey === "prepare-report") {
           const assignedSession = getAdminCstpAssignedSessionForRecord(record);
           if (!assignedSession || !canPrepareAdminCstpReport(assignedSession)) {
@@ -26599,6 +26794,31 @@ function bindAdminCstpLabSection(scope = app) {
         ...existingRecord,
         internalNotes: String(formData.get("internalNotes") || "").trim(),
       });
+      renderWorkspace(activeStatus, recordId);
+    });
+
+    const testerForm = detailShell.querySelector("[data-admin-cstp-tester-form]");
+    if (!(testerForm instanceof HTMLFormElement) || testerForm.dataset.adminCstpLabBound === "true") {
+      return;
+    }
+
+    testerForm.dataset.adminCstpLabBound = "true";
+    testerForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const recordId = String(testerForm.dataset.adminCstpTesterForm || "").trim();
+      const existingRecord = getAdminCstpLabRecords().find((entry) => entry.id === recordId) || null;
+      if (!existingRecord) {
+        return;
+      }
+
+      const formData = new FormData(testerForm);
+      const assignedTesterId = String(formData.get("assignedTesterId") || "").trim();
+      if (!assignedTesterId) {
+        window.alert("Select a tester before assigning this CSTP workflow.");
+        return;
+      }
+
+      assignAdminCstpTester(existingRecord, assignedTesterId);
       renderWorkspace(activeStatus, recordId);
     });
   };
