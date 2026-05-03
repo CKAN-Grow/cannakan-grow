@@ -338,11 +338,13 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "silver", label: "CSTP Silver" }),
   Object.freeze({ key: "tested", label: "Tested - No Certification" }),
   Object.freeze({ key: "not-tested", label: "Not CSTP Tested" }),
+  Object.freeze({ key: "expired", label: "Expired" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
-  Object.freeze({ key: "popularity", label: "Popularity" }),
+  Object.freeze({ key: "popularity", label: "Popularity Rank" }),
   Object.freeze({ key: "avg-rate", label: "Avg Germ Rate" }),
   Object.freeze({ key: "sessions", label: "Total Sessions" }),
+  Object.freeze({ key: "seeds-tracked", label: "Seeds Tracked" }),
   Object.freeze({ key: "recently-tested", label: "Recently Tested" }),
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
@@ -18760,6 +18762,8 @@ function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEF
       return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
     case "sessions":
       return parseSourceDirectoryMetricNumber(source?.community?.sessions);
+    case "seeds-tracked":
+      return parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
     case "recently-tested":
       return getSourceDirectoryCstpPreview(source).testedTime;
     case "popularity":
@@ -18875,7 +18879,7 @@ function renderSourceDirectoryResultsMarkup(records = []) {
   if (!records.length) {
     return `
       <article class="card source-directory-empty-state">
-        <h3>No sources match those filters yet.</h3>
+        <h3>No tested sources match your filters yet.</h3>
         <p class="muted">Try a different search, CSTP filter, or sort option.</p>
       </article>
     `;
@@ -18893,6 +18897,7 @@ function bindSourcesLandingPage() {
   if (!results || !summary) {
     return;
   }
+  const totalSources = getSourceDirectoryMockRecords().length;
 
   const applyDirectoryView = () => {
     const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
@@ -18902,7 +18907,7 @@ function bindSourcesLandingPage() {
       sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
     });
     results.innerHTML = renderSourceDirectoryResultsMarkup(records);
-    summary.textContent = `${records.length} mock source${records.length === 1 ? "" : "s"} shown`;
+    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"}`;
   };
 
   searchInput?.addEventListener("input", () => {
@@ -18953,7 +18958,7 @@ function renderSourcesLandingPage() {
         <div class="source-directory-controls-grid">
           <label class="source-directory-search-field">
             <span class="stat-label">Search</span>
-            <input id="source-directory-search" type="search" placeholder="Search sources..." autocomplete="off">
+            <input id="source-directory-search" type="search" placeholder="Search tested sources..." autocomplete="off">
           </label>
           <label class="source-directory-sort-field">
             <span class="stat-label">Sort By</span>
@@ -18970,7 +18975,7 @@ function renderSourcesLandingPage() {
       </section>
 
       <div class="source-directory-results-head">
-        <p id="source-directory-results-summary" class="muted">0 mock sources shown</p>
+        <p id="source-directory-results-summary" class="muted">Showing 0 of ${getSourceDirectoryMockRecords().length} sources</p>
       </div>
 
       <section id="source-directory-results" class="source-directory-grid" aria-label="Tested source directory mock entries">
