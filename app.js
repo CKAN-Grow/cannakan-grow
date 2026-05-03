@@ -24622,6 +24622,32 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
     || fallback.device_id
     || "A",
   ).trim() || "A";
+  const normalizeReportImageRecord = (entry = null, kind = "", fallbackEntry = {}) => {
+    const sourceEntry = entry && typeof entry === "object" && !Array.isArray(entry) ? entry : {};
+    const fallbackImage = fallbackEntry && typeof fallbackEntry === "object" && !Array.isArray(fallbackEntry) ? fallbackEntry : {};
+    const normalizedKind = String(
+      sourceEntry.kind
+      || fallbackImage.kind
+      || kind
+      || "",
+    ).trim().toLowerCase();
+    if (!normalizedKind) {
+      return null;
+    }
+
+    return {
+      kind: normalizedKind,
+      label: String(
+        sourceEntry.label
+        || fallbackImage.label
+        || (normalizedKind === "first-germinated" ? "First Germinated" : "Completed Test Snapshot"),
+      ).trim(),
+      capturedAt: String(sourceEntry.capturedAt || sourceEntry.captured_at || fallbackImage.capturedAt || fallbackImage.captured_at || "").trim(),
+      generatedAt: String(sourceEntry.generatedAt || sourceEntry.generated_at || fallbackImage.generatedAt || fallbackImage.generated_at || "").trim(),
+    };
+  };
+  const sourceReportImages = source.reportImages || source.report_images || {};
+  const fallbackReportImages = fallback.reportImages || fallback.report_images || {};
 
   return {
     id,
@@ -24655,6 +24681,18 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       || fallback.session_images
       || [],
     ),
+    reportImages: {
+      firstGerminated: normalizeReportImageRecord(
+        sourceReportImages.firstGerminated || sourceReportImages.first_germinated,
+        "first-germinated",
+        fallbackReportImages.firstGerminated || fallbackReportImages.first_germinated,
+      ),
+      completedTestSnapshot: normalizeReportImageRecord(
+        sourceReportImages.completedTestSnapshot || sourceReportImages.completed_test_snapshot,
+        "completed-test-snapshot",
+        fallbackReportImages.completedTestSnapshot || fallbackReportImages.completed_test_snapshot,
+      ),
+    },
     partitions: normalizeAdminCstpSessionPartitions(
       source.partitions || fallback.partitions || [],
       systemType,
@@ -24998,6 +25036,185 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
       </form>
     </section>
   `;
+}
+
+function renderAdminCstpReportImageIconMarkup(kind = "") {
+  if (kind === "first-germinated") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M12 20c3.8 0 6-2.8 6-6.8C18 8 15 5.5 12 4c-3 1.5-6 4-6 9.2C6 17.2 8.2 20 12 20Z"></path>
+        <path d="M12 19V9"></path>
+        <path d="M12 13c1.2-1.8 2.6-2.8 4.4-3.3"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+      <circle cx="9" cy="10" r="1.5"></circle>
+      <path d="m20 15-4.5-4.5L8 18"></path>
+    </svg>
+  `;
+}
+
+function renderAdminCstpReportImageRecordsMarkup(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  const records = [
+    normalizedSession?.reportImages?.firstGerminated,
+    normalizedSession?.reportImages?.completedTestSnapshot,
+  ].filter(Boolean);
+
+  if (!records.length) {
+    return `<p class="muted">No CSTP report images generated yet.</p>`;
+  }
+
+  return records.map((record) => `
+    <article class="snapshot-confirmation-card admin-cstp-report-output-card">
+      <span class="snapshot-action-icon admin-cstp-report-output-icon" aria-hidden="true">
+        ${renderAdminCstpReportImageIconMarkup(record.kind)}
+      </span>
+      <div class="snapshot-action-copy">
+        <h5 class="snapshot-action-title">${escapeHtml(record.label || "CSTP Report Image")}</h5>
+        <p class="snapshot-action-description">Captured ${escapeHtml(formatAdminCstpSessionDateTime(record.capturedAt || record.generatedAt, "Not recorded"))}</p>
+        <p class="admin-cstp-report-output-meta">Stored in local CSTP report data only.</p>
+      </div>
+      <span class="admin-cstp-report-output-stamp">${escapeHtml(record.kind === "first-germinated" ? "Internal" : "Report Ready")}</span>
+    </article>
+  `).join("");
+}
+
+function renderAdminCstpSessionReportImagesSectionMarkup(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  const canCaptureFirstGerminated = Math.max(0, Number(normalizedSession?.germinatedCount) || 0) > 0;
+  const canCaptureCompletedSnapshot = ["completed", "report-prepared", "published"].includes(
+    normalizeAdminCstpTestSessionStatus(normalizedSession?.status || ""),
+  ) || Boolean(normalizedSession?.completedAt || normalizedSession?.reportPreparedAt);
+
+  return `
+    <div class="snapshot-hero">
+      <div class="snapshot-hero-copy">
+        <div class="progress-chart-heading">
+          <p class="eyebrow">Report Images</p>
+          <h4 class="section-title-with-icon">
+            <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+              <circle cx="9" cy="10" r="1.5"></circle>
+              <path d="m20 15-4.5-4.5L8 18"></path>
+            </svg>
+            <span>CSTP Report Image Outputs</span>
+          </h4>
+        </div>
+        <p class="snapshot-help">These internal report records replace member/social snapshot sharing for CSTP sessions.</p>
+      </div>
+    </div>
+    <div class="snapshot-actions admin-cstp-report-output-actions">
+      <div class="snapshot-action-row">
+        <span class="snapshot-action-icon" aria-hidden="true">
+          ${renderAdminCstpReportImageIconMarkup("first-germinated")}
+        </span>
+        <div class="snapshot-action-copy">
+          <h5 class="snapshot-action-title">First Germinated</h5>
+          <p class="snapshot-action-description">Capture the first germination milestone with a timestamp for the internal CSTP report.</p>
+        </div>
+        <button
+          type="button"
+          class="button button-secondary admin-cstp-button admin-cstp-button--secondary"
+          data-admin-cstp-report-image-action="first-germinated"
+          ${canCaptureFirstGerminated ? "" : "disabled"}
+        >
+          ${normalizedSession?.reportImages?.firstGerminated ? "Refresh First Germinated" : "Generate First Germinated"}
+        </button>
+      </div>
+      <div class="snapshot-action-row">
+        <span class="snapshot-action-icon" aria-hidden="true">
+          ${renderAdminCstpReportImageIconMarkup("completed-test-snapshot")}
+        </span>
+        <div class="snapshot-action-copy">
+          <h5 class="snapshot-action-title">Completed Test Snapshot</h5>
+          <p class="snapshot-action-description">Generate the completed CSTP report snapshot when testing is complete or the report is prepared.</p>
+        </div>
+        <button
+          type="button"
+          class="button button-secondary admin-cstp-button admin-cstp-button--primary"
+          data-admin-cstp-report-image-action="completed-test-snapshot"
+          ${canCaptureCompletedSnapshot ? "" : "disabled"}
+        >
+          ${normalizedSession?.reportImages?.completedTestSnapshot ? "Refresh Completed Snapshot" : "Generate Completed Snapshot"}
+        </button>
+      </div>
+    </div>
+    <div class="snapshot-preview admin-cstp-report-output-preview">
+      ${renderAdminCstpReportImageRecordsMarkup(normalizedSession)}
+    </div>
+    <p class="muted admin-cstp-report-output-note">CSTP images stay internal to testing and the final CSTP report. No Community Grow or member snapshot controls are used here.</p>
+  `;
+}
+
+function generateAdminCstpReportImageRecord(session = null, kind = "") {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  const normalizedKind = String(kind || "").trim().toLowerCase();
+  if (!normalizedSession || !normalizedKind) {
+    return null;
+  }
+
+  const generatedAt = new Date().toISOString();
+  const capturedAt = normalizedKind === "first-germinated"
+    ? generatedAt
+    : (normalizedSession.completedAt || normalizedSession.reportPreparedAt || generatedAt);
+
+  return {
+    kind: normalizedKind,
+    label: normalizedKind === "first-germinated" ? "First Germinated" : "Completed Test Snapshot",
+    capturedAt,
+    generatedAt,
+  };
+}
+
+function updateAdminCstpReportImageRecord(sessionId = "", kind = "", options = {}) {
+  const existingSession = getAdminCstpTestSessionById(sessionId);
+  const normalizedKind = String(kind || "").trim().toLowerCase();
+  if (!existingSession || !normalizedKind) {
+    return null;
+  }
+
+  const record = generateAdminCstpReportImageRecord(existingSession, normalizedKind);
+  if (!record) {
+    return null;
+  }
+
+  const nextReportImages = {
+    ...(existingSession.reportImages || {}),
+    ...(options.reportImages || {}),
+  };
+  if (normalizedKind === "first-germinated") {
+    nextReportImages.firstGerminated = record;
+  } else if (normalizedKind === "completed-test-snapshot") {
+    nextReportImages.completedTestSnapshot = record;
+  }
+
+  return updateAdminCstpAssignedSession(sessionId, {
+    ...existingSession,
+    reportImages: nextReportImages,
+  });
+}
+
+function ensureAdminCstpCompletedTestSnapshot(sessionId = "", reason = "") {
+  const existingSession = getAdminCstpTestSessionById(sessionId);
+  if (!existingSession) {
+    return null;
+  }
+
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(existingSession.status);
+  const canGenerate = Boolean(existingSession.completedAt || existingSession.reportPreparedAt)
+    || ["completed", "report-prepared", "published"].includes(normalizedStatus);
+  if (!canGenerate || existingSession.reportImages?.completedTestSnapshot) {
+    return existingSession;
+  }
+
+  return updateAdminCstpReportImageRecord(sessionId, "completed-test-snapshot", {
+    reason,
+  }) || existingSession;
 }
 
 function buildAdminCstpLabBaseRecordFromCommunication(record = {}) {
@@ -25360,11 +25577,13 @@ function prepareAdminCstpReportSession(sessionId = "") {
   }
 
   const timestamp = existingSession.reportPreparedAt || new Date().toISOString();
-  return updateAdminCstpAssignedSession(sessionId, {
+  const updatedSession = updateAdminCstpAssignedSession(sessionId, {
     ...existingSession,
     status: "report-prepared",
     reportPreparedAt: timestamp,
   });
+  ensureAdminCstpCompletedTestSnapshot(sessionId, "prepare-report-session");
+  return updatedSession;
 }
 
 function getAdminCstpLabQualificationResult(record = null) {
@@ -25817,6 +26036,7 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
           status: "completed",
           completedAt: assignedSession.completedAt || timestamp,
         });
+        ensureAdminCstpCompletedTestSnapshot(assignedSession.id, "lab-mark-completed");
       }
       break;
     case "prepare-report":
@@ -25828,6 +26048,7 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
           status: "report-prepared",
           reportPreparedAt: assignedSession.reportPreparedAt || timestamp,
         });
+        ensureAdminCstpCompletedTestSnapshot(assignedSession.id, "lab-prepare-report");
       }
       break;
     case "publish":
@@ -26072,7 +26293,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     backClasses: ["admin-cstp-button", "admin-cstp-button--utility"],
     hideDeleteButton: true,
     hideLifecycleDebug: true,
-    hideSnapshotSection: true,
+    hideSnapshotSection: false,
   });
   applySessionDetailNotesOptions(detail, {
     label: "Observations",
@@ -26125,6 +26346,10 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   }
   if (detail.suppliesAnchor) {
     detail.suppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
+  }
+  if (detail.snapshotSection) {
+    detail.snapshotSection.hidden = false;
+    detail.snapshotSection.innerHTML = renderAdminCstpSessionReportImagesSectionMarkup(session);
   }
 
   renderSessionDetailMetaCards(detail.meta, [
@@ -26196,11 +26421,13 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
           status: "completed",
           completedAt: existingSession.completedAt || timestamp,
         });
+        ensureAdminCstpCompletedTestSnapshot(sessionId, "session-complete");
       } else if (actionKey === "prepare-report") {
         if (!canPrepareAdminCstpReport(existingSession)) {
           return;
         }
         prepareAdminCstpReportSession(sessionId);
+        ensureAdminCstpCompletedTestSnapshot(sessionId, "report-prepare");
         window.location.hash = `#admin/cstp-report/${encodeURIComponent(sessionId)}`;
         return;
       }
@@ -26214,6 +26441,22 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
   const detailSaveButton = document.querySelector("#detail-save-session");
   const detailSaveMessage = document.querySelector("#detail-save-message");
+  app.querySelectorAll("[data-admin-cstp-report-image-action]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportImageBound === "true") {
+      return;
+    }
+
+    button.dataset.adminCstpReportImageBound = "true";
+    button.addEventListener("click", () => {
+      const actionKey = String(button.dataset.adminCstpReportImageAction || "").trim();
+      if (!actionKey) {
+        return;
+      }
+
+      updateAdminCstpReportImageRecord(sessionId, actionKey);
+      renderAdminCstpTestSessionPage(sessionId);
+    });
+  });
 
   const persistAdminCstpSession = () => {
     const existingSession = getAdminCstpTestSessionById(sessionId);
@@ -26308,9 +26551,13 @@ function renderAdminCstpReportPage(recordId = "") {
   const requestedSessionId = getAdminCstpTestSessionById(normalizedRecordId)?.id
     || matchingRecord?.assignedSessionId
     || "";
-  const preparedSession = requestedSessionId ? prepareAdminCstpReportSession(requestedSessionId) : null;
-  const reportSession = preparedSession
-    || (requestedSessionId ? getAdminCstpTestSessionById(requestedSessionId) : null)
+  if (requestedSessionId) {
+    prepareAdminCstpReportSession(requestedSessionId);
+  }
+  if (requestedSessionId) {
+    ensureAdminCstpCompletedTestSnapshot(requestedSessionId, "report-render");
+  }
+  const reportSession = (requestedSessionId ? getAdminCstpTestSessionById(requestedSessionId) : null)
     || getAdminCstpAssignedSessionForRecord(matchingRecord);
   const qualificationResult = normalizeAdminCstpQualificationResult(reportSession?.qualificationResult || "");
   const suggestedQualification = getSuggestedAdminCstpQualificationResult(reportSession);
@@ -26546,13 +26793,13 @@ function renderAdminCstpReportPage(recordId = "") {
                       <circle cx="9" cy="10" r="1.5"></circle>
                       <path d="m20 15-4.5-4.5L8 18"></path>
                     </svg>
-                    <span>CSTP Test Images</span>
+                    <span>CSTP Report Image Outputs</span>
                   </h4>
                 </div>
-                <span class="session-images-limit">Read-only report gallery</span>
+                <span class="session-images-limit">Internal CSTP report records</span>
               </div>
-              <div class="session-images-grid admin-cstp-report-image-grid">
-                ${renderAdminCstpReportImageGalleryMarkup(reportSession.sessionImages || [])}
+              <div class="admin-cstp-report-output-list">
+                ${renderAdminCstpReportImageRecordsMarkup(reportSession)}
               </div>
             </section>
             <p class="muted admin-cstp-report-disclaimer">CSTP certification is published only after admin review of a completed controlled test. Unpublished CSTP results are not public.</p>

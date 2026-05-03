@@ -7936,6 +7936,44 @@ body.theme-dark .contact-reason-card.is-active {
   margin-top: 0.5rem;
 }
 
+.admin-cstp-report-output-actions,
+.admin-cstp-report-output-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-cstp-report-output-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-cstp-report-output-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.admin-cstp-report-output-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.admin-cstp-report-output-stamp {
+  align-self: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  background: rgba(148, 209, 89, 0.08);
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-cstp-report-output-note {
+  margin: 0;
+}
+
 .admin-cstp-report-image-card {
   overflow: hidden;
 }
@@ -10392,6 +10430,12 @@ body.theme-dark .admin-cstp-session-editor-panel {
 
 body.theme-dark .admin-cstp-report-image-caption {
   color: #aeb9af;
+}
+
+body.theme-dark .admin-cstp-report-output-stamp {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.12);
+  color: #eef8e2;
 }
 
 body.theme-dark .admin-cstp-button[disabled],
