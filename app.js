@@ -347,160 +347,153 @@ const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
 const SOURCE_DIRECTORY_DEFAULT_SORT = "popularity";
-const SOURCE_DIRECTORY_MOCK_SOURCE_IDS = Object.freeze([
-  "humboldt-seed-co",
-  "royal-queen-seeds",
-  "barneys-farm",
-  "seedsman",
-  "north-atlantic-seed-co",
-]);
-const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
-  "humboldt-seed-co": Object.freeze({
+const testedSourcesMock = Object.freeze([
+  Object.freeze({
     id: "humboldt-seed-co",
     name: "Humboldt Seed Co",
-    sourceTypeLabel: "Breeder / Seed Source",
+    type: "Seed Bank",
+    logo: "",
     establishedLabel: "Established 2018",
-    logoUrl: "",
     community: Object.freeze({
-      avgRate: "82%",
-      sessions: "148",
-      rank: "#2",
-      seedsTracked: "3,621",
+      avgRate: 82,
+      sessions: 148,
+      rank: 2,
+      seedsTracked: 3621,
     }),
     cstp: Object.freeze({
       status: "gold",
       testedDate: "Jan 2026",
       validUntil: "Jan 2027",
-      sampleSize: "30 seeds",
+      sampleSize: 30,
       avgTime: "42 hrs",
-      resultPercent: "",
+      resultPercent: 94,
       expiringSoon: true,
     }),
     trackRecord: Object.freeze({
-      totalCerts: "11",
-      gold: "7",
-      silver: "4",
-      qualificationRate: "79%",
+      totalCerts: 11,
+      gold: 7,
+      silver: 4,
+      qualificationRate: 79,
       lastTest: "Jan 2026",
     }),
   }),
-  "royal-queen-seeds": Object.freeze({
+  Object.freeze({
     id: "royal-queen-seeds",
     name: "Royal Queen Seeds",
-    sourceTypeLabel: "Seed Bank",
+    type: "Seed Bank",
+    logo: "",
     establishedLabel: "Established 2007",
-    logoUrl: "",
     community: Object.freeze({
-      avgRate: "79%",
-      sessions: "124",
-      rank: "#4",
-      seedsTracked: "2,904",
+      avgRate: 79,
+      sessions: 124,
+      rank: 4,
+      seedsTracked: 2904,
     }),
     cstp: Object.freeze({
       status: "silver",
       testedDate: "Feb 2026",
       validUntil: "Feb 2027",
-      sampleSize: "30 seeds",
+      sampleSize: 30,
       avgTime: "46 hrs",
-      resultPercent: "",
+      resultPercent: 88,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
-      totalCerts: "8",
-      gold: "3",
-      silver: "5",
-      qualificationRate: "68%",
+      totalCerts: 8,
+      gold: 3,
+      silver: 5,
+      qualificationRate: 68,
       lastTest: "Feb 2026",
     }),
   }),
-  "barneys-farm": Object.freeze({
+  Object.freeze({
     id: "barneys-farm",
     name: "Barney's Farm",
-    sourceTypeLabel: "Breeder",
+    type: "Breeder",
+    logo: "",
     establishedLabel: "Established 1986",
-    logoUrl: "",
     community: Object.freeze({
-      avgRate: "77%",
-      sessions: "96",
-      rank: "#6",
-      seedsTracked: "2,118",
+      avgRate: 77,
+      sessions: 96,
+      rank: 6,
+      seedsTracked: 2118,
     }),
     cstp: Object.freeze({
       status: "tested",
       testedDate: "Mar 2026",
       validUntil: "",
-      sampleSize: "30 seeds",
+      sampleSize: 30,
       avgTime: "",
-      resultPercent: "71%",
+      resultPercent: 71,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
-      totalCerts: "5",
-      gold: "1",
-      silver: "2",
-      qualificationRate: "44%",
+      totalCerts: 5,
+      gold: 1,
+      silver: 2,
+      qualificationRate: 44,
       lastTest: "Mar 2026",
     }),
   }),
-  "seedsman": Object.freeze({
+  Object.freeze({
     id: "seedsman",
     name: "Seedsman",
-    sourceTypeLabel: "Seed Marketplace",
+    type: "Seed Marketplace",
+    logo: "",
     establishedLabel: "Established 2002",
-    logoUrl: "",
     community: Object.freeze({
-      avgRate: "75%",
-      sessions: "88",
-      rank: "#7",
-      seedsTracked: "1,964",
+      avgRate: 75,
+      sessions: 88,
+      rank: 7,
+      seedsTracked: 1964,
     }),
     cstp: Object.freeze({
       status: "expired",
       testedDate: "Nov 2025",
       validUntil: "",
-      sampleSize: "",
+      sampleSize: 24,
       avgTime: "",
-      resultPercent: "",
+      resultPercent: 83,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
-      totalCerts: "6",
-      gold: "2",
-      silver: "2",
-      qualificationRate: "51%",
+      totalCerts: 6,
+      gold: 2,
+      silver: 2,
+      qualificationRate: 51,
       lastTest: "Nov 2025",
     }),
   }),
-  "north-atlantic-seed-co": Object.freeze({
+  Object.freeze({
     id: "north-atlantic-seed-co",
     name: "North Atlantic Seed Co",
-    sourceTypeLabel: "Seed Marketplace",
+    type: "Seed Marketplace",
+    logo: "",
     establishedLabel: "Established 2012",
-    logoUrl: "",
     community: Object.freeze({
-      avgRate: "74%",
-      sessions: "61",
-      rank: "#9",
-      seedsTracked: "1,402",
+      avgRate: 74,
+      sessions: 61,
+      rank: 9,
+      seedsTracked: 1402,
     }),
     cstp: Object.freeze({
       status: "not-tested",
       testedDate: "",
       validUntil: "",
-      sampleSize: "",
+      sampleSize: 0,
       avgTime: "",
-      resultPercent: "",
+      resultPercent: 0,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
-      totalCerts: "0",
-      gold: "0",
-      silver: "0",
-      qualificationRate: "0%",
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
       lastTest: "Not tested",
     }),
   }),
-});
+]);
 const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
   {
     id: "mock-notification-avery-follow",
@@ -6560,7 +6553,7 @@ function getAdminSourceReviewSubmittedByLabel(userId = "") {
 function getAdminSourceReviewCanonicalOptions() {
   const seen = new Set();
   const combinedNames = [
-    ...Object.values(SOURCE_PROFILE_MOCK_DATA).map((source) => source?.name || ""),
+    ...testedSourcesMock.map((source) => source?.name || ""),
     ...getSourceCatalogRecords({ includeHidden: true }).map((source) => source?.name || ""),
   ];
 
@@ -18287,12 +18280,58 @@ function renderSourceStatusPillMarkup(status) {
   return `<span class="admin-source-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
 }
 
+function formatTestedSourceMockNumber(value) {
+  return Number.isFinite(value) ? value.toLocaleString() : "0";
+}
+
+function formatTestedSourceMockPercent(value) {
+  return Number.isFinite(value) ? `${value}%` : "0%";
+}
+
+function formatTestedSourceMockRank(value) {
+  return Number.isFinite(value) && value > 0 ? `#${value}` : "—";
+}
+
+function formatTestedSourceMockSampleSize(value) {
+  return Number.isFinite(value) && value > 0 ? `${value} seeds` : "";
+}
+
+function normalizeTestedSourceMockRecord(source = {}) {
+  const community = source?.community || {};
+  const cstp = source?.cstp || {};
+  const trackRecord = source?.trackRecord || {};
+  return {
+    ...source,
+    sourceTypeLabel: String(source?.sourceTypeLabel || source?.type || "Source").trim() || "Source",
+    logoUrl: String(source?.logoUrl || source?.logo || "").trim(),
+    community: {
+      ...community,
+      avgRate: formatTestedSourceMockPercent(Number(community?.avgRate)),
+      sessions: formatTestedSourceMockNumber(Number(community?.sessions)),
+      rank: formatTestedSourceMockRank(Number(community?.rank)),
+      seedsTracked: formatTestedSourceMockNumber(Number(community?.seedsTracked)),
+    },
+    cstp: {
+      ...cstp,
+      sampleSize: formatTestedSourceMockSampleSize(Number(cstp?.sampleSize)),
+      resultPercent: Number(cstp?.resultPercent) > 0 ? formatTestedSourceMockPercent(Number(cstp?.resultPercent)) : "",
+    },
+    trackRecord: {
+      ...trackRecord,
+      totalCerts: formatTestedSourceMockNumber(Number(trackRecord?.totalCerts)),
+      gold: formatTestedSourceMockNumber(Number(trackRecord?.gold)),
+      silver: formatTestedSourceMockNumber(Number(trackRecord?.silver)),
+      qualificationRate: formatTestedSourceMockPercent(Number(trackRecord?.qualificationRate)),
+    },
+  };
+}
+
 function getSourceProfileMockRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim().toLowerCase();
-  if (normalizedId && SOURCE_PROFILE_MOCK_DATA[normalizedId]) {
-    return SOURCE_PROFILE_MOCK_DATA[normalizedId];
-  }
-  return SOURCE_PROFILE_MOCK_DATA[SOURCE_PROFILE_DEFAULT_MOCK_ID] || null;
+  const matchedSource = testedSourcesMock.find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId)
+    || testedSourcesMock.find((source) => String(source?.id || "").trim().toLowerCase() === SOURCE_PROFILE_DEFAULT_MOCK_ID)
+    || null;
+  return matchedSource ? normalizeTestedSourceMockRecord(matchedSource) : null;
 }
 
 function renderSourceProfileMetricCard({ label, value, detail = "" }) {
@@ -18439,8 +18478,8 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
 }
 
 function getSourceDirectoryMockRecords() {
-  return SOURCE_DIRECTORY_MOCK_SOURCE_IDS
-    .map((sourceId) => getSourceProfileMockRecord(sourceId))
+  return testedSourcesMock
+    .map((source) => normalizeTestedSourceMockRecord(source))
     .filter(Boolean);
 }
 
@@ -18960,7 +18999,7 @@ function renderSourceProfilePage(sourceId = "") {
           </div>
           <div class="inline-actions">
             <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>
-            <a class="button button-secondary" href="#home">Back Home</a>
+            <a class="button button-secondary" href="#sources">&larr; Back to Tested Sources</a>
           </div>
         </div>
       </section>
@@ -19027,11 +19066,11 @@ function renderSourceProfilePage(sourceId = "") {
           <div>
             <p class="eyebrow">Source Profile</p>
             <h2>${escapeHtml(sourceProfile.name)}</h2>
-            <p class="muted">Mock placeholder data for the first Source Profile UI. Community performance appears first, with CSTP shown as validation.</p>
+            <p class="muted">Community performance appears first, with CSTP shown as validation for this specific source record.</p>
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#home">Back Home</a>
+          <a class="button button-secondary" href="#sources">&larr; Back to Tested Sources</a>
         </div>
       </div>
 
