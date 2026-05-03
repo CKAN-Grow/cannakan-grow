@@ -22480,7 +22480,7 @@ function buildHomeAnnouncementFallbackCardData(fallbackContent = null, reference
     linkUrl: "",
     buttonText: "",
     dateValue: referenceDate.toISOString(),
-    footerText: "Rotating fallback content",
+    footerText: "",
     fallbackType: activeFallback.type,
     fallbackItemKey: activeFallback.key || "",
     fallbackLabel: getHomeAnnouncementFallbackLabel(activeFallback.type),
@@ -22803,9 +22803,11 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
         >
         <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
       </div>
-    `;
+  `;
   const captionMarkup = renderHomeAnnouncementCaptionMarkup(cardData);
-  const footerText = cardData.footerText || formatAnnouncementDateLabel(cardData.dateValue);
+  const footerText = isFallback ? "" : (cardData.footerText || formatAnnouncementDateLabel(cardData.dateValue));
+  const hasFooterDate = Boolean(String(footerText || "").trim());
+  const hasFooterActions = Boolean(String(cardData.linkUrl || "").trim());
 
   return `
     <section
@@ -22825,8 +22827,8 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
           <h3 id="home-announcement-title" data-home-announcement-title="true">${escapeHtml(cardData.title)}</h3>
           <div data-home-announcement-caption="true">${captionMarkup}</div>
         </div>
-        <div class="home-announcement-card-footer">
-          <p class="home-announcement-card-date" data-home-announcement-date="true">${escapeHtml(footerText)}</p>
+        <div class="home-announcement-card-footer"${!hasFooterDate && !hasFooterActions ? " hidden" : ""}>
+          <p class="home-announcement-card-date" data-home-announcement-date="true"${hasFooterDate ? "" : " hidden"}>${escapeHtml(footerText)}</p>
           ${cardData.linkUrl ? `
             <div class="home-announcement-card-actions">
               <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
