@@ -3552,6 +3552,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   scrollbar-width: thin;
 }
 
+.home-tested-sources-disclaimer {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
 .home-tested-source-card {
   display: grid;
   gap: 16px;
@@ -3853,6 +3858,14 @@ body.theme-dark .home-cstp-overview-icon-glyph {
   border-color: rgba(148, 209, 89, 0.16);
   background: rgba(148, 209, 89, 0.08);
   color: #94d159;
+}
+
+body.theme-dark .disclaimer-card {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: linear-gradient(180deg, rgba(34, 39, 35, 0.96) 0%, rgba(27, 31, 28, 0.94) 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .home-announcement-card {
@@ -10120,6 +10133,10 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .disclaimer-grid {
+    grid-template-columns: 1fr;
+  }
+
   .home-install-card-shell {
     display: block;
   }
@@ -10241,6 +10258,10 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-cstp-trust-row {
+    grid-template-columns: 1fr;
+  }
+
+  .disclaimer-grid {
     grid-template-columns: 1fr;
   }
 
@@ -11526,6 +11547,34 @@ input::placeholder {
 .source-directory-page {
   display: grid;
   gap: 22px;
+}
+
+.disclaimer-page {
+  display: grid;
+  gap: 22px;
+}
+
+.disclaimer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.disclaimer-card {
+  display: grid;
+  gap: 10px;
+  padding: 22px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: linear-gradient(180deg, rgba(250, 251, 249, 0.96) 0%, rgba(244, 247, 242, 0.94) 100%);
+  box-shadow:
+    0 14px 26px rgba(29, 49, 33, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.disclaimer-card h3,
+.disclaimer-card p {
+  margin: 0;
 }
 
 .source-directory-controls-card,

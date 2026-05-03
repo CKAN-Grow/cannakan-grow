@@ -4527,13 +4527,15 @@ function updateNavState() {
   const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
+    : (route === "disclaimer"
+      ? "home"
     : (route === "admin"
       ? "admin"
       : (route === "gallery"
         ? "gallery"
         : (route === "network"
           ? "network"
-          : (route === "sources" ? "sources" : "sessions"))));
+          : (route === "sources" ? "sources" : "sessions")))));
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -4824,6 +4826,14 @@ function getCurrentSiteAnalyticsPageContext() {
         pageLabel: "Tested Sources",
         pagePath: "#sources",
       });
+  }
+  if (route === "disclaimer") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "data-testing-disclaimer",
+      pageLabel: "Data & Testing Disclaimer",
+      pagePath: "#disclaimer",
+    });
   }
   if (route === "members") {
     return buildSiteAnalyticsPageContext({
@@ -13196,7 +13206,7 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
-    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect performance within the KAN® System under user conditions - not the seed source.</p>
+    <p class="gallery-leaderboard-disclaimer">Leaderboard results reflect KAN system session data, not source quality alone.</p>
   `;
 
   return section;
@@ -16095,6 +16105,17 @@ function render() {
     return;
   }
 
+  if (route === "disclaimer") {
+    renderDataTestingDisclaimerPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "data-testing-disclaimer",
+      pageLabel: "Data & Testing Disclaimer",
+      pagePath: "#disclaimer",
+    }));
+    return;
+  }
+
   if (route === "members" && id) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
@@ -18648,6 +18669,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
       <div class="home-tested-sources-preview-row" role="list" aria-label="Tested Sources preview">
         ${previewCardsMarkup}
       </div>
+      <p class="home-tested-sources-disclaimer muted">Community-tested sources. CSTP verification available where applicable.</p>
     </section>
   `;
 }
@@ -18942,7 +18964,7 @@ function renderSourcesLandingPage() {
             <p class="eyebrow">Tested Sources</p>
             <h2>Tested Sources</h2>
             <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
-            <p class="source-directory-trust-note">Community data is based on member sessions. CSTP badges are earned through controlled testing.</p>
+            <p class="source-directory-trust-note">Listings are based on community data and CSTP testing. Results may vary.</p>
           </div>
         </div>
       </div>
@@ -19110,7 +19132,7 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">${escapeHtml("Data based on real user sessions using the KAN system.")}</p>
+        <p class="source-profile-trust-note">${escapeHtml("Community data is based on user sessions and may vary.")}</p>
       </article>
 
       <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
@@ -19147,7 +19169,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
         </div>
-        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>Certification is batch-based and time-limited.</p>
+        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>Certification is batch-based and time-limited.<br>Results do not guarantee future performance.</p>
       </article>
 
       <article class="card source-profile-track-record-card">
@@ -19171,6 +19193,49 @@ function renderSourceProfilePage(sourceId = "") {
   app.querySelector("[data-source-follow-preview]")?.addEventListener("click", () => {
     window.alert("Source follow preview coming soon.");
   });
+}
+
+function renderDataTestingDisclaimerPage() {
+  app.innerHTML = `
+    <section class="card disclaimer-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Reference</p>
+            <h2>Data &amp; Testing Disclaimer</h2>
+            <p class="muted">Short guidance on how to interpret community data and CSTP results across the app.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#home">Back Home</a>
+        </div>
+      </div>
+
+      <div class="disclaimer-grid">
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Community Data</p>
+          <h3>Community results may vary</h3>
+          <p class="muted">Community data comes from real user KAN system sessions and can vary based on grower inputs, handling, environment, and reporting volume.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">CSTP Scope</p>
+          <h3>CSTP is batch-based</h3>
+          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time. Results do not guarantee future performance.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Neutrality</p>
+          <h3>No source endorsement</h3>
+          <p class="muted">Listings, rankings, and CSTP badges are informational signals only. They do not endorse any source.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Use</p>
+          <h3>Informational use only</h3>
+          <p class="muted">Use community and CSTP data as reference alongside your own judgment, batch details, and grow conditions.</p>
+        </article>
+      </div>
+    </section>
+  `;
 }
 
 function renderAdminSourceCardMarkup(source) {
