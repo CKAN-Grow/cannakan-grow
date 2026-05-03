@@ -24872,6 +24872,21 @@ function applyAdminCstpPartitionChartHeading(detail = null) {
   }
 }
 
+function applyAdminCstpPartitionEditingMode(detail = null) {
+  if (!detail?.chartShell || !detail.chartHeader || !detail.partitions) {
+    return;
+  }
+
+  applySessionStatusLayout(detail.chartShell, detail.chartHeader, detail.partitions, "germinating");
+  detail.partitions.querySelectorAll(".partition-row input, .partition-row select").forEach((field) => {
+    field.disabled = false;
+    field.readOnly = false;
+  });
+  detail.partitions.querySelectorAll('select[data-custom-select]').forEach((field) => {
+    syncCustomSelect(field);
+  });
+}
+
 function buildAdminCstpDraftSessionFromDetail(existingSession = null, options = {}) {
   const draftSession = normalizeAdminCstpAssignedSessionRecord(existingSession);
   if (!draftSession) {
@@ -26513,9 +26528,8 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     ensureSourceCatalogDatalist();
     initializeCustomSelects(detail.partitions);
     bindPartitionRowVisualState(detail.partitions);
-    applySessionStatusLayout(detail.chartShell, detail.chartHeader, detail.partitions, sessionStageValue);
+    applyAdminCstpPartitionEditingMode(detail);
     syncPartitionButtonStates(detail.partitions, sessionStageValue);
-    applyStageEditingMode(app, sessionStageValue);
     const timelineSaveShortcut = app.querySelector(".timeline-save-shortcut");
     if (timelineSaveShortcut) {
       timelineSaveShortcut.hidden = false;
