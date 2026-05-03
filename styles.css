@@ -7955,13 +7955,61 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .admin-cstp-lab-actions {
-  margin-block: 1.1rem 1.25rem;
+  margin-block: 0;
   gap: 12px;
   align-items: center;
 }
 
 .admin-cstp-lab-timeline-grid {
   margin-bottom: 1.25rem;
+}
+
+.admin-cstp-request-card {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.admin-cstp-request-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-cstp-request-summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-cstp-request-summary h4,
+.admin-cstp-request-summary p {
+  margin: 0;
+}
+
+.admin-cstp-request-body {
+  display: grid;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+
+.admin-cstp-request-message-shell {
+  margin-top: -4px;
+}
+
+.admin-cstp-workflow-card {
+  gap: 14px;
+}
+
+.admin-cstp-workflow-empty {
+  padding: 16px 0 2px;
+}
+
+.admin-cstp-workflow-empty p {
+  margin: 0;
 }
 
 .admin-cstp-lab-session-form {

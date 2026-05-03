@@ -26306,30 +26306,81 @@ function renderAdminCstpLabTimingItem(label = "", value = "") {
   `;
 }
 
+function getAdminCstpLabVisibleActionConfigs(record = null) {
+  if (!record) {
+    return [];
+  }
+
+  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+  const canOpenReport = Boolean(assignedSession) && canPrepareAdminCstpReport(assignedSession);
+  const openReportHref = canOpenReport
+    ? `#admin/cstp-report/${encodeURIComponent(assignedSession.id)}`
+    : "";
+  const normalizedStatus = normalizeAdminCstpLabStatus(record.status);
+
+  switch (normalizedStatus) {
+    case "request-received":
+      return [
+        { kind: "button", action: "accept", label: "Accept for testing", tone: "secondary" },
+        { kind: "button", action: "decline", label: "Decline", tone: "warning" },
+        { kind: "button", action: "request-more-info", label: "Request more info", tone: "secondary" },
+      ];
+    case "accepted-awaiting-seeds":
+      return [
+        { kind: "button", action: "seeds-received", label: "Mark seeds received", tone: "secondary" },
+      ];
+    case "seeds-received":
+      return [
+        { kind: "button", action: "schedule-test", label: "Schedule test", tone: "secondary" },
+      ];
+    case "test-scheduled":
+      return [
+        { kind: "button", action: "start-test", label: "Start CSTP test", tone: "primary" },
+      ];
+    case "active-test":
+      return [
+        { kind: "button", action: "mark-completed", label: "Mark completed", tone: "secondary" },
+      ];
+    case "completed":
+      return [
+        { kind: "button", action: "prepare-report", label: "Prepare report", tone: "primary" },
+        ...(canOpenReport ? [{ kind: "link", href: openReportHref, label: "Open CSTP Report", tone: "secondary" }] : []),
+      ];
+    case "report-prepared":
+    case "published":
+      return canOpenReport
+        ? [{ kind: "link", href: openReportHref, label: "Open CSTP Report", tone: "secondary" }]
+        : [];
+    default:
+      return [];
+  }
+}
+
 function renderAdminCstpLabActionButtons(record = null) {
   if (!record) {
     return "";
   }
 
-  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
-  const canOpenReport = Boolean(assignedSession) && canPrepareAdminCstpReport(assignedSession);
-  const prepareReportHref = canOpenReport
-    ? `#admin/cstp-report/${encodeURIComponent(assignedSession.id)}`
-    : "";
+  const actions = getAdminCstpLabVisibleActionConfigs(record);
+  if (!actions.length) {
+    return `
+      <div class="admin-cstp-workflow-empty">
+        <p class="muted">No workflow actions are needed for this CSTP request right now.</p>
+      </div>
+    `;
+  }
 
   return `
     <div class="admin-communications-quick-actions admin-cstp-lab-actions">
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="accept" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Accept for testing</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--warning" data-admin-cstp-lab-action="decline" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Decline</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="request-more-info" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Request more info</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="seeds-received" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark seeds received</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="schedule-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Schedule test</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-lab-action="start-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Start CSTP test</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="mark-completed" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark completed</button>
-      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-lab-action="prepare-report" data-admin-cstp-lab-id="${escapeHtml(record.id)}"${canOpenReport ? "" : " disabled"}>Prepare report</button>
-      ${canOpenReport
-        ? `<a class="button button-secondary admin-cstp-button admin-cstp-button--primary" href="${escapeHtml(prepareReportHref)}">${assignedSession?.reportPreparedAt || assignedSession?.publishedAt ? "Open CSTP Report" : "Prepare CSTP Report"}</a>`
-        : '<button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" disabled>Prepare CSTP Report</button>'}
+      ${actions.map((action) => {
+        const toneClass = action.tone === "warning"
+          ? "admin-cstp-button--warning"
+          : (action.tone === "primary" ? "admin-cstp-button--primary" : "admin-cstp-button--secondary");
+        if (action.kind === "link") {
+          return `<a class="button button-secondary admin-cstp-button ${toneClass}" href="${escapeHtml(action.href || "#admin")}">${escapeHtml(action.label || "")}</a>`;
+        }
+        return `<button type="button" class="button button-secondary admin-cstp-button ${toneClass}" data-admin-cstp-lab-action="${escapeHtml(action.action || "")}" data-admin-cstp-lab-id="${escapeHtml(record.id)}">${escapeHtml(action.label || "")}</button>`;
+      }).join("")}
     </div>
   `;
 }
@@ -26352,10 +26403,6 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
       </div>
       <div class="admin-communications-detail-grid">
         <div class="admin-communications-detail-item">
-          <span>Connected</span>
-          <strong>${isConnected ? "Yes" : "No"}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
           <span>Assigned session ID</span>
           <strong>${escapeHtml(assignedSessionDisplayId || "Not connected")}</strong>
         </div>
@@ -26364,16 +26411,8 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
           <strong>${escapeHtml(assignedSession ? getAdminCstpTestSessionStatusLabel(assignedSession.status) : "Not connected")}</strong>
         </div>
         <div class="admin-communications-detail-item">
-          <span>Source name</span>
-          <strong>${escapeHtml(assignedSession?.sourceName || record.sourceName || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
           <span>Variety</span>
           <strong>${escapeHtml(assignedSession?.variety || record.variety || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Batch / lot</span>
-          <strong>${escapeHtml(assignedSession?.batchLot || record.batchLot || "Not provided")}</strong>
         </div>
       </div>
       <div class="admin-communications-quick-actions admin-cstp-lab-actions">
@@ -26387,6 +26426,56 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
           `}
       </div>
     </section>
+  `;
+}
+
+function renderAdminCstpRequestSectionMarkup(record = null) {
+  if (!record) {
+    return "";
+  }
+
+  return `
+    <details class="card admin-cstp-request-card" open>
+      <summary class="admin-cstp-request-summary">
+        <div>
+          <p class="eyebrow">Request</p>
+          <h4>${escapeHtml(record.sourceName || "Source not provided")}</h4>
+          <p class="muted">${escapeHtml(record.contactName || record.email || "No contact details provided")}</p>
+        </div>
+        ${renderAdminCstpLabStatusPillMarkup(record.status)}
+      </summary>
+      <div class="admin-cstp-request-body">
+        <div class="admin-communications-detail-grid">
+          <div class="admin-communications-detail-item">
+            <span>Company / Source name</span>
+            <strong>${escapeHtml(record.sourceName || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Contact name</span>
+            <strong>${escapeHtml(record.contactName || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Email</span>
+            <strong>${escapeHtml(record.email || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Batch / Lot</span>
+            <strong>${escapeHtml(record.batchLot || "Not provided")}</strong>
+          </div>
+          <div class="admin-communications-detail-item">
+            <span>Seeds available</span>
+            <strong>${escapeHtml(record.seedsAvailable || "Not provided")}</strong>
+          </div>
+        </div>
+        <div class="admin-communications-message-shell admin-cstp-request-message-shell">
+          <p class="eyebrow">Message</p>
+          <div class="admin-communications-message-body">
+            <p>${escapeHtml(record.message || "No message provided.").replace(/\n/g, "<br>")}</p>
+          </div>
+        </div>
+        ${renderAdminCstpAssignedTesterSectionMarkup(record)}
+      </div>
+    </details>
   `;
 }
 
@@ -26470,61 +26559,23 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         <div>
           <p class="eyebrow">CSTP Testing Lab</p>
           <h4>${escapeHtml(selectedRecord.sourceName || "Source not provided")}</h4>
-          <div class="admin-report-card-badges">
-            <span class="admin-message-issue-pill">CSTP Testing Request</span>
-            ${renderAdminCstpLabStatusPillMarkup(selectedRecord.status)}
+          <p class="muted admin-cstp-lab-helper">Testing begins within X business days of seed receipt. Results are typically available 3-5 days after testing begins.</p>
+        </div>
+      </div>
+      ${renderAdminCstpRequestSectionMarkup(selectedRecord)}
+      <section class="admin-cstp-assigned-session card admin-cstp-workflow-card">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Workflow Actions</p>
+            <h4>${escapeHtml(getAdminCstpLabStatusLabel(selectedRecord.status))}</h4>
+            <p class="muted">Only the next relevant CSTP workflow actions are shown here.</p>
           </div>
         </div>
-      </div>
-      <p class="muted admin-cstp-lab-helper">Testing begins within X business days of seed receipt. Results are typically available 3-5 days after testing begins.</p>
-      <div class="admin-communications-detail-grid">
-        <div class="admin-communications-detail-item">
-          <span>Company / Source name</span>
-          <strong>${escapeHtml(selectedRecord.sourceName || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Contact name</span>
-          <strong>${escapeHtml(selectedRecord.contactName || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Email</span>
-          <strong>${escapeHtml(selectedRecord.email || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Website</span>
-          <strong>${escapeHtml(selectedRecord.website || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Variety / Seed type</span>
-          <strong>${escapeHtml(selectedRecord.variety || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Batch / Lot</span>
-          <strong>${escapeHtml(selectedRecord.batchLot || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Seeds available</span>
-          <strong>${escapeHtml(selectedRecord.seedsAvailable || "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Request received</span>
-          <strong>${escapeHtml(selectedRecord.submittedAt ? formatAdminTimestamp(selectedRecord.submittedAt) : "Not provided")}</strong>
-        </div>
-        <div class="admin-communications-detail-item">
-          <span>Status</span>
-          <strong>${escapeHtml(getAdminCstpLabStatusLabel(selectedRecord.status))}</strong>
-        </div>
-      </div>
-      <div class="admin-communications-message-shell">
-        <p class="eyebrow">Request Message</p>
-        <div class="admin-communications-message-body">
-          <p>${escapeHtml(selectedRecord.message || "No message provided.").replace(/\n/g, "<br>")}</p>
-        </div>
-      </div>
-      ${renderAdminCstpLabActionButtons(selectedRecord)}
-      ${renderAdminCstpAssignedTesterSectionMarkup(selectedRecord)}
+        ${renderAdminCstpLabActionButtons(selectedRecord)}
+      </section>
       ${renderAdminCstpAssignedSessionSectionMarkup(selectedRecord)}
       <div class="admin-communications-detail-grid admin-cstp-lab-timeline-grid">
+        ${renderAdminCstpLabTimingItem("Request received", selectedRecord.submittedAt)}
         ${renderAdminCstpLabTimingItem("Accepted", selectedRecord.acceptedAt)}
         ${renderAdminCstpLabTimingItem("Seeds received", selectedRecord.seedsReceivedAt)}
         ${renderAdminCstpLabTimingItem("Test scheduled", selectedRecord.testScheduledAt)}
