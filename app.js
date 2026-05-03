@@ -26181,41 +26181,59 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
 
   return `
     <section class="admin-cstp-session-workspace">
-      <div class="admin-cstp-lab-actions admin-cstp-session-actions">
-        <div class="admin-cstp-session-action-buttons">
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
-          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
-          ${shouldShowPublishAction ? `
-            <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--success" data-admin-cstp-session-action="publish-certification" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPublishCertification ? "" : " disabled"}>${escapeHtml(publishLabel)}</button>
-          ` : ""}
+      <section class="card admin-cstp-session-workflow-panel">
+        <div class="admin-cstp-session-workflow-header">
+          <div class="admin-cstp-session-workflow-copy">
+            <p class="eyebrow">Assigned Lab Session</p>
+            <h3>CSTP Partition Chart</h3>
+          </div>
+          <div class="admin-cstp-session-workflow-indicator" aria-label="CSTP workflow status">
+            <span class="admin-cstp-session-workflow-label">Workflow Status</span>
+            <span class="admin-cstp-session-workflow-value">${escapeHtml(workflowStatusLabel)}</span>
+          </div>
         </div>
-        <div class="admin-cstp-session-workflow-indicator" aria-label="CSTP workflow status">
-          <span class="admin-cstp-session-workflow-label">Workflow Status</span>
-          <span class="admin-cstp-session-workflow-value">${escapeHtml(workflowStatusLabel)}</span>
+        <div class="admin-cstp-session-action-panel">
+          <div class="admin-cstp-lab-actions admin-cstp-session-actions">
+            <div class="admin-cstp-session-action-buttons">
+              <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
+              <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
+              <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
+            </div>
+            ${shouldShowPublishAction ? `
+              <div class="admin-cstp-session-secondary-actions">
+                <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--success" data-admin-cstp-session-action="publish-certification" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPublishCertification ? "" : " disabled"}>${escapeHtml(publishLabel)}</button>
+              </div>
+            ` : ""}
+          </div>
         </div>
-      </div>
+        <div class="admin-cstp-session-info-callout" role="note">
+          <p>Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.</p>
+        </div>
+        <div class="admin-cstp-session-stage-anchor" data-admin-cstp-stage-anchor></div>
+      </section>
       <form class="admin-communications-editor admin-cstp-session-editor-panel" data-admin-cstp-session-form="${escapeHtml(normalizedSession.id)}">
-        <div class="admin-communications-editor-head">
+        <div class="admin-communications-editor-head admin-cstp-session-summary-head">
           <div>
-            <p class="eyebrow">CSTP Summary</p>
-            <p class="muted">Use the partition chart below as the primary lab input. This summary only keeps the essential batch and certification controls.</p>
+            <h4>CSTP Summary</h4>
+            <p class="muted">Use the partition chart below as the primary lab input. This summary keeps the essential batch, result, and certification controls in one place.</p>
+          </div>
+          <div class="admin-cstp-session-summary-notes">
             <p class="muted">Test performed by: ${escapeHtml(normalizedSession.testPerformedBy || normalizedSession.assignedTesterName || "Not assigned")}</p>
             <p class="muted">Future CSTP Tester accounts may access only assigned CSTP tests, not full admin controls.</p>
           </div>
         </div>
         <div class="admin-communications-editor-grid admin-cstp-session-summary-grid">
-          <div class="admin-message-field admin-cstp-summary-readout${isBatchLotMissing ? " is-warning" : ""}" data-admin-cstp-batch-lot-card>
+          <div class="admin-message-field admin-cstp-summary-card admin-cstp-summary-readout${isBatchLotMissing ? " is-warning" : ""}" data-admin-cstp-batch-lot-card>
             <span>Batch / Lot Number</span>
             <div class="admin-cstp-summary-readout-value" data-admin-cstp-batch-lot-value>${escapeHtml(batchLotDisplayValue)}</div>
             <p class="admin-message-help-text">${escapeHtml(isBatchLotMissing ? "This batch / lot value must come from the original CSTP request and cannot be edited during testing." : "Copied from the original CSTP request. Batch / lot cannot be edited during testing.")}</p>
           </div>
-          <div class="admin-message-field admin-cstp-summary-readout">
+          <div class="admin-message-field admin-cstp-summary-card admin-cstp-summary-readout">
             <span>Final germination %</span>
             <div class="admin-cstp-summary-readout-value" data-admin-cstp-final-percent>${escapeHtml(getAdminCstpSessionDisplayPercent(normalizedSession))}</div>
             <p class="admin-message-help-text">Calculated automatically from the partition chart seed and germination totals.</p>
           </div>
-          <label class="admin-message-field">
+          <label class="admin-message-field admin-cstp-summary-card">
             <span>Qualification result</span>
             <select name="qualificationResult">
               <option value="">Select a result</option>
@@ -26225,7 +26243,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
             </select>
             <p class="admin-message-help-text" data-admin-cstp-suggested-qualification>${escapeHtml(getAdminCstpSuggestedQualificationSummaryText(normalizedSession))}</p>
           </label>
-          <div class="admin-message-field admin-cstp-badge-summary-card">
+          <div class="admin-message-field admin-cstp-summary-card admin-cstp-badge-summary-card">
             <span>Certification Badge</span>
             <div data-admin-cstp-badge-display>
               ${renderAdminCstpQualificationBadgeSummaryMarkup(normalizedSession)}
@@ -28094,6 +28112,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   const sessionStageValue = getAdminCstpStageControlValue(session);
   const detailLayoutSection = detail.layoutReference?.closest(".system-layout-block") || null;
   const detailPartitionHeader = detail.partitionWorkTitle?.closest(".partition-work-header") || null;
+  const detailStatusPanel = detail.statusTrigger?.closest(".session-status-panel") || null;
   const detailCard = app.querySelector(".card");
   const detailHeader = detail.topBackLink?.closest(".app-section-header") || null;
   const detailHeaderMain = detail.title?.closest(".app-section-header-main") || null;
@@ -28168,11 +28187,17 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     detail.statusHelp.textContent = "Update the stage as your seeds progress through the session.";
   }
   if (detail.statusReminder) {
-    detail.statusReminder.textContent = "Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.";
-    detail.statusReminder.classList.add("is-guidance");
+    detail.statusReminder.textContent = "";
+    detail.statusReminder.classList.remove("is-guidance", "is-warning");
+    detail.statusReminder.hidden = true;
   }
   if (detail.suppliesAnchor) {
     detail.suppliesAnchor.innerHTML = renderAdminCstpSessionWorkspaceMarkup(session, { canPrepareReport });
+    const stageAnchor = detail.suppliesAnchor.querySelector("[data-admin-cstp-stage-anchor]");
+    if (stageAnchor && detailStatusPanel) {
+      detailStatusPanel.classList.add("session-status-panel-compact", "admin-cstp-session-stage-panel");
+      stageAnchor.appendChild(detailStatusPanel);
+    }
   }
   if (detail.imageSection) {
     detail.imageSection.innerHTML = renderAdminCstpDeviceImageUploadSectionMarkup(session);
@@ -28210,7 +28235,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     detailLayoutSection.setAttribute("aria-hidden", "true");
   }
   if (detailPartitionHeader) {
-    detailPartitionHeader.hidden = false;
+    detailPartitionHeader.hidden = true;
   }
   applyAdminCstpPartitionChartHeading(detail);
   if (detail.chartShell) {

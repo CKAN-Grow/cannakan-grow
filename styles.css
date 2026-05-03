@@ -8392,30 +8392,69 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-cstp-session-workspace {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   margin-bottom: 1.35rem;
 }
 
-.admin-cstp-session-actions {
+.admin-cstp-session-workflow-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  box-shadow:
+    0 16px 34px rgba(15, 20, 15, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.06);
+}
+
+.admin-cstp-session-workflow-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
-.admin-cstp-session-action-buttons {
-  display: flex;
-  align-items: center;
+.admin-cstp-session-workflow-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-cstp-session-workflow-copy h3,
+.admin-cstp-session-workflow-copy p {
+  margin: 0;
+}
+
+.admin-cstp-session-action-panel {
+  display: grid;
   gap: 12px;
-  flex-wrap: wrap;
+}
+
+.admin-cstp-session-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-cstp-session-action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.admin-cstp-session-action-buttons .admin-cstp-button,
+.admin-cstp-session-secondary-actions .admin-cstp-button {
+  width: 100%;
+}
+
+.admin-cstp-session-secondary-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .admin-cstp-session-workflow-indicator {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   justify-items: end;
-  margin-left: auto;
 }
 
 .admin-cstp-session-workflow-label {
@@ -8445,19 +8484,112 @@ body.theme-dark .contact-reason-card.is-active {
     0 10px 24px rgba(15, 20, 15, 0.08);
 }
 
+.admin-cstp-session-info-callout {
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.12), rgba(255, 255, 255, 0.68) 42%, rgba(245, 250, 243, 0.9)),
+    rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+}
+
+.admin-cstp-session-info-callout p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.admin-cstp-session-stage-anchor:empty {
+  display: none;
+}
+
+.admin-cstp-session-stage-anchor .session-status-panel {
+  min-width: 0;
+}
+
+.admin-cstp-session-stage-panel .session-status-label {
+  font-size: 0.76rem;
+}
+
+.admin-cstp-session-stage-panel .session-status-card {
+  padding: 18px;
+  border-color: rgba(148, 209, 89, 0.16);
+}
+
+.admin-cstp-session-stage-panel .session-status-top {
+  justify-items: start;
+}
+
+.admin-cstp-session-stage-panel .session-status-current,
+.admin-cstp-session-stage-panel .session-status-help,
+.admin-cstp-session-stage-panel .session-status-error {
+  justify-items: start;
+  text-align: left;
+}
+
 .admin-cstp-session-editor-panel {
   margin: 0;
+  display: grid;
+  gap: 16px;
+  padding: 22px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   box-shadow: 0 14px 36px rgba(15, 20, 15, 0.08);
 }
 
-.admin-cstp-session-summary-grid {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+.admin-cstp-session-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
 }
 
-.admin-cstp-summary-readout,
-.admin-cstp-badge-summary-card {
+.admin-cstp-session-summary-head h4,
+.admin-cstp-session-summary-head p {
+  margin: 0;
+}
+
+.admin-cstp-session-summary-notes {
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.admin-cstp-session-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 1200px) {
+  .admin-cstp-session-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-cstp-summary-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
   min-height: 100%;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(109, 124, 113, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 250, 245, 0.98)),
+    rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.admin-cstp-summary-card > span {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-cstp-summary-card .admin-message-help-text {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .admin-cstp-summary-readout-value {
@@ -8480,11 +8612,18 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .admin-cstp-summary-readout.is-warning .admin-cstp-summary-readout-value {
-  border-color: rgba(217, 139, 43, 0.3);
+  border-color: rgba(217, 139, 43, 0.22);
   background:
-    linear-gradient(180deg, rgba(255, 251, 242, 0.98), rgba(252, 246, 230, 0.94)),
-    rgba(217, 139, 43, 0.06);
-  color: #7a5610;
+    linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(251, 246, 235, 0.92)),
+    rgba(217, 139, 43, 0.04);
+  color: #6a5118;
+}
+
+.admin-cstp-summary-readout.is-warning {
+  border-color: rgba(217, 139, 43, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94), rgba(252, 248, 239, 0.98)),
+    rgba(255, 255, 255, 0.78);
 }
 
 .admin-cstp-badge-summary-card [data-admin-cstp-badge-display] {
@@ -8779,10 +8918,10 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-cstp-button[disabled],
 .admin-cstp-button:disabled {
-  opacity: 0.58;
+  opacity: 0.74;
   cursor: not-allowed;
   transform: none;
-  filter: saturate(0.72);
+  filter: saturate(0.84);
   box-shadow: none;
 }
 
@@ -8791,7 +8930,7 @@ body.theme-dark .contact-reason-card.is-active {
 .admin-cstp-button[disabled]:focus-visible,
 .admin-cstp-button:disabled:focus-visible {
   transform: none;
-  filter: saturate(0.72);
+  filter: saturate(0.84);
   box-shadow: none;
 }
 
@@ -11233,6 +11372,16 @@ body.theme-dark .admin-cstp-session-workflow-label {
   color: #b8c6b8;
 }
 
+body.theme-dark .admin-cstp-session-workflow-panel {
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(18, 24, 20, 0.96), rgba(24, 31, 26, 0.94)),
+    rgba(18, 24, 20, 0.92);
+  box-shadow:
+    0 20px 36px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
+}
+
 body.theme-dark .admin-cstp-session-workflow-value {
   border-color: rgba(148, 209, 89, 0.3);
   background: rgba(148, 209, 89, 0.14);
@@ -11242,11 +11391,32 @@ body.theme-dark .admin-cstp-session-workflow-value {
     0 12px 26px rgba(0, 0, 0, 0.22);
 }
 
+body.theme-dark .admin-cstp-session-info-callout {
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.16), rgba(21, 29, 24, 0.94) 42%, rgba(17, 24, 20, 0.92)),
+    rgba(17, 24, 20, 0.86);
+  color: #eef8e2;
+}
+
+body.theme-dark .admin-cstp-session-stage-panel .session-status-card {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+
 body.theme-dark .admin-cstp-session-editor-panel {
   border-color: rgba(148, 209, 89, 0.24);
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.24),
     0 0 0 1px rgba(148, 209, 89, 0.06);
+}
+
+body.theme-dark .admin-cstp-summary-card {
+  border-color: rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(23, 31, 26, 0.98), rgba(19, 26, 21, 0.94)),
+    rgba(17, 24, 20, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 body.theme-dark .admin-cstp-summary-readout-value {
@@ -11258,6 +11428,13 @@ body.theme-dark .admin-cstp-summary-readout-value {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-summary-readout.is-warning {
+  border-color: rgba(217, 139, 43, 0.18);
+  background:
+    linear-gradient(180deg, rgba(45, 34, 19, 0.88), rgba(36, 29, 20, 0.84)),
+    rgba(17, 24, 20, 0.82);
 }
 
 body.theme-dark .admin-cstp-badge-summary-empty {
@@ -11430,7 +11607,7 @@ body.theme-dark .admin-cstp-report-output-stamp {
 body.theme-dark .admin-cstp-button[disabled],
 body.theme-dark .admin-cstp-button:disabled {
   background: rgba(54, 60, 56, 0.78);
-  color: rgba(246, 248, 245, 0.62);
+  color: rgba(246, 248, 245, 0.72);
   border-color: rgba(148, 209, 89, 0.12);
 }
 
@@ -19653,6 +19830,24 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .admin-cstp-lab-badge-row {
     justify-content: flex-start;
+  }
+
+  .admin-cstp-session-workflow-header,
+  .admin-cstp-session-summary-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-cstp-session-workflow-indicator {
+    justify-items: start;
+  }
+
+  .admin-cstp-session-action-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-cstp-session-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .admin-cstp-device-image-grid {
