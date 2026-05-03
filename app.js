@@ -1729,6 +1729,18 @@ async function promptInstallGrowApp() {
   }
 }
 
+function withAppDataLoadTimeout(loader, timeoutMs = 0, timeoutMessage = "Data load timed out.") {
+  const normalizedTimeoutMs = Math.max(0, Number(timeoutMs) || 0);
+  if (!normalizedTimeoutMs) {
+    return Promise.resolve().then(() => loader());
+  }
+  return withTimeout(
+    Promise.resolve().then(() => loader()),
+    normalizedTimeoutMs,
+    timeoutMessage,
+  );
+}
+
 function syncInstallPromptBanner() {
   const appShell = document.querySelector(".app-shell");
   const topbar = document.querySelector(".topbar");
@@ -6213,18 +6225,33 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
         appState.gallerySnapshotsLoaded = true;
       } else if (isSupabaseConfigured()) {
         saveSessions([]);
-        appState.sources = await safelyLoadAppData(
-          () => loadSources("auth:signed-out"),
-          [],
-          "Failed to load public sources during auth hydration.",
-          "sourcesError",
-        );
+        const [
+          publicSources,
+          publicGallerySnapshots,
+        ] = await Promise.all([
+          safelyLoadAppData(
+            () => withAppDataLoadTimeout(
+              () => loadSources("auth:signed-out"),
+              4000,
+              "Public source loading timed out during auth hydration.",
+            ),
+            [],
+            "Failed to load public sources during auth hydration.",
+            "sourcesError",
+          ),
+          safelyLoadAppData(
+            () => withAppDataLoadTimeout(
+              () => loadGallerySnapshots(),
+              4000,
+              "Community Grow snapshot loading timed out during auth hydration.",
+            ),
+            [],
+            "Failed to load Community Grow snapshots during auth hydration.",
+          ),
+        ]);
+        appState.sources = publicSources;
         appState.sourcesLoaded = true;
-        appState.gallerySnapshots = await safelyLoadAppData(
-          () => loadGallerySnapshots(),
-          [],
-          "Failed to load Community Grow snapshots during auth hydration.",
-        );
+        appState.gallerySnapshots = publicGallerySnapshots;
         appState.gallerySnapshotsLoaded = true;
       }
 
