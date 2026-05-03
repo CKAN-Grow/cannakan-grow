@@ -3648,6 +3648,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-tested-source-stat strong {
   font-size: 1.24rem;
   line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .home-tested-source-footer {
@@ -13190,6 +13191,10 @@ input::placeholder {
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
+.source-directory-metrics-grid {
+  margin-bottom: 1.25rem;
+}
+
 .source-directory-trust-note,
 .source-directory-results-head p {
   margin: 8px 0 0;
@@ -13384,6 +13389,7 @@ input::placeholder {
   color: var(--ink);
   font-size: 1.45rem;
   line-height: 1.05;
+  overflow-wrap: anywhere;
 }
 
 .source-directory-cstp-preview {

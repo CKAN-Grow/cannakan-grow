@@ -353,23 +353,24 @@ const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
   expired: "src/assets/CSTP-gold-badge.png",
 });
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
-  Object.freeze({ key: "all", label: "All" }),
-  Object.freeze({ key: "gold", label: "CSTP Gold" }),
-  Object.freeze({ key: "silver", label: "CSTP Silver" }),
+  Object.freeze({ key: "all", label: "All Sources" }),
+  Object.freeze({ key: "cstp-certified", label: "CSTP Certified" }),
+  Object.freeze({ key: "gold", label: "Gold" }),
+  Object.freeze({ key: "silver", label: "Silver" }),
+  Object.freeze({ key: "recently-logged", label: "Recently Logged" }),
+  Object.freeze({ key: "most-logged", label: "Most Logged" }),
 ]);
 const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Community Grow" }),
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
 ]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
-  Object.freeze({ key: "popularity", label: "Popularity Rank" }),
-  Object.freeze({ key: "avg-rate", label: "Avg Germ Rate" }),
-  Object.freeze({ key: "sessions", label: "Total Sessions" }),
-  Object.freeze({ key: "seeds-tracked", label: "Seeds Tracked" }),
-  Object.freeze({ key: "recently-tested", label: "Recently Tested" }),
+  Object.freeze({ key: "most-logged", label: "Most Logged" }),
+  Object.freeze({ key: "recently-logged", label: "Recently Logged" }),
+  Object.freeze({ key: "a-z", label: "A-Z" }),
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
-const SOURCE_DIRECTORY_DEFAULT_SORT = "popularity";
+const SOURCE_DIRECTORY_DEFAULT_SORT = "most-logged";
 const testedSourcesMock = Object.freeze([
   Object.freeze({
     id: "humboldt-seed-co",
@@ -2527,7 +2528,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
-      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Tested Sources</a>
+      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Source Directory</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
@@ -4980,7 +4981,7 @@ function getCurrentSiteAnalyticsPageContext() {
       : buildSiteAnalyticsPageContext({
         pageGroup: "sources",
         pageKey: "sources-directory",
-        pageLabel: "Tested Sources",
+        pageLabel: "Source Directory",
         pagePath: "#sources",
       });
   }
@@ -16406,7 +16407,7 @@ function render() {
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "sources",
         pageKey: "sources-directory",
-        pageLabel: "Tested Sources",
+        pageLabel: "Source Directory",
         pagePath: "#sources",
       }));
       return;
@@ -18686,6 +18687,7 @@ function normalizeTestedSourceMockRecord(source = {}) {
   const community = source?.community || {};
   const cstp = source?.cstp || {};
   const trackRecord = source?.trackRecord || {};
+  const directoryStats = source?.directoryStats || {};
   return {
     ...source,
     sourceTypeLabel: String(source?.sourceTypeLabel || source?.type || "Source").trim() || "Source",
@@ -18709,13 +18711,147 @@ function normalizeTestedSourceMockRecord(source = {}) {
       silver: formatTestedSourceMockNumber(Number(trackRecord?.silver)),
       qualificationRate: formatTestedSourceMockPercent(Number(trackRecord?.qualificationRate)),
     },
+    directoryStats: {
+      ...directoryStats,
+      sessionsLogged: formatTestedSourceMockNumber(Number(directoryStats?.sessionsLogged)),
+      varietiesLogged: formatTestedSourceMockNumber(Number(directoryStats?.varietiesLogged)),
+      lastLoggedAt: String(directoryStats?.lastLoggedAt || "").trim(),
+    },
+  };
+}
+
+function getSourceDirectorySessionLoggedAt(session = {}) {
+  const dateTimeValue = session?.date && session?.time
+    ? parseSessionStartDateTime(session.date, session.time)
+    : null;
+  const fallbackDate = parseCompletedAtValue(
+    session?.updatedAt
+    || session?.createdAt
+    || session?.completedAt
+    || "",
+  );
+  return dateTimeValue || fallbackDate || null;
+}
+
+function formatSourceDirectoryLastLoggedDate(value = "") {
+  const parsedDate = parseCompletedAtValue(String(value || "").trim());
+  if (!parsedDate) {
+    return "Not logged yet";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
+function buildSourceDirectorySessionAggregate() {
+  const sourceMap = new Map();
+  const breederKeys = new Set();
+  const varietyKeys = new Set();
+  const sessions = Array.isArray(getSessions()) ? getSessions() : [];
+
+  sessions.forEach((session) => {
+    const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
+    const sessionLoggedAt = getSourceDirectorySessionLoggedAt(session);
+    const sessionLoggedTime = sessionLoggedAt?.getTime() || 0;
+    const sessionLoggedValue = sessionLoggedAt?.toISOString() || "";
+    const seenSourcesInSession = new Set();
+
+    partitions.forEach((partition) => {
+      const sourceName = formatPartitionSource(partition);
+      const breederName = String(partition?.breeder || sourceName || "").trim();
+      const varietyName = formatPartitionSeedVariety(partition);
+      const sourceKey = normalizeComparableSourceKey(sourceName);
+
+      if (breederName) {
+        breederKeys.add(normalizeComparableSourceKey(breederName));
+      }
+      if (varietyName) {
+        varietyKeys.add(normalizeComparableSourceKey(varietyName));
+      }
+      if (!sourceName || !sourceKey) {
+        return;
+      }
+
+      const existingEntry = sourceMap.get(sourceKey) || {
+        key: sourceKey,
+        name: sourceName,
+        sessionsLogged: 0,
+        totalSeeds: 0,
+        totalGerminated: 0,
+        varieties: new Map(),
+        lastLoggedAt: "",
+        lastLoggedTime: 0,
+      };
+
+      existingEntry.name = existingEntry.name || sourceName;
+      existingEntry.totalSeeds += Math.max(0, Number(partition?.seedCount) || 0);
+      existingEntry.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
+      if (varietyName) {
+        existingEntry.varieties.set(normalizeComparableSourceKey(varietyName), varietyName);
+      }
+      if (!seenSourcesInSession.has(sourceKey)) {
+        existingEntry.sessionsLogged += 1;
+        seenSourcesInSession.add(sourceKey);
+      }
+      if (sessionLoggedTime > existingEntry.lastLoggedTime) {
+        existingEntry.lastLoggedTime = sessionLoggedTime;
+        existingEntry.lastLoggedAt = sessionLoggedValue;
+      }
+
+      sourceMap.set(sourceKey, existingEntry);
+    });
+  });
+
+  return {
+    sourceMap,
+    totalBreedersLogged: breederKeys.size,
+    totalVarietiesLogged: varietyKeys.size,
+  };
+}
+
+function getSourceDirectoryTrackRecordForSource(sourceName = "", fallbackTrackRecord = {}) {
+  const normalizedSourceKey = normalizeComparableSourceKey(sourceName);
+  const publishedCertifications = getAdminCstpTestSessions()
+    .filter((session) => (
+      session?.certificationPublished === true
+      && isAdminCstpCertificationEligible(session?.qualificationResult)
+      && normalizeComparableSourceKey(session?.sourceName || "") === normalizedSourceKey
+    ));
+  if (!publishedCertifications.length) {
+    return {
+      ...fallbackTrackRecord,
+      totalCerts: Number(fallbackTrackRecord?.totalCerts) || 0,
+      gold: Number(fallbackTrackRecord?.gold) || 0,
+      silver: Number(fallbackTrackRecord?.silver) || 0,
+      qualificationRate: Number(fallbackTrackRecord?.qualificationRate) || 0,
+      lastTest: String(fallbackTrackRecord?.lastTest || "Not tested"),
+    };
+  }
+
+  const goldCount = publishedCertifications.filter((session) => normalizeAdminCstpQualificationResult(session?.qualificationResult) === "gold").length;
+  const silverCount = publishedCertifications.filter((session) => normalizeAdminCstpQualificationResult(session?.qualificationResult) === "silver").length;
+  const latestPublished = publishedCertifications
+    .map((session) => session?.publishedAt || session?.completedAt || "")
+    .filter(Boolean)
+    .sort((left, right) => (Date.parse(right) || 0) - (Date.parse(left) || 0))[0] || "";
+  const totalCerts = goldCount + silverCount;
+  return {
+    totalCerts,
+    gold: goldCount,
+    silver: silverCount,
+    qualificationRate: totalCerts > 0 ? 100 : 0,
+    lastTest: latestPublished ? formatSourceDirectoryLastLoggedDate(latestPublished) : "Not tested",
   };
 }
 
 function getSourceProfileMockRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim().toLowerCase();
-  const matchedSource = testedSourcesMock.find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId)
-    || testedSourcesMock.find((source) => String(source?.id || "").trim().toLowerCase() === SOURCE_PROFILE_DEFAULT_MOCK_ID)
+  const records = getSourceDirectoryMockRecords();
+  const matchedSource = records.find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId)
+    || records.find((source) => String(source?.id || "").trim().toLowerCase() === SOURCE_PROFILE_DEFAULT_MOCK_ID)
+    || records[0]
     || null;
   return matchedSource ? normalizeTestedSourceMockRecord(matchedSource) : null;
 }
@@ -18793,9 +18929,68 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
 }
 
 function getSourceDirectoryMockRecords() {
-  return testedSourcesMock
-    .map((source) => normalizeTestedSourceMockRecord(source))
-    .filter(Boolean);
+  const { sourceMap } = buildSourceDirectorySessionAggregate();
+  const baseSourcesByKey = new Map(
+    testedSourcesMock
+      .map((source) => normalizeTestedSourceMockRecord(source))
+      .filter(Boolean)
+      .map((source) => [normalizeComparableSourceKey(source.name || source.id || ""), source]),
+  );
+
+  const mergedRecords = [];
+  sourceMap.forEach((entry, sourceKey) => {
+    const baseSource = baseSourcesByKey.get(sourceKey) || null;
+    const totalSeeds = entry.totalSeeds;
+    const totalGerminated = entry.totalGerminated;
+    const averageRate = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : 0;
+    const trackRecord = getSourceDirectoryTrackRecordForSource(entry.name, baseSource?.trackRecord || {});
+    mergedRecords.push(normalizeTestedSourceMockRecord({
+      ...(baseSource || {}),
+      id: String(baseSource?.id || sourceKey).trim(),
+      name: entry.name,
+      type: baseSource?.type || "Source / Breeder",
+      sourceTypeLabel: baseSource?.sourceTypeLabel || baseSource?.type || "Source / Breeder",
+      logoUrl: baseSource?.logoUrl || baseSource?.logo || "",
+      website: baseSource?.website || "",
+      establishedLabel: baseSource?.establishedLabel || "",
+      community: {
+        avgRate: averageRate,
+        sessions: entry.sessionsLogged,
+        rank: 0,
+        seedsTracked: totalSeeds,
+      },
+      cstp: {
+        ...(baseSource?.cstp || {}),
+      },
+      trackRecord,
+      directoryStats: {
+        sessionsLogged: entry.sessionsLogged,
+        varietiesLogged: entry.varieties.size,
+        lastLoggedAt: entry.lastLoggedAt,
+      },
+    }));
+    baseSourcesByKey.delete(sourceKey);
+  });
+
+  const rankedRecords = mergedRecords
+    .filter(Boolean)
+    .sort((left, right) => {
+      const sessionDelta = parseSourceDirectoryMetricNumber(right?.directoryStats?.sessionsLogged)
+        - parseSourceDirectoryMetricNumber(left?.directoryStats?.sessionsLogged);
+      if (sessionDelta !== 0) {
+        return sessionDelta;
+      }
+      return String(left?.name || "").localeCompare(String(right?.name || ""));
+    })
+    .map((record, index) => normalizeTestedSourceMockRecord({
+      ...record,
+      community: {
+        ...(record?.community || {}),
+        rank: index + 1,
+      },
+    }));
+
+  return rankedRecords;
 }
 
 function normalizePersistedSessionImageEntry(image) {
@@ -18874,16 +19069,16 @@ function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
       </div>
       <div class="home-tested-source-stats">
         <article class="home-tested-source-stat">
-          <span class="stat-label">Avg Germ Rate</span>
-          <strong>${escapeHtml(source.community?.avgRate || "—")}</strong>
+          <span class="stat-label">Sessions Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
         </article>
         <article class="home-tested-source-stat">
-          <span class="stat-label">Total Sessions</span>
-          <strong>${escapeHtml(source.community?.sessions || "—")}</strong>
+          <span class="stat-label">Varieties Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
         </article>
         <article class="home-tested-source-stat">
-          <span class="stat-label">Popularity Rank</span>
-          <strong>${escapeHtml(source.community?.rank || "—")}</strong>
+          <span class="stat-label">Last Logged</span>
+          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
         </article>
       </div>
       <div class="home-tested-source-footer">
@@ -18898,21 +19093,23 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
     .slice(0, 5)
     .map((source) => renderHomeTestedSourcePreviewCardMarkup(source))
     .join("");
+  const directoryMetrics = getSourceDirectoryMetrics();
 
   return `
     <section class="card home-tested-sources-preview-section">
       <div class="home-tested-sources-preview-head">
         <div>
-          <p class="eyebrow">Tested Sources</p>
-          <h2>Tested Sources</h2>
-          <p class="muted">Community-tested sources with CSTP certification status</p>
+          <p class="eyebrow">Source Directory</p>
+          <h2>Source Directory</h2>
+          <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
+          <p class="muted">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}.</p>
         </div>
-        <a class="button button-secondary" href="#sources">View All Tested Sources</a>
+        <a class="button button-secondary" href="#sources">View Source Directory</a>
       </div>
-      <div class="home-tested-sources-preview-row" role="list" aria-label="Tested Sources preview">
+      <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
         ${previewCardsMarkup}
       </div>
-      <p class="home-tested-sources-disclaimer muted">Community-tested sources. CSTP verification shown where applicable.</p>
+      <p class="home-tested-sources-disclaimer muted">Member session data powers the directory. CSTP seals appear only for active published Gold or Silver certifications.</p>
     </section>
   `;
 }
@@ -19023,20 +19220,36 @@ function renderHomeCstpOverviewSectionMarkup() {
 
 function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEFAULT_SORT) {
   switch (sortKey) {
-    case "avg-rate":
-      return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
-    case "sessions":
-      return parseSourceDirectoryMetricNumber(source?.community?.sessions);
-    case "seeds-tracked":
-      return parseSourceDirectoryMetricNumber(source?.community?.seedsTracked);
-    case "recently-tested":
-      return getSourceDirectoryCstpPreview(source)?.testedTime || 0;
-    case "popularity":
-    default: {
-      const rank = parseSourceDirectoryMetricNumber(source?.community?.rank);
-      return rank > 0 ? 1000 - rank : 0;
-    }
+    case "recently-logged":
+      return Date.parse(source?.directoryStats?.lastLoggedAt || "") || 0;
+    case "a-z":
+      return 0;
+    case "most-logged":
+    default:
+      return parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
   }
+}
+
+function getSourceDirectoryMetrics(records = getSourceDirectoryMockRecords()) {
+  const aggregate = buildSourceDirectorySessionAggregate();
+  return {
+    totalSourcesLogged: records.length,
+    totalBreedersGerminated: aggregate.totalBreedersLogged,
+    totalVarietiesLogged: aggregate.totalVarietiesLogged,
+    cstpCertifiedSources: records.filter((source) => Boolean(getSourceDirectoryCstpPreview(source))).length,
+  };
+}
+
+function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockRecords()) {
+  const metrics = getSourceDirectoryMetrics(records);
+  return `
+    <div class="summary-grid source-directory-metrics-grid">
+      ${renderAdminOverviewCardMarkup({ label: "Total Sources Logged", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources logged by members" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Breeders Germinated", value: metrics.totalBreedersGerminated.toLocaleString(), subtext: "breeders represented in sessions" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Varieties Logged", value: metrics.totalVarietiesLogged.toLocaleString(), subtext: "varieties recorded by members" })}
+      ${renderAdminOverviewCardMarkup({ label: "CSTP Certified Sources", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active published Gold or Silver" })}
+    </div>
+  `;
 }
 
 function getFilteredAndSortedSourceDirectoryRecords({
@@ -19047,10 +19260,16 @@ function getFilteredAndSortedSourceDirectoryRecords({
   const normalizedQuery = String(query || "").trim().toLowerCase();
   const normalizedFilterKey = String(filterKey || SOURCE_DIRECTORY_DEFAULT_FILTER).trim().toLowerCase();
   const normalizedSortKey = String(sortKey || SOURCE_DIRECTORY_DEFAULT_SORT).trim().toLowerCase();
+  const effectiveSortKey = ["recently-logged", "most-logged"].includes(normalizedFilterKey)
+    ? normalizedFilterKey
+    : normalizedSortKey;
   return getSourceDirectoryMockRecords()
     .filter((source) => {
       const cstpPreview = getSourceDirectoryCstpPreview(source);
-      if (normalizedFilterKey !== "all" && cstpPreview?.filterKey !== normalizedFilterKey) {
+      if (normalizedFilterKey === "cstp-certified" && !cstpPreview) {
+        return false;
+      }
+      if (["gold", "silver"].includes(normalizedFilterKey) && cstpPreview?.filterKey !== normalizedFilterKey) {
         return false;
       }
       if (!normalizedQuery) {
@@ -19060,11 +19279,12 @@ function getFilteredAndSortedSourceDirectoryRecords({
         source.name,
         source.sourceTypeLabel,
         source.establishedLabel,
+        source?.directoryStats?.lastLoggedAt || "",
         cstpPreview?.label || "",
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
-      const valueDelta = getSourceDirectorySortValue(right, normalizedSortKey) - getSourceDirectorySortValue(left, normalizedSortKey);
+      const valueDelta = getSourceDirectorySortValue(right, effectiveSortKey) - getSourceDirectorySortValue(left, effectiveSortKey);
       if (valueDelta !== 0) {
         return valueDelta;
       }
@@ -19103,20 +19323,16 @@ function renderSourceDirectoryCardMarkup(source = {}) {
       </div>
       <div class="source-directory-stats-grid">
         <article class="source-directory-stat">
-          <span class="stat-label">Avg Germ Rate</span>
-          <strong>${escapeHtml(source.community?.avgRate || "—")}</strong>
+          <span class="stat-label">Sessions Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
         </article>
         <article class="source-directory-stat">
-          <span class="stat-label">Total Sessions</span>
-          <strong>${escapeHtml(source.community?.sessions || "—")}</strong>
+          <span class="stat-label">Varieties Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
         </article>
         <article class="source-directory-stat">
-          <span class="stat-label">Popularity Rank</span>
-          <strong>${escapeHtml(source.community?.rank || "—")}</strong>
-        </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Seeds Tracked</span>
-          <strong>${escapeHtml(source.community?.seedsTracked || "—")}</strong>
+          <span class="stat-label">Last Logged</span>
+          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
         </article>
       </div>
       ${cstpPreview ? `
@@ -19145,8 +19361,8 @@ function renderSourceDirectoryResultsMarkup(records = []) {
   if (!records.length) {
     return `
       <article class="card source-directory-empty-state">
-        <h3>No tested sources match your filters yet.</h3>
-        <p class="muted">Try a different search, CSTP filter, or sort option.</p>
+        <h3>No source directory entries match your filters yet.</h3>
+        <p class="muted">Try a different search or directory filter.</p>
       </article>
     `;
   }
@@ -19173,7 +19389,7 @@ function bindSourcesLandingPage() {
       sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
     });
     results.innerHTML = renderSourceDirectoryResultsMarkup(records);
-    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"}`;
+    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the directory`;
   };
 
   searchInput?.addEventListener("input", () => {
@@ -19208,34 +19424,38 @@ function bindSourcesLandingPage() {
 }
 
 function renderSourcesLandingPage() {
+  const directoryRecords = getSourceDirectoryMockRecords();
+  const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("sources")}
           <div>
-            <p class="eyebrow">Tested Sources</p>
-            <h2>Tested Sources</h2>
-            <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
-            <p class="source-directory-trust-note">Listings reflect community data and CSTP testing. Based on user-submitted sessions. Results may vary. Informational only.</p>
+            <p class="eyebrow">Source Directory</p>
+            <h2>Source Directory</h2>
+            <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
+            <p class="source-directory-trust-note">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}. Listings reflect member session data first, with CSTP shown only when a certification is actively published.</p>
             <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
             <p class="source-directory-helper-note">CSTP testing can be requested, but certification depends on batch-specific measured results.</p>
           </div>
         </div>
       </div>
 
+      ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
+
       <section class="card source-directory-controls-card">
         <div class="source-directory-controls-head">
           <div>
             <p class="eyebrow">Directory Controls</p>
-            <h3>Find Tested Sources</h3>
+            <h3>Find Sources</h3>
           </div>
           <span class="source-directory-mock-note">Mock data preview</span>
         </div>
         <div class="source-directory-controls-grid">
           <label class="source-directory-search-field">
             <span class="stat-label">Search</span>
-            <input id="source-directory-search" type="search" placeholder="Search tested sources..." autocomplete="off">
+            <input id="source-directory-search" type="search" placeholder="Search sources or breeders..." autocomplete="off">
           </label>
           <label class="source-directory-sort-field">
             <span class="stat-label">Sort By</span>
@@ -19246,16 +19466,16 @@ function renderSourcesLandingPage() {
             </select>
           </label>
         </div>
-        <div class="source-directory-filter-row" role="group" aria-label="Source certification filters">
+        <div class="source-directory-filter-row" role="group" aria-label="Source directory filters">
           ${renderSourceDirectoryFilterPills(SOURCE_DIRECTORY_DEFAULT_FILTER)}
         </div>
       </section>
 
       <div class="source-directory-results-head">
-        <p id="source-directory-results-summary" class="muted">Showing 0 of ${getSourceDirectoryMockRecords().length} sources</p>
+        <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the directory</p>
       </div>
 
-      <section id="source-directory-results" class="source-directory-grid" aria-label="Tested source directory mock entries">
+      <section id="source-directory-results" class="source-directory-grid" aria-label="Source Directory entries">
       </section>
     </section>
   `;
@@ -19281,7 +19501,7 @@ function renderSourceProfilePage(sourceId = "") {
           </div>
           <div class="inline-actions">
             <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>
-            <a class="button button-secondary" href="#sources">&larr; Back to Tested Sources</a>
+            <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
           </div>
         </div>
       </section>
@@ -19293,22 +19513,22 @@ function renderSourceProfilePage(sourceId = "") {
     {
       label: "Avg Germ Rate",
       value: sourceProfile.community.avgRate,
-      detail: "based on user-submitted public sessions",
+      detail: "based on logged member sessions",
     },
     {
       label: "Total Sessions",
       value: sourceProfile.community.sessions,
-      detail: "user-submitted public sessions counted",
+      detail: "member sessions counted for this source",
     },
     {
       label: "Popularity Rank",
       value: sourceProfile.community.rank,
-      detail: "based on recorded user-submitted sessions",
+      detail: "based on how often members log this source",
     },
     {
       label: "Seeds Tracked",
       value: sourceProfile.community.seedsTracked,
-      detail: "seeds counted from user-submitted sessions",
+      detail: "seeds counted from logged member sessions",
     },
   ];
   const cstpState = getSourceProfileCstpState(sourceProfile);
@@ -19348,11 +19568,11 @@ function renderSourceProfilePage(sourceId = "") {
           <div>
             <p class="eyebrow">Source Profile</p>
             <h2>${escapeHtml(sourceProfile.name)}</h2>
-            <p class="muted">Community data appears first, with CSTP shown as batch-specific testing context for this source record.</p>
+            <p class="muted">Member session data appears first, with CSTP shown separately as batch-specific certification context when available.</p>
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#sources">&larr; Back to Tested Sources</a>
+          <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
         </div>
       </div>
 
@@ -19493,7 +19713,7 @@ function renderSourceCstpReportPage(sourceId = "") {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button button-secondary" href="#sources">&larr; Back to Tested Sources</a>
+            <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
           </div>
         </div>
       </section>
@@ -19828,7 +20048,7 @@ const CONTACT_REASON_OPTIONS = Object.freeze([
   Object.freeze({
     key: "source-correction",
     title: "Source Correction / Directory Issue",
-    description: "Corrections to Tested Sources or Source Profile records.",
+    description: "Corrections to Source Directory or Source Profile records.",
   }),
   Object.freeze({
     key: "partnership",
@@ -28320,13 +28540,13 @@ function renderAdminDevAccessSectionMarkup() {
     defaultOpen: false,
     bodyMarkup: `
       <div class="admin-dev-access-grid">
-        <a class="button button-secondary" href="#sources">View Tested Sources</a>
+            <a class="button button-secondary" href="#sources">View Source Directory</a>
         <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Profile</a>
         <a class="button button-secondary" href="#contact">View Contact Page</a>
         <a class="button button-secondary" href="#home">View CSTP Overview</a>
         <a class="button button-secondary" href="#admin">View CSTP Testing Lab</a>
       </div>
-      <p class="muted admin-dev-access-note">The CSTP Overview lives on Home beneath the Tested Sources preview during development.</p>
+      <p class="muted admin-dev-access-note">The CSTP Overview lives on Home beneath the Source Directory preview during development.</p>
     `,
   });
 }
