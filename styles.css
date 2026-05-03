@@ -429,7 +429,20 @@ body.theme-dark .app-footer-nav a:focus-visible {
   position: relative;
   display: inline-flex;
   align-items: center;
+  gap: 10px;
   max-width: min(100%, 340px);
+}
+
+.account-menu-display-name {
+  min-width: 0;
+  max-width: min(24vw, 180px);
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .auth-avatar {
@@ -871,6 +884,10 @@ body.theme-dark .account-menu-trigger:hover {
   box-shadow:
     0 10px 22px rgba(0, 0, 0, 0.26),
     0 0 0 2px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .account-menu-display-name {
+  color: #f4f7f2;
 }
 
 body.theme-dark .account-dropdown {

@@ -8835,7 +8835,14 @@ function getGrowSessionsSectionTitle() {
 }
 
 function getProfileDisplayName() {
-  return appState.profile?.username || appState.user?.email || "Signed in";
+  const profileName = String(appState.profile?.username || "").trim();
+  if (profileName) {
+    return profileName;
+  }
+
+  const normalizedEmail = getNormalizedUserEmail(appState.user);
+  const emailPrefix = normalizedEmail.split("@")[0]?.trim();
+  return emailPrefix || "User";
 }
 
 function getProfileAvatarFallbackLabel() {
@@ -13358,6 +13365,7 @@ function updateAuthStatus() {
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
+      <span class="account-menu-display-name" title="${escapeHtml(getProfileDisplayName())}">${escapeHtml(getProfileDisplayName())}</span>
       <button
         id="account-menu-trigger"
         class="button button-secondary account-menu-trigger account-menu-trigger--avatar"
