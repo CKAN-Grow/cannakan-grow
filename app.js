@@ -330,6 +330,28 @@ const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
   silver: "src/assets/CSTP-silver-badge.png",
   expired: "src/assets/CSTP-gold-badge.png",
 });
+const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all", label: "All" }),
+  Object.freeze({ key: "gold", label: "CSTP Gold" }),
+  Object.freeze({ key: "silver", label: "CSTP Silver" }),
+  Object.freeze({ key: "tested", label: "Tested - No Certification" }),
+  Object.freeze({ key: "not-tested", label: "Not CSTP Tested" }),
+]);
+const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
+  Object.freeze({ key: "popularity", label: "Popularity" }),
+  Object.freeze({ key: "avg-rate", label: "Avg Germ Rate" }),
+  Object.freeze({ key: "sessions", label: "Total Sessions" }),
+  Object.freeze({ key: "recently-tested", label: "Recently Tested" }),
+]);
+const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
+const SOURCE_DIRECTORY_DEFAULT_SORT = "popularity";
+const SOURCE_DIRECTORY_MOCK_SOURCE_IDS = Object.freeze([
+  "humboldt-seed-co",
+  "royal-queen-seeds",
+  "barneys-farm",
+  "seedsman",
+  "north-atlantic-seed-co",
+]);
 const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
   "humboldt-seed-co": Object.freeze({
     id: "humboldt-seed-co",
@@ -445,6 +467,35 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
       silver: "2",
       qualificationRate: "51%",
       lastTest: "Nov 2025",
+    }),
+  }),
+  "north-atlantic-seed-co": Object.freeze({
+    id: "north-atlantic-seed-co",
+    name: "North Atlantic Seed Co",
+    sourceTypeLabel: "Seed Marketplace",
+    establishedLabel: "Established 2012",
+    logoUrl: "",
+    community: Object.freeze({
+      avgRate: "74%",
+      sessions: "61",
+      rank: "#9",
+      seedsTracked: "1,402",
+    }),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: "",
+      avgTime: "",
+      resultPercent: "",
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: "0",
+      gold: "0",
+      silver: "0",
+      qualificationRate: "0%",
+      lastTest: "Not tested",
     }),
   }),
 });
@@ -17929,6 +17980,21 @@ function getSourceProfileCstpState(sourceProfile = {}) {
           { label: "Result %", value: cstp.resultPercent || "Not available" },
         ],
       };
+    case "not-tested":
+      return {
+        status,
+        eyebrow: "CSTP Verification",
+        heading: "CSTP Verification",
+        statusLabel: "Not CSTP Tested",
+        toneClass: "is-not-tested",
+        usesBadge: false,
+        isMuted: true,
+        expiringSoon: false,
+        pills: [],
+        rows: [
+          { label: "Test Status", value: "No CSTP test on record" },
+        ],
+      };
     case "expired":
     default:
       return {
@@ -17967,8 +18033,12 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
     `;
   }
 
-  const textLabel = cstpState.status === "tested" ? "Tested" : "Expired";
-  const textCaption = cstpState.status === "tested" ? "No certification earned" : "Certification lapsed";
+  const textLabel = cstpState.status === "tested"
+    ? "Tested"
+    : (cstpState.status === "not-tested" ? "Not Tested" : "Expired");
+  const textCaption = cstpState.status === "tested"
+    ? "No certification earned"
+    : (cstpState.status === "not-tested" ? "No CSTP test on record" : "Certification lapsed");
   return `
     <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${toneClass}">
       <span class="source-profile-cstp-visual-label">CSTP</span>
@@ -17978,8 +18048,253 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
   `;
 }
 
+function getSourceDirectoryMockRecords() {
+  return SOURCE_DIRECTORY_MOCK_SOURCE_IDS
+    .map((sourceId) => getSourceProfileMockRecord(sourceId))
+    .filter(Boolean);
+}
+
+function parseSourceDirectoryMetricNumber(value = "") {
+  const digitsOnly = String(value || "").replace(/[^0-9.]/g, "");
+  const parsed = Number(digitsOnly);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseSourceDirectoryMonthYearToTime(value = "") {
+  const normalized = String(value || "").trim();
+  if (!normalized || normalized.toLowerCase() === "not tested") {
+    return 0;
+  }
+  const parsed = Date.parse(`${normalized} 01`);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getSourceDirectoryCstpPreview(source = {}) {
+  const cstpStatus = String(source?.cstp?.status || "").trim().toLowerCase();
+  switch (cstpStatus) {
+    case "gold":
+      return {
+        filterKey: "gold",
+        label: "Gold Certified",
+        badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
+        badgeAlt: "CSTP Gold Certified badge",
+        isExpired: false,
+        testedTime: parseSourceDirectoryMonthYearToTime(source?.cstp?.testedDate),
+      };
+    case "silver":
+      return {
+        filterKey: "silver",
+        label: "Silver Certified",
+        badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
+        badgeAlt: "CSTP Silver Certified badge",
+        isExpired: false,
+        testedTime: parseSourceDirectoryMonthYearToTime(source?.cstp?.testedDate),
+      };
+    case "tested":
+      return {
+        filterKey: "tested",
+        label: "Tested - No Certification",
+        badgeAsset: "",
+        badgeAlt: "",
+        isExpired: false,
+        testedTime: parseSourceDirectoryMonthYearToTime(source?.cstp?.testedDate),
+      };
+    case "not-tested":
+      return {
+        filterKey: "not-tested",
+        label: "Not CSTP Tested",
+        badgeAsset: "",
+        badgeAlt: "",
+        isExpired: false,
+        testedTime: 0,
+      };
+    case "expired":
+    default:
+      return {
+        filterKey: "expired",
+        label: "Certification Expired",
+        badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.expired,
+        badgeAlt: "Expired CSTP certification badge",
+        isExpired: true,
+        testedTime: parseSourceDirectoryMonthYearToTime(source?.cstp?.testedDate),
+      };
+  }
+}
+
+function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEFAULT_SORT) {
+  switch (sortKey) {
+    case "avg-rate":
+      return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
+    case "sessions":
+      return parseSourceDirectoryMetricNumber(source?.community?.sessions);
+    case "recently-tested":
+      return getSourceDirectoryCstpPreview(source).testedTime;
+    case "popularity":
+    default: {
+      const rank = parseSourceDirectoryMetricNumber(source?.community?.rank);
+      return rank > 0 ? 1000 - rank : 0;
+    }
+  }
+}
+
+function getFilteredAndSortedSourceDirectoryRecords({
+  query = "",
+  filterKey = SOURCE_DIRECTORY_DEFAULT_FILTER,
+  sortKey = SOURCE_DIRECTORY_DEFAULT_SORT,
+} = {}) {
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const normalizedFilterKey = String(filterKey || SOURCE_DIRECTORY_DEFAULT_FILTER).trim().toLowerCase();
+  const normalizedSortKey = String(sortKey || SOURCE_DIRECTORY_DEFAULT_SORT).trim().toLowerCase();
+  return getSourceDirectoryMockRecords()
+    .filter((source) => {
+      if (normalizedFilterKey !== "all" && getSourceDirectoryCstpPreview(source).filterKey !== normalizedFilterKey) {
+        return false;
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
+      return [
+        source.name,
+        source.sourceTypeLabel,
+        source.establishedLabel,
+        getSourceDirectoryCstpPreview(source).label,
+      ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+    })
+    .sort((left, right) => {
+      const valueDelta = getSourceDirectorySortValue(right, normalizedSortKey) - getSourceDirectorySortValue(left, normalizedSortKey);
+      if (valueDelta !== 0) {
+        return valueDelta;
+      }
+      return String(left?.name || "").localeCompare(String(right?.name || ""));
+    });
+}
+
+function renderSourceDirectoryFilterPills(activeFilterKey = SOURCE_DIRECTORY_DEFAULT_FILTER) {
+  return SOURCE_DIRECTORY_FILTER_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill ${option.key === activeFilterKey ? "is-active" : ""}"
+      data-source-directory-filter="${escapeHtml(option.key)}"
+      aria-pressed="${option.key === activeFilterKey ? "true" : "false"}"
+    >
+      ${escapeHtml(option.label)}
+    </button>
+  `).join("");
+}
+
+function renderSourceDirectoryCardMarkup(source = {}) {
+  const cstpPreview = getSourceDirectoryCstpPreview(source);
+  return `
+    <article class="card source-directory-card">
+      <div class="source-directory-card-head">
+        ${renderSourceLogoMarkup(source, {
+          className: "source-directory-logo",
+          imageClassName: "source-profile-logo-image",
+          placeholderClassName: "source-profile-logo-placeholder",
+          alt: `${source.name} logo`,
+        })}
+        <div class="source-directory-card-copy">
+          <h3>${escapeHtml(source.name)}</h3>
+          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
+        </div>
+      </div>
+      <div class="source-directory-stats-grid">
+        <article class="source-directory-stat">
+          <span class="stat-label">Avg Germ Rate</span>
+          <strong>${escapeHtml(source.community?.avgRate || "—")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Total Sessions</span>
+          <strong>${escapeHtml(source.community?.sessions || "—")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Popularity Rank</span>
+          <strong>${escapeHtml(source.community?.rank || "—")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Seeds Tracked</span>
+          <strong>${escapeHtml(source.community?.seedsTracked || "—")}</strong>
+        </article>
+      </div>
+      <div class="source-directory-cstp-preview">
+        <span class="source-directory-cstp-label">CSTP Verification</span>
+        <div class="source-directory-cstp-status">
+          ${cstpPreview.badgeAsset ? `
+            <img
+              src="${escapeHtml(cstpPreview.badgeAsset)}"
+              alt="${escapeHtml(cstpPreview.badgeAlt)}"
+              class="source-directory-cstp-badge${cstpPreview.isExpired ? " is-expired" : ""}"
+              loading="lazy"
+              decoding="async"
+            >
+          ` : ""}
+          <span class="source-directory-cstp-text${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
+        </div>
+      </div>
+      <div class="inline-actions">
+        <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
+      </div>
+    </article>
+  `;
+}
+
+function renderSourceDirectoryResultsMarkup(records = []) {
+  if (!records.length) {
+    return `
+      <article class="card source-directory-empty-state">
+        <h3>No sources match those filters yet.</h3>
+        <p class="muted">Try a different search, CSTP filter, or sort option.</p>
+      </article>
+    `;
+  }
+
+  return records.map((source) => renderSourceDirectoryCardMarkup(source)).join("");
+}
+
+function bindSourcesLandingPage() {
+  const searchInput = app.querySelector("#source-directory-search");
+  const sortSelect = app.querySelector("#source-directory-sort");
+  const results = app.querySelector("#source-directory-results");
+  const summary = app.querySelector("#source-directory-results-summary");
+  const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
+  if (!results || !summary) {
+    return;
+  }
+
+  const applyDirectoryView = () => {
+    const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
+    const records = getFilteredAndSortedSourceDirectoryRecords({
+      query: searchInput?.value || "",
+      filterKey: activeFilter,
+      sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
+    });
+    results.innerHTML = renderSourceDirectoryResultsMarkup(records);
+    summary.textContent = `${records.length} mock source${records.length === 1 ? "" : "s"} shown`;
+  };
+
+  searchInput?.addEventListener("input", () => {
+    applyDirectoryView();
+  });
+
+  sortSelect?.addEventListener("change", () => {
+    applyDirectoryView();
+  });
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      filterButtons.forEach((entry) => {
+        const isActive = entry === button;
+        entry.classList.toggle("is-active", isActive);
+        entry.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+      applyDirectoryView();
+    });
+  });
+
+  applyDirectoryView();
+}
+
 function renderSourcesLandingPage() {
-  const sourceRecords = Object.values(SOURCE_PROFILE_MOCK_DATA);
   app.innerHTML = `
     <section class="source-directory-page">
       <div class="section-heading app-section-header">
@@ -17988,46 +18303,49 @@ function renderSourcesLandingPage() {
           <div>
             <p class="eyebrow">Tested Sources</p>
             <h2>Tested Sources</h2>
-            <p class="muted">Browse the sources area and open Source Profile child views from here as the directory expands.</p>
+            <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
+            <p class="source-directory-trust-note">Community data is based on member sessions. CSTP badges are earned through controlled testing.</p>
           </div>
         </div>
       </div>
 
-      <article class="card source-directory-review-card">
-        <div>
-          <p class="eyebrow">Dev Review</p>
-          <h3>Source Profile Preview</h3>
-          <p class="muted">Use this temporary review entry to open the current mock Source Profile UI on the deployed app.</p>
+      <section class="card source-directory-controls-card">
+        <div class="source-directory-controls-head">
+          <div>
+            <p class="eyebrow">Directory Controls</p>
+            <h3>Find Tested Sources</h3>
+          </div>
+          <span class="source-directory-mock-note">Mock data preview</span>
         </div>
-        <div class="inline-actions">
-          <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Source Profile</a>
+        <div class="source-directory-controls-grid">
+          <label class="source-directory-search-field">
+            <span class="stat-label">Search</span>
+            <input id="source-directory-search" type="search" placeholder="Search sources..." autocomplete="off">
+          </label>
+          <label class="source-directory-sort-field">
+            <span class="stat-label">Sort By</span>
+            <select id="source-directory-sort">
+              ${SOURCE_DIRECTORY_SORT_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_DEFAULT_SORT ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
         </div>
-      </article>
+        <div class="source-directory-filter-row" role="group" aria-label="Source certification filters">
+          ${renderSourceDirectoryFilterPills(SOURCE_DIRECTORY_DEFAULT_FILTER)}
+        </div>
+      </section>
 
-      <section class="source-directory-grid" aria-label="Tested source directory mock entries">
-        ${sourceRecords.map((source) => `
-          <article class="card source-directory-card">
-            <div class="source-directory-card-head">
-              ${renderSourceLogoMarkup(source, {
-                className: "source-profile-logo",
-                imageClassName: "source-profile-logo-image",
-                placeholderClassName: "source-profile-logo-placeholder",
-                alt: `${source.name} logo`,
-              })}
-              <div class="source-directory-card-copy">
-                <p class="eyebrow">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
-                <h3>${escapeHtml(source.name)}</h3>
-                <p class="muted">Mock source entry for the future Tested Sources directory.</p>
-              </div>
-            </div>
-            <div class="inline-actions">
-              <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
-            </div>
-          </article>
-        `).join("")}
+      <div class="source-directory-results-head">
+        <p id="source-directory-results-summary" class="muted">0 mock sources shown</p>
+      </div>
+
+      <section id="source-directory-results" class="source-directory-grid" aria-label="Tested source directory mock entries">
       </section>
     </section>
   `;
+
+  bindSourcesLandingPage();
 }
 
 function renderSourceProfilePage(sourceId = "") {
