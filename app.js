@@ -4,6 +4,7 @@ const SAMPLE_SEED_VERSION = "history-preview-v3";
 const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
 const GALLERY_SNAPSHOT_PAGE_SIZE = 12;
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
+const DEBUG_UI_STORAGE_KEY = "cannakanGrowDebugUiEnabled";
 const ANNOUNCEMENT_STORAGE_KEY = "cannakanGrowAnnouncement";
 const FILTER_PAPER_INVENTORY_STORAGE_KEY = "cannakanGrowFilterPaperInventory";
 const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDeductionRegistry";
@@ -1741,6 +1742,16 @@ function withAppDataLoadTimeout(loader, timeoutMs = 0, timeoutMessage = "Data lo
   );
 }
 
+function syncDebugUiVisibility(scope = document) {
+  if (isDebugUiEnabled() || !scope?.querySelectorAll) {
+    return;
+  }
+
+  scope.querySelectorAll(".timeline-debug-panel, [data-debug-only='true']").forEach((element) => {
+    element.remove();
+  });
+}
+
 function syncInstallPromptBanner() {
   const appShell = document.querySelector(".app-shell");
   const topbar = document.querySelector(".topbar");
@@ -3279,8 +3290,22 @@ function removeSampleSessions() {
   localStorage.removeItem(SAMPLE_SEED_KEY);
 }
 
+function isDebugUiEnabled() {
+  try {
+    const searchParams = new URLSearchParams(window.location.search || "");
+    const queryValue = searchParams.get("debug-ui");
+    if (queryValue !== null) {
+      return ["1", "true", "yes", "on"].includes(String(queryValue).trim().toLowerCase());
+    }
+  } catch (error) {
+    // Ignore URL parsing issues and fall back to stored preference.
+  }
+
+  return localStorage.getItem(DEBUG_UI_STORAGE_KEY) === "true";
+}
+
 function canAccessMockDataControls() {
-  return hasResolvedAdminAccess();
+  return hasResolvedAdminAccess() && isDebugUiEnabled();
 }
 
 function isMockDataEnabled() {
@@ -16385,6 +16410,7 @@ function render() {
     clearUnsavedChangesContext();
   }
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
+    syncDebugUiVisibility(app);
     syncInstallPromptBanner();
     syncMockDataBanner();
     if (!isAdminAreaRawRoute()) {
@@ -28999,6 +29025,10 @@ function bindAdminCstpReportPage(sessionId = "") {
 }
 
 function renderAdminDevAccessSectionMarkup() {
+  if (!isDebugUiEnabled()) {
+    return "";
+  }
+
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "Development",
     title: "Dev Access",
@@ -29284,7 +29314,9 @@ function renderAdminPage() {
 
   const systemToolsContainer = app.querySelector("#admin-system-tools");
   if (systemToolsContainer) {
-    systemToolsContainer.innerHTML = `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`;
+    systemToolsContainer.innerHTML = isDebugUiEnabled()
+      ? `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`
+      : "";
   }
 
   const sourceList = app.querySelector("#admin-sources-list");
@@ -30294,7 +30326,7 @@ function renderLeaderboardAuditInsightsSectionMarkup(state) {
       <div class="leaderboard-audit-insights-heading">
         <div>
           <h4>Ranking Insights</h4>
-          <p class="muted">Calculated leaderboard results and debug details</p>
+          <p class="muted">Calculated leaderboard results and supporting details</p>
         </div>
       </div>
       <div class="leaderboard-audit-insights-shell ${isExpanded ? "is-expanded" : "is-collapsed"}">
