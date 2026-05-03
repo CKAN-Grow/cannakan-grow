@@ -1360,13 +1360,23 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 
 .spotlight-body {
   display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+  align-items: start;
   gap: 20px;
 }
 
 .spotlight-main {
   display: grid;
   gap: 10px;
+  align-content: start;
   min-width: 0;
+}
+
+.spotlight-progress {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  align-content: start;
 }
 
 .spotlight-name {
@@ -1593,8 +1603,7 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .spotlight-actions {
-  flex: 0 0 auto;
-  margin-left: auto;
+  justify-self: flex-start;
   align-self: flex-start;
 }
 
@@ -12271,8 +12280,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .spotlight-body {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
   }
 
   .spotlight-lifecycle-grid {
@@ -12280,7 +12288,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .spotlight-actions {
-    margin-left: auto;
+    justify-self: flex-start;
   }
 }
 
