@@ -371,6 +371,7 @@ const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
 const SOURCE_DIRECTORY_DEFAULT_SORT = "most-logged";
+const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
 const testedSourcesMock = Object.freeze([
   Object.freeze({
     id: "humboldt-seed-co",
@@ -19244,10 +19245,88 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
   const metrics = getSourceDirectoryMetrics(records);
   return `
     <div class="summary-grid source-directory-metrics-grid">
-      ${renderAdminOverviewCardMarkup({ label: "Total Sources Logged", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources logged by members" })}
-      ${renderAdminOverviewCardMarkup({ label: "Total Breeders Germinated", value: metrics.totalBreedersGerminated.toLocaleString(), subtext: "breeders represented in sessions" })}
-      ${renderAdminOverviewCardMarkup({ label: "Total Varieties Logged", value: metrics.totalVarietiesLogged.toLocaleString(), subtext: "varieties recorded by members" })}
-      ${renderAdminOverviewCardMarkup({ label: "CSTP Certified Sources", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active published Gold or Silver" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Sources Logged", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources logged by members", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Breeders Germinated", value: metrics.totalBreedersGerminated.toLocaleString(), subtext: "breeders represented in sessions", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "Total Varieties Logged", value: metrics.totalVarietiesLogged.toLocaleString(), subtext: "varieties recorded by members", className: "source-directory-metric-card" })}
+      ${renderAdminOverviewCardMarkup({ label: "CSTP Certified Sources", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active published Gold or Silver", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+    </div>
+  `;
+}
+
+function getSourceDirectoryReportedRateNumber(source = {}) {
+  return parseSourceDirectoryMetricNumber(source?.community?.avgRate);
+}
+
+function getSourceDirectoryReportedRateLabel(source = {}) {
+  const rate = getSourceDirectoryReportedRateNumber(source);
+  return rate > 0 ? `${rate}%` : "—";
+}
+
+function getSortedSourceDirectoryListRecords(records = []) {
+  return [...records].sort((left, right) => {
+    const rateDelta = getSourceDirectoryReportedRateNumber(right) - getSourceDirectoryReportedRateNumber(left);
+    if (rateDelta !== 0) {
+      return rateDelta;
+    }
+    const sessionDelta = parseSourceDirectoryMetricNumber(right?.directoryStats?.sessionsLogged)
+      - parseSourceDirectoryMetricNumber(left?.directoryStats?.sessionsLogged);
+    if (sessionDelta !== 0) {
+      return sessionDelta;
+    }
+    return String(left?.name || "").localeCompare(String(right?.name || ""));
+  });
+}
+
+function renderSourceDirectoryListRowsMarkup(records = [], page = 1, pageSize = SOURCE_DIRECTORY_LIST_PAGE_SIZE) {
+  const safePage = Math.max(1, Math.floor(Number(page) || 1));
+  const offset = (safePage - 1) * pageSize;
+  const pageRecords = records.slice(offset, offset + pageSize);
+  if (!pageRecords.length) {
+    return `
+      <div class="source-directory-list-empty">
+        <p class="muted">No source directory rows match the current filters.</p>
+      </div>
+    `;
+  }
+
+  return pageRecords.map((source, index) => `
+    <article class="source-directory-list-row">
+      <span class="source-directory-list-rank">${offset + index + 1}.</span>
+      <span class="source-directory-list-name">${escapeHtml(source.name || "Source / Breeder")}</span>
+      <span class="source-directory-list-leader" aria-hidden="true"></span>
+      <strong class="source-directory-list-rate">${escapeHtml(getSourceDirectoryReportedRateLabel(source))}</strong>
+    </article>
+  `).join("");
+}
+
+function renderSourceDirectoryPaginationMarkup(totalItems = 0, page = 1, pageSize = SOURCE_DIRECTORY_LIST_PAGE_SIZE) {
+  const totalPages = Math.max(1, Math.ceil(Math.max(0, totalItems) / pageSize));
+  const safePage = Math.min(totalPages, Math.max(1, Math.floor(Number(page) || 1)));
+  const pages = totalPages <= 4
+    ? Array.from({ length: totalPages }, (_, index) => index + 1)
+    : [1, 2, 3, totalPages];
+
+  return `
+    <div class="source-directory-pagination">
+      <button type="button" class="source-directory-pagination-button" data-source-directory-page="${safePage - 1}" ${safePage <= 1 ? "disabled" : ""}>Previous</button>
+      <div class="source-directory-pagination-pages">
+        ${pages.map((pageNumber, index) => {
+          const previousValue = pages[index - 1];
+          const showGap = previousValue && pageNumber - previousValue > 1;
+          return `
+            ${showGap ? '<span class="source-directory-pagination-gap">…</span>' : ""}
+            <button
+              type="button"
+              class="source-directory-pagination-button ${pageNumber === safePage ? "is-active" : ""}"
+              data-source-directory-page="${pageNumber}"
+              aria-current="${pageNumber === safePage ? "page" : "false"}"
+            >
+              ${pageNumber}
+            </button>
+          `;
+        }).join("")}
+      </div>
+      <button type="button" class="source-directory-pagination-button" data-source-directory-page="${safePage + 1}" ${safePage >= totalPages ? "disabled" : ""}>Next</button>
     </div>
   `;
 }
@@ -19307,37 +19386,11 @@ function renderSourceDirectoryFilterPills(activeFilterKey = SOURCE_DIRECTORY_DEF
 
 function renderSourceDirectoryCardMarkup(source = {}) {
   const cstpPreview = getSourceDirectoryCstpPreview(source);
+  const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
   return `
     <article class="card source-directory-card">
-      <div class="source-directory-card-head">
-        ${renderSourceLogoMarkup(source, {
-          className: "source-directory-logo",
-          imageClassName: "source-profile-logo-image",
-          placeholderClassName: "source-profile-logo-placeholder",
-          alt: `${source.name} logo`,
-        })}
-        <div class="source-directory-card-copy">
-          <h3>${escapeHtml(source.name)}</h3>
-          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
-        </div>
-      </div>
-      <div class="source-directory-stats-grid">
-        <article class="source-directory-stat">
-          <span class="stat-label">Sessions Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
-        </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Varieties Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
-        </article>
-        <article class="source-directory-stat">
-          <span class="stat-label">Last Logged</span>
-          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
-        </article>
-      </div>
       ${cstpPreview ? `
-        <div class="source-directory-cstp-preview">
-          <span class="source-directory-cstp-label">CSTP Verification</span>
+        <div class="source-directory-card-seal">
           ${renderPublishedCstpCertifiedSealMarkup(cstpPreview.filterKey, cstpPreview.publishedAt, {
             shellClassName: "source-directory-cstp-status cstp-certified-seal cstp-certified-seal--compact",
             imageClassName: "source-directory-cstp-badge cstp-certified-seal-image",
@@ -19350,6 +19403,36 @@ function renderSourceDirectoryCardMarkup(source = {}) {
           })}
         </div>
       ` : ""}
+      <div class="source-directory-card-hero">
+        ${renderSourceLogoMarkup(source, {
+          className: "source-directory-logo",
+          imageClassName: "source-profile-logo-image",
+          placeholderClassName: "source-profile-logo-placeholder",
+          alt: `${source.name} logo`,
+        })}
+        <div class="source-directory-card-copy">
+          <h3>${escapeHtml(source.name)}</h3>
+          <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source / Breeder")}</p>
+        </div>
+      </div>
+      <div class="source-directory-rate-block">
+        <strong class="source-directory-rate-value">${escapeHtml(reportedRateLabel)}</strong>
+        <span class="source-directory-rate-label">reported germination</span>
+      </div>
+      <div class="source-directory-stats-grid">
+        <article class="source-directory-stat">
+          <span class="stat-label">Sessions Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Varieties Logged</span>
+          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
+        </article>
+        <article class="source-directory-stat">
+          <span class="stat-label">Last Activity</span>
+          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
+        </article>
+      </div>
       <div class="inline-actions">
         <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
       </div>
@@ -19373,23 +19456,50 @@ function renderSourceDirectoryResultsMarkup(records = []) {
 function bindSourcesLandingPage() {
   const searchInput = app.querySelector("#source-directory-search");
   const sortSelect = app.querySelector("#source-directory-sort");
-  const results = app.querySelector("#source-directory-results");
+  const cardResults = app.querySelector("#source-directory-card-results");
+  const listResults = app.querySelector("#source-directory-list-results");
+  const pagination = app.querySelector("#source-directory-pagination");
   const summary = app.querySelector("#source-directory-results-summary");
   const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
-  if (!results || !summary) {
+  if (!cardResults || !listResults || !pagination || !summary) {
     return;
   }
   const totalSources = getSourceDirectoryMockRecords().length;
+  let currentListPage = 1;
 
-  const applyDirectoryView = () => {
+  const bindPagination = (filteredRecords = []) => {
+    pagination.querySelectorAll("[data-source-directory-page]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.dataset.sourceDirectoryPageBound === "true") {
+        return;
+      }
+      button.dataset.sourceDirectoryPageBound = "true";
+      button.addEventListener("click", () => {
+        const nextPage = Math.max(1, Math.floor(Number(button.dataset.sourceDirectoryPage) || 1));
+        const totalPages = Math.max(1, Math.ceil(filteredRecords.length / SOURCE_DIRECTORY_LIST_PAGE_SIZE));
+        currentListPage = Math.min(nextPage, totalPages);
+        applyDirectoryView({ preservePage: true });
+      });
+    });
+  };
+
+  const applyDirectoryView = ({ preservePage = false } = {}) => {
     const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
     const records = getFilteredAndSortedSourceDirectoryRecords({
       query: searchInput?.value || "",
       filterKey: activeFilter,
       sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
     });
-    results.innerHTML = renderSourceDirectoryResultsMarkup(records);
+    const listRecords = getSortedSourceDirectoryListRecords(records);
+    if (!preservePage) {
+      currentListPage = 1;
+    }
+    const totalPages = Math.max(1, Math.ceil(listRecords.length / SOURCE_DIRECTORY_LIST_PAGE_SIZE));
+    currentListPage = Math.min(currentListPage, totalPages);
+    cardResults.innerHTML = renderSourceDirectoryResultsMarkup(records);
+    listResults.innerHTML = renderSourceDirectoryListRowsMarkup(listRecords, currentListPage, SOURCE_DIRECTORY_LIST_PAGE_SIZE);
+    pagination.innerHTML = renderSourceDirectoryPaginationMarkup(listRecords.length, currentListPage, SOURCE_DIRECTORY_LIST_PAGE_SIZE);
     summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the directory`;
+    bindPagination(listRecords);
   };
 
   searchInput?.addEventListener("input", () => {
@@ -19428,19 +19538,25 @@ function renderSourcesLandingPage() {
   const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("sources")}
-          <div>
-            <p class="eyebrow">Source Directory</p>
-            <h2>Source Directory</h2>
-            <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
-            <p class="source-directory-trust-note">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}. Listings reflect member session data first, with CSTP shown only when a certification is actively published.</p>
-            <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
-            <p class="source-directory-helper-note">CSTP testing can be requested, but certification depends on batch-specific measured results.</p>
+      <section class="source-directory-hero card">
+        <div class="source-directory-hero-layout">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("sources")}
+            <div>
+              <p class="eyebrow">Source Directory</p>
+              <h2>Source Directory</h2>
+              <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
+              <p class="source-directory-trust-note">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}. Listings reflect member session data first, with CSTP shown only when a certification is actively published.</p>
+              <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
+              <p class="source-directory-helper-note">CSTP testing can be requested, but certification depends on batch-specific measured results.</p>
+            </div>
           </div>
+          <aside class="source-directory-note-card">
+            <span class="source-directory-note-icon" aria-hidden="true">i</span>
+            <p>All germination rates are community-reported and aggregated from member sessions across the platform.</p>
+          </aside>
         </div>
-      </div>
+      </section>
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
 
@@ -19471,11 +19587,34 @@ function renderSourcesLandingPage() {
         </div>
       </section>
 
-      <div class="source-directory-results-head">
+      <div class="source-directory-results-head source-directory-results-head--cards">
+        <div>
+          <h3>Source Cards</h3>
+          <p class="muted">Overview of sources logged by the community.</p>
+        </div>
         <p id="source-directory-results-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the directory</p>
       </div>
 
-      <section id="source-directory-results" class="source-directory-grid" aria-label="Source Directory entries">
+      <section id="source-directory-card-results" class="source-directory-grid" aria-label="Source Directory entries">
+      </section>
+
+      <section class="card source-directory-list-section">
+        <div class="source-directory-results-head source-directory-results-head--list">
+          <div>
+            <p class="eyebrow">Directory List</p>
+            <h3>Source Directory List</h3>
+            <p class="muted">Community-reported germination rates (combined across all member sessions).</p>
+          </div>
+        </div>
+        <div class="source-directory-list-shell">
+          <div class="source-directory-list-head">
+            <span>#</span>
+            <span>Source / Breeder</span>
+            <span>Reported Germination Rate</span>
+          </div>
+          <div id="source-directory-list-results" class="source-directory-list-results"></div>
+        </div>
+        <div id="source-directory-pagination"></div>
       </section>
     </section>
   `;
