@@ -25026,6 +25026,11 @@ function buildAdminCstpLifecycleState(session = null) {
   };
 }
 
+function shouldShowAdminCstpLiveResultSections(session = null) {
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(session?.status || "");
+  return ["active-test", "completed", "report-prepared", "published"].includes(normalizedStatus);
+}
+
 function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, session = null) {
   if (!summaryElement || !sectionElement) {
     return;
@@ -25043,6 +25048,7 @@ function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, ses
   const startedAt = parseCompletedAtValue(startedLabel);
   const completedAt = parseCompletedAtValue(completedLabel);
   const hasTimingData = Boolean(startedLabel || completedLabel || startedAt || completedAt);
+  const durationTarget = completedAt || new Date();
 
   if (!hasTimingData) {
     summaryElement.innerHTML = "";
@@ -25069,8 +25075,51 @@ function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, ses
         <p>${escapeHtml(formatDurationBetween(startedAt, completedAt))}</p>
       </article>
     ` : ""}
+    ${startedAt && !completedAt ? `
+      <article class="timing-card timing-card-elapsed">
+        <strong>Elapsed Time</strong>
+        <p>${escapeHtml(formatDurationBetween(startedAt, durationTarget))}</p>
+      </article>
+    ` : ""}
   `;
   sectionElement.hidden = false;
+}
+
+function syncAdminCstpLiveResultSections(detail, session = null) {
+  if (!detail) {
+    return;
+  }
+
+  if (!shouldShowAdminCstpLiveResultSections(session)) {
+    if (detail.timingSummary) {
+      detail.timingSummary.innerHTML = "";
+    }
+    if (detail.progressChart) {
+      detail.progressChart.innerHTML = "";
+    }
+    if (detail.runProgressSummary) {
+      detail.runProgressSummary.innerHTML = "";
+    }
+    if (detail.timingSection) {
+      detail.timingSection.hidden = true;
+    }
+    if (detail.progressSection) {
+      detail.progressSection.hidden = true;
+    }
+    if (detail.runProgressSection) {
+      detail.runProgressSection.hidden = true;
+    }
+    return;
+  }
+
+  updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, session);
+  updatePartitionProgressChart(session?.partitions || [], detail.progressChart, detail.progressSection);
+  updateRunProgressSummary(
+    detail.runProgressSummary,
+    detail.runProgressSection,
+    mapAdminCstpStatusToSessionStatus(session?.status || ""),
+    session?.partitions || [],
+  );
 }
 
 function renderAdminCstpPartitionDetailRows(container, session = null) {
@@ -26574,9 +26623,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
       detail.saveButton.disabled = false;
     }
   }
-  updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, session);
-  updatePartitionProgressChart(session.partitions || [], detail.progressChart, detail.progressSection);
-  updateRunProgressSummary(detail.runProgressSummary, detail.runProgressSection, sessionStageValue, session.partitions || []);
+  syncAdminCstpLiveResultSections(detail, session);
   updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
   initializeSessionImageState(detail.imageSection, {
     input: detail.imageInput,
@@ -26618,14 +26665,7 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
     }
 
     syncAdminCstpSessionSummaryForm(form, draftSession);
-    updatePartitionProgressChart(draftSession.partitions || [], detail.progressChart, detail.progressSection);
-    updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, draftSession);
-    updateRunProgressSummary(
-      detail.runProgressSummary,
-      detail.runProgressSection,
-      detail.statusField?.value || mapAdminCstpStatusToSessionStatus(draftSession.status),
-      draftSession.partitions || [],
-    );
+    syncAdminCstpLiveResultSections(detail, draftSession);
     updateSessionLifecycleTimeline(
       detail.lifecycleSummary,
       detail.lifecycleSection,
@@ -26774,6 +26814,9 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   }
 
   refreshDerivedViews();
+  startSessionTimer(() => {
+    refreshDerivedViews();
+  });
 }
 
 function renderAdminCstpReportPage(recordId = "") {
