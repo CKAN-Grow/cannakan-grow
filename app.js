@@ -4527,7 +4527,7 @@ function updateNavState() {
   const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
-    : (route === "disclaimer"
+    : (route === "disclaimer" || route === "terms" || route === "privacy"
       ? "home"
     : (route === "admin"
       ? "admin"
@@ -4833,6 +4833,22 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "data-testing-disclaimer",
       pageLabel: "Data & Testing Disclaimer",
       pagePath: "#disclaimer",
+    });
+  }
+  if (route === "terms") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "terms-of-service",
+      pageLabel: "Terms of Service",
+      pagePath: "#terms",
+    });
+  }
+  if (route === "privacy") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "privacy-policy",
+      pageLabel: "Privacy Policy",
+      pagePath: "#privacy",
     });
   }
   if (route === "members") {
@@ -16116,6 +16132,28 @@ function render() {
     return;
   }
 
+  if (route === "terms") {
+    renderTermsOfServicePage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "terms-of-service",
+      pageLabel: "Terms of Service",
+      pagePath: "#terms",
+    }));
+    return;
+  }
+
+  if (route === "privacy") {
+    renderPrivacyPolicyPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "privacy-policy",
+      pageLabel: "Privacy Policy",
+      pagePath: "#privacy",
+    }));
+    return;
+  }
+
   if (route === "members" && id) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
@@ -19242,6 +19280,127 @@ function renderDataTestingDisclaimerPage() {
           <p class="eyebrow">Jurisdiction</p>
           <h3>Applies flexibly by region</h3>
           <p class="muted">This disclaimer is intended to operate with applicable local law. Where regional consumer or liability protections apply, those protections continue to apply.</p>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderTermsOfServicePage() {
+  app.innerHTML = `
+    <section class="card disclaimer-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Legal</p>
+            <h2>Terms of Service</h2>
+            <p class="muted">Plain-language terms for using Cannakan, community data, CSTP information, and platform features.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#home">Back Home</a>
+        </div>
+      </div>
+
+      <div class="disclaimer-grid">
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Use of Platform</p>
+          <h3>Informational tool</h3>
+          <p class="muted">Cannakan is provided as an informational platform for germination tracking, community comparison, and CSTP reference data. It is not a guarantee tool or professional advisory service.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Guarantees</p>
+          <h3>No guarantees</h3>
+          <p class="muted">We do not guarantee germination outcomes, source performance, CSTP results, uptime, or the completeness of any community-submitted information.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Community Data</p>
+          <h3>User responsibility for submissions</h3>
+          <p class="muted">Users are responsible for the accuracy of the session, source, and snapshot data they submit. Community rankings and source summaries may change as new data is added or reviewed.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">CSTP Scope</p>
+          <h3>Batch-based testing only</h3>
+          <p class="muted">CSTP results apply to tested batches under controlled conditions at a point in time. They do not guarantee future performance across other batches, storage conditions, or user environments.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Neutrality</p>
+          <h3>No endorsement</h3>
+          <p class="muted">Listings, rankings, badges, and source pages are informational and do not represent sponsorship, endorsement, or recommendation by Cannakan.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Liability</p>
+          <h3>Limitation of liability</h3>
+          <p class="muted">To the fullest extent permitted by applicable law, Cannakan is not liable for losses, damages, or decisions arising from reliance on platform content, community data, CSTP information, or third-party source information.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Conduct</p>
+          <h3>No false or abusive data</h3>
+          <p class="muted">Users may not knowingly submit false, misleading, spam, abusive, or manipulated data. We may remove content or restrict access when platform integrity is at risk.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Changes</p>
+          <h3>Modifications and jurisdiction</h3>
+          <p class="muted">We may update platform features and these terms over time. These terms are intended to apply with flexibility under applicable law, while regional consumer protections remain in effect where required.</p>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderPrivacyPolicyPage() {
+  app.innerHTML = `
+    <section class="card disclaimer-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Legal</p>
+            <h2>Privacy Policy</h2>
+            <p class="muted">A short overview of what data Cannakan collects, how it is used, and what users can control.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#home">Back Home</a>
+        </div>
+      </div>
+
+      <div class="disclaimer-grid">
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Collection</p>
+          <h3>Data we collect</h3>
+          <p class="muted">We may collect account details, profile information, session entries, snapshots, source inputs, interaction history, support messages, and technical usage data needed to operate the platform.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Use</p>
+          <h3>How data is used</h3>
+          <p class="muted">Data is used to provide platform features, display community statistics, support CSTP-related reference pages, improve moderation, maintain security, and respond to support requests.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Visibility</p>
+          <h3>Public data display</h3>
+          <p class="muted">Public or approved community data may appear in leaderboards, source summaries, community pages, and other in-app surfaces based on the privacy and approval settings applied to that content.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Sales</p>
+          <h3>No sale of personal data</h3>
+          <p class="muted">Cannakan does not sell personal data. If data is shared with service providers, it is for operating, securing, or improving the platform.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Storage</p>
+          <h3>Cookies and local storage</h3>
+          <p class="muted">The app may use cookies, browser storage, and similar tools to support sessions, preferences, performance, analytics, and product functionality.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Control</p>
+          <h3>User choices</h3>
+          <p class="muted">Users can update profile details, manage what they share publicly, and contact us about account or data concerns. Some data may remain in records where required for integrity, moderation, or legal compliance.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Contact</p>
+          <h3>Questions or requests</h3>
+          <p class="muted">For privacy questions, support issues, or data-related requests, use the existing Report / Contact Admin option in the footer so we can review and respond.</p>
         </article>
       </div>
     </section>
