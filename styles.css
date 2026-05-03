@@ -1389,6 +1389,129 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
   max-width: 56ch;
 }
 
+.spotlight-lifecycle {
+  display: grid;
+  gap: 12px;
+}
+
+.spotlight-lifecycle-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.spotlight-lifecycle-stage {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  transition: border-color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.spotlight-lifecycle-line {
+  display: block;
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(24, 34, 24, 0.1);
+  transition: background-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.spotlight-lifecycle-stage strong {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.spotlight-lifecycle-stage p {
+  margin: 0;
+  min-height: 1.3em;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.spotlight-lifecycle-stage-soaking .spotlight-lifecycle-line.is-active {
+  background: #7fb8ff;
+}
+
+.spotlight-lifecycle-stage-germination .spotlight-lifecycle-line.is-active {
+  background: #d97a4a;
+}
+
+.spotlight-lifecycle-stage-green .spotlight-lifecycle-line.is-active {
+  background: #94d159;
+}
+
+.spotlight-lifecycle-stage-completed .spotlight-lifecycle-line.is-active {
+  background: #8a6748;
+}
+
+.spotlight-lifecycle-stage.is-complete p {
+  color: var(--accent-dark);
+}
+
+.spotlight-lifecycle-stage-soaking.is-complete,
+.spotlight-lifecycle-stage-soaking.is-current {
+  background: rgba(127, 184, 255, 0.16);
+  border-color: rgba(79, 137, 207, 0.28);
+}
+
+.spotlight-lifecycle-stage-soaking.is-complete strong,
+.spotlight-lifecycle-stage-soaking.is-complete p,
+.spotlight-lifecycle-stage-soaking.is-current strong,
+.spotlight-lifecycle-stage-soaking.is-current p {
+  color: #2e6299;
+}
+
+.spotlight-lifecycle-stage-germination.is-complete,
+.spotlight-lifecycle-stage-germination.is-current {
+  background: rgba(217, 122, 74, 0.16);
+  border-color: rgba(183, 95, 49, 0.28);
+}
+
+.spotlight-lifecycle-stage-germination.is-complete strong,
+.spotlight-lifecycle-stage-germination.is-complete p,
+.spotlight-lifecycle-stage-germination.is-current strong,
+.spotlight-lifecycle-stage-germination.is-current p {
+  color: #9a4f29;
+}
+
+.spotlight-lifecycle-stage-green.is-complete,
+.spotlight-lifecycle-stage-green.is-current {
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(100, 157, 52, 0.26);
+}
+
+.spotlight-lifecycle-stage-green.is-complete strong,
+.spotlight-lifecycle-stage-green.is-complete p,
+.spotlight-lifecycle-stage-green.is-current strong,
+.spotlight-lifecycle-stage-green.is-current p {
+  color: #4f7f28;
+}
+
+.spotlight-lifecycle-stage-completed.is-complete,
+.spotlight-lifecycle-stage-completed.is-current {
+  background: rgba(138, 103, 72, 0.16);
+  border-color: rgba(116, 83, 54, 0.28);
+}
+
+.spotlight-lifecycle-stage-completed.is-complete strong,
+.spotlight-lifecycle-stage-completed.is-complete p,
+.spotlight-lifecycle-stage-completed.is-current strong,
+.spotlight-lifecycle-stage-completed.is-current p {
+  color: #6d4d33;
+}
+
+.spotlight-lifecycle-stage.is-current {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
 .spotlight-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1419,6 +1542,48 @@ body.theme-dark .spotlight-stat {
   background: #1E221F;
   border-color: #343a35;
   color: #f6f8f5;
+}
+
+body.theme-dark .spotlight-lifecycle-stage {
+  background: #252b26;
+  border-color: #2a332f;
+}
+
+body.theme-dark .spotlight-lifecycle-stage strong,
+body.theme-dark .spotlight-lifecycle-stage p {
+  color: #b7c0b7;
+}
+
+body.theme-dark .spotlight-lifecycle-line {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+body.theme-dark .spotlight-lifecycle-stage-soaking.is-complete,
+body.theme-dark .spotlight-lifecycle-stage-soaking.is-current {
+  background: linear-gradient(180deg, rgba(127, 184, 255, 0.08) 0%, rgba(37, 43, 38, 0.98) 100%);
+  border-color: rgba(127, 184, 255, 0.22);
+}
+
+body.theme-dark .spotlight-lifecycle-stage-germination.is-complete,
+body.theme-dark .spotlight-lifecycle-stage-germination.is-current {
+  background: linear-gradient(180deg, rgba(217, 122, 74, 0.08) 0%, rgba(37, 43, 38, 0.98) 100%);
+  border-color: rgba(217, 122, 74, 0.22);
+}
+
+body.theme-dark .spotlight-lifecycle-stage-green.is-complete,
+body.theme-dark .spotlight-lifecycle-stage-green.is-current {
+  background: linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(37, 43, 38, 0.98) 100%);
+  border-color: rgba(148, 209, 89, 0.2);
+}
+
+body.theme-dark .spotlight-lifecycle-stage-completed.is-complete,
+body.theme-dark .spotlight-lifecycle-stage-completed.is-current {
+  background: linear-gradient(180deg, rgba(138, 103, 72, 0.08) 0%, rgba(37, 43, 38, 0.98) 100%);
+  border-color: rgba(138, 103, 72, 0.22);
+}
+
+body.theme-dark .spotlight-lifecycle-stage.is-current {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 body.theme-dark .spotlight-stat span {

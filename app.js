@@ -29402,10 +29402,10 @@ function renderHome() {
   const spotlightCard = document.querySelector("#active-session-spotlight");
   const summaryGrid = document.querySelector(".summary-grid");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
-  const spotlightStage = document.querySelector("#active-session-spotlight-stage");
   const spotlightName = document.querySelector("#active-session-spotlight-name");
   const spotlightDate = document.querySelector("#active-session-spotlight-date");
   const spotlightDescription = document.querySelector("#active-session-spotlight-description");
+  const spotlightLifecycle = document.querySelector("#active-session-spotlight-lifecycle");
   const spotlightTimer = document.querySelector("#active-session-spotlight-timer");
   const spotlightSeeds = document.querySelector("#active-session-spotlight-seeds");
   const spotlightRate = document.querySelector("#active-session-spotlight-rate");
@@ -29492,14 +29492,12 @@ function renderHome() {
   const updateSpotlight = () => {
     if (!spotlightSession) {
       spotlightCard?.classList.remove("stage-soaking", "stage-germinating", "stage-completed");
-      if (spotlightStage) {
-        spotlightStage.dataset.stage = "No active session";
-        spotlightStage.classList.add("is-inactive");
-      }
-      spotlightStage.textContent = "No active session";
       spotlightName.textContent = "No active session";
       spotlightDate.textContent = "";
       spotlightDescription.textContent = "Start a new grow session to begin tracking.";
+      if (spotlightLifecycle) {
+        spotlightLifecycle.innerHTML = renderSpotlightLifecycleMarkup();
+      }
       spotlightTimer.textContent = "--";
       spotlightSeeds.textContent = "--";
       spotlightRate.textContent = "--";
@@ -29520,24 +29518,17 @@ function renderHome() {
       spotlightSession.germinationStartedAt || "",
     );
 
-    const previousStage = spotlightStage?.dataset.stage || "";
-
     spotlightCard?.classList.toggle("stage-soaking", normalizedStage === "soaking");
     spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
     spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
-    spotlightStage.textContent = capitalize(normalizedStage).replace("Unselected", "Not started");
-    if (spotlightStage) {
-      spotlightStage.classList.remove("is-inactive");
-      spotlightStage.dataset.stage = normalizedStage;
-      if (previousStage && previousStage !== normalizedStage) {
-        animateStageBadge(spotlightStage);
-      }
-    }
     spotlightName.textContent = formatSessionLabel(spotlightSession);
     spotlightDate.textContent = spotlightSession.date || "";
     spotlightDescription.textContent = normalizedStage === "soaking"
       ? "Soaking is underway. Keep this run moving toward germination."
       : "Germination is active. Review progress and continue this session.";
+    if (spotlightLifecycle) {
+      spotlightLifecycle.innerHTML = renderSpotlightLifecycleMarkup(spotlightSession);
+    }
     spotlightTimer.textContent = formatSpotlightElapsed(stageStart);
     spotlightSeeds.textContent = `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds} seeds`;
     spotlightRate.textContent = totalsForSession.totalSeeds > 0 ? `${percentageForSession}%` : "--";
@@ -35543,6 +35534,61 @@ function renderSessionLifecycleTimelineMarkup(state) {
         </article>
         `).join("")}
       </div>
+  `;
+}
+
+function getSpotlightLifecycleEvents(session = null) {
+  const stageState = session ? buildSessionLifecycleState(session) : null;
+  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
+  const currentProgressKey = stageState?.completedAt || normalizedStage === "completed"
+    ? "completed"
+    : stageState?.firstPlantedAt
+      ? "first-germinated"
+      : (normalizedStage === "germinating" || stageState?.germinationStartedAt)
+        ? "germination"
+        : normalizedStage === "soaking"
+          ? "soaking"
+          : "";
+
+  const stageConfig = [
+    { key: "soaking", label: "Soaking", tone: "soaking", currentLabel: "Soaking" },
+    { key: "germination", label: "Germination Started", tone: "germination", currentLabel: "Germinating" },
+    { key: "first-germinated", label: "First Germinated", tone: "green", currentLabel: "First Germinated" },
+    { key: "completed", label: "Completed", tone: "completed", currentLabel: "Completed" },
+  ];
+
+  const currentIndex = stageConfig.findIndex((event) => event.key === currentProgressKey);
+
+  return stageConfig.map((event, index) => {
+    const isCurrent = currentIndex === index;
+    const isComplete = currentIndex > index;
+    const statusText = isComplete
+      ? `${event.label} completed`
+      : (isCurrent ? event.currentLabel : "");
+
+    return {
+      ...event,
+      isCurrent,
+      isComplete,
+      isActive: isCurrent || isComplete,
+      statusText,
+    };
+  });
+}
+
+function renderSpotlightLifecycleMarkup(session = null) {
+  const events = getSpotlightLifecycleEvents(session);
+
+  return `
+    <div class="spotlight-lifecycle-grid">
+      ${events.map((event) => `
+        <article class="spotlight-lifecycle-stage spotlight-lifecycle-stage-${event.tone} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""}">
+          <span class="spotlight-lifecycle-line lifecycle-${event.tone} ${event.isActive ? "is-active" : ""}"></span>
+          <strong>${escapeHtml(event.label)}</strong>
+          <p>${event.statusText ? escapeHtml(event.statusText) : "&nbsp;"}</p>
+        </article>
+      `).join("")}
+    </div>
   `;
 }
 
