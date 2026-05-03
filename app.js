@@ -3305,7 +3305,7 @@ function isDebugUiEnabled() {
 }
 
 function canAccessMockDataControls() {
-  return hasResolvedAdminAccess() && isDebugUiEnabled();
+  return hasResolvedAdminAccess();
 }
 
 function isMockDataEnabled() {
@@ -29309,7 +29309,7 @@ function renderAdminPage() {
 
   const systemToolsContainer = app.querySelector("#admin-system-tools");
   if (systemToolsContainer) {
-    systemToolsContainer.innerHTML = isDebugUiEnabled()
+    systemToolsContainer.innerHTML = canAccessMockDataControls()
       ? `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`
       : "";
   }
