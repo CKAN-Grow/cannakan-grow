@@ -6467,7 +6467,7 @@ function normalizeProfileRow(row) {
     username: String(row.username || "").trim(),
     email: String(row.email || "").trim().toLowerCase(),
     role: normalizeUserRole(row.role),
-    avatarUrl: String(row.avatar_url || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(row.avatar_url),
     avatarPath: String(row.avatar_path || "").trim(),
     accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
     lastActiveAt: row.last_active_at || "",
@@ -6579,7 +6579,7 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
   return {
     id: String(row.id || "").trim(),
     displayName: String(row.display_name || row.username || "").trim() || "Community member",
-    avatarUrl: String(row.avatar_url || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(row.avatar_url),
     joinedAt: row.joined_at || row.created_at || "",
     ...normalizedSettings,
   };
@@ -8843,6 +8843,29 @@ function getProfileAvatarFallbackLabel() {
   return getPublicMemberInitialsLabel(getProfileDisplayName());
 }
 
+function getSafeAvatarImageUrl(avatarUrl = "", options = {}) {
+  const {
+    allowBlob = false,
+    allowDataImage = true,
+  } = options || {};
+  const normalizedUrl = String(avatarUrl || "").trim();
+  if (!normalizedUrl) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(normalizedUrl) || normalizedUrl.startsWith("/public/assets/")) {
+    return normalizedUrl;
+  }
+  if (allowBlob && normalizedUrl.startsWith("blob:")) {
+    return normalizedUrl;
+  }
+  if (allowDataImage && normalizedUrl.startsWith("data:image/")) {
+    return normalizedUrl;
+  }
+
+  return "";
+}
+
 function renderProfileAvatarMarkup({
   avatarUrl = "",
   displayName = getProfileDisplayName(),
@@ -8851,8 +8874,9 @@ function renderProfileAvatarMarkup({
 } = {}) {
   const normalizedDisplayName = String(displayName || "").trim() || "Member";
   const fallbackMarkup = `<span class="${escapeHtml(fallbackClassName)}" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(normalizedDisplayName))}</span>`;
-  if (avatarUrl) {
-    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(normalizedDisplayName)}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
+  const safeAvatarUrl = getSafeAvatarImageUrl(avatarUrl);
+  if (safeAvatarUrl) {
+    return `<img src="${escapeHtml(safeAvatarUrl)}" alt="${escapeHtml(normalizedDisplayName)}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
   }
   return fallbackMarkup;
 }
@@ -11460,8 +11484,13 @@ function renderGallerySharedProfileMarkup(snapshot) {
   }
 
   const profileName = String(snapshot.profileName || "").trim();
-  const profileImageUrl = String(snapshot.profileImageUrl || "").trim();
-  if (!profileName && !profileImageUrl) {
+  const safeProfileImageUrl = getSafeAvatarImageUrl(snapshot.profileImageUrl);
+  const avatarMarkup = renderPublicMemberAvatarMarkup(
+    profileName || "Shared grower profile",
+    safeProfileImageUrl,
+    "gallery-card-profile-avatar",
+  );
+  if (!profileName && !safeProfileImageUrl) {
     return "";
   }
 
@@ -11475,7 +11504,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
 
   return `
     <${wrapperTag} ${wrapperAttributes}>
-      ${profileImageUrl ? `<img src="${escapeHtml(profileImageUrl)}" alt="${escapeHtml(profileName || "Shared grower profile image")}" class="gallery-card-profile-avatar">` : ""}
+      ${avatarMarkup}
       ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
     </${wrapperTag}>
   `;
@@ -11499,7 +11528,7 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
   return {
     memberId,
     displayName: fallbackDisplayName,
-    avatarUrl: fallbackAvatarUrl,
+    avatarUrl: getSafeAvatarImageUrl(fallbackAvatarUrl),
     profileRoute: memberId ? getPublicMemberProfileRoute(memberId) : "",
   };
 }
@@ -12906,9 +12935,10 @@ function renderPublicMemberAvatarFallbackMarkup(displayName = "", className = "p
 }
 
 function renderPublicMemberAvatarMarkup(displayName = "", avatarUrl = "", className = "public-member-profile-avatar") {
-  if (avatarUrl) {
+  const safeAvatarUrl = getSafeAvatarImageUrl(avatarUrl);
+  if (safeAvatarUrl) {
     const fallbackMarkup = renderPublicMemberAvatarFallbackMarkup(displayName, className);
-    return `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
+    return `<img src="${escapeHtml(safeAvatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
   }
 
   return renderPublicMemberAvatarFallbackMarkup(displayName, className);
@@ -16980,18 +17010,21 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
     return;
   }
 
-  const displayUrl = state.previewUrl || (state.removeAvatar ? "" : profile?.avatarUrl || "");
-  if (!displayUrl) {
+  const displayName = String(profile?.username || getProfileDisplayName()).trim() || "Member";
+  const rawDisplayUrl = state.previewUrl || (state.removeAvatar ? "" : profile?.avatarUrl || "");
+  if (!rawDisplayUrl) {
     preview.hidden = true;
     preview.innerHTML = "";
     removeButton.hidden = true;
     return;
   }
 
+  const safeDisplayUrl = getSafeAvatarImageUrl(rawDisplayUrl, { allowBlob: Boolean(state.previewUrl) });
+  const fallbackMarkup = `<span class="profile-avatar-preview-fallback" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(displayName))}</span>`;
   preview.hidden = false;
-  preview.innerHTML = `
-    <img src="${escapeHtml(displayUrl)}" alt="Profile preview" class="profile-avatar-preview-image">
-  `;
+  preview.innerHTML = safeDisplayUrl
+    ? `<img src="${escapeHtml(safeDisplayUrl)}" alt="Profile preview" class="profile-avatar-preview-image" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`
+    : fallbackMarkup;
   removeButton.hidden = false;
 }
 

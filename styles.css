@@ -9034,6 +9034,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(255, 255, 255, 0.7);
 }
 
+.profile-avatar-preview-fallback {
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .profile-avatar-actions {
   display: flex;
   flex-wrap: wrap;
