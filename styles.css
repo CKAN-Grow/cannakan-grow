@@ -1134,15 +1134,18 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .dashboard-bar h2 {
-  font-size: clamp(1.24rem, 2.65vw, 1.76rem);
-  line-height: 1.08;
+  font-size: clamp(1.16rem, 2.35vw, 1.62rem);
+  font-weight: 600;
+  line-height: 1.12;
 }
 
 .dashboard-subtitle {
   margin: 8px 0 0;
   max-width: 640px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.91rem;
+  font-weight: 450;
+  line-height: 1.55;
 }
 
 .muted {
@@ -1683,7 +1686,9 @@ body.theme-dark .spotlight-stat strong {
 
 .session-images-heading h4 {
   margin: 0;
-  font-size: 1.28rem;
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.18;
 }
 
 .section-title-with-icon {
@@ -1779,9 +1784,9 @@ body.theme-dark .spotlight-stat strong {
 .app-section-header-main > div > .app-section-header-title {
   margin: 0;
   min-width: 0;
-  font-size: clamp(1.2rem, 1.03rem + 0.9vw, 1.74rem);
-  font-weight: 800;
-  line-height: 1.04;
+  font-size: clamp(1.12rem, 0.98rem + 0.76vw, 1.58rem);
+  font-weight: 600;
+  line-height: 1.1;
   letter-spacing: -0.02em;
   overflow-wrap: anywhere;
   text-wrap: balance;
@@ -1793,8 +1798,9 @@ body.theme-dark .spotlight-stat strong {
 .app-section-header-main > div > .dashboard-subtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.45;
+  font-size: 0.92rem;
+  font-weight: 450;
+  line-height: 1.58;
   max-width: 72ch;
 }
 
@@ -1835,7 +1841,7 @@ body.theme-dark .spotlight-stat strong {
   .app-section-header-main > div > h5,
   .app-section-header-main > div > .admin-collapsible-title,
   .app-section-header-main > div > .app-section-header-title {
-    font-size: clamp(1.08rem, 0.94rem + 0.74vw, 1.46rem);
+    font-size: clamp(1rem, 0.9rem + 0.56vw, 1.3rem);
   }
 }
 
@@ -6562,13 +6568,16 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .admin-collapsible-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.24;
 }
 
 .admin-collapsible-description {
   margin: 0;
+  font-size: 0.92rem;
+  font-weight: 450;
+  line-height: 1.58;
 }
 
 .admin-collapsible-section.is-open .admin-collapsible-title {
@@ -10703,7 +10712,9 @@ body.theme-dark .contact-reason-card.is-active {
 
 .progress-chart-heading h4 {
   margin: 0;
-  font-size: 1.28rem;
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.18;
 }
 
 .progress-chart-list {
@@ -13090,8 +13101,9 @@ input::placeholder {
 
 .partition-work-heading h3 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 2.4rem);
-  line-height: 1.02;
+  font-size: clamp(1.78rem, 3.1vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.08;
 }
 
 .partition-product-icon {
