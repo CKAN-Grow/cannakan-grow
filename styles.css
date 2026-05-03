@@ -12271,6 +12271,10 @@ body.theme-dark .theme-toggle-button:hover {
     align-items: stretch;
   }
 
+  .spotlight-lifecycle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .spotlight-actions {
     width: 100%;
   }
@@ -12506,6 +12510,10 @@ body.theme-dark .theme-toggle-button:hover {
 
   .home-gallery-rankings-cta {
     width: 100%;
+  }
+
+  .spotlight-lifecycle-grid {
+    grid-template-columns: 1fr;
   }
 
   .spotlight-meta {
