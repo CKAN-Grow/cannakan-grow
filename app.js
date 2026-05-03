@@ -334,7 +334,8 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
   "humboldt-seed-co": Object.freeze({
     id: "humboldt-seed-co",
     name: "Humboldt Seed Co",
-    sourceTypeLabel: "Seed Bank",
+    sourceTypeLabel: "Breeder / Seed Source",
+    establishedLabel: "Established 2018",
     logoUrl: "",
     community: Object.freeze({
       avgRate: "82%",
@@ -363,6 +364,7 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
     id: "royal-queen-seeds",
     name: "Royal Queen Seeds",
     sourceTypeLabel: "Seed Bank",
+    establishedLabel: "Established 2007",
     logoUrl: "",
     community: Object.freeze({
       avgRate: "79%",
@@ -391,6 +393,7 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
     id: "barneys-farm",
     name: "Barney's Farm",
     sourceTypeLabel: "Breeder",
+    establishedLabel: "Established 1986",
     logoUrl: "",
     community: Object.freeze({
       avgRate: "77%",
@@ -419,6 +422,7 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
     id: "seedsman",
     name: "Seedsman",
     sourceTypeLabel: "Seed Marketplace",
+    establishedLabel: "Established 2002",
     logoUrl: "",
     community: Object.freeze({
       avgRate: "75%",
@@ -18119,8 +18123,8 @@ function renderSourceProfilePage(sourceId = "") {
         </div>
       </div>
 
-      <article class="card source-profile-community-card">
-        <div class="source-profile-community-head">
+      <article class="card source-profile-identity-card">
+        <div class="source-profile-identity-head">
           <div class="source-profile-identity">
             ${renderSourceLogoMarkup(sourceProfile, {
               className: "source-profile-logo",
@@ -18129,10 +18133,22 @@ function renderSourceProfilePage(sourceId = "") {
               alt: `${sourceProfile.name} logo`,
             })}
             <div class="source-profile-identity-copy">
-              <p class="eyebrow">Community Performance</p>
               <h3>${escapeHtml(sourceProfile.name)}</h3>
-              <span class="source-profile-type-pill">${escapeHtml(sourceProfile.sourceTypeLabel)}</span>
+              <p class="source-profile-identity-type">${escapeHtml(sourceProfile.sourceTypeLabel)}</p>
+              ${sourceProfile.establishedLabel ? `<span class="source-profile-established-badge">${escapeHtml(sourceProfile.establishedLabel)}</span>` : ""}
             </div>
+          </div>
+          <div class="source-profile-identity-actions">
+            <button type="button" class="button button-secondary" data-source-follow-preview="${escapeHtml(sourceProfile.id)}">Follow</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="card source-profile-community-card">
+        <div class="source-profile-community-head">
+          <div>
+            <p class="eyebrow">Community Performance</p>
+            <h3>Community Performance</h3>
           </div>
         </div>
         <div class="summary-grid source-profile-community-grid">
@@ -18195,6 +18211,9 @@ function renderSourceProfilePage(sourceId = "") {
 
   app.querySelector("[data-source-cstp-report]")?.addEventListener("click", () => {
     window.alert("Full CSTP report mock preview coming soon.");
+  });
+  app.querySelector("[data-source-follow-preview]")?.addEventListener("click", () => {
+    window.alert("Source follow preview coming soon.");
   });
 }
 
