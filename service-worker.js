@@ -1,9 +1,10 @@
-const CACHE_NAME = "cannakan-grow-shell-v13";
+const CACHE_NAME = "cannakan-grow-shell-v14";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/supabase-config.js",
   "/manifest.json",
   "/favicon.ico",
   "/favicon-32x32.png",
@@ -18,6 +19,7 @@ const NETWORK_FIRST_PATHS = new Set([
   "/index.html",
   "/styles.css",
   "/app.js",
+  "/supabase-config.js",
   "/manifest.json",
 ]);
 const loggedPrecacheWarnings = new Set();
