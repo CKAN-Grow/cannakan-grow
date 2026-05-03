@@ -7547,6 +7547,107 @@ body.theme-dark .contact-reason-card.is-active {
   margin-bottom: 16px;
 }
 
+.admin-section-card--featured-cstp {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #94d159;
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.2), transparent 32%),
+    radial-gradient(circle at top left, rgba(201, 244, 154, 0.16), transparent 28%),
+    linear-gradient(160deg, rgba(17, 26, 19, 0.98) 0%, rgba(23, 34, 27, 0.96) 52%, rgba(18, 27, 22, 0.98) 100%);
+  box-shadow:
+    0 22px 42px rgba(15, 20, 15, 0.16),
+    0 0 0 1px rgba(148, 209, 89, 0.16),
+    0 0 26px rgba(148, 209, 89, 0.16);
+}
+
+.admin-section-card--featured-cstp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(148, 209, 89, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 24%);
+}
+
+.admin-section-card--featured-cstp > * {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-section-card--featured-cstp .admin-collapsible-toggle:hover .admin-collapsible-chevron,
+.admin-section-card--featured-cstp .admin-collapsible-toggle:focus-visible .admin-collapsible-chevron {
+  color: #c4f18e;
+}
+
+.admin-section-card--featured-cstp .section-title-icon {
+  width: 92px;
+  height: 92px;
+  flex: 0 0 92px;
+  padding: 12px;
+  border-color: rgba(148, 209, 89, 0.34);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.24), rgba(148, 209, 89, 0.08) 58%, rgba(19, 28, 23, 0.88));
+  color: #b9ee82;
+  box-shadow:
+    0 0 0 1px rgba(148, 209, 89, 0.14),
+    0 0 24px rgba(148, 209, 89, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.admin-section-card--featured-cstp .admin-collapsible-title {
+  font-size: clamp(1.34rem, 1.14rem + 0.95vw, 1.92rem);
+  font-weight: 900;
+}
+
+.admin-section-card--featured-cstp .admin-collapsible-description,
+.admin-section-card--featured-cstp .muted,
+.admin-section-card--featured-cstp .eyebrow {
+  color: rgba(238, 247, 233, 0.82);
+}
+
+.admin-cstp-featured-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.02) 58%),
+    rgba(12, 18, 14, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 30px rgba(0, 0, 0, 0.12);
+}
+
+.admin-cstp-featured-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-cstp-featured-copy strong,
+.admin-section-card--featured-cstp .admin-cstp-featured-copy strong {
+  color: #f4f9ef;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.admin-cstp-featured-copy p {
+  margin: 0;
+  max-width: 72ch;
+}
+
+.admin-cstp-featured-cta {
+  min-height: 54px;
+  padding: 15px 22px;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 .admin-communications-toolbar p,
 .admin-dev-access-note {
   margin: 0;
@@ -10531,6 +10632,39 @@ body.theme-dark .admin-cstp-summary-readout-value {
 body.theme-dark .admin-cstp-badge-summary-empty {
   border-color: rgba(148, 209, 89, 0.28);
   background: rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .admin-section-card--featured-cstp {
+  border-color: #94d159;
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.22), transparent 32%),
+    radial-gradient(circle at top left, rgba(182, 236, 119, 0.14), transparent 28%),
+    linear-gradient(160deg, rgba(13, 20, 16, 0.98) 0%, rgba(17, 27, 22, 0.98) 52%, rgba(13, 20, 16, 0.99) 100%);
+  box-shadow:
+    0 24px 46px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 30px rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .admin-section-card--featured-cstp .section-title-icon {
+  border-color: rgba(148, 209, 89, 0.36);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.28), rgba(148, 209, 89, 0.1) 58%, rgba(16, 24, 19, 0.94));
+  color: #c7f49a;
+  box-shadow:
+    0 0 0 1px rgba(148, 209, 89, 0.16),
+    0 0 30px rgba(148, 209, 89, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body.theme-dark .admin-cstp-featured-toolbar {
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.14), rgba(148, 209, 89, 0.04) 58%),
+    rgba(10, 16, 13, 0.54);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 16px 30px rgba(0, 0, 0, 0.2);
 }
 
 body.theme-dark .admin-cstp-qualification-badge-shell {

@@ -26089,10 +26089,18 @@ function renderAdminCstpLabSectionMarkup() {
     iconType: "activity",
     storageKey: ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
     contentId: "admin-cstp-lab-section-content",
-    defaultOpen: false,
+    defaultOpen: true,
+    sectionClassName: "card admin-section-card admin-section-card--featured-cstp",
     bodyMarkup: `
       <div class="admin-communications-shell">
         <div class="admin-communications-toolbar">
+          <div class="admin-cstp-featured-toolbar">
+            <div class="admin-cstp-featured-copy">
+              <strong>Primary Admin Workflow</strong>
+              <p class="muted">Open the lab workspace first to manage assigned sessions, prepare reports, and publish qualifying certifications.</p>
+            </div>
+            <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary admin-cstp-featured-cta" data-admin-cstp-featured-open="true">Open CSTP Testing Lab</button>
+          </div>
           <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab status filters">
             ${renderAdminCstpLabFiltersMarkup("all")}
           </div>
@@ -26203,6 +26211,29 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
 function bindAdminCstpLabSection(scope = app) {
   if (!scope?.querySelectorAll) {
     return;
+  }
+
+  const featuredOpenButton = scope.querySelector("[data-admin-cstp-featured-open='true']");
+  if (featuredOpenButton instanceof HTMLButtonElement && featuredOpenButton.dataset.adminCstpFeaturedBound !== "true") {
+    featuredOpenButton.dataset.adminCstpFeaturedBound = "true";
+    featuredOpenButton.addEventListener("click", () => {
+      const section = featuredOpenButton.closest(".admin-collapsible-section");
+      const toggle = section?.querySelector("[data-admin-section-toggle='true']") || null;
+      const content = section?.querySelector(".admin-collapsible-content") || null;
+      if (toggle && content && toggle.getAttribute("aria-expanded") !== "true") {
+        syncAdminCollapsibleSection(toggle, content, true);
+        setAdminSectionOpenState(ADMIN_CSTP_LAB_OPEN_STORAGE_KEY, true);
+      }
+
+      const detailShell = scope.querySelector("#admin-cstp-lab-detail");
+      const firstInteractive = detailShell?.querySelector("button, a, input, select, textarea");
+      detailShell?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (firstInteractive instanceof HTMLElement) {
+        window.setTimeout(() => {
+          firstInteractive.focus({ preventScroll: true });
+        }, 180);
+      }
+    });
   }
 
   const listShell = scope.querySelector("#admin-cstp-lab-list");
@@ -27139,6 +27170,7 @@ function renderAdminPage() {
         </div>
       </div>
     </section>
+    ${renderAdminCstpLabSectionMarkup()}
     <section class="card admin-section-card">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
@@ -27184,7 +27216,6 @@ function renderAdminPage() {
       `,
     })}
     ${renderAdminCommunicationsSectionMarkup()}
-    ${renderAdminCstpLabSectionMarkup()}
     ${renderAdminDevAccessSectionMarkup()}
     ${renderAdminSourceReviewSectionMarkup()}
     ${renderAdminMessagesSectionMarkup()}
