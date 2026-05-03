@@ -22935,6 +22935,22 @@ function syncAdminCollapsibleSection(button, content, isOpen) {
   section?.classList.toggle("is-collapsed", !isOpen);
 }
 
+function scrollElementIntoViewAfterLayout(element, options = {}) {
+  if (!(element instanceof Element)) {
+    return;
+  }
+
+  const {
+    delayMs = 140,
+    behavior = "smooth",
+    block = "start",
+  } = options;
+
+  window.setTimeout(() => {
+    element.scrollIntoView({ behavior, block });
+  }, Math.max(0, Number(delayMs) || 0));
+}
+
 function bindAdminCollapsibleSections(scope = app) {
   if (!scope) {
     return;
@@ -22957,6 +22973,10 @@ function bindAdminCollapsibleSections(scope = app) {
       const isOpen = button.getAttribute("aria-expanded") !== "true";
       syncAdminCollapsibleSection(button, content, isOpen);
       setAdminSectionOpenState(storageKey, isOpen);
+      if (isOpen) {
+        const section = button.closest(".admin-collapsible-section");
+        scrollElementIntoViewAfterLayout(section || content, { delayMs: 140 });
+      }
     });
   });
 }
@@ -26636,6 +26656,9 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   });
 
   bindAdminCstpTestSessionPage(session.id);
+  scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
+    delayMs: 140,
+  });
 }
 
 function bindAdminCstpTestSessionPage(sessionId = "") {
@@ -31987,6 +32010,9 @@ function renderSessionDetail(sessionId) {
     } catch (error) {
       window.alert(error.message || "Could not delete session.");
     }
+  });
+  scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
+    delayMs: 140,
   });
 }
 
