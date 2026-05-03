@@ -357,6 +357,10 @@ const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "gold", label: "CSTP Gold" }),
   Object.freeze({ key: "silver", label: "CSTP Silver" }),
 ]);
+const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Community Grow" }),
+  Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
+]);
 const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: "popularity", label: "Popularity Rank" }),
   Object.freeze({ key: "avg-rate", label: "Avg Germ Rate" }),
@@ -1015,6 +1019,7 @@ const appState = {
   installPromptMode: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
+  galleryCertificationFilter: "all",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
@@ -11855,6 +11860,17 @@ function normalizeGallerySort(sortBy = "date") {
   }
 
   return "date";
+}
+
+function normalizeGalleryCertificationFilter(filterKey = "all") {
+  return String(filterKey || "").trim().toLowerCase() === "cstp-tested"
+    ? "cstp-tested"
+    : "all";
+}
+
+function getGalleryCertificationFilterLabel(filterKey = "all") {
+  return GALLERY_CERTIFICATION_FILTER_OPTIONS.find((option) => option.key === normalizeGalleryCertificationFilter(filterKey))?.label
+    || GALLERY_CERTIFICATION_FILTER_OPTIONS[0].label;
 }
 
 function getGallerySortOrderOptions(sortBy = "date") {
@@ -25303,8 +25319,17 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
   syncAdminCstpSessionDerivedValues(normalizedSession);
 
   const canPrepareReport = Boolean(options.canPrepareReport);
+  const canPublishCertification = canPublishAdminCstpCertification(normalizedSession);
   const prepareLabel = normalizedSession.reportPreparedAt || normalizedSession.publishedAt ? "Open Report" : "Prepare Report";
   const workflowStatusLabel = getAdminCstpWorkflowStatusLabel(normalizedSession);
+  const publishLabel = normalizedSession.certificationPublished || normalizedSession.publishedAt
+    ? "CSTP Certification Published"
+    : "Publish CSTP Certification";
+  const shouldShowPublishAction = Boolean(
+    normalizedSession.reportPreparedAt
+    || normalizedSession.publishedAt
+    || normalizedSession.certificationPublished,
+  );
 
   return `
     <section class="admin-cstp-session-workspace">
@@ -25313,6 +25338,9 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
           <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
           <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
           <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
+          ${shouldShowPublishAction ? `
+            <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--success" data-admin-cstp-session-action="publish-certification" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPublishCertification ? "" : " disabled"}>${escapeHtml(publishLabel)}</button>
+          ` : ""}
         </div>
         <div class="admin-cstp-session-workflow-indicator" aria-label="CSTP workflow status">
           <span class="admin-cstp-session-workflow-label">Workflow Status</span>
@@ -25912,6 +25940,32 @@ function canPublishAdminCstpCertification(session = null) {
   );
 }
 
+function publishAdminCstpCertification(sessionId = "") {
+  const existingSession = getAdminCstpTestSessionById(sessionId);
+  if (!existingSession || !canPublishAdminCstpCertification(existingSession)) {
+    return null;
+  }
+
+  const timestamp = existingSession.publishedAt || new Date().toISOString();
+  const updatedSession = updateAdminCstpAssignedSession(sessionId, {
+    ...existingSession,
+    status: "published",
+    publishedAt: timestamp,
+    certificationPublished: true,
+  });
+
+  const linkedRecord = getAdminCstpLabRecords().find((record) => record.assignedSessionId === sessionId) || null;
+  if (linkedRecord) {
+    upsertAdminCstpLabRecord({
+      ...linkedRecord,
+      status: "published",
+      publishedAt: linkedRecord.publishedAt || timestamp,
+    });
+  }
+
+  return updatedSession;
+}
+
 function prepareAdminCstpReportSession(sessionId = "") {
   const existingSession = getAdminCstpTestSessionById(sessionId);
   if (!existingSession) {
@@ -25950,10 +26004,17 @@ function normalizeComparableSourceKey(value = "") {
     .replace(/^-+|-+$/g, "");
 }
 
-function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
-  const sourceIdKey = normalizeComparableSourceKey(sourceProfile?.id || "");
-  const sourceNameKey = normalizeComparableSourceKey(sourceProfile?.name || "");
-  if (!sourceIdKey && !sourceNameKey) {
+function getPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity = {}) {
+  const candidateKeys = new Set(
+    [
+      sourceIdentity?.sourceId,
+      sourceIdentity?.sourceName,
+      sourceIdentity?.sourceLabel,
+    ]
+      .map((value) => normalizeComparableSourceKey(value))
+      .filter(Boolean),
+  );
+  if (!candidateKeys.size) {
     return null;
   }
 
@@ -25962,10 +26023,7 @@ function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
       session?.certificationPublished === true
       && Boolean(session?.publishedAt)
       && ["gold", "silver"].includes(normalizeAdminCstpQualificationResult(session?.qualificationResult))
-      && (
-        normalizeComparableSourceKey(session?.sourceName || "") === sourceIdKey
-        || normalizeComparableSourceKey(session?.sourceName || "") === sourceNameKey
-      )
+      && candidateKeys.has(normalizeComparableSourceKey(session?.sourceName || ""))
     ))
     .sort((left, right) => (Date.parse(right.publishedAt || "") || 0) - (Date.parse(left.publishedAt || "") || 0))[0] || null;
 
@@ -25991,6 +26049,26 @@ function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
     totalGerminationTime: matchingSession.totalGerminationTime,
     observations: matchingSession.observations,
   };
+}
+
+function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
+  return getPublishedAdminCstpCertificationForSourceIdentity({
+    sourceId: sourceProfile?.id || "",
+    sourceName: sourceProfile?.name || "",
+  });
+}
+
+function getPublishedAdminCstpCertificationForSnapshot(snapshot = null) {
+  if (!snapshot) {
+    return null;
+  }
+
+  const managedSource = getManagedSourceRecordForSnapshot(snapshot, { includeHidden: true });
+  return getPublishedAdminCstpCertificationForSourceIdentity({
+    sourceId: managedSource?.id || snapshot?.sourceId || "",
+    sourceName: managedSource?.name || snapshot?.sourceName || "",
+    sourceLabel: snapshot?.sourceName || "",
+  });
 }
 
 function syncAdminCstpLabRecordFromAssignedSession(record = null, session = null) {
@@ -26929,6 +27007,12 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
         ensureAdminCstpCompletedTestSnapshot(sessionId, "report-prepare");
         window.location.hash = `#admin/cstp-report/${encodeURIComponent(sessionId)}`;
         return;
+      } else if (actionKey === "publish-certification") {
+        const persistedDraft = updateAdminCstpAssignedSession(sessionId, draftSession) || existingSession;
+        if (!canPublishAdminCstpCertification(persistedDraft)) {
+          return;
+        }
+        publishAdminCstpCertification(sessionId);
       }
       renderAdminCstpTestSessionPage(sessionId);
     });
@@ -27111,8 +27195,8 @@ function renderAdminCstpReportPage(recordId = "") {
   const suggestedQualification = getSuggestedAdminCstpQualificationResult(reportSession);
   const canPublish = canPublishAdminCstpCertification(reportSession);
   const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
-    ? "Certification Published"
-    : "Publish Certification";
+    ? "CSTP Certification Published"
+    : "Publish CSTP Certification";
   app.innerHTML = `
     <section class="card disclaimer-page">
       <div class="section-heading app-section-header">
@@ -27430,23 +27514,7 @@ function bindAdminCstpReportPage(sessionId = "") {
       return;
     }
 
-    const timestamp = new Date().toISOString();
-    updateAdminCstpAssignedSession(sessionId, {
-      ...existingSession,
-      status: "published",
-      publishedAt: existingSession.publishedAt || timestamp,
-      certificationPublished: true,
-    });
-
-    const linkedRecord = getAdminCstpLabRecords().find((record) => record.assignedSessionId === sessionId) || null;
-    if (linkedRecord) {
-      upsertAdminCstpLabRecord({
-        ...linkedRecord,
-        status: "published",
-        publishedAt: linkedRecord.publishedAt || timestamp,
-      });
-    }
-
+    publishAdminCstpCertification(sessionId);
     renderAdminCstpReportPage(sessionId);
   });
 }
@@ -29298,6 +29366,7 @@ function renderGallery(targetSnapshotId = "") {
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
   const gallerySortOrderControl = document.querySelector("#gallery-sort-order");
+  const galleryCertificationFilterControl = document.querySelector("#gallery-certification-filter");
   const gallerySortState = document.querySelector("#gallery-sort-state");
   const galleryCountState = document.querySelector("#gallery-count-state");
   const galleryLoadMoreShell = document.querySelector("#gallery-load-more-shell");
@@ -29309,12 +29378,13 @@ function renderGallery(targetSnapshotId = "") {
 
   appState.gallerySort = normalizeGallerySort(appState.gallerySort);
   appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
+  appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(appState.galleryCertificationFilter);
   appState.galleryVisibleSnapshotCount = Math.max(
     GALLERY_SNAPSHOT_PAGE_SIZE,
     Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
   );
   if (gallerySortState) {
-    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
+    gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
   }
 
   if (galleryFeedSection) {
@@ -29475,13 +29545,24 @@ function renderGallery(targetSnapshotId = "") {
 
   const renderVisibleGallerySnapshots = () => {
     galleryGrid.innerHTML = "";
+    const filteredApprovedSnapshots = gallerySnapshots.filter((snapshot) => {
+      if (getGallerySnapshotDisplayStatus(snapshot) !== "approved") {
+        return false;
+      }
+      if (appState.galleryCertificationFilter !== "cstp-tested") {
+        return true;
+      }
+      return Boolean(getPublishedAdminCstpCertificationForSnapshot(snapshot));
+    });
     const approvedSnapshots = sortVisibleGallerySnapshots(
-      gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved"),
+      filteredApprovedSnapshots,
       appState.gallerySort,
       appState.gallerySortOrder,
     );
     const nonApprovedSnapshots = sortGallerySnapshotsNewestFirst(
-      gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
+      appState.galleryCertificationFilter === "cstp-tested"
+        ? []
+        : gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
     );
     const targetApprovedIndex = targetSnapshotId
       ? approvedSnapshots.findIndex((snapshot) => snapshot.id === targetSnapshotId)
@@ -29495,7 +29576,10 @@ function renderGallery(targetSnapshotId = "") {
       ...nonApprovedSnapshots,
     ];
     if (galleryCountState) {
-      galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} snapshots`;
+      const countLabel = appState.galleryCertificationFilter === "cstp-tested"
+        ? "CSTP-tested snapshots"
+        : "snapshots";
+      galleryCountState.textContent = `Showing ${visibleApprovedSnapshots.length.toLocaleString()} of ${approvedSnapshots.length.toLocaleString()} ${countLabel}`;
     }
     if (galleryLoadMoreShell) {
       galleryLoadMoreShell.hidden = visibleApprovedSnapshots.length >= approvedSnapshots.length;
@@ -29532,7 +29616,9 @@ function renderGallery(targetSnapshotId = "") {
               <path d="m20.5 15-4.5-4.5L11 16l-2.5-2.5L3.5 18"></path>
             </svg>
           </div>
-          <p>No Community Grow snapshots yet. Publish one from your Share Snapshot section.</p>
+          <p>${appState.galleryCertificationFilter === "cstp-tested"
+            ? "No published Gold or Silver CSTP-certified Community Grow snapshots are available yet."
+            : "No Community Grow snapshots yet. Publish one from your Share Snapshot section."}</p>
         </div>
       `;
       return;
@@ -29592,7 +29678,7 @@ function renderGallery(targetSnapshotId = "") {
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       syncGallerySortOrderControl(true);
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
       }
       renderVisibleGallerySnapshots();
     });
@@ -29604,7 +29690,19 @@ function renderGallery(targetSnapshotId = "") {
       appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, gallerySortOrderControl.value);
       appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
       if (gallerySortState) {
-        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)}`;
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+      }
+      renderVisibleGallerySnapshots();
+    });
+  }
+
+  if (galleryCertificationFilterControl) {
+    galleryCertificationFilterControl.value = normalizeGalleryCertificationFilter(appState.galleryCertificationFilter);
+    galleryCertificationFilterControl.addEventListener("change", () => {
+      appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(galleryCertificationFilterControl.value);
+      appState.galleryVisibleSnapshotCount = GALLERY_SNAPSHOT_PAGE_SIZE;
+      if (gallerySortState) {
+        gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
       }
       renderVisibleGallerySnapshots();
     });
