@@ -19136,47 +19136,161 @@ function getSourceProfileMockRecord(sourceId = "") {
   return matchedSource ? normalizeTestedSourceMockRecord(matchedSource) : null;
 }
 
-function renderSourceProfileMetricCard({ label, value, detail = "" }) {
+function formatSourceProfileMonthYear(value = "", fallback = "Not available") {
+  const parsedDate = parseCompletedAtValue(String(value || "").trim());
+  if (!parsedDate) {
+    return fallback;
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(parsedDate);
+}
+
+function formatSourceProfileSampleSize(value = "") {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "Not available";
+  }
+  return /\bseed/i.test(normalizedValue) ? normalizedValue : `${normalizedValue} seeds`;
+}
+
+function renderSourceProfileMetricCard({
+  label,
+  value,
+  detail = "",
+  progressValue = Number.NaN,
+} = {}) {
+  const numericProgressValue = Number(progressValue);
+  const hasProgress = Number.isFinite(numericProgressValue);
+  const clampedProgressValue = Math.max(0, Math.min(100, numericProgressValue));
   return `
     <article class="card stat-card card-accent card-accent-green source-profile-stat-card">
       <span class="stat-label">${escapeHtml(label)}</span>
       <strong class="stat-value">${escapeHtml(value)}</strong>
+      ${hasProgress ? `
+        <div class="source-profile-stat-progress" aria-hidden="true">
+          <span style="width: ${escapeHtml(String(clampedProgressValue))}%;"></span>
+        </div>
+      ` : ""}
       <p class="summary-subtext">${escapeHtml(detail)}</p>
     </article>
   `;
 }
 
 function getSourceProfileCstpState(sourceProfile = {}) {
-  const publishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
-  if (!publishedCertification) {
-    return null;
+  const publishedCertification = getLatestPublishedAdminCstpCertificationForSource(sourceProfile, { activeOnly: false });
+  const activePublishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
+  const mockCstp = isMockDataEnabled() && sourceProfile?.cstp && typeof sourceProfile.cstp === "object"
+    ? sourceProfile.cstp
+    : null;
+
+  if (publishedCertification) {
+    const qualificationResult = normalizeAdminCstpQualificationResult(publishedCertification.qualificationResult);
+    const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
+    const lifecycleState = getAdminCstpCertificationLifecycleState({
+      qualificationResult,
+      publishedAt: publishedCertification.publishedAt || "",
+    });
+    const stateLabel = lifecycleState.isExpired
+      ? "Expired"
+      : (lifecycleState.isExpiringSoon ? "Expiring Soon" : "Active Certification");
+    const stateToneClass = lifecycleState.isExpired
+      ? "is-expired"
+      : (lifecycleState.isExpiringSoon ? "is-expiring" : "is-active");
+    return {
+      status: qualificationResult,
+      publishedAt: publishedCertification.publishedAt || "",
+      testedAt: publishedCertification.completedAt || publishedCertification.publishedAt || "",
+      expiresAt: lifecycleState.expiresAt || "",
+      heading: "2. CSTP Verification",
+      helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+      statusLabel: `CSTP ${qualificationLabel} Certified`,
+      toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver",
+      usesBadge: true,
+      isMuted: lifecycleState.isExpired,
+      hasReport: Boolean(activePublishedCertification),
+      pills: [
+        { label: qualificationLabel, toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver" },
+        { label: stateLabel, toneClass: stateToneClass },
+      ],
+      rows: [
+        { label: "Tested Date", value: formatSourceProfileMonthYear(publishedCertification.completedAt || publishedCertification.publishedAt || "") },
+        { label: "Valid Until", value: formatSourceProfileMonthYear(lifecycleState.expiresAt || "") },
+        { label: "Sample Size", value: formatSourceProfileSampleSize(publishedCertification.sampleSize || "") },
+        { label: "Avg Germ Time", value: String(publishedCertification.totalGerminationTime || "").trim() || "Not available" },
+      ],
+    };
+  }
+
+  if (mockCstp) {
+    const mockStatus = String(mockCstp.status || "").trim().toLowerCase();
+    const qualificationResult = ["gold", "silver"].includes(mockStatus)
+      ? mockStatus
+      : "";
+    const isExpired = mockStatus === "expired";
+    const isExpiringSoon = mockCstp.expiringSoon === true;
+    return {
+      status: qualificationResult || (isExpired ? "expired" : (mockStatus || "not-tested")),
+      publishedAt: "",
+      testedAt: String(mockCstp.testedDate || "").trim(),
+      expiresAt: String(mockCstp.validUntil || "").trim(),
+      heading: "2. CSTP Verification",
+      helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+      statusLabel: qualificationResult
+        ? `CSTP ${getAdminCstpQualificationLabel(qualificationResult)} Certified`
+        : (isExpired ? "CSTP Certification Expired" : "No public CSTP certification"),
+      toneClass: qualificationResult
+        ? (qualificationResult === "gold" ? "is-gold" : "is-silver")
+        : (isExpired ? "is-expired" : "is-neutral"),
+      usesBadge: Boolean(qualificationResult),
+      isMuted: !qualificationResult,
+      hasReport: false,
+      pills: qualificationResult
+        ? [
+          { label: getAdminCstpQualificationLabel(qualificationResult), toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver" },
+          { label: isExpired ? "Expired" : (isExpiringSoon ? "Expiring Soon" : "Active Certification"), toneClass: isExpired ? "is-expired" : (isExpiringSoon ? "is-expiring" : "is-active") },
+        ]
+        : [
+          { label: isExpired ? "Expired" : "No certification", toneClass: isExpired ? "is-expired" : "is-neutral" },
+        ],
+      rows: [
+        { label: "Tested Date", value: String(mockCstp.testedDate || "").trim() || "Not available" },
+        { label: "Valid Until", value: String(mockCstp.validUntil || "").trim() || "Not available" },
+        { label: "Sample Size", value: formatSourceProfileSampleSize(mockCstp.sampleSize || "") },
+        { label: "Avg Germ Time", value: String(mockCstp.avgTime || "").trim() || "Not available" },
+      ],
+    };
   }
 
   return {
-    status: publishedCertification.qualificationResult,
-    publishedAt: publishedCertification.publishedAt || "",
-    eyebrow: "CSTP Verification",
-    heading: "CSTP Verification",
-    statusLabel: "CSTP Certified",
-    toneClass: publishedCertification.qualificationResult === "gold" ? "is-gold" : "is-silver",
-    usesBadge: true,
-    isMuted: false,
-    expiringSoon: false,
+    status: "not-tested",
+    publishedAt: "",
+    testedAt: "",
+    expiresAt: "",
+    heading: "2. CSTP Verification",
+    helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+    statusLabel: "No public CSTP certification",
+    toneClass: "is-neutral",
+    usesBadge: false,
+    isMuted: true,
+    hasReport: false,
     pills: [
-      { label: "Published Certification", toneClass: "is-active" },
+      { label: "No certification", toneClass: "is-neutral" },
     ],
     rows: [
-      { label: "Qualification Level", value: getAdminCstpQualificationLabel(publishedCertification.qualificationResult) },
-      { label: "Tested Variety", value: publishedCertification.variety || "Not available" },
-      { label: "Batch / Lot", value: getAdminCstpBatchLotDisplayValue(publishedCertification.batchLot || "") },
-      { label: "Published Date", value: publishedCertification.publishedAt ? formatAdminTimestamp(publishedCertification.publishedAt) : "Not available" },
+      { label: "Tested Date", value: "Not available" },
+      { label: "Valid Until", value: "Not available" },
+      { label: "Sample Size", value: "Not available" },
+      { label: "Avg Germ Time", value: "Not available" },
     ],
   };
 }
 
 function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
   const toneClass = escapeHtml(cstpState.toneClass || "");
-  const badgeAsset = SOURCE_PROFILE_CSTP_BADGE_ASSETS[cstpState.status]
+  const badgeAsset = cstpState.badgeAsset
+    || SOURCE_PROFILE_CSTP_BADGE_ASSETS[cstpState.status]
     || (cstpState.status === "expired" ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.expired : "");
   if (badgeAsset) {
     const badgeAlt = cstpState.statusLabel || "CSTP certification badge";
@@ -19193,15 +19307,17 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
     `;
   }
 
-  const textLabel = cstpState.status === "tested"
-    ? "Tested"
-    : (cstpState.status === "not-tested" ? "Not Tested" : "Expired");
-  const textCaption = cstpState.status === "tested"
-    ? "No certification earned"
-    : (cstpState.status === "not-tested" ? "No CSTP test on record" : "Certification lapsed");
+  const textLabel = cstpState.visualTitle
+    || (cstpState.status === "tested"
+      ? "Tested"
+      : (cstpState.status === "not-tested" ? "Not Tested" : "Expired"));
+  const textCaption = cstpState.visualNote
+    || (cstpState.status === "tested"
+      ? "No certification earned"
+      : (cstpState.status === "not-tested" ? "No CSTP test on record" : "Certification lapsed"));
   return `
     <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${toneClass}">
-      <span class="source-profile-cstp-visual-label">CSTP</span>
+      <span class="source-profile-cstp-visual-label">${escapeHtml(cstpState.visualLabel || "CSTP")}</span>
       <strong>${escapeHtml(textLabel)}</strong>
       <span class="source-profile-cstp-visual-note">${escapeHtml(textCaption)}</span>
     </div>
@@ -19927,26 +20043,30 @@ function renderSourceProfilePage(sourceId = "") {
     return;
   }
 
+  const communitySessionCount = sourceProfile.community.sessions || "0";
+  const averageGermRate = sourceProfile.community.avgRate || "0%";
+  const averageGermRateNumber = parseSourceDirectoryMetricNumber(averageGermRate);
   const communityStats = [
     {
       label: "Avg Germ Rate",
-      value: sourceProfile.community.avgRate,
-      detail: "based on logged member sessions",
+      value: averageGermRate,
+      detail: `Based on ${communitySessionCount} sessions`,
+      progressValue: averageGermRateNumber,
     },
     {
       label: "Total Sessions",
       value: sourceProfile.community.sessions,
-      detail: "member sessions counted for this source",
+      detail: "All-time sessions",
     },
     {
       label: "Popularity Rank",
       value: sourceProfile.community.rank,
-      detail: "based on how often members log this source",
+      detail: "Community ranking",
     },
     {
       label: "Seeds Tracked",
       value: sourceProfile.community.seedsTracked,
-      detail: "seeds counted from logged member sessions",
+      detail: "All seed entries",
     },
   ];
   const cstpState = getSourceProfileCstpState(sourceProfile);
@@ -19954,43 +20074,37 @@ function renderSourceProfilePage(sourceId = "") {
     {
       label: "Certifications Earned",
       value: sourceProfile.trackRecord.totalCerts,
-      detail: "completed CSTP certifications",
+      detail: "All time",
     },
     {
-      label: "Gold Count",
+      label: "Gold",
       value: sourceProfile.trackRecord.gold,
-      detail: "gold certifications awarded",
+      detail: "Gold certifications",
     },
     {
-      label: "Silver Count",
+      label: "Silver",
       value: sourceProfile.trackRecord.silver,
-      detail: "silver certifications awarded",
+      detail: "Silver certifications",
     },
     {
       label: "Qualification Rate",
       value: sourceProfile.trackRecord.qualificationRate,
-      detail: "tests earning a certification",
+      detail: "Qualified / tested",
     },
     {
       label: "Last Test",
       value: sourceProfile.trackRecord.lastTest,
-      detail: "most recent CSTP verification",
+      detail: "Most recent CSTP test",
     },
   ];
+  const sourceTypeLabel = String(sourceProfile.sourceTypeLabel || "").trim() || "Breeder / Seed Source";
 
   app.innerHTML = `
     <section class="source-profile-page">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("sources")}
-          <div>
-            <p class="eyebrow">Source Profile</p>
-            <h2>${escapeHtml(sourceProfile.name)}</h2>
-            <p class="muted">Member session data appears first, with CSTP shown separately as batch-specific certification context when available.</p>
-          </div>
-        </div>
-        <div class="inline-actions">
-          <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
+      <div class="source-profile-page-head">
+        <a class="source-profile-back-link" href="#sources">&larr; Back to Sources</a>
+        <div class="source-profile-title-block">
+          <h1>Source Profile</h1>
         </div>
       </div>
 
@@ -20005,7 +20119,7 @@ function renderSourceProfilePage(sourceId = "") {
             })}
             <div class="source-profile-identity-copy">
               <h3>${escapeHtml(sourceProfile.name)}</h3>
-              <p class="source-profile-identity-type">${escapeHtml(sourceProfile.sourceTypeLabel)}</p>
+              <p class="source-profile-identity-type">${escapeHtml(sourceTypeLabel)}</p>
               ${sourceProfile.establishedLabel ? `<span class="source-profile-established-badge">${escapeHtml(sourceProfile.establishedLabel)}</span>` : ""}
             </div>
           </div>
@@ -20016,69 +20130,65 @@ function renderSourceProfilePage(sourceId = "") {
       </article>
 
       <article class="card source-profile-community-card">
-        <div class="source-profile-community-head">
-          <div>
-            <p class="eyebrow">Community Performance</p>
-            <h3>Community Performance</h3>
+        <div class="source-profile-section-head">
+          <div class="source-profile-section-copy">
+            <h3 class="source-profile-section-title">1. Community Performance</h3>
           </div>
         </div>
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">${escapeHtml("Community data is user-submitted and may vary.")}</p>
+        <p class="source-profile-trust-note">Data based on real user sessions using the KAN system.</p>
       </article>
 
-      ${cstpState ? `
-        <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
-          <div class="source-profile-section-head">
-            <div>
-              <p class="eyebrow">${escapeHtml(cstpState.eyebrow)}</p>
-              <h3>${escapeHtml(cstpState.heading)}</h3>
-              <p class="muted">Published CSTP certification appears only after admin publication of a qualifying batch result.</p>
-            </div>
+      <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
+        <div class="source-profile-section-head">
+          <div class="source-profile-section-copy">
+            <h3 class="source-profile-section-title">${escapeHtml(cstpState.heading)}</h3>
+            <p class="muted">${escapeHtml(cstpState.helperText || "")}</p>
           </div>
-          <div class="source-profile-verification-layout">
-            <div class="source-profile-verification-visual-column">
-              ${renderSourceProfileCstpVisualMarkup(cstpState)}
-            </div>
-            <div class="source-profile-verification-main">
-              <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
-              ${renderPublishedCstpCertifiedSealMarkup(cstpState.status, cstpState.publishedAt, {
-                shellClassName: "source-profile-cstp-certified-seal cstp-certified-seal",
-                imageClassName: "cstp-certified-seal-image",
-                copyClassName: "cstp-certified-seal-copy",
-                labelClassName: "cstp-certified-seal-label",
-                titleClassName: "cstp-certified-seal-title",
-                noteClassName: "cstp-certified-seal-note",
-                labelText: "CSTP Certified",
-                noteText: cstpState.publishedAt
-                  ? `Published ${formatAdminTimestamp(cstpState.publishedAt)}`
-                  : getAdminCstpQualificationLabel(cstpState.status),
-              })}
-              ${cstpState.pills.length ? `
-                <div class="source-profile-cstp-state-shell">
-                  ${cstpState.pills.map((pill) => `
-                    <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}">${escapeHtml(pill.label)}</span>
-                  `).join("")}
-                </div>
-              ` : ""}
-              <div class="source-profile-detail-grid source-profile-detail-grid--verification">
-                ${cstpState.rows.map((row) => `
-                  <article class="meta-card source-profile-detail-card">
-                    <span class="stat-label">${escapeHtml(row.label)}</span>
-                    <strong>${escapeHtml(row.value)}</strong>
-                  </article>
+        </div>
+        <div class="source-profile-verification-layout">
+          <div class="source-profile-verification-visual-column">
+            ${renderSourceProfileCstpVisualMarkup(cstpState)}
+          </div>
+          <div class="source-profile-verification-main">
+            <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
+            ${cstpState.pills.length ? `
+              <div class="source-profile-cstp-state-shell">
+                ${cstpState.pills.map((pill) => `
+                  <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}">${escapeHtml(pill.label)}</span>
                 `).join("")}
               </div>
-              <div class="source-profile-verification-actions">
-                <a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Full Report</a>
-              </div>
+            ` : ""}
+            <div class="source-profile-detail-grid source-profile-detail-grid--verification">
+              ${cstpState.rows.map((row) => `
+                <article class="meta-card source-profile-detail-card">
+                  <span class="stat-label">${escapeHtml(row.label)}</span>
+                  <strong>${escapeHtml(row.value)}</strong>
+                </article>
+              `).join("")}
+            </div>
+            <div class="source-profile-verification-actions">
+              ${cstpState.hasReport
+                ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Full Report</a>`
+                : `<button type="button" class="button button-secondary" disabled>View Full Report</button>`}
             </div>
           </div>
-          <p class="source-profile-cstp-trust-note">This certification reflects results from a specific tested batch.<br>Results do not guarantee future performance.</p>
-        </article>
+        </div>
+        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased. Certification is batch-based and time-limited.</p>
+      </article>
 
-      ` : ""}
+      <article class="card source-profile-track-record-card">
+        <div class="source-profile-section-head">
+          <div class="source-profile-section-copy">
+            <h3 class="source-profile-section-title">3. CSTP Track Record</h3>
+          </div>
+        </div>
+        <div class="summary-grid source-profile-track-grid">
+          ${trackRecordStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+        </div>
+      </article>
 
       <article class="card source-profile-request-card">
         <div class="source-profile-request-copy">
@@ -20101,7 +20211,7 @@ function renderSourceProfilePage(sourceId = "") {
     event.preventDefault();
     openContactPageWithPrefill("cstp-request", {
       companyName: sourceProfile.name || "",
-      websiteUrl: sourceProfile.website || "",
+      websiteUrl: sourceProfile.website || sourceProfile.websiteUrl || "",
     });
   });
   app.querySelector("[data-source-request-correction]")?.addEventListener("click", (event) => {
@@ -27170,6 +27280,11 @@ function normalizeComparableSourceKey(value = "") {
 }
 
 function getPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity = {}) {
+  return getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity, { activeOnly: true });
+}
+
+function getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity = {}, options = {}) {
+  const { activeOnly = false } = options;
   const candidateKeys = new Set(
     [
       sourceIdentity?.sourceId,
@@ -27186,7 +27301,7 @@ function getPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity = {}
   const matchingSession = getAdminCstpTestSessions()
     .filter((session) => (
       session?.certificationPublished === true
-      && getAdminCstpCertificationLifecycleState(session).isActive
+      && (!activeOnly || getAdminCstpCertificationLifecycleState(session).isActive)
       && candidateKeys.has(normalizeComparableSourceKey(session?.sourceName || ""))
     ))
     .sort((left, right) => (Date.parse(right.publishedAt || "") || 0) - (Date.parse(left.publishedAt || "") || 0))[0] || null;
@@ -27220,6 +27335,13 @@ function getPublishedAdminCstpCertificationForSource(sourceProfile = {}) {
     sourceId: sourceProfile?.id || "",
     sourceName: sourceProfile?.name || "",
   });
+}
+
+function getLatestPublishedAdminCstpCertificationForSource(sourceProfile = {}, options = {}) {
+  return getLatestPublishedAdminCstpCertificationForSourceIdentity({
+    sourceId: sourceProfile?.id || "",
+    sourceName: sourceProfile?.name || "",
+  }, options);
 }
 
 function getPublishedAdminCstpCertificationForSnapshot(snapshot = null) {
