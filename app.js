@@ -111,7 +111,7 @@ const JOKES = Object.freeze([
   { question: "Why did the gardener smile at the rain cloud?", answer: "It looked like a shower of support." },
 ]);
 const APP_HINTS = Object.freeze([
-  { text: "Use the Sessions page to track each grow separately so your germination history stays easy to compare." },
+  { text: "Use the My Sessions page to track each grow separately so your germination history stays easy to compare." },
   { text: "Add session notes while a run is active so your conditions and observations stay attached to the right batch." },
   { text: "Completed sessions keep their timing and germination data, which makes it easier to review what worked later." },
   { text: "Source Profiles only show published CSTP certifications, so admin lab work stays private until it is approved." },
@@ -2705,7 +2705,7 @@ function syncMobileNavigationMenu() {
   mobileNavContent.innerHTML = `
     <nav class="mobile-nav-links" aria-label="Mobile primary navigation">
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
-      <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
+      <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">My Sessions</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
       <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Source Directory</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
@@ -4377,7 +4377,7 @@ function getAdminMessageContext() {
   }
 
   if (route === "sessions") {
-    context.pageContext = `Sessions${routeSuffix}`;
+    context.pageContext = `My Sessions${routeSuffix}`;
     context.sessionId = id || "";
     return context;
   }
@@ -5255,7 +5255,7 @@ function getCurrentSiteAnalyticsPageContext() {
     return buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
       pageKey: "sessions",
-      pageLabel: "Sessions",
+      pageLabel: "My Sessions",
       pagePath: rawRoute ? `#${rawRoute}` : "#sessions",
     });
   }
@@ -9695,12 +9695,7 @@ function getSignedInMemberFirstName() {
 }
 
 function getGrowSessionsSectionTitle() {
-  if (!appState.user) {
-    return "Grow Sessions";
-  }
-
-  const firstName = getSignedInMemberFirstName();
-  return firstName ? `${firstName}'s Grow Sessions` : "Grow Sessions";
+  return "My Sessions";
 }
 
 function getProfileDisplayName() {
@@ -16871,7 +16866,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
       pageKey: "sessions",
-      pageLabel: "Sessions",
+      pageLabel: "My Sessions",
       pagePath: "#new",
     }));
     openNewSessionSystemModal();
@@ -16894,7 +16889,7 @@ function render() {
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
       pageKey: "sessions",
-      pageLabel: "Sessions",
+      pageLabel: "My Sessions",
       pagePath: "#sessions",
     }));
     return;
