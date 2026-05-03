@@ -324,6 +324,38 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     sessionRoute: "#members/mock-kan-trial-user",
   },
 ]);
+const SOURCE_PROFILE_DEFAULT_MOCK_ID = "humboldt-seed-co";
+const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
+  "humboldt-seed-co": Object.freeze({
+    id: "humboldt-seed-co",
+    name: "Humboldt Seed Co",
+    sourceTypeLabel: "Seed Bank",
+    logoUrl: "",
+    communityPerformance: Object.freeze({
+      avgGermRate: "82%",
+      totalSessions: "148",
+      popularityRank: "#2",
+      seedsTracked: "3,621",
+      trustText: "Data based on real user sessions using the KAN system.",
+    }),
+    cstpVerification: Object.freeze({
+      certification: "CSTP Gold Certified",
+      tested: "Jan 2026",
+      validUntil: "Jan 2027",
+      sampleSize: "30 seeds",
+      avgGermTime: "42 hrs",
+      reportButtonLabel: "View Full Report",
+      trustText: "CSTP badges are earned, not purchased. Certification is batch-based and time-limited.",
+    }),
+    cstpTrackRecord: Object.freeze({
+      certificationsEarned: "11",
+      goldCount: "7",
+      silverCount: "4",
+      qualificationRate: "79%",
+      lastTest: "Jan 2026",
+    }),
+  }),
+});
 const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
   {
     id: "mock-notification-avery-follow",
@@ -3315,6 +3347,7 @@ function getCurrentAppPathRoute() {
   return ({
     "": "",
     profile: "profile",
+    sources: "sources",
     sessions: "sessions",
     "community-grow": "gallery",
     "grow-network": "network",
@@ -4620,6 +4653,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "gallery",
       pageLabel: "Community Grow",
       pagePath: rawRoute ? `#${rawRoute}` : "#gallery",
+    });
+  }
+  if (route === "sources") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "sources",
+      pageKey: "source-profile",
+      pageLabel: "Source Profile",
+      pagePath: rawRoute ? `#${rawRoute}` : `#sources/${SOURCE_PROFILE_DEFAULT_MOCK_ID}`,
     });
   }
   if (route === "members") {
@@ -15458,6 +15499,18 @@ function render() {
     return;
   }
 
+  if (route === "sources") {
+    const sourceProfileId = decodeURIComponent(id || SOURCE_PROFILE_DEFAULT_MOCK_ID);
+    renderSourceProfilePage(sourceProfileId);
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sources",
+      pageKey: "source-profile",
+      pageLabel: "Source Profile",
+      pagePath: `#sources/${encodeURIComponent(sourceProfileId)}`,
+    }));
+    return;
+  }
+
   if (route === "members" && id) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
@@ -17638,6 +17691,188 @@ function renderSourceLogoMarkup(source = {}, options = {}) {
 function renderSourceStatusPillMarkup(status) {
   const normalizedStatus = normalizeSourceStatus(status);
   return `<span class="admin-source-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
+}
+
+function getSourceProfileMockRecord(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  if (normalizedId && SOURCE_PROFILE_MOCK_DATA[normalizedId]) {
+    return SOURCE_PROFILE_MOCK_DATA[normalizedId];
+  }
+  return SOURCE_PROFILE_MOCK_DATA[SOURCE_PROFILE_DEFAULT_MOCK_ID] || null;
+}
+
+function renderSourceProfileMetricCard({ label, value, detail = "" }) {
+  return `
+    <article class="card stat-card card-accent card-accent-green source-profile-stat-card">
+      <span class="stat-label">${escapeHtml(label)}</span>
+      <strong class="stat-value">${escapeHtml(value)}</strong>
+      <p class="summary-subtext">${escapeHtml(detail)}</p>
+    </article>
+  `;
+}
+
+function renderSourceProfilePage(sourceId = "") {
+  const requestedId = String(sourceId || "").trim().toLowerCase();
+  const sourceProfile = getSourceProfileMockRecord(requestedId);
+
+  if (!sourceProfile) {
+    app.innerHTML = `
+      <section class="card source-profile-page">
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("sources")}
+            <div>
+              <p class="eyebrow">Source Profile</p>
+              <h2>Source profile unavailable</h2>
+              <p class="muted">This mock source profile could not be loaded.</p>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Example Source</a>
+            <a class="button button-secondary" href="#home">Back Home</a>
+          </div>
+        </div>
+      </section>
+    `;
+    return;
+  }
+
+  const communityStats = [
+    {
+      label: "Avg Germ Rate",
+      value: sourceProfile.communityPerformance.avgGermRate,
+      detail: "approved public Community Grow sessions",
+    },
+    {
+      label: "Total Sessions",
+      value: sourceProfile.communityPerformance.totalSessions,
+      detail: "approved public sessions counted",
+    },
+    {
+      label: "Popularity Rank",
+      value: sourceProfile.communityPerformance.popularityRank,
+      detail: "relative to tracked source activity",
+    },
+    {
+      label: "Seeds Tracked",
+      value: sourceProfile.communityPerformance.seedsTracked,
+      detail: "seeds counted in community data",
+    },
+  ];
+  const verificationRows = [
+    { label: "Certification", value: sourceProfile.cstpVerification.certification },
+    { label: "Tested", value: sourceProfile.cstpVerification.tested },
+    { label: "Valid Until", value: sourceProfile.cstpVerification.validUntil },
+    { label: "Sample Size", value: sourceProfile.cstpVerification.sampleSize },
+    { label: "Avg Germ Time", value: sourceProfile.cstpVerification.avgGermTime },
+  ];
+  const trackRecordStats = [
+    {
+      label: "Certifications Earned",
+      value: sourceProfile.cstpTrackRecord.certificationsEarned,
+      detail: "completed CSTP certifications",
+    },
+    {
+      label: "Gold Count",
+      value: sourceProfile.cstpTrackRecord.goldCount,
+      detail: "gold certifications awarded",
+    },
+    {
+      label: "Silver Count",
+      value: sourceProfile.cstpTrackRecord.silverCount,
+      detail: "silver certifications awarded",
+    },
+    {
+      label: "Qualification Rate",
+      value: sourceProfile.cstpTrackRecord.qualificationRate,
+      detail: "tests earning a certification",
+    },
+    {
+      label: "Last Test",
+      value: sourceProfile.cstpTrackRecord.lastTest,
+      detail: "most recent CSTP verification",
+    },
+  ];
+
+  app.innerHTML = `
+    <section class="source-profile-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Source Profile</p>
+            <h2>${escapeHtml(sourceProfile.name)}</h2>
+            <p class="muted">Mock placeholder data for the first Source Profile UI. Community performance appears first, with CSTP shown as validation.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#home">Back Home</a>
+        </div>
+      </div>
+
+      <article class="card source-profile-community-card">
+        <div class="source-profile-community-head">
+          <div class="source-profile-identity">
+            ${renderSourceLogoMarkup(sourceProfile, {
+              className: "source-profile-logo",
+              imageClassName: "source-profile-logo-image",
+              placeholderClassName: "source-profile-logo-placeholder",
+              alt: `${sourceProfile.name} logo`,
+            })}
+            <div class="source-profile-identity-copy">
+              <p class="eyebrow">Community Performance</p>
+              <h3>${escapeHtml(sourceProfile.name)}</h3>
+              <span class="source-profile-type-pill">${escapeHtml(sourceProfile.sourceTypeLabel)}</span>
+            </div>
+          </div>
+        </div>
+        <div class="summary-grid source-profile-community-grid">
+          ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+        </div>
+        <p class="source-profile-trust-note">${escapeHtml(sourceProfile.communityPerformance.trustText)}</p>
+      </article>
+
+      <article class="card source-profile-verification-card">
+        <div class="source-profile-section-head">
+          <div>
+            <p class="eyebrow">CSTP Verification</p>
+            <h3>CSTP Verification</h3>
+            <p class="muted">Independent validation shown after community data.</p>
+          </div>
+          <span class="source-profile-cstp-badge">${escapeHtml(sourceProfile.cstpVerification.certification)}</span>
+        </div>
+        <div class="source-profile-detail-grid">
+          ${verificationRows.map((row) => `
+            <article class="meta-card source-profile-detail-card">
+              <span class="stat-label">${escapeHtml(row.label)}</span>
+              <strong>${escapeHtml(row.value)}</strong>
+            </article>
+          `).join("")}
+        </div>
+        <div class="source-profile-verification-actions">
+          <button type="button" class="button button-secondary" data-source-cstp-report="${escapeHtml(sourceProfile.id)}">${escapeHtml(sourceProfile.cstpVerification.reportButtonLabel)}</button>
+        </div>
+        <p class="source-profile-trust-note">${escapeHtml(sourceProfile.cstpVerification.trustText)}</p>
+      </article>
+
+      <article class="card source-profile-track-record-card">
+        <div class="source-profile-section-head">
+          <div>
+            <p class="eyebrow">CSTP Track Record</p>
+            <h3>CSTP Track Record</h3>
+            <p class="muted">Historical certification outcomes for this source profile mock.</p>
+          </div>
+        </div>
+        <div class="summary-grid source-profile-track-grid">
+          ${trackRecordStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
+        </div>
+      </article>
+    </section>
+  `;
+
+  app.querySelector("[data-source-cstp-report]")?.addEventListener("click", () => {
+    window.alert("Full CSTP report mock preview coming soon.");
+  });
 }
 
 function renderAdminSourceCardMarkup(source) {
