@@ -20239,6 +20239,7 @@ function renderSourceProfilePage(sourceId = "") {
   const communitySessionCount = sourceProfile.community.sessions || "0";
   const averageGermRate = sourceProfile.community.avgRate || "0%";
   const averageGermRateNumber = parseSourceDirectoryMetricNumber(averageGermRate);
+  const showDemoDataBadge = isMockDataEnabled();
   const communityStats = [
     {
       label: "Avg Germ Rate",
@@ -20302,6 +20303,7 @@ function renderSourceProfilePage(sourceId = "") {
       </div>
 
       <article class="card source-profile-identity-card">
+        ${showDemoDataBadge ? `<span class="source-profile-demo-badge" aria-hidden="true">Demo Data</span>` : ""}
         <div class="source-profile-identity-head">
           <div class="source-profile-identity">
             ${renderSourceLogoMarkup(sourceProfile, {

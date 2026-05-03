@@ -14570,6 +14570,32 @@ input::placeholder {
   gap: 12px;
 }
 
+.source-profile-identity-card {
+  position: relative;
+}
+
+.source-profile-demo-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(214, 224, 216, 0.62);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.82;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
 .source-profile-back-link {
   display: inline-flex;
   align-items: center;
