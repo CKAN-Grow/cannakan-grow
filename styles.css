@@ -3569,8 +3569,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-tested-source-card-head {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 14px;
   min-width: 0;
+}
+
+.home-tested-source-card-head-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .home-tested-source-logo {
@@ -3625,65 +3634,67 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-tested-source-footer {
-  display: grid;
-  gap: 14px;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
-.home-tested-source-cstp {
-  display: grid;
-  gap: 8px;
-}
-
-.home-tested-source-cstp-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
+.home-tested-source-card-status {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  flex: 0 0 auto;
 }
 
 .home-tested-source-cstp-status {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   min-height: 40px;
 }
 
+.home-tested-source-cstp-status.is-badge {
+  min-width: 46px;
+}
+
 .home-tested-source-cstp-badge {
-  width: 40px;
+  width: 42px;
   height: auto;
   object-fit: contain;
 }
 
-.home-tested-source-cstp-badge.is-expired {
-  opacity: 0.5;
+.home-tested-source-cstp-status-pill,
+.home-tested-source-cstp-status-text {
+  min-height: 32px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.home-tested-source-cstp-text {
-  font-size: 0.92rem;
-  font-weight: 700;
+.home-tested-source-cstp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(98, 119, 96, 0.18);
+  background: rgba(255, 255, 255, 0.76);
   color: var(--ink);
 }
 
-.home-tested-source-cstp-text.is-gold {
-  color: #8f6720;
-}
-
-.home-tested-source-cstp-text.is-silver {
-  color: #57606a;
-}
-
-.home-tested-source-cstp-text.is-tested {
+.home-tested-source-cstp-status-pill.is-tested {
   color: #5c5a88;
 }
 
-.home-tested-source-cstp-text.is-not-tested {
-  color: var(--muted);
+.home-tested-source-cstp-status-pill.is-expired {
+  color: rgba(76, 82, 89, 0.88);
+  background: rgba(244, 245, 242, 0.62);
 }
 
-.home-tested-source-cstp-text.is-expired {
-  color: rgba(76, 82, 89, 0.86);
+.home-tested-source-cstp-status-text {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
 }
 
 .home-cstp-overview-layout {
@@ -3772,14 +3783,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-cstp-trust-row {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .home-cstp-trust-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 13px 15px;
   border-radius: 14px;
   border: 1px solid rgba(98, 119, 96, 0.12);
   background: rgba(255, 255, 255, 0.68);
@@ -3788,11 +3799,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-cstp-trust-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
-  background: rgba(148, 209, 89, 0.84);
-  box-shadow: 0 0 0 4px rgba(148, 209, 89, 0.12);
+  background: rgba(148, 209, 89, 0.94);
+  box-shadow: 0 0 0 4px rgba(148, 209, 89, 0.16);
 }
 
 .home-cstp-overview-trust-note {
@@ -3820,24 +3831,22 @@ body.theme-dark .home-tested-source-stat {
   background: rgba(255, 255, 255, 0.035);
 }
 
-body.theme-dark .home-tested-source-cstp-text.is-gold {
-  color: #d7bc64;
+body.theme-dark .home-tested-source-cstp-status-pill {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-body.theme-dark .home-tested-source-cstp-text.is-silver {
-  color: #d2d6dd;
-}
-
-body.theme-dark .home-tested-source-cstp-text.is-tested {
+body.theme-dark .home-tested-source-cstp-status-pill.is-tested {
   color: #b8a9ff;
 }
 
-body.theme-dark .home-tested-source-cstp-text.is-not-tested {
-  color: #b7c0b7;
+body.theme-dark .home-tested-source-cstp-status-pill.is-expired {
+  color: rgba(183, 192, 183, 0.78);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-body.theme-dark .home-tested-source-cstp-text.is-expired {
-  color: rgba(183, 192, 183, 0.72);
+body.theme-dark .home-tested-source-cstp-status-text {
+  color: #b7c0b7;
 }
 
 body.theme-dark .home-cstp-overview-icon-glyph {
@@ -10211,7 +10220,20 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-tested-source-footer {
-    gap: 12px;
+    justify-content: stretch;
+  }
+
+  .home-tested-source-footer .button {
+    width: 100%;
+  }
+
+  .home-tested-source-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .home-tested-source-card-status {
+    justify-content: flex-start;
   }
 
   .home-cstp-overview-layout {

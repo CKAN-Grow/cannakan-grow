@@ -18513,18 +18513,58 @@ function getSourceDirectoryCstpPreview(source = {}) {
 
 function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
   const cstpPreview = getSourceDirectoryCstpPreview(source);
+  const usesBadge = cstpPreview.filterKey === "gold" || cstpPreview.filterKey === "silver";
+  let statusMarkup = "";
+
+  if (usesBadge) {
+    statusMarkup = `
+      <span class="home-tested-source-cstp-status is-badge" aria-label="${escapeHtml(cstpPreview.label)}">
+        <img
+          src="${escapeHtml(cstpPreview.badgeAsset)}"
+          alt="${escapeHtml(cstpPreview.badgeAlt)}"
+          class="home-tested-source-cstp-badge"
+          loading="lazy"
+          decoding="async"
+        >
+      </span>
+    `;
+  } else if (cstpPreview.filterKey === "tested") {
+    statusMarkup = `
+      <span class="home-tested-source-cstp-status-pill is-tested">
+        Tested (No Certification)
+      </span>
+    `;
+  } else if (cstpPreview.filterKey === "expired") {
+    statusMarkup = `
+      <span class="home-tested-source-cstp-status-pill is-expired">
+        Expired
+      </span>
+    `;
+  } else {
+    statusMarkup = `
+      <span class="home-tested-source-cstp-status-text is-not-tested">
+        Not CSTP Tested
+      </span>
+    `;
+  }
+
   return `
     <article class="card home-tested-source-card">
       <div class="home-tested-source-card-head">
-        ${renderSourceLogoMarkup(source, {
-          className: "home-tested-source-logo",
-          imageClassName: "source-profile-logo-image",
-          placeholderClassName: "source-profile-logo-placeholder",
-          alt: `${source.name} logo`,
-        })}
-        <div class="home-tested-source-card-copy">
-          <h3>${escapeHtml(source.name || "Source")}</h3>
-          <p class="home-tested-source-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
+        <div class="home-tested-source-card-head-main">
+          ${renderSourceLogoMarkup(source, {
+            className: "home-tested-source-logo",
+            imageClassName: "source-profile-logo-image",
+            placeholderClassName: "source-profile-logo-placeholder",
+            alt: `${source.name} logo`,
+          })}
+          <div class="home-tested-source-card-copy">
+            <h3>${escapeHtml(source.name || "Source")}</h3>
+            <p class="home-tested-source-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
+          </div>
+        </div>
+        <div class="home-tested-source-card-status">
+          ${statusMarkup}
         </div>
       </div>
       <div class="home-tested-source-stats">
@@ -18542,21 +18582,6 @@ function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
         </article>
       </div>
       <div class="home-tested-source-footer">
-        <div class="home-tested-source-cstp">
-          <span class="home-tested-source-cstp-label">CSTP Status</span>
-          <div class="home-tested-source-cstp-status">
-            ${cstpPreview.badgeAsset ? `
-              <img
-                src="${escapeHtml(cstpPreview.badgeAsset)}"
-                alt="${escapeHtml(cstpPreview.badgeAlt)}"
-                class="home-tested-source-cstp-badge${cstpPreview.isExpired ? " is-expired" : ""}"
-                loading="lazy"
-                decoding="async"
-              >
-            ` : ""}
-            <span class="home-tested-source-cstp-text is-${escapeHtml(cstpPreview.filterKey)}${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
-          </div>
-        </div>
         <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
       </div>
     </article>
@@ -18639,14 +18664,14 @@ function renderHomeCstpOverviewSectionMarkup() {
     renderHomeCstpOverviewFeatureMarkup({
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
       badgeAlt: "CSTP Gold Certified badge",
-      title: "Gold Certification",
+      title: "CSTP Gold Certified",
       description: "Top-tier performance (90-100%)",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
       badgeAlt: "CSTP Silver Certified badge",
-      title: "Silver Certification",
+      title: "CSTP Silver Certified",
       description: "Strong performance (85-89%)",
       isBadge: true,
     }),
