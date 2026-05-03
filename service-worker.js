@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v12";
+const CACHE_NAME = "cannakan-grow-shell-v13";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -12,8 +12,6 @@ const APP_SHELL_ASSETS = [
   "/icon-192.png",
   "/icon-512.png",
   "/icon-maskable-512.png",
-  "/src/assets/Cannakan_GROW_darkmode.png",
-  "/src/assets/Cannakan_GROW_lightmode.png",
 ];
 const NETWORK_FIRST_PATHS = new Set([
   "/",
