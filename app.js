@@ -689,6 +689,12 @@ const SESSION_STAGE_OPTIONS = [
   { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
   { value: "completed", label: "Completed", modalLabel: "Complete", tone: "is-completed" },
 ];
+const ADMIN_CSTP_STAGE_OPTIONS = [
+  { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
+  { value: "germinating", progressKey: "germination", label: "Germination Started", modalLabel: "Germination Started", tone: "is-germinating" },
+  { value: "germinating", progressKey: "first-germinated", label: "First Germinated", modalLabel: "First Germinated", tone: "is-germinating" },
+  { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
+];
 const inlineSvgCache = {};
 const ACTIVE_PARTITION_STYLE = {
   fill: "#f2ff4d",
@@ -24683,6 +24689,9 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
     unitId,
     status: normalizeAdminCstpTestSessionStatus(source.status || fallback.status || ""),
     startedAt: String(source.startedAt || source.started_at || fallback.startedAt || fallback.started_at || "").trim(),
+    germinationStartedAt: String(source.germinationStartedAt || source.germination_started_at || fallback.germinationStartedAt || fallback.germination_started_at || "").trim(),
+    firstGerminatedAt: String(source.firstGerminatedAt || source.first_germinated_at || fallback.firstGerminatedAt || fallback.first_germinated_at || "").trim(),
+    firstPlantedAt: String(source.firstPlantedAt || source.first_planted_at || fallback.firstPlantedAt || fallback.first_planted_at || "").trim(),
     completedAt: String(source.completedAt || source.completed_at || fallback.completedAt || fallback.completed_at || "").trim(),
     reportPreparedAt: String(source.reportPreparedAt || source.report_prepared_at || fallback.reportPreparedAt || fallback.report_prepared_at || "").trim(),
     publishedAt: String(source.publishedAt || source.published_at || fallback.publishedAt || fallback.published_at || "").trim(),
@@ -24808,6 +24817,7 @@ function syncAdminCstpSessionDerivedValues(session = null) {
   session.totalGerminationTime = startedAt && completedAt
     ? formatDurationBetween(startedAt, completedAt)
     : "";
+  session.firstPlantedAt = String(session.firstGerminatedAt || session.firstPlantedAt || "").trim();
   return session;
 }
 
@@ -25018,6 +25028,8 @@ function buildAdminCstpLifecycleState(session = null) {
   }
 
   const startedAt = parseCompletedAtValue(normalizedSession.startedAt || "");
+  const germinationStartedAt = parseCompletedAtValue(normalizedSession.germinationStartedAt || "");
+  const firstGerminatedAt = parseCompletedAtValue(normalizedSession.firstGerminatedAt || normalizedSession.firstPlantedAt || "");
   const completedAt = parseCompletedAtValue(normalizedSession.completedAt || "");
   const normalizedStatus = normalizeAdminCstpTestSessionStatus(normalizedSession.status);
   const germinatedCount = Math.max(0, Number(normalizedSession.germinatedCount) || 0);
@@ -25030,13 +25042,13 @@ function buildAdminCstpLifecycleState(session = null) {
     startedAt,
     startedDisplayLabel: startedAt ? "" : startedLabel,
     startedComplete: Boolean(startedAt || startedLabel),
-    germinationStartedAt: hasActiveTimeline ? startedAt : null,
+    germinationStartedAt: hasActiveTimeline ? (germinationStartedAt || startedAt || null) : null,
     germinationStartedDisplayLabel: hasActiveTimeline
-      ? (startedAt ? "" : (startedLabel || "Lab test started"))
+      ? ((germinationStartedAt || startedAt) ? "" : (startedLabel || "Lab test started"))
       : "",
     germinationStartedComplete: hasActiveTimeline,
-    firstPlantedAt: germinatedCount > 0 ? (completedAt || startedAt || null) : null,
-    firstPlantedDisplayLabel: germinatedCount > 0
+    firstPlantedAt: germinatedCount > 0 ? (firstGerminatedAt || null) : null,
+    firstPlantedDisplayLabel: germinatedCount > 0 && !firstGerminatedAt
       ? `${germinatedCount} germinated recorded`
       : "",
     firstPlantedComplete: germinatedCount > 0,
@@ -25049,6 +25061,46 @@ function buildAdminCstpLifecycleState(session = null) {
 function shouldShowAdminCstpLiveResultSections(session = null) {
   const normalizedStatus = normalizeAdminCstpTestSessionStatus(session?.status || "");
   return ["active-test", "completed", "report-prepared", "published"].includes(normalizedStatus);
+}
+
+function getAdminCstpStageProgressKey(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return "";
+  }
+
+  const normalizedStatus = normalizeAdminCstpTestSessionStatus(normalizedSession.status);
+  if (["completed", "report-prepared", "published"].includes(normalizedStatus) || normalizedSession.completedAt) {
+    return "completed";
+  }
+  if (normalizedSession.firstGerminatedAt || normalizedSession.firstPlantedAt) {
+    return "first-germinated";
+  }
+  if (normalizedSession.germinationStartedAt) {
+    return "germination";
+  }
+  if (normalizedSession.startedAt || normalizedStatus === "active-test") {
+    return "soaking";
+  }
+  return "";
+}
+
+function getAdminCstpStageControlValue(session = null) {
+  const progressKey = getAdminCstpStageProgressKey(session);
+  if (progressKey === "completed") {
+    return "completed";
+  }
+  if (progressKey === "germination" || progressKey === "first-germinated") {
+    return "germinating";
+  }
+  if (progressKey === "soaking") {
+    return "soaking";
+  }
+  return "";
+}
+
+function getAdminCstpWorkflowStatusLabel(session = null) {
+  return getAdminCstpTestSessionStatusLabel(session?.status || "");
 }
 
 function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, session = null) {
@@ -25142,6 +25194,62 @@ function syncAdminCstpLiveResultSections(detail, session = null) {
   );
 }
 
+function openAdminCstpStageModal({ stageField, stageTrigger } = {}) {
+  if (!stageField) {
+    return false;
+  }
+  if (appState.growthStageModalOpen) {
+    return true;
+  }
+
+  const overlay = ensureGrowthStageModal();
+  const actions = overlay.querySelector("#growth-stage-modal-actions");
+  const currentProgressKey = stageField.dataset.cstpStageProgressKey || getSessionStatusProgressKey(stageField);
+  if (!actions) {
+    return false;
+  }
+
+  actions.innerHTML = ADMIN_CSTP_STAGE_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="stage-button ${option.tone} ${currentProgressKey === option.progressKey ? "is-active" : ""}"
+      data-admin-cstp-stage-progress="${option.progressKey}"
+      data-admin-cstp-stage-value="${option.value}"
+    >
+      <span>${escapeHtml(option.modalLabel)}</span>
+      ${currentProgressKey === option.progressKey ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
+    </button>
+  `).join("");
+
+  actions.querySelectorAll("[data-admin-cstp-stage-progress]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const nextProgressKey = String(button.getAttribute("data-admin-cstp-stage-progress") || "").trim();
+      const nextValue = String(button.getAttribute("data-admin-cstp-stage-value") || "").trim();
+      stageField.dataset.cstpPendingProgressKey = nextProgressKey;
+      stageField.value = nextValue;
+      syncSessionStatusControlDatasets(stageField, {
+        germinationStartedAt: stageField.dataset.germinationStartedAt || "",
+        firstPlantedAt: stageField.dataset.firstPlantedAt || "",
+        completedAt: stageField.dataset.completedAt || "",
+      });
+      updateSessionStatusAppearance(stageField, stageTrigger);
+      stageField.dispatchEvent(new Event("change", { bubbles: true }));
+      closeGrowthStageModal();
+    });
+  });
+
+  overlay.__stageContext = { stageField, stageTrigger };
+  appState.growthStageModalOpen = true;
+  appState.pendingGrowthStageInput = stageField.name || stageField.id || "adminCstpStage";
+  overlay.hidden = false;
+  overlay.classList.add("is-open");
+  document.body.classList.add("modal-open");
+  overlay.querySelector(".modal-close")?.focus();
+  return true;
+}
+
 function renderAdminCstpPartitionDetailRows(container, session = null) {
   if (!container) {
     return;
@@ -25196,13 +25304,20 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
 
   const canPrepareReport = Boolean(options.canPrepareReport);
   const prepareLabel = normalizedSession.reportPreparedAt || normalizedSession.publishedAt ? "Open Report" : "Prepare Report";
+  const workflowStatusLabel = getAdminCstpWorkflowStatusLabel(normalizedSession);
 
   return `
     <section class="admin-cstp-session-workspace">
       <div class="admin-cstp-lab-actions admin-cstp-session-actions">
-        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
-        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
-        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
+        <div class="admin-cstp-session-action-buttons">
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Start Test</button>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}">Mark Completed</button>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(normalizedSession.id)}"${canPrepareReport ? "" : " disabled"}>${prepareLabel}</button>
+        </div>
+        <div class="admin-cstp-session-workflow-indicator" aria-label="CSTP workflow status">
+          <span class="admin-cstp-session-workflow-label">Workflow Status</span>
+          <span class="admin-cstp-session-workflow-value">${escapeHtml(workflowStatusLabel)}</span>
+        </div>
       </div>
       <form class="admin-communications-editor admin-cstp-session-editor-panel" data-admin-cstp-session-form="${escapeHtml(normalizedSession.id)}">
         <div class="admin-communications-editor-head">
@@ -26517,8 +26632,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
   const detailSummaryTitle = getAdminCstpSessionDisplayTitle(session);
-  const sessionStageValue = mapAdminCstpStatusToSessionStatus(session.status);
-  const hasStartedState = ["active-test", "completed", "report-prepared", "published"].includes(normalizeAdminCstpTestSessionStatus(session.status));
+  const sessionStageValue = getAdminCstpStageControlValue(session);
   const detailLayoutSection = detail.layoutReference?.closest(".system-layout-block") || null;
   const detailPartitionHeader = detail.partitionWorkTitle?.closest(".partition-work-header") || null;
 
@@ -26555,28 +26669,24 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     detail.saveButton.classList.add("admin-cstp-button", "admin-cstp-button--primary");
   }
   if (detail.statusLabel) {
-    detail.statusLabel.textContent = "CSTP Workflow Status";
+    detail.statusLabel.textContent = "Current Stage";
   }
   if (detail.statusField) {
     detail.statusField.value = sessionStageValue;
     syncSessionStatusControlDatasets(detail.statusField, {
-      germinationStartedAt: hasStartedState ? (session.startedAt || "started") : "",
-      firstPlantedAt: Number(session.germinatedCount) > 0 ? (session.completedAt || session.startedAt || "recorded") : "",
+      germinationStartedAt: session.germinationStartedAt || "",
+      firstPlantedAt: session.firstGerminatedAt || session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
     });
+    detail.statusField.dataset.cstpStageProgressKey = getAdminCstpStageProgressKey(session);
     updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
   }
   if (detail.statusTrigger) {
-    detail.statusTrigger.textContent = getAdminCstpTestSessionStatusLabel(session.status);
-    detail.statusTrigger.disabled = true;
-    detail.statusTrigger.classList.add("admin-cstp-session-status-trigger");
-  }
-  const statusCurrentValue = document.querySelector(".session-status-current-value");
-  if (statusCurrentValue) {
-    statusCurrentValue.textContent = getAdminCstpTestSessionStatusLabel(session.status);
+    detail.statusTrigger.disabled = false;
+    detail.statusTrigger.classList.remove("admin-cstp-session-status-trigger");
   }
   if (detail.statusHelp) {
-    detail.statusHelp.textContent = "Advance this lab run with the CSTP workflow buttons below. Member growth stage controls stay disconnected from CSTP.";
+    detail.statusHelp.textContent = "Update the stage as your seeds progress through the session.";
   }
   if (detail.statusReminder) {
     detail.statusReminder.textContent = "Use Start Test, Mark Completed, and Prepare Report to move this assigned CSTP session through the lab workflow.";
@@ -26629,7 +26739,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     initializeCustomSelects(detail.partitions);
     bindPartitionRowVisualState(detail.partitions);
     applyAdminCstpPartitionEditingMode(detail);
-    syncPartitionButtonStates(detail.partitions, sessionStageValue);
+    syncPartitionButtonStates(detail.partitions, mapAdminCstpStatusToSessionStatus(session.status));
     const timelineSaveShortcut = app.querySelector(".timeline-save-shortcut");
     if (timelineSaveShortcut) {
       timelineSaveShortcut.hidden = false;
@@ -26696,6 +26806,51 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
     );
   };
 
+  const buildPersistedStageSession = (existingSession = null, progressKey = "") => {
+    const baseSession = buildDraftSession() || normalizeAdminCstpAssignedSessionRecord(existingSession);
+    if (!baseSession) {
+      return null;
+    }
+
+    const nextProgressKey = String(progressKey || "").trim();
+    const timestamp = new Date().toISOString();
+    const currentWorkflowStatus = normalizeAdminCstpTestSessionStatus(baseSession.status);
+
+    if (nextProgressKey === "soaking") {
+      baseSession.status = currentWorkflowStatus === "completed" ? "active-test" : "active-test";
+      baseSession.startedAt = baseSession.startedAt || timestamp;
+      baseSession.germinationStartedAt = "";
+      baseSession.firstGerminatedAt = "";
+      baseSession.firstPlantedAt = "";
+      baseSession.completedAt = "";
+      detail.statusField.value = "soaking";
+    } else if (nextProgressKey === "germination") {
+      baseSession.status = "active-test";
+      baseSession.startedAt = baseSession.startedAt || timestamp;
+      baseSession.germinationStartedAt = baseSession.germinationStartedAt || timestamp;
+      baseSession.firstGerminatedAt = "";
+      baseSession.firstPlantedAt = "";
+      baseSession.completedAt = "";
+      detail.statusField.value = "germinating";
+    } else if (nextProgressKey === "first-germinated") {
+      baseSession.status = "active-test";
+      baseSession.startedAt = baseSession.startedAt || timestamp;
+      baseSession.germinationStartedAt = baseSession.germinationStartedAt || timestamp;
+      baseSession.firstGerminatedAt = baseSession.firstGerminatedAt || timestamp;
+      baseSession.firstPlantedAt = baseSession.firstGerminatedAt;
+      baseSession.completedAt = "";
+      detail.statusField.value = "germinating";
+    } else if (nextProgressKey === "completed") {
+      baseSession.status = "completed";
+      baseSession.startedAt = baseSession.startedAt || timestamp;
+      baseSession.completedAt = baseSession.completedAt || timestamp;
+      detail.statusField.value = "completed";
+    }
+
+    baseSession.firstPlantedAt = baseSession.firstGerminatedAt || baseSession.firstPlantedAt || "";
+    return syncAdminCstpSessionDerivedValues(baseSession);
+  };
+
   app.querySelectorAll("[data-admin-cstp-session-action]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpSessionBound === "true") {
       return;
@@ -26708,19 +26863,10 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
         return;
       }
       const draftSession = buildDraftSession() || existingSession;
-      const timestamp = new Date().toISOString();
       if (actionKey === "start") {
-        updateAdminCstpAssignedSession(sessionId, {
-          ...draftSession,
-          status: "active-test",
-          startedAt: draftSession.startedAt || timestamp,
-        });
+        updateAdminCstpAssignedSession(sessionId, buildPersistedStageSession(draftSession, "soaking"));
       } else if (actionKey === "complete") {
-        updateAdminCstpAssignedSession(sessionId, {
-          ...draftSession,
-          status: "completed",
-          completedAt: draftSession.completedAt || timestamp,
-        });
+        updateAdminCstpAssignedSession(sessionId, buildPersistedStageSession(draftSession, "completed"));
         ensureAdminCstpCompletedTestSnapshot(sessionId, "session-complete");
       } else if (actionKey === "prepare-report") {
         const persistedDraft = updateAdminCstpAssignedSession(sessionId, draftSession) || existingSession;
@@ -26814,6 +26960,38 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
 
   detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
   detailSaveButton?.addEventListener("click", handleSaveClick);
+
+  detail.statusTrigger?.addEventListener("click", () => {
+    appState.growthStageModalDismissed = false;
+    openAdminCstpStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
+  });
+
+  detail.statusField?.addEventListener("change", () => {
+    const existingSession = getAdminCstpTestSessionById(sessionId);
+    if (!existingSession) {
+      return;
+    }
+
+    const progressKey = String(
+      detail.statusField.dataset.cstpPendingProgressKey
+      || detail.statusField.dataset.cstpStageProgressKey
+      || getSessionStatusProgressKey(detail.statusField),
+    ).trim();
+    delete detail.statusField.dataset.cstpPendingProgressKey;
+    if (!progressKey) {
+      return;
+    }
+
+    const nextSession = buildPersistedStageSession(existingSession, progressKey);
+    if (!nextSession) {
+      return;
+    }
+    updateAdminCstpAssignedSession(sessionId, nextSession);
+    if (progressKey === "completed") {
+      ensureAdminCstpCompletedTestSnapshot(sessionId, "stage-complete");
+    }
+    renderAdminCstpTestSessionPage(sessionId);
+  });
 
   if (partitions) {
     partitions.querySelectorAll(".partition-row").forEach((row) => {
