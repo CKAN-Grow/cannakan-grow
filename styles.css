@@ -1212,6 +1212,7 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .spotlight-card {
   display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
   gap: 8px;
   padding: 22px 24px;
   border: 1px solid var(--card-border);
@@ -1230,6 +1231,7 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .spotlight-card.is-empty-state {
+  grid-template-columns: 1fr;
   gap: 16px;
   padding-top: 22px;
   padding-bottom: 22px;
@@ -1240,6 +1242,7 @@ body.theme-dark .install-app-banner-ios-tip {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-4);
+  grid-column: 1;
 }
 
 .spotlight-stage-pill {
@@ -1366,9 +1369,10 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 
 .spotlight-body {
   display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
-  align-items: flex-start;
-  gap: 12px;
+  grid-column: 1;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 10px;
 }
 
 .spotlight-main {
@@ -1380,6 +1384,8 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
 
 .spotlight-progress {
   display: grid;
+  grid-column: 2;
+  grid-row: 1 / span 2;
   gap: 10px;
   min-width: 0;
   min-height: 0;
@@ -1388,12 +1394,9 @@ body:not(.theme-dark) .spotlight-stage-pill[data-stage="No active session"]::bef
   align-self: flex-start;
   align-content: start;
   justify-content: start;
-  position: relative;
-  top: -18px;
 }
 
 .spotlight-card.is-empty-state .spotlight-body {
-  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -12306,12 +12309,17 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .spotlight-body {
+  .spotlight-card {
     grid-template-columns: 1fr;
   }
 
+  .spotlight-body {
+    grid-column: auto;
+  }
+
   .spotlight-progress {
-    top: 0;
+    grid-column: auto;
+    grid-row: auto;
     margin-top: 0;
   }
 
