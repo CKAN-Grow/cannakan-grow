@@ -24653,9 +24653,21 @@ function getFilteredAdminCstpLabRecords(statusFilter = "all") {
 }
 
 function getAdminCstpAssignedSessionForRecord(record = null) {
-  return record?.assignedSessionId
-    ? getAdminCstpTestSessionById(record.assignedSessionId)
-    : null;
+  const normalizedRecord = normalizeAdminCstpLabRecord(record);
+  if (!normalizedRecord?.assignedSessionId) {
+    return null;
+  }
+
+  const assignedSession = getAdminCstpTestSessionById(normalizedRecord.assignedSessionId);
+  if (!assignedSession) {
+    return null;
+  }
+
+  if (String(assignedSession.requestId || "").trim() !== String(normalizedRecord.requestId || "").trim()) {
+    return null;
+  }
+
+  return assignedSession;
 }
 
 function canPrepareAdminCstpReport(session = null) {
@@ -24908,6 +24920,7 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
 
   const assignedSession = getAdminCstpAssignedSessionForRecord(record);
   const isConnected = Boolean(assignedSession);
+  const assignedSessionDisplayId = assignedSession?.id || record?.assignedSessionId || "";
   return `
     <section class="admin-cstp-assigned-session card">
       <div class="admin-communications-editor-head">
@@ -24923,7 +24936,7 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
         </div>
         <div class="admin-communications-detail-item">
           <span>Assigned session ID</span>
-          <strong>${escapeHtml(assignedSession?.id || "Not connected")}</strong>
+          <strong>${escapeHtml(assignedSessionDisplayId || "Not connected")}</strong>
         </div>
         <div class="admin-communications-detail-item">
           <span>Session status</span>
