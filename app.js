@@ -27268,13 +27268,19 @@ function renderAdminCstpCertificationStatePillMarkup(state = null) {
   if (!state?.isPublishedSeal) {
     return "";
   }
-  if (state.isExpired) {
-    return `<span class="admin-cstp-certification-pill is-expired">Expired</span>`;
-  }
-  if (state.isExpiringSoon) {
-    return `<span class="admin-cstp-certification-pill is-expiring">Expiring Soon</span>`;
-  }
-  return "";
+  const qualificationLabel = getAdminCstpQualificationLabel(state.qualificationResult);
+  const toneClass = state.qualificationResult === "gold"
+    ? "is-gold"
+    : (state.qualificationResult === "silver" ? "is-silver" : "");
+  const stateClass = state.isExpired
+    ? "is-expired"
+    : (state.isExpiringSoon ? "is-expiring" : "is-active");
+  const label = state.isExpired
+    ? `${qualificationLabel} Expired`
+    : (state.isExpiringSoon
+      ? `${qualificationLabel} Expiring Soon`
+      : `${qualificationLabel} Active Certification`);
+  return `<span class="admin-cstp-certification-pill ${toneClass} ${stateClass}">${escapeHtml(label)}</span>`;
 }
 
 function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
@@ -27282,7 +27288,7 @@ function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
   if (!rows.length) {
     return `
       <div class="admin-messages-empty">
-        <p>No CSTP testing requests match this workflow state yet.</p>
+        <p>No CSTP requests match this filter.</p>
       </div>
     `;
   }
@@ -27291,22 +27297,9 @@ function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
     <div class="admin-communications-list">
       ${rows.map((row) => {
         const certificationState = getAdminCstpLabCertificationState(row);
-        const qualificationResult = certificationState.qualificationResult;
-        const sealMarkup = certificationState.isPublishedSeal
-          ? renderPublishedCstpCertifiedSealMarkup(qualificationResult, certificationState.publishedAt, {
-            shellClassName: "admin-cstp-list-seal cstp-certified-seal cstp-certified-seal--compact",
-            imageClassName: "cstp-certified-seal-image",
-            copyClassName: "cstp-certified-seal-copy",
-            labelClassName: "cstp-certified-seal-label",
-            titleClassName: "cstp-certified-seal-title",
-            noteClassName: "cstp-certified-seal-note",
-            labelText: "CSTP Certified",
-            noteText: certificationState.isExpired
-              ? `Expired ${formatAdminTimestamp(certificationState.expiresAt)}`
-              : (certificationState.isExpiringSoon
-                ? `Expires ${formatAdminTimestamp(certificationState.expiresAt)}`
-                : getAdminCstpQualificationLabel(qualificationResult)),
-          })
+        const contactLabel = row.contactName || row.email || "No contact name";
+        const varietyLabel = row.variety
+          ? row.variety
           : "";
         return `
           <button
@@ -27315,17 +27308,28 @@ function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
             data-admin-cstp-lab-open="${escapeHtml(row.id)}"
           >
             <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
-              <span class="admin-message-issue-pill">CSTP Testing</span>
+              <div class="admin-cstp-lab-list-item-copy">
+                <span class="admin-message-issue-pill">CSTP Request</span>
+                <strong class="admin-cstp-lab-list-item-title">${escapeHtml(row.sourceName || "Source not provided")}</strong>
+              </div>
               <div class="admin-cstp-lab-badge-row">
                 ${renderAdminCstpLabStatusPillMarkup(row.status)}
                 ${renderAdminCstpCertificationStatePillMarkup(certificationState)}
               </div>
             </div>
             <div class="admin-communications-list-item-body admin-cstp-lab-list-item-body">
-              <strong>${escapeHtml(row.sourceName || "Source not provided")}</strong>
-              <p>${escapeHtml(row.variety || "Variety pending")}</p>
-              <span>${escapeHtml(row.contactName || row.email || "No contact name")}</span>
-              ${sealMarkup}
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Contact</span>
+                <strong>${escapeHtml(contactLabel)}</strong>
+              </p>
+              ${varietyLabel
+                ? `
+                  <p class="admin-cstp-lab-list-item-meta">
+                    <span class="admin-cstp-lab-list-item-label">Variety</span>
+                    <strong>${escapeHtml(varietyLabel)}</strong>
+                  </p>
+                `
+                : ""}
             </div>
           </button>
         `;
@@ -27585,10 +27589,13 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
   if (!selectedRecord) {
     return `
       <section class="card admin-communications-detail-card admin-communications-detail-empty">
-        <p class="muted">Select a CSTP request to open the testing lab detail view.</p>
+        <p class="muted">No CSTP requests match this filter.</p>
       </section>
     `;
   }
+  const certificationState = getAdminCstpLabCertificationState(selectedRecord);
+  const contactLabel = selectedRecord.contactName || selectedRecord.email || "No contact details provided";
+  const varietyLabel = selectedRecord.variety || "Variety pending";
 
   return `
     <section class="card admin-communications-detail-card admin-cstp-lab-detail-card" data-admin-cstp-lab-detail="${escapeHtml(selectedRecord.id)}">
@@ -27596,6 +27603,11 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         <div>
           <p class="eyebrow">CSTP Testing Lab</p>
           <h4>${escapeHtml(selectedRecord.sourceName || "Source not provided")}</h4>
+          <div class="admin-cstp-lab-detail-badge-row">
+            ${renderAdminCstpLabStatusPillMarkup(selectedRecord.status)}
+            ${renderAdminCstpCertificationStatePillMarkup(certificationState)}
+          </div>
+          <p class="muted admin-cstp-lab-detail-subtitle">${escapeHtml(contactLabel)}${varietyLabel ? ` • ${escapeHtml(varietyLabel)}` : ""}</p>
           <p class="muted admin-cstp-lab-helper">Testing begins within X business days of seed receipt. Results are typically available 3-5 days after testing begins.</p>
         </div>
       </div>
@@ -27667,15 +27679,24 @@ function renderAdminCstpLabSectionMarkup() {
           <div id="admin-cstp-lab-metrics">
             ${renderAdminCstpCertificationMetricsMarkup()}
           </div>
-          <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab workflow and certification filters">
-            ${renderAdminCstpLabFiltersMarkup("all")}
-          </div>
-          <p class="muted">Certification must be published manually after a qualifying completed CSTP test. Community Grow snapshots and member sessions are never changed here.</p>
+        <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab workflow and certification filters">
+          ${renderAdminCstpLabFiltersMarkup("all")}
         </div>
-        <div class="admin-communications-workspace">
-          <div id="admin-cstp-lab-list">
-            ${renderAdminCstpLabListMarkup("all", initialSelectedId)}
-          </div>
+        <p class="muted">Certification must be published manually after a qualifying completed CSTP test. Community Grow snapshots and member sessions are never changed here.</p>
+      </div>
+        <div class="admin-communications-workspace admin-cstp-lab-workspace">
+          <section class="card admin-cstp-lab-queue-shell">
+            <div class="admin-cstp-lab-queue-head">
+              <div>
+                <p class="eyebrow">Testing Queue</p>
+                <h4>Filtered CSTP Requests</h4>
+                <p class="muted">Select a request to review its workflow, assigned session, timeline, and internal notes.</p>
+              </div>
+            </div>
+            <div id="admin-cstp-lab-list">
+              ${renderAdminCstpLabListMarkup("all", initialSelectedId)}
+            </div>
+          </section>
           <div id="admin-cstp-lab-detail">
             ${renderAdminCstpLabDetailMarkup(initialSelectedId, "all")}
           </div>

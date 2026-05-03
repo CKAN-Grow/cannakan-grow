@@ -8230,6 +8230,30 @@ body.theme-dark .contact-reason-card.is-active {
   grid-column: 1 / -1;
 }
 
+.admin-cstp-lab-workspace {
+  grid-template-columns: minmax(360px, 440px) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.admin-cstp-lab-queue-shell {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  align-self: start;
+}
+
+.admin-cstp-lab-queue-head {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(109, 124, 113, 0.18);
+}
+
+.admin-cstp-lab-queue-head h4,
+.admin-cstp-lab-queue-head p {
+  margin: 0;
+}
+
 .admin-cstp-lab-filter-row {
   flex-wrap: wrap;
 }
@@ -8237,6 +8261,33 @@ body.theme-dark .contact-reason-card.is-active {
 .admin-cstp-lab-list-item-head {
   align-items: flex-start;
   gap: 12px;
+}
+
+.admin-cstp-lab-list-item {
+  gap: 14px;
+  padding: 18px;
+}
+
+.admin-cstp-lab-list-item.is-active {
+  border-color: rgba(97, 182, 86, 0.62);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.12), rgba(255, 255, 255, 0.8) 42%, rgba(255, 255, 255, 0.94));
+  box-shadow:
+    0 16px 32px rgba(19, 33, 22, 0.1),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 0 6px rgba(148, 209, 89, 0.08);
+}
+
+.admin-cstp-lab-list-item-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-cstp-lab-list-item-title {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.35;
 }
 
 .admin-cstp-lab-badge-row {
@@ -8250,9 +8301,23 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 10px;
 }
 
-.admin-cstp-list-seal {
-  width: 100%;
-  margin-top: 2px;
+.admin-cstp-lab-list-item-meta {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.admin-cstp-lab-list-item-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.admin-cstp-lab-list-item-meta strong {
+  font-size: 0.96rem;
+  line-height: 1.45;
 }
 
 .admin-cstp-certification-pill {
@@ -8271,6 +8336,24 @@ body.theme-dark .contact-reason-card.is-active {
   text-transform: uppercase;
 }
 
+.admin-cstp-certification-pill.is-active {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.12);
+  color: #294218;
+}
+
+.admin-cstp-certification-pill.is-gold {
+  border-color: rgba(217, 180, 43, 0.26);
+  background: rgba(217, 180, 43, 0.12);
+  color: #6f5110;
+}
+
+.admin-cstp-certification-pill.is-silver {
+  border-color: rgba(117, 138, 156, 0.26);
+  background: rgba(117, 138, 156, 0.12);
+  color: #405362;
+}
+
 .admin-cstp-certification-pill.is-expiring {
   border-color: rgba(217, 139, 43, 0.3);
   background: rgba(217, 139, 43, 0.12);
@@ -8281,6 +8364,24 @@ body.theme-dark .contact-reason-card.is-active {
   border-color: rgba(168, 92, 92, 0.28);
   background: rgba(168, 92, 92, 0.12);
   color: #8d4646;
+}
+
+.admin-cstp-lab-detail-card {
+  border-color: rgba(148, 209, 89, 0.18);
+  box-shadow:
+    0 18px 36px rgba(19, 33, 22, 0.08),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
+}
+
+.admin-cstp-lab-detail-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-cstp-lab-detail-subtitle {
+  margin: 0;
 }
 
 .admin-cstp-assigned-session,
@@ -11222,6 +11323,45 @@ body.theme-dark .admin-cstp-featured-toolbar {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 16px 30px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .admin-cstp-lab-queue-head {
+  border-bottom-color: rgba(148, 209, 89, 0.14);
+}
+
+body.theme-dark .admin-cstp-lab-list-item.is-active {
+  border-color: rgba(148, 209, 89, 0.42);
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.16), rgba(22, 30, 24, 0.96) 38%, rgba(18, 24, 20, 0.94));
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.16),
+    0 0 0 6px rgba(148, 209, 89, 0.08);
+}
+
+body.theme-dark .admin-cstp-certification-pill.is-active {
+  color: #c7f49a;
+  background: rgba(148, 209, 89, 0.14);
+  border-color: rgba(148, 209, 89, 0.24);
+}
+
+body.theme-dark .admin-cstp-certification-pill.is-gold {
+  color: #f0d889;
+  background: rgba(164, 124, 31, 0.22);
+  border-color: rgba(212, 170, 70, 0.26);
+}
+
+body.theme-dark .admin-cstp-certification-pill.is-silver {
+  color: #d7e0e7;
+  background: rgba(109, 127, 142, 0.22);
+  border-color: rgba(166, 184, 198, 0.26);
+}
+
+body.theme-dark .admin-cstp-lab-detail-card {
+  border-color: rgba(148, 209, 89, 0.22);
+  box-shadow:
+    0 20px 36px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 body.theme-dark .cstp-certified-seal {
@@ -19496,6 +19636,23 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .admin-cstp-detail-meta-card--wide {
     grid-column: span 2;
+  }
+
+  .admin-cstp-lab-workspace {
+    gap: 14px;
+  }
+
+  .admin-cstp-lab-queue-shell {
+    padding: 18px;
+  }
+
+  .admin-cstp-lab-list-item-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-cstp-lab-badge-row {
+    justify-content: flex-start;
   }
 
   .admin-cstp-device-image-grid {
