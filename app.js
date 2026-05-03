@@ -26283,6 +26283,8 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
   const detailSummaryTitle = getAdminCstpSessionDisplayTitle(session);
   const sessionStageValue = mapAdminCstpStatusToSessionStatus(session.status);
   const hasStartedState = ["active-test", "completed", "report-prepared", "published"].includes(normalizeAdminCstpTestSessionStatus(session.status));
+  const detailLayoutSection = detail.layoutReference?.closest(".system-layout-block") || null;
+  const detailPartitionHeader = detail.partitionWorkTitle?.closest(".partition-work-header") || null;
 
   applySessionDetailHeaderOptions(detail, {
     title: detailSummaryTitle,
@@ -26371,15 +26373,18 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     { label: "Qualification Result", value: getAdminCstpQualificationLabel(session.qualificationResult) },
   ]);
 
-  renderSystemLayoutReference(detail.layoutReference, session.systemType);
-  if (detail.partitionWorkTitle) {
-    updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
+  if (detailLayoutSection) {
+    detailLayoutSection.hidden = true;
   }
-  if (detail.partitions) {
-    renderAdminCstpPartitionDetailRows(detail.partitions, session);
+  if (detailPartitionHeader) {
+    detailPartitionHeader.hidden = true;
   }
-  applySessionStatusLayout(detail.chartShell, detail.chartHeader, detail.partitions, sessionStageValue);
-  updatePartitionProgressChart(session.partitions || [], detail.progressChart, detail.progressSection);
+  if (detail.chartShell) {
+    detail.chartShell.hidden = true;
+  }
+  if (detail.progressSection) {
+    detail.progressSection.hidden = true;
+  }
   updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, session);
   updateRunProgressSummary(detail.runProgressSummary, detail.runProgressSection, sessionStageValue, session.partitions || []);
   updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
