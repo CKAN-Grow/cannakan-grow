@@ -12262,6 +12262,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   const ownerAction = allowOwnerManagement && isOwner ? getOwnerGalleryAction(snapshot) : null;
   const details = getGallerySnapshotFeedDetails(snapshot);
   const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const publishedCertification = getPublishedAdminCstpCertificationForSnapshot(snapshot);
   const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
   const followButtonMarkup = renderGalleryFollowButtonMarkup(snapshot, { showFollowAction });
   const sharedProfileMarkup = linkSharedProfile
@@ -12291,6 +12292,22 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
       : isPrivate
         ? "Private submission"
         : "Approved public snapshot";
+  const cstpCertifiedMarkup = publishedCertification
+    ? renderPublishedCstpCertifiedSealMarkup(
+      publishedCertification.qualificationResult,
+      publishedCertification.publishedAt,
+      {
+        shellClassName: "gallery-card-cstp-certified cstp-certified-seal cstp-certified-seal--compact",
+        imageClassName: "cstp-certified-seal-image",
+        copyClassName: "cstp-certified-seal-copy",
+        labelClassName: "cstp-certified-seal-label",
+        titleClassName: "cstp-certified-seal-title",
+        noteClassName: "cstp-certified-seal-note",
+        labelText: "CSTP Certified",
+        noteText: getAdminCstpQualificationLabel(publishedCertification.qualificationResult),
+      },
+    )
+    : "";
 
   return `
     ${renderGallerySnapshotMediaMarkup(snapshot, details)}
@@ -12308,6 +12325,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
           <p class="gallery-card-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
         </div>
       </div>
+      ${cstpCertifiedMarkup}
       <div class="gallery-card-performance-grid">
         <article class="gallery-card-performance-stat">
           <span>Seed Type</span>
@@ -18712,6 +18730,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
 
   return {
     status: publishedCertification.qualificationResult,
+    publishedAt: publishedCertification.publishedAt || "",
     eyebrow: "CSTP Verification",
     heading: "CSTP Verification",
     statusLabel: "CSTP Certified",
@@ -18800,6 +18819,7 @@ function getSourceDirectoryCstpPreview(source = {}) {
   const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
   return {
     filterKey: qualificationResult,
+    publishedAt: publishedCertification.publishedAt || "",
     label: `CSTP ${qualificationLabel}`,
     badgeAsset: qualificationResult === "gold" ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold : SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
     badgeAlt: `CSTP ${qualificationLabel} badge`,
@@ -18811,17 +18831,16 @@ function getSourceDirectoryCstpPreview(source = {}) {
 function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
   const cstpPreview = getSourceDirectoryCstpPreview(source);
   const statusMarkup = cstpPreview
-    ? `
-      <span class="home-tested-source-cstp-status is-badge" aria-label="${escapeHtml(cstpPreview.label)}">
-        <img
-          src="${escapeHtml(cstpPreview.badgeAsset)}"
-          alt="${escapeHtml(cstpPreview.badgeAlt)}"
-          class="home-tested-source-cstp-badge"
-          loading="lazy"
-          decoding="async"
-        >
-      </span>
-    `
+    ? renderPublishedCstpCertifiedSealMarkup(cstpPreview.filterKey, cstpPreview.publishedAt, {
+      shellClassName: "home-tested-source-cstp-status cstp-certified-seal cstp-certified-seal--compact",
+      imageClassName: "home-tested-source-cstp-badge cstp-certified-seal-image",
+      copyClassName: "cstp-certified-seal-copy",
+      labelClassName: "cstp-certified-seal-label",
+      titleClassName: "cstp-certified-seal-title",
+      noteClassName: "cstp-certified-seal-note",
+      labelText: "CSTP Certified",
+      noteText: getAdminCstpQualificationLabel(cstpPreview.filterKey),
+    })
     : "";
 
   return `
@@ -19095,16 +19114,16 @@ function renderSourceDirectoryCardMarkup(source = {}) {
       ${cstpPreview ? `
         <div class="source-directory-cstp-preview">
           <span class="source-directory-cstp-label">CSTP Verification</span>
-          <div class="source-directory-cstp-status">
-            <img
-              src="${escapeHtml(cstpPreview.badgeAsset)}"
-              alt="${escapeHtml(cstpPreview.badgeAlt)}"
-              class="source-directory-cstp-badge${cstpPreview.isExpired ? " is-expired" : ""}"
-              loading="lazy"
-              decoding="async"
-            >
-            <span class="source-directory-cstp-text${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
-          </div>
+          ${renderPublishedCstpCertifiedSealMarkup(cstpPreview.filterKey, cstpPreview.publishedAt, {
+            shellClassName: "source-directory-cstp-status cstp-certified-seal cstp-certified-seal--compact",
+            imageClassName: "source-directory-cstp-badge cstp-certified-seal-image",
+            copyClassName: "cstp-certified-seal-copy",
+            labelClassName: "cstp-certified-seal-label",
+            titleClassName: "cstp-certified-seal-title",
+            noteClassName: "cstp-certified-seal-note",
+            labelText: "CSTP Certified",
+            noteText: getAdminCstpQualificationLabel(cstpPreview.filterKey),
+          })}
         </div>
       ` : ""}
       <div class="inline-actions">
@@ -19378,6 +19397,18 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
             <div class="source-profile-verification-main">
               <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
+              ${renderPublishedCstpCertifiedSealMarkup(cstpState.status, cstpState.publishedAt, {
+                shellClassName: "source-profile-cstp-certified-seal cstp-certified-seal",
+                imageClassName: "cstp-certified-seal-image",
+                copyClassName: "cstp-certified-seal-copy",
+                labelClassName: "cstp-certified-seal-label",
+                titleClassName: "cstp-certified-seal-title",
+                noteClassName: "cstp-certified-seal-note",
+                labelText: "CSTP Certified",
+                noteText: cstpState.publishedAt
+                  ? `Published ${formatAdminTimestamp(cstpState.publishedAt)}`
+                  : getAdminCstpQualificationLabel(cstpState.status),
+              })}
               ${cstpState.pills.length ? `
                 <div class="source-profile-cstp-state-shell">
                   ${cstpState.pills.map((pill) => `
@@ -19517,6 +19548,16 @@ function renderSourceCstpReportPage(sourceId = "") {
             <p class="muted">Only published Gold or Silver CSTP certifications are shown publicly.</p>
           </div>
         </div>
+        ${renderPublishedCstpCertifiedSealMarkup(publishedCertification.qualificationResult, publishedCertification.publishedAt, {
+          shellClassName: "source-cstp-report-status cstp-certified-seal",
+          imageClassName: "source-cstp-report-badge cstp-certified-seal-image",
+          copyClassName: "source-cstp-report-status-copy cstp-certified-seal-copy",
+          labelClassName: "cstp-certified-seal-label",
+          titleClassName: "cstp-certified-seal-title",
+          noteClassName: "cstp-certified-seal-note",
+          labelText: "CSTP Certified",
+          noteText: `Published ${formatAdminTimestamp(publishedCertification.publishedAt)}`,
+        })}
         <div class="admin-communications-detail-grid">
           <div class="admin-communications-detail-item">
             <span>Source name</span>
@@ -24909,6 +24950,48 @@ function renderAdminCstpQualificationBadgeMarkup(qualificationResult = "") {
   `;
 }
 
+function hasPublishedAdminCstpSeal(qualificationResult = "", publishedAt = "") {
+  return isAdminCstpCertificationEligible(qualificationResult)
+    && Boolean(String(publishedAt || "").trim());
+}
+
+function renderPublishedCstpCertifiedSealMarkup(qualificationResult = "", publishedAt = "", options = {}) {
+  const normalizedResult = normalizeAdminCstpQualificationResult(qualificationResult);
+  if (!hasPublishedAdminCstpSeal(normalizedResult, publishedAt)) {
+    return "";
+  }
+
+  const badgeAsset = normalizedResult === "gold"
+    ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold
+    : SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver;
+  const badgeLabel = getAdminCstpQualificationLabel(normalizedResult);
+  const shellClassName = String(options.shellClassName || "cstp-certified-seal").trim();
+  const imageClassName = String(options.imageClassName || "cstp-certified-seal-image").trim();
+  const copyClassName = String(options.copyClassName || "cstp-certified-seal-copy").trim();
+  const labelClassName = String(options.labelClassName || "cstp-certified-seal-label").trim();
+  const titleClassName = String(options.titleClassName || "cstp-certified-seal-title").trim();
+  const noteClassName = String(options.noteClassName || "cstp-certified-seal-note").trim();
+  const labelText = String(options.labelText || "CSTP Certified").trim() || "CSTP Certified";
+  const noteText = String(options.noteText || badgeLabel).trim() || badgeLabel;
+
+  return `
+    <div class="${escapeHtml(shellClassName)} ${escapeHtml(`${shellClassName}--${normalizedResult}`)}">
+      <img
+        src="${escapeHtml(badgeAsset)}"
+        alt="${escapeHtml(`${labelText} ${badgeLabel} badge`)}"
+        class="${escapeHtml(imageClassName)}"
+        loading="lazy"
+        decoding="async"
+      >
+      <div class="${escapeHtml(copyClassName)}">
+        <span class="${escapeHtml(labelClassName)}">${escapeHtml(labelText)}</span>
+        <strong class="${escapeHtml(titleClassName)}">${escapeHtml(badgeLabel)}</strong>
+        <span class="${escapeHtml(noteClassName)}">${escapeHtml(noteText)}</span>
+      </div>
+    </div>
+  `;
+}
+
 function getAdminCstpSuggestedQualificationSummaryText(session = null) {
   const suggestedQualification = getSuggestedAdminCstpQualificationResult(session);
   return suggestedQualification
@@ -24921,10 +25004,26 @@ function getAdminCstpBatchLotDisplayValue(value = "") {
   return normalizedValue || "Batch / Lot # not provided by source";
 }
 
-function renderAdminCstpQualificationBadgeSummaryMarkup(qualificationResult = "") {
-  return renderAdminCstpQualificationBadgeMarkup(qualificationResult) || `
+function renderAdminCstpQualificationBadgeSummaryMarkup(session = null) {
+  const publishedSealMarkup = renderPublishedCstpCertifiedSealMarkup(
+    session?.qualificationResult || "",
+    session?.publishedAt || "",
+    {
+      shellClassName: "admin-cstp-qualification-badge-shell cstp-certified-seal",
+      imageClassName: "admin-cstp-qualification-badge cstp-certified-seal-image",
+      copyClassName: "admin-cstp-qualification-badge-copy cstp-certified-seal-copy",
+      labelClassName: "admin-cstp-qualification-badge-label cstp-certified-seal-label",
+      titleClassName: "cstp-certified-seal-title",
+      noteClassName: "cstp-certified-seal-note",
+      labelText: "CSTP Certified",
+      noteText: session?.publishedAt
+        ? `Published ${formatAdminCstpSessionDateTime(session.publishedAt, "Not published")}`
+        : getAdminCstpQualificationLabel(session?.qualificationResult || ""),
+    },
+  );
+  return publishedSealMarkup || `
     <div class="admin-cstp-badge-summary-empty">
-      <p class="muted">Gold or Silver will display a certification badge here.</p>
+      <p class="muted">Published Gold or Silver certifications will display a CSTP Certified badge here.</p>
     </div>
   `;
 }
@@ -24956,7 +25055,7 @@ function syncAdminCstpSessionSummaryForm(form, session = null) {
   }
   if (badgeDisplay) {
     badgeDisplay.innerHTML = renderAdminCstpQualificationBadgeSummaryMarkup(
-      workingSession?.qualificationResult || "",
+      workingSession,
     );
   }
 }
@@ -25439,7 +25538,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
           <div class="admin-message-field admin-cstp-badge-summary-card">
             <span>Certification Badge</span>
             <div data-admin-cstp-badge-display>
-              ${renderAdminCstpQualificationBadgeSummaryMarkup(normalizedSession.qualificationResult)}
+              ${renderAdminCstpQualificationBadgeSummaryMarkup(normalizedSession)}
             </div>
           </div>
         </div>
@@ -27823,6 +27922,16 @@ function renderAdminCstpReportPage(recordId = "") {
                   <span>CSTP Seal Eligibility</span>
                 </h4>
               </div>
+              ${renderPublishedCstpCertifiedSealMarkup(qualificationResult, reportSession.publishedAt, {
+                shellClassName: "admin-cstp-report-certified-seal cstp-certified-seal",
+                imageClassName: "admin-cstp-qualification-badge cstp-certified-seal-image",
+                copyClassName: "admin-cstp-qualification-badge-copy cstp-certified-seal-copy",
+                labelClassName: "admin-cstp-qualification-badge-label cstp-certified-seal-label",
+                titleClassName: "cstp-certified-seal-title",
+                noteClassName: "cstp-certified-seal-note",
+                labelText: "CSTP Certified",
+                noteText: `Published ${formatAdminCstpSessionDateTime(reportSession.publishedAt, "Not published")}`,
+              })}
               <div class="admin-cstp-report-seal-grid">
                 <article class="meta-card">
                   <strong>Suggested Qualification</strong>
