@@ -7500,6 +7500,32 @@ body.theme-dark .contact-reason-card.is-active {
   border-top: 1px solid rgba(109, 124, 113, 0.16);
 }
 
+.admin-communications-toolbar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-communications-toolbar p,
+.admin-dev-access-note {
+  margin: 0;
+}
+
+.admin-communication-card {
+  gap: 12px;
+}
+
+.admin-dev-access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-dev-access-grid .button {
+  width: 100%;
+  justify-content: center;
+}
+
 .admin-members-empty {
   padding: 22px;
   border-radius: 16px;
@@ -15584,6 +15610,10 @@ body.theme-dark .admin-report-card-message {
   border-top-color: rgba(111, 122, 116, 0.18);
 }
 
+body.theme-dark .admin-communication-card {
+  background: rgba(255, 255, 255, 0.035);
+}
+
 body.theme-dark .admin-message-issue-pill {
   color: #bfe89d;
   background: rgba(148, 209, 89, 0.14);
@@ -17079,6 +17109,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .admin-report-card-meta {
     grid-auto-flow: row;
     display: grid;
+  }
+
+  .admin-dev-access-grid {
+    grid-template-columns: 1fr;
   }
 
   .admin-report-card-date {

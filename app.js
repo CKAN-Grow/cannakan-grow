@@ -745,6 +745,66 @@ const MOCK_ADMIN_REPORTS = Object.freeze([
     created_at: new Date(Date.now() - (52 * 60 * 60 * 1000)).toISOString(),
   },
 ]);
+const ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY = "cannakanAdminCommunicationsOpen";
+const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
+const ADMIN_COMMUNICATIONS_TABS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Messages" }),
+  Object.freeze({ key: "cstp", label: "CSTP Requests" }),
+  Object.freeze({ key: "support", label: "Support" }),
+  Object.freeze({ key: "source-corrections", label: "Source Corrections" }),
+]);
+const ADMIN_COMMUNICATIONS_MOCK_MESSAGES = Object.freeze([
+  Object.freeze({
+    id: "admin-comm-cstp-1",
+    type: "CSTP Testing Request",
+    name: "Maya Chen",
+    email: "maya@greenseedlabs.com",
+    subject: "Outdoor batch submission for CSTP review",
+    createdAt: new Date(Date.now() - (5 * 60 * 60 * 1000)).toISOString(),
+    status: "new",
+    bucket: "cstp",
+  }),
+  Object.freeze({
+    id: "admin-comm-support-1",
+    type: "App Support",
+    name: "Jordan Blake",
+    email: "jordan@example.com",
+    subject: "Session save issue on mobile",
+    createdAt: new Date(Date.now() - (9 * 60 * 60 * 1000)).toISOString(),
+    status: "in-progress",
+    bucket: "support",
+  }),
+  Object.freeze({
+    id: "admin-comm-source-1",
+    type: "Source Correction / Directory Issue",
+    name: "Avery Moss",
+    email: "avery@example.com",
+    subject: "Seedsman entry should be merged with master source record",
+    createdAt: new Date(Date.now() - (18 * 60 * 60 * 1000)).toISOString(),
+    status: "new",
+    bucket: "source-corrections",
+  }),
+  Object.freeze({
+    id: "admin-comm-support-2",
+    type: "Order / Product Support",
+    name: "Riley Stone",
+    email: "riley@northcoastgrow.com",
+    subject: "Order 1448 packaging issue",
+    createdAt: new Date(Date.now() - (31 * 60 * 60 * 1000)).toISOString(),
+    status: "closed",
+    bucket: "support",
+  }),
+  Object.freeze({
+    id: "admin-comm-business-1",
+    type: "Partnership / Business Inquiry",
+    name: "Noah Patel",
+    email: "noah@batchworks.io",
+    subject: "Exploring a directory data partnership",
+    createdAt: new Date(Date.now() - (44 * 60 * 60 * 1000)).toISOString(),
+    status: "in-progress",
+    bucket: "support",
+  }),
+]);
 const app = document.querySelector("#app");
 const authStatus = document.querySelector("#auth-status");
 const appFooter = document.querySelector(".app-footer");
@@ -23262,6 +23322,152 @@ function bindSiteVisitorAnalyticsSection() {
   });
 }
 
+function normalizeAdminCommunicationStatus(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return ["new", "in-progress", "closed"].includes(normalizedValue)
+    ? normalizedValue
+    : "new";
+}
+
+function getAdminCommunicationRows(filterKey = "all") {
+  const normalizedFilterKey = String(filterKey || "all").trim().toLowerCase();
+  return ADMIN_COMMUNICATIONS_MOCK_MESSAGES
+    .filter((row) => normalizedFilterKey === "all" || row.bucket === normalizedFilterKey)
+    .sort((left, right) => (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0));
+}
+
+function renderAdminCommunicationStatusPillMarkup(status = "new") {
+  const normalizedStatus = normalizeAdminCommunicationStatus(status);
+  const statusLabel = normalizedStatus === "in-progress"
+    ? "In Progress"
+    : capitalize(normalizedStatus);
+  return `<span class="admin-message-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(statusLabel)}</span>`;
+}
+
+function renderAdminCommunicationsTabsMarkup(activeTab = "all") {
+  return ADMIN_COMMUNICATIONS_TABS.map((tab) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill ${tab.key === activeTab ? "is-active" : ""}"
+      data-admin-communications-tab="${escapeHtml(tab.key)}"
+      aria-pressed="${tab.key === activeTab ? "true" : "false"}"
+    >
+      ${escapeHtml(tab.label)}
+    </button>
+  `).join("");
+}
+
+function renderAdminCommunicationsListMarkup(activeTab = "all") {
+  const rows = getAdminCommunicationRows(activeTab);
+  if (!rows.length) {
+    return `
+      <div class="admin-messages-empty">
+        <p>No mock messages are in this category yet.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="admin-report-card-list">
+      ${rows.map((row) => `
+        <article class="meta-card admin-report-card admin-communication-card ${normalizeAdminCommunicationStatus(row.status) === "new" ? "is-new" : ""}">
+          <div class="admin-report-card-header">
+            <div class="admin-report-card-badges">
+              <span class="admin-message-issue-pill">${escapeHtml(row.type)}</span>
+              ${renderAdminCommunicationStatusPillMarkup(row.status)}
+            </div>
+            <p class="admin-report-card-date">${escapeHtml(formatAdminTimestamp(row.createdAt))}</p>
+          </div>
+          <div class="admin-report-card-meta">
+            <div>
+              <strong>${escapeHtml(row.subject)}</strong>
+              <p>${escapeHtml(row.name)} • ${escapeHtml(row.email)}</p>
+            </div>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAdminCommunicationsSectionMarkup() {
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Communications",
+    title: "Communications",
+    description: "Review support requests, CSTP outreach, and directory corrections from one admin-only inbox preview.",
+    iconType: "message-board",
+    storageKey: ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY,
+    contentId: "admin-communications-section-content",
+    defaultOpen: false,
+    bodyMarkup: `
+      <div class="admin-communications-shell">
+        <div class="admin-communications-toolbar">
+          <div class="source-directory-filter-row" role="group" aria-label="Communication message tabs">
+            ${renderAdminCommunicationsTabsMarkup("all")}
+          </div>
+          <p class="muted">Mock communication queue for development routing and admin review planning.</p>
+        </div>
+        <div id="admin-communications-list">
+          ${renderAdminCommunicationsListMarkup("all")}
+        </div>
+      </div>
+    `,
+  });
+}
+
+function bindAdminCommunicationsSection(scope = app) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  const listShell = scope.querySelector("#admin-communications-list");
+  const tabButtons = Array.from(scope.querySelectorAll("[data-admin-communications-tab]"));
+  if (!listShell || !tabButtons.length) {
+    return;
+  }
+
+  const renderTab = (nextTab = "all") => {
+    listShell.innerHTML = renderAdminCommunicationsListMarkup(nextTab);
+    tabButtons.forEach((button) => {
+      const isActive = button.dataset.adminCommunicationsTab === nextTab;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  };
+
+  tabButtons.forEach((button) => {
+    if (button.dataset.adminCommunicationsBound === "true") {
+      return;
+    }
+
+    button.dataset.adminCommunicationsBound = "true";
+    button.addEventListener("click", () => {
+      renderTab(button.dataset.adminCommunicationsTab || "all");
+    });
+  });
+}
+
+function renderAdminDevAccessSectionMarkup() {
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Development",
+    title: "Dev Access",
+    description: "Quick links for admins to preview the new public-facing source, contact, and CSTP-related pages.",
+    iconType: "admin",
+    storageKey: ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY,
+    contentId: "admin-dev-access-section-content",
+    defaultOpen: false,
+    bodyMarkup: `
+      <div class="admin-dev-access-grid">
+        <a class="button button-secondary" href="#sources">View Tested Sources</a>
+        <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Profile</a>
+        <a class="button button-secondary" href="#contact">View Contact Page</a>
+        <a class="button button-secondary" href="#home">View CSTP Overview</a>
+      </div>
+      <p class="muted admin-dev-access-note">The CSTP Overview lives on Home beneath the Tested Sources preview during development.</p>
+    `,
+  });
+}
+
 function renderAdminPage() {
   app.innerHTML = `
     <section class="card admin-page-hero">
@@ -23318,6 +23524,8 @@ function renderAdminPage() {
         <div id="admin-members-table-anchor"></div>
       `,
     })}
+    ${renderAdminCommunicationsSectionMarkup()}
+    ${renderAdminDevAccessSectionMarkup()}
     ${renderAdminSourceReviewSectionMarkup()}
     ${renderAdminMessagesSectionMarkup()}
     ${renderAdminCollapsibleSectionMarkup({
@@ -23548,6 +23756,7 @@ function renderAdminPage() {
 
   bindAdminCollapsibleSections(app);
   bindAdminMembersSection();
+  bindAdminCommunicationsSection();
   bindAdminSourceReviewSection();
   bindAdminMessagesSection();
   bindAdminSourcesSection();
