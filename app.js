@@ -83,7 +83,7 @@ const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
 const DEFAULT_MIXED_IMAGE_MODE = "match-type";
 const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/public/assets/wow-fallback.png";
-const DEFAULT_GROW_JOKES = Object.freeze([
+const JOKES = Object.freeze([
   { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
   { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
   { question: "Why did the tomato turn red in the garden?", answer: "It saw the salad dressing." },
@@ -109,7 +109,17 @@ const DEFAULT_GROW_JOKES = Object.freeze([
   { question: "What do you call a fast-growing herb garden?", answer: "A mint condition miracle." },
   { question: "Why did the gardener smile at the rain cloud?", answer: "It looked like a shower of support." },
 ]);
-const DEFAULT_GROW_FACTS = Object.freeze([
+const APP_HINTS = Object.freeze([
+  { text: "Use the Sessions page to track each grow separately so your germination history stays easy to compare." },
+  { text: "Add session notes while a run is active so your conditions and observations stay attached to the right batch." },
+  { text: "Completed sessions keep their timing and germination data, which makes it easier to review what worked later." },
+  { text: "Source Profiles only show published CSTP certifications, so admin lab work stays private until it is approved." },
+  { text: "The Source Directory is a quick way to review tested varieties and published CSTP qualification levels." },
+  { text: "Use Community Grow snapshots for public sharing and keep private test notes inside the session detail page." },
+  { text: "Dark mode is available from the app theme toggle if you want the testing and report views to feel easier on the eyes." },
+  { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
+]);
+const CANNAKAN_FACTS = Object.freeze([
   "Seeds need moisture, oxygen, and warmth to begin germination.",
   "Many seeds germinate more consistently when the growing medium stays evenly moist, not soaked.",
   "Good airflow helps seedlings grow sturdier and reduces damping-off risk.",
@@ -131,6 +141,15 @@ const DEFAULT_GROW_FACTS = Object.freeze([
   "True leaves appear after the first seed leaves and signal that feeding may begin soon.",
   "Hardening off helps indoor seedlings adjust gradually to outdoor sun, wind, and temperature changes.",
 ]);
+const DEFAULT_GROW_JOKES = JOKES;
+const DEFAULT_GROW_FACTS = CANNAKAN_FACTS;
+const HOME_ANNOUNCEMENT_ROTATION_SEQUENCE = Object.freeze(["joke", "hint", "hint", "hint", "fact"]);
+const HOME_ANNOUNCEMENT_ROTATION_DURATION_MS = Object.freeze({
+  joke: 5000,
+  hint: 5000,
+  fact: 15000,
+});
+const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 260;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -904,6 +923,8 @@ const appState = {
   announcementsRefreshPromise: null,
   announcementAdminMessage: "",
   fallbackContentAdminMessage: "",
+  homeAnnouncementRotationTimeoutId: 0,
+  homeAnnouncementRotationFadeTimeoutId: 0,
   adminMessages: [],
   adminMessagesLoaded: false,
   adminMessagesError: "",
@@ -10691,6 +10712,10 @@ function resolveFallbackCardImageUrl(fallbackType, fallbackMode = getFallbackCon
     }
   }
 
+  if (fallbackType === "hint") {
+    return getResolvedDefaultAnnouncementImageUrl();
+  }
+
   return fallbackType === "fact"
     ? getResolvedDefaultFactImageUrl()
     : getResolvedDefaultJokeImageUrl();
@@ -16085,6 +16110,7 @@ async function shareSnapshotBlob(blob, fileName, text) {
 function render() {
   closeAllCustomSelects();
   clearSessionTimerInterval();
+  stopHomeAnnouncementFallbackRotation();
   closeMobileNavigation();
   updateAuthStatus();
   syncInstallPromptBanner();
@@ -16129,9 +16155,12 @@ function render() {
     const shouldRenderAnnouncementDuringLoad = route === "home" || !route;
     app.innerHTML = `
       <section class="card"><p class="muted">Loading Cannakan® Grow...</p></section>
-      ${shouldRenderAnnouncementDuringLoad ? renderHomeAnnouncementCard() : ""}
+      ${shouldRenderAnnouncementDuringLoad
+        ? renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date(), { useRotatingFallback: true }))
+        : ""}
     `;
     bindMessageBoardImageFallbacks(app);
+    bindHomeAnnouncementFallbackRotation(app);
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     void refreshSiteVisitorPresence("loading");
@@ -18473,7 +18502,9 @@ function renderHomeAdminUtilityCardMarkup() {
 }
 
 function renderHomeSecondaryInfoRowMarkup() {
-  const announcementMarkup = renderHomeAnnouncementCard();
+  const announcementMarkup = renderHomeAnnouncementCard(
+    getHomeAnnouncementCardData(new Date(), { useRotatingFallback: true }),
+  );
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   return `
     <div class="home-dashboard-secondary-row">
@@ -21679,6 +21710,88 @@ function getFallbackFactItems() {
   }));
 }
 
+function getAppHintItems() {
+  return APP_HINTS.map((entry, index) => ({
+    type: "hint",
+    key: `hint:${index}:${String(entry?.text || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    text: String(entry?.text || "").trim(),
+  })).filter((entry) => entry.text && entry.key);
+}
+
+function getHomeAnnouncementFallbackLabel(type = "") {
+  return ({
+    joke: "Grow Humor",
+    hint: "Cannakan Tip",
+    fact: "Did you know?",
+  })[String(type || "").trim().toLowerCase()] || "Latest from Cannakan®";
+}
+
+function getHomeAnnouncementFallbackPool(type = "") {
+  const normalizedType = String(type || "").trim().toLowerCase();
+  if (normalizedType === "joke") {
+    return getFallbackJokeItems();
+  }
+  if (normalizedType === "fact") {
+    return getFallbackFactItems();
+  }
+  if (normalizedType === "hint") {
+    return getAppHintItems();
+  }
+  return [];
+}
+
+function selectRandomAnnouncementFallbackItem(type = "", previousKey = "") {
+  const items = getHomeAnnouncementFallbackPool(type);
+  if (!items.length) {
+    return null;
+  }
+
+  const eligibleItems = items.length > 1
+    ? items.filter((item) => item.key !== previousKey)
+    : items;
+  const selectionPool = eligibleItems.length ? eligibleItems : items;
+  const randomIndex = Math.floor(Math.random() * selectionPool.length);
+  return selectionPool[randomIndex] || selectionPool[0] || null;
+}
+
+function buildHomeAnnouncementFallbackCardData(fallbackContent = null, referenceDate = new Date(), options = {}) {
+  const activeFallback = fallbackContent && typeof fallbackContent === "object"
+    ? fallbackContent
+    : {
+      type: "fact",
+      key: "fact:fallback",
+      text: "Seeds need steady moisture, gentle warmth, and oxygen to begin germination.",
+    };
+
+  return {
+    title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
+    body: activeFallback.type === "joke" ? activeFallback.question : activeFallback.text,
+    answer: activeFallback.type === "joke" ? activeFallback.answer : "",
+    imageUrl: resolveFallbackCardImageUrl(activeFallback.type, getFallbackContentMode()),
+    linkUrl: "",
+    buttonText: "",
+    dateValue: referenceDate.toISOString(),
+    footerText: "Rotating fallback content",
+    fallbackType: activeFallback.type,
+    fallbackItemKey: activeFallback.key || "",
+    fallbackLabel: getHomeAnnouncementFallbackLabel(activeFallback.type),
+    configuredDisplayMode: getMessageBoardDisplayMode(),
+    effectiveDisplayMode: "fallback",
+    fallbackMode: getFallbackContentMode(),
+    fallbackRotationEnabled: options.enableRotation === true,
+    fallbackRotationSequenceIndex: Math.max(0, Number(options.sequenceIndex) || 0),
+  };
+}
+
+function getInitialRotatingFallbackCardData(referenceDate = new Date()) {
+  const initialType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[0] || "joke";
+  const initialItem = selectRandomAnnouncementFallbackItem(initialType, "");
+  return buildHomeAnnouncementFallbackCardData(initialItem, referenceDate, {
+    enableRotation: true,
+    sequenceIndex: 0,
+  });
+}
+
 function findFallbackItemByHistoryEntry(entry, jokes = getFallbackJokeItems(), facts = getFallbackFactItems()) {
   if (!entry?.itemKey) {
     return null;
@@ -21848,10 +21961,10 @@ function clearStoredFallbackContent() {
   }
 }
 
-function getHomeAnnouncementCardData(referenceDate = new Date()) {
+function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
   const announcement = getLatestActiveAnnouncement();
   const displayMode = getMessageBoardDisplayMode();
-  if (displayMode === "announcement" && announcement) {
+  if (announcement) {
     return {
       title: announcement.title || "Latest from Cannakan",
       body: announcement.body || "Latest update from Cannakan.",
@@ -21864,21 +21977,12 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
     };
   }
 
+  if (options?.useRotatingFallback) {
+    return getInitialRotatingFallbackCardData(referenceDate);
+  }
+
   const fallbackContent = getDailyFallbackContent(referenceDate);
-  const fallbackMode = getFallbackContentMode();
-  return {
-    title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
-    body: fallbackContent.type === "joke" ? fallbackContent.question : fallbackContent.text,
-    answer: fallbackContent.type === "joke" ? fallbackContent.answer : "",
-    imageUrl: resolveFallbackCardImageUrl(fallbackContent.type, fallbackMode),
-    linkUrl: "",
-    buttonText: "",
-    dateValue: referenceDate.toISOString(),
-    fallbackType: fallbackContent.type,
-    configuredDisplayMode: displayMode,
-    effectiveDisplayMode: "fallback",
-    fallbackMode,
-  };
+  return buildHomeAnnouncementFallbackCardData(fallbackContent, referenceDate);
 }
 
 function bindMessageBoardImageFallbacks(scope = document) {
@@ -21931,6 +22035,36 @@ function bindMessageBoardImageFallbacks(scope = document) {
   });
 }
 
+function renderHomeAnnouncementCaptionMarkup(cardData = {}) {
+  if (cardData.fallbackType === "joke") {
+    return `
+      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Joke:</span>
+          <span>${escapeHtml(cardData.body)}</span>
+        </p>
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Answer:</span>
+          <span>${escapeHtml(cardData.answer || "")}</span>
+        </p>
+      </div>
+    `;
+  }
+
+  if (cardData.fallbackType === "fact") {
+    return `
+      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
+        <p class="home-announcement-card-caption-line">
+          <span class="home-announcement-card-caption-kicker">Fact:</span>
+          <span>${escapeHtml(cardData.body)}</span>
+        </p>
+      </div>
+    `;
+  }
+
+  return `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`;
+}
+
 function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const visualImageUrl = resolveMessageBoardImageUrl(cardData.imageUrl);
@@ -21945,55 +22079,45 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
     fallbackImagePath: MESSAGE_BOARD_IMAGE_FALLBACK_URL,
     usingAnnouncementImage: !isFallback,
   });
+  const labelText = isFallback
+    ? (cardData.fallbackLabel || getHomeAnnouncementFallbackLabel(cardData.fallbackType))
+    : "Latest from Cannakan®";
   const imageMarkup = `
-      <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}">
+      <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}" data-home-announcement-visual-shell="true">
         <img
           src="${escapeHtml(visualImageUrl)}"
           alt=""
           class="home-announcement-card-image"
+          data-home-announcement-image="true"
           data-message-board-image="true"
           data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
         >
         <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
       </div>
     `;
-  const captionMarkup = cardData.fallbackType === "joke"
-    ? `
-      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Joke:</span>
-          <span>${escapeHtml(cardData.body)}</span>
-        </p>
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Answer:</span>
-          <span>${escapeHtml(cardData.answer || "")}</span>
-        </p>
-      </div>
-    `
-    : (cardData.fallbackType === "fact"
-      ? `
-      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Grow Fact:</span>
-          <span>${escapeHtml(cardData.body)}</span>
-        </p>
-      </div>
-    `
-      : `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`);
+  const captionMarkup = renderHomeAnnouncementCaptionMarkup(cardData);
+  const footerText = cardData.footerText || formatAnnouncementDateLabel(cardData.dateValue);
 
   return `
-    <section class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}" aria-labelledby="home-announcement-title">
+    <section
+      class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}${cardData.fallbackRotationEnabled ? " is-rotating" : ""}"
+      aria-labelledby="home-announcement-title"
+      data-home-announcement-card="true"
+      ${cardData.fallbackRotationEnabled ? `data-home-announcement-rotation="true" data-home-announcement-sequence-index="${escapeHtml(String(cardData.fallbackRotationSequenceIndex || 0))}"` : ""}
+      ${cardData.fallbackItemKey ? `data-home-announcement-item-key="${escapeHtml(cardData.fallbackItemKey)}"` : ""}
+      ${cardData.fallbackType ? `data-home-announcement-item-type="${escapeHtml(cardData.fallbackType)}"` : ""}
+    >
       <div class="home-announcement-card-media">
         ${imageMarkup}
       </div>
       <div class="home-announcement-card-body">
         <div class="home-announcement-card-copy">
-          <p class="home-announcement-card-label">Latest from Cannakan®</p>
-          <h3 id="home-announcement-title">${escapeHtml(cardData.title)}</h3>
-          ${captionMarkup}
+          <p class="home-announcement-card-label" data-home-announcement-label="true">${escapeHtml(labelText)}</p>
+          <h3 id="home-announcement-title" data-home-announcement-title="true">${escapeHtml(cardData.title)}</h3>
+          <div data-home-announcement-caption="true">${captionMarkup}</div>
         </div>
         <div class="home-announcement-card-footer">
-          <p class="home-announcement-card-date">${escapeHtml(formatAnnouncementDateLabel(cardData.dateValue))}</p>
+          <p class="home-announcement-card-date" data-home-announcement-date="true">${escapeHtml(footerText)}</p>
           ${cardData.linkUrl ? `
             <div class="home-announcement-card-actions">
               <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
@@ -23045,6 +23169,78 @@ function renderSiteVisitorAnalyticsCellMarkup(primary = "", secondary = "") {
       <span>${escapeHtml(normalizedSecondary)}</span>
     </div>
   `;
+}
+
+function stopHomeAnnouncementFallbackRotation() {
+  if (appState.homeAnnouncementRotationTimeoutId) {
+    window.clearTimeout(appState.homeAnnouncementRotationTimeoutId);
+    appState.homeAnnouncementRotationTimeoutId = 0;
+  }
+  if (appState.homeAnnouncementRotationFadeTimeoutId) {
+    window.clearTimeout(appState.homeAnnouncementRotationFadeTimeoutId);
+    appState.homeAnnouncementRotationFadeTimeoutId = 0;
+  }
+}
+
+function bindHomeAnnouncementFallbackRotation(scope = app) {
+  stopHomeAnnouncementFallbackRotation();
+  if (!scope?.querySelector) {
+    return;
+  }
+
+  const card = scope.querySelector('[data-home-announcement-rotation="true"]');
+  if (!(card instanceof HTMLElement)) {
+    return;
+  }
+
+  if (getLatestActiveAnnouncement()) {
+    return;
+  }
+
+  const state = {
+    sequenceIndex: Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0),
+    lastShownKeys: {
+      joke: card.dataset.homeAnnouncementItemType === "joke" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
+      hint: card.dataset.homeAnnouncementItemType === "hint" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
+      fact: card.dataset.homeAnnouncementItemType === "fact" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
+    },
+  };
+
+  const scheduleNext = () => {
+    const activeType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[state.sequenceIndex] || "joke";
+    const activeDelay = HOME_ANNOUNCEMENT_ROTATION_DURATION_MS[activeType] || 5000;
+    appState.homeAnnouncementRotationTimeoutId = window.setTimeout(() => {
+      const currentCard = scope.querySelector('[data-home-announcement-card="true"]');
+      if (!(currentCard instanceof HTMLElement) || getLatestActiveAnnouncement()) {
+        stopHomeAnnouncementFallbackRotation();
+        return;
+      }
+
+      currentCard.classList.add("is-transitioning");
+      appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
+        const nextSequenceIndex = (state.sequenceIndex + 1) % HOME_ANNOUNCEMENT_ROTATION_SEQUENCE.length;
+        const nextType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[nextSequenceIndex] || "joke";
+        const nextItem = selectRandomAnnouncementFallbackItem(nextType, state.lastShownKeys[nextType] || "");
+        if (!nextItem) {
+          stopHomeAnnouncementFallbackRotation();
+          return;
+        }
+
+        state.sequenceIndex = nextSequenceIndex;
+        state.lastShownKeys[nextType] = nextItem.key || "";
+        currentCard.outerHTML = renderHomeAnnouncementCard(
+          buildHomeAnnouncementFallbackCardData(nextItem, new Date(), {
+            enableRotation: true,
+            sequenceIndex: nextSequenceIndex,
+          }),
+        );
+        bindMessageBoardImageFallbacks(scope);
+        scheduleNext();
+      }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+    }, activeDelay);
+  };
+
+  scheduleNext();
 }
 
 function getActiveSiteVisitorPresenceEntries() {
@@ -27040,6 +27236,7 @@ function renderHome() {
     app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
   }
   bindMessageBoardImageFallbacks(app);
+  bindHomeAnnouncementFallbackRotation(app);
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });

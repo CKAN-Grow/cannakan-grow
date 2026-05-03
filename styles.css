@@ -3903,6 +3903,7 @@ body.theme-dark .contact-reason-card.is-active {
   align-items: stretch;
   gap: 0;
   overflow: hidden;
+  min-height: 320px;
   padding: 0;
   border: 1px solid rgba(148, 209, 89, 0.16);
   background:
@@ -3914,6 +3915,20 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 0 1px rgba(148, 209, 89, 0.08),
     0 0 24px rgba(148, 209, 89, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.home-announcement-card.is-rotating .home-announcement-card-media,
+.home-announcement-card.is-rotating .home-announcement-card-body {
+  transition: opacity 0.26s ease, transform 0.26s ease, filter 0.26s ease;
+  will-change: opacity, transform, filter;
+}
+
+.home-announcement-card.is-rotating.is-transitioning .home-announcement-card-media,
+.home-announcement-card.is-rotating.is-transitioning .home-announcement-card-body {
+  opacity: 0.18;
+  transform: translateY(4px);
+  filter: saturate(0.94);
 }
 
 .home-announcement-card-media {
