@@ -331,28 +331,111 @@ const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
     name: "Humboldt Seed Co",
     sourceTypeLabel: "Seed Bank",
     logoUrl: "",
-    communityPerformance: Object.freeze({
-      avgGermRate: "82%",
-      totalSessions: "148",
-      popularityRank: "#2",
+    community: Object.freeze({
+      avgRate: "82%",
+      sessions: "148",
+      rank: "#2",
       seedsTracked: "3,621",
-      trustText: "Data based on real user sessions using the KAN system.",
     }),
-    cstpVerification: Object.freeze({
-      certification: "CSTP Gold Certified",
-      tested: "Jan 2026",
+    cstp: Object.freeze({
+      status: "gold",
+      testedDate: "Jan 2026",
       validUntil: "Jan 2027",
       sampleSize: "30 seeds",
-      avgGermTime: "42 hrs",
-      reportButtonLabel: "View Full Report",
-      trustText: "CSTP badges are earned, not purchased. Certification is batch-based and time-limited.",
+      avgTime: "42 hrs",
+      resultPercent: "",
+      expiringSoon: true,
     }),
-    cstpTrackRecord: Object.freeze({
-      certificationsEarned: "11",
-      goldCount: "7",
-      silverCount: "4",
+    trackRecord: Object.freeze({
+      totalCerts: "11",
+      gold: "7",
+      silver: "4",
       qualificationRate: "79%",
       lastTest: "Jan 2026",
+    }),
+  }),
+  "royal-queen-seeds": Object.freeze({
+    id: "royal-queen-seeds",
+    name: "Royal Queen Seeds",
+    sourceTypeLabel: "Seed Bank",
+    logoUrl: "",
+    community: Object.freeze({
+      avgRate: "79%",
+      sessions: "124",
+      rank: "#4",
+      seedsTracked: "2,904",
+    }),
+    cstp: Object.freeze({
+      status: "silver",
+      testedDate: "Feb 2026",
+      validUntil: "Feb 2027",
+      sampleSize: "30 seeds",
+      avgTime: "46 hrs",
+      resultPercent: "",
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: "8",
+      gold: "3",
+      silver: "5",
+      qualificationRate: "68%",
+      lastTest: "Feb 2026",
+    }),
+  }),
+  "barneys-farm": Object.freeze({
+    id: "barneys-farm",
+    name: "Barney's Farm",
+    sourceTypeLabel: "Breeder",
+    logoUrl: "",
+    community: Object.freeze({
+      avgRate: "77%",
+      sessions: "96",
+      rank: "#6",
+      seedsTracked: "2,118",
+    }),
+    cstp: Object.freeze({
+      status: "tested",
+      testedDate: "Mar 2026",
+      validUntil: "",
+      sampleSize: "30 seeds",
+      avgTime: "",
+      resultPercent: "71%",
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: "5",
+      gold: "1",
+      silver: "2",
+      qualificationRate: "44%",
+      lastTest: "Mar 2026",
+    }),
+  }),
+  "seedsman": Object.freeze({
+    id: "seedsman",
+    name: "Seedsman",
+    sourceTypeLabel: "Seed Marketplace",
+    logoUrl: "",
+    community: Object.freeze({
+      avgRate: "75%",
+      sessions: "88",
+      rank: "#7",
+      seedsTracked: "1,964",
+    }),
+    cstp: Object.freeze({
+      status: "expired",
+      testedDate: "Nov 2025",
+      validUntil: "",
+      sampleSize: "",
+      avgTime: "",
+      resultPercent: "",
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: "6",
+      gold: "2",
+      silver: "2",
+      qualificationRate: "51%",
+      lastTest: "Nov 2025",
     }),
   }),
 });
@@ -17711,6 +17794,80 @@ function renderSourceProfileMetricCard({ label, value, detail = "" }) {
   `;
 }
 
+function getSourceProfileCstpState(sourceProfile = {}) {
+  const cstp = sourceProfile?.cstp || {};
+  const status = String(cstp.status || "").trim().toLowerCase();
+  const expiringSoon = cstp.expiringSoon === true;
+
+  switch (status) {
+    case "gold":
+      return {
+        status,
+        eyebrow: "CSTP Verification",
+        heading: "CSTP Verification",
+        statusLabel: "CSTP Gold Certified",
+        toneClass: "is-gold",
+        usesBadge: true,
+        isMuted: false,
+        expiringSoon,
+        rows: [
+          { label: "Tested", value: cstp.testedDate || "Not available" },
+          { label: "Valid Until", value: cstp.validUntil || "Not available" },
+          { label: "Sample Size", value: cstp.sampleSize || "Not available" },
+          { label: "Avg Germ Time", value: cstp.avgTime || "Not available" },
+        ],
+      };
+    case "silver":
+      return {
+        status,
+        eyebrow: "CSTP Verification",
+        heading: "CSTP Verification",
+        statusLabel: "CSTP Silver Certified",
+        toneClass: "is-silver",
+        usesBadge: true,
+        isMuted: false,
+        expiringSoon,
+        rows: [
+          { label: "Tested", value: cstp.testedDate || "Not available" },
+          { label: "Valid Until", value: cstp.validUntil || "Not available" },
+          { label: "Sample Size", value: cstp.sampleSize || "Not available" },
+          { label: "Avg Germ Time", value: cstp.avgTime || "Not available" },
+        ],
+      };
+    case "tested":
+      return {
+        status,
+        eyebrow: "CSTP Verification",
+        heading: "CSTP Verification",
+        statusLabel: "CSTP Tested (No Certification Earned)",
+        toneClass: "is-tested",
+        usesBadge: false,
+        isMuted: false,
+        expiringSoon: false,
+        rows: [
+          { label: "Tested", value: cstp.testedDate || "Not available" },
+          { label: "Sample Size", value: cstp.sampleSize || "Not available" },
+          { label: "Result %", value: cstp.resultPercent || "Not available" },
+        ],
+      };
+    case "expired":
+    default:
+      return {
+        status: status || "expired",
+        eyebrow: "CSTP Verification",
+        heading: "CSTP Verification",
+        statusLabel: "Certification Expired",
+        toneClass: "is-expired",
+        usesBadge: false,
+        isMuted: true,
+        expiringSoon: false,
+        rows: [
+          { label: "Last Tested", value: cstp.testedDate || "Not available" },
+        ],
+      };
+  }
+}
+
 function renderSourceProfilePage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileMockRecord(requestedId);
@@ -17740,56 +17897,50 @@ function renderSourceProfilePage(sourceId = "") {
   const communityStats = [
     {
       label: "Avg Germ Rate",
-      value: sourceProfile.communityPerformance.avgGermRate,
+      value: sourceProfile.community.avgRate,
       detail: "approved public Community Grow sessions",
     },
     {
       label: "Total Sessions",
-      value: sourceProfile.communityPerformance.totalSessions,
+      value: sourceProfile.community.sessions,
       detail: "approved public sessions counted",
     },
     {
       label: "Popularity Rank",
-      value: sourceProfile.communityPerformance.popularityRank,
+      value: sourceProfile.community.rank,
       detail: "relative to tracked source activity",
     },
     {
       label: "Seeds Tracked",
-      value: sourceProfile.communityPerformance.seedsTracked,
+      value: sourceProfile.community.seedsTracked,
       detail: "seeds counted in community data",
     },
   ];
-  const verificationRows = [
-    { label: "Certification", value: sourceProfile.cstpVerification.certification },
-    { label: "Tested", value: sourceProfile.cstpVerification.tested },
-    { label: "Valid Until", value: sourceProfile.cstpVerification.validUntil },
-    { label: "Sample Size", value: sourceProfile.cstpVerification.sampleSize },
-    { label: "Avg Germ Time", value: sourceProfile.cstpVerification.avgGermTime },
-  ];
+  const cstpState = getSourceProfileCstpState(sourceProfile);
   const trackRecordStats = [
     {
       label: "Certifications Earned",
-      value: sourceProfile.cstpTrackRecord.certificationsEarned,
+      value: sourceProfile.trackRecord.totalCerts,
       detail: "completed CSTP certifications",
     },
     {
       label: "Gold Count",
-      value: sourceProfile.cstpTrackRecord.goldCount,
+      value: sourceProfile.trackRecord.gold,
       detail: "gold certifications awarded",
     },
     {
       label: "Silver Count",
-      value: sourceProfile.cstpTrackRecord.silverCount,
+      value: sourceProfile.trackRecord.silver,
       detail: "silver certifications awarded",
     },
     {
       label: "Qualification Rate",
-      value: sourceProfile.cstpTrackRecord.qualificationRate,
+      value: sourceProfile.trackRecord.qualificationRate,
       detail: "tests earning a certification",
     },
     {
       label: "Last Test",
-      value: sourceProfile.cstpTrackRecord.lastTest,
+      value: sourceProfile.trackRecord.lastTest,
       detail: "most recent CSTP verification",
     },
   ];
@@ -17829,20 +17980,25 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="summary-grid source-profile-community-grid">
           ${communityStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
-        <p class="source-profile-trust-note">${escapeHtml(sourceProfile.communityPerformance.trustText)}</p>
+        <p class="source-profile-trust-note">${escapeHtml("Data based on real user sessions using the KAN system.")}</p>
       </article>
 
-      <article class="card source-profile-verification-card">
+      <article class="card source-profile-verification-card ${escapeHtml(cstpState.toneClass)}${cstpState.isMuted ? " is-muted" : ""}">
         <div class="source-profile-section-head">
           <div>
-            <p class="eyebrow">CSTP Verification</p>
-            <h3>CSTP Verification</h3>
+            <p class="eyebrow">${escapeHtml(cstpState.eyebrow)}</p>
+            <h3>${escapeHtml(cstpState.heading)}</h3>
             <p class="muted">Independent validation shown after community data.</p>
           </div>
-          <span class="source-profile-cstp-badge">${escapeHtml(sourceProfile.cstpVerification.certification)}</span>
+          <div class="source-profile-cstp-state-shell">
+            ${cstpState.usesBadge
+              ? `<span class="source-profile-cstp-badge ${escapeHtml(cstpState.toneClass)}">${escapeHtml(cstpState.statusLabel)}</span>`
+              : `<span class="source-profile-cstp-text ${escapeHtml(cstpState.toneClass)}">${escapeHtml(cstpState.statusLabel)}</span>`}
+            ${cstpState.expiringSoon ? '<span class="source-profile-expiring-soon">Expiring Soon</span>' : ""}
+          </div>
         </div>
         <div class="source-profile-detail-grid">
-          ${verificationRows.map((row) => `
+          ${cstpState.rows.map((row) => `
             <article class="meta-card source-profile-detail-card">
               <span class="stat-label">${escapeHtml(row.label)}</span>
               <strong>${escapeHtml(row.value)}</strong>
@@ -17850,9 +18006,9 @@ function renderSourceProfilePage(sourceId = "") {
           `).join("")}
         </div>
         <div class="source-profile-verification-actions">
-          <button type="button" class="button button-secondary" data-source-cstp-report="${escapeHtml(sourceProfile.id)}">${escapeHtml(sourceProfile.cstpVerification.reportButtonLabel)}</button>
+          <button type="button" class="button button-secondary" data-source-cstp-report="${escapeHtml(sourceProfile.id)}">View Full Report</button>
         </div>
-        <p class="source-profile-trust-note">${escapeHtml(sourceProfile.cstpVerification.trustText)}</p>
+        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>Certification is batch-based and time-limited.</p>
       </article>
 
       <article class="card source-profile-track-record-card">
