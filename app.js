@@ -746,6 +746,7 @@ const MOCK_ADMIN_REPORTS = Object.freeze([
   },
 ]);
 const ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY = "cannakanAdminCommunicationsOpen";
+const ADMIN_COMMUNICATIONS_STORAGE_KEY = "cannakanAdminCommunicationsRecords";
 const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
 const ADMIN_COMMUNICATIONS_TABS = Object.freeze([
   Object.freeze({ key: "all", label: "All Messages" }),
@@ -19741,9 +19742,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
   switch (reasonKey) {
     case "app-support":
       return {
+        type: "App Support",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
-        messageType: getValue("appIssueType") || "Technical issue",
+        subject: getValue("appIssueType") || "App Support",
+        bucket: "support",
+        routedTo: "growsupport@cannakan.com",
         message: [
           "Reason: App Support",
           `Issue Type: ${getValue("appIssueType") || "Not provided"}`,
@@ -19753,9 +19757,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
       };
     case "order-support":
       return {
+        type: "Order / Product Support",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
-        messageType: "Other",
+        subject: `Order ${getValue("orderNumber")} - ${getValue("productName")}`,
+        bucket: "support",
+        routedTo: "growsupport@cannakan.com",
         message: [
           "Reason: Order / Product Support",
           `Order Number: ${getValue("orderNumber")}`,
@@ -19766,9 +19773,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
       };
     case "cstp-request":
       return {
+        type: "CSTP Testing Request",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
-        messageType: "Other",
+        subject: `CSTP Testing Request - ${getValue("companyName")}`,
+        bucket: "cstp",
+        routedTo: "cstp@cannakan.com",
         message: [
           "Reason: CSTP Testing Request",
           `Company / Source Name: ${getValue("companyName")}`,
@@ -19782,9 +19792,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
       };
     case "source-correction":
       return {
+        type: "Source Correction / Directory Issue",
         reporterName: "",
         userEmail: "",
-        messageType: "Report content",
+        subject: `Source Correction - ${getValue("shownSourceName") || "Directory Issue"}`,
+        bucket: "source-corrections",
+        routedTo: "growsupport@cannakan.com",
         message: [
           "Reason: Source Correction / Directory Issue",
           `Source Name Shown: ${getValue("shownSourceName")}`,
@@ -19796,9 +19809,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
       };
     case "partnership":
       return {
+        type: "Partnership / Business Inquiry",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
-        messageType: "Other",
+        subject: `${getValue("inquiryType") || "Business Inquiry"} - ${getValue("companyName")}`,
+        bucket: "support",
+        routedTo: "growsupport@cannakan.com",
         message: [
           "Reason: Partnership / Business Inquiry",
           `Company: ${getValue("companyName")}`,
@@ -19811,9 +19827,12 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
     case "other":
     default:
       return {
+        type: "Other",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
-        messageType: "Other",
+        subject: "Other",
+        bucket: "support",
+        routedTo: "growsupport@cannakan.com",
         message: [
           "Reason: Other",
           "",
@@ -19911,12 +19930,19 @@ function bindContactPage() {
         const payload = buildContactSubmissionPayload(activeReasonKey, formData);
         payload.reporterName = payload.reporterName || baseContext.userName || "";
         payload.userEmail = payload.userEmail || baseContext.userEmail || "";
-        await submitAdminMessage({
-          ...payload,
-          pageContext: baseContext.pageContext || "Contact",
-          sessionId: baseContext.sessionId || "",
-          snapshotId: baseContext.snapshotId || "",
-          createdAt: new Date().toISOString(),
+        upsertAdminCommunicationRecord({
+          id: `admin-comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: payload.type,
+          name: payload.reporterName || "Unknown",
+          email: payload.userEmail || "",
+          subject: payload.subject || payload.type || "Contact",
+          reason: payload.subject || payload.type || "Contact",
+          message: payload.message,
+          submitted_at: new Date().toISOString(),
+          status: "new",
+          routed_to: payload.routedTo || "growsupport@cannakan.com",
+          bucket: payload.bucket || "support",
+          internalNotes: "",
         });
         feedback.className = "form-message is-success";
         feedback.textContent = "Thanks - your message has been prepared for review.";
@@ -23329,11 +23355,105 @@ function normalizeAdminCommunicationStatus(value = "") {
     : "new";
 }
 
+function normalizeAdminCommunicationBucket(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return ["all", "cstp", "support", "source-corrections"].includes(normalizedValue)
+    ? normalizedValue
+    : "support";
+}
+
+function normalizeAdminCommunicationRecord(record = null) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) {
+    return null;
+  }
+
+  const id = String(record.id || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  const submittedAt = String(record.submitted_at || record.submittedAt || record.createdAt || "").trim()
+    || new Date().toISOString();
+  const bucket = normalizeAdminCommunicationBucket(record.bucket);
+  const routedTo = String(record.routed_to || record.routedTo || "").trim()
+    || (bucket === "cstp" ? "cstp@cannakan.com" : "growsupport@cannakan.com");
+
+  return {
+    id,
+    type: String(record.type || "").trim() || "Other",
+    name: String(record.name || "").trim() || "Unknown",
+    email: String(record.email || "").trim(),
+    subject: String(record.subject || record.reason || "").trim() || "No subject provided",
+    reason: String(record.reason || record.subject || "").trim() || "No subject provided",
+    message: String(record.message || "").trim(),
+    submittedAt,
+    submitted_at: submittedAt,
+    status: normalizeAdminCommunicationStatus(record.status),
+    routedTo,
+    routed_to: routedTo,
+    bucket,
+    internalNotes: String(record.internalNotes || record.internal_notes || "").trim(),
+    internal_notes: String(record.internal_notes || record.internalNotes || "").trim(),
+  };
+}
+
+function getDefaultAdminCommunicationRecords() {
+  return ADMIN_COMMUNICATIONS_MOCK_MESSAGES
+    .map((record) => normalizeAdminCommunicationRecord(record))
+    .filter(Boolean);
+}
+
+function loadAdminCommunicationRecordsFromStorage() {
+  try {
+    const rawValue = localStorage.getItem(ADMIN_COMMUNICATIONS_STORAGE_KEY);
+    if (!rawValue) {
+      return getDefaultAdminCommunicationRecords();
+    }
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return getDefaultAdminCommunicationRecords();
+    }
+    const normalizedRecords = parsed
+      .map((record) => normalizeAdminCommunicationRecord(record))
+      .filter(Boolean);
+    return normalizedRecords.length ? normalizedRecords : getDefaultAdminCommunicationRecords();
+  } catch (error) {
+    console.error("Failed to read admin communications from localStorage", error);
+    return getDefaultAdminCommunicationRecords();
+  }
+}
+
+function saveAdminCommunicationRecordsToStorage(records = []) {
+  try {
+    localStorage.setItem(ADMIN_COMMUNICATIONS_STORAGE_KEY, JSON.stringify(records || []));
+  } catch (error) {
+    console.error("Failed to write admin communications to localStorage", error);
+  }
+}
+
+function getAdminCommunicationRecords() {
+  return loadAdminCommunicationRecordsFromStorage();
+}
+
+function upsertAdminCommunicationRecord(record = null) {
+  const normalizedRecord = normalizeAdminCommunicationRecord(record);
+  if (!normalizedRecord) {
+    return null;
+  }
+
+  const nextRecords = getAdminCommunicationRecords()
+    .filter((entry) => entry.id !== normalizedRecord.id);
+  nextRecords.push(normalizedRecord);
+  nextRecords.sort((left, right) => (Date.parse(right.submittedAt || "") || 0) - (Date.parse(left.submittedAt || "") || 0));
+  saveAdminCommunicationRecordsToStorage(nextRecords);
+  return normalizedRecord;
+}
+
 function getAdminCommunicationRows(filterKey = "all") {
   const normalizedFilterKey = String(filterKey || "all").trim().toLowerCase();
-  return ADMIN_COMMUNICATIONS_MOCK_MESSAGES
+  return getAdminCommunicationRecords()
     .filter((row) => normalizedFilterKey === "all" || row.bucket === normalizedFilterKey)
-    .sort((left, right) => (Date.parse(right.createdAt || "") || 0) - (Date.parse(left.createdAt || "") || 0));
+    .sort((left, right) => (Date.parse(right.submittedAt || "") || 0) - (Date.parse(left.submittedAt || "") || 0));
 }
 
 function renderAdminCommunicationStatusPillMarkup(status = "new") {
@@ -23376,14 +23496,37 @@ function renderAdminCommunicationsListMarkup(activeTab = "all") {
               <span class="admin-message-issue-pill">${escapeHtml(row.type)}</span>
               ${renderAdminCommunicationStatusPillMarkup(row.status)}
             </div>
-            <p class="admin-report-card-date">${escapeHtml(formatAdminTimestamp(row.createdAt))}</p>
+            <p class="admin-report-card-date">${escapeHtml(formatAdminTimestamp(row.submittedAt))}</p>
           </div>
           <div class="admin-report-card-meta">
             <div>
               <strong>${escapeHtml(row.subject)}</strong>
               <p>${escapeHtml(row.name)} • ${escapeHtml(row.email)}</p>
             </div>
+            <p>${escapeHtml(row.routedTo)}</p>
           </div>
+          <div class="admin-report-card-message">
+            <p>${escapeHtml(row.message || "No message provided.")}</p>
+          </div>
+          <form class="admin-communications-editor" data-admin-communication-form="${escapeHtml(row.id)}">
+            <div class="admin-communications-editor-grid">
+              <label class="admin-messages-issue-filter">
+                <span>Status</span>
+                <select name="status">
+                  <option value="new"${row.status === "new" ? " selected" : ""}>New</option>
+                  <option value="in-progress"${row.status === "in-progress" ? " selected" : ""}>In Progress</option>
+                  <option value="closed"${row.status === "closed" ? " selected" : ""}>Closed</option>
+                </select>
+              </label>
+              <label class="admin-message-field">
+                <span>Internal notes</span>
+                <textarea name="internalNotes" rows="3" maxlength="1500" placeholder="Add admin-only notes for this message.">${escapeHtml(row.internalNotes || "")}</textarea>
+              </label>
+            </div>
+            <div class="inline-actions">
+              <button type="submit" class="button button-secondary">Save Message</button>
+            </div>
+          </form>
         </article>
       `).join("")}
     </div>
@@ -23433,6 +23576,33 @@ function bindAdminCommunicationsSection(scope = app) {
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
+    bindEditors(nextTab);
+  };
+
+  const bindEditors = (activeTab = "all") => {
+    listShell.querySelectorAll("[data-admin-communication-form]").forEach((form) => {
+      if (!(form instanceof HTMLFormElement) || form.dataset.adminCommunicationBound === "true") {
+        return;
+      }
+
+      form.dataset.adminCommunicationBound = "true";
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const messageId = String(form.dataset.adminCommunicationForm || "").trim();
+        const existingRecord = getAdminCommunicationRecords().find((row) => row.id === messageId) || null;
+        if (!existingRecord) {
+          return;
+        }
+
+        const formData = new FormData(form);
+        upsertAdminCommunicationRecord({
+          ...existingRecord,
+          status: String(formData.get("status") || "").trim(),
+          internalNotes: String(formData.get("internalNotes") || "").trim(),
+        });
+        renderTab(activeTab);
+      });
+    });
   };
 
   tabButtons.forEach((button) => {
@@ -23445,6 +23615,8 @@ function bindAdminCommunicationsSection(scope = app) {
       renderTab(button.dataset.adminCommunicationsTab || "all");
     });
   });
+
+  bindEditors("all");
 }
 
 function renderAdminDevAccessSectionMarkup() {

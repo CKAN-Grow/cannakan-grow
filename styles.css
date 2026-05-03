@@ -7594,6 +7594,30 @@ body.theme-dark .contact-reason-card.is-active {
   border-color: rgba(148, 209, 89, 0.26);
 }
 
+.admin-message-status-pill.is-in-progress {
+  color: #2e6299;
+  background: rgba(127, 184, 255, 0.16);
+  border-color: rgba(79, 137, 207, 0.26);
+}
+
+.admin-message-status-pill.is-closed {
+  color: #1f5a2b;
+  background: rgba(148, 209, 89, 0.16);
+  border-color: rgba(148, 209, 89, 0.26);
+}
+
+.admin-communications-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-communications-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
 .admin-member-role-pill,
 .admin-member-status-pill {
   display: inline-flex;
@@ -15596,6 +15620,18 @@ body.theme-dark .admin-message-status-pill.is-new {
   border-color: rgba(230, 180, 90, 0.24);
 }
 
+body.theme-dark .admin-message-status-pill.is-in-progress {
+  color: #b7d8ff;
+  background: rgba(127, 184, 255, 0.14);
+  border-color: rgba(127, 184, 255, 0.24);
+}
+
+body.theme-dark .admin-message-status-pill.is-closed {
+  color: #bfe89d;
+  background: rgba(148, 209, 89, 0.14);
+  border-color: rgba(148, 209, 89, 0.24);
+}
+
 body.theme-dark .admin-report-card.is-new {
   border-color: rgba(230, 180, 90, 0.24);
   box-shadow: inset 3px 0 0 rgba(230, 180, 90, 0.4);
@@ -17112,6 +17148,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .admin-dev-access-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-communications-editor-grid {
     grid-template-columns: 1fr;
   }
 
