@@ -65,6 +65,7 @@ const ADMIN_SOURCE_REVIEW_STORAGE_KEY = "cannakanAdminSourceReviewRecords";
 const SITE_ANALYTICS_ENABLED = false;
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
 const ADMIN_REPORTS_TABLE = "admin_reports";
+const CONTACT_MESSAGES_TABLE = "contact_messages";
 const AUTH_FORGOT_PASSWORD_COOLDOWN_MS = 15000;
 const SITE_ANALYTICS_PRESENCE_CHANNEL = "cannakan-grow-presence";
 const SITE_ANALYTICS_VISITOR_ID_STORAGE_KEY = "cannakanGrowVisitorId";
@@ -878,6 +879,11 @@ const appState = {
   adminMessageIssueTypeFilter: "all",
   adminMessageExpandedState: {},
   mockAdminMessages: [],
+  adminCommunicationRecords: [],
+  adminCommunicationRecordsLoaded: false,
+  adminCommunicationRecordsError: "",
+  adminCommunicationRecordsRefreshPromise: null,
+  contactMessagesTableUnavailable: false,
   members: [],
   membersLoaded: false,
   membersError: "",
@@ -1211,6 +1217,11 @@ function resetSessionScopedAppState() {
   appState.adminMessageIssueTypeFilter = "all";
   appState.adminMessageExpandedState = {};
   appState.mockAdminMessages = [];
+  appState.adminCommunicationRecords = [];
+  appState.adminCommunicationRecordsLoaded = false;
+  appState.adminCommunicationRecordsError = "";
+  appState.adminCommunicationRecordsRefreshPromise = null;
+  appState.contactMessagesTableUnavailable = false;
   appState.members = [];
   appState.membersLoaded = false;
   appState.membersError = "";
@@ -19776,6 +19787,8 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
         type: "CSTP Testing Request",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
+        company: getValue("companyName"),
+        website: getValue("websiteUrl"),
         subject: `CSTP Testing Request - ${getValue("companyName")}`,
         bucket: "cstp",
         routedTo: "cstp@cannakan.com",
@@ -19795,6 +19808,7 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
         type: "Source Correction / Directory Issue",
         reporterName: "",
         userEmail: "",
+        website: getValue("proofLink"),
         subject: `Source Correction - ${getValue("shownSourceName") || "Directory Issue"}`,
         bucket: "source-corrections",
         routedTo: "growsupport@cannakan.com",
@@ -19812,6 +19826,8 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
         type: "Partnership / Business Inquiry",
         reporterName: getValue("reporterName"),
         userEmail: getValue("userEmail"),
+        company: getValue("companyName"),
+        website: getValue("websiteUrl"),
         subject: `${getValue("inquiryType") || "Business Inquiry"} - ${getValue("companyName")}`,
         bucket: "support",
         routedTo: "growsupport@cannakan.com",
@@ -19930,22 +19946,13 @@ function bindContactPage() {
         const payload = buildContactSubmissionPayload(activeReasonKey, formData);
         payload.reporterName = payload.reporterName || baseContext.userName || "";
         payload.userEmail = payload.userEmail || baseContext.userEmail || "";
-        upsertAdminCommunicationRecord({
-          id: `admin-comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          type: payload.type,
-          name: payload.reporterName || "Unknown",
-          email: payload.userEmail || "",
-          subject: payload.subject || payload.type || "Contact",
-          reason: payload.subject || payload.type || "Contact",
-          message: payload.message,
-          submitted_at: new Date().toISOString(),
-          status: "new",
-          routed_to: payload.routedTo || "growsupport@cannakan.com",
-          bucket: payload.bucket || "support",
-          internalNotes: "",
-        });
-        feedback.className = "form-message is-success";
-        feedback.textContent = "Thanks - your message has been prepared for review.";
+        const submissionResult = await submitContactCommunication(payload);
+        feedback.className = submissionResult.usedFallback
+          ? "form-message is-warning"
+          : "form-message is-success";
+        feedback.textContent = submissionResult.usedFallback
+          ? `Thanks - your message has been prepared for review. ${submissionResult.warningMessage}`
+          : "Thanks - your message has been prepared for review.";
         form.reset();
         if (nameField instanceof HTMLInputElement && baseContext.userName) {
           nameField.value = baseContext.userName;
@@ -23362,6 +23369,33 @@ function normalizeAdminCommunicationBucket(value = "") {
     : "support";
 }
 
+function inferAdminCommunicationBucket(record = {}) {
+  const explicitBucket = normalizeAdminCommunicationBucket(record.bucket || "");
+  if (record.bucket) {
+    return explicitBucket;
+  }
+  const normalizedType = String(record.type || "").trim().toLowerCase();
+  if (normalizedType.includes("cstp")) {
+    return "cstp";
+  }
+  if (normalizedType.includes("source correction") || normalizedType.includes("directory issue")) {
+    return "source-corrections";
+  }
+  return "support";
+}
+
+function formatAdminCommunicationStatusForStorage(status = "new") {
+  switch (normalizeAdminCommunicationStatus(status)) {
+    case "in-progress":
+      return "In Progress";
+    case "closed":
+      return "Closed";
+    case "new":
+    default:
+      return "New";
+  }
+}
+
 function normalizeAdminCommunicationRecord(record = null) {
   if (!record || typeof record !== "object" || Array.isArray(record)) {
     return null;
@@ -23374,7 +23408,7 @@ function normalizeAdminCommunicationRecord(record = null) {
 
   const submittedAt = String(record.submitted_at || record.submittedAt || record.createdAt || "").trim()
     || new Date().toISOString();
-  const bucket = normalizeAdminCommunicationBucket(record.bucket);
+  const bucket = inferAdminCommunicationBucket(record);
   const routedTo = String(record.routed_to || record.routedTo || "").trim()
     || (bucket === "cstp" ? "cstp@cannakan.com" : "growsupport@cannakan.com");
 
@@ -23383,6 +23417,8 @@ function normalizeAdminCommunicationRecord(record = null) {
     type: String(record.type || "").trim() || "Other",
     name: String(record.name || "").trim() || "Unknown",
     email: String(record.email || "").trim(),
+    company: String(record.company || "").trim(),
+    website: String(record.website || "").trim(),
     subject: String(record.subject || record.reason || "").trim() || "No subject provided",
     reason: String(record.reason || record.subject || "").trim() || "No subject provided",
     message: String(record.message || "").trim(),
@@ -23395,6 +23431,12 @@ function normalizeAdminCommunicationRecord(record = null) {
     internalNotes: String(record.internalNotes || record.internal_notes || "").trim(),
     internal_notes: String(record.internal_notes || record.internalNotes || "").trim(),
   };
+}
+
+function isContactMessagesTableMissingError(error) {
+  const normalizedMessage = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+  return normalizedMessage.includes("contact_messages")
+    && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
 }
 
 function getDefaultAdminCommunicationRecords() {
@@ -23431,7 +23473,210 @@ function saveAdminCommunicationRecordsToStorage(records = []) {
   }
 }
 
+async function loadContactMessages(reason = "refresh") {
+  if (!appState.supabase || !isAdminUser()) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(CONTACT_MESSAGES_TABLE)
+    .select("*")
+    .order("submitted_at", { ascending: false });
+
+  if (error) {
+    if (isContactMessagesTableMissingError(error)) {
+      throw new Error("Contact messages table unavailable. Run supabase-contact-messages-migration.sql in Supabase.");
+    }
+    throw new Error(error.message || `Could not load contact messages during ${reason}.`);
+  }
+
+  return (data || []).map((record) => normalizeAdminCommunicationRecord(record)).filter(Boolean);
+}
+
+async function refreshAdminCommunicationRecords(options = {}) {
+  const { force = false, reason = "refresh" } = options || {};
+
+  if (!appState.supabase || !isAdminUser()) {
+    appState.adminCommunicationRecords = [];
+    appState.adminCommunicationRecordsLoaded = true;
+    appState.adminCommunicationRecordsError = "";
+    return [];
+  }
+
+  if (!force && appState.adminCommunicationRecordsLoaded && !appState.adminCommunicationRecordsRefreshPromise) {
+    return appState.adminCommunicationRecords;
+  }
+
+  if (!force && appState.adminCommunicationRecordsRefreshPromise) {
+    return appState.adminCommunicationRecordsRefreshPromise;
+  }
+
+  appState.adminCommunicationRecordsError = "";
+  const refreshPromise = (async () => {
+    try {
+      const records = await loadContactMessages(reason);
+      appState.adminCommunicationRecords = records;
+      appState.adminCommunicationRecordsLoaded = true;
+      appState.contactMessagesTableUnavailable = false;
+      appState.adminCommunicationRecordsError = "";
+      return records;
+    } catch (error) {
+      appState.adminCommunicationRecords = [];
+      appState.adminCommunicationRecordsLoaded = true;
+      appState.contactMessagesTableUnavailable = isContactMessagesTableMissingError(error);
+      appState.adminCommunicationRecordsError = error.message || "Could not load contact messages.";
+      console.warn("[Contact Messages] Falling back to local communication records.", { reason, error });
+      return [];
+    }
+  })();
+
+  appState.adminCommunicationRecordsRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.adminCommunicationRecordsRefreshPromise = null;
+  }
+}
+
+async function updateAdminCommunicationRecord(recordId = "", updates = {}) {
+  const normalizedRecordId = String(recordId || "").trim();
+  if (!normalizedRecordId) {
+    throw new Error("Communication record not found.");
+  }
+
+  const existingLocalRecord = getAdminCommunicationRecords().find((row) => row.id === normalizedRecordId) || null;
+
+  if (!appState.supabase || !isAdminUser() || appState.contactMessagesTableUnavailable) {
+    return upsertAdminCommunicationRecord({
+      ...existingLocalRecord,
+      id: normalizedRecordId,
+      ...updates,
+    });
+  }
+
+  const payload = {
+    status: formatAdminCommunicationStatusForStorage(updates.status || existingLocalRecord?.status || "new"),
+    internal_notes: String(updates.internalNotes || updates.internal_notes || existingLocalRecord?.internalNotes || "").trim(),
+  };
+
+  const { data, error } = await appState.supabase
+    .from(CONTACT_MESSAGES_TABLE)
+    .update(payload)
+    .eq("id", normalizedRecordId)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (isContactMessagesTableMissingError(error)) {
+      appState.contactMessagesTableUnavailable = true;
+    }
+    return upsertAdminCommunicationRecord({
+      ...existingLocalRecord,
+      id: normalizedRecordId,
+      ...updates,
+    });
+  }
+
+  const normalizedRecord = normalizeAdminCommunicationRecord(data);
+  if (normalizedRecord) {
+    appState.adminCommunicationRecords = [
+      normalizedRecord,
+      ...appState.adminCommunicationRecords.filter((row) => row.id !== normalizedRecord.id),
+    ].sort((left, right) => (Date.parse(right.submittedAt || "") || 0) - (Date.parse(left.submittedAt || "") || 0));
+  }
+  return normalizedRecord;
+}
+
+async function submitContactCommunication(payload = {}) {
+  const submittedAt = new Date().toISOString();
+  const localRecord = normalizeAdminCommunicationRecord({
+    id: `admin-comm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: payload.type || "Other",
+    name: payload.reporterName || "Unknown",
+    email: payload.userEmail || "",
+    company: payload.company || "",
+    website: payload.website || "",
+    subject: payload.subject || payload.type || "Contact",
+    reason: payload.subject || payload.type || "Contact",
+    message: payload.message || "",
+    submitted_at: submittedAt,
+    status: "new",
+    routed_to: payload.routedTo || "growsupport@cannakan.com",
+    bucket: payload.bucket || "support",
+    internalNotes: "",
+  });
+
+  if (!appState.supabase) {
+    upsertAdminCommunicationRecord(localRecord);
+    return {
+      record: localRecord,
+      usedFallback: true,
+      warningMessage: "Live contact storage is unavailable right now, so your message was saved locally for review.",
+    };
+  }
+
+  const supabaseRecord = {
+    type: String(payload.type || "Other").trim(),
+    name: String(payload.reporterName || "").trim(),
+    email: String(payload.userEmail || "").trim(),
+    company: String(payload.company || "").trim() || null,
+    website: String(payload.website || "").trim() || null,
+    subject: String(payload.subject || "").trim() || null,
+    message: String(payload.message || "").trim(),
+    routed_to: String(payload.routedTo || "growsupport@cannakan.com").trim(),
+    status: "New",
+    internal_notes: null,
+    submitted_at: submittedAt,
+  };
+
+  const { data, error } = await appState.supabase
+    .from(CONTACT_MESSAGES_TABLE)
+    .insert(supabaseRecord)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (isContactMessagesTableMissingError(error)) {
+      appState.contactMessagesTableUnavailable = true;
+    }
+    console.warn("[Contact Messages] Falling back to local contact persistence.", error);
+    upsertAdminCommunicationRecord(localRecord);
+    return {
+      record: localRecord,
+      usedFallback: true,
+      warningMessage: "Live contact storage is unavailable right now, so your message was saved locally for review.",
+    };
+  }
+
+  const normalizedRecord = normalizeAdminCommunicationRecord(data) || localRecord;
+  if (isAdminUser()) {
+    appState.adminCommunicationRecords = [
+      normalizedRecord,
+      ...appState.adminCommunicationRecords.filter((row) => row.id !== normalizedRecord.id),
+    ].sort((left, right) => (Date.parse(right.submittedAt || "") || 0) - (Date.parse(left.submittedAt || "") || 0));
+    appState.adminCommunicationRecordsLoaded = true;
+    appState.adminCommunicationRecordsError = "";
+    appState.contactMessagesTableUnavailable = false;
+  }
+
+  return {
+    record: normalizedRecord,
+    usedFallback: false,
+    warningMessage: "",
+  };
+}
+
 function getAdminCommunicationRecords() {
+  if (
+    appState.supabase
+    && isAdminUser()
+    && !appState.contactMessagesTableUnavailable
+    && !appState.adminCommunicationRecordsError
+    && appState.adminCommunicationRecordsLoaded
+  ) {
+    return Array.isArray(appState.adminCommunicationRecords) ? appState.adminCommunicationRecords : [];
+  }
   return loadAdminCommunicationRecordsFromStorage();
 }
 
@@ -23534,6 +23779,9 @@ function renderAdminCommunicationsListMarkup(activeTab = "all") {
 }
 
 function renderAdminCommunicationsSectionMarkup() {
+  const fallbackNote = appState.adminCommunicationRecordsError && appState.supabase
+    ? `Showing local fallback records. ${appState.adminCommunicationRecordsError}`
+    : "Contact submissions will appear here. Supabase-backed records are used when available, with local fallback during development.";
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "Communications",
     title: "Communications",
@@ -23548,7 +23796,7 @@ function renderAdminCommunicationsSectionMarkup() {
           <div class="source-directory-filter-row" role="group" aria-label="Communication message tabs">
             ${renderAdminCommunicationsTabsMarkup("all")}
           </div>
-          <p class="muted">Mock communication queue for development routing and admin review planning.</p>
+          <p class="muted">${escapeHtml(fallbackNote)}</p>
         </div>
         <div id="admin-communications-list">
           ${renderAdminCommunicationsListMarkup("all")}
@@ -23586,7 +23834,7 @@ function bindAdminCommunicationsSection(scope = app) {
       }
 
       form.dataset.adminCommunicationBound = "true";
-      form.addEventListener("submit", (event) => {
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const messageId = String(form.dataset.adminCommunicationForm || "").trim();
         const existingRecord = getAdminCommunicationRecords().find((row) => row.id === messageId) || null;
@@ -23595,7 +23843,7 @@ function bindAdminCommunicationsSection(scope = app) {
         }
 
         const formData = new FormData(form);
-        upsertAdminCommunicationRecord({
+        await updateAdminCommunicationRecord(messageId, {
           ...existingRecord,
           status: String(formData.get("status") || "").trim(),
           internalNotes: String(formData.get("internalNotes") || "").trim(),
@@ -23794,6 +24042,15 @@ function renderAdminPage() {
 
   if (isAdminUser() && !appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise && appState.supabase) {
     void refreshAdminMessages({ force: true, reason: "route:admin-user-reports" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (currentHash === "#admin" || currentHash === "") {
+        safeRender();
+      }
+    });
+  }
+
+  if (isAdminUser() && !appState.adminCommunicationRecordsLoaded && !appState.adminCommunicationRecordsRefreshPromise && appState.supabase) {
+    void refreshAdminCommunicationRecords({ force: true, reason: "route:admin-communications" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (currentHash === "#admin" || currentHash === "") {
         safeRender();
