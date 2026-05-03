@@ -4246,6 +4246,10 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 14px;
 }
 
+.home-announcement-card.is-fallback .home-announcement-card-copy {
+  gap: 12px;
+}
+
 .home-announcement-card-label {
   margin: 0;
   color: var(--muted);
@@ -4253,6 +4257,10 @@ body.theme-dark .contact-reason-card.is-active {
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+}
+
+.home-announcement-card.is-fallback .home-announcement-card-label {
+  color: #94d159;
 }
 
 .home-announcement-card-copy h3,
@@ -4267,6 +4275,11 @@ body.theme-dark .contact-reason-card.is-active {
   letter-spacing: -0.02em;
 }
 
+.home-announcement-card.is-fallback .home-announcement-card-copy h3 {
+  max-width: 18ch;
+  line-height: 1.08;
+}
+
 .home-announcement-card-caption {
   color: var(--ink);
   font-size: 1rem;
@@ -4276,6 +4289,10 @@ body.theme-dark .contact-reason-card.is-active {
   -webkit-line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.home-announcement-card.is-fallback .home-announcement-card-caption {
+  line-height: 1.72;
 }
 
 .home-announcement-card-caption--joke {

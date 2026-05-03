@@ -22429,10 +22429,18 @@ function getAppHintItems() {
 
 function getHomeAnnouncementFallbackLabel(type = "") {
   return ({
-    joke: "Grow Humor",
+    joke: "Cannakan Tip",
     hint: "Cannakan Tip",
-    fact: "Did you know?",
+    fact: "Did You Know?",
   })[String(type || "").trim().toLowerCase()] || "Latest from Cannakan®";
+}
+
+function getHomeAnnouncementFallbackTitle(type = "") {
+  return ({
+    joke: "A little grow-room humor.",
+    hint: "A practical note for your next grow.",
+    fact: "A quick grow insight from Cannakan.",
+  })[String(type || "").trim().toLowerCase()] || DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT;
 }
 
 function getHomeAnnouncementFallbackPool(type = "") {
@@ -22473,7 +22481,7 @@ function buildHomeAnnouncementFallbackCardData(fallbackContent = null, reference
     };
 
   return {
-    title: DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT,
+    title: getHomeAnnouncementFallbackTitle(activeFallback.type),
     body: activeFallback.type === "joke" ? activeFallback.question : activeFallback.text,
     answer: activeFallback.type === "joke" ? activeFallback.answer : "",
     imageUrl: resolveFallbackCardImageUrl(activeFallback.type, getFallbackContentMode()),
