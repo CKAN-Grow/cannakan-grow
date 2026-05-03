@@ -4298,6 +4298,16 @@ function isCommunityGrowModerationRawRoute(rawRoute = getCurrentAppRawRoute()) {
   return route === "community-grow-moderation" || (route === "admin" && id === "gallery-moderation");
 }
 
+function isAdminAreaRawRoute(rawRoute = getCurrentAppRawRoute()) {
+  const normalizedRawRoute = String(rawRoute || "").trim().replace(/^#/, "");
+  if (isCommunityGrowModerationRawRoute(normalizedRawRoute)) {
+    return true;
+  }
+
+  const [route] = normalizedRawRoute.split("/");
+  return route === "admin";
+}
+
 function getAdminMessageContext() {
   const rawRoute = getCurrentAppRawRoute();
   const [route, id, subroute] = rawRoute.split("/");
@@ -16350,6 +16360,9 @@ function render() {
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
     syncInstallPromptBanner();
     syncMockDataBanner();
+    if (!isAdminAreaRawRoute()) {
+      resetAdminCollapsibleSectionStates();
+    }
     syncAdminSubnav();
     bindContactAdminButtons(app);
     bindContactAdminButtons(authStatus);
@@ -23536,12 +23549,33 @@ function getAdminSectionOpenState(storageKey, defaultOpen = false) {
   }
 }
 
+function getAdminCollapsibleSectionStorageKeys() {
+  return [
+    ADMIN_MEMBERS_OPEN_STORAGE_KEY,
+    ADMIN_SOURCES_OPEN_STORAGE_KEY,
+    ADMIN_SOURCE_REVIEW_OPEN_STORAGE_KEY,
+    ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
+    ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
+    ADMIN_ANALYTICS_OPEN_STORAGE_KEY,
+    ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
+    ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY,
+    ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
+    ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY,
+  ];
+}
+
 function setAdminSectionOpenState(storageKey, isOpen) {
   try {
     localStorage.setItem(storageKey, isOpen ? "true" : "false");
   } catch (error) {
     console.warn("Could not save admin section state", { storageKey, error });
   }
+}
+
+function resetAdminCollapsibleSectionStates() {
+  getAdminCollapsibleSectionStorageKeys().forEach((storageKey) => {
+    setAdminSectionOpenState(storageKey, false);
+  });
 }
 
 function renderAdminCollapsibleSectionMarkup({
