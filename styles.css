@@ -7954,6 +7954,20 @@ body.theme-dark .contact-reason-card.is-active {
   margin: 0 0 1rem;
 }
 
+.admin-cstp-metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.admin-cstp-metric-card {
+  min-height: 100%;
+}
+
+.admin-cstp-metric-card strong {
+  font-size: 1.5rem;
+  line-height: 1.05;
+}
+
 .admin-cstp-lab-actions {
   margin-block: 0;
   gap: 12px;
@@ -8161,6 +8175,55 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-cstp-lab-filter-row {
   flex-wrap: wrap;
+}
+
+.admin-cstp-lab-list-item-head {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.admin-cstp-lab-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-cstp-lab-list-item-body {
+  gap: 10px;
+}
+
+.admin-cstp-list-seal {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.admin-cstp-certification-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(148, 209, 89, 0.1);
+  color: #294218;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-cstp-certification-pill.is-expiring {
+  border-color: rgba(217, 139, 43, 0.3);
+  background: rgba(217, 139, 43, 0.12);
+  color: #8a6113;
+}
+
+.admin-cstp-certification-pill.is-expired {
+  border-color: rgba(168, 92, 92, 0.28);
+  background: rgba(168, 92, 92, 0.12);
+  color: #8d4646;
 }
 
 .admin-cstp-assigned-session,
@@ -11097,6 +11160,24 @@ body.theme-dark .admin-cstp-button:disabled {
   background: rgba(54, 60, 56, 0.78);
   color: rgba(246, 248, 245, 0.62);
   border-color: rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .admin-cstp-certification-pill {
+  border-color: rgba(148, 209, 89, 0.2);
+  background: rgba(148, 209, 89, 0.12);
+  color: #cce8ab;
+}
+
+body.theme-dark .admin-cstp-certification-pill.is-expiring {
+  border-color: rgba(217, 139, 43, 0.28);
+  background: rgba(217, 139, 43, 0.14);
+  color: #efc96f;
+}
+
+body.theme-dark .admin-cstp-certification-pill.is-expired {
+  border-color: rgba(186, 108, 108, 0.26);
+  background: rgba(186, 108, 108, 0.14);
+  color: #efb1b1;
 }
 
 body.theme-dark .auth-forgot-link {

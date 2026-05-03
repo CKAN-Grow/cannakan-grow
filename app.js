@@ -784,6 +784,8 @@ const ADMIN_CSTP_LAB_STORAGE_KEY = "cannakanAdminCstpLabRecords";
 const ADMIN_CSTP_TEST_SESSIONS_STORAGE_KEY = "cannakanAdminCstpTestSessions";
 const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
 const CONTACT_PREFILL_STORAGE_KEY = "cannakanContactPrefill";
+const ADMIN_CSTP_CERTIFICATION_EXPIRATION_MONTHS = 12;
+const ADMIN_CSTP_CERTIFICATION_EXPIRING_SOON_DAYS = 30;
 const ADMIN_COMMUNICATIONS_STATUS_FILTERS = Object.freeze([
   Object.freeze({ key: "all", label: "All" }),
   Object.freeze({ key: "new", label: "New" }),
@@ -800,6 +802,11 @@ const ADMIN_CSTP_LAB_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "completed", label: "Completed" }),
   Object.freeze({ key: "report-prepared", label: "Report Prepared" }),
   Object.freeze({ key: "published", label: "Published" }),
+  Object.freeze({ key: "gold", label: "Gold" }),
+  Object.freeze({ key: "silver", label: "Silver" }),
+  Object.freeze({ key: "active-certification", label: "Active Certification" }),
+  Object.freeze({ key: "expiring-soon", label: "Expiring Soon" }),
+  Object.freeze({ key: "expired", label: "Expired" }),
   Object.freeze({ key: "declined", label: "Declined" }),
 ]);
 const ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS = Object.freeze([
@@ -24554,7 +24561,17 @@ function bindAdminCommunicationsSection(scope = app) {
 
 function normalizeAdminCstpLabStatus(value = "") {
   const normalizedValue = String(value || "").trim().toLowerCase();
-  return ADMIN_CSTP_LAB_STATUS_OPTIONS.some((option) => option.key === normalizedValue && option.key !== "all")
+  return [
+    "request-received",
+    "accepted-awaiting-seeds",
+    "seeds-received",
+    "test-scheduled",
+    "active-test",
+    "completed",
+    "report-prepared",
+    "published",
+    "declined",
+  ].includes(normalizedValue)
     ? normalizedValue
     : "request-received";
 }
@@ -24649,6 +24666,67 @@ function normalizeAdminCstpSessionPartitions(partitions = [], systemType = "KAN"
 
 function isAdminCstpCertificationEligible(value = "") {
   return ["gold", "silver"].includes(normalizeAdminCstpQualificationResult(value));
+}
+
+function parseAdminCstpCertificationDate(value = "") {
+  const timestamp = Date.parse(String(value || "").trim());
+  return Number.isFinite(timestamp) ? new Date(timestamp) : null;
+}
+
+function getAdminCstpCertificationExpirationDate(publishedAt = "") {
+  const publishedDate = parseAdminCstpCertificationDate(publishedAt);
+  if (!publishedDate) {
+    return null;
+  }
+  const expiresAt = new Date(publishedDate.getTime());
+  expiresAt.setMonth(expiresAt.getMonth() + ADMIN_CSTP_CERTIFICATION_EXPIRATION_MONTHS);
+  return Number.isFinite(expiresAt.getTime()) ? expiresAt : null;
+}
+
+function getAdminCstpCertificationLifecycleState({
+  qualificationResult = "",
+  publishedAt = "",
+} = {}) {
+  const normalizedQualification = normalizeAdminCstpQualificationResult(qualificationResult);
+  const publishedDate = parseAdminCstpCertificationDate(publishedAt);
+  const expiresAtDate = getAdminCstpCertificationExpirationDate(publishedAt);
+  const isPublishedSeal = Boolean(
+    isAdminCstpCertificationEligible(normalizedQualification)
+    && publishedDate
+    && expiresAtDate,
+  );
+  if (!isPublishedSeal) {
+    return {
+      qualificationResult: normalizedQualification,
+      publishedAt: String(publishedAt || "").trim(),
+      publishedDate: publishedDate || null,
+      expiresAt: expiresAtDate ? expiresAtDate.toISOString() : "",
+      expiresAtDate: expiresAtDate || null,
+      isPublishedSeal: false,
+      isActive: false,
+      isExpiringSoon: false,
+      isExpired: false,
+      daysUntilExpiration: Number.POSITIVE_INFINITY,
+    };
+  }
+
+  const now = Date.now();
+  const expiresAtMs = expiresAtDate.getTime();
+  const daysUntilExpiration = Math.ceil((expiresAtMs - now) / (24 * 60 * 60 * 1000));
+  const isExpired = now >= expiresAtMs;
+  const isExpiringSoon = !isExpired && daysUntilExpiration <= ADMIN_CSTP_CERTIFICATION_EXPIRING_SOON_DAYS;
+  return {
+    qualificationResult: normalizedQualification,
+    publishedAt: String(publishedAt || "").trim(),
+    publishedDate,
+    expiresAt: expiresAtDate.toISOString(),
+    expiresAtDate,
+    isPublishedSeal: true,
+    isActive: !isExpired,
+    isExpiringSoon,
+    isExpired,
+    daysUntilExpiration,
+  };
 }
 
 function normalizeAdminCstpTestSessionStatus(value = "") {
@@ -26226,7 +26304,33 @@ function upsertAdminCstpLabRecord(record = null) {
 function getFilteredAdminCstpLabRecords(statusFilter = "all") {
   const normalizedFilter = String(statusFilter || "all").trim().toLowerCase();
   return getAdminCstpLabRecords()
-    .filter((record) => normalizedFilter === "all" || record.status === normalizedFilter);
+    .filter((record) => {
+      if (normalizedFilter === "all") {
+        return true;
+      }
+      if (record.status === normalizedFilter) {
+        return true;
+      }
+
+      const certificationState = getAdminCstpLabCertificationState(record);
+      if (!certificationState.isPublishedSeal) {
+        return false;
+      }
+
+      if (normalizedFilter === "gold" || normalizedFilter === "silver") {
+        return certificationState.qualificationResult === normalizedFilter;
+      }
+      if (normalizedFilter === "active-certification") {
+        return certificationState.isActive;
+      }
+      if (normalizedFilter === "expiring-soon") {
+        return certificationState.isExpiringSoon;
+      }
+      if (normalizedFilter === "expired") {
+        return certificationState.isExpired;
+      }
+      return false;
+    });
 }
 
 function getAdminCstpAssignedSessionForRecord(record = null) {
@@ -26325,6 +26429,49 @@ function getAdminCstpLabQualificationResult(record = null) {
   return normalizeAdminCstpQualificationResult(record?.testSession?.qualificationResult || "");
 }
 
+function getAdminCstpLabCertificationState(record = null) {
+  const assignedSession = getAdminCstpAssignedSessionForRecord(record);
+  const qualificationResult = assignedSession?.qualificationResult
+    || record?.testSession?.qualificationResult
+    || "";
+  const publishedAt = assignedSession?.publishedAt
+    || record?.publishedAt
+    || "";
+  return getAdminCstpCertificationLifecycleState({
+    qualificationResult,
+    publishedAt,
+  });
+}
+
+function getAdminCstpCertificationMetrics() {
+  return getAdminCstpTestSessions().reduce((metrics, session) => {
+    const certificationState = getAdminCstpCertificationLifecycleState(session);
+    if (!certificationState.isPublishedSeal) {
+      return metrics;
+    }
+
+    metrics.totalPublishedSeals += 1;
+    if (certificationState.qualificationResult === "gold") {
+      metrics.goldSeals += 1;
+    } else if (certificationState.qualificationResult === "silver") {
+      metrics.silverSeals += 1;
+    }
+    if (certificationState.isExpiringSoon) {
+      metrics.expiringSoon += 1;
+    }
+    if (certificationState.isExpired) {
+      metrics.expired += 1;
+    }
+    return metrics;
+  }, {
+    totalPublishedSeals: 0,
+    goldSeals: 0,
+    silverSeals: 0,
+    expiringSoon: 0,
+    expired: 0,
+  });
+}
+
 function normalizeComparableSourceKey(value = "") {
   return String(value || "")
     .trim()
@@ -26351,8 +26498,7 @@ function getPublishedAdminCstpCertificationForSourceIdentity(sourceIdentity = {}
   const matchingSession = getAdminCstpTestSessions()
     .filter((session) => (
       session?.certificationPublished === true
-      && Boolean(session?.publishedAt)
-      && ["gold", "silver"].includes(normalizeAdminCstpQualificationResult(session?.qualificationResult))
+      && getAdminCstpCertificationLifecycleState(session).isActive
       && candidateKeys.has(normalizeComparableSourceKey(session?.sourceName || ""))
     ))
     .sort((left, right) => (Date.parse(right.publishedAt || "") || 0) - (Date.parse(left.publishedAt || "") || 0))[0] || null;
@@ -26471,6 +26617,28 @@ function renderAdminCstpTestSessionStatusPillMarkup(status = "") {
   return `<span class="admin-source-review-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(getAdminCstpTestSessionStatusLabel(normalizedStatus))}</span>`;
 }
 
+function renderAdminCstpCertificationMetricCardMarkup(label = "", value = 0) {
+  return `
+    <article class="meta-card admin-cstp-metric-card">
+      <span class="stat-label">${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value))}</strong>
+    </article>
+  `;
+}
+
+function renderAdminCstpCertificationMetricsMarkup() {
+  const metrics = getAdminCstpCertificationMetrics();
+  return `
+    <div class="summary-grid admin-cstp-metrics-grid">
+      ${renderAdminCstpCertificationMetricCardMarkup("Total Published Seals", metrics.totalPublishedSeals)}
+      ${renderAdminCstpCertificationMetricCardMarkup("Gold Seals", metrics.goldSeals)}
+      ${renderAdminCstpCertificationMetricCardMarkup("Silver Seals", metrics.silverSeals)}
+      ${renderAdminCstpCertificationMetricCardMarkup("Expiring Soon", metrics.expiringSoon)}
+      ${renderAdminCstpCertificationMetricCardMarkup("Expired", metrics.expired)}
+    </div>
+  `;
+}
+
 function renderAdminCstpLabFiltersMarkup(activeStatus = "all") {
   return ADMIN_CSTP_LAB_STATUS_OPTIONS.map((option) => `
     <button
@@ -26482,6 +26650,19 @@ function renderAdminCstpLabFiltersMarkup(activeStatus = "all") {
       ${escapeHtml(option.label)}
     </button>
   `).join("");
+}
+
+function renderAdminCstpCertificationStatePillMarkup(state = null) {
+  if (!state?.isPublishedSeal) {
+    return "";
+  }
+  if (state.isExpired) {
+    return `<span class="admin-cstp-certification-pill is-expired">Expired</span>`;
+  }
+  if (state.isExpiringSoon) {
+    return `<span class="admin-cstp-certification-pill is-expiring">Expiring Soon</span>`;
+  }
+  return "";
 }
 
 function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
@@ -26496,23 +26677,47 @@ function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
 
   return `
     <div class="admin-communications-list">
-      ${rows.map((row) => `
-        <button
-          type="button"
-          class="admin-communications-list-item admin-cstp-lab-list-item ${row.status === "request-received" ? "is-new" : ""} ${row.id === selectedId ? "is-active" : ""}"
-          data-admin-cstp-lab-open="${escapeHtml(row.id)}"
-        >
-          <div class="admin-communications-list-item-head">
-            <span class="admin-message-issue-pill">CSTP Testing</span>
-            ${renderAdminCstpLabStatusPillMarkup(row.status)}
-          </div>
-          <div class="admin-communications-list-item-body">
-            <strong>${escapeHtml(row.sourceName || "Source not provided")}</strong>
-            <p>${escapeHtml(row.variety || "Variety pending")}</p>
-            <span>${escapeHtml(row.contactName || row.email || "No contact name")}</span>
-          </div>
-        </button>
-      `).join("")}
+      ${rows.map((row) => {
+        const certificationState = getAdminCstpLabCertificationState(row);
+        const qualificationResult = certificationState.qualificationResult;
+        const sealMarkup = certificationState.isPublishedSeal
+          ? renderPublishedCstpCertifiedSealMarkup(qualificationResult, certificationState.publishedAt, {
+            shellClassName: "admin-cstp-list-seal cstp-certified-seal cstp-certified-seal--compact",
+            imageClassName: "cstp-certified-seal-image",
+            copyClassName: "cstp-certified-seal-copy",
+            labelClassName: "cstp-certified-seal-label",
+            titleClassName: "cstp-certified-seal-title",
+            noteClassName: "cstp-certified-seal-note",
+            labelText: "CSTP Certified",
+            noteText: certificationState.isExpired
+              ? `Expired ${formatAdminTimestamp(certificationState.expiresAt)}`
+              : (certificationState.isExpiringSoon
+                ? `Expires ${formatAdminTimestamp(certificationState.expiresAt)}`
+                : getAdminCstpQualificationLabel(qualificationResult)),
+          })
+          : "";
+        return `
+          <button
+            type="button"
+            class="admin-communications-list-item admin-cstp-lab-list-item ${row.status === "request-received" ? "is-new" : ""} ${row.id === selectedId ? "is-active" : ""}"
+            data-admin-cstp-lab-open="${escapeHtml(row.id)}"
+          >
+            <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
+              <span class="admin-message-issue-pill">CSTP Testing</span>
+              <div class="admin-cstp-lab-badge-row">
+                ${renderAdminCstpLabStatusPillMarkup(row.status)}
+                ${renderAdminCstpCertificationStatePillMarkup(certificationState)}
+              </div>
+            </div>
+            <div class="admin-communications-list-item-body admin-cstp-lab-list-item-body">
+              <strong>${escapeHtml(row.sourceName || "Source not provided")}</strong>
+              <p>${escapeHtml(row.variety || "Variety pending")}</p>
+              <span>${escapeHtml(row.contactName || row.email || "No contact name")}</span>
+              ${sealMarkup}
+            </div>
+          </button>
+        `;
+      }).join("")}
     </div>
   `;
 }
@@ -26847,7 +27052,10 @@ function renderAdminCstpLabSectionMarkup() {
             </div>
             <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary admin-cstp-featured-cta" data-admin-cstp-featured-open="true">Open CSTP Testing Lab</button>
           </div>
-          <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab status filters">
+          <div id="admin-cstp-lab-metrics">
+            ${renderAdminCstpCertificationMetricsMarkup()}
+          </div>
+          <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab workflow and certification filters">
             ${renderAdminCstpLabFiltersMarkup("all")}
           </div>
           <p class="muted">Certification must be published manually after a qualifying completed CSTP test. Community Grow snapshots and member sessions are never changed here.</p>
@@ -26982,10 +27190,11 @@ function bindAdminCstpLabSection(scope = app) {
     });
   }
 
+  const metricsShell = scope.querySelector("#admin-cstp-lab-metrics");
   const listShell = scope.querySelector("#admin-cstp-lab-list");
   const detailShell = scope.querySelector("#admin-cstp-lab-detail");
   const filterButtons = Array.from(scope.querySelectorAll("[data-admin-cstp-lab-filter]"));
-  if (!listShell || !detailShell || !filterButtons.length) {
+  if (!metricsShell || !listShell || !detailShell || !filterButtons.length) {
     return;
   }
 
@@ -27113,6 +27322,7 @@ function bindAdminCstpLabSection(scope = app) {
     selectedId = rows.some((record) => record.id === nextSelectedId)
       ? nextSelectedId
       : (rows[0]?.id || "");
+    metricsShell.innerHTML = renderAdminCstpCertificationMetricsMarkup();
     listShell.innerHTML = renderAdminCstpLabListMarkup(activeStatus, selectedId);
     detailShell.innerHTML = renderAdminCstpLabDetailMarkup(selectedId, activeStatus);
     filterButtons.forEach((button) => {
