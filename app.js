@@ -24527,6 +24527,63 @@ function getAdminCstpSessionDisplayPercent(session = null) {
   return `${Math.round((germinatedCount / sampleSize) * 100)}%`;
 }
 
+function getAdminCstpFinalGerminationPercentValue(session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!normalizedSession) {
+    return null;
+  }
+
+  const explicitPercent = String(normalizedSession.finalGerminationPercent || "").trim();
+  const explicitMatch = explicitPercent.match(/(\d+(?:\.\d+)?)/);
+  if (explicitMatch) {
+    const numericPercent = Number.parseFloat(explicitMatch[1]);
+    if (Number.isFinite(numericPercent)) {
+      return Math.max(0, Math.min(100, numericPercent));
+    }
+  }
+
+  const sampleSize = Math.max(0, Number(normalizedSession.sampleSize) || 0);
+  const germinatedCount = Math.max(0, Number(normalizedSession.germinatedCount) || 0);
+  if (sampleSize <= 0) {
+    return null;
+  }
+
+  return Math.max(0, Math.min(100, (germinatedCount / sampleSize) * 100));
+}
+
+function getSuggestedAdminCstpQualificationResult(session = null) {
+  const finalPercent = getAdminCstpFinalGerminationPercentValue(session);
+  if (!Number.isFinite(finalPercent)) {
+    return "";
+  }
+  if (finalPercent >= 90) {
+    return "gold";
+  }
+  if (finalPercent >= 80) {
+    return "silver";
+  }
+  if (finalPercent >= 60) {
+    return "tested-no-certification";
+  }
+  return "not-qualified";
+}
+
+function renderAdminCstpReportImageGalleryMarkup(images = []) {
+  const normalizedImages = normalizePersistedSessionImages(images);
+  if (!normalizedImages.length) {
+    return `<p class="session-images-empty">No CSTP test images recorded for this report.</p>`;
+  }
+
+  return normalizedImages.map((image, index) => `
+    <article class="session-image-card admin-cstp-report-image-card">
+      <div class="session-image-frame">
+        <img src="${escapeHtml(image.url || image.previewUrl || "")}" alt="${escapeHtml(image.name || image.filename || `CSTP test image ${index + 1}`)}" class="session-image-thumb">
+      </div>
+      <p class="admin-cstp-report-image-caption">${escapeHtml(image.name || image.filename || `CSTP test image ${index + 1}`)}</p>
+    </article>
+  `).join("");
+}
+
 function mapAdminCstpStatusToSessionStatus(status = "") {
   const normalizedStatus = normalizeAdminCstpTestSessionStatus(status);
   if (["completed", "report-prepared", "published"].includes(normalizedStatus)) {
@@ -26195,7 +26252,11 @@ function renderAdminCstpReportPage(recordId = "") {
     || (requestedSessionId ? getAdminCstpTestSessionById(requestedSessionId) : null)
     || getAdminCstpAssignedSessionForRecord(matchingRecord);
   const qualificationResult = normalizeAdminCstpQualificationResult(reportSession?.qualificationResult || "");
+  const suggestedQualification = getSuggestedAdminCstpQualificationResult(reportSession);
   const canPublish = canPublishAdminCstpCertification(reportSession);
+  const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
+    ? "Certification Published"
+    : "Publish Certification";
   app.innerHTML = `
     <section class="card disclaimer-page">
       <div class="section-heading app-section-header">
@@ -26211,122 +26272,260 @@ function renderAdminCstpReportPage(recordId = "") {
           <a class="button button-secondary admin-cstp-button admin-cstp-button--utility" href="#admin">Back to Admin</a>
         </div>
       </div>
-      <section class="card source-cstp-report-card">
-        <p class="eyebrow">Report Builder</p>
-        <h3>CSTP Test Report</h3>
-        <p class="muted">This admin-only report builder stays separate from member grow sessions, Community Grow snapshots, and leaderboard calculations.</p>
+      <section class="card source-cstp-report-card admin-cstp-report-shell">
         ${reportSession ? `
-          <div class="admin-communications-detail-grid">
-            <div class="admin-communications-detail-item">
-              <span>Source name</span>
-              <strong>${escapeHtml(reportSession?.sourceName || matchingRecord?.sourceName || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Variety</span>
-              <strong>${escapeHtml(reportSession?.variety || matchingRecord?.variety || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Batch / Lot</span>
-              <strong>${escapeHtml(reportSession?.batchLot || matchingRecord?.batchLot || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Request status</span>
-              <strong>${escapeHtml(matchingRecord ? getAdminCstpLabStatusLabel(matchingRecord.status) : "Not linked")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Report status</span>
-              <strong>${escapeHtml(reportSession ? getAdminCstpTestSessionStatusLabel(reportSession.status) : "Not available")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Sample size</span>
-              <strong>${escapeHtml(reportSession?.sampleSize || matchingRecord?.testSession?.sampleSize || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Device ID</span>
-              <strong>${escapeHtml(reportSession?.deviceId || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Test method</span>
-              <strong>${escapeHtml(reportSession?.testMethod || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Temperature</span>
-              <strong>${escapeHtml(reportSession?.temperature || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Started</span>
-              <strong>${escapeHtml(reportSession?.startedAt ? formatAdminTimestamp(reportSession.startedAt) : "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Completed</span>
-              <strong>${escapeHtml(reportSession?.completedAt ? formatAdminTimestamp(reportSession.completedAt) : "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Germinated count</span>
-              <strong>${escapeHtml(reportSession?.germinatedCount || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Final germination %</span>
-              <strong>${escapeHtml(reportSession?.finalGerminationPercent || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Total germination time</span>
-              <strong>${escapeHtml(reportSession?.totalGerminationTime || "Not provided")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Report prepared</span>
-              <strong>${escapeHtml(reportSession?.reportPreparedAt ? formatAdminTimestamp(reportSession.reportPreparedAt) : "Not prepared yet")}</strong>
-            </div>
-            <div class="admin-communications-detail-item">
-              <span>Published</span>
-              <strong>${escapeHtml(reportSession?.publishedAt ? formatAdminTimestamp(reportSession.publishedAt) : "Not published")}</strong>
-            </div>
-          </div>
-          <form class="admin-communications-editor" data-admin-cstp-report-form="${escapeHtml(reportSession?.id || "")}">
-            <div class="admin-communications-editor-head">
-              <div>
-                <p class="eyebrow">Report Qualification</p>
-                <p class="muted">Gold and Silver are eligible for certification publishing. Tested - No Certification and Not Qualified never publish a badge.</p>
+          <div class="session-overview-panel">
+            <section class="session-top-grid detail-top-grid">
+              <section id="admin-cstp-report-meta" class="session-chart-header detail-header">
+                <article class="meta-card">
+                  <strong>Report Title</strong>
+                  <p>CSTP Test Report</p>
+                </article>
+                <article class="meta-card">
+                  <strong>CSTP Session ID</strong>
+                  <p>${escapeHtml(reportSession.id)}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Source / Company</strong>
+                  <p>${escapeHtml(reportSession.sourceName || matchingRecord?.sourceName || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Variety</strong>
+                  <p>${escapeHtml(reportSession.variety || matchingRecord?.variety || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Batch / Lot</strong>
+                  <p>${escapeHtml(reportSession.batchLot || matchingRecord?.batchLot || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Sample Size</strong>
+                  <p>${escapeHtml(reportSession.sampleSize || matchingRecord?.testSession?.sampleSize || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Device ID</strong>
+                  <p>${escapeHtml(reportSession.deviceId || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Test Method</strong>
+                  <p>${escapeHtml(reportSession.testMethod || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Temperature</strong>
+                  <p>${escapeHtml(reportSession.temperature || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Started At</strong>
+                  <p>${escapeHtml(formatAdminCstpSessionDateTime(reportSession.startedAt))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Completed At</strong>
+                  <p>${escapeHtml(formatAdminCstpSessionDateTime(reportSession.completedAt))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Total Germination Time</strong>
+                  <p>${escapeHtml(reportSession.totalGerminationTime || "Not recorded")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Germinated Count</strong>
+                  <p>${escapeHtml(reportSession.germinatedCount || "0")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Final Germination %</strong>
+                  <p>${escapeHtml(getAdminCstpSessionDisplayPercent(reportSession))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Qualification Result</strong>
+                  <p>${escapeHtml(getAdminCstpQualificationLabel(qualificationResult))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Report Prepared</strong>
+                  <p>${escapeHtml(formatAdminCstpSessionDateTime(reportSession.reportPreparedAt, "Not prepared yet"))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Published</strong>
+                  <p>${escapeHtml(formatAdminCstpSessionDateTime(reportSession.publishedAt, "Not published"))}</p>
+                </article>
+              </section>
+            </section>
+            <section id="admin-cstp-report-lifecycle-section" class="session-lifecycle-section" aria-labelledby="admin-cstp-report-lifecycle-title">
+              <div class="progress-chart-heading">
+                <p class="eyebrow">Timeline</p>
+                <h4 id="admin-cstp-report-lifecycle-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
+                    <path d="M5 6v12"></path>
+                  </svg>
+                  <span>Controlled Test Progress</span>
+                </h4>
               </div>
-            </div>
-            <div class="admin-communications-editor-grid">
-              <label class="admin-message-field">
-                <span>Qualification Result</span>
-                <select name="qualificationResult">
-                  <option value="">Select a result</option>
-                  ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
-                    <option value="${escapeHtml(option.key)}"${option.key === qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
-                  `).join("")}
-                </select>
+              <div id="admin-cstp-report-lifecycle-summary" class="session-lifecycle-summary"></div>
+            </section>
+          </div>
+          <div class="admin-cstp-report-grid">
+            <section id="admin-cstp-report-progress-section" class="progress-chart-section" aria-labelledby="admin-cstp-report-progress-title">
+              <div class="progress-chart-heading">
+                <p class="eyebrow">Progress</p>
+                <h4 id="admin-cstp-report-progress-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M6 18V10"></path>
+                    <path d="M12 18V6"></path>
+                    <path d="M18 18v-4"></path>
+                  </svg>
+                  <span>Germination Progress by Partition</span>
+                </h4>
+              </div>
+              <div id="admin-cstp-report-progress-chart" class="progress-chart-list"></div>
+            </section>
+            <section id="admin-cstp-report-run-progress-section" class="run-progress-section" aria-labelledby="admin-cstp-report-run-progress-title">
+              <div class="progress-chart-heading">
+                <p class="eyebrow">Germination Rate</p>
+                <h4 id="admin-cstp-report-run-progress-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M5 16l4-4 3 3 6-7"></path>
+                    <path d="M15 8h3v3"></path>
+                  </svg>
+                  <span>Overall Germination Percentage</span>
+                </h4>
+              </div>
+              <div id="admin-cstp-report-run-progress-summary" class="run-progress-summary"></div>
+            </section>
+            <section id="admin-cstp-report-timing-section" class="session-timing-section" aria-labelledby="admin-cstp-report-timing-title">
+              <div class="progress-chart-heading">
+                <p class="eyebrow">Timing</p>
+                <h4 id="admin-cstp-report-timing-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8"></circle>
+                    <path d="M12 8v4l2.5 2.5"></path>
+                  </svg>
+                  <span>Controlled Test Duration</span>
+                </h4>
+              </div>
+              <div id="admin-cstp-report-timing-summary" class="session-timing-summary"></div>
+            </section>
+            <section class="session-notes-section admin-cstp-report-seal-section" aria-labelledby="admin-cstp-report-seal-title">
+              <div class="progress-chart-heading">
+                <p class="eyebrow">Certification</p>
+                <h4 id="admin-cstp-report-seal-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 4.5 18 7v4.8c0 3.9-2.5 7.4-6 8.7-3.5-1.3-6-4.8-6-8.7V7l6-2.5Z"></path>
+                    <path d="m9.5 12.2 1.7 1.7 3.3-3.8"></path>
+                  </svg>
+                  <span>CSTP Seal Eligibility</span>
+                </h4>
+              </div>
+              <div class="admin-cstp-report-seal-grid">
+                <article class="meta-card">
+                  <strong>Suggested Qualification</strong>
+                  <p>${escapeHtml(getAdminCstpQualificationLabel(suggestedQualification))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Admin-Approved Qualification</strong>
+                  <p>${escapeHtml(getAdminCstpQualificationLabel(qualificationResult))}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Eligible for CSTP Seal</strong>
+                  <p>${escapeHtml(isAdminCstpCertificationEligible(qualificationResult) ? "Yes" : "No")}</p>
+                </article>
+              </div>
+              <form class="admin-communications-editor admin-cstp-report-review-form" data-admin-cstp-report-form="${escapeHtml(reportSession.id)}">
+                <div class="admin-communications-editor-head">
+                  <div>
+                    <p class="eyebrow">Admin Review</p>
+                    <p class="muted">Suggested qualification is threshold-based. Admin review controls the approved result used for publishing.</p>
+                  </div>
+                </div>
+                <div class="admin-communications-editor-grid">
+                  <label class="admin-message-field">
+                    <span>Qualification Result</span>
+                    <select name="qualificationResult">
+                      <option value="">Select a result</option>
+                      ${ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS.map((option) => `
+                        <option value="${escapeHtml(option.key)}"${option.key === qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
+                      `).join("")}
+                    </select>
+                  </label>
+                </div>
+                <div class="inline-actions admin-cstp-report-actions">
+                  <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--secondary">Save Report</button>
+                  <button
+                    type="button"
+                    class="button button-secondary admin-cstp-button admin-cstp-button--success"
+                    data-admin-cstp-report-publish="${escapeHtml(reportSession.id)}"
+                    ${canPublish ? "" : "disabled"}
+                  >
+                    ${escapeHtml(publishButtonLabel)}
+                  </button>
+                </div>
+                <p class="muted admin-cstp-report-publish-rule">Publishing is enabled only after the CSTP session is completed, the report is prepared, and the admin-approved qualification result is Gold or Silver.</p>
+              </form>
+            </section>
+            <section class="session-notes-section" aria-labelledby="admin-cstp-report-observations-title">
+              <label class="session-notes-field">
+                <p class="eyebrow">Observations</p>
+                <span id="admin-cstp-report-observations-title" class="section-title-with-icon">
+                  <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M7 5.5h7l3 3V18.5a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 6 18.5v-11A2 2 0 0 1 8 5.5"></path>
+                    <path d="M14 5.5v3h3"></path>
+                    <path d="M9 12h6"></path>
+                    <path d="M9 15h4"></path>
+                  </svg>
+                  <span>Report Observations</span>
+                </span>
+                <textarea rows="6" readonly>${escapeHtml(reportSession.observations || "No observations recorded yet.")}</textarea>
               </label>
-            </div>
-            <div class="inline-actions">
-              <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--utility">Save Report</button>
-            </div>
-          </form>
-          <div class="admin-communications-message-shell">
-            <p class="eyebrow">Observations</p>
-            <div class="admin-communications-message-body">
-              <p>${escapeHtml(reportSession?.observations || "No observations recorded yet.").replace(/\n/g, "<br>")}</p>
-            </div>
+              <p class="session-notes-help">CSTP certification is published only after admin review of a completed controlled test. Unpublished CSTP results are not public.</p>
+            </section>
+            <section class="session-images-section admin-cstp-report-images-section" aria-labelledby="admin-cstp-report-images-title">
+              <div class="session-images-heading">
+                <div>
+                  <p class="eyebrow">Images</p>
+                  <h4 id="admin-cstp-report-images-title" class="section-title-with-icon">
+                    <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                      <rect x="4" y="6" width="16" height="12" rx="2"></rect>
+                      <circle cx="9" cy="10" r="1.5"></circle>
+                      <path d="m20 15-4.5-4.5L8 18"></path>
+                    </svg>
+                    <span>CSTP Test Images</span>
+                  </h4>
+                </div>
+                <span class="session-images-limit">Read-only report gallery</span>
+              </div>
+              <div class="session-images-grid admin-cstp-report-image-grid">
+                ${renderAdminCstpReportImageGalleryMarkup(reportSession.sessionImages || [])}
+              </div>
+            </section>
+            <p class="muted admin-cstp-report-disclaimer">CSTP certification is published only after admin review of a completed controlled test. Unpublished CSTP results are not public.</p>
           </div>
-          <div class="admin-communications-quick-actions admin-cstp-lab-actions">
-            <button
-              type="button"
-              class="button button-secondary admin-cstp-button admin-cstp-button--success"
-              data-admin-cstp-report-publish="${escapeHtml(reportSession?.id || "")}"
-              ${canPublish ? "" : "disabled"}
-            >
-              Publish Certification
-            </button>
-          </div>
-          <p class="muted">Publishing is enabled only after the CSTP session is completed, the report is prepared, and the qualification result is Gold or Silver.</p>
         ` : `
           <p class="muted">No linked CSTP session data is available for this report yet.</p>
         `}
       </section>
     </section>
   `;
+
+  if (reportSession) {
+    updatePartitionProgressChart(
+      reportSession.partitions || [],
+      app.querySelector("#admin-cstp-report-progress-chart"),
+      app.querySelector("#admin-cstp-report-progress-section"),
+    );
+    updateRunProgressSummary(
+      app.querySelector("#admin-cstp-report-run-progress-summary"),
+      app.querySelector("#admin-cstp-report-run-progress-section"),
+      mapAdminCstpStatusToSessionStatus(reportSession.status),
+      reportSession.partitions || [],
+    );
+    updateAdminCstpSessionTimingSummary(
+      app.querySelector("#admin-cstp-report-timing-summary"),
+      app.querySelector("#admin-cstp-report-timing-section"),
+      reportSession,
+    );
+    updateSessionLifecycleTimeline(
+      app.querySelector("#admin-cstp-report-lifecycle-summary"),
+      app.querySelector("#admin-cstp-report-lifecycle-section"),
+      buildAdminCstpLifecycleState(reportSession),
+    );
+  }
 
   if (reportSession?.id) {
     bindAdminCstpReportPage(reportSession.id);

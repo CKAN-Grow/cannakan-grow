@@ -7883,6 +7883,56 @@ body.theme-dark .contact-reason-card.is-active {
   opacity: 1;
 }
 
+.admin-cstp-report-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-cstp-report-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-cstp-report-seal-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1rem;
+}
+
+.admin-cstp-report-review-form {
+  margin-top: 0.25rem;
+}
+
+.admin-cstp-report-actions {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-cstp-report-publish-rule {
+  margin: 0.5rem 0 0;
+}
+
+.admin-cstp-report-disclaimer {
+  margin: 0;
+}
+
+.admin-cstp-report-images-section .session-images-grid {
+  margin-top: 0.5rem;
+}
+
+.admin-cstp-report-image-card {
+  overflow: hidden;
+}
+
+.admin-cstp-report-image-caption {
+  margin: 0;
+  padding: 10px 12px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .admin-cstp-button {
   display: inline-flex;
   align-items: center;
@@ -10323,6 +10373,10 @@ body.theme-dark .admin-cstp-session-editor-panel {
   box-shadow:
     0 16px 38px rgba(0, 0, 0, 0.24),
     0 0 0 1px rgba(148, 209, 89, 0.06);
+}
+
+body.theme-dark .admin-cstp-report-image-caption {
+  color: #aeb9af;
 }
 
 body.theme-dark .admin-cstp-button[disabled],
