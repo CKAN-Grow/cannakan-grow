@@ -2306,7 +2306,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
-      <a class="mobile-nav-link" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}" data-mobile-nav-link="true">Source Profile</a>
+      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Tested Sources</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
@@ -4467,7 +4467,9 @@ function updateNavState() {
       ? "admin"
       : (route === "gallery"
         ? "gallery"
-        : (route === "network" ? "network" : "sessions")));
+        : (route === "network"
+          ? "network"
+          : (route === "sources" ? "sources" : "sessions"))));
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -4745,12 +4747,19 @@ function getCurrentSiteAnalyticsPageContext() {
     });
   }
   if (route === "sources") {
-    return buildSiteAnalyticsPageContext({
-      pageGroup: "sources",
-      pageKey: "source-profile",
-      pageLabel: "Source Profile",
-      pagePath: rawRoute ? `#${rawRoute}` : `#sources/${SOURCE_PROFILE_DEFAULT_MOCK_ID}`,
-    });
+    return id
+      ? buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-profile",
+        pageLabel: "Source Profile",
+        pagePath: `#sources/${id}`,
+      })
+      : buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "sources-directory",
+        pageLabel: "Tested Sources",
+        pagePath: "#sources",
+      });
   }
   if (route === "members") {
     return buildSiteAnalyticsPageContext({
@@ -15627,6 +15636,16 @@ function render() {
   }
 
   if (route === "sources") {
+    if (!id) {
+      renderSourcesLandingPage();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "sources-directory",
+        pageLabel: "Tested Sources",
+        pagePath: "#sources",
+      }));
+      return;
+    }
     const sourceProfileId = decodeURIComponent(id || SOURCE_PROFILE_DEFAULT_MOCK_ID);
     renderSourceProfilePage(sourceProfileId);
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -17952,6 +17971,58 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
       <strong>${escapeHtml(textLabel)}</strong>
       <span class="source-profile-cstp-visual-note">${escapeHtml(textCaption)}</span>
     </div>
+  `;
+}
+
+function renderSourcesLandingPage() {
+  const sourceRecords = Object.values(SOURCE_PROFILE_MOCK_DATA);
+  app.innerHTML = `
+    <section class="source-directory-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Tested Sources</p>
+            <h2>Tested Sources</h2>
+            <p class="muted">Browse the sources area and open Source Profile child views from here as the directory expands.</p>
+          </div>
+        </div>
+      </div>
+
+      <article class="card source-directory-review-card">
+        <div>
+          <p class="eyebrow">Dev Review</p>
+          <h3>Source Profile Preview</h3>
+          <p class="muted">Use this temporary review entry to open the current mock Source Profile UI on the deployed app.</p>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-primary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">Open Source Profile</a>
+        </div>
+      </article>
+
+      <section class="source-directory-grid" aria-label="Tested source directory mock entries">
+        ${sourceRecords.map((source) => `
+          <article class="card source-directory-card">
+            <div class="source-directory-card-head">
+              ${renderSourceLogoMarkup(source, {
+                className: "source-profile-logo",
+                imageClassName: "source-profile-logo-image",
+                placeholderClassName: "source-profile-logo-placeholder",
+                alt: `${source.name} logo`,
+              })}
+              <div class="source-directory-card-copy">
+                <p class="eyebrow">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
+                <h3>${escapeHtml(source.name)}</h3>
+                <p class="muted">Mock source entry for the future Tested Sources directory.</p>
+              </div>
+            </div>
+            <div class="inline-actions">
+              <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
+            </div>
+          </article>
+        `).join("")}
+      </section>
+    </section>
   `;
 }
 
