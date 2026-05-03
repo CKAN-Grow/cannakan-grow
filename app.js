@@ -4527,7 +4527,7 @@ function updateNavState() {
   const [route] = rawRoute.split("/");
   const activeNav = route === "home" || !route
     ? "home"
-    : (route === "disclaimer" || route === "terms" || route === "privacy"
+    : (route === "disclaimer" || route === "terms" || route === "privacy" || route === "contact"
       ? "home"
     : (route === "admin"
       ? "admin"
@@ -4849,6 +4849,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "privacy-policy",
       pageLabel: "Privacy Policy",
       pagePath: "#privacy",
+    });
+  }
+  if (route === "contact") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "contact",
+      pageLabel: "Contact",
+      pagePath: "#contact",
     });
   }
   if (route === "members") {
@@ -16154,6 +16162,17 @@ function render() {
     return;
   }
 
+  if (route === "contact") {
+    renderContactPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "contact",
+      pageLabel: "Contact",
+      pagePath: "#contact",
+    }));
+    return;
+  }
+
   if (route === "members" && id) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
@@ -19401,6 +19420,39 @@ function renderPrivacyPolicyPage() {
           <p class="eyebrow">Contact</p>
           <h3>Questions or requests</h3>
           <p class="muted">For privacy questions, support issues, or data-related requests, use the existing Report / Contact Admin option in the footer so we can review and respond.</p>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderContactPage() {
+  app.innerHTML = `
+    <section class="card disclaimer-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">Support</p>
+            <h2>Contact</h2>
+            <p class="muted">Questions, support requests, privacy concerns, or platform feedback can be sent through the existing contact flow.</p>
+          </div>
+        </div>
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#home">Back Home</a>
+        </div>
+      </div>
+
+      <div class="disclaimer-grid">
+        <article class="card disclaimer-card">
+          <p class="eyebrow">General Help</p>
+          <h3>Support and feedback</h3>
+          <p class="muted">Use the existing Report / Contact Admin flow in the app footer when you need help with sessions, community data, source records, CSTP-related questions, or account concerns.</p>
+        </article>
+        <article class="card disclaimer-card">
+          <p class="eyebrow">Privacy</p>
+          <h3>Data-related requests</h3>
+          <p class="muted">If your request relates to privacy, account data, or public content visibility, include as much detail as possible so it can be reviewed accurately.</p>
         </article>
       </div>
     </section>
