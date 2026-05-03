@@ -24898,17 +24898,17 @@ function renderAdminCstpLabActionButtons(record = null) {
 
   return `
     <div class="admin-communications-quick-actions admin-cstp-lab-actions">
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="accept" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Accept for testing</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="decline" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Decline</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="request-more-info" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Request more info</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="seeds-received" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark seeds received</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="schedule-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Schedule test</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="start-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Start CSTP test</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="mark-completed" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark completed</button>
-      <button type="button" class="button button-secondary" data-admin-cstp-lab-action="prepare-report" data-admin-cstp-lab-id="${escapeHtml(record.id)}"${canOpenReport ? "" : " disabled"}>Prepare report</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="accept" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Accept for testing</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--warning" data-admin-cstp-lab-action="decline" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Decline</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="request-more-info" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Request more info</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="seeds-received" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark seeds received</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="schedule-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Schedule test</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-lab-action="start-test" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Start CSTP test</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-lab-action="mark-completed" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Mark completed</button>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-lab-action="prepare-report" data-admin-cstp-lab-id="${escapeHtml(record.id)}"${canOpenReport ? "" : " disabled"}>Prepare report</button>
       ${canOpenReport
-        ? `<a class="button button-secondary" href="${escapeHtml(prepareReportHref)}">${assignedSession?.reportPreparedAt || assignedSession?.publishedAt ? "Open CSTP Report" : "Prepare CSTP Report"}</a>`
-        : '<button type="button" class="button button-secondary" disabled>Prepare CSTP Report</button>'}
+        ? `<a class="button button-secondary admin-cstp-button admin-cstp-button--primary" href="${escapeHtml(prepareReportHref)}">${assignedSession?.reportPreparedAt || assignedSession?.publishedAt ? "Open CSTP Report" : "Prepare CSTP Report"}</a>`
+        : '<button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" disabled>Prepare CSTP Report</button>'}
     </div>
   `;
 }
@@ -24958,11 +24958,11 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
       <div class="admin-communications-quick-actions admin-cstp-lab-actions">
         ${isConnected
           ? `
-            <a class="button button-secondary" href="#admin/cstp-session/${escapeHtml(assignedSession.id)}">Open Assigned CSTP Session</a>
-            <button type="button" class="button button-secondary" data-admin-cstp-lab-action="disconnect-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Disconnect Session</button>
+            <a class="button button-secondary admin-cstp-button admin-cstp-button--secondary" href="#admin/cstp-session/${escapeHtml(assignedSession.id)}">Open Assigned CSTP Session</a>
+            <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--warning" data-admin-cstp-lab-action="disconnect-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">Disconnect Session</button>
           `
           : `
-            <button type="button" class="button button-secondary admin-cstp-create-session-cta" data-admin-cstp-lab-action="create-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">+ Create Assigned CSTP Session</button>
+            <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary admin-cstp-create-session-cta" data-admin-cstp-lab-action="create-session" data-admin-cstp-lab-id="${escapeHtml(record.id)}">+ Create Assigned CSTP Session</button>
           `}
       </div>
     </section>
@@ -25062,7 +25062,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
           </label>
         </div>
         <div class="inline-actions">
-          <button type="submit" class="button button-secondary">Save CSTP Lab Notes</button>
+          <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--utility">Save CSTP Lab Notes</button>
         </div>
       </form>
     </section>
@@ -25354,7 +25354,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
             </div>
           </div>
           <div class="inline-actions">
-            <a class="button button-secondary" href="#admin">Back to Admin</a>
+            <a class="button button-secondary admin-cstp-button admin-cstp-button--utility" href="#admin">Back to Admin</a>
           </div>
         </div>
       </section>
@@ -25376,7 +25376,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#admin">Back to Admin</a>
+          <a class="button button-secondary admin-cstp-button admin-cstp-button--utility" href="#admin">Back to Admin</a>
         </div>
       </div>
       <section class="card admin-cstp-session-page-card">
@@ -25417,9 +25417,9 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
           </div>
         </div>
         <div class="admin-communications-quick-actions admin-cstp-lab-actions">
-          <button type="button" class="button button-secondary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(session.id)}">Start Test</button>
-          <button type="button" class="button button-secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(session.id)}">Mark Completed</button>
-          <button type="button" class="button button-secondary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(session.id)}"${canPrepareReport ? "" : " disabled"}>${session.reportPreparedAt || session.publishedAt ? "Open Report" : "Prepare Report"}</button>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="start" data-admin-cstp-session-id="${escapeHtml(session.id)}">Start Test</button>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--secondary" data-admin-cstp-session-action="complete" data-admin-cstp-session-id="${escapeHtml(session.id)}">Mark Completed</button>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary" data-admin-cstp-session-action="prepare-report" data-admin-cstp-session-id="${escapeHtml(session.id)}"${canPrepareReport ? "" : " disabled"}>${session.reportPreparedAt || session.publishedAt ? "Open Report" : "Prepare Report"}</button>
         </div>
         <form class="admin-communications-editor" data-admin-cstp-session-form="${escapeHtml(session.id)}">
           <div class="admin-communications-editor-head">
@@ -25500,7 +25500,7 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
             </label>
           </div>
           <div class="inline-actions">
-            <button type="submit" class="button button-secondary">Save CSTP Session</button>
+            <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--primary">Save CSTP Session</button>
           </div>
         </form>
       </section>
@@ -25608,7 +25608,7 @@ function renderAdminCstpReportPage(recordId = "") {
           </div>
         </div>
         <div class="inline-actions">
-          <a class="button button-secondary" href="#admin">Back to Admin</a>
+          <a class="button button-secondary admin-cstp-button admin-cstp-button--utility" href="#admin">Back to Admin</a>
         </div>
       </div>
       <section class="card source-cstp-report-card">
@@ -25701,7 +25701,7 @@ function renderAdminCstpReportPage(recordId = "") {
               </label>
             </div>
             <div class="inline-actions">
-              <button type="submit" class="button button-secondary">Save Report</button>
+              <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--utility">Save Report</button>
             </div>
           </form>
           <div class="admin-communications-message-shell">
@@ -25713,7 +25713,7 @@ function renderAdminCstpReportPage(recordId = "") {
           <div class="admin-communications-quick-actions admin-cstp-lab-actions">
             <button
               type="button"
-              class="button button-secondary"
+              class="button button-secondary admin-cstp-button admin-cstp-button--success"
               data-admin-cstp-report-publish="${escapeHtml(reportSession?.id || "")}"
               ${canPublish ? "" : "disabled"}
             >

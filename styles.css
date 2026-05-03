@@ -7840,6 +7840,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .admin-cstp-lab-actions {
   margin-block: 1.1rem 1.25rem;
+  gap: 12px;
+  align-items: center;
 }
 
 .admin-cstp-lab-timeline-grid {
@@ -7864,29 +7866,66 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 14px;
 }
 
-.admin-cstp-create-session-cta {
-  margin-top: 14px;
-  padding: 15px 24px;
-  min-height: 54px;
-  font-size: 1rem;
+.admin-cstp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 13px 20px;
+  border-radius: 14px;
+  font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+  line-height: 1.15;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.admin-cstp-button:hover,
+.admin-cstp-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.admin-cstp-button:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.admin-cstp-button[disabled],
+.admin-cstp-button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
+  filter: saturate(0.72);
+  box-shadow: none;
+}
+
+.admin-cstp-button[disabled]:hover,
+.admin-cstp-button:disabled:hover,
+.admin-cstp-button[disabled]:focus-visible,
+.admin-cstp-button:disabled:focus-visible {
+  transform: none;
+  filter: saturate(0.72);
+  box-shadow: none;
+}
+
+.admin-cstp-button--primary {
   background: #94d159;
   color: #0f140f;
   border-color: rgba(15, 20, 15, 0.28);
   box-shadow:
     0 10px 24px rgba(148, 209, 89, 0.24),
     0 0 14px rgba(148, 209, 89, 0.18);
-  cursor: pointer;
-  transition:
-    transform 0.18s ease,
-    background 0.18s ease,
-    box-shadow 0.18s ease,
-    filter 0.18s ease;
 }
 
-.admin-cstp-create-session-cta:hover,
-.admin-cstp-create-session-cta:focus-visible {
+.admin-cstp-button--primary:hover,
+.admin-cstp-button--primary:focus-visible {
   background: #a4de68;
   color: #0f140f;
   box-shadow:
@@ -7895,12 +7934,88 @@ body.theme-dark .contact-reason-card.is-active {
   filter: brightness(1.02);
 }
 
-.admin-cstp-create-session-cta:active {
+.admin-cstp-button--primary:active {
   background: #8ac94c;
   color: #0f140f;
   box-shadow:
     0 8px 18px rgba(148, 209, 89, 0.22),
     0 0 12px rgba(148, 209, 89, 0.18);
+}
+
+.admin-cstp-button--secondary {
+  background: rgba(18, 24, 20, 0.94);
+  color: #94d159;
+  border-color: rgba(148, 209, 89, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 8px 20px rgba(18, 24, 20, 0.12);
+}
+
+.admin-cstp-button--secondary:hover,
+.admin-cstp-button--secondary:focus-visible {
+  background: rgba(22, 29, 24, 0.98);
+  color: #b7ea83;
+  border-color: rgba(167, 238, 114, 0.82);
+  box-shadow:
+    0 10px 24px rgba(18, 24, 20, 0.16),
+    0 0 14px rgba(148, 209, 89, 0.18);
+}
+
+.admin-cstp-button--warning {
+  background: rgba(166, 61, 64, 0.08);
+  color: #8f3135;
+  border-color: rgba(166, 61, 64, 0.42);
+  box-shadow: 0 8px 18px rgba(166, 61, 64, 0.08);
+}
+
+.admin-cstp-button--warning:hover,
+.admin-cstp-button--warning:focus-visible {
+  background: rgba(166, 61, 64, 0.12);
+  color: #7b272b;
+  border-color: rgba(166, 61, 64, 0.56);
+  box-shadow:
+    0 10px 24px rgba(166, 61, 64, 0.12),
+    0 0 12px rgba(166, 61, 64, 0.1);
+}
+
+.admin-cstp-button--success {
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 56%, #6da83f 100%);
+  color: #0f140f;
+  border-color: rgba(15, 20, 15, 0.3);
+  box-shadow:
+    0 12px 28px rgba(148, 209, 89, 0.28),
+    0 0 18px rgba(148, 209, 89, 0.24);
+}
+
+.admin-cstp-button--success:hover,
+.admin-cstp-button--success:focus-visible {
+  background: linear-gradient(180deg, #baf784 0%, #a1e267 56%, #79bc47 100%);
+  color: #0f140f;
+  box-shadow:
+    0 16px 34px rgba(148, 209, 89, 0.32),
+    0 0 24px rgba(148, 209, 89, 0.28);
+}
+
+.admin-cstp-button--utility {
+  background: var(--surface-strong);
+  color: var(--ink);
+  border-color: rgba(24, 34, 24, 0.14);
+  box-shadow: 0 8px 20px rgba(24, 34, 24, 0.08);
+}
+
+.admin-cstp-button--utility:hover,
+.admin-cstp-button--utility:focus-visible {
+  background: #ffffff;
+  color: var(--ink);
+  border-color: rgba(24, 34, 24, 0.2);
+  box-shadow: 0 12px 24px rgba(24, 34, 24, 0.1);
+}
+
+.admin-cstp-create-session-cta {
+  margin-top: 14px;
+  min-height: 54px;
+  padding: 15px 24px;
+  font-size: 1rem;
 }
 
 .admin-member-role-pill,
@@ -10090,7 +10205,7 @@ body.theme-dark .button-secondary:hover {
     0 0 18px rgba(148, 209, 89, 0.24);
 }
 
-body.theme-dark .admin-cstp-create-session-cta {
+body.theme-dark .admin-cstp-button--primary {
   background: #94d159;
   color: #0f140f;
   border-color: rgba(15, 20, 15, 0.42);
@@ -10099,8 +10214,8 @@ body.theme-dark .admin-cstp-create-session-cta {
     0 0 16px rgba(148, 209, 89, 0.22);
 }
 
-body.theme-dark .admin-cstp-create-session-cta:hover,
-body.theme-dark .admin-cstp-create-session-cta:focus-visible {
+body.theme-dark .admin-cstp-button--primary:hover,
+body.theme-dark .admin-cstp-button--primary:focus-visible {
   background: #ace36f;
   color: #0f140f;
   border-color: rgba(15, 20, 15, 0.42);
@@ -10109,10 +10224,88 @@ body.theme-dark .admin-cstp-create-session-cta:focus-visible {
     0 0 22px rgba(148, 209, 89, 0.28);
 }
 
-body.theme-dark .admin-cstp-create-session-cta:active {
+body.theme-dark .admin-cstp-button--primary:active {
   background: #86c54a;
   color: #0f140f;
   border-color: rgba(15, 20, 15, 0.42);
+}
+
+body.theme-dark .admin-cstp-button--secondary {
+  background: rgba(17, 24, 20, 0.72);
+  color: #d4f2b4;
+  border-color: #94d159;
+  box-shadow:
+    0 0 8px rgba(148, 209, 89, 0.18),
+    0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .admin-cstp-button--secondary:hover,
+body.theme-dark .admin-cstp-button--secondary:focus-visible {
+  background: rgba(148, 209, 89, 0.12);
+  color: #eff9e3;
+  border-color: #a7ee72;
+  box-shadow:
+    0 0 12px rgba(148, 209, 89, 0.28),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-button--warning {
+  background: rgba(213, 107, 112, 0.08);
+  color: #f1b3b7;
+  border-color: rgba(213, 107, 112, 0.5);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .admin-cstp-button--warning:hover,
+body.theme-dark .admin-cstp-button--warning:focus-visible {
+  background: rgba(213, 107, 112, 0.14);
+  color: #ffd4d7;
+  border-color: rgba(230, 133, 138, 0.68);
+  box-shadow:
+    0 0 12px rgba(213, 107, 112, 0.18),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-button--success {
+  background: linear-gradient(180deg, #b9fa88 0%, #9edf63 56%, #75b845 100%);
+  color: #0f140f;
+  border-color: rgba(15, 20, 15, 0.46);
+  box-shadow:
+    0 0 14px rgba(148, 209, 89, 0.3),
+    0 18px 36px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-button--success:hover,
+body.theme-dark .admin-cstp-button--success:focus-visible {
+  background: linear-gradient(180deg, #cbff9a 0%, #ade96f 56%, #82c94c 100%);
+  color: #0f140f;
+  box-shadow:
+    0 0 20px rgba(148, 209, 89, 0.38),
+    0 20px 40px rgba(0, 0, 0, 0.24);
+}
+
+body.theme-dark .admin-cstp-button--utility {
+  background: rgba(37, 43, 38, 0.96);
+  color: #f6f8f5;
+  border-color: rgba(148, 209, 89, 0.22);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .admin-cstp-button--utility:hover,
+body.theme-dark .admin-cstp-button--utility:focus-visible {
+  background: rgba(44, 51, 45, 0.98);
+  color: #ffffff;
+  border-color: rgba(148, 209, 89, 0.34);
+  box-shadow:
+    0 0 10px rgba(148, 209, 89, 0.14),
+    0 14px 28px rgba(0, 0, 0, 0.22);
+}
+
+body.theme-dark .admin-cstp-button[disabled],
+body.theme-dark .admin-cstp-button:disabled {
+  background: rgba(54, 60, 56, 0.78);
+  color: rgba(246, 248, 245, 0.62);
+  border-color: rgba(148, 209, 89, 0.12);
 }
 
 body.theme-dark .auth-forgot-link {
