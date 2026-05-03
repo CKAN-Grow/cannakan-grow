@@ -3880,6 +3880,24 @@ body.theme-dark .disclaimer-card {
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
+body.theme-dark .contact-reason-card,
+body.theme-dark .contact-form-card {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: linear-gradient(180deg, rgba(34, 39, 35, 0.96) 0%, rgba(27, 31, 28, 0.94) 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .contact-reason-card.is-active {
+  border-color: rgba(148, 209, 89, 0.22);
+  background: linear-gradient(180deg, rgba(37, 45, 37, 0.98) 0%, rgba(30, 36, 30, 0.96) 100%);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 .home-announcement-card {
   display: flex;
   align-items: stretch;
@@ -10149,6 +10167,10 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: 1fr;
   }
 
+  .contact-reason-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .home-install-card-shell {
     display: block;
   }
@@ -10274,6 +10296,11 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .disclaimer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-reason-grid,
+  .contact-form-grid {
     grid-template-columns: 1fr;
   }
 
@@ -11587,6 +11614,96 @@ input::placeholder {
 .disclaimer-card h3,
 .disclaimer-card p {
   margin: 0;
+}
+
+.contact-page {
+  display: grid;
+  gap: 18px;
+}
+
+.contact-reason-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contact-reason-card,
+.contact-form-card {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: linear-gradient(180deg, rgba(250, 251, 249, 0.96) 0%, rgba(244, 247, 242, 0.94) 100%);
+  box-shadow:
+    0 14px 26px rgba(29, 49, 33, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.contact-reason-card {
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.contact-reason-card:hover,
+.contact-reason-card:focus-visible {
+  border-color: rgba(116, 155, 81, 0.22);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.contact-reason-card.is-active {
+  border-color: rgba(116, 155, 81, 0.24);
+  background: linear-gradient(180deg, rgba(242, 247, 237, 0.98) 0%, rgba(234, 242, 231, 0.96) 100%);
+  box-shadow:
+    0 16px 28px rgba(29, 49, 33, 0.07),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.contact-reason-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.contact-reason-copy {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.contact-form-card-empty {
+  align-items: start;
+}
+
+.contact-form-head h3,
+.contact-form-head p {
+  margin: 0;
+}
+
+.contact-request-form {
+  display: grid;
+  gap: 14px;
+}
+
+.contact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.contact-form-helper,
+.contact-form-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .source-directory-controls-card,

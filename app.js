@@ -19426,6 +19426,343 @@ function renderPrivacyPolicyPage() {
   `;
 }
 
+const CONTACT_REASON_OPTIONS = Object.freeze([
+  Object.freeze({
+    key: "app-support",
+    title: "App Support",
+    description: "Technical issues, account problems, or platform questions.",
+  }),
+  Object.freeze({
+    key: "order-support",
+    title: "Order / Product Support",
+    description: "Order-related or product-related help requests.",
+  }),
+  Object.freeze({
+    key: "cstp-request",
+    title: "CSTP Testing Request",
+    description: "Requests to submit a batch for CSTP review.",
+  }),
+  Object.freeze({
+    key: "source-correction",
+    title: "Source Correction / Directory Issue",
+    description: "Corrections to Tested Sources or Source Profile records.",
+  }),
+  Object.freeze({
+    key: "partnership",
+    title: "Partnership / Business Inquiry",
+    description: "Business, collaboration, or partnership outreach.",
+  }),
+  Object.freeze({
+    key: "other",
+    title: "Other",
+    description: "Anything that does not fit the categories above.",
+  }),
+]);
+
+function getContactReasonByKey(reasonKey = "") {
+  const normalizedKey = String(reasonKey || "").trim().toLowerCase();
+  return CONTACT_REASON_OPTIONS.find((option) => option.key === normalizedKey) || null;
+}
+
+function renderContactFormFieldsMarkup(reasonKey = "") {
+  switch (reasonKey) {
+    case "app-support":
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Name</span>
+            <input name="reporterName" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Email</span>
+            <input name="userEmail" type="email" maxlength="160" required>
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Issue type</span>
+          <select name="appIssueType" required>
+            <option value="" selected>Select an issue type</option>
+            <option value="Technical issue">Technical issue</option>
+            <option value="Account issue">Account issue</option>
+            <option value="Feedback">Feedback</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label class="admin-message-field">
+          <span>Message</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+      `;
+    case "order-support":
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Name</span>
+            <input name="reporterName" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Email</span>
+            <input name="userEmail" type="email" maxlength="160" required>
+          </label>
+        </div>
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Order number</span>
+            <input name="orderNumber" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Product</span>
+            <input name="productName" type="text" maxlength="160" required>
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Message</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+      `;
+    case "cstp-request":
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Company / Source name</span>
+            <input name="companyName" type="text" maxlength="160" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Contact name</span>
+            <input name="reporterName" type="text" maxlength="120" required>
+          </label>
+        </div>
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Email</span>
+            <input name="userEmail" type="email" maxlength="160" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Website</span>
+            <input name="websiteUrl" type="url" maxlength="240" placeholder="https://">
+          </label>
+        </div>
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Seed type / category</span>
+            <input name="seedCategory" type="text" maxlength="160" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Batch or lot info</span>
+            <input name="batchInfo" type="text" maxlength="160" required>
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Approximate number of seeds available for testing</span>
+          <input name="seedCount" type="text" maxlength="80" required>
+        </label>
+        <label class="admin-message-field">
+          <span>Message</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+        <p class="contact-form-note">CSTP testing can be requested, but certification is not guaranteed. Badges are earned only through qualifying controlled test results.</p>
+      `;
+    case "source-correction":
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Source name shown</span>
+            <input name="shownSourceName" type="text" maxlength="160" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Correct source name</span>
+            <input name="correctSourceName" type="text" maxlength="160" required>
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Website / proof link</span>
+          <input name="proofLink" type="url" maxlength="240" placeholder="https://">
+        </label>
+        <label class="admin-message-field">
+          <span>Explanation</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+        <p class="contact-form-note">Corrections update the master source database only and do not retroactively change approved Community Grow snapshots.</p>
+      `;
+    case "partnership":
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Name</span>
+            <input name="reporterName" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Company</span>
+            <input name="companyName" type="text" maxlength="160" required>
+          </label>
+        </div>
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Email</span>
+            <input name="userEmail" type="email" maxlength="160" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Website</span>
+            <input name="websiteUrl" type="url" maxlength="240" placeholder="https://">
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Inquiry type</span>
+          <select name="inquiryType" required>
+            <option value="" selected>Select an inquiry type</option>
+            <option value="Partnership">Partnership</option>
+            <option value="Distribution">Distribution</option>
+            <option value="Media">Media</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+        <label class="admin-message-field">
+          <span>Message</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+      `;
+    case "other":
+    default:
+      return `
+        <div class="contact-form-grid">
+          <label class="admin-message-field">
+            <span>Name</span>
+            <input name="reporterName" type="text" maxlength="120" required>
+          </label>
+          <label class="admin-message-field">
+            <span>Email</span>
+            <input name="userEmail" type="email" maxlength="160" required>
+          </label>
+        </div>
+        <label class="admin-message-field">
+          <span>Message</span>
+          <textarea name="message" rows="6" maxlength="2000" required></textarea>
+        </label>
+      `;
+  }
+}
+
+function renderContactSelectedFormMarkup(reasonKey = "") {
+  const reason = getContactReasonByKey(reasonKey);
+  if (!reason) {
+    return `
+      <section class="card contact-form-card contact-form-card-empty">
+        <p class="contact-form-helper">Please choose the closest reason for your message. Requests with missing details may take longer to review.</p>
+        <p class="muted">Select a reason above to open the correct form.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="card contact-form-card">
+      <div class="contact-form-head">
+        <div>
+          <p class="eyebrow">Selected Reason</p>
+          <h3>${escapeHtml(reason.title)}</h3>
+          <p class="muted">${escapeHtml(reason.description)}</p>
+        </div>
+      </div>
+      <p class="contact-form-helper">Please choose the closest reason for your message. Requests with missing details may take longer to review.</p>
+      <form class="contact-request-form" data-contact-request-form="${escapeHtml(reason.key)}">
+        ${renderContactFormFieldsMarkup(reason.key)}
+        <p class="form-message" data-contact-form-feedback role="alert" aria-live="polite"></p>
+        <div class="inline-actions">
+          <button type="submit" class="button button-primary">Submit for Review</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function buildContactSubmissionPayload(reasonKey = "", formData) {
+  const getValue = (key) => String(formData.get(key) || "").trim();
+  const baseMessage = getValue("message");
+
+  switch (reasonKey) {
+    case "app-support":
+      return {
+        reporterName: getValue("reporterName"),
+        userEmail: getValue("userEmail"),
+        messageType: getValue("appIssueType") || "Technical issue",
+        message: [
+          "Reason: App Support",
+          `Issue Type: ${getValue("appIssueType") || "Not provided"}`,
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+    case "order-support":
+      return {
+        reporterName: getValue("reporterName"),
+        userEmail: getValue("userEmail"),
+        messageType: "Other",
+        message: [
+          "Reason: Order / Product Support",
+          `Order Number: ${getValue("orderNumber")}`,
+          `Product: ${getValue("productName")}`,
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+    case "cstp-request":
+      return {
+        reporterName: getValue("reporterName"),
+        userEmail: getValue("userEmail"),
+        messageType: "Other",
+        message: [
+          "Reason: CSTP Testing Request",
+          `Company / Source Name: ${getValue("companyName")}`,
+          `Website: ${getValue("websiteUrl") || "Not provided"}`,
+          `Seed Type / Category: ${getValue("seedCategory")}`,
+          `Batch or Lot Info: ${getValue("batchInfo")}`,
+          `Approximate Seeds Available: ${getValue("seedCount")}`,
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+    case "source-correction":
+      return {
+        reporterName: "",
+        userEmail: "",
+        messageType: "Report content",
+        message: [
+          "Reason: Source Correction / Directory Issue",
+          `Source Name Shown: ${getValue("shownSourceName")}`,
+          `Correct Source Name: ${getValue("correctSourceName")}`,
+          `Website / Proof Link: ${getValue("proofLink") || "Not provided"}`,
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+    case "partnership":
+      return {
+        reporterName: getValue("reporterName"),
+        userEmail: getValue("userEmail"),
+        messageType: "Other",
+        message: [
+          "Reason: Partnership / Business Inquiry",
+          `Company: ${getValue("companyName")}`,
+          `Website: ${getValue("websiteUrl") || "Not provided"}`,
+          `Inquiry Type: ${getValue("inquiryType")}`,
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+    case "other":
+    default:
+      return {
+        reporterName: getValue("reporterName"),
+        userEmail: getValue("userEmail"),
+        messageType: "Other",
+        message: [
+          "Reason: Other",
+          "",
+          baseMessage,
+        ].join("\n"),
+      };
+  }
+}
+
 function renderContactPage() {
   app.innerHTML = `
     <section class="card disclaimer-page">
@@ -19434,8 +19771,8 @@ function renderContactPage() {
           ${renderAppSectionHeaderIcon("sources")}
           <div>
             <p class="eyebrow">Support</p>
-            <h2>Contact</h2>
-            <p class="muted">Questions, support requests, privacy concerns, or platform feedback can be sent through the existing contact flow.</p>
+            <h2>Contact Cannakan</h2>
+            <p class="muted">Choose the reason for your message so we can route it correctly.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -19443,20 +19780,118 @@ function renderContactPage() {
         </div>
       </div>
 
-      <div class="disclaimer-grid">
-        <article class="card disclaimer-card">
-          <p class="eyebrow">General Help</p>
-          <h3>Support and feedback</h3>
-          <p class="muted">Use the existing Report / Contact Admin flow in the app footer when you need help with sessions, community data, source records, CSTP-related questions, or account concerns.</p>
-        </article>
-        <article class="card disclaimer-card">
-          <p class="eyebrow">Privacy</p>
-          <h3>Data-related requests</h3>
-          <p class="muted">If your request relates to privacy, account data, or public content visibility, include as much detail as possible so it can be reviewed accurately.</p>
-        </article>
-      </div>
+      <section class="contact-page">
+        <div class="contact-reason-grid" role="list" aria-label="Contact reasons">
+          ${CONTACT_REASON_OPTIONS.map((reason) => `
+            <button type="button" class="card contact-reason-card" data-contact-reason="${escapeHtml(reason.key)}">
+              <span class="contact-reason-title">${escapeHtml(reason.title)}</span>
+              <span class="contact-reason-copy">${escapeHtml(reason.description)}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div id="contact-form-shell">
+          ${renderContactSelectedFormMarkup("")}
+        </div>
+      </section>
     </section>
   `;
+
+  bindContactPage();
+}
+
+function bindContactPage() {
+  const formShell = app.querySelector("#contact-form-shell");
+  const reasonButtons = Array.from(app.querySelectorAll("[data-contact-reason]"));
+  if (!formShell || !reasonButtons.length) {
+    return;
+  }
+
+  const baseContext = getAdminMessageContext();
+  let activeReasonKey = "";
+
+  const applyActiveState = () => {
+    reasonButtons.forEach((button) => {
+      const isActive = button.dataset.contactReason === activeReasonKey;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  };
+
+  const bindRenderedForm = () => {
+    const form = formShell.querySelector("[data-contact-request-form]");
+    const feedback = formShell.querySelector("[data-contact-form-feedback]");
+    if (!(form instanceof HTMLFormElement) || !feedback) {
+      return;
+    }
+
+    const nameField = form.querySelector("input[name='reporterName']");
+    const emailField = form.querySelector("input[name='userEmail']");
+    if (nameField instanceof HTMLInputElement && !nameField.value) {
+      nameField.value = baseContext.userName || "";
+    }
+    if (emailField instanceof HTMLInputElement && !emailField.value) {
+      emailField.value = baseContext.userEmail || "";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      feedback.className = "form-message";
+      feedback.textContent = "";
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const submitButton = form.querySelector("button[type='submit']");
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+      }
+
+      try {
+        const formData = new FormData(form);
+        const payload = buildContactSubmissionPayload(activeReasonKey, formData);
+        payload.reporterName = payload.reporterName || baseContext.userName || "";
+        payload.userEmail = payload.userEmail || baseContext.userEmail || "";
+        await submitAdminMessage({
+          ...payload,
+          pageContext: baseContext.pageContext || "Contact",
+          sessionId: baseContext.sessionId || "",
+          snapshotId: baseContext.snapshotId || "",
+          createdAt: new Date().toISOString(),
+        });
+        feedback.className = "form-message is-success";
+        feedback.textContent = "Thanks - your message has been prepared for review.";
+        form.reset();
+        if (nameField instanceof HTMLInputElement && baseContext.userName) {
+          nameField.value = baseContext.userName;
+        }
+        if (emailField instanceof HTMLInputElement && baseContext.userEmail) {
+          emailField.value = baseContext.userEmail;
+        }
+      } catch (error) {
+        feedback.className = "form-message";
+        feedback.textContent = error.message || "Could not prepare this message for review.";
+      } finally {
+        if (submitButton instanceof HTMLButtonElement) {
+          submitButton.disabled = false;
+        }
+      }
+    });
+  };
+
+  const renderSelectedReason = (reasonKey = "") => {
+    activeReasonKey = reasonKey;
+    formShell.innerHTML = renderContactSelectedFormMarkup(reasonKey);
+    applyActiveState();
+    bindRenderedForm();
+  };
+
+  reasonButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      renderSelectedReason(button.dataset.contactReason || "");
+    });
+  });
+
+  renderSelectedReason("");
 }
 
 function renderAdminSourceCardMarkup(source) {
