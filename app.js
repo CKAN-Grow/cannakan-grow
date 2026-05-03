@@ -356,6 +356,7 @@ const testedSourcesMock = Object.freeze([
     name: "Humboldt Seed Co",
     type: "Seed Bank",
     logo: "",
+    website: "https://humboldtseedcompany.com",
     establishedLabel: "Established 2018",
     community: Object.freeze({
       avgRate: 82,
@@ -385,6 +386,7 @@ const testedSourcesMock = Object.freeze([
     name: "Royal Queen Seeds",
     type: "Seed Bank",
     logo: "",
+    website: "https://www.royalqueenseeds.com",
     establishedLabel: "Established 2007",
     community: Object.freeze({
       avgRate: 79,
@@ -414,6 +416,7 @@ const testedSourcesMock = Object.freeze([
     name: "Barney's Farm",
     type: "Breeder",
     logo: "",
+    website: "https://www.barneysfarm.com",
     establishedLabel: "Established 1986",
     community: Object.freeze({
       avgRate: 77,
@@ -443,6 +446,7 @@ const testedSourcesMock = Object.freeze([
     name: "Seedsman",
     type: "Seed Marketplace",
     logo: "",
+    website: "https://www.seedsman.com",
     establishedLabel: "Established 2002",
     community: Object.freeze({
       avgRate: 75,
@@ -472,6 +476,7 @@ const testedSourcesMock = Object.freeze([
     name: "North Atlantic Seed Co",
     type: "Seed Marketplace",
     logo: "",
+    website: "https://northatlanticseed.com",
     establishedLabel: "Established 2012",
     community: Object.freeze({
       avgRate: 74,
@@ -749,6 +754,7 @@ const MOCK_ADMIN_REPORTS = Object.freeze([
 const ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY = "cannakanAdminCommunicationsOpen";
 const ADMIN_COMMUNICATIONS_STORAGE_KEY = "cannakanAdminCommunicationsRecords";
 const ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY = "cannakanAdminDevAccessOpen";
+const CONTACT_PREFILL_STORAGE_KEY = "cannakanContactPrefill";
 const ADMIN_COMMUNICATIONS_STATUS_FILTERS = Object.freeze([
   Object.freeze({ key: "all", label: "All" }),
   Object.freeze({ key: "new", label: "New" }),
@@ -19080,6 +19086,15 @@ function bindSourcesLandingPage() {
     });
   });
 
+  app.querySelector("[data-source-directory-contact-link='cstp']")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    openContactPageWithPrefill("cstp-request");
+  });
+  app.querySelector("[data-source-directory-contact-link='correction']")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    openContactPageWithPrefill("source-correction");
+  });
+
   applyDirectoryView();
 }
 
@@ -19094,6 +19109,8 @@ function renderSourcesLandingPage() {
             <h2>Tested Sources</h2>
             <p class="muted">Browse community-tracked seed sources and view CSTP certification status.</p>
             <p class="source-directory-trust-note">Listings reflect community data and CSTP testing. Results may vary.</p>
+            <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
+            <p class="source-directory-helper-note">CSTP testing can be requested, but certification is never guaranteed.</p>
           </div>
         </div>
       </div>
@@ -19313,6 +19330,18 @@ function renderSourceProfilePage(sourceId = "") {
           ${trackRecordStats.map((stat) => renderSourceProfileMetricCard(stat)).join("")}
         </div>
       </article>
+
+      <article class="card source-profile-request-card">
+        <div class="source-profile-request-copy">
+          <p class="eyebrow">Source Actions</p>
+          <h3>Need to update or review this source?</h3>
+          <p class="muted">CSTP testing can be requested, but certification is never guaranteed.</p>
+        </div>
+        <div class="source-profile-request-actions">
+          <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
+          <a class="button button-secondary" href="#contact" data-source-request-correction="${escapeHtml(sourceProfile.id)}">Claim or Correct This Source</a>
+        </div>
+      </article>
     </section>
   `;
 
@@ -19321,6 +19350,21 @@ function renderSourceProfilePage(sourceId = "") {
   });
   app.querySelector("[data-source-follow-preview]")?.addEventListener("click", () => {
     window.alert("Source follow preview coming soon.");
+  });
+  app.querySelector("[data-source-request-cstp]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    openContactPageWithPrefill("cstp-request", {
+      companyName: sourceProfile.name || "",
+      websiteUrl: sourceProfile.website || "",
+    });
+  });
+  app.querySelector("[data-source-request-correction]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    openContactPageWithPrefill("source-correction", {
+      shownSourceName: sourceProfile.name || "",
+      correctSourceName: "",
+      proofLink: "",
+    });
   });
 }
 
@@ -19534,6 +19578,69 @@ const CONTACT_REASON_OPTIONS = Object.freeze([
 function getContactReasonByKey(reasonKey = "") {
   const normalizedKey = String(reasonKey || "").trim().toLowerCase();
   return CONTACT_REASON_OPTIONS.find((option) => option.key === normalizedKey) || null;
+}
+
+function savePendingContactPrefill(prefill = null) {
+  if (!prefill || typeof prefill !== "object" || Array.isArray(prefill)) {
+    return;
+  }
+  try {
+    sessionStorage.setItem(CONTACT_PREFILL_STORAGE_KEY, JSON.stringify(prefill));
+  } catch (error) {
+    console.warn("Could not save contact prefill.", error);
+  }
+}
+
+function consumePendingContactPrefill() {
+  try {
+    const rawValue = sessionStorage.getItem(CONTACT_PREFILL_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+    sessionStorage.removeItem(CONTACT_PREFILL_STORAGE_KEY);
+    const parsed = JSON.parse(rawValue);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch (error) {
+    console.warn("Could not read contact prefill.", error);
+    return null;
+  }
+}
+
+function openContactPageWithPrefill(reasonKey = "", fields = {}) {
+  const normalizedReasonKey = String(reasonKey || "").trim().toLowerCase();
+  if (!normalizedReasonKey) {
+    window.location.hash = "#contact";
+    return;
+  }
+  savePendingContactPrefill({
+    reasonKey: normalizedReasonKey,
+    fields: fields && typeof fields === "object" && !Array.isArray(fields) ? fields : {},
+  });
+  window.location.hash = "#contact";
+}
+
+function applyContactFormPrefill(form, prefill = null) {
+  if (!(form instanceof HTMLFormElement) || !prefill?.fields || typeof prefill.fields !== "object") {
+    return;
+  }
+  Object.entries(prefill.fields).forEach(([fieldName, fieldValue]) => {
+    const field = form.elements.namedItem(fieldName);
+    if (!field) {
+      return;
+    }
+    const nextValue = String(fieldValue ?? "").trim();
+    if (field instanceof RadioNodeList) {
+      Array.from(field).forEach((option) => {
+        if (option instanceof HTMLInputElement || option instanceof HTMLOptionElement) {
+          option.checked = option.value === nextValue;
+        }
+      });
+      return;
+    }
+    if ("value" in field && !String(field.value || "").trim()) {
+      field.value = nextValue;
+    }
+  });
 }
 
 function renderContactFormFieldsMarkup(reasonKey = "") {
@@ -19902,6 +20009,7 @@ function bindContactPage() {
   }
 
   const baseContext = getAdminMessageContext();
+  const pendingPrefill = consumePendingContactPrefill();
   let activeReasonKey = "";
 
   const applyActiveState = () => {
@@ -19927,6 +20035,7 @@ function bindContactPage() {
     if (emailField instanceof HTMLInputElement && !emailField.value) {
       emailField.value = baseContext.userEmail || "";
     }
+    applyContactFormPrefill(form, pendingPrefill);
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -19987,7 +20096,7 @@ function bindContactPage() {
     });
   });
 
-  renderSelectedReason("");
+  renderSelectedReason(getContactReasonByKey(pendingPrefill?.reasonKey || "")?.key || "");
 }
 
 function renderAdminSourceCardMarkup(source) {
