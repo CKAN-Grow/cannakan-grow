@@ -11186,30 +11186,21 @@ input::placeholder {
   text-align: center;
 }
 
-.source-profile-cstp-visual--badge {
-  border-radius: 50%;
-  border: 1px solid rgba(126, 111, 78, 0.3);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 16px 28px rgba(29, 49, 33, 0.08);
+.source-profile-cstp-visual--image {
+  padding: 6px;
 }
 
-.source-profile-cstp-visual--badge.is-gold {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 237, 185, 0.2), transparent 24%),
-    radial-gradient(circle at center, rgba(134, 98, 32, 0.18), transparent 72%),
-    linear-gradient(180deg, rgba(125, 90, 29, 0.18) 0%, rgba(89, 63, 19, 0.16) 100%);
-  border-color: rgba(145, 111, 46, 0.32);
-  color: #7a5618;
+.source-profile-cstp-badge-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 16px 28px rgba(29, 49, 33, 0.16));
 }
 
-.source-profile-cstp-visual--badge.is-silver {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), transparent 24%),
-    radial-gradient(circle at center, rgba(131, 141, 153, 0.16), transparent 72%),
-    linear-gradient(180deg, rgba(156, 165, 174, 0.12) 0%, rgba(117, 126, 136, 0.12) 100%);
-  border-color: rgba(147, 155, 164, 0.28);
-  color: #5e6772;
+.source-profile-cstp-visual--image.is-expired .source-profile-cstp-badge-image {
+  opacity: 0.46;
+  filter: grayscale(1) saturate(0.2) brightness(0.88) drop-shadow(0 12px 20px rgba(29, 49, 33, 0.08));
 }
 
 .source-profile-cstp-visual--text {
@@ -12443,28 +12434,13 @@ body.theme-dark .source-profile-cstp-pill.is-expiring {
   color: #efc96f;
 }
 
-body.theme-dark .source-profile-cstp-visual--badge {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 16px 28px rgba(0, 0, 0, 0.22);
+body.theme-dark .source-profile-cstp-badge-image {
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.28));
 }
 
-body.theme-dark .source-profile-cstp-visual--badge.is-gold {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 232, 162, 0.12), transparent 24%),
-    radial-gradient(circle at center, rgba(174, 131, 48, 0.22), transparent 74%),
-    linear-gradient(180deg, rgba(84, 61, 19, 0.92) 0%, rgba(58, 41, 13, 0.94) 100%);
-  border-color: rgba(154, 123, 57, 0.34);
-  color: #f1cf81;
-}
-
-body.theme-dark .source-profile-cstp-visual--badge.is-silver {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.1), transparent 24%),
-    radial-gradient(circle at center, rgba(142, 151, 162, 0.2), transparent 74%),
-    linear-gradient(180deg, rgba(68, 75, 82, 0.94) 0%, rgba(45, 51, 56, 0.96) 100%);
-  border-color: rgba(150, 157, 166, 0.28);
-  color: #dce2e8;
+body.theme-dark .source-profile-cstp-visual--image.is-expired .source-profile-cstp-badge-image {
+  opacity: 0.42;
+  filter: grayscale(1) saturate(0.14) brightness(0.82) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));
 }
 
 body.theme-dark .source-profile-cstp-visual--text {

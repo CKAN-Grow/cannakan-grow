@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">CSTP Verified Silver Badge</title>
+  <desc id="desc">Silver CSTP verified certification badge with CK mark.</desc>
+  <defs>
+    <radialGradient id="silverOuter" cx="34%" cy="24%" r="72%">
+      <stop offset="0%" stop-color="#fafafa"/>
+      <stop offset="24%" stop-color="#dadde0"/>
+      <stop offset="62%" stop-color="#9da4ab"/>
+      <stop offset="100%" stop-color="#5e646b"/>
+    </radialGradient>
+    <radialGradient id="silverInner" cx="35%" cy="28%" r="70%">
+      <stop offset="0%" stop-color="#f9f9fa"/>
+      <stop offset="24%" stop-color="#c6ccd2"/>
+      <stop offset="72%" stop-color="#7a8088"/>
+      <stop offset="100%" stop-color="#51575e"/>
+    </radialGradient>
+    <linearGradient id="silverBevel" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="30%" stop-color="#d7dbe0"/>
+      <stop offset="70%" stop-color="#9ea4ab"/>
+      <stop offset="100%" stop-color="#f4f5f7"/>
+    </linearGradient>
+    <filter id="silverShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+    <path id="topArcSilver" d="M 108 256 A 148 148 0 0 1 404 256" />
+    <path id="bottomArcSilver" d="M 404 256 A 148 148 0 0 1 108 256" />
+  </defs>
+  <g filter="url(#silverShadow)">
+    <circle cx="256" cy="256" r="224" fill="url(#silverOuter)"/>
+    <circle cx="256" cy="256" r="214" fill="none" stroke="#3c4045" stroke-width="4" opacity="0.36"/>
+    <circle cx="256" cy="256" r="185" fill="#171a1d" opacity="0.92"/>
+    <circle cx="256" cy="256" r="176" fill="url(#silverBevel)"/>
+    <circle cx="256" cy="256" r="160" fill="#1f2328"/>
+    <circle cx="256" cy="256" r="150" fill="url(#silverInner)"/>
+    <circle cx="256" cy="256" r="147" fill="none" stroke="#f3f5f8" stroke-width="2.5" opacity="0.62"/>
+    <circle cx="109" cy="256" r="10" fill="#15181b"/>
+    <circle cx="403" cy="256" r="10" fill="#15181b"/>
+    <text font-family="Arial, Helvetica, sans-serif" font-size="31" font-weight="800" letter-spacing="2.6" fill="#171a1d">
+      <textPath href="#topArcSilver" startOffset="50%" text-anchor="middle">CSTP VERIFIED</textPath>
+    </text>
+    <text font-family="Arial, Helvetica, sans-serif" font-size="33" font-weight="800" letter-spacing="3.2" fill="#171a1d">
+      <textPath href="#bottomArcSilver" startOffset="50%" text-anchor="middle">SILVER</textPath>
+    </text>
+    <g transform="translate(256 271)">
+      <text x="0" y="0" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="156" font-weight="900" fill="#f0f2f4" stroke="#686f76" stroke-width="6">ck</text>
+      <g transform="translate(0 72)" fill="none" stroke="#eceef1" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M0 22 C0 -6 0 -34 0 -56"/>
+        <path d="M0 14 C-12 -4 -35 -16 -58 -18 C-56 8 -44 28 -18 42"/>
+        <path d="M0 14 C12 -4 35 -16 58 -18 C56 8 44 28 18 42"/>
+      </g>
+    </g>
+    <path d="M53 224 C65 136 134 67 224 53" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.34"/>
+  </g>
+</svg>

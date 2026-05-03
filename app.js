@@ -325,6 +325,11 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
   },
 ]);
 const SOURCE_PROFILE_DEFAULT_MOCK_ID = "humboldt-seed-co";
+const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
+  gold: "src/assets/cstp-badge-gold.svg",
+  silver: "src/assets/cstp-badge-silver.svg",
+  expired: "src/assets/cstp-badge-gold.svg",
+});
 const SOURCE_PROFILE_MOCK_DATA = Object.freeze({
   "humboldt-seed-co": Object.freeze({
     id: "humboldt-seed-co",
@@ -17922,13 +17927,19 @@ function getSourceProfileCstpState(sourceProfile = {}) {
 
 function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
   const toneClass = escapeHtml(cstpState.toneClass || "");
-  if (cstpState.usesBadge) {
-    const badgeLabel = cstpState.status === "silver" ? "Silver" : "Gold";
+  const badgeAsset = SOURCE_PROFILE_CSTP_BADGE_ASSETS[cstpState.status]
+    || (cstpState.status === "expired" ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.expired : "");
+  if (badgeAsset) {
+    const badgeAlt = cstpState.statusLabel || "CSTP certification badge";
     return `
-      <div class="source-profile-cstp-visual source-profile-cstp-visual--badge ${toneClass}" aria-hidden="true">
-        <span class="source-profile-cstp-visual-eyebrow">CSTP</span>
-        <strong>${escapeHtml(badgeLabel)}</strong>
-        <span class="source-profile-cstp-visual-caption">Certified</span>
+      <div class="source-profile-cstp-visual source-profile-cstp-visual--image ${toneClass}">
+        <img
+          src="${escapeHtml(badgeAsset)}"
+          alt="${escapeHtml(badgeAlt)}"
+          class="source-profile-cstp-badge-image"
+          loading="lazy"
+          decoding="async"
+        >
       </div>
     `;
   }
