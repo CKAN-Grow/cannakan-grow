@@ -24649,7 +24649,7 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
   const sourceReportImages = source.reportImages || source.report_images || {};
   const fallbackReportImages = fallback.reportImages || fallback.report_images || {};
 
-  return {
+  return syncAdminCstpSessionDerivedValues({
     id,
     requestId: String(source.requestId || source.request_id || fallback.requestId || fallback.request_id || "").trim(),
     sourceName: String(source.sourceName || source.source_name || fallback.sourceName || fallback.source_name || "").trim(),
@@ -24704,7 +24704,7 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       },
     ),
     createdAt: String(source.createdAt || source.created_at || fallback.createdAt || fallback.created_at || "").trim() || new Date().toISOString(),
-  };
+  });
 }
 
 function formatAdminCstpSessionDateTime(value = "", emptyLabel = "Not recorded") {
@@ -24745,6 +24745,158 @@ function getAdminCstpSessionDisplayPercent(session = null) {
   }
 
   return `${Math.round((germinatedCount / sampleSize) * 100)}%`;
+}
+
+function getAdminCstpPartitionSummaryValue(partitions = [], formatter = (value) => value, fallbackValue = "") {
+  const values = [...new Set(
+    (partitions || [])
+      .map((partition) => String(formatter(partition) || "").trim())
+      .filter(Boolean),
+  )];
+  if (!values.length) {
+    return String(fallbackValue || "").trim();
+  }
+  if (values.length === 1) {
+    return values[0];
+  }
+  return `${values[0]} +${values.length - 1} more`;
+}
+
+function syncAdminCstpSessionDerivedValues(session = null) {
+  if (!session || !Array.isArray(session.partitions)) {
+    return session;
+  }
+
+  const totals = getSessionSeedTotals(session);
+  const startedAt = parseCompletedAtValue(session.startedAt || "");
+  const completedAt = parseCompletedAtValue(session.completedAt || "");
+  session.sourceName = getAdminCstpPartitionSummaryValue(
+    session.partitions,
+    (partition) => formatPartitionSource(partition),
+    session.sourceName || "",
+  );
+  session.variety = getAdminCstpPartitionSummaryValue(
+    session.partitions,
+    (partition) => formatPartitionSeedVariety(partition),
+    session.variety || "",
+  );
+  session.sampleSize = totals.totalSeeds > 0 ? String(Math.max(0, totals.totalSeeds || 0)) : "";
+  session.germinatedCount = String(Math.max(0, totals.totalPlanted || 0));
+  session.finalGerminationPercent = totals.totalSeeds > 0
+    ? String(Math.round((totals.totalPlanted / totals.totalSeeds) * 100))
+    : "";
+  session.totalGerminationTime = startedAt && completedAt
+    ? formatDurationBetween(startedAt, completedAt)
+    : "";
+  return session;
+}
+
+function renderAdminCstpQualificationBadgeMarkup(qualificationResult = "") {
+  const normalizedResult = normalizeAdminCstpQualificationResult(qualificationResult);
+  if (!["gold", "silver"].includes(normalizedResult)) {
+    return "";
+  }
+
+  const badgeAsset = normalizedResult === "gold"
+    ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold
+    : SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver;
+  const badgeLabel = getAdminCstpQualificationLabel(normalizedResult);
+
+  return `
+    <div class="admin-cstp-qualification-badge-shell">
+      <img
+        src="${escapeHtml(badgeAsset)}"
+        alt="${escapeHtml(`CSTP ${badgeLabel} badge`)}"
+        class="admin-cstp-qualification-badge"
+        loading="lazy"
+        decoding="async"
+      >
+      <div class="admin-cstp-qualification-badge-copy">
+        <span class="admin-cstp-qualification-badge-label">Certification Badge</span>
+        <strong>${escapeHtml(badgeLabel)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function getAdminCstpSuggestedQualificationSummaryText(session = null) {
+  const suggestedQualification = getSuggestedAdminCstpQualificationResult(session);
+  return suggestedQualification
+    ? `Suggested qualification: ${getAdminCstpQualificationLabel(suggestedQualification)}`
+    : "Suggested qualification appears automatically after partition totals are recorded.";
+}
+
+function renderAdminCstpQualificationBadgeSummaryMarkup(qualificationResult = "") {
+  return renderAdminCstpQualificationBadgeMarkup(qualificationResult) || `
+    <div class="admin-cstp-badge-summary-empty">
+      <p class="muted">Gold or Silver will display a certification badge here.</p>
+    </div>
+  `;
+}
+
+function syncAdminCstpSessionSummaryForm(form, session = null) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const workingSession = session ? syncAdminCstpSessionDerivedValues(session) : null;
+  const finalPercentValue = form.querySelector("[data-admin-cstp-final-percent]");
+  const suggestedQualification = form.querySelector("[data-admin-cstp-suggested-qualification]");
+  const badgeDisplay = form.querySelector("[data-admin-cstp-badge-display]");
+
+  if (finalPercentValue) {
+    finalPercentValue.textContent = getAdminCstpSessionDisplayPercent(workingSession);
+  }
+  if (suggestedQualification) {
+    suggestedQualification.textContent = getAdminCstpSuggestedQualificationSummaryText(workingSession);
+  }
+  if (badgeDisplay) {
+    badgeDisplay.innerHTML = renderAdminCstpQualificationBadgeSummaryMarkup(
+      workingSession?.qualificationResult || "",
+    );
+  }
+}
+
+function applyAdminCstpPartitionChartHeading(detail = null) {
+  const partitionHeading = detail?.partitionWorkTitle?.closest(".partition-work-heading") || null;
+  const partitionIcon = partitionHeading?.querySelector(".partition-product-icon") || null;
+  const titleText = detail?.partitionWorkTitle?.querySelector("[data-partition-title-text]") || null;
+
+  if (partitionIcon) {
+    partitionIcon.hidden = true;
+  }
+  if (titleText) {
+    titleText.textContent = "CSTP Partition Chart";
+  } else if (detail?.partitionWorkTitle) {
+    detail.partitionWorkTitle.textContent = "CSTP Partition Chart";
+  }
+}
+
+function buildAdminCstpDraftSessionFromDetail(existingSession = null, options = {}) {
+  const draftSession = normalizeAdminCstpAssignedSessionRecord(existingSession);
+  if (!draftSession) {
+    return null;
+  }
+
+  const form = options.form instanceof HTMLFormElement ? options.form : null;
+  const notesField = options.notesField instanceof HTMLTextAreaElement ? options.notesField : null;
+  const partitions = options.partitions;
+
+  if (form) {
+    const formData = new FormData(form);
+    draftSession.batchLot = String(formData.get("batchLot") || "").trim();
+    draftSession.qualificationResult = normalizeAdminCstpQualificationResult(
+      formData.get("qualificationResult") || "",
+    );
+  }
+  if (notesField) {
+    draftSession.observations = notesField.value.trim();
+  }
+  if (partitions) {
+    syncSessionPartitionsFromContainer(draftSession, partitions);
+  }
+
+  return syncAdminCstpSessionDerivedValues(draftSession);
 }
 
 function getAdminCstpFinalGerminationPercentValue(session = null) {
@@ -24956,6 +25108,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
   if (!normalizedSession) {
     return "";
   }
+  syncAdminCstpSessionDerivedValues(normalizedSession);
 
   const canPrepareReport = Boolean(options.canPrepareReport);
   const prepareLabel = normalizedSession.reportPreparedAt || normalizedSession.publishedAt ? "Open Report" : "Prepare Report";
@@ -24970,59 +25123,20 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
       <form class="admin-communications-editor admin-cstp-session-editor-panel" data-admin-cstp-session-form="${escapeHtml(normalizedSession.id)}">
         <div class="admin-communications-editor-head">
           <div>
-            <p class="eyebrow">CSTP Lab Controls</p>
-            <p class="muted">Mock/local CSTP session fields only. These do not modify member sessions, Community Grow, or leaderboard data.</p>
+            <p class="eyebrow">CSTP Summary</p>
+            <p class="muted">Use the partition chart below as the primary lab input. This summary only keeps the essential batch and certification controls.</p>
           </div>
         </div>
-        <div class="admin-communications-editor-grid">
+        <div class="admin-communications-editor-grid admin-cstp-session-summary-grid">
           <label class="admin-message-field">
-            <span>Source name</span>
-            <input name="sourceName" type="text" maxlength="160" value="${escapeHtml(normalizedSession.sourceName || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Variety</span>
-            <input name="variety" type="text" maxlength="160" value="${escapeHtml(normalizedSession.variety || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Batch / lot</span>
+            <span>Batch / Lot Number</span>
             <input name="batchLot" type="text" maxlength="160" value="${escapeHtml(normalizedSession.batchLot || "")}">
           </label>
-          <label class="admin-message-field">
-            <span>Sample size</span>
-            <input name="sampleSize" type="text" maxlength="80" value="${escapeHtml(normalizedSession.sampleSize || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Device ID</span>
-            <input name="deviceId" type="text" maxlength="120" value="${escapeHtml(normalizedSession.deviceId || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Test method</span>
-            <input name="testMethod" type="text" maxlength="160" value="${escapeHtml(normalizedSession.testMethod || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Temperature</span>
-            <input name="temperature" type="text" maxlength="120" value="${escapeHtml(normalizedSession.temperature || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Started at</span>
-            <input name="startedAt" type="text" maxlength="120" placeholder="May 3, 2026 10:00 AM" value="${escapeHtml(normalizedSession.startedAt || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Completed at</span>
-            <input name="completedAt" type="text" maxlength="120" placeholder="May 6, 2026 2:00 PM" value="${escapeHtml(normalizedSession.completedAt || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Germinated count</span>
-            <input name="germinatedCount" type="text" maxlength="80" value="${escapeHtml(normalizedSession.germinatedCount || "")}">
-          </label>
-          <label class="admin-message-field">
+          <div class="admin-message-field admin-cstp-summary-readout">
             <span>Final germination %</span>
-            <input name="finalGerminationPercent" type="text" maxlength="80" value="${escapeHtml(normalizedSession.finalGerminationPercent || "")}">
-          </label>
-          <label class="admin-message-field">
-            <span>Total germination time</span>
-            <input name="totalGerminationTime" type="text" maxlength="120" value="${escapeHtml(normalizedSession.totalGerminationTime || "")}">
-          </label>
+            <div class="admin-cstp-summary-readout-value" data-admin-cstp-final-percent>${escapeHtml(getAdminCstpSessionDisplayPercent(normalizedSession))}</div>
+            <p class="admin-message-help-text">Calculated automatically from the partition chart seed and germination totals.</p>
+          </div>
           <label class="admin-message-field">
             <span>Qualification result</span>
             <select name="qualificationResult">
@@ -25031,7 +25145,14 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
                 <option value="${escapeHtml(option.key)}"${option.key === normalizedSession.qualificationResult ? " selected" : ""}>${escapeHtml(option.label)}</option>
               `).join("")}
             </select>
+            <p class="admin-message-help-text" data-admin-cstp-suggested-qualification>${escapeHtml(getAdminCstpSuggestedQualificationSummaryText(normalizedSession))}</p>
           </label>
+          <div class="admin-message-field admin-cstp-badge-summary-card">
+            <span>Certification Badge</span>
+            <div data-admin-cstp-badge-display>
+              ${renderAdminCstpQualificationBadgeSummaryMarkup(normalizedSession.qualificationResult)}
+            </div>
+          </div>
         </div>
       </form>
     </section>
@@ -26377,15 +26498,39 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
     detailLayoutSection.hidden = true;
   }
   if (detailPartitionHeader) {
-    detailPartitionHeader.hidden = true;
+    detailPartitionHeader.hidden = false;
   }
+  applyAdminCstpPartitionChartHeading(detail);
   if (detail.chartShell) {
-    detail.chartShell.hidden = true;
+    detail.chartShell.hidden = false;
   }
-  if (detail.progressSection) {
-    detail.progressSection.hidden = true;
+  if (detail.partitions) {
+    detail.partitions.innerHTML = "";
+    session.partitions.forEach((partition, index) => {
+      detail.partitions.appendChild(buildPartitionFormCard(partition, index));
+      hydratePartitionRow(detail.partitions.lastElementChild, partition);
+    });
+    ensureSourceCatalogDatalist();
+    initializeCustomSelects(detail.partitions);
+    bindPartitionRowVisualState(detail.partitions);
+    applySessionStatusLayout(detail.chartShell, detail.chartHeader, detail.partitions, sessionStageValue);
+    syncPartitionButtonStates(detail.partitions, sessionStageValue);
+    applyStageEditingMode(app, sessionStageValue);
+    const timelineSaveShortcut = app.querySelector(".timeline-save-shortcut");
+    if (timelineSaveShortcut) {
+      timelineSaveShortcut.hidden = false;
+    }
+    if (detail.saveShortcutButton) {
+      detail.saveShortcutButton.hidden = false;
+      detail.saveShortcutButton.disabled = false;
+    }
+    if (detail.saveButton) {
+      detail.saveButton.hidden = false;
+      detail.saveButton.disabled = false;
+    }
   }
   updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, session);
+  updatePartitionProgressChart(session.partitions || [], detail.progressChart, detail.progressSection);
   updateRunProgressSummary(detail.runProgressSummary, detail.runProgressSection, sessionStageValue, session.partitions || []);
   updateSessionLifecycleTimeline(detail.lifecycleSummary, detail.lifecycleSection, buildAdminCstpLifecycleState(session));
   initializeSessionImageState(detail.imageSection, {
@@ -26402,6 +26547,47 @@ function renderAdminCstpTestSessionPage(sessionId = "") {
 }
 
 function bindAdminCstpTestSessionPage(sessionId = "") {
+  const detail = getSessionDetailElements(app);
+  const form = app.querySelector("[data-admin-cstp-session-form]");
+  const partitions = detail.partitions;
+  const detailNotesField = detail.notesField;
+  const detailNotesSaveButton = detail.notesSaveButton;
+  const detailNotesMessage = detail.notesMessage;
+  const detailSaveShortcutButton = detail.saveShortcutButton;
+  const detailSaveButton = detail.saveButton;
+  const detailSaveMessage = detail.saveMessage;
+
+  const buildDraftSession = () => buildAdminCstpDraftSessionFromDetail(
+    getAdminCstpTestSessionById(sessionId),
+    {
+      form,
+      notesField: detailNotesField,
+      partitions,
+    },
+  );
+
+  const refreshDerivedViews = (workingSession = null) => {
+    const draftSession = workingSession || buildDraftSession();
+    if (!draftSession) {
+      return;
+    }
+
+    syncAdminCstpSessionSummaryForm(form, draftSession);
+    updatePartitionProgressChart(draftSession.partitions || [], detail.progressChart, detail.progressSection);
+    updateAdminCstpSessionTimingSummary(detail.timingSummary, detail.timingSection, draftSession);
+    updateRunProgressSummary(
+      detail.runProgressSummary,
+      detail.runProgressSection,
+      detail.statusField?.value || mapAdminCstpStatusToSessionStatus(draftSession.status),
+      draftSession.partitions || [],
+    );
+    updateSessionLifecycleTimeline(
+      detail.lifecycleSummary,
+      detail.lifecycleSection,
+      buildAdminCstpLifecycleState(draftSession),
+    );
+  };
+
   app.querySelectorAll("[data-admin-cstp-session-action]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpSessionBound === "true") {
       return;
@@ -26413,22 +26599,24 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       if (!existingSession) {
         return;
       }
+      const draftSession = buildDraftSession() || existingSession;
       const timestamp = new Date().toISOString();
       if (actionKey === "start") {
         updateAdminCstpAssignedSession(sessionId, {
-          ...existingSession,
+          ...draftSession,
           status: "active-test",
-          startedAt: existingSession.startedAt || timestamp,
+          startedAt: draftSession.startedAt || timestamp,
         });
       } else if (actionKey === "complete") {
         updateAdminCstpAssignedSession(sessionId, {
-          ...existingSession,
+          ...draftSession,
           status: "completed",
-          completedAt: existingSession.completedAt || timestamp,
+          completedAt: draftSession.completedAt || timestamp,
         });
         ensureAdminCstpCompletedTestSnapshot(sessionId, "session-complete");
       } else if (actionKey === "prepare-report") {
-        if (!canPrepareAdminCstpReport(existingSession)) {
+        const persistedDraft = updateAdminCstpAssignedSession(sessionId, draftSession) || existingSession;
+        if (!canPrepareAdminCstpReport(persistedDraft)) {
           return;
         }
         prepareAdminCstpReportSession(sessionId);
@@ -26439,13 +26627,6 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       renderAdminCstpTestSessionPage(sessionId);
     });
   });
-  const form = app.querySelector("[data-admin-cstp-session-form]");
-  const detailNotesField = document.querySelector("#detail-session-notes");
-  const detailNotesSaveButton = document.querySelector("#detail-session-notes-save");
-  const detailNotesMessage = document.querySelector("#detail-session-notes-message");
-  const detailSaveShortcutButton = document.querySelector("#detail-save-shortcut");
-  const detailSaveButton = document.querySelector("#detail-save-session");
-  const detailSaveMessage = document.querySelector("#detail-save-message");
   app.querySelectorAll("[data-admin-cstp-report-image-action]").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportImageBound === "true") {
       return;
@@ -26464,44 +26645,8 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   });
 
   const persistAdminCstpSession = () => {
-    const existingSession = getAdminCstpTestSessionById(sessionId);
-    if (!existingSession || !(form instanceof HTMLFormElement)) {
-      return null;
-    }
-
-    const formData = new FormData(form);
-    const sourceName = String(formData.get("sourceName") || "").trim();
-    const variety = String(formData.get("variety") || "").trim();
-    const sampleSize = String(formData.get("sampleSize") || "").trim();
-    const germinatedCount = String(formData.get("germinatedCount") || "").trim();
-
-    return updateAdminCstpAssignedSession(sessionId, {
-      ...existingSession,
-      sourceName,
-      variety,
-      batchLot: String(formData.get("batchLot") || "").trim(),
-      sampleSize,
-      deviceId: String(formData.get("deviceId") || "").trim(),
-      testMethod: String(formData.get("testMethod") || "").trim(),
-      temperature: String(formData.get("temperature") || "").trim(),
-      startedAt: String(formData.get("startedAt") || "").trim(),
-      completedAt: String(formData.get("completedAt") || "").trim(),
-      germinatedCount,
-      finalGerminationPercent: String(formData.get("finalGerminationPercent") || "").trim(),
-      totalGerminationTime: String(formData.get("totalGerminationTime") || "").trim(),
-      qualificationResult: String(formData.get("qualificationResult") || "").trim(),
-      observations: String(detailNotesField?.value || "").trim(),
-      partitions: normalizeAdminCstpSessionPartitions(
-        existingSession.partitions || [],
-        existingSession.systemType,
-        {
-          sourceName,
-          variety,
-          sampleSize,
-          germinatedCount,
-        },
-      ),
-    });
+    const draftSession = buildDraftSession();
+    return draftSession ? updateAdminCstpAssignedSession(sessionId, draftSession) : null;
   };
 
   if (form instanceof HTMLFormElement) {
@@ -26510,12 +26655,27 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       persistAdminCstpSession();
       renderAdminCstpTestSessionPage(sessionId);
     });
+
+    form.querySelectorAll("input, select").forEach((field) => {
+      const eventName = field.tagName === "SELECT" ? "change" : "input";
+      field.addEventListener(eventName, () => {
+        if (detailSaveMessage) {
+          detailSaveMessage.textContent = "";
+          detailSaveMessage.classList.remove("is-error");
+        }
+        refreshDerivedViews();
+      });
+    });
   }
 
   detailNotesField?.addEventListener("input", () => {
     if (detailNotesMessage) {
       detailNotesMessage.textContent = "";
       detailNotesMessage.classList.remove("is-error");
+    }
+    if (detailSaveMessage) {
+      detailSaveMessage.textContent = "";
+      detailSaveMessage.classList.remove("is-error");
     }
   });
 
@@ -26546,6 +26706,29 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
 
   detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
   detailSaveButton?.addEventListener("click", handleSaveClick);
+
+  if (partitions) {
+    partitions.querySelectorAll(".partition-row").forEach((row) => {
+      row.querySelectorAll("input, select").forEach((field) => {
+        const eventName = field.tagName === "SELECT" ? "change" : "input";
+        field.addEventListener(eventName, () => {
+          validatePartitionRow(row);
+          refreshDerivedViews();
+          if (detailSaveMessage) {
+            detailSaveMessage.textContent = "";
+            detailSaveMessage.classList.remove("is-error");
+          }
+        });
+        field.addEventListener("blur", () => {
+          validatePartitionRow(row);
+          refreshDerivedViews();
+        });
+      });
+      validatePartitionRow(row);
+    });
+  }
+
+  refreshDerivedViews();
 }
 
 function renderAdminCstpReportPage(recordId = "") {
