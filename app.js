@@ -2521,6 +2521,153 @@ function navigateToCommunityGrowModerationRoute() {
   navigateToHashRoute(getCommunityGrowModerationRoute());
 }
 
+function getAdminDashboardSectionRouteConfig(routeId = "") {
+  const normalizedRouteId = String(routeId || "").trim().toLowerCase();
+  switch (normalizedRouteId) {
+    case "":
+    case "dashboard":
+      return {
+        key: "dashboard",
+        label: "Admin Dashboard",
+        href: "#admin",
+        pageKey: "admin",
+        pageLabel: "Admin",
+        pagePath: "#admin",
+        storageKey: "",
+        contentId: "",
+      };
+    case "members":
+      return {
+        key: "members",
+        label: "Members",
+        href: "#admin/members",
+        pageKey: "admin-members",
+        pageLabel: "Admin Members",
+        pagePath: "#admin/members",
+        storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
+        contentId: "admin-members-section-content",
+      };
+    case "sources":
+      return {
+        key: "sources",
+        label: "Sources",
+        href: "#admin/sources",
+        pageKey: "admin-sources",
+        pageLabel: "Admin Sources",
+        pagePath: "#admin/sources",
+        storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
+        contentId: "admin-sources-section-content",
+      };
+    case "message-board":
+      return {
+        key: "message-board",
+        label: "Message Board CMS",
+        href: "#admin/message-board",
+        pageKey: "admin-message-board",
+        pageLabel: "Admin Message Board CMS",
+        pagePath: "#admin/message-board",
+        storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
+        contentId: "admin-message-board-section-content",
+      };
+    case "analytics":
+      return {
+        key: "analytics",
+        label: "Analytics",
+        href: "#admin/analytics",
+        pageKey: "admin-analytics",
+        pageLabel: "Admin Analytics",
+        pagePath: "#admin/analytics",
+        storageKey: ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
+        contentId: "admin-site-visitor-analytics-content",
+      };
+    default:
+      return null;
+  }
+}
+
+function getAdminSubnavItems() {
+  return [
+    getAdminDashboardSectionRouteConfig("dashboard"),
+    getAdminDashboardSectionRouteConfig("members"),
+    getAdminDashboardSectionRouteConfig("sources"),
+    getAdminDashboardSectionRouteConfig("message-board"),
+    getAdminDashboardSectionRouteConfig("analytics"),
+    {
+      key: "community-grow-moderation",
+      label: "Community Grow Moderation",
+      href: getCommunityGrowModerationRoute(),
+    },
+  ].filter(Boolean);
+}
+
+function getActiveAdminSubnavKey(rawRoute = getCurrentAppRawRoute()) {
+  if (isCommunityGrowModerationRawRoute(rawRoute)) {
+    return "community-grow-moderation";
+  }
+
+  const normalizedRawRoute = String(rawRoute || "").trim().replace(/^#/, "");
+  const [route, id] = normalizedRawRoute.split("/");
+  if (route !== "admin") {
+    return "";
+  }
+
+  return getAdminDashboardSectionRouteConfig(id || "")?.key || "dashboard";
+}
+
+function renderAdminSubnavMarkup(activeKey = "dashboard") {
+  return `
+    <section class="card admin-subnav-shell" data-admin-subnav="true">
+      <nav class="admin-subnav" aria-label="Admin section navigation">
+        ${getAdminSubnavItems().map((item) => `
+          <a
+            class="button button-secondary admin-subnav-link${item.key === activeKey ? " is-active" : ""}"
+            href="${escapeHtml(item.href || "#admin")}"
+            ${item.key === activeKey ? 'aria-current="page"' : ""}
+          >${escapeHtml(item.label || "")}</a>
+        `).join("")}
+      </nav>
+    </section>
+  `;
+}
+
+function syncAdminSubnav() {
+  app.querySelector('[data-admin-subnav="true"]')?.remove();
+  if (!appState.user || !hasResolvedAdminAccess()) {
+    return false;
+  }
+
+  const activeKey = getActiveAdminSubnavKey();
+  if (!activeKey) {
+    return false;
+  }
+
+  app.insertAdjacentHTML("afterbegin", renderAdminSubnavMarkup(activeKey));
+  return true;
+}
+
+function focusAdminDashboardSection(sectionConfig = null) {
+  if (!sectionConfig?.storageKey || !sectionConfig?.contentId) {
+    return true;
+  }
+
+  setAdminSectionOpenState(sectionConfig.storageKey, true);
+  const button = app.querySelector(`[data-admin-section-storage-key="${sectionConfig.storageKey}"]`);
+  const content = app.querySelector(`#${sectionConfig.contentId}`);
+  if (!button || !content) {
+    return false;
+  }
+
+  syncAdminCollapsibleSection(button, content, true);
+  const section = button.closest(".admin-collapsible-section");
+  scrollElementIntoViewAfterLayout(section || content, { delayMs: 180 });
+  return true;
+}
+
+function isAdminDashboardHashRoute(hash = window.location.hash || "#home") {
+  const normalizedHash = normalizeNavigationHash(hash || "#home");
+  return normalizedHash === "#admin" || normalizedHash.startsWith("#admin/");
+}
+
 function syncMobileNavigationMenu() {
   if (!mobileNavContent) {
     return;
@@ -16203,6 +16350,7 @@ function render() {
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
     syncInstallPromptBanner();
     syncMockDataBanner();
+    syncAdminSubnav();
     bindContactAdminButtons(app);
     bindContactAdminButtons(authStatus);
     bindContactAdminButtons(appFooter);
@@ -16278,7 +16426,11 @@ function render() {
     return;
   }
 
-  if (route === "admin" && !id) {
+  const adminDashboardSectionConfig = route === "admin"
+    ? getAdminDashboardSectionRouteConfig(id || "")
+    : null;
+
+  if (route === "admin" && adminDashboardSectionConfig) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
       return;
@@ -16289,7 +16441,7 @@ function render() {
         pageGroup: "profile",
         pageKey: "profile-setup",
         pageLabel: "Profile Setup",
-        pagePath: "#admin",
+        pagePath: adminDashboardSectionConfig.pagePath,
       }));
       return;
     }
@@ -16299,16 +16451,20 @@ function render() {
         pageGroup: "admin",
         pageKey: "admin-access-denied",
         pageLabel: "Admin Access Denied",
-        pagePath: "#admin",
+        pagePath: adminDashboardSectionConfig.pagePath,
       }));
       return;
     }
     renderAdminPage();
+    if (!focusAdminDashboardSection(adminDashboardSectionConfig)) {
+      renderAdminDashboardFallback();
+      return;
+    }
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
-      pageKey: "admin",
-      pageLabel: "Admin",
-      pagePath: "#admin",
+      pageKey: adminDashboardSectionConfig.pageKey,
+      pageLabel: adminDashboardSectionConfig.pageLabel,
+      pagePath: adminDashboardSectionConfig.pagePath,
     }));
     void refreshGallerySnapshots("route:admin-dashboard");
     return;
@@ -16420,6 +16576,35 @@ function render() {
       pagePath: getCommunityGrowModerationRoute(),
     }));
     void refreshGallerySnapshots("route:admin-gallery-review", subroute || "");
+    return;
+  }
+
+  if (route === "admin") {
+    if (!appState.user) {
+      renderProtectedRouteSignInPrompt();
+      return;
+    }
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: "#admin",
+      }));
+      return;
+    }
+    if (!hasResolvedAdminAccess()) {
+      renderAdminAccessDeniedScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "admin",
+        pageKey: "admin-access-denied",
+        pageLabel: "Admin Access Denied",
+        pagePath: "#admin",
+      }));
+      return;
+    }
+    renderAdminDashboardFallback();
     return;
   }
 
@@ -28843,7 +29028,7 @@ function renderAdminPage() {
   if (!appState.memberCountLoaded && !appState.memberCountRefreshPromise && appState.supabase) {
     void refreshRegisteredMemberCount().then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28852,7 +29037,7 @@ function renderAdminPage() {
   if (!appState.sourcesLoaded && !appState.sourcesRefreshPromise && appState.supabase) {
     void refreshSources({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28861,7 +29046,7 @@ function renderAdminPage() {
   if (!appState.announcementsLoaded && !appState.announcementsRefreshPromise) {
     void refreshAnnouncements({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28870,7 +29055,7 @@ function renderAdminPage() {
   if (isAdminUser() && !appState.membersLoaded && !appState.membersRefreshPromise && appState.supabase) {
     void refreshAdminMembers({ force: true, reason: "route:admin-dashboard" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28879,7 +29064,7 @@ function renderAdminPage() {
   if (isAdminUser() && !appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise && appState.supabase) {
     void refreshAdminMessages({ force: true, reason: "route:admin-user-reports" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28888,7 +29073,7 @@ function renderAdminPage() {
   if (isAdminUser() && !appState.adminCommunicationRecordsLoaded && !appState.adminCommunicationRecordsRefreshPromise && appState.supabase) {
     void refreshAdminCommunicationRecords({ force: true, reason: "route:admin-communications" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28897,7 +29082,7 @@ function renderAdminPage() {
   if (isAdminUser() && (!appState.sourceReviewLoaded || !appState.sourceReviewSessionRows.length) && !appState.sourceReviewRefreshPromise) {
     void refreshAdminSourceReviewSessionRows({ force: true, reason: "route:admin-source-review" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });
@@ -28906,7 +29091,7 @@ function renderAdminPage() {
   if (isAdminUser() && (!appState.siteVisitorAnalyticsLoaded || appState.siteVisitorAnalyticsLoadedFilter !== appState.siteVisitorAnalyticsFilter) && !appState.siteVisitorAnalyticsRefreshPromise && appState.supabase) {
     void refreshSiteVisitorAnalytics({ force: true, reason: "route:admin-site-visitor-analytics" }).then(() => {
       const currentHash = window.location.hash || "#home";
-      if (currentHash === "#admin" || currentHash === "") {
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
         safeRender();
       }
     });

@@ -10938,6 +10938,54 @@ body.theme-dark .button-secondary:hover {
     0 0 18px rgba(148, 209, 89, 0.24);
 }
 
+.admin-subnav-shell {
+  margin-bottom: var(--space-section);
+  padding: clamp(14px, 1.8vw, 18px);
+}
+
+.admin-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-subnav-link {
+  min-height: 40px;
+  padding-inline: 16px;
+  border-radius: 999px;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.admin-subnav-link.is-active,
+.admin-subnav-link.is-active:hover,
+.admin-subnav-link.is-active:focus-visible {
+  background: #94d159;
+  border-color: #94d159;
+  color: #101510;
+  box-shadow:
+    0 0 0 1px rgba(148, 209, 89, 0.22),
+    0 0 22px rgba(148, 209, 89, 0.2);
+}
+
+body.theme-dark .admin-subnav-link.is-active,
+body.theme-dark .admin-subnav-link.is-active:hover,
+body.theme-dark .admin-subnav-link.is-active:focus-visible {
+  background: #94d159;
+  border-color: #94d159;
+  color: #101510;
+}
+
+@media (max-width: 640px) {
+  .admin-subnav {
+    gap: 10px;
+  }
+
+  .admin-subnav-link {
+    width: 100%;
+  }
+}
+
 body.theme-dark .admin-cstp-button--primary {
   background: #94d159;
   color: #0f140f;
