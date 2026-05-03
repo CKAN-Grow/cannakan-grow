@@ -18193,6 +18193,8 @@ function renderHomeSecondaryInfoRowMarkup() {
         </div>
       </div>
       ${announcementMarkup}
+      ${renderHomeTestedSourcesPreviewSectionMarkup()}
+      ${renderHomeCstpOverviewSectionMarkup()}
       ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
     </div>
   `;
@@ -18507,6 +18509,185 @@ function getSourceDirectoryCstpPreview(source = {}) {
         testedTime: parseSourceDirectoryMonthYearToTime(source?.cstp?.testedDate),
       };
   }
+}
+
+function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
+  const cstpPreview = getSourceDirectoryCstpPreview(source);
+  return `
+    <article class="card home-tested-source-card">
+      <div class="home-tested-source-card-head">
+        ${renderSourceLogoMarkup(source, {
+          className: "home-tested-source-logo",
+          imageClassName: "source-profile-logo-image",
+          placeholderClassName: "source-profile-logo-placeholder",
+          alt: `${source.name} logo`,
+        })}
+        <div class="home-tested-source-card-copy">
+          <h3>${escapeHtml(source.name || "Source")}</h3>
+          <p class="home-tested-source-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
+        </div>
+      </div>
+      <div class="home-tested-source-stats">
+        <article class="home-tested-source-stat">
+          <span class="stat-label">Avg Germ Rate</span>
+          <strong>${escapeHtml(source.community?.avgRate || "—")}</strong>
+        </article>
+        <article class="home-tested-source-stat">
+          <span class="stat-label">Total Sessions</span>
+          <strong>${escapeHtml(source.community?.sessions || "—")}</strong>
+        </article>
+        <article class="home-tested-source-stat">
+          <span class="stat-label">Popularity Rank</span>
+          <strong>${escapeHtml(source.community?.rank || "—")}</strong>
+        </article>
+      </div>
+      <div class="home-tested-source-footer">
+        <div class="home-tested-source-cstp">
+          <span class="home-tested-source-cstp-label">CSTP Status</span>
+          <div class="home-tested-source-cstp-status">
+            ${cstpPreview.badgeAsset ? `
+              <img
+                src="${escapeHtml(cstpPreview.badgeAsset)}"
+                alt="${escapeHtml(cstpPreview.badgeAlt)}"
+                class="home-tested-source-cstp-badge${cstpPreview.isExpired ? " is-expired" : ""}"
+                loading="lazy"
+                decoding="async"
+              >
+            ` : ""}
+            <span class="home-tested-source-cstp-text is-${escapeHtml(cstpPreview.filterKey)}${cstpPreview.isExpired ? " is-expired" : ""}">${escapeHtml(cstpPreview.label)}</span>
+          </div>
+        </div>
+        <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
+      </div>
+    </article>
+  `;
+}
+
+function renderHomeTestedSourcesPreviewSectionMarkup() {
+  const previewCardsMarkup = getSourceDirectoryMockRecords()
+    .slice(0, 5)
+    .map((source) => renderHomeTestedSourcePreviewCardMarkup(source))
+    .join("");
+
+  return `
+    <section class="card home-tested-sources-preview-section">
+      <div class="home-tested-sources-preview-head">
+        <div>
+          <p class="eyebrow">Tested Sources</p>
+          <h2>Tested Sources</h2>
+          <p class="muted">Community-tested sources with CSTP certification status</p>
+        </div>
+        <a class="button button-secondary" href="#sources">View All Tested Sources</a>
+      </div>
+      <div class="home-tested-sources-preview-row" role="list" aria-label="Tested Sources preview">
+        ${previewCardsMarkup}
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeCstpTestingIconMarkup() {
+  return `
+    <span class="home-cstp-overview-icon home-cstp-overview-icon-glyph" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M9 3h6"></path>
+        <path d="M10 3v4l-4.6 7.18A4.4 4.4 0 0 0 9.1 21h5.8a4.4 4.4 0 0 0 3.7-6.82L14 7V3"></path>
+        <path d="M9 14h6"></path>
+        <circle cx="10" cy="16.5" r="0.8" fill="currentColor" stroke="none"></circle>
+        <circle cx="13.5" cy="17.5" r="0.8" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </span>
+  `;
+}
+
+function renderHomeCstpOverviewFeatureMarkup({
+  badgeAsset = "",
+  badgeAlt = "",
+  title = "",
+  description = "",
+  isBadge = false,
+  isExpired = false,
+  iconMarkup = "",
+} = {}) {
+  const visualMarkup = isBadge
+    ? `
+      <span class="home-cstp-overview-icon">
+        <img
+          src="${escapeHtml(badgeAsset)}"
+          alt="${escapeHtml(badgeAlt)}"
+          class="home-cstp-overview-badge${isExpired ? " is-expired" : ""}"
+          loading="lazy"
+          decoding="async"
+        >
+      </span>
+    `
+    : iconMarkup;
+
+  return `
+    <article class="home-cstp-overview-feature">
+      ${visualMarkup}
+      <div class="home-cstp-overview-feature-copy">
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderHomeCstpOverviewSectionMarkup() {
+  const featuresMarkup = [
+    renderHomeCstpOverviewFeatureMarkup({
+      badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
+      badgeAlt: "CSTP Gold Certified badge",
+      title: "Gold Certification",
+      description: "Top-tier performance (90-100%)",
+      isBadge: true,
+    }),
+    renderHomeCstpOverviewFeatureMarkup({
+      badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
+      badgeAlt: "CSTP Silver Certified badge",
+      title: "Silver Certification",
+      description: "Strong performance (85-89%)",
+      isBadge: true,
+    }),
+    renderHomeCstpOverviewFeatureMarkup({
+      title: "Controlled Testing",
+      description: "Batch-tested under controlled conditions before certification is shown publicly.",
+      iconMarkup: renderHomeCstpTestingIconMarkup(),
+    }),
+  ].join("");
+
+  const trustItemsMarkup = [
+    "Community Funded",
+    "Batch-Based Testing",
+    "No Promotions",
+    "Open & Transparent",
+  ].map((item) => `
+    <article class="home-cstp-trust-item">
+      <span class="home-cstp-trust-dot" aria-hidden="true"></span>
+      <span>${escapeHtml(item)}</span>
+    </article>
+  `).join("");
+
+  return `
+    <section class="card home-cstp-overview-section">
+      <div class="home-cstp-overview-layout">
+        <div class="home-cstp-overview-intro">
+          <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
+          <h2>Cannakan Seed Testing Program (CSTP)</h2>
+          <p class="home-cstp-overview-description">Controlled, batch-based seed testing for verified germination performance.</p>
+          <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
+        </div>
+        <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
+          ${featuresMarkup}
+        </div>
+      </div>
+      <div class="home-cstp-trust-row" role="list" aria-label="CSTP trust principles">
+        ${trustItemsMarkup}
+      </div>
+      <p class="home-cstp-overview-trust-note muted">Community data is based on member sessions. CSTP badges are earned through controlled testing.</p>
+    </section>
+  `;
 }
 
 function getSourceDirectorySortValue(source = {}, sortKey = SOURCE_DIRECTORY_DEFAULT_SORT) {
