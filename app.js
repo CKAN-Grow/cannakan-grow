@@ -17852,6 +17852,10 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         usesBadge: true,
         isMuted: false,
         expiringSoon,
+        pills: [
+          { label: "Active Certification", toneClass: "is-active" },
+          ...(expiringSoon ? [{ label: "Expiring Soon", toneClass: "is-expiring" }] : []),
+        ],
         rows: [
           { label: "Tested", value: cstp.testedDate || "Not available" },
           { label: "Valid Until", value: cstp.validUntil || "Not available" },
@@ -17869,6 +17873,10 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         usesBadge: true,
         isMuted: false,
         expiringSoon,
+        pills: [
+          { label: "Active Certification", toneClass: "is-active" },
+          ...(expiringSoon ? [{ label: "Expiring Soon", toneClass: "is-expiring" }] : []),
+        ],
         rows: [
           { label: "Tested", value: cstp.testedDate || "Not available" },
           { label: "Valid Until", value: cstp.validUntil || "Not available" },
@@ -17886,6 +17894,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         usesBadge: false,
         isMuted: false,
         expiringSoon: false,
+        pills: [],
         rows: [
           { label: "Tested", value: cstp.testedDate || "Not available" },
           { label: "Sample Size", value: cstp.sampleSize || "Not available" },
@@ -17903,11 +17912,36 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         usesBadge: false,
         isMuted: true,
         expiringSoon: false,
+        pills: [],
         rows: [
           { label: "Last Tested", value: cstp.testedDate || "Not available" },
         ],
       };
   }
+}
+
+function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
+  const toneClass = escapeHtml(cstpState.toneClass || "");
+  if (cstpState.usesBadge) {
+    const badgeLabel = cstpState.status === "silver" ? "Silver" : "Gold";
+    return `
+      <div class="source-profile-cstp-visual source-profile-cstp-visual--badge ${toneClass}" aria-hidden="true">
+        <span class="source-profile-cstp-visual-eyebrow">CSTP</span>
+        <strong>${escapeHtml(badgeLabel)}</strong>
+        <span class="source-profile-cstp-visual-caption">Certified</span>
+      </div>
+    `;
+  }
+
+  const textLabel = cstpState.status === "tested" ? "Tested" : "Expired";
+  const textCaption = cstpState.status === "tested" ? "No certification earned" : "Certification lapsed";
+  return `
+    <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${toneClass}" aria-hidden="true">
+      <span class="source-profile-cstp-visual-eyebrow">CSTP</span>
+      <strong>${escapeHtml(textLabel)}</strong>
+      <span class="source-profile-cstp-visual-caption">${escapeHtml(textCaption)}</span>
+    </div>
+  `;
 }
 
 function renderSourceProfilePage(sourceId = "") {
@@ -18032,23 +18066,32 @@ function renderSourceProfilePage(sourceId = "") {
             <h3>${escapeHtml(cstpState.heading)}</h3>
             <p class="muted">Independent validation shown after community data.</p>
           </div>
-          <div class="source-profile-cstp-state-shell">
-            ${cstpState.usesBadge
-              ? `<span class="source-profile-cstp-badge ${escapeHtml(cstpState.toneClass)}">${escapeHtml(cstpState.statusLabel)}</span>`
-              : `<span class="source-profile-cstp-text ${escapeHtml(cstpState.toneClass)}">${escapeHtml(cstpState.statusLabel)}</span>`}
-            ${cstpState.expiringSoon ? '<span class="source-profile-expiring-soon">Expiring Soon</span>' : ""}
+        </div>
+        <div class="source-profile-verification-layout">
+          <div class="source-profile-verification-visual-column">
+            ${renderSourceProfileCstpVisualMarkup(cstpState)}
           </div>
-        </div>
-        <div class="source-profile-detail-grid">
-          ${cstpState.rows.map((row) => `
-            <article class="meta-card source-profile-detail-card">
-              <span class="stat-label">${escapeHtml(row.label)}</span>
-              <strong>${escapeHtml(row.value)}</strong>
-            </article>
-          `).join("")}
-        </div>
-        <div class="source-profile-verification-actions">
-          <button type="button" class="button button-secondary" data-source-cstp-report="${escapeHtml(sourceProfile.id)}">View Full Report</button>
+          <div class="source-profile-verification-main">
+            <h4 class="source-profile-cstp-title">${escapeHtml(cstpState.statusLabel)}</h4>
+            ${cstpState.pills.length ? `
+              <div class="source-profile-cstp-state-shell">
+                ${cstpState.pills.map((pill) => `
+                  <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}">${escapeHtml(pill.label)}</span>
+                `).join("")}
+              </div>
+            ` : ""}
+            <div class="source-profile-detail-grid source-profile-detail-grid--verification">
+              ${cstpState.rows.map((row) => `
+                <article class="meta-card source-profile-detail-card">
+                  <span class="stat-label">${escapeHtml(row.label)}</span>
+                  <strong>${escapeHtml(row.value)}</strong>
+                </article>
+              `).join("")}
+            </div>
+            <div class="source-profile-verification-actions">
+              <button type="button" class="button button-secondary" data-source-cstp-report="${escapeHtml(sourceProfile.id)}">View Full Report</button>
+            </div>
+          </div>
         </div>
         <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>Certification is batch-based and time-limited.</p>
       </article>
