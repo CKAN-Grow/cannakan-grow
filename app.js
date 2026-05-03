@@ -18555,7 +18555,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         status,
         eyebrow: "CSTP Verification",
         heading: "CSTP Verification",
-        statusLabel: "CSTP Tested (No Certification Earned)",
+        statusLabel: "Tested (No Certification Earned)",
         toneClass: "is-tested",
         usesBadge: false,
         isMuted: false,
@@ -18680,7 +18680,7 @@ function getSourceDirectoryCstpPreview(source = {}) {
     case "tested":
       return {
         filterKey: "tested",
-        label: "Tested - No Certification",
+        label: "Tested (No Certification Earned)",
         badgeAsset: "",
         badgeAlt: "",
         isExpired: false,
@@ -18863,14 +18863,14 @@ function renderHomeCstpOverviewSectionMarkup() {
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
       badgeAlt: "CSTP Gold Certified badge",
       title: "CSTP Gold Certified",
-      description: "Top-tier performance (90-100%)",
+      description: "Measured germination rate of 90-100% under CSTP conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
       badgeAlt: "CSTP Silver Certified badge",
       title: "CSTP Silver Certified",
-      description: "Strong performance (85-89%)",
+      description: "Measured germination rate of 85-89% under CSTP conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
@@ -18898,7 +18898,7 @@ function renderHomeCstpOverviewSectionMarkup() {
         <div class="home-cstp-overview-intro">
           <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
           <h2>Cannakan Seed Testing Program (CSTP)</h2>
-          <p class="home-cstp-overview-description">Controlled, batch-based seed testing for measured germination results.</p>
+          <p class="home-cstp-overview-description">CSTP provides controlled, batch-based testing to measure germination performance under standardized conditions.</p>
           <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
@@ -18908,7 +18908,7 @@ function renderHomeCstpOverviewSectionMarkup() {
       <div class="home-cstp-trust-row" role="list" aria-label="CSTP trust principles">
         ${trustItemsMarkup}
       </div>
-      <p class="home-cstp-overview-trust-note muted">Community data is based on member sessions. CSTP badges are earned through controlled testing.</p>
+      <p class="home-cstp-overview-trust-note muted">Community data is based on member sessions. CSTP badges are earned through controlled testing. Certification reflects observed results and does not imply future outcomes.</p>
     </section>
   `;
 }
@@ -19286,7 +19286,7 @@ function renderSourceProfilePage(sourceId = "") {
           <div>
             <p class="eyebrow">${escapeHtml(cstpState.eyebrow)}</p>
             <h3>${escapeHtml(cstpState.heading)}</h3>
-            <p class="muted">Independent batch-specific test data shown after community data.</p>
+            <p class="muted">Controlled batch testing results shown after community data.</p>
           </div>
         </div>
         <div class="source-profile-verification-layout">
@@ -19315,7 +19315,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
         </div>
-        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased.<br>CSTP results are batch-specific, reflect measured test outcomes, and may not match future performance. Informational only.</p>
+        <p class="source-profile-cstp-trust-note">This certification reflects results from a specific tested batch.<br>Results do not guarantee future performance.</p>
       </article>
 
       <article class="card source-profile-track-record-card">
