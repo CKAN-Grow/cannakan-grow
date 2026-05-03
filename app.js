@@ -13355,28 +13355,28 @@ function renderHomeGalleryRankingsTeaser() {
   const { rankings } = teaserState;
   const rankingRows = [
     {
-      label: "#1 Monthly Grow Member",
+      label: "Most Active Grower (This Month)",
       toneClass: "is-gold",
       iconType: "member",
       entry: rankings.topMember,
       formatValue: (entry) => entry.name,
     },
     {
-      label: "This Month Leading Source",
+      label: "Highest Avg Germ Rate (This Month)",
       toneClass: "is-gold",
       iconType: "source",
       entry: rankings.topSource,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "This Month Leading Seed Variety",
+      label: "Highest Avg Germ Rate by Variety (This Month)",
       toneClass: "is-silver",
       iconType: "variety",
       entry: rankings.topVariety,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "This Month Most-used Seed Type",
+      label: "Most Used Seed Type (This Month)",
       toneClass: "is-bronze",
       iconType: "seed-type",
       entry: rankings.topSeedType,
@@ -13391,9 +13391,9 @@ function renderHomeGalleryRankingsTeaser() {
           <div class="section-title-with-icon home-leaderboard-header-main app-section-header-main">
             ${renderAppSectionHeaderIcon("community")}
             <div>
-              <p class="eyebrow">Leaderboard Preview</p>
-              <h3 id="home-gallery-rankings-title">Community Grow Rankings</h3>
-              <p class="muted home-gallery-rankings-subtitle">Approved public snapshots only, based on community session data this month.</p>
+              <p class="eyebrow">Community Insights</p>
+              <h3 id="home-gallery-rankings-title">Community Grow Insights</h3>
+              <p class="muted home-gallery-rankings-subtitle">Based on approved public session data. Results may vary.</p>
             </div>
           </div>
           <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
