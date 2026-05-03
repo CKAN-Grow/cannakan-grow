@@ -2513,6 +2513,14 @@ function navigateToHashRoute(nextHash = "#home") {
   safeRender();
 }
 
+function getCommunityGrowModerationRoute() {
+  return "#community-grow-moderation";
+}
+
+function navigateToCommunityGrowModerationRoute() {
+  navigateToHashRoute(getCommunityGrowModerationRoute());
+}
+
 function syncMobileNavigationMenu() {
   if (!mobileNavContent) {
     return;
@@ -3663,7 +3671,7 @@ function getCurrentAppPathRoute() {
     sessions: "sessions",
     "community-grow": "gallery",
     "grow-network": "network",
-    "admin/gallery-moderation": "admin/gallery-moderation",
+    "admin/gallery-moderation": "community-grow-moderation",
   })[pathRoute] || "";
 }
 
@@ -3681,7 +3689,7 @@ function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "network" || route === "new" || route === "members" || route === "profile") {
+  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile") {
     return true;
   }
 
@@ -4130,15 +4138,17 @@ function getCurrentAppRawRoute() {
   const currentHash = window.location.hash || "";
   const pathRoute = getCurrentAppPathRoute();
 
-  if (pathRoute === "admin/gallery-moderation") {
-    return pathRoute;
-  }
-
   if (currentHash && !isSupabaseAuthFragmentHash(currentHash)) {
     return currentHash.replace(/^#/, "");
   }
 
   return pathRoute || "home";
+}
+
+function isCommunityGrowModerationRawRoute(rawRoute = getCurrentAppRawRoute()) {
+  const normalizedRawRoute = String(rawRoute || "").trim().replace(/^#/, "");
+  const [route, id] = normalizedRawRoute.split("/");
+  return route === "community-grow-moderation" || (route === "admin" && id === "gallery-moderation");
 }
 
 function getAdminMessageContext() {
@@ -4175,6 +4185,11 @@ function getAdminMessageContext() {
   if (route === "sessions") {
     context.pageContext = `Sessions${routeSuffix}`;
     context.sessionId = id || "";
+    return context;
+  }
+
+  if (route === "community-grow-moderation" || (route === "admin" && id === "gallery-moderation")) {
+    context.pageContext = `Admin Community Grow Moderation${routeSuffix}`;
     return context;
   }
 
@@ -4688,7 +4703,7 @@ function updateNavState() {
     ? "home"
     : (route === "disclaimer" || route === "terms" || route === "privacy" || route === "contact"
       ? "home"
-    : (route === "admin"
+    : (route === "admin" || route === "community-grow-moderation"
       ? "admin"
       : (route === "gallery"
         ? "gallery"
@@ -4947,12 +4962,12 @@ function getCurrentSiteAnalyticsPageContext() {
   const rawRoute = getCurrentAppRawRoute();
   const [route, id] = rawRoute.split("/");
 
-  if (route === "admin" && id === "gallery-moderation") {
+  if (isCommunityGrowModerationRawRoute(rawRoute)) {
     return buildSiteAnalyticsPageContext({
       pageGroup: "admin",
       pageKey: "admin-gallery-moderation",
       pageLabel: "Admin Community Grow Moderation",
-      pagePath: "/admin/gallery-moderation",
+      pagePath: getCommunityGrowModerationRoute(),
     });
   }
   if (route === "admin") {
@@ -13717,8 +13732,9 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       });
 
       const hashRoute = window.location.hash || "";
-      const pathRoute = window.location.pathname.replace(/^\/+/, "");
-      const isGalleryRoute = hashRoute.startsWith("#gallery") || pathRoute === "admin/gallery-moderation";
+      const rawRoute = getCurrentAppRawRoute();
+      const isGalleryRoute = hashRoute.startsWith("#gallery");
+      const isModerationRoute = isCommunityGrowModerationRawRoute(rawRoute);
       const isPublicSessionRoute = hashRoute.startsWith("#sessions/public/");
       const isPublicMemberRoute = hashRoute.startsWith("#members/");
       const isGrowNetworkRoute = hashRoute.startsWith("#network");
@@ -13728,6 +13744,8 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
           targetSnapshotId,
         });
         renderGallery(targetSnapshotId);
+      } else if (isModerationRoute && previousSignature !== nextSignature) {
+        render();
       } else if ((isPublicSessionRoute || isPublicMemberRoute || isGrowNetworkRoute) && previousSignature !== nextSignature) {
         render();
       }
@@ -16208,6 +16226,18 @@ function render() {
       openAuthModal({ dismissHash: "#home" });
     });
   };
+  const renderAdminDashboardFallback = () => {
+    const adminHash = replaceLocationHashWithoutNavigation("#admin");
+    appState.currentRouteHash = adminHash;
+    updateNavState();
+    renderAdminPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "admin",
+      pageKey: "admin",
+      pageLabel: "Admin",
+      pagePath: "#admin",
+    }));
+  };
 
   if (!appState.initialized || appState.loading || !appState.authReady) {
     const shouldRenderAnnouncementDuringLoad = route === "home" || !route;
@@ -16354,7 +16384,7 @@ function render() {
     return;
   }
 
-  if (route === "admin" && id === "gallery-moderation") {
+  if (route === "community-grow-moderation" || (route === "admin" && id === "gallery-moderation")) {
     if (!appState.user) {
       renderProtectedRouteSignInPrompt();
       return;
@@ -16365,7 +16395,7 @@ function render() {
         pageGroup: "profile",
         pageKey: "profile-setup",
         pageLabel: "Profile Setup",
-        pagePath: "/admin/gallery-moderation",
+        pagePath: getCommunityGrowModerationRoute(),
       }));
       return;
     }
@@ -16375,16 +16405,19 @@ function render() {
         pageGroup: "admin",
         pageKey: "admin-access-denied",
         pageLabel: "Admin Access Denied",
-        pagePath: "/admin/gallery-moderation",
+        pagePath: getCommunityGrowModerationRoute(),
       }));
       return;
     }
-    renderGalleryReview();
+    if (!renderGalleryReview()) {
+      renderAdminDashboardFallback();
+      return;
+    }
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
       pageKey: "admin-gallery-moderation",
       pageLabel: "Admin Community Grow Moderation",
-      pagePath: "/admin/gallery-moderation",
+      pagePath: getCommunityGrowModerationRoute(),
     }));
     void refreshGallerySnapshots("route:admin-gallery-review", subroute || "");
     return;
@@ -28729,7 +28762,7 @@ function renderAdminPage() {
           </div>
         </div>
         <div class="admin-section-actions">
-          <a class="button button-primary" href="#admin/gallery-moderation">Open Community Grow Moderation</a>
+          <button type="button" class="button button-primary" data-open-community-grow-moderation="true">Open Community Grow Moderation</button>
         </div>
       </div>
     </section>
@@ -29004,6 +29037,9 @@ function renderAdminPage() {
   bindAdminFallbackContentSection();
   bindSiteVisitorAnalyticsSection();
   bindMessageBoardImageFallbacks(app);
+  app.querySelector('[data-open-community-grow-moderation="true"]')?.addEventListener("click", () => {
+    navigateToCommunityGrowModerationRoute();
+  });
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
@@ -30874,7 +30910,123 @@ function renderGallery(targetSnapshotId = "") {
 
 function renderGalleryReview() {
   document.title = "Community Grow Moderation";
-  renderGallery();
+  if (!templates.galleryReview) {
+    return false;
+  }
+
+  app.replaceChildren(cloneTemplate(templates.galleryReview));
+  const pendingList = app.querySelector("#gallery-review-pending-list");
+  const approvedList = app.querySelector("#gallery-review-approved-list");
+  if (!pendingList || !approvedList) {
+    return false;
+  }
+
+  const pendingSnapshots = getAdminReviewPendingSnapshots();
+  const approvedSnapshots = sortGallerySnapshotsNewestFirst(
+    getGallerySnapshotsForDisplay().filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved"),
+  );
+
+  if (!pendingSnapshots.length) {
+    pendingList.innerHTML = `
+      <div class="empty-state gallery-empty-state">
+        <p>No pending snapshots to review.</p>
+      </div>
+    `;
+  } else {
+    pendingSnapshots.forEach((snapshot) => {
+      const item = document.createElement("article");
+      item.className = "gallery-review-card";
+      item.dataset.gallerySnapshotId = snapshot.id;
+      const details = getGallerySnapshotFeedDetails(snapshot);
+      const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+      const isMockReviewSnapshot = isMockGalleryReviewSnapshot(snapshot);
+      const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
+      item.innerHTML = `
+        <div class="gallery-review-media">
+          ${renderGallerySnapshotMediaMarkup(snapshot, details)}
+        </div>
+        <div class="gallery-review-body">
+          <div class="gallery-card-top">
+            <div>
+              <strong>${escapeHtml(snapshot.title)}</strong>
+              <p>${escapeHtml(getGallerySnapshotSubmittedDateTimeLabel(snapshot))}</p>
+            </div>
+            <div class="gallery-review-status-stack">
+              ${isMockReviewSnapshot ? '<span class="gallery-review-status-badge is-dev-mock">DEV MOCK</span>' : ""}
+              <span class="gallery-review-status-badge is-pending">Pending Review</span>
+              <span class="gallery-card-rate">${Math.max(0, Number(snapshot.successPercent) || 0)}%</span>
+            </div>
+          </div>
+          <div class="gallery-review-meta-grid">
+            <span class="gallery-card-chip">${escapeHtml(`ID ${snapshot.id}`)}</span>
+            <span class="gallery-card-chip">${escapeHtml(publicDetails.systemLabel)}</span>
+            <span class="gallery-card-chip">${escapeHtml(publicDetails.sourceLabel)}</span>
+            <span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>
+            <span class="gallery-card-chip">${escapeHtml(publicDetails.seedTypeLabel)}</span>
+            <span class="gallery-card-chip">${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds`)}</span>
+          </div>
+          ${sharedProfileMarkup ? `<div class="gallery-review-profile-row">${sharedProfileMarkup}</div>` : ""}
+          <div class="gallery-review-actions">
+            <button type="button" class="button button-secondary" data-gallery-review-preview="${escapeHtml(snapshot.id)}">View Session / Preview</button>
+            <button type="button" class="button button-primary gallery-admin-approve" data-gallery-approve="${escapeHtml(snapshot.id)}">Approve</button>
+            <button type="button" class="button button-secondary gallery-admin-reject" data-gallery-reject="${escapeHtml(snapshot.id)}">Reject</button>
+          </div>
+        </div>
+      `;
+      pendingList.appendChild(item);
+    });
+  }
+
+  approvedList.classList.add("gallery-grid");
+  if (!approvedSnapshots.length) {
+    approvedList.innerHTML = `
+      <div class="empty-state gallery-empty-state">
+        <p>No approved Community Grow snapshots are available yet.</p>
+      </div>
+    `;
+  } else {
+    approvedSnapshots.forEach((snapshot) => {
+      const card = document.createElement("article");
+      card.className = "gallery-card";
+      card.dataset.gallerySnapshotId = snapshot.id;
+      card.tabIndex = -1;
+      card.innerHTML = renderGallerySnapshotCardMarkup(snapshot, {
+        allowOwnerManagement: false,
+        alwaysShowPublicSessionAction: true,
+        showFollowAction: false,
+      });
+      approvedList.appendChild(card);
+    });
+  }
+
+  app.querySelectorAll("[data-gallery-review-preview]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openGalleryReviewPreview(button.dataset.galleryReviewPreview);
+    });
+  });
+  app.querySelectorAll("[data-gallery-approve]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await approveGalleryReviewSnapshot(button.dataset.galleryApprove);
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not approve this snapshot.");
+      }
+    });
+  });
+  app.querySelectorAll("[data-gallery-reject]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await rejectGalleryReviewSnapshot(button.dataset.galleryReject);
+        renderGalleryReview();
+      } catch (error) {
+        window.alert(error.message || "Could not reject this snapshot.");
+      }
+    });
+  });
+  bindGallerySnapshotCardInteractions(approvedList, approvedSnapshots, () => renderGalleryReview());
+  bindMessageBoardImageFallbacks(app);
+  return true;
 }
 
 function renderRecentSessions(container, recentSessions, allSessions, options = {}) {
