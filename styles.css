@@ -4608,6 +4608,8 @@ body.theme-dark .contact-reason-card.is-active {
   min-height: 320px;
   overflow: hidden;
   background: rgba(7, 12, 10, 0.98);
+  display: flex;
+  align-items: stretch;
 }
 
 .home-announcement-card-visual-shell--fallback {
@@ -4637,7 +4639,92 @@ body.theme-dark .contact-reason-card.is-active {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to right, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.7) 100%);
+  background:
+    linear-gradient(180deg, rgba(4, 8, 6, 0.08) 0%, rgba(4, 8, 6, 0.24) 42%, rgba(4, 8, 6, 0.86) 100%),
+    linear-gradient(90deg, rgba(4, 8, 6, 0.1) 0%, rgba(4, 8, 6, 0.02) 34%, rgba(4, 8, 6, 0.46) 100%);
+}
+
+.home-announcement-card-feed-panel {
+  position: absolute;
+  inset: auto 18px 18px 18px;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(10, 16, 12, 0.8) 0%, rgba(10, 16, 12, 0.92) 100%);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+}
+
+.home-announcement-card-feed-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.home-announcement-card-feed-label {
+  margin: 0;
+  color: #b8ef84;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.home-announcement-card-feed-title {
+  margin: 0;
+  color: #f5faf2;
+  font-size: clamp(1.15rem, 1.8vw, 1.55rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.home-announcement-card-feed-caption {
+  display: grid;
+  gap: 10px;
+}
+
+.home-announcement-card-feed-caption .home-announcement-card-caption {
+  color: rgba(231, 241, 226, 0.9);
+  max-width: 42ch;
+  line-height: 1.58;
+  -webkit-line-clamp: 4;
+}
+
+.home-announcement-card-feed-caption .home-announcement-card-caption--joke {
+  max-width: 42ch;
+  gap: 10px;
+}
+
+.home-announcement-card-feed-caption .home-announcement-card-caption-line {
+  gap: 3px;
+}
+
+.home-announcement-card-feed-caption .home-announcement-card-caption-kicker {
+  color: rgba(184, 239, 132, 0.8);
+}
+
+.home-announcement-card-feed-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.home-announcement-card-feed-date {
+  margin: 0;
+  color: rgba(189, 204, 192, 0.74);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.home-announcement-card-feed-actions {
+  display: flex;
+  align-items: center;
 }
 
 .admin-announcement-card-image,
@@ -4681,7 +4768,7 @@ body.theme-dark .contact-reason-card.is-active {
   width: 33.333%;
   min-width: 0;
   display: grid;
-  gap: 22px;
+  gap: 18px;
   align-content: center;
   padding: clamp(28px, 3.4vw, 42px);
 }
@@ -4689,6 +4776,10 @@ body.theme-dark .contact-reason-card.is-active {
 .home-announcement-card-copy {
   display: grid;
   gap: 14px;
+}
+
+.home-announcement-card-copy--static {
+  max-width: 26ch;
 }
 
 .home-announcement-card.is-fallback .home-announcement-card-copy {
@@ -4714,10 +4805,17 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-announcement-card-copy h3 {
-  max-width: 16ch;
+  max-width: 14ch;
   font-size: clamp(1.8rem, 2.5vw, 2.4rem);
   line-height: 1.02;
   letter-spacing: -0.02em;
+}
+
+.home-announcement-card-static-text {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.75;
+  max-width: 30ch;
 }
 
 .home-announcement-card.is-fallback .home-announcement-card-copy h3 {
@@ -8407,6 +8505,11 @@ body.theme-dark .contact-reason-card.is-active {
   .home-announcement-card-media {
     min-height: 240px;
     height: clamp(220px, 42vw, 280px);
+  }
+
+  .home-announcement-card-feed-panel {
+    inset: auto 14px 14px 14px;
+    padding: 14px 15px;
   }
 
   .home-announcement-card-visual-shell {
@@ -19131,6 +19234,20 @@ body.theme-dark .home-announcement-card-date {
 
 body.theme-dark .home-announcement-card-label {
   color: rgba(196, 210, 198, 0.78);
+}
+
+body.theme-dark .home-announcement-card-static-text,
+body.theme-dark .home-announcement-card-feed-date {
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .home-announcement-card-feed-panel {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: linear-gradient(180deg, rgba(10, 16, 12, 0.8) 0%, rgba(10, 16, 12, 0.94) 100%);
+}
+
+body.theme-dark .home-announcement-card-feed-caption .home-announcement-card-caption {
+  color: #f3f7f1;
 }
 
 body.theme-dark .admin-source-logo {

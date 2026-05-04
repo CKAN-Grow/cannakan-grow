@@ -174,12 +174,8 @@ const CANNAKAN_FACTS = Object.freeze([
 ]);
 const DEFAULT_GROW_JOKES = JOKES;
 const DEFAULT_GROW_FACTS = CANNAKAN_FACTS;
-const HOME_ANNOUNCEMENT_ROTATION_SEQUENCE = Object.freeze(["joke", "hint", "hint", "hint", "fact"]);
-const HOME_ANNOUNCEMENT_ROTATION_DURATION_MS = Object.freeze({
-  joke: 20000,
-  hint: 25000,
-  fact: 30000,
-});
+const HOME_ANNOUNCEMENT_ROTATION_MIN_MS = 6000;
+const HOME_ANNOUNCEMENT_ROTATION_MAX_MS = 8000;
 const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 420;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
@@ -1020,6 +1016,13 @@ const appState = {
   fallbackContentAdminMessage: "",
   homeAnnouncementRotationTimeoutId: 0,
   homeAnnouncementRotationFadeTimeoutId: 0,
+  homeAnnouncementFeedItems: [],
+  homeAnnouncementFeedSignature: "",
+  homeAnnouncementFeedIndex: 0,
+  homeAnnouncementRotationPaused: false,
+  homeAnnouncementTouchStartX: 0,
+  homeAnnouncementTouchStartY: 0,
+  homeAnnouncementTouchStartTime: 0,
   adminMessages: [],
   adminMessagesLoaded: false,
   adminMessagesError: "",
@@ -1361,6 +1364,13 @@ function resetSessionScopedAppState() {
   appState.announcementsRefreshPromise = null;
   appState.announcementAdminMessage = "";
   appState.fallbackContentAdminMessage = "";
+  appState.homeAnnouncementFeedItems = [];
+  appState.homeAnnouncementFeedSignature = "";
+  appState.homeAnnouncementFeedIndex = 0;
+  appState.homeAnnouncementRotationPaused = false;
+  appState.homeAnnouncementTouchStartX = 0;
+  appState.homeAnnouncementTouchStartY = 0;
+  appState.homeAnnouncementTouchStartTime = 0;
   appState.adminMessages = [];
   appState.adminMessagesLoaded = false;
   appState.adminMessagesError = "";
@@ -23144,6 +23154,75 @@ function getAppHintItems() {
   })).filter((entry) => entry.text && entry.key);
 }
 
+function shuffleItems(items = []) {
+  const nextItems = [...items];
+  for (let index = nextItems.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
+  }
+  return nextItems;
+}
+
+function buildHomeAnnouncementFeedSignature() {
+  return [
+    ...getFallbackJokeItems(),
+    ...getAppHintItems(),
+    ...getFallbackFactItems(),
+  ].map((item) => item.key).join("|");
+}
+
+function buildHomeAnnouncementFeedItems() {
+  const groupedItems = {
+    joke: shuffleItems(getFallbackJokeItems()),
+    hint: shuffleItems(getAppHintItems()),
+    fact: shuffleItems(getFallbackFactItems()),
+  };
+  const feedItems = [];
+  let previousType = "";
+
+  while (groupedItems.joke.length || groupedItems.hint.length || groupedItems.fact.length) {
+    const availableTypes = Object.entries(groupedItems)
+      .filter(([, items]) => items.length);
+    const nonRepeatingTypes = availableTypes.filter(([type]) => type !== previousType);
+    const candidateTypes = nonRepeatingTypes.length ? nonRepeatingTypes : availableTypes;
+    const [nextType] = shuffleItems(candidateTypes)
+      .sort((leftEntry, rightEntry) => rightEntry[1].length - leftEntry[1].length)[0] || [];
+    if (!nextType || !groupedItems[nextType]?.length) {
+      break;
+    }
+
+    const nextItem = groupedItems[nextType].shift();
+    if (!nextItem) {
+      break;
+    }
+
+    feedItems.push(nextItem);
+    previousType = nextType;
+  }
+
+  return feedItems;
+}
+
+function ensureHomeAnnouncementFeedItems() {
+  const nextSignature = buildHomeAnnouncementFeedSignature();
+  if (
+    !Array.isArray(appState.homeAnnouncementFeedItems)
+    || !appState.homeAnnouncementFeedItems.length
+    || appState.homeAnnouncementFeedSignature !== nextSignature
+  ) {
+    appState.homeAnnouncementFeedItems = buildHomeAnnouncementFeedItems();
+    appState.homeAnnouncementFeedSignature = nextSignature;
+    appState.homeAnnouncementFeedIndex = 0;
+  }
+
+  return appState.homeAnnouncementFeedItems;
+}
+
+function getRandomHomeAnnouncementRotationDelayMs() {
+  const spread = Math.max(0, HOME_ANNOUNCEMENT_ROTATION_MAX_MS - HOME_ANNOUNCEMENT_ROTATION_MIN_MS);
+  return HOME_ANNOUNCEMENT_ROTATION_MIN_MS + Math.floor(Math.random() * (spread + 1));
+}
+
 function getHomeAnnouncementFallbackLabel(type = "") {
   return ({
     joke: "Cannakan Tip",
@@ -23218,11 +23297,12 @@ function buildHomeAnnouncementFallbackCardData(fallbackContent = null, reference
 }
 
 function getInitialRotatingFallbackCardData(referenceDate = new Date()) {
-  const initialType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[0] || "joke";
-  const initialItem = selectRandomAnnouncementFallbackItem(initialType, "");
+  const feedItems = ensureHomeAnnouncementFeedItems();
+  const initialItem = feedItems[Math.max(0, appState.homeAnnouncementFeedIndex || 0)] || feedItems[0]
+    || selectRandomAnnouncementFallbackItem("hint", "");
   return buildHomeAnnouncementFallbackCardData(initialItem, referenceDate, {
     enableRotation: true,
-    sequenceIndex: 0,
+    sequenceIndex: Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0),
   });
 }
 
@@ -23516,6 +23596,10 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const labelText = isFallback
     ? (cardData.fallbackLabel || getHomeAnnouncementFallbackLabel(cardData.fallbackType))
     : "Latest from Cannakan®";
+  const captionMarkup = renderHomeAnnouncementCaptionMarkup(cardData);
+  const footerText = isFallback ? "" : (cardData.footerText || formatAnnouncementDateLabel(cardData.dateValue));
+  const hasFeedDate = Boolean(String(footerText || "").trim());
+  const hasFeedAction = Boolean(String(cardData.linkUrl || "").trim());
   const imageMarkup = `
       <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}" data-home-announcement-visual-shell="true">
         <img
@@ -23527,12 +23611,25 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
           data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
         >
         <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
+        <div class="home-announcement-card-feed-panel">
+          <div class="home-announcement-card-feed-copy">
+            <p class="home-announcement-card-feed-label">${escapeHtml(labelText)}</p>
+            <h4 class="home-announcement-card-feed-title">${escapeHtml(cardData.title)}</h4>
+            <div class="home-announcement-card-feed-caption">${captionMarkup}</div>
+          </div>
+          <div class="home-announcement-card-feed-footer"${!hasFeedDate && !hasFeedAction ? " hidden" : ""}>
+            <p class="home-announcement-card-feed-date"${hasFeedDate ? "" : " hidden"}>${escapeHtml(footerText)}</p>
+            ${cardData.linkUrl ? `
+              <div class="home-announcement-card-feed-actions">
+                <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
+                  <span>${escapeHtml(normalizeAnnouncementButtonText(cardData.buttonText || ""))}</span>
+                </a>
+              </div>
+            ` : ""}
+          </div>
+        </div>
       </div>
   `;
-  const captionMarkup = renderHomeAnnouncementCaptionMarkup(cardData);
-  const footerText = isFallback ? "" : (cardData.footerText || formatAnnouncementDateLabel(cardData.dateValue));
-  const hasFooterDate = Boolean(String(footerText || "").trim());
-  const hasFooterActions = Boolean(String(cardData.linkUrl || "").trim());
 
   return `
     <section
@@ -23547,20 +23644,9 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
         ${imageMarkup}
       </div>
       <div class="home-announcement-card-body">
-        <div class="home-announcement-card-copy">
-          <p class="home-announcement-card-label" data-home-announcement-label="true">${escapeHtml(labelText)}</p>
-          <h3 id="home-announcement-title" data-home-announcement-title="true">${escapeHtml(cardData.title)}</h3>
-          <div data-home-announcement-caption="true">${captionMarkup}</div>
-        </div>
-        <div class="home-announcement-card-footer"${!hasFooterDate && !hasFooterActions ? " hidden" : ""}>
-          <p class="home-announcement-card-date" data-home-announcement-date="true"${hasFooterDate ? "" : " hidden"}>${escapeHtml(footerText)}</p>
-          ${cardData.linkUrl ? `
-            <div class="home-announcement-card-actions">
-              <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
-                <span>${escapeHtml(normalizeAnnouncementButtonText(cardData.buttonText || ""))}</span>
-              </a>
-            </div>
-          ` : ""}
+        <div class="home-announcement-card-copy home-announcement-card-copy--static">
+          <h3 id="home-announcement-title">Cannakan Feed</h3>
+          <p class="home-announcement-card-static-text">A mix of tips, insights, and light humor to keep you informed and improving every session.</p>
         </div>
       </div>
     </section>
@@ -24932,6 +25018,44 @@ function stopHomeAnnouncementFallbackRotation() {
   }
 }
 
+function stepHomeAnnouncementFeedIndex(step = 1) {
+  const feedItems = ensureHomeAnnouncementFeedItems();
+  if (!feedItems.length) {
+    appState.homeAnnouncementFeedIndex = 0;
+    return null;
+  }
+
+  const currentIndex = Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0);
+  appState.homeAnnouncementFeedIndex = ((currentIndex + step) % feedItems.length + feedItems.length) % feedItems.length;
+  return feedItems[appState.homeAnnouncementFeedIndex] || feedItems[0] || null;
+}
+
+function replaceHomeAnnouncementFeedCard(scope = app, step = 1) {
+  const currentCard = scope?.querySelector?.('[data-home-announcement-card="true"]');
+  if (!(currentCard instanceof HTMLElement) || getLatestActiveAnnouncement()) {
+    stopHomeAnnouncementFallbackRotation();
+    return;
+  }
+
+  currentCard.classList.add("is-transitioning");
+  appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
+    const nextItem = stepHomeAnnouncementFeedIndex(step);
+    if (!nextItem) {
+      stopHomeAnnouncementFallbackRotation();
+      return;
+    }
+
+    currentCard.outerHTML = renderHomeAnnouncementCard(
+      buildHomeAnnouncementFallbackCardData(nextItem, new Date(), {
+        enableRotation: true,
+        sequenceIndex: Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0),
+      }),
+    );
+    bindMessageBoardImageFallbacks(scope);
+    bindHomeAnnouncementFallbackRotation(scope);
+  }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+}
+
 function bindHomeAnnouncementFallbackRotation(scope = app) {
   stopHomeAnnouncementFallbackRotation();
   if (!scope?.querySelector) {
@@ -24947,48 +25071,78 @@ function bindHomeAnnouncementFallbackRotation(scope = app) {
     return;
   }
 
-  const state = {
-    sequenceIndex: Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0),
-    lastShownKeys: {
-      joke: card.dataset.homeAnnouncementItemType === "joke" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
-      hint: card.dataset.homeAnnouncementItemType === "hint" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
-      fact: card.dataset.homeAnnouncementItemType === "fact" ? String(card.dataset.homeAnnouncementItemKey || "") : "",
-    },
-  };
+  ensureHomeAnnouncementFeedItems();
+  appState.homeAnnouncementFeedIndex = Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0);
 
   const scheduleNext = () => {
-    const activeType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[state.sequenceIndex] || "joke";
-    const activeDelay = HOME_ANNOUNCEMENT_ROTATION_DURATION_MS[activeType] || 5000;
+    if (appState.homeAnnouncementRotationPaused) {
+      return;
+    }
+
+    if (appState.homeAnnouncementRotationTimeoutId) {
+      window.clearTimeout(appState.homeAnnouncementRotationTimeoutId);
+      appState.homeAnnouncementRotationTimeoutId = 0;
+    }
+    const activeDelay = getRandomHomeAnnouncementRotationDelayMs();
     appState.homeAnnouncementRotationTimeoutId = window.setTimeout(() => {
-      const currentCard = scope.querySelector('[data-home-announcement-card="true"]');
-      if (!(currentCard instanceof HTMLElement) || getLatestActiveAnnouncement()) {
+      if (getLatestActiveAnnouncement() || appState.homeAnnouncementRotationPaused) {
         stopHomeAnnouncementFallbackRotation();
         return;
       }
 
-      currentCard.classList.add("is-transitioning");
-      appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
-        const nextSequenceIndex = (state.sequenceIndex + 1) % HOME_ANNOUNCEMENT_ROTATION_SEQUENCE.length;
-        const nextType = HOME_ANNOUNCEMENT_ROTATION_SEQUENCE[nextSequenceIndex] || "joke";
-        const nextItem = selectRandomAnnouncementFallbackItem(nextType, state.lastShownKeys[nextType] || "");
-        if (!nextItem) {
-          stopHomeAnnouncementFallbackRotation();
-          return;
-        }
-
-        state.sequenceIndex = nextSequenceIndex;
-        state.lastShownKeys[nextType] = nextItem.key || "";
-        currentCard.outerHTML = renderHomeAnnouncementCard(
-          buildHomeAnnouncementFallbackCardData(nextItem, new Date(), {
-            enableRotation: true,
-            sequenceIndex: nextSequenceIndex,
-          }),
-        );
-        bindMessageBoardImageFallbacks(scope);
-        scheduleNext();
-      }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+      replaceHomeAnnouncementFeedCard(scope, 1);
     }, activeDelay);
   };
+
+  if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) {
+    card.addEventListener("mouseenter", () => {
+      appState.homeAnnouncementRotationPaused = true;
+      stopHomeAnnouncementFallbackRotation();
+    });
+
+    card.addEventListener("mouseleave", () => {
+      appState.homeAnnouncementRotationPaused = false;
+      scheduleNext();
+    });
+  }
+
+  card.addEventListener("touchstart", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) {
+      return;
+    }
+
+    appState.homeAnnouncementTouchStartX = touch.clientX;
+    appState.homeAnnouncementTouchStartY = touch.clientY;
+    appState.homeAnnouncementTouchStartTime = Date.now();
+    appState.homeAnnouncementRotationPaused = true;
+    stopHomeAnnouncementFallbackRotation();
+  }, { passive: true });
+
+  card.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches?.[0];
+    if (!touch) {
+      appState.homeAnnouncementRotationPaused = false;
+      scheduleNext();
+      return;
+    }
+
+    const deltaX = touch.clientX - appState.homeAnnouncementTouchStartX;
+    const deltaY = touch.clientY - appState.homeAnnouncementTouchStartY;
+    const elapsed = Date.now() - appState.homeAnnouncementTouchStartTime;
+    appState.homeAnnouncementRotationPaused = false;
+    if (Math.abs(deltaX) >= 48 && Math.abs(deltaY) <= 60 && elapsed <= 900) {
+      replaceHomeAnnouncementFeedCard(scope, deltaX < 0 ? 1 : -1);
+      return;
+    }
+
+    scheduleNext();
+  }, { passive: true });
+
+  card.addEventListener("touchcancel", () => {
+    appState.homeAnnouncementRotationPaused = false;
+    scheduleNext();
+  }, { passive: true });
 
   scheduleNext();
 }
