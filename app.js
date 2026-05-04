@@ -13975,10 +13975,13 @@ function getAppSectionHeaderIconName(iconType = "overview") {
   }
 }
 
-function renderAppSectionHeaderIcon(iconType = "overview") {
+function renderAppSectionHeaderIcon(iconType = "overview", options = {}) {
+  const {
+    className = "",
+  } = options;
   return renderAppIconMarkup(getAppSectionHeaderIconName(iconType), {
     variant: "plate",
-    className: "section-title-icon",
+    className: ["section-title-icon", className].filter(Boolean).join(" "),
   });
 }
 
@@ -20131,14 +20134,10 @@ function renderHomeCstpTestingIconMarkup() {
 }
 
 function renderPremiumSectionHeaderIcon(iconName = "info") {
-  return `
-    <span class="cg-icon icon-static cg-icon--plate section-title-icon premium-icon-plate premium-icon-inner-glow premium-icon-highlight" aria-hidden="true">
-      ${renderAppIconSvgMarkup(iconName, {
-        decorative: true,
-        className: "premium-icon-svg",
-      })}
-    </span>
-  `;
+  return renderAppIconMarkup(iconName, {
+    variant: "plate",
+    className: "section-title-icon",
+  });
 }
 
 function renderHomeCstpOverviewFeatureMarkup({
@@ -32231,17 +32230,9 @@ function renderGallery(targetSnapshotId = "") {
     adminSection.innerHTML = `
       <div class="section-heading gallery-inline-review-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
-          <span class="section-title-icon gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M8 4.75h8" />
-              <path d="M14.75 3h-5.5a1.25 1.25 0 0 0-1.25 1.25v.5h8V4.25A1.25 1.25 0 0 0 14.75 3Z" />
-              <path d="M7.5 4.75H6.75A1.75 1.75 0 0 0 5 6.5v11.75C5 19.216 5.784 20 6.75 20h10.5c.966 0 1.75-.784 1.75-1.75V6.5c0-.966-.784-1.75-1.75-1.75H16.5" />
-              <path d="M8.5 10.25h5.25" />
-              <path d="M8.5 13.25h3.5" />
-              <path d="M13.75 15.5 15 16.75l2.75-3" />
-              <circle cx="16" cy="15.5" r="3.5"></circle>
-            </svg>
-          </span>
+          ${renderAppSectionHeaderIcon("review", {
+            className: `gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}`,
+          })}
           <div class="gallery-inline-review-copy">
             <p class="eyebrow">Admin Review</p>
             <div class="gallery-inline-review-title-row">
