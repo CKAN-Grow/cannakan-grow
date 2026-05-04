@@ -1782,14 +1782,13 @@ function getDesktopInstallBrowserFamily() {
 
 function getDesktopInstallFallbackText() {
   const platformLabel = getDesktopPlatformLabel();
-  const browserFamily = getDesktopInstallBrowserFamily();
-  if (browserFamily === "chrome") {
-    return `On ${platformLabel}, use the install icon in the address bar or open the Chrome menu and choose Install app.`;
+  if (platformLabel === "Mac") {
+    return "On Mac, use Chrome or Edge and click the install icon in the address bar or browser menu.";
   }
-  if (browserFamily === "edge") {
-    return `On ${platformLabel}, use the install icon in the address bar or open the Edge menu and choose Install app.`;
+  if (platformLabel === "Windows") {
+    return "On Windows, use Chrome or Edge and click the install icon in the address bar or browser menu.";
   }
-  return `On ${platformLabel}, install is best supported in Chrome or Edge. Look for an install option in the address bar or browser menu if available.`;
+  return "On desktop, use Chrome or Edge and click the install icon in the address bar or browser menu.";
 }
 
 function isIPhoneSafariInstallCandidate() {
@@ -19095,70 +19094,137 @@ function renderHomeInstallInfoCardMarkup() {
   const installPreviewTotalSeeds = 50;
   const installPreviewGerminatedSeeds = 49;
   const installPreviewPartitionBars = [98, 96];
+  const installPreviewMarkup = showDesktopInstallState
+    ? `
+      <div class="home-install-monitor">
+        <div class="home-install-monitor-frame">
+          <div class="home-install-monitor-screen">
+            <div class="home-install-monitor-screen-head">
+              <span class="home-install-monitor-screen-dot"></span>
+              <span>Cannakan® Grow</span>
+            </div>
+            <div class="home-install-monitor-dashboard">
+              <div class="home-install-monitor-stat">
+                <div class="home-install-progress-ring home-install-monitor-stat-ring is-animated">
+                  <span>${installPreviewSuccessRate}%</span>
+                </div>
+                <p class="home-install-monitor-stat-label">Germination</p>
+              </div>
+              <div class="home-install-monitor-metrics">
+                <div class="home-install-monitor-metric">
+                  <span>Stage</span>
+                  <strong>Germination</strong>
+                </div>
+                <div class="home-install-monitor-metric">
+                  <span>Seeds</span>
+                  <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
+                </div>
+                <div class="home-install-monitor-metric">
+                  <span>Time Elapsed</span>
+                  <strong>${escapeHtml(installPreviewElapsed)}</strong>
+                </div>
+              </div>
+            </div>
+            <div class="home-install-monitor-progress-panel">
+              <div class="home-install-monitor-stage-timeline">
+                <div class="home-install-phone-stage-segment stage-soaking is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-germinating is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-planted is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-completed is-current">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+              </div>
+              <div class="home-install-monitor-partition-graph">
+                ${installPreviewPartitionBars.map((progressPercent) => {
+                  return `
+                    <div class="home-install-phone-partition-row">
+                      <div class="home-install-phone-partition-track">
+                        <span class="home-install-phone-partition-fill" style="width:${progressPercent}%"></span>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="home-install-monitor-stand"></div>
+        <div class="home-install-monitor-base"></div>
+      </div>
+    `
+    : `
+      <div class="phone-mock home-install-phone home-install-phone-mockup">
+        <div class="home-install-phone-notch"></div>
+        <div class="phone-screen home-install-phone-screen">
+          <div class="home-install-phone-screen-head">
+            <span class="home-install-phone-screen-dot"></span>
+            <span>Cannakan® Grow</span>
+          </div>
+          <div class="home-install-phone-stat">
+            <div class="home-install-progress-ring home-install-phone-stat-ring is-animated">
+              <span>${installPreviewSuccessRate}%</span>
+            </div>
+            <p class="home-install-phone-stat-label">Germination</p>
+          </div>
+          <div class="home-install-phone-metrics">
+            <div class="home-install-phone-metric">
+              <span>Stage</span>
+              <strong>Germination</strong>
+            </div>
+            <div class="home-install-phone-metric">
+              <span>Seeds</span>
+              <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
+            </div>
+            <div class="home-install-phone-metric">
+              <span>Time Elapsed</span>
+              <strong>${escapeHtml(installPreviewElapsed)}</strong>
+            </div>
+          </div>
+          <div class="home-install-phone-actions">
+            <div class="home-install-phone-progress-panel">
+              <div class="home-install-phone-stage-timeline">
+                <div class="home-install-phone-stage-segment stage-soaking is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-germinating is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-planted is-complete">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+                <div class="home-install-phone-stage-segment stage-completed is-current">
+                  <span class="home-install-phone-stage-fill"></span>
+                </div>
+              </div>
+              <div class="home-install-phone-partition-graph">
+                ${installPreviewPartitionBars.map((progressPercent) => {
+                  return `
+                    <div class="home-install-phone-partition-row">
+                      <div class="home-install-phone-partition-track">
+                        <span class="home-install-phone-partition-fill" style="width:${progressPercent}%"></span>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
 
   return `
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
         <div class="home-install-card-body">
           <div class="home-install-card-preview" aria-hidden="true">
-            <div class="phone-mock home-install-phone home-install-phone-mockup">
-              <div class="home-install-phone-notch"></div>
-              <div class="phone-screen home-install-phone-screen">
-                <div class="home-install-phone-screen-head">
-                  <span class="home-install-phone-screen-dot"></span>
-                  <span>Cannakan® Grow</span>
-                </div>
-                <div class="home-install-phone-stat">
-                  <div class="home-install-progress-ring home-install-phone-stat-ring is-animated">
-                    <span>${installPreviewSuccessRate}%</span>
-                  </div>
-                  <p class="home-install-phone-stat-label">Germination</p>
-                </div>
-                <div class="home-install-phone-metrics">
-                  <div class="home-install-phone-metric">
-                    <span>Stage</span>
-                    <strong>Germination</strong>
-                  </div>
-                  <div class="home-install-phone-metric">
-                    <span>Seeds</span>
-                    <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
-                  </div>
-                  <div class="home-install-phone-metric">
-                    <span>Time Elapsed</span>
-                    <strong>${escapeHtml(installPreviewElapsed)}</strong>
-                  </div>
-                </div>
-                <div class="home-install-phone-actions">
-                  <div class="home-install-phone-progress-panel">
-                    <div class="home-install-phone-stage-timeline">
-                      <div class="home-install-phone-stage-segment stage-soaking is-complete">
-                        <span class="home-install-phone-stage-fill"></span>
-                      </div>
-                      <div class="home-install-phone-stage-segment stage-germinating is-complete">
-                        <span class="home-install-phone-stage-fill"></span>
-                      </div>
-                      <div class="home-install-phone-stage-segment stage-planted is-complete">
-                        <span class="home-install-phone-stage-fill"></span>
-                      </div>
-                      <div class="home-install-phone-stage-segment stage-completed is-current">
-                        <span class="home-install-phone-stage-fill"></span>
-                      </div>
-                    </div>
-                    <div class="home-install-phone-partition-graph">
-                      ${installPreviewPartitionBars.map((progressPercent) => {
-                        return `
-                          <div class="home-install-phone-partition-row">
-                            <div class="home-install-phone-partition-track">
-                              <span class="home-install-phone-partition-fill" style="width:${progressPercent}%"></span>
-                            </div>
-                          </div>
-                        `;
-                      }).join("")}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            ${installPreviewMarkup}
           </div>
           <div class="home-install-card-content">
             <div class="home-install-card-copy">
@@ -19166,7 +19232,7 @@ function renderHomeInstallInfoCardMarkup() {
                 <p class="eyebrow">Install App</p>
                 <h3 id="home-install-card-title">Install the Grow App</h3>
                 <p class="muted home-install-card-description">${escapeHtml(showDesktopInstallState
-                  ? `Install Cannakan Grow on your ${desktopPlatformLabel.toLowerCase()} computer for a faster desktop app experience.`
+                  ? "Install Cannakan Grow on your desktop for a faster desktop app experience."
                   : "Track sessions, receive notifications, and stay connected on the go.")}</p>
               </div>
             </div>

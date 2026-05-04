@@ -4841,6 +4841,11 @@ body.theme-dark .contact-reason-card.is-active {
   align-self: center;
 }
 
+.home-install-card.is-desktop .home-install-card-preview {
+  flex: 0 1 clamp(320px, 38vw, 440px);
+  align-self: stretch;
+}
+
 .phone-mock,
 .home-install-phone,
 .home-install-phone-mockup {
@@ -5358,6 +5363,193 @@ body.theme-dark .contact-reason-card.is-active {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.home-install-monitor {
+  display: grid;
+  justify-items: center;
+  width: min(100%, clamp(300px, 37vw, 430px));
+  gap: 0;
+}
+
+.home-install-monitor-frame {
+  position: relative;
+  width: 100%;
+  border-radius: 24px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(61, 72, 65, 0.92) 0%, rgba(29, 34, 31, 0.98) 100%);
+  box-shadow:
+    0 24px 40px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(148, 209, 89, 0.18),
+    0 0 24px rgba(148, 209, 89, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.home-install-monitor-frame::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 23px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  box-shadow: inset 0 0 28px rgba(148, 209, 89, 0.06);
+  pointer-events: none;
+}
+
+.home-install-monitor-screen {
+  display: grid;
+  gap: 14px;
+  min-height: 250px;
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 42%),
+    linear-gradient(180deg, #121915 0%, #0a0f0c 100%);
+  color: #f3f8f0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -16px 26px rgba(0, 0, 0, 0.28);
+}
+
+.home-install-monitor-screen-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(231, 245, 214, 0.94);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-install-monitor-screen-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #94d159;
+  box-shadow: 0 0 16px rgba(148, 209, 89, 0.72);
+}
+
+.home-install-monitor-dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(150px, 0.9fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-install-monitor-stat {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  min-height: 160px;
+}
+
+.home-install-monitor-stat-ring {
+  width: 158px;
+  height: 158px;
+  box-shadow:
+    inset 0 0 24px rgba(148, 209, 89, 0.14),
+    0 0 24px rgba(148, 209, 89, 0.12);
+}
+
+.home-install-monitor-stat-ring span {
+  font-size: 3rem;
+  font-weight: 800;
+}
+
+.home-install-monitor-stat-label {
+  margin: 0;
+  color: #b8ef84;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-install-monitor-metrics {
+  display: grid;
+  gap: 12px;
+}
+
+.home-install-monitor-metric {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-height: 66px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.home-install-monitor-metric span {
+  color: rgba(189, 204, 192, 0.78);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.home-install-monitor-metric strong {
+  color: #f5faf2;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.home-install-monitor-progress-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.home-install-monitor-stage-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-install-monitor-stage-timeline .home-install-phone-stage-fill {
+  height: 11px;
+}
+
+.home-install-monitor-partition-graph {
+  display: grid;
+  gap: 8px;
+}
+
+.home-install-monitor-partition-graph .home-install-phone-partition-track {
+  height: 9px;
+}
+
+.home-install-monitor-stand {
+  width: 22%;
+  height: 58px;
+  margin-top: -2px;
+  border-radius: 0 0 18px 18px;
+  background:
+    linear-gradient(180deg, rgba(91, 93, 100, 0.82) 0%, rgba(28, 29, 34, 0.98) 100%);
+  clip-path: polygon(34% 0, 66% 0, 60% 100%, 40% 100%);
+  box-shadow:
+    0 12px 20px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.home-install-monitor-base {
+  width: 44%;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(128, 130, 136, 0.4) 0%, rgba(31, 32, 37, 0.96) 100%);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.26),
+    0 0 18px rgba(148, 209, 89, 0.08);
+}
+
 .home-install-card-platform {
   display: grid;
   gap: 6px;
@@ -5426,6 +5618,33 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-install-card-directions {
     grid-template-columns: 1fr;
+  }
+
+  .home-install-card.is-desktop .home-install-card-preview {
+    flex: 0 1 auto;
+    width: 100%;
+    align-self: center;
+  }
+
+  .home-install-monitor {
+    width: min(100%, 420px);
+  }
+
+  .home-install-monitor-screen {
+    min-height: 0;
+  }
+
+  .home-install-monitor-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .home-install-monitor-stat {
+    min-height: 0;
+  }
+
+  .home-install-monitor-stat-ring {
+    width: 132px;
+    height: 132px;
   }
 }
 
