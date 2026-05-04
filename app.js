@@ -1740,6 +1740,58 @@ function isIOSDevice() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent || "");
 }
 
+function isAndroidDevice() {
+  return /android/i.test(window.navigator.userAgent || "");
+}
+
+function isDesktopDevice() {
+  const userAgent = window.navigator.userAgent || "";
+  const platform = String(window.navigator.userAgentData?.platform || window.navigator.platform || "").toLowerCase();
+  const looksMobile = Boolean(
+    window.navigator.userAgentData?.mobile
+    || /mobile|tablet|iphone|ipad|ipod|android/i.test(userAgent),
+  );
+  const looksDesktopPlatform = /win|mac|linux|x11|cros/i.test(platform || userAgent);
+  return !looksMobile && looksDesktopPlatform;
+}
+
+function getDesktopPlatformLabel() {
+  const platform = String(window.navigator.userAgentData?.platform || window.navigator.platform || window.navigator.userAgent || "").toLowerCase();
+  if (/win/i.test(platform)) {
+    return "Windows";
+  }
+  if (/mac/i.test(platform)) {
+    return "Mac";
+  }
+  if (/linux|x11|cros/i.test(platform)) {
+    return "Linux";
+  }
+  return "Desktop";
+}
+
+function getDesktopInstallBrowserFamily() {
+  const userAgent = getUserAgent();
+  if (/edg\//.test(userAgent)) {
+    return "edge";
+  }
+  if (/chrome|chromium|brave|opr\//.test(userAgent) && !/edg\//.test(userAgent)) {
+    return "chrome";
+  }
+  return "other";
+}
+
+function getDesktopInstallFallbackText() {
+  const platformLabel = getDesktopPlatformLabel();
+  const browserFamily = getDesktopInstallBrowserFamily();
+  if (browserFamily === "chrome") {
+    return `On ${platformLabel}, use the install icon in the address bar or open the Chrome menu and choose Install app.`;
+  }
+  if (browserFamily === "edge") {
+    return `On ${platformLabel}, use the install icon in the address bar or open the Edge menu and choose Install app.`;
+  }
+  return `On ${platformLabel}, install is best supported in Chrome or Edge. Look for an install option in the address bar or browser menu if available.`;
+}
+
 function isIPhoneSafariInstallCandidate() {
   const userAgent = getUserAgent();
   const isIos = isIOSDevice();
@@ -18973,11 +19025,18 @@ function renderHomeInstallInfoCardMarkup() {
   const mode = getInstallPromptMode();
   const isInstalled = isStandaloneAppDisplay();
   const isIOS = isIOSDevice();
-  const cardStateClass = isInstalled ? "is-installed" : "";
+  const isAndroid = isAndroidDevice();
+  const isDesktop = isDesktopDevice();
+  const showDesktopInstallState = isDesktop && !isIOS && !isAndroid;
+  const desktopPlatformLabel = getDesktopPlatformLabel();
+  const cardStateClass = [
+    isInstalled ? "is-installed" : "",
+    showDesktopInstallState ? "is-desktop" : "",
+  ].filter(Boolean).join(" ");
   const hasDeferredPrompt = !isIOS && mode === "prompt";
   const isUnsupported = !isInstalled && !isIOS && !hasDeferredPrompt;
   const buttonLabel = isInstalled
-    ? "App Installed ✓"
+    ? "App Installed"
     : isIOS
       ? "Use Share → Add to Home Screen"
       : hasDeferredPrompt
@@ -18992,15 +19051,45 @@ function renderHomeInstallInfoCardMarkup() {
         ? "is-active"
         : "is-disabled";
   const helperText = isInstalled
-    ? "Cannakan Grow is already installed on this device."
+    ? "Installed on this device."
     : isIOS
       ? "Use Safari on iPhone or iPad to add Cannakan Grow to your home screen."
+      : showDesktopInstallState && !hasDeferredPrompt
+        ? getDesktopInstallFallbackText()
       : hasDeferredPrompt
         ? "Install directly from this browser for a faster full-screen experience."
         : "Install becomes available on supported browsers like Chrome.";
-  const footerText = isUnsupported
+  const footerText = isUnsupported && !showDesktopInstallState
     ? "Install available on supported browsers like Chrome. Support varies by device."
     : helperText;
+  const installDirectionsMarkup = showDesktopInstallState
+    ? `
+      <section class="home-install-card-platform">
+        <h4 class="home-install-card-platform-title">Desktop</h4>
+        <ol class="home-install-card-steps">
+          <li>Click Install Now</li>
+          <li>Confirm install in your browser</li>
+          <li>Open Cannakan Grow from your desktop or app menu</li>
+        </ol>
+      </section>
+    `
+    : `
+      <section class="home-install-card-platform">
+        <h4 class="home-install-card-platform-title">iPhone</h4>
+        <ol class="home-install-card-steps">
+          <li>Open in Safari</li>
+          <li>Tap Share</li>
+          <li>Add to Home Screen</li>
+        </ol>
+      </section>
+      <section class="home-install-card-platform">
+        <h4 class="home-install-card-platform-title">Android</h4>
+        <ol class="home-install-card-steps">
+          <li>Open in Chrome</li>
+          <li>Tap Install App or Add to Home Screen</li>
+        </ol>
+      </section>
+    `;
   const installPreviewElapsed = formatInstallPreviewElapsed(2, 2);
   const installPreviewSuccessRate = 98;
   const installPreviewTotalSeeds = 50;
@@ -19076,25 +19165,13 @@ function renderHomeInstallInfoCardMarkup() {
               <div class="home-install-card-copy-block">
                 <p class="eyebrow">Install App</p>
                 <h3 id="home-install-card-title">Install the Grow App</h3>
-                <p class="muted home-install-card-description">Track sessions, receive notifications, and stay connected on the go.</p>
+                <p class="muted home-install-card-description">${escapeHtml(showDesktopInstallState
+                  ? `Install Cannakan Grow on your ${desktopPlatformLabel.toLowerCase()} computer for a faster desktop app experience.`
+                  : "Track sessions, receive notifications, and stay connected on the go.")}</p>
               </div>
             </div>
             <div class="home-install-card-directions">
-              <section class="home-install-card-platform">
-                <h4 class="home-install-card-platform-title">iPhone</h4>
-                <ol class="home-install-card-steps">
-                  <li>Open in Safari</li>
-                  <li>Tap Share</li>
-                  <li>Add to Home Screen</li>
-                </ol>
-              </section>
-              <section class="home-install-card-platform">
-                <h4 class="home-install-card-platform-title">Android</h4>
-                <ol class="home-install-card-steps">
-                  <li>Open in Chrome</li>
-                  <li>Tap Install App or Add to Home Screen</li>
-                </ol>
-              </section>
+              ${installDirectionsMarkup}
             </div>
             <div class="home-install-card-actions">
               <button
