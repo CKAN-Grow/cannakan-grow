@@ -13638,10 +13638,12 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
     className = "",
     label = "",
     decorative = true,
+    interactive = false,
   } = options;
   const premiumClassNames = getPremiumIconClassNames(iconName, variant);
   const wrapperClasses = [
     "cg-icon",
+    interactive ? "icon-interactive" : "icon-static",
     variant === "plate" ? "cg-icon--plate" : "cg-icon--plain",
     ...premiumClassNames.wrapper,
     className,
@@ -13669,8 +13671,14 @@ function hydrateAppIconSlots(root = document) {
     const variant = String(slot.dataset.iconVariant || "plain").trim() === "plate" ? "plate" : "plain";
     const label = String(slot.dataset.iconLabel || "").trim();
     const decorative = slot.dataset.iconDecorative !== "false";
+    const interactive = slot.dataset.iconInteractive === "true";
     const premiumClassNames = getPremiumIconClassNames(iconName, variant);
-    slot.classList.add("cg-icon", variant === "plate" ? "cg-icon--plate" : "cg-icon--plain", ...premiumClassNames.wrapper);
+    slot.classList.add(
+      "cg-icon",
+      interactive ? "icon-interactive" : "icon-static",
+      variant === "plate" ? "cg-icon--plate" : "cg-icon--plain",
+      ...premiumClassNames.wrapper,
+    );
     slot.innerHTML = renderAppIconSvgMarkup(iconName, {
       decorative: true,
       extraSvgClasses: premiumClassNames.svg,
@@ -14125,7 +14133,7 @@ function renderGalleryLikeButtonMarkup(snapshot) {
       aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow snapshot" : "Like this Community Grow snapshot")}"
       ${isMock ? "disabled" : ""}
     >
-      ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon" })}
+      ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true })}
       <span class="gallery-like-count">${escapeHtml(String(likeCount))}</span>
     </button>
   `;
@@ -19918,7 +19926,7 @@ function renderHomeCstpTestingIconMarkup() {
 
 function renderPremiumSectionHeaderIcon(iconName = "info") {
   return `
-    <span class="cg-icon cg-icon--plate section-title-icon premium-icon-plate premium-icon-inner-glow premium-icon-highlight" aria-hidden="true">
+    <span class="cg-icon icon-static cg-icon--plate section-title-icon premium-icon-plate premium-icon-inner-glow premium-icon-highlight" aria-hidden="true">
       ${renderAppIconSvgMarkup(iconName, {
         decorative: true,
         className: "premium-icon-svg",
