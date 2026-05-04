@@ -19362,6 +19362,22 @@ function renderHomeAdminUtilityCardMarkup() {
   `;
 }
 
+function renderHomeExploreDividerMarkup({
+  title = "",
+  subtitle = "",
+  labelledBy = "",
+} = {}) {
+  const dividerTitleId = String(labelledBy || "").trim() || `home-explore-divider-${crypto.randomUUID()}`;
+  return `
+    <section class="home-explore-divider" aria-labelledby="${escapeHtml(dividerTitleId)}">
+      <div class="home-explore-divider-copy">
+        <h3 id="${escapeHtml(dividerTitleId)}">${escapeHtml(title)}</h3>
+        <p class="home-explore-divider-subtitle">${escapeHtml(subtitle)}</p>
+      </div>
+    </section>
+  `;
+}
+
 function renderHomeSecondaryInfoRowMarkup() {
   const announcementMarkup = renderHomeAnnouncementCard(
     getHomeAnnouncementCardData(new Date()),
@@ -19369,20 +19385,26 @@ function renderHomeSecondaryInfoRowMarkup() {
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   return `
     <div class="home-dashboard-secondary-row">
-      <section class="home-explore-divider" aria-labelledby="home-explore-title">
-        <div class="home-explore-divider-copy">
-          <h3 id="home-explore-title">CSTP: Cannakan Seed Testing Program</h3>
-          <p class="home-explore-divider-subtitle">Standardized testing insights and verified results under controlled conditions.</p>
-        </div>
-      </section>
       <div class="home-dashboard-secondary-row-top">
-        ${renderHomeGalleryRankingsTeaser()}
+        <div class="home-dashboard-secondary-main-column">
+          ${renderHomeExploreDividerMarkup({
+            title: "Community Grow Insights",
+            subtitle: "Explore approved community session data, grow activity, and member-driven insights.",
+            labelledBy: "home-community-grow-insights-divider-title",
+          })}
+          ${renderHomeGalleryRankingsTeaser()}
+        </div>
         <div class="home-dashboard-secondary-side-column">
           ${renderHomeInstallInfoCardMarkup()}
         </div>
       </div>
-      ${announcementMarkup}
+      ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
       ${renderHomeTestedSourcesPreviewSectionMarkup()}
+      ${renderHomeExploreDividerMarkup({
+        title: "CSTP: Cannakan Seed Testing Program",
+        subtitle: "Standardized testing insights and verified results under controlled KAN® System conditions.",
+        labelledBy: "home-cstp-divider-title",
+      })}
       ${renderHomeCstpOverviewSectionMarkup()}
       ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
     </div>

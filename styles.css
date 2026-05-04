@@ -4159,12 +4159,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 0;
 }
 
+.home-dashboard-secondary-main-column,
+.home-dashboard-secondary-row-bottom {
+  display: grid;
+  gap: var(--space-section);
+  align-items: start;
+}
+
 .home-explore-divider {
   display: grid;
   gap: 10px;
-  margin-top: clamp(10px, 2vw, 24px);
-  margin-bottom: calc(var(--space-section) * -0.28);
+  margin: 0;
   padding-top: clamp(12px, 2.2vw, 20px);
+  padding-bottom: 2px;
 }
 
 .home-explore-divider::before {
@@ -4209,12 +4216,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: var(--space-section);
   align-content: start;
-}
-
-.home-dashboard-secondary-row-bottom {
-  display: grid;
-  gap: var(--space-section);
-  align-items: start;
 }
 
 .home-dashboard-secondary-row-top .home-gallery-rankings-card,
@@ -13542,9 +13543,8 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-explore-divider {
-    margin-top: 10px;
-    margin-bottom: -2px;
     padding-top: 10px;
+    padding-bottom: 0;
   }
 
   .home-dashboard-secondary-row-top {
