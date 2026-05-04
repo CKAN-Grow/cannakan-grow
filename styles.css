@@ -4676,15 +4676,6 @@ body.theme-dark .contact-reason-card.is-active {
   display: none;
 }
 
-.home-announcement-card-image-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(4, 8, 6, 0.08) 0%, rgba(4, 8, 6, 0.24) 42%, rgba(4, 8, 6, 0.86) 100%),
-    linear-gradient(90deg, rgba(4, 8, 6, 0.1) 0%, rgba(4, 8, 6, 0.02) 34%, rgba(4, 8, 6, 0.46) 100%);
-}
-
 .home-announcement-card-feed-panel {
   position: absolute;
   inset: auto 18px 18px 18px;

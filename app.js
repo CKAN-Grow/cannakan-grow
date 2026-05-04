@@ -23652,7 +23652,6 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
           data-message-board-image="true"
           data-fallback-src="${escapeHtml(MESSAGE_BOARD_IMAGE_FALLBACK_URL)}"
         >
-        <div class="home-announcement-card-image-overlay" aria-hidden="true"></div>
       </div>
   `;
 
