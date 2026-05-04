@@ -23516,7 +23516,8 @@ function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
       body: announcement.body || "Latest update from Cannakan.",
       imageUrl: announcementImageUrl || activeSlidePath,
       linkUrl: announcement.instagramPostUrl || "",
-      buttonText: normalizeAnnouncementButtonText(announcement.buttonText || ""),
+      buttonText: String(announcement.buttonText || "").trim(),
+      hasButtonText: Boolean(String(announcement.buttonText || "").trim()),
       dateValue: referenceDate.toISOString(),
       configuredDisplayMode: "announcement",
       effectiveDisplayMode: "announcement",
@@ -23533,6 +23534,7 @@ function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
     imageUrl: activeSlidePath,
     linkUrl: "",
     buttonText: "",
+    hasButtonText: false,
     dateValue: referenceDate.toISOString(),
     configuredDisplayMode: "default-slides",
     effectiveDisplayMode: "default-slides",
@@ -23642,27 +23644,50 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const bodyText = isDynamicContent
     ? (cardData.body || "Latest update from Cannakan.")
     : "A mix of tips, insights, and light humor to keep you informed and improving every session.";
+  const announcementButtonLabel = isDynamicContent && cardData.hasButtonText
+    ? normalizeAnnouncementButtonText(cardData.buttonText || "")
+    : "";
   const staticPanelMarkup = `
-    <div class="home-announcement-card-copy home-announcement-card-copy--static">
-      <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
-      <p class="home-announcement-card-static-kicker">Small insights. Better outcomes.</p>
-      <div class="home-announcement-card-static-sections">
-        <section class="home-announcement-card-static-section" aria-label="What this is">
-          <h4>What this is</h4>
-          <p>A rotating stream of insights, features, and ideas designed to help you improve every session.</p>
-        </section>
-        <section class="home-announcement-card-static-section" aria-label="Why it matters">
-          <h4>Why it matters</h4>
-          <p>Better decisions come from better information.</p>
-          <p>The more you track and review, the more consistent your results become.</p>
-        </section>
-        <section class="home-announcement-card-static-section" aria-label="How to use it">
-          <h4>How to use it</h4>
-          <p>Check in regularly.</p>
-          <p>Apply what stands out.</p>
-          <p>Refine your process over time.</p>
-        </section>
+    <div class="home-announcement-card-panel home-announcement-card-panel--static">
+      <div class="home-announcement-card-copy home-announcement-card-copy--static">
+        <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
+        <p class="home-announcement-card-static-kicker">Small insights. Better outcomes.</p>
+        <div class="home-announcement-card-static-sections">
+          <section class="home-announcement-card-static-section" aria-label="What this is">
+            <h4>What this is</h4>
+            <p>A rotating stream of insights, features, and ideas designed to help you improve every session.</p>
+          </section>
+          <section class="home-announcement-card-static-section" aria-label="Why it matters">
+            <h4>Why it matters</h4>
+            <p>Better decisions come from better information.</p>
+            <p>The more you track and review, the more consistent your results become.</p>
+          </section>
+          <section class="home-announcement-card-static-section" aria-label="How to use it">
+            <h4>How to use it</h4>
+            <p>Check in regularly.</p>
+            <p>Apply what stands out.</p>
+            <p>Refine your process over time.</p>
+          </section>
+        </div>
       </div>
+    </div>
+  `;
+  const announcementPanelMarkup = `
+    <div class="home-announcement-card-panel home-announcement-card-panel--announcement">
+      <div class="home-announcement-card-copy home-announcement-card-copy--announcement">
+        <p class="home-announcement-card-mode-label">Announcement</p>
+        <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
+        <p class="home-announcement-card-body-text">${escapeHtml(bodyText)}</p>
+      </div>
+      ${cardData.linkUrl && announcementButtonLabel ? `
+        <div class="home-announcement-card-footer">
+          <div class="home-announcement-card-actions">
+            <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
+              <span>${escapeHtml(announcementButtonLabel)}</span>
+            </a>
+          </div>
+        </div>
+      ` : ""}
     </div>
   `;
   const imageMarkup = `
@@ -23691,23 +23716,7 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
         ${imageMarkup}
       </div>
       <div class="home-announcement-card-body">
-        ${isDynamicContent
-      ? `
-          <div class="home-announcement-card-copy">
-            <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
-            <p class="home-announcement-card-body-text">${escapeHtml(bodyText)}</p>
-          </div>
-        `
-      : staticPanelMarkup}
-        ${cardData.linkUrl ? `
-          <div class="home-announcement-card-footer">
-            <div class="home-announcement-card-actions">
-              <a class="button button-secondary home-announcement-card-link" href="${escapeHtml(cardData.linkUrl)}" target="_blank" rel="noreferrer">
-                <span>${escapeHtml(normalizeAnnouncementButtonText(cardData.buttonText || ""))}</span>
-              </a>
-            </div>
-          </div>
-        ` : ""}
+        ${isDynamicContent ? announcementPanelMarkup : staticPanelMarkup}
       </div>
     </section>
   `;

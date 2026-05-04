@@ -4808,13 +4808,42 @@ body.theme-dark .contact-reason-card.is-active {
   padding: clamp(28px, 3.4vw, 42px);
 }
 
+.home-announcement-card-panel {
+  display: grid;
+  gap: 18px;
+  align-content: center;
+  min-height: 100%;
+  animation: home-announcement-panel-fade 240ms ease;
+}
+
+.home-announcement-card-panel--static {
+  max-width: 26ch;
+}
+
+.home-announcement-card-panel--announcement {
+  max-width: 28ch;
+}
+
 .home-announcement-card-copy {
   display: grid;
   gap: 14px;
 }
 
 .home-announcement-card-copy--static {
-  max-width: 26ch;
+  max-width: 100%;
+}
+
+.home-announcement-card-copy--announcement {
+  gap: 12px;
+}
+
+.home-announcement-card-mode-label {
+  margin: 0;
+  color: rgba(189, 204, 192, 0.74);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .home-announcement-card-static-kicker {
@@ -4893,6 +4922,16 @@ body.theme-dark .contact-reason-card.is-active {
   font-size: 1rem;
   line-height: 1.72;
   max-width: 30ch;
+}
+
+@keyframes home-announcement-panel-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .home-announcement-card.is-fallback .home-announcement-card-copy h3 {
@@ -19327,6 +19366,10 @@ body.theme-dark .home-announcement-card-feed-date {
 
 body.theme-dark .home-announcement-card-static-kicker {
   color: rgba(214, 224, 214, 0.88);
+}
+
+body.theme-dark .home-announcement-card-mode-label {
+  color: rgba(189, 204, 192, 0.74);
 }
 
 body.theme-dark .home-announcement-card-static-section h4 {
