@@ -13758,6 +13758,55 @@ function upgradeLegacySectionTitleIcons(root = document) {
   });
 }
 
+function normalizeSectionHeaderLayouts(root = document) {
+  if (!root || typeof root.querySelectorAll !== "function") {
+    return;
+  }
+
+  root.querySelectorAll(".section-title-with-icon.app-section-header-main").forEach((header) => {
+    if (!(header instanceof HTMLElement) || header.dataset.sectionHeaderNormalized === "true") {
+      return;
+    }
+
+    const icon = Array.from(header.children).find((child) => (
+      child instanceof HTMLElement
+      && (child.classList.contains("section-title-icon") || child.classList.contains("cg-icon"))
+    )) || null;
+    const content = Array.from(header.children).find((child) => child instanceof HTMLElement && child !== icon) || null;
+    if (!(icon instanceof HTMLElement) || !(content instanceof HTMLElement)) {
+      return;
+    }
+
+    const directChildren = Array.from(content.children).filter((child) => child instanceof HTMLElement);
+    if (!directChildren.length) {
+      return;
+    }
+
+    const titleStack = document.createElement("div");
+    titleStack.className = "section-header-title-stack";
+    const descriptionStack = document.createElement("div");
+    descriptionStack.className = "section-header-description-stack";
+
+    directChildren.forEach((child) => {
+      if (child.matches(".eyebrow, h1, h2, h3, h4, h5, .admin-collapsible-title, .app-section-header-title")) {
+        titleStack.appendChild(child);
+        return;
+      }
+      descriptionStack.appendChild(child);
+    });
+
+    if (!titleStack.children.length) {
+      return;
+    }
+
+    content.replaceWith(titleStack);
+    if (descriptionStack.children.length) {
+      header.appendChild(descriptionStack);
+    }
+    header.dataset.sectionHeaderNormalized = "true";
+  });
+}
+
 function getAppSectionHeaderIconName(iconType = "overview") {
   switch (iconType) {
     case "install":
@@ -16666,6 +16715,9 @@ function render() {
     upgradeLegacySectionTitleIcons(app);
     upgradeLegacySectionTitleIcons(authStatus);
     upgradeLegacySectionTitleIcons(appFooter);
+    normalizeSectionHeaderLayouts(app);
+    normalizeSectionHeaderLayouts(authStatus);
+    normalizeSectionHeaderLayouts(appFooter);
     syncDebugUiVisibility(app);
     syncInstallPromptBanner();
     syncMockDataBanner();

@@ -1900,7 +1900,7 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .section-title-with-icon {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 18px;
   min-width: 0;
@@ -2293,8 +2293,22 @@ body.theme-dark .spotlight-stat strong {
   width: 100%;
   flex: 1 1 360px;
   min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: clamp(16px, 2vw, 20px);
+  row-gap: 8px;
   align-items: center;
-  gap: clamp(16px, 2vw, 20px);
+}
+
+.section-header-title-stack {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
 }
 
 .app-section-header-main > div {
@@ -2305,6 +2319,7 @@ body.theme-dark .spotlight-stat strong {
   justify-content: center;
 }
 
+.section-header-title-stack > .eyebrow,
 .app-section-header-main > div > .eyebrow {
   width: auto;
   margin: 0;
@@ -2314,6 +2329,13 @@ body.theme-dark .spotlight-stat strong {
   line-height: 1.1;
 }
 
+.section-header-title-stack > h1,
+.section-header-title-stack > h2,
+.section-header-title-stack > h3,
+.section-header-title-stack > h4,
+.section-header-title-stack > h5,
+.section-header-title-stack > .admin-collapsible-title,
+.section-header-title-stack > .app-section-header-title,
 .app-section-header-main > div > h1,
 .app-section-header-main > div > h2,
 .app-section-header-main > div > h3,
@@ -2331,6 +2353,22 @@ body.theme-dark .spotlight-stat strong {
   text-wrap: balance;
 }
 
+.section-header-description-stack {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.section-header-description-stack > * {
+  margin: 0;
+}
+
+.section-header-description-stack > p:not(.eyebrow),
+.section-header-description-stack > .admin-collapsible-description,
+.section-header-description-stack > .app-section-header-subtitle,
+.section-header-description-stack > .dashboard-subtitle,
 .app-section-header-main > div > p:not(.eyebrow),
 .app-section-header-main > div > .admin-collapsible-description,
 .app-section-header-main > div > .app-section-header-subtitle,
@@ -2344,11 +2382,14 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .app-section-header-main .section-title-icon {
+  grid-column: 1;
+  grid-row: 1;
   width: 78px;
   height: 78px;
   flex: 0 0 78px;
   padding: 10px;
   border-radius: 20px;
+  align-self: center;
 }
 
 .app-section-header > :not(.app-section-header-main) {
@@ -2362,7 +2403,8 @@ body.theme-dark .spotlight-stat strong {
   }
 
   .app-section-header-main {
-    gap: 14px;
+    column-gap: 14px;
+    row-gap: 8px;
   }
 
   .app-section-header-main .section-title-icon {
