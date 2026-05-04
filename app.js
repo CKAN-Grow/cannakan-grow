@@ -19368,8 +19368,8 @@ function renderHomeSecondaryInfoRowMarkup() {
     <div class="home-dashboard-secondary-row">
       <section class="home-explore-divider" aria-labelledby="home-explore-title">
         <div class="home-explore-divider-copy">
-          <h3 id="home-explore-title">Explore</h3>
-          <p class="home-explore-divider-subtitle">Discover insights, tools, and community data to improve your results.</p>
+          <h3 id="home-explore-title">CSTP: Cannakan Seed Testing Program</h3>
+          <p class="home-explore-divider-subtitle">Standardized testing insights and verified results under controlled conditions.</p>
         </div>
       </section>
       <div class="home-dashboard-secondary-row-top">
