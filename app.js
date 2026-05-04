@@ -20244,9 +20244,11 @@ function renderHomeCstpOverviewSectionMarkup() {
               <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
             </div>
           </div>
-          <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
-          <div class="home-cstp-coming-soon" role="note" aria-label="CSTP coming soon status">
-            <strong class="home-cstp-coming-soon-title">COMING SOON</strong>
+          <div class="home-cstp-overview-cta">
+            <div class="home-cstp-coming-soon" role="note" aria-label="CSTP coming soon status">
+              <strong class="home-cstp-coming-soon-title">COMING SOON</strong>
+            </div>
+            <a class="button button-secondary home-cstp-overview-button" href="#sources">Learn More About CSTP</a>
           </div>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
