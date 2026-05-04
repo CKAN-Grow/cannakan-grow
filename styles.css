@@ -4802,31 +4802,37 @@ body.theme-dark .contact-reason-card.is-active {
   flex: 0 0 33.333%;
   width: 33.333%;
   min-width: 0;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
   gap: 18px;
-  align-content: center;
-  padding: clamp(28px, 3.4vw, 42px);
+  padding: 24px;
 }
 
 .home-announcement-card-panel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 18px;
-  align-content: center;
+  align-items: stretch;
   min-height: 100%;
+  width: 100%;
   animation: home-announcement-panel-fade 240ms ease;
 }
 
 .home-announcement-card-panel--static {
-  max-width: 26ch;
+  max-width: none;
 }
 
 .home-announcement-card-panel--announcement {
-  max-width: 28ch;
+  max-width: none;
 }
 
 .home-announcement-card-copy {
   display: grid;
   gap: 14px;
+  width: 100%;
 }
 
 .home-announcement-card-copy--static {
