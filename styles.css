@@ -8238,6 +8238,69 @@ body.theme-dark .contact-reason-card.is-active {
   align-items: start;
 }
 
+.admin-announcement-preview-section {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-announcement-preview-head {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-announcement-preview-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-announcement-preview-toggle-button {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(109, 124, 113, 0.18);
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.2;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.admin-announcement-preview-toggle-button.is-active {
+  color: var(--ink);
+  border-color: rgba(94, 163, 60, 0.34);
+  background: rgba(148, 209, 89, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(94, 163, 60, 0.08);
+}
+
+.admin-announcement-live-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-announcement-live-preview .home-announcement-card {
+  min-height: 284px;
+}
+
+.admin-announcement-live-preview .home-announcement-card-body {
+  min-height: 284px;
+}
+
+.admin-announcement-live-preview .home-announcement-card-static-sections {
+  gap: 14px;
+}
+
+.admin-announcement-live-preview .home-announcement-card-static-section p,
+.admin-announcement-live-preview .home-announcement-card-body-text {
+  font-size: 0.94rem;
+}
+
 .admin-announcement-toggle-row {
   display: flex;
   align-items: center;
@@ -8641,6 +8704,15 @@ body.theme-dark .contact-reason-card.is-active {
   .admin-announcement-card-media {
     width: 100%;
     height: 200px;
+  }
+
+  .admin-announcement-preview-toggle {
+    flex-direction: column;
+  }
+
+  .admin-announcement-preview-toggle-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .admin-message-board-image-preview-grid {
@@ -19508,6 +19580,19 @@ body.theme-dark .admin-announcement-card-title {
 body.theme-dark .admin-announcement-card-meta,
 body.theme-dark .admin-announcement-card-link-row {
   color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-announcement-preview-toggle-button {
+  border-color: rgba(111, 122, 116, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(189, 204, 192, 0.82);
+}
+
+body.theme-dark .admin-announcement-preview-toggle-button.is-active {
+  color: #f3f7f1;
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.08);
 }
 
 body.theme-dark .admin-fallback-content-stat-value {

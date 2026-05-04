@@ -1677,6 +1677,7 @@ installRuntimeErrorGuards();
 
 function safeRender() {
   try {
+    stopAdminAnnouncementPreviewRotation();
     render();
   } catch (error) {
     reportAppError(error, "Render failed");
@@ -23502,29 +23503,33 @@ function clearStoredFallbackContent() {
   }
 }
 
-function getHomeAnnouncementCardData(referenceDate = new Date()) {
-  const slideIndex = Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0);
-  const announcement = getLatestActiveAnnouncement();
+function createHomeAnnouncementCardData({
+  announcement = null,
+  referenceDate = new Date(),
+  slideIndex = 0,
+} = {}) {
+  const normalizedSlideIndex = Math.max(0, Number(slideIndex) || 0);
   ensureHomeAnnouncementFeedItems();
-  const activeSlidePath = getHomeAnnouncementSlidePathForIndex(slideIndex);
+  const activeSlidePath = getHomeAnnouncementSlidePathForIndex(normalizedSlideIndex);
   const loadedSlideCount = getLoadedHomeAnnouncementSlidePaths().length;
   const canRotateSlides = (loadedSlideCount || DEFAULT_ANNOUNCEMENT_SLIDE_PATHS.length) > 1;
   if (announcement) {
     const announcementImageUrl = normalizeMediaUrl(announcement.imageUrl || "");
+    const buttonText = String(announcement.buttonText || "").trim();
     return {
       title: announcement.title || "Latest from Cannakan",
       body: announcement.body || "Latest update from Cannakan.",
       imageUrl: announcementImageUrl || activeSlidePath,
-      linkUrl: announcement.instagramPostUrl || "",
-      buttonText: String(announcement.buttonText || "").trim(),
-      hasButtonText: Boolean(String(announcement.buttonText || "").trim()),
+      linkUrl: normalizeExternalUrl(announcement.instagramPostUrl || ""),
+      buttonText,
+      hasButtonText: Boolean(buttonText),
       dateValue: referenceDate.toISOString(),
       configuredDisplayMode: "announcement",
       effectiveDisplayMode: "announcement",
       contentMode: "dynamic",
       hasAnnouncementImage: Boolean(announcementImageUrl),
       fallbackRotationEnabled: !announcementImageUrl && canRotateSlides,
-      fallbackRotationSequenceIndex: slideIndex,
+      fallbackRotationSequenceIndex: normalizedSlideIndex,
     };
   }
 
@@ -23541,8 +23546,16 @@ function getHomeAnnouncementCardData(referenceDate = new Date()) {
     contentMode: "static",
     hasAnnouncementImage: false,
     fallbackRotationEnabled: canRotateSlides,
-    fallbackRotationSequenceIndex: slideIndex,
+    fallbackRotationSequenceIndex: normalizedSlideIndex,
   };
+}
+
+function getHomeAnnouncementCardData(referenceDate = new Date()) {
+  return createHomeAnnouncementCardData({
+    announcement: getLatestActiveAnnouncement(),
+    referenceDate,
+    slideIndex: appState.homeAnnouncementFeedIndex,
+  });
 }
 
 function bindMessageBoardImageFallbacks(scope = document) {
@@ -23595,9 +23608,11 @@ function bindMessageBoardImageFallbacks(scope = document) {
   });
 }
 
-function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
+function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData(), options = {}) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const isDynamicContent = cardData.contentMode === "dynamic";
+  const rotationBinding = options.rotationBinding || "global";
+  const rotationEnabled = Boolean(cardData.fallbackRotationEnabled) && rotationBinding !== "none";
   const visualImageUrl = resolveMessageBoardImageUrl(cardData.imageUrl);
   console.log("[Cannakan Announcements] announcement section render", {
     hasActiveAnnouncement: isDynamicContent,
@@ -23675,10 +23690,12 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
 
   return `
     <section
-      class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}${cardData.fallbackRotationEnabled ? " is-rotating" : ""}"
+      class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}${rotationEnabled ? " is-rotating" : ""}"
       aria-labelledby="home-announcement-title"
       data-home-announcement-card="true"
-      ${cardData.fallbackRotationEnabled ? `data-home-announcement-rotation="true" data-home-announcement-sequence-index="${escapeHtml(String(cardData.fallbackRotationSequenceIndex || 0))}"` : ""}
+      ${rotationEnabled
+    ? `${rotationBinding === "preview" ? 'data-home-announcement-preview-rotation="true"' : 'data-home-announcement-rotation="true"'} data-home-announcement-sequence-index="${escapeHtml(String(cardData.fallbackRotationSequenceIndex || 0))}"`
+    : ""}
     >
       <div class="home-announcement-card-media">
         ${imageMarkup}
@@ -23841,6 +23858,19 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
             <span>Show this announcement on Home</span>
           </label>
         </div>
+        <div class="admin-source-form-full admin-announcement-preview-section">
+          <div class="admin-announcement-preview-head">
+            <div class="admin-message-board-subsection">
+              <strong>Preview Mode</strong>
+              <p class="muted">Preview either Home state live while you edit. Nothing updates on Home until you save.</p>
+            </div>
+            <div class="admin-announcement-preview-toggle" role="group" aria-label="Announcement preview mode">
+              <button type="button" class="admin-announcement-preview-toggle-button is-active" data-announcement-preview-mode="default" aria-pressed="true">Preview Default Feed</button>
+              <button type="button" class="admin-announcement-preview-toggle-button" data-announcement-preview-mode="announcement" aria-pressed="false">Preview Announcement</button>
+            </div>
+          </div>
+          <div id="admin-announcement-live-preview" class="admin-announcement-live-preview" aria-live="polite"></div>
+        </div>
       </div>
       <p id="admin-message-board-settings-message" class="snapshot-message">${escapeHtml(appState.announcementAdminMessage || "")}</p>
       <div class="form-actions admin-source-form-actions">
@@ -23869,10 +23899,10 @@ function renderAdminAnnouncementsListMarkup() {
   return `
     <div class="admin-sources-list-shell">
       <div class="admin-sources-list-head">
-        <strong>Current Home Preview</strong>
+        <strong>Current Home Snapshot</strong>
         <span class="muted">${escapeHtml(previewStatus)}</span>
       </div>
-      ${renderHomeAnnouncementCard(cardData)}
+      ${renderHomeAnnouncementCard(cardData, { rotationBinding: "none" })}
       ${announcement ? `
         <div class="admin-message-board-saved-announcement">
           <div class="admin-sources-list-head">
@@ -23900,6 +23930,8 @@ function bindAdminAnnouncementsSection() {
   const message = form.querySelector("#admin-message-board-settings-message");
   const submitButton = form.querySelector('button[type="submit"]');
   const clearButton = form.querySelector("#admin-announcement-clear");
+  const previewRoot = form.querySelector("#admin-announcement-live-preview");
+  const previewButtons = Array.from(form.querySelectorAll("[data-announcement-preview-mode]"));
   const imageFieldState = {
     announcementImage: {
       label: "Announcement image",
@@ -23907,10 +23939,14 @@ function bindAdminAnnouncementsSection() {
       clearButton: form.querySelector("#admin-message-board-clear-announcement-image"),
       textInput: form.elements.imageUrl,
       pendingFile: null,
+      pendingValue: "",
+      pendingValuePromise: null,
       clearRequested: false,
       existingValue: String(existingAnnouncement?.imageUrl || "").trim(),
     },
   };
+  let previewMode = appState.adminAnnouncementPreviewMode === "announcement" ? "announcement" : "default";
+  let previewRenderToken = 0;
 
   const validateMessageBoardImageFile = (file, label) => {
     if (!file) {
@@ -23933,7 +23969,24 @@ function bindAdminAnnouncementsSection() {
       return "";
     }
     if (fieldState.pendingFile) {
-      return prepareImageDataUrlForStorage(fieldState.pendingFile, MAX_IMAGE_DIMENSION, 0.86);
+      if (fieldState.pendingValue) {
+        return fieldState.pendingValue;
+      }
+      if (!fieldState.pendingValuePromise) {
+        fieldState.pendingValuePromise = prepareImageDataUrlForStorage(fieldState.pendingFile, MAX_IMAGE_DIMENSION, 0.86)
+          .then((value) => {
+            fieldState.pendingValue = value;
+            return value;
+          })
+          .catch((error) => {
+            fieldState.pendingValue = "";
+            throw error;
+          })
+          .finally(() => {
+            fieldState.pendingValuePromise = null;
+          });
+      }
+      return fieldState.pendingValuePromise;
     }
 
     const typedValue = normalizeMediaUrl(fieldState.textInput?.value || "");
@@ -23955,8 +24008,11 @@ function bindAdminAnnouncementsSection() {
     fieldState.input.addEventListener("change", () => {
       const file = fieldState.input.files?.[0] || null;
       updateFileUploadName(fieldState.input);
+      fieldState.pendingValue = "";
+      fieldState.pendingValuePromise = null;
       if (!file) {
         fieldState.pendingFile = null;
+        renderAdminAnnouncementLivePreview();
         return;
       }
 
@@ -23968,6 +24024,7 @@ function bindAdminAnnouncementsSection() {
         if (message) {
           message.textContent = validationMessage;
         }
+        renderAdminAnnouncementLivePreview();
         return;
       }
 
@@ -23976,10 +24033,13 @@ function bindAdminAnnouncementsSection() {
       if (message) {
         message.textContent = `${fieldState.label} will be uploaded and stored locally when you save.`;
       }
+      renderAdminAnnouncementLivePreview();
     });
 
     fieldState.clearButton?.addEventListener("click", () => {
       fieldState.pendingFile = null;
+      fieldState.pendingValue = "";
+      fieldState.pendingValuePromise = null;
       fieldState.clearRequested = true;
       if (fieldState.input) {
         fieldState.input.value = "";
@@ -23991,8 +24051,98 @@ function bindAdminAnnouncementsSection() {
       if (message) {
         message.textContent = `${fieldState.label} will be cleared when you save.`;
       }
+      renderAdminAnnouncementLivePreview();
     });
   });
+
+  const syncPreviewModeButtons = () => {
+    previewButtons.forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const isActiveButton = button.dataset.announcementPreviewMode === previewMode;
+      button.classList.toggle("is-active", isActiveButton);
+      button.setAttribute("aria-pressed", isActiveButton ? "true" : "false");
+    });
+  };
+
+  const getDraftAnnouncementPreviewData = async () => ({
+    title: String(form.elements.title?.value || "").trim(),
+    body: String(form.elements.message?.value || "").trim(),
+    imageUrl: await resolveMessageBoardImageValue(imageFieldState.announcementImage),
+    instagramPostUrl: String(form.elements.buttonUrl?.value || "").trim(),
+    buttonText: String(form.elements.buttonText?.value || "").trim(),
+  });
+
+  async function renderAdminAnnouncementLivePreview() {
+    if (!(previewRoot instanceof HTMLElement)) {
+      return;
+    }
+
+    stopAdminAnnouncementPreviewRotation();
+    syncPreviewModeButtons();
+    const currentRenderToken = ++previewRenderToken;
+    try {
+      const draftAnnouncement = await getDraftAnnouncementPreviewData();
+      if (currentRenderToken !== previewRenderToken) {
+        return;
+      }
+
+      const nextCardData = createHomeAnnouncementCardData({
+        announcement: previewMode === "announcement" ? draftAnnouncement : null,
+        referenceDate: new Date(),
+        slideIndex: appState.adminAnnouncementPreviewSlideIndex || 0,
+      });
+      previewRoot.innerHTML = renderHomeAnnouncementCard(nextCardData, {
+        rotationBinding: nextCardData.fallbackRotationEnabled ? "preview" : "none",
+      });
+      bindMessageBoardImageFallbacks(previewRoot);
+      bindAdminAnnouncementPreviewRotation(previewRoot);
+    } catch (error) {
+      previewRoot.innerHTML = `
+        <div class="admin-source-form-helper muted">
+          ${escapeHtml(error.message || "Preview could not be rendered right now.")}
+        </div>
+      `;
+    }
+  }
+
+  previewButtons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    button.addEventListener("click", () => {
+      const nextMode = button.dataset.announcementPreviewMode === "announcement" ? "announcement" : "default";
+      if (previewMode === nextMode) {
+        return;
+      }
+      previewMode = nextMode;
+      appState.adminAnnouncementPreviewMode = nextMode;
+      renderAdminAnnouncementLivePreview();
+    });
+  });
+
+  [
+    form.elements.title,
+    form.elements.message,
+    form.elements.buttonUrl,
+    form.elements.buttonText,
+    form.elements.imageUrl,
+    form.elements.active,
+  ].forEach((field) => {
+    if (!(field instanceof HTMLElement) || !("addEventListener" in field)) {
+      return;
+    }
+    const eventName = field instanceof HTMLInputElement && field.type === "checkbox" ? "change" : "input";
+    field.addEventListener(eventName, () => {
+      if (field === form.elements.imageUrl) {
+        imageFieldState.announcementImage.clearRequested = false;
+      }
+      renderAdminAnnouncementLivePreview();
+    });
+  });
+
+  renderAdminAnnouncementLivePreview();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -24982,6 +25132,95 @@ function bindHomeAnnouncementFallbackRotation(scope = app) {
     scheduleNext();
   }).catch((error) => {
     console.warn("[Cannakan Feed] Could not start slide rotation because the default slides were not ready.", error);
+  });
+}
+
+function stopAdminAnnouncementPreviewRotation() {
+  if (appState.adminAnnouncementPreviewRotationTimeoutId) {
+    window.clearTimeout(appState.adminAnnouncementPreviewRotationTimeoutId);
+    appState.adminAnnouncementPreviewRotationTimeoutId = 0;
+  }
+  if (appState.adminAnnouncementPreviewRotationFadeTimeoutId) {
+    window.clearTimeout(appState.adminAnnouncementPreviewRotationFadeTimeoutId);
+    appState.adminAnnouncementPreviewRotationFadeTimeoutId = 0;
+  }
+}
+
+function bindAdminAnnouncementPreviewRotation(scope = app) {
+  stopAdminAnnouncementPreviewRotation();
+  if (!scope?.querySelector) {
+    return;
+  }
+
+  const card = scope.querySelector('[data-home-announcement-preview-rotation="true"]');
+  if (!(card instanceof HTMLElement)) {
+    return;
+  }
+
+  preloadHomeAnnouncementSlides().then((loadedSlides) => {
+    if (loadedSlides.length <= 1) {
+      return;
+    }
+
+    const image = card.querySelector('[data-home-announcement-image="true"]');
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+
+    const scheduleNext = () => {
+      if (appState.adminAnnouncementPreviewRotationPaused) {
+        return;
+      }
+
+      if (appState.adminAnnouncementPreviewRotationTimeoutId) {
+        window.clearTimeout(appState.adminAnnouncementPreviewRotationTimeoutId);
+        appState.adminAnnouncementPreviewRotationTimeoutId = 0;
+      }
+      appState.adminAnnouncementPreviewRotationTimeoutId = window.setTimeout(() => {
+        if (appState.adminAnnouncementPreviewRotationPaused) {
+          return;
+        }
+
+        const currentIndex = Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0) % loadedSlides.length;
+        const nextIndex = (currentIndex + 1) % loadedSlides.length;
+        const nextSlidePath = loadedSlides[nextIndex];
+        if (!nextSlidePath) {
+          scheduleNext();
+          return;
+        }
+
+        card.classList.add("is-transitioning");
+        appState.adminAnnouncementPreviewRotationFadeTimeoutId = window.setTimeout(() => {
+          image.src = nextSlidePath;
+          image.hidden = false;
+          image.classList.remove("is-hidden");
+          image.dataset.fallbackApplied = "false";
+          image.dataset.imageFailed = "false";
+          card.dataset.homeAnnouncementSequenceIndex = String(nextIndex);
+          appState.adminAnnouncementPreviewSlideIndex = nextIndex;
+          card.classList.remove("is-transitioning");
+          scheduleNext();
+        }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+      }, getRandomHomeAnnouncementRotationDelayMs());
+    };
+
+    if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) {
+      card.addEventListener("mouseenter", () => {
+        appState.adminAnnouncementPreviewRotationPaused = true;
+        stopAdminAnnouncementPreviewRotation();
+      });
+
+      card.addEventListener("mouseleave", () => {
+        appState.adminAnnouncementPreviewRotationPaused = false;
+        scheduleNext();
+      });
+    }
+
+    appState.adminAnnouncementPreviewRotationPaused = false;
+    appState.adminAnnouncementPreviewSlideIndex = Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0) % loadedSlides.length;
+    scheduleNext();
+  }).catch((error) => {
+    console.warn("[Cannakan Feed] Could not start the admin announcement preview rotation.", error);
   });
 }
 
