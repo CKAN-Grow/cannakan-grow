@@ -62,6 +62,21 @@ const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
 const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
+const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
+  "cstp-testing-lab",
+  "admin-overview",
+  "site-visitor-analytics",
+  "community-grow-moderation",
+  "members",
+  "communications",
+  "dev-access",
+  "source-review",
+  "user-reports",
+  "sources",
+  "message-board-cms",
+  "system-tools",
+]);
 const ADMIN_SOURCE_REVIEW_STORAGE_KEY = "cannakanAdminSourceReviewRecords";
 const SITE_ANALYTICS_ENABLED = false;
 const SITE_ANALYTICS_TABLE = "site_analytics_events";
@@ -24091,6 +24106,111 @@ function resetAdminCollapsibleSectionStates() {
   });
 }
 
+function normalizeAdminDashboardSectionOrder(sectionOrder = []) {
+  const normalizedKeys = [];
+  const allowedKeys = new Set(ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER);
+  (Array.isArray(sectionOrder) ? sectionOrder : []).forEach((entry) => {
+    const normalizedKey = String(entry || "").trim();
+    if (!normalizedKey || !allowedKeys.has(normalizedKey) || normalizedKeys.includes(normalizedKey)) {
+      return;
+    }
+    normalizedKeys.push(normalizedKey);
+  });
+  return normalizedKeys;
+}
+
+function getAdminDashboardSectionOrder() {
+  try {
+    const storedValue = localStorage.getItem(ADMIN_SECTION_ORDER_STORAGE_KEY);
+    if (!storedValue) {
+      return [];
+    }
+    return normalizeAdminDashboardSectionOrder(JSON.parse(storedValue));
+  } catch (error) {
+    return [];
+  }
+}
+
+function setAdminDashboardSectionOrder(sectionOrder = []) {
+  try {
+    const normalizedOrder = normalizeAdminDashboardSectionOrder(sectionOrder);
+    if (!normalizedOrder.length) {
+      localStorage.removeItem(ADMIN_SECTION_ORDER_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(ADMIN_SECTION_ORDER_STORAGE_KEY, JSON.stringify(normalizedOrder));
+  } catch (error) {}
+}
+
+function resetAdminDashboardSectionOrder() {
+  try {
+    localStorage.removeItem(ADMIN_SECTION_ORDER_STORAGE_KEY);
+  } catch (error) {}
+}
+
+function getOrderedAdminDashboardPanels(panels = []) {
+  const availablePanels = (Array.isArray(panels) ? panels : []).filter((panel) => String(panel?.markup || "").trim());
+  const panelMap = new Map(
+    availablePanels.map((panel) => [String(panel?.key || "").trim(), panel]).filter(([key]) => Boolean(key)),
+  );
+  const orderedPanels = [];
+  const seenKeys = new Set();
+
+  getAdminDashboardSectionOrder().forEach((key) => {
+    const panel = panelMap.get(key);
+    if (!panel || seenKeys.has(key)) {
+      return;
+    }
+    seenKeys.add(key);
+    orderedPanels.push(panel);
+  });
+
+  ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER.forEach((key) => {
+    const panel = panelMap.get(key);
+    if (!panel || seenKeys.has(key)) {
+      return;
+    }
+    seenKeys.add(key);
+    orderedPanels.push(panel);
+  });
+
+  availablePanels.forEach((panel) => {
+    const key = String(panel?.key || "").trim();
+    if (!key || seenKeys.has(key)) {
+      return;
+    }
+    seenKeys.add(key);
+    orderedPanels.push(panel);
+  });
+
+  return orderedPanels;
+}
+
+function renderAdminDashboardPanelMarkup({ key = "", markup = "" } = {}) {
+  const normalizedKey = String(key || "").trim();
+  const normalizedMarkup = String(markup || "").trim();
+  if (!normalizedKey || !normalizedMarkup) {
+    return "";
+  }
+
+  return `
+    <div class="admin-dashboard-panel" data-admin-panel-key="${escapeHtml(normalizedKey)}">
+      <button
+        type="button"
+        class="admin-panel-drag-handle"
+        data-admin-panel-drag-handle="true"
+        draggable="true"
+        aria-label="Drag to reorder admin section"
+        title="Drag to reorder"
+      >
+        <span class="admin-panel-drag-grip" aria-hidden="true"></span>
+        <span>Drag</span>
+      </button>
+      ${normalizedMarkup}
+    </div>
+  `;
+}
+
 function renderAdminCollapsibleSectionMarkup({
   eyebrow,
   title,
@@ -24187,6 +24307,140 @@ function bindAdminCollapsibleSections(scope = app) {
         scrollElementIntoViewAfterLayout(section || content, { delayMs: 140 });
       }
     });
+  });
+}
+
+function bindAdminDashboardSectionReordering(scope = app) {
+  if (!scope) {
+    return;
+  }
+
+  const container = scope.querySelector("[data-admin-dashboard-sections='true']");
+  if (!(container instanceof HTMLElement)) {
+    return;
+  }
+
+  const dragEnabled = window.matchMedia ? window.matchMedia("(min-width: 861px) and (pointer: fine)").matches : true;
+  container.classList.toggle("is-reorder-disabled", !dragEnabled);
+
+  const resetButton = scope.querySelector("[data-admin-reset-layout='true']");
+  if (resetButton instanceof HTMLButtonElement && resetButton.dataset.adminResetLayoutBound !== "true") {
+    resetButton.dataset.adminResetLayoutBound = "true";
+    resetButton.addEventListener("click", () => {
+      resetAdminDashboardSectionOrder();
+      safeRender();
+    });
+  }
+
+  const handles = Array.from(container.querySelectorAll("[data-admin-panel-drag-handle='true']"));
+  handles.forEach((handle) => {
+    if (!(handle instanceof HTMLButtonElement)) {
+      return;
+    }
+    handle.disabled = !dragEnabled;
+    handle.setAttribute("aria-disabled", dragEnabled ? "false" : "true");
+    if (handle.dataset.adminPanelDragBound === "true") {
+      return;
+    }
+    handle.dataset.adminPanelDragBound = "true";
+    handle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    handle.addEventListener("mousedown", (event) => {
+      event.stopPropagation();
+    });
+  });
+
+  if (container.dataset.adminReorderBound === "true") {
+    return;
+  }
+  container.dataset.adminReorderBound = "true";
+
+  let draggedPanel = null;
+
+  const clearDropIndicators = () => {
+    container.querySelectorAll(".admin-dashboard-panel.is-drop-before, .admin-dashboard-panel.is-drop-after").forEach((panel) => {
+      panel.classList.remove("is-drop-before", "is-drop-after");
+    });
+  };
+
+  const persistCurrentOrder = () => {
+    const currentOrder = Array.from(container.querySelectorAll(".admin-dashboard-panel"))
+      .map((panel) => String(panel.dataset.adminPanelKey || "").trim())
+      .filter(Boolean);
+    setAdminDashboardSectionOrder(currentOrder);
+  };
+
+  container.addEventListener("dragstart", (event) => {
+    const handle = event.target instanceof Element ? event.target.closest("[data-admin-panel-drag-handle='true']") : null;
+    if (!(handle instanceof HTMLButtonElement) || !dragEnabled) {
+      event.preventDefault();
+      return;
+    }
+
+    const panel = handle.closest(".admin-dashboard-panel");
+    if (!(panel instanceof HTMLElement)) {
+      event.preventDefault();
+      return;
+    }
+
+    draggedPanel = panel;
+    draggedPanel.classList.add("is-dragging");
+    container.classList.add("is-reordering");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      try {
+        event.dataTransfer.setData("text/plain", String(panel.dataset.adminPanelKey || ""));
+      } catch (error) {}
+    }
+  });
+
+  container.addEventListener("dragover", (event) => {
+    if (!dragEnabled || !(draggedPanel instanceof HTMLElement)) {
+      return;
+    }
+
+    const targetPanel = event.target instanceof Element ? event.target.closest(".admin-dashboard-panel") : null;
+    if (!(targetPanel instanceof HTMLElement) || targetPanel === draggedPanel || !container.contains(targetPanel)) {
+      return;
+    }
+
+    event.preventDefault();
+    const panelRect = targetPanel.getBoundingClientRect();
+    const shouldInsertBefore = event.clientY < (panelRect.top + (panelRect.height / 2));
+    clearDropIndicators();
+    targetPanel.classList.add(shouldInsertBefore ? "is-drop-before" : "is-drop-after");
+
+    if (shouldInsertBefore) {
+      if (targetPanel !== draggedPanel.nextElementSibling) {
+        container.insertBefore(draggedPanel, targetPanel);
+      }
+      return;
+    }
+
+    if (targetPanel.nextElementSibling !== draggedPanel) {
+      container.insertBefore(draggedPanel, targetPanel.nextElementSibling);
+    }
+  });
+
+  container.addEventListener("drop", (event) => {
+    if (!dragEnabled || !(draggedPanel instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    clearDropIndicators();
+    persistCurrentOrder();
+  });
+
+  container.addEventListener("dragend", () => {
+    if (draggedPanel instanceof HTMLElement) {
+      draggedPanel.classList.remove("is-dragging");
+    }
+    draggedPanel = null;
+    clearDropIndicators();
+    container.classList.remove("is-reordering");
+    persistCurrentOrder();
   });
 }
 
@@ -29517,119 +29771,173 @@ function renderAdminDevAccessSectionMarkup() {
 }
 
 function renderAdminPage() {
+  const adminPanels = getOrderedAdminDashboardPanels([
+    {
+      key: "cstp-testing-lab",
+      markup: renderAdminCstpLabSectionMarkup(),
+    },
+    {
+      key: "admin-overview",
+      markup: `
+        <section class="card admin-section-card">
+          <div class="section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("analytics")}
+              <div>
+                <p class="eyebrow">Admin Overview</p>
+                <h3>High-level system snapshot</h3>
+                <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
+              </div>
+            </div>
+          </div>
+          <div id="admin-overview-tools"></div>
+          <div class="summary-grid admin-overview-grid"></div>
+        </section>
+      `,
+    },
+    {
+      key: "site-visitor-analytics",
+      markup: renderSiteVisitorAnalyticsSectionMarkup(),
+    },
+    {
+      key: "community-grow-moderation",
+      markup: `
+        <section class="card admin-section-card">
+          <div class="section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("moderation")}
+              <div>
+                <p class="eyebrow">Community Grow Moderation</p>
+                <h3>Review Community Grow submissions</h3>
+                <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
+              </div>
+            </div>
+            <div class="admin-section-actions">
+              <button type="button" class="button button-primary" data-open-community-grow-moderation="true">Open Community Grow Moderation</button>
+            </div>
+          </div>
+        </section>
+      `,
+    },
+    {
+      key: "members",
+      markup: renderAdminCollapsibleSectionMarkup({
+        eyebrow: "Members",
+        title: "View and manage Cannakan Grow members.",
+        description: "Review member growth activity, account access, and admin roles without exposing private member data publicly.",
+        iconType: "members",
+        storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
+        contentId: "admin-members-section-content",
+        defaultOpen: false,
+        bodyMarkup: `
+          <div class="summary-grid admin-overview-grid admin-members-summary-grid" id="admin-members-summary-grid"></div>
+          ${renderAdminMembersFiltersMarkup()}
+          <div id="admin-members-table-anchor"></div>
+        `,
+      }),
+    },
+    {
+      key: "communications",
+      markup: renderAdminCommunicationsSectionMarkup(),
+    },
+    {
+      key: "dev-access",
+      markup: renderAdminDevAccessSectionMarkup(),
+    },
+    {
+      key: "source-review",
+      markup: renderAdminSourceReviewSectionMarkup(),
+    },
+    {
+      key: "user-reports",
+      markup: renderAdminMessagesSectionMarkup(),
+    },
+    {
+      key: "sources",
+      markup: renderAdminCollapsibleSectionMarkup({
+        eyebrow: "Sources",
+        title: "Manage source companies, logos, and display info.",
+        description: "Add, update, hide, or delete source companies without changing the current Community Grow layout.",
+        iconType: "sources",
+        storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
+        contentId: "admin-sources-section-content",
+        defaultOpen: false,
+        bodyMarkup: `
+          <div class="admin-sources-layout">
+            <div class="admin-sources-list-shell">
+              <div class="admin-sources-list-head">
+                <strong>Saved Sources</strong>
+                <span class="muted">${escapeHtml(`${appState.sources.length} total`)}</span>
+              </div>
+              <div id="admin-sources-list" class="admin-sources-list"></div>
+            </div>
+            <div id="admin-source-editor" class="meta-card admin-source-editor"></div>
+          </div>
+        `,
+      }),
+    },
+    {
+      key: "message-board-cms",
+      markup: renderAdminCollapsibleSectionMarkup({
+        eyebrow: "Message Board CMS",
+        title: "Message Board CMS",
+        description: "Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.",
+        iconType: "message-board",
+        storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
+        contentId: "admin-message-board-section-content",
+        defaultOpen: false,
+        bodyMarkup: `
+          <div class="admin-sources-layout">
+            <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
+            <div class="admin-message-board-sidebar">
+              <div id="admin-announcements-list"></div>
+              <div id="admin-fallback-content-stats"></div>
+              <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
+            </div>
+          </div>
+        `,
+      }),
+    },
+    {
+      key: "system-tools",
+      markup: `
+        <section class="card admin-section-card">
+          <div class="section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("admin")}
+              <div>
+                <p class="eyebrow">System Tools</p>
+                <h3>Admin-only utilities</h3>
+                <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
+              </div>
+            </div>
+          </div>
+          <div id="admin-system-tools"></div>
+        </section>
+      `,
+    },
+  ]);
+
   app.innerHTML = `
     <section class="card admin-page-hero">
-      <div class="section-title-with-icon app-section-header-main">
-        ${renderAppSectionHeaderIcon("admin")}
-        <div>
-          <p class="eyebrow">Admin</p>
-          <h2>Admin Tools</h2>
-          <p class="muted">Manage moderation, inspect leaderboard inputs, and review system-level controls without exposing admin data in public views.</p>
-        </div>
-      </div>
-    </section>
-    ${renderAdminCstpLabSectionMarkup()}
-    <section class="card admin-section-card">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("analytics")}
-          <div>
-            <p class="eyebrow">Admin Overview</p>
-            <h3>High-level system snapshot</h3>
-            <p class="muted">Quick totals for members, gallery activity, and moderation workload.</p>
-          </div>
-        </div>
-      </div>
-      <div id="admin-overview-tools"></div>
-      <div class="summary-grid admin-overview-grid"></div>
-    </section>
-    ${renderSiteVisitorAnalyticsSectionMarkup()}
-    <section class="card admin-section-card">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("moderation")}
-          <div>
-            <p class="eyebrow">Community Grow Moderation</p>
-            <h3>Review Community Grow submissions</h3>
-            <p class="muted">Open the moderation workspace to approve or reject pending public snapshot submissions.</p>
-          </div>
-        </div>
-        <div class="admin-section-actions">
-          <button type="button" class="button button-primary" data-open-community-grow-moderation="true">Open Community Grow Moderation</button>
-        </div>
-      </div>
-    </section>
-    ${renderAdminCollapsibleSectionMarkup({
-      eyebrow: "Members",
-      title: "View and manage Cannakan Grow members.",
-      description: "Review member growth activity, account access, and admin roles without exposing private member data publicly.",
-      iconType: "members",
-      storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
-      contentId: "admin-members-section-content",
-      defaultOpen: false,
-      bodyMarkup: `
-        <div class="summary-grid admin-overview-grid admin-members-summary-grid" id="admin-members-summary-grid"></div>
-        ${renderAdminMembersFiltersMarkup()}
-        <div id="admin-members-table-anchor"></div>
-      `,
-    })}
-    ${renderAdminCommunicationsSectionMarkup()}
-    ${renderAdminDevAccessSectionMarkup()}
-    ${renderAdminSourceReviewSectionMarkup()}
-    ${renderAdminMessagesSectionMarkup()}
-    ${renderAdminCollapsibleSectionMarkup({
-      eyebrow: "Sources",
-      title: "Manage source companies, logos, and display info.",
-      description: "Add, update, hide, or delete source companies without changing the current Community Grow layout.",
-      iconType: "sources",
-      storageKey: ADMIN_SOURCES_OPEN_STORAGE_KEY,
-      contentId: "admin-sources-section-content",
-      defaultOpen: false,
-      bodyMarkup: `
-        <div class="admin-sources-layout">
-          <div class="admin-sources-list-shell">
-            <div class="admin-sources-list-head">
-              <strong>Saved Sources</strong>
-              <span class="muted">${escapeHtml(`${appState.sources.length} total`)}</span>
-            </div>
-            <div id="admin-sources-list" class="admin-sources-list"></div>
-          </div>
-          <div id="admin-source-editor" class="meta-card admin-source-editor"></div>
-        </div>
-      `,
-    })}
-    ${renderAdminCollapsibleSectionMarkup({
-      eyebrow: "Message Board CMS",
-      title: "Message Board CMS",
-      description: "Control the Home “Latest from Cannakan” card, fallback library, and default image behavior from one admin-only workspace.",
-      iconType: "message-board",
-      storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
-      contentId: "admin-message-board-section-content",
-      defaultOpen: false,
-      bodyMarkup: `
-        <div class="admin-sources-layout">
-          <div id="admin-announcement-editor" class="meta-card admin-source-editor"></div>
-          <div class="admin-message-board-sidebar">
-            <div id="admin-announcements-list"></div>
-            <div id="admin-fallback-content-stats"></div>
-            <div id="admin-fallback-content-editor" class="meta-card admin-source-editor"></div>
-          </div>
-        </div>
-      `,
-    })}
-    <section class="card admin-section-card">
-      <div class="section-heading app-section-header">
+      <div class="app-section-header">
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("admin")}
           <div>
-            <p class="eyebrow">System Tools</p>
-            <h3>Admin-only utilities</h3>
-            <p class="muted">Dev Mode is managed from Admin Overview. Additional admin-only tools will appear here as they are added.</p>
+            <p class="eyebrow">Admin</p>
+            <h2>Admin Tools</h2>
+            <p class="muted">Manage moderation, inspect leaderboard inputs, and review system-level controls without exposing admin data in public views.</p>
           </div>
         </div>
+        <div class="admin-page-hero-actions">
+          <button type="button" class="button button-secondary" data-admin-reset-layout="true">Reset Admin Layout</button>
+          <p class="muted admin-layout-note">Drag section handles on desktop to reorder your admin dashboard. Mobile keeps the saved layout but does not support drag reordering.</p>
+        </div>
       </div>
-      <div id="admin-system-tools"></div>
     </section>
+    <div class="admin-dashboard-sections" data-admin-dashboard-sections="true">
+      ${adminPanels.map((panel) => renderAdminDashboardPanelMarkup(panel)).join("")}
+    </div>
     <div id="admin-leaderboard-audit-anchor"></div>
   `;
 
@@ -29822,6 +30130,7 @@ function renderAdminPage() {
   }
 
   bindAdminCollapsibleSections(app);
+  bindAdminDashboardSectionReordering(app);
   bindAdminMembersSection();
   bindAdminCommunicationsSection();
   bindAdminCstpLabSection();
