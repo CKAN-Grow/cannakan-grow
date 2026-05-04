@@ -4619,15 +4619,15 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-announcement-card.is-rotating .home-announcement-card-media,
 .home-announcement-card.is-rotating .home-announcement-card-body {
-  transition: opacity 0.42s ease, transform 0.42s ease, filter 0.42s ease;
-  will-change: opacity, transform, filter;
+  transition: none;
+  will-change: auto;
 }
 
 .home-announcement-card.is-rotating.is-transitioning .home-announcement-card-media,
 .home-announcement-card.is-rotating.is-transitioning .home-announcement-card-body {
-  opacity: 0.34;
-  transform: translateY(2px);
-  filter: saturate(0.98);
+  opacity: 1;
+  transform: none;
+  filter: none;
 }
 
 .home-announcement-card-media {
@@ -4639,7 +4639,7 @@ body.theme-dark .contact-reason-card.is-active {
   padding: 0;
   display: flex;
   align-self: stretch;
-  background: rgba(12, 18, 14, 0.92);
+  background: transparent;
 }
 
 .home-announcement-card-visual-shell {
@@ -4648,13 +4648,13 @@ body.theme-dark .contact-reason-card.is-active {
   height: 100%;
   min-height: 320px;
   overflow: hidden;
-  background: rgba(7, 12, 10, 0.98);
+  background: transparent;
   display: flex;
   align-items: stretch;
 }
 
 .home-announcement-card-visual-shell--fallback {
-  background-color: rgba(7, 12, 10, 0.98);
+  background-color: transparent;
 }
 
 .home-announcement-card-visual-shell.is-image-failed {
@@ -4670,6 +4670,9 @@ body.theme-dark .contact-reason-card.is-active {
   object-fit: cover;
   object-position: center center;
   display: block;
+  opacity: 1;
+  filter: none;
+  mix-blend-mode: normal;
 }
 
 .home-announcement-card-image.is-hidden {
@@ -19266,7 +19269,7 @@ body.theme-dark .home-announcement-card {
 }
 
 body.theme-dark .home-announcement-card-media {
-  background: rgba(12, 18, 14, 0.78);
+  background: transparent;
 }
 
 body.theme-dark .home-announcement-card-caption {
