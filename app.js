@@ -24259,12 +24259,10 @@ function renderAdminDashboardPanelMarkup({ key = "", markup = "" } = {}) {
         type="button"
         class="admin-panel-drag-handle"
         data-admin-panel-drag-handle="true"
-        draggable="true"
         aria-label="Drag to reorder admin section"
         title="Drag to reorder"
       >
         <span class="admin-panel-drag-grip" aria-hidden="true"></span>
-        <span>Drag</span>
       </button>
       ${normalizedMarkup}
     </div>
@@ -24393,6 +24391,21 @@ function bindAdminDashboardSectionReordering(scope = app) {
   }
 
   const handles = Array.from(container.querySelectorAll("[data-admin-panel-drag-handle='true']"));
+  const panels = Array.from(container.querySelectorAll(".admin-dashboard-panel"));
+  let draggedPanel = null;
+  let armedPanel = null;
+
+  const clearArmedPanels = () => {
+    panels.forEach((panel) => {
+      if (!(panel instanceof HTMLElement)) {
+        return;
+      }
+      panel.draggable = false;
+      delete panel.dataset.adminDragArmed;
+    });
+    armedPanel = null;
+  };
+
   handles.forEach((handle) => {
     if (!(handle instanceof HTMLButtonElement)) {
       return;
@@ -24407,8 +24420,23 @@ function bindAdminDashboardSectionReordering(scope = app) {
       event.preventDefault();
       event.stopPropagation();
     });
-    handle.addEventListener("mousedown", (event) => {
+    const armPanelDrag = (event) => {
       event.stopPropagation();
+      const panel = handle.closest(".admin-dashboard-panel");
+      if (!(panel instanceof HTMLElement) || !dragEnabled) {
+        return;
+      }
+      clearArmedPanels();
+      panel.draggable = true;
+      panel.dataset.adminDragArmed = "true";
+      armedPanel = panel;
+    };
+    handle.addEventListener("mousedown", armPanelDrag);
+    handle.addEventListener("pointerdown", armPanelDrag);
+    handle.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        armPanelDrag(event);
+      }
     });
   });
 
@@ -24416,8 +24444,6 @@ function bindAdminDashboardSectionReordering(scope = app) {
     return;
   }
   container.dataset.adminReorderBound = "true";
-
-  let draggedPanel = null;
 
   const clearDropIndicators = () => {
     container.querySelectorAll(".admin-dashboard-panel.is-drop-before, .admin-dashboard-panel.is-drop-after").forEach((panel) => {
@@ -24433,14 +24459,8 @@ function bindAdminDashboardSectionReordering(scope = app) {
   };
 
   container.addEventListener("dragstart", (event) => {
-    const handle = event.target instanceof Element ? event.target.closest("[data-admin-panel-drag-handle='true']") : null;
-    if (!(handle instanceof HTMLButtonElement) || !dragEnabled) {
-      event.preventDefault();
-      return;
-    }
-
-    const panel = handle.closest(".admin-dashboard-panel");
-    if (!(panel instanceof HTMLElement)) {
+    const panel = event.target instanceof Element ? event.target.closest(".admin-dashboard-panel") : null;
+    if (!(panel instanceof HTMLElement) || !dragEnabled || panel.dataset.adminDragArmed !== "true") {
       event.preventDefault();
       return;
     }
@@ -24496,11 +24516,25 @@ function bindAdminDashboardSectionReordering(scope = app) {
   container.addEventListener("dragend", () => {
     if (draggedPanel instanceof HTMLElement) {
       draggedPanel.classList.remove("is-dragging");
+      draggedPanel.draggable = false;
     }
     draggedPanel = null;
     clearDropIndicators();
     container.classList.remove("is-reordering");
+    clearArmedPanels();
     persistCurrentOrder();
+  });
+
+  container.addEventListener("mouseup", () => {
+    if (!draggedPanel) {
+      clearArmedPanels();
+    }
+  });
+
+  container.addEventListener("mouseleave", () => {
+    if (!draggedPanel) {
+      clearArmedPanels();
+    }
   });
 }
 
