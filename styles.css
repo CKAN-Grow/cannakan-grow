@@ -1900,9 +1900,9 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .section-title-with-icon {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
 
@@ -1910,11 +1910,12 @@ body.theme-dark .spotlight-stat strong {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
 .section-title-with-icon > div > .eyebrow {
-  width: calc(100% + 80px);
-  margin-left: -80px;
+  width: auto;
+  margin: 0;
 }
 
 .cg-icon {
@@ -2265,6 +2266,8 @@ body.theme-dark .spotlight-stat strong {
 .section-title-icon {
   flex: 0 0 64px;
   opacity: 1;
+  align-self: center;
+  margin: 0;
 }
 
 .section-title-icon .cg-icon-svg,
@@ -2290,8 +2293,8 @@ body.theme-dark .spotlight-stat strong {
   width: 100%;
   flex: 1 1 360px;
   min-width: 0;
-  align-items: flex-start;
-  gap: clamp(16px, 2vw, 24px);
+  align-items: center;
+  gap: clamp(16px, 2vw, 20px);
 }
 
 .app-section-header-main > div {
@@ -2299,6 +2302,7 @@ body.theme-dark .spotlight-stat strong {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  justify-content: center;
 }
 
 .app-section-header-main > div > .eyebrow {
