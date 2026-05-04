@@ -4635,8 +4635,10 @@ body.theme-dark .contact-reason-card.is-active {
   width: 66.666%;
   position: relative;
   min-height: 320px;
+  height: 100%;
   padding: 0;
   display: flex;
+  align-self: stretch;
   background: rgba(12, 18, 14, 0.92);
 }
 

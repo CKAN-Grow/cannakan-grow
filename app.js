@@ -1029,6 +1029,8 @@ const appState = {
   homeAnnouncementFeedItems: [],
   homeAnnouncementFeedSignature: "",
   homeAnnouncementFeedIndex: 0,
+  homeAnnouncementSlideLoadState: {},
+  homeAnnouncementSlidePreloadPromise: null,
   homeAnnouncementRotationPaused: false,
   homeAnnouncementTouchStartX: 0,
   homeAnnouncementTouchStartY: 0,
@@ -1377,6 +1379,8 @@ function resetSessionScopedAppState() {
   appState.homeAnnouncementFeedItems = [];
   appState.homeAnnouncementFeedSignature = "";
   appState.homeAnnouncementFeedIndex = 0;
+  appState.homeAnnouncementSlideLoadState = {};
+  appState.homeAnnouncementSlidePreloadPromise = null;
   appState.homeAnnouncementRotationPaused = false;
   appState.homeAnnouncementTouchStartX = 0;
   appState.homeAnnouncementTouchStartY = 0;
@@ -10961,6 +10965,10 @@ function normalizeMediaUrl(value) {
   }
 
   if (/^(https?:\/\/|\/\/|\/|\.\.?\/|data:|blob:)/i.test(rawValue)) {
+    return rawValue;
+  }
+
+  if (/^[A-Za-z0-9_-]+(?:[./-][A-Za-z0-9_.-]+)+$/.test(rawValue) && rawValue.includes("/")) {
     return rawValue;
   }
 
@@ -23171,6 +23179,57 @@ function buildHomeAnnouncementFeedItems() {
   return [...DEFAULT_ANNOUNCEMENT_SLIDE_PATHS];
 }
 
+function getLoadedHomeAnnouncementSlidePaths() {
+  return DEFAULT_ANNOUNCEMENT_SLIDE_PATHS.filter((path) => appState.homeAnnouncementSlideLoadState?.[path] === "loaded");
+}
+
+function getHomeAnnouncementSlidePathForIndex(index = 0) {
+  const loadedSlides = getLoadedHomeAnnouncementSlidePaths();
+  const slidePool = loadedSlides.length ? loadedSlides : DEFAULT_ANNOUNCEMENT_SLIDE_PATHS;
+  if (!slidePool.length) {
+    return MESSAGE_BOARD_IMAGE_FALLBACK_URL;
+  }
+
+  const normalizedIndex = ((Number(index) || 0) % slidePool.length + slidePool.length) % slidePool.length;
+  return slidePool[normalizedIndex] || slidePool[0];
+}
+
+function preloadHomeAnnouncementSlides() {
+  const loadState = appState.homeAnnouncementSlideLoadState || {};
+  const allSlidesReady = DEFAULT_ANNOUNCEMENT_SLIDE_PATHS.every((path) => loadState[path] === "loaded" || loadState[path] === "failed");
+  if (allSlidesReady) {
+    return Promise.resolve(getLoadedHomeAnnouncementSlidePaths());
+  }
+
+  if (appState.homeAnnouncementSlidePreloadPromise) {
+    return appState.homeAnnouncementSlidePreloadPromise;
+  }
+
+  const pendingLoads = DEFAULT_ANNOUNCEMENT_SLIDE_PATHS
+    .filter((path) => loadState[path] !== "loaded" && loadState[path] !== "failed")
+    .map((path) => new Promise((resolve) => {
+      const image = new window.Image();
+      image.onload = () => {
+        appState.homeAnnouncementSlideLoadState[path] = "loaded";
+        resolve({ path, status: "loaded" });
+      };
+      image.onerror = () => {
+        appState.homeAnnouncementSlideLoadState[path] = "failed";
+        console.warn("[Cannakan Feed] Failed to preload default slide image", path);
+        resolve({ path, status: "failed" });
+      };
+      image.src = path;
+    }));
+
+  appState.homeAnnouncementSlidePreloadPromise = Promise.all(pendingLoads)
+    .then(() => getLoadedHomeAnnouncementSlidePaths())
+    .finally(() => {
+      appState.homeAnnouncementSlidePreloadPromise = null;
+    });
+
+  return appState.homeAnnouncementSlidePreloadPromise;
+}
+
 function ensureHomeAnnouncementFeedItems() {
   const nextSignature = buildHomeAnnouncementFeedSignature();
   if (
@@ -23444,10 +23503,12 @@ function clearStoredFallbackContent() {
 }
 
 function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
-  const announcement = getLatestActiveAnnouncement();
-  const slidePaths = ensureHomeAnnouncementFeedItems();
   const slideIndex = Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0);
-  const activeSlidePath = slidePaths[slideIndex] || slidePaths[0] || DEFAULT_ANNOUNCEMENT_SLIDE_PATHS[0];
+  const announcement = getLatestActiveAnnouncement();
+  ensureHomeAnnouncementFeedItems();
+  const activeSlidePath = getHomeAnnouncementSlidePathForIndex(slideIndex);
+  const loadedSlideCount = getLoadedHomeAnnouncementSlidePaths().length;
+  const canRotateSlides = (loadedSlideCount || DEFAULT_ANNOUNCEMENT_SLIDE_PATHS.length) > 1;
   if (announcement) {
     const announcementImageUrl = normalizeMediaUrl(announcement.imageUrl || "");
     return {
@@ -23461,7 +23522,7 @@ function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
       effectiveDisplayMode: "announcement",
       contentMode: "dynamic",
       hasAnnouncementImage: Boolean(announcementImageUrl),
-      fallbackRotationEnabled: !announcementImageUrl && slidePaths.length > 1,
+      fallbackRotationEnabled: !announcementImageUrl && canRotateSlides,
       fallbackRotationSequenceIndex: slideIndex,
     };
   }
@@ -23477,7 +23538,7 @@ function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
     effectiveDisplayMode: "default-slides",
     contentMode: "static",
     hasAnnouncementImage: false,
-    fallbackRotationEnabled: slidePaths.length > 1,
+    fallbackRotationEnabled: canRotateSlides,
     fallbackRotationSequenceIndex: slideIndex,
   };
 }
@@ -24802,7 +24863,8 @@ function stopHomeAnnouncementFallbackRotation() {
 }
 
 function stepHomeAnnouncementFeedIndex(step = 1) {
-  const feedItems = ensureHomeAnnouncementFeedItems();
+  ensureHomeAnnouncementFeedItems();
+  const feedItems = getLoadedHomeAnnouncementSlidePaths();
   if (!feedItems.length) {
     appState.homeAnnouncementFeedIndex = 0;
     return null;
@@ -24821,17 +24883,32 @@ function replaceHomeAnnouncementFeedCard(scope = app, step = 1) {
   }
 
   currentCard.classList.add("is-transitioning");
-  appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
-    const nextItem = stepHomeAnnouncementFeedIndex(step);
-    if (!nextItem) {
+  preloadHomeAnnouncementSlides().then((loadedSlides) => {
+    if (!loadedSlides.length) {
+      currentCard.classList.remove("is-transitioning");
       stopHomeAnnouncementFallbackRotation();
       return;
     }
 
-    currentCard.outerHTML = renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date()));
-    bindMessageBoardImageFallbacks(scope);
-    bindHomeAnnouncementFallbackRotation(scope);
-  }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+    const currentIndex = Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0);
+    const currentSlidePath = getHomeAnnouncementSlidePathForIndex(currentIndex);
+    const nextItem = stepHomeAnnouncementFeedIndex(step);
+    if (!nextItem || nextItem === currentSlidePath) {
+      currentCard.classList.remove("is-transitioning");
+      stopHomeAnnouncementFallbackRotation();
+      return;
+    }
+
+    appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
+      currentCard.outerHTML = renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date()));
+      bindMessageBoardImageFallbacks(scope);
+      bindHomeAnnouncementFallbackRotation(scope);
+    }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
+  }).catch((error) => {
+    console.warn("[Cannakan Feed] Could not prepare the next slide for rotation.", error);
+    currentCard.classList.remove("is-transitioning");
+    stopHomeAnnouncementFallbackRotation();
+  });
 }
 
 function bindHomeAnnouncementFallbackRotation(scope = app) {
@@ -24846,79 +24923,87 @@ function bindHomeAnnouncementFallbackRotation(scope = app) {
   }
 
   ensureHomeAnnouncementFeedItems();
-  appState.homeAnnouncementFeedIndex = Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0);
-
-  const scheduleNext = () => {
-    if (appState.homeAnnouncementRotationPaused) {
+  preloadHomeAnnouncementSlides().then((loadedSlides) => {
+    if (!loadedSlides.length) {
       return;
     }
 
-    if (appState.homeAnnouncementRotationTimeoutId) {
-      window.clearTimeout(appState.homeAnnouncementRotationTimeoutId);
-      appState.homeAnnouncementRotationTimeoutId = 0;
-    }
-    const activeDelay = getRandomHomeAnnouncementRotationDelayMs();
-    appState.homeAnnouncementRotationTimeoutId = window.setTimeout(() => {
+    const normalizedIndex = Math.max(0, Number(card.dataset.homeAnnouncementSequenceIndex) || 0);
+    appState.homeAnnouncementFeedIndex = normalizedIndex % loadedSlides.length;
+
+    const scheduleNext = () => {
       if (appState.homeAnnouncementRotationPaused) {
-        stopHomeAnnouncementFallbackRotation();
         return;
       }
 
-      replaceHomeAnnouncementFeedCard(scope, 1);
-    }, activeDelay);
-  };
+      if (appState.homeAnnouncementRotationTimeoutId) {
+        window.clearTimeout(appState.homeAnnouncementRotationTimeoutId);
+        appState.homeAnnouncementRotationTimeoutId = 0;
+      }
+      const activeDelay = getRandomHomeAnnouncementRotationDelayMs();
+      appState.homeAnnouncementRotationTimeoutId = window.setTimeout(() => {
+        if (appState.homeAnnouncementRotationPaused) {
+          return;
+        }
 
-  if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) {
-    card.addEventListener("mouseenter", () => {
+        replaceHomeAnnouncementFeedCard(scope, 1);
+      }, activeDelay);
+    };
+
+    if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) {
+      card.addEventListener("mouseenter", () => {
+        appState.homeAnnouncementRotationPaused = true;
+        stopHomeAnnouncementFallbackRotation();
+      });
+
+      card.addEventListener("mouseleave", () => {
+        appState.homeAnnouncementRotationPaused = false;
+        scheduleNext();
+      });
+    }
+
+    card.addEventListener("touchstart", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch) {
+        return;
+      }
+
+      appState.homeAnnouncementTouchStartX = touch.clientX;
+      appState.homeAnnouncementTouchStartY = touch.clientY;
+      appState.homeAnnouncementTouchStartTime = Date.now();
       appState.homeAnnouncementRotationPaused = true;
       stopHomeAnnouncementFallbackRotation();
-    });
+    }, { passive: true });
 
-    card.addEventListener("mouseleave", () => {
+    card.addEventListener("touchend", (event) => {
+      const touch = event.changedTouches?.[0];
+      if (!touch) {
+        appState.homeAnnouncementRotationPaused = false;
+        scheduleNext();
+        return;
+      }
+
+      const deltaX = touch.clientX - appState.homeAnnouncementTouchStartX;
+      const deltaY = touch.clientY - appState.homeAnnouncementTouchStartY;
+      const elapsed = Date.now() - appState.homeAnnouncementTouchStartTime;
+      appState.homeAnnouncementRotationPaused = false;
+      if (Math.abs(deltaX) >= 48 && Math.abs(deltaY) <= 60 && elapsed <= 900) {
+        replaceHomeAnnouncementFeedCard(scope, deltaX < 0 ? 1 : -1);
+        return;
+      }
+
+      scheduleNext();
+    }, { passive: true });
+
+    card.addEventListener("touchcancel", () => {
       appState.homeAnnouncementRotationPaused = false;
       scheduleNext();
-    });
-  }
-
-  card.addEventListener("touchstart", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch) {
-      return;
-    }
-
-    appState.homeAnnouncementTouchStartX = touch.clientX;
-    appState.homeAnnouncementTouchStartY = touch.clientY;
-    appState.homeAnnouncementTouchStartTime = Date.now();
-    appState.homeAnnouncementRotationPaused = true;
-    stopHomeAnnouncementFallbackRotation();
-  }, { passive: true });
-
-  card.addEventListener("touchend", (event) => {
-    const touch = event.changedTouches?.[0];
-    if (!touch) {
-      appState.homeAnnouncementRotationPaused = false;
-      scheduleNext();
-      return;
-    }
-
-    const deltaX = touch.clientX - appState.homeAnnouncementTouchStartX;
-    const deltaY = touch.clientY - appState.homeAnnouncementTouchStartY;
-    const elapsed = Date.now() - appState.homeAnnouncementTouchStartTime;
-    appState.homeAnnouncementRotationPaused = false;
-    if (Math.abs(deltaX) >= 48 && Math.abs(deltaY) <= 60 && elapsed <= 900) {
-      replaceHomeAnnouncementFeedCard(scope, deltaX < 0 ? 1 : -1);
-      return;
-    }
+    }, { passive: true });
 
     scheduleNext();
-  }, { passive: true });
-
-  card.addEventListener("touchcancel", () => {
-    appState.homeAnnouncementRotationPaused = false;
-    scheduleNext();
-  }, { passive: true });
-
-  scheduleNext();
+  }).catch((error) => {
+    console.warn("[Cannakan Feed] Could not start slide rotation because the default slides were not ready.", error);
+  });
 }
 
 function getActiveSiteVisitorPresenceEntries() {
