@@ -16893,7 +16893,7 @@ function render() {
     app.innerHTML = `
       <section class="card"><p class="muted">Loading Cannakan® Grow...</p></section>
       ${shouldRenderAnnouncementDuringLoad
-        ? renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date(), { useRotatingFallback: true }))
+        ? renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date()))
         : ""}
     `;
     bindMessageBoardImageFallbacks(app);
@@ -19360,7 +19360,7 @@ function renderHomeAdminUtilityCardMarkup() {
 
 function renderHomeSecondaryInfoRowMarkup() {
   const announcementMarkup = renderHomeAnnouncementCard(
-    getHomeAnnouncementCardData(new Date(), { useRotatingFallback: true }),
+    getHomeAnnouncementCardData(new Date()),
   );
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   return `
@@ -23502,7 +23502,7 @@ function clearStoredFallbackContent() {
   }
 }
 
-function getHomeAnnouncementCardData(referenceDate = new Date(), options = {}) {
+function getHomeAnnouncementCardData(referenceDate = new Date()) {
   const slideIndex = Math.max(0, Number(appState.homeAnnouncementFeedIndex) || 0);
   const announcement = getLatestActiveAnnouncement();
   ensureHomeAnnouncementFeedItems();
@@ -23595,36 +23595,6 @@ function bindMessageBoardImageFallbacks(scope = document) {
   });
 }
 
-function renderHomeAnnouncementCaptionMarkup(cardData = {}) {
-  if (cardData.fallbackType === "joke") {
-    return `
-      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Joke:</span>
-          <span>${escapeHtml(cardData.body)}</span>
-        </p>
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Answer:</span>
-          <span>${escapeHtml(cardData.answer || "")}</span>
-        </p>
-      </div>
-    `;
-  }
-
-  if (cardData.fallbackType === "fact") {
-    return `
-      <div class="home-announcement-card-caption home-announcement-card-caption--joke">
-        <p class="home-announcement-card-caption-line">
-          <span class="home-announcement-card-caption-kicker">Fact:</span>
-          <span>${escapeHtml(cardData.body)}</span>
-        </p>
-      </div>
-    `;
-  }
-
-  return `<p class="home-announcement-card-caption" title="${escapeHtml(cardData.body)}">${escapeHtml(cardData.body)}</p>`;
-}
-
 function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const isDynamicContent = cardData.contentMode === "dynamic";
@@ -23709,8 +23679,6 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
       aria-labelledby="home-announcement-title"
       data-home-announcement-card="true"
       ${cardData.fallbackRotationEnabled ? `data-home-announcement-rotation="true" data-home-announcement-sequence-index="${escapeHtml(String(cardData.fallbackRotationSequenceIndex || 0))}"` : ""}
-      ${cardData.fallbackItemKey ? `data-home-announcement-item-key="${escapeHtml(cardData.fallbackItemKey)}"` : ""}
-      ${cardData.fallbackType ? `data-home-announcement-item-type="${escapeHtml(cardData.fallbackType)}"` : ""}
     >
       <div class="home-announcement-card-media">
         ${imageMarkup}
@@ -23719,30 +23687,6 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
         ${isDynamicContent ? announcementPanelMarkup : staticPanelMarkup}
       </div>
     </section>
-  `;
-}
-
-function renderAdminMessageBoardRadioSelectorMarkup({
-  name,
-  legend,
-  selectedValue,
-  options = [],
-}) {
-  return `
-    <fieldset class="admin-source-form-full admin-message-board-radio-group">
-      <legend>${escapeHtml(legend)}</legend>
-      <div class="admin-message-board-radio-grid">
-        ${options.map((option) => `
-          <label class="admin-message-board-radio-option${selectedValue === option.value ? " is-selected" : ""}">
-            <input type="radio" name="${escapeHtml(name)}" value="${escapeHtml(option.value)}"${selectedValue === option.value ? " checked" : ""}${option.required ? " required" : ""}>
-            <span class="admin-message-board-radio-copy">
-              <strong>${escapeHtml(option.label)}</strong>
-              <span>${escapeHtml(option.description)}</span>
-            </span>
-          </label>
-        `).join("")}
-      </div>
-    </fieldset>
   `;
 }
 
@@ -23854,15 +23798,15 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("message-board")}
           <div>
-            <p class="eyebrow">Message Board CMS</p>
-            <h4>Control the Home message board</h4>
-            <p class="muted">When no announcement is active, Home shows the default slide rotation. Activate an announcement to replace the right-side feed copy and optionally the image.</p>
+            <p class="eyebrow">Announcement CMS</p>
+            <h4>Control the Home announcement</h4>
+            <p class="muted">Use one announcement to override the default Cannakan Feed state. When it is inactive, Home returns to rotating default slides and the static feed info panel.</p>
           </div>
         </div>
       </div>
       <div class="admin-source-form-grid">
         <div class="admin-source-form-full admin-message-board-subsection">
-          <strong>Announcement Content</strong>
+          <strong>Announcement</strong>
           <p class="muted">Use an image to fully replace the default slides. If you leave the image blank, the announcement will use the rotating default slides on the left.</p>
         </div>
         <label class="admin-source-form-full">
@@ -23870,7 +23814,7 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan">
         </label>
         <label class="admin-source-form-full">
-          <span>Message</span>
+          <span>Content / Description</span>
           <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update">${escapeHtml(announcement?.body || "")}</textarea>
         </label>
         ${renderAdminMessageBoardImageFieldMarkup({
@@ -30208,9 +30152,9 @@ function renderAdminPage() {
     {
       key: "message-board-cms",
       markup: renderAdminCollapsibleSectionMarkup({
-        eyebrow: "Message Board CMS",
-        title: "Message Board CMS",
-        description: "Control the Home Cannakan Feed announcement from one admin-only workspace.",
+        eyebrow: "Announcement CMS",
+        title: "Announcement CMS",
+        description: "Control the single Home announcement from one admin-only workspace.",
         iconType: "message-board",
         storageKey: ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY,
         contentId: "admin-message-board-section-content",
