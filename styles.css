@@ -4857,6 +4857,13 @@ body.theme-dark .contact-reason-card.is-active {
   max-width: 30ch;
 }
 
+.home-announcement-card-body-text {
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.72;
+  max-width: 30ch;
+}
+
 .home-announcement-card.is-fallback .home-announcement-card-copy h3 {
   max-width: 18ch;
   line-height: 1.08;
@@ -19282,6 +19289,7 @@ body.theme-dark .home-announcement-card-label {
 }
 
 body.theme-dark .home-announcement-card-static-text,
+body.theme-dark .home-announcement-card-body-text,
 body.theme-dark .home-announcement-card-feed-date {
   color: rgba(189, 204, 192, 0.82);
 }
