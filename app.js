@@ -23642,6 +23642,29 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
   const bodyText = isDynamicContent
     ? (cardData.body || "Latest update from Cannakan.")
     : "A mix of tips, insights, and light humor to keep you informed and improving every session.";
+  const staticPanelMarkup = `
+    <div class="home-announcement-card-copy home-announcement-card-copy--static">
+      <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
+      <p class="home-announcement-card-static-kicker">Small insights. Better outcomes.</p>
+      <div class="home-announcement-card-static-sections">
+        <section class="home-announcement-card-static-section" aria-label="What this is">
+          <h4>What this is</h4>
+          <p>A rotating stream of insights, features, and ideas designed to help you improve every session.</p>
+        </section>
+        <section class="home-announcement-card-static-section" aria-label="Why it matters">
+          <h4>Why it matters</h4>
+          <p>Better decisions come from better information.</p>
+          <p>The more you track and review, the more consistent your results become.</p>
+        </section>
+        <section class="home-announcement-card-static-section" aria-label="How to use it">
+          <h4>How to use it</h4>
+          <p>Check in regularly.</p>
+          <p>Apply what stands out.</p>
+          <p>Refine your process over time.</p>
+        </section>
+      </div>
+    </div>
+  `;
   const imageMarkup = `
       <div class="home-announcement-card-visual-shell${visualImageUrl === MESSAGE_BOARD_IMAGE_FALLBACK_URL ? " home-announcement-card-visual-shell--fallback" : ""}" data-home-announcement-visual-shell="true">
         <img
@@ -23668,10 +23691,14 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData()) {
         ${imageMarkup}
       </div>
       <div class="home-announcement-card-body">
-        <div class="home-announcement-card-copy${isDynamicContent ? "" : " home-announcement-card-copy--static"}">
-          <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
-          <p class="${isDynamicContent ? "home-announcement-card-body-text" : "home-announcement-card-static-text"}">${escapeHtml(bodyText)}</p>
-        </div>
+        ${isDynamicContent
+      ? `
+          <div class="home-announcement-card-copy">
+            <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
+            <p class="home-announcement-card-body-text">${escapeHtml(bodyText)}</p>
+          </div>
+        `
+      : staticPanelMarkup}
         ${cardData.linkUrl ? `
           <div class="home-announcement-card-footer">
             <div class="home-announcement-card-actions">
