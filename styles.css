@@ -2057,6 +2057,22 @@ body.theme-dark .spotlight-stat strong {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, filter 180ms ease;
 }
 
+.premium-icon-plate--sessions {
+  border-color: rgba(170, 228, 94, 0.34);
+  background:
+    radial-gradient(circle at 50% 38%, rgba(154, 219, 79, 0.2), transparent 32%),
+    radial-gradient(circle at 50% 112%, rgba(0, 0, 0, 0.64), transparent 50%),
+    linear-gradient(180deg, rgba(32, 50, 28, 0.99) 0%, rgba(15, 23, 17, 0.99) 56%, rgba(5, 9, 7, 1) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -16px 22px rgba(0, 0, 0, 0.44),
+    inset 0 0 32px rgba(148, 209, 89, 0.12),
+    inset 0 12px 18px rgba(201, 248, 146, 0.05),
+    0 0 0 1px rgba(148, 209, 89, 0.12),
+    0 18px 34px rgba(0, 0, 0, 0.34),
+    0 0 26px rgba(148, 209, 89, 0.16);
+}
+
 .premium-icon-svg {
   position: relative;
   z-index: 2;
@@ -2084,6 +2100,15 @@ body.theme-dark .spotlight-stat strong {
   pointer-events: none;
 }
 
+.premium-icon-plate--sessions.premium-icon-inner-glow::before {
+  inset: 7px;
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 50% 43%, rgba(181, 239, 95, 0.34), transparent 30%),
+    radial-gradient(circle at 50% 53%, rgba(110, 171, 42, 0.24), transparent 58%);
+  filter: blur(4px);
+}
+
 .premium-icon-highlight::after {
   content: "";
   position: absolute;
@@ -2101,10 +2126,54 @@ body.theme-dark .spotlight-stat strong {
   pointer-events: none;
 }
 
+.premium-icon-plate--sessions.premium-icon-highlight::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(229, 255, 206, 0.06) 22%, rgba(255, 255, 255, 0) 38%),
+    radial-gradient(circle at 50% 6%, rgba(255, 255, 255, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 64%, rgba(0, 0, 0, 0.3) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(192, 245, 130, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -16px 18px rgba(0, 0, 0, 0.34),
+    0 0 24px rgba(148, 209, 89, 0.1);
+}
+
 .premium-icon-svg .premium-sprout-mark {
   filter:
     drop-shadow(0 0 8px rgba(180, 239, 82, 0.24))
     drop-shadow(0 2px 2px rgba(0, 0, 0, 0.32));
+}
+
+.premium-icon-svg--sessions {
+  transform: scale(0.9) translateY(0.5px);
+  filter:
+    saturate(1.24)
+    contrast(1.05)
+    drop-shadow(0 0 18px rgba(166, 229, 86, 0.32))
+    drop-shadow(0 3px 7px rgba(0, 0, 0, 0.4));
+}
+
+.premium-icon-svg--sessions .premium-sprout-under-shadow {
+  filter: blur(1.6px);
+}
+
+.premium-icon-svg--sessions .premium-sprout-mark {
+  filter:
+    drop-shadow(0 0 10px rgba(190, 247, 106, 0.3))
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.36))
+    drop-shadow(0 6px 8px rgba(0, 0, 0, 0.16));
+}
+
+.premium-icon-svg--sessions .premium-sprout-veins {
+  opacity: 0.26;
+}
+
+.premium-icon-svg--sessions .premium-sprout-edge-light {
+  mix-blend-mode: screen;
+}
+
+.premium-icon-svg--sessions .premium-sprout-gloss {
+  opacity: 0.76;
 }
 
 .premium-icon-svg .premium-sprout-gloss {
@@ -2127,6 +2196,21 @@ body.theme-dark .spotlight-stat strong {
     0 0 28px rgba(148, 209, 89, 0.2);
 }
 
+.premium-icon-plate--sessions:hover,
+.section-title-with-icon:hover .premium-icon-plate--sessions,
+.app-section-header:hover .premium-icon-plate--sessions {
+  border-color: rgba(181, 239, 104, 0.42);
+  filter: drop-shadow(0 0 20px rgba(148, 209, 89, 0.14));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -16px 22px rgba(0, 0, 0, 0.44),
+    inset 0 0 34px rgba(148, 209, 89, 0.15),
+    inset 0 12px 18px rgba(201, 248, 146, 0.07),
+    0 0 0 1px rgba(148, 209, 89, 0.14),
+    0 18px 34px rgba(0, 0, 0, 0.34),
+    0 0 30px rgba(148, 209, 89, 0.22);
+}
+
 .premium-icon-plate:hover .premium-icon-svg,
 .section-title-with-icon:hover .premium-icon-plate .premium-icon-svg,
 .app-section-header:hover .premium-icon-plate .premium-icon-svg {
@@ -2134,6 +2218,16 @@ body.theme-dark .spotlight-stat strong {
     saturate(1.22)
     drop-shadow(0 0 18px rgba(148, 209, 89, 0.34))
     drop-shadow(0 2px 6px rgba(0, 0, 0, 0.38));
+}
+
+.premium-icon-plate--sessions:hover .premium-icon-svg--sessions,
+.section-title-with-icon:hover .premium-icon-plate--sessions .premium-icon-svg--sessions,
+.app-section-header:hover .premium-icon-plate--sessions .premium-icon-svg--sessions {
+  filter:
+    saturate(1.28)
+    contrast(1.08)
+    drop-shadow(0 0 20px rgba(179, 238, 98, 0.38))
+    drop-shadow(0 3px 7px rgba(0, 0, 0, 0.42));
 }
 
 .cg-icon--plain {
