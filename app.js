@@ -19363,6 +19363,12 @@ function renderHomeSecondaryInfoRowMarkup() {
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   return `
     <div class="home-dashboard-secondary-row">
+      <section class="home-explore-divider" aria-labelledby="home-explore-title">
+        <div class="home-explore-divider-copy">
+          <h3 id="home-explore-title">Explore</h3>
+          <p class="home-explore-divider-subtitle">Discover insights, tools, and community data to improve your results.</p>
+        </div>
+      </section>
       <div class="home-dashboard-secondary-row-top">
         ${renderHomeGalleryRankingsTeaser()}
         <div class="home-dashboard-secondary-side-column">
