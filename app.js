@@ -13562,12 +13562,6 @@ function decorateAppIconSymbolMarkup(symbolMarkup = "", shapeClass = "cg-icon-ma
 }
 
 function getPremiumIconClassNames(iconName = "", variant = "plain") {
-  if (iconName === "mySessionsSprout" && variant === "plate") {
-    return {
-      wrapper: ["premium-icon-plate", "premium-icon-glow"],
-      svg: ["premium-icon-svg"],
-    };
-  }
   return {
     wrapper: [],
     svg: [],
@@ -19829,11 +19823,14 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
   return `
     <section class="card home-tested-sources-preview-section">
       <div class="home-tested-sources-preview-head">
-        <div>
-          <p class="eyebrow">Source Directory</p>
-          <h2>Source Directory</h2>
-          <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
-          <p class="muted">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}.</p>
+        <div class="section-title-with-icon app-section-header-main home-section-header-main">
+          ${renderPremiumSectionHeaderIcon("sourceDirectoryBars")}
+          <div>
+            <p class="eyebrow">Source Directory</p>
+            <h2>Source Directory</h2>
+            <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
+            <p class="muted">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}.</p>
+          </div>
         </div>
         <a class="button button-secondary" href="#sources">View Source Directory</a>
       </div>
@@ -19850,6 +19847,17 @@ function renderHomeCstpTestingIconMarkup() {
     variant: "plate",
     className: "home-cstp-overview-icon home-cstp-overview-icon-glyph",
   });
+}
+
+function renderPremiumSectionHeaderIcon(iconName = "info") {
+  return `
+    <span class="cg-icon cg-icon--plate section-title-icon premium-icon-plate premium-icon-inner-glow premium-icon-highlight" aria-hidden="true">
+      ${renderAppIconSvgMarkup(iconName, {
+        decorative: true,
+        className: "premium-icon-svg",
+      })}
+    </span>
+  `;
 }
 
 function renderHomeCstpOverviewFeatureMarkup({
@@ -19926,9 +19934,14 @@ function renderHomeCstpOverviewSectionMarkup() {
     <section class="card home-cstp-overview-section">
       <div class="home-cstp-overview-layout">
         <div class="home-cstp-overview-intro">
-          <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
-          <h2>Cannakan Seed Testing Program (CSTP)</h2>
-          <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
+          <div class="section-title-with-icon app-section-header-main home-section-header-main">
+            ${renderPremiumSectionHeaderIcon("certificationShield")}
+            <div>
+              <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
+              <h2>Cannakan Seed Testing Program (CSTP)</h2>
+              <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
+            </div>
+          </div>
           <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">

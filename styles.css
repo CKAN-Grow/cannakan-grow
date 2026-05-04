@@ -2034,9 +2034,16 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .premium-icon-plate {
-  --cg-icon-size: 28px;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   border-color: rgba(148, 209, 89, 0.28);
   background:
+    radial-gradient(circle at 50% 34%, rgba(138, 201, 72, 0.14), transparent 44%),
+    radial-gradient(circle at 50% 112%, rgba(0, 0, 0, 0.56), transparent 48%),
     linear-gradient(180deg, rgba(34, 54, 30, 0.98) 0%, rgba(16, 23, 18, 0.98) 54%, rgba(7, 11, 9, 0.99) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
@@ -2046,44 +2053,62 @@ body.theme-dark .spotlight-stat strong {
     0 0 0 1px rgba(148, 209, 89, 0.08),
     0 16px 32px rgba(0, 0, 0, 0.3),
     0 0 22px rgba(148, 209, 89, 0.14);
-}
-
-.premium-icon-plate::before {
-  background:
-    linear-gradient(180deg, rgba(250, 255, 240, 0.12), rgba(250, 255, 240, 0) 32%),
-    radial-gradient(circle at 50% 24%, rgba(148, 209, 89, 0.16), transparent 60%);
-  box-shadow:
-    inset 0 0 0 1px rgba(148, 209, 89, 0.12),
-    0 0 24px rgba(148, 209, 89, 0.12);
-}
-
-.premium-icon-glow::after {
-  box-shadow:
-    inset 0 -16px 20px rgba(0, 0, 0, 0.34),
-    inset 0 11px 18px rgba(255, 255, 255, 0.05),
-    0 0 0 1px rgba(148, 209, 89, 0.04);
+  transform-origin: center;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, filter 180ms ease;
 }
 
 .premium-icon-svg {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  transform: scale(0.9) translateY(1px);
   filter:
     saturate(1.18)
-    drop-shadow(0 0 14px rgba(148, 209, 89, 0.24))
-    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.34));
+    drop-shadow(0 0 16px rgba(148, 209, 89, 0.28))
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.36));
 }
 
-.premium-icon-svg .cg-icon-shadow-layer {
-  transform: translateY(1.5px);
-  opacity: 0.96;
+.premium-icon-inner-glow::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: 0;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(163, 233, 78, 0.24), transparent 42%),
+    radial-gradient(circle at 50% 54%, rgba(109, 171, 43, 0.18), transparent 62%);
+  filter: blur(3px);
+  pointer-events: none;
 }
 
-.premium-icon-svg .cg-icon-main-layer {
+.premium-icon-highlight::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 26%, rgba(255, 255, 255, 0) 38%),
+    radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.1), transparent 22%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 66%, rgba(0, 0, 0, 0.26) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(185, 242, 122, 0.14),
+    inset 0 -15px 18px rgba(0, 0, 0, 0.3),
+    0 0 22px rgba(148, 209, 89, 0.1);
+  pointer-events: none;
+}
+
+.premium-icon-svg .premium-sprout-mark {
   filter:
-    drop-shadow(0 0 9px rgba(148, 209, 89, 0.34))
-    drop-shadow(0 1px 0 rgba(247, 255, 232, 0.2));
+    drop-shadow(0 0 8px rgba(180, 239, 82, 0.24))
+    drop-shadow(0 2px 2px rgba(0, 0, 0, 0.32));
 }
 
-.premium-icon-svg .cg-icon-main-shape[data-solid="true"] {
-  stroke-width: calc(var(--cg-icon-stroke) + 0.15);
+.premium-icon-svg .premium-sprout-gloss {
+  mix-blend-mode: screen;
 }
 
 .premium-icon-plate:hover,
@@ -2091,6 +2116,7 @@ body.theme-dark .spotlight-stat strong {
 .app-section-header:hover .premium-icon-plate {
   transform: scale(1.03);
   border-color: rgba(148, 209, 89, 0.36);
+  filter: drop-shadow(0 0 18px rgba(148, 209, 89, 0.12));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -14px 20px rgba(0, 0, 0, 0.38),
@@ -2099,6 +2125,15 @@ body.theme-dark .spotlight-stat strong {
     0 0 0 1px rgba(148, 209, 89, 0.1),
     0 18px 34px rgba(0, 0, 0, 0.32),
     0 0 28px rgba(148, 209, 89, 0.2);
+}
+
+.premium-icon-plate:hover .premium-icon-svg,
+.section-title-with-icon:hover .premium-icon-plate .premium-icon-svg,
+.app-section-header:hover .premium-icon-plate .premium-icon-svg {
+  filter:
+    saturate(1.22)
+    drop-shadow(0 0 18px rgba(148, 209, 89, 0.34))
+    drop-shadow(0 2px 6px rgba(0, 0, 0, 0.38));
 }
 
 .cg-icon--plain {
@@ -3964,6 +3999,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.home-section-header-main {
+  width: auto;
+  flex: 1 1 auto;
+}
+
+.home-section-header-main > div {
+  gap: 8px;
 }
 
 .home-tested-sources-preview-row {
@@ -12589,6 +12633,10 @@ body.theme-dark .theme-toggle-button:hover {
   .home-tested-sources-preview-head,
   .home-cstp-overview-layout {
     gap: 14px;
+  }
+
+  .home-section-header-main {
+    width: 100%;
   }
 
   .home-tested-sources-preview-head {
