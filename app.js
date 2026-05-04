@@ -13389,41 +13389,41 @@ function renderGalleryTopMembersSummary(entries = []) {
 
 const APP_ICON_LIBRARY = Object.freeze({
   mySessionsSprout: `
-    <path d="M12 20v-5.2"></path>
-    <path d="M12 14.8c0-3 1.9-5.4 4.8-6.6.1 3.1-1.6 5.7-4.8 6.9Z"></path>
-    <path d="M12 13.8c-2.8-1-4.5-3.5-4.7-6.4 2.8 1 4.7 3.4 4.7 6.4Z"></path>
-    <path d="M9.2 20.5h5.6"></path>
+    <path data-solid="true" d="M12.1 19.9c-.7 0-1.2-.5-1.2-1.2v-4.2c0-.5.3-1 .8-1.1 1.8-.6 3.2-2 4.1-4 1 .5 1.7 1.6 1.7 2.8 0 3.7-2.1 6.7-5.4 7.7Z"></path>
+    <path data-solid="true" d="M10.9 13.9c-3-.4-5.3-2.9-5.6-6.5 3.4.2 6 2.5 6.4 5.8.1.4-.3.7-.8.7Z"></path>
+    <path data-solid="true" d="M12.1 13.8c-.4 0-.8-.3-.7-.7.4-3.4 2.9-5.8 6.4-6-1 3.7-3.3 6.2-5.7 6.7Z"></path>
+    <path data-solid="true" d="M8.2 20.6c0-.8.5-1.3 1.3-1.3h5c.8 0 1.3.5 1.3 1.3Z"></path>
   `,
   activeSessionWaveform: `
-    <path d="M3.5 13.5H7l2.4-4.5 3.2 8 2.2-5h5.7"></path>
-    <path d="M5 18.5h14"></path>
+    <path data-solid="true" d="M3.5 14.8c0-.8.5-1.3 1.3-1.3H6c.5 0 .9-.3 1.1-.7l1.7-3.7c.2-.4.6-.7 1.1-.7.5 0 .9.3 1.1.7l2.3 5.7c.2.5.9.5 1.1 0l1.6-3.8c.2-.4.6-.7 1.1-.7h3.8c.8 0 1.3.5 1.3 1.3s-.5 1.3-1.3 1.3h-2.9c-.5 0-.9.3-1.1.7l-1.7 4c-.2.4-.6.7-1.1.7-.5 0-.9-.3-1.1-.8l-2.3-5.6-1 2.3c-.2.4-.6.7-1.1.7H4.8c-.8 0-1.3-.5-1.3-1.3Z"></path>
+    <path data-solid="true" d="M6 19.9c0-.8.5-1.3 1.3-1.3h9.4c.8 0 1.3.5 1.3 1.3Z"></path>
   `,
   communityGroup: `
-    <circle cx="9" cy="9" r="2.5"></circle>
-    <circle cx="16.3" cy="8.2" r="2"></circle>
-    <path d="M4.8 18c.6-2.2 2.4-3.6 4.9-3.6 2.4 0 4.2 1.4 4.8 3.6"></path>
-    <path d="M14.2 17.3c.5-1.5 1.9-2.4 3.6-2.4 1 0 1.9.2 2.7.8"></path>
+    <circle cx="8.5" cy="8.5" r="2.7"></circle>
+    <circle cx="16.6" cy="8" r="2.2"></circle>
+    <path data-solid="true" d="M4.2 18.7c0-2.7 2.3-4.8 5.1-4.8h.4c2.8 0 5.1 2.1 5.1 4.8 0 .6-.5 1.1-1.1 1.1H5.3c-.6 0-1.1-.5-1.1-1.1Z"></path>
+    <path data-solid="true" d="M13.8 18.8c.1-2 1.8-3.5 3.9-3.5h.4c1.4 0 2.7.6 3.5 1.6.6.8 0 2-1 2h-5.7c-.6 0-1.1-.5-1.1-1.1Z"></path>
   `,
   sourceDirectoryBars: `
-    <path d="M4.5 19.5h15"></path>
-    <path d="M7 19.5V10"></path>
-    <path d="M12 19.5V6"></path>
-    <path d="M17 19.5v-7"></path>
+    <path data-solid="true" d="M4.5 19.4c0-.7.5-1.2 1.2-1.2h12.8c.7 0 1.2.5 1.2 1.2v.2H4.5Z"></path>
+    <rect x="6.1" y="10.4" width="2.8" height="7.8" rx="1.2"></rect>
+    <rect x="10.6" y="6.2" width="2.8" height="12" rx="1.2"></rect>
+    <rect x="15.1" y="8.8" width="2.8" height="9.4" rx="1.2"></rect>
   `,
   growNetworkNodes: `
-    <circle cx="6" cy="12" r="2"></circle>
-    <circle cx="18" cy="7" r="2"></circle>
-    <circle cx="18" cy="17" r="2"></circle>
-    <path d="M8 11.2 16 7.8"></path>
-    <path d="M8 12.8 16 16.2"></path>
+    <circle cx="6.2" cy="12" r="2.4"></circle>
+    <circle cx="17.9" cy="7.1" r="2.4"></circle>
+    <circle cx="17.9" cy="16.9" r="2.4"></circle>
+    <path data-solid="true" d="M8 10.9c.5-.2 1-.5 1.5-.7l4.4-1.9c.8-.3 1.5-.7 2.3-1 .8-.4 1.7.2 1.7 1.1 0 .5-.3.9-.7 1.1l-7 3Z"></path>
+    <path data-solid="true" d="M8 13.1 17 17c.7.3 1 1.2.6 1.8-.3.6-1 .9-1.6.6l-7.9-3.4Z"></path>
   `,
   adminShield: `
-    <path d="M12 3.5 5.5 6.5v5.2c0 4.1 2.6 7.5 6.5 8.8 3.9-1.3 6.5-4.7 6.5-8.8V6.5Z"></path>
-    <path d="m9.2 12.1 1.9 1.9 3.9-4.2"></path>
+    <path data-solid="true" d="M12 3.5 5.4 6.4v5.1c0 4.3 2.5 7.8 6.6 9 4.1-1.2 6.6-4.7 6.6-9V6.4Z"></path>
+    <path d="m9.2 12.2 1.7 1.7 4-4.1c.4-.4 1-.4 1.4 0s.4 1 0 1.4l-4.7 4.8c-.4.4-1 .4-1.4 0l-2.4-2.4c-.4-.4-.4-1 0-1.4s1-.4 1.4 0Z"></path>
   `,
   profileUser: `
-    <circle cx="12" cy="8.2" r="3"></circle>
-    <path d="M5.2 19c.8-3 3.1-4.8 6.8-4.8 3.7 0 6 1.8 6.8 4.8"></path>
+    <circle cx="12" cy="8.3" r="3.2"></circle>
+    <path data-solid="true" d="M5 18.9c0-2.9 2.8-5.2 6.2-5.2h1.6c3.4 0 6.2 2.3 6.2 5.2 0 .6-.5 1.1-1.1 1.1H6.1c-.6 0-1.1-.5-1.1-1.1Z"></path>
   `,
   settingsGear: `
     <circle cx="12" cy="12" r="2.7"></circle>
@@ -13510,16 +13510,15 @@ const APP_ICON_LIBRARY = Object.freeze({
     <path d="M18 13.5v4A1.5 1.5 0 0 1 16.5 19h-10A1.5 1.5 0 0 1 5 17.5v-10A1.5 1.5 0 0 1 6.5 6h4"></path>
   `,
   chart: `
-    <path d="M4.5 19.5h15"></path>
-    <path d="m6 15 4-4 3 2.5 5-6"></path>
-    <path d="M14.5 7.5H18V11"></path>
+    <path data-solid="true" d="M4.5 19.5c0-.7.5-1.2 1.2-1.2h12.8c.7 0 1.2.5 1.2 1.2v.2H4.5Z"></path>
+    <path data-solid="true" d="M6 15.7c0-.3.1-.6.4-.8l3-3c.4-.4 1-.5 1.5-.1l1.5 1.2c.5.4 1.1.3 1.5-.2l3.1-3.8c.5-.7 1.7-.3 1.7.6V11c0 .7-.5 1.2-1.2 1.2h-1c-.4 0-.8.2-1 .5l-2 2.6c-.4.5-1.1.6-1.6.2l-1.7-1.3c-.5-.3-1.1-.3-1.5.1l-1.9 2c-.7.7-1.8.2-1.8-.6Z"></path>
   `,
   leaderboard: `
-    <path d="M5 19.5h14"></path>
-    <path d="M7 19.5v-6"></path>
-    <path d="M12 19.5V8"></path>
-    <path d="M17 19.5v-9"></path>
-    <path d="M9 5.5h6"></path>
+    <path data-solid="true" d="M5 19.4c0-.7.5-1.2 1.2-1.2h11.6c.7 0 1.2.5 1.2 1.2v.2H5Z"></path>
+    <rect x="6.3" y="12.8" width="2.6" height="5.4" rx="1.1"></rect>
+    <rect x="10.7" y="7.5" width="2.6" height="10.7" rx="1.1"></rect>
+    <rect x="15.1" y="10.2" width="2.6" height="8" rx="1.1"></rect>
+    <path data-solid="true" d="M8.8 5.3c0-.6.4-1 1-1h4.4c.6 0 1 .4 1 1 0 .4-.2.7-.5.9l-1 .6H10.3l-1-.6c-.3-.2-.5-.5-.5-.9Z"></path>
   `,
   heartLike: `
     <path d="m12 20-1.2-1.1C6.2 14.8 4 12.8 4 9.9 4 7.6 5.7 6 7.9 6c1.5 0 2.9.7 4.1 2 1.2-1.3 2.6-2 4.1-2 2.2 0 3.9 1.6 3.9 3.9 0 2.9-2.2 4.9-6.8 9Z"></path>
@@ -13530,20 +13529,19 @@ const APP_ICON_LIBRARY = Object.freeze({
     <path d="M18 16.5H6c1.2-1.1 2-2.7 2-4.6V10a4 4 0 1 1 8 0v1.9c0 1.9.8 3.5 2 4.6Z"></path>
   `,
   reportDocument: `
-    <path d="M8 4.5h7l3 3v12a1.5 1.5 0 0 1-1.5 1.5h-8A1.5 1.5 0 0 1 7 19.5v-13A2 2 0 0 1 9 4.5"></path>
-    <path d="M15 4.5v3h3"></path>
-    <path d="M10 12h5"></path>
-    <path d="M10 15h5"></path>
+    <path data-solid="true" d="M8.6 4.5H14l4 4v10.7c0 1-.8 1.8-1.8 1.8H8.6c-1 0-1.8-.8-1.8-1.8V6.3c0-1 .8-1.8 1.8-1.8Z"></path>
+    <path data-solid="true" d="M14.1 4.5v2.8c0 .8.6 1.4 1.4 1.4H18"></path>
+    <rect x="9.6" y="11.2" width="5.8" height="1.6" rx=".8"></rect>
+    <rect x="9.6" y="14.6" width="5.8" height="1.6" rx=".8"></rect>
   `,
   labFlask: `
-    <path d="M10 4.5h4"></path>
-    <path d="M11 4.5v4.2l-4.5 7.6A2 2 0 0 0 8.2 19h7.6a2 2 0 0 0 1.7-3l-4.5-7.3V4.5"></path>
-    <path d="M9.3 13.8h5.4"></path>
+    <path data-solid="true" d="M10 4.4c0-.5.4-.9.9-.9h2.2c.5 0 .9.4.9.9 0 .5-.4.9-.9.9h-.3v3l4.1 6.8c.9 1.5-.1 3.4-1.8 3.4H8.9c-1.7 0-2.7-1.9-1.8-3.4l4.1-6.8v-3h-.3c-.5 0-.9-.4-.9-.9Z"></path>
+    <path data-solid="true" d="M9.2 14.1c0-.5.4-.9.9-.9h3.8c1.3 0 2.4.6 3.1 1.6l.8 1.2c.6 1-.1 2.3-1.3 2.3H8.5c-1.1 0-1.8-1.2-1.3-2.1l.9-1.5c.2-.4.6-.6 1.1-.6Z"></path>
   `,
   certificationShield: `
-    <path d="M12 3.5 5.5 6.5v5.2c0 4.1 2.6 7.5 6.5 8.8 3.9-1.3 6.5-4.7 6.5-8.8V6.5Z"></path>
-    <path d="m9.4 12.2 1.8 1.8 3.4-3.7"></path>
-    <path d="M8.2 18.2 7.6 21l4.4-2.2 4.4 2.2-.6-2.8"></path>
+    <path data-solid="true" d="M12 3.5 5.4 6.4v5.1c0 4.4 2.6 7.9 6.6 9.1 4-1.2 6.6-4.7 6.6-9.1V6.4Z"></path>
+    <path d="m9.4 12.2 1.8 1.8 3.4-3.7c.4-.4 1-.5 1.4-.1.4.4.5 1 .1 1.4l-4.1 4.5c-.4.4-1 .4-1.4 0L8 13.6c-.4-.4-.4-1 0-1.4s1-.4 1.4 0Z"></path>
+    <path data-solid="true" d="M8.4 18.3a13 13 0 0 0 3.6 1.2 13 13 0 0 0 3.6-1.2l.7 2.8c.1.5-.4.9-.8.7L12 20l-3.5 1.8c-.4.2-.9-.2-.8-.7Z"></path>
   `,
   installDevice: `
     <rect x="7" y="3.5" width="10" height="17" rx="2.5"></rect>
@@ -13553,6 +13551,15 @@ const APP_ICON_LIBRARY = Object.freeze({
   `,
 });
 
+let appIconRenderSequence = 0;
+
+function decorateAppIconSymbolMarkup(symbolMarkup = "", shapeClass = "cg-icon-main-shape") {
+  return String(symbolMarkup || "").replace(
+    /<(path|circle|rect|polygon|polyline|line|ellipse)\b/g,
+    `<$1 class="${shapeClass}"`,
+  );
+}
+
 function renderAppIconSvgMarkup(iconName = "info", options = {}) {
   const {
     className = "",
@@ -13560,13 +13567,43 @@ function renderAppIconSvgMarkup(iconName = "info", options = {}) {
     decorative = true,
   } = options;
   const symbolMarkup = APP_ICON_LIBRARY[iconName] || APP_ICON_LIBRARY.info;
+  const iconToken = `cg-icon-${String(iconName || "info").replace(/[^a-z0-9_-]/gi, "").toLowerCase()}-${appIconRenderSequence += 1}`;
+  const plateGradientId = `${iconToken}-plate-gradient`;
+  const detailGradientId = `${iconToken}-detail-gradient`;
+  const glowGradientId = `${iconToken}-glow-gradient`;
   const svgClasses = ["cg-icon-svg", className].filter(Boolean).join(" ");
   const ariaAttributes = decorative
     ? 'aria-hidden="true" focusable="false"'
     : `role="img" aria-label="${escapeHtml(label || iconName)}" focusable="false"`;
   return `
-    <svg class="${escapeHtml(svgClasses)}" viewBox="0 0 24 24" ${ariaAttributes}>
-      ${symbolMarkup}
+    <svg
+      class="${escapeHtml(svgClasses)}"
+      viewBox="0 0 24 24"
+      ${ariaAttributes}
+      style="--cg-icon-primary-fill:url(#${escapeHtml(plateGradientId)}); --cg-icon-secondary-fill:url(#${escapeHtml(detailGradientId)}); --cg-icon-glow-fill:url(#${escapeHtml(glowGradientId)});"
+    >
+      <defs>
+        <linearGradient id="${escapeHtml(plateGradientId)}" x1="4" y1="3.5" x2="20" y2="20.5" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#d9ff9f"></stop>
+          <stop offset="46%" stop-color="#94d159"></stop>
+          <stop offset="100%" stop-color="#4f8f1d"></stop>
+        </linearGradient>
+        <linearGradient id="${escapeHtml(detailGradientId)}" x1="7" y1="5" x2="18" y2="18" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#f4ffd8"></stop>
+          <stop offset="100%" stop-color="#7cc33a"></stop>
+        </linearGradient>
+        <radialGradient id="${escapeHtml(glowGradientId)}" cx="50%" cy="30%" r="70%">
+          <stop offset="0%" stop-color="#ecffc6" stop-opacity="0.96"></stop>
+          <stop offset="45%" stop-color="#94d159" stop-opacity="0.92"></stop>
+          <stop offset="100%" stop-color="#4e8120" stop-opacity="0.88"></stop>
+        </radialGradient>
+      </defs>
+      <g class="cg-icon-shadow-layer" aria-hidden="true">
+        ${decorateAppIconSymbolMarkup(symbolMarkup, "cg-icon-shadow-shape")}
+      </g>
+      <g class="cg-icon-main-layer">
+        ${decorateAppIconSymbolMarkup(symbolMarkup, "cg-icon-main-shape")}
+      </g>
     </svg>
   `;
 }
