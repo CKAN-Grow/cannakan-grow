@@ -2342,6 +2342,20 @@ button:focus-visible .icon-interactive.cg-icon--plate {
   object-fit: contain;
 }
 
+.dashboard-bar .section-title-icon {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.dashboard-bar .section-title-icon-image[src*="my-sessions-premium.svg"] {
+  width: 112%;
+  height: 112%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+}
+
 .section-title-with-icon > span:last-child {
   min-width: 0;
 }
