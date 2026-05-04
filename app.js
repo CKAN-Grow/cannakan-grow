@@ -120,6 +120,21 @@ const APP_HINTS = Object.freeze([
   { text: "Dark mode is available from the app theme toggle if you want the testing and report views to feel easier on the eyes." },
   { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
 ]);
+const CSTP_DEFINITION = "CSTP (Cannakan Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.";
+const CSTP_CERTIFICATION_PHILOSOPHY = "CSTP certification is earned, not purchased.";
+const CSTP_RESULTS_CREDIBILITY = "All CSTP results are generated under controlled testing conditions using the KAN® System.";
+const CSTP_BADGE_DISCLAIMER = "CSTP badges reflect performance from a specific tested batch and are time-limited.";
+const CSTP_SHARING_EXPOSURE = "CSTP-qualified results may be featured within the app and shared across Cannakan Grow channels.";
+const CSTP_REPORT_LANGUAGE = "This report summarizes results from a controlled CSTP session. All data reflects observed outcomes under standardized conditions.";
+const CSTP_REPORT_NO_GUARANTEE = "No guarantees are implied beyond the tested sample.";
+const CSTP_NEUTRALITY = "CSTP evaluations are conducted independently using standardized procedures to ensure consistency and reliability.";
+const CSTP_TOOLTIP_COPY = Object.freeze({
+  cstp: "Standardized germination testing protocol",
+  gold: "Top-tier performance under CSTP testing",
+  silver: "Strong performance under CSTP testing",
+  "active certification": "Currently within valid certification window",
+  "expiring soon": "Certification nearing expiration",
+});
 const CANNAKAN_FACTS = Object.freeze([
   "Seeds need moisture, oxygen, and warmth to begin germination.",
   "Many seeds germinate more consistently when the growing medium stays evenly moist, not soaked.",
@@ -19355,6 +19370,29 @@ function formatSourceProfileSampleSize(value = "") {
   return /\bseed/i.test(normalizedValue) ? normalizedValue : `${normalizedValue} seeds`;
 }
 
+function getCstpTooltipCopy(label = "") {
+  const normalizedLabel = String(label || "").trim().toLowerCase();
+  if (!normalizedLabel) {
+    return "";
+  }
+  if (normalizedLabel.includes("cstp")) {
+    return CSTP_TOOLTIP_COPY.cstp;
+  }
+  if (normalizedLabel.includes("gold")) {
+    return CSTP_TOOLTIP_COPY.gold;
+  }
+  if (normalizedLabel.includes("silver")) {
+    return CSTP_TOOLTIP_COPY.silver;
+  }
+  if (normalizedLabel.includes("active certification")) {
+    return CSTP_TOOLTIP_COPY["active certification"];
+  }
+  if (normalizedLabel.includes("expiring soon")) {
+    return CSTP_TOOLTIP_COPY["expiring soon"];
+  }
+  return "";
+}
+
 function renderSourceProfileMetricCard({
   label,
   value,
@@ -19404,7 +19442,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       testedAt: publishedCertification.completedAt || publishedCertification.publishedAt || "",
       expiresAt: lifecycleState.expiresAt || "",
       heading: "2. CSTP Verification",
-      helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+      helperText: CSTP_DEFINITION,
       statusLabel: `CSTP ${qualificationLabel} Certified`,
       toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver",
       usesBadge: true,
@@ -19436,7 +19474,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       testedAt: String(mockCstp.testedDate || "").trim(),
       expiresAt: String(mockCstp.validUntil || "").trim(),
       heading: "2. CSTP Verification",
-      helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+      helperText: CSTP_DEFINITION,
       statusLabel: qualificationResult
         ? `CSTP ${getAdminCstpQualificationLabel(qualificationResult)} Certified`
         : (isExpired ? "CSTP Certification Expired" : "No public CSTP certification"),
@@ -19469,7 +19507,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
     testedAt: "",
     expiresAt: "",
     heading: "2. CSTP Verification",
-    helperText: "Published CSTP badges reflect controlled batch testing and remain separate from broader community session performance.",
+    helperText: CSTP_DEFINITION,
     statusLabel: "No public CSTP certification",
     toneClass: "is-neutral",
     usesBadge: false,
@@ -19494,11 +19532,13 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
     || (cstpState.status === "expired" ? SOURCE_PROFILE_CSTP_BADGE_ASSETS.expired : "");
   if (badgeAsset) {
     const badgeAlt = cstpState.statusLabel || "CSTP certification badge";
+    const badgeTitle = getCstpTooltipCopy(cstpState.statusLabel || cstpState.status || "CSTP");
     return `
       <div class="source-profile-cstp-visual source-profile-cstp-visual--image ${toneClass}">
         <img
           src="${escapeHtml(badgeAsset)}"
           alt="${escapeHtml(badgeAlt)}"
+          title="${escapeHtml(badgeTitle || getCstpTooltipCopy("CSTP"))}"
           class="source-profile-cstp-badge-image"
           loading="lazy"
           decoding="async"
@@ -19513,11 +19553,11 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
       : (cstpState.status === "not-tested" ? "Not Tested" : "Expired"));
   const textCaption = cstpState.visualNote
     || (cstpState.status === "tested"
-      ? "No certification earned"
-      : (cstpState.status === "not-tested" ? "No CSTP test on record" : "Certification lapsed"));
+      ? "No certification earned for the tested batch"
+      : (cstpState.status === "not-tested" ? "No public CSTP certification on record" : "Certification window has ended"));
   return `
     <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${toneClass}">
-      <span class="source-profile-cstp-visual-label">${escapeHtml(cstpState.visualLabel || "CSTP")}</span>
+      <span class="source-profile-cstp-visual-label" title="${escapeHtml(getCstpTooltipCopy(cstpState.visualLabel || "CSTP"))}">${escapeHtml(cstpState.visualLabel || "CSTP")}</span>
       <strong>${escapeHtml(textLabel)}</strong>
       <span class="source-profile-cstp-visual-note">${escapeHtml(textCaption)}</span>
     </div>
@@ -19697,7 +19737,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
         <div>
           <p class="eyebrow">Source Directory</p>
           <h2>Source Directory</h2>
-          <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
+          <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
           <p class="muted">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}.</p>
         </div>
         <a class="button button-secondary" href="#sources">View Source Directory</a>
@@ -19705,7 +19745,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
       <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
         ${previewCardsMarkup}
       </div>
-      <p class="home-tested-sources-disclaimer muted">Member session data powers the directory. CSTP seals appear only for active published Gold or Silver certifications.</p>
+      <p class="home-tested-sources-disclaimer muted">${escapeHtml(`${CSTP_RESULTS_CREDIBILITY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
     </section>
   `;
 }
@@ -19732,6 +19772,7 @@ function renderHomeCstpOverviewFeatureMarkup({
         <img
           src="${escapeHtml(badgeAsset)}"
           alt="${escapeHtml(badgeAlt)}"
+          title="${escapeHtml(getCstpTooltipCopy(title))}"
           class="home-cstp-overview-badge${isExpired ? " is-expired" : ""}"
           loading="lazy"
           decoding="async"
@@ -19757,28 +19798,28 @@ function renderHomeCstpOverviewSectionMarkup() {
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
       badgeAlt: "CSTP Gold Certified badge",
       title: "CSTP Gold Certified",
-      description: "Measured germination rate of 90-100% under CSTP conditions.",
+      description: "Top-tier CSTP qualification for a tested batch under standardized conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
       badgeAlt: "CSTP Silver Certified badge",
       title: "CSTP Silver Certified",
-      description: "Measured germination rate of 85-89% under CSTP conditions.",
+      description: "Strong CSTP qualification for a tested batch under standardized conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
       title: "Controlled Testing",
-      description: "Batch-tested under controlled conditions before certification is shown publicly.",
+      description: CSTP_RESULTS_CREDIBILITY,
       iconMarkup: renderHomeCstpTestingIconMarkup(),
     }),
   ].join("");
 
   const trustItemsMarkup = [
-    "Community Funded",
-    "Batch-Based Testing",
-    "No Promotions",
-    "Open & Transparent",
+    "Controlled Conditions",
+    "Earned Certification",
+    "Batch-Specific Results",
+    "Independent Evaluation",
   ].map((item) => `
     <article class="home-cstp-trust-item">
       <span class="home-cstp-trust-dot" aria-hidden="true"></span>
@@ -19792,7 +19833,7 @@ function renderHomeCstpOverviewSectionMarkup() {
         <div class="home-cstp-overview-intro">
           <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
           <h2>Cannakan Seed Testing Program (CSTP)</h2>
-          <p class="home-cstp-overview-description">CSTP provides controlled, batch-based testing to measure germination performance under standardized conditions.</p>
+          <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
           <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
@@ -19802,7 +19843,7 @@ function renderHomeCstpOverviewSectionMarkup() {
       <div class="home-cstp-trust-row" role="list" aria-label="CSTP trust principles">
         ${trustItemsMarkup}
       </div>
-      <p class="home-cstp-overview-trust-note muted">Community data is based on member sessions. CSTP badges are earned through controlled testing. Certification reflects observed results and does not imply future outcomes.</p>
+      <p class="home-cstp-overview-trust-note muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
     </section>
   `;
 }
@@ -20133,10 +20174,10 @@ function renderSourcesLandingPage() {
             <div>
               <p class="eyebrow">Source Directory</p>
               <h2>Source Directory</h2>
-              <p class="muted">Sources and breeders logged by Cannakan Grow members, with CSTP certification shown when available.</p>
-              <p class="source-directory-trust-note">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}. Listings reflect member session data first, with CSTP shown only when a certification is actively published.</p>
+              <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
+              <p class="source-directory-trust-note">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
               <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
-              <p class="source-directory-helper-note">CSTP testing can be requested, but certification depends on batch-specific measured results.</p>
+              <p class="source-directory-helper-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
             </div>
           </div>
           <aside class="source-directory-note-card">
@@ -20352,7 +20393,7 @@ function renderSourceProfilePage(sourceId = "") {
             ${cstpState.pills.length ? `
               <div class="source-profile-cstp-state-shell">
                 ${cstpState.pills.map((pill) => `
-                  <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}">${escapeHtml(pill.label)}</span>
+                  <span class="source-profile-cstp-pill ${escapeHtml(pill.toneClass)}"${getCstpTooltipCopy(pill.label) ? ` title="${escapeHtml(getCstpTooltipCopy(pill.label))}"` : ""}>${escapeHtml(pill.label)}</span>
                 `).join("")}
               </div>
             ` : ""}
@@ -20371,7 +20412,7 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
           </div>
         </div>
-        <p class="source-profile-cstp-trust-note">CSTP badges are earned, not purchased. Certification is batch-based and time-limited.</p>
+        <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
       </article>
 
       <article class="card source-profile-track-record-card">
@@ -20389,7 +20430,7 @@ function renderSourceProfilePage(sourceId = "") {
         <div class="source-profile-request-copy">
           <p class="eyebrow">Source Actions</p>
           <h3>Need to update or review this source?</h3>
-          <p class="muted">CSTP testing can be requested, but certification depends on batch-specific measured results. Informational only.</p>
+          <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
         </div>
         <div class="source-profile-request-actions">
           <a class="button button-secondary" href="#contact" data-source-request-cstp="${escapeHtml(sourceProfile.id)}">Request CSTP Testing</a>
@@ -20432,7 +20473,7 @@ function renderSourceCstpReportPage(sourceId = "") {
             <div>
               <p class="eyebrow">CSTP Report</p>
               <h2>Report unavailable</h2>
-              <p class="muted">This CSTP report mock could not be loaded.</p>
+              <p class="muted">This CSTP report could not be loaded.</p>
             </div>
           </div>
           <div class="inline-actions">
@@ -20466,7 +20507,7 @@ function renderSourceCstpReportPage(sourceId = "") {
             <div>
               <p class="eyebrow">Publication Required</p>
               <h3>No public CSTP report yet</h3>
-              <p class="muted">Unpublished or pending CSTP results are not exposed on public source pages.</p>
+              <p class="muted">${escapeHtml(CSTP_SHARING_EXPOSURE)}</p>
             </div>
           </div>
         </article>
@@ -20483,7 +20524,7 @@ function renderSourceCstpReportPage(sourceId = "") {
           <div>
             <p class="eyebrow">CSTP Report</p>
             <h2>CSTP Test Report</h2>
-            <p class="muted">Published CSTP batch testing details for this certified source profile.</p>
+            <p class="muted">${escapeHtml(CSTP_REPORT_LANGUAGE)}</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -20496,7 +20537,7 @@ function renderSourceCstpReportPage(sourceId = "") {
           <div>
             <p class="eyebrow">Published Report</p>
             <h3>${escapeHtml(sourceProfile.name)}</h3>
-            <p class="muted">Only published Gold or Silver CSTP certifications are shown publicly.</p>
+            <p class="muted">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
           </div>
         </div>
         ${renderPublishedCstpCertifiedSealMarkup(publishedCertification.qualificationResult, publishedCertification.publishedAt, {
@@ -20573,6 +20614,7 @@ function renderSourceCstpReportPage(sourceId = "") {
             <p>${escapeHtml(publishedCertification.observations || "No observations were published with this report.").replace(/\n/g, "<br>")}</p>
           </div>
         </div>
+        <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_NEUTRALITY} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
       </article>
     </section>
   `;
@@ -20604,7 +20646,7 @@ function renderDataTestingDisclaimerPage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">CSTP Scope</p>
           <h3>CSTP is batch-based</h3>
-          <p class="muted">CSTP results reflect controlled testing on specific batches at a point in time and may not match future performance across other batches or conditions.</p>
+          <p class="muted">${escapeHtml(`${CSTP_BADGE_DISCLAIMER} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Neutrality</p>
@@ -20949,7 +20991,7 @@ function renderContactFormFieldsMarkup(reasonKey = "") {
           <span>Message</span>
           <textarea name="message" rows="6" maxlength="2000" required></textarea>
         </label>
-        <p class="contact-form-note">CSTP testing can be requested, but certification depends on batch-specific measured results. Badges are earned only through qualifying controlled test results.</p>
+        <p class="contact-form-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
       `;
     case "source-correction":
       return `
@@ -25987,7 +26029,7 @@ function renderAdminCstpQualificationBadgeMarkup(qualificationResult = "") {
   const badgeLabel = getAdminCstpQualificationLabel(normalizedResult);
 
   return `
-    <div class="admin-cstp-qualification-badge-shell">
+    <div class="admin-cstp-qualification-badge-shell" title="${escapeHtml(getCstpTooltipCopy("CSTP"))}">
       <img
         src="${escapeHtml(badgeAsset)}"
         alt="${escapeHtml(`CSTP ${badgeLabel} badge`)}"
@@ -25996,8 +26038,8 @@ function renderAdminCstpQualificationBadgeMarkup(qualificationResult = "") {
         decoding="async"
       >
       <div class="admin-cstp-qualification-badge-copy">
-        <span class="admin-cstp-qualification-badge-label">Certification Badge</span>
-        <strong>${escapeHtml(badgeLabel)}</strong>
+        <span class="admin-cstp-qualification-badge-label" title="${escapeHtml(getCstpTooltipCopy("CSTP"))}">Certification Badge</span>
+        <strong title="${escapeHtml(getCstpTooltipCopy(badgeLabel))}">${escapeHtml(badgeLabel)}</strong>
       </div>
     </div>
   `;
@@ -26026,9 +26068,11 @@ function renderPublishedCstpCertifiedSealMarkup(qualificationResult = "", publis
   const noteClassName = String(options.noteClassName || "cstp-certified-seal-note").trim();
   const labelText = String(options.labelText || "CSTP Certified").trim() || "CSTP Certified";
   const noteText = String(options.noteText || badgeLabel).trim() || badgeLabel;
+  const cstpTooltip = getCstpTooltipCopy("CSTP");
+  const badgeTooltip = getCstpTooltipCopy(badgeLabel);
 
   return `
-    <div class="${escapeHtml(shellClassName)} ${escapeHtml(`${shellClassName}--${normalizedResult}`)}">
+    <div class="${escapeHtml(shellClassName)} ${escapeHtml(`${shellClassName}--${normalizedResult}`)}" title="${escapeHtml(cstpTooltip)}">
       <img
         src="${escapeHtml(badgeAsset)}"
         alt="${escapeHtml(`${labelText} ${badgeLabel} badge`)}"
@@ -26037,8 +26081,8 @@ function renderPublishedCstpCertifiedSealMarkup(qualificationResult = "", publis
         decoding="async"
       >
       <div class="${escapeHtml(copyClassName)}">
-        <span class="${escapeHtml(labelClassName)}">${escapeHtml(labelText)}</span>
-        <strong class="${escapeHtml(titleClassName)}">${escapeHtml(badgeLabel)}</strong>
+        <span class="${escapeHtml(labelClassName)}" title="${escapeHtml(cstpTooltip)}">${escapeHtml(labelText)}</span>
+        <strong class="${escapeHtml(titleClassName)}" title="${escapeHtml(badgeTooltip)}">${escapeHtml(badgeLabel)}</strong>
         <span class="${escapeHtml(noteClassName)}">${escapeHtml(noteText)}</span>
       </div>
     </div>
@@ -27661,7 +27705,11 @@ function renderAdminCstpCertificationStatePillMarkup(state = null) {
     : (state.isExpiringSoon
       ? `${qualificationLabel} Expiring Soon`
       : `${qualificationLabel} Active Certification`);
-  return `<span class="admin-cstp-certification-pill ${toneClass} ${stateClass}">${escapeHtml(label)}</span>`;
+  const tooltipLabel = state.isExpiringSoon
+    ? "Expiring Soon"
+    : (state.isActive ? "Active Certification" : qualificationLabel);
+  const tooltipCopy = getCstpTooltipCopy(tooltipLabel);
+  return `<span class="admin-cstp-certification-pill ${toneClass} ${stateClass}"${tooltipCopy ? ` title="${escapeHtml(tooltipCopy)}"` : ""}>${escapeHtml(label)}</span>`;
 }
 
 function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
@@ -27989,7 +28037,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
             ${renderAdminCstpCertificationStatePillMarkup(certificationState)}
           </div>
           <p class="muted admin-cstp-lab-detail-subtitle">${escapeHtml(contactLabel)}${varietyLabel ? ` • ${escapeHtml(varietyLabel)}` : ""}</p>
-          <p class="muted admin-cstp-lab-helper">Testing begins within X business days of seed receipt. Results are typically available 3-5 days after testing begins.</p>
+          <p class="muted admin-cstp-lab-helper">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
         </div>
       </div>
       ${renderAdminCstpRequestSectionMarkup(selectedRecord)}
@@ -27998,7 +28046,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
           <div>
             <p class="eyebrow">Workflow Actions</p>
             <h4>${escapeHtml(getAdminCstpLabStatusLabel(selectedRecord.status))}</h4>
-            <p class="muted">Only the next relevant CSTP workflow actions are shown here.</p>
+            <p class="muted">${escapeHtml(CSTP_NEUTRALITY)}</p>
           </div>
         </div>
         ${renderAdminCstpLabActionButtons(selectedRecord)}
@@ -28018,7 +28066,7 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
         <div class="admin-communications-editor-head">
           <div>
             <p class="eyebrow">Internal Notes</p>
-            <p class="muted">Request notes stay on the CSTP workflow record. Assigned CSTP session data stays separate from member grow sessions.</p>
+            <p class="muted">${escapeHtml(CSTP_SHARING_EXPOSURE)}</p>
           </div>
         </div>
         <div class="admin-communications-editor-grid admin-communications-editor-grid-single">
@@ -28041,7 +28089,7 @@ function renderAdminCstpLabSectionMarkup() {
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "CSTP",
     title: "CSTP Testing Lab",
-    description: "Track CSTP intake, seed receipt, controlled test sessions, report preparation, and publication without touching member grow-session data.",
+    description: CSTP_DEFINITION,
     iconType: "activity",
     storageKey: ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
     contentId: "admin-cstp-lab-section-content",
@@ -28053,7 +28101,7 @@ function renderAdminCstpLabSectionMarkup() {
           <div class="admin-cstp-featured-toolbar">
             <div class="admin-cstp-featured-copy">
               <strong>Primary Admin Workflow</strong>
-              <p class="muted">Open the lab workspace first to manage assigned sessions, prepare reports, and publish qualifying certifications.</p>
+              <p class="muted">${escapeHtml(CSTP_NEUTRALITY)}</p>
             </div>
             <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary admin-cstp-featured-cta" data-admin-cstp-featured-open="true">Open CSTP Testing Lab</button>
           </div>
@@ -28063,7 +28111,7 @@ function renderAdminCstpLabSectionMarkup() {
         <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab workflow and certification filters">
           ${renderAdminCstpLabFiltersMarkup("all")}
         </div>
-        <p class="muted">Certification must be published manually after a qualifying completed CSTP test. Community Grow snapshots and member sessions are never changed here.</p>
+        <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
       </div>
         <div class="admin-communications-workspace admin-cstp-lab-workspace">
           <section class="card admin-cstp-lab-queue-shell">
@@ -28071,7 +28119,7 @@ function renderAdminCstpLabSectionMarkup() {
               <div>
                 <p class="eyebrow">Testing Queue</p>
                 <h4>Filtered CSTP Requests</h4>
-                <p class="muted">Select a request to review its workflow, assigned session, timeline, and internal notes.</p>
+                <p class="muted">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
               </div>
             </div>
             <div id="admin-cstp-lab-list">
@@ -28487,7 +28535,7 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
   applySessionDetailHeaderOptions(detail, {
     title: detailSummaryTitle,
     eyebrow: "CSTP Testing Lab",
-    description: "Controlled lab session stored in mock/local CSTP data only. It does not appear in member Sessions, Community Grow, or leaderboard insights.",
+    description: CSTP_RESULTS_CREDIBILITY,
     backHref: "#admin",
     backLabel: "Back to Admin",
     backClasses: ["admin-cstp-button", "admin-cstp-button--utility"],
@@ -28514,7 +28562,7 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
     label: "Observations",
     value: session.observations || "",
     placeholder: "Add controlled lab observations, environment notes, or certification context...",
-    helpText: "Observations stay local to the CSTP lab workflow and are never shown publicly until certification is published.",
+    helpText: CSTP_NEUTRALITY,
     buttonText: "Save Observations",
     buttonClasses: ["admin-cstp-button", "admin-cstp-button--secondary"],
   });
@@ -29010,7 +29058,7 @@ function renderAdminCstpReportPage(recordId = "") {
           <div>
             <p class="eyebrow">CSTP Testing Lab</p>
             <h2>CSTP Test Report</h2>
-            <p class="muted">Controlled batch testing report builder for mock CSTP workflow records.</p>
+            <p class="muted">${escapeHtml(CSTP_REPORT_LANGUAGE)}</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -29186,7 +29234,7 @@ function renderAdminCstpReportPage(recordId = "") {
                 <div class="admin-communications-editor-head">
                   <div>
                     <p class="eyebrow">Admin Review</p>
-                    <p class="muted">Suggested qualification is threshold-based. Admin review controls the approved result used for publishing.</p>
+                    <p class="muted">${escapeHtml(CSTP_NEUTRALITY)}</p>
                   </div>
                 </div>
                 <div class="admin-communications-editor-grid">
@@ -29211,7 +29259,7 @@ function renderAdminCstpReportPage(recordId = "") {
                     ${escapeHtml(publishButtonLabel)}
                   </button>
                 </div>
-                <p class="muted admin-cstp-report-publish-rule">Publishing is enabled only after the CSTP session is completed, the report is prepared, and the admin-approved qualification result is Gold or Silver.</p>
+                <p class="muted admin-cstp-report-publish-rule">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
               </form>
             </section>
             <section class="session-notes-section" aria-labelledby="admin-cstp-report-observations-title">
@@ -29228,7 +29276,7 @@ function renderAdminCstpReportPage(recordId = "") {
                 </span>
                 <textarea rows="6" readonly>${escapeHtml(reportSession.observations || "No observations recorded yet.")}</textarea>
               </label>
-              <p class="session-notes-help">CSTP certification is published only after admin review of a completed controlled test. Unpublished CSTP results are not public.</p>
+              <p class="session-notes-help">${escapeHtml(CSTP_REPORT_NO_GUARANTEE)}</p>
             </section>
             <section class="session-images-section admin-cstp-report-images-section" aria-labelledby="admin-cstp-report-images-title">
               <div class="session-images-heading">
@@ -29249,7 +29297,7 @@ function renderAdminCstpReportPage(recordId = "") {
                 ${renderAdminCstpReportImageRecordsMarkup(reportSession)}
               </div>
             </section>
-            <p class="muted admin-cstp-report-disclaimer">CSTP certification is published only after admin review of a completed controlled test. Unpublished CSTP results are not public.</p>
+            <p class="muted admin-cstp-report-disclaimer">${escapeHtml(`${CSTP_RESULTS_CREDIBILITY} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
           </div>
         ` : `
           <p class="muted">No linked CSTP session data is available for this report yet.</p>
