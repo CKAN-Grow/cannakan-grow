@@ -362,11 +362,47 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     sessionRoute: "#members/mock-kan-trial-user",
   },
 ]);
-const SOURCE_PROFILE_DEFAULT_MOCK_ID = "humboldt-seed-co";
+const SOURCE_PROFILE_DEFAULT_MOCK_ID = "green-horizons-seed-co";
 const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
   gold: "/src/assets/CSTP-gold-badge.png",
   silver: "/src/assets/CSTP-silver-badge.png",
   expired: "/src/assets/CSTP-gold-badge.png",
+});
+const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
+  id: SOURCE_PROFILE_DEFAULT_MOCK_ID,
+  name: "Green Horizons Seed Co.",
+  type: "Breeder / Seed Source",
+  sourceTypeLabel: "Breeder / Seed Source",
+  logoUrl: "",
+  websiteUrl: "",
+  establishedLabel: "Established 2018",
+  community: Object.freeze({
+    avgRate: 87,
+    sessions: 142,
+    rank: 3,
+    seedsTracked: 1240,
+  }),
+  cstp: Object.freeze({
+    status: "gold",
+    testedDate: "Jan 2026",
+    validUntil: "Jan 2027",
+    sampleSize: 30,
+    avgTime: "42 hrs",
+    resultPercent: 94,
+    expiringSoon: true,
+  }),
+  trackRecord: Object.freeze({
+    totalCerts: 8,
+    gold: 5,
+    silver: 3,
+    qualificationRate: 83,
+    lastTest: "Jan 2026",
+  }),
+  directoryStats: Object.freeze({
+    sessionsLogged: 142,
+    varietiesLogged: 0,
+    lastLoggedAt: "",
+  }),
 });
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Sources" }),
@@ -19283,12 +19319,10 @@ function getSourceDirectoryTrackRecordForSource(sourceName = "", fallbackTrackRe
 
 function getSourceProfileMockRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim().toLowerCase();
-  const records = getSourceDirectoryMockRecords();
-  const matchedSource = records.find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId)
-    || records.find((source) => String(source?.id || "").trim().toLowerCase() === SOURCE_PROFILE_DEFAULT_MOCK_ID)
-    || records[0]
-    || null;
-  return matchedSource ? normalizeTestedSourceMockRecord(matchedSource) : null;
+  return normalizeTestedSourceMockRecord({
+    ...SOURCE_PROFILE_DEMO_RECORD,
+    id: normalizedId || SOURCE_PROFILE_DEMO_RECORD.id,
+  });
 }
 
 function buildRealSourceProfileRecord(sourceId = "") {
