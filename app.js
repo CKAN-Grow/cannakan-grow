@@ -20246,9 +20246,7 @@ function renderHomeCstpOverviewSectionMarkup() {
           </div>
           <a class="button button-secondary" href="#sources">Learn More About CSTP</a>
           <div class="home-cstp-coming-soon" role="note" aria-label="CSTP coming soon status">
-            <strong class="home-cstp-coming-soon-title">Coming Soon</strong>
-            <p class="home-cstp-coming-soon-subtitle">CSTP testing, certifications, and verified results are currently in development.</p>
-            <p class="home-cstp-coming-soon-note">Early access and live testing sessions will be available soon.</p>
+            <strong class="home-cstp-coming-soon-title">COMING SOON</strong>
           </div>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">

@@ -4445,46 +4445,24 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-cstp-coming-soon {
-  display: grid;
-  gap: 4px;
+  display: block;
   width: 100%;
   max-width: 36rem;
-  padding: 13px 15px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  background:
-    linear-gradient(180deg, rgba(24, 34, 27, 0.9) 0%, rgba(20, 29, 23, 0.94) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1), transparent 52%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 0 1px rgba(148, 209, 89, 0.04),
-    0 12px 24px rgba(14, 20, 16, 0.14),
-    0 0 18px rgba(148, 209, 89, 0.08);
-}
-
-.home-cstp-coming-soon-title,
-.home-cstp-coming-soon-subtitle,
-.home-cstp-coming-soon-note {
-  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #b3261e;
+  color: #ffffff;
+  text-align: center;
 }
 
 .home-cstp-coming-soon-title {
-  color: #eef8e4;
-  font-size: 0.94rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-}
-
-.home-cstp-coming-soon-subtitle {
-  color: rgba(220, 231, 219, 0.82);
-  font-size: 0.88rem;
-  line-height: 1.42;
-}
-
-.home-cstp-coming-soon-note {
-  color: rgba(220, 231, 219, 0.56);
-  font-size: 0.78rem;
-  line-height: 1.38;
+  margin: 0;
+  display: block;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
 }
 
 .home-cstp-overview-features {
@@ -4632,27 +4610,8 @@ body.theme-dark .home-cstp-overview-icon-glyph {
 }
 
 body.theme-dark .home-cstp-coming-soon {
-  border-color: rgba(148, 209, 89, 0.18);
-  background:
-    linear-gradient(180deg, rgba(23, 33, 26, 0.96) 0%, rgba(17, 24, 19, 0.96) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 50%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(148, 209, 89, 0.05),
-    0 14px 28px rgba(0, 0, 0, 0.22),
-    0 0 20px rgba(148, 209, 89, 0.08);
-}
-
-body.theme-dark .home-cstp-coming-soon-title {
-  color: #eff8e5;
-}
-
-body.theme-dark .home-cstp-coming-soon-subtitle {
-  color: rgba(214, 224, 214, 0.82);
-}
-
-body.theme-dark .home-cstp-coming-soon-note {
-  color: rgba(189, 204, 192, 0.58);
+  background: #b3261e;
+  color: #ffffff;
 }
 
 body.theme-dark .disclaimer-card {
