@@ -13389,10 +13389,11 @@ function renderGalleryTopMembersSummary(entries = []) {
 
 const APP_ICON_LIBRARY = Object.freeze({
   mySessionsSprout: `
-    <path data-solid="true" d="M12.1 19.9c-.7 0-1.2-.5-1.2-1.2v-4.2c0-.5.3-1 .8-1.1 1.8-.6 3.2-2 4.1-4 1 .5 1.7 1.6 1.7 2.8 0 3.7-2.1 6.7-5.4 7.7Z"></path>
-    <path data-solid="true" d="M10.9 13.9c-3-.4-5.3-2.9-5.6-6.5 3.4.2 6 2.5 6.4 5.8.1.4-.3.7-.8.7Z"></path>
-    <path data-solid="true" d="M12.1 13.8c-.4 0-.8-.3-.7-.7.4-3.4 2.9-5.8 6.4-6-1 3.7-3.3 6.2-5.7 6.7Z"></path>
-    <path data-solid="true" d="M8.2 20.6c0-.8.5-1.3 1.3-1.3h5c.8 0 1.3.5 1.3 1.3Z"></path>
+    <ellipse data-solid="true" cx="8.4" cy="10.1" rx="2.9" ry="5.15" transform="rotate(-33 8.4 10.1)"></ellipse>
+    <ellipse data-solid="true" cx="15.6" cy="10.1" rx="2.9" ry="5.15" transform="rotate(33 15.6 10.1)"></ellipse>
+    <ellipse data-solid="true" cx="12" cy="7.9" rx="1.75" ry="2.65"></ellipse>
+    <rect data-solid="true" x="10.9" y="11.6" width="2.2" height="6.7" rx="1.1"></rect>
+    <path data-solid="true" d="M7.6 20c0-1 .8-1.7 1.7-1.7h5.4c1 0 1.7.8 1.7 1.7Z"></path>
   `,
   activeSessionWaveform: `
     <path data-solid="true" d="M3.5 14.8c0-.8.5-1.3 1.3-1.3H6c.5 0 .9-.3 1.1-.7l1.7-3.7c.2-.4.6-.7 1.1-.7.5 0 .9.3 1.1.7l2.3 5.7c.2.5.9.5 1.1 0l1.6-3.8c.2-.4.6-.7 1.1-.7h3.8c.8 0 1.3.5 1.3 1.3s-.5 1.3-1.3 1.3h-2.9c-.5 0-.9.3-1.1.7l-1.7 4c-.2.4-.6.7-1.1.7-.5 0-.9-.3-1.1-.8l-2.3-5.6-1 2.3c-.2.4-.6.7-1.1.7H4.8c-.8 0-1.3-.5-1.3-1.3Z"></path>
@@ -13560,9 +13561,23 @@ function decorateAppIconSymbolMarkup(symbolMarkup = "", shapeClass = "cg-icon-ma
   );
 }
 
+function getPremiumIconClassNames(iconName = "", variant = "plain") {
+  if (iconName === "mySessionsSprout" && variant === "plate") {
+    return {
+      wrapper: ["premium-icon-plate", "premium-icon-glow"],
+      svg: ["premium-icon-svg"],
+    };
+  }
+  return {
+    wrapper: [],
+    svg: [],
+  };
+}
+
 function renderAppIconSvgMarkup(iconName = "info", options = {}) {
   const {
     className = "",
+    extraSvgClasses = [],
     label = "",
     decorative = true,
   } = options;
@@ -13571,7 +13586,7 @@ function renderAppIconSvgMarkup(iconName = "info", options = {}) {
   const plateGradientId = `${iconToken}-plate-gradient`;
   const detailGradientId = `${iconToken}-detail-gradient`;
   const glowGradientId = `${iconToken}-glow-gradient`;
-  const svgClasses = ["cg-icon-svg", className].filter(Boolean).join(" ");
+  const svgClasses = ["cg-icon-svg", ...extraSvgClasses, className].filter(Boolean).join(" ");
   const ariaAttributes = decorative
     ? 'aria-hidden="true" focusable="false"'
     : `role="img" aria-label="${escapeHtml(label || iconName)}" focusable="false"`;
@@ -13615,9 +13630,11 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
     label = "",
     decorative = true,
   } = options;
+  const premiumClassNames = getPremiumIconClassNames(iconName, variant);
   const wrapperClasses = [
     "cg-icon",
     variant === "plate" ? "cg-icon--plate" : "cg-icon--plain",
+    ...premiumClassNames.wrapper,
     className,
   ].filter(Boolean).join(" ");
   const wrapperAttributes = decorative
@@ -13625,7 +13642,10 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
     : `role="img" aria-label="${escapeHtml(label || iconName)}"`;
   return `
     <span class="${escapeHtml(wrapperClasses)}" ${wrapperAttributes}>
-      ${renderAppIconSvgMarkup(iconName, { decorative: true })}
+      ${renderAppIconSvgMarkup(iconName, {
+        decorative: true,
+        extraSvgClasses: premiumClassNames.svg,
+      })}
     </span>
   `;
 }
@@ -13640,8 +13660,12 @@ function hydrateAppIconSlots(root = document) {
     const variant = String(slot.dataset.iconVariant || "plain").trim() === "plate" ? "plate" : "plain";
     const label = String(slot.dataset.iconLabel || "").trim();
     const decorative = slot.dataset.iconDecorative !== "false";
-    slot.classList.add("cg-icon", variant === "plate" ? "cg-icon--plate" : "cg-icon--plain");
-    slot.innerHTML = renderAppIconSvgMarkup(iconName, { decorative: true });
+    const premiumClassNames = getPremiumIconClassNames(iconName, variant);
+    slot.classList.add("cg-icon", variant === "plate" ? "cg-icon--plate" : "cg-icon--plain", ...premiumClassNames.wrapper);
+    slot.innerHTML = renderAppIconSvgMarkup(iconName, {
+      decorative: true,
+      extraSvgClasses: premiumClassNames.svg,
+    });
     if (decorative) {
       slot.setAttribute("aria-hidden", "true");
       slot.removeAttribute("role");
