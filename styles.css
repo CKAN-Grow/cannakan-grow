@@ -4202,6 +4202,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     radial-gradient(circle, rgba(242, 249, 239, 0.34) 0%, rgba(148, 209, 89, 0.16) 22%, rgba(148, 209, 89, 0.07) 44%, rgba(148, 209, 89, 0) 74%);
   filter: blur(2px);
   pointer-events: none;
+  opacity: 0.72;
+  animation: home-explore-divider-shimmer 8s ease-in-out infinite alternate;
+}
+
+@keyframes home-explore-divider-shimmer {
+  0% {
+    left: 32%;
+    opacity: 0.42;
+    filter: blur(2px);
+  }
+
+  50% {
+    opacity: 0.78;
+    filter: blur(1.6px);
+  }
+
+  100% {
+    left: 62%;
+    opacity: 0.48;
+    filter: blur(2.4px);
+  }
 }
 
 .home-explore-divider-copy {
@@ -19836,6 +19857,13 @@ body.theme-dark .home-explore-divider::before {
 body.theme-dark .home-explore-divider::after {
   background:
     radial-gradient(circle, rgba(245, 250, 242, 0.38) 0%, rgba(148, 209, 89, 0.18) 22%, rgba(148, 209, 89, 0.08) 44%, rgba(148, 209, 89, 0) 74%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-explore-divider::after {
+    animation: none;
+    opacity: 0.56;
+  }
 }
 
 body.theme-dark .admin-source-logo {
