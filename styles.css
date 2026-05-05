@@ -1210,6 +1210,22 @@ body.theme-dark .install-app-banner-ios-tip {
   max-width: 36rem;
 }
 
+.dashboard-bar--seed-hero .app-section-header-main {
+  align-self: stretch;
+}
+
+.dashboard-bar--seed-hero .app-section-header-main > div {
+  min-height: 100%;
+}
+
+.dashboard-bar--seed-hero .app-section-header-main > div > .hero-actions {
+  margin-top: clamp(20px, 2vw, 28px);
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px 16px;
+  width: 100%;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -12748,8 +12764,8 @@ body.theme-dark .contact-reason-card.is-active {
 @media (min-width: 1024px) {
   .dashboard-bar--seed-hero {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    justify-content: flex-start;
+    align-items: stretch;
     gap: clamp(18px, 2.6vw, 34px);
   }
 
@@ -12758,14 +12774,7 @@ body.theme-dark .contact-reason-card.is-active {
     max-width: min(44rem, 56%);
     position: relative;
     z-index: 1;
-  }
-
-  .dashboard-bar--seed-hero .hero-actions {
-    align-self: center;
-    justify-content: flex-end;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
+    flex: 1 1 auto;
   }
 }
 
