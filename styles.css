@@ -5105,6 +5105,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop {
   container-type: inline-size;
   padding: 18px 20px;
+  overflow: visible;
 }
 
 .home-install-card-shell {
@@ -5142,12 +5143,13 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-preview {
-  flex: 0 1 auto;
-  width: min(100%, 272px);
-  max-width: 100%;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 300px;
   margin-inline: 0;
   align-self: center;
-  justify-self: end;
+  flex-shrink: 0;
+  transform: translateX(14px);
 }
 
 .phone-mock,
@@ -5608,9 +5610,10 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-top-row {
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: clamp(16px, 3cqi, 24px);
+  gap: 24px;
 }
 
 .home-install-card-copy {
@@ -5637,7 +5640,9 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-card.is-desktop .home-install-card-copy {
   align-content: center;
-  max-width: 19rem;
+  flex: 1 1 auto;
+  max-width: 18.5rem;
+  min-width: 0;
 }
 
 .home-install-card.is-desktop .home-install-card-description {
@@ -5677,10 +5682,6 @@ body.theme-dark .contact-reason-card.is-active {
   width: auto;
 }
 
-.home-install-card.is-desktop .home-install-card-footer {
-  margin-top: auto;
-}
-
 .home-install-card-actions .install-app-button {
   width: 100%;
   min-width: 0;
@@ -5713,7 +5714,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 272px;
+  max-width: 300px;
   gap: 0;
   margin-inline: auto;
 }
@@ -6012,6 +6013,8 @@ body.theme-dark .contact-reason-card.is-active {
     flex: 0 1 auto;
     width: min(100%, 240px);
     align-self: center;
+    transform: translateX(8px);
+    flex-shrink: 0;
   }
 
   .home-install-monitor {
