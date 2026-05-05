@@ -13959,6 +13959,30 @@ function normalizeSectionHeaderLayouts(root = document) {
     return;
   }
 
+  const applySectionTypographyClasses = (container) => {
+    if (!(container instanceof HTMLElement)) {
+      return;
+    }
+
+    container.classList.add("section-heading-block");
+    Array.from(container.children).forEach((child) => {
+      if (!(child instanceof HTMLElement)) {
+        return;
+      }
+      if (child.matches(".eyebrow")) {
+        child.classList.add("section-eyebrow");
+        return;
+      }
+      if (child.matches("h1, h2, h3, h4, h5, .admin-collapsible-title, .app-section-header-title")) {
+        child.classList.add("section-title");
+        return;
+      }
+      if (child.matches("p:not(.eyebrow), .muted, .admin-collapsible-description, .app-section-header-subtitle, .dashboard-subtitle")) {
+        child.classList.add("section-subtitle");
+      }
+    });
+  };
+
   root.querySelectorAll(".section-title-with-icon.app-section-header-main").forEach((header) => {
     if (!(header instanceof HTMLElement) || header.dataset.sectionHeaderNormalized === "true") {
       return;
@@ -13995,11 +14019,25 @@ function normalizeSectionHeaderLayouts(root = document) {
       return;
     }
 
+    applySectionTypographyClasses(titleStack);
+    applySectionTypographyClasses(descriptionStack);
     content.replaceWith(titleStack);
     if (descriptionStack.children.length) {
       header.appendChild(descriptionStack);
     }
     header.dataset.sectionHeaderNormalized = "true";
+  });
+
+  root.querySelectorAll([
+    ".app-section-header-main > div",
+    ".grow-network-hero-copy",
+    ".grow-network-panel-header > div",
+    ".profile-page-copy",
+    ".profile-section-heading",
+    ".auth-card > div:first-child",
+    ".snapshot-modal-copy",
+  ].join(", ")).forEach((container) => {
+    applySectionTypographyClasses(container);
   });
 }
 
