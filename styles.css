@@ -5102,10 +5102,15 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-card.is-desktop {
   container-type: inline-size;
+  padding: 18px 20px;
 }
 
 .home-install-card-shell {
   display: block;
+}
+
+.home-install-card.is-desktop .home-install-card-shell {
+  height: 100%;
 }
 
 .home-install-card-preview {
@@ -5129,11 +5134,13 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-preview {
+  grid-area: preview;
   flex: 0 1 auto;
-  width: 100%;
-  max-width: 280px;
-  margin-inline: auto;
-  align-self: start;
+  width: min(100%, 292px);
+  max-width: 100%;
+  margin-inline: 0;
+  align-self: center;
+  justify-self: end;
 }
 
 .phone-mock,
@@ -5590,9 +5597,11 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-body {
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1.12fr) minmax(176px, 0.88fr);
+  grid-template-areas: "content preview";
+  align-items: center;
+  gap: clamp(16px, 3cqi, 24px);
+  min-height: 100%;
 }
 
 .home-install-card-content {
@@ -5603,8 +5612,10 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-content {
-  align-content: start;
-  gap: 8px;
+  grid-area: content;
+  align-content: center;
+  gap: 10px;
+  max-width: 34ch;
 }
 
 .home-install-card-copy {
@@ -5626,12 +5637,13 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-copy-block {
-  gap: 4px;
+  gap: 6px;
 }
 
 .home-install-card.is-desktop .home-install-card-description {
   font-size: 0.92rem;
-  line-height: 1.36;
+  line-height: 1.4;
+  max-width: 34ch;
 }
 
 .home-install-card-copy-block h3 {
@@ -5657,6 +5669,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-card.is-desktop .home-install-card-actions {
   margin-top: 0;
+  width: auto;
 }
 
 .home-install-card-actions .install-app-button {
@@ -5682,7 +5695,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-card.is-desktop .home-install-card-directions {
   grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
+  gap: 8px;
+  max-width: 34ch;
 }
 
 .home-install-monitor {
@@ -5690,7 +5704,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 280px;
+  max-width: 292px;
   gap: 0;
   margin-inline: auto;
 }
@@ -5698,10 +5712,10 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-frame {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9.35;
   overflow: hidden;
-  border-radius: 12px;
-  padding: 6px 6px 18px;
+  border-radius: 14px;
+  padding: 7px 7px 16px;
   background:
     linear-gradient(180deg, rgba(61, 72, 65, 0.92) 0%, rgba(29, 34, 31, 0.98) 100%);
   box-shadow:
@@ -5715,7 +5729,7 @@ body.theme-dark .contact-reason-card.is-active {
   content: "";
   position: absolute;
   inset: 1px;
-  border-radius: 11px;
+  border-radius: 13px;
   border: 1px solid rgba(148, 209, 89, 0.14);
   box-shadow: inset 0 0 22px rgba(148, 209, 89, 0.06);
   pointer-events: none;
@@ -5724,11 +5738,11 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-screen {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
-  padding: 14px 16px 14px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 42%),
     linear-gradient(180deg, #121915 0%, #0a0f0c 100%);
@@ -5759,8 +5773,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-dashboard {
   display: grid;
-  grid-template-columns: minmax(148px, 1fr) minmax(150px, 1.02fr);
-  gap: 14px;
+  grid-template-columns: minmax(112px, 0.86fr) minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
   min-width: 0;
 }
@@ -5769,28 +5783,28 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 8px;
+  gap: 7px;
   min-height: 0;
-  padding: 6px 0 0;
+  padding: 2px 0 0;
 }
 
 .home-install-monitor-stat-ring {
-  width: clamp(142px, 15vw, 176px);
-  height: clamp(142px, 15vw, 176px);
+  width: clamp(108px, 31cqi, 132px);
+  height: clamp(108px, 31cqi, 132px);
   box-shadow:
     inset 0 0 24px rgba(148, 209, 89, 0.14),
     0 0 24px rgba(148, 209, 89, 0.12);
 }
 
 .home-install-monitor-stat-ring span {
-  font-size: clamp(2.7rem, 4vw, 3.2rem);
+  font-size: clamp(2rem, 9cqi, 2.45rem);
   font-weight: 800;
 }
 
 .home-install-monitor-stat-label {
   margin: 0;
   color: #b8ef84;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5798,18 +5812,18 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metrics {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-content: center;
   min-width: 0;
 }
 
 .home-install-monitor-metric {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   align-content: center;
   min-height: 0;
-  padding: 11px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -5817,7 +5831,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric span {
   color: rgba(189, 204, 192, 0.78);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5825,16 +5839,16 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric strong {
   color: #f5faf2;
-  font-size: 1.02rem;
+  font-size: 0.96rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .home-install-monitor-progress-panel {
   display: grid;
-  gap: 8px;
-  padding: 10px 12px 11px;
-  border-radius: 16px;
+  gap: 7px;
+  padding: 9px 10px 10px;
+  border-radius: 14px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -5844,25 +5858,25 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-stage-timeline {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .home-install-monitor-stage-timeline .home-install-phone-stage-fill {
-  height: 10px;
+  height: 8px;
 }
 
 .home-install-monitor-partition-graph {
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .home-install-monitor-partition-graph .home-install-phone-partition-track {
-  height: 9px;
+  height: 7px;
 }
 
 .home-install-monitor-stand {
-  width: clamp(52px, 13%, 72px);
-  height: 44px;
+  width: clamp(46px, 12%, 62px);
+  height: 34px;
   margin-top: -1px;
   border-radius: 0 0 8px 8px;
   background:
@@ -5874,8 +5888,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-base {
-  width: clamp(126px, 34%, 168px);
-  height: 10px;
+  width: clamp(108px, 31%, 144px);
+  height: 8px;
   margin-top: -2px;
   border-radius: 999px;
   background:
@@ -5897,8 +5911,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-platform {
-  gap: 5px;
-  padding: 8px 10px;
+  gap: 6px;
+  padding: 10px 12px;
 }
 
 .home-install-card-platform-title {
@@ -5921,9 +5935,9 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-steps {
-  gap: 2px;
-  font-size: 0.84rem;
-  line-height: 1.3;
+  gap: 4px;
+  font-size: 0.82rem;
+  line-height: 1.32;
 }
 
 .home-install-card-steps li {
@@ -5958,7 +5972,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 @container (min-width: 780px) {
   .home-install-card.is-desktop .home-install-card-body {
-    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.08fr) minmax(220px, 280px);
     align-items: center;
   }
 
