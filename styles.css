@@ -1302,11 +1302,13 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .app-hero--sources {
-  --app-hero-art:
-    radial-gradient(circle at 84% 24%, rgba(148, 209, 89, 0.28) 0%, rgba(148, 209, 89, 0.15) 16%, transparent 42%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.04) 28%, transparent 58%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --app-hero-art: url("/src/assets/images/source-directory-bg.png");
   --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.68) 30%, rgba(8, 13, 10, 0.16) 58%, rgba(8, 13, 10, 0.24) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 
 body.theme-dark .app-hero {
@@ -15911,10 +15913,13 @@ input::placeholder {
 }
 
 .source-directory-hero {
-  --app-hero-art:
-    radial-gradient(circle at 84% 24%, rgba(148, 209, 89, 0.28) 0%, rgba(148, 209, 89, 0.15) 16%, transparent 42%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.04) 28%, transparent 58%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --app-hero-art: url("/src/assets/images/source-directory-bg.png");
+  --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.68) 30%, rgba(8, 13, 10, 0.16) 58%, rgba(8, 13, 10, 0.24) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 
 .source-directory-note-card {
