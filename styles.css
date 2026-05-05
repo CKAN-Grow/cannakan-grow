@@ -5744,6 +5744,7 @@ body.theme-dark .contact-reason-card.is-active {
   max-width: 290px;
   gap: 0;
   margin-inline: auto;
+  transform: translateY(-6px);
 }
 
 .home-install-monitor-frame {
@@ -5756,10 +5757,28 @@ body.theme-dark .contact-reason-card.is-active {
   background:
     linear-gradient(180deg, rgba(61, 72, 65, 0.92) 0%, rgba(29, 34, 31, 0.98) 100%);
   box-shadow:
-    0 24px 40px rgba(0, 0, 0, 0.28),
+    0 30px 44px rgba(0, 0, 0, 0.34),
+    0 14px 22px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(148, 209, 89, 0.16),
     0 0 18px rgba(148, 209, 89, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.home-install-monitor::before {
+  content: "";
+  position: absolute;
+  inset: 8% 6% 24%;
+  border-radius: 24px;
+  background: radial-gradient(circle at center, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.08) 28%, rgba(148, 209, 89, 0.02) 56%, transparent 74%);
+  filter: blur(18px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-install-monitor > * {
+  position: relative;
+  z-index: 1;
 }
 
 .home-install-monitor-frame::before {
@@ -5843,6 +5862,7 @@ body.theme-dark .contact-reason-card.is-active {
     inset 0 0 16px rgba(148, 209, 89, 0.12),
     0 0 16px rgba(148, 209, 89, 0.08);
   isolation: isolate;
+  animation: home-install-monitor-ring-breathe 8s ease-in-out infinite;
 }
 
 .home-install-monitor-ring::before {
@@ -6018,6 +6038,27 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 12px rgba(148, 209, 89, 0.08);
 }
 
+@keyframes home-install-monitor-ring-breathe {
+  0% {
+    box-shadow:
+      inset 0 0 16px rgba(148, 209, 89, 0.11),
+      0 0 12px rgba(148, 209, 89, 0.06);
+  }
+
+  50% {
+    box-shadow:
+      inset 0 0 18px rgba(148, 209, 89, 0.15),
+      0 0 18px rgba(148, 209, 89, 0.1),
+      0 0 24px rgba(148, 209, 89, 0.06);
+  }
+
+  100% {
+    box-shadow:
+      inset 0 0 16px rgba(148, 209, 89, 0.11),
+      0 0 12px rgba(148, 209, 89, 0.06);
+  }
+}
+
 .home-install-card-platform {
   display: grid;
   gap: 6px;
@@ -6167,6 +6208,16 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-install-monitor-metric strong {
     font-size: 0.62rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-install-monitor-ring {
+    animation: none;
+  }
+
+  .home-install-monitor::before {
+    opacity: 0.72;
   }
 }
 
