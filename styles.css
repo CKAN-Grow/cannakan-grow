@@ -4233,43 +4233,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
 }
 
-@media (min-width: 641px) {
-  .home-dashboard-secondary-side-column {
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .home-dashboard-secondary-side-column > .home-install-card {
-    height: auto;
-    align-self: start;
-  }
-
-  .home-dashboard-secondary-side-column::after {
-    content: "";
-    display: block;
-    min-height: 0;
-    border-radius: 26px;
-    border: 1px solid rgba(148, 209, 89, 0.1);
-    background:
-      radial-gradient(circle at top left, rgba(148, 209, 89, 0.08), transparent 42%),
-      linear-gradient(180deg, rgba(244, 248, 243, 0.32) 0%, rgba(234, 241, 233, 0.18) 100%),
-      linear-gradient(135deg, rgba(148, 209, 89, 0.05), rgba(43, 111, 65, 0.02) 58%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      0 0 0 1px rgba(148, 209, 89, 0.03);
-  }
-
-  body.theme-dark .home-dashboard-secondary-side-column::after {
-    border-color: rgba(148, 209, 89, 0.12);
-    background:
-      radial-gradient(circle at top left, rgba(148, 209, 89, 0.1), transparent 42%),
-      linear-gradient(180deg, rgba(34, 47, 38, 0.52) 0%, rgba(24, 33, 27, 0.28) 100%),
-      linear-gradient(135deg, rgba(148, 209, 89, 0.06), rgba(43, 111, 65, 0.025) 58%);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.03),
-      0 0 0 1px rgba(148, 209, 89, 0.04);
-  }
-}
-
 .home-tested-sources-preview-section,
 .home-cstp-overview-section {
   display: grid;
@@ -5152,6 +5115,12 @@ body.theme-dark .contact-reason-card.is-active {
   height: 100%;
 }
 
+.home-install-card-top-row {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
 .home-install-card-preview {
   display: flex;
   align-items: center;
@@ -5173,9 +5142,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-preview {
-  grid-area: preview;
   flex: 0 1 auto;
-  width: min(100%, 292px);
+  width: min(100%, 272px);
   max-width: 100%;
   margin-inline: 0;
   align-self: center;
@@ -5628,33 +5596,21 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card-body {
-  display: grid;
-  grid-template-columns: minmax(190px, 228px) minmax(0, 1fr);
-  align-items: center;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   min-width: 0;
 }
 
 .home-install-card.is-desktop .home-install-card-body {
-  grid-template-columns: minmax(0, 1.12fr) minmax(176px, 0.88fr);
-  grid-template-areas: "content preview";
+  gap: 14px;
+  height: 100%;
+}
+
+.home-install-card.is-desktop .home-install-card-top-row {
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: clamp(16px, 3cqi, 24px);
-  min-height: 100%;
-}
-
-.home-install-card-content {
-  display: grid;
-  min-width: 0;
-  align-content: center;
-  gap: 12px;
-}
-
-.home-install-card.is-desktop .home-install-card-content {
-  grid-area: content;
-  align-content: center;
-  gap: 10px;
-  max-width: 34ch;
 }
 
 .home-install-card-copy {
@@ -5679,10 +5635,15 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 6px;
 }
 
+.home-install-card.is-desktop .home-install-card-copy {
+  align-content: center;
+  max-width: 19rem;
+}
+
 .home-install-card.is-desktop .home-install-card-description {
   font-size: 0.92rem;
   line-height: 1.4;
-  max-width: 34ch;
+  max-width: 30ch;
 }
 
 .home-install-card-copy-block h3 {
@@ -5699,6 +5660,11 @@ body.theme-dark .contact-reason-card.is-active {
   line-height: 1.42;
 }
 
+.home-install-card-footer {
+  display: grid;
+  gap: 10px;
+}
+
 .home-install-card-actions {
   display: flex;
   align-items: center;
@@ -5709,6 +5675,10 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-actions {
   margin-top: 0;
   width: auto;
+}
+
+.home-install-card.is-desktop .home-install-card-footer {
+  margin-top: auto;
 }
 
 .home-install-card-actions .install-app-button {
@@ -5735,7 +5705,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-directions {
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  max-width: 34ch;
+  max-width: none;
 }
 
 .home-install-monitor {
@@ -5743,7 +5713,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 292px;
+  max-width: 272px;
   gap: 0;
   margin-inline: auto;
 }
@@ -6009,17 +5979,6 @@ body.theme-dark .contact-reason-card.is-active {
   color: var(--muted);
 }
 
-@container (min-width: 780px) {
-  .home-install-card.is-desktop .home-install-card-body {
-    grid-template-columns: minmax(0, 1.08fr) minmax(220px, 280px);
-    align-items: center;
-  }
-
-  .home-install-card.is-desktop .home-install-card-preview {
-    margin-inline: 0;
-  }
-}
-
 @container (max-width: 330px) {
   .home-install-monitor-screen {
     gap: 10px;
@@ -6042,7 +6001,6 @@ body.theme-dark .contact-reason-card.is-active {
 
 @media (max-width: 880px) {
   .home-install-card-body {
-    grid-template-columns: minmax(178px, 210px) minmax(0, 1fr);
     gap: 16px;
   }
 
@@ -6052,12 +6010,12 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-install-card.is-desktop .home-install-card-preview {
     flex: 0 1 auto;
-    width: 100%;
+    width: min(100%, 240px);
     align-self: center;
   }
 
   .home-install-monitor {
-    width: min(100%, 420px);
+    max-width: 240px;
   }
 
   .home-install-monitor-screen {
@@ -13739,8 +13697,10 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .home-install-card-body {
-    grid-template-columns: 1fr;
-    align-items: stretch;
+    gap: 18px;
+  }
+
+  .home-install-card-top-row {
     gap: 18px;
   }
 
@@ -13748,10 +13708,6 @@ body.theme-dark .theme-toggle-button:hover {
     order: -1;
     justify-content: center;
     height: auto;
-  }
-
-  .home-install-card-content {
-    justify-content: flex-start;
   }
 
   .home-install-card-directions {

@@ -19283,10 +19283,7 @@ function renderHomeInstallInfoCardMarkup() {
     <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
         <div class="home-install-card-body">
-          <div class="home-install-card-preview" aria-hidden="true">
-            ${installPreviewMarkup}
-          </div>
-          <div class="home-install-card-content">
+          <div class="home-install-card-top-row">
             <div class="home-install-card-copy">
               <div class="home-install-card-copy-block">
                 <p class="eyebrow">Install App</p>
@@ -19296,9 +19293,14 @@ function renderHomeInstallInfoCardMarkup() {
                   : "Track sessions, receive notifications, and stay connected on the go.")}</p>
               </div>
             </div>
-            <div class="home-install-card-directions">
-              ${installDirectionsMarkup}
+            <div class="home-install-card-preview" aria-hidden="true">
+              ${installPreviewMarkup}
             </div>
+          </div>
+          <div class="home-install-card-directions">
+            ${installDirectionsMarkup}
+          </div>
+          <div class="home-install-card-footer">
             <div class="home-install-card-actions">
               <button
                 type="button"
