@@ -15,6 +15,7 @@ const THEME_KEY = "cannakan-grow-theme";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
+const DEFAULT_AVATAR_IMAGE_URL = "/assets/images/default-avatar.png";
 const SOURCE_LOGO_BUCKET = "source-logos";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   startDate: "",
@@ -604,7 +605,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     id: "mock-notification-avery-follow",
     type: "follow",
     displayName: "Avery Moss",
-    avatarUrl: "https://i.pravatar.cc/96?u=avery-moss",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Avery Moss", "Grow Network", 0),
     occurredAt: "2026-05-02T11:58:00.000Z",
     isUnseen: true,
     targetId: "self-follow",
@@ -615,7 +616,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     id: "mock-notification-sarah-follow",
     type: "follow",
     displayName: "Sarah K.",
-    avatarUrl: "https://i.pravatar.cc/96?u=sarah-k",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Sarah K.", "Grow Network", 1),
     occurredAt: "2026-05-02T11:54:30.000Z",
     isUnseen: true,
     targetId: "self-follow",
@@ -626,7 +627,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     id: "mock-notification-mike-follow",
     type: "follow",
     displayName: "Mike R.",
-    avatarUrl: "https://i.pravatar.cc/96?u=mike-r",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Mike R.", "Grow Network", 2),
     occurredAt: "2026-05-02T11:51:30.000Z",
     isUnseen: false,
     targetId: "self-follow",
@@ -650,7 +651,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     id: "mock-notification-alex-grow-session-like",
     type: "like",
     displayName: "Alex P.",
-    avatarUrl: "https://i.pravatar.cc/96?u=alex-p",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Alex P.", "Grow Network", 3),
     occurredAt: "2026-05-02T11:46:30.000Z",
     isUnseen: true,
     targetId: "grow-session-demo",
@@ -676,7 +677,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     id: "mock-notification-sarah-snapshot-like",
     type: "like",
     displayName: "Sarah K.",
-    avatarUrl: "https://i.pravatar.cc/96?u=sarah-k-snapshot",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Sarah K.", "Snapshot", 4),
     occurredAt: "2026-05-02T11:22:00.000Z",
     isUnseen: true,
     targetId: "snapshot-demo",
@@ -7580,7 +7581,7 @@ function normalizeProfileRow(row) {
     username: String(row.username || "").trim(),
     email: String(row.email || "").trim().toLowerCase(),
     role: normalizeUserRole(row.role),
-    avatarUrl: getSafeAvatarImageUrl(row.avatar_url),
+    avatarUrl: resolveAvatarImageUrl(row.avatar_url, row.avatar_path),
     avatarPath: String(row.avatar_path || "").trim(),
     accountStatus: String(row.account_status || "active").trim().toLowerCase() === "disabled" ? "disabled" : "active",
     lastActiveAt: row.last_active_at || "",
@@ -7692,7 +7693,7 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
   return {
     id: String(row.id || "").trim(),
     displayName: String(row.display_name || row.username || "").trim() || "Community member",
-    avatarUrl: getSafeAvatarImageUrl(row.avatar_url),
+    avatarUrl: resolveAvatarImageUrl(row.avatar_url, row.avatar_path),
     joinedAt: row.joined_at || row.created_at || "",
     ...normalizedSettings,
   };
@@ -7746,7 +7747,7 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
   return {
     id: normalizedId,
     displayName: getGallerySnapshotMemberLabel(sharedProfileSnapshot),
-    avatarUrl: String(sharedProfileSnapshot?.profileImageUrl || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(sharedProfileSnapshot?.profileImageUrl || ""),
     joinedAt: "",
     ...getDefaultProfilePageSettings(),
   };
@@ -7766,7 +7767,7 @@ function buildCurrentUserPublicMemberProfileFallback(
   return {
     id: normalizedUserId,
     displayName: String(profile?.username || "").trim() || "Community member",
-    avatarUrl: String(profile?.avatarUrl || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(profile?.avatarUrl || ""),
     joinedAt: profile?.createdAt || user?.created_at || "",
     ...normalizedSettings,
   };
@@ -7784,7 +7785,7 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     ...(primaryProfile || {}),
     id: String(primaryProfile?.id || fallbackProfile?.id || "").trim(),
     displayName: String(primaryProfile?.displayName || fallbackProfile?.displayName || "Community member").trim() || "Community member",
-    avatarUrl: String(primaryProfile?.avatarUrl || fallbackProfile?.avatarUrl || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(primaryProfile?.avatarUrl || fallbackProfile?.avatarUrl || ""),
     joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
     ...resolvedSettings,
   };
@@ -8031,7 +8032,7 @@ function normalizePublicMemberFollowListRow(row) {
   return {
     memberId,
     displayName: String(row?.display_name || row?.displayName || "").trim() || "Community member",
-    avatarUrl: String(row?.avatar_url || row?.avatarUrl || "").trim(),
+    avatarUrl: resolveAvatarImageUrl(row?.avatar_url || row?.avatarUrl || "", row?.avatar_path || row?.avatarPath || ""),
     joinedAt: row?.joined_at || row?.joinedAt || "",
     createdAt: row?.created_at || row?.createdAt || "",
     relationshipType: String(row?.relationship_type || row?.relationshipType || "").trim() === "following"
@@ -8202,7 +8203,7 @@ function getMockGrowNetworkNotifications() {
       ? String(notification.type || "").trim().toLowerCase()
       : "system",
     displayName: String(notification.displayName || "").trim() || "Grow Network",
-    avatarUrl: String(notification.avatarUrl || "").trim(),
+    avatarUrl: getSafeAvatarImageUrl(notification.avatarUrl || ""),
     actionText: String(notification.actionText || "").trim(),
     occurredAt: String(notification.occurredAt || "").trim() || GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT,
     isUnseen: Boolean(notification.isUnseen) && !appState.mockGrowNetworkSeenNotificationIds[String(notification.id || "").trim()],
@@ -9958,6 +9959,44 @@ function getProfileAvatarFallbackLabel() {
   return getPublicMemberInitialsLabel(getProfileDisplayName());
 }
 
+function isSafeAvatarHttpUrl(url = "") {
+  const normalizedUrl = String(url || "").trim();
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(normalizedUrl, typeof window !== "undefined" ? window.location.origin : "https://cannakan.local");
+    const pathname = String(parsedUrl.pathname || "").toLowerCase();
+    if (/\.(png|jpe?g|webp)(?:$)/i.test(pathname)) {
+      return true;
+    }
+    const formatValue = String(
+      parsedUrl.searchParams.get("format")
+      || parsedUrl.searchParams.get("fm")
+      || parsedUrl.searchParams.get("ext")
+      || "",
+    ).toLowerCase();
+    return ["png", "jpg", "jpeg", "webp"].includes(formatValue);
+  } catch (error) {
+    return false;
+  }
+}
+
+function getProfileAvatarPublicUrlFromPath(avatarPath = "") {
+  const normalizedPath = String(avatarPath || "").trim();
+  if (!normalizedPath || !appState.supabase?.storage) {
+    return "";
+  }
+
+  try {
+    const { data } = appState.supabase.storage.from(PROFILE_AVATAR_BUCKET).getPublicUrl(normalizedPath);
+    return isSafeAvatarHttpUrl(data?.publicUrl || "") ? String(data.publicUrl || "").trim() : "";
+  } catch (error) {
+    return "";
+  }
+}
+
 function getSafeAvatarImageUrl(avatarUrl = "", options = {}) {
   const {
     allowBlob = false,
@@ -9968,7 +10007,10 @@ function getSafeAvatarImageUrl(avatarUrl = "", options = {}) {
     return "";
   }
 
-  if (/^https?:\/\//i.test(normalizedUrl) || normalizedUrl.startsWith("/public/assets/")) {
+  if (normalizedUrl.startsWith("/assets/images/") && /\.(png|jpe?g|webp)(?:$|[?#])/i.test(normalizedUrl)) {
+    return normalizedUrl;
+  }
+  if (isSafeAvatarHttpUrl(normalizedUrl)) {
     return normalizedUrl;
   }
   if (allowBlob && normalizedUrl.startsWith("blob:")) {
@@ -9981,6 +10023,26 @@ function getSafeAvatarImageUrl(avatarUrl = "", options = {}) {
   return "";
 }
 
+function resolveAvatarImageUrl(avatarUrl = "", avatarPath = "", options = {}) {
+  return getSafeAvatarImageUrl(avatarUrl, options) || getProfileAvatarPublicUrlFromPath(avatarPath);
+}
+
+function buildAvatarImageMarkup({
+  avatarUrl = "",
+  alt = "Member",
+  className = "profile-page-avatar",
+  fallbackMarkup = "",
+  allowBlob = false,
+  allowDataImage = true,
+} = {}) {
+  const safeAvatarUrl = getSafeAvatarImageUrl(avatarUrl, {
+    allowBlob,
+    allowDataImage,
+  });
+  const resolvedAvatarUrl = safeAvatarUrl || DEFAULT_AVATAR_IMAGE_URL;
+  return `<img src="${escapeHtml(resolvedAvatarUrl)}" alt="${escapeHtml(alt)}" class="${escapeHtml(className)}" data-default-avatar-src="${escapeHtml(DEFAULT_AVATAR_IMAGE_URL)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="if(this.dataset.defaultAvatarSrc && this.src !== this.dataset.defaultAvatarSrc){this.src=this.dataset.defaultAvatarSrc; return;} this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
+}
+
 function renderProfileAvatarMarkup({
   avatarUrl = "",
   displayName = getProfileDisplayName(),
@@ -9989,11 +10051,12 @@ function renderProfileAvatarMarkup({
 } = {}) {
   const normalizedDisplayName = String(displayName || "").trim() || "Member";
   const fallbackMarkup = `<span class="${escapeHtml(fallbackClassName)}" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(normalizedDisplayName))}</span>`;
-  const safeAvatarUrl = getSafeAvatarImageUrl(avatarUrl);
-  if (safeAvatarUrl) {
-    return `<img src="${escapeHtml(safeAvatarUrl)}" alt="${escapeHtml(normalizedDisplayName)}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
-  }
-  return fallbackMarkup;
+  return buildAvatarImageMarkup({
+    avatarUrl,
+    alt: normalizedDisplayName,
+    className,
+    fallbackMarkup,
+  });
 }
 
 function getProfilePageSettingsStorageKey(userId = "") {
@@ -10553,7 +10616,8 @@ async function uploadProfileAvatar(file) {
   }
 
   const preparedImage = await prepareImageForUpload(file, MAX_AVATAR_DIMENSION, 0.84);
-  const path = `${appState.user.id}/avatar-${crypto.randomUUID()}.jpg`;
+  const extension = preparedImage.extension || "jpg";
+  const path = `${appState.user.id}/profile-image-${crypto.randomUUID()}.${extension}`;
   const { error } = await appState.supabase.storage
     .from(PROFILE_AVATAR_BUCKET)
     .upload(path, preparedImage.blob, {
@@ -14379,13 +14443,13 @@ function renderPublicMemberAvatarFallbackMarkup(displayName = "", className = "p
 }
 
 function renderPublicMemberAvatarMarkup(displayName = "", avatarUrl = "", className = "public-member-profile-avatar") {
-  const safeAvatarUrl = getSafeAvatarImageUrl(avatarUrl);
-  if (safeAvatarUrl) {
-    const fallbackMarkup = renderPublicMemberAvatarFallbackMarkup(displayName, className);
-    return `<img src="${escapeHtml(safeAvatarUrl)}" alt="${escapeHtml(displayName || "Community member")}" class="${escapeHtml(className)}" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`;
-  }
-
-  return renderPublicMemberAvatarFallbackMarkup(displayName, className);
+  const fallbackMarkup = renderPublicMemberAvatarFallbackMarkup(displayName, className);
+  return buildAvatarImageMarkup({
+    avatarUrl,
+    alt: displayName || "Community member",
+    className,
+    fallbackMarkup,
+  });
 }
 
 function hasGallerySnapshotGrowMember(snapshot) {
@@ -16366,7 +16430,10 @@ function getSnapshotProfileAttribution(state) {
 
   return {
     name,
-    imageUrl: String(appState.profile?.avatarUrl || "").trim(),
+    imageUrl: resolveAvatarImageUrl(
+      appState.profile?.avatarUrl || "",
+      appState.profile?.avatarPath || "",
+    ) || DEFAULT_AVATAR_IMAGE_URL,
   };
 }
 
@@ -18703,9 +18770,13 @@ function renderProfileAvatarPreview(preview, removeButton, state, profile) {
   const safeDisplayUrl = getSafeAvatarImageUrl(rawDisplayUrl, { allowBlob: Boolean(state.previewUrl) });
   const fallbackMarkup = `<span class="profile-avatar-preview-fallback" aria-hidden="true">${escapeHtml(getPublicMemberInitialsLabel(displayName))}</span>`;
   preview.hidden = false;
-  preview.innerHTML = safeDisplayUrl
-    ? `<img src="${escapeHtml(safeDisplayUrl)}" alt="Profile preview" class="profile-avatar-preview-image" data-fallback-html="${escapeHtml(fallbackMarkup)}" onerror="this.onerror=null; this.outerHTML=this.dataset.fallbackHtml;">`
-    : fallbackMarkup;
+  preview.innerHTML = buildAvatarImageMarkup({
+    avatarUrl: safeDisplayUrl,
+    alt: "Profile preview",
+    className: "profile-avatar-preview-image",
+    fallbackMarkup,
+    allowBlob: Boolean(state.previewUrl),
+  });
   removeButton.hidden = false;
 }
 
