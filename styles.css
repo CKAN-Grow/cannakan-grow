@@ -4169,7 +4169,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-explore-divider {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 22px;
   margin: 0;
   padding-top: clamp(18px, 2.8vw, 28px);
   padding-bottom: 6px;
