@@ -14153,28 +14153,28 @@ function renderHomeGalleryRankingsTeaser() {
   const { rankings } = teaserState;
   const rankingRows = [
     {
-      label: "Most Active Grower (This Month)",
+      label: "Most Active Grower",
       toneClass: "is-gold",
       iconType: "member",
       entry: rankings.topMember,
       formatValue: (entry) => entry.name,
     },
     {
-      label: "Highest Avg Germ Rate (This Month)",
+      label: "Highest Avg Germ Rate",
       toneClass: "is-gold",
       iconType: "source",
       entry: rankings.topSource,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "Highest Avg Germ Rate by Variety (This Month)",
+      label: "Highest Avg Germ Rate by Variety",
       toneClass: "is-silver",
       iconType: "variety",
       entry: rankings.topVariety,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "Most Used Seed Type (This Month)",
+      label: "Most Used Seed Type",
       toneClass: "is-bronze",
       iconType: "seed-type",
       entry: rankings.topSeedType,
@@ -14190,7 +14190,7 @@ function renderHomeGalleryRankingsTeaser() {
             ${renderAppSectionHeaderIcon("community")}
             <div>
               <p class="eyebrow">Community Insights</p>
-              <h3 id="home-gallery-rankings-title">Community Grow Insights</h3>
+              <h3 id="home-gallery-rankings-title">Community Grow Insights - This Month</h3>
               <p class="muted home-gallery-rankings-subtitle">Based on approved public session data. Results may vary.</p>
             </div>
           </div>
