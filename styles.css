@@ -4348,6 +4348,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 0;
 }
 
+.home-dashboard-secondary-row-top {
+  margin-top: clamp(28px, 3vw, 40px);
+}
+
 .home-dashboard-secondary-main-column,
 .home-dashboard-secondary-row-bottom {
   display: grid;
@@ -14115,6 +14119,7 @@ body.theme-dark .theme-toggle-button:hover {
   .home-dashboard-secondary-row-top {
     grid-template-columns: 1fr;
     gap: 12px;
+    margin-top: 24px;
   }
 
   .home-dashboard-secondary-side-column,
