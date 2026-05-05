@@ -5151,6 +5151,7 @@ body.theme-dark .contact-reason-card.is-active {
   min-width: 0;
   height: auto;
   align-self: center;
+  pointer-events: none;
 }
 
 .home-install-card .home-install-card-preview {

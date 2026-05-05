@@ -1118,6 +1118,7 @@ const appState = {
   deferredInstallPrompt: null,
   installPromptDismissed: false,
   installPromptMode: "",
+  installPromptFeedbackMessage: "",
   gallerySort: "date",
   gallerySortOrder: "desc",
   galleryCertificationFilter: "all",
@@ -1743,6 +1744,10 @@ function getUserAgent() {
 function getInstallEnvironment() {
   const userAgent = getUserAgent();
   const rawUserAgent = window.navigator.userAgent || "";
+  const vendor = String(window.navigator.vendor || "").toLowerCase();
+  const userAgentBrands = Array.isArray(window.navigator.userAgentData?.brands)
+    ? window.navigator.userAgentData.brands.map((brand) => String(brand?.brand || "").toLowerCase())
+    : [];
   const platform = String(
     window.navigator.userAgentData?.platform
     || window.navigator.platform
@@ -1766,32 +1771,46 @@ function getInstallEnvironment() {
     os = "mac";
   }
 
+  const isEdge = userAgentBrands.some((brand) => brand.includes("microsoft edge"))
+    || /edg\//.test(userAgent)
+    || /edgios\//.test(userAgent);
+  const isChrome = (
+    userAgentBrands.some((brand) => brand.includes("google chrome") || brand.includes("chromium"))
+    || /chrome|chromium|crios/i.test(rawUserAgent)
+  ) && !isEdge;
+  const isSafari = (
+    userAgentBrands.some((brand) => brand.includes("safari"))
+    || /safari/.test(userAgent)
+    || vendor.includes("apple")
+  ) && !isChrome
+    && !isEdge
+    && !/crmo|fxios|opr\//.test(userAgent);
+
   let browser = "other";
-  if (/edg\//.test(userAgent) || /edgios\//.test(userAgent)) {
+  if (isEdge) {
     browser = "edge";
-  } else if (
-    /chrome|chromium|crios/i.test(rawUserAgent)
-    && !/edg\//.test(userAgent)
-    && !/edgios\//.test(userAgent)
-  ) {
+  } else if (isChrome) {
     browser = "chrome";
-  } else if (
-    /safari/.test(userAgent)
-    && !/chrome|chromium|crios|crmo|fxios|edg\//.test(userAgent)
-    && !/edgios\//.test(userAgent)
-    && !/opr\//.test(userAgent)
-  ) {
+  } else if (isSafari) {
     browser = "safari";
   }
+
+  const isWindows = os === "windows";
+  const isMac = os === "mac" && !isIOS;
 
   return {
     browser,
     device: isMobile ? "mobile" : "desktop",
     isAndroid,
+    isChrome,
     isDesktop,
+    isEdge,
     isInstalled: isStandaloneAppDisplay(),
     isIOS,
+    isMac,
     isMobile,
+    isSafari,
+    isWindows,
     os,
     promptAvailable: Boolean(getDeferredInstallPrompt()),
   };
@@ -1809,12 +1828,31 @@ function isDesktopDevice() {
   return getInstallEnvironment().isDesktop;
 }
 
+function isWindowsDevice() {
+  return getInstallEnvironment().isWindows;
+}
+
+function isMacDevice() {
+  return getInstallEnvironment().isMac;
+}
+
+function isChromeBrowser() {
+  return getInstallEnvironment().isChrome;
+}
+
+function isEdgeBrowser() {
+  return getInstallEnvironment().isEdge;
+}
+
+function isSafariBrowser() {
+  return getInstallEnvironment().isSafari;
+}
+
 function getDesktopPlatformLabel() {
-  const { os } = getInstallEnvironment();
-  if (os === "windows") {
+  if (isWindowsDevice()) {
     return "Windows";
   }
-  if (os === "mac") {
+  if (isMacDevice()) {
     return "Mac";
   }
   return "Desktop";
@@ -1826,35 +1864,54 @@ function getDesktopInstallBrowserFamily() {
 
 function getDesktopInstallFallbackText() {
   const environment = getInstallEnvironment();
-  const isSupportedDesktopBrowser = environment.browser === "chrome" || environment.browser === "edge";
-  if (environment.isDesktop && isSupportedDesktopBrowser) {
+  if (environment.isDesktop && (environment.isChrome || environment.isEdge)) {
     return "Click the install icon in the address bar or browser menu.";
   }
-  if (environment.isDesktop && environment.os === "mac" && environment.browser === "safari") {
-    return "Safari does not fully support app install. Use Chrome or Edge for the best experience.";
+  if (environment.isDesktop && environment.isMac && environment.isSafari) {
+    return "Use File > Add to Dock if available, or open in Chrome for Install App support.";
   }
-  return "Use a supported browser like Chrome or Edge to install the app.";
+  return "Open this site in Chrome or Edge to install the app.";
 }
 
 function isIPhoneSafariInstallCandidate() {
   const environment = getInstallEnvironment();
-  return environment.isIOS && environment.browser === "safari" && !environment.isInstalled;
+  return environment.isIOS && environment.isSafari && !environment.isInstalled;
 }
 
 function getInstallUnavailableHelperText(environment = getInstallEnvironment()) {
-  if (environment.isDesktop && (environment.browser === "chrome" || environment.browser === "edge")) {
+  if (environment.isDesktop && (environment.isChrome || environment.isEdge)) {
+    return "Manual install is available from your browser menu.";
+  }
+  if (environment.isDesktop && environment.isMac && environment.isSafari) {
+    return "Safari has limited desktop install support.";
+  }
+  if (environment.isMobile && environment.isIOS) {
+    return environment.isSafari
+      ? "Use Safari Share to add the app to your Home Screen."
+      : "Open this site in Safari to add it to your Home Screen.";
+  }
+  if (environment.isMobile && environment.isAndroid && environment.isChrome) {
+    return "Use Chrome to install or add the app to Home Screen.";
+  }
+  return "Open this site in Chrome or Edge to install the app.";
+}
+
+function getInstallActionFallbackText(environment = getInstallEnvironment()) {
+  if (environment.isDesktop && (environment.isChrome || environment.isEdge)) {
     return "Click the install icon in the address bar or browser menu.";
   }
-  if (environment.isDesktop && environment.os === "mac" && environment.browser === "safari") {
-    return "Safari does not fully support app install. Use Chrome or Edge for the best experience.";
+  if (environment.isDesktop && environment.isMac && environment.isSafari) {
+    return "Use File > Add to Dock if available, or open in Chrome for Install App support.";
   }
-  if (environment.isMobile && environment.isIOS && environment.browser === "safari") {
-    return "Tap Share \u2192 Add to Home Screen";
+  if (environment.isMobile && environment.isIOS) {
+    return environment.isSafari
+      ? "Open in Safari, tap Share, then Add to Home Screen."
+      : "Open this site in Safari, then tap Share and Add to Home Screen.";
   }
-  if (environment.isMobile && environment.isAndroid && environment.browser === "chrome") {
-    return "Tap menu \u2192 Add to Home Screen";
+  if (environment.isMobile && environment.isAndroid && environment.isChrome) {
+    return "Use Chrome menu > Install App or Add to Home Screen.";
   }
-  return "Use a supported browser like Chrome or Edge to install the app.";
+  return "Open this site in Chrome or Edge to install the app.";
 }
 
 function getDeferredInstallPrompt() {
@@ -1887,12 +1944,14 @@ function getInstallPromptMode() {
 async function promptInstallGrowApp() {
   const promptEvent = getDeferredInstallPrompt();
   if (!promptEvent) {
+    appState.installPromptFeedbackMessage = getInstallActionFallbackText();
     appState.installPromptMode = getInstallPromptMode();
     safeRender();
     return;
   }
 
   try {
+    appState.installPromptFeedbackMessage = "";
     await promptEvent.prompt();
     const userChoice = await promptEvent.userChoice;
     appState.installPromptDismissed = userChoice?.outcome !== "accepted";
@@ -2000,6 +2059,7 @@ function bindInstallPromptEvents() {
     event.preventDefault();
     setDeferredInstallPrompt(event);
     appState.installPromptDismissed = false;
+    appState.installPromptFeedbackMessage = "";
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
     safeRender();
@@ -2008,6 +2068,7 @@ function bindInstallPromptEvents() {
   window.addEventListener("appinstalled", () => {
     setDeferredInstallPrompt(null);
     appState.installPromptDismissed = true;
+    appState.installPromptFeedbackMessage = "";
     appState.installPromptMode = getInstallPromptMode();
     syncInstallPromptBanner();
     safeRender();
@@ -19105,17 +19166,22 @@ function renderHomeInstallInfoCardMarkup() {
     showDesktopInstallState ? "is-desktop" : "",
   ].filter(Boolean).join(" ");
   const hasDeferredPrompt = mode === "prompt";
+  const fallbackFeedback = String(appState.installPromptFeedbackMessage || "").trim();
   const helperText = isInstalled
     ? "Cannakan Grow is already installed on this device."
+    : fallbackFeedback
+      ? fallbackFeedback
     : hasDeferredPrompt
       ? "Install directly from this browser for a faster full-screen experience."
       : getInstallUnavailableHelperText(environment);
   const buttonLabel = isInstalled
     ? "App Installed"
     : "Install Now";
-  const buttonEnabled = hasDeferredPrompt && !isInstalled;
+  const buttonEnabled = !isInstalled;
   const statusToneClass = isInstalled
     ? "is-installed"
+    : fallbackFeedback
+      ? "is-active"
     : isIOS
       ? "is-ios"
       : hasDeferredPrompt
@@ -19310,7 +19376,7 @@ function renderHomeInstallInfoCardMarkup() {
                 aria-disabled="${buttonEnabled ? "false" : "true"}"
               >${escapeHtml(buttonLabel)}</button>
             </div>
-            <p class="home-install-card-tip ${statusToneClass}">${escapeHtml(helperText)}</p>
+            <p class="home-install-card-tip ${statusToneClass}" aria-live="polite">${escapeHtml(helperText)}</p>
           </div>
         </div>
       </div>
