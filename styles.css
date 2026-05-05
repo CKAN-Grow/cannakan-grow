@@ -12623,7 +12623,7 @@ body.theme-dark .contact-reason-card.is-active {
     box-shadow 0.18s ease;
 }
 
-#grow-sessions-header .button-new-session {
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .button-new-session {
   min-width: 168px;
   white-space: nowrap;
   text-align: center;
@@ -20921,7 +20921,7 @@ body.theme-dark #session-history-section {
   border-top-width: 3px;
 }
 
-#grow-sessions-header,
+#grow-sessions-header:not(.dashboard-bar--seed-hero),
 #active-sessions-section,
 #recent-completed-sessions-section,
 #session-history-section {
@@ -20949,7 +20949,7 @@ body.theme-dark #session-history-section {
   min-width: 0;
 }
 
-#grow-sessions-header .section-heading,
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading,
 #active-sessions-section .section-heading,
 #recent-completed-sessions-section .section-heading,
 #session-history-section .section-heading {
@@ -20957,7 +20957,7 @@ body.theme-dark #session-history-section {
   gap: clamp(16px, 2vw, 24px);
 }
 
-#grow-sessions-header .section-heading > :first-child,
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading > :first-child,
 #active-sessions-section .section-heading > :first-child,
 #recent-completed-sessions-section .section-heading > :first-child,
 #session-history-section .section-heading > :first-child {
@@ -21029,7 +21029,17 @@ body.theme-dark #session-history-section {
   margin-left: auto;
 }
 
-#grow-sessions-header {
+#grow-sessions-header.dashboard-bar--seed-hero {
+  padding: var(--space-card);
+  background-image:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.95) 0%, rgba(8, 13, 10, 0.75) 32%, rgba(8, 13, 10, 0.15) 58%, rgba(8, 13, 10, 0.35) 100%),
+    url("/src/assets/images/grow-tracking-my-sessions-bg.png");
+  background-size: cover;
+  background-position: center right;
+  background-repeat: no-repeat;
+}
+
+#grow-sessions-header:not(.dashboard-bar--seed-hero) {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.04) 34%, transparent 62%),
     linear-gradient(145deg, rgba(21, 26, 22, 0.96) 0%, rgba(28, 34, 29, 0.94) 54%, rgba(19, 24, 21, 0.97) 100%);
@@ -21042,7 +21052,7 @@ body.theme-dark #session-history-section {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-#grow-sessions-header:hover {
+#grow-sessions-header:not(.dashboard-bar--seed-hero):hover {
   box-shadow:
     0 0 10px rgba(148, 209, 89, 0.17),
     0 20px 38px rgba(0, 0, 0, 0.2),
@@ -21051,16 +21061,16 @@ body.theme-dark #session-history-section {
     inset 0 -18px 30px rgba(7, 10, 8, 0.2);
 }
 
-#grow-sessions-header .eyebrow,
-#grow-sessions-header h2 {
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .eyebrow,
+#grow-sessions-header:not(.dashboard-bar--seed-hero) h2 {
   color: #f5f8f1;
 }
 
-#grow-sessions-header p:not(.eyebrow) {
+#grow-sessions-header:not(.dashboard-bar--seed-hero) p:not(.eyebrow) {
   color: rgba(230, 237, 226, 0.84);
 }
 
-#grow-sessions-header .section-title-icon {
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-title-icon {
   color: #0f140f;
   background: #94d159;
   border-color: rgba(15, 20, 15, 0.14);
@@ -21069,11 +21079,11 @@ body.theme-dark #session-history-section {
     inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
-#grow-sessions-header .section-title-icon * {
+#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-title-icon * {
   stroke: currentColor;
 }
 
-body.theme-dark #grow-sessions-header {
+body.theme-dark #grow-sessions-header:not(.dashboard-bar--seed-hero) {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.05) 32%, transparent 58%),
     linear-gradient(145deg, rgba(18, 22, 19, 0.98) 0%, rgba(23, 28, 24, 0.97) 52%, rgba(13, 17, 14, 0.99) 100%);
@@ -21085,7 +21095,7 @@ body.theme-dark #grow-sessions-header {
     inset 0 -18px 30px rgba(0, 0, 0, 0.24);
 }
 
-body.theme-dark #grow-sessions-header:hover {
+body.theme-dark #grow-sessions-header:not(.dashboard-bar--seed-hero):hover {
   box-shadow:
     0 0 10px rgba(148, 209, 89, 0.17),
     0 24px 42px rgba(0, 0, 0, 0.3),
@@ -21137,14 +21147,14 @@ body.theme-dark #session-history-section .session-row:hover {
 }
 
 @media (max-width: 760px) {
-  #grow-sessions-header,
+  #grow-sessions-header:not(.dashboard-bar--seed-hero),
   #active-sessions-section,
   #recent-completed-sessions-section,
   #session-history-section {
     padding: 18px;
   }
 
-  #grow-sessions-header .section-heading,
+  #grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading,
   #active-sessions-section .section-heading,
   #recent-completed-sessions-section .section-heading,
   #session-history-section .section-heading {
@@ -21174,6 +21184,10 @@ body.theme-dark #session-history-section .session-row:hover {
     width: 100%;
     margin-left: 0;
     align-self: stretch;
+  }
+
+  #grow-sessions-header.dashboard-bar--seed-hero {
+    padding: var(--space-card);
   }
 
   .active-sessions-layout {
@@ -21991,6 +22005,15 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     background-image:
       linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
       url("/assets/images/my-sessions-hero-bg.png");
+    background-size: cover;
+    background-position: 72% center;
+    background-repeat: no-repeat;
+  }
+
+  #grow-sessions-header.dashboard-bar--seed-hero {
+    background-image:
+      linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
+      url("/src/assets/images/grow-tracking-my-sessions-bg.png");
     background-size: cover;
     background-position: 72% center;
     background-repeat: no-repeat;
