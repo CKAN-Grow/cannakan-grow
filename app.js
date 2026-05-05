@@ -19236,36 +19236,38 @@ function renderHomeInstallInfoCardMarkup() {
                 </div>
                 <p class="home-install-monitor-ring-label">Germination</p>
               </div>
-              <div class="home-install-monitor-metrics">
-                <div class="home-install-monitor-metric">
-                  <span>Stage</span>
-                  <strong>Germination</strong>
+              <div class="home-install-monitor-detail-column">
+                <div class="home-install-monitor-metrics">
+                  <div class="home-install-monitor-metric">
+                    <span>Stage</span>
+                    <strong>Germination</strong>
+                  </div>
+                  <div class="home-install-monitor-metric">
+                    <span>Seeds</span>
+                    <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
+                  </div>
+                  <div class="home-install-monitor-metric">
+                    <span>Time Elapsed</span>
+                    <strong>${escapeHtml(installPreviewElapsed)}</strong>
+                  </div>
                 </div>
-                <div class="home-install-monitor-metric">
-                  <span>Seeds</span>
-                  <strong>${installPreviewGerminatedSeeds} / ${installPreviewTotalSeeds}</strong>
+                <div class="home-install-monitor-progress-panel">
+                  <div class="home-install-monitor-stage-timeline">
+                    <span class="home-install-monitor-stage-segment is-soaking"></span>
+                    <span class="home-install-monitor-stage-segment is-germinating"></span>
+                    <span class="home-install-monitor-stage-segment is-planted"></span>
+                    <span class="home-install-monitor-stage-segment is-completed"></span>
+                  </div>
+                  <div class="home-install-monitor-partition-graph">
+                    ${installPreviewPartitionBars.map((progressPercent) => {
+                      return `
+                        <div class="home-install-monitor-bar-track">
+                          <span class="home-install-monitor-bar-fill" style="width:${progressPercent}%"></span>
+                        </div>
+                      `;
+                    }).join("")}
+                  </div>
                 </div>
-                <div class="home-install-monitor-metric">
-                  <span>Time Elapsed</span>
-                  <strong>${escapeHtml(installPreviewElapsed)}</strong>
-                </div>
-              </div>
-            </div>
-            <div class="home-install-monitor-progress-panel">
-              <div class="home-install-monitor-stage-timeline">
-                <span class="home-install-monitor-stage-segment is-soaking"></span>
-                <span class="home-install-monitor-stage-segment is-germinating"></span>
-                <span class="home-install-monitor-stage-segment is-planted"></span>
-                <span class="home-install-monitor-stage-segment is-completed"></span>
-              </div>
-              <div class="home-install-monitor-partition-graph">
-                ${installPreviewPartitionBars.map((progressPercent) => {
-                  return `
-                    <div class="home-install-monitor-bar-track">
-                      <span class="home-install-monitor-bar-fill" style="width:${progressPercent}%"></span>
-                    </div>
-                  `;
-                }).join("")}
               </div>
             </div>
           </div>
