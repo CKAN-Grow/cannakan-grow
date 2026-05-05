@@ -4192,7 +4192,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-explore-divider::after {
   content: "";
   position: absolute;
-  top: 0;
+  top: calc(clamp(18px, 2.8vw, 28px) * 0.5);
   left: 36%;
   width: 22px;
   height: 22px;
