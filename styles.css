@@ -4454,7 +4454,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-cstp-overview-intro {
-  --home-cstp-banner-offset: 0px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -4477,9 +4476,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-cstp-coming-soon {
   display: block;
-  width: calc(100% + var(--home-cstp-banner-offset));
-  max-width: calc(36rem + var(--home-cstp-banner-offset));
-  margin-left: calc(-1 * var(--home-cstp-banner-offset));
+  width: 100%;
+  max-width: 100%;
   padding: 12px 14px;
   border-radius: 0;
   background: #b3261e;
@@ -4501,12 +4499,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.2;
-}
-
-@media (min-width: 641px) {
-  .home-cstp-overview-intro {
-    --home-cstp-banner-offset: calc(78px + clamp(16px, 2vw, 20px));
-  }
 }
 
 .home-cstp-overview-features {
