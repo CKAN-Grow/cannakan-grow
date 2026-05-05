@@ -1295,6 +1295,9 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .app-hero--sessions {
   --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png");
+  --app-hero-art-size: auto 88%;
+  --app-hero-art-position: right center;
+  --app-hero-art-repeat: no-repeat;
 }
 
 .app-hero--gallery {
@@ -21082,6 +21085,9 @@ body.theme-dark #session-history-section {
 
 #grow-sessions-header.app-hero {
   --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png");
+  --app-hero-art-size: auto 88%;
+  --app-hero-art-position: right center;
+  --app-hero-art-repeat: no-repeat;
 }
 
 #grow-sessions-header:not(.app-hero) {
@@ -21232,7 +21238,8 @@ body.theme-dark #session-history-section .session-row:hover {
   }
 
   #grow-sessions-header.app-hero {
-    --app-hero-art-position: 72% center;
+    --app-hero-art-size: auto 88%;
+    --app-hero-art-position: right center;
   }
 
   .active-sessions-layout {
@@ -22054,7 +22061,8 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   #grow-sessions-header.app-hero {
-    --app-hero-art-position: 72% center;
+    --app-hero-art-size: auto 88%;
+    --app-hero-art-position: right center;
   }
 
   .gallery-hero-section.app-hero {
