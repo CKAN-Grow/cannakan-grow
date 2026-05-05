@@ -5145,11 +5145,11 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-preview {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 248px;
+  max-width: 236px;
   margin-inline: 0;
   align-self: flex-start;
   flex-shrink: 0;
-  transform: translate(10px, -6px);
+  transform: translate(5px, -3px);
 }
 
 .phone-mock,
@@ -5714,7 +5714,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 248px;
+  max-width: 236px;
   gap: 0;
   margin-inline: auto;
 }
@@ -5725,7 +5725,7 @@ body.theme-dark .contact-reason-card.is-active {
   aspect-ratio: 16 / 9.35;
   overflow: hidden;
   border-radius: 14px;
-  padding: 7px 7px 16px;
+  padding: 7px 7px 14px;
   background:
     linear-gradient(180deg, rgba(61, 72, 65, 0.92) 0%, rgba(29, 34, 31, 0.98) 100%);
   box-shadow:
@@ -5748,10 +5748,10 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-screen {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   height: 100%;
   min-height: 0;
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 10px;
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 42%),
@@ -5765,27 +5765,27 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-screen-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: rgba(231, 245, 214, 0.94);
-  font-size: 0.88rem;
+  font-size: 0.74rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .home-install-monitor-screen-dot {
-  width: 12px;
-  height: 12px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #94d159;
-  box-shadow: 0 0 16px rgba(148, 209, 89, 0.72);
+  box-shadow: 0 0 12px rgba(148, 209, 89, 0.66);
 }
 
 .home-install-monitor-dashboard {
   display: grid;
-  grid-template-columns: minmax(112px, 0.86fr) minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
+  grid-template-columns: minmax(86px, 0.74fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
   min-width: 0;
 }
 
@@ -5793,28 +5793,28 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   align-content: center;
   justify-items: center;
-  gap: 7px;
+  gap: 6px;
   min-height: 0;
-  padding: 2px 0 0;
+  padding: 0;
 }
 
 .home-install-monitor-stat-ring {
-  width: clamp(108px, 31cqi, 132px);
-  height: clamp(108px, 31cqi, 132px);
+  width: clamp(78px, 25cqi, 94px);
+  height: clamp(78px, 25cqi, 94px);
   box-shadow:
-    inset 0 0 24px rgba(148, 209, 89, 0.14),
-    0 0 24px rgba(148, 209, 89, 0.12);
+    inset 0 0 18px rgba(148, 209, 89, 0.12),
+    0 0 18px rgba(148, 209, 89, 0.1);
 }
 
 .home-install-monitor-stat-ring span {
-  font-size: clamp(2rem, 9cqi, 2.45rem);
+  font-size: clamp(1.42rem, 7.2cqi, 1.8rem);
   font-weight: 800;
 }
 
 .home-install-monitor-stat-label {
   margin: 0;
   color: #b8ef84;
-  font-size: 0.82rem;
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5822,18 +5822,18 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metrics {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: center;
   min-width: 0;
 }
 
 .home-install-monitor-metric {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   align-content: center;
   min-height: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 7px 9px;
+  border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -5841,7 +5841,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric span {
   color: rgba(189, 204, 192, 0.78);
-  font-size: 0.64rem;
+  font-size: 0.56rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5849,16 +5849,16 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric strong {
   color: #f5faf2;
-  font-size: 0.96rem;
+  font-size: 0.8rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .home-install-monitor-progress-panel {
   display: grid;
-  gap: 7px;
-  padding: 9px 10px 10px;
-  border-radius: 14px;
+  gap: 5px;
+  padding: 7px 8px 8px;
+  border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -5868,25 +5868,25 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-stage-timeline {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .home-install-monitor-stage-timeline .home-install-phone-stage-fill {
-  height: 8px;
+  height: 6px;
 }
 
 .home-install-monitor-partition-graph {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .home-install-monitor-partition-graph .home-install-phone-partition-track {
-  height: 7px;
+  height: 5px;
 }
 
 .home-install-monitor-stand {
-  width: clamp(46px, 12%, 62px);
-  height: 34px;
+  width: clamp(40px, 11%, 54px);
+  height: 28px;
   margin-top: -1px;
   border-radius: 0 0 8px 8px;
   background:
@@ -5898,8 +5898,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-base {
-  width: clamp(108px, 31%, 144px);
-  height: 8px;
+  width: clamp(92px, 29%, 124px);
+  height: 6px;
   margin-top: -2px;
   border-radius: 999px;
   background:
@@ -6011,14 +6011,14 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-install-card.is-desktop .home-install-card-preview {
     flex: 0 1 auto;
-    width: min(100%, 228px);
+    width: min(100%, 216px);
     align-self: flex-start;
-    transform: translate(8px, -4px);
+    transform: translate(4px, -2px);
     flex-shrink: 0;
   }
 
   .home-install-monitor {
-    max-width: 228px;
+    max-width: 216px;
   }
 
   .home-install-monitor-screen {
@@ -6034,8 +6034,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-stat-ring {
-    width: 132px;
-    height: 132px;
+    width: 86px;
+    height: 86px;
   }
 }
 
