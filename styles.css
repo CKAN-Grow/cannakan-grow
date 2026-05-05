@@ -1154,17 +1154,10 @@ body.theme-dark .install-app-banner-ios-tip {
   isolation: isolate;
   min-height: clamp(220px, 24vw, 318px);
   background-image:
-    linear-gradient(90deg, rgba(6, 12, 8, 0.97) 0%, rgba(6, 12, 8, 0.94) 18%, rgba(6, 12, 8, 0.82) 34%, rgba(6, 12, 8, 0.46) 50%, rgba(6, 12, 8, 0.16) 64%, rgba(6, 12, 8, 0) 76%),
-    url("/src/assets/illustrations/my-sessions-hero-bg.svg"),
-    linear-gradient(145deg, rgba(18, 22, 19, 0.98) 0%, rgba(23, 28, 24, 0.97) 52%, rgba(13, 17, 14, 0.99) 100%);
-  background-size:
-    100% 100%,
-    cover,
-    100% 100%;
-  background-position:
-    left top,
-    center right,
-    center;
+    linear-gradient(90deg, rgba(8, 13, 10, 0.95) 0%, rgba(8, 13, 10, 0.75) 32%, rgba(8, 13, 10, 0.15) 58%, rgba(8, 13, 10, 0.35) 100%),
+    url("/src/assets/images/my-sessions-hero-bg.png");
+  background-size: cover;
+  background-position: center right;
   background-repeat: no-repeat;
 }
 
@@ -21843,17 +21836,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   .dashboard-bar--seed-hero {
     min-height: 240px;
     background-image:
-      linear-gradient(180deg, rgba(6, 12, 8, 0.94) 0%, rgba(6, 12, 8, 0.86) 34%, rgba(6, 12, 8, 0.74) 62%, rgba(6, 12, 8, 0.62) 100%),
-      url("/src/assets/illustrations/my-sessions-hero-bg.svg"),
-      linear-gradient(145deg, rgba(18, 22, 19, 0.98) 0%, rgba(23, 28, 24, 0.97) 52%, rgba(13, 17, 14, 0.99) 100%);
-    background-size:
-      100% 100%,
-      cover,
-      100% 100%;
-    background-position:
-      left top,
-      72% center,
-      center;
+      linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
+      url("/src/assets/images/my-sessions-hero-bg.png");
+    background-size: cover;
+    background-position: 72% center;
     background-repeat: no-repeat;
   }
 
