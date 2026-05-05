@@ -153,6 +153,8 @@ const CSTP_SHARING_EXPOSURE = "CSTP-qualified results may be featured within the
 const CSTP_REPORT_LANGUAGE = "This report summarizes results from a controlled CSTP session. All data reflects observed outcomes under standardized conditions.";
 const CSTP_REPORT_NO_GUARANTEE = "No guarantees are implied beyond the tested sample.";
 const CSTP_NEUTRALITY = "CSTP evaluations are conducted independently using standardized procedures to ensure consistency and reliability.";
+const SOURCE_DIRECTORY_DESCRIPTION = "A growing directory of sources recorded by Cannakan Grow members through shared germination sessions.";
+const SOURCE_DIRECTORY_COMMUNITY_NOTE = "All germination rates are community-reported and aggregated from member sessions across the platform.";
 const CSTP_TOOLTIP_COPY = Object.freeze({
   cstp: "Standardized germination testing protocol",
   gold: "Top-tier performance under CSTP testing",
@@ -1871,6 +1873,11 @@ function getDesktopInstallFallbackText() {
     return "Use File > Add to Dock if available, or open in Chrome for Install App support.";
   }
   return "Open this site in Chrome or Edge to install the app.";
+}
+
+function getSourceDirectoryCountLine(sourceCount = 0) {
+  const normalizedCount = Math.max(0, Number(sourceCount) || 0);
+  return `Cannakan Grow members have germinated seeds from ${normalizedCount.toLocaleString()} source${normalizedCount === 1 ? "" : "s"}.`;
 }
 
 function isIPhoneSafariInstallCandidate() {
@@ -20194,8 +20201,8 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
           <div>
             <p class="eyebrow">Source Directory</p>
             <h2>Source Directory</h2>
-            <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
-            <p class="muted">Cannakan Grow members have germinated seeds from ${escapeHtml(directoryMetrics.totalSourcesLogged.toLocaleString())} source${directoryMetrics.totalSourcesLogged === 1 ? "" : "s"}.</p>
+            <p class="muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
+            <p class="muted">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
           </div>
         </div>
         <a class="button button-secondary" href="#sources">View Source Directory</a>
@@ -20203,7 +20210,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
       <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
         ${previewCardsMarkup}
       </div>
-      <p class="home-tested-sources-disclaimer muted">${escapeHtml(`${CSTP_RESULTS_CREDIBILITY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
+      <p class="home-tested-sources-disclaimer muted">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
     </section>
   `;
 }
@@ -20649,15 +20656,15 @@ function renderSourcesLandingPage() {
             <div>
               <p class="eyebrow">Source Directory</p>
               <h2>Source Directory</h2>
-              <p class="muted">${escapeHtml(CSTP_DEFINITION)}</p>
-              <p class="source-directory-trust-note">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
+              <p class="muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
+              <p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
               <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
-              <p class="source-directory-helper-note">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
+              <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
             </div>
           </div>
           <aside class="source-directory-note-card">
             <span class="source-directory-note-icon" aria-hidden="true">i</span>
-            <p>All germination rates are community-reported and aggregated from member sessions across the platform.</p>
+            <p>Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
           </aside>
         </div>
       </section>
