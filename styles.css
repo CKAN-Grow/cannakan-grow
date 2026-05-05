@@ -5166,7 +5166,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-preview {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 250px;
+  max-width: 290px;
   margin-inline: 0;
   align-self: flex-start;
   flex-shrink: 0;
@@ -5736,7 +5736,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 250px;
+  max-width: 290px;
   gap: 0;
   margin-inline: auto;
 }
@@ -5770,10 +5770,10 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-screen {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 9px;
   height: 100%;
   min-height: 0;
-  padding: 12px 14px;
+  padding: 13px 15px;
   border-radius: 10px;
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 42%),
@@ -5789,15 +5789,15 @@ body.theme-dark .contact-reason-card.is-active {
   align-items: center;
   gap: 8px;
   color: rgba(231, 245, 214, 0.94);
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .home-install-monitor-screen-dot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #94d159;
   box-shadow: 0 0 12px rgba(148, 209, 89, 0.66);
@@ -5805,8 +5805,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-dashboard {
   display: grid;
-  grid-template-columns: minmax(82px, 0.72fr) minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: minmax(96px, 0.76fr) minmax(0, 1fr);
+  gap: 10px;
   align-items: start;
   min-width: 0;
 }
@@ -5821,22 +5821,22 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-stat-ring {
-  width: clamp(76px, 24cqi, 92px);
-  height: clamp(76px, 24cqi, 92px);
+  width: clamp(84px, 25cqi, 104px);
+  height: clamp(84px, 25cqi, 104px);
   box-shadow:
     inset 0 0 18px rgba(148, 209, 89, 0.12),
     0 0 18px rgba(148, 209, 89, 0.1);
 }
 
 .home-install-monitor-stat-ring span {
-  font-size: clamp(1.3rem, 6.7cqi, 1.66rem);
+  font-size: clamp(1.42rem, 6.9cqi, 1.82rem);
   font-weight: 800;
 }
 
 .home-install-monitor-stat-label {
   margin: 0;
   color: #b8ef84;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5844,7 +5844,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metrics {
   display: grid;
-  gap: 7px;
+  gap: 8px;
   align-content: center;
   min-width: 0;
 }
@@ -5854,7 +5854,7 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 3px;
   align-content: center;
   min-height: 0;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.035);
@@ -5863,7 +5863,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric span {
   color: rgba(189, 204, 192, 0.78);
-  font-size: 0.58rem;
+  font-size: 0.61rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5871,15 +5871,15 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric strong {
   color: #f5faf2;
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .home-install-monitor-progress-panel {
   display: grid;
-  gap: 5px;
-  padding: 7px 8px 8px;
+  gap: 6px;
+  padding: 8px 9px 9px;
   border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
@@ -5890,16 +5890,16 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-stage-timeline {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 7px;
 }
 
 .home-install-monitor-stage-timeline .home-install-phone-stage-fill {
-  height: 6px;
+  height: 7px;
 }
 
 .home-install-monitor-partition-graph {
   display: grid;
-  gap: 5px;
+  gap: 6px;
 }
 
 .home-install-monitor-partition-graph .home-install-phone-partition-track {
@@ -6043,14 +6043,14 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-install-card.is-desktop .home-install-card-preview {
     flex: 0 1 auto;
-    width: min(100%, 228px);
+    width: min(100%, 250px);
     align-self: flex-start;
     transform: none;
     flex-shrink: 0;
   }
 
   .home-install-monitor {
-    max-width: 228px;
+    max-width: 250px;
   }
 
   .home-install-monitor-screen {
@@ -6058,8 +6058,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-dashboard {
-    grid-template-columns: minmax(78px, 0.7fr) minmax(0, 1fr);
-    gap: 8px;
+    grid-template-columns: minmax(86px, 0.72fr) minmax(0, 1fr);
+    gap: 9px;
   }
 
   .home-install-monitor-stat {
@@ -6067,8 +6067,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-stat-ring {
-    width: 82px;
-    height: 82px;
+    width: 88px;
+    height: 88px;
   }
 }
 
