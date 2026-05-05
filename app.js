@@ -5817,14 +5817,11 @@ function getUserNotificationPreferencesBooleanValue(row, keys = [], fallbackValu
 
 function buildUserNotificationPreferencesSeedPayload(userId = "", existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES) {
   return {
-    user_id: userId,
-    email_notifications: existingPreferences.notifySnapshot !== false,
-    push_notifications: existingPreferences.notifyCompletion !== false,
-    follow_notifications: existingPreferences.notifyFollow !== false,
-    like_notifications: existingPreferences.notifyLike !== false,
-    community_activity_notifications: existingPreferences.notifyCommunityActivity === true,
-    created_at: existingPreferences.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    user_id: String(userId || "").trim(),
+    notify_snapshot: existingPreferences.notifySnapshot !== false,
+    notify_completion: existingPreferences.notifyCompletion !== false,
+    notify_follow: existingPreferences.notifyFollow !== false,
+    notify_like: existingPreferences.notifyLike !== false,
   };
 }
 
@@ -5834,9 +5831,6 @@ function buildUserNotificationPreferencesUpsertPayload(
   existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
   schemaMode = "",
 ) {
-  const effectiveMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(schemaMode)
-    ? schemaMode
-    : "hybrid";
   const notifySnapshot =
     preferencesInput?.notifySnapshot !== undefined
       ? Boolean(preferencesInput.notifySnapshot)
@@ -5853,42 +5847,19 @@ function buildUserNotificationPreferencesUpsertPayload(
     preferencesInput?.notifyLike !== undefined
       ? Boolean(preferencesInput.notifyLike)
       : existingPreferences.notifyLike !== false;
-  const notifyCommunityActivity =
-    preferencesInput?.notifyCommunityActivity !== undefined
-      ? Boolean(preferencesInput.notifyCommunityActivity)
-      : existingPreferences.notifyCommunityActivity === true;
-  const payload = {
-    user_id: userId,
-    created_at: existingPreferences.createdAt || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+  void schemaMode;
+  return {
+    user_id: String(userId || "").trim(),
+    notify_snapshot: notifySnapshot,
+    notify_completion: notifyCompletion,
+    notify_follow: notifyFollow,
+    notify_like: notifyLike,
   };
-
-  if (effectiveMode === "legacy" || effectiveMode === "hybrid") {
-    payload.notify_snapshot = notifySnapshot;
-    payload.notify_completion = notifyCompletion;
-    payload.notify_follow = notifyFollow;
-    payload.notify_like = notifyLike;
-  }
-
-  if (effectiveMode === "modern" || effectiveMode === "hybrid") {
-    payload.email_notifications = notifySnapshot;
-    payload.push_notifications = notifyCompletion;
-    payload.follow_notifications = notifyFollow;
-    payload.like_notifications = notifyLike;
-    payload.community_activity_notifications = notifyCommunityActivity;
-  }
-
-  return payload;
 }
 
 function getUserNotificationPreferencesWriteModes(preferredMode = "") {
-  if (preferredMode === "legacy") {
-    return ["legacy", "modern", "hybrid"];
-  }
-  if (preferredMode === "modern") {
-    return ["modern", "hybrid", "legacy"];
-  }
-  return ["modern", "hybrid", "legacy"];
+  void preferredMode;
+  return ["legacy"];
 }
 
 function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
@@ -6622,7 +6593,7 @@ async function ensureUserNotificationPreferences(user) {
   const { data: savedPreferences, error: upsertError } = await appState.supabase
     .from(USER_NOTIFICATION_PREFERENCES_TABLE)
     .upsert(preferencePayload, { onConflict: "user_id" })
-    .select("*")
+    .select()
     .single();
 
   if (upsertError) {
@@ -11617,7 +11588,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       const response = await appState.supabase
         .from(USER_NOTIFICATION_PREFERENCES_TABLE)
         .upsert(payload, { onConflict: "user_id" })
-        .select("*")
+        .select()
         .single();
       data = response?.data || null;
       error = response?.error || null;
