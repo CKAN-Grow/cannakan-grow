@@ -14012,7 +14012,7 @@ function normalizeSectionHeaderLayouts(root = document) {
         child.classList.add("section-title");
         return;
       }
-      if (child.matches("p:not(.eyebrow), .muted, .admin-collapsible-description, .app-section-header-subtitle, .dashboard-subtitle")) {
+      if (child.matches("p:not(.eyebrow), .muted, .admin-collapsible-description, .app-section-header-subtitle, .dashboard-subtitle, .app-hero-subtitle")) {
         child.classList.add("section-subtitle");
       }
     });
@@ -20729,23 +20729,24 @@ function renderSourcesLandingPage() {
   const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
-      <section class="source-directory-hero card">
-        <div class="source-directory-hero-layout">
-          <div class="section-title-with-icon app-section-header-main">
-            ${renderAppSectionHeaderIcon("sources")}
-            <div>
-              <p class="eyebrow">Source Directory</p>
-              <h2>Source Directory</h2>
-              <p class="muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
-              <p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
-              <p class="source-directory-helper-line">Represent a source? <a href="#contact" data-source-directory-contact-link="cstp">Request testing</a> or <a href="#contact" data-source-directory-contact-link="correction">submit a correction</a>.</p>
-              <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
+      <section class="source-directory-hero app-hero app-hero--sources card">
+        <div class="app-hero-background" aria-hidden="true"></div>
+        <div class="app-hero-overlay" aria-hidden="true"></div>
+        <div class="app-hero-content section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div class="app-hero-copy">
+            <p class="app-hero-eyebrow eyebrow">Source Directory</p>
+            <h2 class="app-hero-title">Source Directory</h2>
+            <p class="app-hero-subtitle muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
+            <p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
+            <div class="app-hero-actions hero-actions">
+              <a class="button button-secondary" href="#contact" data-source-directory-contact-link="cstp">Request Testing</a>
+              <a class="button button-secondary" href="#contact" data-source-directory-contact-link="correction">Submit a Correction</a>
             </div>
+            <p class="source-directory-helper-note">Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
+            <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
+            <p class="source-directory-helper-line">Represent a source? Need account or listing help? Use the buttons above and we will route the request.</p>
           </div>
-          <aside class="source-directory-note-card">
-            <span class="source-directory-note-icon" aria-hidden="true">i</span>
-            <p>Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
-          </aside>
         </div>
       </section>
 
@@ -30831,7 +30832,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
-  const growSessionsHeading = app.querySelector(".dashboard-bar .app-section-header-main h2");
+  const growSessionsHeading = app.querySelector(".app-hero--home .app-hero-title");
   if (growSessionsHeading) {
     growSessionsHeading.textContent = getGrowSessionsSectionTitle();
   }

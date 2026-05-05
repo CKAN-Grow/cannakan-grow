@@ -262,14 +262,16 @@
 
   <template id="home-template">
     <div class="page-content home-page-content">
-      <section class="dashboard-bar dashboard-bar--seed-hero card app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          <span class="section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
-          <div>
-            <p class="eyebrow">Session Dashboard</p>
-            <h2>My Sessions</h2>
-            <p class="dashboard-subtitle">Track what is active, what is showing the strongest recorded results, and what needs your attention next.</p>
-            <div class="hero-actions">
+      <section class="app-hero app-hero--home card">
+        <div class="app-hero-background" aria-hidden="true"></div>
+        <div class="app-hero-overlay" aria-hidden="true"></div>
+        <div class="app-hero-content section-title-with-icon app-section-header-main">
+          <span class="app-hero-icon section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
+          <div class="app-hero-copy">
+            <p class="app-hero-eyebrow eyebrow">Session Dashboard</p>
+            <h2 class="app-hero-title">My Sessions</h2>
+            <p class="app-hero-subtitle dashboard-subtitle">Track what is active, what is showing the strongest recorded results, and what needs your attention next.</p>
+            <div class="app-hero-actions hero-actions">
               <a class="button button-new-session" href="#new" data-session-entry="true">New Session</a>
               <a class="button button-secondary" href="#sessions">All Sessions</a>
             </div>
@@ -351,18 +353,18 @@
   </template>
 
   <template id="gallery-template">
-    <section class="card gallery-hero-section">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          <span class="section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" aria-hidden="true"></span>
-          <div>
-            <p class="eyebrow">Community Grow</p>
-            <h2>Community Grow</h2>
-            <p class="muted">Explore shared grow sessions in Community Grow</p>
+    <section class="card gallery-hero-section app-hero app-hero--gallery">
+      <div class="app-hero-background" aria-hidden="true"></div>
+      <div class="app-hero-overlay" aria-hidden="true"></div>
+      <div class="app-hero-content section-title-with-icon app-section-header-main">
+        <span class="app-hero-icon section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" aria-hidden="true"></span>
+        <div class="app-hero-copy">
+          <p class="app-hero-eyebrow eyebrow">Community Grow</p>
+          <h2 class="app-hero-title">Community Grow</h2>
+          <p class="app-hero-subtitle muted">Explore shared grow sessions in Community Grow</p>
+          <div class="app-hero-actions hero-actions">
+            <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Question">Report / Contact Admin</button>
           </div>
-        </div>
-        <div class="inline-actions">
-          <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Question">Report / Contact Admin</button>
         </div>
       </div>
     </section>
@@ -807,14 +809,16 @@
   </template>
 
   <template id="sessions-template">
-    <section id="grow-sessions-header" class="dashboard-bar dashboard-bar--seed-hero card app-section-header">
-      <div class="section-title-with-icon app-section-header-main">
-        <span class="section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
-        <div>
-          <p class="eyebrow">Grow Tracking</p>
-          <h2>My Sessions</h2>
-          <p class="dashboard-subtitle">Track every active and completed grow in one place, compare progress, and start the next session when you're ready.</p>
-          <div class="hero-actions">
+    <section id="grow-sessions-header" class="app-hero app-hero--sessions card">
+      <div class="app-hero-background" aria-hidden="true"></div>
+      <div class="app-hero-overlay" aria-hidden="true"></div>
+      <div class="app-hero-content section-title-with-icon app-section-header-main">
+        <span class="app-hero-icon section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
+        <div class="app-hero-copy">
+          <p class="app-hero-eyebrow eyebrow">Grow Tracking</p>
+          <h2 class="app-hero-title">My Sessions</h2>
+          <p class="app-hero-subtitle dashboard-subtitle">Track every active and completed grow in one place, compare progress, and start the next session when you're ready.</p>
+          <div class="app-hero-actions hero-actions">
             <a class="button button-new-session" href="#new" data-session-entry="true">New Session</a>
             <a class="button button-secondary" href="#sessions">All Sessions</a>
           </div>

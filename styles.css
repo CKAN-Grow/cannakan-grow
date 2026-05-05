@@ -1172,13 +1172,8 @@ body.theme-dark .install-app-banner-ios-tip {
   gap: var(--space-4);
 }
 
-.dashboard-bar h2 {
-  font-size: clamp(1.16rem, 2.35vw, 1.62rem);
-  font-weight: 600;
-  line-height: 1.12;
-}
-
-.dashboard-subtitle {
+.dashboard-subtitle,
+.app-hero-subtitle {
   margin: 8px 0 0;
   max-width: 640px;
   color: var(--muted);
@@ -1187,43 +1182,140 @@ body.theme-dark .install-app-banner-ios-tip {
   line-height: 1.55;
 }
 
-.dashboard-bar--seed-hero {
+.app-hero {
+  --app-hero-min-height: clamp(220px, 24vw, 318px);
+  --app-hero-art: none;
+  --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.95) 0%, rgba(8, 13, 10, 0.75) 32%, rgba(8, 13, 10, 0.15) 58%, rgba(8, 13, 10, 0.35) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  min-height: clamp(220px, 24vw, 318px);
-  background-image:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.95) 0%, rgba(8, 13, 10, 0.75) 32%, rgba(8, 13, 10, 0.15) 58%, rgba(8, 13, 10, 0.35) 100%),
-    url("/assets/images/my-sessions-hero-bg.png");
-  background-size: cover;
-  background-position: center right;
-  background-repeat: no-repeat;
+  display: flex;
+  align-items: stretch;
+  min-height: var(--app-hero-min-height);
+  padding: clamp(22px, 2.25vw, 28px);
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: linear-gradient(180deg, rgba(19, 25, 20, 0.96) 0%, rgba(12, 17, 14, 0.96) 100%);
+  box-shadow:
+    0 18px 34px rgba(24, 34, 24, 0.14),
+    0 0 0 1px rgba(148, 209, 89, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.dashboard-bar--seed-hero .eyebrow,
-.dashboard-bar--seed-hero h2 {
-  color: #f5f8f1;
+.app-hero-background,
+.app-hero-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-.dashboard-bar--seed-hero .dashboard-subtitle {
-  color: rgba(230, 237, 226, 0.84);
-  max-width: 36rem;
+.app-hero-background {
+  background-image: var(--app-hero-art);
+  background-size: var(--app-hero-art-size);
+  background-position: var(--app-hero-art-position);
+  background-repeat: var(--app-hero-art-repeat);
+  opacity: 1;
 }
 
-.dashboard-bar--seed-hero .app-section-header-main {
-  align-self: stretch;
+.app-hero-overlay {
+  background: var(--app-hero-overlay);
 }
 
-.dashboard-bar--seed-hero .app-section-header-main > div {
+.app-hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(44rem, 56%);
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: clamp(16px, 2vw, 20px);
+  row-gap: 8px;
+  align-items: center;
+}
+
+.app-hero-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   min-height: 100%;
 }
 
-.dashboard-bar--seed-hero .app-section-header-main > div > .hero-actions {
-  margin-top: clamp(20px, 2vw, 28px);
+.app-hero-eyebrow,
+.app-hero-title {
+  color: #f5f8f1;
+}
+
+.app-hero-title {
+  margin: 0;
+  font-size: clamp(1.16rem, 2.35vw, 1.62rem);
+  font-weight: 600;
+  line-height: 1.12;
+}
+
+.app-hero-subtitle,
+.app-hero .source-directory-trust-note,
+.app-hero .source-directory-helper-line,
+.app-hero .source-directory-helper-note {
+  color: rgba(230, 237, 226, 0.84);
+  max-width: 40rem;
+}
+
+.app-hero .source-directory-trust-note,
+.app-hero .source-directory-helper-line {
+  margin: 10px 0 0;
+}
+
+.app-hero .source-directory-helper-note {
+  margin: 6px 0 0;
+  font-size: 0.86rem;
+}
+
+.app-hero .source-directory-helper-line a {
+  color: #d5efb2;
+}
+
+.app-hero-actions {
+  margin-top: auto;
+  padding-top: clamp(20px, 2vw, 28px);
   justify-content: flex-start;
   align-items: center;
   gap: 12px 16px;
   width: 100%;
+}
+
+.app-hero--home {
+  --app-hero-art: url("/assets/images/my-sessions-hero-bg.png");
+}
+
+.app-hero--sessions {
+  --app-hero-art: url("/src/assets/images/grow-tracking-my-sessions-bg.png");
+}
+
+.app-hero--gallery {
+  --app-hero-art: url("/assets/images/community-grow-hero-bg.png");
+}
+
+.app-hero--sources {
+  --app-hero-art:
+    radial-gradient(circle at 84% 24%, rgba(148, 209, 89, 0.28) 0%, rgba(148, 209, 89, 0.15) 16%, transparent 42%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.04) 28%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  --app-hero-art-size: cover;
+}
+
+body.theme-dark .app-hero {
+  border-color: rgba(148, 209, 89, 0.16);
+  background: linear-gradient(180deg, rgba(16, 21, 17, 0.98) 0%, rgba(10, 14, 11, 0.98) 100%);
+  box-shadow:
+    0 22px 40px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .muted {
@@ -3802,23 +3894,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-hero-section {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  border: none;
-  border-top: 4px solid #94d159;
-  background:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.96) 0%, rgba(8, 13, 10, 0.82) 34%, rgba(8, 13, 10, 0.42) 62%, rgba(8, 13, 10, 0.24) 100%),
-    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(221, 240, 205, 0.04) 100%),
-    url("/assets/images/community-grow-hero-bg.png");
-  background-size: auto, auto, cover;
-  background-position: center, center, center right;
-  background-repeat: no-repeat;
-  box-shadow:
-    0 12px 26px rgba(24, 34, 24, 0.06),
-    0 0 0 1px rgba(148, 209, 89, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  padding: 22px 22px 18px;
+  --app-hero-art: url("/assets/images/community-grow-hero-bg.png");
 }
 
 .gallery-feed-section {
@@ -3885,15 +3961,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-feed-section .section-heading,
 .gallery-hero-section .section-heading {
   margin-bottom: 6px;
-}
-
-.gallery-hero-section .eyebrow,
-.gallery-hero-section h2 {
-  color: #f5f8f1;
-}
-
-.gallery-hero-section .muted {
-  color: rgba(230, 237, 226, 0.84);
 }
 
 .gallery-sort-state {
@@ -12639,7 +12706,7 @@ body.theme-dark .contact-reason-card.is-active {
     box-shadow 0.18s ease;
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .button-new-session {
+#grow-sessions-header:not(.app-hero) .button-new-session {
   min-width: 168px;
   white-space: nowrap;
   text-align: center;
@@ -12715,20 +12782,20 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 12px rgba(148, 209, 89, 0.28);
 }
 
-.dashboard-bar .hero-actions .button-new-session,
-.dashboard-bar .hero-actions .button-secondary {
+.app-hero .app-hero-actions .button-new-session,
+.app-hero .app-hero-actions .button-secondary {
   min-height: 50px;
   padding: 13px 22px;
   font-weight: 800;
   letter-spacing: 0.01em;
 }
 
-.dashboard-bar .hero-actions .button-new-session {
+.app-hero .app-hero-actions .button-new-session {
   padding-inline: 30px;
   font-weight: 900;
 }
 
-.dashboard-bar .hero-actions .button-secondary {
+.app-hero .app-hero-actions .button-secondary {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0) 24%),
     rgba(18, 24, 19, 0.42);
@@ -12740,8 +12807,8 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 14px rgba(148, 209, 89, 0.12);
 }
 
-.dashboard-bar .hero-actions .button-secondary:hover,
-.dashboard-bar .hero-actions .button-secondary:focus-visible {
+.app-hero .app-hero-actions .button-secondary:hover,
+.app-hero .app-hero-actions .button-secondary:focus-visible {
   background: rgba(148, 209, 89, 0.11);
   border-color: rgba(181, 232, 111, 0.32);
   color: #224a1a;
@@ -12752,7 +12819,7 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 18px rgba(148, 209, 89, 0.16);
 }
 
-.dashboard-bar .hero-actions .button-secondary:active {
+.app-hero .app-hero-actions .button-secondary:active {
   background: rgba(148, 209, 89, 0.16);
   color: #1f3e19;
   transform: translateY(0) scale(0.985);
@@ -12762,19 +12829,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 @media (min-width: 1024px) {
-  .dashboard-bar--seed-hero {
-    display: flex;
-    justify-content: flex-start;
-    align-items: stretch;
+  .app-hero {
     gap: clamp(18px, 2.6vw, 34px);
-  }
-
-  .dashboard-bar--seed-hero .app-section-header-main {
-    min-width: 0;
-    max-width: min(44rem, 56%);
-    position: relative;
-    z-index: 1;
-    flex: 1 1 auto;
   }
 }
 
@@ -13540,7 +13596,7 @@ body.theme-dark .profile-preference-toggle:focus-within {
   box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
 }
 
-body.theme-dark .dashboard-bar .hero-actions .button-secondary {
+body.theme-dark .app-hero .app-hero-actions .button-secondary {
   background: rgba(148, 209, 89, 0.04);
   border-color: rgba(181, 232, 111, 0.18);
   color: #d4f2b4;
@@ -13550,8 +13606,8 @@ body.theme-dark .dashboard-bar .hero-actions .button-secondary {
     0 0 14px rgba(148, 209, 89, 0.12);
 }
 
-body.theme-dark .dashboard-bar .hero-actions .button-secondary:hover,
-body.theme-dark .dashboard-bar .hero-actions .button-secondary:focus-visible {
+body.theme-dark .app-hero .app-hero-actions .button-secondary:hover,
+body.theme-dark .app-hero .app-hero-actions .button-secondary:focus-visible {
   background: rgba(148, 209, 89, 0.12);
   border-color: rgba(181, 232, 111, 0.3);
   color: #eff9e3;
@@ -13561,7 +13617,7 @@ body.theme-dark .dashboard-bar .hero-actions .button-secondary:focus-visible {
     0 0 18px rgba(148, 209, 89, 0.16);
 }
 
-body.theme-dark .dashboard-bar .hero-actions .button-secondary:active {
+body.theme-dark .app-hero .app-hero-actions .button-secondary:active {
   background: rgba(148, 209, 89, 0.16);
   color: #ffffff;
   box-shadow:
@@ -15855,14 +15911,10 @@ input::placeholder {
 }
 
 .source-directory-hero {
-  padding: 26px 28px;
-}
-
-.source-directory-hero-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
-  gap: 22px;
-  align-items: start;
+  --app-hero-art:
+    radial-gradient(circle at 84% 24%, rgba(148, 209, 89, 0.28) 0%, rgba(148, 209, 89, 0.15) 16%, transparent 42%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.04) 28%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .source-directory-note-card {
@@ -17813,7 +17865,6 @@ body.theme-dark .source-directory-card {
     var(--glass-inset);
 }
 
-body.theme-dark .source-directory-hero,
 body.theme-dark .source-directory-list-section {
   border-color: rgba(148, 209, 89, 0.14);
   background:
@@ -19580,21 +19631,6 @@ body.theme-dark .gallery-admin-reject:hover {
   color: #ffd0d0;
 }
 
-body.theme-dark .gallery-hero-section {
-  background:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.86) 36%, rgba(8, 13, 10, 0.46) 64%, rgba(8, 13, 10, 0.28) 100%),
-    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(31, 42, 34, 0.92) 18%, rgba(24, 33, 27, 0.84) 100%),
-    url("/assets/images/community-grow-hero-bg.png");
-  background-size: auto, auto, cover;
-  background-position: center, center, center right;
-  background-repeat: no-repeat;
-  border: none;
-  box-shadow:
-    0 14px 28px rgba(0, 0, 0, 0.16),
-    0 0 0 1px rgba(148, 209, 89, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
 body.theme-dark .gallery-feed-section {
   border: 1px solid transparent;
   background:
@@ -20534,10 +20570,6 @@ body.theme-dark .mock-data-toggle.is-on {
   background: rgba(148, 209, 89, 0.07);
 }
 
-body.theme-dark .gallery-hero-section .muted {
-  color: rgba(193, 227, 167, 0.86);
-}
-
 body.theme-dark .snapshot-gallery-note {
   color: #b7c0b7;
 }
@@ -20930,7 +20962,7 @@ body.theme-dark #session-history-section {
   border-top-width: 3px;
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero),
+#grow-sessions-header:not(.app-hero),
 #active-sessions-section,
 #recent-completed-sessions-section,
 #session-history-section {
@@ -20958,7 +20990,7 @@ body.theme-dark #session-history-section {
   min-width: 0;
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading,
+#grow-sessions-header:not(.app-hero) .section-heading,
 #active-sessions-section .section-heading,
 #recent-completed-sessions-section .section-heading,
 #session-history-section .section-heading {
@@ -20966,7 +20998,7 @@ body.theme-dark #session-history-section {
   gap: clamp(16px, 2vw, 24px);
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading > :first-child,
+#grow-sessions-header:not(.app-hero) .section-heading > :first-child,
 #active-sessions-section .section-heading > :first-child,
 #recent-completed-sessions-section .section-heading > :first-child,
 #session-history-section .section-heading > :first-child {
@@ -21038,17 +21070,11 @@ body.theme-dark #session-history-section {
   margin-left: auto;
 }
 
-#grow-sessions-header.dashboard-bar--seed-hero {
-  padding: var(--space-card);
-  background-image:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.95) 0%, rgba(8, 13, 10, 0.75) 32%, rgba(8, 13, 10, 0.15) 58%, rgba(8, 13, 10, 0.35) 100%),
-    url("/src/assets/images/grow-tracking-my-sessions-bg.png");
-  background-size: cover;
-  background-position: center right;
-  background-repeat: no-repeat;
+#grow-sessions-header.app-hero {
+  --app-hero-art: url("/src/assets/images/grow-tracking-my-sessions-bg.png");
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) {
+#grow-sessions-header:not(.app-hero) {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.04) 34%, transparent 62%),
     linear-gradient(145deg, rgba(21, 26, 22, 0.96) 0%, rgba(28, 34, 29, 0.94) 54%, rgba(19, 24, 21, 0.97) 100%);
@@ -21061,7 +21087,7 @@ body.theme-dark #session-history-section {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero):hover {
+#grow-sessions-header:not(.app-hero):hover {
   box-shadow:
     0 0 10px rgba(148, 209, 89, 0.17),
     0 20px 38px rgba(0, 0, 0, 0.2),
@@ -21070,16 +21096,16 @@ body.theme-dark #session-history-section {
     inset 0 -18px 30px rgba(7, 10, 8, 0.2);
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .eyebrow,
-#grow-sessions-header:not(.dashboard-bar--seed-hero) h2 {
+#grow-sessions-header:not(.app-hero) .eyebrow,
+#grow-sessions-header:not(.app-hero) h2 {
   color: #f5f8f1;
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) p:not(.eyebrow) {
+#grow-sessions-header:not(.app-hero) p:not(.eyebrow) {
   color: rgba(230, 237, 226, 0.84);
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-title-icon {
+#grow-sessions-header:not(.app-hero) .section-title-icon {
   color: #0f140f;
   background: #94d159;
   border-color: rgba(15, 20, 15, 0.14);
@@ -21088,11 +21114,11 @@ body.theme-dark #session-history-section {
     inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
-#grow-sessions-header:not(.dashboard-bar--seed-hero) .section-title-icon * {
+#grow-sessions-header:not(.app-hero) .section-title-icon * {
   stroke: currentColor;
 }
 
-body.theme-dark #grow-sessions-header:not(.dashboard-bar--seed-hero) {
+body.theme-dark #grow-sessions-header:not(.app-hero) {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.16) 0%, rgba(148, 209, 89, 0.05) 32%, transparent 58%),
     linear-gradient(145deg, rgba(18, 22, 19, 0.98) 0%, rgba(23, 28, 24, 0.97) 52%, rgba(13, 17, 14, 0.99) 100%);
@@ -21104,7 +21130,7 @@ body.theme-dark #grow-sessions-header:not(.dashboard-bar--seed-hero) {
     inset 0 -18px 30px rgba(0, 0, 0, 0.24);
 }
 
-body.theme-dark #grow-sessions-header:not(.dashboard-bar--seed-hero):hover {
+body.theme-dark #grow-sessions-header:not(.app-hero):hover {
   box-shadow:
     0 0 10px rgba(148, 209, 89, 0.17),
     0 24px 42px rgba(0, 0, 0, 0.3),
@@ -21156,14 +21182,14 @@ body.theme-dark #session-history-section .session-row:hover {
 }
 
 @media (max-width: 760px) {
-  #grow-sessions-header:not(.dashboard-bar--seed-hero),
+  #grow-sessions-header:not(.app-hero),
   #active-sessions-section,
   #recent-completed-sessions-section,
   #session-history-section {
     padding: 18px;
   }
 
-  #grow-sessions-header:not(.dashboard-bar--seed-hero) .section-heading,
+  #grow-sessions-header:not(.app-hero) .section-heading,
   #active-sessions-section .section-heading,
   #recent-completed-sessions-section .section-heading,
   #session-history-section .section-heading {
@@ -21195,8 +21221,8 @@ body.theme-dark #session-history-section .session-row:hover {
     align-self: stretch;
   }
 
-  #grow-sessions-header.dashboard-bar--seed-hero {
-    padding: var(--space-card);
+  #grow-sessions-header.app-hero {
+    --app-hero-art-position: 72% center;
   }
 
   .active-sessions-layout {
@@ -22009,27 +22035,20 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     grid-column: auto;
   }
 
-  .dashboard-bar--seed-hero {
+  .app-hero {
     min-height: 240px;
-    background-image:
+    --app-hero-art-position: 72% center;
+    --app-hero-overlay:
       linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
-      url("/assets/images/my-sessions-hero-bg.png");
-    background-size: cover;
-    background-position: 72% center;
-    background-repeat: no-repeat;
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
   }
 
-  #grow-sessions-header.dashboard-bar--seed-hero {
-    background-image:
-      linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
-      url("/src/assets/images/grow-tracking-my-sessions-bg.png");
-    background-size: cover;
-    background-position: 72% center;
-    background-repeat: no-repeat;
+  #grow-sessions-header.app-hero {
+    --app-hero-art-position: 72% center;
   }
 
-  .gallery-hero-section {
-    background-position: center, center, 72% center;
+  .gallery-hero-section.app-hero {
+    --app-hero-art-position: 72% center;
   }
 
   :root {
@@ -22047,9 +22066,13 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .section-heading,
   .partition-work-header,
-  .dashboard-bar {
+  .app-hero {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .app-hero-content {
+    max-width: none;
   }
 
   .topbar {
@@ -22084,7 +22107,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     justify-content: center;
   }
 
-  .dashboard-bar .hero-actions {
+  .app-hero .app-hero-actions {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -22092,7 +22115,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     gap: 12px;
   }
 
-  .dashboard-bar .hero-actions .button {
+  .app-hero .app-hero-actions .button {
     width: 100%;
     min-width: 0;
     max-width: none;
@@ -22450,7 +22473,6 @@ body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custo
 
 @media (max-width: 640px) {
   .section-heading.app-section-header,
-  .dashboard-bar.app-section-header,
   .spotlight-head.app-section-header,
   .home-leaderboard-header.app-section-header {
     flex-direction: row;
@@ -22460,7 +22482,6 @@ body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custo
 
 @media (max-width: 460px) {
   .section-heading.app-section-header,
-  .dashboard-bar.app-section-header,
   .spotlight-head.app-section-header,
   .home-leaderboard-header.app-section-header {
     flex-direction: column;
