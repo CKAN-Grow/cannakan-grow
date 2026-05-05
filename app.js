@@ -20205,7 +20205,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
             <p class="muted">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
           </div>
         </div>
-        <a class="button button-secondary" href="#sources">View Source Directory</a>
+        <a class="button button-secondary" href="/sources">View Source Directory</a>
       </div>
       <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
         ${previewCardsMarkup}
