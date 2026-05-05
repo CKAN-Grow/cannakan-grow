@@ -14324,7 +14324,7 @@ function renderHomeGalleryRankingsTeaser() {
   ];
 
   return `
-    <section class="card home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
+    <section class="card card-accent card-accent-green home-gallery-rankings-card" aria-labelledby="home-gallery-rankings-title">
       <div class="home-gallery-rankings-head">
         <div class="home-leaderboard-header app-section-header">
           <div class="section-title-with-icon home-leaderboard-header-main app-section-header-main">
@@ -19425,7 +19425,7 @@ function renderHomeInstallInfoCardMarkup() {
     `;
 
   return `
-    <section class="card home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
+    <section class="card card-accent card-accent-green home-install-card ${cardStateClass}" aria-labelledby="home-install-card-title">
       <div class="home-install-card-shell">
         <div class="home-install-card-body">
           <div class="home-install-card-top-row">
@@ -23864,7 +23864,7 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData(), op
 
   return `
     <section
-      class="card home-announcement-card ${isFallback ? "is-fallback" : "is-live"}${rotationEnabled ? " is-rotating" : ""}"
+      class="card card-accent card-accent-brown home-announcement-card ${isFallback ? "is-fallback" : "is-live"}${rotationEnabled ? " is-rotating" : ""}"
       aria-labelledby="home-announcement-title"
       data-home-announcement-card="true"
       ${rotationEnabled
