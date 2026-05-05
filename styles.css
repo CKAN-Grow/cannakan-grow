@@ -3786,11 +3786,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-hero-section {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
   border: none;
   border-top: 4px solid #94d159;
   background:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.96) 0%, rgba(8, 13, 10, 0.82) 34%, rgba(8, 13, 10, 0.42) 62%, rgba(8, 13, 10, 0.24) 100%),
     linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(221, 240, 205, 0.04) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.06), rgba(43, 111, 65, 0.02) 58%);
+    url("/assets/images/community-grow-hero-bg.png");
+  background-size: auto, auto, cover;
+  background-position: center, center, center right;
+  background-repeat: no-repeat;
   box-shadow:
     0 12px 26px rgba(24, 34, 24, 0.06),
     0 0 0 1px rgba(148, 209, 89, 0.06),
@@ -3864,8 +3871,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-bottom: 6px;
 }
 
+.gallery-hero-section .eyebrow,
+.gallery-hero-section h2 {
+  color: #f5f8f1;
+}
+
 .gallery-hero-section .muted {
-  color: rgba(42, 76, 48, 0.78);
+  color: rgba(230, 237, 226, 0.84);
 }
 
 .gallery-sort-state {
@@ -19561,7 +19573,12 @@ body.theme-dark .gallery-admin-reject:hover {
 
 body.theme-dark .gallery-hero-section {
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(31, 42, 34, 0.92) 18%, rgba(24, 33, 27, 0.84) 100%);
+    linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.86) 36%, rgba(8, 13, 10, 0.46) 64%, rgba(8, 13, 10, 0.28) 100%),
+    linear-gradient(180deg, rgba(148, 209, 89, 0.08) 0%, rgba(31, 42, 34, 0.92) 18%, rgba(24, 33, 27, 0.84) 100%),
+    url("/assets/images/community-grow-hero-bg.png");
+  background-size: auto, auto, cover;
+  background-position: center, center, center right;
+  background-repeat: no-repeat;
   border: none;
   box-shadow:
     0 14px 28px rgba(0, 0, 0, 0.16),
@@ -21977,6 +21994,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     background-size: cover;
     background-position: 72% center;
     background-repeat: no-repeat;
+  }
+
+  .gallery-hero-section {
+    background-position: center, center, 72% center;
   }
 
   :root {
