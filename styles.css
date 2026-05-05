@@ -5137,6 +5137,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-shell {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   flex: 1 1 auto;
   height: 100%;
 }
@@ -5631,6 +5632,9 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   flex: 1 1 auto;
   gap: 14px;
   height: 100%;
