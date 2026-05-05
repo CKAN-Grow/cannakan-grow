@@ -10,6 +10,10 @@ function Get-ContentType($path) {
     ".js" { return "application/javascript; charset=utf-8" }
     ".css" { return "text/css; charset=utf-8" }
     ".svg" { return "image/svg+xml" }
+    ".png" { return "image/png" }
+    ".jpg" { return "image/jpeg" }
+    ".jpeg" { return "image/jpeg" }
+    ".webp" { return "image/webp" }
     ".json" { return "application/json; charset=utf-8" }
     default { return "application/octet-stream" }
   }
@@ -37,10 +41,18 @@ try {
 
       $relativePath = [System.Uri]::UnescapeDataString($path.TrimStart("/")).Replace("/", "\")
       $filePath = Join-Path $root $relativePath
+      $publicFilePath = Join-Path (Join-Path $root "public") $relativePath
+      $resolvedFilePath = $null
 
       if ((Test-Path $filePath) -and -not (Get-Item $filePath).PSIsContainer) {
-        $bytes = [System.IO.File]::ReadAllBytes($filePath)
-        $headers = "HTTP/1.1 200 OK`r`nContent-Type: $(Get-ContentType $filePath)`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
+        $resolvedFilePath = $filePath
+      } elseif ((Test-Path $publicFilePath) -and -not (Get-Item $publicFilePath).PSIsContainer) {
+        $resolvedFilePath = $publicFilePath
+      }
+
+      if ($resolvedFilePath) {
+        $bytes = [System.IO.File]::ReadAllBytes($resolvedFilePath)
+        $headers = "HTTP/1.1 200 OK`r`nContent-Type: $(Get-ContentType $resolvedFilePath)`r`nContent-Length: $($bytes.Length)`r`nConnection: close`r`n`r`n"
         $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
         $stream.Write($headerBytes, 0, $headerBytes.Length)
         $stream.Write($bytes, 0, $bytes.Length)

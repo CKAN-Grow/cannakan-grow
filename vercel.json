@@ -36,6 +36,10 @@
       "destination": "/public/icon-maskable-512.png"
     },
     {
+      "source": "/assets/:path*",
+      "destination": "/public/assets/:path*"
+    },
+    {
       "source": "/admin",
       "destination": "/index.html"
     },
