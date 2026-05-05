@@ -19230,11 +19230,11 @@ function renderHomeInstallInfoCardMarkup() {
               <span>Cannakan® Grow</span>
             </div>
             <div class="home-install-monitor-dashboard">
-              <div class="home-install-monitor-stat">
-                <div class="home-install-progress-ring home-install-monitor-stat-ring is-animated">
+              <div class="home-install-monitor-ring-panel">
+                <div class="home-install-monitor-ring" aria-hidden="true">
                   <span>${installPreviewSuccessRate}%</span>
                 </div>
-                <p class="home-install-monitor-stat-label">Germination</p>
+                <p class="home-install-monitor-ring-label">Germination</p>
               </div>
               <div class="home-install-monitor-metrics">
                 <div class="home-install-monitor-metric">
@@ -19253,26 +19253,16 @@ function renderHomeInstallInfoCardMarkup() {
             </div>
             <div class="home-install-monitor-progress-panel">
               <div class="home-install-monitor-stage-timeline">
-                <div class="home-install-phone-stage-segment stage-soaking is-complete">
-                  <span class="home-install-phone-stage-fill"></span>
-                </div>
-                <div class="home-install-phone-stage-segment stage-germinating is-complete">
-                  <span class="home-install-phone-stage-fill"></span>
-                </div>
-                <div class="home-install-phone-stage-segment stage-planted is-complete">
-                  <span class="home-install-phone-stage-fill"></span>
-                </div>
-                <div class="home-install-phone-stage-segment stage-completed is-current">
-                  <span class="home-install-phone-stage-fill"></span>
-                </div>
+                <span class="home-install-monitor-stage-segment is-soaking"></span>
+                <span class="home-install-monitor-stage-segment is-germinating"></span>
+                <span class="home-install-monitor-stage-segment is-planted"></span>
+                <span class="home-install-monitor-stage-segment is-completed"></span>
               </div>
               <div class="home-install-monitor-partition-graph">
                 ${installPreviewPartitionBars.map((progressPercent) => {
                   return `
-                    <div class="home-install-phone-partition-row">
-                      <div class="home-install-phone-partition-track">
-                        <span class="home-install-phone-partition-fill" style="width:${progressPercent}%"></span>
-                      </div>
+                    <div class="home-install-monitor-bar-track">
+                      <span class="home-install-monitor-bar-fill" style="width:${progressPercent}%"></span>
                     </div>
                   `;
                 }).join("")}

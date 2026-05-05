@@ -5807,39 +5807,62 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-dashboard {
   display: grid;
-  grid-template-columns: minmax(92px, 0.78fr) minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
+  grid-template-columns: minmax(88px, 96px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
   min-width: 0;
   min-height: 0;
 }
 
-.home-install-monitor-stat {
+.home-install-monitor-ring-panel {
   display: grid;
-  align-content: center;
+  align-content: start;
   justify-items: center;
-  gap: 7px;
+  gap: 9px;
   min-height: 0;
   padding: 0;
 }
 
-.home-install-monitor-stat-ring {
-  width: clamp(76px, 22cqi, 90px);
-  height: clamp(76px, 22cqi, 90px);
+.home-install-monitor-ring {
+  --home-install-monitor-ring-angle: 352.8deg;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(13, 19, 15, 0.98) 55%, transparent 56%),
+    conic-gradient(rgba(255, 255, 255, 0.08) 0 360deg);
   box-shadow:
-    inset 0 0 18px rgba(148, 209, 89, 0.12),
-    0 0 18px rgba(148, 209, 89, 0.1);
+    inset 0 0 16px rgba(148, 209, 89, 0.12),
+    0 0 16px rgba(148, 209, 89, 0.08);
+  isolation: isolate;
 }
 
-.home-install-monitor-stat-ring span {
-  font-size: clamp(1.2rem, 5.8cqi, 1.48rem);
+.home-install-monitor-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(#94d159 0 var(--home-install-monitor-ring-angle), transparent var(--home-install-monitor-ring-angle) 360deg);
+  -webkit-mask: radial-gradient(circle, transparent 56%, #000 57.5%);
+  mask: radial-gradient(circle, transparent 56%, #000 57.5%);
+}
+
+.home-install-monitor-ring span {
+  position: relative;
+  z-index: 1;
+  font-size: 1.28rem;
   font-weight: 800;
+  line-height: 1;
+  color: #eef8e4;
 }
 
-.home-install-monitor-stat-label {
+.home-install-monitor-ring-label {
   margin: 0;
   color: #b8ef84;
-  font-size: 0.62rem;
+  font-size: 0.63rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   line-height: 1.15;
@@ -5849,7 +5872,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metrics {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   align-content: start;
   min-width: 0;
 }
@@ -5858,11 +5881,11 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 10px;
+  column-gap: 12px;
   row-gap: 0;
   min-height: 0;
-  padding: 7px 9px;
-  border-radius: 10px;
+  padding: 7px 10px;
+  border-radius: 999px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.035);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -5890,7 +5913,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-monitor-progress-panel {
   display: grid;
   gap: 6px;
-  padding: 8px 9px 9px;
+  padding: 8px 9px;
   border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
@@ -5905,8 +5928,31 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 7px;
 }
 
-.home-install-monitor-stage-timeline .home-install-phone-stage-fill {
+.home-install-monitor-stage-segment {
+  display: block;
   height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+}
+
+.home-install-monitor-stage-segment.is-soaking {
+  background: #6fa8dc;
+}
+
+.home-install-monitor-stage-segment.is-germinating {
+  background: #dd8045;
+}
+
+.home-install-monitor-stage-segment.is-planted {
+  background: #94d159;
+}
+
+.home-install-monitor-stage-segment.is-completed {
+  background: #8a6748;
+  box-shadow:
+    0 0 0 1px rgba(138, 103, 72, 0.18),
+    0 0 8px rgba(138, 103, 72, 0.15);
 }
 
 .home-install-monitor-partition-graph {
@@ -5914,8 +5960,21 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 6px;
 }
 
-.home-install-monitor-partition-graph .home-install-phone-partition-track {
-  height: 6px;
+.home-install-monitor-bar-track {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.04);
+}
+
+.home-install-monitor-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #94d159 0%, #75b545 100%);
 }
 
 .home-install-monitor-stand {
@@ -6024,13 +6083,13 @@ body.theme-dark .contact-reason-card.is-active {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .home-install-monitor-stat {
-    padding-top: 0;
+  .home-install-monitor-ring-panel {
+    gap: 8px;
   }
 
-  .home-install-monitor-stat-ring {
-    width: 132px;
-    height: 132px;
+  .home-install-monitor-ring {
+    width: 82px;
+    height: 82px;
   }
 }
 
@@ -6071,17 +6130,26 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-dashboard {
-    grid-template-columns: minmax(82px, 0.72fr) minmax(0, 1fr);
+    grid-template-columns: minmax(80px, 88px) minmax(0, 1fr);
     gap: 8px;
   }
 
-  .home-install-monitor-stat {
-    min-height: 0;
-  }
-
-  .home-install-monitor-stat-ring {
+  .home-install-monitor-ring {
     width: 78px;
     height: 78px;
+  }
+
+  .home-install-monitor-ring span {
+    font-size: 1.12rem;
+  }
+
+  .home-install-monitor-metric {
+    column-gap: 8px;
+    padding: 6px 8px;
+  }
+
+  .home-install-monitor-metric strong {
+    font-size: 0.62rem;
   }
 }
 
