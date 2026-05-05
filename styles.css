@@ -4233,6 +4233,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
 }
 
+@media (min-width: 641px) {
+  .home-dashboard-secondary-side-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .home-dashboard-secondary-side-column > .home-install-card {
+    flex: 1 1 auto;
+  }
+}
+
 .home-tested-sources-preview-section,
 .home-cstp-overview-section {
   display: grid;
@@ -5105,7 +5117,7 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop {
   container-type: inline-size;
   padding: 18px 20px;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .home-install-card-shell {
@@ -5113,6 +5125,9 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
   height: 100%;
 }
 
@@ -5145,11 +5160,11 @@ body.theme-dark .contact-reason-card.is-active {
 .home-install-card.is-desktop .home-install-card-preview {
   flex: 0 0 auto;
   width: 100%;
-  max-width: 236px;
+  max-width: 224px;
   margin-inline: 0;
   align-self: flex-start;
   flex-shrink: 0;
-  transform: translate(5px, -3px);
+  transform: none;
 }
 
 .phone-mock,
@@ -5605,6 +5620,7 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-card.is-desktop .home-install-card-body {
+  flex: 1 1 auto;
   gap: 14px;
   height: 100%;
 }
@@ -5714,7 +5730,7 @@ body.theme-dark .contact-reason-card.is-active {
   container-type: inline-size;
   justify-items: center;
   width: 100%;
-  max-width: 236px;
+  max-width: 224px;
   gap: 0;
   margin-inline: auto;
 }
@@ -5751,7 +5767,7 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 8px;
   height: 100%;
   min-height: 0;
-  padding: 10px 12px;
+  padding: 11px 13px;
   border-radius: 10px;
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 42%),
@@ -5783,8 +5799,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-dashboard {
   display: grid;
-  grid-template-columns: minmax(86px, 0.74fr) minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: minmax(74px, 0.68fr) minmax(0, 1fr);
+  gap: 8px;
   align-items: start;
   min-width: 0;
 }
@@ -5799,22 +5815,22 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-stat-ring {
-  width: clamp(78px, 25cqi, 94px);
-  height: clamp(78px, 25cqi, 94px);
+  width: clamp(68px, 22cqi, 84px);
+  height: clamp(68px, 22cqi, 84px);
   box-shadow:
     inset 0 0 18px rgba(148, 209, 89, 0.12),
     0 0 18px rgba(148, 209, 89, 0.1);
 }
 
 .home-install-monitor-stat-ring span {
-  font-size: clamp(1.42rem, 7.2cqi, 1.8rem);
+  font-size: clamp(1.2rem, 6.2cqi, 1.52rem);
   font-weight: 800;
 }
 
 .home-install-monitor-stat-label {
   margin: 0;
   color: #b8ef84;
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -5849,7 +5865,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-metric strong {
   color: #f5faf2;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -6005,20 +6021,30 @@ body.theme-dark .contact-reason-card.is-active {
     gap: 16px;
   }
 
+  .home-dashboard-secondary-side-column {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .home-dashboard-secondary-side-column > .home-install-card {
+    flex: 1 1 auto;
+  }
+
   .home-install-card-directions {
     grid-template-columns: 1fr;
   }
 
   .home-install-card.is-desktop .home-install-card-preview {
     flex: 0 1 auto;
-    width: min(100%, 216px);
+    width: min(100%, 208px);
     align-self: flex-start;
-    transform: translate(4px, -2px);
+    transform: none;
     flex-shrink: 0;
   }
 
   .home-install-monitor {
-    max-width: 216px;
+    max-width: 208px;
   }
 
   .home-install-monitor-screen {
@@ -6026,7 +6052,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-dashboard {
-    grid-template-columns: minmax(132px, 0.9fr) minmax(0, 1fr);
+    grid-template-columns: minmax(72px, 0.66fr) minmax(0, 1fr);
+    gap: 7px;
   }
 
   .home-install-monitor-stat {
@@ -6034,8 +6061,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .home-install-monitor-stat-ring {
-    width: 86px;
-    height: 86px;
+    width: 72px;
+    height: 72px;
   }
 }
 
