@@ -1294,7 +1294,7 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .app-hero--sessions {
-  --app-hero-art: url("/src/assets/images/grow-tracking-my-sessions-bg.png");
+  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png");
 }
 
 .app-hero--gallery {
@@ -21071,7 +21071,7 @@ body.theme-dark #session-history-section {
 }
 
 #grow-sessions-header.app-hero {
-  --app-hero-art: url("/src/assets/images/grow-tracking-my-sessions-bg.png");
+  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png");
 }
 
 #grow-sessions-header:not(.app-hero) {
