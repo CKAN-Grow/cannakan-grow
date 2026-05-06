@@ -39872,21 +39872,28 @@ function renderSessionLifecycleTimelineMarkup(state) {
   const events = getSessionLifecycleTimelineEvents(state);
 
   return `
-    <div class="session-lifecycle-progress-grid stage-progress-row" role="list" aria-label="Session timeline progress">
-      ${events.map((event, index) => `
+    <div class="session-command-stage-grid session-lifecycle-progress-grid stage-progress-row" role="list" aria-label="Session timeline progress">
+      ${events.map((event, index) => {
+        const nextEvent = events[index + 1] || null;
+        const connectorIsActive = Boolean(
+          nextEvent
+          && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
+        );
+        const iconStageKey = event.key === "germination-started" ? "germination" : event.key;
+
+        return `
         <article
-          class="session-command-stage session-lifecycle-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${event.isFuture ? "is-future" : ""}"
+          class="session-command-stage stage-item session-lifecycle-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${event.isFuture ? "is-future" : ""}"
           role="listitem"
         >
-          <div class="session-command-stage-icon-wrap">
-            ${renderCommandCenterIconMarkup(event.iconName, "command-icon--stage")}
-          </div>
+          ${renderCommandCenterIconMarkup(`stage-${iconStageKey}`, `command-icon--stage command-icon--stage-${iconStageKey}`)}
           <strong>${escapeHtml(event.label)}</strong>
           <p class="session-command-stage-helper">${escapeHtml(event.statusText)}</p>
           <p class="session-lifecycle-stage-timestamp">${escapeHtml(event.timestampText)}</p>
         </article>
-        ${index < events.length - 1 ? `<span class="stage-connector session-lifecycle-stage-connector ${events[index + 1].isCurrent || events[index + 1].isComplete ? "stage-connector--active" : ""}" aria-hidden="true"></span>` : ""}
-      `).join("")}
+        ${nextEvent ? `<div class="stage-connector session-lifecycle-stage-connector${connectorIsActive ? " stage-connector--active" : ""}" aria-hidden="true"></div>` : ""}
+      `;
+      }).join("")}
     </div>
   `;
 }
