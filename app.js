@@ -16582,6 +16582,26 @@ function renderSeedAgeAnalyticsKpiVisualMarkup(card) {
   `;
 }
 
+function getSeedAgeAnalyticsKpiValueClass(card) {
+  const rawValue = String(card?.value || "").trim();
+  const normalizedValue = rawValue.toLowerCase();
+  const classNames = [];
+
+  if (normalizedValue.includes("%")) {
+    classNames.push("is-percent");
+  }
+
+  if (
+    normalizedValue.includes("month")
+    || normalizedValue.includes("60+")
+    || rawValue.length >= 12
+  ) {
+    classNames.push("is-extended");
+  }
+
+  return classNames.join(" ");
+}
+
 function clampSeedAgeAnalyticsConfidenceScore(value = 0) {
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
@@ -16847,7 +16867,7 @@ function renderSeedAgeAnalyticsPage() {
             <article class="seed-age-analytics-kpi-card ${escapeHtml(card.variant || "")}${card.isPlaceholder ? " is-empty" : ""}">
               <div class="seed-age-analytics-kpi-copy">
                 <p class="seed-age-analytics-kpi-label">${escapeHtml(card.label)}</p>
-                <strong class="seed-age-analytics-kpi-value">${escapeHtml(card.value)}</strong>
+                <strong class="seed-age-analytics-kpi-value ${escapeHtml(getSeedAgeAnalyticsKpiValueClass(card))}">${escapeHtml(card.value)}</strong>
                 <p class="seed-age-analytics-kpi-helper">${escapeHtml(card.helper)}</p>
               </div>
               ${renderSeedAgeAnalyticsKpiVisualMarkup(card)}

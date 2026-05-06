@@ -6062,8 +6062,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+  gap: 18px;
 }
 
 .seed-age-analytics-kpi-card,
@@ -6084,13 +6084,35 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --seed-age-kpi-accent: #9dd948;
   --seed-age-kpi-accent-soft: rgba(157, 217, 72, 0.22);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(136px, 1fr) 92px;
   align-items: center;
-  gap: 18px;
-  min-height: 144px;
-  padding: 20px 20px 18px;
+  gap: 20px;
+  min-height: 156px;
+  padding: 22px 24px 20px;
   position: relative;
   overflow: hidden;
+  box-shadow:
+    0 22px 38px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 28px rgba(148, 209, 89, 0.035),
+    inset 0 -18px 28px rgba(3, 8, 5, 0.08);
+}
+
+.seed-age-analytics-kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(157, 217, 72, 0.06), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 36%);
+  opacity: 0.85;
+}
+
+.seed-age-analytics-kpi-card > * {
+  position: relative;
+  z-index: 1;
 }
 
 .seed-age-analytics-kpi-card.is-empty {
@@ -6124,8 +6146,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-copy {
   display: grid;
-  gap: 10px;
-  min-width: 0;
+  gap: 8px;
+  min-width: 136px;
+  align-content: center;
 }
 
 .seed-age-analytics-kpi-label,
@@ -6144,10 +6167,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-value {
   color: var(--seed-age-kpi-accent);
-  font-size: clamp(1.55rem, 2.35vw, 2.18rem);
+  font-size: clamp(1.44rem, 2vw, 1.98rem);
   font-weight: 800;
-  line-height: 1.06;
+  line-height: 1.02;
   letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.seed-age-analytics-kpi-value.is-percent {
+  font-size: clamp(1.6rem, 2.18vw, 2.14rem);
+}
+
+.seed-age-analytics-kpi-value.is-extended {
+  font-size: clamp(1.3rem, 1.7vw, 1.72rem);
+  line-height: 1.08;
 }
 
 .seed-age-analytics-kpi-card.is-empty .seed-age-analytics-kpi-value {
@@ -6157,9 +6190,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .seed-age-analytics-kpi-helper {
-  color: rgba(217, 225, 214, 0.7);
-  font-size: 0.88rem;
-  line-height: 1.42;
+  color: rgba(217, 225, 214, 0.72);
+  font-size: 0.84rem;
+  line-height: 1.38;
   max-width: 20ch;
 }
 
@@ -6168,10 +6201,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   isolation: isolate;
   display: grid;
   place-items: center;
-  width: 108px;
-  min-width: 108px;
+  width: 92px;
+  min-width: 92px;
   aspect-ratio: 1;
   justify-self: end;
+  align-self: center;
   color: var(--seed-age-kpi-accent);
   animation: seed-age-analytics-kpi-enter 320ms ease-out both;
 }
@@ -6179,7 +6213,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .seed-age-analytics-kpi-visual::before {
   content: "";
   position: absolute;
-  inset: 14px;
+  inset: 12px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
@@ -6192,19 +6226,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .seed-age-analytics-kpi-visual::after {
   content: "";
   position: absolute;
-  inset: 4px;
+  inset: 6px;
   border-radius: 50%;
   border: 1px solid color-mix(in srgb, var(--seed-age-kpi-accent) 34%, rgba(255, 255, 255, 0.08));
-  opacity: 0.34;
+  opacity: 0.28;
 }
 
 .seed-age-analytics-kpi-visual-glow {
   position: absolute;
-  inset: 16px;
+  inset: 14px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--seed-age-kpi-accent-soft) 0%, transparent 72%);
-  filter: blur(12px);
-  opacity: 0.88;
+  filter: blur(10px);
+  opacity: 0.72;
   z-index: 0;
   animation: seed-age-analytics-kpi-pulse 3.6s ease-in-out infinite;
 }
@@ -6220,7 +6254,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .seed-age-analytics-kpi-ring-track,
 .seed-age-analytics-kpi-ring-progress {
   fill: none;
-  stroke-width: 6.5;
+  stroke-width: 6;
 }
 
 .seed-age-analytics-kpi-ring-track {
@@ -6243,13 +6277,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 18px;
+  padding: 16px;
 }
 
 .seed-age-analytics-kpi-visual-center strong {
   display: block;
   color: #f3f9ec;
-  font-size: 1.03rem;
+  font-size: 0.92rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.02em;
@@ -6257,7 +6291,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-visual-center span {
   color: rgba(222, 231, 217, 0.68);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -7077,12 +7111,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .seed-age-analytics-kpi-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) 88px;
     align-items: start;
   }
 
   .seed-age-analytics-kpi-visual {
-    justify-self: start;
+    justify-self: end;
   }
 
   .seed-age-analytics-community-note {
@@ -7113,6 +7147,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .seed-age-analytics-kpi-copy {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .seed-age-analytics-kpi-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    min-height: 0;
+  }
+
+  .seed-age-analytics-kpi-visual {
+    justify-self: start;
   }
 }
 
