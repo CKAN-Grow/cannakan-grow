@@ -2778,6 +2778,10 @@ function navigateToCommunityGrowModerationRoute() {
   navigateToHashRoute(getCommunityGrowModerationRoute());
 }
 
+function getActiveSessionsRouteHash() {
+  return "#active-sessions";
+}
+
 function getAdminDashboardSectionRouteConfig(routeId = "") {
   const normalizedRouteId = String(routeId || "").trim().toLowerCase();
   switch (normalizedRouteId) {
@@ -39647,7 +39651,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const headerEyebrow = String(options.headerEyebrow || "ACTIVE SESSION").trim() || "ACTIVE SESSION";
   const headerTitle = String(options.headerTitle || "SESSION COMMAND CENTER").trim() || "SESSION COMMAND CENTER";
   const headerDescription = String(options.headerDescription || "").trim();
-  const viewAllHref = String(options.viewAllHref || "#sessions").trim() || "#sessions";
+  const viewAllHref = String(options.viewAllHref || getActiveSessionsRouteHash()).trim() || getActiveSessionsRouteHash();
   const showViewAllLink = options.showViewAllLink !== false;
   const showMetrics = options.showMetrics !== false;
   const headerActionHref = String(options.headerActionHref || "").trim();
@@ -39677,7 +39681,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
                 <span class="session-command-count-badge">${escapeHtml(countBadgeLabel)}</span>
               </div>
             </div>
-            ${showViewAllLink ? `<a class="session-command-panel-link" href="${escapeHtml(viewAllHref)}">View All Active <span aria-hidden="true">&rarr;</span></a>` : ""}
+            ${showViewAllLink ? `<a class="session-command-panel-link" href="${escapeHtml(viewAllHref)}" aria-label="View all active sessions">View All Active <span aria-hidden="true">&rarr;</span></a>` : ""}
           </div>
           <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
         </section>

@@ -2139,17 +2139,25 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-command-panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   align-self: center;
   color: rgba(181, 232, 111, 0.84);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 700;
+  cursor: pointer;
+  outline-offset: 4px;
   transition: color 0.18s ease, opacity 0.18s ease;
 }
 
 .session-command-panel-link:hover,
 .session-command-panel-link:focus-visible {
   color: #ffffff;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
 }
 
 .session-command-list {
