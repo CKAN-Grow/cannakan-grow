@@ -3491,6 +3491,68 @@ function buildSeedAgeSnapshotLabel(source = null) {
   return "";
 }
 
+function getCommandCenterFilterPaperSupplyState() {
+  const inventory = getFilterPaperInventory();
+  const isInventorySet = hasFilterPaperInventoryBeenSet();
+  if (!isInventorySet) {
+    return {
+      count: inventory.count,
+      tone: "unset",
+      statusLabel: "Not Set",
+      countLabel: "Filter paper count not set",
+      helperText: "Set your current filter paper count so session reminders stay accurate.",
+      primaryActionLabel: "Set Count",
+      showReminderAction: false,
+    };
+  }
+
+  if (inventory.count <= 0) {
+    return {
+      count: inventory.count,
+      tone: "empty",
+      statusLabel: "Empty",
+      countLabel: "Filter Papers: 0 remaining",
+      helperText: "Add filter papers before starting another session.",
+      primaryActionLabel: "Update Count",
+      showReminderAction: false,
+    };
+  }
+
+  if (inventory.count === 1) {
+    return {
+      count: inventory.count,
+      tone: "urgent",
+      statusLabel: "Urgent",
+      countLabel: "Filter Papers: 1 remaining",
+      helperText: "Only one filter paper left.",
+      primaryActionLabel: "Update Count",
+      showReminderAction: inventory.notifyLowSupply === false,
+    };
+  }
+
+  if (inventory.count === 2) {
+    return {
+      count: inventory.count,
+      tone: "low",
+      statusLabel: "Low",
+      countLabel: "Filter Papers: 2 remaining",
+      helperText: "Running low. Add more soon.",
+      primaryActionLabel: "Update Count",
+      showReminderAction: inventory.notifyLowSupply === false,
+    };
+  }
+
+  return {
+    count: inventory.count,
+    tone: "ok",
+    statusLabel: "OK",
+    countLabel: `Filter Papers: ${inventory.count} remaining`,
+    helperText: "You have enough filter papers for your next session.",
+    primaryActionLabel: "Update Count",
+    showReminderAction: inventory.notifyLowSupply === false,
+  };
+}
+
 function getGallerySnapshotSeedAgeMetadata(snapshot = null) {
   const linkedSession = getGallerySnapshotSession(snapshot);
   const sessionLike = linkedSession ? { ...linkedSession } : {};
@@ -40562,6 +40624,17 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
           </svg>
         </span>
       `;
+    case "filter-paper":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.7"></circle>
+            <path d="M12 4.9v14.2M4.9 12h14.2" stroke-linecap="round"></path>
+            <path d="m6.9 6.9 10.2 10.2M17.1 6.9 6.9 17.1" stroke-linecap="round" opacity="0.82"></path>
+            <circle cx="12" cy="12" r="2.1" opacity="0.7"></circle>
+          </svg>
+        </span>
+      `;
     default:
       return `
         <span class="${classes}" aria-hidden="true">
@@ -40643,6 +40716,39 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
       <p>${escapeHtml(card.caption)}</p>
     </article>
   `).join("");
+}
+
+function renderSessionCommandCenterFilterPaperSupplyMarkup() {
+  const supply = getCommandCenterFilterPaperSupplyState();
+  const actionButtons = [
+    `<button type="button" class="button button-primary" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>`,
+  ];
+
+  if (supply.showReminderAction) {
+    actionButtons.push('<button type="button" class="button button-secondary" data-filter-paper-edit="true">Add Reminder</button>');
+  }
+
+  return `
+    <section class="session-command-center-supply-panel session-command-center-supply-panel--${escapeHtml(supply.tone)}" aria-labelledby="session-command-center-supply-title">
+      <div class="session-command-center-supply-copy">
+        <div class="session-command-center-supply-head">
+          ${renderCommandCenterIconMarkup("filter-paper", `command-icon--supply command-icon--supply-${supply.tone}`)}
+          <div class="session-command-center-supply-title-group">
+            <p class="eyebrow">SUPPLIES</p>
+            <h4 id="session-command-center-supply-title">Filter Paper Supply</h4>
+          </div>
+        </div>
+        <p class="session-command-center-supply-count">${escapeHtml(supply.countLabel)}</p>
+        <p class="session-command-center-supply-helper">${escapeHtml(supply.helperText)}</p>
+      </div>
+      <div class="session-command-center-supply-actions">
+        <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(supply.statusLabel)}</span>
+        <div class="session-command-center-supply-button-row">
+          ${actionButtons.join("")}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
 function formatSessionCommandCenterDayLabel(session = null) {
@@ -40878,6 +40984,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
       <div class="summary-grid session-command-center-metrics">
         ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
       </div>` : ""}
+      ${renderSessionCommandCenterFilterPaperSupplyMarkup()}
     </section>
   `;
 }
@@ -40910,6 +41017,7 @@ function mountSharedSessionCommandCenter(host, options = {}) {
     });
     hydrateAppIconSlots(host);
     applySupplyStatusToSessionEntryButtons(host);
+    bindFilterPaperCardActions(host, { onSave: renderSessionCommandCenter });
   };
 
   if (host.dataset.sessionCommandCenterBound !== "true") {
