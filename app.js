@@ -15694,10 +15694,10 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
       "Photos seem to hold their viability a little better over longer storage windows.",
     ],
     performanceInsights: [
-      { icon: "arrow", title: "Peak Performance", body: "Seeds in the 6-12 month range show the strongest mock germination rate at 91.8%." },
-      { icon: "clock", title: "Good Window", body: "The 3-12 month window stays consistently strong, with both buckets holding above 84% in the mock profile." },
-      { icon: "decline", title: "Declining Returns", body: "Performance falls off gradually after 18-24 months, with the sharpest drop becoming visible beyond 36 months." },
-      { icon: "alert", title: "Age Matters", body: "Fresh seeds and long-stored seeds both trail the mid-age peak, which mirrors real curing and storage behavior." },
+      { icon: "arrow", title: "Peak Performance", body: "6-12 month seeds lead the mock profile at 91.8%." },
+      { icon: "clock", title: "Good Window", body: "The 3-12 month window stays reliably strong across the sample." },
+      { icon: "decline", title: "Declining Returns", body: "Rates ease down after 18-24 months and drop faster beyond 36 months." },
+      { icon: "alert", title: "Age Matters", body: "Fresh and long-stored seeds both trail the mid-age peak window." },
     ],
     communityNotes: [
       { title: "Community note", meta: "Grower observation", body: "6-12 month seeds consistently give me the best results once they have had time to fully cure." },
@@ -16084,28 +16084,28 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
       icon: "arrow",
       title: "Peak Performance",
       body: bestSingleBucket
-        ? `${bestSingleBucket.label} months currently lead the community data at ${formatSeedAgeAnalyticsRateLabel(bestSingleBucket.rate)}.`
+        ? `${bestSingleBucket.label} months currently lead at ${formatSeedAgeAnalyticsRateLabel(bestSingleBucket.rate)}.`
         : "No completed seed-age performance data is available yet.",
     },
     {
       icon: "clock",
       title: "Good Window",
       body: selectedOptimalWindow
-        ? `${optimalRangeLabel} holds the strongest repeatable performance window across the available community data.`
+        ? `${optimalRangeLabel} holds the strongest repeatable performance window.`
         : "A repeatable age window will appear here as more tracked sessions are published.",
     },
     {
       icon: "decline",
       title: "Declining Returns",
       body: bestSingleBucket && oldestBucket && Number.isFinite(oldestBucket.rate)
-        ? `Older buckets taper off from the peak, with ${oldestBucket.label} months landing at ${formatSeedAgeAnalyticsRateLabel(oldestBucket.rate)} in the current sample.`
+        ? `${oldestBucket.label} months fall to ${formatSeedAgeAnalyticsRateLabel(oldestBucket.rate)} in the current sample.`
         : "Longer-term storage performance will become easier to compare as more older seed batches are recorded.",
     },
     {
       icon: "alert",
       title: "Age Matters",
       body: bestSingleBucket && freshestBucket && Number.isFinite(freshestBucket.rate)
-        ? `Fresh seeds are ${Math.max(0, (bestSingleBucket.rate || 0) - (freshestBucket.rate || 0)).toFixed(1)} points below the best bucket, so curing and storage age visibly affect outcomes.`
+        ? `Fresh seeds trail the best bucket by ${Math.max(0, (bestSingleBucket.rate || 0) - (freshestBucket.rate || 0)).toFixed(1)} points.`
         : "Seed age is tracked separately here so fresh, cured, and stored seed lots are not blended together.",
     },
   ];
@@ -16212,11 +16212,68 @@ function renderSeedAgeAnalyticsInsightIcon(iconType = "arrow") {
   }
 }
 
+function clampSeedAgeAnalyticsSvgCoordinate(value = 0, min = 0, max = 0) {
+  return Math.max(min, Math.min(max, Number(value) || 0));
+}
+
+function buildSeedAgeAnalyticsSmoothLinePath(points = []) {
+  if (!Array.isArray(points) || !points.length) {
+    return "";
+  }
+  if (points.length === 1) {
+    return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  }
+
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const currentPoint = points[index];
+    const nextPoint = points[index + 1];
+    const controlX = ((currentPoint.x + nextPoint.x) / 2).toFixed(2);
+    path += ` C ${controlX} ${currentPoint.y.toFixed(2)}, ${controlX} ${nextPoint.y.toFixed(2)}, ${nextPoint.x.toFixed(2)} ${nextPoint.y.toFixed(2)}`;
+  }
+  return path;
+}
+
+function buildSeedAgeAnalyticsAreaPath(points = [], baselineY = 0) {
+  if (!Array.isArray(points) || !points.length) {
+    return "";
+  }
+  const linePath = buildSeedAgeAnalyticsSmoothLinePath(points);
+  const lastPoint = points[points.length - 1];
+  const firstPoint = points[0];
+  return `${linePath} L ${lastPoint.x.toFixed(2)} ${baselineY.toFixed(2)} L ${firstPoint.x.toFixed(2)} ${baselineY.toFixed(2)} Z`;
+}
+
+function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+  return {
+    x: centerX + (radius * Math.cos(angleInRadians)),
+    y: centerY + (radius * Math.sin(angleInRadians)),
+  };
+}
+
+function describeSeedAgeAnalyticsArcPath(centerX, centerY, radius, startAngle, endAngle) {
+  const start = polarToCartesian(centerX, centerY, radius, endAngle);
+  const end = polarToCartesian(centerX, centerY, radius, startAngle);
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+  return [
+    "M", start.x.toFixed(2), start.y.toFixed(2),
+    "A", radius.toFixed(2), radius.toFixed(2), "0", largeArcFlag, "0", end.x.toFixed(2), end.y.toFixed(2),
+  ].join(" ");
+}
+
+function getSeedAgeAnalyticsCommunityNoteInitials(note = {}) {
+  const seedText = String(note?.title || note?.meta || "CG").trim();
+  const parts = seedText.split(/\s+/).filter(Boolean);
+  const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+  return initials || "CG";
+}
+
 function renderSeedAgeAnalyticsLineChartMarkup(state) {
   const buckets = Array.isArray(state?.lineBuckets) ? state.lineBuckets : [];
   const chartWidth = 900;
-  const chartHeight = 340;
-  const padding = { top: 18, right: 24, bottom: 58, left: 56 };
+  const chartHeight = 408;
+  const padding = { top: 18, right: 24, bottom: 68, left: 58 };
   const innerWidth = chartWidth - padding.left - padding.right;
   const innerHeight = chartHeight - padding.top - padding.bottom;
   const step = buckets.length > 1 ? innerWidth / (buckets.length - 1) : innerWidth;
@@ -16230,7 +16287,8 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
       safeRate,
     };
   });
-  const linePoints = pointList.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
+  const linePath = buildSeedAgeAnalyticsSmoothLinePath(pointList);
+  const areaPath = buildSeedAgeAnalyticsAreaPath(pointList, padding.top + innerHeight);
   const optimalPoints = pointList.filter((point) => point.isOptimal);
   const optimalStart = optimalPoints[0] || null;
   const optimalEnd = optimalPoints[optimalPoints.length - 1] || null;
@@ -16242,13 +16300,27 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
       <svg class="seed-age-analytics-line-chart" viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Line chart of germination rate by seed age bucket.">
         <defs>
           <linearGradient id="seed-age-line-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="rgba(157, 217, 72, 0.34)"></stop>
-            <stop offset="100%" stop-color="rgba(157, 217, 72, 0.02)"></stop>
+            <stop offset="0%" stop-color="rgba(148, 209, 89, 0.34)"></stop>
+            <stop offset="68%" stop-color="rgba(148, 209, 89, 0.1)"></stop>
+            <stop offset="100%" stop-color="rgba(148, 209, 89, 0.01)"></stop>
           </linearGradient>
           <linearGradient id="seed-age-line-stroke" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stop-color="#84d95d"></stop>
+            <stop offset="50%" stop-color="#94d159"></stop>
             <stop offset="100%" stop-color="#b8ec68"></stop>
           </linearGradient>
+          <linearGradient id="seed-age-optimal-band" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="rgba(148, 209, 89, 0.04)"></stop>
+            <stop offset="42%" stop-color="rgba(148, 209, 89, 0.18)"></stop>
+            <stop offset="100%" stop-color="rgba(148, 209, 89, 0.03)"></stop>
+          </linearGradient>
+          <filter id="seed-age-line-glow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="6.5" result="blur"></feGaussianBlur>
+            <feMerge>
+              <feMergeNode in="blur"></feMergeNode>
+              <feMergeNode in="SourceGraphic"></feMergeNode>
+            </feMerge>
+          </filter>
         </defs>
         ${optimalStart && optimalEnd ? `
           <rect
@@ -16259,9 +16331,17 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
             rx="18"
             class="seed-age-analytics-line-chart-optimal-band"
           ></rect>
+          <rect
+            x="${highlightX.toFixed(2)}"
+            y="${padding.top}"
+            width="${highlightWidth.toFixed(2)}"
+            height="${innerHeight}"
+            rx="18"
+            class="seed-age-analytics-line-chart-optimal-band-glow"
+          ></rect>
           <text
             x="${(highlightX + (highlightWidth / 2)).toFixed(2)}"
-            y="${(chartHeight - 18).toFixed(2)}"
+            y="${(chartHeight - 24).toFixed(2)}"
             text-anchor="middle"
             class="seed-age-analytics-line-chart-optimal-label"
           >OPTIMAL RANGE</text>
@@ -16275,20 +16355,87 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
         }).join("")}
         <line x1="${padding.left}" y1="${(padding.top + innerHeight).toFixed(2)}" x2="${(chartWidth - padding.right).toFixed(2)}" y2="${(padding.top + innerHeight).toFixed(2)}" class="seed-age-analytics-line-chart-axis"></line>
         <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${(padding.top + innerHeight).toFixed(2)}" class="seed-age-analytics-line-chart-axis"></line>
-        <polyline points="${linePoints}" class="seed-age-analytics-line-chart-fill"></polyline>
-        <polyline points="${linePoints}" class="seed-age-analytics-line-chart-line"></polyline>
+        <path d="${areaPath}" class="seed-age-analytics-line-chart-area"></path>
+        <path d="${linePath}" class="seed-age-analytics-line-chart-line-glow" filter="url(#seed-age-line-glow)"></path>
+        <path d="${linePath}" class="seed-age-analytics-line-chart-line"></path>
         ${pointList.map((point) => `
           <g class="seed-age-analytics-line-chart-point${point.isOptimal ? " is-optimal" : ""}">
-            <circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="5.5"></circle>
+            <circle class="seed-age-analytics-line-chart-hit-area" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="16"></circle>
+            <circle class="seed-age-analytics-line-chart-point-pulse" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="7.8"></circle>
+            <circle class="seed-age-analytics-line-chart-point-core" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="5.8"></circle>
             ${Number.isFinite(point.rate) ? `
               <text x="${point.x.toFixed(2)}" y="${(point.y - 14).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-value">${formatSeedAgeAnalyticsRateLabel(point.rate)}</text>
             ` : ""}
-            <text x="${point.x.toFixed(2)}" y="${(chartHeight - 28).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-x-label">${escapeHtml(point.label)}</text>
+            <text x="${point.x.toFixed(2)}" y="${(chartHeight - 36).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-x-label">${escapeHtml(point.label)}</text>
+            ${Number.isFinite(point.rate) ? `
+              <g class="seed-age-analytics-line-chart-tooltip" transform="translate(${clampSeedAgeAnalyticsSvgCoordinate(point.x - 72, padding.left, chartWidth - padding.right - 144).toFixed(2)} ${(Math.max(padding.top + 8, point.y - 84)).toFixed(2)})">
+                <rect width="144" height="58" rx="14"></rect>
+                <text x="14" y="20" class="seed-age-analytics-line-chart-tooltip-label">${escapeHtml(point.legendLabel || `${point.label} months`)}</text>
+                <text x="14" y="39" class="seed-age-analytics-line-chart-tooltip-value">${escapeHtml(formatSeedAgeAnalyticsRateLabel(point.rate))}</text>
+              </g>
+            ` : ""}
           </g>
         `).join("")}
         <text x="${20}" y="${(padding.top + (innerHeight / 2)).toFixed(2)}" class="seed-age-analytics-line-chart-axis-title" transform="rotate(-90 20 ${(padding.top + (innerHeight / 2)).toFixed(2)})">Germination Rate (%)</text>
         <text x="${(padding.left + (innerWidth / 2)).toFixed(2)}" y="${(chartHeight - 6).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-axis-title">Seed Age (Months)</text>
       </svg>
+    </div>
+  `;
+}
+
+function renderSeedAgeAnalyticsDonutMarkup(state) {
+  const segments = Array.isArray(state?.distributionSegments) ? state.distributionSegments : [];
+  const totalLabel = String(state?.distributionCenterLabel || "0").trim() || "0";
+  const totalValue = Number(String(totalLabel).replace(/[^0-9]+/g, "")) || 0;
+  const viewBoxSize = 320;
+  const center = 160;
+  const radius = 108;
+  const circumference = 2 * Math.PI * radius;
+  let currentOffset = 0;
+
+  return `
+    <div class="seed-age-analytics-donut-shell">
+      <div class="seed-age-analytics-donut-frame">
+        <svg class="seed-age-analytics-donut-chart" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" role="img" aria-label="Distribution of sessions by seed age.">
+          <defs>
+            <filter id="seed-age-donut-glow" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
+              <feMerge>
+                <feMergeNode in="blur"></feMergeNode>
+                <feMergeNode in="SourceGraphic"></feMergeNode>
+              </feMerge>
+            </filter>
+          </defs>
+          <circle class="seed-age-donut-track-outer" cx="${center}" cy="${center}" r="${radius + 10}"></circle>
+          <circle class="seed-age-donut-track" cx="${center}" cy="${center}" r="${radius}" pathLength="${circumference.toFixed(2)}"></circle>
+          ${segments.map((segment) => {
+            const share = Math.max(0, Number(segment.sharePercent) || 0);
+            const segmentLength = (share / 100) * circumference;
+            const dashArray = `${segmentLength.toFixed(2)} ${(circumference - segmentLength).toFixed(2)}`;
+            const markup = `
+              <g class="seed-age-analytics-donut-segment" data-seed-age-segment="${escapeHtml(segment.key)}">
+                <circle
+                  class="seed-age-analytics-donut-segment-arc"
+                  cx="${center}"
+                  cy="${center}"
+                  r="${radius}"
+                  pathLength="${circumference.toFixed(2)}"
+                  stroke-dasharray="${dashArray}"
+                  stroke-dashoffset="${(-currentOffset).toFixed(2)}"
+                  style="--seed-age-donut-segment:${escapeHtml(segment.color)};"
+                  filter="url(#seed-age-donut-glow)"
+                ></circle>
+              </g>
+            `;
+            currentOffset += segmentLength;
+            return markup;
+          }).join("")}
+        </svg>
+        <div class="seed-age-analytics-donut-center">
+          <strong data-seed-age-countup="${escapeHtml(String(totalValue))}">${escapeHtml(totalLabel)}</strong>
+          <span>Total Sessions</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -16592,6 +16739,74 @@ function renderSeedAgeAnalyticsConfidenceMarkup(confidence = {}) {
   `;
 }
 
+function enhanceSeedAgeAnalyticsPage() {
+  const dashboard = app.querySelector(".seed-age-analytics-dashboard");
+  if (!dashboard) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  dashboard.querySelectorAll("[data-seed-age-countup]").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    const targetValue = Math.max(0, Number(element.dataset.seedAgeCountup) || 0);
+    if (!Number.isFinite(targetValue)) {
+      return;
+    }
+    if (prefersReducedMotion) {
+      element.textContent = Math.round(targetValue).toLocaleString();
+      return;
+    }
+
+    const durationMs = 360;
+    const startTime = performance.now();
+    const update = (timestamp) => {
+      const progress = Math.min(1, (timestamp - startTime) / durationMs);
+      const eased = 1 - ((1 - progress) * (1 - progress));
+      element.textContent = Math.round(targetValue * eased).toLocaleString();
+      if (progress < 1) {
+        window.requestAnimationFrame(update);
+      }
+    };
+    window.requestAnimationFrame(update);
+  });
+
+  const heatmapTable = dashboard.querySelector(".seed-age-analytics-heatmap-table");
+  if (heatmapTable instanceof HTMLElement) {
+    heatmapTable.querySelectorAll("[data-heatmap-column-index]").forEach((cell) => {
+      const activate = () => {
+        heatmapTable.dataset.activeColumn = String(cell.getAttribute("data-heatmap-column-index") || "");
+      };
+      const deactivate = () => {
+        delete heatmapTable.dataset.activeColumn;
+      };
+      cell.addEventListener("mouseenter", activate);
+      cell.addEventListener("focus", activate, true);
+      cell.addEventListener("mouseleave", deactivate);
+      cell.addEventListener("blur", deactivate, true);
+    });
+  }
+
+  const donutSegments = new Map(
+    [...dashboard.querySelectorAll("[data-seed-age-segment]")]
+      .map((segment) => [String(segment.getAttribute("data-seed-age-segment") || ""), segment]),
+  );
+  dashboard.querySelectorAll("[data-seed-age-legend-key]").forEach((row) => {
+    const key = String(row.getAttribute("data-seed-age-legend-key") || "");
+    const segment = donutSegments.get(key);
+    if (!segment) {
+      return;
+    }
+    const activate = () => segment.classList.add("is-active");
+    const deactivate = () => segment.classList.remove("is-active");
+    row.addEventListener("mouseenter", activate);
+    row.addEventListener("focus", activate, true);
+    row.addEventListener("mouseleave", deactivate);
+    row.addEventListener("blur", deactivate, true);
+  });
+}
+
 function renderSeedAgeAnalyticsPage() {
   const state = buildPublicSeedAgeAnalyticsState();
   const kpiCards = buildSeedAgeAnalyticsKpiCards(state);
@@ -16645,7 +16860,7 @@ function renderSeedAgeAnalyticsPage() {
             <div class="seed-age-analytics-panel-head">
               <div>
                 <h2>Germination Rate by Seed Age</h2>
-                <p>Average germination rate by seed age (months)</p>
+                <p>Average germination rate by seed age buckets across the community.</p>
               </div>
               <span class="seed-age-analytics-filter-pill">All Time</span>
             </div>
@@ -16660,17 +16875,10 @@ function renderSeedAgeAnalyticsPage() {
               </div>
             </div>
             <div class="seed-age-analytics-distribution-layout">
-              <div class="seed-age-analytics-donut-shell">
-                <div class="seed-age-analytics-donut" style="--seed-age-donut:${escapeHtml(state.distributionStyle)};">
-                  <div class="seed-age-analytics-donut-center">
-                    <strong>${escapeHtml(state.distributionCenterLabel)}</strong>
-                    <span>Total</span>
-                  </div>
-                </div>
-              </div>
+              ${renderSeedAgeAnalyticsDonutMarkup(state)}
               <div class="seed-age-analytics-legend">
                 ${state.distributionSegments.map((segment) => `
-                  <div class="seed-age-analytics-legend-row">
+                  <div class="seed-age-analytics-legend-row" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
                     <span class="seed-age-analytics-legend-main">
                       <span class="seed-age-analytics-legend-dot" style="--seed-age-legend-color:${escapeHtml(segment.color)};"></span>
                       <span>${escapeHtml(segment.label)}</span>
@@ -16700,8 +16908,8 @@ function renderSeedAgeAnalyticsPage() {
             </div>
             <div class="seed-age-analytics-insight-list">
               ${state.performanceInsights.map((insight) => `
-                <div class="seed-age-analytics-insight-row">
-                  <span class="seed-age-analytics-insight-icon" aria-hidden="true">${renderSeedAgeAnalyticsInsightIcon(insight.icon)}</span>
+                <div class="seed-age-analytics-insight-row seed-age-analytics-insight-row--${escapeHtml(insight.icon || "arrow")}">
+                  <span class="seed-age-analytics-insight-icon seed-age-analytics-insight-icon--${escapeHtml(insight.icon || "arrow")}" aria-hidden="true">${renderSeedAgeAnalyticsInsightIcon(insight.icon)}</span>
                   <div class="seed-age-analytics-insight-copy">
                     <strong>${escapeHtml(insight.title)}</strong>
                     <p>${escapeHtml(insight.body)}</p>
@@ -16721,15 +16929,18 @@ function renderSeedAgeAnalyticsPage() {
             <div class="seed-age-analytics-heatmap-table" role="table" aria-label="Seed age heatmap">
               <div class="seed-age-analytics-heatmap-row seed-age-analytics-heatmap-row--head" role="row">
                 <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="columnheader">Seed Age \\ Seed Type</div>
-                ${state.heatmap.columns.map((column) => `
-                  <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--head" role="columnheader">${escapeHtml(column.label)}</div>
+                ${state.heatmap.columns.map((column, columnIndex) => `
+                  <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--head" role="columnheader" data-heatmap-column-index="${columnIndex}">${escapeHtml(column.label)}</div>
                 `).join("")}
               </div>
               ${state.heatmap.rows.map((row) => `
                 <div class="seed-age-analytics-heatmap-row" role="row">
                   <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="rowheader">${escapeHtml(row.label)}</div>
-                  ${row.cells.map((cell) => `
-                    <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--value ${escapeHtml(cell.toneClass)}" role="cell">${escapeHtml(cell.valueLabel)}</div>
+                  ${row.cells.map((cell, columnIndex) => `
+                    <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--value ${escapeHtml(cell.toneClass)}" role="cell" data-heatmap-column-index="${columnIndex}" tabindex="0">
+                      ${escapeHtml(cell.valueLabel)}
+                      <span class="seed-age-analytics-heatmap-tooltip">${escapeHtml(`${row.label} · ${cell.label} · ${cell.valueLabel}`)}</span>
+                    </div>
                   `).join("")}
                 </div>
               `).join("")}
@@ -16751,8 +16962,9 @@ function renderSeedAgeAnalyticsPage() {
             <div class="seed-age-analytics-community-list">
               ${state.communityNotes.map((note) => `
                 <article class="seed-age-analytics-community-note">
+                  <span class="seed-age-analytics-community-note-avatar" aria-hidden="true">${escapeHtml(getSeedAgeAnalyticsCommunityNoteInitials(note))}</span>
                   <div class="seed-age-analytics-community-note-head">
-                    <strong>${escapeHtml(note.title)}</strong>
+                    <strong>${escapeHtml(state.isDemo ? "Preview Observation" : note.title)}</strong>
                     <span>${escapeHtml(note.meta)}</span>
                   </div>
                   <p>${escapeHtml(note.body)}</p>
@@ -16777,6 +16989,7 @@ function renderSeedAgeAnalyticsPage() {
       </article>
     </section>
   `;
+  enhanceSeedAgeAnalyticsPage();
 }
 
 function formatHomeGalleryRankingMetric(entry) {
