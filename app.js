@@ -30851,17 +30851,13 @@ function renderHome() {
   const activeSessions = sortActiveSessionsNewestFirst(
     sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
   );
-  const spotlightCard = document.querySelector("#active-session-spotlight");
+  const commandCenterCard = document.querySelector("#session-command-center");
   const summaryGrid = document.querySelector(".summary-grid");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
-  const spotlightName = document.querySelector("#active-session-spotlight-name");
-  const spotlightDate = document.querySelector("#active-session-spotlight-date");
-  const spotlightDescription = document.querySelector("#active-session-spotlight-description");
-  const spotlightLifecycle = document.querySelector("#active-session-spotlight-lifecycle");
-  const spotlightTimer = document.querySelector("#active-session-spotlight-timer");
-  const spotlightSeeds = document.querySelector("#active-session-spotlight-seeds");
-  const spotlightRate = document.querySelector("#active-session-spotlight-rate");
-  const spotlightAction = document.querySelector("#active-session-spotlight-action");
+  const commandCenterList = document.querySelector("#session-command-list");
+  const commandCenterListSubtext = document.querySelector("#session-command-list-subtext");
+  const commandCenterProgress = document.querySelector("#session-command-progress");
+  const commandCenterStats = document.querySelector("#session-command-stats");
   const countEl = document.querySelector("#session-count");
   const activeCountEl = document.querySelector("#active-session-count");
   const activeSubtextEl = document.querySelector("#active-session-subtext");
@@ -30926,8 +30922,8 @@ function renderHome() {
     homeAnnouncementAnchor.innerHTML = homeSecondaryInfoRowMarkup;
   } else if (summaryGrid) {
     summaryGrid.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
-  } else if (spotlightCard) {
-    spotlightCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
+  } else if (commandCenterCard) {
+    commandCenterCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else {
     app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
   }
@@ -30940,62 +30936,73 @@ function renderHome() {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
 
-  const spotlightSession = activeSessions[0] || null;
-  const updateSpotlight = () => {
-    if (!appState.user || !spotlightSession) {
-      spotlightCard?.classList.remove("stage-soaking", "stage-germinating", "stage-completed");
-      spotlightCard?.classList.add("is-empty-state");
-      const requiresSignIn = !appState.user;
-      spotlightName.textContent = requiresSignIn ? "Sign in required" : "No active session";
-      spotlightDate.textContent = "";
-      spotlightDate.hidden = true;
-      spotlightDescription.textContent = requiresSignIn
-        ? "Sign in to start and continue tracking your grow sessions."
-        : "Start a new grow session to begin tracking.";
-      if (spotlightLifecycle) {
-        spotlightLifecycle.innerHTML = "";
-      }
-      spotlightTimer.textContent = "--";
-      spotlightSeeds.textContent = "--";
-      spotlightRate.textContent = "--";
-      spotlightAction.textContent = requiresSignIn ? "Sign In to Start Session" : "Start New Session";
-      spotlightAction.href = "#new";
-      return;
-    }
+  let selectedCommandCenterSessionId = activeSessions[0]?.id || "";
+  const renderCommandCenter = () => {
+    const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
+    const requiresSignIn = !appState.user;
 
-    const normalizedStage = normalizeSessionStatus(spotlightSession.sessionStatus);
-    const totalsForSession = getSessionSeedTotals(spotlightSession);
-    const percentageForSession = totalsForSession.totalSeeds > 0
-      ? Math.round((totalsForSession.totalPlanted / totalsForSession.totalSeeds) * 100)
-      : 0;
-    const stageStart = getStageStartDateTime(
-      spotlightSession.date,
-      spotlightSession.time,
-      normalizedStage,
-      spotlightSession.germinationStartedAt || "",
-    );
-
-    spotlightCard?.classList.remove("is-empty-state");
-    spotlightCard?.classList.toggle("stage-soaking", normalizedStage === "soaking");
-    spotlightCard?.classList.toggle("stage-germinating", normalizedStage === "germinating");
-    spotlightCard?.classList.toggle("stage-completed", normalizedStage === "completed");
-    spotlightName.textContent = formatSessionLabel(spotlightSession);
-    spotlightDate.textContent = "";
-    spotlightDate.hidden = true;
-    spotlightDescription.textContent = normalizedStage === "soaking"
-      ? "Soaking is underway. Keep this run moving toward germination."
-      : "Germination is active. Review progress and continue this session.";
-    if (spotlightLifecycle) {
-      spotlightLifecycle.innerHTML = renderSpotlightLifecycleMarkup(spotlightSession);
+    if (commandCenterCard) {
+      commandCenterCard.classList.toggle("is-empty-state", !selectedSession || requiresSignIn);
     }
-    spotlightTimer.textContent = formatSpotlightElapsed(stageStart);
-    spotlightSeeds.textContent = `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds} seeds`;
-    spotlightRate.textContent = totalsForSession.totalSeeds > 0 ? `${percentageForSession}%` : "--";
-    spotlightAction.textContent = "Continue Session";
-    spotlightAction.href = `#sessions/${spotlightSession.id}`;
+    if (commandCenterListSubtext) {
+      commandCenterListSubtext.textContent = requiresSignIn
+        ? "Sign in to continue"
+        : (activeSessions.length
+          ? `${activeSessions.length} in progress`
+          : "No sessions in progress");
+    }
+    if (commandCenterList) {
+      commandCenterList.innerHTML = renderSessionCommandCenterListMarkup(activeSessions, selectedSession?.id || "", {
+        requiresSignIn,
+      });
+    }
+    if (commandCenterProgress) {
+      commandCenterProgress.innerHTML = renderSessionCommandCenterProgressMarkup(selectedSession, {
+        requiresSignIn,
+      });
+    }
+    if (commandCenterStats) {
+      commandCenterStats.innerHTML = renderSessionCommandCenterStatsMarkup(selectedSession, {
+        requiresSignIn,
+      });
+    }
+    if (commandCenterCard) {
+      hydrateAppIconSlots(commandCenterCard);
+      applySupplyStatusToSessionEntryButtons(commandCenterCard);
+    }
   };
 
-  startSessionTimer(updateSpotlight);
+  commandCenterList?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("a, button")) {
+      return;
+    }
+    const card = target.closest("[data-session-command-select]");
+    if (!card) {
+      return;
+    }
+    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+    renderCommandCenter();
+  });
+
+  commandCenterList?.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const card = target.closest("[data-session-command-select]");
+    if (!card || (event.key !== "Enter" && event.key !== " ")) {
+      return;
+    }
+    event.preventDefault();
+    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+    renderCommandCenter();
+  });
+
+  startSessionTimer(renderCommandCenter);
 }
 
 function syncMockDataBanner() {
@@ -37024,6 +37031,228 @@ function renderSpotlightLifecycleMarkup(session = null) {
       `).join("")}
     </div>
   `;
+}
+
+function getSessionCommandCenterPrimaryStrain(session = null) {
+  const directVariety = String(session?.seedVarietyName || "").trim();
+  if (directVariety) {
+    return directVariety;
+  }
+
+  const firstPartitionWithVariety = (session?.partitions || []).find((partition) => String(partition?.seedVariety || "").trim());
+  return String(firstPartitionWithVariety?.seedVariety || "").trim();
+}
+
+function getSessionCommandCenterStageBadge(session = null) {
+  const stageState = session ? buildSessionLifecycleState(session) : null;
+  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
+
+  if (normalizedStage === "completed") {
+    return { label: "Completed", className: "is-completed" };
+  }
+  if (stageState?.firstPlantedAt) {
+    return { label: "First Germinated", className: "is-first-germinated" };
+  }
+  if (normalizedStage === "germinating" || stageState?.germinationStartedAt) {
+    return { label: "Germinating", className: "is-germinating" };
+  }
+  if (normalizedStage === "soaking") {
+    return { label: "Soaking", className: "is-soaking" };
+  }
+  return { label: "Not Started", className: "is-inactive" };
+}
+
+function getSessionCommandCenterProgressEvents(session = null) {
+  const displayLabelByKey = {
+    soaking: "Soaking",
+    germination: "Germination",
+    "first-germinated": "First Germinated",
+    completed: "Completed",
+  };
+  const iconByKey = {
+    soaking: "clock",
+    germination: "activeSessionWaveform",
+    "first-germinated": "mySessionsSprout",
+    completed: "check",
+  };
+
+  return getSpotlightLifecycleEvents(session).map((event) => {
+    const displayLabel = displayLabelByKey[event.key] || event.label;
+    let subtext = "Up next";
+
+    if (!session) {
+      subtext = "Awaiting session";
+    } else if (event.isComplete) {
+      subtext = `${displayLabel} completed`;
+    } else if (event.isCurrent) {
+      switch (event.key) {
+        case "soaking":
+          subtext = "Currently soaking";
+          break;
+        case "germination":
+          subtext = "Germination active";
+          break;
+        case "first-germinated":
+          subtext = "First sprout recorded";
+          break;
+        case "completed":
+          subtext = "Ready to complete";
+          break;
+        default:
+          subtext = "In progress";
+      }
+    } else {
+      switch (event.key) {
+        case "soaking":
+          subtext = "Waiting to begin";
+          break;
+        case "germination":
+          subtext = "Awaiting germination";
+          break;
+        case "first-germinated":
+          subtext = "Awaiting first sprout";
+          break;
+        case "completed":
+          subtext = "Finish when ready";
+          break;
+        default:
+          subtext = "Up next";
+      }
+    }
+
+    return {
+      ...event,
+      displayLabel,
+      iconName: iconByKey[event.key] || "info",
+      subtext,
+    };
+  });
+}
+
+function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+
+  if (requiresSignIn) {
+    return `
+      <div class="session-command-empty">
+        <p>Sign in to start and continue tracking your grow sessions.</p>
+        <a class="button button-primary" href="#new" data-session-entry="true">Sign In to Start Session</a>
+      </div>
+    `;
+  }
+
+  if (!activeSessions.length) {
+    return `
+      <div class="session-command-empty">
+        <p>Start a new grow session to begin tracking stage progress and germination stats.</p>
+        <a class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
+      </div>
+    `;
+  }
+
+  return activeSessions.map((session) => {
+    const isSelected = session.id === selectedSessionId;
+    const stageBadge = getSessionCommandCenterStageBadge(session);
+    const strainLabel = getSessionCommandCenterPrimaryStrain(session);
+
+    return `
+      <article
+        class="session-command-session-card${isSelected ? " is-selected" : ""}"
+        data-session-command-select="${escapeHtml(session.id)}"
+        tabindex="0"
+        role="button"
+        aria-pressed="${isSelected ? "true" : "false"}"
+      >
+        <div class="session-command-session-icon-wrap" aria-hidden="true">
+          ${renderAppIconMarkup("mySessionsSprout", {
+            variant: "plate",
+            className: "session-command-session-icon",
+          })}
+        </div>
+        <div class="session-command-session-copy">
+          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <p class="session-command-session-date">${escapeHtml(formatSessionNameDate(session.date))}</p>
+          <p class="session-command-session-strain">${escapeHtml(strainLabel ? `Strain: ${strainLabel}` : "Strain not set")}</p>
+          <div class="session-command-session-footer">
+            <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
+          </div>
+        </div>
+        <div class="session-command-session-actions">
+          <a class="button button-primary session-command-session-continue" href="#sessions/${escapeHtml(session.id)}">Continue</a>
+          <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
+            <span aria-hidden="true">&bull;&bull;&bull;</span>
+          </a>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderSessionCommandCenterProgressMarkup(session = null, options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  const events = getSessionCommandCenterProgressEvents(session);
+
+  return `
+    <div class="session-command-stage-grid">
+      ${events.map((event) => `
+        <article class="session-command-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
+          <div class="session-command-stage-icon-wrap" aria-hidden="true">
+            ${renderAppIconMarkup(event.iconName, {
+              variant: "plain",
+              className: "session-command-stage-icon",
+            })}
+          </div>
+          <strong>${escapeHtml(event.displayLabel)}</strong>
+          <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
+  const totalsForSession = session ? getSessionSeedTotals(session) : { totalSeeds: 0, totalPlanted: 0 };
+  const stageStart = session
+    ? getStageStartDateTime(
+      session.date,
+      session.time,
+      normalizedStage,
+      session.germinationStartedAt || "",
+    )
+    : null;
+  const rateValue = session && totalsForSession.totalSeeds > 0
+    ? `${Math.round((totalsForSession.totalPlanted / totalsForSession.totalSeeds) * 100)}%`
+    : "--";
+  const statCards = [
+    {
+      label: "Stage Timer",
+      value: session ? formatSpotlightElapsed(stageStart) : "--",
+      caption: requiresSignIn ? "Sign in to track" : "Elapsed",
+      tone: "blue",
+    },
+    {
+      label: "Seeds Progress",
+      value: session ? `${totalsForSession.totalPlanted} / ${totalsForSession.totalSeeds} seeds` : "--",
+      caption: "Planted",
+      tone: "green",
+    },
+    {
+      label: "Germination Rate",
+      value: rateValue,
+      caption: "Current rate",
+      tone: "orange",
+    },
+  ];
+
+  return statCards.map((card) => `
+    <article class="session-command-stat-card session-command-stat-card--${escapeHtml(card.tone)}">
+      <span>${escapeHtml(card.label)}</span>
+      <strong>${escapeHtml(card.value)}</strong>
+      <p>${escapeHtml(card.caption)}</p>
+    </article>
+  `).join("");
 }
 
 function formatPublicTimelineElapsedDuration(startedAt, endedAt) {

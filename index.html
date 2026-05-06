@@ -279,42 +279,36 @@
         </div>
       </section>
 
-      <section id="active-session-spotlight" class="card spotlight-card" aria-labelledby="active-session-spotlight-title">
-        <div class="spotlight-head app-section-header">
+      <section id="session-command-center" class="card card-accent card-accent-green session-command-center-shell" aria-labelledby="session-command-center-title">
+        <div class="session-command-center-head app-section-header">
           <div class="section-title-with-icon app-section-header-main">
             <span class="section-title-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
             <div>
               <p class="eyebrow">Active Session</p>
-              <h3 id="active-session-spotlight-title">Active Session Spotlight</h3>
+              <h3 id="session-command-center-title">Session Command Center</h3>
             </div>
           </div>
         </div>
-        <div class="spotlight-body">
-          <div class="spotlight-main">
-            <strong id="active-session-spotlight-name" class="spotlight-name">No active sessions</strong>
-            <p id="active-session-spotlight-date" class="spotlight-date"></p>
-            <p id="active-session-spotlight-description" class="spotlight-description"></p>
-            <div class="spotlight-actions">
-              <a id="active-session-spotlight-action" class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
+        <div class="session-command-center" data-session-command-center="true">
+          <section class="session-command-panel session-command-panel--sessions" aria-labelledby="session-command-list-title">
+            <div class="session-command-panel-heading">
+              <div>
+                <h4 id="session-command-list-title">Active Sessions</h4>
+                <p id="session-command-list-subtext" class="session-command-panel-subtext">0 in progress</p>
+              </div>
+              <a class="session-command-panel-link" href="#sessions">View All Active <span aria-hidden="true">&rarr;</span></a>
             </div>
-          </div>
-        </div>
-        <div class="spotlight-progress">
-          <div id="active-session-spotlight-lifecycle" class="spotlight-lifecycle" aria-label="Active session progress"></div>
-          <div class="spotlight-meta">
-            <article class="spotlight-stat">
-              <span>Stage Timer</span>
-              <strong id="active-session-spotlight-timer">0 minutes</strong>
-            </article>
-            <article class="spotlight-stat">
-              <span>Seeds Progress</span>
-              <strong id="active-session-spotlight-seeds">0 / 0</strong>
-            </article>
-            <article class="spotlight-stat">
-              <span>Germination</span>
-              <strong id="active-session-spotlight-rate">0%</strong>
-            </article>
-          </div>
+            <div id="session-command-list" class="session-command-list"></div>
+          </section>
+          <section class="session-command-panel session-command-panel--progress" aria-labelledby="session-command-progress-title">
+            <div class="session-command-panel-heading">
+              <div>
+                <h4 id="session-command-progress-title">Stage Progress</h4>
+              </div>
+            </div>
+            <div id="session-command-progress" class="session-command-progress" aria-label="Selected session progress"></div>
+            <div id="session-command-stats" class="session-command-stats"></div>
+          </section>
         </div>
       </section>
 
