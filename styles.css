@@ -16744,8 +16744,29 @@ textarea::placeholder {
 
 .partition-work-heading {
   display: grid;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "eyebrow icon"
+    "title icon";
+  column-gap: 16px;
+  row-gap: 6px;
+  align-items: center;
   justify-items: start;
+}
+
+.partition-work-heading .eyebrow {
+  grid-area: eyebrow;
+}
+
+.partition-work-heading h3 {
+  grid-area: title;
+  min-width: 0;
+}
+
+.partition-product-icon {
+  grid-area: icon;
+  align-self: center;
+  justify-self: end;
 }
 
 .partition-work-heading h3 {
@@ -21347,7 +21368,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-workspace-shell .partition-work-heading {
-  gap: 10px;
+  column-gap: 14px;
+  row-gap: 4px;
 }
 
 .session-workspace-shell .partition-work-heading h3 {
@@ -22029,6 +22051,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 @media (max-width: 720px) {
+  .partition-work-heading {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "eyebrow"
+      "title"
+      "icon";
+    row-gap: 10px;
+  }
+
+  .partition-product-icon {
+    justify-self: start;
+  }
+
   .session-workspace-shell {
     padding: 20px 16px;
     border-radius: 24px;
