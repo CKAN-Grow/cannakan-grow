@@ -65,6 +65,7 @@ const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminSeedAgeAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
 const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
   "cstp-testing-lab",
@@ -27313,6 +27314,47 @@ function bindAdminCollapsibleSections(scope = app) {
   });
 }
 
+function syncCommunityGrowAdminReviewSection(section, isOpen) {
+  if (!(section instanceof Element)) {
+    return;
+  }
+
+  const toggle = section.querySelector("[data-gallery-admin-review-toggle='true']");
+  const contentShell = section.querySelector(".gallery-inline-review-collapse-shell");
+  toggle?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  section.classList.toggle("is-open", isOpen);
+  section.classList.toggle("is-collapsed", !isOpen);
+  if (contentShell instanceof HTMLElement) {
+    contentShell.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    if (isOpen) {
+      contentShell.removeAttribute("inert");
+    } else {
+      contentShell.setAttribute("inert", "");
+    }
+  }
+}
+
+function bindCommunityGrowAdminReviewSection(section) {
+  if (!(section instanceof Element)) {
+    return;
+  }
+
+  const toggle = section.querySelector("[data-gallery-admin-review-toggle='true']");
+  if (!(toggle instanceof HTMLButtonElement) || toggle.dataset.galleryAdminReviewBound === "true") {
+    return;
+  }
+
+  toggle.dataset.galleryAdminReviewBound = "true";
+  toggle.addEventListener("click", () => {
+    const isOpen = toggle.getAttribute("aria-expanded") !== "true";
+    syncCommunityGrowAdminReviewSection(section, isOpen);
+    setAdminSectionOpenState(COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY, isOpen);
+    if (isOpen) {
+      scrollElementIntoViewAfterLayout(section, { delayMs: 120 });
+    }
+  });
+}
+
 function bindAdminDashboardSectionReordering(scope = app) {
   if (!scope) {
     return;
@@ -35056,6 +35098,7 @@ function renderGallery(targetSnapshotId = "") {
 
   if (isAdminView && galleryFeedSection) {
     const pendingSnapshots = getAdminReviewPendingSnapshots();
+    const isAdminReviewOpen = getAdminSectionOpenState(COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY, false);
     logGrowGalleryDebug("renderGallery:admin-review", {
       pendingCount: pendingSnapshots.length,
       pendingSnapshotIds: pendingSnapshots.map((entry) => entry.id),
@@ -35069,27 +35112,42 @@ function renderGallery(targetSnapshotId = "") {
       })),
     });
     const adminSection = document.createElement("section");
-    adminSection.className = "card gallery-review-section gallery-inline-review-section";
+    adminSection.className = `card gallery-review-section gallery-inline-review-section gallery-inline-review-collapsible${isAdminReviewOpen ? " is-open" : " is-collapsed"}`;
     const pendingReviewCount = pendingSnapshots.length;
     const pendingReviewLabel =
       pendingReviewCount === 1 ? "1 Pending Review" : `${pendingReviewCount} Pending Reviews`;
     adminSection.innerHTML = `
-      <div class="section-heading gallery-inline-review-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
+      <button
+        type="button"
+        class="gallery-inline-review-toggle admin-collapsible-toggle"
+        data-gallery-admin-review-toggle="true"
+        aria-controls="community-grow-admin-review-content"
+        aria-expanded="${isAdminReviewOpen ? "true" : "false"}"
+      >
+        <span class="section-title-with-icon app-section-header-main gallery-inline-review-heading">
           ${renderAppSectionHeaderIcon("review", {
             className: `gallery-inline-review-icon${pendingReviewCount > 0 ? " has-pending" : ""}`,
           })}
-          <div class="gallery-inline-review-copy">
-            <p class="eyebrow">Admin Review</p>
-            <div class="gallery-inline-review-title-row">
-              <h3>Community Grow Submissions</h3>
+          <span class="gallery-inline-review-copy">
+            <span class="eyebrow">ADMIN REVIEW</span>
+            <span class="gallery-inline-review-title-row">
+              <span class="gallery-inline-review-title admin-collapsible-title" role="heading" aria-level="3">Community Grow Submissions</span>
               <span class="gallery-inline-review-badge${pendingReviewCount > 0 ? " has-pending" : ""}">&bull; ${pendingReviewLabel}</span>
-            </div>
-            <p class="muted">Review pending Community Grow snapshots before they become public.</p>
-          </div>
+            </span>
+            <span class="muted gallery-inline-review-helper">Review pending Community Grow snapshots before they become public.</span>
+          </span>
+        </span>
+        <span class="admin-collapsible-chevron gallery-inline-review-chevron" aria-hidden="true"></span>
+      </button>
+      <div
+        id="community-grow-admin-review-content"
+        class="gallery-inline-review-collapse-shell"
+        aria-hidden="${isAdminReviewOpen ? "false" : "true"}"${isAdminReviewOpen ? "" : " inert"}
+      >
+        <div class="gallery-inline-review-collapse-inner">
+          <div class="gallery-review-list"></div>
         </div>
       </div>
-      <div class="gallery-review-list"></div>
     `;
     const pendingList = adminSection.querySelector(".gallery-review-list");
     if (pendingList) {
@@ -35169,6 +35227,8 @@ function renderGallery(targetSnapshotId = "") {
         }
       });
     });
+    syncCommunityGrowAdminReviewSection(adminSection, isAdminReviewOpen);
+    bindCommunityGrowAdminReviewSection(adminSection);
     galleryFeedSection.before(adminSection);
   }
 

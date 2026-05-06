@@ -14323,6 +14323,18 @@ body.theme-dark .contact-reason-card.is-active {
   margin-bottom: 18px;
 }
 
+.gallery-inline-review-section.gallery-inline-review-collapsible {
+  gap: 0;
+}
+
+.gallery-inline-review-section .gallery-inline-review-toggle {
+  align-items: center;
+}
+
+.gallery-inline-review-section.gallery-inline-review-collapsible .gallery-inline-review-heading {
+  margin-bottom: 0;
+}
+
 .gallery-inline-review-section .gallery-inline-review-icon {
   align-self: center;
 }
@@ -14344,7 +14356,8 @@ body.theme-dark .contact-reason-card.is-active {
   min-width: 0;
 }
 
-.gallery-inline-review-section .gallery-inline-review-copy .muted {
+.gallery-inline-review-section .gallery-inline-review-copy .muted,
+.gallery-inline-review-section .gallery-inline-review-helper {
   margin: 0;
 }
 
@@ -14357,8 +14370,7 @@ body.theme-dark .contact-reason-card.is-active {
   min-width: 0;
 }
 
-.gallery-inline-review-section .gallery-inline-review-title-row h3 {
-  margin: 0;
+.gallery-inline-review-section .gallery-inline-review-title {
   min-width: 0;
 }
 
@@ -14383,6 +14395,41 @@ body.theme-dark .contact-reason-card.is-active {
   border-color: rgba(255, 140, 0, 0.22);
   background: rgba(255, 140, 0, 0.12);
   color: #c77731;
+}
+
+.gallery-inline-review-section .gallery-inline-review-chevron {
+  margin-top: 6px;
+}
+
+.gallery-inline-review-section .gallery-inline-review-collapse-shell {
+  display: grid;
+  grid-template-rows: 0fr;
+  margin-top: 0;
+  transition:
+    grid-template-rows 220ms ease,
+    margin-top 220ms ease;
+}
+
+.gallery-inline-review-section .gallery-inline-review-collapse-inner {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: var(--space-section);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease;
+}
+
+.gallery-inline-review-section.gallery-inline-review-collapsible.is-open .gallery-inline-review-collapse-shell {
+  grid-template-rows: 1fr;
+  margin-top: 18px;
+}
+
+.gallery-inline-review-section.gallery-inline-review-collapsible.is-open .gallery-inline-review-collapse-inner {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 @keyframes gallery-inline-review-pulse {
@@ -16804,6 +16851,10 @@ body.theme-dark .theme-toggle-button:hover {
     grid-template-columns: 1fr;
   }
 
+  .gallery-inline-review-section .gallery-inline-review-toggle {
+    align-items: flex-start;
+  }
+
   .gallery-inline-review-section .gallery-inline-review-heading {
     grid-template-columns: 64px minmax(0, 1fr);
     column-gap: 14px;
@@ -17056,6 +17107,14 @@ body.theme-dark .theme-toggle-button:hover {
 
   .spotlight-meta {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-inline-review-section .gallery-inline-review-collapse-shell,
+  .gallery-inline-review-section .gallery-inline-review-collapse-inner,
+  .gallery-inline-review-section .gallery-inline-review-chevron {
+    transition: none;
   }
 }
 
