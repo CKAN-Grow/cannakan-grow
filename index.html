@@ -277,11 +277,11 @@
   </template>
 
   <template id="gallery-template">
-    <section class="card gallery-hero-section app-hero app-hero--gallery">
+    <section class="card gallery-hero-section app-hero app-hero--gallery app-hero--contained-right">
       <div class="app-hero-background" aria-hidden="true"></div>
       <div class="app-hero-overlay" aria-hidden="true"></div>
       <div class="app-hero-content section-title-with-icon app-section-header-main">
-        <span class="app-hero-icon section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" aria-hidden="true"></span>
+        <span class="app-hero-icon section-title-icon" data-app-icon="communityGroup" data-icon-variant="plate" data-icon-label="Community Grow" aria-hidden="true"></span>
         <div class="app-hero-copy">
           <p class="app-hero-eyebrow eyebrow">Community Grow</p>
           <h2 class="app-hero-title">Community Grow</h2>
@@ -296,15 +296,10 @@
     <section class="card gallery-section gallery-feed-section">
       <div class="section-heading app-section-header">
         <div class="section-title-with-icon app-section-header-main">
-          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <rect x="4" y="6" width="10" height="12" rx="2"></rect>
-            <path d="M14 9h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2"></path>
-            <path d="m8 14 2-2 2 2"></path>
-            <circle cx="10" cy="10" r="1"></circle>
-          </svg>
+          <span class="section-title-icon" data-app-icon="uploadImage" data-icon-variant="plate" data-icon-label="Published snapshots" aria-hidden="true"></span>
           <div>
             <p class="eyebrow">Published Snapshots</p>
-            <h3>Community Grow</h3>
+            <h3>Published Snapshots</h3>
             <p id="gallery-sort-state" class="gallery-sort-state muted">Sorted by: Date · Newest to Oldest</p>
             <p id="gallery-count-state" class="gallery-count-state muted">Showing 0 of 0 snapshots</p>
           </div>
