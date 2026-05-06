@@ -16776,8 +16776,8 @@ function renderSeedAgeAnalyticsPage() {
                 ${state.summaryNotice ? `<p class="seed-age-analytics-summary-note">${escapeHtml(state.summaryNotice)}</p>` : ""}
               </div>
             </div>
-            <a class="button button-secondary seed-age-analytics-hero-button" href="/community-grow#community-insights-seed-age">
-              <span>View all Seed Age Insights</span>
+            <a class="button button-secondary seed-age-analytics-hero-button" href="/community-grow">
+              <span>Back to Community Grow</span>
               <span class="seed-age-analytics-hero-button-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                   <path d="M5 12h14"></path>
