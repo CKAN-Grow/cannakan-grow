@@ -775,13 +775,13 @@ const PARTITION_HEADER_ICON_ASSETS = {
 const GROW_GALLERY_DEBUG = true;
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
-  { value: "germinating", label: "Germination", modalLabel: "Start Germination", tone: "is-germinating" },
+  { value: "germinating", label: "Germinating", modalLabel: "Start Germinating", tone: "is-germinating" },
   { value: "completed", label: "Completed", modalLabel: "Complete", tone: "is-completed" },
 ];
 const ADMIN_CSTP_STAGE_OPTIONS = [
   { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
-  { value: "germinating", progressKey: "germination", label: "Germination Started", modalLabel: "Germination Started", tone: "is-germinating" },
-  { value: "germinating", progressKey: "first-germinated", label: "First Germinated", modalLabel: "First Germinated", tone: "is-germinating" },
+  { value: "germinating", progressKey: "germination", label: "Germinating", modalLabel: "Germinating", tone: "is-germinating" },
+  { value: "germinating", progressKey: "first-germinated", label: "Germination Started", modalLabel: "Germination Started", tone: "is-germinating" },
   { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
 ];
 const inlineSvgCache = {};
@@ -914,7 +914,7 @@ const ADMIN_CSTP_TESTER_OPTIONS = Object.freeze([
   Object.freeze({ id: "tester-joe-john", name: "Joe John", email: "joe.john@cannakan.com" }),
 ]);
 const ADMIN_CSTP_DEVICE_IMAGE_GROUPS = Object.freeze([
-  Object.freeze({ key: "firstGerminated", label: "First Germinated (Per Device)" }),
+  Object.freeze({ key: "firstGerminated", label: "Germination Started (Per Device)" }),
   Object.freeze({ key: "completedTest", label: "Completed Test (Per Device)" }),
 ]);
 const ADMIN_CSTP_DEVICE_IMAGE_KEYS = Object.freeze(["A", "B", "C"]);
@@ -27177,7 +27177,7 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       label: String(
         sourceEntry.label
         || fallbackImage.label
-        || (normalizedKind === "first-germinated" ? "First Germinated" : "Completed Test Snapshot"),
+        || (normalizedKind === "first-germinated" ? "Germination Started" : "Completed Test Snapshot"),
       ).trim(),
       capturedAt: String(sourceEntry.capturedAt || sourceEntry.captured_at || fallbackImage.capturedAt || fallbackImage.captured_at || "").trim(),
       generatedAt: String(sourceEntry.generatedAt || sourceEntry.generated_at || fallbackImage.generatedAt || fallbackImage.generated_at || "").trim(),
@@ -28127,7 +28127,7 @@ function renderAdminCstpSessionReportImagesSectionMarkup(session = null) {
           ${renderAdminCstpReportImageIconMarkup("first-germinated")}
         </span>
         <div class="snapshot-action-copy">
-          <h5 class="snapshot-action-title">First Germinated</h5>
+          <h5 class="snapshot-action-title">Germination Started</h5>
           <p class="snapshot-action-description">Capture the first germination milestone with a timestamp for the internal CSTP report.</p>
         </div>
         <button
@@ -28136,7 +28136,7 @@ function renderAdminCstpSessionReportImagesSectionMarkup(session = null) {
           data-admin-cstp-report-image-action="first-germinated"
           ${canCaptureFirstGerminated ? "" : "disabled"}
         >
-          ${normalizedSession?.reportImages?.firstGerminated ? "Refresh First Germinated" : "Generate First Germinated"}
+          ${normalizedSession?.reportImages?.firstGerminated ? "Refresh Germination Started" : "Generate Germination Started"}
         </button>
       </div>
       <div class="snapshot-action-row">
@@ -28178,7 +28178,7 @@ function generateAdminCstpReportImageRecord(session = null, kind = "") {
 
   return {
     kind: normalizedKind,
-    label: normalizedKind === "first-germinated" ? "First Germinated" : "Completed Test Snapshot",
+    label: normalizedKind === "first-germinated" ? "Germination Started" : "Completed Test Snapshot",
     capturedAt,
     generatedAt,
   };
@@ -34357,22 +34357,44 @@ function getSessionStageDisplayLabel(value) {
   return SESSION_STAGE_OPTIONS.find((option) => option.value === value)?.label || "Not Started";
 }
 
+function getCanonicalSessionStageDisplayLabel(stageKey = "", options = {}) {
+  const normalizedKey = String(stageKey || "").trim().toLowerCase().replace(/_/g, "-");
+  let label = "Not Started";
+
+  switch (normalizedKey) {
+    case "soaking":
+      label = "Soaking";
+      break;
+    case "germination":
+    case "germinating":
+      label = "Germinating";
+      break;
+    case "first-germinated":
+    case "first germinated":
+    case "germination-started":
+    case "germination started":
+      label = "Germination Started";
+      break;
+    case "completed":
+      label = "Completed";
+      break;
+    case "unselected":
+    case "":
+    default:
+      label = "Not Started";
+      break;
+  }
+
+  return options.uppercase ? label.toUpperCase() : label;
+}
+
 function getSessionStageButtonLabel(value) {
   return value ? "Update Growth Stage" : "Select Growth Stage";
 }
 
 function getSessionProgressDisplayLabel(progressKey, value) {
-  if (progressKey === "germination") {
-    return "Germination Started";
-  }
-  if (progressKey === "first-germinated") {
-    return "First Germinated";
-  }
-  if (progressKey === "completed") {
-    return "Completed";
-  }
-  if (progressKey === "soaking") {
-    return "Soaking";
+  if (progressKey) {
+    return getCanonicalSessionStageDisplayLabel(progressKey);
   }
   return getSessionStageDisplayLabel(value);
 }
@@ -37790,7 +37812,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
       complete: state.germinationStartedComplete !== undefined ? state.germinationStartedComplete : Boolean(state.germinationStartedAt),
     },
     {
-      label: "FIRST GERMINATED",
+      label: getCanonicalSessionStageDisplayLabel("first-germinated", { uppercase: true }),
       timestamp: state.firstPlantedAt,
       displayLabel: state.firstPlantedDisplayLabel || "",
       tone: "green",
@@ -37895,23 +37917,23 @@ function getSessionCommandCenterStageBadge(session = null) {
     return { label: "Completed", className: "is-completed" };
   }
   if (stageState?.firstPlantedAt) {
-    return { label: "First Germinated", className: "is-first-germinated" };
+    return { label: getCanonicalSessionStageDisplayLabel("first-germinated"), className: "is-first-germinated" };
   }
   if (normalizedStage === "germinating" || stageState?.germinationStartedAt) {
-    return { label: "Germinating", className: "is-germinating" };
+    return { label: getCanonicalSessionStageDisplayLabel("germinating"), className: "is-germinating" };
   }
   if (normalizedStage === "soaking") {
-    return { label: "Soaking", className: "is-soaking" };
+    return { label: getCanonicalSessionStageDisplayLabel("soaking"), className: "is-soaking" };
   }
   return { label: "Not Started", className: "is-inactive" };
 }
 
 function getSessionCommandCenterProgressEvents(session = null) {
   const displayLabelByKey = {
-    soaking: "Soaking",
-    germination: "Germinating",
-    "first-germinated": "Germination Started",
-    completed: "Completed",
+    soaking: getCanonicalSessionStageDisplayLabel("soaking"),
+    germination: getCanonicalSessionStageDisplayLabel("germination"),
+    "first-germinated": getCanonicalSessionStageDisplayLabel("first-germinated"),
+    completed: getCanonicalSessionStageDisplayLabel("completed"),
   };
   const iconByKey = {
     soaking: "clock",
