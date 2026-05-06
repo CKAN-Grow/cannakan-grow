@@ -39570,9 +39570,10 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
   sectionElement.hidden = false;
 }
 
-function renderSessionLifecycleTimelineMarkup(state) {
+function getSessionLifecycleTimelineEvents(state = {}) {
   const events = [
     {
+      key: "soaking",
       label: "SOAKING",
       timestamp: state.startedAt,
       displayLabel: state.startedDisplayLabel || "",
@@ -39580,6 +39581,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
       complete: state.startedComplete !== undefined ? state.startedComplete : Boolean(state.startedAt),
     },
     {
+      key: "germination",
       label: "GERMINATION STARTED",
       timestamp: state.germinationStartedAt,
       displayLabel: state.germinationStartedDisplayLabel || "",
@@ -39587,6 +39589,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
       complete: state.germinationStartedComplete !== undefined ? state.germinationStartedComplete : Boolean(state.germinationStartedAt),
     },
     {
+      key: "first-germinated",
       label: getCanonicalSessionStageDisplayLabel("first-germinated", { uppercase: true }),
       timestamp: state.firstPlantedAt,
       displayLabel: state.firstPlantedDisplayLabel || "",
@@ -39594,6 +39597,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
       complete: state.firstPlantedComplete !== undefined ? state.firstPlantedComplete : Boolean(state.firstPlantedAt),
     },
     {
+      key: "completed",
       label: "COMPLETED",
       timestamp: state.completedAt,
       displayLabel: state.completedDisplayLabel || "",
@@ -39602,20 +39606,44 @@ function renderSessionLifecycleTimelineMarkup(state) {
     },
   ];
 
+  const currentIndex = events.reduce((activeIndex, event, index) => (event.complete ? index : activeIndex), -1);
+  const resolvedCurrentIndex = currentIndex >= 0 ? currentIndex : (state.showEmptyTimeline ? -1 : 0);
+  const iconNameByKey = {
+    soaking: "stage-soaking",
+    germination: "stage-germination",
+    "first-germinated": "stage-first-germinated",
+    completed: "stage-completed",
+  };
+
+  return events.map((event, index) => ({
+    ...event,
+    helperText: event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"),
+    iconName: iconNameByKey[event.key] || "stage-soaking",
+    isCurrent: resolvedCurrentIndex === index,
+    isFuture: resolvedCurrentIndex < index,
+    isComplete: event.complete && resolvedCurrentIndex >= index,
+  }));
+}
+
+function renderSessionLifecycleTimelineMarkup(state) {
+  const events = getSessionLifecycleTimelineEvents(state);
+
   return `
-    <div class="lifecycle-bar">
-      ${events.map((event) => `
-        <span class="lifecycle-segment lifecycle-${event.tone} ${event.complete ? "is-complete" : ""}"></span>
+    <div class="session-lifecycle-progress-grid stage-progress-row" role="list" aria-label="Session timeline progress">
+      ${events.map((event, index) => `
+        <article
+          class="session-command-stage session-lifecycle-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${event.isFuture ? "is-future" : ""}"
+          role="listitem"
+        >
+          <div class="session-command-stage-icon-wrap">
+            ${renderCommandCenterIconMarkup(event.iconName, "command-icon--stage")}
+          </div>
+          <strong>${escapeHtml(event.label)}</strong>
+          <p>${escapeHtml(event.helperText)}</p>
+        </article>
+        ${index < events.length - 1 ? `<span class="stage-connector session-lifecycle-stage-connector ${events[index + 1].isCurrent || events[index + 1].isComplete ? "stage-connector--active" : ""}" aria-hidden="true"></span>` : ""}
       `).join("")}
     </div>
-    <div class="lifecycle-events">
-      ${events.map((event) => `
-        <article class="lifecycle-event lifecycle-event-${event.tone} ${event.complete ? "is-complete" : ""}">
-          <strong>${event.label}</strong>
-          <p>${event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet")}</p>
-        </article>
-        `).join("")}
-      </div>
   `;
 }
 
