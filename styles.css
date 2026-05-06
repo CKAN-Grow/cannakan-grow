@@ -16882,26 +16882,25 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 12px rgba(148, 209, 89, 0.28);
 }
 
-.session-entry-supply-urgent {
-  border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+.session-command-start-link.session-entry-supply-urgent {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 10px rgba(148, 209, 89, 0.12);
 }
 
-.session-entry-supply-urgent:hover,
-.session-entry-supply-urgent:focus-visible {
-  border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+.session-command-start-link.session-entry-supply-urgent:hover,
+.session-command-start-link.session-entry-supply-urgent:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 12px rgba(148, 209, 89, 0.16);
 }
 
-.session-entry-supply-urgent:active {
-  border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 6px rgba(148, 209, 89, 0.42),
-    0 0 12px rgba(148, 209, 89, 0.28);
+.session-command-start-link.session-entry-supply-urgent:active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app-hero .app-hero-actions .button-new-session,
@@ -17893,26 +17892,25 @@ body.theme-dark .session-entry-supply-low:active {
     0 0 12px rgba(148, 209, 89, 0.28);
 }
 
-body.theme-dark .session-entry-supply-urgent {
-  border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+body.theme-dark .session-command-start-link.session-entry-supply-urgent {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 10px rgba(148, 209, 89, 0.12);
 }
 
-body.theme-dark .session-entry-supply-urgent:hover,
-body.theme-dark .session-entry-supply-urgent:focus-visible {
-  border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+body.theme-dark .session-command-start-link.session-entry-supply-urgent:hover,
+body.theme-dark .session-command-start-link.session-entry-supply-urgent:focus-visible {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 0 12px rgba(148, 209, 89, 0.16);
 }
 
-body.theme-dark .session-entry-supply-urgent:active {
-  border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 6px rgba(148, 209, 89, 0.42),
-    0 0 12px rgba(148, 209, 89, 0.28);
+body.theme-dark .session-command-start-link.session-entry-supply-urgent:active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .theme-toggle-button {
