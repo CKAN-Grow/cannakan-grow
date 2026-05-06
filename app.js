@@ -35235,18 +35235,19 @@ function renderGrowNetworkPage() {
     <section class="card grow-network-page">
       <div class="grow-network-page-glow" aria-hidden="true"></div>
       <div class="grow-network-page-heading">
-        ${renderAppHeroMarkup({
-          className: "grow-network-page-hero",
-          iconMarkup: renderAppSectionHeaderIcon("community"),
-          eyebrow: "Community",
-          title: "Grow Network",
-          description: "Follow members and see public grow activity from your network.",
-          secondaryAction: {
-            href: "#gallery",
-            label: "Browse Community Grow",
-            className: "button button-secondary grow-network-hero-button",
-          },
-        })}
+        <div class="grow-network-page-header">
+          <div class="grow-network-page-header-main">
+            ${renderAppSectionHeaderIcon("community")}
+            <div class="grow-network-page-copy">
+              <p class="eyebrow">Community</p>
+              <h2>Grow Network</h2>
+              <p class="muted">Follow members and see public grow activity from your network.</p>
+            </div>
+          </div>
+          <div class="grow-network-page-actions">
+            <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
+          </div>
+        </div>
         <div class="grow-network-header-stats" aria-label="Grow Network quick stats">
           ${headerStats.map((stat) => `
             <article class="grow-network-header-stat">
