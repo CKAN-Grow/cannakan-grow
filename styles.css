@@ -2029,11 +2029,11 @@ body.theme-dark .spotlight-stat strong {
 }
 
 #session-command-center .command-icon--stage-first-germinated {
-  color: #94d159;
+  color: #f5f8f1;
 }
 
 #session-command-center .command-icon--stage-completed {
-  color: rgba(206, 219, 206, 0.76);
+  color: #94d159;
 }
 
 .session-command-panel {
@@ -2507,7 +2507,7 @@ body.theme-dark .spotlight-stat strong {
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #eef3eb;
+  color: var(--session-command-stage-title, #eef3eb);
   line-height: 1.35;
 }
 
@@ -2515,25 +2515,30 @@ body.theme-dark .spotlight-stat strong {
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.45;
-  color: var(--session-command-stage-ink);
+  color: rgba(236, 241, 234, 0.82);
 }
 
 .session-command-stage--soaking {
   --session-command-stage-color: rgba(127, 184, 255, 0.44);
-  --session-command-stage-ink: rgba(187, 219, 255, 0.88);
+  --session-command-stage-title: #7fb8ff;
   --session-command-stage-glow: rgba(127, 184, 255, 0.16);
 }
 
 .session-command-stage--germination {
   --session-command-stage-color: rgba(221, 128, 69, 0.44);
-  --session-command-stage-ink: rgba(255, 206, 173, 0.88);
+  --session-command-stage-title: #f39a53;
   --session-command-stage-glow: rgba(221, 128, 69, 0.16);
 }
 
-.session-command-stage--green,
+.session-command-stage--green {
+  --session-command-stage-color: rgba(148, 209, 89, 0.44);
+  --session-command-stage-title: #94d159;
+  --session-command-stage-glow: rgba(148, 209, 89, 0.16);
+}
+
 .session-command-stage--completed {
   --session-command-stage-color: rgba(148, 209, 89, 0.44);
-  --session-command-stage-ink: rgba(209, 240, 166, 0.88);
+  --session-command-stage-title: #b58a61;
   --session-command-stage-glow: rgba(148, 209, 89, 0.16);
 }
 
