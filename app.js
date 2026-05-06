@@ -12418,7 +12418,7 @@ function mapRowToGallerySnapshot(row) {
     imageHash: String(row.image_hash || "").trim(),
     sessionDate: row.session_date || "",
     systemType: String(row.system_type || "KAN").trim() || "KAN",
-    unitId: String(row.unit_id || "").trim(),
+    unitId: normalizeUnitIdValue(row.unit_id),
     totalSeeds: Math.max(0, Number(row.total_seeds) || 0),
     totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
@@ -12591,7 +12591,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     image_hash: imageHash || null,
     session_date: session.date || null,
     system_type: session.systemType || "KAN",
-    unit_id: String(session.unitId || "").trim(),
+    unit_id: normalizeUnitIdValue(session.unitId),
     total_seeds: Math.max(0, Number(snapshotData?.totalSeeds) || 0),
     total_planted: Math.max(0, Number(snapshotData?.totalPlanted) || 0),
     success_percent: Number(snapshotData?.percentage) || 0,
@@ -15191,14 +15191,13 @@ function getGallerySnapshotFeedDetails(snapshot) {
       ? getSessionSeedTotals(linkedSession).totalPlanted
       : 0;
   const unitId = String(snapshot.unitId || linkedSession?.unitId || "").trim();
+  const resolvedUnitId = normalizeUnitIdValue(unitId);
 
   return {
     totalSeeds,
     totalPlanted,
     seedCountLabel: totalSeeds > 0 ? `${totalPlanted} / ${totalSeeds} seeds` : "",
-    systemLabel: unitId
-      ? `${formatSnapshotSystemLabel(snapshot.systemType)} • ${unitId}`
-      : formatSnapshotSystemLabel(snapshot.systemType),
+    systemLabel: `${formatSnapshotSystemLabel(snapshot.systemType)} • ${resolvedUnitId}`,
   };
 }
 
@@ -15386,7 +15385,7 @@ function mapSessionToRecord(session, userId) {
     date: session.date,
     time: session.time,
     system_type: session.systemType,
-    unit_id: session.unitId,
+    unit_id: normalizeUnitIdValue(session.unitId),
     session_name: session.sessionName,
     custom_session_name: session.customSessionName || "",
     session_notes: session.sessionNotes || "",
@@ -15419,7 +15418,7 @@ function mapRowToSession(row) {
     date: row.date,
     time: row.time,
     systemType: row.system_type,
-    unitId: row.unit_id,
+    unitId: normalizeUnitIdValue(row.unit_id),
     sessionName: row.session_name,
     customSessionName: row.custom_session_name || "",
     sessionNotes: row.session_notes || "",
@@ -34887,6 +34886,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   appState.newSessionSystemType = normalizedSystemType;
 
   primeNewSessionSeedAgeDefaults(form);
+  primeUnitIdDefault(form);
 
   form.elements.date.value = today.toISOString().slice(0, 10);
   initializeTimeFormatField(form, today.toTimeString().slice(0, 5));
@@ -35346,7 +35346,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       date: formData.get("date"),
       time: formData.get("time"),
       systemType: formData.get("systemType"),
-      unitId: String(formData.get("unitId") || "").trim() || "A",
+      unitId: normalizeUnitIdValue(formData.get("unitId")),
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
         partitionEntries[0],
@@ -37504,7 +37504,7 @@ function renderSessionDetail(sessionId) {
   const detailMetaCards = [
     { label: "Status", value: capitalize(normalizeSessionStatus(session.sessionStatus || "")).replace("Unselected", "Not started") },
     { label: "System Type", value: session.systemType },
-    { label: "Unit ID", value: String(session.unitId || "").trim() },
+    { label: "Unit ID", value: normalizeUnitIdValue(session.unitId) },
     { label: "Date", value: session.date },
     { label: "Time", value: formatStoredTime(session.time) },
   ];
@@ -38020,7 +38020,7 @@ function getSessionSuccessRate(session) {
 
 function getSessionSystemSummary(session) {
   const systemType = String(session.systemType || "").trim();
-  const unitId = String(session.unitId || "").trim();
+  const unitId = normalizeUnitIdValue(session.unitId);
 
   if (systemType && unitId) {
     return `${systemType} / ${unitId}`;
@@ -39005,6 +39005,22 @@ function formatPartitionSource(partition) {
   }
 
   return String(partition?.breeder || "").trim();
+}
+
+function normalizeUnitIdValue(value, fallback = "A") {
+  const normalized = String(value || "").trim();
+  return normalized || fallback;
+}
+
+function primeUnitIdDefault(form) {
+  const unitIdField = form?.elements?.unitId;
+  if (!(unitIdField instanceof HTMLInputElement)) {
+    return;
+  }
+
+  if (!String(unitIdField.value || "").trim()) {
+    unitIdField.value = "A";
+  }
 }
 
 function buildFinalSessionName(inputName, firstPartition, sessionDate) {
@@ -40724,6 +40740,7 @@ function applyDebugEventToSession(session, stageField, action) {
 
 async function saveSessionUpdate(session) {
   try {
+    session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
     Object.assign(session, savedSession);
     return savedSession;
