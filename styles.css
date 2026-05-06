@@ -16642,6 +16642,23 @@ textarea::placeholder {
   line-height: 1.08;
 }
 
+.session-sequence-label {
+  align-self: center;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(24, 34, 24, 0.62);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .partition-product-icon {
   width: 104px;
   display: inline-flex;
@@ -19895,6 +19912,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .grow-network-stats-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .session-sequence-label {
+    justify-self: start;
+    align-self: start;
   }
 }
 

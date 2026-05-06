@@ -37497,6 +37497,7 @@ function getSessionDetailElements(scope = document) {
     layoutSection: scope.querySelector("#detail-layout-reference")?.closest(".system-layout-block") || null,
     layoutReference: scope.querySelector("#detail-layout-reference"),
     partitionWorkTitle: scope.querySelector("#detail-partition-work-title"),
+    sessionSequenceLabel: scope.querySelector("#detail-session-sequence"),
     statusField: scope.querySelector("#detail-session-status-control"),
     statusTrigger: scope.querySelector("#detail-session-status-trigger"),
     statusReminder: scope.querySelector("#detail-session-status-reminder"),
@@ -37720,6 +37721,16 @@ function renderSessionDetail(sessionId) {
   }
   if (detail.partitionWorkTitle) {
     updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
+  }
+  if (detail.sessionSequenceLabel) {
+    const sessionSequenceNumber = getSessionSequenceNumber(session);
+    if (sessionSequenceNumber) {
+      detail.sessionSequenceLabel.textContent = `Session #${sessionSequenceNumber}`;
+      detail.sessionSequenceLabel.hidden = false;
+    } else {
+      detail.sessionSequenceLabel.textContent = "";
+      detail.sessionSequenceLabel.hidden = true;
+    }
   }
   detail.statusField.value = session.sessionStatus || "soaking";
   syncSessionStatusControlDatasets(detail.statusField, {
@@ -38296,6 +38307,26 @@ function getSessionSortTime(session) {
 
   const startedAt = parseSessionStartDateTime(session?.date, session?.time);
   return startedAt ? startedAt.getTime() : 0;
+}
+
+function getSessionSequenceNumber(session = null, sessions = getSessions()) {
+  const normalizedSessionId = String(session?.id || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+
+  const orderedSessions = [...(Array.isArray(sessions) ? sessions : [])]
+    .filter((entry) => String(entry?.id || "").trim())
+    .sort((left, right) => {
+      const timeDifference = getSessionSortTime(left) - getSessionSortTime(right);
+      if (timeDifference !== 0) {
+        return timeDifference;
+      }
+      return String(left?.id || "").localeCompare(String(right?.id || ""));
+    });
+
+  const sequenceIndex = orderedSessions.findIndex((entry) => String(entry?.id || "").trim() === normalizedSessionId);
+  return sequenceIndex >= 0 ? sequenceIndex + 1 : null;
 }
 
 function buildPartitionDetailRow(partition, sessionStatus = "") {
