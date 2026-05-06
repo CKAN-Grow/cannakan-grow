@@ -35177,6 +35177,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   form.dataset.currentStage = normalizeSessionStatus(sessionStatusField.value);
   appState.growthStage = sessionStatusField.value || null;
   syncSessionStatusControlDatasets(sessionStatusField, {
+    startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value)?.toISOString() || "",
     germinationStartedAt: form.dataset.germinationStartedAt || "",
     firstPlantedAt: form.dataset.firstPlantedAt || "",
     completedAt: form.dataset.completedAt || "",
@@ -36053,9 +36054,129 @@ function syncSessionStatusControlDatasets(control, source = {}) {
   }
 
   control.dataset.sessionStatus = normalizeSessionStatus(control.value);
+  control.dataset.startedAt = source.startedAt || "";
   control.dataset.germinationStartedAt = source.germinationStartedAt || "";
   control.dataset.firstPlantedAt = source.firstPlantedAt || "";
   control.dataset.completedAt = source.completedAt || "";
+}
+
+function getSessionStatusVisualState(control) {
+  const value = control?.value || "";
+  const normalizedStatus = normalizeSessionStatus(value);
+  const progressKey = getSessionStatusProgressKey(control);
+  const effectiveStage = progressKey || normalizedStatus;
+  const timestampKeyByStage = {
+    soaking: "startedAt",
+    germination: "germinationStartedAt",
+    "first-germinated": "firstPlantedAt",
+    completed: "completedAt",
+  };
+  const iconKeyByStage = {
+    soaking: "soaking",
+    germination: "germination",
+    "first-germinated": "first-germinated",
+    completed: "completed",
+  };
+
+  switch (effectiveStage) {
+    case "soaking":
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "soaking",
+        label: "Soaking",
+        helperText: "Currently soaking",
+        iconKey: iconKeyByStage.soaking,
+        timestampLabel: formatSessionStatusTimestampLabel(control?.dataset?.[timestampKeyByStage.soaking] || ""),
+      };
+    case "germination":
+    case "germinating":
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "germinating",
+        label: "Germinating",
+        helperText: "Germination underway",
+        iconKey: iconKeyByStage.germination,
+        timestampLabel: formatSessionStatusTimestampLabel(control?.dataset?.[timestampKeyByStage.germination] || ""),
+      };
+    case "first-germinated":
+    case "germination-started":
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "first-germinated",
+        label: "Germination Started",
+        helperText: "First sprout recorded",
+        iconKey: iconKeyByStage["first-germinated"],
+        timestampLabel: formatSessionStatusTimestampLabel(control?.dataset?.[timestampKeyByStage["first-germinated"]] || ""),
+      };
+    case "completed":
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "completed",
+        label: "Completed",
+        helperText: "Session successfully completed",
+        iconKey: iconKeyByStage.completed,
+        timestampLabel: formatSessionStatusTimestampLabel(control?.dataset?.[timestampKeyByStage.completed] || ""),
+      };
+    case "unselected":
+    case "":
+    default:
+      return {
+        normalizedStatus,
+        progressKey,
+        tone: "unselected",
+        label: "Not Started",
+        helperText: "Update the stage as your seeds progress through the session.",
+        iconKey: "",
+        timestampLabel: "Not recorded yet",
+      };
+  }
+}
+
+function formatSessionStatusTimestampLabel(value = "") {
+  const parsedValue = parseCompletedAtValue(value);
+  return parsedValue ? formatTimingDateTime(parsedValue) : "Not recorded yet";
+}
+
+function renderSessionStatusStageIconMarkup(stageIconKey = "", variant = "pill") {
+  if (!stageIconKey) {
+    return `
+      <span class="session-status-stage-icon session-status-stage-icon--${escapeHtml(variant)}" aria-hidden="true">
+        ${renderCommandCenterIconMarkup("header", "session-status-stage-icon-symbol")}
+      </span>
+    `;
+  }
+
+  return `
+    <span class="session-status-stage-icon session-status-stage-icon--${escapeHtml(variant)}" aria-hidden="true">
+      ${renderCommandCenterIconMarkup(`stage-${stageIconKey}`, `session-status-stage-icon-symbol command-icon--stage command-icon--stage-${stageIconKey}`)}
+    </span>
+  `;
+}
+
+function renderSessionStatusTrailingIconMarkup(progressKey = "") {
+  if (progressKey === "completed") {
+    return `
+      <span class="session-status-trailing-mark session-status-trailing-mark--completed" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="m8.2 12.4 2.5 2.5 5.1-5.7"></path>
+        </svg>
+      </span>
+    `;
+  }
+
+  return `
+    <span class="session-status-trailing-mark session-status-trailing-mark--active" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"></circle>
+      </svg>
+    </span>
+  `;
 }
 
 function getPartitionChartTitle(systemType) {
@@ -37824,6 +37945,7 @@ function renderSessionDetail(sessionId) {
   }
   detail.statusField.value = session.sessionStatus || "soaking";
   syncSessionStatusControlDatasets(detail.statusField, {
+    startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
     germinationStartedAt: session.germinationStartedAt || "",
     firstPlantedAt: session.firstPlantedAt || "",
     completedAt: session.completedAt || "",
@@ -37962,6 +38084,7 @@ function renderSessionDetail(sessionId) {
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
         syncSessionStatusControlDatasets(detail.statusField, {
+          startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
           germinationStartedAt: session.germinationStartedAt || "",
           firstPlantedAt: session.firstPlantedAt || "",
           completedAt: session.completedAt || "",
@@ -37977,6 +38100,7 @@ function renderSessionDetail(sessionId) {
         syncSessionPartitionsFromContainer(session, partitions);
         captureFirstPlantedEventForSession(session);
         syncSessionStatusControlDatasets(detail.statusField, {
+          startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
           germinationStartedAt: session.germinationStartedAt || "",
           firstPlantedAt: session.firstPlantedAt || "",
           completedAt: session.completedAt || "",
@@ -37994,6 +38118,7 @@ function renderSessionDetail(sessionId) {
     const previousStatus = session.sessionStatus || "";
     applyDebugEventToSession(session, detail.statusField, action);
     syncSessionStatusControlDatasets(detail.statusField, {
+      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
@@ -38076,6 +38201,7 @@ function renderSessionDetail(sessionId) {
       session.completedAt = "";
     }
     syncSessionStatusControlDatasets(detail.statusField, {
+      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
@@ -39233,21 +39359,44 @@ function updateSessionStatusAppearance(control, trigger) {
   const value = control?.value || "";
   const normalizedStatus = normalizeSessionStatus(value);
   const progressKey = getSessionStatusProgressKey(control);
+  const visualState = getSessionStatusVisualState(control);
   const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
   const currentStageIndex = stageOrder.indexOf(progressKey);
   const nextStageIndex = progressKey ? Math.min(currentStageIndex + 1, stageOrder.length - 1) : 0;
   const panel = control?.closest(".session-status-panel") || trigger?.closest(".session-status-panel");
   const currentValueElement = panel?.querySelector(".session-status-current-value");
+  const helperTextElement = panel?.querySelector(".session-status-help");
+  const metaValueElement = panel?.querySelector(".session-status-meta-value");
+  const overlineIconElement = panel?.querySelector("[data-session-status-overline-icon]");
+  const pillIconElement = panel?.querySelector("[data-session-status-pill-icon]");
+  const trailingIconElement = panel?.querySelector("[data-session-status-pill-trailing-icon]");
+  const triggerLabelElement = trigger?.querySelector("[data-session-status-trigger-label]") || panel?.querySelector("[data-session-status-trigger-label]");
 
   if (control) {
     control.dataset.sessionStatus = normalizedStatus;
   }
 
   panel?.setAttribute("data-session-status", normalizedStatus);
-  panel?.setAttribute("data-session-progress", progressKey || "unselected");
+  panel?.setAttribute("data-session-progress", visualState.progressKey || "unselected");
+  panel?.setAttribute("data-session-tone", visualState.tone || "unselected");
 
   if (currentValueElement) {
-    currentValueElement.textContent = getSessionProgressDisplayLabel(progressKey, value);
+    currentValueElement.textContent = visualState.label || getSessionProgressDisplayLabel(progressKey, value);
+  }
+  if (helperTextElement) {
+    helperTextElement.textContent = visualState.helperText || "Update the stage as your seeds progress through the session.";
+  }
+  if (metaValueElement) {
+    metaValueElement.textContent = visualState.timestampLabel || "Not recorded yet";
+  }
+  if (overlineIconElement) {
+    overlineIconElement.innerHTML = renderSessionStatusStageIconMarkup(visualState.iconKey, "header");
+  }
+  if (pillIconElement) {
+    pillIconElement.innerHTML = renderSessionStatusStageIconMarkup(visualState.iconKey, "pill");
+  }
+  if (trailingIconElement) {
+    trailingIconElement.innerHTML = renderSessionStatusTrailingIconMarkup(visualState.progressKey);
   }
 
   panel?.querySelectorAll("[data-stage-step]").forEach((stepElement) => {
@@ -39264,7 +39413,11 @@ function updateSessionStatusAppearance(control, trigger) {
 
   if (trigger) {
     trigger.dataset.sessionStatus = normalizedStatus;
-    trigger.textContent = getSessionStageButtonLabel(value);
+    if (triggerLabelElement) {
+      triggerLabelElement.textContent = getSessionStageButtonLabel(value);
+    } else {
+      trigger.textContent = getSessionStageButtonLabel(value);
+    }
   }
 }
 

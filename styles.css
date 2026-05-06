@@ -15940,6 +15940,47 @@ body.theme-dark .theme-toggle-button:hover {
     justify-items: start;
   }
 
+  .session-lifecycle-status-column .session-status-card {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .session-lifecycle-status-column .session-status-stage-pill {
+    min-height: 84px;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-tile {
+    width: 54px;
+    height: 54px;
+  }
+
+  .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .session-lifecycle-status-column .session-status-pill-trailing-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .session-lifecycle-status-column .session-status-current-value {
+    font-size: 1.02rem;
+    text-align: left;
+  }
+
+  .session-lifecycle-status-column .session-status-help {
+    padding-inline: 0;
+    text-align: left;
+  }
+
+  .session-lifecycle-status-column .session-status-help::before {
+    left: 0;
+    right: 0;
+  }
+
   .session-lifecycle-detail-layout {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -21379,6 +21420,395 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   border-color: rgba(148, 209, 89, 0.42);
   background: rgba(30, 38, 31, 0.96);
   color: #f6f8f5;
+}
+
+.session-lifecycle-status-column .session-status-panel {
+  --session-status-accent: #94d159;
+  --session-status-accent-soft: rgba(148, 209, 89, 0.18);
+  --session-status-accent-strong: rgba(148, 209, 89, 0.32);
+  --session-status-accent-glow: rgba(148, 209, 89, 0.22);
+  --session-status-accent-ink: #eef5ec;
+  min-width: 0;
+  gap: 10px;
+}
+
+.session-lifecycle-status-column .session-status-panel[data-session-status="soaking"],
+.session-lifecycle-status-column .session-status-panel[data-session-progress="soaking"] {
+  --session-status-accent: #7fb8ff;
+  --session-status-accent-soft: rgba(127, 184, 255, 0.18);
+  --session-status-accent-strong: rgba(127, 184, 255, 0.32);
+  --session-status-accent-glow: rgba(127, 184, 255, 0.22);
+  --session-status-accent-ink: #d8ecff;
+}
+
+.session-lifecycle-status-column .session-status-panel[data-session-status="germinating"],
+.session-lifecycle-status-column .session-status-panel[data-session-progress="germination"] {
+  --session-status-accent: #dd8045;
+  --session-status-accent-soft: rgba(221, 128, 69, 0.18);
+  --session-status-accent-strong: rgba(221, 128, 69, 0.34);
+  --session-status-accent-glow: rgba(221, 128, 69, 0.24);
+  --session-status-accent-ink: #ffd4b8;
+}
+
+.session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] {
+  --session-status-accent: #94d159;
+  --session-status-accent-soft: rgba(148, 209, 89, 0.18);
+  --session-status-accent-strong: rgba(148, 209, 89, 0.34);
+  --session-status-accent-glow: rgba(148, 209, 89, 0.24);
+  --session-status-accent-ink: #e2f6cf;
+}
+
+.session-lifecycle-status-column .session-status-panel[data-session-status="completed"],
+.session-lifecycle-status-column .session-status-panel[data-session-progress="completed"] {
+  --session-status-accent: #b58a61;
+  --session-status-accent-soft: rgba(181, 138, 97, 0.18);
+  --session-status-accent-strong: rgba(181, 138, 97, 0.34);
+  --session-status-accent-glow: rgba(181, 138, 97, 0.24);
+  --session-status-accent-ink: #f1d6bb;
+}
+
+.session-lifecycle-status-column .session-status-card {
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  border-color: var(--session-status-accent-strong);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 36%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 24%),
+    rgba(11, 17, 13, 0.96);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 18px var(--session-status-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-lifecycle-status-column .session-status-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.session-lifecycle-status-column .session-status-label {
+  margin: 0;
+  color: #c5cec6;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.session-lifecycle-status-column .session-status-overline-icon,
+.session-lifecycle-status-column .session-status-pill-icon,
+.session-lifecycle-status-column .session-status-pill-trailing-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.session-lifecycle-status-column .session-status-stage-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.session-lifecycle-status-column .session-status-stage-icon .command-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--session-status-accent);
+}
+
+.session-lifecycle-status-column .session-status-stage-icon .command-icon-tile {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 100%),
+    rgba(17, 24, 19, 0.92);
+  border: 1px solid var(--session-status-accent-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 16px rgba(0, 0, 0, 0.12);
+}
+
+.session-lifecycle-status-column .session-status-stage-icon .command-icon-svg {
+  stroke: currentColor;
+}
+
+.session-lifecycle-status-column .session-status-stage-icon--header .command-icon-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+}
+
+.session-lifecycle-status-column .session-status-stage-icon--header .command-icon-svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.7;
+}
+
+.session-lifecycle-status-column .session-status-current {
+  justify-items: stretch;
+}
+
+.session-lifecycle-status-column .session-status-stage-pill {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 92px;
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--session-status-accent-strong);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-status-accent) 20%, rgba(19, 25, 20, 0.98)) 0%, rgba(18, 25, 20, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 18px var(--session-status-accent-glow);
+}
+
+.session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-tile {
+  width: 60px;
+  height: 60px;
+  border-radius: 999px;
+}
+
+.session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-svg {
+  width: 29px;
+  height: 29px;
+  stroke-width: 1.75;
+}
+
+.session-lifecycle-status-column .session-status-current-value {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f8fbf7;
+  font-size: clamp(1.16rem, 1.9vw, 1.54rem);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.06;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.session-lifecycle-status-column .session-status-pill-trailing-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--session-status-accent-strong);
+  background: rgba(12, 18, 14, 0.74);
+  color: var(--session-status-accent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.session-lifecycle-status-column .session-status-pill-trailing-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-lifecycle-status-column .session-status-help {
+  position: relative;
+  margin: 0;
+  padding: 14px 12px 0;
+  color: #cdd7cf;
+  font-size: 0.9rem;
+  line-height: 1.36;
+  text-align: center;
+}
+
+.session-lifecycle-status-column .session-status-help::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 1px;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.14) 14%, var(--session-status-accent) 50%, rgba(255, 255, 255, 0.14) 86%, transparent 100%);
+}
+
+.session-lifecycle-status-column .session-status-trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--session-status-accent-strong);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-status-accent) 26%, rgba(17, 22, 18, 0.98)) 0%, color-mix(in srgb, var(--session-status-accent) 18%, rgba(17, 22, 18, 0.96)) 100%);
+  color: #f8fbf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 14px var(--session-status-accent-glow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.session-lifecycle-status-column .session-status-trigger:hover,
+.session-lifecycle-status-column .session-status-trigger:focus-visible {
+  border-color: var(--session-status-accent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-status-accent) 32%, rgba(21, 27, 22, 0.99)) 0%, color-mix(in srgb, var(--session-status-accent) 22%, rgba(20, 27, 22, 0.98)) 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 24px rgba(0, 0, 0, 0.22),
+    0 0 16px var(--session-status-accent-glow),
+    0 0 0 3px color-mix(in srgb, var(--session-status-accent) 18%, transparent);
+}
+
+.session-lifecycle-status-column .session-status-trigger:active {
+  transform: translateY(1px);
+}
+
+.session-lifecycle-status-column .session-status-trigger-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.session-lifecycle-status-column .session-status-trigger-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-lifecycle-status-column .session-status-trigger-label {
+  white-space: nowrap;
+}
+
+.session-lifecycle-status-column .session-status-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.session-lifecycle-status-column .session-status-meta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 20, 16, 0.82);
+  color: #cfd8d0;
+}
+
+.session-lifecycle-status-column .session-status-meta-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.session-lifecycle-status-column .session-status-meta-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.session-lifecycle-status-column .session-status-meta-label {
+  color: #9cad9d;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.session-lifecycle-status-column .session-status-meta-value {
+  color: #f3f7f1;
+  font-size: 1.01rem;
+  font-weight: 700;
+  line-height: 1.22;
+}
+
+body.theme-dark .session-lifecycle-status-column .session-status-card {
+  border-color: var(--session-status-accent-strong);
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 36%, transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 24%),
+    rgba(11, 17, 13, 0.96);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 0 18px var(--session-status-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .session-lifecycle-status-column .session-status-current-value,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="unselected"] .session-status-current-value,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="soaking"] .session-status-current-value,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="germinating"] .session-status-current-value,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] .session-status-current-value,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="completed"] .session-status-current-value {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: #f8fbf7;
+}
+
+body.theme-dark .session-lifecycle-status-column .session-status-panel .session-status-trigger,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="unselected"] .session-status-trigger,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="soaking"] .session-status-trigger,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="germinating"] .session-status-trigger,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] .session-status-trigger,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="completed"] .session-status-trigger {
+  border-color: var(--session-status-accent-strong);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-status-accent) 26%, rgba(17, 22, 18, 0.98)) 0%, color-mix(in srgb, var(--session-status-accent) 18%, rgba(17, 22, 18, 0.96)) 100%);
+  color: #f8fbf7;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 14px var(--session-status-accent-glow);
+}
+
+body.theme-dark .session-lifecycle-status-column .session-status-panel .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel .session-status-trigger:focus-visible,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="unselected"] .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="unselected"] .session-status-trigger:focus-visible,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="soaking"] .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="soaking"] .session-status-trigger:focus-visible,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="germinating"] .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="germinating"] .session-status-trigger:focus-visible,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] .session-status-trigger:focus-visible,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="completed"] .session-status-trigger:hover,
+body.theme-dark .session-lifecycle-status-column .session-status-panel[data-session-status="completed"] .session-status-trigger:focus-visible {
+  border-color: var(--session-status-accent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-status-accent) 32%, rgba(21, 27, 22, 0.99)) 0%, color-mix(in srgb, var(--session-status-accent) 22%, rgba(20, 27, 22, 0.98)) 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 24px rgba(0, 0, 0, 0.22),
+    0 0 16px var(--session-status-accent-glow),
+    0 0 0 3px color-mix(in srgb, var(--session-status-accent) 18%, transparent);
 }
 
 .session-workspace-shell .chart-shell {

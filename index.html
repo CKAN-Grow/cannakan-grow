@@ -845,16 +845,48 @@
             <div id="detail-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
             <div class="session-lifecycle-status-column">
               <div class="session-status-panel">
-                <p class="session-status-label">Current Stage</p>
                 <div class="session-status-card">
-                  <div class="session-status-top">
-                    <div class="session-status-current">
+                  <div class="session-status-card-head">
+                    <span class="session-status-overline-icon" data-session-status-overline-icon aria-hidden="true"></span>
+                    <p class="session-status-label">Current Stage</p>
+                  </div>
+                  <input type="hidden" id="detail-session-status-control" value="">
+                  <div class="session-status-current">
+                    <div class="session-status-stage-pill">
+                      <span class="session-status-pill-icon" data-session-status-pill-icon aria-hidden="true"></span>
                       <strong class="session-status-current-value">Not Started</strong>
+                      <span class="session-status-pill-trailing-icon" data-session-status-pill-trailing-icon aria-hidden="true"></span>
                     </div>
-                    <input type="hidden" id="detail-session-status-control" value="">
-                    <button type="button" id="detail-session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
                   </div>
                   <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+                  <button type="button" id="detail-session-status-trigger" class="session-status-trigger">
+                    <span class="session-status-trigger-icon" data-session-status-trigger-icon aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <path d="m5 19 3.8-.8L18.2 8.8a1.8 1.8 0 0 0-2.6-2.6L6.2 15.6 5 19Z"></path>
+                        <path d="m13.9 7.9 2.2 2.2"></path>
+                      </svg>
+                    </span>
+                    <span class="session-status-trigger-label" data-session-status-trigger-label>Update Growth Stage</span>
+                  </button>
+                  <div class="session-status-meta" aria-live="polite">
+                    <span class="session-status-meta-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                        <rect x="4.25" y="5.25" width="15.5" height="14.5" rx="3"></rect>
+                        <path d="M8 3.75v3"></path>
+                        <path d="M16 3.75v3"></path>
+                        <path d="M4.25 9.25h15.5"></path>
+                        <path d="M8.4 12.8h.01"></path>
+                        <path d="M12 12.8h.01"></path>
+                        <path d="M15.6 12.8h.01"></path>
+                        <path d="M8.4 16.2h.01"></path>
+                        <path d="M12 16.2h.01"></path>
+                      </svg>
+                    </span>
+                    <div class="session-status-meta-copy">
+                      <span class="session-status-meta-label">Last Updated</span>
+                      <strong class="session-status-meta-value">Not recorded yet</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
               <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
