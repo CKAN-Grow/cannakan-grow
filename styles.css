@@ -1880,6 +1880,14 @@ body.theme-dark .spotlight-stat strong {
   line-height: 1.08;
 }
 
+#session-command-center .session-command-center-header-description {
+  margin: 0;
+  max-width: 42rem;
+  color: rgba(230, 237, 226, 0.84);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
 #session-command-center .session-command-center-header-divider {
   position: relative;
   width: 100%;
@@ -1903,6 +1911,22 @@ body.theme-dark .spotlight-stat strong {
     0 0 10px rgba(148, 209, 89, 0.4),
     0 0 20px rgba(148, 209, 89, 0.25);
   pointer-events: none;
+}
+
+#session-command-center .session-command-center-header-link {
+  margin-left: auto;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  color: rgba(213, 239, 178, 0.9);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#session-command-center .session-command-center-header-link:hover,
+#session-command-center .session-command-center-header-link:focus-visible {
+  color: #ffffff;
 }
 
 #session-command-center .command-icon {
@@ -24611,6 +24635,14 @@ body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custo
   .home-leaderboard-header.app-section-header {
     flex-direction: row;
     align-items: flex-start;
+  }
+
+  #session-command-center .session-command-center-header {
+    flex-wrap: wrap;
+  }
+
+  #session-command-center .session-command-center-header-link {
+    margin-left: 0;
   }
 }
 

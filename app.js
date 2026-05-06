@@ -34411,7 +34411,10 @@ function renderActiveSessionsPage() {
     showMetrics: false,
     showViewAllLink: false,
     headerEyebrow: "ACTIVE SESSIONS",
-    headerTitle: "ACTIVE SESSIONS",
+    headerTitle: "Active Sessions",
+    headerDescription: "Track every session currently in progress and continue exactly where you left off.",
+    headerActionHref: "#sessions",
+    headerActionLabel: "← Back to My Sessions",
   });
 }
 
@@ -37971,9 +37974,12 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const selectedSession = activeSessions.find((session) => session.id === selectedSessionId) || activeSessions[0] || null;
   const headerEyebrow = String(options.headerEyebrow || "ACTIVE SESSION").trim() || "ACTIVE SESSION";
   const headerTitle = String(options.headerTitle || "SESSION COMMAND CENTER").trim() || "SESSION COMMAND CENTER";
+  const headerDescription = String(options.headerDescription || "").trim();
   const viewAllHref = String(options.viewAllHref || "#sessions").trim() || "#sessions";
   const showViewAllLink = options.showViewAllLink !== false;
   const showMetrics = options.showMetrics !== false;
+  const headerActionHref = String(options.headerActionHref || "").trim();
+  const headerActionLabel = String(options.headerActionLabel || "").trim();
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
@@ -37985,8 +37991,10 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         <div class="session-command-center-header-text session-command-center-title-copy">
             <p class="eyebrow">${escapeHtml(headerEyebrow)}</p>
             <h3 id="active-sessions-command-title">${escapeHtml(headerTitle)}</h3>
+            ${headerDescription ? `<p class="session-command-center-header-description">${escapeHtml(headerDescription)}</p>` : ""}
             <div class="session-command-center-header-divider" aria-hidden="true"></div>
         </div>
+        ${headerActionHref && headerActionLabel ? `<a class="session-command-center-header-link" href="${escapeHtml(headerActionHref)}">${escapeHtml(headerActionLabel)}</a>` : ""}
       </header>
       <div class="session-command-center session-command-center-grid" data-session-command-center="true">
         <section class="session-command-panel session-command-panel--sessions active-sessions-panel" aria-labelledby="active-sessions-command-list-title">
