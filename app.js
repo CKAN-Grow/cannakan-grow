@@ -146,15 +146,22 @@ const APP_HINTS = Object.freeze([
   { text: "Dark mode is available from the app theme toggle if you want the testing and report views to feel easier on the eyes." },
   { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
 ]);
-const CSTP_DEFINITION = "CSTP (Cannakan Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.";
+const CSTP_DEFINITION = `CSTP (${BRAND_NAME} Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.`;
 const CSTP_CERTIFICATION_PHILOSOPHY = "CSTP certification is earned, not purchased.";
 const CSTP_RESULTS_CREDIBILITY = "All CSTP results are generated under controlled testing conditions using the KAN® System.";
 const CSTP_BADGE_DISCLAIMER = "CSTP badges reflect performance from a specific tested batch and are time-limited.";
-const CSTP_SHARING_EXPOSURE = "CSTP-qualified results may be featured within the app and shared across Cannakan Grow channels.";
+const BRAND_NAME = "Cannakan®";
+const BRAND_APP_NAME = `${BRAND_NAME} Grow`;
+
+function formatBrandName(value = "") {
+  return String(value || "").replace(/\bCannakan\b(?!®)/g, BRAND_NAME);
+}
+
+const CSTP_SHARING_EXPOSURE = `CSTP-qualified results may be featured within the app and shared across ${BRAND_APP_NAME} channels.`;
 const CSTP_REPORT_LANGUAGE = "This report summarizes results from a controlled CSTP session. All data reflects observed outcomes under standardized conditions.";
 const CSTP_REPORT_NO_GUARANTEE = "No guarantees are implied beyond the tested sample.";
 const CSTP_NEUTRALITY = "CSTP evaluations are conducted independently using standardized procedures to ensure consistency and reliability.";
-const SOURCE_DIRECTORY_DESCRIPTION = "A growing directory of sources recorded by Cannakan Grow members through shared germination sessions.";
+const SOURCE_DIRECTORY_DESCRIPTION = `A growing directory of sources recorded by ${BRAND_APP_NAME} members through shared germination sessions.`;
 const SOURCE_DIRECTORY_COMMUNITY_NOTE = "All germination rates are community-reported and aggregated from member sessions across the platform.";
 const CSTP_TOOLTIP_COPY = Object.freeze({
   cstp: "Standardized germination testing protocol",
@@ -270,7 +277,7 @@ const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
   { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", favoriteSource: "Fast Buds", followerCount: 176, followingCount: 40, isFollowing: true },
   { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", favoriteSource: "Fast Buds", followerCount: 72, followingCount: 22, isFollowing: true },
   { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photo", favoriteSource: "Ethos Genetics", followerCount: 144, followingCount: 39, isFollowing: true },
-  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", favoriteSource: "Cannakan Labs", followerCount: 58, followingCount: 18, isFollowing: true },
+  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", favoriteSource: "Cannakan® Labs", followerCount: 58, followingCount: 18, isFollowing: true },
   { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Regular", favoriteSource: "Archive Seeds", followerCount: 86, followingCount: 28, isFollowing: false },
   { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photo", favoriteSource: "Humboldt Seed Co", followerCount: 162, followingCount: 44, isFollowing: false },
   { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", favoriteSource: "Sweet Seeds", followerCount: 108, followingCount: 32, isFollowing: false },
@@ -1879,7 +1886,7 @@ function getDesktopInstallFallbackText() {
 
 function getSourceDirectoryCountLine(sourceCount = 0) {
   const normalizedCount = Math.max(0, Number(sourceCount) || 0);
-  return `Cannakan Grow members have germinated seeds from ${normalizedCount.toLocaleString()} source${normalizedCount === 1 ? "" : "s"}.`;
+  return `${BRAND_APP_NAME} members have germinated seeds from ${normalizedCount.toLocaleString()} source${normalizedCount === 1 ? "" : "s"}.`;
 }
 
 function isIPhoneSafariInstallCandidate() {
@@ -2046,8 +2053,8 @@ function syncInstallPromptBanner() {
           <p class="eyebrow">Install App</p>
           <h3>Install Grow App</h3>
           <p class="muted install-app-banner-subtitle">${mode === "prompt"
-      ? "Add Cannakan Grow to your home screen for a faster, full-screen experience."
-      : "Save Cannakan Grow to your iPhone home screen for a full-screen app experience."}</p>
+      ? `Add ${BRAND_APP_NAME} to your home screen for a faster, full-screen experience.`
+      : `Save ${BRAND_APP_NAME} to your iPhone home screen for a full-screen app experience.`}</p>
         </div>
       </div>
       ${bodyMarkup}
@@ -4963,7 +4970,7 @@ function ensureAdminMessageModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Support</p>
         <h3 id="admin-message-modal-title">Report / Contact Admin</h3>
-        <p class="muted">Use this form to report an issue, flag content, or contact the Cannakan Grow admin team.</p>
+        <p class="muted">Use this form to report an issue, flag content, or contact the ${BRAND_APP_NAME} admin team.</p>
       </div>
       <div class="admin-message-context-note" id="admin-message-context-note"></div>
       <label class="admin-message-field">
@@ -5547,7 +5554,7 @@ function getCurrentSiteAnalyticsPageContext() {
       pagePath: rawRoute ? `#${rawRoute}` : "#sessions",
     });
   }
-  if (route === "home" || !route) {
+        if (route === "home" || !route) {
     return buildSiteAnalyticsPageContext({
       pageGroup: "home",
       pageKey: "home",
@@ -6469,7 +6476,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
         applyResolvedAuthState(session, `${reason}:profile`, appState.profile);
         updateAuthStatus();
         if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
-          appState.authNotice = "This Cannakan Grow account has been disabled. Contact an administrator for help.";
+          appState.authNotice = `This ${BRAND_APP_NAME} account has been disabled. Contact an administrator for help.`;
           await appState.supabase?.auth.signOut();
           return;
         }
@@ -17130,7 +17137,7 @@ function buildSnapshotFileName(data) {
 
 function buildSnapshotShareText(data) {
   if (!data) {
-    return "Cannakan Grow snapshot";
+    return `${BRAND_APP_NAME} snapshot`;
   }
 
   return `${data.sessionName} • ${data.percentage}% germination (${data.totalPlanted} / ${data.totalSeeds})`;
@@ -17160,7 +17167,7 @@ async function shareSnapshotBlob(blob, fileName, text) {
   try {
     await navigator.share({
       files: [file],
-      title: "Cannakan Grow Snapshot",
+      title: `${BRAND_APP_NAME} Snapshot`,
       text,
     });
     return true;
@@ -17855,7 +17862,7 @@ function renderProfileSignInPrompt() {
           <div class="profile-page-copy">
             <p class="eyebrow">Account</p>
             <h2>Profile</h2>
-            <p class="muted">Sign in to open your Cannakan Grow control center and manage account, notification, and community preferences.</p>
+            <p class="muted">Sign in to open your ${BRAND_APP_NAME} control center and manage account, notification, and community preferences.</p>
           </div>
         </div>
       </header>
@@ -18181,7 +18188,7 @@ function renderProfilePage() {
               <div>
                 <p class="eyebrow">Account Info</p>
                 <h3>Account Info</h3>
-                <p class="profile-section-subtitle">Your Cannakan Grow identity details.</p>
+                <p class="profile-section-subtitle">Your ${BRAND_APP_NAME} identity details.</p>
               </div>
               <span class="profile-status-badge ${profileSetupComplete ? "is-complete" : "is-pending"}">${escapeHtml(profileSetupComplete ? "Profile ready" : "Setup incomplete")}</span>
             </div>
@@ -18202,7 +18209,7 @@ function renderProfilePage() {
               <div>
                 <p class="eyebrow">Notifications</p>
                 <h3>Notification Preferences</h3>
-                <p class="profile-section-subtitle">Control the alerts Cannakan Grow sends and previews for your account.</p>
+                <p class="profile-section-subtitle">Control the alerts ${BRAND_APP_NAME} sends and previews for your account.</p>
               </div>
             </div>
             <div class="profile-toggle-list">
@@ -18239,7 +18246,7 @@ function renderProfilePage() {
             </div>
             <p class="profile-section-note">${usesNotificationFallback
               ? "Notification preferences are currently using your latest saved browser fallback while the backend is unavailable."
-              : "Notification settings are connected to your saved Cannakan Grow preferences."}</p>
+              : `Notification settings are connected to your saved ${BRAND_APP_NAME} preferences.`}</p>
           </article>
           <article class="profile-section-card" id="profile-privacy-community-card">
             <div class="profile-section-heading">
@@ -18334,7 +18341,7 @@ function renderProfileSetupScreen() {
     title.textContent = "Set up your profile";
   }
   if (copy) {
-    copy.textContent = "Choose the username you want Cannakan Grow to show in the app. You can also add an optional profile picture and set notification preferences.";
+    copy.textContent = `Choose the username you want ${BRAND_APP_NAME} to show in the app. You can also add an optional profile picture and set notification preferences.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile Setup";
@@ -18374,7 +18381,7 @@ function openProfileEditor() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Account</p>
           <h3>Edit Profile</h3>
-          <p class="muted">Update the name and avatar shown in Cannakan Grow.</p>
+          <p class="muted">Update the name and avatar shown in ${BRAND_APP_NAME}.</p>
         </div>
         <div id="profile-modal-body"></div>
         <div class="snapshot-modal-actions">
@@ -18400,7 +18407,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = "Update the name, avatar, and notification preferences used in Cannakan Grow.";
+    copy.textContent = `Update the name, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -18727,7 +18734,7 @@ function ensureDeleteAccountModal() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Final Confirmation</p>
           <h3>Schedule account deletion</h3>
-          <p class="muted">Type DELETE to schedule deletion of your Cannakan Grow app data in 7 days. Your login credentials are not removed from Supabase Auth by this frontend action.</p>
+          <p class="muted">Type DELETE to schedule deletion of your ${BRAND_APP_NAME} app data in 7 days. Your login credentials are not removed from Supabase Auth by this frontend action.</p>
         </div>
         <label class="auth-form">
           <span>Type DELETE to confirm</span>
@@ -18829,7 +18836,7 @@ function ensureScheduledDeletionModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Account Status</p>
         <h3>Account deletion is scheduled</h3>
-        <p id="scheduled-deletion-copy" class="muted">Your Cannakan Grow account data is scheduled for deletion.</p>
+        <p id="scheduled-deletion-copy" class="muted">Your ${BRAND_APP_NAME} account data is scheduled for deletion.</p>
       </div>
       <p id="scheduled-deletion-message" class="form-message" role="alert" aria-live="polite"></p>
       <div class="snapshot-modal-actions">
@@ -19103,7 +19110,7 @@ function ensureFilterPaperInventoryModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Supplies Tracker</p>
         <h3>Filter Papers</h3>
-        <p>Keep your current count up to date so Cannakan Grow can give you a gentle reorder reminder when you're getting low.</p>
+        <p>Keep your current count up to date so ${BRAND_APP_NAME} can give you a gentle reorder reminder when you're getting low.</p>
       </div>
       <div class="filter-paper-modal-grid">
         <label>
@@ -19195,7 +19202,7 @@ function ensureFilterPaperSetupModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Supplies</p>
         <h3 id="filter-paper-setup-title">Filter paper setup</h3>
-        <p>Enter how many filter papers you have on hand. Cannakan Grow will track your usage and notify you when you’re running low.</p>
+        <p>Enter how many filter papers you have on hand. ${BRAND_APP_NAME} will track your usage and notify you when you’re running low.</p>
       </div>
       <label class="filter-paper-setup-field">
         <span>Filter papers on hand</span>
@@ -19472,7 +19479,7 @@ function renderHomeInstallInfoCardMarkup() {
   const hasDeferredPrompt = mode === "prompt";
   const fallbackFeedback = String(appState.installPromptFeedbackMessage || "").trim();
   const helperText = isInstalled
-    ? "Cannakan Grow is already installed on this device."
+    ? `${BRAND_APP_NAME} is already installed on this device.`
     : fallbackFeedback
       ? fallbackFeedback
     : hasDeferredPrompt
@@ -19498,7 +19505,7 @@ function renderHomeInstallInfoCardMarkup() {
         <ol class="home-install-card-steps">
           <li>Click Install Now</li>
           <li>Confirm install in your browser</li>
-          <li>Open Cannakan Grow from your desktop or app menu</li>
+          <li>Open ${BRAND_APP_NAME} from your desktop or app menu</li>
         </ol>
       </section>
     `
@@ -19651,7 +19658,7 @@ function renderHomeInstallInfoCardMarkup() {
                 <p class="eyebrow">Install App</p>
                 <h3 id="home-install-card-title">Install the Grow App</h3>
                 <p class="muted home-install-card-description">${escapeHtml(showDesktopInstallState
-                  ? "Install Cannakan Grow on your desktop for a faster desktop app experience."
+                  ? `Install ${BRAND_APP_NAME} on your desktop for a faster desktop app experience.`
                   : "Track sessions, receive notifications, and stay connected on the go.")}</p>
               </div>
             </div>
@@ -19765,7 +19772,7 @@ function renderHomeSecondaryInfoRowMarkup() {
       ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
       ${renderHomeTestedSourcesPreviewSectionMarkup()}
       ${renderHomeExploreDividerMarkup({
-        title: "CSTP: Cannakan Seed Testing Program",
+        title: `CSTP: ${BRAND_NAME} Seed Testing Program`,
         subtitle: "Standardized testing insights and verified results under controlled KAN® System conditions.",
         labelledBy: "home-cstp-divider-title",
       })}
@@ -19799,7 +19806,7 @@ function renderAdminAccessDeniedScreen() {
     <section class="card admin-access-card">
       <p class="eyebrow">Access Denied</p>
       <h2>Admin access required</h2>
-      <p class="muted">This page is available only to Cannakan Grow admins.</p>
+      <p class="muted">This page is available only to ${BRAND_APP_NAME} admins.</p>
       <div class="form-actions">
         <a class="button button-primary" href="#home">Return Home</a>
       </div>
@@ -20603,8 +20610,8 @@ function renderHomeCstpOverviewSectionMarkup() {
           <div class="section-title-with-icon app-section-header-main home-section-header-main">
             ${renderPremiumSectionHeaderIcon("certificationShield")}
             <div>
-              <p class="eyebrow">Cannakan Seed Testing Program (CSTP)</p>
-              <h2>Cannakan Seed Testing Program (CSTP)</h2>
+            <p class="eyebrow">${BRAND_NAME} Seed Testing Program (CSTP)</p>
+              <h2>${BRAND_NAME} Seed Testing Program (CSTP)</h2>
               <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
             </div>
           </div>
@@ -20966,7 +20973,7 @@ function renderSourcesLandingPage() {
         },
         beforeActionsMarkup: `<p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>`,
         afterActionsMarkup: `
-          <p class="source-directory-helper-note">Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
+          <p class="source-directory-helper-note">Directory entries expand as ${BRAND_APP_NAME} members share more germination sessions across the platform.</p>
           <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
           <p class="source-directory-helper-line">Represent a source? Need account or listing help? Use the buttons above and we will route the request.</p>
         `,
@@ -21446,7 +21453,7 @@ function renderDataTestingDisclaimerPage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Liability</p>
           <h3>Limited responsibility</h3>
-          <p class="muted">To the fullest extent allowed by applicable law, Cannakan provides this data for informational use and is not responsible for losses, outcomes, or decisions based solely on these results.</p>
+          <p class="muted">To the fullest extent allowed by applicable law, ${BRAND_NAME} provides this data for informational use and is not responsible for losses, outcomes, or decisions based solely on these results.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Jurisdiction</p>
@@ -21467,7 +21474,7 @@ function renderTermsOfServicePage() {
           <div>
             <p class="eyebrow">Legal</p>
             <h2>Terms of Service</h2>
-            <p class="muted">Plain-language terms for using Cannakan, community data, CSTP information, and platform features.</p>
+            <p class="muted">Plain-language terms for using ${BRAND_NAME}, community data, CSTP information, and platform features.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -21479,7 +21486,7 @@ function renderTermsOfServicePage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Use of Platform</p>
           <h3>Informational tool</h3>
-          <p class="muted">Cannakan is provided as an informational platform for germination tracking, community comparison, and CSTP reference data. It is not an assurance tool or professional advisory service.</p>
+          <p class="muted">${BRAND_NAME} is provided as an informational platform for germination tracking, community comparison, and CSTP reference data. It is not an assurance tool or professional advisory service.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Outcome Limits</p>
@@ -21499,12 +21506,12 @@ function renderTermsOfServicePage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Neutrality</p>
           <h3>No endorsement</h3>
-          <p class="muted">Listings, rankings, badges, and source pages are informational and do not represent sponsorship, endorsement, or recommendation by Cannakan.</p>
+          <p class="muted">Listings, rankings, badges, and source pages are informational and do not represent sponsorship, endorsement, or recommendation by ${BRAND_NAME}.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Liability</p>
           <h3>Limitation of liability</h3>
-          <p class="muted">To the fullest extent permitted by applicable law, Cannakan is not liable for losses, damages, or decisions arising from reliance on platform content, community data, CSTP information, or third-party source information.</p>
+          <p class="muted">To the fullest extent permitted by applicable law, ${BRAND_NAME} is not liable for losses, damages, or decisions arising from reliance on platform content, community data, CSTP information, or third-party source information.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Conduct</p>
@@ -21530,7 +21537,7 @@ function renderPrivacyPolicyPage() {
           <div>
             <p class="eyebrow">Legal</p>
             <h2>Privacy Policy</h2>
-            <p class="muted">A short overview of what data Cannakan collects, how it is used, and what users can control.</p>
+            <p class="muted">A short overview of what data ${BRAND_NAME} collects, how it is used, and what users can control.</p>
           </div>
         </div>
         <div class="inline-actions">
@@ -21557,7 +21564,7 @@ function renderPrivacyPolicyPage() {
         <article class="card disclaimer-card">
           <p class="eyebrow">Sales</p>
           <h3>No sale of personal data</h3>
-          <p class="muted">Cannakan does not sell personal data. If data is shared with service providers, it is for operating, securing, or improving the platform.</p>
+          <p class="muted">${BRAND_NAME} does not sell personal data. If data is shared with service providers, it is for operating, securing, or improving the platform.</p>
         </article>
         <article class="card disclaimer-card">
           <p class="eyebrow">Storage</p>
@@ -22010,7 +22017,7 @@ function renderContactPage() {
           ${renderAppSectionHeaderIcon("sources")}
           <div>
             <p class="eyebrow">Support</p>
-            <h2>Contact Cannakan</h2>
+            <h2>Contact ${BRAND_NAME}</h2>
             <p class="muted">Choose the reason for your message so we can route it correctly.</p>
           </div>
         </div>
@@ -23649,8 +23656,8 @@ function getRandomHomeAnnouncementRotationDelayMs() {
 
 function getHomeAnnouncementFallbackLabel(type = "") {
   return ({
-    joke: "Cannakan Tip",
-    hint: "Cannakan Tip",
+    joke: `${BRAND_NAME} Tip`,
+    hint: `${BRAND_NAME} Tip`,
     fact: "Did You Know?",
   })[String(type || "").trim().toLowerCase()] || "Latest from Cannakan®";
 }
@@ -23659,7 +23666,7 @@ function getHomeAnnouncementFallbackTitle(type = "") {
   return ({
     joke: "A little grow-room humor.",
     hint: "A practical note for your next grow.",
-    fact: "A quick grow insight from Cannakan.",
+    fact: `A quick grow insight from ${BRAND_NAME}.`,
   })[String(type || "").trim().toLowerCase()] || DEFAULT_ANNOUNCEMENT_FALLBACK_SUBTEXT;
 }
 
@@ -23913,8 +23920,8 @@ function createHomeAnnouncementCardData({
     const announcementImageUrl = normalizeMediaUrl(announcement.imageUrl || "");
     const buttonText = String(announcement.buttonText || "").trim();
     return {
-      title: announcement.title || "Latest from Cannakan",
-      body: announcement.body || "Latest update from Cannakan.",
+      title: announcement.title || `Latest from ${BRAND_NAME}`,
+      body: announcement.body || `Latest update from ${BRAND_NAME}.`,
       imageUrl: announcementImageUrl || activeSlidePath,
       linkUrl: normalizeExternalUrl(announcement.instagramPostUrl || ""),
       buttonText,
@@ -23930,7 +23937,7 @@ function createHomeAnnouncementCardData({
   }
 
   return {
-    title: "Cannakan Feed",
+    title: `${BRAND_NAME} Feed`,
     body: "A mix of tips, insights, and light humor to keep you informed and improving every session.",
     imageUrl: activeSlidePath,
     linkUrl: "",
@@ -24021,9 +24028,9 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData(), op
     fallbackImagePath: MESSAGE_BOARD_IMAGE_FALLBACK_URL,
     usingAnnouncementImage: isDynamicContent && cardData.hasAnnouncementImage === true,
   });
-  const titleText = isDynamicContent ? (cardData.title || "Latest from Cannakan") : "Cannakan Feed";
+  const titleText = isDynamicContent ? (cardData.title || `Latest from ${BRAND_NAME}`) : `${BRAND_NAME} Feed`;
   const bodyText = isDynamicContent
-    ? (cardData.body || "Latest update from Cannakan.")
+    ? (cardData.body || `Latest update from ${BRAND_NAME}.`)
     : "A mix of tips, insights, and light humor to keep you informed and improving every session.";
   const announcementButtonLabel = isDynamicContent && cardData.hasButtonText
     ? normalizeAnnouncementButtonText(cardData.buttonText || "")
@@ -24213,7 +24220,7 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <div>
             <p class="eyebrow">Announcement CMS</p>
             <h4>Control the Home announcement</h4>
-            <p class="muted">Use one announcement to override the default Cannakan Feed state. When it is inactive, Home returns to rotating default slides and the static feed info panel.</p>
+            <p class="muted">Use one announcement to override the default ${BRAND_NAME} Feed state. When it is inactive, Home returns to rotating default slides and the static feed info panel.</p>
           </div>
         </div>
       </div>
@@ -24224,11 +24231,11 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
         </div>
         <label class="admin-source-form-full">
           <span>Title</span>
-          <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from Cannakan">
+          <input type="text" name="title" maxlength="120" value="${escapeHtml(announcement?.title || "")}" placeholder="Latest from ${BRAND_NAME}">
         </label>
         <label class="admin-source-form-full">
           <span>Content / Description</span>
-          <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest Cannakan update">${escapeHtml(announcement?.body || "")}</textarea>
+          <textarea name="message" rows="5" maxlength="800" placeholder="Share the latest ${BRAND_NAME} update">${escapeHtml(announcement?.body || "")}</textarea>
         </label>
         ${renderAdminMessageBoardImageFieldMarkup({
     label: "Announcement image",
@@ -30731,7 +30738,7 @@ function renderAdminPage() {
       key: "members",
       markup: renderAdminCollapsibleSectionMarkup({
         eyebrow: "Members",
-        title: "View and manage Cannakan Grow members.",
+        title: `View and manage ${BRAND_APP_NAME} members.`,
         description: "Review member growth activity, account access, and admin roles without exposing private member data publicly.",
         iconType: "members",
         storageKey: ADMIN_MEMBERS_OPEN_STORAGE_KEY,
