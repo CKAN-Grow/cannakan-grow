@@ -2144,9 +2144,17 @@ body.theme-dark .spotlight-stat strong {
   height: 84px;
 }
 
+#detail-lifecycle-section .session-lifecycle-progress-shell .command-icon--stage-first-germinated {
+  color: #94d159;
+}
+
+#detail-lifecycle-section .session-lifecycle-progress-shell .command-icon--stage-completed {
+  color: #b58a61;
+}
+
 #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
-  width: 44px;
-  height: 44px;
+  width: 67px;
+  height: 67px;
 }
 
 .session-command-panel {
@@ -2991,6 +2999,18 @@ body.theme-dark .spotlight-stat strong {
 
 #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-helper {
   min-height: 2.35em;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage.session-command-stage--green strong {
+  color: #94d159;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage.session-command-stage--completed strong {
+  color: #b58a61;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage.session-command-stage--completed .session-command-stage-helper {
+  color: rgba(248, 252, 247, 0.92);
 }
 
 .session-lifecycle-stage.session-command-stage--completed strong,
@@ -16064,8 +16084,8 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
-    width: 39px;
-    height: 39px;
+    width: 59px;
+    height: 59px;
   }
 
   #detail-lifecycle-section .session-lifecycle-progress-grid::before,
@@ -16192,8 +16212,8 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
-    width: 34px;
-    height: 34px;
+    width: 51px;
+    height: 51px;
   }
 
   #detail-lifecycle-section .session-lifecycle-stage {
