@@ -1937,8 +1937,22 @@ body.theme-dark .spotlight-stat strong {
 }
 
 #session-command-center .command-icon--header {
+  width: 24px;
+  height: 24px;
   margin-top: 2px;
   color: #9fe269;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+#session-command-center .command-icon--header .command-icon-svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.7;
+  filter: drop-shadow(0 0 4px rgba(148, 209, 89, 0.18));
 }
 
 #session-command-center .command-icon--session-thumb {
@@ -3319,6 +3333,31 @@ button:focus-visible .icon-interactive.cg-icon--plate {
   margin: 0;
 }
 
+.section-title-icon.cg-icon--plate {
+  width: 64px;
+  height: 64px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.section-title-icon.cg-icon--plate::before {
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 36%);
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.06);
+}
+
+.section-title-icon.cg-icon--plate::after {
+  box-shadow:
+    inset 0 -10px 14px rgba(0, 0, 0, 0.2),
+    inset 0 8px 12px rgba(255, 255, 255, 0.02);
+}
+
 .section-title-icon .cg-icon-svg,
 .section-title-icon svg {
   width: 100%;
@@ -3326,6 +3365,27 @@ button:focus-visible .icon-interactive.cg-icon--plate {
   display: block;
   margin: 0;
   transform: none;
+  filter: none;
+}
+
+.section-title-icon .cg-icon-shadow-layer {
+  transform: translateY(0.8px);
+  opacity: 0.72;
+}
+
+.section-title-icon .cg-icon-shadow-shape {
+  stroke: rgba(10, 16, 10, 0.72);
+  stroke-width: calc(var(--cg-icon-stroke) + 0.55);
+}
+
+.section-title-icon .cg-icon-main-layer {
+  filter: drop-shadow(0 0 4px rgba(148, 209, 89, 0.16));
+}
+
+.section-title-icon .cg-icon-main-shape[data-solid="true"],
+.section-title-icon .cg-icon-main-shape:is(circle, rect, ellipse) {
+  fill: none;
+  stroke: var(--cg-icon-secondary-fill);
 }
 
 .section-title-icon-image {
@@ -22004,12 +22064,12 @@ body.theme-dark #session-history-section {
 #active-sessions-section .section-title-icon,
 #recent-completed-sessions-section .section-title-icon,
 #session-history-section .section-title-icon {
-  width: 78px;
-  height: 78px;
-  flex: 0 0 78px;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
   --cg-icon-shell-gap: 8px;
-  padding: var(--cg-icon-shell-gap);
-  border-radius: 20px;
+  padding: 10px;
+  border-radius: 16px;
 }
 
 #session-history-section .session-history-sort-control {
@@ -22057,16 +22117,7 @@ body.theme-dark #session-history-section {
 }
 
 #grow-sessions-header:not(.app-hero) .section-title-icon {
-  color: #0f140f;
-  background: #94d159;
-  border-color: rgba(15, 20, 15, 0.14);
-  box-shadow:
-    0 8px 18px rgba(10, 16, 11, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.26);
-}
-
-#grow-sessions-header:not(.app-hero) .section-title-icon * {
-  stroke: currentColor;
+  color: #94d159;
 }
 
 body.theme-dark #grow-sessions-header:not(.app-hero) {

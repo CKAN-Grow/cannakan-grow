@@ -37721,7 +37721,11 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
 }
 
 function renderCommandCenterIconMarkup(iconName, className = "") {
-  const classes = ["command-icon", "command-icon-tile", className].filter(Boolean).join(" ");
+  const classes = [
+    "command-icon",
+    iconName === "header" ? "" : "command-icon-tile",
+    className,
+  ].filter(Boolean).join(" ");
   const svgClass = "command-icon-svg";
 
   switch (iconName) {
@@ -37731,7 +37735,7 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <circle cx="12" cy="12" r="7.25"></circle>
             <path d="M12 2.75v3.1M12 18.15v3.1M2.75 12h3.1M18.15 12h3.1" stroke-linecap="round"></path>
-            <circle cx="12" cy="12" r="2.15"></circle>
+            <circle cx="12" cy="12" r="1.85" fill="currentColor" stroke="none"></circle>
           </svg>
         </span>
       `;
