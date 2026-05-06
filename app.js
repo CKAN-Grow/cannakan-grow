@@ -37193,12 +37193,7 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
         role="button"
         aria-pressed="${isSelected ? "true" : "false"}"
       >
-        <div class="session-command-session-icon-wrap" aria-hidden="true">
-          ${renderAppIconMarkup("mySessionsSprout", {
-            variant: "plate",
-            className: "session-command-session-icon",
-          })}
-        </div>
+        ${renderCommandCenterIconMarkup("session-thumb", "command-icon--session-thumb")}
         <div class="session-command-session-copy">
           <strong>${escapeHtml(formatSessionLabel(session))}</strong>
           <p class="session-command-session-date">${escapeHtml(formatSessionNameDate(session.date))}</p>
@@ -37218,6 +37213,126 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
   }).join("");
 }
 
+function renderCommandCenterIconMarkup(iconName, className = "") {
+  const classes = ["command-icon", className].filter(Boolean).join(" ");
+
+  switch (iconName) {
+    case "header":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.25" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            <path d="M12 2.75v3.1M12 18.15v3.1M2.75 12h3.1M18.15 12h3.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            <circle cx="12" cy="12" r="1.85" fill="currentColor"></circle>
+          </svg>
+        </span>
+      `;
+    case "session-thumb":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 56 56" focusable="false" aria-hidden="true">
+            <defs>
+              <linearGradient id="command-session-thumb-stem" x1="0%" x2="0%" y1="0%" y2="100%">
+                <stop offset="0%" stop-color="#d7ff91"></stop>
+                <stop offset="100%" stop-color="#86cb4c"></stop>
+              </linearGradient>
+              <radialGradient id="command-session-thumb-glow" cx="50%" cy="84%" r="60%">
+                <stop offset="0%" stop-color="rgba(148, 209, 89, 0.6)"></stop>
+                <stop offset="100%" stop-color="rgba(148, 209, 89, 0)"></stop>
+              </radialGradient>
+            </defs>
+            <ellipse cx="28" cy="42" rx="16" ry="7" fill="url(#command-session-thumb-glow)"></ellipse>
+            <path d="M28 38V20" fill="none" stroke="url(#command-session-thumb-stem)" stroke-linecap="round" stroke-width="2.5"></path>
+            <path d="M28 24c-7 0-11-4.8-11-10 6.8 0 11 4.2 11 10Z" fill="rgba(185, 237, 120, 0.96)" stroke="rgba(228, 255, 193, 0.9)" stroke-width="1.2"></path>
+            <path d="M28 27c7 0 11-4.8 11-10-6.8 0-11 4.2-11 10Z" fill="rgba(143, 211, 85, 0.98)" stroke="rgba(216, 255, 172, 0.88)" stroke-width="1.2"></path>
+            <path d="M28 29c-4.8 0-7.6-3.2-7.6-6.8 4.7 0 7.6 2.9 7.6 6.8Z" fill="rgba(213, 255, 161, 0.9)" stroke="rgba(235, 255, 205, 0.9)" stroke-width="1"></path>
+            <path d="M28 31c4.8 0 7.6-3.2 7.6-6.8-4.7 0-7.6 2.9-7.6 6.8Z" fill="rgba(124, 196, 68, 0.95)" stroke="rgba(220, 255, 179, 0.85)" stroke-width="1"></path>
+            <path d="M19 43h18" fill="none" stroke="rgba(148, 209, 89, 0.42)" stroke-linecap="round" stroke-width="1.4"></path>
+          </svg>
+        </span>
+      `;
+    case "stage-soaking":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 3.5c-3.1 3.8-5.6 7.1-5.6 10.2a5.6 5.6 0 1 0 11.2 0C17.6 10.6 15.1 7.3 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "stage-germination":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 18.5V10.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M12 10.6c0-3.3 2.5-5.6 6.1-5.6 0 3.4-2.4 5.6-6.1 5.6Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            <path d="M12 13.1c0-2.9-2.3-4.9-5.7-4.9 0 3 2.2 4.9 5.7 4.9Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            <path d="M7.5 18.5h9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "stage-first-germinated":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 19V10.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M12 11.1c-4 0-7.1-2.8-7.1-7.1 4.4 0 7.1 2.7 7.1 7.1Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            <path d="M12 13.5c0-3.8 2.7-6.2 7.1-6.2 0 4.1-2.9 6.2-7.1 6.2Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "stage-completed":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m7.5 12.4 3.1 3.1 5.9-7.1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "metric-active":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M2.5 12h4l2.2-4.5 3.1 9 2.8-6h6.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "metric-saved":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M7 4.5h10a1.5 1.5 0 0 1 1.5 1.5v13.5L12 15.7 5.5 19.5V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "metric-leading":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m5 17 1.5-9 5.5 4 5.5-4L19 17H5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+            <path d="M8 17v2h8v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "metric-rate":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m6.5 12 3.1 3.1 7.9-8.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M5 5.5h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.45"></path>
+          </svg>
+        </span>
+      `;
+    default:
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.25" fill="currentColor"></circle>
+          </svg>
+        </span>
+      `;
+  }
+}
+
 function renderSessionCommandCenterProgressMarkup(session = null, options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
   const events = getSessionCommandCenterProgressEvents(session);
@@ -37226,12 +37341,7 @@ function renderSessionCommandCenterProgressMarkup(session = null, options = {}) 
     <div class="session-command-stage-grid">
       ${events.map((event) => `
         <article class="session-command-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
-          <div class="session-command-stage-icon-wrap" aria-hidden="true">
-            ${renderAppIconMarkup(event.iconName, {
-              variant: "plain",
-              className: "session-command-stage-icon",
-            })}
-          </div>
+          ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "germination" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "germination" : event.key}`)}
           <strong>${escapeHtml(event.displayLabel)}</strong>
           <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
         </article>
@@ -37334,12 +37444,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
         role="button"
         aria-pressed="${isSelected ? "true" : "false"}"
       >
-        <div class="session-command-session-icon-wrap" aria-hidden="true">
-          ${renderAppIconMarkup("mySessionsSprout", {
-            variant: "plate",
-            className: "session-command-session-icon",
-          })}
-        </div>
+        ${renderCommandCenterIconMarkup("session-thumb", "command-icon--session-thumb")}
         <div class="session-command-session-copy">
           <strong>${escapeHtml(formatSessionLabel(session))}</strong>
           <div class="session-command-session-meta">
@@ -37397,7 +37502,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
   return `
     <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
       <div class="summary-card-head">
-        <span class="summary-card-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
+        ${renderCommandCenterIconMarkup("metric-active", "command-icon--metric command-icon--metric-active")}
         <span class="stat-label">Active Sessions</span>
       </div>
       <div class="summary-card-body">
@@ -37408,7 +37513,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     </a>
     <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
       <div class="summary-card-head">
-        <span class="summary-card-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
+        ${renderCommandCenterIconMarkup("metric-saved", "command-icon--metric command-icon--metric-saved")}
         <span class="stat-label">Saved Sessions</span>
       </div>
       <div class="summary-card-body">
@@ -37420,7 +37525,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="${escapeHtml(bestSession ? `#sessions/${bestSession.id}` : "#sessions")}">
       <div class="summary-card-head best-session-header">
         <div class="summary-card-head-main">
-          <span class="summary-card-icon" data-app-icon="leaderboard" data-icon-variant="plate" aria-hidden="true"></span>
+          ${renderCommandCenterIconMarkup("metric-leading", "command-icon--metric command-icon--metric-leading")}
           <span class="stat-label">Leading Session</span>
         </div>
         ${bestSession ? '<span class="best-session-indicator">Recorded</span>' : ""}
@@ -37434,7 +37539,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     </a>
     <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions">
       <div class="summary-card-head">
-        <span class="summary-card-icon" data-app-icon="check" data-icon-variant="plate" aria-hidden="true"></span>
+        ${renderCommandCenterIconMarkup("metric-rate", "command-icon--metric command-icon--metric-rate")}
         <span class="stat-label">All Sessions Germination Rate</span>
       </div>
       <div class="overall-rate-content">
@@ -37462,11 +37567,11 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
 
   return `
-    <section class="session-command-center-shell session-command-center-shell--sessions card card-accent card-accent-green">
-      <header class="session-command-center-head session-command-center-header app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          <span class="section-title-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
-          <div>
+    <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions card card-accent card-accent-green">
+      <header class="session-command-center-head session-command-center-header">
+        <div class="session-command-center-title-row">
+          ${renderCommandCenterIconMarkup("header", "command-icon--header")}
+          <div class="session-command-center-title-copy">
             <p class="eyebrow">ACTIVE SESSION</p>
             <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
           </div>
