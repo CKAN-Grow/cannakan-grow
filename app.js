@@ -27,6 +27,7 @@ const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   status: "all",
   inclusion: "all",
 });
+const ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER = "all";
 const AUTH_NAVIGATION_KEYS = [
   "cannakan-grow-last-route",
   "cannakan-grow-last-session-id",
@@ -62,6 +63,7 @@ const ADMIN_SOURCE_REVIEW_OPEN_STORAGE_KEY = "cannakanAdminSourceReviewOpen";
 const ADMIN_MESSAGE_BOARD_OPEN_STORAGE_KEY = "cannakanAdminMessageBoardOpen";
 const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
+const ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminSeedAgeAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
 const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
@@ -1138,6 +1140,7 @@ const appState = {
   sessionHistoryFilter: "all",
   sessionHistoryVisibleCount: 6,
   sessionDashboardScrollTarget: "",
+  adminSeedAgeAnalyticsFilter: ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
@@ -3507,6 +3510,146 @@ function getGallerySnapshotSeedAgeMetadata(snapshot = null) {
   }
 
   return getSessionSeedAgeMetadata(sessionLike);
+}
+
+function getSeedAgeBucketDefinitions() {
+  return [
+    {
+      key: "under-1",
+      label: "Under 1 year",
+      matches: (ageYears) => ageYears < 1,
+    },
+    {
+      key: "1-2",
+      label: "1-2 years",
+      matches: (ageYears) => ageYears >= 1 && ageYears < 3,
+    },
+    {
+      key: "3-5",
+      label: "3-5 years",
+      matches: (ageYears) => ageYears >= 3 && ageYears <= 5,
+    },
+    {
+      key: "5-10",
+      label: "5-10 years",
+      matches: (ageYears) => ageYears > 5 && ageYears <= 10,
+    },
+    {
+      key: "10-15",
+      label: "10-15 years",
+      matches: (ageYears) => ageYears > 10 && ageYears <= 15,
+    },
+    {
+      key: "15-20",
+      label: "15-20 years",
+      matches: (ageYears) => ageYears > 15 && ageYears <= 20,
+    },
+    {
+      key: "20-plus",
+      label: "20+ years",
+      matches: (ageYears) => ageYears > 20,
+    },
+    {
+      key: "unknown",
+      label: "Unknown",
+      matches: (ageYears) => ageYears === null,
+    },
+  ];
+}
+
+function normalizeSeedAgeBucketFilter(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  const validKeys = new Set([
+    ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
+    ...getSeedAgeBucketDefinitions().map((bucket) => bucket.key),
+  ]);
+  return validKeys.has(normalizedValue)
+    ? normalizedValue
+    : ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER;
+}
+
+function getSeedAgeBucketKey(ageYears = null) {
+  const normalizedAgeYears = normalizeSeedAgeYears(ageYears);
+  const matchingBucket = getSeedAgeBucketDefinitions().find((bucket) => bucket.matches(normalizedAgeYears)) || null;
+  return matchingBucket?.key || "unknown";
+}
+
+function getSeedAgeBucketLabel(bucketKey = "") {
+  const normalizedBucketKey = normalizeSeedAgeBucketFilter(bucketKey);
+  if (normalizedBucketKey === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER) {
+    return "Any age";
+  }
+  return getSeedAgeBucketDefinitions().find((bucket) => bucket.key === normalizedBucketKey)?.label || "Unknown";
+}
+
+function buildSeedAgeBucketSessionEntries(sessions = []) {
+  return (sessions || []).flatMap((session) => {
+    const normalizedSession = normalizeStoredSession(session) || session;
+    const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
+
+    return partitions
+      .map((partition) => {
+        const totalSeeds = Math.max(0, Number(partition?.seedCount) || 0);
+        if (totalSeeds <= 0) {
+          return null;
+        }
+
+        const totalPlanted = Math.max(0, Number(partition?.plantedCount) || 0);
+        const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
+        const bucketKey = getSeedAgeBucketKey(seedAgeYears);
+        return {
+          sessionId: String(normalizedSession?.id || "").trim(),
+          sessionStatus: normalizeSessionStatus(normalizedSession?.sessionStatus || ""),
+          bucketKey,
+          bucketLabel: getSeedAgeBucketLabel(bucketKey),
+          seedAgeYears,
+          totalSeeds,
+          totalPlanted,
+        };
+      })
+      .filter(Boolean);
+  });
+}
+
+function buildSeedAgeBucketAnalytics(entries = []) {
+  const buckets = new Map(
+    getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, {
+      key: bucket.key,
+      label: bucket.label,
+      totalSeeds: 0,
+      totalPlanted: 0,
+      sessionIds: new Set(),
+    }]),
+  );
+
+  (entries || []).forEach((entry) => {
+    const bucket = buckets.get(entry.bucketKey) || buckets.get("unknown");
+    if (!bucket) {
+      return;
+    }
+
+    bucket.totalSeeds += Math.max(0, Number(entry.totalSeeds) || 0);
+    bucket.totalPlanted += Math.max(0, Number(entry.totalPlanted) || 0);
+    if (entry.sessionId) {
+      bucket.sessionIds.add(entry.sessionId);
+    }
+  });
+
+  return getSeedAgeBucketDefinitions().map((bucketDefinition) => {
+    const bucket = buckets.get(bucketDefinition.key);
+    const germinationRate = bucket && bucket.totalSeeds > 0
+      ? Math.round((bucket.totalPlanted / bucket.totalSeeds) * 100)
+      : 0;
+
+    return {
+      key: bucketDefinition.key,
+      label: bucketDefinition.label,
+      totalSeeds: bucket?.totalSeeds || 0,
+      totalPlanted: bucket?.totalPlanted || 0,
+      germinationRate,
+      completedSessionCount: bucket?.sessionIds?.size || 0,
+    };
+  });
 }
 
 function getEffectivePartitionSeedAgeYears(partition = null, session = null) {
@@ -31758,6 +31901,7 @@ function renderAdminPage() {
 
   const leaderboardAuditAnchor = app.querySelector("#admin-leaderboard-audit-anchor");
   renderLeaderboardAuditSection(leaderboardAuditAnchor);
+  renderAdminSeedAgeAnalyticsSection(leaderboardAuditAnchor);
 }
 
 function renderHome() {
@@ -34253,6 +34397,251 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
       </div>
     </section>
   `;
+}
+
+function buildAdminSeedAgeAnalyticsState(filter = appState.adminSeedAgeAnalyticsFilter) {
+  const normalizedFilter = normalizeSeedAgeBucketFilter(filter);
+  const completedSessions = sortSessionsNewestFirst(
+    getAggregateStatsSessions(getSessions()).filter((session) => (
+      normalizeSessionStatus(session?.sessionStatus || "") === "completed"
+    )),
+  );
+  const entries = buildSeedAgeBucketSessionEntries(completedSessions);
+  const bucketRows = buildSeedAgeBucketAnalytics(entries);
+  const visibleRows = normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER
+    ? bucketRows
+    : bucketRows.filter((row) => row.key === normalizedFilter);
+  const nonZeroVisibleRows = visibleRows.filter((row) => row.totalSeeds > 0);
+  const maxSeedCount = visibleRows.reduce((maxValue, row) => Math.max(maxValue, row.totalSeeds), 0);
+  const representedSessionIds = new Set(
+    entries
+      .filter((entry) => normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER || entry.bucketKey === normalizedFilter)
+      .map((entry) => entry.sessionId)
+      .filter(Boolean),
+  );
+  const totals = visibleRows.reduce((accumulator, row) => {
+    accumulator.totalSeeds += row.totalSeeds;
+    accumulator.totalPlanted += row.totalPlanted;
+    accumulator.completedSessionCount += row.completedSessionCount;
+    return accumulator;
+  }, {
+    totalSeeds: 0,
+    totalPlanted: 0,
+    completedSessionCount: 0,
+  });
+  const overallRate = totals.totalSeeds > 0
+    ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
+    : 0;
+  const bestPerformingGroup = nonZeroVisibleRows.length
+    ? [...nonZeroVisibleRows].sort((left, right) => (
+      right.germinationRate - left.germinationRate
+      || right.totalSeeds - left.totalSeeds
+      || left.label.localeCompare(right.label)
+    ))[0]
+    : null;
+  const lowestPerformingGroup = nonZeroVisibleRows.length
+    ? [...nonZeroVisibleRows].sort((left, right) => (
+      left.germinationRate - right.germinationRate
+      || right.totalSeeds - left.totalSeeds
+      || left.label.localeCompare(right.label)
+    ))[0]
+    : null;
+
+  return {
+    filter: normalizedFilter,
+    filterLabel: getSeedAgeBucketLabel(normalizedFilter),
+    completedSessions,
+    entries,
+    rows: visibleRows,
+    hasData: nonZeroVisibleRows.length > 0,
+    totals: {
+      totalSeeds: totals.totalSeeds,
+      totalPlanted: totals.totalPlanted,
+      representedCompletedSessions: representedSessionIds.size,
+    },
+    overallRate,
+    bestPerformingGroup,
+    lowestPerformingGroup,
+    germinationRateRows: visibleRows.map((row) => ({
+      label: row.label,
+      fillWidth: `${row.germinationRate}%`,
+      totalWidth: "100%",
+      value: row.totalSeeds > 0
+        ? `${row.germinationRate}%`
+        : "No data",
+    })),
+    totalSeedRows: visibleRows.map((row) => ({
+      label: row.label,
+      fillWidth: maxSeedCount > 0 ? `${Math.round((row.totalSeeds / maxSeedCount) * 100)}%` : "0%",
+      totalWidth: "100%",
+      value: `${row.totalSeeds} seeds`,
+    })),
+    completedSessionRows: visibleRows.map((row) => ({
+      label: row.label,
+      fillWidth: representedSessionIds.size > 0
+        ? `${Math.round((row.completedSessionCount / representedSessionIds.size) * 100)}%`
+        : "0%",
+      totalWidth: "100%",
+      value: `${row.completedSessionCount} session${row.completedSessionCount === 1 ? "" : "s"}`,
+    })),
+  };
+}
+
+function renderAdminSeedAgeAnalyticsSection(target = app) {
+  if (!target || !isAdminUser()) {
+    return null;
+  }
+
+  const state = buildAdminSeedAgeAnalyticsState();
+  const section = document.createElement("section");
+  section.className = "admin-seed-age-analytics-shell";
+  section.innerHTML = renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Admin Analytics",
+    title: "Seed Age Analytics",
+    description: "Analyze completed-session germination performance by reusable seed age buckets.",
+    iconType: "analytics",
+    storageKey: ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY,
+    contentId: "admin-seed-age-analytics-content",
+    defaultOpen: false,
+    sectionClassName: "card admin-seed-age-analytics-section",
+    bodyMarkup: `
+      <div class="admin-seed-age-analytics-toolbar">
+        <div class="admin-seed-age-analytics-toolbar-copy">
+          <strong>Seed age filter</strong>
+          <p class="muted">Reusable bucket logic for Admin, Community Grow, Source Directory, and CSTP reporting.</p>
+        </div>
+        <label class="admin-seed-age-analytics-filter">
+          <span>Age bucket</span>
+          <select data-admin-seed-age-filter="true">
+            <option value="all"${state.filter === "all" ? " selected" : ""}>Any age</option>
+            ${getSeedAgeBucketDefinitions().map((bucket) => `
+              <option value="${escapeHtml(bucket.key)}"${state.filter === bucket.key ? " selected" : ""}>${escapeHtml(bucket.label)}</option>
+            `).join("")}
+          </select>
+        </label>
+      </div>
+      <div class="session-analytics-grid admin-seed-age-analytics-grid">
+        <article class="session-analytics-card session-analytics-card--overview">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("trend", "sessions-inline-icon")}
+            <div>
+              <h4>Germination Rate by Seed Age</h4>
+              <p>${escapeHtml(state.filter === "all" ? "Completed-session performance across every seed age bucket." : `Completed-session performance for ${state.filterLabel}.`)}</p>
+            </div>
+          </div>
+          ${state.hasData ? `
+            <div class="session-analytics-overview">
+              <div class="overall-rate-ring session-analytics-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${state.overallRate}%`)};">
+                <strong class="overall-rate-value">${escapeHtml(`${state.overallRate}%`)}</strong>
+              </div>
+              <div class="session-analytics-overview-copy">
+                <strong>${escapeHtml(`${state.totals.totalPlanted} / ${state.totals.totalSeeds} seeds`)}</strong>
+                <p>${escapeHtml(`${state.totals.representedCompletedSessions} completed session${state.totals.representedCompletedSessions === 1 ? "" : "s"} represented`)}</p>
+              </div>
+            </div>
+            <div class="overall-rate-bar session-analytics-rate-bar" aria-label="Seed age germination rate">
+              <div class="overall-rate-fill" style="width:${escapeHtml(`${state.overallRate}%`)};"></div>
+            </div>
+          ` : `
+            <div class="sessions-panel-empty sessions-panel-empty--analytics">
+              <p>No completed seed-age data is available for this filter yet.</p>
+            </div>
+          `}
+        </article>
+        <article class="session-analytics-card">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("summary", "sessions-inline-icon")}
+            <div>
+              <h4>Summary</h4>
+              <p>Quick read on coverage, best result, and lowest result by age bucket.</p>
+            </div>
+          </div>
+          <div class="session-analytics-summary-grid">
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(String(state.totals.totalSeeds))}</strong>
+              <span>Total Seeds Tested</span>
+            </div>
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(String(state.totals.representedCompletedSessions))}</strong>
+              <span>Completed Sessions</span>
+            </div>
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(state.bestPerformingGroup ? state.bestPerformingGroup.label : "No data")}</strong>
+              <span>Best Performing</span>
+            </div>
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(state.lowestPerformingGroup ? state.lowestPerformingGroup.label : "No data")}</strong>
+              <span>Lowest Performing</span>
+            </div>
+          </div>
+          <div class="session-analytics-summary-bars" aria-label="Best and lowest performing age groups">
+            <div class="session-analytics-summary-row">
+              <span>Best</span>
+              <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--completed" style="width:${escapeHtml(`${state.bestPerformingGroup?.germinationRate || 0}%`)};"></span>
+              </div>
+              <strong>${escapeHtml(state.bestPerformingGroup ? `${state.bestPerformingGroup.germinationRate}%` : "—")}</strong>
+            </div>
+            <div class="session-analytics-summary-row">
+              <span>Lowest</span>
+              <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active" style="width:${escapeHtml(`${state.lowestPerformingGroup?.germinationRate || 0}%`)};"></span>
+              </div>
+              <strong>${escapeHtml(state.lowestPerformingGroup ? `${state.lowestPerformingGroup.germinationRate}%` : "—")}</strong>
+            </div>
+          </div>
+        </article>
+        <article class="session-analytics-card">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("analytics", "sessions-inline-icon")}
+            <div>
+              <h4>Germination % by Age Group</h4>
+              <p>Bar chart of completed-session germination rate per seed age bucket.</p>
+            </div>
+          </div>
+          ${renderSessionAnalyticsProgressRows(state.germinationRateRows, {
+            emptyMessage: "No age-bucket germination data yet.",
+          })}
+        </article>
+        <article class="session-analytics-card">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-icon")}
+            <div>
+              <h4>Total Seeds Tested by Age Group</h4>
+              <p>Bar chart of completed-session seed counts per age bucket.</p>
+            </div>
+          </div>
+          ${renderSessionAnalyticsProgressRows(state.totalSeedRows, {
+            emptyMessage: "No age-bucket seed totals yet.",
+          })}
+        </article>
+        <article class="session-analytics-card session-analytics-card--summary admin-seed-age-analytics-card-wide">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("summary", "sessions-inline-icon")}
+            <div>
+              <h4>Completed Sessions Represented by Age Group</h4>
+              <p>Mixed-age sessions can count in multiple buckets when their partitions span multiple seed ages.</p>
+            </div>
+          </div>
+          ${renderSessionAnalyticsProgressRows(state.completedSessionRows, {
+            emptyMessage: "No completed sessions represented yet.",
+          })}
+        </article>
+      </div>
+    `,
+  });
+
+  const filterControl = section.querySelector("[data-admin-seed-age-filter='true']");
+  if (filterControl instanceof HTMLSelectElement) {
+    filterControl.addEventListener("change", () => {
+      appState.adminSeedAgeAnalyticsFilter = normalizeSeedAgeBucketFilter(filterControl.value);
+      safeRender();
+    });
+  }
+
+  bindAdminCollapsibleSections(section);
+  target.appendChild(section);
+  return section.querySelector(".admin-seed-age-analytics-section");
 }
 
 function getBestCompletedSession(sessions) {

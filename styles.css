@@ -23586,6 +23586,55 @@ body.theme-dark #session-analytics-section {
   gap: 18px;
 }
 
+.admin-seed-age-analytics-shell {
+  margin-top: 18px;
+}
+
+.admin-seed-age-analytics-section .admin-collapsible-section-content {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-seed-age-analytics-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-seed-age-analytics-toolbar-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-seed-age-analytics-toolbar-copy strong {
+  color: #f5f8f3;
+  font-size: 0.95rem;
+}
+
+.admin-seed-age-analytics-filter {
+  display: grid;
+  gap: 8px;
+  min-width: min(100%, 240px);
+}
+
+.admin-seed-age-analytics-filter span {
+  color: rgba(199, 208, 201, 0.76);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-seed-age-analytics-filter select {
+  min-height: 42px;
+}
+
+.admin-seed-age-analytics-card-wide {
+  grid-column: 1 / -1;
+}
+
 .session-analytics-header {
   display: flex;
   align-items: flex-start;
@@ -23800,6 +23849,10 @@ body.theme-dark #session-analytics-section {
 
   .session-analytics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-seed-age-analytics-toolbar {
+    align-items: stretch;
   }
 }
 
