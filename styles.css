@@ -23847,6 +23847,14 @@ body.theme-dark #session-analytics-section {
   color: rgba(233, 146, 136, 0.86);
 }
 
+.session-history-germination-rate {
+  color: #f5f8f3;
+}
+
+.session-history-germination-rate--success {
+  color: #94d159;
+}
+
 .session-history-cell--actions {
   display: inline-flex;
   align-items: center;

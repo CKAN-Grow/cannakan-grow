@@ -34393,7 +34393,15 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
             ${sessions.length ? visibleSessions.map((session) => {
               const statusMeta = getMySessionsHistoryStatusMeta(session);
               const totals = getSessionSeedTotals(session);
-              const germinationRate = totals.totalSeeds > 0 ? `${getSessionSuccessRate(session)}%` : "--";
+              const germinationRateValue = totals.totalSeeds > 0 ? getSessionSuccessRate(session) : null;
+              const germinationRate = germinationRateValue !== null ? `${germinationRateValue}%` : "--";
+              const germinationRateTone = (
+                germinationRateValue !== null
+                && germinationRateValue > 0
+                && ["first-germinated", "completed"].includes(statusMeta.tone)
+              )
+                ? " session-history-germination-rate--success"
+                : "";
               const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
               const dateContext = getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started";
 
@@ -34423,7 +34431,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                     <strong>${escapeHtml(`${totals.totalPlanted} / ${totals.totalSeeds}`)}</strong>
                   </div>
                   <div class="session-history-cell" data-label="Germination">
-                    <strong>${escapeHtml(germinationRate)}</strong>
+                    <strong class="session-history-germination-rate${germinationRateTone}">${escapeHtml(germinationRate)}</strong>
                   </div>
                   <div class="session-history-cell session-history-cell--actions" data-label="Actions">
                     <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
