@@ -17,17 +17,9 @@
   <link rel="manifest" href="/manifest.json">
   <script>
     (function () {
-      var themeKey = "cannakan-grow-theme";
-      var savedTheme = "dark";
-      try {
-        var storedTheme = localStorage.getItem(themeKey);
-        if (storedTheme === "light" || storedTheme === "dark") {
-          savedTheme = storedTheme;
-        }
-      } catch (error) {}
-      document.documentElement.dataset.theme = savedTheme;
-      document.documentElement.classList.toggle("theme-dark", savedTheme === "dark");
-      document.documentElement.style.colorScheme = savedTheme;
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.classList.add("theme-dark");
+      document.documentElement.style.colorScheme = "dark";
     })();
   </script>
   <link rel="stylesheet" href="/styles.css">
@@ -37,10 +29,9 @@
 <body>
   <script>
     (function () {
-      var theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
-      document.body.dataset.theme = theme;
-      document.body.classList.toggle("theme-dark", theme === "dark");
-      document.body.style.colorScheme = theme;
+      document.body.dataset.theme = "dark";
+      document.body.classList.add("theme-dark");
+      document.body.style.colorScheme = "dark";
     })();
   </script>
   <div class="app-shell">

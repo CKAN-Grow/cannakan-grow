@@ -143,7 +143,7 @@ const APP_HINTS = Object.freeze([
   { text: "Source Profiles only show published CSTP certifications, so admin lab work stays private until it is approved." },
   { text: "The Source Directory is a quick way to review tested varieties and published CSTP qualification levels." },
   { text: "Use Community Grow snapshots for public sharing and keep private test notes inside the session detail page." },
-  { text: "Dark mode is available from the app theme toggle if you want the testing and report views to feel easier on the eyes." },
+  { text: "Cannakan® Grow is tuned for a dark-first workspace so your session data, glass panels, and progress visuals stay clear." },
   { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
 ]);
 const BRAND_NAME = "Cannakan®";
@@ -1133,7 +1133,7 @@ const appState = {
   gallerySortOrder: "desc",
   galleryCertificationFilter: "all",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
-  theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
+  theme: "dark",
   sessionHistorySort: "date",
   sessionHistoryFilter: "all",
   sessionHistoryVisibleCount: 6,
@@ -2094,11 +2094,6 @@ function bindInstallPromptEvents() {
 }
 
 function getPreferredTheme() {
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  if (savedTheme === "light" || savedTheme === "dark") {
-    return savedTheme;
-  }
-
   return "dark";
 }
 
@@ -2662,33 +2657,13 @@ function animateStageBadge(stageBadge) {
 
 function syncThemeToggleButtons() {
   document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-    const isDark = appState.theme === "dark";
-    button.classList.toggle("is-dark", isDark);
-    button.classList.toggle("is-light", !isDark);
-    button.setAttribute("aria-pressed", isDark ? "true" : "false");
-    button.setAttribute("aria-label", `Switch to ${isDark ? "light" : "dark"} mode`);
-    button.setAttribute("title", `Switch to ${isDark ? "light" : "dark"} mode`);
-    button.innerHTML = isDark
-      ? `
-        <span class="theme-toggle-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <circle cx="12" cy="12" r="4.25"></circle>
-            <path d="M12 2.5v2.25M12 19.25v2.25M4.75 12H2.5M21.5 12h-2.25M5.84 5.84 4.25 4.25M19.75 19.75l-1.59-1.59M18.16 5.84l1.59-1.59M5.84 18.16l-1.59 1.59"></path>
-          </svg>
-        </span>
-      `
-      : `
-        <span class="theme-toggle-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false">
-            <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a9 9 0 1 0 10.7 10.7Z"></path>
-          </svg>
-        </span>
-      `;
+    button.hidden = true;
+    button.setAttribute("aria-hidden", "true");
   });
 }
 
 function applyTheme(theme, options = {}) {
-  const normalizedTheme = theme === "dark" ? "dark" : "light";
+  const normalizedTheme = "dark";
   const persist = options.persist !== false;
   appState.theme = normalizedTheme;
 
@@ -2707,7 +2682,7 @@ function applyTheme(theme, options = {}) {
 }
 
 function toggleTheme() {
-  applyTheme(appState.theme === "dark" ? "light" : "dark");
+  applyTheme("dark");
 }
 
 function closeAccountMenu() {
