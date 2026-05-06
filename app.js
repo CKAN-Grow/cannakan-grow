@@ -17059,6 +17059,26 @@ function syncSeedAgeSetupUi(form, options = {}) {
   return state;
 }
 
+function primeNewSessionSeedAgeDefaults(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
+  const sameModeInput = form.querySelector('input[name="seedAgeMode"][value="same"]');
+  const mixedModeInput = form.querySelector('input[name="seedAgeMode"][value="mixed"]');
+
+  if (seedAgeTrackingField instanceof HTMLInputElement) {
+    seedAgeTrackingField.checked = false;
+  }
+  if (sameModeInput instanceof HTMLInputElement) {
+    sameModeInput.checked = true;
+  }
+  if (mixedModeInput instanceof HTMLInputElement) {
+    mixedModeInput.checked = false;
+  }
+}
+
 function validateSeedAgeSettings(form) {
   const state = getSeedAgeSettingsFromForm(form);
   const modeGroup = form.querySelector(".session-seed-age-mode-group") || form.querySelector(".session-seed-age-mode-grid");
@@ -34739,6 +34759,8 @@ function renderSessionForm(initialSystemType = "KAN") {
   const notesDraft = loadNewSessionNotesDraft();
   appState.newSessionSystemType = normalizedSystemType;
 
+  primeNewSessionSeedAgeDefaults(form);
+
   form.elements.date.value = today.toISOString().slice(0, 10);
   initializeTimeFormatField(form, today.toTimeString().slice(0, 5));
   systemTypeField.value = normalizedSystemType;
@@ -34960,6 +34982,12 @@ function renderSessionForm(initialSystemType = "KAN") {
       openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
     seedAgeTrackingField?.addEventListener("change", () => {
+      if (seedAgeTrackingField.checked && !form.querySelector('input[name="seedAgeMode"]:checked')) {
+        const sameModeInput = form.querySelector('input[name="seedAgeMode"][value="same"]');
+        if (sameModeInput instanceof HTMLInputElement) {
+          sameModeInput.checked = true;
+        }
+      }
       rerenderSeedAgePartitions();
     });
     seedAgeModeInputs.forEach((input) => {
