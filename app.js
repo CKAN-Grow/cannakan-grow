@@ -3491,7 +3491,7 @@ function buildSeedAgeSnapshotLabel(source = null) {
   return "";
 }
 
-function getCommandCenterFilterPaperSupplyState() {
+function getFilterPaperSupplyDisplayState() {
   const inventory = getFilterPaperInventory();
   const isInventorySet = hasFilterPaperInventoryBeenSet();
   if (!isInventorySet) {
@@ -20054,25 +20054,22 @@ function renderSessionsFilterPaperCardMarkup() {
 }
 
 function renderActiveSessionFilterPaperCardMarkup() {
-  const inventory = getFilterPaperInventory();
-  const status = getFilterPaperStatusMeta(inventory.count);
-  const reminder = inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
-  const statusLabel = getFilterPaperStatusDisplayLabel(status.key);
+  const supply = getFilterPaperSupplyDisplayState();
 
   return `
-    <section class="card active-session-supplies-card active-session-supplies-card--${status.key}" aria-labelledby="active-session-supplies-title">
+    <section class="card active-session-supplies-card active-session-supplies-card--${escapeHtml(supply.tone)}" aria-labelledby="active-session-supplies-title">
       <div class="active-session-supplies-head">
         <div class="active-session-supplies-copy">
           <p class="eyebrow">Supplies</p>
-          <h4 id="active-session-supplies-title">Supplies</h4>
-          <p class="active-session-supplies-count">Filter Papers: <strong>${escapeHtml(String(inventory.count))}</strong> remaining</p>
-          ${reminder ? `<p class="active-session-supplies-reminder">${escapeHtml(reminder)}</p>` : ""}
+          <h4 id="active-session-supplies-title">Lab Filter Paper Supply</h4>
+          <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
+          <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
         </div>
         <div class="active-session-supplies-actions">
-          <span class="filter-paper-status-badge filter-paper-status-badge--${status.key}">${escapeHtml(statusLabel)}</span>
+          <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(supply.statusLabel)}</span>
           <div class="active-session-supplies-button-row">
             <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
-            <button type="button" class="button button-secondary" data-filter-paper-edit="true">Update Count</button>
+            <button type="button" class="button button-secondary" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>
           </div>
         </div>
       </div>
@@ -35172,6 +35169,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const runProgressSummary = document.querySelector("#run-progress-summary");
   const lifecycleSection = document.querySelector("#session-lifecycle-section");
   const lifecycleSummary = document.querySelector("#session-lifecycle-summary");
+  const suppliesAnchor = document.querySelector("#session-lifecycle-supplies-anchor");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
@@ -35256,6 +35254,16 @@ function renderSessionForm(initialSystemType = "KAN") {
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
   applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
   applyStageEditingMode(form, sessionStatusField.value);
+  const renderFormSuppliesCard = () => {
+    if (!suppliesAnchor) {
+      return;
+    }
+    suppliesAnchor.innerHTML = renderActiveSessionFilterPaperCardMarkup();
+    bindFilterPaperCardActions(suppliesAnchor, {
+      onSave: renderFormSuppliesCard,
+    });
+  };
+  renderFormSuppliesCard();
   updateSessionStatusReminder(
     reminder,
     form.elements.date.value,
@@ -37752,7 +37760,7 @@ function getSessionDetailElements(scope = document) {
     statusReminder: scope.querySelector("#detail-session-status-reminder"),
     statusLabel: scope.querySelector(".session-status-label"),
     statusHelp: scope.querySelector(".session-status-help"),
-    suppliesAnchor: scope.querySelector("#detail-supplies-anchor"),
+    suppliesAnchor: scope.querySelector("#detail-lifecycle-supplies-anchor"),
     notesField: scope.querySelector("#detail-session-notes"),
     notesLabel: scope.querySelector("#detail-session-notes-label span:last-child"),
     notesHelp: scope.querySelector(".session-notes-help"),
@@ -38094,12 +38102,7 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
-    const isActiveSession = normalizeSessionStatus(detail.statusField.value) !== "completed";
-    detail.suppliesAnchor.innerHTML = isActiveSession ? renderActiveSessionFilterPaperCardMarkup() : "";
-    if (!isActiveSession) {
-      return;
-    }
-
+    detail.suppliesAnchor.innerHTML = renderActiveSessionFilterPaperCardMarkup();
     bindFilterPaperCardActions(detail.suppliesAnchor, {
       onSave: renderDetailSuppliesCard,
     });
@@ -40719,7 +40722,7 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
 }
 
 function renderSessionCommandCenterFilterPaperSupplyMarkup() {
-  const supply = getCommandCenterFilterPaperSupplyState();
+  const supply = getFilterPaperSupplyDisplayState();
   const actionButtons = [
     `<button type="button" class="button button-primary" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>`,
   ];

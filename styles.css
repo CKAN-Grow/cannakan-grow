@@ -8252,7 +8252,6 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-accent-soft: rgba(148, 209, 89, 0.16);
   display: grid;
   gap: 12px;
-  margin-bottom: 14px;
   padding: 16px 18px;
   border: 1px solid var(--active-supplies-accent-soft);
   background:
@@ -8268,11 +8267,22 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-accent-soft: rgba(148, 209, 89, 0.16);
 }
 
+.active-session-supplies-card--unset {
+  --active-supplies-accent: #8db985;
+  --active-supplies-accent-soft: rgba(141, 185, 133, 0.18);
+}
+
 .active-session-supplies-card--low {
   --active-supplies-accent: #d98b2b;
   --active-supplies-accent-soft: rgba(217, 139, 43, 0.18);
 }
 
+.active-session-supplies-card--urgent {
+  --active-supplies-accent: #cb7540;
+  --active-supplies-accent-soft: rgba(203, 117, 64, 0.2);
+}
+
+.active-session-supplies-card--empty,
 .active-session-supplies-card--critical {
   --active-supplies-accent: #c6534c;
   --active-supplies-accent-soft: rgba(198, 83, 76, 0.2);
@@ -8325,6 +8335,10 @@ body.theme-dark .contact-reason-card.is-active {
 .active-session-supplies-button-row .button {
   width: auto;
   min-width: 0;
+}
+
+.session-lifecycle-supplies-anchor {
+  margin-top: 16px;
 }
 
 .home-gallery-rankings-head {
