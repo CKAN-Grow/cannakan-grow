@@ -33875,17 +33875,9 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   applySupplyStatusToSessionEntryButtons(app);
-  const activeSessionsSuppliesSidebar = document.querySelector("#active-sessions-supplies-sidebar");
-  if (activeSessionsSuppliesSidebar) {
-    activeSessionsSuppliesSidebar.innerHTML = renderSessionsFilterPaperCardMarkup();
-    bindFilterPaperCardActions(activeSessionsSuppliesSidebar, {
-      onSave: () => safeRender(),
-    });
-  }
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
-  const activeContainer = document.querySelector("#active-sessions-list");
-  const activeSessionsTitle = document.querySelector("#active-sessions-section .section-title-with-icon h3");
+  const activeSessionsSection = document.querySelector("#active-sessions-section");
   const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
   const historyContainer = document.querySelector("#sessions-list");
   const historySortControl = document.querySelector("#session-history-sort");
@@ -33895,18 +33887,52 @@ function renderSessionsList() {
   );
   const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
-  if (activeSessionsTitle) {
-    activeSessionsTitle.textContent = activeSessions.length === 1
-      ? "Active Session Spotlight"
-      : "Active Sessions";
-  }
+  let selectedCommandCenterSessionId = activeSessions[0]?.id || "";
+  const renderActiveSessionsCommandCenter = () => {
+    if (!activeSessionsSection) {
+      return;
+    }
 
-  renderSessionCollection(activeContainer, activeSessions, {
-    emptyMessage: hasSessionHistory ? "No active sessions." : "No sessions yet.",
-    emptyActionLabel: hasSessionHistory ? "Start New Session" : "Create your first session",
-    compact: false,
-    variant: "active-grid",
+    const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
+    activeSessionsSection.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
+      hasSessionHistory,
+      requiresSignIn: !appState.user,
+    });
+    hydrateAppIconSlots(activeSessionsSection);
+    applySupplyStatusToSessionEntryButtons(activeSessionsSection);
+  };
+
+  activeSessionsSection?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("a, button")) {
+      return;
+    }
+    const card = target.closest("[data-session-command-select]");
+    if (!card) {
+      return;
+    }
+    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+    renderActiveSessionsCommandCenter();
   });
+
+  activeSessionsSection?.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const card = target.closest("[data-session-command-select]");
+    if (!card || (event.key !== "Enter" && event.key !== " ")) {
+      return;
+    }
+    event.preventDefault();
+    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+    renderActiveSessionsCommandCenter();
+  });
+
+  startSessionTimer(renderActiveSessionsCommandCenter);
 
   renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 2), sessions, {
     emptyMessage: "No completed sessions yet.",
@@ -37253,6 +37279,135 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
       <p>${escapeHtml(card.caption)}</p>
     </article>
   `).join("");
+}
+
+function formatSessionCommandCenterDayLabel(session = null) {
+  const startedAt = parseSessionStartDateTime(session?.date, session?.time);
+  if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
+    return "";
+  }
+
+  const totalDays = Math.max(1, Math.floor((Date.now() - startedAt.getTime()) / (24 * 60 * 60 * 1000)) + 1);
+  return `Day ${totalDays}`;
+}
+
+function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  const hasSessionHistory = Boolean(options.hasSessionHistory);
+
+  if (requiresSignIn) {
+    return `
+      <div class="session-command-empty">
+        <p>Sign in to start and continue tracking your grow sessions.</p>
+        <a class="button button-primary" href="#new" data-session-entry="true">Sign In to Start Session</a>
+      </div>
+      <a class="session-command-start-link" href="#new" data-session-entry="true">+ Start New Session</a>
+    `;
+  }
+
+  if (!activeSessions.length) {
+    return `
+      <div class="session-command-empty">
+        <p>${escapeHtml(hasSessionHistory ? "No active sessions right now. Start a new grow session when you're ready." : "No sessions yet. Start your first grow session to open the command center.")}</p>
+        <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasSessionHistory ? "Start New Session" : "Create Your First Session")}</a>
+      </div>
+      <a class="session-command-start-link" href="#new" data-session-entry="true">+ Start New Session</a>
+    `;
+  }
+
+  const cardsMarkup = activeSessions.map((session) => {
+    const isSelected = session.id === selectedSessionId;
+    const stageBadge = getSessionCommandCenterStageBadge(session);
+    const strainLabel = getSessionCommandCenterPrimaryStrain(session) || "Strain not set";
+    const dateLabel = formatSessionNameDate(session.date);
+    const dayLabel = formatSessionCommandCenterDayLabel(session);
+
+    return `
+      <article
+        class="session-command-session-card${isSelected ? " is-selected" : ""}"
+        data-session-command-select="${escapeHtml(session.id)}"
+        tabindex="0"
+        role="button"
+        aria-pressed="${isSelected ? "true" : "false"}"
+      >
+        <div class="session-command-session-icon-wrap" aria-hidden="true">
+          ${renderAppIconMarkup("mySessionsSprout", {
+            variant: "plate",
+            className: "session-command-session-icon",
+          })}
+        </div>
+        <div class="session-command-session-copy">
+          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+          <div class="session-command-session-meta">
+            <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
+            ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
+            <p class="session-command-session-strain">${escapeHtml(strainLabel)}</p>
+          </div>
+          <div class="session-command-session-footer">
+            <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
+          </div>
+        </div>
+        <div class="session-command-session-actions">
+          <a class="button button-primary session-command-session-continue" href="#sessions/${escapeHtml(session.id)}">Continue</a>
+          <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
+            <span aria-hidden="true">&bull;&bull;&bull;</span>
+          </a>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  return `
+    ${cardsMarkup}
+    <a class="session-command-start-link" href="#new" data-session-entry="true">+ Start New Session</a>
+  `;
+}
+
+function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  const selectedSession = activeSessions.find((session) => session.id === selectedSessionId) || activeSessions[0] || null;
+  const countBadgeLabel = requiresSignIn
+    ? "Sign in"
+    : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
+
+  return `
+    <div class="session-command-center-head app-section-header">
+      <div class="section-title-with-icon app-section-header-main">
+        <span class="section-title-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
+        <div>
+          <p class="eyebrow">ACTIVE SESSION</p>
+          <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
+        </div>
+      </div>
+    </div>
+    <div class="session-command-center" data-session-command-center="true">
+      <section class="session-command-panel session-command-panel--sessions" aria-labelledby="active-sessions-command-list-title">
+        <div class="session-command-panel-heading">
+          <div class="session-command-panel-heading-copy">
+            <div class="session-command-panel-heading-row">
+              <h4 id="active-sessions-command-list-title">ACTIVE SESSIONS</h4>
+              <span class="session-command-count-badge">${escapeHtml(countBadgeLabel)}</span>
+            </div>
+          </div>
+          <a class="session-command-panel-link" href="#sessions">View All Active <span aria-hidden="true">&rarr;</span></a>
+        </div>
+        <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
+      </section>
+      <section class="session-command-panel session-command-panel--progress" aria-labelledby="active-sessions-command-progress-title">
+        <div class="session-command-panel-heading">
+          <div class="session-command-panel-heading-row">
+            <h4 id="active-sessions-command-progress-title">STAGE PROGRESS</h4>
+          </div>
+        </div>
+        <div class="session-command-progress" aria-label="Selected session progress">
+          ${renderSessionCommandCenterProgressMarkup(selectedSession, { requiresSignIn })}
+        </div>
+        <div class="session-command-stats">
+          ${renderSessionCommandCenterStatsMarkup(selectedSession, { requiresSignIn })}
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
