@@ -17375,6 +17375,7 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     return null;
   }
 
+  const hasIncludeProfilePreference = Object.prototype.hasOwnProperty.call(snapshotState, "includeProfileInGallery");
   const normalized = {
     referenceId: String(snapshotState.referenceId || snapshotState.id || "").trim(),
     createdAt: String(snapshotState.createdAt || "").trim(),
@@ -17387,6 +17388,9 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     gallerySnapshotId: String(snapshotState.gallerySnapshotId || snapshotState.snapshotId || "").trim(),
     galleryRoute: String(snapshotState.galleryRoute || "").trim(),
   };
+  if (hasIncludeProfilePreference) {
+    normalized.includeProfileInGallery = Boolean(snapshotState.includeProfileInGallery);
+  }
 
   const hasSubmittedStatus = ["pending_review", "approved", "rejected"].includes(normalized.galleryStatus);
   if (normalized.gallerySnapshotId && !normalized.submittedAt) {
@@ -17404,7 +17408,7 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     normalized.galleryStatus = "private";
   }
 
-  return Object.values(normalized).some(Boolean) ? normalized : null;
+  return Object.values(normalized).some(Boolean) || hasIncludeProfilePreference ? normalized : null;
 }
 
 function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotState = null) {
@@ -17423,6 +17427,9 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
     imagePath: String(snapshot.imagePath || normalizedBase?.imagePath || "").trim(),
     gallerySnapshotId: String(snapshot.id || normalizedBase?.gallerySnapshotId || "").trim(),
     galleryRoute: snapshot.id ? `#gallery/${snapshot.id}` : (normalizedBase?.galleryRoute || ""),
+    includeProfileInGallery: Object.prototype.hasOwnProperty.call(snapshot, "includeProfileInGallery")
+      ? Boolean(snapshot.includeProfileInGallery)
+      : normalizedBase?.includeProfileInGallery,
   });
 }
 
@@ -18137,8 +18144,15 @@ function initializeSnapshotSection(scope, options) {
     });
   }
   if (state.includeProfileToggle) {
-    state.includeProfileToggle.checked = false;
+    const persistedSnapshotState = getSnapshotStateForSection(state);
+    state.includeProfileToggle.checked = Object.prototype.hasOwnProperty.call(persistedSnapshotState || {}, "includeProfileInGallery")
+      ? Boolean(persistedSnapshotState.includeProfileInGallery)
+      : true;
     state.includeProfileToggle.addEventListener("change", async () => {
+      await persistSnapshotStateForSection(state, {
+        ...(getSnapshotStateForSection(state) || {}),
+        includeProfileInGallery: Boolean(state.includeProfileToggle.checked),
+      });
       if (!state.generatedBlob) {
         return;
       }
@@ -18554,9 +18568,6 @@ function syncSnapshotGalleryControls(state) {
   const hasConfirmedSubmission = Boolean(publishedEntry?.id);
 
   setSnapshotAnimatedVisibility([state.includeProfileToggleRow, state.includeProfileDividerRow], includesGallery);
-  if (state.includeProfileToggle && !includesGallery) {
-    setSnapshotIncludeProfileEnabled(state, false);
-  }
 
   if (state.galleryNote) {
     if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
