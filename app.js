@@ -15393,14 +15393,18 @@ function renderCommunitySeedAgeOverviewSection() {
     </div>
     <div class="gallery-seed-age-overview-grid">
       ${cards.map((card) => `
-        <article class="gallery-seed-age-kpi-card ${escapeHtml(card.variant || "")}${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
+        <article class="gallery-seed-age-kpi-card ${escapeHtml(card.variant || "")}${state.isDemo ? " is-demo" : ""}${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
           <div class="gallery-seed-age-kpi-copy">
             <p class="gallery-seed-age-kpi-label">${escapeHtml(card.label)}</p>
             <strong class="gallery-seed-age-kpi-value ${escapeHtml(getSeedAgeAnalyticsKpiValueClass(card))}">${escapeHtml(card.value)}</strong>
             <p class="gallery-seed-age-kpi-helper">${escapeHtml(card.helper)}</p>
           </div>
           <div class="gallery-seed-age-kpi-visual-shell">
-            ${renderSeedAgeAnalyticsKpiVisualMarkup(card)}
+            ${renderSeedAgeAnalyticsKpiVisualMarkup(card, {
+              contextClass: "is-preview",
+              useMulticolorGradient: true,
+              isDemo: state.isDemo,
+            })}
           </div>
         </article>
       `).join("")}
@@ -16560,14 +16564,23 @@ function buildSeedAgeAnalyticsKpiCards(state) {
   });
 }
 
-function renderSeedAgeAnalyticsKpiVisualMarkup(card) {
+function renderSeedAgeAnalyticsKpiVisualMarkup(card, options = {}) {
   const progress = Math.max(0, Math.min(100, Number(card?.progress) || 0));
+  const theme = getSeedAgeAnalyticsKpiVisualTheme(card, options);
+  const gradientToken = `seed-age-kpi-ring-${appIconRenderSequence += 1}`;
   return `
-    <div class="seed-age-analytics-kpi-visual ${escapeHtml(card?.variant || "")}" style="--seed-age-kpi-progress:${escapeHtml(progress.toFixed(2))};" aria-hidden="true">
+    <div class="seed-age-analytics-kpi-visual ${escapeHtml(card?.variant || "")}${options.contextClass ? ` ${escapeHtml(options.contextClass)}` : ""}${options.isDemo ? " is-demo" : ""}" style="--seed-age-kpi-progress:${escapeHtml(progress.toFixed(2))}; --seed-age-kpi-accent-start:${escapeHtml(theme.start)}; --seed-age-kpi-accent-mid:${escapeHtml(theme.mid)}; --seed-age-kpi-accent-end:${escapeHtml(theme.end)}; --seed-age-kpi-accent-soft:${escapeHtml(theme.soft)};" aria-hidden="true">
       <div class="seed-age-analytics-kpi-visual-glow"></div>
       <svg class="seed-age-analytics-kpi-ring" viewBox="0 0 96 96" focusable="false">
+        <defs>
+          <linearGradient id="${escapeHtml(gradientToken)}" x1="14" y1="10" x2="82" y2="86" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="${escapeHtml(theme.start)}"></stop>
+            <stop offset="52%" stop-color="${escapeHtml(theme.mid)}"></stop>
+            <stop offset="100%" stop-color="${escapeHtml(theme.end)}"></stop>
+          </linearGradient>
+        </defs>
         <circle class="seed-age-analytics-kpi-ring-track" cx="48" cy="48" r="34" pathLength="100"></circle>
-        <circle class="seed-age-analytics-kpi-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
+        <circle class="seed-age-analytics-kpi-ring-progress" cx="48" cy="48" r="34" pathLength="100"${options.useMulticolorGradient ? ` style="stroke:url(#${escapeHtml(gradientToken)});"` : ""}></circle>
       </svg>
       <div class="seed-age-analytics-kpi-visual-center">
         <strong>${escapeHtml(card?.visualValue || "")}</strong>
@@ -16575,6 +16588,50 @@ function renderSeedAgeAnalyticsKpiVisualMarkup(card) {
       </div>
     </div>
   `;
+}
+
+function getSeedAgeAnalyticsKpiVisualTheme(card, options = {}) {
+  if (options.isDemo) {
+    return {
+      start: "#d9a24b",
+      mid: "#b7d05c",
+      end: "#6fca72",
+      soft: "rgba(217, 162, 75, 0.26)",
+    };
+  }
+
+  switch (String(card?.variant || "").trim()) {
+    case "is-sessions":
+      return {
+        start: "#67d780",
+        mid: "#4fc99a",
+        end: "#49bfc0",
+        soft: "rgba(79, 201, 154, 0.24)",
+      };
+    case "is-range":
+      return {
+        start: "#74d97d",
+        mid: "#55c98f",
+        end: "#43b5a6",
+        soft: "rgba(85, 201, 143, 0.24)",
+      };
+    case "is-performance":
+      return {
+        start: "#bdec68",
+        mid: "#d8dd62",
+        end: "#eab75d",
+        soft: "rgba(216, 221, 98, 0.24)",
+      };
+    case "is-optimal":
+    case "is-average":
+    default:
+      return {
+        start: "#67d67b",
+        mid: "#96d85a",
+        end: "#c7ef69",
+        soft: "rgba(150, 216, 90, 0.24)",
+      };
+  }
 }
 
 function getSeedAgeAnalyticsKpiValueClass(card) {

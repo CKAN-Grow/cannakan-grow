@@ -5763,11 +5763,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-seed-age-kpi-card {
   display: grid;
-  grid-template-columns: minmax(128px, 1fr) 84px;
+  grid-template-columns: minmax(0, 1fr) 76px;
   align-items: center;
-  gap: 16px;
-  min-height: 148px;
-  padding: 18px 18px 16px;
+  gap: 18px;
+  min-height: 152px;
+  padding: 18px 20px 18px 18px;
   border-radius: 22px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background:
@@ -5785,33 +5785,68 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-seed-age-kpi-visual-shell {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  min-width: 76px;
+  align-self: stretch;
   justify-self: end;
+  padding-right: 2px;
 }
 
-.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual {
-  width: 84px;
-  min-width: 84px;
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview {
+  width: 76px;
+  min-width: 76px;
+  justify-self: center;
+  color: transparent;
 }
 
-.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual::before {
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview::before {
+  inset: 10px;
+  border-color: rgba(255, 255, 255, 0.05);
+  background:
+    radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--seed-age-kpi-accent-mid) 18%, rgba(255, 255, 255, 0.08)) 0%, rgba(10, 15, 12, 0.96) 66%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 18px color-mix(in srgb, var(--seed-age-kpi-accent-soft) 42%, transparent),
+    0 10px 18px rgba(0, 0, 0, 0.2);
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview::after {
+  inset: 4px;
+  border-color: color-mix(in srgb, var(--seed-age-kpi-accent-mid) 30%, rgba(255, 255, 255, 0.07));
+  opacity: 0.44;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview .seed-age-analytics-kpi-visual-glow {
   inset: 11px;
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--seed-age-kpi-accent-mid) 32%, transparent) 0%, transparent 72%);
+  filter: blur(11px);
+  opacity: 0.78;
 }
 
-.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual::after {
-  inset: 5px;
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview .seed-age-analytics-kpi-ring-track,
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview .seed-age-analytics-kpi-ring-progress {
+  stroke-width: 5.5;
 }
 
-.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-glow {
-  inset: 13px;
-  opacity: 0.68;
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview .seed-age-analytics-kpi-ring-track {
+  stroke: rgba(255, 255, 255, 0.075);
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview .seed-age-analytics-kpi-ring-progress {
+  filter:
+    drop-shadow(0 0 10px color-mix(in srgb, var(--seed-age-kpi-accent-soft) 82%, transparent))
+    drop-shadow(0 0 4px color-mix(in srgb, var(--seed-age-kpi-accent-end) 38%, transparent));
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center {
-  padding: 14px;
+  padding: 13px;
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center strong {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center span {
@@ -5844,7 +5879,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-seed-age-kpi-value.is-extended {
-  font-size: clamp(1.16rem, 1.7vw, 1.54rem);
+  font-size: clamp(1.06rem, 1.55vw, 1.42rem);
+  line-height: 1.08;
 }
 
 .gallery-seed-age-kpi-card.is-empty .gallery-seed-age-kpi-value {
@@ -10800,8 +10836,20 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .gallery-seed-age-kpi-card {
-    grid-template-columns: minmax(0, 1fr) 84px;
+    grid-template-columns: minmax(0, 1fr) 74px;
     min-height: 0;
+    gap: 14px;
+    padding-right: 18px;
+  }
+
+  .gallery-seed-age-kpi-visual-shell {
+    width: 74px;
+    min-width: 74px;
+  }
+
+  .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview {
+    width: 74px;
+    min-width: 74px;
   }
 
   .gallery-card-feed-header {
