@@ -2084,9 +2084,9 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-lifecycle-progress-shell .command-icon-tile {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
   background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
   border: 1px solid rgba(148,209,89,0.18);
   box-shadow:
@@ -2101,8 +2101,8 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-lifecycle-progress-shell .command-icon-svg {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.6;
@@ -2110,9 +2110,9 @@ body.theme-dark .spotlight-stat strong {
 }
 
 .session-lifecycle-progress-shell .command-icon--stage {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   color: rgba(225, 230, 224, 0.56);
   position: relative;
   z-index: 1;
@@ -2623,6 +2623,11 @@ body.theme-dark .spotlight-stat strong {
   background: rgba(148, 209, 89, 0.18);
 }
 
+.session-lifecycle-stage-connector.stage-connector--active {
+  background: linear-gradient(90deg, #6eb7ff 0%, #94d159 100%);
+  box-shadow: 0 0 6px rgba(148, 209, 89, 0.36);
+}
+
 .session-command-stage {
   --session-command-stage-color: rgba(148, 209, 89, 0.22);
   --session-command-stage-ink: rgba(209, 218, 211, 0.86);
@@ -2780,6 +2785,60 @@ body.theme-dark .spotlight-stat strong {
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 4px 12px rgba(0, 0, 0, 0.35),
     0 0 10px var(--session-command-stage-glow);
+}
+
+.session-lifecycle-stage.is-complete:not(.is-current) {
+  opacity: 1;
+}
+
+.session-lifecycle-stage.is-complete:not(.is-current) .session-command-stage-icon-wrap {
+  filter: brightness(0.96);
+}
+
+.session-lifecycle-stage.is-complete:not(.is-current) strong {
+  opacity: 1;
+  color: var(--session-command-stage-title, #eef3eb);
+}
+
+.session-lifecycle-stage.is-complete:not(.is-current) p,
+.session-lifecycle-stage.is-complete:not(.is-current) .session-lifecycle-stage-card {
+  opacity: 0.92;
+}
+
+.session-lifecycle-stage.is-current .session-command-stage-icon-wrap,
+.session-lifecycle-stage.is-current strong {
+  transform: scale(1.42);
+}
+
+.session-lifecycle-stage.is-current .session-command-stage-icon-wrap {
+  filter: brightness(1.2);
+}
+
+.session-lifecycle-stage.is-current strong {
+  font-weight: 800;
+  opacity: 1;
+}
+
+.session-lifecycle-stage.is-current .session-command-stage-helper,
+.session-lifecycle-stage.is-current .session-lifecycle-stage-card dd {
+  color: rgba(248, 252, 247, 0.98);
+}
+
+.session-lifecycle-stage.is-future {
+  opacity: 0.44;
+}
+
+.session-lifecycle-stage.is-future .session-command-stage-icon-wrap {
+  filter: brightness(0.62);
+}
+
+.session-lifecycle-stage.is-future strong {
+  opacity: 0.56;
+}
+
+.session-lifecycle-stage.is-future p,
+.session-lifecycle-stage.is-future .session-lifecycle-stage-card {
+  opacity: 0.6;
 }
 
 .session-command-stage.is-current strong {
@@ -15708,6 +15767,22 @@ body.theme-dark .theme-toggle-button:hover {
       minmax(86px, 1fr)
       minmax(18px, 0.28fr)
       minmax(86px, 1fr);
+  }
+
+  .session-lifecycle-progress-shell .command-icon-tile {
+    width: 58px;
+    height: 58px;
+    padding: 9px;
+  }
+
+  .session-lifecycle-progress-shell .command-icon--stage {
+    width: 52px;
+    height: 52px;
+  }
+
+  .session-lifecycle-progress-shell .command-icon-svg {
+    width: 28px;
+    height: 28px;
   }
 
   #session-command-center .stage-connector {
