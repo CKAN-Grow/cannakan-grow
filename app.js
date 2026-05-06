@@ -30832,6 +30832,7 @@ function renderHome() {
   appState.announcements = loadAnnouncementsFromStorage("home:render");
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
+  hydrateAppIconSlots(app);
   const growSessionsHeading = app.querySelector(".app-hero--home .app-hero-title");
   if (growSessionsHeading) {
     growSessionsHeading.textContent = getGrowSessionsSectionTitle();
@@ -30870,6 +30871,7 @@ function renderHome() {
   const overallRateEl = document.querySelector("#overall-germination-rate");
   const overallTotalEl = document.querySelector("#overall-germination-total");
   const overallFillEl = document.querySelector("#overall-germination-fill");
+  const overallRingEl = document.querySelector("#overall-germination-ring");
   countEl.textContent = String(sessions.length);
   activeCountEl.textContent = String(activeSessions.length);
   activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
@@ -30892,6 +30894,7 @@ function renderHome() {
   overallRateEl.textContent = `${percentage}%`;
   overallTotalEl.textContent = `${totals.totalPlanted} / ${totals.totalSeeds} seeds`;
   overallFillEl.style.width = `${percentage}%`;
+  overallRingEl?.style.setProperty("--overall-ring-progress", `${percentage}%`);
 
   const bestSession = getBestCompletedSession(sessions);
   if (bestSession) {

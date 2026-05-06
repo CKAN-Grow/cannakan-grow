@@ -314,32 +314,60 @@
 
       <section class="summary-grid">
         <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
-          <span class="stat-label">Active Sessions</span>
-          <strong id="active-session-count" class="stat-value">0</strong>
-          <p id="active-session-subtext" class="summary-subtext">in progress</p>
+          <div class="summary-card-head">
+            <span class="summary-card-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
+            <span class="stat-label">Active Sessions</span>
+          </div>
+          <div class="summary-card-body">
+            <strong id="active-session-count" class="stat-value">0</strong>
+            <p id="active-session-subtext" class="summary-subtext">in progress</p>
+          </div>
+          <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
         </a>
         <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
-          <span class="stat-label">Saved Sessions</span>
-          <strong id="session-count" class="stat-value">0</strong>
-          <p class="summary-subtext">total saved</p>
+          <div class="summary-card-head">
+            <span class="summary-card-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
+            <span class="stat-label">Saved Sessions</span>
+          </div>
+          <div class="summary-card-body">
+            <strong id="session-count" class="stat-value">0</strong>
+            <p class="summary-subtext">total saved</p>
+          </div>
+          <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
         </a>
         <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="#sessions">
-          <div class="best-session-header">
-            <span class="stat-label">Leading Session</span>
+          <div class="summary-card-head best-session-header">
+            <div class="summary-card-head-main">
+              <span class="summary-card-icon" data-app-icon="leaderboard" data-icon-variant="plate" aria-hidden="true"></span>
+              <span class="stat-label">Leading Session</span>
+            </div>
             <span class="best-session-indicator">Recorded</span>
           </div>
-          <strong id="best-session-name" class="best-session-name">No completed sessions yet</strong>
-          <p id="best-session-date" class="summary-subtext"></p>
-          <p id="best-session-result" class="best-session-result"></p>
+          <div class="summary-card-body">
+            <strong id="best-session-name" class="best-session-name">No completed sessions yet</strong>
+            <p id="best-session-date" class="summary-subtext"></p>
+            <p id="best-session-result" class="best-session-result"></p>
+          </div>
+          <span class="summary-card-action">View Details <span aria-hidden="true">&rarr;</span></span>
         </a>
-        <article class="card stat-card overall-rate-card card-accent card-accent-brown">
-          <span class="stat-label">All Sessions Germination Rate</span>
-          <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
-          <p id="overall-germination-total" class="overall-rate-total">0 / 0 seeds</p>
+        <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions">
+          <div class="summary-card-head">
+            <span class="summary-card-icon" data-app-icon="check" data-icon-variant="plate" aria-hidden="true"></span>
+            <span class="stat-label">All Sessions Germination Rate</span>
+          </div>
+          <div class="overall-rate-content">
+            <div id="overall-germination-ring" class="overall-rate-ring" aria-hidden="true">
+              <strong id="overall-germination-rate" class="overall-rate-value">0%</strong>
+            </div>
+            <div class="overall-rate-copy">
+              <p id="overall-germination-total" class="overall-rate-total">0 / 0 seeds</p>
+            </div>
+          </div>
           <div class="overall-rate-bar" aria-label="Overall germination rate">
             <div id="overall-germination-fill" class="overall-rate-fill"></div>
           </div>
-        </article>
+          <span class="summary-card-action">View Analytics <span aria-hidden="true">&rarr;</span></span>
+        </a>
       </section>
 
       <div id="home-dashboard-message-board-anchor"></div>
