@@ -2319,10 +2319,6 @@ body.theme-dark .spotlight-stat strong {
     0 0 18px rgba(221, 128, 69, 0.08);
 }
 
-.session-command-center-shell + .summary-grid {
-  margin-top: 16px;
-}
-
 #active-sessions-section.session-command-center-shell {
   padding: clamp(20px, 2.25vw, 28px);
 }
@@ -2330,6 +2326,10 @@ body.theme-dark .spotlight-stat strong {
 .session-command-center-metrics {
   margin-top: 6px;
   align-items: stretch;
+}
+
+.session-command-center-shell > .summary-grid {
+  margin-top: 28px;
 }
 
 #active-sessions-section {
