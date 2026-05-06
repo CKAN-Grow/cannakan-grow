@@ -16214,6 +16214,7 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-status-column .session-status-stage-pill {
+    grid-template-columns: 54px minmax(0, 1fr) 42px;
     min-height: 84px;
     gap: 12px;
     padding: 12px;
@@ -16235,8 +16236,10 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-status-column .session-status-current-value {
-    font-size: 1.02rem;
-    text-align: left;
+    max-width: 11ch;
+    font-size: 0.96rem;
+    line-height: 1.12;
+    text-align: center;
   }
 
   .session-lifecycle-status-column .session-status-help {
@@ -21841,12 +21844,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-lifecycle-status-column .session-status-stage-pill {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: 64px minmax(0, 1fr) 50px;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
   min-height: 92px;
-  padding: 12px 14px;
+  padding: 12px 18px;
   border-radius: 999px;
   border: 1px solid var(--session-status-accent-strong);
   background:
@@ -21870,18 +21873,27 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-lifecycle-status-column .session-status-current-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-width: 0;
   width: 100%;
+  max-width: 13ch;
+  margin-inline: auto;
   padding: 0;
   border: 0;
   background: transparent;
   color: #f8fbf7;
-  font-size: clamp(1.16rem, 1.9vw, 1.54rem);
+  font-size: clamp(1.04rem, 1.5vw, 1.42rem);
   font-weight: 800;
-  letter-spacing: 0.1em;
-  line-height: 1.06;
+  letter-spacing: 0.08em;
+  line-height: 1.14;
   text-align: center;
   text-transform: uppercase;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
 }
 
 .session-lifecycle-status-column .session-status-pill-trailing-icon {
