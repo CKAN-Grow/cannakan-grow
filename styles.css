@@ -3176,6 +3176,9 @@ body.theme-dark #active-sessions-section {
   --filter-paper-panel-top: rgba(18, 24, 19, 0.96);
   --filter-paper-panel-bottom: rgba(11, 15, 12, 0.98);
   --filter-paper-panel-glow: color-mix(in srgb, var(--filter-paper-accent) 18%, transparent);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3195,14 +3198,24 @@ body.theme-dark #active-sessions-section {
     0 0 0 1px color-mix(in srgb, var(--filter-paper-accent) 10%, transparent);
 }
 
+.session-command-center-supply-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
 .session-command-center-supply-panel--unset {
-  --filter-paper-accent: #8fc7dd;
-  --filter-paper-accent-soft: rgba(143, 199, 221, 0.16);
-  --filter-paper-accent-text: #d8ecf5;
-  --filter-paper-panel-top: rgba(22, 28, 32, 0.96);
-  --filter-paper-panel-bottom: rgba(13, 17, 20, 0.98);
-  --filter-paper-panel-glow: rgba(143, 199, 221, 0.1);
-  animation: filter-paper-supply-breathe-idle 6.2s ease-in-out infinite;
+  --filter-paper-accent: #9edbf5;
+  --filter-paper-accent-soft: rgba(158, 219, 245, 0.24);
+  --filter-paper-accent-text: #e4f7ff;
+  --filter-paper-panel-top: rgba(22, 31, 38, 0.98);
+  --filter-paper-panel-bottom: rgba(11, 16, 21, 0.99);
+  --filter-paper-panel-glow: rgba(120, 210, 244, 0.28);
+  background:
+    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.1), transparent 28%),
+    linear-gradient(180deg, var(--filter-paper-panel-top) 0%, var(--filter-paper-panel-bottom) 100%),
+    linear-gradient(135deg, rgba(112, 192, 226, 0.12) 0%, rgba(10, 16, 20, 0.03) 68%);
+  animation: filter-paper-supply-breathe-idle 5.6s ease-in-out infinite;
 }
 
 .session-command-center-supply-panel--ok {
@@ -10080,6 +10093,9 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-bg-bottom: rgba(24, 33, 27, 0.88);
   --active-supplies-glow: color-mix(in srgb, var(--active-supplies-accent) 18%, transparent);
   --active-supplies-pill-text: color-mix(in srgb, var(--active-supplies-accent) 78%, white 22%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   gap: 12px;
   padding: 16px 18px;
@@ -10094,6 +10110,11 @@ body.theme-dark .contact-reason-card.is-active {
     inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent) 8%, transparent);
 }
 
+.active-session-supplies-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .active-session-supplies-card--ok {
   --active-supplies-accent: #94d159;
   --active-supplies-accent-soft: rgba(148, 209, 89, 0.16);
@@ -10103,12 +10124,17 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .active-session-supplies-card--unset {
-  --active-supplies-accent: #8fc7dd;
-  --active-supplies-accent-soft: rgba(143, 199, 221, 0.16);
-  --active-supplies-bg-top: rgba(28, 35, 39, 0.96);
-  --active-supplies-bg-bottom: rgba(18, 23, 27, 0.92);
-  --active-supplies-glow: rgba(143, 199, 221, 0.1);
-  animation: filter-paper-supply-breathe-idle 6.2s ease-in-out infinite;
+  --active-supplies-accent: #9edbf5;
+  --active-supplies-accent-soft: rgba(158, 219, 245, 0.24);
+  --active-supplies-bg-top: rgba(25, 34, 40, 0.98);
+  --active-supplies-bg-bottom: rgba(15, 21, 28, 0.95);
+  --active-supplies-glow: rgba(120, 210, 244, 0.28);
+  background:
+    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.1), transparent 28%),
+    linear-gradient(180deg, var(--active-supplies-bg-top) 0%, var(--active-supplies-bg-bottom) 100%),
+    linear-gradient(135deg, rgba(112, 192, 226, 0.12) 0%, rgba(10, 16, 20, 0.03) 68%);
+  animation: filter-paper-supply-breathe-idle 5.6s ease-in-out infinite;
 }
 
 .active-session-supplies-card--low {
@@ -10149,6 +10175,41 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.session-command-center-supply-panel--unset::before,
+.active-session-supplies-card--unset::before {
+  content: "";
+  position: absolute;
+  inset: -16% -10% -20% -8%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 82% 62%, rgba(127, 224, 255, 0.34) 0%, rgba(127, 224, 255, 0.14) 18%, transparent 48%),
+    radial-gradient(circle at 28% 18%, rgba(238, 252, 255, 0.16) 0%, transparent 34%),
+    radial-gradient(circle at 62% 86%, rgba(114, 200, 232, 0.16) 0%, transparent 30%);
+  filter: blur(18px);
+  opacity: 0.86;
+  transform: scale(0.96) translate3d(0, 0, 0);
+  animation: filter-paper-supply-idle-atmosphere 5.6s ease-in-out infinite;
+}
+
+.session-command-center-supply-panel--unset::after,
+.active-session-supplies-card--unset::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(112deg, transparent 18%, rgba(235, 250, 255, 0.09) 31%, rgba(235, 250, 255, 0.18) 38%, rgba(160, 226, 255, 0.08) 45%, transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01) 22%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 84% 56%, rgba(136, 226, 255, 0.18), transparent 24%);
+  mix-blend-mode: screen;
+  opacity: 0.72;
+  transform: translate3d(-12%, 0, 0);
+  animation: filter-paper-supply-idle-shimmer 5.9s ease-in-out infinite;
 }
 
 .active-session-supplies-copy h4,
@@ -10388,20 +10449,51 @@ body.theme-dark .contact-reason-card.is-active {
   0%,
   100% {
     box-shadow:
-      0 18px 34px rgba(0, 0, 0, 0.2),
-      0 0 22px var(--active-supplies-glow, var(--filter-paper-panel-glow)),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 8%, transparent),
-      inset 0 0 18px rgba(194, 225, 238, 0.04);
+      0 18px 34px rgba(0, 0, 0, 0.22),
+      0 0 24px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 92%, transparent),
+      0 0 52px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 12%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 14%, transparent),
+      inset 0 0 26px rgba(201, 236, 248, 0.08),
+      inset 0 -10px 18px rgba(6, 12, 18, 0.16);
   }
   50% {
     box-shadow:
-      0 18px 34px rgba(0, 0, 0, 0.21),
-      0 0 28px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 14%, transparent),
-      0 0 10px rgba(198, 232, 245, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 10%, transparent),
-      inset 0 0 24px rgba(201, 232, 245, 0.06);
+      0 22px 42px rgba(0, 0, 0, 0.24),
+      0 0 42px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 100%, transparent),
+      0 0 82px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 28%, transparent),
+      0 0 18px rgba(223, 247, 255, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.11),
+      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 24%, transparent),
+      inset 0 0 42px rgba(207, 240, 252, 0.16),
+      inset 0 0 90px rgba(110, 208, 241, 0.12),
+      inset 0 -12px 20px rgba(6, 12, 18, 0.12);
+  }
+}
+
+@keyframes filter-paper-supply-idle-atmosphere {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: scale(0.95) translate3d(-1%, 2%, 0);
+    filter: blur(16px) saturate(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04) translate3d(2%, -2%, 0);
+    filter: blur(24px) saturate(1.12);
+  }
+}
+
+@keyframes filter-paper-supply-idle-shimmer {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: translate3d(-14%, 0, 0);
+  }
+  50% {
+    opacity: 0.86;
+    transform: translate3d(9%, -1%, 0);
   }
 }
 
@@ -10417,6 +10509,14 @@ body.theme-dark .contact-reason-card.is-active {
   .session-command-center-supply-panel--empty,
   .session-command-center-supply-panel--critical {
     animation: none;
+  }
+
+  .session-command-center-supply-panel--unset::before,
+  .session-command-center-supply-panel--unset::after,
+  .active-session-supplies-card--unset::before,
+  .active-session-supplies-card--unset::after {
+    animation: none;
+    transform: none;
   }
 
   .filter-paper-supply-button--manage::after,
