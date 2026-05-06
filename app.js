@@ -15470,6 +15470,7 @@ function buildSeedAgeAnalyticsDonutStyle(segments = []) {
 
 function buildSeedAgeAnalyticsNoDataState() {
   return {
+    dataMode: "empty",
     isDemo: false,
     hasData: false,
     ignoredSessionCount: 0,
@@ -15830,6 +15831,7 @@ function buildSeedAgeAnalyticsDemoState() {
   }).filter((segment) => segment.count > 0);
   const mostCommonSegment = [...distributionSegments].sort((left, right) => right.count - left.count)[0] || null;
   return {
+    dataMode: "demo",
     isDemo: true,
     hasData: true,
     ignoredSessionCount: 0,
@@ -16133,6 +16135,7 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
   ];
 
   return {
+    dataMode: "real",
     isDemo: false,
     hasData: true,
     ignoredSessionCount,
@@ -16432,9 +16435,167 @@ function renderSeedAgeAnalyticsKpiVisualMarkup(card) {
   `;
 }
 
+function clampSeedAgeAnalyticsConfidenceScore(value = 0) {
+  return Math.max(0, Math.min(100, Number(value) || 0));
+}
+
+function calculateSeedAgeAnalyticsSessionConfidenceScore(totalSessions = 0) {
+  const count = Math.max(0, Number(totalSessions) || 0);
+  if (count <= 25) {
+    return (count / 25) * 24;
+  }
+  if (count <= 100) {
+    return 25 + (((count - 26) / 74) * 24);
+  }
+  if (count <= 500) {
+    return 50 + (((count - 101) / 399) * 24);
+  }
+  return 75 + Math.min(25, ((count - 500) / 700) * 25);
+}
+
+function calculateSeedAgeAnalyticsDistributionBalanceScore(segments = []) {
+  const populatedSegments = (Array.isArray(segments) ? segments : []).filter((segment) => Number(segment?.count) > 0);
+  const totalCount = populatedSegments.reduce((total, segment) => total + Math.max(0, Number(segment.count) || 0), 0);
+  if (!populatedSegments.length || totalCount <= 0) {
+    return 0;
+  }
+  if (populatedSegments.length === 1) {
+    return 12;
+  }
+
+  const entropy = populatedSegments.reduce((total, segment) => {
+    const share = Math.max(0, Number(segment.count) || 0) / totalCount;
+    if (share <= 0) {
+      return total;
+    }
+    return total - (share * Math.log(share));
+  }, 0);
+  const normalizedEntropy = entropy / Math.log(populatedSegments.length);
+  return clampSeedAgeAnalyticsConfidenceScore(normalizedEntropy * 100);
+}
+
+function buildSeedAgeAnalyticsConfidenceState(state = {}) {
+  const dataMode = String(
+    state?.dataMode
+    || (state?.isDemo ? "demo" : (state?.hasData ? "real" : "empty")),
+  ).trim().toLowerCase();
+
+  if (dataMode === "demo" || dataMode === "mock") {
+    return {
+      title: "Data Confidence",
+      level: "Demo Preview",
+      score: 12,
+      scoreLabel: "12%",
+      helper: "Real confidence will increase as community seed age data is collected.",
+      variant: "is-demo",
+    };
+  }
+
+  const lineBuckets = Array.isArray(state?.lineBuckets) ? state.lineBuckets : [];
+  const distributionSegments = Array.isArray(state?.distributionSegments) ? state.distributionSegments : [];
+  const totalSessions = Number.isFinite(Number(state?.distributionTotal))
+    ? Math.max(0, Number(state.distributionTotal))
+    : distributionSegments.reduce((total, segment) => total + Math.max(0, Number(segment?.count) || 0), 0);
+  const totalBucketCount = lineBuckets.length || 10;
+  const populatedBucketCount = lineBuckets.filter((bucket) => (
+    Number(bucket?.sessionCount) > 0
+    || Number(bucket?.totalSeeds) > 0
+    || Number.isFinite(Number(bucket?.rate))
+  )).length;
+  const sessionScore = calculateSeedAgeAnalyticsSessionConfidenceScore(totalSessions);
+  const coverageScore = totalBucketCount > 0 ? (populatedBucketCount / totalBucketCount) * 100 : 0;
+  const balanceScore = calculateSeedAgeAnalyticsDistributionBalanceScore(distributionSegments);
+  const dataModeScore = dataMode === "blended" ? 68 : dataMode === "real" ? 100 : 0;
+  let score = (
+    (sessionScore * 0.44)
+    + (coverageScore * 0.24)
+    + (balanceScore * 0.16)
+    + (dataModeScore * 0.16)
+  );
+  if (dataMode === "blended") {
+    score = Math.min(score, 74);
+  }
+  score = clampSeedAgeAnalyticsConfidenceScore(score);
+
+  let level = "Low Confidence";
+  let helper = "Early dataset. Results should be viewed as preliminary.";
+  let variant = "is-low";
+
+  if (dataMode === "blended") {
+    if (score >= 50) {
+      level = "Good Confidence";
+      helper = "Useful directional trends are available, with some modeled coverage filling gaps in the community dataset.";
+      variant = "is-good";
+    } else if (score >= 25) {
+      level = "Building Confidence";
+      helper = "Real data is growing, but modeled coverage is still helping fill missing seed age gaps.";
+      variant = "is-building";
+    } else {
+      helper = "Blended results are still preliminary while real community seed age coverage expands.";
+      variant = "is-low";
+    }
+  } else if (score >= 75) {
+    level = "Strong Confidence";
+    helper = "Based on broad seed age coverage across community sessions.";
+    variant = "is-strong";
+  } else if (score >= 50) {
+    level = "Good Confidence";
+    helper = "Enough seed age data exists for useful directional trends.";
+    variant = "is-good";
+  } else if (score >= 25) {
+    level = "Building Confidence";
+    helper = "More sessions are needed before trends become reliable.";
+    variant = "is-building";
+  }
+
+  if (dataMode === "empty" && totalSessions <= 0) {
+    score = 0;
+    level = "Low Confidence";
+    helper = "Early dataset. Results should be viewed as preliminary.";
+    variant = "is-low";
+  }
+
+  return {
+    title: "Data Confidence",
+    level,
+    score,
+    scoreLabel: `${Math.round(score)}%`,
+    helper,
+    variant,
+  };
+}
+
+function renderSeedAgeAnalyticsConfidenceMarkup(confidence = {}) {
+  const score = clampSeedAgeAnalyticsConfidenceScore(confidence?.score);
+  return `
+    <section class="seed-age-analytics-meta-row" aria-label="Seed age data confidence">
+      <article class="seed-age-analytics-confidence-card ${escapeHtml(confidence?.variant || "is-low")}">
+        <div class="seed-age-analytics-confidence-copy">
+          <p class="seed-age-analytics-confidence-label">${escapeHtml(confidence?.title || "Data Confidence")}</p>
+          <div class="seed-age-analytics-confidence-title-row">
+            <strong>${escapeHtml(confidence?.level || "Low Confidence")}</strong>
+            <span class="seed-age-analytics-confidence-score">${escapeHtml(confidence?.scoreLabel || "0%")}</span>
+          </div>
+          <p class="seed-age-analytics-confidence-helper">${escapeHtml(confidence?.helper || "")}</p>
+        </div>
+        <div class="seed-age-analytics-confidence-visual" style="--seed-age-confidence-progress:${escapeHtml(score.toFixed(2))};" aria-hidden="true">
+          <svg class="seed-age-analytics-confidence-ring" viewBox="0 0 96 96" focusable="false">
+            <circle class="seed-age-analytics-confidence-ring-track" cx="48" cy="48" r="34" pathLength="100"></circle>
+            <circle class="seed-age-analytics-confidence-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
+          </svg>
+          <div class="seed-age-analytics-confidence-center">
+            <strong>${escapeHtml(confidence?.scoreLabel || "0%")}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
 function renderSeedAgeAnalyticsPage() {
   const state = buildPublicSeedAgeAnalyticsState();
   const kpiCards = buildSeedAgeAnalyticsKpiCards(state);
+  const confidence = buildSeedAgeAnalyticsConfidenceState(state);
   const disclaimer = "Results reflect KAN system community session data, not source performance alone. Informational only. Results may vary.";
   app.innerHTML = `
     <section class="seed-age-analytics-page">
@@ -16463,6 +16624,8 @@ function renderSeedAgeAnalyticsPage() {
             </a>
           </div>
         </header>
+
+        ${renderSeedAgeAnalyticsConfidenceMarkup(confidence)}
 
         <section class="seed-age-analytics-kpi-grid" aria-label="Seed age key metrics">
           ${kpiCards.map((card) => `
