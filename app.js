@@ -34241,6 +34241,7 @@ function getMySessionsHistoryCategory(session = null) {
 function getMySessionsHistoryStatusMeta(session = null) {
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   const dayLabel = formatSessionCommandCenterDayLabel(session);
+  const lifecycleState = session ? buildSessionLifecycleState(session) : null;
 
   if (normalizedStatus === "completed") {
     return {
@@ -34258,18 +34259,22 @@ function getMySessionsHistoryStatusMeta(session = null) {
     };
   }
 
-  const stageBadge = getSessionCommandCenterStageBadge(session);
+  let label = "Not Started";
   let tone = "inactive";
-  if (stageBadge.className === "is-soaking") {
-    tone = "soaking";
-  } else if (stageBadge.className === "is-germinating") {
-    tone = "germinating";
-  } else if (stageBadge.className === "is-first-germinated") {
+
+  if (lifecycleState?.firstPlantedAt) {
+    label = "Germination Started";
     tone = "first-germinated";
+  } else if (normalizedStatus === "germinating" || lifecycleState?.germinationStartedAt) {
+    label = "Germinating";
+    tone = "germinating";
+  } else if (normalizedStatus === "soaking" || lifecycleState?.startedAt) {
+    label = "Soaking";
+    tone = "soaking";
   }
 
   return {
-    label: stageBadge.label,
+    label,
     tone,
     detail: dayLabel || "In progress",
   };
