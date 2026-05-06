@@ -39574,7 +39574,7 @@ function getSessionLifecycleTimelineEvents(state = {}) {
   const events = [
     {
       key: "soaking",
-      label: "SOAKING",
+      label: "Soaking",
       timestamp: state.startedAt,
       displayLabel: state.startedDisplayLabel || "",
       tone: "soaking",
@@ -39582,7 +39582,7 @@ function getSessionLifecycleTimelineEvents(state = {}) {
     },
     {
       key: "germination",
-      label: "GERMINATION STARTED",
+      label: "Germinating",
       timestamp: state.germinationStartedAt,
       displayLabel: state.germinationStartedDisplayLabel || "",
       tone: "germination",
@@ -39590,7 +39590,7 @@ function getSessionLifecycleTimelineEvents(state = {}) {
     },
     {
       key: "first-germinated",
-      label: getCanonicalSessionStageDisplayLabel("first-germinated", { uppercase: true }),
+      label: "Germination Started",
       timestamp: state.firstPlantedAt,
       displayLabel: state.firstPlantedDisplayLabel || "",
       tone: "green",
@@ -39617,12 +39617,63 @@ function getSessionLifecycleTimelineEvents(state = {}) {
 
   return events.map((event, index) => ({
     ...event,
-    helperText: event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"),
+    statusText: getSessionLifecycleTimelineStatusText({
+      ...event,
+      isCurrent: resolvedCurrentIndex === index,
+      isFuture: resolvedCurrentIndex < index,
+      isComplete: event.complete && resolvedCurrentIndex >= index,
+    }),
+    timestampText: event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"),
     iconName: iconNameByKey[event.key] || "stage-soaking",
     isCurrent: resolvedCurrentIndex === index,
     isFuture: resolvedCurrentIndex < index,
     isComplete: event.complete && resolvedCurrentIndex >= index,
   }));
+}
+
+function getSessionLifecycleTimelineStatusText(event) {
+  if (event.isCurrent) {
+    switch (event.key) {
+      case "soaking":
+        return "Currently soaking";
+      case "germination":
+        return "Germination active";
+      case "first-germinated":
+        return "First sprout recorded";
+      case "completed":
+        return event.complete ? "Session completed" : "Ready to complete";
+      default:
+        return "In progress";
+    }
+  }
+
+  if (event.isComplete) {
+    switch (event.key) {
+      case "soaking":
+        return "Soaking completed";
+      case "germination":
+        return "Germination underway";
+      case "first-germinated":
+        return "First sprout recorded";
+      case "completed":
+        return "Session completed";
+      default:
+        return "Completed";
+    }
+  }
+
+  switch (event.key) {
+    case "soaking":
+      return "Waiting to begin";
+    case "germination":
+      return "Awaiting germination";
+    case "first-germinated":
+      return "Awaiting first sprout";
+    case "completed":
+      return "Awaiting completion";
+    default:
+      return "Up next";
+  }
 }
 
 function renderSessionLifecycleTimelineMarkup(state) {
@@ -39639,7 +39690,8 @@ function renderSessionLifecycleTimelineMarkup(state) {
             ${renderCommandCenterIconMarkup(event.iconName, "command-icon--stage")}
           </div>
           <strong>${escapeHtml(event.label)}</strong>
-          <p>${escapeHtml(event.helperText)}</p>
+          <p class="session-command-stage-helper">${escapeHtml(event.statusText)}</p>
+          <p class="session-lifecycle-stage-timestamp">${escapeHtml(event.timestampText)}</p>
         </article>
         ${index < events.length - 1 ? `<span class="stage-connector session-lifecycle-stage-connector ${events[index + 1].isCurrent || events[index + 1].isComplete ? "stage-connector--active" : ""}" aria-hidden="true"></span>` : ""}
       `).join("")}

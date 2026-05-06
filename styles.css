@@ -2622,6 +2622,16 @@ body.theme-dark .spotlight-stat strong {
   transition: opacity 0.18s ease, filter 0.18s ease;
 }
 
+.session-command-stage-helper {
+  font-weight: 600;
+}
+
+.session-lifecycle-stage-timestamp {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(209, 218, 211, 0.72);
+}
+
 .session-command-stage--soaking {
   --session-command-stage-color: rgba(127, 184, 255, 0.44);
   --session-command-stage-title: #7fb8ff;
