@@ -15258,13 +15258,101 @@ function getCommunitySeedAgeOverviewSessions() {
   return [...sessionsById.values()];
 }
 
+function hasCommunitySeedAgeOverviewRealData(session = null) {
+  const normalizedSession = normalizeStoredSession(session) || session || {};
+  const sessionSeedAge = getSessionSeedAgeMetadata(normalizedSession);
+  if (
+    sessionSeedAge.trackingEnabled
+    && sessionSeedAge.mode === "same"
+    && normalizeSeedAgeAnalyticsYears(sessionSeedAge.sessionSeedAgeYears) !== null
+  ) {
+    return true;
+  }
+
+  const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
+  return partitions.some((partition) => (
+    normalizeSeedAgeAnalyticsYears(partition?.seedAgeYears ?? partition?.seed_age_years) !== null
+  ));
+}
+
+function getCommunitySeedAgeOverviewMockCards() {
+  return [
+    {
+      label: "Optimal Age Range",
+      value: "1–2 yrs",
+      helper: "Highest germination performance window",
+      progress: 88,
+      visualValue: "88%",
+      visualLabel: "window",
+      variant: "is-optimal",
+    },
+    {
+      label: "Overall Average",
+      value: "79.2%",
+      helper: "Average germination across all ages",
+      progress: 79,
+      visualValue: "79%",
+      visualLabel: "avg",
+      variant: "is-average",
+    },
+    {
+      label: "Total Sessions",
+      value: "1,284",
+      helper: "Sessions with recorded seed age",
+      progress: 86,
+      visualValue: "86%",
+      visualLabel: "coverage",
+      variant: "is-sessions",
+    },
+    {
+      label: "Age Range",
+      value: "1–20+ yrs",
+      helper: "Seed age range in community data",
+      progress: 100,
+      visualValue: "10/10",
+      visualLabel: "buckets",
+      variant: "is-range",
+    },
+    {
+      label: "Best Performance",
+      value: "91.8%",
+      helper: "Highest rate in the 1–2 year bucket",
+      progress: 92,
+      visualValue: "92%",
+      visualLabel: "peak",
+      variant: "is-performance",
+    },
+  ];
+}
+
 // Reusable public/community seed-age rollup for future Source Directory,
 // Community Grow deep-dive analytics, and CSTP/public reporting.
 function buildCommunitySeedAgeOverviewState() {
+  const sessions = getCommunitySeedAgeOverviewSessions();
+  if (!sessions.some((session) => hasCommunitySeedAgeOverviewRealData(session))) {
+    const mockCards = getCommunitySeedAgeOverviewMockCards();
+    return {
+      hasData: true,
+      isDemo: true,
+      demoLabel: "Demo preview",
+      cards: mockCards,
+      optimalAgeRange: mockCards[0].value,
+      overallAverage: mockCards[1].value,
+      totalSessions: mockCards[2].value,
+      ageRange: mockCards[3].value,
+      bestPerformance: mockCards[4].value,
+      bestPerformanceHelper: mockCards[4].helper,
+    };
+  }
+
   const analyticsState = buildPublicSeedAgeAnalyticsState({ allowDemoData: false });
-  const cardsByLabel = new Map((analyticsState.kpis || []).map((card) => [card.label, card]));
+  const cards = buildSeedAgeAnalyticsKpiCards(analyticsState);
+  const cardsByLabel = new Map(cards.map((card) => [card.label, card]));
   return {
     hasData: Boolean(analyticsState.hasData),
+    isDemo: false,
+    demoLabel: "",
+    cards,
     optimalAgeRange: cardsByLabel.get("Optimal Age Range")?.value || "Not enough data yet",
     overallAverage: cardsByLabel.get("Overall Average")?.value || "Not enough data yet",
     totalSessions: cardsByLabel.get("Total Sessions")?.value || "Not enough data yet",
@@ -15276,33 +15364,7 @@ function buildCommunitySeedAgeOverviewState() {
 
 function renderCommunitySeedAgeOverviewSection() {
   const state = buildCommunitySeedAgeOverviewState();
-  const cards = [
-    {
-      label: "Optimal Age Range",
-      value: state.optimalAgeRange,
-      helper: "Highest germination performance window",
-    },
-    {
-      label: "Overall Average",
-      value: state.overallAverage,
-      helper: "Average germination across all ages",
-    },
-    {
-      label: "Total Sessions",
-      value: state.totalSessions,
-      helper: "Sessions with recorded seed age",
-    },
-    {
-      label: "Age Range",
-      value: state.ageRange,
-      helper: "Seed age range in community data",
-    },
-    {
-      label: "Best Performance",
-      value: state.bestPerformance,
-      helper: state.bestPerformanceHelper,
-    },
-  ];
+  const cards = state.cards || [];
 
   const section = document.createElement("section");
   section.id = "community-insights-seed-age";
@@ -15315,6 +15377,7 @@ function renderCommunitySeedAgeOverviewSection() {
           <p class="eyebrow">SEED AGE ANALYTICS</p>
           <h3>Seed Age Overview</h3>
           <p class="muted">Analyze how seed age impacts germination performance across the community.</p>
+          ${state.isDemo ? `<span class="gallery-seed-age-preview-pill">${escapeHtml(state.demoLabel || "Demo preview")}</span>` : ""}
         </div>
       </div>
       <a class="button button-secondary gallery-seed-age-overview-cta" href="/seed-age-analytics">
@@ -15329,10 +15392,15 @@ function renderCommunitySeedAgeOverviewSection() {
     </div>
     <div class="gallery-seed-age-overview-grid">
       ${cards.map((card) => `
-        <article class="gallery-seed-age-kpi-card${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
-          <p class="gallery-seed-age-kpi-label">${escapeHtml(card.label)}</p>
-          <strong class="gallery-seed-age-kpi-value">${escapeHtml(card.value)}</strong>
-          <p class="gallery-seed-age-kpi-helper">${escapeHtml(card.helper)}</p>
+        <article class="gallery-seed-age-kpi-card ${escapeHtml(card.variant || "")}${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
+          <div class="gallery-seed-age-kpi-copy">
+            <p class="gallery-seed-age-kpi-label">${escapeHtml(card.label)}</p>
+            <strong class="gallery-seed-age-kpi-value ${escapeHtml(getSeedAgeAnalyticsKpiValueClass(card))}">${escapeHtml(card.value)}</strong>
+            <p class="gallery-seed-age-kpi-helper">${escapeHtml(card.helper)}</p>
+          </div>
+          <div class="gallery-seed-age-kpi-visual-shell">
+            ${renderSeedAgeAnalyticsKpiVisualMarkup(card)}
+          </div>
         </article>
       `).join("")}
     </div>

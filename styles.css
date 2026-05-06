@@ -5652,6 +5652,22 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.55;
 }
 
+.gallery-seed-age-preview-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 2px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  background: rgba(148, 209, 89, 0.08);
+  color: rgba(226, 234, 220, 0.88);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .gallery-seed-age-overview-cta {
   display: inline-flex;
   align-items: center;
@@ -5685,8 +5701,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-seed-age-kpi-card {
   display: grid;
-  gap: 10px;
-  min-height: 138px;
+  grid-template-columns: minmax(128px, 1fr) 84px;
+  align-items: center;
+  gap: 16px;
+  min-height: 148px;
   padding: 18px 18px 16px;
   border-radius: 22px;
   border: 1px solid rgba(148, 209, 89, 0.12);
@@ -5696,6 +5714,46 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   box-shadow:
     0 14px 24px rgba(24, 34, 24, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.gallery-seed-age-kpi-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gallery-seed-age-kpi-visual-shell {
+  justify-self: end;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual {
+  width: 84px;
+  min-width: 84px;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual::before {
+  inset: 11px;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual::after {
+  inset: 5px;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-glow {
+  inset: 13px;
+  opacity: 0.68;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center {
+  padding: 14px;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center strong {
+  font-size: 0.86rem;
+}
+
+.gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center span {
+  font-size: 0.55rem;
 }
 
 .gallery-seed-age-kpi-card.is-empty {
@@ -5721,6 +5779,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: clamp(1.3rem, 2vw, 1.8rem);
   font-weight: 800;
   line-height: 1.08;
+}
+
+.gallery-seed-age-kpi-value.is-extended {
+  font-size: clamp(1.16rem, 1.7vw, 1.54rem);
 }
 
 .gallery-seed-age-kpi-card.is-empty .gallery-seed-age-kpi-value {
@@ -10558,6 +10620,7 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .gallery-seed-age-kpi-card {
+    grid-template-columns: minmax(0, 1fr) 84px;
     min-height: 0;
   }
 
