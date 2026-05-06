@@ -15543,7 +15543,6 @@ function buildSeedAgeAnalyticsNoDataState() {
     distributionStyle: buildSeedAgeAnalyticsDonutStyle([]),
     mostCommonSegment: null,
     performanceInsights: [],
-    communityNotes: [],
     heatmap: {
       columns: getSeedAgeAnalyticsHeatmapBucketDefinitions(),
       rows: [
@@ -15713,12 +15712,6 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
       { icon: "decline", title: "Declining Returns", body: "Performance slips steadily after 5 years and falls sharply beyond 15 years." },
       { icon: "alert", title: "Age Matters", body: "Long-stored seeds trail the baseline bucket by a wide margin in the preview model." },
     ],
-    communityNotes: [
-      { title: "Preview Observation", meta: "Grower observation", body: "1-2 year seeds consistently give me the best starts in long-term storage comparisons." },
-      { title: "Preview Observation", meta: "Grower observation", body: "2-5 year seeds still perform well, but they are not as sharp as the baseline bucket." },
-      { title: "Preview Observation", meta: "Grower observation", body: "Older seeds above 15 years usually need extra patience and a gentler setup." },
-      { title: "Preview Observation", meta: "Grower observation", body: "Photos look a little more stable than autos once seed lots move into the oldest buckets." },
-    ],
     structured: buildSeedAgeAnalyticsStructuredObject({
       kpis,
       lineChart: lineChart.map((bucket) => ({
@@ -15869,7 +15862,6 @@ function buildSeedAgeAnalyticsDemoState() {
     distributionStyle: buildSeedAgeAnalyticsDonutStyle(distributionSegments),
     mostCommonSegment,
     performanceInsights: [...(mockDataset.performanceInsights || [])],
-    communityNotes: [...(mockDataset.communityNotes || [])],
     heatmap: {
       columns: getSeedAgeAnalyticsHeatmapBucketDefinitions(),
       rows: (mockDataset.heatmap?.rows || []).map((row) => ({
@@ -16080,28 +16072,6 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     },
   ];
 
-  const communityNotes = [
-    {
-      title: "Peak window",
-      meta: optimalBucket ? `${formatSeedAgeAnalyticsRateLabel(optimalBucket.rate)} avg` : "Awaiting more data",
-      body: `${optimalRangeLabel} currently marks the strongest community performance window.`,
-    },
-    {
-      title: "Coverage",
-      meta: mostCommonSegment ? `${mostCommonSegment.sharePercent.toFixed(1)}% of logged groups` : "Awaiting more data",
-      body: mostCommonSegment
-        ? `${mostCommonSegment.label} is the most common recorded age group${hasMixedAgeOverlap ? ", and mixed-age sessions can contribute to more than one bucket." : "."}`
-        : "Age distribution coverage will appear here as more public sessions record seed age.",
-    },
-    {
-      title: "Type signal",
-      meta: bestTypeSignal ? `${bestTypeSignal.rowLabel} · ${bestTypeSignal.columnLabel}` : "Awaiting more data",
-      body: bestTypeSignal
-        ? `${bestTypeSignal.rowLabel} seeds are strongest in the ${bestTypeSignal.columnLabel} window right now, reaching ${formatSeedAgeAnalyticsRateLabel(bestTypeSignal.rate)}.`
-        : "Type-specific seed-age patterns will become clearer as more sessions are published.",
-    },
-  ];
-
   return {
     dataMode: "real",
     isDemo: false,
@@ -16133,7 +16103,6 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     distributionStyle: buildSeedAgeAnalyticsDonutStyle(distributionSegments),
     mostCommonSegment,
     performanceInsights,
-    communityNotes,
     heatmap: {
       columns: heatmapDefinitions,
       rows: heatmapRows,
@@ -16224,13 +16193,6 @@ function describeSeedAgeAnalyticsArcPath(centerX, centerY, radius, startAngle, e
     "M", start.x.toFixed(2), start.y.toFixed(2),
     "A", radius.toFixed(2), radius.toFixed(2), "0", largeArcFlag, "0", end.x.toFixed(2), end.y.toFixed(2),
   ].join(" ");
-}
-
-function getSeedAgeAnalyticsCommunityNoteInitials(note = {}) {
-  const seedText = String(note?.title || note?.meta || "CG").trim();
-  const parts = seedText.split(/\s+/).filter(Boolean);
-  const initials = parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
-  return initials || "CG";
 }
 
 function renderSeedAgeAnalyticsLineChartMarkup(state) {
@@ -16933,38 +16895,6 @@ function renderSeedAgeAnalyticsPage() {
               <span>Lower Performance</span>
               <div class="seed-age-analytics-heatmap-scale-bar"></div>
               <span>Higher Performance</span>
-            </div>
-          </article>
-
-          <article class="seed-age-analytics-panel seed-age-analytics-panel--community">
-            <div class="seed-age-analytics-panel-head">
-              <div>
-                <h2>Community Insights</h2>
-                <p>Compact observations from the current data profile</p>
-              </div>
-            </div>
-            <div class="seed-age-analytics-community-list">
-              ${state.communityNotes.map((note) => `
-                <article class="seed-age-analytics-community-note">
-                  <span class="seed-age-analytics-community-note-avatar" aria-hidden="true">${escapeHtml(getSeedAgeAnalyticsCommunityNoteInitials(note))}</span>
-                  <div class="seed-age-analytics-community-note-head">
-                    <strong>${escapeHtml(state.isDemo ? "Preview Observation" : note.title)}</strong>
-                    <span>${escapeHtml(note.meta)}</span>
-                  </div>
-                  <p>${escapeHtml(note.body)}</p>
-                </article>
-              `).join("")}
-            </div>
-            <div class="seed-age-analytics-community-actions">
-              <a class="button button-secondary seed-age-analytics-community-button" href="/community-grow">
-                <span>View all community discussions</span>
-                <span class="seed-age-analytics-hero-button-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                    <path d="M5 12h14"></path>
-                    <path d="m13 7 5 5-5 5"></path>
-                  </svg>
-                </span>
-              </a>
             </div>
           </article>
         </section>

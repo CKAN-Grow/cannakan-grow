@@ -5843,8 +5843,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: rgba(157, 217, 72, 0.08);
 }
 
-.seed-age-analytics-hero-button,
-.seed-age-analytics-community-button {
+.seed-age-analytics-hero-button {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -6339,8 +6338,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-bottom-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.15fr) minmax(300px, 0.88fr);
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.68fr);
   gap: 22px;
+}
+
+.seed-age-analytics-panel--heatmap {
+  min-width: 0;
 }
 
 .seed-age-analytics-panel {
@@ -6952,91 +6955,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   background: linear-gradient(90deg, #c34738 0%, #d39b37 48%, #3f8b39 100%);
 }
 
-.seed-age-analytics-community-list {
-  display: grid;
-  gap: 14px;
-}
-
-.seed-age-analytics-community-note {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 14px;
-  row-gap: 6px;
-  padding: 12px 0 14px;
-  border-bottom: 1px solid rgba(148, 209, 89, 0.08);
-  border-left: 2px solid rgba(148, 209, 89, 0.18);
-  padding-left: 12px;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.seed-age-analytics-community-note:last-child {
-  padding-bottom: 0;
-  border-bottom: 0;
-}
-
-.seed-age-analytics-community-note:hover {
-  transform: translateY(-1px);
-  border-left-color: rgba(148, 209, 89, 0.54);
-  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.015);
-}
-
-.seed-age-analytics-community-note-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, rgba(148, 209, 89, 0.32), rgba(32, 46, 33, 0.92) 72%);
-  color: #eff6e7;
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  box-shadow: 0 0 18px rgba(148, 209, 89, 0.12);
-}
-
-.seed-age-analytics-community-note-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  grid-column: 2;
-}
-
-.seed-age-analytics-community-note-head strong {
-  color: #f4f8ef;
-  font-size: 1rem;
-}
-
-.seed-age-analytics-community-note-head span {
-  color: #9dd948;
-  font-size: 0.83rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  white-space: nowrap;
-  opacity: 0.7;
-  transition: opacity 180ms ease;
-}
-
-.seed-age-analytics-community-note p {
-  margin: 0;
-  color: rgba(220, 228, 215, 0.82);
-  font-size: 0.96rem;
-  line-height: 1.5;
-  grid-column: 2;
-}
-
-.seed-age-analytics-community-note:hover .seed-age-analytics-community-note-head span {
-  opacity: 1;
-}
-
-.seed-age-analytics-community-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 6px;
-}
-
 .seed-age-analytics-disclaimer {
   margin: 4px 0 0;
   color: rgba(220, 228, 215, 0.72);
@@ -7119,18 +7037,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     justify-self: end;
   }
 
-  .seed-age-analytics-community-note {
-    grid-template-columns: 1fr;
-    padding-left: 10px;
-  }
-
-  .seed-age-analytics-community-note-head,
-  .seed-age-analytics-community-note p {
-    grid-column: auto;
-  }
-
-  .seed-age-analytics-panel-head,
-  .seed-age-analytics-community-note-head {
+  .seed-age-analytics-panel-head {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -7139,11 +7046,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     min-width: 680px;
   }
 
-  .seed-age-analytics-community-actions {
-    justify-content: stretch;
-  }
-
-  .seed-age-analytics-community-button,
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
@@ -7181,7 +7083,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-line-chart-tooltip,
   .seed-age-analytics-heatmap-tooltip,
   .seed-age-analytics-insight-row,
-  .seed-age-analytics-community-note,
   .seed-age-analytics-legend-row {
     transition: none;
   }
