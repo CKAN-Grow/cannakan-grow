@@ -18393,7 +18393,7 @@ textarea::placeholder {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 24px;
+  gap: 18px;
   padding: clamp(20px, 2.8vw, 30px);
   border-radius: 30px;
   border: 1px solid rgba(181, 232, 111, 0.12);
@@ -18424,15 +18424,14 @@ textarea::placeholder {
 
 .grow-network-page-heading {
   display: grid;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 22px;
+  row-gap: 14px;
 }
 
 .grow-network-page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-  min-width: 0;
+  display: contents;
 }
 
 .grow-network-page-header-main {
@@ -18440,6 +18439,8 @@ textarea::placeholder {
   align-items: flex-start;
   gap: 14px;
   min-width: 0;
+  grid-column: 1;
+  grid-row: 1 / span 2;
 }
 
 .grow-network-page-copy {
@@ -18464,6 +18465,9 @@ textarea::placeholder {
   align-items: flex-start;
   justify-content: flex-end;
   flex: 0 0 auto;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .grow-network-header-stats {
@@ -18472,6 +18476,10 @@ textarea::placeholder {
   gap: 12px;
   justify-content: flex-end;
   flex-wrap: wrap;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  align-self: start;
 }
 
 .grow-network-header-stat {
@@ -19668,11 +19676,21 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 @media (max-width: 1100px) {
   .grow-network-page-heading {
     grid-template-columns: minmax(0, 1fr);
+    row-gap: 18px;
   }
 
   .grow-network-page-header {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .grow-network-page-header-main,
+  .grow-network-page-actions,
+  .grow-network-header-stats {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: stretch;
   }
 
   .grow-network-page-actions {
