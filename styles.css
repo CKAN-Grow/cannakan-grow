@@ -20914,7 +20914,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 
 .chart-row {
   display: grid;
-  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px 90px;
+  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 108px 90px;
   gap: 10px;
   align-items: center;
 }
@@ -20941,6 +20941,10 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   display: flex;
   align-items: center;
   min-height: 28px;
+}
+
+.chart-header span:nth-child(7) {
+  white-space: nowrap;
 }
 
 .chart-header span,
@@ -23870,6 +23874,8 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
   display: none;
 }
 
+.chart-shell[data-session-status="germinating"] .chart-header span:nth-child(6),
+.chart-shell[data-session-status="completed"] .chart-header span:nth-child(6),
 .chart-shell[data-session-status="germinating"] .chart-header span:nth-child(7),
 .chart-shell[data-session-status="completed"] .chart-header span:nth-child(7) {
   background: transparent !important;
