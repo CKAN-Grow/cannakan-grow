@@ -37535,7 +37535,9 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
   return activeSessions.map((session) => {
     const isSelected = session.id === selectedSessionId;
     const stageBadge = getSessionCommandCenterStageBadge(session);
-    const strainLabel = getSessionCommandCenterPrimaryStrain(session);
+    const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
+    const dateLabel = formatSessionNameDate(session.date);
+    const dayLabel = formatSessionCommandCenterDayLabel(session);
 
     return `
       <article
@@ -37548,8 +37550,11 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
         ${renderCommandCenterIconMarkup("session-thumb", "command-icon--session-thumb")}
         <div class="session-command-session-copy">
           <strong>${escapeHtml(formatSessionLabel(session))}</strong>
-          <p class="session-command-session-date">${escapeHtml(formatSessionNameDate(session.date))}</p>
-          <p class="session-command-session-strain">${escapeHtml(strainLabel ? `Strain: ${strainLabel}` : "Strain not set")}</p>
+          <div class="session-command-session-meta">
+            <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
+            ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
+            <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
+          </div>
           <div class="session-command-session-footer">
             <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
           </div>
@@ -37784,7 +37789,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
   const cardsMarkup = activeSessions.map((session) => {
     const isSelected = session.id === selectedSessionId;
     const stageBadge = getSessionCommandCenterStageBadge(session);
-    const strainLabel = getSessionCommandCenterPrimaryStrain(session) || "Strain not set";
+    const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
     const dateLabel = formatSessionNameDate(session.date);
     const dayLabel = formatSessionCommandCenterDayLabel(session);
 
@@ -37802,7 +37807,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
           <div class="session-command-session-meta">
             <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
             ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
-            <p class="session-command-session-strain">${escapeHtml(strainLabel)}</p>
+            <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
           </div>
           <div class="session-command-session-footer">
             <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
