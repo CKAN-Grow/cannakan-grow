@@ -16530,7 +16530,7 @@ function renderSeedAgeAnalyticsDonutMarkup(state) {
   return `
     <div class="seed-age-analytics-donut-shell">
       <div class="seed-age-analytics-donut-frame">
-        <svg class="seed-age-analytics-donut-chart" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" role="img" aria-label="Distribution of sessions by seed age.">
+        <svg class="seed-age-analytics-donut-chart" viewBox="0 0 ${viewBoxSize} ${viewBoxSize}" role="img" aria-label="Community session usage share by seed age bucket.">
           <defs>
             <filter id="seed-age-donut-glow" x="-40%" y="-40%" width="180%" height="180%">
               <feGaussianBlur stdDeviation="6" result="blur"></feGaussianBlur>
@@ -16591,7 +16591,7 @@ function renderSeedAgeAnalyticsDistributionBarsMarkup(state) {
   });
 
   return `
-    <div class="seed-age-analytics-distribution-bars" role="img" aria-label="Seed age session distribution by bucket">
+    <div class="seed-age-analytics-distribution-bars" role="img" aria-label="Community seed age usage by bucket, showing session share and count.">
       ${normalizedSegments.map((segment) => `
         <div class="seed-age-analytics-distribution-column" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
           <div class="seed-age-analytics-distribution-column-meta">
@@ -16620,15 +16620,15 @@ function renderSeedAgeAnalyticsDistributionPanelMarkup(state) {
     <article class="seed-age-analytics-panel seed-age-analytics-panel--distribution">
       <div class="seed-age-analytics-panel-head">
         <div>
-          <h2>Seed Age Distribution</h2>
-          <p>Session distribution and bucket concentration across tracked seed ages.</p>
+          <h2>Community Seed Age Usage</h2>
+          <p>What seed ages the community is germinating across tracked sessions.</p>
         </div>
       </div>
       <div class="seed-age-analytics-distribution-panel-layout">
         <div class="seed-age-analytics-distribution-radial">
           ${renderSeedAgeAnalyticsDonutMarkup(state)}
           <div class="seed-age-analytics-distribution-summary">
-            <p>Most common seed age:</p>
+            <p>Most common seed age used:</p>
             <strong>${mostCommonSegment ? escapeHtml(`${mostCommonSegment.label} (${mostCommonSegment.sharePercent.toFixed(1)}%)`) : "Awaiting community coverage"}</strong>
           </div>
         </div>
@@ -17172,8 +17172,8 @@ function renderSeedAgeAnalyticsPage() {
           <article class="seed-age-analytics-panel seed-age-analytics-panel--performance">
             <div class="seed-age-analytics-panel-head">
               <div>
-                <h2>Germination Rate by Seed Age</h2>
-                <p>Germination performance curve across standardized seed age buckets.</p>
+                <h2>Germination Performance By Seed Age</h2>
+                <p>How each seed age range performs across the community germination dataset.</p>
               </div>
               <span class="seed-age-analytics-filter-pill">All Time</span>
             </div>
