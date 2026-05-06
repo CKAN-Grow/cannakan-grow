@@ -2680,6 +2680,19 @@ body.theme-dark #active-sessions-section {
   margin-top: 28px;
 }
 
+.active-sessions-page {
+  display: grid;
+  gap: 0;
+}
+
+.active-sessions-command-center {
+  min-width: 0;
+}
+
+.session-command-center-shell--compact {
+  margin: 0;
+}
+
 .progress-chart-section {
   margin-top: var(--space-section);
   padding: var(--space-card);

@@ -4157,7 +4157,7 @@ function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile") {
+  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile" || route === "active-sessions") {
     return true;
   }
 
@@ -17544,6 +17544,17 @@ function render() {
       pageKey: "profile",
       pageLabel: "Profile",
       pagePath: pathRoute === "profile" && isUsingPathRoute("profile") ? "/profile" : "#profile",
+    }));
+    return;
+  }
+
+  if (route === "active-sessions") {
+    renderActiveSessionsPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "active-sessions",
+      pageLabel: "Active Sessions",
+      pagePath: "#active-sessions",
     }));
     return;
   }
@@ -34297,6 +34308,34 @@ function renderSessionsList() {
   renderHistorySessions();
 }
 
+function renderActiveSessionsPage() {
+  const sessions = sortSessionsNewestFirst(getSessions());
+  const visibleSessions = getVisibleUserSessions(sessions);
+  const activeSessions = sortActiveSessionsNewestFirst(
+    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+  );
+
+  app.innerHTML = `
+    <section class="active-sessions-page">
+      <section id="active-sessions-page-command-center" class="active-sessions-command-center"></section>
+    </section>
+  `;
+
+  const host = document.querySelector("#active-sessions-page-command-center");
+  mountSharedSessionCommandCenter(host, {
+    activeSessions,
+    sessions: visibleSessions,
+    aggregateSessions: sessions,
+    hasSessionHistory: visibleSessions.length > 0,
+    requiresSignIn: !appState.user,
+    compact: true,
+    showMetrics: false,
+    showViewAllLink: false,
+    headerEyebrow: "ACTIVE SESSIONS",
+    headerTitle: "ACTIVE SESSIONS",
+  });
+}
+
 function renderPublicSessionDetail(snapshotId) {
   const snapshot = getApprovedPublicGallerySnapshotById(snapshotId);
   const isLoadingSnapshot = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshots.length);
@@ -37850,17 +37889,22 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const requiresSignIn = Boolean(options.requiresSignIn);
   const sessions = Array.isArray(options.sessions) ? options.sessions : [];
   const selectedSession = activeSessions.find((session) => session.id === selectedSessionId) || activeSessions[0] || null;
+  const headerEyebrow = String(options.headerEyebrow || "ACTIVE SESSION").trim() || "ACTIVE SESSION";
+  const headerTitle = String(options.headerTitle || "SESSION COMMAND CENTER").trim() || "SESSION COMMAND CENTER";
+  const viewAllHref = String(options.viewAllHref || "#sessions").trim() || "#sessions";
+  const showViewAllLink = options.showViewAllLink !== false;
+  const showMetrics = options.showMetrics !== false;
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
 
   return `
-    <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions card card-accent card-accent-green">
+    <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions${options.compact ? " session-command-center-shell--compact" : ""} card card-accent card-accent-green">
       <header class="session-command-center-head session-command-center-header">
         ${renderCommandCenterIconMarkup("header", "command-icon--header")}
         <div class="session-command-center-header-text session-command-center-title-copy">
-            <p class="eyebrow">ACTIVE SESSION</p>
-            <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
+            <p class="eyebrow">${escapeHtml(headerEyebrow)}</p>
+            <h3 id="active-sessions-command-title">${escapeHtml(headerTitle)}</h3>
             <div class="session-command-center-header-divider" aria-hidden="true"></div>
         </div>
       </header>
@@ -37873,7 +37917,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
                 <span class="session-command-count-badge">${escapeHtml(countBadgeLabel)}</span>
               </div>
             </div>
-            <a class="session-command-panel-link" href="#sessions">View All Active <span aria-hidden="true">&rarr;</span></a>
+            ${showViewAllLink ? `<a class="session-command-panel-link" href="${escapeHtml(viewAllHref)}">View All Active <span aria-hidden="true">&rarr;</span></a>` : ""}
           </div>
           <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
         </section>
@@ -37891,9 +37935,10 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
           </div>
         </section>
       </div>
+      ${showMetrics ? `
       <div class="summary-grid session-command-center-metrics">
         ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
-      </div>
+      </div>` : ""}
     </section>
   `;
 }
@@ -37917,6 +37962,12 @@ function mountSharedSessionCommandCenter(host, options = {}) {
       requiresSignIn,
       sessions,
       aggregateSessions,
+      compact: options.compact,
+      showMetrics: options.showMetrics,
+      showViewAllLink: options.showViewAllLink,
+      viewAllHref: options.viewAllHref,
+      headerEyebrow: options.headerEyebrow,
+      headerTitle: options.headerTitle,
     });
     hydrateAppIconSlots(host);
     applySupplyStatusToSessionEntryButtons(host);
