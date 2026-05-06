@@ -37528,7 +37528,7 @@ function getSessionDetailElements(scope = document) {
     runProgressSection: scope.querySelector("#detail-run-progress-section"),
     runProgressSummary: scope.querySelector("#detail-run-progress-summary"),
     lifecycleSection: scope.querySelector("#detail-lifecycle-section"),
-    lifecycleSummary: scope.querySelector("#detail-lifecycle-summary"),
+    lifecycleSummary: scope.querySelector("#detail-lifecycle-progress"),
     partitions: scope.querySelector("#detail-partitions"),
     topBackLink: scope.querySelector(".app-section-header .inline-actions a"),
     bottomBackLink: scope.querySelector(".form-actions a"),

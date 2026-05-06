@@ -841,7 +841,8 @@
               <span>Session Progress</span>
             </h4>
           </div>
-          <div class="session-lifecycle-layout">
+          <div id="detail-lifecycle-summary" class="session-lifecycle-summary session-lifecycle-detail-layout">
+            <div id="detail-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
             <div class="session-lifecycle-status-column">
               <div class="session-status-panel">
                 <p class="session-status-label">Current Stage</p>
@@ -858,7 +859,6 @@
               </div>
               <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
             </div>
-            <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
           </div>
           <details class="timeline-debug-panel">
             <summary>Timeline Debug Tools</summary>
