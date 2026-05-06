@@ -39809,7 +39809,7 @@ function getSessionLifecycleTimelineEvents(state = {}) {
     },
     {
       key: "completed",
-      label: "COMPLETED",
+      label: "Completed",
       timestamp: state.completedAt,
       displayLabel: state.completedDisplayLabel || "",
       tone: "completed",
@@ -39840,6 +39840,63 @@ function getSessionLifecycleTimelineEvents(state = {}) {
     isFuture: resolvedCurrentIndex < index,
     isComplete: event.complete && resolvedCurrentIndex >= index,
   }));
+}
+
+function getSessionLifecycleTimelineStageBounds(state = {}, eventKey = "") {
+  switch (eventKey) {
+    case "soaking":
+      return {
+        startAt: state.startedAt || null,
+        finishAt: state.germinationStartedAt || null,
+      };
+    case "germination":
+      return {
+        startAt: state.germinationStartedAt || null,
+        finishAt: state.firstPlantedAt || null,
+      };
+    case "first-germinated":
+      return {
+        startAt: state.firstPlantedAt || null,
+        finishAt: state.completedAt || null,
+      };
+    case "completed":
+      return {
+        startAt: state.completedAt || null,
+        finishAt: null,
+      };
+    default:
+      return {
+        startAt: null,
+        finishAt: null,
+      };
+  }
+}
+
+function getSessionLifecycleTimelineCardMeta(state = {}, event = {}) {
+  const { startAt, finishAt } = getSessionLifecycleTimelineStageBounds(state, event.key);
+  const hasValidStart = startAt instanceof Date && !Number.isNaN(startAt.getTime());
+  const hasValidFinish = finishAt instanceof Date && !Number.isNaN(finishAt.getTime());
+
+  let finishText = hasValidFinish ? formatTimingDateTime(finishAt) : "In progress";
+  let lengthText = "Pending";
+
+  if (event.key === "completed") {
+    finishText = event.isComplete ? "Final" : "In progress";
+    lengthText = event.isComplete && hasValidStart ? "Final stage" : "Pending";
+  } else if (hasValidStart && hasValidFinish) {
+    const durationLabel = formatDurationBetween(startAt, finishAt);
+    lengthText = durationLabel || "Pending";
+  } else if (hasValidStart && event.isCurrent) {
+    const durationLabel = formatDurationBetween(startAt, new Date());
+    lengthText = durationLabel || "Pending";
+  }
+
+  return {
+    stageText: event.label || "Unknown stage",
+    startText: hasValidStart ? formatTimingDateTime(startAt) : "Not recorded",
+    finishText,
+    lengthText,
+  };
 }
 
 function getSessionLifecycleTimelineStatusText(event) {
@@ -39899,6 +39956,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
           && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
         );
         const iconStageKey = event.key === "germination-started" ? "germination" : event.key;
+        const cardMeta = getSessionLifecycleTimelineCardMeta(state, event);
 
         return `
         <article
@@ -39908,7 +39966,26 @@ function renderSessionLifecycleTimelineMarkup(state) {
           ${renderCommandCenterIconMarkup(`stage-${iconStageKey}`, `command-icon--stage command-icon--stage-${iconStageKey}`)}
           <strong>${escapeHtml(event.label)}</strong>
           <p class="session-command-stage-helper">${escapeHtml(event.statusText)}</p>
-          <p class="session-lifecycle-stage-timestamp">${escapeHtml(event.timestampText)}</p>
+          <div class="session-lifecycle-stage-card" aria-label="${escapeHtml(`${event.label} timing details`)}">
+            <dl class="session-lifecycle-stage-card-grid">
+              <div>
+                <dt>Stage</dt>
+                <dd>${escapeHtml(cardMeta.stageText)}</dd>
+              </div>
+              <div>
+                <dt>Start</dt>
+                <dd>${escapeHtml(cardMeta.startText)}</dd>
+              </div>
+              <div>
+                <dt>Finish</dt>
+                <dd>${escapeHtml(cardMeta.finishText)}</dd>
+              </div>
+              <div>
+                <dt>Length</dt>
+                <dd>${escapeHtml(cardMeta.lengthText)}</dd>
+              </div>
+            </dl>
+          </div>
         </article>
         ${nextEvent ? `<div class="stage-connector session-lifecycle-stage-connector${connectorIsActive ? " stage-connector--active" : ""}" aria-hidden="true"></div>` : ""}
       `;

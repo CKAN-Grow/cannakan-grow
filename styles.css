@@ -2685,12 +2685,6 @@ body.theme-dark .spotlight-stat strong {
   font-weight: 600;
 }
 
-.session-lifecycle-stage-timestamp {
-  font-size: 0.78rem;
-  line-height: 1.4;
-  color: rgba(209, 218, 211, 0.72);
-}
-
 .session-command-stage--soaking {
   --session-command-stage-color: rgba(127, 184, 255, 0.44);
   --session-command-stage-title: #7fb8ff;
@@ -2794,6 +2788,59 @@ body.theme-dark .spotlight-stat strong {
 
 .session-command-stage.is-current p {
   filter: brightness(1.06);
+}
+
+.session-lifecycle-stage-card {
+  position: relative;
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 14px 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01) 100%),
+    rgba(10, 15, 12, 0.88);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 26px rgba(0, 0, 0, 0.2);
+  text-align: left;
+  overflow: hidden;
+}
+
+.session-lifecycle-stage-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--session-command-stage-title, #94d159), rgba(255, 255, 255, 0.06));
+  opacity: 0.96;
+}
+
+.session-lifecycle-stage-card-grid {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.session-lifecycle-stage-card-grid div {
+  display: grid;
+  gap: 2px;
+}
+
+.session-lifecycle-stage-card dt {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(199, 208, 201, 0.62);
+}
+
+.session-lifecycle-stage-card dd {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(240, 245, 239, 0.9);
 }
 
 .session-lifecycle-stage p {
