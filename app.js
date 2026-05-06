@@ -13462,16 +13462,7 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
       <div class="gallery-seedtype-highlights-grid">
       ${cards.map((card) => `
         <div class="gallery-seedtype-highlight${card.isEmpty ? " is-empty" : ""}">
-          <span class="gallery-seedtype-highlight-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-              <path d="M8 4.5h8"></path>
-              <path d="M9 4.5v3a3 3 0 0 0 3 3 3 3 0 0 0 3-3v-3"></path>
-              <path d="M6.5 6.5c0 2.8 2.2 5 5 5"></path>
-              <path d="M17.5 6.5c0 2.8-2.2 5-5 5"></path>
-              <path d="M12 12v3.5"></path>
-              <path d="M9.5 19.5 12 15.5l2.5 4"></path>
-            </svg>
-          </span>
+          ${renderCommunityInsightsIconMarkup("seed-type", "gallery-seedtype-highlight-icon")}
           <span class="gallery-seedtype-highlight-copy">
             <span class="gallery-seedtype-highlight-badge">${escapeHtml(card.badge)}</span>
             <span class="gallery-seedtype-highlight-label">${escapeHtml(card.title)}</span>
@@ -13559,16 +13550,11 @@ function getLeaderboardRankTone(index) {
 }
 
 function renderGalleryLeaderboardIcon(type, entry = {}) {
-  const logoUrl = type === "source" ? String(entry?.sourceLogoUrl || "").trim() : "";
-  if (type === "source" && logoUrl) {
-    return `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(entry?.name || "Source logo")}" class="gallery-leaderboard-icon-image">`;
-  }
-
   if (type === "source") {
-    return renderAppIconSvgMarkup("sourceDirectoryBars");
+    return renderCommunityInsightsIconMarkup("sources", "gallery-leaderboard-icon");
   }
 
-  return renderAppIconSvgMarkup("mySessionsSprout");
+  return renderCommunityInsightsIconMarkup("varieties", "gallery-leaderboard-icon");
 }
 
 function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessage = "Not enough approved public data yet.") {
@@ -13585,9 +13571,7 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
       ${entries.map((entry, index) => `
         <li class="gallery-leaderboard-row ${getLeaderboardRankTone(index)}">
           <span class="gallery-leaderboard-rank" aria-hidden="true">&bull;</span>
-          <span class="gallery-leaderboard-icon" aria-hidden="true">
-            ${renderGalleryLeaderboardIcon(type, entry)}
-          </span>
+          ${renderGalleryLeaderboardIcon(type, entry)}
           <span class="gallery-leaderboard-name">${escapeHtml(entry.name)}</span>
           <span class="gallery-leaderboard-metric">
             <span class="gallery-leaderboard-metric-primary">${escapeHtml(`${entry.averagePercent}%`)}</span>
@@ -14328,19 +14312,54 @@ function renderAppHeroMarkup(options = {}) {
   `;
 }
 
-function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
+function renderCommunityInsightsIconMarkup(iconType = "sources", className = "") {
+  const classes = ["icon-glass-tile", "community-insights-icon", className].filter(Boolean).join(" ");
+  let symbolMarkup = "";
+
   switch (iconType) {
-    case "all-time":
-      return renderAppIconSvgMarkup("clock");
-    case "streak":
-      return renderAppIconSvgMarkup("chart");
-    case "month":
+    case "trends":
+      symbolMarkup = `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M4 16.5 9 11.5l3.5 3.5L20 7.5"></path>
+          <path d="M14 7.5h6v6"></path>
+        </svg>
+      `;
+      break;
+    case "varieties":
+      symbolMarkup = `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 19V11.5"></path>
+          <path d="M12 12.2c0-3.6 2.8-6 6.8-6 0 3.8-2.7 6-6.8 6Z"></path>
+          <path d="M12 14.8c0-3-2.3-5-5.6-5 0 3.1 2.2 5 5.6 5Z"></path>
+        </svg>
+      `;
+      break;
+    case "seed-type":
+      symbolMarkup = `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M12 5c-3.2 0-5.6 2.4-5.6 5.5 0 3.2 2.4 5.5 5.5 5.5 3.1 0 5.7-2.3 5.7-5.5C17.6 7.4 15.2 5 12 5Z"></path>
+          <path d="M10.7 7.9c.7 1.1 1.2 2.2 1.5 3.4.3 1 .5 2 .6 3"></path>
+        </svg>
+      `;
+      break;
+    case "sources":
     default:
-      return renderAppIconSvgMarkup("calendar");
+      symbolMarkup = `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <path d="M5.5 7.5 12 4l6.5 3.5L12 11 5.5 7.5Z"></path>
+          <path d="M5.5 12 12 15.5 18.5 12"></path>
+          <path d="M5.5 16.5 12 20l6.5-3.5"></path>
+          <path d="M5.5 7.5V16.5"></path>
+          <path d="M18.5 7.5V16.5"></path>
+        </svg>
+      `;
+      break;
   }
+
+  return `<span class="${escapeHtml(classes)}" aria-hidden="true">${symbolMarkup}</span>`;
 }
 
-function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "month") {
+function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "sources") {
   return renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType);
 }
 
@@ -14350,13 +14369,11 @@ function renderGalleryLeaderboardViewAllButton(href = "#gallery") {
   `;
 }
 
-function renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType = "month", actionMarkup = "") {
+function renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType = "sources", actionMarkup = "") {
   return `
     <div class="gallery-leaderboard-card-heading${actionMarkup ? " has-action" : ""}">
       <div class="gallery-leaderboard-card-heading-row">
-        <span class="gallery-leaderboard-section-icon" aria-hidden="true">
-          ${renderGalleryLeaderboardSectionHeadingIcon(iconType)}
-        </span>
+        ${renderCommunityInsightsIconMarkup(iconType, "gallery-leaderboard-section-icon")}
         <div class="gallery-leaderboard-card-heading-copy">
           <h4>${escapeHtml(title)}</h4>
           <p class="eyebrow">${escapeHtml(subtitle)}</p>
@@ -14379,9 +14396,7 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
   const streakMonthsLabel = `${streakEntry.length} ${streakEntry.length === 1 ? "month" : "months"}`;
   return `
     <div class="gallery-leaderboard-row gallery-leaderboard-row--streak ${getLeaderboardRankTone(0)}">
-      <span class="gallery-leaderboard-icon gallery-leaderboard-icon--feature" aria-hidden="true">
-        ${renderGalleryLeaderboardIcon(type, streakEntry)}
-      </span>
+      ${renderCommunityInsightsIconMarkup(type === "source" ? "sources" : "varieties", "gallery-leaderboard-icon gallery-leaderboard-icon--feature")}
       <span class="gallery-leaderboard-streak-copy">
         <span class="gallery-leaderboard-name">${escapeHtml(streakEntry.name)}</span>
         <span class="gallery-leaderboard-metric gallery-leaderboard-metric--stack">
@@ -14425,27 +14440,27 @@ function renderGalleryLeaderboardSection() {
     </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Sources", "This month · approved source germination averages", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Sources", "This month · approved source germination averages", "sources", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Source consistency across recorded months", "streak")}
+        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Source consistency across recorded months", "trends")}
         ${renderGalleryLongestStreakRow(sourceStreak, "source", "No source consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Variety consistency across recorded months", "streak")}
+        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Variety consistency across recorded months", "trends")}
         ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No variety consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Varieties", "This month · approved variety germination averages", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Varieties", "This month · approved variety germination averages", "varieties", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
-        ${renderGalleryLeaderboardCardHeading("Sources", "All-time · recorded source germination averages", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Sources", "All-time · recorded source germination averages", "sources")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
-        ${renderGalleryLeaderboardCardHeading("Varieties", "All-time · recorded variety germination averages", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Varieties", "All-time · recorded variety germination averages", "varieties")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
