@@ -9853,6 +9853,12 @@ body.theme-dark .contact-reason-card.is-active {
   --filter-paper-accent-text: #92342f;
 }
 
+.filter-paper-card--unset {
+  --filter-paper-accent: #8fc7dd;
+  --filter-paper-accent-soft: rgba(143, 199, 221, 0.2);
+  --filter-paper-accent-text: #3b6171;
+}
+
 .filter-paper-card--compact {
   margin-top: 0;
   padding: 14px 16px;
@@ -9978,6 +9984,13 @@ body.theme-dark .contact-reason-card.is-active {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.filter-paper-actions .filter-paper-supply-button,
+.active-session-supplies-button-row .filter-paper-supply-button,
+.session-command-center-supply-button-row .filter-paper-supply-button {
+  width: auto;
+  min-width: 0;
 }
 
 .filter-paper-actions .button,
@@ -10304,6 +10317,16 @@ body.theme-dark .contact-reason-card.is-active {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+  backdrop-filter: blur(16px) saturate(118%);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
 }
 
@@ -10312,8 +10335,7 @@ body.theme-dark .contact-reason-card.is-active {
   transform: translateY(-1px);
 }
 
-.filter-paper-supply-button--manage::after,
-.filter-paper-supply-button--setup::after {
+.filter-paper-supply-button--update::after {
   content: "\2192";
   font-size: 0.98em;
   line-height: 1;
@@ -10322,89 +10344,81 @@ body.theme-dark .contact-reason-card.is-active {
   opacity: 0.9;
 }
 
-.filter-paper-supply-button--manage:hover::after,
-.filter-paper-supply-button--manage:focus-visible::after,
-.filter-paper-supply-button--setup:hover::after,
-.filter-paper-supply-button--setup:focus-visible::after {
+.filter-paper-supply-button--update:hover::after,
+.filter-paper-supply-button--update:focus-visible::after {
   transform: translateX(3px);
 }
 
-.filter-paper-supply-button--ok.filter-paper-supply-button--reorder {
-  box-shadow: 0 0 18px rgba(148, 209, 89, 0.16);
-}
-
-.filter-paper-supply-button--low.filter-paper-supply-button--reorder,
-.filter-paper-supply-button--low.filter-paper-supply-button--manage,
-.filter-paper-supply-button--low.filter-paper-supply-button--reminder {
-  border-color: rgba(217, 139, 43, 0.34);
-  color: #f5d9a8;
-}
-
-.filter-paper-supply-button--low.filter-paper-supply-button--reorder {
+.filter-paper-supply-button--update {
+  border-color: rgba(148, 209, 89, 0.24);
   background:
-    linear-gradient(180deg, rgba(120, 72, 24, 0.96) 0%, rgba(86, 48, 15, 0.98) 100%);
-  box-shadow:
-    0 10px 20px rgba(0, 0, 0, 0.18),
-    0 0 18px rgba(217, 139, 43, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.filter-paper-supply-button--low.filter-paper-supply-button--manage,
-.filter-paper-supply-button--low.filter-paper-supply-button--reminder {
-  background:
-    linear-gradient(180deg, rgba(55, 37, 20, 0.94) 0%, rgba(33, 23, 13, 0.98) 100%);
-  box-shadow:
-    0 0 0 1px rgba(217, 139, 43, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.filter-paper-supply-button--critical.filter-paper-supply-button--manage,
-.filter-paper-supply-button--critical.filter-paper-supply-button--reminder {
-  border-color: rgba(198, 83, 76, 0.38);
-  background:
-    linear-gradient(180deg, rgba(74, 31, 31, 0.94) 0%, rgba(44, 17, 18, 0.98) 100%);
-  color: #f4b3ae;
-  box-shadow:
-    0 0 0 1px rgba(198, 83, 76, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.filter-paper-supply-button--critical.filter-paper-supply-button--reorder {
-  box-shadow: 0 0 20px rgba(148, 209, 89, 0.14);
-}
-
-.filter-paper-supply-button--unset.filter-paper-supply-button--setup {
-  border-color: rgba(148, 209, 89, 0.32);
-  background:
-    linear-gradient(180deg, rgba(83, 132, 49, 0.42) 0%, rgba(53, 94, 29, 0.3) 100%);
-  backdrop-filter: blur(16px) saturate(110%);
-  color: #dff5c5;
+    linear-gradient(180deg, rgba(25, 34, 27, 0.94) 0%, rgba(13, 18, 15, 0.98) 100%);
+  color: #dff1da;
   box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.16),
-    0 0 16px rgba(148, 209, 89, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 0 16px rgba(148, 209, 89, 0.04);
+}
+
+.filter-paper-supply-button--update:hover,
+.filter-paper-supply-button--update:focus-visible {
+  border-color: rgba(163, 227, 98, 0.32);
+  background:
+    linear-gradient(180deg, rgba(29, 40, 30, 0.96) 0%, rgba(15, 21, 17, 0.99) 100%);
+  color: #ebfae3;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 18px rgba(148, 209, 89, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.1),
     inset 0 0 18px rgba(148, 209, 89, 0.06);
 }
 
-.filter-paper-supply-button--unset.filter-paper-supply-button--setup:hover,
-.filter-paper-supply-button--unset.filter-paper-supply-button--setup:focus-visible {
-  border-color: rgba(166, 223, 110, 0.38);
+.filter-paper-supply-button--ok.filter-paper-supply-button--reorder,
+.filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
+  border-color: rgba(143, 199, 221, 0.34);
   background:
-    linear-gradient(180deg, rgba(94, 146, 56, 0.5) 0%, rgba(60, 104, 34, 0.36) 100%);
+    linear-gradient(180deg, rgba(44, 82, 106, 0.88) 0%, rgba(24, 48, 67, 0.96) 100%);
+  color: #e2f6ff;
   box-shadow:
-    0 12px 22px rgba(0, 0, 0, 0.18),
-    0 0 20px rgba(148, 209, 89, 0.14),
+    0 10px 20px rgba(0, 0, 0, 0.18),
+    0 0 20px rgba(120, 210, 244, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.1),
-    inset 0 0 22px rgba(148, 209, 89, 0.08);
+    inset 0 0 0 1px rgba(176, 228, 246, 0.12),
+    inset 0 0 20px rgba(120, 210, 244, 0.08);
 }
 
-.filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
-  border-color: rgba(127, 183, 133, 0.26);
+.filter-paper-supply-button--low.filter-paper-supply-button--reorder {
+  border-color: rgba(217, 139, 43, 0.34);
   background:
-    linear-gradient(180deg, rgba(25, 33, 27, 0.94) 0%, rgba(16, 21, 18, 0.98) 100%);
-  color: #dce7db;
+    linear-gradient(180deg, rgba(120, 72, 24, 0.96) 0%, rgba(86, 48, 15, 0.98) 100%);
+  color: #f5d9a8;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.18),
+    0 0 18px rgba(217, 139, 43, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(245, 190, 110, 0.08);
+}
+
+.filter-paper-supply-button--critical.filter-paper-supply-button--reorder {
+  border-color: rgba(198, 83, 76, 0.38);
+  background:
+    linear-gradient(180deg, rgba(117, 38, 42, 0.94) 0%, rgba(74, 21, 25, 0.99) 100%);
+  color: #ffd1cc;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.2),
+    0 0 22px rgba(198, 83, 76, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(246, 158, 151, 0.1);
+}
+
+.filter-paper-supply-button--reorder:hover,
+.filter-paper-supply-button--reorder:focus-visible {
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 @keyframes filter-paper-supply-pulse-low {
@@ -10519,8 +10533,7 @@ body.theme-dark .contact-reason-card.is-active {
     transform: none;
   }
 
-  .filter-paper-supply-button--manage::after,
-  .filter-paper-supply-button--setup::after {
+  .filter-paper-supply-button--update::after {
     transition: none;
   }
 }
@@ -18318,7 +18331,8 @@ body.theme-dark .theme-toggle-button:hover {
 
   .active-session-supplies-head,
   .active-session-supplies-actions,
-  .active-session-supplies-button-row {
+  .active-session-supplies-button-row,
+  .session-command-center-supply-button-row {
     display: grid;
     width: 100%;
   }
@@ -18327,11 +18341,15 @@ body.theme-dark .theme-toggle-button:hover {
     justify-items: stretch;
   }
 
-  .active-session-supplies-button-row {
+  .active-session-supplies-button-row,
+  .session-command-center-supply-button-row,
+  .filter-paper-actions {
     gap: 10px;
   }
 
-  .active-session-supplies-button-row .button {
+  .active-session-supplies-button-row .button,
+  .session-command-center-supply-button-row .button,
+  .filter-paper-actions .button {
     width: 100%;
   }
 
