@@ -35548,7 +35548,7 @@ function renderSessionDetail(sessionId) {
     title: formatSessionLabel(session),
   });
   renderSessionDetailMetaCards(detail.meta, [
-    { label: "Session Name", value: formatSessionLabel(session) },
+    { label: "Status", value: capitalize(normalizeSessionStatus(session.sessionStatus || "")).replace("Unselected", "Not started") },
     { label: "System Type", value: session.systemType },
     { label: "Unit ID", value: String(session.unitId || "").trim() },
     { label: "Date", value: session.date },
