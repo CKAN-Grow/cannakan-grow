@@ -1826,8 +1826,8 @@ body.theme-dark .spotlight-stat strong {
 
 .session-command-center-shell {
   display: grid;
-  gap: 18px;
-  padding: 22px 24px 24px;
+  gap: 22px;
+  padding: 22px 24px 28px;
   border-radius: 24px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 22%),
@@ -2325,6 +2325,11 @@ body.theme-dark .spotlight-stat strong {
 
 #active-sessions-section.session-command-center-shell {
   padding: clamp(20px, 2.25vw, 28px);
+}
+
+.session-command-center-metrics {
+  margin-top: 6px;
+  align-items: stretch;
 }
 
 .progress-chart-section {

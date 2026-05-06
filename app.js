@@ -33900,6 +33900,7 @@ function renderSessionsList() {
     activeSessionsSection.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
       hasSessionHistory,
       requiresSignIn: !appState.user,
+      sessions,
     });
     hydrateAppIconSlots(activeSessionsSection);
     applySupplyStatusToSessionEntryButtons(activeSessionsSection);
@@ -37366,8 +37367,95 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
   `;
 }
 
+function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSessions = []) {
+  const totalSessions = sessions.length;
+  const activeCount = activeSessions.length;
+  const activeSubtext = activeCount ? "in progress" : "No active sessions";
+
+  const bestSession = getBestCompletedSession(sessions);
+  const bestSessionName = bestSession ? formatSessionLabel(bestSession) : "No completed sessions yet";
+  const bestSessionDate = bestSession ? formatSessionNameDate(bestSession.date) : "";
+  const bestSessionTotals = bestSession ? getSessionSeedTotals(bestSession) : { totalSeeds: 0, totalPlanted: 0 };
+  const bestSessionPercentage = bestSessionTotals.totalSeeds > 0
+    ? Math.round((bestSessionTotals.totalPlanted / bestSessionTotals.totalSeeds) * 100)
+    : 0;
+  const bestDurationLabel = bestSession ? formatDurationMsShort(getSessionCompletedDurationMs(bestSession)) : "";
+  const bestSessionResult = bestSession
+    ? (bestDurationLabel ? `${bestSessionPercentage}% · ${bestDurationLabel}` : `${bestSessionPercentage}%`)
+    : "";
+
+  const overallTotals = sessions.reduce((accumulator, session) => {
+    const sessionTotals = getSessionSeedTotals(session);
+    accumulator.totalSeeds += sessionTotals.totalSeeds;
+    accumulator.totalPlanted += sessionTotals.totalPlanted;
+    return accumulator;
+  }, { totalSeeds: 0, totalPlanted: 0 });
+  const overallPercentage = overallTotals.totalSeeds > 0
+    ? Math.round((overallTotals.totalPlanted / overallTotals.totalSeeds) * 100)
+    : 0;
+
+  return `
+    <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
+      <div class="summary-card-head">
+        <span class="summary-card-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
+        <span class="stat-label">Active Sessions</span>
+      </div>
+      <div class="summary-card-body">
+        <strong class="stat-value">${escapeHtml(String(activeCount))}</strong>
+        <p class="summary-subtext">${escapeHtml(activeSubtext)}</p>
+      </div>
+      <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
+    </a>
+    <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
+      <div class="summary-card-head">
+        <span class="summary-card-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
+        <span class="stat-label">Saved Sessions</span>
+      </div>
+      <div class="summary-card-body">
+        <strong class="stat-value">${escapeHtml(String(totalSessions))}</strong>
+        <p class="summary-subtext">total saved</p>
+      </div>
+      <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
+    </a>
+    <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="${escapeHtml(bestSession ? `#sessions/${bestSession.id}` : "#sessions")}">
+      <div class="summary-card-head best-session-header">
+        <div class="summary-card-head-main">
+          <span class="summary-card-icon" data-app-icon="leaderboard" data-icon-variant="plate" aria-hidden="true"></span>
+          <span class="stat-label">Leading Session</span>
+        </div>
+        ${bestSession ? '<span class="best-session-indicator">Recorded</span>' : ""}
+      </div>
+      <div class="summary-card-body">
+        <strong class="best-session-name">${escapeHtml(bestSessionName)}</strong>
+        <p class="summary-subtext">${escapeHtml(bestSessionDate)}</p>
+        <p class="best-session-result">${escapeHtml(bestSessionResult)}</p>
+      </div>
+      <span class="summary-card-action">View Details <span aria-hidden="true">&rarr;</span></span>
+    </a>
+    <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions">
+      <div class="summary-card-head">
+        <span class="summary-card-icon" data-app-icon="check" data-icon-variant="plate" aria-hidden="true"></span>
+        <span class="stat-label">All Sessions Germination Rate</span>
+      </div>
+      <div class="overall-rate-content">
+        <div class="overall-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallPercentage}%`)};">
+          <strong class="overall-rate-value">${escapeHtml(`${overallPercentage}%`)}</strong>
+        </div>
+        <div class="overall-rate-copy">
+          <p class="overall-rate-total">${escapeHtml(`${overallTotals.totalPlanted} / ${overallTotals.totalSeeds} seeds`)}</p>
+        </div>
+      </div>
+      <div class="overall-rate-bar" aria-label="Overall germination rate">
+        <div class="overall-rate-fill" style="width:${escapeHtml(`${overallPercentage}%`)};"></div>
+      </div>
+      <span class="summary-card-action">View Analytics <span aria-hidden="true">&rarr;</span></span>
+    </a>
+  `;
+}
+
 function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
+  const sessions = Array.isArray(options.sessions) ? options.sessions : [];
   const selectedSession = activeSessions.find((session) => session.id === selectedSessionId) || activeSessions[0] || null;
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
@@ -37409,6 +37497,9 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
           ${renderSessionCommandCenterStatsMarkup(selectedSession, { requiresSignIn })}
         </div>
       </section>
+    </div>
+    <div class="summary-grid session-command-center-metrics">
+      ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions)}
     </div>
   `;
 }
