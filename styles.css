@@ -10115,18 +10115,35 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .active-session-supplies-actions {
+  position: relative;
+  isolation: isolate;
   display: grid;
   justify-items: end;
-  gap: 10px;
+  align-content: center;
+  gap: 12px;
   flex: 0 0 auto;
 }
 
 .active-session-supplies-button-row {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
+}
+
+.active-session-supplies-actions::before,
+.session-command-center-supply-actions::before {
+  content: "";
+  position: absolute;
+  inset: -12px -10px -10px 18px;
+  border-radius: 24px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 72% 56%, color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 16%, transparent) 0%, transparent 66%);
+  opacity: 0.5;
 }
 
 .active-session-supplies-button-row .button {
@@ -10150,17 +10167,22 @@ body.theme-dark .contact-reason-card.is-active {
 
 .active-session-supplies-card .filter-paper-status-badge {
   color: var(--active-supplies-pill-text);
-  background: color-mix(in srgb, var(--active-supplies-accent) 16%, rgba(18, 24, 19, 0.92));
-  border-color: color-mix(in srgb, var(--active-supplies-accent) 32%, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--active-supplies-accent) 11%, rgba(18, 24, 19, 0.84));
+  border-color: color-mix(in srgb, var(--active-supplies-accent) 24%, rgba(255, 255, 255, 0.05));
 }
 
 .session-command-center-supply-panel .filter-paper-status-badge {
   color: color-mix(in srgb, var(--filter-paper-accent) 78%, white 22%);
-  background: color-mix(in srgb, var(--filter-paper-accent) 16%, rgba(18, 24, 19, 0.92));
-  border-color: color-mix(in srgb, var(--filter-paper-accent) 32%, rgba(255, 255, 255, 0.06));
+  background: color-mix(in srgb, var(--filter-paper-accent) 11%, rgba(18, 24, 19, 0.84));
+  border-color: color-mix(in srgb, var(--filter-paper-accent) 24%, rgba(255, 255, 255, 0.05));
 }
 
 .filter-paper-supply-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
 }
 
@@ -10214,14 +10236,44 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .filter-paper-supply-button--unset.filter-paper-supply-button--setup {
-  border-color: rgba(148, 209, 89, 0.28);
+  border-color: rgba(148, 209, 89, 0.32);
   background:
-    linear-gradient(180deg, rgba(137, 196, 79, 0.96) 0%, rgba(105, 160, 52, 0.98) 100%);
-  color: #112611;
+    linear-gradient(180deg, rgba(83, 132, 49, 0.42) 0%, rgba(53, 94, 29, 0.3) 100%);
+  backdrop-filter: blur(16px) saturate(110%);
+  color: #dff5c5;
   box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.16),
-    0 0 18px rgba(148, 209, 89, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    0 0 16px rgba(148, 209, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 0 18px rgba(148, 209, 89, 0.06);
+}
+
+.filter-paper-supply-button--unset.filter-paper-supply-button--setup::after {
+  content: "\2192";
+  font-size: 0.98em;
+  line-height: 1;
+  transform: translateX(0);
+  transition: transform 180ms ease, opacity 180ms ease;
+  opacity: 0.9;
+}
+
+.filter-paper-supply-button--unset.filter-paper-supply-button--setup:hover,
+.filter-paper-supply-button--unset.filter-paper-supply-button--setup:focus-visible {
+  border-color: rgba(166, 223, 110, 0.38);
+  background:
+    linear-gradient(180deg, rgba(94, 146, 56, 0.5) 0%, rgba(60, 104, 34, 0.36) 100%);
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.18),
+    0 0 20px rgba(148, 209, 89, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.1),
+    inset 0 0 22px rgba(148, 209, 89, 0.08);
+}
+
+.filter-paper-supply-button--unset.filter-paper-supply-button--setup:hover::after,
+.filter-paper-supply-button--unset.filter-paper-supply-button--setup:focus-visible::after {
+  transform: translateX(3px);
 }
 
 .filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
