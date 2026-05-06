@@ -38292,59 +38292,67 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
 
   return `
     <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#active-sessions">
-      <div class="summary-card-head">
-        ${renderCommandCenterIconMarkup("metric-active", "command-icon--metric command-icon--metric-active")}
-        <span class="stat-label">Active Sessions</span>
+      <div class="card-content">
+        <div class="summary-card-head">
+          ${renderCommandCenterIconMarkup("metric-active", "command-icon--metric command-icon--metric-active")}
+          <span class="stat-label">Active Sessions</span>
+        </div>
+        <div class="summary-card-body">
+          <strong class="stat-value">${escapeHtml(String(activeCount))}</strong>
+          <p class="summary-subtext">${escapeHtml(activeSubtext)}</p>
+        </div>
       </div>
-      <div class="summary-card-body">
-        <strong class="stat-value">${escapeHtml(String(activeCount))}</strong>
-        <p class="summary-subtext">${escapeHtml(activeSubtext)}</p>
-      </div>
-      <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
+      <span class="summary-card-action card-action">View All <span aria-hidden="true">&rarr;</span></span>
     </a>
     <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions" data-session-scroll-target="session-history">
-      <div class="summary-card-head">
-        ${renderCommandCenterIconMarkup("metric-saved", "command-icon--metric command-icon--metric-saved")}
-        <span class="stat-label">Saved Sessions</span>
+      <div class="card-content">
+        <div class="summary-card-head">
+          ${renderCommandCenterIconMarkup("metric-saved", "command-icon--metric command-icon--metric-saved")}
+          <span class="stat-label">Saved Sessions</span>
+        </div>
+        <div class="summary-card-body">
+          <strong class="stat-value">${escapeHtml(String(totalSessions))}</strong>
+          <p class="summary-subtext">total saved</p>
+        </div>
       </div>
-      <div class="summary-card-body">
-        <strong class="stat-value">${escapeHtml(String(totalSessions))}</strong>
-        <p class="summary-subtext">total saved</p>
-      </div>
-      <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
+      <span class="summary-card-action card-action">View All <span aria-hidden="true">&rarr;</span></span>
     </a>
     <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="${escapeHtml(bestSession ? `#sessions/${bestSession.id}` : "#sessions")}">
-      <div class="summary-card-head best-session-header">
-        <div class="summary-card-head-main">
-          ${renderCommandCenterIconMarkup("metric-leading", "command-icon--metric command-icon--metric-leading")}
-          <span class="stat-label">Leading Session</span>
+      <div class="card-content">
+        <div class="summary-card-head best-session-header">
+          <div class="summary-card-head-main">
+            ${renderCommandCenterIconMarkup("metric-leading", "command-icon--metric command-icon--metric-leading")}
+            <span class="stat-label">Leading Session</span>
+          </div>
+          ${bestSession ? '<span class="best-session-indicator">Recorded</span>' : ""}
         </div>
-        ${bestSession ? '<span class="best-session-indicator">Recorded</span>' : ""}
+        <div class="summary-card-body">
+          <strong class="best-session-name">${escapeHtml(bestSessionName)}</strong>
+          <p class="summary-subtext">${escapeHtml(bestSessionDate)}</p>
+          <p class="best-session-result">${escapeHtml(bestSessionResult)}</p>
+        </div>
       </div>
-      <div class="summary-card-body">
-        <strong class="best-session-name">${escapeHtml(bestSessionName)}</strong>
-        <p class="summary-subtext">${escapeHtml(bestSessionDate)}</p>
-        <p class="best-session-result">${escapeHtml(bestSessionResult)}</p>
-      </div>
-      <span class="summary-card-action">View Details <span aria-hidden="true">&rarr;</span></span>
+      <span class="summary-card-action card-action">View Details <span aria-hidden="true">&rarr;</span></span>
     </a>
     <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions" data-session-scroll-target="session-analytics">
-      <div class="summary-card-head">
-        ${renderCommandCenterIconMarkup("metric-rate", "command-icon--metric command-icon--metric-rate")}
-        <span class="stat-label">All Sessions Germination Rate</span>
-      </div>
-      <div class="overall-rate-content">
-        <div class="overall-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallPercentage}%`)};">
-          <strong class="overall-rate-value">${escapeHtml(`${overallPercentage}%`)}</strong>
+      <div class="card-content">
+        <div class="summary-card-head">
+          ${renderCommandCenterIconMarkup("metric-rate", "command-icon--metric command-icon--metric-rate")}
+          <span class="stat-label">All Sessions Germination Rate</span>
         </div>
-        <div class="overall-rate-copy">
-          <p class="overall-rate-total">${escapeHtml(`${overallTotals.totalPlanted} / ${overallTotals.totalSeeds} seeds`)}</p>
+        <div class="overall-rate-content">
+          <div class="overall-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallPercentage}%`)};">
+            <strong class="overall-rate-value">${escapeHtml(`${overallPercentage}%`)}</strong>
+          </div>
+          <div class="overall-rate-copy">
+            <p class="overall-rate-total">${escapeHtml(`${overallTotals.totalPlanted} / ${overallTotals.totalSeeds} seeds`)}</p>
+          </div>
+        </div>
+        <div class="overall-rate-bar" aria-label="Overall germination rate">
+          <div class="overall-rate-fill" style="width:${escapeHtml(`${overallPercentage}%`)};"></div>
         </div>
       </div>
-      <div class="overall-rate-bar" aria-label="Overall germination rate">
-        <div class="overall-rate-fill" style="width:${escapeHtml(`${overallPercentage}%`)};"></div>
-      </div>
-      <span class="summary-card-action">View Analytics <span aria-hidden="true">&rarr;</span></span>
+      <span class="summary-card-action card-action">View Analytics <span aria-hidden="true">&rarr;</span></span>
     </a>
   `;
 }

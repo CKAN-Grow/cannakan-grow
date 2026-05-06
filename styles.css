@@ -1996,12 +1996,22 @@ body.theme-dark .spotlight-stat strong {
 
 #session-command-center .card.stat-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   overflow: hidden;
   border-top-width: 1px;
   border-top-color: var(--glass-border);
   box-shadow:
     var(--glass-shadow),
     var(--glass-inset);
+}
+
+#session-command-center .card.stat-card .card-content {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 #session-command-center .card.stat-card.card-accent {
@@ -14960,6 +14970,10 @@ body.theme-dark .theme-toggle-button:hover {
   font-weight: 700;
   letter-spacing: 0.02em;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+#session-command-center .summary-card-action.card-action {
+  margin-top: auto;
 }
 
 .overall-rate-content {
