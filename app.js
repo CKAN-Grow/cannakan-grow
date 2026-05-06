@@ -35637,6 +35637,7 @@ function renderSessionDetail(sessionId) {
   bindPartitionRowVisualState(partitions);
   applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
   syncPartitionButtonStates(partitions, detail.statusField.value);
+  syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
   applyStageEditingMode(app, detail.statusField.value);
   const renderDetailSuppliesCard = () => {
     if (!detail.suppliesAnchor) {
@@ -35700,6 +35701,7 @@ function renderSessionDetail(sessionId) {
           completedAt: session.completedAt || "",
         });
         updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+        syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
         refreshDetailDerivedViews();
         detail.saveMessage.textContent = "";
         refreshDetailUnsavedChanges();
@@ -35714,6 +35716,7 @@ function renderSessionDetail(sessionId) {
           completedAt: session.completedAt || "",
         });
         updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+        syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
         refreshDetailDerivedViews();
         refreshDetailUnsavedChanges();
       });
@@ -35730,6 +35733,7 @@ function renderSessionDetail(sessionId) {
       completedAt: session.completedAt || "",
     });
     updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+    syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
     updateSessionStatusReminder(
       detail.statusReminder,
       session.date,
@@ -35821,6 +35825,7 @@ function renderSessionDetail(sessionId) {
     bindPartitionRowVisualState(partitions);
     applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
     syncPartitionButtonStates(partitions, detail.statusField.value);
+    syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
     applyStageEditingMode(app, detail.statusField.value);
     syncSessionPartitionsFromContainer(session, partitions);
     refreshDetailDerivedViews();
@@ -36218,6 +36223,41 @@ function getPartitionRowStateFromPartition(partition, sessionStatus = "") {
     seedValue: partition?.seedCount ?? "",
     plantedValue: partition?.plantedCount ?? "",
   }, sessionStatus);
+}
+
+function shouldHideInactivePartitionRowsForStatus(sessionStatus = "") {
+  const normalizedStatus = String(sessionStatus || "").trim().toLowerCase();
+  return normalizedStatus === "completed" || normalizedStatus === "closed";
+}
+
+function getPartitionBaseRowStateFromRow(row) {
+  if (!(row instanceof Element)) {
+    return "empty";
+  }
+
+  return getPartitionBaseRowState({
+    sourceValue: row.querySelector('input[name^="source-"]')?.value || "",
+    varietyValue: row.querySelector('input[name^="seedVariety-"]')?.value || "",
+    typeValue: row.querySelector('select[name^="seedType-"]')?.value || "",
+    sexValue: row.querySelector('select[name^="feminized-"]')?.value || "",
+    seedValue: row.querySelector('input[name^="seedCount-"]')?.value || "",
+    plantedValue: row.querySelector('input[name="plantedCount"]')?.value || "",
+  });
+}
+
+function syncCompletedSessionPartitionVisibility(partitionContainer, sessionStatus = "") {
+  if (!(partitionContainer instanceof Element)) {
+    return;
+  }
+
+  const shouldHideEmptyRows = shouldHideInactivePartitionRowsForStatus(sessionStatus);
+  partitionContainer.querySelectorAll(".partition-row").forEach((row) => {
+    const baseState = getPartitionBaseRowStateFromRow(row);
+    row.dataset.partitionBaseState = baseState;
+    const shouldHide = shouldHideEmptyRows && baseState === "empty";
+    row.hidden = shouldHide;
+    row.setAttribute("aria-hidden", shouldHide ? "true" : "false");
+  });
 }
 
 function getPartitionButtonClassName(state) {
