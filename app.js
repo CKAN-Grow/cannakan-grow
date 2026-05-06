@@ -778,9 +778,10 @@ const PARTITION_HEADER_ICON_ASSETS = {
 };
 const GROW_GALLERY_DEBUG = true;
 const SESSION_STAGE_OPTIONS = [
-  { value: "soaking", label: "Soaking", modalLabel: "Start Soak", tone: "is-soaking" },
-  { value: "germinating", label: "Germinating", modalLabel: "Start Germinating", tone: "is-germinating" },
-  { value: "completed", label: "Completed", modalLabel: "Complete", tone: "is-completed" },
+  { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
+  { value: "germinating", progressKey: "germination", label: "Germinating", modalLabel: "Germinating", tone: "is-germinating" },
+  { value: "germinating", progressKey: "first-germinated", label: "Germination Started", modalLabel: "Germination Started", tone: "is-first-germinated" },
+  { value: "completed", progressKey: "completed", label: "Completed", modalLabel: "Completed", tone: "is-completed" },
 ];
 const ADMIN_CSTP_STAGE_OPTIONS = [
   { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
@@ -30823,7 +30824,7 @@ function openAdminCstpStageModal({ stageField, stageTrigger } = {}) {
   actions.innerHTML = ADMIN_CSTP_STAGE_OPTIONS.map((option) => `
     <button
       type="button"
-      class="stage-button ${option.tone} ${currentProgressKey === option.progressKey ? "is-active" : ""}"
+      class="stage-button ${option.tone} stage-button--${escapeHtml(option.progressKey || option.value)} ${currentProgressKey === option.progressKey ? "is-active" : ""}"
       data-admin-cstp-stage-progress="${option.progressKey}"
       data-admin-cstp-stage-value="${option.value}"
     >
@@ -38257,7 +38258,7 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
 
   const overlay = ensureGrowthStageModal();
   const actions = overlay.querySelector("#growth-stage-modal-actions");
-  const currentStage = normalizeSessionStatus(stageField.value);
+  const currentProgressKey = getSessionStatusProgressKey(stageField);
   if (!actions) {
     return false;
   }
@@ -38265,11 +38266,12 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   actions.innerHTML = SESSION_STAGE_OPTIONS.map((option) => `
     <button
       type="button"
-      class="stage-button ${option.tone} ${currentStage === option.value ? "is-active" : ""}"
+      class="stage-button ${option.tone} stage-button--${escapeHtml(option.progressKey || option.value)} ${currentProgressKey === (option.progressKey || option.value) ? "is-active" : ""}"
       data-growth-stage-value="${option.value}"
+      data-growth-stage-progress="${escapeHtml(option.progressKey || option.value)}"
     >
       <span>${escapeHtml(option.modalLabel)}</span>
-      ${currentStage === option.value ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
+      ${currentProgressKey === (option.progressKey || option.value) ? '<span class="stage-option-check" aria-hidden="true">✓</span>' : ""}
     </button>
   `).join("");
 
@@ -38278,6 +38280,25 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
       event.preventDefault();
       event.stopPropagation();
       const nextValue = button.getAttribute("data-growth-stage-value") || "";
+      const nextProgressKey = String(button.getAttribute("data-growth-stage-progress") || "").trim();
+      const timestamp = new Date().toISOString();
+      if (nextProgressKey === "soaking") {
+        stageField.dataset.germinationStartedAt = "";
+        stageField.dataset.firstPlantedAt = "";
+        stageField.dataset.completedAt = "";
+      } else if (nextProgressKey === "germination") {
+        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
+        stageField.dataset.firstPlantedAt = "";
+        stageField.dataset.completedAt = "";
+      } else if (nextProgressKey === "first-germinated") {
+        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
+        stageField.dataset.firstPlantedAt = stageField.dataset.firstPlantedAt || timestamp;
+        stageField.dataset.completedAt = "";
+      } else if (nextProgressKey === "completed") {
+        stageField.dataset.germinationStartedAt = stageField.dataset.germinationStartedAt || timestamp;
+        stageField.dataset.firstPlantedAt = stageField.dataset.firstPlantedAt || timestamp;
+        stageField.dataset.completedAt = stageField.dataset.completedAt || timestamp;
+      }
       appState.growthStageModalDismissed = false;
       appState.growthStage = nextValue || null;
       stageField.value = nextValue;
