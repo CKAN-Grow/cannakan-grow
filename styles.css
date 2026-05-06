@@ -5873,13 +5873,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   stroke-linejoin: round;
 }
 
-.seed-age-analytics-meta-row {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-}
-
-.seed-age-analytics-meta-row::before,
 .seed-age-analytics-kpi-grid::before,
 .seed-age-analytics-main-grid::before,
 .seed-age-analytics-bottom-grid::before {
@@ -5897,10 +5890,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  width: min(100%, 440px);
-  padding: 16px 18px;
-  border-radius: 22px;
+  gap: 14px;
+  width: min(100%, 520px);
+  margin-top: 4px;
+  padding: 14px 16px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 209, 89, 0.14);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.012) 100%),
@@ -5929,7 +5923,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-confidence-copy {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -5946,17 +5940,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   text-transform: uppercase;
 }
 
+.seed-age-analytics-confidence-level {
+  color: #f4f8ef;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
 .seed-age-analytics-confidence-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.seed-age-analytics-confidence-title-row strong {
-  color: #f4f8ef;
-  font-size: 1.12rem;
-  line-height: 1.2;
 }
 
 .seed-age-analytics-confidence-score {
@@ -5969,16 +5963,33 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-confidence-helper {
   color: rgba(217, 225, 214, 0.82);
-  font-size: 0.92rem;
-  line-height: 1.48;
+  font-size: 0.86rem;
+  line-height: 1.42;
+}
+
+.seed-age-analytics-confidence-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.seed-age-analytics-confidence-bar-fill {
+  display: block;
+  height: 100%;
+  width: calc(var(--seed-age-confidence-progress) * 1%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--seed-age-confidence-accent) 82%, #ffffff 6%), var(--seed-age-confidence-accent));
+  box-shadow: 0 0 14px var(--seed-age-confidence-accent-soft);
 }
 
 .seed-age-analytics-confidence-visual {
   position: relative;
   display: grid;
   place-items: center;
-  width: 74px;
-  min-width: 74px;
+  width: 66px;
+  min-width: 66px;
   aspect-ratio: 1;
   color: var(--seed-age-confidence-accent);
 }
@@ -6033,7 +6044,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-confidence-center strong {
   color: #f4f8ef;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 800;
   line-height: 1;
 }
@@ -7015,10 +7026,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     padding: 16px;
   }
 
-  .seed-age-analytics-meta-row {
-    justify-content: stretch;
-  }
-
   .seed-age-analytics-confidence-card {
     width: 100%;
   }
@@ -7062,6 +7069,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-confidence-card {
     grid-template-columns: 1fr;
     align-items: start;
+    width: 100%;
   }
 
   .seed-age-analytics-confidence-visual {

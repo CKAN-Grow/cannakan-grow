@@ -16633,7 +16633,7 @@ function buildSeedAgeAnalyticsConfidenceState(state = {}) {
       level: "Demo Preview",
       score: 12,
       scoreLabel: "12%",
-      helper: "Real confidence will increase as community seed age data is collected.",
+      helper: "Confidence will increase as real seed age data is collected.",
       variant: "is-demo",
     };
   }
@@ -16715,27 +16715,28 @@ function buildSeedAgeAnalyticsConfidenceState(state = {}) {
 function renderSeedAgeAnalyticsConfidenceMarkup(confidence = {}) {
   const score = clampSeedAgeAnalyticsConfidenceScore(confidence?.score);
   return `
-    <section class="seed-age-analytics-meta-row" aria-label="Seed age data confidence">
-      <article class="seed-age-analytics-confidence-card ${escapeHtml(confidence?.variant || "is-low")}">
-        <div class="seed-age-analytics-confidence-copy">
+    <article class="seed-age-analytics-confidence-card ${escapeHtml(confidence?.variant || "is-low")}" aria-label="Seed age data confidence">
+      <div class="seed-age-analytics-confidence-copy">
+        <div class="seed-age-analytics-confidence-title-row">
           <p class="seed-age-analytics-confidence-label">${escapeHtml(confidence?.title || "Data Confidence")}</p>
-          <div class="seed-age-analytics-confidence-title-row">
-            <strong>${escapeHtml(confidence?.level || "Low Confidence")}</strong>
-            <span class="seed-age-analytics-confidence-score">${escapeHtml(confidence?.scoreLabel || "0%")}</span>
-          </div>
-          <p class="seed-age-analytics-confidence-helper">${escapeHtml(confidence?.helper || "")}</p>
+          <span class="seed-age-analytics-confidence-score">${escapeHtml(confidence?.scoreLabel || "0%")}</span>
         </div>
-        <div class="seed-age-analytics-confidence-visual" style="--seed-age-confidence-progress:${escapeHtml(score.toFixed(2))};" aria-hidden="true">
-          <svg class="seed-age-analytics-confidence-ring" viewBox="0 0 96 96" focusable="false">
-            <circle class="seed-age-analytics-confidence-ring-track" cx="48" cy="48" r="34" pathLength="100"></circle>
-            <circle class="seed-age-analytics-confidence-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
-          </svg>
-          <div class="seed-age-analytics-confidence-center">
-            <strong>${escapeHtml(confidence?.scoreLabel || "0%")}</strong>
-          </div>
+        <strong class="seed-age-analytics-confidence-level">${escapeHtml(confidence?.level || "Low Confidence")}</strong>
+        <p class="seed-age-analytics-confidence-helper">${escapeHtml(confidence?.helper || "")}</p>
+        <div class="seed-age-analytics-confidence-bar" aria-hidden="true">
+          <span class="seed-age-analytics-confidence-bar-fill" style="--seed-age-confidence-progress:${escapeHtml(score.toFixed(2))};"></span>
         </div>
-      </article>
-    </section>
+      </div>
+      <div class="seed-age-analytics-confidence-visual" style="--seed-age-confidence-progress:${escapeHtml(score.toFixed(2))};" aria-hidden="true">
+        <svg class="seed-age-analytics-confidence-ring" viewBox="0 0 96 96" focusable="false">
+          <circle class="seed-age-analytics-confidence-ring-track" cx="48" cy="48" r="34" pathLength="100"></circle>
+          <circle class="seed-age-analytics-confidence-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
+        </svg>
+        <div class="seed-age-analytics-confidence-center">
+          <strong>${escapeHtml(confidence?.scoreLabel || "0%")}</strong>
+        </div>
+      </div>
+    </article>
   `;
 }
 
@@ -16824,6 +16825,7 @@ function renderSeedAgeAnalyticsPage() {
                 <p class="eyebrow">SEED AGE ANALYTICS</p>
                 <h1>Seed Age Overview</h1>
                 <p class="seed-age-analytics-hero-subtitle">Analyze how seed age impacts germination performance across the community.</p>
+                ${renderSeedAgeAnalyticsConfidenceMarkup(confidence)}
                 ${state.demoNotice ? `<p class="seed-age-analytics-status-pill">${escapeHtml(state.demoNotice)}</p>` : ""}
                 ${state.summaryNotice ? `<p class="seed-age-analytics-summary-note">${escapeHtml(state.summaryNotice)}</p>` : ""}
               </div>
@@ -16839,8 +16841,6 @@ function renderSeedAgeAnalyticsPage() {
             </a>
           </div>
         </header>
-
-        ${renderSeedAgeAnalyticsConfidenceMarkup(confidence)}
 
         <section class="seed-age-analytics-kpi-grid" aria-label="Seed age key metrics">
           ${kpiCards.map((card) => `
