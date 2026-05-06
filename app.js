@@ -37835,16 +37835,26 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
 function renderSessionCommandCenterProgressMarkup(session = null, options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
   const events = getSessionCommandCenterProgressEvents(session);
+  const rowMarkup = events.map((event, index) => {
+    const nextEvent = events[index + 1] || null;
+    const connectorIsActive = Boolean(
+      nextEvent
+      && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
+    );
+
+    return `
+      <article class="session-command-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
+        ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "germination" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "germination" : event.key}`)}
+        <strong>${escapeHtml(event.displayLabel)}</strong>
+        <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
+      </article>
+      ${nextEvent ? `<div class="stage-connector${connectorIsActive ? " stage-connector--active" : ""}" aria-hidden="true"></div>` : ""}
+    `;
+  }).join("");
 
   return `
     <div class="session-command-stage-grid">
-      ${events.map((event) => `
-        <article class="session-command-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
-          ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "germination" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "germination" : event.key}`)}
-          <strong>${escapeHtml(event.displayLabel)}</strong>
-          <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
-        </article>
-      `).join("")}
+      ${rowMarkup}
     </div>
   `;
 }

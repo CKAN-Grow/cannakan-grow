@@ -2410,20 +2410,44 @@ body.theme-dark .spotlight-stat strong {
 
 .session-command-stage-grid {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding-inline: 10px;
+}
+
+#session-command-center .session-command-stage-grid::before,
+#session-command-center .session-command-stage-grid::after {
+  content: "";
+  position: absolute;
+  top: 24px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-50%);
 }
 
 #session-command-center .session-command-stage-grid::before {
-  content: "";
-  position: absolute;
-  left: 17px;
-  right: 17px;
-  top: 16px;
+  left: 0;
+}
+
+#session-command-center .session-command-stage-grid::after {
+  right: 0;
+}
+
+#session-command-center .stage-connector {
+  flex: 1 1 28px;
+  align-self: flex-start;
   height: 2px;
+  margin: 24px 8px 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(127, 184, 255, 0.46) 0%, rgba(148, 209, 89, 0.12) 100%);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#session-command-center .stage-connector--active {
+  background: linear-gradient(90deg, #6eb7ff 0%, #94d159 100%);
+  box-shadow: 0 0 6px rgba(148, 209, 89, 0.4);
 }
 
 .session-command-stage {
@@ -2433,7 +2457,11 @@ body.theme-dark .spotlight-stat strong {
   position: relative;
   display: grid;
   gap: 10px;
-  justify-items: start;
+  justify-items: center;
+  text-align: center;
+  flex: 0 1 136px;
+  width: 136px;
+  max-width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -15325,11 +15353,9 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-command-stage-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #session-command-center .session-command-stage-grid::before {
-    display: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 16px;
   }
 }
 
@@ -15372,7 +15398,22 @@ body.theme-dark .theme-toggle-button:hover {
 
 @media (max-width: 640px) {
   .session-command-stage-grid {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+    padding-inline: 0;
+    gap: 14px;
+  }
+
+  #session-command-center .session-command-stage-grid::before,
+  #session-command-center .session-command-stage-grid::after,
+  #session-command-center .stage-connector {
+    display: none;
+  }
+
+  .session-command-stage {
+    width: 100%;
+    justify-items: start;
+    text-align: left;
   }
 }
 
