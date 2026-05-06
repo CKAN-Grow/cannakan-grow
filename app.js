@@ -14254,6 +14254,73 @@ function renderAppSectionHeaderIcon(iconType = "overview", options = {}) {
   });
 }
 
+function renderAppHeroActionMarkup(action = {}, fallbackClasses = "") {
+  if (!action || !action.href || !action.label) {
+    return "";
+  }
+
+  const className = [action.className || fallbackClasses].filter(Boolean).join(" ").trim();
+  const attributes = Object.entries(action.attributes || {}).map(([key, value]) => {
+    if (value === false || value == null) {
+      return "";
+    }
+    if (value === true) {
+      return ` ${escapeHtml(key)}`;
+    }
+    return ` ${escapeHtml(key)}="${escapeHtml(String(value))}"`;
+  }).join("");
+
+  return `
+    <a class="${escapeHtml(className || "button button-secondary")}" href="${escapeHtml(action.href)}"${attributes}>${action.label}</a>
+  `;
+}
+
+function renderAppHeroMarkup(options = {}) {
+  const {
+    sectionId = "",
+    className = "",
+    iconMarkup = "",
+    eyebrow = "",
+    title = "",
+    description = "",
+    primaryAction = null,
+    secondaryAction = null,
+    beforeActionsMarkup = "",
+    afterActionsMarkup = "",
+  } = options;
+
+  const sectionAttributes = [
+    sectionId ? `id="${escapeHtml(sectionId)}"` : "",
+    `class="${escapeHtml(["app-hero", "card", className].filter(Boolean).join(" "))}"`,
+  ].filter(Boolean).join(" ");
+
+  const actionsMarkup = [primaryAction, secondaryAction]
+    .map((action, index) => renderAppHeroActionMarkup(
+      action,
+      index === 0 ? "button button-primary" : "button button-secondary",
+    ))
+    .filter(Boolean)
+    .join("");
+
+  return `
+    <section ${sectionAttributes}>
+      <div class="app-hero-background" aria-hidden="true"></div>
+      <div class="app-hero-overlay" aria-hidden="true"></div>
+      <div class="app-hero-content section-title-with-icon app-section-header-main">
+        ${iconMarkup}
+        <div class="app-hero-copy">
+          <p class="app-hero-eyebrow eyebrow">${escapeHtml(eyebrow)}</p>
+          <h2 class="app-hero-title">${escapeHtml(title)}</h2>
+          <p class="app-hero-subtitle muted">${escapeHtml(description)}</p>
+          ${beforeActionsMarkup}
+          ${actionsMarkup ? `<div class="app-hero-actions hero-actions">${actionsMarkup}</div>` : ""}
+          ${afterActionsMarkup}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGalleryLeaderboardSectionHeadingIcon(iconType = "month") {
   switch (iconType) {
     case "all-time":
@@ -20879,26 +20946,31 @@ function renderSourcesLandingPage() {
   const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
-      <section class="source-directory-hero app-hero app-hero--sources app-hero--contained-right card">
-        <div class="app-hero-background" aria-hidden="true"></div>
-        <div class="app-hero-overlay" aria-hidden="true"></div>
-        <div class="app-hero-content section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("sources")}
-          <div class="app-hero-copy">
-            <p class="app-hero-eyebrow eyebrow">Source Directory</p>
-            <h2 class="app-hero-title">Source Directory</h2>
-            <p class="app-hero-subtitle muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
-            <p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
-            <div class="app-hero-actions hero-actions">
-              <a class="button button-secondary" href="#contact" data-source-directory-contact-link="cstp">Request Testing</a>
-              <a class="button button-secondary" href="#contact" data-source-directory-contact-link="correction">Submit a Correction</a>
-            </div>
-            <p class="source-directory-helper-note">Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
-            <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
-            <p class="source-directory-helper-line">Represent a source? Need account or listing help? Use the buttons above and we will route the request.</p>
-          </div>
-        </div>
-      </section>
+      ${renderAppHeroMarkup({
+        className: "source-directory-hero app-hero--sources app-hero--contained-right",
+        iconMarkup: renderAppSectionHeaderIcon("sources"),
+        eyebrow: "Source Directory",
+        title: "Source Directory",
+        description: SOURCE_DIRECTORY_DESCRIPTION,
+        primaryAction: {
+          href: "#contact",
+          label: "Request Testing",
+          className: "button button-secondary",
+          attributes: { "data-source-directory-contact-link": "cstp" },
+        },
+        secondaryAction: {
+          href: "#contact",
+          label: "Submit a Correction",
+          className: "button button-secondary",
+          attributes: { "data-source-directory-contact-link": "correction" },
+        },
+        beforeActionsMarkup: `<p class="source-directory-trust-note">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>`,
+        afterActionsMarkup: `
+          <p class="source-directory-helper-note">Directory entries expand as Cannakan Grow members share more germination sessions across the platform.</p>
+          <p class="source-directory-helper-note">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
+          <p class="source-directory-helper-line">Represent a source? Need account or listing help? Use the buttons above and we will route the request.</p>
+        `,
+      })}
 
       ${renderSourceDirectoryMetricsMarkup(directoryRecords)}
 
@@ -35153,16 +35225,18 @@ function renderGrowNetworkPage() {
     <section class="card grow-network-page">
       <div class="grow-network-page-glow" aria-hidden="true"></div>
       <div class="grow-network-page-heading">
-        <div class="grow-network-hero">
-          <div class="grow-network-hero-badge" aria-hidden="true">
-            ${renderAppSectionHeaderIcon("community")}
-          </div>
-          <div class="grow-network-hero-copy">
-            <p class="eyebrow">COMMUNITY</p>
-            <h2>Grow Network</h2>
-            <p class="muted">Follow members and see public grow activity from your network.</p>
-          </div>
-        </div>
+        ${renderAppHeroMarkup({
+          className: "grow-network-page-hero",
+          iconMarkup: renderAppSectionHeaderIcon("community"),
+          eyebrow: "Community",
+          title: "Grow Network",
+          description: "Follow members and see public grow activity from your network.",
+          secondaryAction: {
+            href: "#gallery",
+            label: "Browse Community Grow",
+            className: "button button-secondary grow-network-hero-button",
+          },
+        })}
         <div class="grow-network-header-stats" aria-label="Grow Network quick stats">
           ${headerStats.map((stat) => `
             <article class="grow-network-header-stat">
@@ -35171,7 +35245,6 @@ function renderGrowNetworkPage() {
             </article>
           `).join("")}
         </div>
-        <a class="button button-secondary grow-network-hero-button" href="#gallery">Browse Community Grow</a>
       </div>
       <div class="grow-network-layout">
         <section class="grow-network-panel grow-network-panel--members grow-network-section">

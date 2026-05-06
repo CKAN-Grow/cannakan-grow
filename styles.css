@@ -18117,7 +18117,6 @@ input::placeholder {
 }
 
 .grow-network-page-heading,
-.grow-network-hero,
 .grow-network-layout,
 .grow-network-stats-strip {
   position: relative;
@@ -18125,24 +18124,24 @@ input::placeholder {
 }
 
 .grow-network-page-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 18px;
 }
 
-.grow-network-hero {
-  display: flex;
-  align-items: center;
-  gap: 18px;
+.grow-network-page-hero {
   min-width: 0;
+}
+
+.grow-network-page-hero .app-hero-content {
+  max-width: min(52rem, 100%);
 }
 
 .grow-network-header-stats {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .grow-network-header-stat {
@@ -18172,7 +18171,6 @@ input::placeholder {
   letter-spacing: 0.02em;
 }
 
-.grow-network-hero-badge,
 .grow-network-panel-icon,
 .grow-network-stat-icon {
   display: inline-flex;
@@ -18181,7 +18179,6 @@ input::placeholder {
   flex: 0 0 auto;
 }
 
-.grow-network-hero-badge,
 .grow-network-panel-icon {
   color: inherit;
   border: 0;
@@ -18200,23 +18197,13 @@ input::placeholder {
     0 14px 26px rgba(0, 0, 0, 0.24);
 }
 
-.grow-network-hero-badge {
-  width: auto;
-  height: auto;
-  border-radius: 0;
-}
-
-.grow-network-hero-copy {
-  min-width: 0;
-}
-
-.grow-network-hero-copy h2,
+.grow-network-page-hero .app-hero-title,
 .grow-network-section-heading h3 {
   margin: 0;
   color: inherit;
 }
 
-.grow-network-hero-copy .muted,
+.grow-network-page-hero .app-hero-subtitle,
 .grow-network-section-subtitle {
   color: var(--muted);
 }
@@ -19349,13 +19336,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 @media (max-width: 1100px) {
   .grow-network-page-heading {
-    flex-wrap: wrap;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .grow-network-header-stats {
-    order: 3;
     width: 100%;
-    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .grow-network-layout {
@@ -19511,22 +19497,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .grow-network-page-heading {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: stretch;
   }
 
   .grow-network-header-stats {
     display: none;
-  }
-
-  .grow-network-hero {
-    align-items: flex-start;
-  }
-
-  .grow-network-hero-badge {
-    width: auto;
-    height: auto;
-    border-radius: 0;
   }
 
   .grow-network-hero-button {
