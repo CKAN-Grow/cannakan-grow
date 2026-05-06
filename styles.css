@@ -3362,6 +3362,41 @@ body.theme-dark #active-sessions-section {
   min-height: 100%;
 }
 
+#detail-lifecycle-section .session-lifecycle-status-column {
+  align-self: stretch;
+  height: 100%;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-panel {
+  height: 100%;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-card {
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-current {
+  margin-top: 2px;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-help {
+  margin-top: 2px;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-trigger {
+  margin-top: 4px;
+}
+
+#detail-lifecycle-section .session-lifecycle-status-column .session-status-meta {
+  margin-top: auto;
+  padding-top: 6px;
+}
+
 .lifecycle-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -17938,6 +17973,23 @@ body.theme-dark .theme-toggle-button:hover {
 
   #detail-lifecycle-section .session-lifecycle-supplies-anchor {
     order: 3;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-status-column {
+    height: auto;
+    align-self: start;
+    grid-template-rows: auto auto;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-status-column .session-status-panel,
+  #detail-lifecycle-section .session-lifecycle-status-column .session-status-card {
+    height: auto;
+    min-height: 0;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-status-column .session-status-meta {
+    margin-top: 0;
+    padding-top: 0;
   }
 }
 
