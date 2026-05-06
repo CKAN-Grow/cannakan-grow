@@ -37706,11 +37706,11 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
             <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
           </div>
           <div class="session-command-session-footer">
-            <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
+            <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
           </div>
         </div>
         <div class="session-command-session-actions">
-          <a class="button button-primary session-command-session-continue" href="#sessions/${escapeHtml(session.id)}">Continue</a>
+          <a class="button button-primary session-command-session-continue session-continue-button" href="#sessions/${escapeHtml(session.id)}"><span class="session-continue-button-icon" aria-hidden="true">&#9654;</span><span>Continue</span></a>
           <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
             <span aria-hidden="true">&bull;&bull;&bull;</span>
           </a>
@@ -37721,119 +37721,107 @@ function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessi
 }
 
 function renderCommandCenterIconMarkup(iconName, className = "") {
-  const classes = ["command-icon", className].filter(Boolean).join(" ");
+  const classes = ["command-icon", "command-icon-tile", className].filter(Boolean).join(" ");
+  const svgClass = "command-icon-svg";
 
   switch (iconName) {
     case "header":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <circle cx="12" cy="12" r="7.25" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
-            <path d="M12 2.75v3.1M12 18.15v3.1M2.75 12h3.1M18.15 12h3.1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
-            <circle cx="12" cy="12" r="1.85" fill="currentColor"></circle>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.25"></circle>
+            <path d="M12 2.75v3.1M12 18.15v3.1M2.75 12h3.1M18.15 12h3.1" stroke-linecap="round"></path>
+            <circle cx="12" cy="12" r="2.15"></circle>
           </svg>
         </span>
       `;
     case "session-thumb":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 56 56" focusable="false" aria-hidden="true">
-            <defs>
-              <linearGradient id="command-session-thumb-stem" x1="0%" x2="0%" y1="0%" y2="100%">
-                <stop offset="0%" stop-color="#d7ff91"></stop>
-                <stop offset="100%" stop-color="#86cb4c"></stop>
-              </linearGradient>
-              <radialGradient id="command-session-thumb-glow" cx="50%" cy="84%" r="60%">
-                <stop offset="0%" stop-color="rgba(148, 209, 89, 0.6)"></stop>
-                <stop offset="100%" stop-color="rgba(148, 209, 89, 0)"></stop>
-              </radialGradient>
-            </defs>
-            <ellipse cx="28" cy="42" rx="16" ry="7" fill="url(#command-session-thumb-glow)"></ellipse>
-            <path d="M28 38V20" fill="none" stroke="url(#command-session-thumb-stem)" stroke-linecap="round" stroke-width="2.5"></path>
-            <path d="M28 24c-7 0-11-4.8-11-10 6.8 0 11 4.2 11 10Z" fill="rgba(185, 237, 120, 0.96)" stroke="rgba(228, 255, 193, 0.9)" stroke-width="1.2"></path>
-            <path d="M28 27c7 0 11-4.8 11-10-6.8 0-11 4.2-11 10Z" fill="rgba(143, 211, 85, 0.98)" stroke="rgba(216, 255, 172, 0.88)" stroke-width="1.2"></path>
-            <path d="M28 29c-4.8 0-7.6-3.2-7.6-6.8 4.7 0 7.6 2.9 7.6 6.8Z" fill="rgba(213, 255, 161, 0.9)" stroke="rgba(235, 255, 205, 0.9)" stroke-width="1"></path>
-            <path d="M28 31c4.8 0 7.6-3.2 7.6-6.8-4.7 0-7.6 2.9-7.6 6.8Z" fill="rgba(124, 196, 68, 0.95)" stroke="rgba(220, 255, 179, 0.85)" stroke-width="1"></path>
-            <path d="M19 43h18" fill="none" stroke="rgba(148, 209, 89, 0.42)" stroke-linecap="round" stroke-width="1.4"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 18.8V10.7" stroke-linecap="round"></path>
+            <path d="M12 11c-4 0-7-2.9-7-7 4.3 0 7 2.7 7 7Z" stroke-linejoin="round"></path>
+            <path d="M12 13.4c0-3.7 2.6-6.1 7-6.1 0 4-2.9 6.1-7 6.1Z" stroke-linejoin="round"></path>
+            <path d="M8.1 19h7.8" stroke-linecap="round"></path>
           </svg>
         </span>
       `;
     case "stage-soaking":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 3.5c-3.1 3.8-5.6 7.1-5.6 10.2a5.6 5.6 0 1 0 11.2 0C17.6 10.6 15.1 7.3 12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 3.5c-3.1 3.8-5.6 7.1-5.6 10.2a5.6 5.6 0 1 0 11.2 0C17.6 10.6 15.1 7.3 12 3.5Z" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
     case "stage-germination":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 18.5V10.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
-            <path d="M12 10.6c0-3.3 2.5-5.6 6.1-5.6 0 3.4-2.4 5.6-6.1 5.6Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
-            <path d="M12 13.1c0-2.9-2.3-4.9-5.7-4.9 0 3 2.2 4.9 5.7 4.9Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
-            <path d="M7.5 18.5h9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 18.5V10.6" stroke-linecap="round"></path>
+            <path d="M12 10.6c0-3.3 2.5-5.6 6.1-5.6 0 3.4-2.4 5.6-6.1 5.6Z" stroke-linejoin="round"></path>
+            <path d="M12 13.1c0-2.9-2.3-4.9-5.7-4.9 0 3 2.2 4.9 5.7 4.9Z" stroke-linejoin="round"></path>
+            <path d="M7.5 18.5h9" stroke-linecap="round"></path>
           </svg>
         </span>
       `;
     case "stage-first-germinated":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 19V10.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
-            <path d="M12 11.1c-4 0-7.1-2.8-7.1-7.1 4.4 0 7.1 2.7 7.1 7.1Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
-            <path d="M12 13.5c0-3.8 2.7-6.2 7.1-6.2 0 4.1-2.9 6.2-7.1 6.2Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 19V10.8" stroke-linecap="round"></path>
+            <path d="M12 11.1c-4 0-7.1-2.8-7.1-7.1 4.4 0 7.1 2.7 7.1 7.1Z" stroke-linejoin="round"></path>
+            <path d="M12 13.5c0-3.8 2.7-6.2 7.1-6.2 0 4.1-2.9 6.2-7.1 6.2Z" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
     case "stage-completed":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="m7.5 12.4 3.1 3.1 5.9-7.1" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m7.5 12.4 3.1 3.1 5.9-7.1" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
     case "metric-active":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M2.5 12h4l2.2-4.5 3.1 9 2.8-6h6.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M2.5 12h4l2.2-4.5 3.1 9 2.8-6h6.9" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
     case "metric-saved":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M7 4.5h10a1.5 1.5 0 0 1 1.5 1.5v13.5L12 15.7 5.5 19.5V6A1.5 1.5 0 0 1 7 4.5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M7 4.5h10a1.5 1.5 0 0 1 1.5 1.5v13.5L12 15.7 5.5 19.5V6A1.5 1.5 0 0 1 7 4.5Z" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
     case "metric-leading":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="m5 17 1.5-9 5.5 4 5.5-4L19 17H5Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
-            <path d="M8 17v2h8v-2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m5 17 1.5-9 5.5 4 5.5-4L19 17H5Z" stroke-linejoin="round"></path>
+            <path d="M8 17v2h8v-2" stroke-linecap="round"></path>
           </svg>
         </span>
       `;
     case "metric-rate":
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="m6.5 12 3.1 3.1 7.9-8.1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="M5 5.5h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.45"></path>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="m6.5 12 3.1 3.1 7.9-8.1" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M5 5.5h14" stroke-linecap="round" opacity="0.45"></path>
           </svg>
         </span>
       `;
     default:
       return `
         <span class="${classes}" aria-hidden="true">
-          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <circle cx="12" cy="12" r="2.25" fill="currentColor"></circle>
+          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.25"></circle>
           </svg>
         </span>
       `;
@@ -37960,11 +37948,11 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
             <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
           </div>
           <div class="session-command-session-footer">
-            <span class="session-command-stage-badge ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
+            <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
           </div>
         </div>
         <div class="session-command-session-actions">
-          <a class="button button-primary session-command-session-continue" href="#sessions/${escapeHtml(session.id)}">Continue</a>
+          <a class="button button-primary session-command-session-continue session-continue-button" href="#sessions/${escapeHtml(session.id)}"><span class="session-continue-button-icon" aria-hidden="true">&#9654;</span><span>Continue</span></a>
           <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
             <span aria-hidden="true">&bull;&bull;&bull;</span>
           </a>
