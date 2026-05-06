@@ -41,6 +41,7 @@ html {
   --field-bg: #fffef9;
   --field-focus-bg: #ffffff;
   --field-placeholder: #899589;
+  --field-placeholder-opacity: 0.56;
   --radius: 20px;
   --page-section-gap: var(--space-5);
   --space-section: var(--page-section-gap);
@@ -87,6 +88,7 @@ body.theme-dark {
   --field-bg: #1E221F;
   --field-focus-bg: #232823;
   --field-placeholder: #8f9a91;
+  --field-placeholder-opacity: 0.52;
 }
 
 * {
@@ -16216,8 +16218,10 @@ body.theme-dark .admin-cstp-device-image-slot-head span {
   color: #a8b7a9;
 }
 
-input::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 .partitions-panel {
@@ -16927,7 +16931,8 @@ input::placeholder {
 }
 
 .source-directory-search-field input::placeholder {
-  color: var(--muted);
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 .source-directory-search-field input:focus-visible,
@@ -19123,7 +19128,8 @@ body.theme-dark .source-directory-sort-field select {
 }
 
 body.theme-dark .source-directory-search-field input::placeholder {
-  color: rgba(189, 204, 192, 0.62);
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark .source-directory-filter-pill {
@@ -20424,7 +20430,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-workspace-shell input::placeholder,
 .session-workspace-shell textarea::placeholder {
-  color: #8f9a91;
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 .session-workspace-shell input:focus-visible,
@@ -21443,7 +21450,8 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
 
 .partition-table[data-session-status="completed"] .partition-row.row-completed-empty input::placeholder,
 body.theme-dark .partition-table[data-session-status="completed"] .partition-row.row-completed-empty input::placeholder {
-  color: rgba(179, 184, 175, 0.92);
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive,
@@ -24089,7 +24097,8 @@ body.theme-dark textarea:focus {
 
 body.theme-dark input::placeholder,
 body.theme-dark textarea::placeholder {
-  color: #8f9a91;
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark input:-webkit-autofill,
@@ -24340,7 +24349,8 @@ body.theme-dark .session-notes-field textarea {
 }
 
 body.theme-dark .session-notes-field textarea::placeholder {
-  color: #9aa49c;
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark .session-notes-message {
@@ -24415,7 +24425,8 @@ body.theme-dark #profile-modal textarea {
 
 body.theme-dark #profile-modal input::placeholder,
 body.theme-dark #profile-modal textarea::placeholder {
-  color: #8f9a91;
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark #profile-modal input:focus-visible,
@@ -24519,7 +24530,8 @@ body.theme-dark .partition-table input[name="plantedCount"] {
 }
 
 body.theme-dark .partition-table input[name="plantedCount"]::placeholder {
-  color: #a8b5ad !important;
+  color: var(--field-placeholder) !important;
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark .partition-table input[name="plantedCount"]:hover,
@@ -24607,7 +24619,8 @@ body.theme-dark .partition-row.row--completed select {
 }
 
 body.theme-dark .partition-row.row--completed input::placeholder {
-  color: #7f8a80;
+  color: var(--field-placeholder);
+  opacity: var(--field-placeholder-opacity);
 }
 
 body.theme-dark .partition-row.row--completed input:focus,
