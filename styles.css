@@ -10764,50 +10764,114 @@ body.theme-dark .contact-reason-card.is-active {
     inset 0 0 18px rgba(148, 209, 89, 0.06);
 }
 
-.filter-paper-supply-button--ok.filter-paper-supply-button--reorder,
-.filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
-  border-color: rgba(143, 199, 221, 0.34);
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--reorder {
+  --filter-paper-reorder-border: rgba(143, 199, 221, 0.34);
+  --filter-paper-reorder-bg-start: rgba(44, 82, 106, 0.88);
+  --filter-paper-reorder-bg-end: rgba(24, 48, 67, 0.96);
+  --filter-paper-reorder-text: #e2f6ff;
+  --filter-paper-reorder-halo: rgba(120, 210, 244, 0.16);
+  --filter-paper-reorder-inner-ring: rgba(176, 228, 246, 0.12);
+  --filter-paper-reorder-inner-glow: rgba(120, 210, 244, 0.08);
+  --filter-paper-reorder-hover-border: rgba(173, 229, 248, 0.4);
+  --filter-paper-reorder-hover-halo: rgba(120, 210, 244, 0.22);
+  --filter-paper-reorder-hover-inner-glow: rgba(120, 210, 244, 0.12);
+  border-color: var(--filter-paper-reorder-border);
   background:
-    linear-gradient(180deg, rgba(44, 82, 106, 0.88) 0%, rgba(24, 48, 67, 0.96) 100%);
-  color: #e2f6ff;
+    linear-gradient(180deg, var(--filter-paper-reorder-bg-start) 0%, var(--filter-paper-reorder-bg-end) 100%);
+  color: var(--filter-paper-reorder-text);
   box-shadow:
     0 10px 20px rgba(0, 0, 0, 0.18),
-    0 0 20px rgba(120, 210, 244, 0.18),
+    0 0 20px var(--filter-paper-reorder-halo),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(176, 228, 246, 0.12),
-    inset 0 0 20px rgba(120, 210, 244, 0.08);
+    inset 0 0 0 1px var(--filter-paper-reorder-inner-ring),
+    inset 0 0 20px var(--filter-paper-reorder-inner-glow);
 }
 
-.filter-paper-supply-button--low.filter-paper-supply-button--reorder {
-  border-color: rgba(217, 139, 43, 0.34);
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--ok.filter-paper-supply-button--reorder {
+  --filter-paper-reorder-border: rgba(126, 198, 226, 0.28);
+  --filter-paper-reorder-bg-start: rgba(38, 72, 93, 0.84);
+  --filter-paper-reorder-bg-end: rgba(20, 39, 54, 0.95);
+  --filter-paper-reorder-text: #def5ff;
+  --filter-paper-reorder-halo: rgba(93, 191, 227, 0.12);
+  --filter-paper-reorder-inner-ring: rgba(166, 221, 242, 0.1);
+  --filter-paper-reorder-inner-glow: rgba(103, 199, 235, 0.05);
+  --filter-paper-reorder-hover-border: rgba(155, 223, 246, 0.34);
+  --filter-paper-reorder-hover-halo: rgba(103, 199, 235, 0.18);
+  --filter-paper-reorder-hover-inner-glow: rgba(103, 199, 235, 0.09);
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
+  --filter-paper-reorder-border: rgba(143, 199, 221, 0.36);
+  --filter-paper-reorder-bg-start: rgba(50, 90, 116, 0.9);
+  --filter-paper-reorder-bg-end: rgba(26, 49, 69, 0.97);
+  --filter-paper-reorder-text: #e6f8ff;
+  --filter-paper-reorder-halo: rgba(120, 210, 244, 0.2);
+  --filter-paper-reorder-inner-ring: rgba(181, 232, 248, 0.14);
+  --filter-paper-reorder-inner-glow: rgba(120, 210, 244, 0.09);
+  --filter-paper-reorder-hover-border: rgba(178, 231, 249, 0.42);
+  --filter-paper-reorder-hover-halo: rgba(120, 210, 244, 0.26);
+  --filter-paper-reorder-hover-inner-glow: rgba(120, 210, 244, 0.14);
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--low.filter-paper-supply-button--reorder {
+  --filter-paper-reorder-border: rgba(217, 139, 43, 0.34);
+  --filter-paper-reorder-bg-start: rgba(120, 72, 24, 0.96);
+  --filter-paper-reorder-bg-end: rgba(86, 48, 15, 0.98);
+  --filter-paper-reorder-text: #f5d9a8;
+  --filter-paper-reorder-halo: rgba(217, 139, 43, 0.18);
+  --filter-paper-reorder-inner-ring: rgba(245, 190, 110, 0.08);
+  --filter-paper-reorder-inner-glow: rgba(217, 139, 43, 0.07);
+  --filter-paper-reorder-hover-border: rgba(238, 174, 82, 0.42);
+  --filter-paper-reorder-hover-halo: rgba(228, 154, 55, 0.24);
+  --filter-paper-reorder-hover-inner-glow: rgba(228, 154, 55, 0.11);
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder {
+  --filter-paper-reorder-border: rgba(198, 83, 76, 0.38);
+  --filter-paper-reorder-bg-start: rgba(117, 38, 42, 0.94);
+  --filter-paper-reorder-bg-end: rgba(74, 21, 25, 0.99);
+  --filter-paper-reorder-text: #ffd1cc;
+  --filter-paper-reorder-halo: rgba(198, 83, 76, 0.2);
+  --filter-paper-reorder-inner-ring: rgba(246, 158, 151, 0.1);
+  --filter-paper-reorder-inner-glow: rgba(198, 83, 76, 0.08);
+  --filter-paper-reorder-hover-border: rgba(232, 124, 117, 0.44);
+  --filter-paper-reorder-hover-halo: rgba(211, 95, 88, 0.28);
+  --filter-paper-reorder-hover-inner-glow: rgba(211, 95, 88, 0.13);
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--reorder:hover,
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--reorder:focus-visible {
+  border-color: var(--filter-paper-reorder-hover-border);
   background:
-    linear-gradient(180deg, rgba(120, 72, 24, 0.96) 0%, rgba(86, 48, 15, 0.98) 100%);
-  color: #f5d9a8;
-  box-shadow:
-    0 10px 20px rgba(0, 0, 0, 0.18),
-    0 0 18px rgba(217, 139, 43, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(245, 190, 110, 0.08);
-}
-
-.filter-paper-supply-button--critical.filter-paper-supply-button--reorder {
-  border-color: rgba(198, 83, 76, 0.38);
-  background:
-    linear-gradient(180deg, rgba(117, 38, 42, 0.94) 0%, rgba(74, 21, 25, 0.99) 100%);
-  color: #ffd1cc;
-  box-shadow:
-    0 12px 22px rgba(0, 0, 0, 0.2),
-    0 0 22px rgba(198, 83, 76, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 0 0 1px rgba(246, 158, 151, 0.1);
-}
-
-.filter-paper-supply-button--reorder:hover,
-.filter-paper-supply-button--reorder:focus-visible {
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--filter-paper-reorder-bg-start) 88%, white 12%) 0%,
+      color-mix(in srgb, var(--filter-paper-reorder-bg-end) 92%, black 8%) 100%
+    );
+  color: var(--filter-paper-reorder-text);
   box-shadow:
     0 14px 24px rgba(0, 0, 0, 0.22),
+    0 0 24px var(--filter-paper-reorder-hover-halo),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    inset 0 0 0 1px var(--filter-paper-reorder-inner-ring),
+    inset 0 0 22px var(--filter-paper-reorder-hover-inner-glow);
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--reorder:active {
+  border-color: color-mix(in srgb, var(--filter-paper-reorder-hover-border) 84%, black 16%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--filter-paper-reorder-bg-start) 80%, black 20%) 0%,
+      color-mix(in srgb, var(--filter-paper-reorder-bg-end) 86%, black 14%) 100%
+    );
+  color: var(--filter-paper-reorder-text);
+  box-shadow:
+    0 9px 18px rgba(0, 0, 0, 0.22),
+    0 0 18px color-mix(in srgb, var(--filter-paper-reorder-halo) 88%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px color-mix(in srgb, var(--filter-paper-reorder-inner-ring) 92%, rgba(255, 255, 255, 0.02)),
+    inset 0 0 16px color-mix(in srgb, var(--filter-paper-reorder-inner-glow) 90%, transparent);
 }
 
 @keyframes filter-paper-supply-pulse-low {
