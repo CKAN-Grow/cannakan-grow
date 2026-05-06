@@ -24437,7 +24437,7 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
   background: rgba(255, 107, 107, 0.08);
 }
 
-.chart-shell:not([data-seed-age-mode="mixed"]) .chart-header [data-partition-header="age"] {
+.chart-shell:not([data-seed-age-enabled="true"]) .chart-header [data-partition-header="age"] {
   display: none;
 }
 
@@ -24517,6 +24517,13 @@ body.theme-dark .partition-row.row-has-warning:hover input[name="plantedCount"] 
   -webkit-text-fill-color: #f3f7f1 !important;
   border-color: #94d159 !important;
   box-shadow: 0 0 0 2px rgba(148, 209, 89, 0.14) !important;
+}
+
+body.theme-dark .partition-table input[data-seed-age-readonly="true"] {
+  background: rgba(148, 209, 89, 0.08) !important;
+  border-color: rgba(148, 209, 89, 0.34) !important;
+  color: #eaf4dd !important;
+  cursor: default;
 }
 
 .success-cell {
