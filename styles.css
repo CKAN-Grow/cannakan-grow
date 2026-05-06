@@ -3205,16 +3205,16 @@ body.theme-dark #active-sessions-section {
 
 .session-command-center-supply-panel--unset {
   --filter-paper-accent: #9edbf5;
-  --filter-paper-accent-soft: rgba(158, 219, 245, 0.24);
+  --filter-paper-accent-soft: rgba(158, 219, 245, 0.18);
   --filter-paper-accent-text: #e4f7ff;
   --filter-paper-panel-top: rgba(22, 31, 38, 0.98);
   --filter-paper-panel-bottom: rgba(11, 16, 21, 0.99);
-  --filter-paper-panel-glow: rgba(120, 210, 244, 0.28);
+  --filter-paper-panel-glow: rgba(120, 210, 244, 0.16);
   background:
-    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.16), transparent 30%),
-    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.1), transparent 28%),
+    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.1), transparent 30%),
+    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.06), transparent 28%),
     linear-gradient(180deg, var(--filter-paper-panel-top) 0%, var(--filter-paper-panel-bottom) 100%),
-    linear-gradient(135deg, rgba(112, 192, 226, 0.12) 0%, rgba(10, 16, 20, 0.03) 68%);
+    linear-gradient(135deg, rgba(112, 192, 226, 0.07) 0%, rgba(10, 16, 20, 0.03) 68%);
   animation: filter-paper-supply-breathe-idle 5.6s ease-in-out infinite;
 }
 
@@ -10326,15 +10326,15 @@ body.theme-dark .contact-reason-card.is-active {
 
 .active-session-supplies-card--unset {
   --active-supplies-accent: #9edbf5;
-  --active-supplies-accent-soft: rgba(158, 219, 245, 0.24);
+  --active-supplies-accent-soft: rgba(158, 219, 245, 0.18);
   --active-supplies-bg-top: rgba(25, 34, 40, 0.98);
   --active-supplies-bg-bottom: rgba(15, 21, 28, 0.95);
-  --active-supplies-glow: rgba(120, 210, 244, 0.28);
+  --active-supplies-glow: rgba(120, 210, 244, 0.16);
   background:
-    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.16), transparent 30%),
-    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.1), transparent 28%),
+    radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.1), transparent 30%),
+    radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.06), transparent 28%),
     linear-gradient(180deg, var(--active-supplies-bg-top) 0%, var(--active-supplies-bg-bottom) 100%),
-    linear-gradient(135deg, rgba(112, 192, 226, 0.12) 0%, rgba(10, 16, 20, 0.03) 68%);
+    linear-gradient(135deg, rgba(112, 192, 226, 0.07) 0%, rgba(10, 16, 20, 0.03) 68%);
   animation: filter-paper-supply-breathe-idle 5.6s ease-in-out infinite;
 }
 
@@ -10386,11 +10386,11 @@ body.theme-dark .contact-reason-card.is-active {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 82% 62%, rgba(127, 224, 255, 0.34) 0%, rgba(127, 224, 255, 0.14) 18%, transparent 48%),
-    radial-gradient(circle at 28% 18%, rgba(238, 252, 255, 0.16) 0%, transparent 34%),
-    radial-gradient(circle at 62% 86%, rgba(114, 200, 232, 0.16) 0%, transparent 30%);
-  filter: blur(18px);
-  opacity: 0.86;
+    radial-gradient(circle at 82% 62%, rgba(127, 224, 255, 0.19) 0%, rgba(127, 224, 255, 0.08) 18%, transparent 48%),
+    radial-gradient(circle at 28% 18%, rgba(238, 252, 255, 0.08) 0%, transparent 34%),
+    radial-gradient(circle at 62% 86%, rgba(114, 200, 232, 0.08) 0%, transparent 30%);
+  filter: blur(16px);
+  opacity: 0.58;
   transform: scale(0.96) translate3d(0, 0, 0);
   animation: filter-paper-supply-idle-atmosphere 5.6s ease-in-out infinite;
 }
@@ -10404,11 +10404,11 @@ body.theme-dark .contact-reason-card.is-active {
   pointer-events: none;
   border-radius: inherit;
   background:
-    linear-gradient(112deg, transparent 18%, rgba(235, 250, 255, 0.09) 31%, rgba(235, 250, 255, 0.18) 38%, rgba(160, 226, 255, 0.08) 45%, transparent 56%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01) 22%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 84% 56%, rgba(136, 226, 255, 0.18), transparent 24%);
+    linear-gradient(112deg, transparent 18%, rgba(235, 250, 255, 0.05) 31%, rgba(235, 250, 255, 0.1) 38%, rgba(160, 226, 255, 0.04) 45%, transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.008) 22%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 84% 56%, rgba(136, 226, 255, 0.1), transparent 24%);
   mix-blend-mode: screen;
-  opacity: 0.72;
+  opacity: 0.42;
   transform: translate3d(-12%, 0, 0);
   animation: filter-paper-supply-idle-shimmer 5.9s ease-in-out infinite;
 }
@@ -10464,8 +10464,8 @@ body.theme-dark .contact-reason-card.is-active {
 .active-session-supplies-card--unset .active-session-supplies-actions::before,
 .session-command-center-supply-panel--unset .session-command-center-supply-actions::before {
   background:
-    radial-gradient(circle at 70% 54%, rgba(177, 220, 237, 0.14) 0%, rgba(143, 199, 221, 0.08) 34%, transparent 70%);
-  opacity: 0.62;
+    radial-gradient(circle at 70% 54%, rgba(177, 220, 237, 0.08) 0%, rgba(143, 199, 221, 0.05) 34%, transparent 70%);
+  opacity: 0.4;
 }
 
 .active-session-supplies-button-row .button {
@@ -10652,23 +10652,23 @@ body.theme-dark .contact-reason-card.is-active {
   100% {
     box-shadow:
       0 18px 34px rgba(0, 0, 0, 0.22),
-      0 0 24px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 92%, transparent),
-      0 0 52px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 12%, transparent),
+      0 0 16px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 72%, transparent),
+      0 0 28px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 7%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
-      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 14%, transparent),
-      inset 0 0 26px rgba(201, 236, 248, 0.08),
+      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 10%, transparent),
+      inset 0 0 16px rgba(201, 236, 248, 0.04),
       inset 0 -10px 18px rgba(6, 12, 18, 0.16);
   }
   50% {
     box-shadow:
       0 22px 42px rgba(0, 0, 0, 0.24),
-      0 0 42px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 100%, transparent),
-      0 0 82px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 28%, transparent),
-      0 0 18px rgba(223, 247, 255, 0.14),
-      inset 0 1px 0 rgba(255, 255, 255, 0.11),
-      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 24%, transparent),
-      inset 0 0 42px rgba(207, 240, 252, 0.16),
-      inset 0 0 90px rgba(110, 208, 241, 0.12),
+      0 0 24px color-mix(in srgb, var(--active-supplies-glow, var(--filter-paper-panel-glow)) 84%, transparent),
+      0 0 42px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 14%, transparent),
+      0 0 10px rgba(223, 247, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 15%, transparent),
+      inset 0 0 24px rgba(207, 240, 252, 0.08),
+      inset 0 0 50px rgba(110, 208, 241, 0.06),
       inset 0 -12px 20px rgba(6, 12, 18, 0.12);
   }
 }
@@ -10676,26 +10676,26 @@ body.theme-dark .contact-reason-card.is-active {
 @keyframes filter-paper-supply-idle-atmosphere {
   0%,
   100% {
-    opacity: 0.72;
-    transform: scale(0.95) translate3d(-1%, 2%, 0);
-    filter: blur(16px) saturate(1);
+    opacity: 0.46;
+    transform: scale(0.97) translate3d(-1%, 1%, 0);
+    filter: blur(15px) saturate(0.98);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.04) translate3d(2%, -2%, 0);
-    filter: blur(24px) saturate(1.12);
+    opacity: 0.66;
+    transform: scale(1.01) translate3d(1%, -1%, 0);
+    filter: blur(19px) saturate(1.05);
   }
 }
 
 @keyframes filter-paper-supply-idle-shimmer {
   0%,
   100% {
-    opacity: 0.4;
-    transform: translate3d(-14%, 0, 0);
+    opacity: 0.22;
+    transform: translate3d(-12%, 0, 0);
   }
   50% {
-    opacity: 0.86;
-    transform: translate3d(9%, -1%, 0);
+    opacity: 0.42;
+    transform: translate3d(6%, -1%, 0);
   }
 }
 
