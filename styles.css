@@ -5806,12 +5806,30 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: stretch;
 }
 
+.seed-age-metric-card-stack {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  align-content: start;
+  min-height: 100%;
+  width: 100%;
+}
+
+.seed-age-metric-card-label,
+.seed-age-metric-card-value,
+.seed-age-metric-card-helper {
+  margin: 0;
+}
+
+.seed-age-metric-card-visual-shell {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
 .gallery-seed-age-kpi-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px;
-  align-items: center;
-  gap: 18px;
-  min-height: 152px;
+  min-height: 170px;
   padding: 18px 20px 18px 18px;
   border-radius: 22px;
   border: 1px solid rgba(148, 209, 89, 0.12);
@@ -5823,25 +5841,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-.gallery-seed-age-kpi-copy {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
+.gallery-seed-age-kpi-stack {
+  gap: 10px;
+  justify-items: start;
 }
 
 .gallery-seed-age-kpi-visual-shell {
-  display: grid;
-  place-items: center;
-  width: 76px;
-  min-width: 76px;
-  align-self: stretch;
-  justify-self: end;
-  padding-right: 2px;
+  margin-top: 2px;
+  justify-self: center;
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview {
-  width: 76px;
-  min-width: 76px;
+  width: 74px;
+  min-width: 74px;
   justify-self: center;
   color: transparent;
 }
@@ -5887,7 +5899,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center {
-  padding: 13px;
+  padding: 0;
 }
 
 .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual-center strong {
@@ -5900,12 +5912,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-seed-age-kpi-card.is-empty {
   border-style: dashed;
-}
-
-.gallery-seed-age-kpi-label,
-.gallery-seed-age-kpi-value,
-.gallery-seed-age-kpi-helper {
-  margin: 0;
 }
 
 .gallery-seed-age-kpi-label {
@@ -5921,6 +5927,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: clamp(1.3rem, 2vw, 1.8rem);
   font-weight: 800;
   line-height: 1.08;
+  margin-top: 4px;
 }
 
 .gallery-seed-age-kpi-value.is-extended {
@@ -5936,8 +5943,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .gallery-seed-age-kpi-helper {
   color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.45;
+  justify-self: center;
+  max-width: 22ch;
+  font-size: 0.82rem;
+  line-height: 1.42;
+  text-align: center;
 }
 
 .seed-age-analytics-page {
@@ -6288,10 +6298,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --seed-age-kpi-accent: #9dd948;
   --seed-age-kpi-accent-soft: rgba(157, 217, 72, 0.22);
   display: grid;
-  grid-template-columns: minmax(136px, 1fr) 92px;
-  align-items: center;
-  gap: 20px;
-  min-height: 156px;
+  min-height: 182px;
   padding: 22px 24px 20px;
   position: relative;
   overflow: hidden;
@@ -6348,17 +6355,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --seed-age-kpi-accent-soft: rgba(193, 241, 109, 0.24);
 }
 
-.seed-age-analytics-kpi-copy {
-  display: grid;
-  gap: 8px;
-  min-width: 136px;
-  align-content: center;
+.seed-age-analytics-kpi-stack {
+  gap: 12px;
+  justify-items: start;
 }
 
-.seed-age-analytics-kpi-label,
-.seed-age-analytics-kpi-value,
-.seed-age-analytics-kpi-helper {
-  margin: 0;
+.seed-age-analytics-kpi-visual-shell {
+  margin-top: 2px;
+  justify-self: center;
 }
 
 .seed-age-analytics-kpi-label {
@@ -6376,6 +6380,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.02;
   letter-spacing: -0.03em;
   text-wrap: balance;
+  margin-top: 4px;
 }
 
 .seed-age-analytics-kpi-value.is-percent {
@@ -6395,9 +6400,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-helper {
   color: rgba(217, 225, 214, 0.72);
+  justify-self: center;
+  max-width: 24ch;
   font-size: 0.84rem;
-  line-height: 1.38;
-  max-width: 20ch;
+  line-height: 1.42;
+  text-align: center;
 }
 
 .seed-age-analytics-kpi-visual {
@@ -6405,10 +6412,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   isolation: isolate;
   display: grid;
   place-items: center;
-  width: 92px;
-  min-width: 92px;
+  width: 88px;
+  min-width: 88px;
   aspect-ratio: 1;
-  justify-self: end;
+  justify-self: center;
   align-self: center;
   color: var(--seed-age-kpi-accent);
   animation: seed-age-analytics-kpi-enter 320ms ease-out both;
@@ -6453,6 +6460,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
   height: 100%;
   transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  animation: seed-age-analytics-kpi-ring-drift 6.8s ease-in-out infinite;
 }
 
 .seed-age-analytics-kpi-ring-track,
@@ -6478,10 +6487,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   inset: 0;
   z-index: 2;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   text-align: center;
-  padding: 16px;
+  padding: 0;
 }
 
 .seed-age-analytics-kpi-visual-center strong {
@@ -6497,8 +6509,19 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(222, 231, 217, 0.68);
   font-size: 0.58rem;
   font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+@keyframes seed-age-analytics-kpi-ring-drift {
+  0%,
+  100% {
+    transform: rotate(-90deg);
+  }
+  50% {
+    transform: rotate(-84deg);
+  }
 }
 
 @keyframes seed-age-analytics-kpi-pulse {
@@ -7267,15 +7290,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     justify-self: start;
   }
 
-  .seed-age-analytics-kpi-card {
-    grid-template-columns: minmax(0, 1fr) 88px;
-    align-items: start;
-  }
-
-  .seed-age-analytics-kpi-visual {
-    justify-self: end;
-  }
-
   .seed-age-analytics-panel-head {
     flex-direction: column;
     align-items: flex-start;
@@ -7284,10 +7298,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
-  }
-
-  .seed-age-analytics-kpi-copy {
-    min-width: 0;
   }
 }
 
@@ -7302,18 +7312,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .seed-age-analytics-kpi-card {
-    grid-template-columns: 1fr;
-    gap: 14px;
     min-height: 0;
-  }
-
-  .seed-age-analytics-kpi-visual {
-    justify-self: start;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .seed-age-analytics-kpi-visual,
+  .seed-age-analytics-kpi-ring,
   .seed-age-analytics-kpi-visual-glow,
   .seed-age-analytics-line-chart-area,
   .seed-age-analytics-line-chart-line,
@@ -11025,20 +11030,8 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .gallery-seed-age-kpi-card {
-    grid-template-columns: minmax(0, 1fr) 74px;
     min-height: 0;
-    gap: 14px;
     padding-right: 18px;
-  }
-
-  .gallery-seed-age-kpi-visual-shell {
-    width: 74px;
-    min-width: 74px;
-  }
-
-  .gallery-seed-age-kpi-card .seed-age-analytics-kpi-visual.is-preview {
-    width: 74px;
-    min-width: 74px;
   }
 
   .gallery-card-feed-header {
