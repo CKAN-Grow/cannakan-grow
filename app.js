@@ -3521,8 +3521,8 @@ function getFilterPaperSupplyDisplayState() {
   if (inventory.count <= 0) {
     return {
       count: inventory.count,
-      tone: "empty",
-      statusLabel: "Empty",
+      tone: "critical",
+      statusLabel: "Critical",
       countLabel: "Filter Papers: 0 remaining",
       helperText: "Add filter papers before starting another session.",
       primaryActionLabel: "Update Count",
@@ -3533,10 +3533,10 @@ function getFilterPaperSupplyDisplayState() {
   if (inventory.count === 1) {
     return {
       count: inventory.count,
-      tone: "urgent",
-      statusLabel: "Urgent",
+      tone: "critical",
+      statusLabel: "Critical",
       countLabel: "Filter Papers: 1 remaining",
-      helperText: "Only one filter paper left.",
+      helperText: "Add filter papers before starting another session.",
       primaryActionLabel: "Update Count",
       showReminderAction: inventory.notifyLowSupply === false,
     };
@@ -3557,7 +3557,7 @@ function getFilterPaperSupplyDisplayState() {
   return {
     count: inventory.count,
     tone: "ok",
-    statusLabel: "OK",
+    statusLabel: "Ready",
     countLabel: `Filter Papers: ${inventory.count} remaining`,
     helperText: "You have enough filter papers for your next session.",
     primaryActionLabel: "Update Count",
@@ -21908,6 +21908,9 @@ function renderSessionsFilterPaperCardMarkup() {
 
 function renderActiveSessionFilterPaperCardMarkup() {
   const supply = getFilterPaperSupplyDisplayState();
+  const manageActionClass = supply.tone === "unset"
+    ? "filter-paper-supply-button--setup"
+    : "filter-paper-supply-button--manage";
 
   return `
     <section class="card active-session-supplies-card active-session-supplies-card--${escapeHtml(supply.tone)}" aria-labelledby="active-session-supplies-title">
@@ -21924,8 +21927,8 @@ function renderActiveSessionFilterPaperCardMarkup() {
         <div class="active-session-supplies-actions">
           <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(supply.statusLabel)}</span>
           <div class="active-session-supplies-button-row">
-            <button type="button" class="button button-primary" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
-            <button type="button" class="button button-secondary" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>
+            <button type="button" class="button button-primary filter-paper-supply-button filter-paper-supply-button--reorder filter-paper-supply-button--${escapeHtml(supply.tone)}" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
+            <button type="button" class="button button-secondary filter-paper-supply-button ${manageActionClass} filter-paper-supply-button--${escapeHtml(supply.tone)}" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>
           </div>
         </div>
       </div>
@@ -42737,12 +42740,15 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
 
 function renderSessionCommandCenterFilterPaperSupplyMarkup() {
   const supply = getFilterPaperSupplyDisplayState();
+  const manageActionClass = supply.tone === "unset"
+    ? "filter-paper-supply-button--setup"
+    : "filter-paper-supply-button--manage";
   const actionButtons = [
-    `<button type="button" class="button button-primary" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>`,
+    `<button type="button" class="button button-primary filter-paper-supply-button ${manageActionClass} filter-paper-supply-button--${escapeHtml(supply.tone)}" data-filter-paper-edit="true">${escapeHtml(supply.primaryActionLabel)}</button>`,
   ];
 
   if (supply.showReminderAction) {
-    actionButtons.push('<button type="button" class="button button-secondary" data-filter-paper-edit="true">Add Reminder</button>');
+    actionButtons.push(`<button type="button" class="button button-secondary filter-paper-supply-button filter-paper-supply-button--reminder filter-paper-supply-button--${escapeHtml(supply.tone)}" data-filter-paper-edit="true">Add Reminder</button>`);
   }
 
   return `
