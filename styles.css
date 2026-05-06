@@ -1943,6 +1943,42 @@ body.theme-dark .spotlight-stat strong {
   filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.18));
 }
 
+#session-command-center .summary-link-card {
+  position: relative;
+  overflow: hidden;
+  border-top-width: 1px;
+  border-top-color: var(--glass-border);
+}
+
+#session-command-center .summary-link-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  border-radius: inherit inherit 0 0;
+  opacity: 0.95;
+  pointer-events: none;
+  background: transparent;
+}
+
+#session-command-center .summary-link-card.card-accent-blue::before {
+  background: #6eb7ff;
+}
+
+#session-command-center .summary-link-card.card-accent-orange::before {
+  background: #f08237;
+}
+
+#session-command-center .summary-link-card.card-accent-green::before {
+  background: #94d159;
+}
+
+#session-command-center .summary-link-card.card-accent-brown::before {
+  background: #b58a61;
+}
+
 #session-command-center .command-icon--stage {
   width: 34px;
   height: 34px;
