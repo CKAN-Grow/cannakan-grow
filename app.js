@@ -16950,6 +16950,7 @@ function renderSeedAgeAnalyticsPage() {
                 <p class="eyebrow">SEED AGE ANALYTICS</p>
                 <h1>Seed Age Overview</h1>
                 <p class="seed-age-analytics-hero-subtitle">Analyze how seed age impacts germination performance across the community.</p>
+                <div class="seed-age-analytics-hero-lightline" aria-hidden="true"></div>
                 ${renderSeedAgeAnalyticsConfidenceMarkup(confidence)}
                 ${state.demoNotice ? `<p class="seed-age-analytics-status-pill">${escapeHtml(state.demoNotice)}</p>` : ""}
                 ${state.summaryNotice ? `<p class="seed-age-analytics-summary-note">${escapeHtml(state.summaryNotice)}</p>` : ""}
@@ -17000,6 +17001,7 @@ function renderSeedAgeAnalyticsPage() {
               <div class="seed-age-analytics-performance-side">
                 <div class="seed-age-analytics-distribution-layout">
                   ${renderSeedAgeAnalyticsDonutMarkup(state)}
+                  <div class="seed-age-analytics-legend-divider" aria-hidden="true"></div>
                   <div class="seed-age-analytics-legend">
                     ${state.distributionSegments.map((segment) => `
                       <div class="seed-age-analytics-legend-row" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
@@ -17052,24 +17054,26 @@ function renderSeedAgeAnalyticsPage() {
                 <p>Seed age by seed type</p>
               </div>
             </div>
-            <div class="seed-age-analytics-heatmap-table" role="table" aria-label="Seed age heatmap">
-              <div class="seed-age-analytics-heatmap-row seed-age-analytics-heatmap-row--head" role="row">
-                <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="columnheader">Seed Age \\ Seed Type</div>
-                ${state.heatmap.columns.map((column, columnIndex) => `
-                  <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--head" role="columnheader" data-heatmap-column-index="${columnIndex}">${escapeHtml(column.label)}</div>
-                `).join("")}
-              </div>
-              ${state.heatmap.rows.map((row) => `
-                <div class="seed-age-analytics-heatmap-row" role="row">
-                  <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="rowheader">${escapeHtml(row.label)}</div>
-                  ${row.cells.map((cell, columnIndex) => `
-                    <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--value ${escapeHtml(cell.toneClass)}" role="cell" data-heatmap-column-index="${columnIndex}" tabindex="0">
-                      ${escapeHtml(cell.valueLabel)}
-                      <span class="seed-age-analytics-heatmap-tooltip">${escapeHtml(`${row.label} · ${cell.label} · ${cell.valueLabel}`)}</span>
-                    </div>
+            <div class="seed-age-analytics-heatmap-scroll">
+              <div class="seed-age-analytics-heatmap-table" role="table" aria-label="Seed age heatmap">
+                <div class="seed-age-analytics-heatmap-row seed-age-analytics-heatmap-row--head" role="row">
+                  <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="columnheader">Seed Age \\ Seed Type</div>
+                  ${state.heatmap.columns.map((column, columnIndex) => `
+                    <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--head" role="columnheader" data-heatmap-column-index="${columnIndex}">${escapeHtml(column.label)}</div>
                   `).join("")}
                 </div>
-              `).join("")}
+                ${state.heatmap.rows.map((row) => `
+                  <div class="seed-age-analytics-heatmap-row" role="row">
+                    <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--label" role="rowheader">${escapeHtml(row.label)}</div>
+                    ${row.cells.map((cell, columnIndex) => `
+                      <div class="seed-age-analytics-heatmap-cell seed-age-analytics-heatmap-cell--value ${escapeHtml(cell.toneClass)}" role="cell" data-heatmap-column-index="${columnIndex}" tabindex="0">
+                        ${escapeHtml(cell.valueLabel)}
+                        <span class="seed-age-analytics-heatmap-tooltip">${escapeHtml(`${row.label} · ${cell.label} · ${cell.valueLabel}`)}</span>
+                      </div>
+                    `).join("")}
+                  </div>
+                `).join("")}
+              </div>
             </div>
             <div class="seed-age-analytics-heatmap-scale" aria-hidden="true">
               <span>Lower Performance</span>
