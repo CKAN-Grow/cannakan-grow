@@ -2877,13 +2877,8 @@ body.theme-dark .spotlight-stat strong {
 
 .session-lifecycle-stage-card-grid {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   margin: 0;
-}
-
-.session-lifecycle-stage-card-grid div {
-  display: grid;
-  gap: 2px;
 }
 
 .session-lifecycle-stage-card dt {
@@ -2897,7 +2892,8 @@ body.theme-dark .spotlight-stat strong {
 
 .session-lifecycle-stage-card dd {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.9rem;
+  font-weight: 700;
   line-height: 1.4;
   color: rgba(240, 245, 239, 0.9);
 }

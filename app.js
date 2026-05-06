@@ -39861,8 +39861,8 @@ function getSessionLifecycleTimelineStageBounds(state = {}, eventKey = "") {
       };
     case "completed":
       return {
-        startAt: state.completedAt || null,
-        finishAt: null,
+        startAt: state.startedAt || null,
+        finishAt: state.completedAt || null,
       };
     default:
       return {
@@ -39877,24 +39877,17 @@ function getSessionLifecycleTimelineCardMeta(state = {}, event = {}) {
   const hasValidStart = startAt instanceof Date && !Number.isNaN(startAt.getTime());
   const hasValidFinish = finishAt instanceof Date && !Number.isNaN(finishAt.getTime());
 
-  let finishText = hasValidFinish ? formatTimingDateTime(finishAt) : "In progress";
   let lengthText = "Pending";
 
-  if (event.key === "completed") {
-    finishText = event.isComplete ? "Final" : "In progress";
-    lengthText = event.isComplete && hasValidStart ? "Final stage" : "Pending";
-  } else if (hasValidStart && hasValidFinish) {
+  if (hasValidStart && hasValidFinish) {
     const durationLabel = formatDurationBetween(startAt, finishAt);
     lengthText = durationLabel || "Pending";
   } else if (hasValidStart && event.isCurrent) {
     const durationLabel = formatDurationBetween(startAt, new Date());
-    lengthText = durationLabel || "Pending";
+    lengthText = durationLabel || "In progress";
   }
 
   return {
-    stageText: event.label || "Unknown stage",
-    startText: hasValidStart ? formatTimingDateTime(startAt) : "Not recorded",
-    finishText,
     lengthText,
   };
 }
@@ -39968,22 +39961,8 @@ function renderSessionLifecycleTimelineMarkup(state) {
           <p class="session-command-stage-helper">${escapeHtml(event.statusText)}</p>
           <div class="session-lifecycle-stage-card" aria-label="${escapeHtml(`${event.label} timing details`)}">
             <dl class="session-lifecycle-stage-card-grid">
-              <div>
-                <dt>Stage</dt>
-                <dd>${escapeHtml(cardMeta.stageText)}</dd>
-              </div>
-              <div>
-                <dt>Start</dt>
-                <dd>${escapeHtml(cardMeta.startText)}</dd>
-              </div>
-              <div>
-                <dt>Finish</dt>
-                <dd>${escapeHtml(cardMeta.finishText)}</dd>
-              </div>
-              <div>
-                <dt>Length</dt>
-                <dd>${escapeHtml(cardMeta.lengthText)}</dd>
-              </div>
+              <dt>Length</dt>
+              <dd>${escapeHtml(cardMeta.lengthText)}</dd>
             </dl>
           </div>
         </article>
