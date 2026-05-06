@@ -34098,7 +34098,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                       <span class="session-history-status-dot" aria-hidden="true"></span>
                       ${escapeHtml(statusMeta.label)}
                     </strong>
-                    <span>${escapeHtml(statusMeta.detail)}</span>
+                    <span class="session-history-status-detail session-history-status-detail--${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.detail)}</span>
                   </div>
                   <div class="session-history-cell" data-label="Seeds">
                     <strong>${escapeHtml(`${totals.totalPlanted} / ${totals.totalSeeds}`)}</strong>
@@ -34108,9 +34108,14 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                   </div>
                   <div class="session-history-cell session-history-cell--actions" data-label="Actions">
                     <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
-                    <button type="button" class="session-history-delete-button" data-session-delete="${escapeHtml(session.id)}" aria-label="Delete Session ${escapeHtml(formatSessionLabel(session))}">
+                    <button
+                      type="button"
+                      class="session-history-delete-button"
+                      data-session-delete="${escapeHtml(session.id)}"
+                      aria-label="Delete session"
+                      title="Delete session"
+                    >
                       ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
-                      <span>Delete Session</span>
                     </button>
                   </div>
                 </div>
