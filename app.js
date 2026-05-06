@@ -351,9 +351,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     memberId: "mock-seedvault",
     activityType: "approved-snapshot",
     typeLabel: "Grow Network update",
-    typeMeta: "Leaderboard highlight",
-    title: "SeedVault logged the highest recorded source activity this month",
-    summary: "Auto-heavy runs are currently leading this month’s source chart based on recorded sessions.",
+    typeMeta: "Community insights highlight",
+    title: "SeedVault added a strong source activity signal this month",
+    summary: "Auto-heavy runs are showing up frequently in this month’s approved source data.",
     germinationRateLabel: "96%",
     sourceLabel: "Auto",
     occurredAt: "2026-04-30T13:38:00.000Z",
@@ -13438,20 +13438,20 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
   const cards = [
     {
       badge: "This Month",
-      title: "Most-used Seed Type",
+      title: "Seed Type Activity",
       value: thisMonthTopSeedType?.name || "Not enough data yet",
       isEmpty: !thisMonthTopSeedType?.name,
     },
     {
       badge: "All-Time",
-      title: "Most-used Seed Type",
+      title: "Seed Type Activity",
       value: allTimeTopSeedType?.name || "Not enough data yet",
       isEmpty: !allTimeTopSeedType?.name,
     },
   ];
 
   return `
-    <article class="gallery-seedtype-highlights" aria-label="Top seed type highlights">
+    <article class="gallery-seedtype-highlights" aria-label="Seed type insights">
       <div class="gallery-seedtype-highlights-grid">
       ${cards.map((card) => `
         <div class="gallery-seedtype-highlight${card.isEmpty ? " is-empty" : ""}">
@@ -13473,7 +13473,7 @@ function renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedTyp
         </div>
       `).join("")}
       </div>
-      <p class="gallery-seedtype-highlights-note">Calculated by popularity</p>
+      <p class="gallery-seedtype-highlights-note">Based on approved session activity</p>
     </article>
   `;
 }
@@ -13574,10 +13574,10 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
   }
 
   return `
-    <ol class="gallery-leaderboard-list">
+    <ol class="gallery-leaderboard-list" aria-label="Community insights data points">
       ${entries.map((entry, index) => `
         <li class="gallery-leaderboard-row ${getLeaderboardRankTone(index)}">
-          <span class="gallery-leaderboard-rank">#${index + 1}</span>
+          <span class="gallery-leaderboard-rank" aria-hidden="true">&bull;</span>
           <span class="gallery-leaderboard-icon" aria-hidden="true">
             ${renderGalleryLeaderboardIcon(type, entry)}
           </span>
@@ -13728,23 +13728,23 @@ function getGalleryTopMemberSummaryEntries(monthlySnapshots = []) {
 function renderGalleryTopMembersSummary(entries = []) {
   const summaryEntries = (entries || []).slice(0, 3);
   return `
-    <article class="gallery-top-members-summary-card" aria-label="Most Active Members This Month">
+    <article class="gallery-top-members-summary-card" aria-label="Source activity insights">
       <div class="gallery-top-members-summary-head">
         <div class="gallery-top-members-summary-copy">
-          <p class="eyebrow">Activity-Based</p>
-          <h4>Most Active Members (This Month)</h4>
-          <p class="gallery-top-members-summary-note">Approved public snapshots and likes this month.</p>
+          <p class="eyebrow">Sources</p>
+          <h4>Source Activity</h4>
+          <p class="gallery-top-members-summary-note">Approved source activity and germination averages from community sessions this month.</p>
         </div>
         ${renderGalleryLeaderboardViewAllButton()}
       </div>
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.map((entry, index) => `
           <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
-            <span class="gallery-top-members-summary-rank">#${index + 1}</span>
-            <span class="gallery-top-members-summary-name">${renderLeaderboardMemberIdentityMarkup(entry, "leaderboard-member-identity leaderboard-member-identity--compact")}</span>
+            <span class="gallery-top-members-summary-rank" aria-hidden="true">&bull;</span>
+            <span class="gallery-top-members-summary-name">${escapeHtml(entry.name || "Source")}</span>
             <span class="gallery-top-members-summary-metric">
-              <span>${escapeHtml(`${entry.snapshotCount} approved`)}</span>
-              <span>${escapeHtml(`${entry.totalLikes || 0} likes`)}</span>
+              <span>${escapeHtml(`${entry.snapshotCount || 0} sessions`)}</span>
+              <span>${escapeHtml(`${Math.round(Number(entry.averagePercent) || 0)}% avg`)}</span>
             </span>
           </li>
         `).join("")}
@@ -14330,7 +14330,6 @@ function renderGalleryLeaderboardSection() {
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
   const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
-  const topMembers = getGalleryTopMemberSummaryEntries(monthlySnapshots);
 
   const section = document.createElement("section");
   section.id = "community-insights";
@@ -14341,38 +14340,38 @@ function renderGalleryLeaderboardSection() {
         ${renderAppSectionHeaderIcon("leaderboard")}
         <div>
           <p class="eyebrow">Community Insights</p>
-          <h3>Community Grow Insights</h3>
-          <p class="muted">Approved public snapshots only. Rankings use germination performance with a 3-snapshot minimum per source or seed variety.<br>Rankings are based on recorded session data and may vary.</p>
+          <h3>Community Insights</h3>
+          <p class="muted">Approved community session data, source activity, seed type trends, and germination performance patterns.</p>
         </div>
       </div>
     </div>
     <div class="gallery-leaderboard-summary">
       ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
-      ${renderGalleryTopMembersSummary(topMembers)}
+      ${renderGalleryTopMembersSummary(thisMonthSources)}
     </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Highest Avg Germ Rate (This Month)", "Based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Sources", "This month · approved source germination averages", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Longest Consistent Performance (Source)", "Based on recorded sessions", "streak")}
-        ${renderGalleryLongestStreakRow(sourceStreak, "source", "No monthly source streak is available yet.")}
+        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Source consistency across recorded months", "streak")}
+        ${renderGalleryLongestStreakRow(sourceStreak, "source", "No source consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Longest Consistent Performance (Variety)", "Based on recorded sessions", "streak")}
-        ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No monthly seed variety streak is available yet.")}
+        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Variety consistency across recorded months", "streak")}
+        ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No variety consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Highest Avg Germ Rate by Variety (This Month)", "Based on community session data", "month", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Varieties", "This month · approved variety germination averages", "month", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
-        ${renderGalleryLeaderboardCardHeading("Highest Avg Germ Rate (All-Time)", "All-time based on recorded sessions", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Sources", "All-time · recorded source germination averages", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
-        ${renderGalleryLeaderboardCardHeading("Highest Avg Germ Rate by Variety (All-Time)", "All-time based on recorded sessions", "all-time")}
+        ${renderGalleryLeaderboardCardHeading("Varieties", "All-time · recorded variety germination averages", "all-time")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
@@ -14423,28 +14422,28 @@ function renderHomeGalleryRankingsTeaser() {
   const { rankings } = teaserState;
   const rankingRows = [
     {
-      label: "Most Active Grower",
+      label: "Community Activity",
       toneClass: "is-gold",
       iconType: "member",
       entry: rankings.topMember,
       formatValue: (entry) => entry.name,
     },
     {
-      label: "Highest Avg Germ Rate",
+      label: "Source Signals",
       toneClass: "is-gold",
       iconType: "source",
       entry: rankings.topSource,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "Highest Avg Germ Rate by Variety",
+      label: "Variety Signals",
       toneClass: "is-silver",
       iconType: "variety",
       entry: rankings.topVariety,
       formatValue: (entry) => `${entry.name} - ${formatHomeGalleryRankingMetric(entry)}`,
     },
     {
-      label: "Most Used Seed Type",
+      label: "Seed Type Activity",
       toneClass: "is-bronze",
       iconType: "seed-type",
       entry: rankings.topSeedType,
@@ -14460,8 +14459,8 @@ function renderHomeGalleryRankingsTeaser() {
             ${renderAppSectionHeaderIcon("community")}
             <div>
               <p class="eyebrow">Community Insights</p>
-              <h3 id="home-gallery-rankings-title">Community Grow Insights - This Month</h3>
-              <p class="muted home-gallery-rankings-subtitle">Based on approved public session data. Results may vary.</p>
+              <h3 id="home-gallery-rankings-title">Community Insights</h3>
+              <p class="muted home-gallery-rankings-subtitle">Approved community session data, source activity, seed type trends, and germination performance patterns.</p>
             </div>
           </div>
           <a class="button button-secondary home-gallery-rankings-cta" href="/community-grow#community-insights">
@@ -14475,7 +14474,7 @@ function renderHomeGalleryRankingsTeaser() {
           </a>
         </div>
       </div>
-      <ul class="home-gallery-rankings-list" aria-label="Community Grow ranking preview">
+      <ul class="home-gallery-rankings-list" aria-label="Community insights preview">
         ${rankingRows.map((row) => {
           const valueText = row.entry ? row.formatValue(row.entry) : "Not enough data yet";
           const valueMarkup = row.iconType === "member" && row.entry
@@ -19675,8 +19674,8 @@ function renderHomeSecondaryInfoRowMarkup() {
       <div class="home-dashboard-secondary-row-top">
         <div class="home-dashboard-secondary-main-column">
           ${renderHomeExploreDividerMarkup({
-            title: "Community Grow Insights",
-            subtitle: "Explore approved community session data, grow activity, and member-driven insights.",
+            title: "Community Insights",
+            subtitle: "Explore approved community session data, source activity, seed type trends, and germination performance patterns.",
             labelledBy: "home-community-grow-insights-divider-title",
           })}
           ${renderHomeGalleryRankingsTeaser()}
