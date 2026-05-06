@@ -2134,6 +2134,21 @@ body.theme-dark .spotlight-stat strong {
   color: #b58a61;
 }
 
+#detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-tile {
+  width: 94px;
+  height: 94px;
+}
+
+#detail-lifecycle-section .session-lifecycle-progress-shell .command-icon--stage {
+  width: 84px;
+  height: 84px;
+}
+
+#detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
+  width: 44px;
+  height: 44px;
+}
+
 .session-command-panel {
   position: relative;
   display: grid;
@@ -2580,6 +2595,11 @@ body.theme-dark .spotlight-stat strong {
   right: 10px;
 }
 
+#detail-lifecycle-section .session-lifecycle-progress-grid::before,
+#detail-lifecycle-section .session-lifecycle-progress-grid::after {
+  top: 47px;
+}
+
 #session-command-center .session-command-stage-grid::before,
 #session-command-center .session-command-stage-grid::after {
   content: "";
@@ -2626,6 +2646,10 @@ body.theme-dark .spotlight-stat strong {
 .session-lifecycle-stage-connector.stage-connector--active {
   background: linear-gradient(90deg, #6eb7ff 0%, #94d159 100%);
   box-shadow: 0 0 8px rgba(148, 209, 89, 0.38);
+}
+
+#detail-lifecycle-section .session-lifecycle-stage-connector {
+  margin-top: 47px;
 }
 
 .session-command-stage {
@@ -2949,6 +2973,24 @@ body.theme-dark .spotlight-stat strong {
   min-height: 2.9em;
   font-size: 0.81rem;
   line-height: 1.34;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage {
+  grid-template-rows: minmax(94px, auto) minmax(1.85em, auto) minmax(2.35em, auto) minmax(76px, auto);
+  gap: 5px;
+  padding-top: 6px;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage .session-command-stage-icon-wrap {
+  min-height: 94px;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage strong {
+  min-height: 1.85em;
+}
+
+#detail-lifecycle-section .session-lifecycle-stage .session-command-stage-helper {
+  min-height: 2.35em;
 }
 
 .session-lifecycle-stage.session-command-stage--completed strong,
@@ -15844,6 +15886,39 @@ body.theme-dark .theme-toggle-button:hover {
   .session-lifecycle-stage-connector {
     margin-inline: 4px;
   }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-tile {
+    width: 84px;
+    height: 84px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon--stage {
+    width: 74px;
+    height: 74px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
+    width: 39px;
+    height: 39px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-grid::before,
+  #detail-lifecycle-section .session-lifecycle-progress-grid::after {
+    top: 42px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-stage-connector {
+    margin-top: 42px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-stage {
+    grid-template-rows: minmax(84px, auto) minmax(1.8em, auto) minmax(2.2em, auto) minmax(76px, auto);
+    gap: 5px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-icon-wrap {
+    min-height: 84px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -15938,6 +16013,33 @@ body.theme-dark .theme-toggle-button:hover {
   .session-lifecycle-stage-card-grid {
     text-align: left;
     justify-items: start;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-tile {
+    width: 72px;
+    height: 72px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon--stage {
+    width: 64px;
+    height: 64px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-progress-shell .command-icon-svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-stage {
+    grid-template-rows: auto auto auto auto;
+    gap: 6px;
+    padding-top: 0;
+  }
+
+  #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-icon-wrap,
+  #detail-lifecycle-section .session-lifecycle-stage strong,
+  #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-helper {
+    min-height: 0;
   }
 
   .session-lifecycle-status-column .session-status-card {
