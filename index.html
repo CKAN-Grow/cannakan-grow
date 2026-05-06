@@ -530,8 +530,8 @@
   </template>
 
   <template id="session-form-template">
-    <section class="card">
-      <div class="section-heading app-section-header">
+    <section class="card session-workspace-shell session-workspace-shell--form">
+      <div class="section-heading app-section-header session-workspace-header">
         <div class="section-title-with-icon app-section-header-main">
           <span class="section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
           <div>
@@ -541,8 +541,8 @@
         </div>
       </div>
 
-      <form id="session-form" class="session-form">
-        <section class="session-overview-panel">
+      <form id="session-form" class="session-form session-workspace-form">
+        <section class="session-overview-panel session-workspace-overview">
           <section class="session-top-grid">
             <div class="session-chart-header">
               <label>
@@ -578,12 +578,12 @@
             </div>
           </section>
 
-          <section class="system-layout-block" aria-labelledby="system-layout-label">
+          <section class="system-layout-block session-glass-panel" aria-labelledby="system-layout-label">
             <p id="system-layout-label" class="system-layout-label">System Layout</p>
             <div id="system-layout-reference" class="system-layout-visual"></div>
           </section>
 
-          <section id="session-lifecycle-section" class="session-lifecycle-section" aria-labelledby="session-lifecycle-title">
+          <section id="session-lifecycle-section" class="session-lifecycle-section session-glass-panel" aria-labelledby="session-lifecycle-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timeline</p>
               <h4 id="session-lifecycle-title" class="section-title-with-icon">
@@ -607,8 +607,8 @@
           </section>
         </section>
 
-        <section class="partitions-panel">
-          <div class="partition-work-header">
+        <section class="partitions-panel session-workspace-content">
+          <div class="partition-work-header session-glass-panel session-workspace-panel-head">
             <div class="partition-work-heading">
               <span class="partition-product-icon" aria-hidden="true">
                 <img class="partition-product-icon-image" data-partition-title-icon src="/src/assets/kan-partition-icon-v2.png" alt="KAN partition icon">
@@ -633,7 +633,7 @@
           </div>
           <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
           <p id="form-message" class="form-message" role="alert" aria-live="polite"></p>
-          <div id="partition-chart-shell" class="chart-shell">
+          <div id="partition-chart-shell" class="chart-shell session-glass-panel">
             <div id="partition-chart-header" class="chart-header chart-row">
               <span>Partition</span>
               <span>Source</span>
@@ -646,11 +646,11 @@
             </div>
             <div id="partition-fields" class="partition-table"></div>
           </div>
-          <div class="timeline-save-shortcut">
+          <div class="timeline-save-shortcut session-glass-panel">
             <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
             <button type="submit" class="button button-primary">Save Session</button>
           </div>
-          <section id="session-timing-section" class="session-timing-section" aria-labelledby="session-timing-title">
+          <section id="session-timing-section" class="session-timing-section session-glass-panel" aria-labelledby="session-timing-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timing</p>
               <h4 id="session-timing-title" class="section-title-with-icon">
@@ -663,7 +663,7 @@
             </div>
             <div id="session-timing-summary" class="session-timing-summary"></div>
           </section>
-          <section id="partition-progress-section" class="progress-chart-section" aria-labelledby="partition-progress-title">
+          <section id="partition-progress-section" class="progress-chart-section session-glass-panel" aria-labelledby="partition-progress-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Progress</p>
               <h4 id="partition-progress-title" class="section-title-with-icon">
@@ -677,7 +677,7 @@
             </div>
             <div id="partition-progress-chart" class="progress-chart-list"></div>
           </section>
-          <section id="run-progress-section" class="run-progress-section" aria-labelledby="run-progress-title">
+          <section id="run-progress-section" class="run-progress-section session-glass-panel" aria-labelledby="run-progress-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Germination Rate</p>
               <h4 id="run-progress-title" class="section-title-with-icon">
@@ -690,7 +690,7 @@
             </div>
             <div id="run-progress-summary" class="run-progress-summary"></div>
           </section>
-          <section class="session-notes-section" aria-labelledby="session-notes-label">
+          <section class="session-notes-section session-glass-panel" aria-labelledby="session-notes-label">
             <label class="session-notes-field" for="session-notes">
               <p class="eyebrow">Notes</p>
               <span id="session-notes-label" class="section-title-with-icon">
@@ -715,7 +715,7 @@
               <p id="session-notes-message" class="session-notes-message" aria-live="polite"></p>
             </div>
           </section>
-          <section class="session-images-section" aria-labelledby="session-images-label">
+          <section class="session-images-section session-glass-panel" aria-labelledby="session-images-label">
             <div class="session-images-heading">
               <div>
                 <p class="eyebrow">Images</p>
@@ -741,7 +741,7 @@
             <p id="session-images-message" class="session-images-message" aria-live="polite"></p>
             <div id="session-images-grid" class="session-images-grid"></div>
           </section>
-        <section id="share-snapshot-section" class="share-snapshot-section" aria-labelledby="share-snapshot-title">
+        <section id="share-snapshot-section" class="share-snapshot-section session-glass-panel" aria-labelledby="share-snapshot-title">
           <div class="snapshot-hero">
             <div class="snapshot-hero-copy">
               <div class="progress-chart-heading">
@@ -844,7 +844,7 @@
 
         <p id="session-success-summary" class="session-success-summary" aria-live="polite"></p>
 
-        <div class="form-actions">
+        <div class="form-actions session-workspace-actions">
           <button type="submit" class="button button-primary">Save Session</button>
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>
@@ -878,8 +878,8 @@
   </template>
 
   <template id="session-detail-template">
-    <section class="card">
-      <div class="section-heading app-section-header">
+    <section class="card session-workspace-shell session-workspace-shell--detail">
+      <div class="section-heading app-section-header session-workspace-header">
         <div class="section-title-with-icon app-section-header-main">
           <span class="section-title-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
           <div>
@@ -893,15 +893,15 @@
         </div>
       </div>
 
-      <section class="session-overview-panel">
+      <section class="session-overview-panel session-workspace-overview">
         <section class="session-top-grid detail-top-grid">
           <section id="detail-meta" class="session-chart-header detail-header"></section>
         </section>
-        <section class="system-layout-block" aria-labelledby="detail-system-layout-label">
+        <section class="system-layout-block session-glass-panel" aria-labelledby="detail-system-layout-label">
           <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>
           <div id="detail-layout-reference" class="system-layout-visual"></div>
         </section>
-        <section id="detail-lifecycle-section" class="session-lifecycle-section" aria-labelledby="detail-lifecycle-title">
+        <section id="detail-lifecycle-section" class="session-lifecycle-section session-glass-panel" aria-labelledby="detail-lifecycle-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Timeline</p>
             <h4 id="detail-lifecycle-title" class="section-title-with-icon">
@@ -924,8 +924,8 @@
           </details>
         </section>
       </section>
-      <section>
-        <div class="partition-work-header">
+      <section class="session-workspace-content">
+        <div class="partition-work-header session-glass-panel session-workspace-panel-head">
           <div class="partition-work-heading">
             <span class="partition-product-icon" aria-hidden="true">
               <img class="partition-product-icon-image" data-partition-title-icon src="/src/assets/kan-partition-icon-v2.png" alt="KAN partition icon">
@@ -949,7 +949,7 @@
         </div>
         <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
         <div id="detail-supplies-anchor"></div>
-        <div id="detail-chart-shell" class="chart-shell">
+        <div id="detail-chart-shell" class="chart-shell session-glass-panel">
           <div id="detail-chart-header" class="chart-header chart-row">
             <span>Partition</span>
             <span>Source</span>
@@ -962,11 +962,11 @@
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>
-        <div class="timeline-save-shortcut">
+        <div class="timeline-save-shortcut session-glass-panel">
           <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
           <button id="detail-save-shortcut" type="button" class="button button-primary">Save Session</button>
         </div>
-        <section id="detail-timing-section" class="session-timing-section" aria-labelledby="detail-timing-title">
+        <section id="detail-timing-section" class="session-timing-section session-glass-panel" aria-labelledby="detail-timing-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Timing</p>
             <h4 id="detail-timing-title" class="section-title-with-icon">
@@ -979,7 +979,7 @@
           </div>
           <div id="detail-timing-summary" class="session-timing-summary"></div>
         </section>
-        <section id="detail-progress-section" class="progress-chart-section" aria-labelledby="detail-progress-title">
+        <section id="detail-progress-section" class="progress-chart-section session-glass-panel" aria-labelledby="detail-progress-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Progress</p>
             <h4 id="detail-progress-title" class="section-title-with-icon">
@@ -993,7 +993,7 @@
           </div>
           <div id="detail-progress-chart" class="progress-chart-list"></div>
         </section>
-        <section id="detail-run-progress-section" class="run-progress-section" aria-labelledby="detail-run-progress-title">
+        <section id="detail-run-progress-section" class="run-progress-section session-glass-panel" aria-labelledby="detail-run-progress-title">
           <div class="progress-chart-heading">
             <p class="eyebrow">Germination Rate</p>
             <h4 id="detail-run-progress-title" class="section-title-with-icon">
@@ -1006,7 +1006,7 @@
           </div>
           <div id="detail-run-progress-summary" class="run-progress-summary"></div>
         </section>
-        <section class="session-notes-section" aria-labelledby="detail-session-notes-label">
+        <section class="session-notes-section session-glass-panel" aria-labelledby="detail-session-notes-label">
           <label class="session-notes-field" for="detail-session-notes">
             <p class="eyebrow">Notes</p>
             <span id="detail-session-notes-label" class="section-title-with-icon">
@@ -1030,7 +1030,7 @@
             <p id="detail-session-notes-message" class="session-notes-message" aria-live="polite"></p>
           </div>
         </section>
-        <section class="session-images-section" aria-labelledby="detail-session-images-label">
+        <section class="session-images-section session-glass-panel" aria-labelledby="detail-session-images-label">
           <div class="session-images-heading">
             <div>
               <p class="eyebrow">Images</p>
@@ -1056,7 +1056,7 @@
           <p id="detail-session-images-message" class="session-images-message" aria-live="polite"></p>
           <div id="detail-session-images-grid" class="session-images-grid"></div>
         </section>
-        <section id="detail-share-snapshot-section" class="share-snapshot-section" aria-labelledby="detail-share-snapshot-title">
+        <section id="detail-share-snapshot-section" class="share-snapshot-section session-glass-panel" aria-labelledby="detail-share-snapshot-title">
           <div class="snapshot-hero">
             <div class="snapshot-hero-copy">
               <div class="progress-chart-heading">
@@ -1156,7 +1156,7 @@
           </div>
         </section>
         <p id="detail-save-message" class="form-message" role="alert" aria-live="polite"></p>
-        <div class="form-actions">
+        <div class="form-actions session-workspace-actions">
           <button id="detail-save-session" type="button" class="button button-primary">Save Session</button>
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>

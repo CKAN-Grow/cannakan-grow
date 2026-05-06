@@ -20175,6 +20175,543 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   gap: 18px;
 }
 
+.session-workspace-shell {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(22px, 2.4vw, 30px);
+  border-radius: 28px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(181, 138, 97, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(16, 21, 17, 0.98) 0%, rgba(10, 14, 11, 0.98) 100%);
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-workspace-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 20%);
+  opacity: 0.9;
+}
+
+.session-workspace-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.session-workspace-header {
+  align-items: flex-start;
+  margin-bottom: clamp(20px, 2.2vw, 28px);
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.session-workspace-header .app-section-header-main {
+  gap: 16px;
+}
+
+.session-workspace-header .app-section-header-main > div {
+  display: grid;
+  gap: 6px;
+}
+
+.session-workspace-header .eyebrow,
+.session-workspace-header h2,
+.session-workspace-header p.muted {
+  margin: 0;
+}
+
+.session-workspace-form {
+  gap: 24px;
+}
+
+.session-workspace-overview,
+.session-workspace-content {
+  display: grid;
+  gap: 18px;
+}
+
+.session-glass-panel,
+.session-workspace-shell .timeline-save-shortcut,
+.session-workspace-shell .partition-work-header,
+.session-workspace-shell .chart-shell,
+.session-workspace-shell .session-lifecycle-section,
+.session-workspace-shell .session-timing-section,
+.session-workspace-shell .progress-chart-section,
+.session-workspace-shell .run-progress-section,
+.session-workspace-shell .session-notes-section,
+.session-workspace-shell .session-images-section,
+.session-workspace-shell .share-snapshot-section {
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 26%),
+    linear-gradient(180deg, rgba(20, 26, 22, 0.96) 0%, rgba(14, 18, 15, 0.96) 100%);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-workspace-shell .session-chart-header > label,
+.session-workspace-shell .detail-header .meta-card {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 28%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.14);
+}
+
+.session-workspace-shell .session-chart-header > label > span,
+.session-workspace-shell .detail-header .meta-card strong {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9cad9d;
+}
+
+.session-workspace-shell .detail-header .meta-card p {
+  margin: 0;
+  color: #f3f6f1;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.session-workspace-shell .field-label-row {
+  align-items: flex-start;
+}
+
+.session-workspace-shell .time-format-toggle {
+  border-color: rgba(148, 209, 89, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.session-workspace-shell .time-format-button {
+  color: #b8c2b9;
+}
+
+.session-workspace-shell .time-format-button.is-active,
+.session-workspace-shell .time-format-button[aria-pressed="true"] {
+  background: rgba(148, 209, 89, 0.16);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-shell input,
+.session-workspace-shell select,
+.session-workspace-shell textarea,
+.session-workspace-shell .custom-select-trigger {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(14, 19, 15, 0.76);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 18px rgba(0, 0, 0, 0.14);
+}
+
+.session-workspace-shell input::placeholder,
+.session-workspace-shell textarea::placeholder {
+  color: #8f9a91;
+}
+
+.session-workspace-shell input:focus-visible,
+.session-workspace-shell select:focus-visible,
+.session-workspace-shell textarea:focus-visible,
+.session-workspace-shell .custom-select.is-open .custom-select-trigger,
+.session-workspace-shell .custom-select-trigger:focus-visible {
+  border-color: rgba(148, 209, 89, 0.5);
+  background: rgba(18, 24, 19, 0.92);
+  box-shadow:
+    0 0 0 3px rgba(148, 209, 89, 0.14),
+    0 14px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+
+.session-workspace-shell .custom-select-menu {
+  background: rgba(15, 21, 17, 0.98);
+  border-color: rgba(148, 209, 89, 0.18);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-workspace-shell .custom-select-option {
+  color: #edf4ee;
+}
+
+.session-workspace-shell .custom-select-option:hover,
+.session-workspace-shell .custom-select-option:focus-visible {
+  background: rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-shell .custom-select-option.is-selected {
+  background: rgba(148, 209, 89, 0.9);
+  color: #101510;
+}
+
+.session-workspace-shell .system-layout-block {
+  padding: 18px;
+  gap: 14px;
+}
+
+.session-workspace-shell .system-layout-label {
+  color: #94d159;
+}
+
+.session-workspace-shell .system-layout-visual {
+  min-height: 150px;
+  align-items: center;
+  padding: 6px 0 2px;
+}
+
+.session-workspace-shell .layout-reference-copy {
+  color: #b7c0b7;
+}
+
+.session-workspace-shell .layout-placeholder {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(20, 28, 22, 0.82);
+  color: #edf4ee;
+}
+
+.session-workspace-shell .partition-work-header {
+  align-items: stretch;
+  padding: 20px 22px;
+}
+
+.session-workspace-shell .partition-work-heading {
+  gap: 10px;
+}
+
+.session-workspace-shell .partition-work-heading h3 {
+  color: #f6f8f5;
+  font-size: clamp(1.58rem, 2.6vw, 1.95rem);
+}
+
+.session-workspace-shell .partition-work-heading .eyebrow,
+.session-workspace-shell .progress-chart-heading .eyebrow,
+.session-workspace-shell .session-images-heading .eyebrow,
+.session-workspace-shell .session-notes-field .eyebrow {
+  margin: 0;
+  color: #94d159;
+}
+
+.session-workspace-shell .partition-product-icon {
+  width: 84px;
+}
+
+.session-workspace-shell .session-status-panel {
+  min-width: min(100%, 340px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-workspace-shell .session-status-label {
+  margin: 0 0 10px;
+  color: #9cad9d;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-workspace-shell .session-status-card {
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 24%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.session-workspace-shell .session-status-current-value {
+  color: #f6f8f5;
+}
+
+.session-workspace-shell .session-status-help,
+.session-workspace-shell .session-status-reminder {
+  color: #b7c0b7;
+}
+
+.session-workspace-shell .session-status-trigger {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  background: rgba(24, 31, 26, 0.92);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 18px rgba(0, 0, 0, 0.16);
+}
+
+.session-workspace-shell .session-status-trigger:hover,
+.session-workspace-shell .session-status-trigger:focus-visible {
+  border-color: rgba(148, 209, 89, 0.42);
+  background: rgba(30, 38, 31, 0.96);
+  color: #f6f8f5;
+}
+
+.session-workspace-shell .chart-shell {
+  overflow: hidden;
+}
+
+.session-workspace-shell .chart-header {
+  padding: 14px 18px;
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.04)),
+    rgba(255, 255, 255, 0.02);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  color: #c8d7c9;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.session-workspace-shell .chart-header span:not(:last-child)::after {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.session-workspace-shell .tra-section + .tra-section {
+  margin-top: 10px;
+}
+
+.session-workspace-shell .tra-section-label {
+  background: rgba(148, 209, 89, 0.08);
+  border-color: rgba(148, 209, 89, 0.14);
+  color: #dcebdc;
+}
+
+.session-workspace-shell .partition-row {
+  padding: 14px 18px;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.session-workspace-shell .partition-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.session-workspace-shell .partition-row:hover,
+.session-workspace-shell .partition-row:focus-within {
+  background: rgba(148, 209, 89, 0.05) !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12) !important;
+}
+
+.session-workspace-shell .partition-number {
+  min-height: 44px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: #f3f8f3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 14px rgba(0, 0, 0, 0.12);
+}
+
+.session-workspace-shell .partition-btn {
+  border-radius: 12px;
+  background: rgba(23, 30, 24, 0.92);
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 8px 14px rgba(0, 0, 0, 0.14);
+}
+
+.session-workspace-shell .partition-btn--in-progress {
+  background: rgba(240, 130, 55, 0.16);
+  border-color: rgba(240, 130, 55, 0.34);
+  color: #ffd7bf;
+}
+
+.session-workspace-shell .partition-btn--complete {
+  background: rgba(181, 138, 97, 0.16);
+  border-color: rgba(181, 138, 97, 0.34);
+  color: #ead7bf;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 8px 14px rgba(0, 0, 0, 0.14);
+}
+
+.session-workspace-shell .timeline-save-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+
+.session-workspace-shell .timeline-save-shortcut-text {
+  color: #b7c0b7;
+}
+
+.session-workspace-shell .progress-chart-heading {
+  align-items: start;
+}
+
+.session-workspace-shell .progress-chart-heading h4,
+.session-workspace-shell .session-images-heading h4,
+.session-workspace-shell .session-notes-field > span,
+.session-workspace-shell .snapshot-hero-copy h4 {
+  color: #f6f8f5;
+}
+
+.session-workspace-shell .lifecycle-event,
+.session-workspace-shell .timing-card,
+.session-workspace-shell .snapshot-action-row,
+.session-workspace-shell .snapshot-explore-card,
+.session-workspace-shell .snapshot-source-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(148, 209, 89, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+.session-workspace-shell .session-notes-help,
+.session-workspace-shell .session-images-limit,
+.session-workspace-shell .snapshot-help,
+.session-workspace-shell .snapshot-destination-info,
+.session-workspace-shell .snapshot-gallery-note,
+.session-workspace-shell .snapshot-action-description,
+.session-workspace-shell .snapshot-explore-description,
+.session-workspace-shell .session-images-message,
+.session-workspace-shell .session-notes-message,
+.session-workspace-shell .snapshot-message {
+  color: #b7c0b7;
+}
+
+.session-workspace-shell .file-upload-control,
+.session-workspace-shell .session-images-upload,
+.session-workspace-shell .snapshot-destination-option,
+.session-workspace-shell .snapshot-profile-toggle,
+.session-workspace-shell .snapshot-consent-block {
+  border-color: rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-shell .session-images-grid > *,
+.session-workspace-shell .snapshot-preview-card {
+  border-color: rgba(148, 209, 89, 0.12);
+}
+
+.session-workspace-actions {
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.session-workspace-shell .button-primary,
+.session-workspace-shell .button-new-session {
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 58%, #6da83f 100%);
+  border-color: rgba(13, 18, 14, 0.72);
+  color: #101510;
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.session-workspace-shell .button-primary:hover,
+.session-workspace-shell .button-primary:focus-visible,
+.session-workspace-shell .button-new-session:hover,
+.session-workspace-shell .button-new-session:focus-visible {
+  box-shadow:
+    0 16px 28px rgba(0, 0, 0, 0.22),
+    0 0 18px rgba(148, 209, 89, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+
+.session-workspace-shell .button-secondary {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(18, 24, 19, 0.82);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+.session-workspace-shell .button-secondary:hover,
+.session-workspace-shell .button-secondary:focus-visible {
+  border-color: rgba(148, 209, 89, 0.4);
+  background: rgba(148, 209, 89, 0.08);
+  color: #f6f8f5;
+}
+
+.session-workspace-shell .button-danger {
+  border-color: rgba(255, 107, 107, 0.28);
+  background: rgba(123, 45, 49, 0.16);
+  color: #ffb3b3;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+.session-workspace-shell .button-danger:hover,
+.session-workspace-shell .button-danger:focus-visible {
+  border-color: rgba(255, 107, 107, 0.42);
+  background: rgba(123, 45, 49, 0.24);
+  color: #ffd0d0;
+}
+
+@media (max-width: 960px) {
+  .session-workspace-header {
+    gap: 14px;
+  }
+
+  .session-workspace-shell .partition-work-header,
+  .session-workspace-shell .timeline-save-shortcut {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .session-workspace-shell .session-status-panel {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .session-workspace-shell {
+    padding: 20px 16px;
+    border-radius: 24px;
+  }
+
+  .session-workspace-shell .session-chart-header > label,
+  .session-workspace-shell .detail-header .meta-card {
+    padding: 12px 14px;
+  }
+
+  .session-workspace-shell .session-workspace-header .inline-actions,
+  .session-workspace-actions {
+    width: 100%;
+  }
+
+  .session-workspace-shell .session-workspace-header .inline-actions > *,
+  .session-workspace-actions > * {
+    flex: 1 1 100%;
+  }
+}
+
 .session-chart-header {
   display: grid;
   grid-template-columns:
@@ -24120,4 +24657,202 @@ body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custo
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+body.theme-dark .session-workspace-shell {
+  border-color: rgba(148, 209, 89, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 26%),
+    radial-gradient(circle at bottom left, rgba(181, 138, 97, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(16, 21, 17, 0.98) 0%, rgba(10, 14, 11, 0.98) 100%);
+  box-shadow:
+    0 24px 42px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .session-workspace-shell .session-glass-panel,
+body.theme-dark .session-workspace-shell .timeline-save-shortcut,
+body.theme-dark .session-workspace-shell .partition-work-header,
+body.theme-dark .session-workspace-shell .chart-shell,
+body.theme-dark .session-workspace-shell .session-lifecycle-section,
+body.theme-dark .session-workspace-shell .session-timing-section,
+body.theme-dark .session-workspace-shell .progress-chart-section,
+body.theme-dark .session-workspace-shell .run-progress-section,
+body.theme-dark .session-workspace-shell .session-notes-section,
+body.theme-dark .session-workspace-shell .session-images-section,
+body.theme-dark .session-workspace-shell .share-snapshot-section {
+  border-color: rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 26%),
+    linear-gradient(180deg, rgba(20, 26, 22, 0.96) 0%, rgba(14, 18, 15, 0.96) 100%);
+  box-shadow:
+    0 18px 32px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(148, 209, 89, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .session-workspace-shell .session-chart-header > label,
+body.theme-dark .session-workspace-shell .detail-header .meta-card,
+body.theme-dark .session-workspace-shell .session-status-card,
+body.theme-dark .session-workspace-shell .lifecycle-event,
+body.theme-dark .session-workspace-shell .timing-card,
+body.theme-dark .session-workspace-shell .snapshot-action-row,
+body.theme-dark .session-workspace-shell .snapshot-explore-card,
+body.theme-dark .session-workspace-shell .snapshot-source-card {
+  border-color: rgba(148, 209, 89, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 24%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .session-workspace-shell input,
+body.theme-dark .session-workspace-shell select,
+body.theme-dark .session-workspace-shell textarea,
+body.theme-dark .session-workspace-shell .custom-select-trigger {
+  background: rgba(14, 19, 15, 0.76);
+  color: #edf4ee;
+  border-color: rgba(148, 209, 89, 0.18);
+  -webkit-text-fill-color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 10px 18px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .session-workspace-shell input:focus-visible,
+body.theme-dark .session-workspace-shell select:focus-visible,
+body.theme-dark .session-workspace-shell textarea:focus-visible,
+body.theme-dark .session-workspace-shell .custom-select.is-open .custom-select-trigger,
+body.theme-dark .session-workspace-shell .custom-select-trigger:focus-visible,
+body.theme-dark .session-workspace-shell input:focus,
+body.theme-dark .session-workspace-shell select:focus,
+body.theme-dark .session-workspace-shell textarea:focus {
+  border-color: rgba(148, 209, 89, 0.5);
+  background: rgba(18, 24, 19, 0.92);
+  color: #edf4ee;
+  -webkit-text-fill-color: #edf4ee;
+  box-shadow:
+    0 0 0 3px rgba(148, 209, 89, 0.14),
+    0 14px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .session-workspace-shell .custom-select-menu {
+  background: rgba(15, 21, 17, 0.98);
+  border-color: rgba(148, 209, 89, 0.18);
+}
+
+body.theme-dark .session-workspace-shell .chart-header {
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.04)),
+    rgba(255, 255, 255, 0.02);
+  color: #c8d7c9;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+body.theme-dark .session-workspace-shell .chart-header span:not(:last-child)::after {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+body.theme-dark .session-workspace-shell .tra-section-label {
+  background: rgba(148, 209, 89, 0.08);
+  border-color: rgba(148, 209, 89, 0.14);
+  color: #dcebdc;
+}
+
+body.theme-dark .session-workspace-shell .partition-row,
+body.theme-dark .session-workspace-shell .partition-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.022);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+body.theme-dark .session-workspace-shell .partition-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.034);
+}
+
+body.theme-dark .session-workspace-shell .partition-row:hover,
+body.theme-dark .session-workspace-shell .partition-row:focus-within,
+body.theme-dark .session-workspace-shell .partition-row.partition-row--filled:hover,
+body.theme-dark .session-workspace-shell .partition-row.row--completed:hover,
+body.theme-dark .session-workspace-shell .partition-row.row-has-warning:hover {
+  background: rgba(148, 209, 89, 0.05) !important;
+  box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12) !important;
+}
+
+body.theme-dark .session-workspace-shell .partition-row:hover input,
+body.theme-dark .session-workspace-shell .partition-row:hover select,
+body.theme-dark .session-workspace-shell .partition-row:hover .custom-select-trigger,
+body.theme-dark .session-workspace-shell .partition-row:focus-within input,
+body.theme-dark .session-workspace-shell .partition-row:focus-within select,
+body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-select-trigger {
+  background: rgba(18, 24, 19, 0.92) !important;
+  color: #edf4ee !important;
+  -webkit-text-fill-color: #edf4ee !important;
+  border-color: rgba(148, 209, 89, 0.24) !important;
+}
+
+body.theme-dark .session-workspace-shell .partition-number {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(148, 209, 89, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 14px rgba(0, 0, 0, 0.12);
+}
+
+body.theme-dark .session-workspace-shell .partition-btn {
+  background: rgba(23, 30, 24, 0.92);
+  border-color: rgba(148, 209, 89, 0.22);
+  color: #edf4ee;
+}
+
+body.theme-dark .session-workspace-shell .partition-btn--in-progress {
+  background: rgba(240, 130, 55, 0.16) !important;
+  border-color: rgba(240, 130, 55, 0.34) !important;
+  color: #ffd7bf !important;
+}
+
+body.theme-dark .session-workspace-shell .partition-btn--complete,
+body.theme-dark .session-workspace-shell .partition-table[data-session-status="completed"] .partition-row .partition-number,
+body.theme-dark .session-workspace-shell .partition-table[data-session-status="completed"] .partition-row .partition-btn {
+  background: rgba(181, 138, 97, 0.16) !important;
+  border-color: rgba(181, 138, 97, 0.34) !important;
+  color: #ead7bf !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 8px 14px rgba(0, 0, 0, 0.14);
+}
+
+body.theme-dark .session-workspace-shell .button-primary,
+body.theme-dark .session-workspace-shell .button-new-session {
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 58%, #6da83f 100%);
+  border-color: rgba(13, 18, 14, 0.72);
+  color: #101510;
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .session-workspace-shell .button-secondary {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(18, 24, 19, 0.82);
+  color: #edf4ee;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 20px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .session-workspace-shell .button-secondary:hover,
+body.theme-dark .session-workspace-shell .button-secondary:focus-visible {
+  border-color: rgba(148, 209, 89, 0.4);
+  background: rgba(148, 209, 89, 0.08);
+  color: #f6f8f5;
+}
+
+body.theme-dark .session-workspace-shell .button-danger {
+  border-color: rgba(255, 107, 107, 0.28);
+  background: rgba(123, 45, 49, 0.16);
+  color: #ffb3b3;
 }
