@@ -1027,6 +1027,7 @@ const appState = {
   notificationPreferencesError: "",
   notificationPreferencesTableUnavailable: false,
   notificationPreferencesSchemaMode: "",
+  notificationPreferencesAvailableColumns: [],
   sessionHistoryFocusSessionId: "",
   authModalDismissHash: "",
   authNotice: "",
@@ -1406,6 +1407,7 @@ function resetSessionScopedAppState() {
   // Preserve the missing-table latch for the rest of this browser session so
   // auth resets do not re-trigger repeated 404 requests to Supabase.
   appState.notificationPreferencesSchemaMode = "";
+  appState.notificationPreferencesAvailableColumns = [];
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
@@ -6241,18 +6243,13 @@ function logUserNotificationPreferencesFallback(error, details = {}) {
     code: error?.code || "",
     status: Number(error?.status || error?.statusCode || 0) || 0,
   };
-  console.warn("[Profile Settings] Notification preferences Supabase fallback.", {
-    ...details,
-    ...errorSummary,
-    error,
-  });
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-backend-fallback",
-    "Notification preferences backend unavailable; using the latest safe local fallback.",
+    "Notification preferences backend unavailable or missing optional columns. Using local fallback.",
     {
       ...details,
-      error,
+      ...errorSummary,
     },
   );
 }
@@ -6269,10 +6266,11 @@ function markUserNotificationPreferencesTableUnavailable() {
   appState.notificationPreferencesTableUnavailable = true;
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
+  appState.notificationPreferencesAvailableColumns = [];
   logRuntimeIssueOnce(
     "warn",
-    "notification-preferences-table-unavailable",
-    "Notification preferences backend unavailable; using the latest safe local fallback for this session.",
+    "notification-preferences-backend-fallback",
+    "Notification preferences backend unavailable or missing optional columns. Using local fallback.",
   );
 }
 
@@ -6303,6 +6301,24 @@ function setUserNotificationPreferencesSchemaMode(modeOrRow = "") {
   appState.notificationPreferencesSchemaMode = USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES.has(nextMode)
     ? nextMode
     : "";
+}
+
+function setUserNotificationPreferencesAvailableColumns(columnsOrRow = []) {
+  const nextColumns = Array.isArray(columnsOrRow)
+    ? columnsOrRow
+    : ((columnsOrRow && typeof columnsOrRow === "object") ? Object.keys(columnsOrRow) : []);
+  appState.notificationPreferencesAvailableColumns = nextColumns
+    .map((columnName) => String(columnName || "").trim())
+    .filter(Boolean);
+}
+
+function hasAvailableUserNotificationPreferencesColumn(columnName = "") {
+  const normalizedColumnName = String(columnName || "").trim();
+  if (!normalizedColumnName) {
+    return false;
+  }
+  return Array.isArray(appState.notificationPreferencesAvailableColumns)
+    && appState.notificationPreferencesAvailableColumns.includes(normalizedColumnName);
 }
 
 async function safelyEnsureUserNotificationPreferences(user) {
@@ -6371,6 +6387,12 @@ function buildUserNotificationPreferencesUpsertPayload(
       ? Boolean(preferencesInput.notifyLike)
       : existingPreferences.notifyLike !== false;
   const normalizedSchemaMode = String(schemaMode || "").trim().toLowerCase();
+  const includeKnownModernColumn = (columnName, assumeWhenUnknown = true) => {
+    if (Array.isArray(appState.notificationPreferencesAvailableColumns) && appState.notificationPreferencesAvailableColumns.length) {
+      return hasAvailableUserNotificationPreferencesColumn(columnName);
+    }
+    return assumeWhenUnknown;
+  };
   const payload = {
     user_id: String(userId || "").trim(),
   };
@@ -6381,10 +6403,18 @@ function buildUserNotificationPreferencesUpsertPayload(
     payload.notify_like = notifyLike;
   }
   if (normalizedSchemaMode === "hybrid" || normalizedSchemaMode === "modern") {
-    payload.email_notifications = notifySnapshot;
-    payload.session_reminders = notifyCompletion;
-    payload.community_updates = notifyFollow;
-    payload.low_filter_alerts = notifyLike;
+    if (includeKnownModernColumn("email_notifications", true)) {
+      payload.email_notifications = notifySnapshot;
+    }
+    if (includeKnownModernColumn("session_reminders", true)) {
+      payload.session_reminders = notifyCompletion;
+    }
+    if (includeKnownModernColumn("community_updates", false)) {
+      payload.community_updates = notifyFollow;
+    }
+    if (includeKnownModernColumn("low_filter_alerts", true)) {
+      payload.low_filter_alerts = notifyLike;
+    }
   }
   return payload;
 }
@@ -6396,6 +6426,9 @@ function getUserNotificationPreferencesWriteModes(preferredMode = "") {
   }
   if (normalizedMode === "legacy") {
     return ["legacy", "hybrid", "modern"];
+  }
+  if (!normalizedMode) {
+    return ["legacy", "modern", "hybrid"];
   }
   return ["hybrid", "legacy", "modern"];
 }
@@ -7123,6 +7156,7 @@ async function ensureUserNotificationPreferences(user) {
 
   if (existingPreferences) {
     setUserNotificationPreferencesSchemaMode(existingPreferences);
+    setUserNotificationPreferencesAvailableColumns(existingPreferences);
     return syncUserNotificationPreferencesCache(normalizedUserId, existingPreferences);
   }
 
@@ -7155,6 +7189,7 @@ async function ensureUserNotificationPreferences(user) {
     }
 
     setUserNotificationPreferencesSchemaMode(savedPreferences || writeMode);
+    setUserNotificationPreferencesAvailableColumns(savedPreferences || []);
     return syncUserNotificationPreferencesCache(normalizedUserId, savedPreferences);
   }
 
@@ -12486,6 +12521,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       }
 
       setUserNotificationPreferencesSchemaMode(resolvedRow || writeMode);
+      setUserNotificationPreferencesAvailableColumns(resolvedRow || payload);
       return syncUserNotificationPreferencesCache(normalizedUserId, resolvedRow || fallbackPreferences);
     }
 
@@ -21709,7 +21745,7 @@ function bindProfileForm(form, options = {}) {
           warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
         }
       } catch (error) {
-        console.error("[Cannakan Profile] Notification preference save warning", error);
+        console.warn("[Cannakan Profile] Notification preference save warning", error);
         warnings.push(`Profile saved, but notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
         syncNotificationPreferenceAvailability();
       }
