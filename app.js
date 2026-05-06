@@ -35287,6 +35287,7 @@ function renderSessionForm(initialSystemType = "KAN") {
 
 function buildPartitionFormCard(partition, index, options = {}) {
   const showSeedAgeField = Boolean(options.showSeedAgeField);
+  const showSeedAgeInput = Boolean(options.showSeedAgeInput);
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
   row.dataset.partitionRow = "true";
@@ -35344,7 +35345,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
     ${showSeedAgeField ? `
-    <label>
+    <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
         <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="Years" aria-label="Partition ${partition.id} seed age in years">
       <span class="field-warning" aria-live="polite">Enter a valid age in years or leave blank.</span>
@@ -35771,6 +35772,9 @@ function renderTraPartitionSections(container, partitions, options = {}) {
     { label: "C", start: 8, end: 12 },
     { label: "D", start: 12, end: 16 },
   ];
+  const shouldShowSeedAgeInput = typeof options.shouldShowSeedAgeInput === "function"
+    ? options.shouldShowSeedAgeInput
+    : (() => Boolean(options.showSeedAgeField));
 
   sections.forEach((section) => {
     const wrapper = document.createElement("section");
@@ -35783,7 +35787,10 @@ function renderTraPartitionSections(container, partitions, options = {}) {
     const body = wrapper.querySelector(".tra-section-body");
     partitions.slice(section.start, section.end).forEach((partition, localIndex) => {
       const index = section.start + localIndex;
-      body.appendChild(buildPartitionFormCard(partition, index, options));
+      body.appendChild(buildPartitionFormCard(partition, index, {
+        ...options,
+        showSeedAgeInput: shouldShowSeedAgeInput(partition, index),
+      }));
       hydratePartitionRow(body.lastElementChild, partition);
     });
 
@@ -35819,6 +35826,53 @@ function getCurrentPartitionValues(form) {
       ?? previousValues[index]?.seedAgeYears,
     ),
   }));
+}
+
+function hasPartitionCoreValues(values = {}) {
+  return getPartitionBaseRowState({
+    sourceValue: values.sourceValue ?? values.source ?? "",
+    varietyValue: values.varietyValue ?? values.seedVariety ?? "",
+    typeValue: values.typeValue ?? values.seedType ?? "",
+    sexValue: values.sexValue ?? values.feminized ?? "",
+    seedValue: values.seedValue ?? values.seedCount ?? "",
+    plantedValue: values.plantedValue ?? values.plantedCount ?? "",
+  }) !== "empty";
+}
+
+function shouldShowPartitionSeedAgeFieldForValues(values = {}) {
+  const seedAgeRaw = values.seedAgeValue ?? values.seedAgeYears ?? values.seed_age_years ?? "";
+  return hasPartitionCoreValues(values) || String(seedAgeRaw ?? "").trim() !== "";
+}
+
+function shouldShowPartitionSeedAgeFieldForPartition(partition = {}) {
+  return shouldShowPartitionSeedAgeFieldForValues({
+    source: partition.source,
+    seedVariety: partition.seedVariety,
+    seedType: partition.seedType,
+    feminized: partition.feminized,
+    seedCount: partition.seedCount,
+    plantedCount: partition.plantedCount,
+    seedAgeYears: partition.seedAgeYears ?? partition.seed_age_years,
+  });
+}
+
+function autofillMixedPartitionSeedAgeYears(partitions = [], sessionSeedAgeYears = null) {
+  const normalizedSessionSeedAgeYears = normalizeSeedAgeYears(sessionSeedAgeYears);
+  if (!Array.isArray(partitions) || normalizedSessionSeedAgeYears === null) {
+    return partitions;
+  }
+
+  partitions.forEach((partition) => {
+    if (!partition || !hasPartitionCoreValues(partition)) {
+      return;
+    }
+    if (normalizeSeedAgeYears(partition.seedAgeYears ?? partition.seed_age_years) !== null) {
+      return;
+    }
+    partition.seedAgeYears = normalizedSessionSeedAgeYears;
+  });
+
+  return partitions;
 }
 
 function renderSessionsList() {
