@@ -36306,7 +36306,9 @@ function applyPartitionRowVisualState(row) {
   const fields = row.querySelectorAll('input:not([name="plantedCount"]), select, .custom-select-trigger');
   const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
   const isCompletedSession = normalizeSessionStatus(sessionStatus) === "completed";
+  const isGerminatingSession = normalizeSessionStatus(sessionStatus) === "germinating";
   const isCompletedEmpty = row.classList.contains("row-completed-empty");
+  const isInactive = row.classList.contains("partition-row--inactive");
 
   if (!isDarkTheme) {
     row.style.removeProperty("background");
@@ -36368,6 +36370,12 @@ function applyPartitionRowVisualState(row) {
     row.style.setProperty("background", "#18201b", "important");
     row.style.setProperty("background-image", "none", "important");
     row.style.setProperty("box-shadow", "inset 0 0 0 1px rgba(148, 209, 89, 0.12)", "important");
+  } else if (isGerminatingSession && isInactive) {
+    row.style.setProperty("opacity", "0.45", "important");
+    row.style.setProperty("filter", "grayscale(0.28)", "important");
+    row.style.setProperty("background", "#18201b", "important");
+    row.style.setProperty("background-image", "none", "important");
+    row.style.setProperty("box-shadow", "inset 0 0 0 1px rgba(148, 209, 89, 0.08)", "important");
   } else {
     row.style.removeProperty("opacity");
     row.style.removeProperty("filter");
@@ -36381,18 +36389,22 @@ function applyPartitionRowVisualState(row) {
   fields.forEach((node) => {
     const fieldBackground = isCompletedSession && isCompletedEmpty
       ? "#202622"
-      : (isFilled || isCompleted ? "#232823" : "#1E221F");
+      : (isGerminatingSession && isInactive
+        ? "#1b201c"
+        : (isFilled || isCompleted ? "#232823" : "#1E221F"));
     node.style.setProperty("background", fieldBackground, "important");
     node.style.setProperty("background-image", "none", "important");
     node.style.setProperty("color", "#f6f8f5", "important");
     node.style.setProperty("-webkit-text-fill-color", "#f6f8f5", "important");
     node.style.setProperty(
       "border-color",
-      isCompletedSession && isCompletedEmpty ? "rgba(148, 209, 89, 0.12)" : "#343a35",
+      (isCompletedSession && isCompletedEmpty) || (isGerminatingSession && isInactive)
+        ? "rgba(148, 209, 89, 0.12)"
+        : "#343a35",
       "important",
     );
     node.style.setProperty("box-shadow", "none", "important");
-    if (isCompletedSession && isCompletedEmpty) {
+    if ((isCompletedSession && isCompletedEmpty) || (isGerminatingSession && isInactive)) {
       node.style.setProperty("opacity", "0.88", "important");
     } else {
       node.style.removeProperty("opacity");
@@ -37219,6 +37231,7 @@ function validatePartitionRow(row) {
   }, sessionStatus);
 
   row.classList.toggle("partition-row--filled", rowStarted);
+  row.classList.toggle("partition-row--inactive", normalizedSessionStatus === "germinating" && !rowStarted);
   row.classList.toggle("row--completed", fieldsComplete);
   row.classList.toggle("row-has-warning", rowInvalid);
   row.classList.toggle("row-complete", normalizedSessionStatus === "completed" && rowStarted);

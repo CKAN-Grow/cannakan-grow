@@ -21217,6 +21217,21 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   color: rgba(179, 184, 175, 0.92);
 }
 
+.partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive,
+body.theme-dark .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive {
+  opacity: 0.45;
+}
+
+.partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive input,
+.partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive select,
+.partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive .custom-select-trigger,
+body.theme-dark .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive input,
+body.theme-dark .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive select,
+body.theme-dark .partition-table[data-session-status="germinating"] .partition-row.partition-row--inactive .custom-select-trigger {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
 body.theme-dark .button-secondary,
 body.theme-dark .auth-pill,
 body.theme-dark .summary-link-card,
