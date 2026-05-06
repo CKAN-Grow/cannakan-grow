@@ -16,6 +16,9 @@ create table if not exists public.grow_sessions (
   germination_started_at timestamptz,
   first_planted_at timestamptz,
   completed_at timestamptz,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
+  visibility_status text not null default 'active',
   partitions jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -365,6 +368,15 @@ alter table public.grow_sessions
 
 alter table public.grow_sessions
   add column if not exists snapshot_state jsonb not null default '{}'::jsonb;
+
+alter table public.grow_sessions
+  add column if not exists is_deleted boolean not null default false;
+
+alter table public.grow_sessions
+  add column if not exists deleted_at timestamptz;
+
+alter table public.grow_sessions
+  add column if not exists visibility_status text not null default 'active';
 
 alter table public.grow_gallery_snapshots
   add column if not exists submitted_by text default '';

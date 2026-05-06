@@ -3364,6 +3364,9 @@ function normalizeStoredSession(session) {
     germinationStartedAt: String(session.germinationStartedAt || "").trim(),
     firstPlantedAt: String(session.firstPlantedAt || "").trim(),
     completedAt: String(session.completedAt || "").trim(),
+    isDeleted: Boolean(session.isDeleted || session.is_deleted),
+    deletedAt: String(session.deletedAt || session.deleted_at || "").trim(),
+    visibilityStatus: normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
     filterPaperDeducted: getSessionFilterPaperDeducted(session),
     partitions: Array.isArray(session.partitions) ? session.partitions : [],
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
@@ -3383,6 +3386,40 @@ function saveSessions(sessions) {
   if (!isSupabaseConfigured()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.sessions));
   }
+}
+
+function normalizeSessionVisibilityStatus(status = "") {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (["deleted", "archived", "hidden"].includes(normalizedStatus)) {
+    return normalizedStatus;
+  }
+  return normalizedStatus === "active" ? "active" : "";
+}
+
+function isSessionSoftDeleted(session = null) {
+  if (!session) {
+    return false;
+  }
+
+  return Boolean(
+    session.isDeleted
+    || session.is_deleted
+    || String(session.deletedAt || session.deleted_at || "").trim()
+    || ["deleted", "archived", "hidden"].includes(
+      normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
+    )
+  );
+}
+
+function getVisibleUserSessions(sessions = []) {
+  return (sessions || []).filter((session) => !isSessionSoftDeleted(session));
+}
+
+function getAggregateStatsSessions(sessions = []) {
+  return (sessions || []).filter((session) => (
+    !isSessionSoftDeleted(session)
+    || normalizeSessionStatus(session?.sessionStatus || "") === "completed"
+  ));
 }
 
 function loadNewSessionNotesDraft() {
@@ -10524,33 +10561,119 @@ async function updateCloudSessionNotes(sessionId, sessionNotes) {
   return savedSession;
 }
 
-async function deleteCloudSession(sessionId) {
-  const existingSession = getSessions().find((item) => item.id === sessionId);
-  const existingGallerySnapshot = appState.gallerySnapshots.find((item) => item.sessionId === sessionId);
-  if (existingSession?.sessionImages?.length) {
-    const paths = existingSession.sessionImages
-      .map((image) => image.path)
-      .filter(Boolean);
-    if (paths.length && appState.supabase?.storage) {
-      await appState.supabase.storage.from(SESSION_IMAGE_BUCKET).remove(paths);
-    }
+function ensureSessionDeleteConfirmModal() {
+  let modal = document.querySelector("#session-delete-confirm-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
   }
 
-  const { error } = await appState.supabase
+  modal = document.createElement("dialog");
+  modal.id = "session-delete-confirm-modal";
+  modal.className = "snapshot-modal session-delete-confirm-modal";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card session-delete-confirm-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Delete Session</p>
+        <h3 id="session-delete-confirm-title">Delete session?</h3>
+        <p id="session-delete-confirm-message">This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity.</p>
+      </div>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-secondary" data-session-delete-cancel>Cancel</button>
+        <button type="button" class="button button-danger" data-session-delete-confirm>Delete Session</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function confirmSessionArchive(session) {
+  const modal = ensureSessionDeleteConfirmModal();
+  const title = modal.querySelector("#session-delete-confirm-title");
+  const message = modal.querySelector("#session-delete-confirm-message");
+  const cancelButton = modal.querySelector("[data-session-delete-cancel]");
+  const confirmButton = modal.querySelector("[data-session-delete-confirm]");
+
+  if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
+    return Promise.resolve(window.confirm("Delete session? This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity."));
+  }
+
+  if (title) {
+    title.textContent = "Delete session?";
+  }
+  if (message) {
+    message.textContent = "This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity.";
+  }
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      cancelButton.removeEventListener("click", onCancel);
+      confirmButton.removeEventListener("click", onConfirm);
+      modal.removeEventListener("cancel", onCancel);
+      if (modal.open) {
+        modal.close();
+      }
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    cancelButton.addEventListener("click", onCancel, { once: true });
+    confirmButton.addEventListener("click", onConfirm, { once: true });
+    modal.addEventListener("cancel", onCancel, { once: true });
+    modal.showModal();
+    cancelButton.focus();
+  });
+}
+
+async function deleteCloudSession(sessionId) {
+  const existingSession = getSessions().find((item) => item.id === sessionId);
+  const deletedAt = new Date().toISOString();
+  const archivedSession = normalizeStoredSession({
+    ...existingSession,
+    id: sessionId,
+    isDeleted: true,
+    deletedAt,
+    visibilityStatus: "deleted",
+    updatedAt: deletedAt,
+  });
+
+  if (!appState.supabase) {
+    saveSessions(getSessions().map((item) => (item.id === sessionId ? archivedSession : item)));
+    return archivedSession;
+  }
+
+  const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .delete()
-    .eq("id", sessionId);
+    .update({
+      is_deleted: true,
+      deleted_at: deletedAt,
+      visibility_status: "deleted",
+      updated_at: deletedAt,
+    })
+    .eq("id", sessionId)
+    .select()
+    .single();
 
   if (error) {
+    const message = String(error.message || "").toLowerCase();
+    if (message.includes("is_deleted") || message.includes("deleted_at") || message.includes("visibility_status")) {
+      throw new Error("Could not archive this session because the soft-delete columns are missing. Apply the grow sessions soft-delete migration and try again.");
+    }
     throw error;
   }
 
-  if (existingGallerySnapshot?.imagePath) {
-    await removeGallerySnapshotImage(existingGallerySnapshot.imagePath);
-  }
-  setSessionFilterPaperDeducted({ id: sessionId }, false);
-  saveSessions(getSessions().filter((item) => item.id !== sessionId));
-  appState.gallerySnapshots = appState.gallerySnapshots.filter((item) => item.sessionId !== sessionId);
+  const savedSession = mapRowToSession(data);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(existingSession || { id: sessionId });
+  saveSessions(getSessions().map((item) => (item.id === sessionId ? savedSession : item)));
+  return savedSession;
 }
 
 async function uploadSessionImageFile(sessionId, file) {
@@ -14742,7 +14865,7 @@ function getSessionSnapshotState(session) {
 }
 
 function mapSessionToRecord(session, userId) {
-  return {
+  const record = {
     id: session.id,
     user_id: userId,
     date: session.date,
@@ -14762,6 +14885,14 @@ function mapSessionToRecord(session, userId) {
     created_at: session.createdAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
+
+  if (isSessionSoftDeleted(session) || normalizeSessionVisibilityStatus(session?.visibilityStatus || "") === "active") {
+    record.is_deleted = Boolean(session.isDeleted);
+    record.deleted_at = session.deletedAt || null;
+    record.visibility_status = normalizeSessionVisibilityStatus(session.visibilityStatus || "") || "active";
+  }
+
+  return record;
 }
 
 function mapRowToSession(row) {
@@ -14780,6 +14911,9 @@ function mapRowToSession(row) {
     germinationStartedAt: row.germination_started_at || "",
     firstPlantedAt: row.first_planted_at || "",
     completedAt: row.completed_at || "",
+    isDeleted: Boolean(row.is_deleted),
+    deletedAt: row.deleted_at || "",
+    visibilityStatus: normalizeSessionVisibilityStatus(row.visibility_status || ""),
     filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
     partitions: Array.isArray(row.partitions) ? row.partitions : [],
     createdAt: row.created_at,
@@ -30850,8 +30984,10 @@ function renderHome() {
     });
   }
   const sessions = sortSessionsNewestFirst(getSessions());
+  const visibleSessions = getVisibleUserSessions(sessions);
+  const aggregateStatsSessions = getAggregateStatsSessions(sessions);
   const activeSessions = sortActiveSessionsNewestFirst(
-    sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
   );
   const commandCenterCard = document.querySelector("#session-command-center");
   const summaryGrid = document.querySelector(".summary-grid");
@@ -30873,7 +31009,7 @@ function renderHome() {
   const overallTotalEl = document.querySelector("#overall-germination-total");
   const overallFillEl = document.querySelector("#overall-germination-fill");
   const overallRingEl = document.querySelector("#overall-germination-ring");
-  countEl.textContent = String(sessions.length);
+  countEl.textContent = String(visibleSessions.length);
   activeCountEl.textContent = String(activeSessions.length);
   activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
   const hasGerminatingActive = activeSessions.some((session) => normalizeSessionStatus(session.sessionStatus) === "germinating");
@@ -30881,7 +31017,7 @@ function renderHome() {
   activeCard?.classList.toggle("has-germinating-sessions", hasGerminatingActive);
   activeCard?.classList.toggle("has-soaking-sessions", activeSessions.length > 0 && !hasGerminatingActive);
 
-  const totals = sessions.reduce((accumulator, session) => {
+  const totals = aggregateStatsSessions.reduce((accumulator, session) => {
     const sessionTotals = getSessionSeedTotals(session);
     accumulator.totalSeeds += sessionTotals.totalSeeds;
     accumulator.totalPlanted += sessionTotals.totalPlanted;
@@ -32960,7 +33096,7 @@ function getMySessionsHistoryStatusMeta(session = null) {
 
 function filterMySessionsHistorySessions(sessions = [], filterValue = "all") {
   const normalizedFilter = String(filterValue || "all").trim().toLowerCase();
-  if (normalizedFilter === "all") {
+  if (!["all", "active", "completed", "failed"].includes(normalizedFilter) || normalizedFilter === "all") {
     return [...sessions];
   }
 
@@ -34154,16 +34290,20 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   applySupplyStatusToSessionEntryButtons(app);
+  if (!["all", "active", "completed"].includes(appState.sessionHistoryFilter || "")) {
+    appState.sessionHistoryFilter = "all";
+  }
   const sessions = sortSessionsNewestFirst(getSessions());
-  const hasSessionHistory = sessions.length > 0;
+  const visibleSessions = getVisibleUserSessions(sessions);
+  const hasSessionHistory = visibleSessions.length > 0;
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
   const historySection = document.querySelector("#session-history-section");
 
   const activeSessions = sortActiveSessionsNewestFirst(
-    sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
   );
-  const completedSessions = sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
+  const completedSessions = visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
 
   let selectedCommandCenterSessionId = activeSessions[0]?.id || "";
   const renderActiveSessionsCommandCenter = () => {
@@ -34175,7 +34315,8 @@ function renderSessionsList() {
     activeSessionsSection.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
       hasSessionHistory,
       requiresSignIn: !appState.user,
-      sessions,
+      sessions: visibleSessions,
+      aggregateSessions: sessions,
     });
     hydrateAppIconSlots(activeSessionsSection);
     applySupplyStatusToSessionEntryButtons(activeSessionsSection);
@@ -34227,12 +34368,12 @@ function renderSessionsList() {
       return;
     }
 
-    const filteredSessions = filterMySessionsHistorySessions(sessions, appState.sessionHistoryFilter || "all");
+    const filteredSessions = filterMySessionsHistorySessions(visibleSessions, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
       filterValue: appState.sessionHistoryFilter || "all",
       sortValue: appState.sessionHistorySort || "date",
-      hasAnySessions: sessions.length > 0,
+      hasAnySessions: visibleSessions.length > 0,
     });
     applySupplyStatusToSessionEntryButtons(historySection);
   };
@@ -34288,7 +34429,7 @@ function renderSessionsList() {
         return;
       }
 
-      const confirmed = window.confirm("Delete this session? This cannot be undone.");
+      const confirmed = await confirmSessionArchive(session);
       if (!confirmed) {
         return;
       }
@@ -35792,7 +35933,7 @@ function renderSessionDetail(sessionId) {
   });
 
   detail.deleteButton.addEventListener("click", async () => {
-    const confirmed = window.confirm("Delete this session?");
+    const confirmed = await confirmSessionArchive(session);
     if (!confirmed) {
       return;
     }
@@ -35885,7 +36026,7 @@ function renderSessionCollection(container, sessions, options) {
       event.preventDefault();
       event.stopPropagation();
 
-      const confirmed = window.confirm("Delete this session? This cannot be undone.");
+      const confirmed = await confirmSessionArchive(session);
       if (!confirmed) {
         return;
       }
@@ -37829,12 +37970,15 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
   `;
 }
 
-function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSessions = []) {
+function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSessions = [], options = {}) {
   const totalSessions = sessions.length;
   const activeCount = activeSessions.length;
   const activeSubtext = activeCount ? "in progress" : "No active sessions";
+  const aggregateStatsSessions = getAggregateStatsSessions(
+    Array.isArray(options.aggregateSessions) ? options.aggregateSessions : sessions,
+  );
 
-  const bestSession = getBestCompletedSession(sessions);
+  const bestSession = getBestCompletedSession(aggregateStatsSessions);
   const bestSessionName = bestSession ? formatSessionLabel(bestSession) : "No completed sessions yet";
   const bestSessionDate = bestSession ? formatSessionNameDate(bestSession.date) : "";
   const bestSessionTotals = bestSession ? getSessionSeedTotals(bestSession) : { totalSeeds: 0, totalPlanted: 0 };
@@ -37846,7 +37990,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     ? (bestDurationLabel ? `${bestSessionPercentage}% · ${bestDurationLabel}` : `${bestSessionPercentage}%`)
     : "";
 
-  const overallTotals = sessions.reduce((accumulator, session) => {
+  const overallTotals = aggregateStatsSessions.reduce((accumulator, session) => {
     const sessionTotals = getSessionSeedTotals(session);
     accumulator.totalSeeds += sessionTotals.totalSeeds;
     accumulator.totalPlanted += sessionTotals.totalPlanted;
@@ -37961,7 +38105,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         </section>
       </div>
       <div class="summary-grid session-command-center-metrics">
-        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions)}
+        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
       </div>
     </section>
   `;
