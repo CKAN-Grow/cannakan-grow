@@ -37645,7 +37645,7 @@ function getSessionCommandCenterProgressEvents(session = null) {
           subtext = "Awaiting first sprout";
           break;
         case "completed":
-          subtext = "Finish when ready";
+          subtext = "Session Completed";
           break;
         default:
           subtext = "Up next";
