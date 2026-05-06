@@ -2905,6 +2905,27 @@ body.theme-dark #active-sessions-section {
   gap: var(--space-stack);
 }
 
+.session-lifecycle-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.31fr) minmax(0, 0.69fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.session-lifecycle-status-column {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.session-lifecycle-layout .session-status-panel {
+  min-width: 0;
+}
+
+.session-lifecycle-layout .session-lifecycle-summary {
+  min-width: 0;
+}
+
 .lifecycle-bar {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -15666,6 +15687,11 @@ body.theme-dark .theme-toggle-button:hover {
 
   .session-lifecycle-stage p {
     max-width: none;
+  }
+
+  .session-lifecycle-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 

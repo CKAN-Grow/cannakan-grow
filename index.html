@@ -841,7 +841,25 @@
               <span>Session Progress</span>
             </h4>
           </div>
-          <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
+          <div class="session-lifecycle-layout">
+            <div class="session-lifecycle-status-column">
+              <div class="session-status-panel">
+                <p class="session-status-label">Current Stage</p>
+                <div class="session-status-card">
+                  <div class="session-status-top">
+                    <div class="session-status-current">
+                      <strong class="session-status-current-value">Not Started</strong>
+                    </div>
+                    <input type="hidden" id="detail-session-status-control" value="">
+                    <button type="button" id="detail-session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
+                  </div>
+                  <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
+                </div>
+              </div>
+              <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
+            </div>
+            <div id="detail-lifecycle-summary" class="session-lifecycle-summary"></div>
+          </div>
           <details class="timeline-debug-panel">
             <summary>Timeline Debug Tools</summary>
             <div class="timeline-debug-actions">
@@ -862,21 +880,7 @@
             <p class="eyebrow">Partitions</p>
             <h3 id="detail-partition-work-title"><span data-partition-title-text>KAN® Partition Chart</span></h3>
           </div>
-          <div class="session-status-panel">
-            <p class="session-status-label">Current Stage</p>
-            <div class="session-status-card">
-              <div class="session-status-top">
-                <div class="session-status-current">
-                  <strong class="session-status-current-value">Not Started</strong>
-                </div>
-                <input type="hidden" id="detail-session-status-control" value="">
-                <button type="button" id="detail-session-status-trigger" class="session-status-trigger">Select Growth Stage</button>
-              </div>
-              <p class="session-status-help">Update the stage as your seeds progress through the session.</p>
-            </div>
-          </div>
         </div>
-        <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
         <div id="detail-supplies-anchor"></div>
         <div id="detail-chart-shell" class="chart-shell session-glass-panel">
           <div id="detail-chart-header" class="chart-header chart-row">
