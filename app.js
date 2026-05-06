@@ -7260,7 +7260,13 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
     .filter((profile) => profile && profile.deletionStatus !== "deleted")
     .map((profile) => ({
       id: profile.id,
-      profileName: profile.username || "Unnamed member",
+      profileName: getDisplayName(
+        {
+          id: profile.id,
+          username: profile.username || "",
+        },
+        { fallbackLabel: "User" },
+      ),
       email: profile.email || "",
       role: getMemberRole(profile.email),
       joinedAt: profile.createdAt || "",
@@ -7557,10 +7563,13 @@ function getAdminSourceReviewSubmittedByLabel(userId = "") {
     return "Unknown member";
   }
   const member = (appState.members || []).find((entry) => entry.id === normalizedUserId) || null;
-  if (member) {
-    return member.profileName || member.email || "Unknown member";
-  }
-  return "Member";
+  return getDisplayName(
+    {
+      id: normalizedUserId,
+      profileName: member?.profileName || "",
+    },
+    { fallbackLabel: "Unknown member" },
+  );
 }
 
 function getAdminSourceReviewCanonicalOptions() {
@@ -8040,7 +8049,14 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
   const normalizedSettings = normalizeProfilePageSettings(row, fallbackSettings);
   return {
     id: String(row.id || "").trim(),
-    displayName: String(row.display_name || row.username || "").trim() || "Community member",
+    displayName: getDisplayName(
+      {
+        id: row.id,
+        displayName: row.display_name || "",
+        username: row.username || "",
+      },
+      { fallbackLabel: "User" },
+    ),
     avatarUrl: resolveAvatarImageUrl(row.avatar_url, row.avatar_path),
     joinedAt: row.joined_at || row.created_at || "",
     ...normalizedSettings,
@@ -8114,7 +8130,13 @@ function buildCurrentUserPublicMemberProfileFallback(
   const normalizedSettings = normalizeProfilePageSettings(settings, DEFAULT_PROFILE_PAGE_SETTINGS);
   return {
     id: normalizedUserId,
-    displayName: String(profile?.username || "").trim() || "Community member",
+    displayName: getDisplayName(
+      {
+        id: normalizedUserId,
+        username: profile?.username || "",
+      },
+      { fallbackLabel: "User" },
+    ),
     avatarUrl: getSafeAvatarImageUrl(profile?.avatarUrl || ""),
     joinedAt: profile?.createdAt || user?.created_at || "",
     ...normalizedSettings,
@@ -8132,7 +8154,13 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     ...(fallbackProfile || {}),
     ...(primaryProfile || {}),
     id: String(primaryProfile?.id || fallbackProfile?.id || "").trim(),
-    displayName: String(primaryProfile?.displayName || fallbackProfile?.displayName || "Community member").trim() || "Community member",
+    displayName: getDisplayName(
+      {
+        id: String(primaryProfile?.id || fallbackProfile?.id || "").trim(),
+        displayName: primaryProfile?.displayName || fallbackProfile?.displayName || "",
+      },
+      { fallbackLabel: "User" },
+    ),
     avatarUrl: getSafeAvatarImageUrl(primaryProfile?.avatarUrl || fallbackProfile?.avatarUrl || ""),
     joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
     ...resolvedSettings,
@@ -8379,7 +8407,13 @@ function normalizePublicMemberFollowListRow(row) {
 
   return {
     memberId,
-    displayName: String(row?.display_name || row?.displayName || "").trim() || "Community member",
+    displayName: getDisplayName(
+      {
+        memberId,
+        displayName: row?.display_name || row?.displayName || "",
+      },
+      { fallbackLabel: "User" },
+    ),
     avatarUrl: resolveAvatarImageUrl(row?.avatar_url || row?.avatarUrl || "", row?.avatar_path || row?.avatarPath || ""),
     joinedAt: row?.joined_at || row?.joinedAt || "",
     createdAt: row?.created_at || row?.createdAt || "",
@@ -9102,7 +9136,13 @@ function renderPublicMemberConnectionsModal(memberId = "", listType = "followers
   const followSummary = getPublicMemberFollowSummary(normalizedId);
   const followLists = getPublicMemberFollowLists(normalizedId);
   const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
-  const displayName = profile?.displayName || "Community member";
+  const displayName = getDisplayName(
+    {
+      id: normalizedId,
+      displayName: profile?.displayName || "",
+    },
+    { fallbackLabel: "User" },
+  );
   const followersCount = followSummary
     ? followSummary.followerCount.toLocaleString()
     : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
@@ -9453,7 +9493,13 @@ async function loadPublicMemberFollowLists(memberId = "", options = {}) {
         appState.publicMemberProfiles[row.memberId] = {
           ...existingProfile,
           id: row.memberId,
-          displayName: row.displayName || existingProfile.displayName || "Community member",
+          displayName: getDisplayName(
+            {
+              id: row.memberId,
+              displayName: row.displayName || existingProfile.displayName || "",
+            },
+            { fallbackLabel: "User" },
+          ),
           avatarUrl: row.avatarUrl || existingProfile.avatarUrl || "",
           joinedAt: row.joinedAt || existingProfile.joinedAt || "",
         };
@@ -9773,7 +9819,13 @@ function buildCommunityActivityFeedEntry(activity) {
 
   const profile = getPublicMemberProfile(normalizedActivity.userId);
   const typeDetails = getCommunityActivityTypeDetails(normalizedActivity.activityType);
-  const displayName = profile?.displayName || "Community member";
+  const displayName = getDisplayName(
+    {
+      id: normalizedActivity.userId,
+      displayName: profile?.displayName || "",
+    },
+    { fallbackLabel: "User" },
+  );
   const avatarUrl = profile?.avatarUrl || "";
   const metadata = normalizedActivity.metadata || {};
   const fallbackRateLabel = `${Math.max(0, Number(metadata.germinationRate) || 0)}%`;
@@ -10307,6 +10359,92 @@ function hasCompletedProfile(profile = appState.profile) {
   return Boolean(String(profile?.username || "").trim());
 }
 
+const GENERIC_DISPLAY_NAME_PLACEHOLDERS = new Set([
+  "community member",
+  "member",
+  "user",
+  "unnamed member",
+  "unknown member",
+  "submitted by grower",
+  "shared grower profile",
+]);
+
+function isEmailLikeDisplayName(value = "") {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue.includes("@");
+}
+
+function isGenericDisplayNamePlaceholder(value = "") {
+  return GENERIC_DISPLAY_NAME_PLACEHOLDERS.has(String(value || "").trim().toLowerCase());
+}
+
+function getMeaningfulDisplayName(...candidates) {
+  const queue = candidates.flat ? candidates.flat() : candidates;
+  for (const candidate of queue) {
+    const normalizedValue = String(candidate || "").trim();
+    if (!normalizedValue) {
+      continue;
+    }
+    if (isEmailLikeDisplayName(normalizedValue) || isGenericDisplayNamePlaceholder(normalizedValue)) {
+      continue;
+    }
+    return normalizedValue;
+  }
+  return "";
+}
+
+function getStableUserDisplayNumber(value = "") {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  let hash = 0;
+  for (const character of normalizedValue) {
+    hash = (hash * 131 + character.charCodeAt(0)) % 90000;
+  }
+
+  return String(hash + 10000).padStart(5, "0");
+}
+
+function getFallbackUserLabel(userId = "", fallbackLabel = "User") {
+  const stableNumber = getStableUserDisplayNumber(userId);
+  return stableNumber ? `User #${stableNumber}` : fallbackLabel;
+}
+
+function getDisplayName(user = null, options = {}) {
+  const meaningfulName = getMeaningfulDisplayName(
+    options.displayName,
+    options.username,
+    options.profileName,
+    options.name,
+    options.submittedBy,
+    options.submittedByName,
+    options.candidates || [],
+    user?.displayName,
+    user?.username,
+    user?.profileName,
+    user?.name,
+    user?.submittedBy,
+    user?.submittedByName,
+  );
+
+  if (meaningfulName) {
+    return meaningfulName;
+  }
+
+  const stableUserId = String(
+    options.userId
+    || user?.id
+    || user?.userId
+    || user?.memberId
+    || user?.profileId
+    || "",
+  ).trim();
+
+  return getFallbackUserLabel(stableUserId, options.fallbackLabel || "User");
+}
+
 function getSignedInMemberFirstName() {
   const profileName = String(appState.profile?.username || "").trim();
   if (profileName) {
@@ -10336,14 +10474,13 @@ function getGrowSessionsSectionTitle() {
 }
 
 function getProfileDisplayName() {
-  const profileName = String(appState.profile?.username || "").trim();
-  if (profileName) {
-    return profileName;
-  }
-
-  const normalizedEmail = getNormalizedUserEmail(appState.user);
-  const emailPrefix = normalizedEmail.split("@")[0]?.trim();
-  return emailPrefix || "User";
+  return getDisplayName(
+    {
+      id: appState.user?.id || appState.profile?.id || "",
+      username: appState.profile?.username || "",
+    },
+    { fallbackLabel: "User" },
+  );
 }
 
 function getProfileAvatarFallbackLabel() {
@@ -12488,7 +12625,14 @@ function getGallerySnapshotSubmitterLabel(snapshot) {
   }
 
   return snapshot.includeProfileInGallery
-    ? (snapshot.profileName || snapshot.submittedBy || "Submitted by grower")
+    ? getDisplayName(
+      {
+        userId: snapshot.userId || "",
+        profileName: snapshot.profileName || "",
+        submittedBy: snapshot.submittedBy || "",
+      },
+      { fallbackLabel: "User" },
+    )
     : "Anonymous grower";
 }
 
@@ -12577,7 +12721,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   const upload = await uploadGallerySnapshotBlob(session.id, blob);
   const includeProfileInGallery = Boolean(options.includeProfileInGallery);
   const profileName = includeProfileInGallery
-    ? String(appState.profile?.username || appState.user?.email || "").trim()
+    ? getProfileDisplayName()
     : "";
   const profileImageUrl = includeProfileInGallery
     ? String(appState.profile?.avatarUrl || "").trim()
@@ -13199,12 +13343,16 @@ function renderGallerySharedProfileMarkup(snapshot) {
 function getGallerySnapshotCardMemberProfile(snapshot) {
   const memberId = String(snapshot?.userId || "").trim();
   const cachedProfile = memberId ? getPublicMemberProfile(memberId) : null;
-  const fallbackDisplayName = String(
-    cachedProfile?.displayName
-    || snapshot?.profileName
-    || snapshot?.submittedBy
-    || "Community member",
-  ).trim() || "Community member";
+  const fallbackDisplayName = getDisplayName(
+    {
+      id: memberId,
+      displayName: cachedProfile?.displayName || "",
+      profileName: snapshot?.profileName || "",
+      submittedBy: snapshot?.submittedBy || "",
+      submittedByName: snapshot?.submittedByName || "",
+    },
+    { fallbackLabel: "User" },
+  );
   const fallbackAvatarUrl = String(
     cachedProfile?.avatarUrl
     || snapshot?.profileImageUrl
@@ -13975,12 +14123,15 @@ function getGallerySnapshotMemberKey(snapshot = {}) {
 }
 
 function getGallerySnapshotMemberLabel(snapshot = {}) {
-  return String(
-    snapshot?.profileName
-    || snapshot?.submittedBy
-    || snapshot?.submittedByName
-    || "Community member",
-  ).trim() || "Community member";
+  return getDisplayName(
+    {
+      userId: snapshot?.userId || "",
+      profileName: snapshot?.profileName || "",
+      submittedBy: snapshot?.submittedBy || "",
+      submittedByName: snapshot?.submittedByName || "",
+    },
+    { fallbackLabel: "User" },
+  );
 }
 
 function getGallerySnapshotMemberAvatarUrl(snapshot = {}) {
@@ -14020,7 +14171,7 @@ function buildGalleryTopMemberEntries(snapshots = []) {
       totalSuccessPercent: 0,
     };
 
-    existingEntry.name = existingEntry.name === "Community member"
+    existingEntry.name = isGenericDisplayNamePlaceholder(existingEntry.name)
       ? getGallerySnapshotMemberLabel(snapshot)
       : existingEntry.name;
     existingEntry.avatarUrl = existingEntry.avatarUrl || getGallerySnapshotMemberAvatarUrl(snapshot);
@@ -14049,7 +14200,13 @@ function buildGalleryTopMemberEntries(snapshots = []) {
 }
 
 function renderLeaderboardMemberIdentityMarkup(entry = {}, className = "leaderboard-member-identity") {
-  const displayName = String(entry?.name || "Community member").trim() || "Community member";
+  const displayName = getDisplayName(
+    {
+      id: entry?.key || "",
+      name: entry?.name || "",
+    },
+    { fallbackLabel: "User" },
+  );
   const avatarUrl = String(entry?.avatarUrl || "").trim();
   return `
     <span class="${escapeHtml(className)}">
@@ -17320,7 +17477,7 @@ function getSnapshotProfileAttribution(state) {
     return null;
   }
 
-  const name = String(appState.profile?.username || appState.user?.email || "").trim();
+  const name = getProfileDisplayName();
   if (!name) {
     return null;
   }
@@ -23328,11 +23485,11 @@ function renderAdminSourceReviewListMarkup() {
         <div class="admin-source-review-card-copy">
           <strong>${escapeHtml(entry.submittedSourceName)}</strong>
           <p>${escapeHtml(entry.submittedVarietyName || "No variety name provided")}</p>
-        </div>
-        ${renderAdminSourceReviewStatusPillMarkup(entry.reviewStatus)}
+      </div>
+      ${renderAdminSourceReviewStatusPillMarkup(entry.reviewStatus)}
       </div>
       <div class="admin-source-review-card-meta">
-        <span><strong>Submitted by:</strong> ${escapeHtml(entry.submittedBy || "Unknown member")}</span>
+        <span><strong>Submitted by:</strong> ${escapeHtml(getDisplayName({ submittedBy: entry.submittedBy || "" }, { fallbackLabel: "Unknown member" }))}</span>
         <span><strong>Session date:</strong> ${escapeHtml(formatSessionNameDate(entry.sessionDate || "") || "Not available")}</span>
         <span><strong>Occurrences:</strong> ${escapeHtml(String(entry.occurrenceCount || 0))}</span>
       </div>
@@ -23422,13 +23579,13 @@ function renderAdminSourceReviewEditorMarkup() {
       </label>
       <div class="admin-source-review-editor-meta">
         <span><strong>Occurrences:</strong> ${escapeHtml(String(activeEntry.occurrenceCount || 0))}</span>
-        <span><strong>Latest submitter:</strong> ${escapeHtml(activeEntry.submittedBy || "Unknown member")}</span>
+        <span><strong>Latest submitter:</strong> ${escapeHtml(getDisplayName({ submittedBy: activeEntry.submittedBy || "" }, { fallbackLabel: "Unknown member" }))}</span>
         <span><strong>Latest session date:</strong> ${escapeHtml(formatSessionNameDate(activeEntry.sessionDate || "") || "Not available")}</span>
       </div>
       ${latestAudit ? `
         <div class="admin-source-review-audit-note">
           <strong>Last review:</strong>
-          <span>${escapeHtml(getAdminSourceReviewStatusLabel(latestAudit.actionTaken))} by ${escapeHtml(latestAudit.reviewedBy || "Admin")} on ${escapeHtml(formatTimingDateTime(parseCompletedAtValue(latestAudit.reviewedAt)) || latestAudit.reviewedAt || "Not available")}</span>
+          <span>${escapeHtml(getAdminSourceReviewStatusLabel(latestAudit.actionTaken))} by ${escapeHtml(getDisplayName({ submittedBy: latestAudit.reviewedBy || "" }, { fallbackLabel: "Admin" }))} on ${escapeHtml(formatTimingDateTime(parseCompletedAtValue(latestAudit.reviewedAt)) || latestAudit.reviewedAt || "Not available")}</span>
         </div>
       ` : ""}
       <p id="admin-source-review-message" class="snapshot-message">${escapeHtml(appState.sourceReviewMessage || "")}</p>
@@ -23533,7 +23690,7 @@ function bindAdminSourceReviewSection() {
       return;
     }
 
-    const reviewedBy = getProfileDisplayName() || appState.user?.email || "Admin";
+    const reviewedBy = getProfileDisplayName() || "Admin";
     const reviewedAt = new Date().toISOString();
     const nextRecord = {
       submittedKey,
@@ -26031,18 +26188,22 @@ function getSiteVisitorIdentityLabel(entry) {
   const userId = String(entry?.userId || "").trim();
   if (userId && isAdminUser()) {
     const adminMember = getAdminMemberById(userId);
-    if (adminMember?.profileName && adminMember?.email) {
-      return `${adminMember.profileName} (${adminMember.email})`;
-    }
-    if (adminMember?.profileName) {
-      return adminMember.profileName;
-    }
-    if (adminMember?.email) {
-      return adminMember.email;
-    }
     if (userId === appState.user?.id) {
-      return appState.profile?.username || appState.user?.email || `Member ${formatSiteVisitorShortId(userId, "Member")}`;
+      return getDisplayName(
+        {
+          id: userId,
+          username: appState.profile?.username || "",
+        },
+        { fallbackLabel: "User" },
+      );
     }
+    return getDisplayName(
+      {
+        id: userId,
+        profileName: adminMember?.profileName || "",
+      },
+      { fallbackLabel: "User" },
+    );
   }
 
   return `Anonymous • ${formatSiteVisitorShortId(entry?.visitorId, "Visitor")}`;
@@ -26064,29 +26225,32 @@ function formatSiteAnalyticsEventTypeLabel(value = "page_view") {
 
 function getSiteVisitorAnalyticsUserDisplay(entry) {
   const profileName = String(entry?.profileName || "").trim();
-  const userEmail = String(entry?.userEmail || "").trim().toLowerCase();
-  if (profileName && userEmail) {
-    return { primary: profileName, secondary: userEmail };
-  }
-  if (userEmail) {
-    return { primary: userEmail, secondary: "" };
-  }
-  if (profileName) {
-    return { primary: profileName, secondary: "" };
+  const userId = String(entry?.userId || "").trim();
+  if (profileName || userId) {
+    return {
+      primary: getDisplayName(
+        {
+          id: userId,
+          profileName,
+        },
+        { fallbackLabel: "User" },
+      ),
+      secondary: "",
+    };
   }
 
-  const userId = String(entry?.userId || "").trim();
   if (userId && isAdminUser()) {
     const adminMember = getAdminMemberById(userId);
-    if (adminMember?.profileName && adminMember?.email) {
-      return { primary: adminMember.profileName, secondary: adminMember.email };
-    }
-    if (adminMember?.profileName) {
-      return { primary: adminMember.profileName, secondary: "" };
-    }
-    if (adminMember?.email) {
-      return { primary: adminMember.email, secondary: "" };
-    }
+    return {
+      primary: getDisplayName(
+        {
+          id: userId,
+          profileName: adminMember?.profileName || "",
+        },
+        { fallbackLabel: "User" },
+      ),
+      secondary: "",
+    };
   }
 
   return { primary: "", secondary: "" };
@@ -29247,7 +29411,7 @@ function getAdminCstpTesterById(testerId = "") {
 }
 
 function getAdminCstpAssignmentActorLabel() {
-  return String(getProfileDisplayName() || appState.currentUserEmail || appState.user?.email || "Admin").trim() || "Admin";
+  return String(getProfileDisplayName() || "Admin").trim() || "Admin";
 }
 
 function assignAdminCstpTester(record = null, testerId = "") {
@@ -36515,7 +36679,13 @@ function renderPublicMemberProfile(memberId) {
     return;
   }
 
-  const displayName = profile?.displayName || "Community member";
+  const displayName = getDisplayName(
+    {
+      id: normalizedId,
+      displayName: profile?.displayName || "",
+    },
+    { fallbackLabel: "User" },
+  );
   const avatarUrl = profile?.avatarUrl || "";
   const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
   const followerCountValue = followSummary
@@ -36996,7 +37166,13 @@ function renderGrowNetworkPage() {
           const memberId = entry.memberId;
           const isMockEntry = Boolean(entry.isMock);
           const profile = getPublicMemberProfile(memberId);
-          const displayName = profile?.displayName || "Community member";
+          const displayName = getDisplayName(
+            {
+              id: memberId,
+              displayName: profile?.displayName || "",
+            },
+            { fallbackLabel: "User" },
+          );
           const avatarUrl = profile?.avatarUrl || "";
           const followSummary = appState.publicMemberFollowSummaries[memberId] || null;
           const publicSnapshotCount = getApprovedPublicSnapshotsForMember(memberId).length;
