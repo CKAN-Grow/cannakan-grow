@@ -1080,6 +1080,7 @@ const appState = {
   adminMessagesLoaded: false,
   adminMessagesError: "",
   adminMessagesRefreshPromise: null,
+  adminReportsTableUnavailable: false,
   adminMessageStatusFilter: "all",
   adminMessageIssueTypeFilter: "all",
   adminMessageExpandedState: {},
@@ -1435,6 +1436,7 @@ function resetSessionScopedAppState() {
   appState.adminMessagesLoaded = false;
   appState.adminMessagesError = "";
   appState.adminMessagesRefreshPromise = null;
+  appState.adminReportsTableUnavailable = false;
   appState.adminMessageStatusFilter = "all";
   appState.adminMessageIssueTypeFilter = "all";
   appState.adminMessageExpandedState = {};
@@ -1629,7 +1631,6 @@ function isSuppressedExternalStylesheetInspectionFailure({
   stack = "",
 } = {}) {
   const normalizedMessage = String(message || "").trim().toLowerCase();
-  const normalizedFilename = String(filename || "").trim().toLowerCase();
   const normalizedStack = String(stack || "").trim().toLowerCase();
   const mentionsCssRules = normalizedMessage.includes("cssrules")
     || normalizedStack.includes("cssrules");
@@ -1642,22 +1643,7 @@ function isSuppressedExternalStylesheetInspectionFailure({
     return false;
   }
 
-  const sameOrigin = String(window.location.origin || "").trim().toLowerCase();
-  const isVendorLikeSource = (
-    normalizedFilename.startsWith("chrome-extension://")
-    || normalizedFilename.startsWith("moz-extension://")
-    || normalizedFilename.startsWith("safari-web-extension://")
-    || normalizedFilename.includes("/vendor")
-    || normalizedFilename.includes("vendor.js")
-    || normalizedFilename.includes("vm")
-    || normalizedStack.includes("vendor.js")
-    || normalizedStack.includes(" insertrule ")
-    || normalizedStack.includes(" at insertrule ")
-    || normalizedStack.includes("(vm")
-    || (normalizedFilename.startsWith("http") && sameOrigin && !normalizedFilename.startsWith(sameOrigin))
-  );
-
-  return isVendorLikeSource;
+  return true;
 }
 
 function shouldSuppressExternalStylesheetInspectionError(event) {
@@ -5166,14 +5152,16 @@ function normalizeAdminMessageRow(row) {
 }
 
 function isAdminMessagesTableMissingError(error) {
-  const normalizedMessage = String(error?.message || error?.details || error?.hint || "").toLowerCase();
-  return normalizedMessage.includes("admin_reports")
-    && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
+  return isSupabaseTableMissingError(error, ADMIN_REPORTS_TABLE);
 }
 
 function logAdminReportFallback(record = {}, error = null) {
   if (error) {
-    console.warn("[Admin Reports Fallback] Could not insert report into Supabase.", error);
+    if (isAdminMessagesTableMissingError(error)) {
+      markAdminReportsTableUnavailable();
+    } else {
+      console.warn("[Admin Reports Fallback] Could not insert report into Supabase.", { message: error?.message || String(error || "") });
+    }
   }
   console.info("[Admin Reports Fallback] Report logged to console fallback.", record);
   return {
@@ -5260,8 +5248,11 @@ async function submitAdminMessage(payload = {}) {
     created_at: payload.createdAt || new Date().toISOString(),
   };
 
-  if (!appState.supabase) {
+  if (!appState.supabase || appState.adminReportsTableUnavailable) {
     const fallbackRecord = logAdminReportFallback(record);
+    if (appState.adminReportsTableUnavailable) {
+      markAdminReportsTableUnavailable();
+    }
     void notifyAdminReportByEmail(record);
     return fallbackRecord;
   }
@@ -5271,17 +5262,21 @@ async function submitAdminMessage(payload = {}) {
     .insert(record);
 
   if (error) {
+    if (isAdminMessagesTableMissingError(error)) {
+      markAdminReportsTableUnavailable();
+    }
     const fallbackRecord = logAdminReportFallback(record, error);
     void notifyAdminReportByEmail(record);
     return fallbackRecord;
   }
 
+  appState.adminReportsTableUnavailable = false;
   void notifyAdminReportByEmail(record);
   return record;
 }
 
 async function loadAdminMessages(reason = "refresh") {
-  if (!appState.supabase || !isAdminUser()) {
+  if (!appState.supabase || !isAdminUser() || appState.adminReportsTableUnavailable) {
     return [];
   }
 
@@ -5292,11 +5287,13 @@ async function loadAdminMessages(reason = "refresh") {
 
   if (error) {
     if (isAdminMessagesTableMissingError(error)) {
-      throw new Error("User reports table unavailable. Apply supabase-admin-reports-migration.sql.");
+      markAdminReportsTableUnavailable();
+      return [];
     }
     throw new Error(error.message || `Could not load user reports during ${reason}.`);
   }
 
+  appState.adminReportsTableUnavailable = false;
   return (data || []).map(normalizeAdminMessageRow).filter(Boolean);
 }
 
@@ -5329,7 +5326,12 @@ async function refreshAdminMessages(options = {}) {
     } catch (error) {
       appState.adminMessages = [];
       appState.adminMessagesLoaded = true;
-      console.warn("[Admin Reports] Could not load user reports.", error);
+      if (isAdminMessagesTableMissingError(error)) {
+        markAdminReportsTableUnavailable();
+        appState.adminMessagesError = "";
+        return [];
+      }
+      console.warn("[Admin Reports] Could not load user reports.", { reason, message: error?.message || String(error || "") });
       appState.adminMessagesError = "Could not load user reports.";
       return [];
     }
@@ -6046,18 +6048,19 @@ function getSupabaseErrorStatusCode(error) {
 }
 
 function getSafeCssRules(sheet) {
-  if (!sheet || typeof sheet !== "object") {
+  const resolvedSheet = sheet?.sheet || sheet;
+  if (!resolvedSheet || typeof resolvedSheet !== "object") {
     return [];
   }
 
   try {
     // Some extension-injected or cross-origin stylesheets block cssRules access.
     // Skip those sheets quietly so style inspection never breaks the app.
-    if ("cssRules" in sheet && sheet.cssRules) {
-      return sheet.cssRules;
+    if ("cssRules" in resolvedSheet && resolvedSheet.cssRules) {
+      return resolvedSheet.cssRules;
     }
-    if ("rules" in sheet && sheet.rules) {
-      return sheet.rules;
+    if ("rules" in resolvedSheet && resolvedSheet.rules) {
+      return resolvedSheet.rules;
     }
     return [];
   } catch {
@@ -6109,6 +6112,24 @@ function isSupabaseTableMissingError(error, tableNames = "") {
   }
 
   return referencesKnownTable || statusCode === 404 || SUPABASE_MISSING_TABLE_ERROR_CODES.has(code);
+}
+
+function markAdminReportsTableUnavailable() {
+  appState.adminReportsTableUnavailable = true;
+  logRuntimeIssueOnce(
+    "warn",
+    "supabase-admin-reports-unavailable",
+    "Admin reports table not configured. Using local fallback.",
+  );
+}
+
+function markContactMessagesTableUnavailable() {
+  appState.contactMessagesTableUnavailable = true;
+  logRuntimeIssueOnce(
+    "warn",
+    "supabase-contact-messages-unavailable",
+    "Contact messages table unavailable. Using fallback storage.",
+  );
 }
 
 function isSiteAnalyticsTableMissingError(error) {
@@ -29598,9 +29619,7 @@ function normalizeAdminCommunicationRecord(record = null) {
 }
 
 function isContactMessagesTableMissingError(error) {
-  const normalizedMessage = String(error?.message || error?.details || error?.hint || "").toLowerCase();
-  return normalizedMessage.includes("contact_messages")
-    && (normalizedMessage.includes("relation") || normalizedMessage.includes("does not exist"));
+  return isSupabaseTableMissingError(error, CONTACT_MESSAGES_TABLE);
 }
 
 function getDefaultAdminCommunicationRecords() {
@@ -29638,7 +29657,7 @@ function saveAdminCommunicationRecordsToStorage(records = []) {
 }
 
 async function loadContactMessages(reason = "refresh") {
-  if (!appState.supabase || !isAdminUser()) {
+  if (!appState.supabase || !isAdminUser() || appState.contactMessagesTableUnavailable) {
     return [];
   }
 
@@ -29649,11 +29668,13 @@ async function loadContactMessages(reason = "refresh") {
 
   if (error) {
     if (isContactMessagesTableMissingError(error)) {
-      throw new Error("Contact messages table unavailable. Run supabase-contact-messages-migration.sql in Supabase.");
+      markContactMessagesTableUnavailable();
+      return [];
     }
     throw new Error(error.message || `Could not load contact messages during ${reason}.`);
   }
 
+  appState.contactMessagesTableUnavailable = false;
   return (data || []).map((record) => normalizeAdminCommunicationRecord(record)).filter(Boolean);
 }
 
@@ -29681,15 +29702,18 @@ async function refreshAdminCommunicationRecords(options = {}) {
       const records = await loadContactMessages(reason);
       appState.adminCommunicationRecords = records;
       appState.adminCommunicationRecordsLoaded = true;
-      appState.contactMessagesTableUnavailable = false;
       appState.adminCommunicationRecordsError = "";
       return records;
     } catch (error) {
       appState.adminCommunicationRecords = [];
       appState.adminCommunicationRecordsLoaded = true;
-      appState.contactMessagesTableUnavailable = isContactMessagesTableMissingError(error);
+      if (isContactMessagesTableMissingError(error)) {
+        markContactMessagesTableUnavailable();
+        appState.adminCommunicationRecordsError = "";
+        return [];
+      }
       appState.adminCommunicationRecordsError = error.message || "Could not load contact messages.";
-      console.warn("[Contact Messages] Falling back to local communication records.", { reason, error });
+      console.warn("[Contact Messages] Falling back to local communication records.", { reason, message: error?.message || String(error || "") });
       return [];
     }
   })();
@@ -29733,7 +29757,7 @@ async function updateAdminCommunicationRecord(recordId = "", updates = {}) {
 
   if (error) {
     if (isContactMessagesTableMissingError(error)) {
-      appState.contactMessagesTableUnavailable = true;
+      markContactMessagesTableUnavailable();
     }
     return upsertAdminCommunicationRecord({
       ...existingLocalRecord,
@@ -29774,7 +29798,10 @@ async function submitContactCommunication(payload = {}) {
     internalNotes: "",
   });
 
-  if (!appState.supabase) {
+  if (!appState.supabase || appState.contactMessagesTableUnavailable) {
+    if (appState.contactMessagesTableUnavailable) {
+      markContactMessagesTableUnavailable();
+    }
     upsertAdminCommunicationRecord(localRecord);
     return {
       record: localRecord,
@@ -29805,9 +29832,10 @@ async function submitContactCommunication(payload = {}) {
 
   if (error) {
     if (isContactMessagesTableMissingError(error)) {
-      appState.contactMessagesTableUnavailable = true;
+      markContactMessagesTableUnavailable();
+    } else {
+      console.warn("[Contact Messages] Falling back to local contact persistence.", { message: error?.message || String(error || "") });
     }
-    console.warn("[Contact Messages] Falling back to local contact persistence.", error);
     upsertAdminCommunicationRecord(localRecord);
     return {
       record: localRecord,
@@ -34446,7 +34474,13 @@ function renderAdminPage() {
     });
   }
 
-  if (isAdminUser() && !appState.adminMessagesLoaded && !appState.adminMessagesRefreshPromise && appState.supabase) {
+  if (
+    isAdminUser()
+    && !appState.adminReportsTableUnavailable
+    && !appState.adminMessagesLoaded
+    && !appState.adminMessagesRefreshPromise
+    && appState.supabase
+  ) {
     void refreshAdminMessages({ force: true, reason: "route:admin-user-reports" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
@@ -34455,7 +34489,13 @@ function renderAdminPage() {
     });
   }
 
-  if (isAdminUser() && !appState.adminCommunicationRecordsLoaded && !appState.adminCommunicationRecordsRefreshPromise && appState.supabase) {
+  if (
+    isAdminUser()
+    && !appState.contactMessagesTableUnavailable
+    && !appState.adminCommunicationRecordsLoaded
+    && !appState.adminCommunicationRecordsRefreshPromise
+    && appState.supabase
+  ) {
     void refreshAdminCommunicationRecords({ force: true, reason: "route:admin-communications" }).then(() => {
       const currentHash = window.location.hash || "#home";
       if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
