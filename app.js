@@ -67,7 +67,7 @@ const ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminSeedAgeAnalytics
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
-const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "realistic-v1";
+const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
 const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
   "cstp-testing-lab",
@@ -15343,57 +15343,61 @@ function renderCommunitySeedAgeOverviewSection() {
 
 function getSeedAgeAnalyticsBucketDefinitions() {
   return [
-    { key: "0-1", label: "0-1", legendLabel: "0-1 month", minMonths: 0, maxMonths: 1, color: "#5fc56a" },
-    { key: "1-3", label: "1-3", legendLabel: "1-3 months", minMonths: 1, maxMonths: 3, color: "#76cb5d" },
-    { key: "3-6", label: "3-6", legendLabel: "3-6 months", minMonths: 3, maxMonths: 6, color: "#9ad54a" },
-    { key: "6-12", label: "6-12", legendLabel: "6-12 months", minMonths: 6, maxMonths: 12, color: "#bbd53e" },
-    { key: "12-18", label: "12-18", legendLabel: "12-18 months", minMonths: 12, maxMonths: 18, color: "#d0b83e" },
-    { key: "18-24", label: "18-24", legendLabel: "18-24 months", minMonths: 18, maxMonths: 24, color: "#d6913f" },
-    { key: "24-36", label: "24-36", legendLabel: "24-36 months", minMonths: 24, maxMonths: 36, color: "#d57742" },
-    { key: "36-48", label: "36-48", legendLabel: "36-48 months", minMonths: 36, maxMonths: 48, color: "#d36043" },
-    { key: "48-60", label: "48-60", legendLabel: "48-60 months", minMonths: 48, maxMonths: 60, color: "#d85343" },
-    { key: "60+", label: "60+", legendLabel: "60+ months", minMonths: 60, maxMonths: null, color: "#df4b41" },
+    { key: "1-2", label: "1-2 yrs", legendLabel: "1-2 yrs", fullLabel: "1-2 years", minYears: 0, maxYears: 2, averageYears: 1.5, color: "#b8ec68" },
+    { key: "2-5", label: "2-5 yrs", legendLabel: "2-5 yrs", fullLabel: "2-5 years", minYears: 2, maxYears: 5, averageYears: 3.5, color: "#98dd65" },
+    { key: "5-10", label: "5-10 yrs", legendLabel: "5-10 yrs", fullLabel: "5-10 years", minYears: 5, maxYears: 10, averageYears: 7.5, color: "#cdd95a" },
+    { key: "10-15", label: "10-15 yrs", legendLabel: "10-15 yrs", fullLabel: "10-15 years", minYears: 10, maxYears: 15, averageYears: 12.5, color: "#d6b24d" },
+    { key: "15-20", label: "15-20 yrs", legendLabel: "15-20 yrs", fullLabel: "15-20 years", minYears: 15, maxYears: 20, averageYears: 17.5, color: "#d88747" },
+    { key: "20-plus", label: "20+ yrs", legendLabel: "20+ yrs", fullLabel: "20+ years", minYears: 20, maxYears: null, averageYears: 23, color: "#da5d43" },
   ];
 }
 
 function getSeedAgeAnalyticsHeatmapBucketDefinitions() {
-  return [
-    { key: "0-1", label: "0-1 months", minMonths: 0, maxMonths: 1 },
-    { key: "1-3", label: "1-3 months", minMonths: 1, maxMonths: 3 },
-    { key: "3-6", label: "3-6 months", minMonths: 3, maxMonths: 6 },
-    { key: "6-12", label: "6-12 months", minMonths: 6, maxMonths: 12 },
-    { key: "12-18", label: "12-18 months", minMonths: 12, maxMonths: 18 },
-    { key: "18-24", label: "18-24 months", minMonths: 18, maxMonths: 24 },
-    { key: "24+", label: "24+ months", minMonths: 24, maxMonths: null },
-  ];
+  return getSeedAgeAnalyticsBucketDefinitions().map((bucket) => ({
+    key: bucket.key,
+    label: bucket.label,
+    fullLabel: bucket.fullLabel,
+    minYears: bucket.minYears,
+    maxYears: bucket.maxYears,
+  }));
 }
 
-function matchesSeedAgeAnalyticsBucket(ageMonths = null, bucket = null) {
-  const normalizedAgeMonths = Number(ageMonths);
-  if (!Number.isFinite(normalizedAgeMonths) || !bucket) {
+function normalizeSeedAgeAnalyticsYears(value = null) {
+  const normalizedYears = normalizeSeedAgeYears(value);
+  if (normalizedYears === null) {
+    return null;
+  }
+  if (normalizedYears > 30) {
+    return Math.max(0, normalizedYears / 12);
+  }
+  return Math.max(0, normalizedYears);
+}
+
+function getSeedAgeAnalyticsDefaultAgeYears() {
+  return 1.5;
+}
+
+function matchesSeedAgeAnalyticsBucket(ageYears = null, bucket = null) {
+  const normalizedAgeYears = Number(ageYears);
+  if (!Number.isFinite(normalizedAgeYears) || !bucket) {
     return false;
   }
-  return normalizedAgeMonths >= bucket.minMonths
-    && (bucket.maxMonths === null || normalizedAgeMonths < bucket.maxMonths);
+  return normalizedAgeYears >= bucket.minYears
+    && (bucket.maxYears === null || normalizedAgeYears < bucket.maxYears);
 }
 
-function getSeedAgeAnalyticsBucketForMonths(ageMonths = null, definitions = getSeedAgeAnalyticsBucketDefinitions()) {
-  return definitions.find((bucket) => matchesSeedAgeAnalyticsBucket(ageMonths, bucket)) || null;
+function getSeedAgeAnalyticsBucketForYears(ageYears = null, definitions = getSeedAgeAnalyticsBucketDefinitions()) {
+  return definitions.find((bucket) => matchesSeedAgeAnalyticsBucket(ageYears, bucket)) || null;
 }
 
 function formatSeedAgeAnalyticsRangeLabel(startBucket = null, endBucket = startBucket) {
   if (!startBucket || !endBucket) {
     return "Not enough data yet";
   }
-
-  const normalizedStart = Math.max(0, Math.round(Number(startBucket.minMonths) || 0));
-  if (endBucket.maxMonths === null) {
-    return normalizedStart === 60
-      ? "60+ months"
-      : `${normalizedStart} - 60+ months`;
+  if (startBucket.key === endBucket.key) {
+    return startBucket.fullLabel || startBucket.label;
   }
-
-  return `${normalizedStart} - ${Math.max(normalizedStart, Math.round(Number(endBucket.maxMonths) || normalizedStart))} months`;
+  return `${startBucket.fullLabel || startBucket.label} - ${endBucket.fullLabel || endBucket.label}`;
 }
 
 function formatSeedAgeAnalyticsRateLabel(value = null, emptyLabel = "No data") {
@@ -15402,6 +15406,38 @@ function formatSeedAgeAnalyticsRateLabel(value = null, emptyLabel = "No data") {
     return emptyLabel;
   }
   return `${normalizedValue.toFixed(1)}%`;
+}
+
+function getSeedAgeAnalyticsResolvedYears(partition = null, session = null) {
+  const trackingEnabled = Boolean(session?.seedAgeTrackingEnabled ?? session?.seed_age_tracking_enabled);
+  if (!trackingEnabled) {
+    return {
+      years: getSeedAgeAnalyticsDefaultAgeYears(),
+      usedDefaultAge: true,
+    };
+  }
+
+  const partitionYears = normalizeSeedAgeAnalyticsYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+  if (partitionYears !== null) {
+    return {
+      years: partitionYears,
+      usedDefaultAge: false,
+    };
+  }
+
+  const sessionSeedAge = getSessionSeedAgeMetadata(session);
+  const sessionYears = normalizeSeedAgeAnalyticsYears(sessionSeedAge.sessionSeedAgeYears);
+  if (sessionSeedAge.trackingEnabled && sessionSeedAge.mode === "same" && sessionYears !== null) {
+    return {
+      years: sessionYears,
+      usedDefaultAge: false,
+    };
+  }
+
+  return {
+    years: getSeedAgeAnalyticsDefaultAgeYears(),
+    usedDefaultAge: true,
+  };
 }
 
 function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
@@ -15415,12 +15451,9 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
       }
 
       const totalPlanted = Math.max(0, Number(partition?.plantedCount) || 0);
-      const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
-      if (seedAgeYears === null) {
-        return null;
-      }
-
-      const ageMonths = Math.max(0, Number(seedAgeYears) * 12);
+      const seedAgeResolution = getSeedAgeAnalyticsResolvedYears(partition, normalizedSession);
+      const seedAgeYears = seedAgeResolution.years;
+      const ageBucket = getSeedAgeAnalyticsBucketForYears(seedAgeYears);
       const sessionId = String(normalizedSession?.id || "").trim();
       const seedType = String(partition?.seedType || "").trim().toLowerCase();
       const feminized = String(partition?.feminized || "").trim().toLowerCase();
@@ -15431,9 +15464,11 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
         totalSeeds,
         totalPlanted,
         seedAgeYears,
-        ageMonths,
+        bucketKey: ageBucket?.key || "1-2",
+        bucketLabel: ageBucket?.fullLabel || "1-2 years",
         seedType,
         feminized,
+        usedDefaultAge: Boolean(seedAgeResolution.usedDefaultAge),
       };
     }).filter(Boolean);
   });
@@ -15493,7 +15528,7 @@ function buildSeedAgeAnalyticsNoDataState() {
       totalSeeds: 0,
       totalPlanted: 0,
       sessionCount: 0,
-      averageMonths: null,
+      averageYears: null,
       isOptimal: false,
     })),
     distributionSegments: getSeedAgeAnalyticsBucketDefinitions().map((bucket) => ({
@@ -15541,52 +15576,36 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
   const bucketDefinitions = getSeedAgeAnalyticsBucketDefinitions();
   const heatmapDefinitions = getSeedAgeAnalyticsHeatmapBucketDefinitions();
   const distributionCountsByKey = {
-    "0-1": 96,
-    "1-3": 186,
-    "3-6": 289,
-    "6-12": 320,
-    "12-18": 154,
-    "18-24": 96,
-    "24-36": 64,
-    "36-48": 38,
-    "48-60": 25,
-    "60+": 16,
+    "1-2": 642,
+    "2-5": 338,
+    "5-10": 171,
+    "10-15": 79,
+    "15-20": 36,
+    "20-plus": 18,
   };
   const ratesByKey = {
-    "0-1": 60.8,
-    "1-3": 71.4,
-    "3-6": 84.6,
-    "6-12": 91.8,
-    "12-18": 84.1,
-    "18-24": 75.2,
-    "24-36": 64.3,
-    "36-48": 51.7,
-    "48-60": 38.6,
-    "60+": 27.4,
+    "1-2": 91.8,
+    "2-5": 85.4,
+    "5-10": 73.6,
+    "10-15": 61.9,
+    "15-20": 46.8,
+    "20-plus": 31.7,
   };
-  const averageMonthsByKey = {
-    "0-1": 0.7,
-    "1-3": 2.1,
-    "3-6": 4.4,
-    "6-12": 8.6,
-    "12-18": 14.9,
-    "18-24": 21.2,
-    "24-36": 29.8,
-    "36-48": 41.3,
-    "48-60": 54.1,
-    "60+": 66.5,
+  const averageYearsByKey = {
+    "1-2": 1.5,
+    "2-5": 3.4,
+    "5-10": 7.1,
+    "10-15": 12.2,
+    "15-20": 17.1,
+    "20-plus": 24.6,
   };
   const seedsPerSessionByKey = {
-    "0-1": 10,
-    "1-3": 10,
-    "3-6": 11,
-    "6-12": 11,
-    "12-18": 10,
-    "18-24": 10,
-    "24-36": 9,
-    "36-48": 9,
-    "48-60": 8,
-    "60+": 8,
+    "1-2": 10,
+    "2-5": 10,
+    "5-10": 9,
+    "10-15": 9,
+    "15-20": 8,
+    "20-plus": 8,
   };
 
   const lineChart = bucketDefinitions.map((bucket) => {
@@ -15601,11 +15620,11 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
       sessionCount,
       totalSeeds,
       totalPlanted: Math.round(totalSeeds * (rate / 100)),
-      averageMonths: averageMonthsByKey[bucket.key] || bucket.minMonths || 0,
-      minMonths: bucket.minMonths,
-      maxMonths: bucket.maxMonths,
+      averageYears: averageYearsByKey[bucket.key] || bucket.averageYears || 0,
+      minYears: bucket.minYears,
+      maxYears: bucket.maxYears,
       color: bucket.color,
-      isOptimal: bucket.key === "3-6" || bucket.key === "6-12",
+      isOptimal: bucket.key === "1-2",
     };
   });
 
@@ -15620,35 +15639,30 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
     color: bucket.color,
   }));
 
-  const aggregatedOlderSessionCount = ["24-36", "36-48", "48-60", "60+"].reduce(
-    (total, key) => total + (distributionCountsByKey[key] || 0),
-    0,
-  );
   const overallHeatmapSeeds = {
-    "0-1": distributionCountsByKey["0-1"] * 10,
-    "1-3": distributionCountsByKey["1-3"] * 10,
-    "3-6": distributionCountsByKey["3-6"] * 11,
-    "6-12": distributionCountsByKey["6-12"] * 11,
-    "12-18": distributionCountsByKey["12-18"] * 10,
-    "18-24": distributionCountsByKey["18-24"] * 10,
-    "24+": aggregatedOlderSessionCount * 9,
+    "1-2": distributionCountsByKey["1-2"] * 10,
+    "2-5": distributionCountsByKey["2-5"] * 10,
+    "5-10": distributionCountsByKey["5-10"] * 9,
+    "10-15": distributionCountsByKey["10-15"] * 9,
+    "15-20": distributionCountsByKey["15-20"] * 8,
+    "20-plus": distributionCountsByKey["20-plus"] * 8,
   };
   const heatmapConfig = {
     Photo: {
-      rates: [59, 70, 83, 90, 85, 76, 56],
-      shares: [0.44, 0.43, 0.42, 0.41, 0.4, 0.39, 0.38],
+      rates: [90, 84, 76, 65, 51, 36],
+      shares: [0.42, 0.42, 0.43, 0.44, 0.44, 0.45],
     },
     Auto: {
-      rates: [63, 74, 87, 93, 82, 72, 49],
-      shares: [0.27, 0.29, 0.3, 0.31, 0.31, 0.3, 0.28],
+      rates: [93, 86, 72, 58, 43, 28],
+      shares: [0.3, 0.31, 0.29, 0.28, 0.27, 0.26],
     },
     Feminized: {
-      rates: [61, 72, 85, 92, 84, 74, 53],
-      shares: [0.57, 0.59, 0.61, 0.62, 0.61, 0.6, 0.57],
+      rates: [92, 85, 74, 62, 47, 32],
+      shares: [0.58, 0.58, 0.59, 0.6, 0.6, 0.6],
     },
     Overall: {
-      rates: [61, 72, 85, 92, 84, 75, 54],
-      shares: [1, 1, 1, 1, 1, 1, 1],
+      rates: [92, 85, 74, 62, 47, 32],
+      shares: [1, 1, 1, 1, 1, 1],
     },
   };
   const heatmapRows = Object.entries(heatmapConfig).map(([label, config]) => ({
@@ -15669,13 +15683,13 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
   }));
 
   const kpis = {
-    optimalAgeRange: "3 - 12 months",
+    optimalAgeRange: "1-2 years",
     overallAverage: `${overallAverage.toFixed(1)}%`,
     totalSessions,
-    ageRange: "0 - 60+ months",
+    ageRange: "1-20+ years",
     bestPerformance: "91.8%",
-    bestPerformanceBucket: "6-12",
-    bestPerformanceHelper: "Achieved at 9 months average",
+    bestPerformanceBucket: "1-2",
+    bestPerformanceHelper: "Highest rate in the 1-2 years bucket",
   };
 
   return {
@@ -15688,22 +15702,22 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
       rows: heatmapRows,
     },
     insights: [
-      "6-12 month seeds consistently give me the best results.",
-      "Fresh seeds under 1 month can be hit or miss until they finish curing.",
-      "Older seeds beyond 24 months usually need extra patience and a gentler setup.",
-      "Photos seem to hold their viability a little better over longer storage windows.",
+      "1-2 year seeds consistently lead community-style mock performance.",
+      "2-5 year seeds remain strong, but they no longer match the peak bucket.",
+      "5-10 year seeds show a clear mid-life drop in viability.",
+      "Older stored seeds beyond 15 years need more patience and care.",
     ],
     performanceInsights: [
-      { icon: "arrow", title: "Peak Performance", body: "6-12 month seeds lead the mock profile at 91.8%." },
-      { icon: "clock", title: "Good Window", body: "The 3-12 month window stays reliably strong across the sample." },
-      { icon: "decline", title: "Declining Returns", body: "Rates ease down after 18-24 months and drop faster beyond 36 months." },
-      { icon: "alert", title: "Age Matters", body: "Fresh and long-stored seeds both trail the mid-age peak window." },
+      { icon: "arrow", title: "Peak Performance", body: "1-2 year seeds lead the mock profile at 91.8%." },
+      { icon: "clock", title: "Good Window", body: "The 1-5 year span stays strongest across the mock sample." },
+      { icon: "decline", title: "Declining Returns", body: "Performance slips steadily after 5 years and falls sharply beyond 15 years." },
+      { icon: "alert", title: "Age Matters", body: "Long-stored seeds trail the baseline bucket by a wide margin in the preview model." },
     ],
     communityNotes: [
-      { title: "Community note", meta: "Grower observation", body: "6-12 month seeds consistently give me the best results once they have had time to fully cure." },
-      { title: "Community note", meta: "Grower observation", body: "Older seeds (24+ months) usually need extra time, patience, and more careful moisture control." },
-      { title: "Community note", meta: "Grower observation", body: "Fresh seeds under 1 month can be hit or miss compared with lightly cured seed lots." },
-      { title: "Community note", meta: "Grower observation", body: "Photos seem a little more stable than autos once seed lots get into the older storage buckets." },
+      { title: "Preview Observation", meta: "Grower observation", body: "1-2 year seeds consistently give me the best starts in long-term storage comparisons." },
+      { title: "Preview Observation", meta: "Grower observation", body: "2-5 year seeds still perform well, but they are not as sharp as the baseline bucket." },
+      { title: "Preview Observation", meta: "Grower observation", body: "Older seeds above 15 years usually need extra patience and a gentler setup." },
+      { title: "Preview Observation", meta: "Grower observation", body: "Photos look a little more stable than autos once seed lots move into the oldest buckets." },
     ],
     structured: buildSeedAgeAnalyticsStructuredObject({
       kpis,
@@ -15727,11 +15741,11 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
       insights: [
         ...lineChart
           .filter((bucket) => bucket.isOptimal)
-          .map((bucket) => `${bucket.key} months: ${bucket.rate.toFixed(1)}% germination`),
+          .map((bucket) => `${bucket.fullLabel}: ${bucket.rate.toFixed(1)}% germination`),
         ...[
-          "6-12 month seeds consistently give me the best results.",
-          "Older seeds (24+ months) need extra time and care.",
-          "Fresh seeds under 1 month can be hit or miss.",
+          "1-2 year seeds consistently give me the best results.",
+          "Older seeds above 15 years need extra time and care.",
+          "2-5 year seeds remain strong but no longer match the peak bucket.",
         ],
       ],
     }),
@@ -15815,7 +15829,7 @@ function buildSeedAgeAnalyticsDemoState() {
       totalSeeds: Number(source.totalSeeds) || 0,
       totalPlanted: Number(source.totalPlanted) || 0,
       sessionCount: Number(source.sessionCount) || 0,
-      averageMonths: Number(source.averageMonths) || null,
+      averageYears: Number(source.averageYears) || null,
       isOptimal: Boolean(source.isOptimal),
     };
   });
@@ -15828,7 +15842,7 @@ function buildSeedAgeAnalyticsDemoState() {
       sharePercent: Number(source.sharePercent) || 0,
       color: bucket.color,
     };
-  }).filter((segment) => segment.count > 0);
+  });
   const mostCommonSegment = [...distributionSegments].sort((left, right) => right.count - left.count)[0] || null;
   return {
     dataMode: "demo",
@@ -15837,7 +15851,7 @@ function buildSeedAgeAnalyticsDemoState() {
     ignoredSessionCount: 0,
     hasMixedAgeOverlap: false,
     demoNotice: "Stable mock preview shown until more public Community Grow sessions include recorded seed age.",
-    summaryNotice: "Mock data follows realistic viability trends so older seed buckets remain testable before public coverage fills in.",
+    summaryNotice: "Mock data follows realistic long-term viability trends across standardized year buckets.",
     optimalRangeLabel: mockDataset.kpis.optimalAgeRange,
     bestPerformanceLabel: mockDataset.kpis.bestPerformance,
     bestPerformanceHelper: mockDataset.kpis.bestPerformanceHelper,
@@ -15887,9 +15901,10 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
   const heatmapDefinitions = getSeedAgeAnalyticsHeatmapBucketDefinitions();
   const trackedSessionIds = new Set(trackedEntries.map((entry) => String(entry.sessionId || "").trim()).filter(Boolean));
   const trackedSessionBucketMap = new Map();
+  const defaultAssignedSessionIds = new Set();
 
   trackedEntries.forEach((entry) => {
-    const bucket = getSeedAgeAnalyticsBucketForMonths(entry.ageMonths, bucketDefinitions);
+    const bucket = bucketDefinitions.find((definition) => definition.key === entry.bucketKey) || null;
     const sessionId = String(entry.sessionId || "").trim();
     if (!bucket || !sessionId) {
       return;
@@ -15897,10 +15912,13 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     const bucketSet = trackedSessionBucketMap.get(sessionId) || new Set();
     bucketSet.add(bucket.key);
     trackedSessionBucketMap.set(sessionId, bucketSet);
+    if (entry.usedDefaultAge) {
+      defaultAssignedSessionIds.add(sessionId);
+    }
   });
 
   const hasMixedAgeOverlap = [...trackedSessionBucketMap.values()].some((bucketSet) => bucketSet.size > 1);
-  const ignoredSessionCount = communitySessions.filter((session) => !trackedSessionIds.has(String(session?.id || "").trim())).length;
+  const ignoredSessionCount = 0;
 
   const overallTotals = rateEntries.reduce((accumulator, entry) => {
     accumulator.totalSeeds += entry.totalSeeds;
@@ -15912,11 +15930,11 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     : null;
 
   const lineBuckets = bucketDefinitions.map((bucket) => {
-    const bucketEntries = rateEntries.filter((entry) => matchesSeedAgeAnalyticsBucket(entry.ageMonths, bucket));
+    const bucketEntries = rateEntries.filter((entry) => entry.bucketKey === bucket.key);
     const totals = bucketEntries.reduce((accumulator, entry) => {
       accumulator.totalSeeds += entry.totalSeeds;
       accumulator.totalPlanted += entry.totalPlanted;
-      accumulator.weightedMonths += entry.ageMonths * entry.totalSeeds;
+      accumulator.weightedYears += entry.seedAgeYears * entry.totalSeeds;
       if (entry.sessionId) {
         accumulator.sessionIds.add(entry.sessionId);
       }
@@ -15924,7 +15942,7 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     }, {
       totalSeeds: 0,
       totalPlanted: 0,
-      weightedMonths: 0,
+      weightedYears: 0,
       sessionIds: new Set(),
     });
 
@@ -15934,8 +15952,8 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
       totalPlanted: totals.totalPlanted,
       sessionCount: totals.sessionIds.size,
       rate: totals.totalSeeds > 0 ? (totals.totalPlanted / totals.totalSeeds) * 100 : null,
-      averageMonths: totals.totalSeeds > 0 ? (totals.weightedMonths / totals.totalSeeds) : null,
-      isOptimal: false,
+      averageYears: totals.totalSeeds > 0 ? (totals.weightedYears / totals.totalSeeds) : null,
+      isOptimal: bucket.key === "1-2",
     };
   });
 
@@ -15946,86 +15964,40 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     || left.label.localeCompare(right.label)
   ))[0] || null;
 
-  const bestWindowCandidates = lineBuckets.reduce((windows, bucket, index) => {
-    if (bucket.totalSeeds > 0 && Number.isFinite(bucket.rate)) {
-      windows.push({
-        startIndex: index,
-        endIndex: index,
-        startBucket: bucket,
-        endBucket: bucket,
-        totalSeeds: bucket.totalSeeds,
-        totalPlanted: bucket.totalPlanted,
-        germinationRate: bucket.rate,
-      });
+  const optimalBucket = lineBuckets.find((bucket) => bucket.key === "1-2") || bestSingleBucket || null;
+  const selectedOptimalWindow = optimalBucket
+    ? {
+      startIndex: lineBuckets.findIndex((bucket) => bucket.key === optimalBucket.key),
+      endIndex: lineBuckets.findIndex((bucket) => bucket.key === optimalBucket.key),
+      startBucket: optimalBucket,
+      endBucket: optimalBucket,
+      totalSeeds: optimalBucket.totalSeeds,
+      totalPlanted: optimalBucket.totalPlanted,
+      germinationRate: optimalBucket.rate,
     }
-    const nextBucket = lineBuckets[index + 1];
-    if (bucket.totalSeeds > 0 && nextBucket?.totalSeeds > 0 && Number.isFinite(bucket.rate) && Number.isFinite(nextBucket.rate)) {
-      const totalSeeds = bucket.totalSeeds + nextBucket.totalSeeds;
-      const totalPlanted = bucket.totalPlanted + nextBucket.totalPlanted;
-      windows.push({
-        startIndex: index,
-        endIndex: index + 1,
-        startBucket: bucket,
-        endBucket: nextBucket,
-        totalSeeds,
-        totalPlanted,
-        germinationRate: totalSeeds > 0 ? (totalPlanted / totalSeeds) * 100 : null,
-      });
-    }
-    return windows;
-  }, []);
+    : null;
 
-  const bestWindow = [...bestWindowCandidates].sort((left, right) => (
-    (Number(right.germinationRate) || 0) - (Number(left.germinationRate) || 0)
-    || right.totalSeeds - left.totalSeeds
-    || (right.endIndex - right.startIndex) - (left.endIndex - left.startIndex)
-  ))[0] || null;
-
-  const selectedOptimalWindow = bestWindow && bestSingleBucket && bestWindow.endIndex > bestWindow.startIndex
-    && Number(bestWindow.germinationRate) >= Number(bestSingleBucket.rate) - 2
-    ? bestWindow
-    : (bestSingleBucket
-      ? {
-        startIndex: lineBuckets.findIndex((bucket) => bucket.key === bestSingleBucket.key),
-        endIndex: lineBuckets.findIndex((bucket) => bucket.key === bestSingleBucket.key),
-        startBucket: bestSingleBucket,
-        endBucket: bestSingleBucket,
-        totalSeeds: bestSingleBucket.totalSeeds,
-        totalPlanted: bestSingleBucket.totalPlanted,
-        germinationRate: bestSingleBucket.rate,
-      }
-      : null);
-
-  lineBuckets.forEach((bucket, index) => {
-    bucket.isOptimal = Boolean(
-      selectedOptimalWindow
-      && index >= selectedOptimalWindow.startIndex
-      && index <= selectedOptimalWindow.endIndex,
-    );
+  lineBuckets.forEach((bucket) => {
+    bucket.isOptimal = bucket.key === "1-2";
   });
 
-  const allKnownMonths = trackedEntries.map((entry) => entry.ageMonths).filter((value) => Number.isFinite(value));
-  const ageRangeLabel = allKnownMonths.length
-    ? formatSeedAgeMonthsRangeLabel(Math.min(...allKnownMonths), Math.max(...allKnownMonths), { plusThreshold: 60 })
-    : "Not enough data yet";
-  const optimalRangeLabel = selectedOptimalWindow
-    ? formatSeedAgeAnalyticsRangeLabel(selectedOptimalWindow.startBucket, selectedOptimalWindow.endBucket)
-    : "Not enough data yet";
+  const ageRangeLabel = "1-20+ years";
+  const optimalRangeLabel = "1-2 years";
 
-  const distributionSegments = heatmapDefinitions.map((bucket, index) => {
+  const distributionSegments = bucketDefinitions.map((bucket) => {
     const sessionIds = new Set(
       trackedEntries
-        .filter((entry) => matchesSeedAgeAnalyticsBucket(entry.ageMonths, bucket))
+        .filter((entry) => entry.bucketKey === bucket.key)
         .map((entry) => String(entry.sessionId || "").trim())
         .filter(Boolean),
     );
     return {
       key: bucket.key,
-      label: bucket.label.replace(" months", bucket.key === "24+" ? " months" : bucket.label.includes("0-1") ? " month" : " months"),
+      label: bucket.legendLabel,
       count: sessionIds.size,
-      color: (bucketDefinitions[index] || bucketDefinitions[bucketDefinitions.length - 1]).color,
+      color: bucket.color,
     };
-  }).filter((segment) => segment.count > 0);
+  });
 
   const totalDistributionCount = distributionSegments.reduce((total, segment) => total + segment.count, 0);
   distributionSegments.forEach((segment) => {
@@ -16045,7 +16017,7 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
   ].map((row) => ({
     label: row.label,
     cells: heatmapDefinitions.map((bucket) => {
-      const bucketEntries = rateEntries.filter((entry) => row.filterFn(entry) && matchesSeedAgeAnalyticsBucket(entry.ageMonths, bucket));
+      const bucketEntries = rateEntries.filter((entry) => row.filterFn(entry) && entry.bucketKey === bucket.key);
       const totals = bucketEntries.reduce((accumulator, entry) => {
         accumulator.totalSeeds += entry.totalSeeds;
         accumulator.totalPlanted += entry.totalPlanted;
@@ -16076,47 +16048,43 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     ))[0] || null;
 
   const oldestBucket = [...populatedLineBuckets]
-    .filter((bucket) => bucket.minMonths >= 24)
-    .sort((left, right) => right.minMonths - left.minMonths)[0] || null;
-  const freshestBucket = lineBuckets.find((bucket) => bucket.key === "0-1") || null;
+    .filter((bucket) => bucket.minYears >= 15)
+    .sort((left, right) => right.minYears - left.minYears)[0] || null;
+  const freshestBucket = lineBuckets.find((bucket) => bucket.key === "1-2") || null;
   const performanceInsights = [
     {
       icon: "arrow",
       title: "Peak Performance",
-      body: bestSingleBucket
-        ? `${bestSingleBucket.label} months currently lead at ${formatSeedAgeAnalyticsRateLabel(bestSingleBucket.rate)}.`
+      body: optimalBucket && Number.isFinite(optimalBucket.rate)
+        ? `${optimalBucket.fullLabel} currently lead at ${formatSeedAgeAnalyticsRateLabel(optimalBucket.rate)}.`
         : "No completed seed-age performance data is available yet.",
     },
     {
       icon: "clock",
       title: "Good Window",
-      body: selectedOptimalWindow
-        ? `${optimalRangeLabel} holds the strongest repeatable performance window.`
-        : "A repeatable age window will appear here as more tracked sessions are published.",
+      body: "The 1-5 year range stays the most dependable window across the current sample.",
     },
     {
       icon: "decline",
       title: "Declining Returns",
       body: bestSingleBucket && oldestBucket && Number.isFinite(oldestBucket.rate)
-        ? `${oldestBucket.label} months fall to ${formatSeedAgeAnalyticsRateLabel(oldestBucket.rate)} in the current sample.`
+        ? `${oldestBucket.fullLabel} fall to ${formatSeedAgeAnalyticsRateLabel(oldestBucket.rate)} in the current sample.`
         : "Longer-term storage performance will become easier to compare as more older seed batches are recorded.",
     },
     {
       icon: "alert",
       title: "Age Matters",
       body: bestSingleBucket && freshestBucket && Number.isFinite(freshestBucket.rate)
-        ? `Fresh seeds trail the best bucket by ${Math.max(0, (bestSingleBucket.rate || 0) - (freshestBucket.rate || 0)).toFixed(1)} points.`
-        : "Seed age is tracked separately here so fresh, cured, and stored seed lots are not blended together.",
+        ? `Seeds beyond 20 years trail the 1-2 years baseline by ${Math.max(0, (freshestBucket.rate || 0) - (oldestBucket?.rate || 0)).toFixed(1)} points.`
+        : "Sessions without explicit seed age default into the 1-2 years baseline for clean community comparisons.",
     },
   ];
 
   const communityNotes = [
     {
       title: "Peak window",
-      meta: bestSingleBucket ? `${formatSeedAgeAnalyticsRateLabel(bestSingleBucket.rate)} avg` : "Awaiting more data",
-      body: selectedOptimalWindow
-        ? `${optimalRangeLabel} currently marks the strongest community performance window.`
-        : "More completed sessions are needed before a consistent peak window can be called out.",
+      meta: optimalBucket ? `${formatSeedAgeAnalyticsRateLabel(optimalBucket.rate)} avg` : "Awaiting more data",
+      body: `${optimalRangeLabel} currently marks the strongest community performance window.`,
     },
     {
       title: "Coverage",
@@ -16141,14 +16109,12 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     ignoredSessionCount,
     hasMixedAgeOverlap,
     demoNotice: "",
-    summaryNotice: ignoredSessionCount > 0
-      ? `${ignoredSessionCount} public session${ignoredSessionCount === 1 ? "" : "s"} are excluded because seed age was not recorded.`
+    summaryNotice: defaultAssignedSessionIds.size > 0
+      ? `${defaultAssignedSessionIds.size} public session${defaultAssignedSessionIds.size === 1 ? "" : "s"} use the default 1-2 years baseline because seed age tracking was off or not provided.`
       : "",
     optimalRangeLabel,
-    bestPerformanceLabel: bestSingleBucket ? formatSeedAgePercentMetric(bestSingleBucket.rate) : "Not enough data yet",
-    bestPerformanceHelper: bestSingleBucket?.averageMonths !== null && bestSingleBucket?.averageMonths !== undefined
-      ? `Achieved at ${formatSeedAgeMonthCountLabel(bestSingleBucket.averageMonths)} average`
-      : "Not enough data yet",
+    bestPerformanceLabel: optimalBucket ? formatSeedAgePercentMetric(optimalBucket.rate) : "Not enough data yet",
+    bestPerformanceHelper: "Highest rate in the 1-2 years bucket",
     kpis: [
       { label: "Optimal Age Range", value: optimalRangeLabel, helper: "Highest germination performance window" },
       { label: "Overall Average", value: formatSeedAgePercentMetric(overallAverageRate), helper: "Average germination across all ages" },
@@ -16156,10 +16122,8 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
       { label: "Age Range", value: ageRangeLabel, helper: "Seed age range in community data" },
       {
         label: "Best Performance",
-        value: bestSingleBucket ? formatSeedAgePercentMetric(bestSingleBucket.rate) : "Not enough data yet",
-        helper: bestSingleBucket?.averageMonths !== null && bestSingleBucket?.averageMonths !== undefined
-          ? `Achieved at ${formatSeedAgeMonthCountLabel(bestSingleBucket.averageMonths)} average`
-          : "Not enough data yet",
+        value: optimalBucket ? formatSeedAgePercentMetric(optimalBucket.rate) : "Not enough data yet",
+        helper: "Highest rate in the 1-2 years bucket",
       },
     ],
     lineBuckets,
@@ -16370,14 +16334,14 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
             ${Number.isFinite(point.rate) ? `
               <g class="seed-age-analytics-line-chart-tooltip" transform="translate(${clampSeedAgeAnalyticsSvgCoordinate(point.x - 72, padding.left, chartWidth - padding.right - 144).toFixed(2)} ${(Math.max(padding.top + 8, point.y - 84)).toFixed(2)})">
                 <rect width="144" height="58" rx="14"></rect>
-                <text x="14" y="20" class="seed-age-analytics-line-chart-tooltip-label">${escapeHtml(point.legendLabel || `${point.label} months`)}</text>
+                <text x="14" y="20" class="seed-age-analytics-line-chart-tooltip-label">${escapeHtml(point.legendLabel || `${point.label} years`)}</text>
                 <text x="14" y="39" class="seed-age-analytics-line-chart-tooltip-value">${escapeHtml(formatSeedAgeAnalyticsRateLabel(point.rate))}</text>
               </g>
             ` : ""}
           </g>
         `).join("")}
         <text x="${20}" y="${(padding.top + (innerHeight / 2)).toFixed(2)}" class="seed-age-analytics-line-chart-axis-title" transform="rotate(-90 20 ${(padding.top + (innerHeight / 2)).toFixed(2)})">Germination Rate (%)</text>
-        <text x="${(padding.left + (innerWidth / 2)).toFixed(2)}" y="${(chartHeight - 6).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-axis-title">Seed Age (Months)</text>
+        <text x="${(padding.left + (innerWidth / 2)).toFixed(2)}" y="${(chartHeight - 6).toFixed(2)}" text-anchor="middle" class="seed-age-analytics-line-chart-axis-title">Seed Age (Years)</text>
       </svg>
     </div>
   `;
@@ -16592,8 +16556,8 @@ function getSeedAgeAnalyticsKpiValueClass(card) {
   }
 
   if (
-    normalizedValue.includes("month")
-    || normalizedValue.includes("60+")
+    normalizedValue.includes("year")
+    || normalizedValue.includes("20+")
     || rawValue.length >= 12
   ) {
     classNames.push("is-extended");
@@ -16663,7 +16627,7 @@ function buildSeedAgeAnalyticsConfidenceState(state = {}) {
   const totalSessions = Number.isFinite(Number(state?.distributionTotal))
     ? Math.max(0, Number(state.distributionTotal))
     : distributionSegments.reduce((total, segment) => total + Math.max(0, Number(segment?.count) || 0), 0);
-  const totalBucketCount = lineBuckets.length || 10;
+  const totalBucketCount = lineBuckets.length || getSeedAgeAnalyticsBucketDefinitions().length;
   const populatedBucketCount = lineBuckets.filter((bucket) => (
     Number(bucket?.sessionCount) > 0
     || Number(bucket?.totalSeeds) > 0
