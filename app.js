@@ -33022,7 +33022,6 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
     { key: "all", label: "All" },
     { key: "active", label: "Active" },
     { key: "completed", label: "Completed" },
-    { key: "failed", label: "Failed" },
   ];
 
   return `
@@ -33103,8 +33102,9 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                   </div>
                   <div class="session-history-cell session-history-cell--actions" data-label="Actions">
                     <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
-                    <button type="button" class="session-history-delete-button" data-session-delete="${escapeHtml(session.id)}" aria-label="Delete ${escapeHtml(formatSessionLabel(session))}">
+                    <button type="button" class="session-history-delete-button" data-session-delete="${escapeHtml(session.id)}" aria-label="Delete Session ${escapeHtml(formatSessionLabel(session))}">
                       ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
+                      <span>Delete Session</span>
                     </button>
                   </div>
                 </div>

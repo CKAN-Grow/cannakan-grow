@@ -22426,12 +22426,16 @@ body.theme-dark #session-history-section {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
   border-radius: 12px;
   border: 1px solid rgba(217, 109, 99, 0.36);
   background: rgba(217, 109, 99, 0.05);
   color: #d96d63;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
   transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
 }
@@ -22519,10 +22523,15 @@ body.theme-dark #session-history-section {
 
   .session-history-cell--actions {
     justify-content: stretch;
+    gap: 10px;
   }
 
   .session-history-open-button.button {
     flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .session-history-delete-button {
     justify-content: center;
   }
 }
@@ -22557,6 +22566,15 @@ body.theme-dark #session-history-section {
   }
 
   .session-history-sort-inline select {
+    width: 100%;
+  }
+
+  .session-history-cell--actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .session-history-delete-button {
     width: 100%;
   }
 }
