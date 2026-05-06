@@ -33329,6 +33329,58 @@ function renderSessionAnalyticsProgressRows(rows = [], options = {}) {
   `;
 }
 
+function buildSessionAnalyticsCategoryRows(partitions = [], key = "") {
+  const buckets = new Map();
+
+  (partitions || []).forEach((partition) => {
+    const label = String(partition?.[key] || "").trim();
+    const seeds = Math.max(0, Number(partition?.seedCount) || 0);
+    const planted = Math.max(0, Number(partition?.plantedCount) || 0);
+    if (!label || seeds <= 0) {
+      return;
+    }
+
+    const bucket = buckets.get(label) || {
+      label,
+      totalSeeds: 0,
+      totalPlanted: 0,
+    };
+    bucket.totalSeeds += seeds;
+    bucket.totalPlanted += planted;
+    buckets.set(label, bucket);
+  });
+
+  return [...buckets.values()]
+    .map((bucket) => {
+      const rate = bucket.totalSeeds > 0
+        ? Math.round((bucket.totalPlanted / bucket.totalSeeds) * 100)
+        : 0;
+      return {
+        label: bucket.label,
+        fillWidth: `${rate}%`,
+        totalWidth: "100%",
+        value: `${rate}%`,
+      };
+    })
+    .sort((left, right) => right.fillWidth.localeCompare(left.fillWidth) || left.label.localeCompare(right.label));
+}
+
+function renderSessionAnalyticsBreakdownSectionMarkup(title = "", rows = [], options = {}) {
+  const emptyMessage = String(options.emptyMessage || "Not enough data yet").trim();
+  const normalizedTitle = String(title || "").trim();
+
+  return `
+    <section class="session-analytics-breakdown-section">
+      <div class="session-analytics-breakdown-heading">
+        <strong>${escapeHtml(normalizedTitle)}</strong>
+      </div>
+      ${rows.length
+        ? renderSessionAnalyticsProgressRows(rows, { emptyMessage })
+        : `<p class="session-analytics-breakdown-empty">${escapeHtml(emptyMessage)}</p>`}
+    </section>
+  `;
+}
+
 function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
   const visibleSessions = Array.isArray(sessions) ? sessions : [];
   const aggregateSourceSessions = Array.isArray(options.aggregateSessions) ? options.aggregateSessions : visibleSessions;
@@ -33348,6 +33400,13 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
   }, { totalSeeds: 0, totalPlanted: 0 });
   const overallRate = overallTotals.totalSeeds > 0
     ? Math.round((overallTotals.totalPlanted / overallTotals.totalSeeds) * 100)
+    : 0;
+
+  const averageRateSessions = aggregateStatsSessions.filter((session) => getSessionSeedTotals(session).totalSeeds > 0);
+  const averageOverallGermination = averageRateSessions.length
+    ? Math.round(
+      averageRateSessions.reduce((sum, session) => sum + getSessionSuccessRate(session), 0) / averageRateSessions.length,
+    )
     : 0;
 
   const bySessionRows = completedSessions.slice(0, 6).map((session) => {
@@ -33375,6 +33434,10 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
       value: `${overallTotals.totalPlanted}`,
     },
   ];
+
+  const allTrackedPartitions = aggregateStatsSessions.flatMap((session) => Array.isArray(session?.partitions) ? session.partitions : []);
+  const typeBreakdownRows = buildSessionAnalyticsCategoryRows(allTrackedPartitions, "seedType");
+  const sexBreakdownRows = buildSessionAnalyticsCategoryRows(allTrackedPartitions, "feminized");
 
   const totalVisibleSessions = visibleSessions.length;
   const completedCount = completedSessions.length;
@@ -33424,25 +33487,45 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
           <div class="session-analytics-card-heading">
             ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-icon")}
             <div>
-              <h4>Seeds Planted vs Germinated</h4>
-              <p>Compare total recorded seed counts.</p>
+              <h4>Average Overall Germination</h4>
+              <p>Average germination rate across recorded sessions.</p>
             </div>
           </div>
-          ${renderSessionAnalyticsProgressRows(seedsComparisonRows, {
-            emptyMessage: "No seed totals recorded yet.",
-          })}
+          ${averageRateSessions.length ? `
+            <div class="session-analytics-average-card">
+              <div class="overall-rate-ring session-analytics-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${averageOverallGermination}%`)};">
+                <strong class="overall-rate-value">${escapeHtml(`${averageOverallGermination}%`)}</strong>
+              </div>
+              <div class="session-analytics-overview-copy">
+                <strong>${escapeHtml(`${averageRateSessions.length} recorded session${averageRateSessions.length === 1 ? "" : "s"}`)}</strong>
+                <p>Average success rate calculated per recorded session with seed totals.</p>
+              </div>
+            </div>
+          ` : `
+            <div class="sessions-panel-empty sessions-panel-empty--analytics">
+              <p>Not enough data yet</p>
+            </div>
+          `}
         </article>
         <article class="session-analytics-card">
           <div class="session-analytics-card-heading">
             ${renderMySessionsInlineIconMarkup("analytics", "sessions-inline-icon")}
             <div>
-              <h4>Germination Rate by Session</h4>
-              <p>Recent completed sessions and recorded success rate.</p>
+              <h4>Breakdown by Type, Sex &amp; Age</h4>
+              <p>Compare germination trends by seed type, sex, and age when available.</p>
             </div>
           </div>
-          ${renderSessionAnalyticsProgressRows(bySessionRows, {
-            emptyMessage: "Complete a session to start building performance trends.",
-          })}
+          <div class="session-analytics-breakdown-grid">
+            ${renderSessionAnalyticsBreakdownSectionMarkup("Type", typeBreakdownRows, {
+              emptyMessage: "Not enough type data yet",
+            })}
+            ${renderSessionAnalyticsBreakdownSectionMarkup("Sex", sexBreakdownRows, {
+              emptyMessage: "Not enough sex data yet",
+            })}
+            ${renderSessionAnalyticsBreakdownSectionMarkup("Age", [], {
+              emptyMessage: "Age data coming soon",
+            })}
+          </div>
         </article>
         <article class="session-analytics-card session-analytics-card--summary">
           <div class="session-analytics-card-heading">
