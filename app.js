@@ -1136,6 +1136,7 @@ const appState = {
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   sessionHistoryFilter: "all",
+  sessionDashboardScrollTarget: "",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
@@ -25002,6 +25003,36 @@ function scrollElementIntoViewAfterLayout(element, options = {}) {
   }, Math.max(0, Number(delayMs) || 0));
 }
 
+function scrollToSessionDashboardSection(sectionId = "", options = {}) {
+  const normalizedId = String(sectionId || "").trim();
+  if (!normalizedId) {
+    return false;
+  }
+
+  const target = document.getElementById(normalizedId);
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  scrollElementIntoViewAfterLayout(target, {
+    delayMs: 80,
+    block: "start",
+    ...options,
+  });
+  return true;
+}
+
+function flushPendingSessionDashboardScrollTarget() {
+  const targetId = String(appState.sessionDashboardScrollTarget || "").trim();
+  if (!targetId) {
+    return;
+  }
+
+  if (scrollToSessionDashboardSection(targetId)) {
+    appState.sessionDashboardScrollTarget = "";
+  }
+}
+
 function bindAdminCollapsibleSections(scope = app) {
   if (!scope) {
     return;
@@ -32992,6 +33023,47 @@ function renderMySessionsInlineIconMarkup(iconName, className = "") {
           </svg>
         </span>
       `;
+    case "analytics":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M5.5 18.5h13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+            <path d="M7.5 16V11.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M12 16V8.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+            <path d="M16.5 16v-5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "trend":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M5.5 16.5 10 12l3 3 5.5-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M14.8 9h3.7v3.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "seed":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12.2 5.2c3.4 0 5.7 2.2 5.7 5.7 0 4.2-2.9 7.9-5.7 7.9s-5.7-3.7-5.7-7.9c0-3.5 2.3-5.7 5.7-5.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+            <path d="M12.2 8.1v7.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" opacity="0.75"></path>
+          </svg>
+        </span>
+      `;
+    case "summary":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <rect x="5.5" y="6.5" width="5" height="5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+            <rect x="13.5" y="6.5" width="5" height="5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+            <rect x="5.5" y="13.5" width="5" height="5" rx="1.25" fill="none" stroke="currentColor" stroke-width="1.7"></rect>
+            <path d="M14.5 16h3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            <path d="M14.5 18h2.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity="0.72"></path>
+          </svg>
+        </span>
+      `;
     case "thumb":
       return `
         <span class="${classes}" aria-hidden="true">
@@ -33148,7 +33220,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   ];
 
   return `
-    <section class="sessions-glass-panel session-history-panel">
+    <section id="session-history" class="sessions-glass-panel session-history-panel">
       <div class="sessions-panel-header sessions-panel-header--compact sessions-panel-header--history">
         <div class="sessions-panel-title">
           ${renderMySessionsInlineIconMarkup("history", "sessions-inline-icon")}
@@ -33240,6 +33312,187 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
             `}
           </div>
         </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderSessionAnalyticsProgressRows(rows = [], options = {}) {
+  const emptyMessage = String(options.emptyMessage || "No recorded session data yet.").trim();
+  if (!rows.length) {
+    return `
+      <div class="sessions-panel-empty sessions-panel-empty--analytics">
+        <p>${escapeHtml(emptyMessage)}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="progress-chart-list">
+      ${rows.map((row) => `
+        <div class="progress-chart-row session-analytics-progress-row">
+          <div class="progress-chart-label">${escapeHtml(row.label || "")}</div>
+          <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
+            <span class="progress-bar-total" style="width:${escapeHtml(row.totalWidth || "100%")};"></span>
+            <span class="progress-bar-fill" style="width:${escapeHtml(row.fillWidth || "0%")};"></span>
+          </div>
+          <div class="progress-chart-values">${escapeHtml(row.value || "")}</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
+  const visibleSessions = Array.isArray(sessions) ? sessions : [];
+  const aggregateSourceSessions = Array.isArray(options.aggregateSessions) ? options.aggregateSessions : visibleSessions;
+  const aggregateStatsSessions = getAggregateStatsSessions(aggregateSourceSessions);
+  const completedSessions = sortSessionsNewestFirst(
+    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed"),
+  );
+  const activeSessions = sortActiveSessionsNewestFirst(
+    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+  );
+
+  const overallTotals = aggregateStatsSessions.reduce((accumulator, session) => {
+    const totals = getSessionSeedTotals(session);
+    accumulator.totalSeeds += totals.totalSeeds;
+    accumulator.totalPlanted += totals.totalPlanted;
+    return accumulator;
+  }, { totalSeeds: 0, totalPlanted: 0 });
+  const overallRate = overallTotals.totalSeeds > 0
+    ? Math.round((overallTotals.totalPlanted / overallTotals.totalSeeds) * 100)
+    : 0;
+
+  const bySessionRows = completedSessions.slice(0, 6).map((session) => {
+    const totals = getSessionSeedTotals(session);
+    const rate = totals.totalSeeds > 0 ? getSessionSuccessRate(session) : 0;
+    return {
+      label: formatSessionLabel(session),
+      fillWidth: `${rate}%`,
+      totalWidth: "100%",
+      value: `${rate}%`,
+    };
+  });
+
+  const seedsComparisonRows = [
+    {
+      label: "Seeds Planted",
+      fillWidth: "100%",
+      totalWidth: "100%",
+      value: `${overallTotals.totalSeeds}`,
+    },
+    {
+      label: "Germinated",
+      fillWidth: `${overallRate}%`,
+      totalWidth: "100%",
+      value: `${overallTotals.totalPlanted}`,
+    },
+  ];
+
+  const totalVisibleSessions = visibleSessions.length;
+  const completedCount = completedSessions.length;
+  const activeCount = activeSessions.length;
+  const completedShare = totalVisibleSessions > 0
+    ? Math.round((completedCount / totalVisibleSessions) * 100)
+    : 0;
+  const activeShare = totalVisibleSessions > 0
+    ? Math.round((activeCount / totalVisibleSessions) * 100)
+    : 0;
+
+  return `
+    <section id="session-analytics" class="sessions-glass-panel session-analytics-panel">
+      <div class="session-analytics-header">
+        <div class="session-analytics-header-copy">
+          <div class="sessions-panel-title">
+            ${renderMySessionsInlineIconMarkup("analytics", "sessions-inline-icon")}
+            <span>SESSION DATA</span>
+          </div>
+          <h3>Session Analytics</h3>
+          <p>Visual trends based on recorded session results and germination performance.</p>
+        </div>
+      </div>
+      <div class="session-analytics-grid">
+        <article class="session-analytics-card session-analytics-card--overview">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("trend", "sessions-inline-icon")}
+            <div>
+              <h4>Overall Germination Rate</h4>
+              <p>Across recorded session results</p>
+            </div>
+          </div>
+          <div class="session-analytics-overview">
+            <div class="overall-rate-ring session-analytics-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallRate}%`)};">
+              <strong class="overall-rate-value">${escapeHtml(`${overallRate}%`)}</strong>
+            </div>
+            <div class="session-analytics-overview-copy">
+              <strong>${escapeHtml(`${overallTotals.totalPlanted} / ${overallTotals.totalSeeds} seeds`)}</strong>
+              <p>Recorded germination across your tracked sessions.</p>
+            </div>
+          </div>
+          <div class="overall-rate-bar session-analytics-rate-bar" aria-label="Overall germination rate">
+            <div class="overall-rate-fill" style="width:${escapeHtml(`${overallRate}%`)};"></div>
+          </div>
+        </article>
+        <article class="session-analytics-card">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-icon")}
+            <div>
+              <h4>Seeds Planted vs Germinated</h4>
+              <p>Compare total recorded seed counts.</p>
+            </div>
+          </div>
+          ${renderSessionAnalyticsProgressRows(seedsComparisonRows, {
+            emptyMessage: "No seed totals recorded yet.",
+          })}
+        </article>
+        <article class="session-analytics-card">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("analytics", "sessions-inline-icon")}
+            <div>
+              <h4>Germination Rate by Session</h4>
+              <p>Recent completed sessions and recorded success rate.</p>
+            </div>
+          </div>
+          ${renderSessionAnalyticsProgressRows(bySessionRows, {
+            emptyMessage: "Complete a session to start building performance trends.",
+          })}
+        </article>
+        <article class="session-analytics-card session-analytics-card--summary">
+          <div class="session-analytics-card-heading">
+            ${renderMySessionsInlineIconMarkup("summary", "sessions-inline-icon")}
+            <div>
+              <h4>Completed vs Active Sessions</h4>
+              <p>Current balance across visible sessions.</p>
+            </div>
+          </div>
+          <div class="session-analytics-summary-grid">
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(String(completedCount))}</strong>
+              <span>Completed</span>
+            </div>
+            <div class="session-analytics-summary-stat">
+              <strong>${escapeHtml(String(activeCount))}</strong>
+              <span>Active</span>
+            </div>
+          </div>
+          <div class="session-analytics-summary-bars" aria-label="Completed and active session summary">
+            <div class="session-analytics-summary-row">
+              <span>Completed</span>
+              <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--completed" style="width:${escapeHtml(`${completedShare}%`)};"></span>
+              </div>
+              <strong>${escapeHtml(`${completedShare}%`)}</strong>
+            </div>
+            <div class="session-analytics-summary-row">
+              <span>Active</span>
+              <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active" style="width:${escapeHtml(`${activeShare}%`)};"></span>
+              </div>
+              <strong>${escapeHtml(`${activeShare}%`)}</strong>
+            </div>
+          </div>
+        </article>
       </div>
     </section>
   `;
@@ -34286,6 +34539,7 @@ function renderSessionsList() {
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
   const historySection = document.querySelector("#session-history-section");
+  const analyticsSection = document.querySelector("#session-analytics-section");
 
   const activeSessions = sortActiveSessionsNewestFirst(
     visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
@@ -34321,6 +34575,17 @@ function renderSessionsList() {
       hasAnySessions: visibleSessions.length > 0,
     });
     applySupplyStatusToSessionEntryButtons(historySection);
+  };
+
+  const renderAnalyticsSection = () => {
+    if (!analyticsSection) {
+      return;
+    }
+
+    analyticsSection.innerHTML = renderMySessionsAnalyticsPanelMarkup(visibleSessions, {
+      aggregateSessions: sessions,
+    });
+    applySupplyStatusToSessionEntryButtons(analyticsSection);
   };
 
   if (recentCompletedSection && recentCompletedSection.dataset.sessionsPanelBound !== "true") {
@@ -34400,6 +34665,8 @@ function renderSessionsList() {
 
   renderRecentCompletedSection();
   renderHistorySessions();
+  renderAnalyticsSection();
+  flushPendingSessionDashboardScrollTarget();
 }
 
 function renderActiveSessionsPage() {
@@ -37979,7 +38246,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     : 0;
 
   return `
-    <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#sessions">
+    <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#active-sessions">
       <div class="summary-card-head">
         ${renderCommandCenterIconMarkup("metric-active", "command-icon--metric command-icon--metric-active")}
         <span class="stat-label">Active Sessions</span>
@@ -37990,7 +38257,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
       </div>
       <span class="summary-card-action">View All <span aria-hidden="true">&rarr;</span></span>
     </a>
-    <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions">
+    <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions" data-session-scroll-target="session-history">
       <div class="summary-card-head">
         ${renderCommandCenterIconMarkup("metric-saved", "command-icon--metric command-icon--metric-saved")}
         <span class="stat-label">Saved Sessions</span>
@@ -38016,7 +38283,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
       </div>
       <span class="summary-card-action">View Details <span aria-hidden="true">&rarr;</span></span>
     </a>
-    <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions">
+    <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions" data-session-scroll-target="session-analytics">
       <div class="summary-card-head">
         ${renderCommandCenterIconMarkup("metric-rate", "command-icon--metric command-icon--metric-rate")}
         <span class="stat-label">All Sessions Germination Rate</span>
@@ -38137,6 +38404,23 @@ function mountSharedSessionCommandCenter(host, options = {}) {
       const target = event.target;
       if (!(target instanceof Element)) {
         return;
+      }
+      const dashboardLink = target.closest("[data-session-scroll-target]");
+      if (dashboardLink instanceof HTMLAnchorElement) {
+        const scrollTarget = String(dashboardLink.getAttribute("data-session-scroll-target") || "").trim();
+        const href = String(dashboardLink.getAttribute("href") || "#sessions").trim() || "#sessions";
+        if (scrollTarget) {
+          event.preventDefault();
+          if (normalizeNavigationHash(window.location.hash || "#home") === normalizeNavigationHash(href)) {
+            if (!scrollToSessionDashboardSection(scrollTarget)) {
+              appState.sessionDashboardScrollTarget = scrollTarget;
+            }
+            return;
+          }
+          appState.sessionDashboardScrollTarget = scrollTarget;
+          navigateToHashRoute(href);
+          return;
+        }
       }
       if (target.closest("a, button")) {
         return;
