@@ -1635,11 +1635,17 @@ function isSuppressedExternalStylesheetInspectionFailure({
   const normalizedMessage = String(message || "").trim().toLowerCase();
   const normalizedStack = String(stack || "").trim().toLowerCase();
   const mentionsCssRules = normalizedMessage.includes("cssrules")
+    || normalizedMessage.includes("reading 'cssrules'")
+    || normalizedMessage.includes("reading \"cssrules\"")
     || normalizedStack.includes("cssrules");
   const isNullAccessError = normalizedMessage.includes("cannot read properties of null")
     || normalizedMessage.includes("cannot read property 'cssrules' of null")
+    || normalizedMessage.includes("reading 'cssrules'")
+    || normalizedMessage.includes("reading \"cssrules\"")
     || normalizedStack.includes("cannot read properties of null")
-    || normalizedStack.includes("cannot read property 'cssrules' of null");
+    || normalizedStack.includes("cannot read property 'cssrules' of null")
+    || normalizedStack.includes("reading 'cssrules'")
+    || normalizedStack.includes("reading \"cssrules\"");
 
   if (!mentionsCssRules || !isNullAccessError) {
     return false;
@@ -6050,24 +6056,31 @@ function getSupabaseErrorStatusCode(error) {
 }
 
 function getSafeCssRules(sheet) {
-  const resolvedSheet = sheet?.sheet || sheet;
-  if (!resolvedSheet || typeof resolvedSheet !== "object") {
-    return [];
+  const candidateSheets = [sheet, sheet?.sheet, sheet?.styleSheet, sheet?.ownerNode?.sheet]
+    .filter((candidate, index, collection) => (
+      candidate
+      && typeof candidate === "object"
+      && collection.indexOf(candidate) === index
+    ));
+
+  for (const candidateSheet of candidateSheets) {
+    try {
+      // Some extension-injected or cross-origin stylesheets block cssRules access,
+      // and others can lose their sheet reference after DOM updates.
+      const cssRules = candidateSheet?.cssRules;
+      if (cssRules && typeof cssRules.length === "number") {
+        return cssRules;
+      }
+      const legacyRules = candidateSheet?.rules;
+      if (legacyRules && typeof legacyRules.length === "number") {
+        return legacyRules;
+      }
+    } catch {
+      // Ignore inaccessible stylesheet objects and continue checking fallbacks.
+    }
   }
 
-  try {
-    // Some extension-injected or cross-origin stylesheets block cssRules access.
-    // Skip those sheets quietly so style inspection never breaks the app.
-    if ("cssRules" in resolvedSheet && resolvedSheet.cssRules) {
-      return resolvedSheet.cssRules;
-    }
-    if ("rules" in resolvedSheet && resolvedSheet.rules) {
-      return resolvedSheet.rules;
-    }
-    return [];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 function logRuntimeIssueOnce(level = "warn", key = "", message = "", details) {
@@ -6321,11 +6334,93 @@ function hasAvailableUserNotificationPreferencesColumn(columnName = "") {
     && appState.notificationPreferencesAvailableColumns.includes(normalizedColumnName);
 }
 
+function getSafeNotificationPreferencePayload(
+  userId = "",
+  preferencesInput = {},
+  existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  schemaMode = "",
+) {
+  const notifySnapshot =
+    preferencesInput?.notifySnapshot !== undefined
+      ? Boolean(preferencesInput.notifySnapshot)
+      : existingPreferences.notifySnapshot !== false;
+  const notifyCompletion =
+    preferencesInput?.notifyCompletion !== undefined
+      ? Boolean(preferencesInput.notifyCompletion)
+      : existingPreferences.notifyCompletion !== false;
+  const notifyFollow =
+    preferencesInput?.notifyFollow !== undefined
+      ? Boolean(preferencesInput.notifyFollow)
+      : existingPreferences.notifyFollow !== false;
+  const notifyLike =
+    preferencesInput?.notifyLike !== undefined
+      ? Boolean(preferencesInput.notifyLike)
+      : existingPreferences.notifyLike !== false;
+  const normalizedSchemaMode = String(schemaMode || "").trim().toLowerCase();
+  const hasKnownColumns = Array.isArray(appState.notificationPreferencesAvailableColumns)
+    && appState.notificationPreferencesAvailableColumns.length > 0;
+  const includeColumn = (columnName, options = {}) => {
+    const {
+      allowLegacyByDefault = false,
+      allowModernByDefault = false,
+      allowWhenUnknown = false,
+      requireConfirmation = false,
+    } = options || {};
+    if (hasKnownColumns) {
+      return hasAvailableUserNotificationPreferencesColumn(columnName);
+    }
+    if (requireConfirmation) {
+      return false;
+    }
+    if (normalizedSchemaMode === "legacy") {
+      return allowLegacyByDefault;
+    }
+    if (normalizedSchemaMode === "modern") {
+      return allowModernByDefault;
+    }
+    if (normalizedSchemaMode === "hybrid") {
+      return allowLegacyByDefault || allowModernByDefault;
+    }
+    return allowWhenUnknown;
+  };
+
+  const payload = {
+    user_id: String(userId || "").trim(),
+  };
+
+  if (includeColumn("notify_snapshot", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
+    payload.notify_snapshot = notifySnapshot;
+  }
+  if (includeColumn("notify_completion", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
+    payload.notify_completion = notifyCompletion;
+  }
+  if (includeColumn("notify_follow", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
+    payload.notify_follow = notifyFollow;
+  }
+  if (includeColumn("notify_like", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
+    payload.notify_like = notifyLike;
+  }
+  if (includeColumn("email_notifications", { allowModernByDefault: true })) {
+    payload.email_notifications = notifySnapshot;
+  }
+  if (includeColumn("session_reminders", { allowModernByDefault: true })) {
+    payload.session_reminders = notifyCompletion;
+  }
+  if (includeColumn("community_updates", { requireConfirmation: true })) {
+    payload.community_updates = notifyFollow;
+  }
+  if (includeColumn("low_filter_alerts", { requireConfirmation: true })) {
+    payload.low_filter_alerts = notifyLike;
+  }
+
+  return payload;
+}
+
 async function safelyEnsureUserNotificationPreferences(user) {
   try {
     return await ensureUserNotificationPreferences(user);
   } catch (error) {
-    if (isUserNotificationPreferencesTableMissingError(error)) {
+    if (isUserNotificationPreferencesTableMissingError(error) || isUserNotificationPreferencesSchemaModeError(error)) {
       markUserNotificationPreferencesTableUnavailable();
     } else {
       logUserNotificationPreferencesFallback(error, {
@@ -6370,53 +6465,12 @@ function buildUserNotificationPreferencesUpsertPayload(
   existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
   schemaMode = "",
 ) {
-  const notifySnapshot =
-    preferencesInput?.notifySnapshot !== undefined
-      ? Boolean(preferencesInput.notifySnapshot)
-      : existingPreferences.notifySnapshot !== false;
-  const notifyCompletion =
-    preferencesInput?.notifyCompletion !== undefined
-      ? Boolean(preferencesInput.notifyCompletion)
-      : existingPreferences.notifyCompletion !== false;
-  const notifyFollow =
-    preferencesInput?.notifyFollow !== undefined
-      ? Boolean(preferencesInput.notifyFollow)
-      : existingPreferences.notifyFollow !== false;
-  const notifyLike =
-    preferencesInput?.notifyLike !== undefined
-      ? Boolean(preferencesInput.notifyLike)
-      : existingPreferences.notifyLike !== false;
-  const normalizedSchemaMode = String(schemaMode || "").trim().toLowerCase();
-  const includeKnownModernColumn = (columnName, assumeWhenUnknown = true) => {
-    if (Array.isArray(appState.notificationPreferencesAvailableColumns) && appState.notificationPreferencesAvailableColumns.length) {
-      return hasAvailableUserNotificationPreferencesColumn(columnName);
-    }
-    return assumeWhenUnknown;
-  };
-  const payload = {
-    user_id: String(userId || "").trim(),
-  };
-  if (normalizedSchemaMode === "hybrid" || normalizedSchemaMode === "legacy" || !normalizedSchemaMode) {
-    payload.notify_snapshot = notifySnapshot;
-    payload.notify_completion = notifyCompletion;
-    payload.notify_follow = notifyFollow;
-    payload.notify_like = notifyLike;
-  }
-  if (normalizedSchemaMode === "hybrid" || normalizedSchemaMode === "modern") {
-    if (includeKnownModernColumn("email_notifications", true)) {
-      payload.email_notifications = notifySnapshot;
-    }
-    if (includeKnownModernColumn("session_reminders", true)) {
-      payload.session_reminders = notifyCompletion;
-    }
-    if (includeKnownModernColumn("community_updates", false)) {
-      payload.community_updates = notifyFollow;
-    }
-    if (includeKnownModernColumn("low_filter_alerts", true)) {
-      payload.low_filter_alerts = notifyLike;
-    }
-  }
-  return payload;
+  return getSafeNotificationPreferencePayload(
+    userId,
+    preferencesInput,
+    existingPreferences,
+    schemaMode,
+  );
 }
 
 function getUserNotificationPreferencesWriteModes(preferredMode = "") {
@@ -7174,7 +7228,8 @@ async function ensureUserNotificationPreferences(user) {
     if (upsertError) {
       if (isUserNotificationPreferencesSchemaModeError(upsertError)) {
         lastSeedError = upsertError;
-        continue;
+        markUserNotificationPreferencesTableUnavailable();
+        break;
       }
       if (isUserNotificationPreferencesTableMissingError(upsertError)) {
         markUserNotificationPreferencesTableUnavailable();
@@ -12527,7 +12582,8 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
       lastError = error;
-      continue;
+      markUserNotificationPreferencesTableUnavailable();
+      break;
     }
 
     if (isUserNotificationPreferencesTableMissingError(error)) {
