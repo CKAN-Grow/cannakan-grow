@@ -14329,6 +14329,7 @@ function renderGalleryLeaderboardSection() {
   const topMembers = getGalleryTopMemberSummaryEntries(monthlySnapshots);
 
   const section = document.createElement("section");
+  section.id = "leaderboard-insights";
   section.className = "card gallery-section gallery-leaderboard-section";
   section.innerHTML = `
     <div class="section-heading app-section-header">
@@ -14459,7 +14460,7 @@ function renderHomeGalleryRankingsTeaser() {
               <p class="muted home-gallery-rankings-subtitle">Based on approved public session data. Results may vary.</p>
             </div>
           </div>
-          <a class="button button-secondary home-gallery-rankings-cta" href="#gallery">
+          <a class="button button-secondary home-gallery-rankings-cta" href="#gallery/leaderboard-insights">
             <span>View Community Grow</span>
             <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -32748,6 +32749,11 @@ function renderGallery(targetSnapshotId = "") {
         behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
       });
       targetCard.focus({ preventScroll: true });
+    } else if (targetSnapshotId === "leaderboard-insights") {
+      document.querySelector("#leaderboard-insights")?.scrollIntoView({
+        block: "start",
+        behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
+      });
     }
 
     bindGallerySnapshotCardInteractions(galleryGrid, gallerySnapshots, () => renderGallery(targetSnapshotId));

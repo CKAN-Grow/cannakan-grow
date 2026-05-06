@@ -1,3 +1,7 @@
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --space-1: 4px;
   --space-2: 8px;
@@ -4627,6 +4631,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .gallery-leaderboard-section {
   position: relative;
   overflow: hidden;
+  scroll-margin-top: 100px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   background:
     radial-gradient(circle at top right, rgba(148, 209, 89, 0.08), transparent 28%),
