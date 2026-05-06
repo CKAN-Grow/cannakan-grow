@@ -458,6 +458,49 @@
             </div>
           </section>
 
+          <section id="seed-age-panel" class="session-seed-age-panel session-glass-panel" aria-labelledby="seed-age-title">
+            <label class="session-seed-age-toggle">
+              <input id="session-seed-age-tracking" type="checkbox" name="seedAgeTrackingEnabled">
+              <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
+              <span class="session-seed-age-toggle-text">
+                <span id="seed-age-title" class="session-seed-age-toggle-copy">Track Seed Age</span>
+                <span class="session-seed-age-toggle-helper">Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</span>
+              </span>
+            </label>
+            <div id="seed-age-setup-section" class="session-seed-age-setup" hidden>
+              <div class="session-seed-age-setup-header">
+                <p class="eyebrow">Seed Age Setup</p>
+                <p class="muted">Choose how seed age should be recorded for this session.</p>
+              </div>
+              <fieldset class="session-seed-age-mode-group">
+                <legend>Seed age mode</legend>
+                <label class="session-seed-age-mode-card">
+                  <input type="radio" name="seedAgeMode" value="same">
+                  <span class="session-seed-age-mode-copy">
+                    <strong>Same age for all seeds</strong>
+                    <span>Use one age value across this session.</span>
+                  </span>
+                </label>
+                <label class="session-seed-age-mode-card">
+                  <input type="radio" name="seedAgeMode" value="mixed">
+                  <span class="session-seed-age-mode-copy">
+                    <strong>Mixed ages by partition</strong>
+                    <span>Enter seed age separately for each partition.</span>
+                  </span>
+                </label>
+              </fieldset>
+              <div id="session-seed-age-same-field" class="session-seed-age-same-field" hidden>
+                <label class="session-seed-age-input-field">
+                  <span>Seed age</span>
+                  <div class="session-seed-age-input-wrap">
+                    <input type="number" name="sessionSeedAgeYears" inputmode="decimal" min="0" step="0.1" placeholder="Years old">
+                    <span class="session-seed-age-input-unit">years</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </section>
+
           <section class="system-layout-block session-glass-panel" aria-labelledby="system-layout-label">
             <p id="system-layout-label" class="system-layout-label">System Layout</p>
             <div id="system-layout-reference" class="system-layout-visual"></div>
@@ -520,9 +563,10 @@
               <span>Seed Variety</span>
               <span>Type</span>
               <span>Sex</span>
-              <span># of Seeds</span>
-              <span># Germinated</span>
-              <span>Success %</span>
+              <span data-partition-header="seeds"># of Seeds</span>
+              <span data-partition-header="age" data-seed-age-header hidden>Age</span>
+              <span data-partition-header="germinated"># Germinated</span>
+              <span data-partition-header="success">Success %</span>
             </div>
             <div id="partition-fields" class="partition-table"></div>
           </div>
@@ -838,9 +882,10 @@
             <span>Seed Variety</span>
             <span>Type</span>
             <span>Sex</span>
-            <span># of Seeds</span>
-            <span># Germinated</span>
-            <span>Success %</span>
+            <span data-partition-header="seeds"># of Seeds</span>
+            <span data-partition-header="age" data-seed-age-header hidden>Age</span>
+            <span data-partition-header="germinated"># Germinated</span>
+            <span data-partition-header="success">Success %</span>
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>

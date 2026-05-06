@@ -20404,6 +20404,178 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   outline: none;
 }
 
+.session-seed-age-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.session-seed-age-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  cursor: pointer;
+}
+
+.session-seed-age-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.session-seed-age-toggle-control {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.session-seed-age-toggle-control::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #edf4ee;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.2s ease;
+}
+
+.session-seed-age-toggle-text {
+  display: grid;
+  gap: 4px;
+}
+
+.session-seed-age-toggle-copy {
+  font-weight: 700;
+  color: #f3f6f1;
+}
+
+.session-seed-age-toggle-helper,
+.session-seed-age-setup-header .muted,
+.session-seed-age-mode-copy span,
+.session-seed-age-mode-group legend {
+  color: var(--muted);
+}
+
+.session-seed-age-toggle input:checked + .session-seed-age-toggle-control {
+  background: rgba(148, 209, 89, 0.22);
+  border-color: rgba(148, 209, 89, 0.32);
+}
+
+.session-seed-age-toggle input:checked + .session-seed-age-toggle-control::after {
+  transform: translateX(22px);
+}
+
+.session-seed-age-toggle input:focus-visible + .session-seed-age-toggle-control {
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.14);
+}
+
+.session-seed-age-setup {
+  display: grid;
+  gap: 16px;
+}
+
+.session-seed-age-setup-header {
+  display: grid;
+  gap: 4px;
+}
+
+.session-seed-age-setup-header .eyebrow,
+.session-seed-age-input-field > span {
+  margin: 0;
+  color: #94d159;
+}
+
+.session-seed-age-mode-group {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.session-seed-age-mode-group legend {
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.session-seed-age-mode-group.is-disabled {
+  opacity: 0.72;
+}
+
+.session-seed-age-mode-group.is-invalid .session-seed-age-mode-card {
+  border-color: rgba(255, 107, 107, 0.38);
+}
+
+.session-seed-age-mode-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.session-seed-age-mode-card input {
+  margin-top: 2px;
+  accent-color: #94d159;
+}
+
+.session-seed-age-mode-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.session-seed-age-mode-copy strong {
+  color: #f3f6f1;
+}
+
+.session-seed-age-mode-card:has(input:checked) {
+  border-color: rgba(148, 209, 89, 0.34);
+  background: rgba(148, 209, 89, 0.09);
+  transform: translateY(-1px);
+}
+
+.session-seed-age-same-field {
+  display: grid;
+  gap: 10px;
+}
+
+.session-seed-age-input-field {
+  display: grid;
+  gap: 10px;
+}
+
+.session-seed-age-input-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.session-seed-age-input-unit {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #b7c0b7;
+  text-transform: lowercase;
+}
+
 .session-workspace-shell .custom-select-menu {
   background: rgba(15, 21, 17, 0.98);
   border-color: rgba(148, 209, 89, 0.18);
@@ -20927,11 +21099,23 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   align-items: center;
 }
 
+.chart-shell[data-seed-age-mode="mixed"] .chart-row,
+.partition-table[data-seed-age-mode="mixed"] .chart-row {
+  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px 108px 90px;
+}
+
 .chart-shell[data-session-status="unselected"] .chart-row,
 .partition-table[data-session-status="unselected"] .chart-row,
 .chart-shell[data-session-status="soaking"] .chart-row,
 .partition-table[data-session-status="soaking"] .chart-row {
   grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px;
+}
+
+.chart-shell[data-seed-age-mode="mixed"][data-session-status="unselected"] .chart-row,
+.partition-table[data-seed-age-mode="mixed"][data-session-status="unselected"] .chart-row,
+.chart-shell[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row,
+.partition-table[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row {
+  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px;
 }
 
 .chart-header {
@@ -20951,7 +21135,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   min-height: 28px;
 }
 
-.chart-header span:nth-child(7) {
+.chart-header [data-partition-header="germinated"] {
   white-space: nowrap;
 }
 
@@ -24127,21 +24311,25 @@ body.theme-dark #profile-modal .profile-danger-zone .button-danger {
   background: rgba(255, 107, 107, 0.08);
 }
 
-.chart-shell[data-session-status="unselected"] .chart-header span:nth-child(7),
-.chart-shell[data-session-status="unselected"] .chart-header span:nth-child(8),
-.chart-shell[data-session-status="soaking"] .chart-header span:nth-child(7),
-.chart-shell[data-session-status="soaking"] .chart-header span:nth-child(8),
-.partition-table[data-session-status="unselected"] .partition-row > :nth-child(7),
-.partition-table[data-session-status="unselected"] .partition-row > :nth-child(8),
-.partition-table[data-session-status="soaking"] .partition-row > :nth-child(7),
-.partition-table[data-session-status="soaking"] .partition-row > :nth-child(8) {
+.chart-shell:not([data-seed-age-mode="mixed"]) .chart-header [data-partition-header="age"] {
   display: none;
 }
 
-.chart-shell[data-session-status="germinating"] .chart-header span:nth-child(6),
-.chart-shell[data-session-status="completed"] .chart-header span:nth-child(6),
-.chart-shell[data-session-status="germinating"] .chart-header span:nth-child(7),
-.chart-shell[data-session-status="completed"] .chart-header span:nth-child(7) {
+.chart-shell[data-session-status="unselected"] .chart-header [data-partition-header="germinated"],
+.chart-shell[data-session-status="unselected"] .chart-header [data-partition-header="success"],
+.chart-shell[data-session-status="soaking"] .chart-header [data-partition-header="germinated"],
+.chart-shell[data-session-status="soaking"] .chart-header [data-partition-header="success"],
+.partition-table[data-session-status="unselected"] .partition-row label:has(input[name="plantedCount"]),
+.partition-table[data-session-status="unselected"] .partition-row .success-cell,
+.partition-table[data-session-status="soaking"] .partition-row label:has(input[name="plantedCount"]),
+.partition-table[data-session-status="soaking"] .partition-row .success-cell {
+  display: none;
+}
+
+.chart-shell[data-session-status="germinating"] .chart-header [data-partition-header="seeds"],
+.chart-shell[data-session-status="completed"] .chart-header [data-partition-header="seeds"],
+.chart-shell[data-session-status="germinating"] .chart-header [data-partition-header="germinated"],
+.chart-shell[data-session-status="completed"] .chart-header [data-partition-header="germinated"] {
   background: transparent !important;
   color: inherit !important;
 }
@@ -24172,6 +24360,7 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
 body.theme-dark .partition-table input[type="number"],
 body.theme-dark .partition-table input[name="plantedCount"],
 body.theme-dark .partition-table input[name^="seedCount-"],
+body.theme-dark .partition-table input[name^="seedAgeYears-"],
 body.theme-dark .partition-table input[name^="source-"],
 body.theme-dark .partition-table input[name^="seedVariety-"] {
   color: #f3f7f1;
@@ -24809,6 +24998,16 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     row-gap: 8px;
   }
 
+  .partition-table[data-seed-age-mode="mixed"] .partition-row {
+    grid-template-areas:
+      "number source"
+      "number variety"
+      "number type"
+      "number sex"
+      "number seeds"
+      "number age";
+  }
+
   .partition-table[data-session-status="germinating"] .partition-row,
   .partition-table[data-session-status="completed"] .partition-row {
     grid-template-areas:
@@ -24817,6 +25016,19 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
       "number type"
       "number sex"
       "number seeds"
+      "number planted"
+      "number success";
+  }
+
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="germinating"] .partition-row,
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="completed"] .partition-row {
+    grid-template-areas:
+      "number source"
+      "number variety"
+      "number type"
+      "number sex"
+      "number seeds"
+      "number age"
       "number planted"
       "number success";
   }
@@ -24850,13 +25062,27 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     grid-area: seeds;
   }
 
-  .partition-table[data-session-status="germinating"] .partition-row > :nth-child(7),
-  .partition-table[data-session-status="completed"] .partition-row > :nth-child(7) {
+  .partition-table[data-seed-age-mode="mixed"] .partition-row > :nth-child(7) {
+    grid-area: age;
+  }
+
+  .partition-table:not([data-seed-age-mode="mixed"])[data-session-status="germinating"] .partition-row > :nth-child(7),
+  .partition-table:not([data-seed-age-mode="mixed"])[data-session-status="completed"] .partition-row > :nth-child(7) {
     grid-area: planted;
   }
 
-  .partition-table[data-session-status="germinating"] .partition-row > :nth-child(8),
-  .partition-table[data-session-status="completed"] .partition-row > :nth-child(8) {
+  .partition-table:not([data-seed-age-mode="mixed"])[data-session-status="germinating"] .partition-row > :nth-child(8),
+  .partition-table:not([data-seed-age-mode="mixed"])[data-session-status="completed"] .partition-row > :nth-child(8) {
+    grid-area: success;
+  }
+
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="germinating"] .partition-row > :nth-child(8),
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="completed"] .partition-row > :nth-child(8) {
+    grid-area: planted;
+  }
+
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="germinating"] .partition-row > :nth-child(9),
+  .partition-table[data-seed-age-mode="mixed"][data-session-status="completed"] .partition-row > :nth-child(9) {
     grid-area: success;
   }
 
@@ -24881,6 +25107,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .snapshot-modal-grid {
     grid-template-columns: 1fr;
+  }
+
+  .session-seed-age-input-wrap {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

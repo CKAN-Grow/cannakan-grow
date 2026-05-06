@@ -16,6 +16,9 @@ create table if not exists public.grow_sessions (
   germination_started_at timestamptz,
   first_planted_at timestamptz,
   completed_at timestamptz,
+  seed_age_tracking_enabled boolean not null default false,
+  seed_age_mode text,
+  session_seed_age_years numeric,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   visibility_status text not null default 'active',
@@ -377,6 +380,15 @@ alter table public.grow_sessions
 
 alter table public.grow_sessions
   add column if not exists visibility_status text not null default 'active';
+
+alter table public.grow_sessions
+  add column if not exists seed_age_tracking_enabled boolean not null default false;
+
+alter table public.grow_sessions
+  add column if not exists seed_age_mode text;
+
+alter table public.grow_sessions
+  add column if not exists session_seed_age_years numeric;
 
 alter table public.grow_gallery_snapshots
   add column if not exists submitted_by text default '';

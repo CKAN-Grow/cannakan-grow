@@ -3334,10 +3334,145 @@ function applySupplyStatusToSessionEntryButtons(scope = document) {
   });
 }
 
+function normalizeSeedAgeMode(mode = "") {
+  const normalizedMode = String(mode || "").trim().toLowerCase();
+  return normalizedMode === "same" || normalizedMode === "mixed" ? normalizedMode : null;
+}
+
+function normalizeSeedAgeYears(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+    return null;
+  }
+
+  return parsedValue;
+}
+
+function formatSeedAgeInputValue(value) {
+  const normalizedValue = normalizeSeedAgeYears(value);
+  return normalizedValue === null ? "" : String(normalizedValue);
+}
+
+function formatSeedAgeYearsLabel(value) {
+  const normalizedValue = normalizeSeedAgeYears(value);
+  if (normalizedValue === null) {
+    return "";
+  }
+
+  return `${normalizedValue} ${normalizedValue === 1 ? "year" : "years"}`;
+}
+
+function normalizeStoredPartition(partition, fallback = {}) {
+  const sourcePartition = partition && typeof partition === "object" ? partition : {};
+  const fallbackPartition = fallback && typeof fallback === "object" ? fallback : {};
+
+  return {
+    ...sourcePartition,
+    id: Number(sourcePartition.id) || Number(fallbackPartition.id) || 0,
+    source: String(sourcePartition.source || "").trim(),
+    seedVariety: String(sourcePartition.seedVariety || sourcePartition.seed_variety || "").trim(),
+    breeder: String(sourcePartition.breeder || fallbackPartition.breeder || "").trim(),
+    seedType: String(sourcePartition.seedType || sourcePartition.seed_type || "").trim(),
+    feminized: String(sourcePartition.feminized || "").trim(),
+    seedCount: Math.max(0, Number(sourcePartition.seedCount ?? sourcePartition.seed_count) || 0),
+    plantedCount: String(sourcePartition.plantedCount ?? sourcePartition.planted_count ?? "").trim(),
+    seedAgeYears: normalizeSeedAgeYears(sourcePartition.seedAgeYears ?? sourcePartition.seed_age_years),
+  };
+}
+
+function normalizeSessionPartitions(partitions = []) {
+  if (!Array.isArray(partitions)) {
+    return [];
+  }
+
+  return partitions.map((partition, index) => normalizeStoredPartition(partition, { id: index + 1 }));
+}
+
+function serializeSessionPartitions(partitions = []) {
+  return normalizeSessionPartitions(partitions).map((partition) => ({
+    id: partition.id,
+    source: partition.source,
+    seedVariety: partition.seedVariety,
+    breeder: partition.breeder,
+    seedType: partition.seedType,
+    feminized: partition.feminized,
+    seedCount: partition.seedCount,
+    plantedCount: partition.plantedCount,
+    seed_age_years: normalizeSeedAgeYears(partition.seedAgeYears),
+  }));
+}
+
+// Shared seed-age resolver for future Community Grow, Source Directory,
+// analytics, CSTP reporting, and snapshot/report summaries.
+function getSessionSeedAgeMetadata(session = null) {
+  const trackingEnabled = Boolean(session?.seedAgeTrackingEnabled ?? session?.seed_age_tracking_enabled);
+  const mode = trackingEnabled
+    ? normalizeSeedAgeMode(session?.seedAgeMode || session?.seed_age_mode || "")
+    : null;
+  const sessionSeedAgeYears = trackingEnabled && mode === "same"
+    ? normalizeSeedAgeYears(session?.sessionSeedAgeYears ?? session?.session_seed_age_years)
+    : null;
+  const partitions = normalizeSessionPartitions(session?.partitions || []);
+  const knownPartitionAges = partitions
+    .map((partition) => normalizeSeedAgeYears(partition?.seedAgeYears))
+    .filter((value) => value !== null);
+
+  let summaryKey = "disabled";
+  let summaryLabel = "";
+
+  if (trackingEnabled) {
+    if (mode === "same" && sessionSeedAgeYears !== null) {
+      summaryKey = "same";
+      summaryLabel = `Same age: ${formatSeedAgeYearsLabel(sessionSeedAgeYears)}`;
+    } else if (mode === "mixed" && knownPartitionAges.length) {
+      summaryKey = "mixed";
+      summaryLabel = "Mixed ages";
+    } else {
+      summaryKey = "unknown";
+      summaryLabel = "Age unknown";
+    }
+  }
+
+  return {
+    trackingEnabled,
+    mode,
+    sessionSeedAgeYears,
+    knownPartitionAges,
+    summaryKey,
+    summaryLabel,
+  };
+}
+
+function getEffectivePartitionSeedAgeYears(partition = null, session = null) {
+  const partitionSeedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+  if (partitionSeedAgeYears !== null) {
+    return partitionSeedAgeYears;
+  }
+
+  const sessionSeedAge = getSessionSeedAgeMetadata(session);
+  if (sessionSeedAge.trackingEnabled && sessionSeedAge.mode === "same") {
+    return sessionSeedAge.sessionSeedAgeYears;
+  }
+
+  return null;
+}
+
 function normalizeStoredSession(session) {
   if (!session || typeof session !== "object") {
     return null;
   }
+
+  const seedAgeTrackingEnabled = Boolean(session.seedAgeTrackingEnabled ?? session.seed_age_tracking_enabled);
+  const seedAgeMode = seedAgeTrackingEnabled
+    ? normalizeSeedAgeMode(session.seedAgeMode || session.seed_age_mode || "")
+    : null;
+  const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
+    ? normalizeSeedAgeYears(session.sessionSeedAgeYears ?? session.session_seed_age_years)
+    : null;
 
   return {
     ...session,
@@ -3352,7 +3487,10 @@ function normalizeStoredSession(session) {
     deletedAt: String(session.deletedAt || session.deleted_at || "").trim(),
     visibilityStatus: normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
     filterPaperDeducted: getSessionFilterPaperDeducted(session),
-    partitions: Array.isArray(session.partitions) ? session.partitions : [],
+    seedAgeTrackingEnabled,
+    seedAgeMode,
+    sessionSeedAgeYears,
+    partitions: normalizeSessionPartitions(session.partitions),
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
     createdAt: String(session.createdAt || "").trim(),
     updatedAt: String(
@@ -3535,6 +3673,9 @@ function createSampleSession(config) {
     germinationStartedAt: config.germinationStartedAt || "",
     firstPlantedAt: config.firstPlantedAt || "",
     completedAt: config.completedAt || "",
+    seedAgeTrackingEnabled: Boolean(config.seedAgeTrackingEnabled),
+    seedAgeMode: normalizeSeedAgeMode(config.seedAgeMode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(config.sessionSeedAgeYears),
     createdAt: `${config.date}T${config.time}:00`,
     updatedAt: config.updatedAt || `${config.date}T${config.time}:00`,
     isSample: true,
@@ -3547,6 +3688,7 @@ function createSampleSession(config) {
       feminized: partition[3],
       seedCount: partition[4],
       plantedCount: String(partition[5]),
+      seedAgeYears: normalizeSeedAgeYears(partition[6]),
     })),
   };
 }
@@ -7142,7 +7284,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
       userId: appState.user?.id || "",
       sessionDate: session.date || "",
       createdAt: session.createdAt || "",
-      partitions: Array.isArray(session.partitions) ? session.partitions : [],
+      partitions: normalizeSessionPartitions(session.partitions),
     }));
   }
 
@@ -7162,7 +7304,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
     userId: String(row.user_id || "").trim(),
     sessionDate: String(row.date || "").trim(),
     createdAt: String(row.created_at || "").trim(),
-    partitions: Array.isArray(row.partitions) ? row.partitions : [],
+    partitions: normalizeSessionPartitions(row.partitions),
   }));
 }
 
@@ -14935,6 +15077,13 @@ function getSessionSnapshotState(session) {
 }
 
 function mapSessionToRecord(session, userId) {
+  const seedAgeTrackingEnabled = Boolean(session.seedAgeTrackingEnabled);
+  const seedAgeMode = seedAgeTrackingEnabled
+    ? normalizeSeedAgeMode(session.seedAgeMode || "") || null
+    : null;
+  const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
+    ? normalizeSeedAgeYears(session.sessionSeedAgeYears)
+    : null;
   const record = {
     id: session.id,
     user_id: userId,
@@ -14951,7 +15100,10 @@ function mapSessionToRecord(session, userId) {
     germination_started_at: session.germinationStartedAt || null,
     first_planted_at: session.firstPlantedAt || null,
     completed_at: session.completedAt || null,
-    partitions: session.partitions || [],
+    seed_age_tracking_enabled: seedAgeTrackingEnabled,
+    seed_age_mode: seedAgeMode,
+    session_seed_age_years: sessionSeedAgeYears,
+    partitions: serializeSessionPartitions(session.partitions),
     created_at: session.createdAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
@@ -14981,11 +15133,14 @@ function mapRowToSession(row) {
     germinationStartedAt: row.germination_started_at || "",
     firstPlantedAt: row.first_planted_at || "",
     completedAt: row.completed_at || "",
+    seedAgeTrackingEnabled: Boolean(row.seed_age_tracking_enabled),
+    seedAgeMode: normalizeSeedAgeMode(row.seed_age_mode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(row.session_seed_age_years),
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at || "",
     visibilityStatus: normalizeSessionVisibilityStatus(row.visibility_status || ""),
     filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
-    partitions: Array.isArray(row.partitions) ? row.partitions : [],
+    partitions: normalizeSessionPartitions(row.partitions),
     createdAt: row.created_at,
     updatedAt: row.updated_at || row.last_updated_at || "",
   };
@@ -16537,17 +16692,145 @@ function chooseSnapshotImageForState(state, images) {
   });
 }
 
+function getSeedAgeSettingsFromForm(form) {
+  if (!form) {
+    return {
+      trackingEnabled: false,
+      mode: null,
+      sessionSeedAgeYears: null,
+    };
+  }
+
+  const trackingEnabled = Boolean(form.elements.seedAgeTrackingEnabled?.checked);
+  const mode = trackingEnabled
+    ? normalizeSeedAgeMode(form.querySelector('input[name="seedAgeMode"]:checked')?.value || "")
+    : null;
+  const sessionSeedAgeYears = trackingEnabled && mode === "same"
+    ? normalizeSeedAgeYears(form.elements.sessionSeedAgeYears?.value)
+    : null;
+
+  return {
+    trackingEnabled,
+    mode,
+    sessionSeedAgeYears,
+  };
+}
+
+function applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionContainer, seedAgeMode = null) {
+  const normalizedMode = normalizeSeedAgeMode(seedAgeMode);
+  const mixedModeEnabled = normalizedMode === "mixed";
+
+  [chartShell, chartHeader, partitionContainer].forEach((element) => {
+    if (!element) {
+      return;
+    }
+
+    if (mixedModeEnabled) {
+      element.dataset.seedAgeMode = "mixed";
+    } else {
+      delete element.dataset.seedAgeMode;
+    }
+  });
+
+  chartHeader?.querySelectorAll("[data-seed-age-header]").forEach((cell) => {
+    cell.hidden = !mixedModeEnabled;
+  });
+}
+
+function syncSeedAgeSetupUi(form, options = {}) {
+  if (!form) {
+    return {
+      trackingEnabled: false,
+      mode: null,
+      sessionSeedAgeYears: null,
+    };
+  }
+
+  const state = getSeedAgeSettingsFromForm(form);
+  const setupSection = form.querySelector("#seed-age-setup-section");
+  const sameField = form.querySelector("#session-seed-age-same-field");
+  const modeGroup = form.querySelector(".session-seed-age-mode-group");
+
+  if (setupSection) {
+    setupSection.hidden = !state.trackingEnabled;
+  }
+
+  if (sameField) {
+    sameField.hidden = !(state.trackingEnabled && state.mode === "same");
+  }
+
+  if (modeGroup) {
+    modeGroup.classList.toggle("is-disabled", !state.trackingEnabled);
+  }
+
+  const sameAgeInput = form.elements.sessionSeedAgeYears;
+  if (!options.preserveValidationState) {
+    modeGroup?.classList.remove("is-invalid");
+    sameAgeInput?.classList.remove("is-missing");
+  }
+
+  form.dataset.seedAgeTrackingEnabled = state.trackingEnabled ? "true" : "false";
+  form.dataset.seedAgeMode = state.mode || "";
+  return state;
+}
+
+function validateSeedAgeSettings(form) {
+  const state = getSeedAgeSettingsFromForm(form);
+  const modeGroup = form.querySelector(".session-seed-age-mode-group");
+  const sameAgeInput = form.elements.sessionSeedAgeYears;
+
+  modeGroup?.classList.remove("is-invalid");
+  sameAgeInput?.classList.remove("is-missing");
+
+  if (!state.trackingEnabled) {
+    return {
+      isValid: true,
+      message: "",
+      firstInvalidField: null,
+    };
+  }
+
+  if (!state.mode) {
+    modeGroup?.classList.add("is-invalid");
+    return {
+      isValid: false,
+      message: "Choose how seed age should be tracked before saving.",
+      firstInvalidField: form.querySelector('input[name="seedAgeMode"]'),
+    };
+  }
+
+  if (state.mode === "same") {
+    const rawValue = String(sameAgeInput?.value || "").trim();
+    if (rawValue === "" || normalizeSeedAgeYears(rawValue) === null) {
+      sameAgeInput?.classList.add("is-missing");
+      return {
+        isValid: false,
+        message: "Enter a seed age in years or switch to mixed ages by partition.",
+        firstInvalidField: sameAgeInput,
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    message: "",
+    firstInvalidField: null,
+  };
+}
+
 function getFormSnapshotData(form) {
   if (!form) {
     return null;
   }
 
+  const seedAgeState = getSeedAgeSettingsFromForm(form);
   const partitions = [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     id: Number(row.dataset.partitionId) || index + 1,
     source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
     seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
     plantedCount: Number(row.querySelector('input[name="plantedCount"]')?.value) || 0,
+    seedAgeYears: normalizeSeedAgeYears(row.querySelector('input[name^="seedAgeYears-"]')?.value),
   }));
   const firstPartition = partitions[0] || {};
   const date = form.elements.date?.value || "";
@@ -16555,6 +16838,9 @@ function getFormSnapshotData(form) {
     sessionName: buildFinalSessionName(form.elements.sessionName?.value, firstPartition, date),
     date,
     systemType: form.elements.systemType?.value || "",
+    seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
+    seedAgeMode: seedAgeState.mode,
+    sessionSeedAgeYears: seedAgeState.sessionSeedAgeYears,
     partitions,
   });
 }
@@ -16578,6 +16864,7 @@ function buildSnapshotData(source) {
     ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
     : 0;
   const sourceDetails = getPrimaryPartitionSourceDetails(source.partitions || []);
+  const seedAgeMetadata = getSessionSeedAgeMetadata(source);
 
   return {
     sessionName: source.sessionName || "Session",
@@ -16591,6 +16878,11 @@ function buildSnapshotData(source) {
     totalSeeds: totals.totalSeeds,
     totalPlanted: totals.totalPlanted,
     percentage,
+    seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
+    seedAgeMode: seedAgeMetadata.mode,
+    sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
+    seedAgeSummaryKey: seedAgeMetadata.summaryKey,
+    seedAgeSummaryLabel: seedAgeMetadata.summaryLabel,
   };
 }
 
@@ -33642,6 +33934,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const lifecycleSummary = document.querySelector("#session-lifecycle-summary");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
+  const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
+  const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
+  const seedAgeSameInput = form.elements.sessionSeedAgeYears;
   const notesField = document.querySelector("#session-notes");
   const notesSaveButton = document.querySelector("#session-notes-save");
   const notesMessage = document.querySelector("#session-notes-message");
@@ -33705,6 +34000,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     firstPlantedAt: form.dataset.firstPlantedAt || "",
     completedAt: form.dataset.completedAt || "",
   });
+  syncSeedAgeSetupUi(form);
 
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
   if (partitionWorkTitle) {
@@ -33714,6 +34010,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+  applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
   applyStageEditingMode(form, sessionStatusField.value);
   updateSessionStatusReminder(
     reminder,
@@ -33780,6 +34077,33 @@ function renderSessionForm(initialSystemType = "KAN") {
     );
     refreshUnsavedChangesState();
   });
+  const rerenderSeedAgePartitions = () => {
+    syncSeedAgeSetupUi(form);
+    renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+    applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
+    applyStageEditingMode(form, sessionStatusField.value);
+    updateSessionSuccessSummary(form, sessionSuccessSummary);
+    updatePartitionProgressChart(
+      getPartitionProgressDataFromForm(form),
+      progressChart,
+      progressSection,
+    );
+    updateRunProgressSummary(
+      runProgressSummary,
+      runProgressSection,
+      sessionStatusField.value,
+      getPartitionProgressDataFromForm(form),
+    );
+    validateSeedAgeSettings(form);
+    if (formMessage.textContent) {
+      const seedAgeValidation = validateSeedAgeSettings(form);
+      const partitionValidation = validatePartitions(form, { showMessage: false });
+      if (seedAgeValidation.isValid && partitionValidation.isValid) {
+        formMessage.textContent = "";
+      }
+    }
+  };
   form.addEventListener("input", () => {
     refreshUnsavedChangesState();
   });
@@ -33841,6 +34165,17 @@ function renderSessionForm(initialSystemType = "KAN") {
       appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
+    seedAgeTrackingField?.addEventListener("change", () => {
+      rerenderSeedAgePartitions();
+    });
+    seedAgeModeInputs.forEach((input) => {
+      input.addEventListener("change", () => {
+        rerenderSeedAgePartitions();
+      });
+    });
+    seedAgeSameInput?.addEventListener("input", () => {
+      validateSeedAgeSettings(form);
+    });
     chartShell.addEventListener("click", (event) => {
       if (!event.target.closest("#partition-fields")) {
         return;
@@ -33886,6 +34221,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
+    applyStageEditingMode(form, sessionStatusField.value);
     clearActiveSystemLayout(form);
     updateSessionSuccessSummary(form, sessionSuccessSummary);
     updatePartitionProgressChart(
@@ -33927,6 +34264,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     });
     updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
     applyStageEditingMode(form, sessionStatusField.value);
     updateGrowthStageLock(form, sessionStatusField.value);
     updateSessionStatusReminder(
@@ -34017,6 +34355,13 @@ function renderSessionForm(initialSystemType = "KAN") {
       return null;
     }
 
+    const seedAgeValidation = validateSeedAgeSettings(form);
+    if (!seedAgeValidation.isValid) {
+      formMessage.textContent = seedAgeValidation.message;
+      seedAgeValidation.firstInvalidField?.focus();
+      return null;
+    }
+
     const validation = validatePartitions(form, { showMessage: true });
     if (!validation.isValid) {
       formMessage.textContent = "Please complete all partition fields before saving";
@@ -34027,6 +34372,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     formMessage.textContent = "";
 
     const formData = new FormData(form);
+    const seedAgeState = getSeedAgeSettingsFromForm(form);
     const partitionRows = [...form.querySelectorAll(".partition-row")];
     const partitionEntries = createPartitionsForSystem(formData.get("systemType")).map((partition, index) => {
       const row = partitionRows[index];
@@ -34039,6 +34385,9 @@ function renderSessionForm(initialSystemType = "KAN") {
         feminized: formData.get(`feminized-${index}`),
         seedCount: Number(formData.get(`seedCount-${index}`)) || 0,
         plantedCount: row?.querySelector('input[name="plantedCount"]')?.value.trim() || "",
+        seedAgeYears: seedAgeState.mode === "mixed"
+          ? normalizeSeedAgeYears(row?.querySelector(`input[name="seedAgeYears-${index}"]`)?.value)
+          : null,
       };
     });
     const session = {
@@ -34066,6 +34415,9 @@ function renderSessionForm(initialSystemType = "KAN") {
         formData.get("sessionStatus") === "completed"
           ? form.dataset.completedAt || new Date().toISOString()
           : form.dataset.completedAt || "",
+      seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
+      seedAgeMode: seedAgeState.mode,
+      sessionSeedAgeYears: seedAgeState.sessionSeedAgeYears,
       filterPaperDeducted: false,
       partitions: partitionEntries,
       createdAt: new Date().toISOString(),
@@ -34111,7 +34463,8 @@ function renderSessionForm(initialSystemType = "KAN") {
   });
 }
 
-function buildPartitionFormCard(partition, index) {
+function buildPartitionFormCard(partition, index, options = {}) {
+  const showSeedAgeField = Boolean(options.showSeedAgeField);
   const row = document.createElement("article");
   row.className = "chart-row partition-row";
   row.dataset.partitionRow = "true";
@@ -34168,6 +34521,13 @@ function buildPartitionFormCard(partition, index) {
         <input type="number" name="seedCount-${index}" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number of seeds">
       <span class="field-warning" aria-live="polite">Enter a seed count greater than zero.</span>
     </label>
+    ${showSeedAgeField ? `
+    <label>
+      <span class="mobile-field-label">Age</span>
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="Years" aria-label="Partition ${partition.id} seed age in years">
+      <span class="field-warning" aria-live="polite">Enter a valid age in years or leave blank.</span>
+    </label>
+    ` : ""}
     <label>
       <span class="mobile-field-label"># Germinated</span>
         <input type="number" name="plantedCount" class="partition-input" min="0" step="1" placeholder="Enter #" aria-label="Partition ${partition.id} number germinated">
@@ -34203,6 +34563,8 @@ function ensureSourceCatalogDatalist() {
 function renderPartitionRows(form, systemType, sessionStatus) {
   const partitionFields = form.querySelector("#partition-fields");
   const formMessage = form.querySelector("#form-message");
+  const seedAgeState = getSeedAgeSettingsFromForm(form);
+  const showSeedAgeField = seedAgeState.trackingEnabled && seedAgeState.mode === "mixed";
   const existingPartitions = getCurrentPartitionValues(form);
   const partitions = createPartitionsForSystem(systemType).map((partition, index) => ({
     ...partition,
@@ -34212,13 +34574,14 @@ function renderPartitionRows(form, systemType, sessionStatus) {
 
   partitionFields.innerHTML = "";
   if (systemType === "TRA") {
-    renderTraPartitionSections(partitionFields, partitions);
+    renderTraPartitionSections(partitionFields, partitions, { showSeedAgeField });
   } else {
     partitions.forEach((partition, index) => {
-      partitionFields.appendChild(buildPartitionFormCard(partition, index));
+      partitionFields.appendChild(buildPartitionFormCard(partition, index, { showSeedAgeField }));
       hydratePartitionRow(partitionFields.lastElementChild, partition);
     });
   }
+  form.__partitionDraftValues = partitions.map((partition) => ({ ...partition }));
 
   initializeCustomSelects(partitionFields);
   bindPartitionRowVisualState(partitionFields);
@@ -34228,6 +34591,12 @@ function renderPartitionRows(form, systemType, sessionStatus) {
     form.querySelector("#partition-chart-header"),
     partitionFields,
     sessionStatus,
+  );
+  applyPartitionSeedAgeLayout(
+    form.querySelector("#partition-chart-shell"),
+    form.querySelector("#partition-chart-header"),
+    partitionFields,
+    seedAgeState.mode,
   );
   syncPartitionButtonStates(partitionFields, sessionStatus);
   updateGrowthStageLock(form, sessionStatus);
@@ -34291,12 +34660,16 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     field.disabled = !allowFullEditing;
   });
 
+  scope.querySelectorAll('input[name="seedAgeTrackingEnabled"], input[name="seedAgeMode"], input[name="sessionSeedAgeYears"]').forEach((field) => {
+    field.disabled = !allowFullEditing;
+  });
+
   scope.querySelectorAll('#detail-session-notes, #session-notes').forEach((field) => {
     field.readOnly = false;
     field.disabled = false;
   });
 
-  scope.querySelectorAll('.partition-row input[name^="source-"], .partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"]').forEach((field) => {
+  scope.querySelectorAll('.partition-row input[name^="source-"], .partition-row input[name^="seedVariety-"], .partition-row select[name^="seedType-"], .partition-row select[name^="feminized-"], .partition-row input[name^="seedCount-"], .partition-row input[name^="seedAgeYears-"]').forEach((field) => {
     field.disabled = isCompleted || allowGerminationOnlyEditing;
   });
 
@@ -34569,7 +34942,7 @@ function maybePromptGrowthStage(form, stageField, stageTrigger) {
   return openGrowthStageModal({ stageField, stageTrigger });
 }
 
-function renderTraPartitionSections(container, partitions) {
+function renderTraPartitionSections(container, partitions, options = {}) {
   const sections = [
     { label: "A", start: 0, end: 4 },
     { label: "B", start: 4, end: 8 },
@@ -34588,7 +34961,7 @@ function renderTraPartitionSections(container, partitions) {
     const body = wrapper.querySelector(".tra-section-body");
     partitions.slice(section.start, section.end).forEach((partition, localIndex) => {
       const index = section.start + localIndex;
-      body.appendChild(buildPartitionFormCard(partition, index));
+      body.appendChild(buildPartitionFormCard(partition, index, options));
       hydratePartitionRow(body.lastElementChild, partition);
     });
 
@@ -34602,11 +34975,16 @@ function hydratePartitionRow(row, partition) {
   row.querySelector('select[name^="seedType-"]').value = partition.seedType || "";
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
   row.querySelector('input[name^="seedCount-"]').value = partition.seedCount > 0 ? partition.seedCount : "";
+  const seedAgeField = row.querySelector('input[name^="seedAgeYears-"]');
+  if (seedAgeField) {
+    seedAgeField.value = formatSeedAgeInputValue(partition.seedAgeYears);
+  }
   row.querySelector('input[name="plantedCount"]').value = partition.plantedCount || "";
 }
 
 function getCurrentPartitionValues(form) {
-  return [...form.querySelectorAll(".partition-row")].map((row) => ({
+  const previousValues = Array.isArray(form?.__partitionDraftValues) ? form.__partitionDraftValues : [];
+  return [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
     seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
     breeder: "",
@@ -34614,6 +34992,10 @@ function getCurrentPartitionValues(form) {
     feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
     plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
+    seedAgeYears: normalizeSeedAgeYears(
+      row.querySelector('input[name^="seedAgeYears-"]')?.value
+      ?? previousValues[index]?.seedAgeYears,
+    ),
   }));
 }
 
@@ -35928,17 +36310,25 @@ function renderSessionDetail(sessionId) {
 
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
+  const seedAgeMetadata = getSessionSeedAgeMetadata(session);
 
   applySessionDetailHeaderOptions(detail, {
     title: formatSessionLabel(session),
   });
-  renderSessionDetailMetaCards(detail.meta, [
+  const detailMetaCards = [
     { label: "Status", value: capitalize(normalizeSessionStatus(session.sessionStatus || "")).replace("Unselected", "Not started") },
     { label: "System Type", value: session.systemType },
     { label: "Unit ID", value: String(session.unitId || "").trim() },
     { label: "Date", value: session.date },
     { label: "Time", value: formatStoredTime(session.time) },
-  ]);
+  ];
+  if (seedAgeMetadata.trackingEnabled) {
+    detailMetaCards.push({
+      label: "Seed Age",
+      value: seedAgeMetadata.summaryLabel,
+    });
+  }
+  renderSessionDetailMetaCards(detail.meta, detailMetaCards);
   applySessionDetailNotesOptions(detail, {
     value: session.sessionNotes || "",
   });
@@ -36014,13 +36404,16 @@ function renderSessionDetail(sessionId) {
 
   const partitions = detail.partitions;
   session.partitions.forEach((partition, index) => {
-    partitions.appendChild(buildPartitionFormCard(partition, index));
+    partitions.appendChild(buildPartitionFormCard(partition, index, {
+      showSeedAgeField: seedAgeMetadata.mode === "mixed",
+    }));
     hydratePartitionRow(partitions.lastElementChild, partition);
   });
   ensureSourceCatalogDatalist();
   initializeCustomSelects(partitions);
   bindPartitionRowVisualState(partitions);
   applySessionStatusLayout(detail.chartShell, detail.chartHeader, partitions, detail.statusField.value);
+  applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, partitions, seedAgeMetadata.mode);
   syncPartitionButtonStates(partitions, detail.statusField.value);
   syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
   applyStageEditingMode(app, detail.statusField.value);
@@ -36521,12 +36914,14 @@ function getSessionSortTime(session) {
 function buildPartitionDetailRow(partition, sessionStatus = "") {
   const germinationStatus = getPartitionGerminationDisplay(partition);
   const successDisplay = getPartitionSuccessDisplay(partition);
+  const seedAgeValue = getEffectivePartitionSeedAgeYears(partition);
   const basePartitionState = getPartitionBaseRowState({
     sourceValue: formatPartitionSource(partition),
     varietyValue: formatPartitionSeedVariety(partition),
     typeValue: partition?.seedType || "",
     sexValue: partition?.feminized || "",
     seedValue: partition?.seedCount ?? "",
+    seedAgeValue: seedAgeValue ?? "",
     plantedValue: partition?.plantedCount ?? "",
   });
   const partitionState = getPartitionRowStateFromPartition(partition, sessionStatus);
@@ -36574,11 +36969,13 @@ function getPartitionBaseRowState(values) {
   const typeValue = String(values?.typeValue || "").trim();
   const sexValue = String(values?.sexValue || "").trim();
   const seedValue = String(values?.seedValue || "").trim();
+  const seedAgeValue = String(values?.seedAgeValue || "").trim();
   const plantedValue = String(values?.plantedValue || "").trim();
   const hasSeedCount = seedValue !== "";
+  const hasSeedAge = seedAgeValue !== "";
   const hasPlantedCount = plantedValue !== "";
 
-  if (sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount) {
+  if (sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount) {
     return "in-progress";
   }
 
@@ -37042,6 +37439,7 @@ function createPartitionsForSystem(systemType) {
     feminized: "",
     seedCount: 0,
     plantedCount: "",
+    seedAgeYears: null,
   }));
 }
 
@@ -37060,7 +37458,7 @@ function applySessionStatusLayout(chartShell, chartHeader, partitionContainer, s
 function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionStatus) {
   const isVisible = sessionStatus === "germinating" || sessionStatus === "completed";
   const isDarkTheme = document.body.classList.contains("theme-dark");
-  const headerCell = chartHeader.querySelector("span:nth-child(6)");
+  const headerCell = chartHeader.querySelector('[data-partition-header="germinated"]');
   const plantedCells = [...partitionContainer.querySelectorAll('.partition-row label:has(input[name="plantedCount"])')];
   const plantedInputs = [...partitionContainer.querySelectorAll('input[name="plantedCount"]')];
 
@@ -37112,7 +37510,7 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
 
   window.__plantedColumnDebug = {
     sessionStatus,
-    headerSelector: "#partition-chart-header span:nth-child(6) or #detail-chart-header span:nth-child(6)",
+    headerSelector: '#partition-chart-header [data-partition-header="germinated"] or #detail-chart-header [data-partition-header="germinated"]',
     cellSelector: '.partition-row label:has(input[name="plantedCount"])',
     inputSelector: 'input[name="plantedCount"]',
     headerFound: Boolean(headerCell),
@@ -37580,11 +37978,13 @@ function validatePartitionRow(row) {
   const typeSelect = row.querySelector('select[name^="seedType-"]');
   const sexSelect = row.querySelector('select[name^="feminized-"]');
   const seedInput = row.querySelector('input[name^="seedCount-"]');
+  const seedAgeInput = row.querySelector('input[name^="seedAgeYears-"]');
   const plantedInput = row.querySelector('input[name="plantedCount"]');
   const varietyLabel = varietyInput.closest("label");
   const typeLabel = typeSelect.closest("label");
   const sexLabel = sexSelect.closest("label");
   const seedLabel = seedInput.closest("label");
+  const seedAgeLabel = seedAgeInput?.closest("label") || null;
   const plantedLabel = plantedInput.closest("label");
 
   const sourceValue = sourceInput.value.trim();
@@ -37592,18 +37992,22 @@ function validatePartitionRow(row) {
   const typeValue = typeSelect.value;
   const sexValue = sexSelect.value;
   const seedValue = seedInput.value.trim();
+  const seedAgeValue = seedAgeInput?.value.trim() || "";
   const plantedValue = plantedInput.value.trim();
   const successOutput = row.querySelector("[data-success-output]");
   const hasSeedCount = seedValue !== "";
+  const hasSeedAge = seedAgeValue !== "";
   const hasPlantedCount = plantedValue !== "";
   const seedNumber = Number(seedValue);
+  const seedAgeNumber = Number(seedAgeValue);
   const plantedNumber = Number(plantedValue);
   const seedCountValid = hasSeedCount && seedNumber > 0;
+  const seedAgeValid = !seedAgeInput || !hasSeedAge || (Number.isFinite(seedAgeNumber) && seedAgeNumber >= 0);
   const plantedCountValid = !hasPlantedCount || (Number.isFinite(plantedNumber) && plantedNumber >= 0 && seedCountValid && plantedNumber <= seedNumber);
 
-  const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasPlantedCount);
+  const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount);
   const fieldsComplete = Boolean(varietyValue && typeValue && sexValue && seedCountValid && plantedCountValid);
-  const rowInvalid = (rowStarted && !fieldsComplete) || !plantedCountValid;
+  const rowInvalid = (rowStarted && !fieldsComplete) || !seedAgeValid || !plantedCountValid;
   const sessionStatus = row.closest(".partition-table")?.dataset.sessionStatus || row.closest("form")?.dataset.currentStage || "";
   const normalizedSessionStatus = normalizeSessionStatus(sessionStatus);
   const rowState = getPartitionRowState({
@@ -37612,6 +38016,7 @@ function validatePartitionRow(row) {
     typeValue,
     sexValue,
     seedValue,
+    seedAgeValue,
     plantedValue,
   }, sessionStatus);
 
@@ -37628,12 +38033,14 @@ function validatePartitionRow(row) {
   typeLabel.classList.toggle("field-has-warning", rowInvalid && !typeValue);
   sexLabel.classList.toggle("field-has-warning", rowInvalid && !sexValue);
   seedLabel.classList.toggle("field-has-warning", rowInvalid && !seedCountValid);
+  seedAgeLabel?.classList.toggle("field-has-warning", !seedAgeValid);
   plantedLabel.classList.toggle("field-has-warning", !plantedCountValid);
 
   typeSelect.classList.toggle("is-missing", rowInvalid && !typeValue);
   sexSelect.classList.toggle("is-missing", rowInvalid && !sexValue);
   varietyInput.classList.toggle("is-missing", rowInvalid && !varietyValue);
   seedInput.classList.toggle("is-missing", rowInvalid && !seedCountValid);
+  seedAgeInput?.classList.toggle("is-missing", !seedAgeValid);
   plantedInput.classList.toggle("is-missing", !plantedCountValid);
   syncCustomSelect(typeSelect);
   syncCustomSelect(sexSelect);
@@ -37655,6 +38062,9 @@ function validatePartitionRow(row) {
     }
     if (!firstInvalidField && !seedCountValid) {
       firstInvalidField = seedInput;
+    }
+    if (!firstInvalidField && !seedAgeValid) {
+      firstInvalidField = seedAgeInput;
     }
     if (!firstInvalidField && !plantedCountValid) {
       firstInvalidField = plantedInput;
@@ -38777,6 +39187,11 @@ function syncSessionPartitionsFromContainer(session, container) {
       seedType: row.querySelector('select[name^="seedType-"]')?.value || "",
       feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
       seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
+      seedAgeYears: normalizeSeedAgeYears(
+        row.querySelector('input[name^="seedAgeYears-"]')?.value
+        ?? existingPartition.seedAgeYears
+        ?? existingPartition.seed_age_years,
+      ),
       plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
     };
   });
@@ -39174,6 +39589,7 @@ function buildPartitionDraftValuesFromContainer(container) {
     seedType: String(row.querySelector('select[name^="seedType-"]')?.value || "").trim(),
     feminized: String(row.querySelector('select[name^="feminized-"]')?.value || "").trim(),
     seedCount: String(row.querySelector('input[name^="seedCount-"]')?.value || "").trim(),
+    seedAgeYears: String(row.querySelector('input[name^="seedAgeYears-"]')?.value || "").trim(),
     plantedCount: String(row.querySelector('input[name="plantedCount"]')?.value || "").trim(),
   }));
 }
@@ -39191,6 +39607,9 @@ function buildNewSessionDraftSignature(form) {
     systemType: String(form.elements.systemType?.value || "").trim(),
     unitId: String(form.elements.unitId?.value || "").trim(),
     sessionStatus: String(form.elements.sessionStatus?.value || "").trim(),
+    seedAgeTrackingEnabled: Boolean(form.elements.seedAgeTrackingEnabled?.checked),
+    seedAgeMode: String(form.querySelector('input[name="seedAgeMode"]:checked')?.value || "").trim(),
+    sessionSeedAgeYears: String(form.elements.sessionSeedAgeYears?.value || "").trim(),
     sessionNotes: String(form.elements.sessionNotes?.value || "").trim(),
     germinationStartedAt: String(form.dataset.germinationStartedAt || "").trim(),
     firstPlantedAt: String(form.dataset.firstPlantedAt || "").trim(),
