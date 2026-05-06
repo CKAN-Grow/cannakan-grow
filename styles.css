@@ -1846,16 +1846,30 @@ body.theme-dark .spotlight-stat strong {
   margin: 0;
 }
 
-#session-command-center .session-command-center-title-row {
+#session-command-center .session-command-center-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
 }
 
+#session-command-center .session-command-center-header-text,
 #session-command-center .session-command-center-title-copy {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+#session-command-center .session-command-center-header-text .eyebrow,
+#session-command-center .session-command-center-title-copy .eyebrow {
+  margin: 0;
+  line-height: 1.1;
+}
+
+#session-command-center .session-command-center-header-text h3,
+#session-command-center .session-command-center-title-copy h3 {
+  margin: 0;
+  line-height: 1.08;
 }
 
 #session-command-center .command-icon {
@@ -1875,6 +1889,7 @@ body.theme-dark .spotlight-stat strong {
 #session-command-center .command-icon--header {
   width: 24px;
   height: 24px;
+  margin-top: 2px;
   color: #9fe269;
   filter: drop-shadow(0 0 10px rgba(148, 209, 89, 0.28));
 }

@@ -37921,12 +37921,10 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   return `
     <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions card card-accent card-accent-green">
       <header class="session-command-center-head session-command-center-header">
-        <div class="session-command-center-title-row">
-          ${renderCommandCenterIconMarkup("header", "command-icon--header")}
-          <div class="session-command-center-title-copy">
+        ${renderCommandCenterIconMarkup("header", "command-icon--header")}
+        <div class="session-command-center-header-text session-command-center-title-copy">
             <p class="eyebrow">ACTIVE SESSION</p>
             <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
-          </div>
         </div>
       </header>
       <div class="session-command-center session-command-center-grid" data-session-command-center="true">
