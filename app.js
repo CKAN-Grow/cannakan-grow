@@ -16482,6 +16482,72 @@ function renderSeedAgeAnalyticsDonutMarkup(state) {
   `;
 }
 
+function renderSeedAgeAnalyticsDistributionBarsMarkup(state) {
+  const segments = Array.isArray(state?.distributionSegments) ? state.distributionSegments : [];
+  const normalizedSegments = segments.map((segment) => {
+    const sharePercent = Math.max(0, Number(segment?.sharePercent) || 0);
+    const count = Math.max(0, Number(segment?.count) || 0);
+    const activeCells = Math.max(0, Math.min(10, Math.round((sharePercent / 100) * 10)));
+    return {
+      key: String(segment?.key || "").trim(),
+      label: String(segment?.label || "").trim(),
+      color: String(segment?.color || "#94d159").trim(),
+      sharePercent,
+      count,
+      activeCells,
+    };
+  });
+
+  return `
+    <div class="seed-age-analytics-distribution-bars" role="img" aria-label="Seed age session distribution by bucket">
+      ${normalizedSegments.map((segment) => `
+        <div class="seed-age-analytics-distribution-column" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
+          <div class="seed-age-analytics-distribution-column-meta">
+            <strong>${escapeHtml(`${segment.sharePercent.toFixed(1)}%`)}</strong>
+            <span>${escapeHtml(`(${segment.count.toLocaleString()})`)}</span>
+          </div>
+          <div class="seed-age-analytics-distribution-column-stack" aria-hidden="true">
+            ${Array.from({ length: 10 }, (_, index) => {
+              const isActive = index >= (10 - segment.activeCells);
+              return `<span class="seed-age-analytics-distribution-column-cell${isActive ? " is-active" : ""}" style="--seed-age-distribution-color:${escapeHtml(segment.color)};"></span>`;
+            }).join("")}
+          </div>
+          <div class="seed-age-analytics-distribution-column-label">
+            <span class="seed-age-analytics-distribution-column-dot" style="--seed-age-distribution-color:${escapeHtml(segment.color)};"></span>
+            <span>${escapeHtml(segment.label)}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSeedAgeAnalyticsDistributionPanelMarkup(state) {
+  const mostCommonSegment = state?.mostCommonSegment || null;
+  return `
+    <article class="seed-age-analytics-panel seed-age-analytics-panel--distribution">
+      <div class="seed-age-analytics-panel-head">
+        <div>
+          <h2>Seed Age Distribution</h2>
+          <p>Session distribution and bucket concentration across tracked seed ages.</p>
+        </div>
+      </div>
+      <div class="seed-age-analytics-distribution-panel-layout">
+        <div class="seed-age-analytics-distribution-radial">
+          ${renderSeedAgeAnalyticsDonutMarkup(state)}
+          <div class="seed-age-analytics-distribution-summary">
+            <p>Most common seed age:</p>
+            <strong>${mostCommonSegment ? escapeHtml(`${mostCommonSegment.label} (${mostCommonSegment.sharePercent.toFixed(1)}%)`) : "Awaiting community coverage"}</strong>
+          </div>
+        </div>
+        <div class="seed-age-analytics-distribution-graph-shell">
+          ${renderSeedAgeAnalyticsDistributionBarsMarkup(state)}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function parseSeedAgeAnalyticsNumericValue(value = "") {
   const normalizedValue = Number(String(value || "").replace(/[^0-9.]+/g, ""));
   return Number.isFinite(normalizedValue) ? normalizedValue : null;
@@ -17007,11 +17073,15 @@ function renderSeedAgeAnalyticsPage() {
         </section>
 
         <section class="seed-age-analytics-main-grid">
+          ${renderSeedAgeAnalyticsDistributionPanelMarkup(state)}
+        </section>
+
+        <section class="seed-age-analytics-main-grid">
           <article class="seed-age-analytics-panel seed-age-analytics-panel--performance">
             <div class="seed-age-analytics-panel-head">
               <div>
-                <h2>Seed Age Performance</h2>
-                <p>Germination trends and session distribution by seed age.</p>
+                <h2>Germination Rate by Seed Age</h2>
+                <p>Germination performance curve across standardized seed age buckets.</p>
               </div>
               <span class="seed-age-analytics-filter-pill">All Time</span>
             </div>
@@ -17019,31 +17089,9 @@ function renderSeedAgeAnalyticsPage() {
               <div class="seed-age-analytics-performance-chart">
                 ${renderSeedAgeAnalyticsLineChartMarkup(state)}
               </div>
-              <div class="seed-age-analytics-performance-side">
-                <div class="seed-age-analytics-distribution-layout">
-                  ${renderSeedAgeAnalyticsDonutMarkup(state)}
-                  <div class="seed-age-analytics-legend-divider" aria-hidden="true"></div>
-                  <div class="seed-age-analytics-legend">
-                    ${state.distributionSegments.map((segment) => `
-                      <div class="seed-age-analytics-legend-row" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
-                        <span class="seed-age-analytics-legend-main">
-                          <span class="seed-age-analytics-legend-dot" style="--seed-age-legend-color:${escapeHtml(segment.color)};"></span>
-                          <span>${escapeHtml(segment.label)}</span>
-                        </span>
-                        <span class="seed-age-analytics-legend-values">${escapeHtml(`${segment.sharePercent.toFixed(1)}% (${segment.count.toLocaleString()})`)}</span>
-                      </div>
-                    `).join("")}
-                  </div>
-                </div>
-                <div class="seed-age-analytics-panel-foot seed-age-analytics-performance-foot">
-                  <p>
-                    ${state.mostCommonSegment
-                      ? escapeHtml(`Most common seed age: ${state.mostCommonSegment.label} (${state.mostCommonSegment.sharePercent.toFixed(1)}%)`)
-                      : "Most common seed age will appear here as more sessions are tracked."}
-                  </p>
-                  ${state.hasMixedAgeOverlap ? `<p class="seed-age-analytics-footnote">Mixed-age sessions can appear in more than one age group.</p>` : ""}
-                </div>
-              </div>
+            </div>
+            <div class="seed-age-analytics-panel-foot seed-age-analytics-performance-foot">
+              ${state.hasMixedAgeOverlap ? `<p class="seed-age-analytics-footnote">Mixed-age sessions can appear in more than one age group.</p>` : ""}
             </div>
           </article>
         </section>

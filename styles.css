@@ -6653,6 +6653,180 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 26px;
 }
 
+.seed-age-analytics-panel--distribution {
+  padding: 24px 24px 22px;
+  gap: 20px;
+  background:
+    radial-gradient(circle at 16% 26%, rgba(148, 209, 89, 0.08), transparent 20%),
+    radial-gradient(circle at 76% 18%, rgba(110, 209, 223, 0.08), transparent 18%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032) 0%, rgba(255, 255, 255, 0.006) 100%),
+    rgba(13, 20, 16, 0.72);
+}
+
+.seed-age-analytics-distribution-panel-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.68fr) minmax(0, 1.32fr);
+  gap: 24px;
+  align-items: stretch;
+  position: relative;
+}
+
+.seed-age-analytics-distribution-panel-layout::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px calc(33% + 10px);
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(110, 209, 223, 0.16), rgba(148, 209, 89, 0.14), transparent);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+.seed-age-analytics-distribution-radial {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.seed-age-analytics-distribution-radial .seed-age-analytics-donut-shell {
+  width: min(100%, 312px);
+}
+
+.seed-age-analytics-distribution-radial .seed-age-analytics-donut-frame {
+  width: min(312px, 100%);
+}
+
+.seed-age-analytics-distribution-summary {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  max-width: 280px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0.008) 100%),
+    rgba(12, 18, 14, 0.5);
+  text-align: left;
+}
+
+.seed-age-analytics-distribution-summary p,
+.seed-age-analytics-distribution-summary strong {
+  margin: 0;
+}
+
+.seed-age-analytics-distribution-summary p {
+  color: rgba(220, 228, 215, 0.74);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.seed-age-analytics-distribution-summary strong {
+  color: #f4f8ef;
+  font-size: 1.02rem;
+  line-height: 1.35;
+}
+
+.seed-age-analytics-distribution-graph-shell {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  padding: 14px 16px 8px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 50% 12%, rgba(110, 209, 223, 0.06), transparent 26%),
+    rgba(10, 16, 13, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.018);
+}
+
+.seed-age-analytics-distribution-bars {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
+  gap: 18px;
+  align-items: end;
+  min-width: 0;
+}
+
+.seed-age-analytics-distribution-column {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  outline: none;
+}
+
+.seed-age-analytics-distribution-column-meta {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+}
+
+.seed-age-analytics-distribution-column-meta strong,
+.seed-age-analytics-distribution-column-meta span {
+  margin: 0;
+}
+
+.seed-age-analytics-distribution-column-meta strong {
+  color: #f3f9ec;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.seed-age-analytics-distribution-column-meta span {
+  color: rgba(220, 228, 215, 0.72);
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.seed-age-analytics-distribution-column-stack {
+  display: grid;
+  grid-template-rows: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+  width: 24px;
+  min-height: 250px;
+}
+
+.seed-age-analytics-distribution-column-cell {
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.seed-age-analytics-distribution-column-cell.is-active {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--seed-age-distribution-color) 88%, white 10%) 0%, var(--seed-age-distribution-color) 100%);
+  border-color: color-mix(in srgb, var(--seed-age-distribution-color) 46%, rgba(255, 255, 255, 0.1));
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--seed-age-distribution-color) 26%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.seed-age-analytics-distribution-column-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  color: rgba(235, 241, 231, 0.88);
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.seed-age-analytics-distribution-column-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--seed-age-distribution-color);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--seed-age-distribution-color) 18%, transparent),
+    0 0 12px color-mix(in srgb, var(--seed-age-distribution-color) 24%, transparent);
+  flex: 0 0 16px;
+}
+
 .seed-age-analytics-panel--performance {
   grid-column: 1 / -1;
   padding: 24px 24px 22px;
@@ -6666,20 +6840,14 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-performance-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.78fr);
-  gap: 26px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
   align-items: stretch;
   position: relative;
 }
 
 .seed-age-analytics-performance-layout::before {
-  content: "";
-  position: absolute;
-  inset: 8px auto 8px calc(64% + 8px);
-  width: 1px;
-  background: linear-gradient(180deg, transparent, rgba(124, 218, 231, 0.18), rgba(148, 209, 89, 0.16), transparent);
-  pointer-events: none;
-  opacity: 0.8;
+  display: none;
 }
 
 .seed-age-analytics-performance-chart,
@@ -7412,16 +7580,17 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     grid-template-columns: 1fr;
   }
 
-  .seed-age-analytics-performance-layout {
+  .seed-age-analytics-distribution-panel-layout {
     grid-template-columns: 1fr;
   }
 
-  .seed-age-analytics-performance-layout::before {
+  .seed-age-analytics-distribution-panel-layout::before {
     display: none;
   }
 
-  .seed-age-analytics-performance-side {
-    padding-left: 0;
+  .seed-age-analytics-distribution-bars {
+    grid-template-columns: repeat(3, minmax(90px, 1fr));
+    gap: 20px 18px;
   }
 }
 
@@ -7441,10 +7610,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .seed-age-analytics-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .seed-age-analytics-distribution-layout {
-    grid-template-columns: 1fr;
   }
 
   .seed-age-analytics-heatmap-row {
@@ -7486,13 +7651,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .seed-age-analytics-performance-chart,
-  .seed-age-analytics-distribution-layout {
+  .seed-age-analytics-distribution-graph-shell {
     padding-inline: 12px;
   }
 
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .seed-age-analytics-distribution-bars {
+    grid-template-columns: repeat(2, minmax(100px, 1fr));
+  }
+
+  .seed-age-analytics-distribution-column-stack {
+    min-height: 220px;
   }
 }
 
@@ -7512,6 +7685,34 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
   .seed-age-analytics-heatmap-table {
     min-width: 700px;
+  }
+
+  .seed-age-analytics-distribution-bars {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .seed-age-analytics-distribution-column {
+    justify-items: stretch;
+  }
+
+  .seed-age-analytics-distribution-column-meta,
+  .seed-age-analytics-distribution-column-label {
+    justify-items: start;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .seed-age-analytics-distribution-column-stack {
+    width: 100%;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-rows: none;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  .seed-age-analytics-distribution-column-cell {
+    min-height: 18px;
   }
 }
 
