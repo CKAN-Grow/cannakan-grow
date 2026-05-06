@@ -66,6 +66,8 @@ const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminSeedAgeAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
+const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
+const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "realistic-v1";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
 const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
   "cstp-testing-lab",
@@ -15493,7 +15495,7 @@ function buildSeedAgeAnalyticsNoDataState() {
       averageMonths: null,
       isOptimal: false,
     })),
-    distributionSegments: getSeedAgeAnalyticsBucketDefinitions().slice(0, 7).map((bucket) => ({
+    distributionSegments: getSeedAgeAnalyticsBucketDefinitions().map((bucket) => ({
       key: bucket.key,
       label: bucket.legendLabel,
       count: 0,
@@ -15518,79 +15520,354 @@ function buildSeedAgeAnalyticsNoDataState() {
   };
 }
 
-function buildSeedAgeAnalyticsDemoState() {
-  const lineBuckets = getSeedAgeAnalyticsBucketDefinitions().map((bucket, index) => ({
-    ...bucket,
-    rate: [58.2, 71.3, 88.7, 92.1, 85.4, 74.8, 63.2, 52.1, 41.7, 28.9][index] || null,
-    totalSeeds: [56, 108, 176, 214, 155, 96, 81, 72, 49, 31][index] || 0,
-    totalPlanted: [33, 77, 156, 197, 132, 72, 51, 38, 20, 9][index] || 0,
-    sessionCount: [109, 218, 288, 309, 155, 91, 78, 62, 41, 24][index] || 0,
-    averageMonths: [0.5, 2, 4.5, 8.8, 14.7, 21.1, 30, 42, 54, 66][index] || null,
-    isOptimal: bucket.key === "3-6" || bucket.key === "6-12",
-  }));
-  const distributionSegments = [
-    { key: "0-1", label: "0-1 month", count: 109, sharePercent: 8.7, color: "#5fc56a" },
-    { key: "1-3", label: "1-3 months", count: 218, sharePercent: 17.5, color: "#7acc5e" },
-    { key: "3-6", label: "3-6 months", count: 288, sharePercent: 23.1, color: "#9ad54a" },
-    { key: "6-12", label: "6-12 months", count: 309, sharePercent: 24.8, color: "#bbd53e" },
-    { key: "12-18", label: "12-18 months", count: 155, sharePercent: 12.4, color: "#d0b83e" },
-    { key: "18-24", label: "18-24 months", count: 91, sharePercent: 7.3, color: "#d6913f" },
-    { key: "24+", label: "24+ months", count: 78, sharePercent: 6.2, color: "#df4b41" },
-  ];
-  const heatmapColumns = getSeedAgeAnalyticsHeatmapBucketDefinitions();
-  const heatmapValues = {
-    Photo: [56, 69, 86, 91, 84, 72, 48],
-    Auto: [61, 74, 89, 93, 87, 75, 52],
-    Feminized: [59, 72, 87, 92, 85, 73, 50],
-    Overall: [58, 71, 88, 92, 85, 74, 51],
+function buildSeedAgeAnalyticsStructuredObject({
+  kpis = {},
+  lineChart = [],
+  distribution = [],
+  heatmap = {},
+  insights = [],
+} = {}) {
+  return {
+    kpis,
+    lineChart,
+    distribution,
+    heatmap,
+    insights,
   };
+}
+
+function buildDefaultSeedAgeAnalyticsMockDataset() {
+  const bucketDefinitions = getSeedAgeAnalyticsBucketDefinitions();
+  const heatmapDefinitions = getSeedAgeAnalyticsHeatmapBucketDefinitions();
+  const distributionCountsByKey = {
+    "0-1": 96,
+    "1-3": 186,
+    "3-6": 289,
+    "6-12": 320,
+    "12-18": 154,
+    "18-24": 96,
+    "24-36": 64,
+    "36-48": 38,
+    "48-60": 25,
+    "60+": 16,
+  };
+  const ratesByKey = {
+    "0-1": 60.8,
+    "1-3": 71.4,
+    "3-6": 84.6,
+    "6-12": 91.8,
+    "12-18": 84.1,
+    "18-24": 75.2,
+    "24-36": 64.3,
+    "36-48": 51.7,
+    "48-60": 38.6,
+    "60+": 27.4,
+  };
+  const averageMonthsByKey = {
+    "0-1": 0.7,
+    "1-3": 2.1,
+    "3-6": 4.4,
+    "6-12": 8.6,
+    "12-18": 14.9,
+    "18-24": 21.2,
+    "24-36": 29.8,
+    "36-48": 41.3,
+    "48-60": 54.1,
+    "60+": 66.5,
+  };
+  const seedsPerSessionByKey = {
+    "0-1": 10,
+    "1-3": 10,
+    "3-6": 11,
+    "6-12": 11,
+    "12-18": 10,
+    "18-24": 10,
+    "24-36": 9,
+    "36-48": 9,
+    "48-60": 8,
+    "60+": 8,
+  };
+
+  const lineChart = bucketDefinitions.map((bucket) => {
+    const sessionCount = distributionCountsByKey[bucket.key] || 0;
+    const totalSeeds = sessionCount * (seedsPerSessionByKey[bucket.key] || 10);
+    const rate = ratesByKey[bucket.key] || 0;
+    return {
+      key: bucket.key,
+      label: bucket.label,
+      legendLabel: bucket.legendLabel,
+      rate,
+      sessionCount,
+      totalSeeds,
+      totalPlanted: Math.round(totalSeeds * (rate / 100)),
+      averageMonths: averageMonthsByKey[bucket.key] || bucket.minMonths || 0,
+      minMonths: bucket.minMonths,
+      maxMonths: bucket.maxMonths,
+      color: bucket.color,
+      isOptimal: bucket.key === "3-6" || bucket.key === "6-12",
+    };
+  });
+
+  const totalSessions = lineChart.reduce((total, bucket) => total + bucket.sessionCount, 0);
+  const overallAverage = lineChart.reduce((total, bucket) => total + (bucket.totalSeeds * bucket.rate), 0)
+    / Math.max(1, lineChart.reduce((total, bucket) => total + bucket.totalSeeds, 0));
+  const distribution = lineChart.map((bucket) => ({
+    key: bucket.key,
+    label: bucket.legendLabel,
+    count: bucket.sessionCount,
+    sharePercent: totalSessions > 0 ? (bucket.sessionCount / totalSessions) * 100 : 0,
+    color: bucket.color,
+  }));
+
+  const aggregatedOlderSessionCount = ["24-36", "36-48", "48-60", "60+"].reduce(
+    (total, key) => total + (distributionCountsByKey[key] || 0),
+    0,
+  );
+  const overallHeatmapSeeds = {
+    "0-1": distributionCountsByKey["0-1"] * 10,
+    "1-3": distributionCountsByKey["1-3"] * 10,
+    "3-6": distributionCountsByKey["3-6"] * 11,
+    "6-12": distributionCountsByKey["6-12"] * 11,
+    "12-18": distributionCountsByKey["12-18"] * 10,
+    "18-24": distributionCountsByKey["18-24"] * 10,
+    "24+": aggregatedOlderSessionCount * 9,
+  };
+  const heatmapConfig = {
+    Photo: {
+      rates: [59, 70, 83, 90, 85, 76, 56],
+      shares: [0.44, 0.43, 0.42, 0.41, 0.4, 0.39, 0.38],
+    },
+    Auto: {
+      rates: [63, 74, 87, 93, 82, 72, 49],
+      shares: [0.27, 0.29, 0.3, 0.31, 0.31, 0.3, 0.28],
+    },
+    Feminized: {
+      rates: [61, 72, 85, 92, 84, 74, 53],
+      shares: [0.57, 0.59, 0.61, 0.62, 0.61, 0.6, 0.57],
+    },
+    Overall: {
+      rates: [61, 72, 85, 92, 84, 75, 54],
+      shares: [1, 1, 1, 1, 1, 1, 1],
+    },
+  };
+  const heatmapRows = Object.entries(heatmapConfig).map(([label, config]) => ({
+    label,
+    cells: heatmapDefinitions.map((column, index) => {
+      const rate = config.rates[index];
+      const totalSeeds = overallHeatmapSeeds[column.key] * (config.shares[index] || 1);
+      return {
+        key: column.key,
+        label: column.label,
+        rate,
+        totalSeeds,
+        totalPlanted: totalSeeds * (rate / 100),
+        valueLabel: `${Math.round(rate)}%`,
+        toneClass: getSeedAgeAnalyticsHeatmapTone(rate),
+      };
+    }),
+  }));
+
+  const kpis = {
+    optimalAgeRange: "3 - 12 months",
+    overallAverage: `${overallAverage.toFixed(1)}%`,
+    totalSessions,
+    ageRange: "0 - 60+ months",
+    bestPerformance: "91.8%",
+    bestPerformanceBucket: "6-12",
+    bestPerformanceHelper: "Achieved at 9 months average",
+  };
+
+  return {
+    version: SEED_AGE_ANALYTICS_MOCK_DATA_VERSION,
+    kpis,
+    lineChart,
+    distribution,
+    heatmap: {
+      columns: heatmapDefinitions.map((column) => ({ key: column.key, label: column.label })),
+      rows: heatmapRows,
+    },
+    insights: [
+      "6-12 month seeds consistently give me the best results.",
+      "Fresh seeds under 1 month can be hit or miss until they finish curing.",
+      "Older seeds beyond 24 months usually need extra patience and a gentler setup.",
+      "Photos seem to hold their viability a little better over longer storage windows.",
+    ],
+    performanceInsights: [
+      { icon: "arrow", title: "Peak Performance", body: "Seeds in the 6-12 month range show the strongest mock germination rate at 91.8%." },
+      { icon: "clock", title: "Good Window", body: "The 3-12 month window stays consistently strong, with both buckets holding above 84% in the mock profile." },
+      { icon: "decline", title: "Declining Returns", body: "Performance falls off gradually after 18-24 months, with the sharpest drop becoming visible beyond 36 months." },
+      { icon: "alert", title: "Age Matters", body: "Fresh seeds and long-stored seeds both trail the mid-age peak, which mirrors real curing and storage behavior." },
+    ],
+    communityNotes: [
+      { title: "Community note", meta: "Grower observation", body: "6-12 month seeds consistently give me the best results once they have had time to fully cure." },
+      { title: "Community note", meta: "Grower observation", body: "Older seeds (24+ months) usually need extra time, patience, and more careful moisture control." },
+      { title: "Community note", meta: "Grower observation", body: "Fresh seeds under 1 month can be hit or miss compared with lightly cured seed lots." },
+      { title: "Community note", meta: "Grower observation", body: "Photos seem a little more stable than autos once seed lots get into the older storage buckets." },
+    ],
+    structured: buildSeedAgeAnalyticsStructuredObject({
+      kpis,
+      lineChart: lineChart.map((bucket) => ({
+        bucket: bucket.key,
+        rate: bucket.rate,
+        sessions: bucket.sessionCount,
+      })),
+      distribution: distribution.map((segment) => ({
+        bucket: segment.key,
+        sessions: segment.count,
+        sharePercent: Number(segment.sharePercent.toFixed(1)),
+      })),
+      heatmap: {
+        columns: heatmapDefinitions.map((column) => column.key),
+        rows: heatmapRows.map((row) => ({
+          label: row.label,
+          values: row.cells.map((cell) => cell.rate),
+        })),
+      },
+      insights: [
+        ...lineChart
+          .filter((bucket) => bucket.isOptimal)
+          .map((bucket) => `${bucket.key} months: ${bucket.rate.toFixed(1)}% germination`),
+        ...[
+          "6-12 month seeds consistently give me the best results.",
+          "Older seeds (24+ months) need extra time and care.",
+          "Fresh seeds under 1 month can be hit or miss.",
+        ],
+      ],
+    }),
+  };
+}
+
+function getCachedSeedAgeAnalyticsMockDataset() {
+  try {
+    const storedValue = localStorage.getItem(SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY);
+    if (storedValue) {
+      const parsed = JSON.parse(storedValue);
+      if (parsed?.version === SEED_AGE_ANALYTICS_MOCK_DATA_VERSION && parsed?.data) {
+        return parsed.data;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to read seed age analytics mock data from localStorage", error);
+  }
+
+  const dataset = buildDefaultSeedAgeAnalyticsMockDataset();
+  try {
+    localStorage.setItem(
+      SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY,
+      JSON.stringify({
+        version: SEED_AGE_ANALYTICS_MOCK_DATA_VERSION,
+        data: dataset,
+      }),
+    );
+  } catch (error) {
+    console.warn("Failed to cache seed age analytics mock data in localStorage", error);
+  }
+  return dataset;
+}
+
+function scaleSeedAgeAnalyticsMockDataset(dataset, scaleFactor = 1) {
+  const factor = Math.max(0, Number(scaleFactor) || 0);
+  const scaledLineChart = (dataset?.lineChart || []).map((bucket) => ({
+    ...bucket,
+    sessionCount: Math.max(0, Math.round((Number(bucket.sessionCount) || 0) * factor)),
+    totalSeeds: (Number(bucket.totalSeeds) || 0) * factor,
+    totalPlanted: (Number(bucket.totalPlanted) || 0) * factor,
+  }));
+  const totalSessions = scaledLineChart.reduce((total, bucket) => total + (Number(bucket.sessionCount) || 0), 0);
+  const scaledDistribution = (dataset?.distribution || []).map((segment) => {
+    const matchingBucket = scaledLineChart.find((bucket) => bucket.key === segment.key);
+    const count = Math.max(0, Math.round(Number(matchingBucket?.sessionCount) || 0));
+    return {
+      ...segment,
+      count,
+      sharePercent: totalSessions > 0 ? (count / totalSessions) * 100 : 0,
+    };
+  });
+  const scaledHeatmapRows = (dataset?.heatmap?.rows || []).map((row) => ({
+    ...row,
+    cells: (row.cells || []).map((cell) => ({
+      ...cell,
+      totalSeeds: (Number(cell.totalSeeds) || 0) * factor,
+      totalPlanted: (Number(cell.totalPlanted) || 0) * factor,
+    })),
+  }));
+
+  return {
+    ...dataset,
+    lineChart: scaledLineChart,
+    distribution: scaledDistribution,
+    heatmap: {
+      ...(dataset?.heatmap || {}),
+      rows: scaledHeatmapRows,
+    },
+  };
+}
+
+function buildSeedAgeAnalyticsDemoState() {
+  const mockDataset = getCachedSeedAgeAnalyticsMockDataset();
+  const bucketDefinitions = getSeedAgeAnalyticsBucketDefinitions();
+  const lineBuckets = bucketDefinitions.map((bucket) => {
+    const source = mockDataset.lineChart.find((entry) => entry.key === bucket.key) || {};
+    return {
+      ...bucket,
+      rate: Number(source.rate) || null,
+      totalSeeds: Number(source.totalSeeds) || 0,
+      totalPlanted: Number(source.totalPlanted) || 0,
+      sessionCount: Number(source.sessionCount) || 0,
+      averageMonths: Number(source.averageMonths) || null,
+      isOptimal: Boolean(source.isOptimal),
+    };
+  });
+  const distributionSegments = bucketDefinitions.map((bucket) => {
+    const source = mockDataset.distribution.find((entry) => entry.key === bucket.key) || {};
+    return {
+      key: bucket.key,
+      label: bucket.legendLabel,
+      count: Math.max(0, Math.round(Number(source.count) || 0)),
+      sharePercent: Number(source.sharePercent) || 0,
+      color: bucket.color,
+    };
+  }).filter((segment) => segment.count > 0);
+  const mostCommonSegment = [...distributionSegments].sort((left, right) => right.count - left.count)[0] || null;
   return {
     isDemo: true,
     hasData: true,
     ignoredSessionCount: 0,
     hasMixedAgeOverlap: false,
-    demoNotice: "Demo preview shown until more public Community Grow sessions include recorded seed age.",
-    summaryNotice: "",
-    optimalRangeLabel: "3 - 12 months",
-    bestPerformanceLabel: "92.1%",
-    bestPerformanceHelper: "Achieved at 6 months average",
+    demoNotice: "Stable mock preview shown until more public Community Grow sessions include recorded seed age.",
+    summaryNotice: "Mock data follows realistic viability trends so older seed buckets remain testable before public coverage fills in.",
+    optimalRangeLabel: mockDataset.kpis.optimalAgeRange,
+    bestPerformanceLabel: mockDataset.kpis.bestPerformance,
+    bestPerformanceHelper: mockDataset.kpis.bestPerformanceHelper,
     kpis: [
-      { label: "Optimal Age Range", value: "3 - 12 months", helper: "Highest germination performance window" },
-      { label: "Overall Average", value: "82.4%", helper: "Average germination across all ages" },
-      { label: "Total Sessions", value: "1,248", helper: "Sessions with recorded seed age" },
-      { label: "Age Range", value: "0 - 60+ months", helper: "Seed age range in community data" },
-      { label: "Best Performance", value: "92.1%", helper: "Achieved at 6 months average" },
+      { label: "Optimal Age Range", value: mockDataset.kpis.optimalAgeRange, helper: "Highest germination performance window" },
+      { label: "Overall Average", value: mockDataset.kpis.overallAverage, helper: "Average germination across all ages" },
+      { label: "Total Sessions", value: Number(mockDataset.kpis.totalSessions || 0).toLocaleString(), helper: "Sessions with recorded seed age" },
+      { label: "Age Range", value: mockDataset.kpis.ageRange, helper: "Seed age range in community data" },
+      { label: "Best Performance", value: mockDataset.kpis.bestPerformance, helper: mockDataset.kpis.bestPerformanceHelper },
     ],
     lineBuckets,
     distributionSegments,
-    distributionTotal: 1248,
-    distributionCenterLabel: "1,248",
+    distributionTotal: Number(mockDataset.kpis.totalSessions || 0),
+    distributionCenterLabel: Number(mockDataset.kpis.totalSessions || 0).toLocaleString(),
     distributionStyle: buildSeedAgeAnalyticsDonutStyle(distributionSegments),
-    mostCommonSegment: distributionSegments[3],
-    performanceInsights: [
-      { icon: "arrow", title: "Peak Performance", body: "Seeds in the 6-12 month range show the strongest demo germination rate at 92.1%." },
-      { icon: "clock", title: "Good Window", body: "The 3-12 month window stays consistently strong across the demo profile and keeps rates above 88%." },
-      { icon: "decline", title: "Declining Returns", body: "Performance trends soften after 24 months in this preview, with each older bucket stepping down from the peak." },
-      { icon: "alert", title: "Age Matters", body: "Fresh seeds and long-stored seeds both underperform the mid-range demo window, so age context matters." },
-    ],
-    communityNotes: [
-      { title: "Demo note", meta: "Preview observation", body: "6-12 month seeds lead the strongest sample performance in this placeholder dashboard." },
-      { title: "Demo note", meta: "Preview observation", body: "The 6-12 month bucket is also the most common recorded range in the sample distribution." },
-      { title: "Demo note", meta: "Preview observation", body: "Auto and feminized examples hold up especially well once seeds move into the 3-12 month window." },
-    ],
+    mostCommonSegment,
+    performanceInsights: [...(mockDataset.performanceInsights || [])],
+    communityNotes: [...(mockDataset.communityNotes || [])],
     heatmap: {
-      columns: heatmapColumns,
-      rows: Object.entries(heatmapValues).map(([label, values]) => ({
-        label,
-        cells: heatmapColumns.map((column, index) => ({
-          key: column.key,
-          label: column.label,
-          rate: values[index],
-          valueLabel: `${values[index]}%`,
-          toneClass: getSeedAgeAnalyticsHeatmapTone(values[index]),
+      columns: getSeedAgeAnalyticsHeatmapBucketDefinitions(),
+      rows: (mockDataset.heatmap?.rows || []).map((row) => ({
+        label: row.label,
+        cells: (row.cells || []).map((cell) => ({
+          key: cell.key,
+          label: cell.label,
+          rate: Number(cell.rate) || null,
+          valueLabel: `${Math.round(Number(cell.rate) || 0)}%`,
+          toneClass: getSeedAgeAnalyticsHeatmapTone(cell.rate),
         })),
       })),
     },
+    structuredData: mockDataset.structured,
   };
 }
 
