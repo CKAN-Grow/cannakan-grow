@@ -20293,12 +20293,29 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-workspace-header .app-section-header-main {
+  width: auto;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
   gap: 16px;
+  min-width: 0;
 }
 
 .session-workspace-header .app-section-header-main > div {
-  display: grid;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+
+.session-workspace-header .app-section-header-main .section-title-icon {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  --cg-icon-shell-gap: 7px;
+  padding: var(--cg-icon-shell-gap);
+  border-radius: 16px;
+  align-self: center;
 }
 
 .session-workspace-header .eyebrow,
