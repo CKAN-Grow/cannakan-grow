@@ -1854,7 +1854,8 @@ body.theme-dark .spotlight-stat strong {
 
 #session-command-center .session-command-center-header-text,
 #session-command-center .session-command-center-title-copy {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
@@ -1877,27 +1878,23 @@ body.theme-dark .spotlight-stat strong {
   width: 100%;
   height: 1px;
   margin: 16px 0 22px;
-  background: linear-gradient(
-    90deg,
-    rgba(148, 209, 89, 0),
-    rgba(148, 209, 89, 0.65),
-    rgba(240, 130, 55, 0.35),
-    rgba(148, 209, 89, 0)
-  );
-  box-shadow: 0 0 14px rgba(148, 209, 89, 0.25);
-  opacity: 0.85;
+  background: linear-gradient(90deg, rgba(148, 209, 89, 0.08), rgba(148, 209, 89, 0.22), rgba(240, 130, 55, 0.14), rgba(148, 209, 89, 0.08));
+  opacity: 0.82;
 }
 
 #session-command-center .session-command-center-header-divider::after {
   content: "";
   position: absolute;
-  left: 50%;
   top: 50%;
-  width: 28px;
-  height: 5px;
+  left: 50%;
+  width: 140px;
+  height: 2px;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(148, 209, 89, 0.42) 0%, rgba(240, 130, 55, 0.16) 45%, rgba(148, 209, 89, 0) 80%);
+  background: linear-gradient(90deg, rgba(148, 209, 89, 0), rgba(148, 209, 89, 0.9), rgba(240, 130, 55, 0.5), rgba(148, 209, 89, 0));
+  box-shadow:
+    0 0 10px rgba(148, 209, 89, 0.4),
+    0 0 20px rgba(148, 209, 89, 0.25);
   pointer-events: none;
 }
 

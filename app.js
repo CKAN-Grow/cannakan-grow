@@ -37930,9 +37930,9 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         <div class="session-command-center-header-text session-command-center-title-copy">
             <p class="eyebrow">ACTIVE SESSION</p>
             <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
+            <div class="session-command-center-header-divider" aria-hidden="true"></div>
         </div>
       </header>
-      <div class="session-command-center-header-divider" aria-hidden="true"></div>
       <div class="session-command-center session-command-center-grid" data-session-command-center="true">
         <section class="session-command-panel session-command-panel--sessions active-sessions-panel" aria-labelledby="active-sessions-command-list-title">
           <div class="session-command-panel-heading">
