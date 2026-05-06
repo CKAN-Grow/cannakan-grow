@@ -37754,7 +37754,8 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
       return `
         <span class="${classes}" aria-hidden="true">
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 3.5c-3.1 3.8-5.6 7.1-5.6 10.2a5.6 5.6 0 1 0 11.2 0C17.6 10.6 15.1 7.3 12 3.5Z" stroke-linejoin="round"></path>
+            <path d="M12 4.2c-2.9 0-5.1 2.3-5.1 5.2 0 3 2.2 5.2 5 5.2 2.8 0 5.2-2.1 5.2-5 0-3-2.1-5.4-5.1-5.4Z" stroke-linejoin="round"></path>
+            <path d="M12 7c-1.5 1.8-2.7 3.4-2.7 4.9a2.7 2.7 0 1 0 5.4 0C14.7 10.4 13.5 8.8 12 7Z" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
@@ -37763,8 +37764,8 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
         <span class="${classes}" aria-hidden="true">
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <path d="M12 5.4c-3.3 0-5.8 2.5-5.8 5.7 0 3.2 2.5 5.8 5.6 5.8 3.1 0 5.9-2.3 5.9-5.7 0-3.3-2.4-5.8-5.7-5.8Z" stroke-linejoin="round"></path>
-            <path d="m11.2 8.2 1.4 1.8-1.5 1.8 1.6 2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="M12 16.9v1.5" stroke-linecap="round"></path>
+            <path d="m10.9 8 1.7 2-1.8 2 1.8 2.1" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M12.7 10.1 14.6 8" stroke-linecap="round"></path>
           </svg>
         </span>
       `;
@@ -37774,9 +37775,9 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <path d="M12 5.3c-3.3 0-5.8 2.5-5.8 5.7 0 3.2 2.5 5.8 5.6 5.8 3.1 0 5.9-2.3 5.9-5.7 0-3.3-2.4-5.8-5.7-5.8Z" stroke-linejoin="round"></path>
             <path d="m11.2 8.1 1.4 1.8-1.5 1.8 1.6 2" stroke-linecap="round" stroke-linejoin="round"></path>
-            <path d="M12 16.8v2.7" stroke-linecap="round"></path>
-            <path d="M12 19.5c0 1.1-.5 1.8-1.2 2.2" stroke-linecap="round"></path>
-            <path d="M12.1 8.9c.8-.9 1.7-1.3 2.8-1.3-.2 1.1-.8 1.9-1.9 2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M12 16.6v2.9" stroke-linecap="round" style="stroke:#f5f8f1"></path>
+            <path d="M12 19.4c0 1.1-.5 1.9-1.2 2.4" stroke-linecap="round" style="stroke:#f5f8f1"></path>
+            <path d="M11.9 18.7c.6.1 1 .4 1.4.9" stroke-linecap="round" style="stroke:#94d159"></path>
           </svg>
         </span>
       `;
@@ -37784,7 +37785,10 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
       return `
         <span class="${classes}" aria-hidden="true">
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="m7.5 12.4 3.1 3.1 5.9-7.1" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M12 17.8v-5.2" stroke-linecap="round"></path>
+            <path d="M12 12.9c-2.6 0-4.6-1.9-4.6-4.8 2.9 0 4.6 1.8 4.6 4.8Z" stroke-linejoin="round"></path>
+            <path d="M12 14.6c0-2.5 1.8-4.1 4.7-4.1 0 2.7-1.9 4.1-4.7 4.1Z" stroke-linejoin="round"></path>
+            <path d="m16.2 7.7 1.4 1.4 2.2-2.6" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
