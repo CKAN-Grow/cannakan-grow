@@ -37848,7 +37848,7 @@ function renderSessionCommandCenterProgressMarkup(session = null, options = {}) 
     );
 
     return `
-      <article class="session-command-stage session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
+      <article class="session-command-stage stage-item session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
         ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "germination" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "germination" : event.key}`)}
         <strong>${escapeHtml(event.displayLabel)}</strong>
         <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
@@ -37858,7 +37858,7 @@ function renderSessionCommandCenterProgressMarkup(session = null, options = {}) 
   }).join("");
 
   return `
-    <div class="session-command-stage-grid">
+    <div class="session-command-stage-grid stage-progress-row">
       ${rowMarkup}
     </div>
   `;

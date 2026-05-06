@@ -2408,11 +2408,27 @@ body.theme-dark .spotlight-stat strong {
   gap: 16px;
 }
 
-.session-command-stage-grid {
+#session-command-center .stage-progress-panel {
+  overflow: hidden;
+}
+
+.session-command-stage-grid,
+.stage-progress-row {
   position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
+  display: grid;
+  grid-template-columns:
+    minmax(72px, 1fr)
+    minmax(28px, 0.45fr)
+    minmax(72px, 1fr)
+    minmax(28px, 0.45fr)
+    minmax(72px, 1fr)
+    minmax(28px, 0.45fr)
+    minmax(72px, 1fr);
+  align-items: start;
+  column-gap: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
   padding-inline: 10px;
 }
 
@@ -2429,20 +2445,20 @@ body.theme-dark .spotlight-stat strong {
 }
 
 #session-command-center .session-command-stage-grid::before {
-  left: 0;
+  left: 10px;
 }
 
 #session-command-center .session-command-stage-grid::after {
-  right: 0;
+  right: 10px;
 }
 
 #session-command-center .stage-connector {
-  flex: 1 1 28px;
-  align-self: flex-start;
+  align-self: start;
   height: 2px;
+  min-width: 28px;
   margin: 24px 8px 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(148, 209, 89, 0.22);
 }
 
 #session-command-center .stage-connector--active {
@@ -2459,10 +2475,8 @@ body.theme-dark .spotlight-stat strong {
   gap: 10px;
   justify-items: center;
   text-align: center;
-  flex: 0 1 136px;
-  width: 136px;
-  max-width: 100%;
-  min-width: 0;
+  width: 100%;
+  min-width: 72px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -15353,9 +15367,18 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-command-stage-grid {
-    flex-wrap: wrap;
-    justify-content: center;
-    row-gap: 16px;
+    grid-template-columns:
+      minmax(60px, 1fr)
+      minmax(20px, 0.35fr)
+      minmax(60px, 1fr)
+      minmax(20px, 0.35fr)
+      minmax(60px, 1fr)
+      minmax(20px, 0.35fr)
+      minmax(60px, 1fr);
+  }
+
+  #session-command-center .stage-connector {
+    margin-inline: 4px;
   }
 }
 
@@ -15398,8 +15421,7 @@ body.theme-dark .theme-toggle-button:hover {
 
 @media (max-width: 640px) {
   .session-command-stage-grid {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
     padding-inline: 0;
     gap: 14px;
   }
