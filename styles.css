@@ -20464,6 +20464,13 @@ textarea::placeholder {
   padding: 24px 26px;
 }
 
+.source-directory-list-controls-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) repeat(3, minmax(170px, 0.8fr));
+  gap: 14px;
+  align-items: end;
+}
+
 .source-directory-list-shell {
   display: grid;
   gap: 0;
@@ -22713,6 +22720,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   .source-directory-hero-layout,
   .source-directory-controls-head,
   .source-directory-controls-grid,
+  .source-directory-list-controls-grid,
   .source-directory-card-head {
     grid-template-columns: minmax(0, 1fr);
     flex-direction: column;

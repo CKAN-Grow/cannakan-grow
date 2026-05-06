@@ -456,8 +456,32 @@ const SOURCE_DIRECTORY_SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: "recently-logged", label: "Recently Logged" }),
   Object.freeze({ key: "a-z", label: "A-Z" }),
 ]);
+const SOURCE_DIRECTORY_LIST_SORT_OPTIONS = Object.freeze([
+  Object.freeze({ key: "germination-rate", label: "Germination Rate" }),
+  Object.freeze({ key: "source-name", label: "Source Name" }),
+  Object.freeze({ key: "total-sessions", label: "Total Sessions" }),
+  Object.freeze({ key: "most-recent", label: "Most Recent" }),
+]);
+const SOURCE_DIRECTORY_LIST_ORDER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "highest-to-lowest", label: "Highest to Lowest" }),
+  Object.freeze({ key: "lowest-to-highest", label: "Lowest to Highest" }),
+  Object.freeze({ key: "a-to-z", label: "A to Z" }),
+  Object.freeze({ key: "z-to-a", label: "Z to A" }),
+  Object.freeze({ key: "newest-to-oldest", label: "Newest to Oldest" }),
+  Object.freeze({ key: "oldest-to-newest", label: "Oldest to Newest" }),
+]);
+const SOURCE_DIRECTORY_LIST_FILTER_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all-sources", label: "All Sources" }),
+  Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
+  Object.freeze({ key: "community-reported", label: "Community Reported" }),
+  Object.freeze({ key: "has-germination-data", label: "Has Germination Data" }),
+  Object.freeze({ key: "no-germination-data", label: "No Germination Data" }),
+]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
 const SOURCE_DIRECTORY_DEFAULT_SORT = "most-logged";
+const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "germination-rate";
+const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
+const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
 const testedSourcesMock = Object.freeze([
   Object.freeze({
@@ -23675,6 +23699,128 @@ function getSortedSourceDirectoryListRecords(records = []) {
   });
 }
 
+function hasSourceDirectoryCstpTesting(source = {}) {
+  if (getSourceDirectoryCstpPreview(source)) {
+    return true;
+  }
+
+  const cstpStatus = String(source?.cstp?.status || "").trim().toLowerCase();
+  return Boolean(cstpStatus && cstpStatus !== "not-tested");
+}
+
+function hasSourceDirectoryCommunityReporting(source = {}) {
+  return parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged) > 0
+    || parseSourceDirectoryMetricNumber(source?.community?.sessions) > 0;
+}
+
+function hasSourceDirectoryGerminationData(source = {}) {
+  return getSourceDirectoryReportedRateNumber(source) > 0;
+}
+
+function getSourceDirectoryMostRecentTimestamp(source = {}) {
+  return Date.parse(source?.directoryStats?.lastLoggedAt || "") || 0;
+}
+
+function getDefaultSourceDirectoryListOrder(sortKey = SOURCE_DIRECTORY_LIST_DEFAULT_SORT) {
+  switch (String(sortKey || SOURCE_DIRECTORY_LIST_DEFAULT_SORT).trim().toLowerCase()) {
+    case "source-name":
+      return "a-to-z";
+    case "most-recent":
+      return "newest-to-oldest";
+    case "total-sessions":
+    case "germination-rate":
+    default:
+      return "highest-to-lowest";
+  }
+}
+
+function normalizeSourceDirectoryListOrder(sortKey = SOURCE_DIRECTORY_LIST_DEFAULT_SORT, orderKey = SOURCE_DIRECTORY_LIST_DEFAULT_ORDER) {
+  const normalizedSortKey = String(sortKey || SOURCE_DIRECTORY_LIST_DEFAULT_SORT).trim().toLowerCase();
+  const normalizedOrderKey = String(orderKey || "").trim().toLowerCase();
+  const validOrders = normalizedSortKey === "source-name"
+    ? ["a-to-z", "z-to-a"]
+    : (normalizedSortKey === "most-recent"
+      ? ["newest-to-oldest", "oldest-to-newest"]
+      : ["highest-to-lowest", "lowest-to-highest"]);
+  return validOrders.includes(normalizedOrderKey)
+    ? normalizedOrderKey
+    : getDefaultSourceDirectoryListOrder(normalizedSortKey);
+}
+
+function getFilteredAndSortedSourceDirectoryListRecords({
+  query = "",
+  sortKey = SOURCE_DIRECTORY_LIST_DEFAULT_SORT,
+  orderKey = SOURCE_DIRECTORY_LIST_DEFAULT_ORDER,
+  filterKey = SOURCE_DIRECTORY_LIST_DEFAULT_FILTER,
+} = {}) {
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const normalizedSortKey = String(sortKey || SOURCE_DIRECTORY_LIST_DEFAULT_SORT).trim().toLowerCase();
+  const normalizedOrderKey = normalizeSourceDirectoryListOrder(normalizedSortKey, orderKey);
+  const normalizedFilterKey = String(filterKey || SOURCE_DIRECTORY_LIST_DEFAULT_FILTER).trim().toLowerCase();
+
+  return getSourceDirectoryMockRecords()
+    .filter((source) => {
+      if (normalizedFilterKey === "cstp-tested" && !hasSourceDirectoryCstpTesting(source)) {
+        return false;
+      }
+      if (normalizedFilterKey === "community-reported" && !hasSourceDirectoryCommunityReporting(source)) {
+        return false;
+      }
+      if (normalizedFilterKey === "has-germination-data" && !hasSourceDirectoryGerminationData(source)) {
+        return false;
+      }
+      if (normalizedFilterKey === "no-germination-data" && hasSourceDirectoryGerminationData(source)) {
+        return false;
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
+      return [
+        source.name,
+        source.sourceTypeLabel,
+        source.type,
+      ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
+    })
+    .sort((left, right) => {
+      switch (normalizedSortKey) {
+        case "source-name": {
+          const comparison = String(left?.name || "").localeCompare(String(right?.name || ""));
+          return normalizedOrderKey === "z-to-a" ? -comparison : comparison;
+        }
+        case "total-sessions": {
+          const comparison = parseSourceDirectoryMetricNumber(left?.directoryStats?.sessionsLogged)
+            - parseSourceDirectoryMetricNumber(right?.directoryStats?.sessionsLogged);
+          if (comparison !== 0) {
+            return normalizedOrderKey === "lowest-to-highest" ? comparison : -comparison;
+          }
+          break;
+        }
+        case "most-recent": {
+          const comparison = getSourceDirectoryMostRecentTimestamp(left) - getSourceDirectoryMostRecentTimestamp(right);
+          if (comparison !== 0) {
+            return normalizedOrderKey === "oldest-to-newest" ? comparison : -comparison;
+          }
+          break;
+        }
+        case "germination-rate":
+        default: {
+          const comparison = getSourceDirectoryReportedRateNumber(left) - getSourceDirectoryReportedRateNumber(right);
+          if (comparison !== 0) {
+            return normalizedOrderKey === "lowest-to-highest" ? comparison : -comparison;
+          }
+          break;
+        }
+      }
+
+      const sessionDelta = parseSourceDirectoryMetricNumber(right?.directoryStats?.sessionsLogged)
+        - parseSourceDirectoryMetricNumber(left?.directoryStats?.sessionsLogged);
+      if (sessionDelta !== 0) {
+        return sessionDelta;
+      }
+      return String(left?.name || "").localeCompare(String(right?.name || ""));
+    });
+}
+
 function renderSourceDirectoryListRowsMarkup(records = [], page = 1, pageSize = SOURCE_DIRECTORY_LIST_PAGE_SIZE) {
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
   const offset = (safePage - 1) * pageSize;
@@ -23682,7 +23828,7 @@ function renderSourceDirectoryListRowsMarkup(records = [], page = 1, pageSize = 
   if (!pageRecords.length) {
     return `
       <div class="source-directory-list-empty">
-        <p class="muted">No source directory rows match the current filters.</p>
+        <p class="muted">No sources match your filters.</p>
       </div>
     `;
   }
@@ -23858,14 +24004,30 @@ function bindSourcesLandingPage() {
   const listResults = app.querySelector("#source-directory-list-results");
   const pagination = app.querySelector("#source-directory-pagination");
   const summary = app.querySelector("#source-directory-results-summary");
+  const listSearchInput = app.querySelector("#source-directory-list-search");
+  const listSortSelect = app.querySelector("#source-directory-list-sort");
+  const listOrderSelect = app.querySelector("#source-directory-list-order");
+  const listFilterSelect = app.querySelector("#source-directory-list-filter");
+  const listSummary = app.querySelector("#source-directory-list-summary");
   const filterButtons = Array.from(app.querySelectorAll("[data-source-directory-filter]"));
-  if (!cardResults || !listResults || !pagination || !summary) {
+  if (!cardResults || !listResults || !pagination || !summary || !listSummary) {
     return;
   }
   const totalSources = getSourceDirectoryMockRecords().length;
   let currentListPage = 1;
 
-  const bindPagination = (filteredRecords = []) => {
+  const applyDirectoryView = () => {
+    const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
+    const records = getFilteredAndSortedSourceDirectoryRecords({
+      query: searchInput?.value || "",
+      filterKey: activeFilter,
+      sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
+    });
+    cardResults.innerHTML = renderSourceDirectoryResultsMarkup(records);
+    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the directory`;
+  };
+
+  const bindListPagination = (filteredRecords = []) => {
     pagination.querySelectorAll("[data-source-directory-page]").forEach((button) => {
       if (!(button instanceof HTMLButtonElement) || button.dataset.sourceDirectoryPageBound === "true") {
         return;
@@ -23875,29 +24037,27 @@ function bindSourcesLandingPage() {
         const nextPage = Math.max(1, Math.floor(Number(button.dataset.sourceDirectoryPage) || 1));
         const totalPages = Math.max(1, Math.ceil(filteredRecords.length / SOURCE_DIRECTORY_LIST_PAGE_SIZE));
         currentListPage = Math.min(nextPage, totalPages);
-        applyDirectoryView({ preservePage: true });
+        applyDirectoryListView({ preservePage: true });
       });
     });
   };
 
-  const applyDirectoryView = ({ preservePage = false } = {}) => {
-    const activeFilter = filterButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.sourceDirectoryFilter || SOURCE_DIRECTORY_DEFAULT_FILTER;
-    const records = getFilteredAndSortedSourceDirectoryRecords({
-      query: searchInput?.value || "",
-      filterKey: activeFilter,
-      sortKey: sortSelect?.value || SOURCE_DIRECTORY_DEFAULT_SORT,
+  const applyDirectoryListView = ({ preservePage = false } = {}) => {
+    const listRecords = getFilteredAndSortedSourceDirectoryListRecords({
+      query: listSearchInput?.value || "",
+      sortKey: listSortSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_SORT,
+      orderKey: listOrderSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_ORDER,
+      filterKey: listFilterSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_FILTER,
     });
-    const listRecords = getSortedSourceDirectoryListRecords(records);
     if (!preservePage) {
       currentListPage = 1;
     }
     const totalPages = Math.max(1, Math.ceil(listRecords.length / SOURCE_DIRECTORY_LIST_PAGE_SIZE));
     currentListPage = Math.min(currentListPage, totalPages);
-    cardResults.innerHTML = renderSourceDirectoryResultsMarkup(records);
     listResults.innerHTML = renderSourceDirectoryListRowsMarkup(listRecords, currentListPage, SOURCE_DIRECTORY_LIST_PAGE_SIZE);
     pagination.innerHTML = renderSourceDirectoryPaginationMarkup(listRecords.length, currentListPage, SOURCE_DIRECTORY_LIST_PAGE_SIZE);
-    summary.textContent = `Showing ${records.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the directory`;
-    bindPagination(listRecords);
+    listSummary.textContent = `Showing ${listRecords.length} of ${totalSources} source${totalSources === 1 ? "" : "s"} in the list`;
+    bindListPagination(listRecords);
   };
 
   searchInput?.addEventListener("input", () => {
@@ -23919,6 +24079,25 @@ function bindSourcesLandingPage() {
     });
   });
 
+  listSearchInput?.addEventListener("input", () => {
+    applyDirectoryListView();
+  });
+
+  listOrderSelect?.addEventListener("change", () => {
+    applyDirectoryListView();
+  });
+
+  listFilterSelect?.addEventListener("change", () => {
+    applyDirectoryListView();
+  });
+
+  listSortSelect?.addEventListener("change", () => {
+    if (listOrderSelect) {
+      listOrderSelect.value = getDefaultSourceDirectoryListOrder(listSortSelect.value);
+    }
+    applyDirectoryListView();
+  });
+
   app.querySelector("[data-source-directory-contact-link='cstp']")?.addEventListener("click", (event) => {
     event.preventDefault();
     openContactPageWithPrefill("cstp-request");
@@ -23929,6 +24108,13 @@ function bindSourcesLandingPage() {
   });
 
   applyDirectoryView();
+  if (listOrderSelect) {
+    listOrderSelect.value = normalizeSourceDirectoryListOrder(
+      listSortSelect?.value || SOURCE_DIRECTORY_LIST_DEFAULT_SORT,
+      listOrderSelect.value || SOURCE_DIRECTORY_LIST_DEFAULT_ORDER,
+    );
+  }
+  applyDirectoryListView();
 }
 
 function renderSourcesLandingPage() {
@@ -24009,6 +24195,37 @@ function renderSourcesLandingPage() {
             <h3>Source Directory List</h3>
             <p class="muted">Community-reported germination rates (combined across all member sessions).</p>
           </div>
+          <p id="source-directory-list-summary" class="muted">Showing 0 of ${directoryRecords.length} sources in the list</p>
+        </div>
+        <div class="source-directory-list-controls-grid">
+          <label class="source-directory-search-field">
+            <span class="stat-label">Search</span>
+            <input id="source-directory-list-search" type="search" placeholder="Search sources..." autocomplete="off">
+          </label>
+          <label class="source-directory-sort-field">
+            <span class="stat-label">Sort By</span>
+            <select id="source-directory-list-sort">
+              ${SOURCE_DIRECTORY_LIST_SORT_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_SORT ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+          <label class="source-directory-sort-field">
+            <span class="stat-label">Order</span>
+            <select id="source-directory-list-order">
+              ${SOURCE_DIRECTORY_LIST_ORDER_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_ORDER ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+          <label class="source-directory-sort-field">
+            <span class="stat-label">Filter</span>
+            <select id="source-directory-list-filter">
+              ${SOURCE_DIRECTORY_LIST_FILTER_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.key)}"${option.key === SOURCE_DIRECTORY_LIST_DEFAULT_FILTER ? " selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
         </div>
         <div class="source-directory-list-shell">
           <div class="source-directory-list-head">
