@@ -3428,7 +3428,7 @@ function getSessionSeedAgeMetadata(session = null) {
     if (mode === "same" && sessionSeedAgeYears !== null) {
       summaryKey = "same";
       summaryLabel = `Same age: ${formatSeedAgeYearsLabel(sessionSeedAgeYears)}`;
-    } else if (mode === "mixed" && knownPartitionAges.length) {
+    } else if (mode === "mixed") {
       summaryKey = "mixed";
       summaryLabel = "Mixed ages";
     } else {
@@ -3445,6 +3445,68 @@ function getSessionSeedAgeMetadata(session = null) {
     summaryKey,
     summaryLabel,
   };
+}
+
+function buildSeedAgeDisplayLabel(source = null, options = {}) {
+  const metadata = source && typeof source === "object" && Object.prototype.hasOwnProperty.call(source, "summaryKey")
+    ? source
+    : getSessionSeedAgeMetadata(source);
+  const samePrefix = String(options.samePrefix || "Same age").trim() || "Same age";
+  const mixedLabel = String(options.mixedLabel || "Mixed ages").trim() || "Mixed ages";
+  const unknownLabel = String(options.unknownLabel || "Age unknown").trim() || "Age unknown";
+  const disabledLabel = Object.prototype.hasOwnProperty.call(options, "disabledLabel")
+    ? String(options.disabledLabel || "").trim()
+    : "";
+
+  if (metadata.summaryKey === "same" && metadata.sessionSeedAgeYears !== null) {
+    return `${samePrefix}: ${formatSeedAgeYearsLabel(metadata.sessionSeedAgeYears)}`;
+  }
+  if (metadata.summaryKey === "mixed") {
+    return mixedLabel;
+  }
+  if (metadata.summaryKey === "unknown") {
+    return unknownLabel;
+  }
+  return disabledLabel;
+}
+
+function buildSeedAgeSnapshotLabel(source = null) {
+  const metadata = source && typeof source === "object" && Object.prototype.hasOwnProperty.call(source, "summaryKey")
+    ? source
+    : getSessionSeedAgeMetadata(source);
+
+  if (metadata.summaryKey === "same" && metadata.sessionSeedAgeYears !== null) {
+    return `Seed age: ${formatSeedAgeYearsLabel(metadata.sessionSeedAgeYears)}`;
+  }
+  if (metadata.summaryKey === "mixed") {
+    return "Mixed seed ages";
+  }
+  return "";
+}
+
+function getGallerySnapshotSeedAgeMetadata(snapshot = null) {
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const sessionLike = linkedSession ? { ...linkedSession } : {};
+
+  if (snapshot && typeof snapshot === "object") {
+    if (Object.prototype.hasOwnProperty.call(snapshot, "seedAgeTrackingEnabled")
+      || Object.prototype.hasOwnProperty.call(snapshot, "seed_age_tracking_enabled")) {
+      sessionLike.seedAgeTrackingEnabled = snapshot.seedAgeTrackingEnabled ?? snapshot.seed_age_tracking_enabled;
+    }
+    if (Object.prototype.hasOwnProperty.call(snapshot, "seedAgeMode")
+      || Object.prototype.hasOwnProperty.call(snapshot, "seed_age_mode")) {
+      sessionLike.seedAgeMode = snapshot.seedAgeMode || snapshot.seed_age_mode || "";
+    }
+    if (Object.prototype.hasOwnProperty.call(snapshot, "sessionSeedAgeYears")
+      || Object.prototype.hasOwnProperty.call(snapshot, "session_seed_age_years")) {
+      sessionLike.sessionSeedAgeYears = snapshot.sessionSeedAgeYears ?? snapshot.session_seed_age_years;
+    }
+    if (Array.isArray(snapshot.partitions) && snapshot.partitions.length) {
+      sessionLike.partitions = snapshot.partitions;
+    }
+  }
+
+  return getSessionSeedAgeMetadata(sessionLike);
 }
 
 function getEffectivePartitionSeedAgeYears(partition = null, session = null) {
@@ -8331,6 +8393,7 @@ function buildMockGrowNetworkActivityEntries() {
         sourceLabel: activity.sourceLabel || "",
         germinationRateLabel: activity.germinationRateLabel || "0%",
         systemLabel: "KAN",
+        seedAgeLabel: String(activity.seedAgeLabel || "").trim(),
       };
     });
 }
@@ -9474,6 +9537,8 @@ function normalizeCommunityActivityMetadata(metadata) {
     return {};
   }
 
+  // Keep seed-age fields normalized here so future Grow Network filters,
+  // Community analytics, and published session rollups can reuse one shape.
   return {
     germinationRate: Math.max(0, Number(metadata.germinationRate) || 0),
     germinationRateLabel: String(metadata.germinationRateLabel || "").trim(),
@@ -9481,6 +9546,11 @@ function normalizeCommunityActivityMetadata(metadata) {
     sessionDateLabel: String(metadata.sessionDateLabel || "").trim(),
     systemLabel: String(metadata.systemLabel || "").trim(),
     activityTypeLabel: String(metadata.activityTypeLabel || "").trim(),
+    seedAgeTrackingEnabled: Boolean(metadata.seedAgeTrackingEnabled),
+    seedAgeMode: normalizeSeedAgeMode(metadata.seedAgeMode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(metadata.sessionSeedAgeYears),
+    seedAgeSummaryKey: String(metadata.seedAgeSummaryKey || "").trim(),
+    seedAgeSummaryLabel: String(metadata.seedAgeSummaryLabel || "").trim(),
   };
 }
 
@@ -9560,6 +9630,16 @@ function buildCommunityActivityFeedEntry(activity) {
   const avatarUrl = profile?.avatarUrl || "";
   const metadata = normalizedActivity.metadata || {};
   const fallbackRateLabel = `${Math.max(0, Number(metadata.germinationRate) || 0)}%`;
+  const seedAgeLabel = metadata.seedAgeSummaryLabel || buildSeedAgeDisplayLabel({
+    seedAgeTrackingEnabled: metadata.seedAgeTrackingEnabled,
+    seedAgeMode: metadata.seedAgeMode,
+    sessionSeedAgeYears: metadata.sessionSeedAgeYears,
+  }, {
+    samePrefix: "Same age",
+    mixedLabel: "Mixed ages",
+    unknownLabel: "Unknown",
+    disabledLabel: "Unknown",
+  });
 
   return {
     id: normalizedActivity.id,
@@ -9579,6 +9659,8 @@ function buildCommunityActivityFeedEntry(activity) {
     sourceLabel: metadata.sourceLabel || "",
     germinationRateLabel: metadata.germinationRateLabel || fallbackRateLabel,
     systemLabel: metadata.systemLabel || "",
+    seedAgeSummaryKey: metadata.seedAgeSummaryKey || "unknown",
+    seedAgeLabel,
   };
 }
 
@@ -9609,6 +9691,9 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       sessionName: existingSession.sessionName || "",
       date: existingSession.date || "",
       time: existingSession.time || "",
+      seedAgeTrackingEnabled: Boolean(existingSession.seedAgeTrackingEnabled),
+      seedAgeMode: normalizeSeedAgeMode(existingSession.seedAgeMode || ""),
+      sessionSeedAgeYears: normalizeSeedAgeYears(existingSession.sessionSeedAgeYears),
     };
   }
 
@@ -9618,7 +9703,7 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,session_status,completed_at,session_name,date,time")
+    .select("id,session_status,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years")
     .eq("id", normalizedSessionId)
     .maybeSingle();
 
@@ -9638,6 +9723,9 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       sessionName: data.session_name || "",
       date: data.date || "",
       time: data.time || "",
+      seedAgeTrackingEnabled: Boolean(data.seed_age_tracking_enabled),
+      seedAgeMode: normalizeSeedAgeMode(data.seed_age_mode || ""),
+      sessionSeedAgeYears: normalizeSeedAgeYears(data.session_seed_age_years),
     }
     : null;
 }
@@ -9690,6 +9778,18 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
   });
   const safeSourceLabel = normalizeLeaderboardLabel(normalizedSnapshot.sourceName || "") || "Not shared";
   const safeRate = Math.max(0, Number(normalizedSnapshot.successPercent) || 0);
+  const seedAgeMetadata = getGallerySnapshotSeedAgeMetadata({
+    sessionId: normalizedSnapshot.sessionId || sessionContext?.id || "",
+    seedAgeTrackingEnabled: normalizedSnapshot.seedAgeTrackingEnabled ?? sessionContext?.seedAgeTrackingEnabled,
+    seedAgeMode: normalizedSnapshot.seedAgeMode || sessionContext?.seedAgeMode || "",
+    sessionSeedAgeYears: normalizedSnapshot.sessionSeedAgeYears ?? sessionContext?.sessionSeedAgeYears,
+  });
+  const communitySeedAgeLabel = buildSeedAgeDisplayLabel(seedAgeMetadata, {
+    samePrefix: "Same age",
+    mixedLabel: "Mixed ages",
+    unknownLabel: "Unknown",
+    disabledLabel: "Unknown",
+  });
   const metadata = {
     activityTypeLabel: "",
     germinationRate: safeRate,
@@ -9697,6 +9797,11 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     sourceLabel: safeSourceLabel,
     sessionDateLabel: safeDateLabel,
     systemLabel: formatSnapshotSystemLabel(normalizedSnapshot.systemType || "KAN"),
+    seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
+    seedAgeMode: seedAgeMetadata.mode || "",
+    sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
+    seedAgeSummaryKey: seedAgeMetadata.summaryKey === "disabled" ? "unknown" : seedAgeMetadata.summaryKey,
+    seedAgeSummaryLabel: communitySeedAgeLabel,
   };
   const payloads = [
     {
@@ -12170,6 +12275,9 @@ function mapRowToGallerySnapshot(row) {
     totalSeeds: Math.max(0, Number(row.total_seeds) || 0),
     totalPlanted: Math.max(0, Number(row.total_planted) || 0),
     successPercent: Number(row.success_percent) || 0,
+    seedAgeTrackingEnabled: Boolean(row.seed_age_tracking_enabled),
+    seedAgeMode: normalizeSeedAgeMode(row.seed_age_mode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(row.session_seed_age_years),
     submittedBy: String(row.submitted_by || "").trim(),
     sourceId: String(row.source_id || "").trim(),
     sourceName: String(row.source_name || "").trim(),
@@ -12340,6 +12448,9 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     total_seeds: Math.max(0, Number(snapshotData?.totalSeeds) || 0),
     total_planted: Math.max(0, Number(snapshotData?.totalPlanted) || 0),
     success_percent: Number(snapshotData?.percentage) || 0,
+    seed_age_tracking_enabled: Boolean(snapshotData?.seedAgeTrackingEnabled),
+    seed_age_mode: normalizeSeedAgeMode(snapshotData?.seedAgeMode || "") || null,
+    session_seed_age_years: normalizeSeedAgeYears(snapshotData?.sessionSeedAgeYears),
     submitted_by: profileName,
     source_id: String(snapshotData?.sourceId || "").trim() || null,
     source_name: normalizeLeaderboardLabel(snapshotData?.sourceName || ""),
@@ -13109,6 +13220,10 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
         <article class="gallery-card-performance-stat">
           <span>Seeds</span>
           <strong>${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel}`)}</strong>
+        </article>
+        <article class="gallery-card-performance-stat">
+          <span>Seed Age</span>
+          <strong>${escapeHtml(publicDetails.seedAgeLabel)}</strong>
         </article>
       </div>
       <div class="gallery-card-feed-meta">
@@ -14923,6 +15038,7 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
   const linkedSession = getGallerySnapshotSession(snapshot);
   const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
   const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+  const seedAgeMetadata = getGallerySnapshotSeedAgeMetadata(snapshot);
   const firstPartition = (linkedSession?.partitions || []).find((partition) => (
     normalizeLeaderboardLabel(formatPartitionSource(partition))
     || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
@@ -14940,6 +15056,16 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
     seedVarietyLabel: metadata.seedVarietyName || "Not shared",
     seedTypeLabel: metadata.seedTypeName || "Not shared",
     sexLabel: sexValue ? capitalize(sexValue) : "Not shared",
+    seedAgeLabel: buildSeedAgeDisplayLabel(seedAgeMetadata, {
+      samePrefix: "Same age",
+      mixedLabel: "Mixed ages",
+      unknownLabel: "Unknown",
+      disabledLabel: "Unknown",
+    }),
+    seedAgeSummaryKey: seedAgeMetadata.summaryKey === "disabled" ? "unknown" : seedAgeMetadata.summaryKey,
+    seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
+    seedAgeMode: seedAgeMetadata.mode,
+    sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
     seedCountLabel: totalSeeds > 0 ? String(totalSeeds) : "Not shared",
     germinatedLabel: totalSeeds > 0 ? String(germinatedCount) : "Not shared",
     germinationRateLabel: `${germinationRate}%`,
@@ -14961,6 +15087,8 @@ function getMockPublicSessionDetails(snapshot, scenario) {
     seedVarietyLabel: scenario.seedVarietyName,
     seedTypeLabel: scenario.seedTypeName,
     sexLabel: scenario.sexLabel,
+    seedAgeLabel: String(scenario.seedAgeLabel || "").trim() || "Unknown",
+    seedAgeSummaryKey: "unknown",
     seedCountLabel: String(scenario.totalSeeds),
     germinatedLabel: String(scenario.totalPlanted),
     germinationRateLabel: `${scenario.successPercent}%`,
@@ -16747,9 +16875,11 @@ function syncSeedAgeSetupUi(form, options = {}) {
   }
 
   const state = getSeedAgeSettingsFromForm(form);
-  const setupSection = form.querySelector("#seed-age-setup-section");
-  const sameField = form.querySelector("#session-seed-age-same-field");
-  const modeGroup = form.querySelector(".session-seed-age-mode-group");
+  const setupSection = form.querySelector("#seed-age-setup-section") || form.querySelector("[data-seed-age-setup]");
+  const sameField = form.querySelector("#session-seed-age-same-field") || form.querySelector("[data-seed-age-same-value]");
+  const modeGroup = form.querySelector(".session-seed-age-mode-group") || form.querySelector(".session-seed-age-mode-grid");
+  const modeHint = form.querySelector("[data-seed-age-mode-hint]");
+  const modeCards = [...form.querySelectorAll("[data-seed-age-mode-card]")];
 
   if (setupSection) {
     setupSection.hidden = !state.trackingEnabled;
@@ -16761,6 +16891,14 @@ function syncSeedAgeSetupUi(form, options = {}) {
 
   if (modeGroup) {
     modeGroup.classList.toggle("is-disabled", !state.trackingEnabled);
+  }
+  modeCards.forEach((card) => {
+    card.classList.toggle("is-selected", state.trackingEnabled && card.dataset.seedAgeModeCard === state.mode);
+  });
+  if (modeHint) {
+    modeHint.textContent = state.mode === "mixed"
+      ? "Enter seed age separately for each partition. Leave it blank when unknown."
+      : "Use one session-wide age value across this session.";
   }
 
   const sameAgeInput = form.elements.sessionSeedAgeYears;
@@ -16776,7 +16914,7 @@ function syncSeedAgeSetupUi(form, options = {}) {
 
 function validateSeedAgeSettings(form) {
   const state = getSeedAgeSettingsFromForm(form);
-  const modeGroup = form.querySelector(".session-seed-age-mode-group");
+  const modeGroup = form.querySelector(".session-seed-age-mode-group") || form.querySelector(".session-seed-age-mode-grid");
   const sameAgeInput = form.elements.sessionSeedAgeYears;
 
   modeGroup?.classList.remove("is-invalid");
@@ -16883,6 +17021,7 @@ function buildSnapshotData(source) {
     sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
     seedAgeSummaryKey: seedAgeMetadata.summaryKey,
     seedAgeSummaryLabel: seedAgeMetadata.summaryLabel,
+    seedAgeSnapshotLabel: buildSeedAgeSnapshotLabel(seedAgeMetadata),
   };
 }
 
@@ -16944,6 +17083,7 @@ function buildSnapshotRenderKey(state, data, selectedImage) {
     totalSeeds: Number(data.totalSeeds) || 0,
     totalPlanted: Number(data.totalPlanted) || 0,
     percentage: Number(data.percentage) || 0,
+    seedAgeSnapshotLabel: String(data.seedAgeSnapshotLabel || "").trim(),
     imageKey: selectedImage?.key || "",
     profileName: data.profileAttribution?.name || "",
     profileImageUrl: data.profileAttribution?.imageUrl || "",
@@ -17115,6 +17255,15 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.stroke();
   context.fillStyle = "#f4faef";
   context.fillText(systemPillText, badgeX + 19, badgeY + (roomy ? 26 : 24));
+
+  const seedAgeSnapshotLabel = String(data?.seedAgeSnapshotLabel || "").trim();
+  if (seedAgeSnapshotLabel) {
+    context.fillStyle = "#dce9d2";
+    context.font = roomy ? "600 22px Arial, sans-serif" : "600 15px Arial, sans-serif";
+    const maxSeedAgeWidth = Math.max(120, rightRegionWidth);
+    const seedAgeText = truncateTextToWidth(context, seedAgeSnapshotLabel, maxSeedAgeWidth);
+    context.fillText(seedAgeText, rightRegionX, badgeY + badgeHeight + (roomy ? 42 : 30));
+  }
 
   context.strokeStyle = "rgba(148, 209, 89, 0.26)";
   context.lineWidth = 0.8;
@@ -27267,6 +27416,12 @@ function normalizeAdminCstpSessionPartitions(partitions = [], systemType = "KAN"
       seedType: String(source.seedType || fallback.seedType || "").trim(),
       feminized: String(source.feminized || fallback.feminized || "").trim(),
       seedCount: Math.max(0, Number(source.seedCount ?? fallback.seedCount ?? 0) || 0),
+      seedAgeYears: normalizeSeedAgeYears(
+        source.seedAgeYears
+        ?? source.seed_age_years
+        ?? fallback.seedAgeYears
+        ?? fallback.seed_age_years,
+      ),
       plantedCount: plantedValue === "" ? "" : String(Math.max(0, Number(plantedValue) || 0)),
     };
   });
@@ -27372,6 +27527,14 @@ function normalizeAdminCstpTestSession(session = null, fallbackSession = {}) {
     batchLot: String(source.batchLot || source.batch_lot || fallback.batchLot || fallback.batch_lot || "").trim(),
     sampleSize: String(source.sampleSize || source.sample_size || fallback.sampleSize || fallback.sample_size || "").trim(),
     deviceId: String(source.deviceId || source.device_id || fallback.deviceId || fallback.device_id || "").trim(),
+    seedAgeTrackingEnabled: Boolean(source.seedAgeTrackingEnabled ?? source.seed_age_tracking_enabled ?? fallback.seedAgeTrackingEnabled ?? fallback.seed_age_tracking_enabled),
+    seedAgeMode: normalizeSeedAgeMode(source.seedAgeMode || source.seed_age_mode || fallback.seedAgeMode || fallback.seed_age_mode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(
+      source.sessionSeedAgeYears
+      ?? source.session_seed_age_years
+      ?? fallback.sessionSeedAgeYears
+      ?? fallback.session_seed_age_years,
+    ),
     startDateTime: String(source.startDateTime || source.start_date_time || fallback.startDateTime || fallback.start_date_time || "").trim(),
     testMethod: String(source.testMethod || source.test_method || fallback.testMethod || fallback.test_method || "").trim(),
     temperature: String(source.temperature || fallback.temperature || "").trim(),
@@ -27454,6 +27617,29 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
   const fallbackReportImages = fallback.reportImages || fallback.report_images || {};
   const sourceDeviceImages = source.cstpDeviceImages || source.cstp_device_images || {};
   const fallbackDeviceImages = fallback.cstpDeviceImages || fallback.cstp_device_images || {};
+  const seedAgeTrackingEnabled = Boolean(
+    source.seedAgeTrackingEnabled
+    ?? source.seed_age_tracking_enabled
+    ?? fallback.seedAgeTrackingEnabled
+    ?? fallback.seed_age_tracking_enabled,
+  );
+  const seedAgeMode = seedAgeTrackingEnabled
+    ? normalizeSeedAgeMode(
+      source.seedAgeMode
+      || source.seed_age_mode
+      || fallback.seedAgeMode
+      || fallback.seed_age_mode
+      || "",
+    )
+    : null;
+  const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
+    ? normalizeSeedAgeYears(
+      source.sessionSeedAgeYears
+      ?? source.session_seed_age_years
+      ?? fallback.sessionSeedAgeYears
+      ?? fallback.session_seed_age_years,
+    )
+    : null;
 
   return syncAdminCstpSessionDerivedValues({
     id,
@@ -27489,6 +27675,9 @@ function normalizeAdminCstpAssignedSessionRecord(record = null, fallbackRecord =
       source.qualificationResult || source.qualification_result || fallback.qualificationResult || fallback.qualification_result || "",
     ),
     observations: String(source.observations || fallback.observations || "").trim(),
+    seedAgeTrackingEnabled,
+    seedAgeMode,
+    sessionSeedAgeYears,
     sessionImages: normalizePersistedSessionImages(
       source.sessionImages
       || source.session_images
@@ -27728,6 +27917,8 @@ function syncAdminCstpSessionSummaryForm(form, session = null) {
   const batchLotValue = form.querySelector("[data-admin-cstp-batch-lot-value]");
   const batchLotCard = form.querySelector("[data-admin-cstp-batch-lot-card]");
   const batchLotMissing = !String(workingSession?.batchLot || "").trim();
+  const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
+  const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
 
   if (finalPercentValue) {
     finalPercentValue.textContent = getAdminCstpSessionDisplayPercent(workingSession);
@@ -27746,6 +27937,13 @@ function syncAdminCstpSessionSummaryForm(form, session = null) {
       workingSession,
     );
   }
+  if (seedAgeTrackingField instanceof HTMLInputElement) {
+    seedAgeTrackingField.checked = Boolean(workingSession?.seedAgeTrackingEnabled);
+  }
+  seedAgeModeInputs.forEach((input) => {
+    input.checked = Boolean(workingSession?.seedAgeTrackingEnabled) && input.value === workingSession?.seedAgeMode;
+  });
+  syncSeedAgeSetupUi(form);
 }
 
 function applyAdminCstpPartitionChartHeading(detail = null) {
@@ -27778,6 +27976,28 @@ function applyAdminCstpPartitionEditingMode(detail = null) {
   });
 }
 
+function renderAdminCstpPartitionEditor(detail = null, session = null) {
+  const normalizedSession = normalizeAdminCstpAssignedSessionRecord(session);
+  if (!detail?.partitions || !normalizedSession) {
+    return;
+  }
+
+  const seedAgeMetadata = getSessionSeedAgeMetadata(normalizedSession);
+  detail.partitions.innerHTML = "";
+  normalizedSession.partitions.forEach((partition, index) => {
+    detail.partitions.appendChild(buildPartitionFormCard(partition, index, {
+      showSeedAgeField: seedAgeMetadata.mode === "mixed",
+    }));
+    hydratePartitionRow(detail.partitions.lastElementChild, partition);
+  });
+  ensureSourceCatalogDatalist();
+  initializeCustomSelects(detail.partitions);
+  bindPartitionRowVisualState(detail.partitions);
+  applyAdminCstpPartitionEditingMode(detail);
+  applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, detail.partitions, seedAgeMetadata.mode);
+  syncPartitionButtonStates(detail.partitions, mapAdminCstpStatusToSessionStatus(normalizedSession.status));
+}
+
 function buildAdminCstpDraftSessionFromDetail(existingSession = null, options = {}) {
   const draftSession = normalizeAdminCstpAssignedSessionRecord(existingSession);
   if (!draftSession) {
@@ -27787,18 +28007,33 @@ function buildAdminCstpDraftSessionFromDetail(existingSession = null, options = 
   const form = options.form instanceof HTMLFormElement ? options.form : null;
   const notesField = options.notesField instanceof HTMLTextAreaElement ? options.notesField : null;
   const partitions = options.partitions;
+  let seedAgeState = {
+    trackingEnabled: Boolean(draftSession.seedAgeTrackingEnabled),
+    mode: normalizeSeedAgeMode(draftSession.seedAgeMode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(draftSession.sessionSeedAgeYears),
+  };
 
   if (form) {
     const formData = new FormData(form);
     draftSession.qualificationResult = normalizeAdminCstpQualificationResult(
       formData.get("qualificationResult") || "",
     );
+    seedAgeState = getSeedAgeSettingsFromForm(form);
+    draftSession.seedAgeTrackingEnabled = seedAgeState.trackingEnabled;
+    draftSession.seedAgeMode = seedAgeState.mode;
+    draftSession.sessionSeedAgeYears = seedAgeState.sessionSeedAgeYears;
   }
   if (notesField) {
     draftSession.observations = notesField.value.trim();
   }
   if (partitions) {
     syncSessionPartitionsFromContainer(draftSession, partitions);
+    if (seedAgeState.mode !== "mixed") {
+      draftSession.partitions = normalizeSessionPartitions(draftSession.partitions).map((partition) => ({
+        ...partition,
+        seedAgeYears: null,
+      }));
+    }
   }
 
   return syncAdminCstpSessionDerivedValues(draftSession);
@@ -28176,6 +28411,13 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
     || normalizedSession.publishedAt
     || normalizedSession.certificationPublished,
   );
+  const seedAgeTrackingEnabled = Boolean(normalizedSession.seedAgeTrackingEnabled);
+  const seedAgeMode = seedAgeTrackingEnabled
+    ? normalizeSeedAgeMode(normalizedSession.seedAgeMode || "") || "same"
+    : "";
+  const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
+    ? formatSeedAgeInputValue(normalizedSession.sessionSeedAgeYears)
+    : "";
 
   return `
     <section class="admin-cstp-session-workspace">
@@ -28245,6 +28487,42 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
             <span>Certification Badge</span>
             <div data-admin-cstp-badge-display>
               ${renderAdminCstpQualificationBadgeSummaryMarkup(normalizedSession)}
+            </div>
+          </div>
+          <div class="admin-message-field admin-cstp-summary-card admin-cstp-summary-card--wide">
+            <span>Seed Age Tracking</span>
+            <label class="session-seed-age-toggle">
+              <input type="checkbox" name="seedAgeTrackingEnabled"${seedAgeTrackingEnabled ? " checked" : ""}>
+              <span>Track Seed Age</span>
+            </label>
+            <p class="admin-message-help-text" data-seed-age-toggle-hint>Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</p>
+            <div class="session-seed-age-setup"${seedAgeTrackingEnabled ? "" : " hidden"} data-seed-age-setup>
+              <div class="session-seed-age-mode-group session-seed-age-mode-grid">
+                <label class="session-seed-age-mode-card${seedAgeMode === "same" ? " is-selected" : ""}" data-seed-age-mode-card="same">
+                  <input type="radio" name="seedAgeMode" value="same"${seedAgeMode === "same" ? " checked" : ""}>
+                  <div class="session-seed-age-mode-copy">
+                    <strong>Same age for all seeds</strong>
+                    <p>Use one age value across this session.</p>
+                  </div>
+                </label>
+                <label class="session-seed-age-mode-card${seedAgeMode === "mixed" ? " is-selected" : ""}" data-seed-age-mode-card="mixed">
+                  <input type="radio" name="seedAgeMode" value="mixed"${seedAgeMode === "mixed" ? " checked" : ""}>
+                  <div class="session-seed-age-mode-copy">
+                    <strong>Mixed ages by partition</strong>
+                    <p>Enter seed age separately for each partition.</p>
+                  </div>
+                </label>
+              </div>
+              <div class="session-seed-age-value"${seedAgeMode === "same" ? "" : " hidden"} data-seed-age-same-value>
+                <label>
+                  <span>Seed age</span>
+                  <div class="session-seed-age-input-shell">
+                    <input type="number" name="sessionSeedAgeYears" min="0" step="0.1" inputmode="decimal" placeholder="Years old" value="${escapeHtml(sessionSeedAgeYears)}">
+                    <span>years</span>
+                  </div>
+                </label>
+              </div>
+              <p class="admin-message-help-text" data-seed-age-mode-hint>${escapeHtml(seedAgeMode === "mixed" ? "Each partition row below can keep its age blank when unknown." : "This value applies across the CSTP session unless a future workflow overrides it.")}</p>
             </div>
           </div>
         </div>
@@ -28795,6 +29073,9 @@ function createAssignedAdminCstpTestSession(record = null) {
     deviceId: normalizedRecord.testSession?.deviceId || "",
     testMethod: normalizedRecord.testSession?.testMethod || "",
     temperature: normalizedRecord.testSession?.temperature || "",
+    seedAgeTrackingEnabled: Boolean(normalizedRecord.testSession?.seedAgeTrackingEnabled),
+    seedAgeMode: normalizeSeedAgeMode(normalizedRecord.testSession?.seedAgeMode || "") || null,
+    sessionSeedAgeYears: normalizeSeedAgeYears(normalizedRecord.testSession?.sessionSeedAgeYears),
     systemType: "KAN",
     unitId: normalizedRecord.testSession?.deviceId || "A",
     status: sessionStatus,
@@ -29145,6 +29426,18 @@ function getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentit
     finalGerminationPercent: matchingSession.finalGerminationPercent,
     totalGerminationTime: matchingSession.totalGerminationTime,
     observations: matchingSession.observations,
+    seedAgeTrackingEnabled: Boolean(matchingSession.seedAgeTrackingEnabled),
+    seedAgeMode: normalizeSeedAgeMode(matchingSession.seedAgeMode || ""),
+    sessionSeedAgeYears: normalizeSeedAgeYears(matchingSession.sessionSeedAgeYears),
+    seedAgeSummaryKey: getSessionSeedAgeMetadata(matchingSession).summaryKey === "disabled"
+      ? "unknown"
+      : getSessionSeedAgeMetadata(matchingSession).summaryKey,
+    seedAgeSummaryLabel: buildSeedAgeDisplayLabel(matchingSession, {
+      samePrefix: "Same age",
+      mixedLabel: "Mixed ages",
+      unknownLabel: "Unknown",
+      disabledLabel: "Unknown",
+    }),
   };
 }
 
@@ -29217,6 +29510,9 @@ function syncAdminCstpLabRecordFromAssignedSession(record = null, session = null
       batchLot: normalizedSession.batchLot,
       sampleSize: normalizedSession.sampleSize,
       deviceId: normalizedSession.deviceId,
+      seedAgeTrackingEnabled: Boolean(normalizedSession.seedAgeTrackingEnabled),
+      seedAgeMode: normalizeSeedAgeMode(normalizedSession.seedAgeMode || ""),
+      sessionSeedAgeYears: normalizeSeedAgeYears(normalizedSession.sessionSeedAgeYears),
       testMethod: normalizedSession.testMethod,
       temperature: normalizedSession.temperature,
       startDateTime: normalizedSession.startedAt || normalizedRecord.testSession?.startDateTime || "",
@@ -29454,6 +29750,14 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
   const assignedSession = getAdminCstpAssignedSessionForRecord(record);
   const isConnected = Boolean(assignedSession);
   const assignedSessionDisplayId = assignedSession?.id || record?.assignedSessionId || "";
+  const seedAgeSummaryLabel = assignedSession
+    ? buildSeedAgeDisplayLabel(assignedSession, {
+      samePrefix: "Same age",
+      mixedLabel: "Mixed ages",
+      unknownLabel: "Unknown",
+      disabledLabel: "Unknown",
+    })
+    : "Not connected";
   return `
     <section class="admin-cstp-assigned-session card">
       <div class="admin-communications-editor-head">
@@ -29474,6 +29778,10 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
         <div class="admin-communications-detail-item">
           <span>Variety</span>
           <strong>${escapeHtml(assignedSession?.variety || record.variety || "Not provided")}</strong>
+        </div>
+        <div class="admin-communications-detail-item">
+          <span>Seed Age</span>
+          <strong>${escapeHtml(seedAgeSummaryLabel)}</strong>
         </div>
       </div>
       <div class="admin-communications-quick-actions admin-cstp-lab-actions">
@@ -30212,6 +30520,15 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
   }
 
   renderSessionDetailMetaCards(detail.meta, [
+    {
+      label: "Seed Age",
+      value: buildSeedAgeDisplayLabel(session, {
+        samePrefix: "Same age",
+        mixedLabel: "Mixed ages",
+        unknownLabel: "Unknown",
+        disabledLabel: "Unknown",
+      }),
+    },
     { label: "CSTP Session ID", value: session.id },
     { label: "Linked Request ID", value: session.requestId || "Not linked" },
     { label: "Source Name", value: session.sourceName || linkedRequest?.sourceName || "Not provided" },
@@ -30246,16 +30563,7 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
     detail.chartShell.hidden = false;
   }
   if (detail.partitions) {
-    detail.partitions.innerHTML = "";
-    session.partitions.forEach((partition, index) => {
-      detail.partitions.appendChild(buildPartitionFormCard(partition, index));
-      hydratePartitionRow(detail.partitions.lastElementChild, partition);
-    });
-    ensureSourceCatalogDatalist();
-    initializeCustomSelects(detail.partitions);
-    bindPartitionRowVisualState(detail.partitions);
-    applyAdminCstpPartitionEditingMode(detail);
-    syncPartitionButtonStates(detail.partitions, mapAdminCstpStatusToSessionStatus(session.status));
+    renderAdminCstpPartitionEditor(detail, session);
     const timelineSaveShortcut = app.querySelector(".timeline-save-shortcut");
     if (timelineSaveShortcut) {
       timelineSaveShortcut.hidden = false;
@@ -30290,6 +30598,9 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   const detailSaveShortcutButton = detail.saveShortcutButton;
   const detailSaveButton = detail.saveButton;
   const detailSaveMessage = detail.saveMessage;
+  const seedAgeTrackingField = form?.elements?.seedAgeTrackingEnabled || null;
+  const seedAgeModeInputs = form ? [...form.querySelectorAll('input[name="seedAgeMode"]')] : [];
+  const seedAgeSameInput = form?.elements?.sessionSeedAgeYears || null;
 
   const buildDraftSession = () => buildAdminCstpDraftSessionFromDetail(
     getAdminCstpTestSessionById(sessionId),
@@ -30313,6 +30624,47 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
       detail.lifecycleSection,
       buildAdminCstpLifecycleState(draftSession),
     );
+  };
+
+  const bindPartitionFieldEvents = () => {
+    if (!partitions) {
+      return;
+    }
+
+    partitions.querySelectorAll(".partition-row").forEach((row) => {
+      row.querySelectorAll("input, select").forEach((field) => {
+        if (field.dataset.adminCstpPartitionBound === "true") {
+          return;
+        }
+
+        field.dataset.adminCstpPartitionBound = "true";
+        const eventName = field.tagName === "SELECT" ? "change" : "input";
+        field.addEventListener(eventName, () => {
+          validatePartitionRow(row);
+          refreshDerivedViews();
+          if (detailSaveMessage) {
+            detailSaveMessage.textContent = "";
+            detailSaveMessage.classList.remove("is-error");
+          }
+        });
+        field.addEventListener("blur", () => {
+          validatePartitionRow(row);
+          refreshDerivedViews();
+        });
+      });
+      validatePartitionRow(row);
+    });
+  };
+
+  const rerenderSeedAgePartitions = () => {
+    const workingSession = buildDraftSession() || getAdminCstpTestSessionById(sessionId);
+    if (!workingSession) {
+      return;
+    }
+
+    renderAdminCstpPartitionEditor(detail, workingSession);
+    bindPartitionFieldEvents();
+    refreshDerivedViews(workingSession);
   };
 
   const buildPersistedStageSession = (existingSession = null, progressKey = "") => {
@@ -30414,6 +30766,29 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   });
 
   const persistAdminCstpSession = () => {
+    if (form instanceof HTMLFormElement) {
+      const seedAgeValidation = validateSeedAgeSettings(form);
+      if (!seedAgeValidation.isValid) {
+        if (detailSaveMessage) {
+          detailSaveMessage.textContent = seedAgeValidation.message;
+          detailSaveMessage.classList.add("is-error");
+        }
+        seedAgeValidation.firstInvalidField?.focus();
+        return null;
+      }
+    }
+    if (partitions) {
+      const partitionValidation = validatePartitions(partitions, { showMessage: false });
+      if (!partitionValidation.isValid) {
+        if (detailSaveMessage) {
+          detailSaveMessage.textContent = "Complete the required CSTP partition fields before saving.";
+          detailSaveMessage.classList.add("is-error");
+        }
+        partitionValidation.firstInvalidField?.focus();
+        return null;
+      }
+    }
+
     const draftSession = buildDraftSession();
     return draftSession ? updateAdminCstpAssignedSession(sessionId, draftSession) : null;
   };
@@ -30421,8 +30796,10 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
   if (form instanceof HTMLFormElement) {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      persistAdminCstpSession();
-      renderAdminCstpTestSessionPage(sessionId);
+      const savedSession = persistAdminCstpSession();
+      if (savedSession) {
+        renderAdminCstpTestSessionPage(sessionId);
+      }
     });
 
     form.querySelectorAll("input, select").forEach((field) => {
@@ -30434,6 +30811,28 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
         }
         refreshDerivedViews();
       });
+    });
+  }
+
+  if (seedAgeTrackingField instanceof HTMLInputElement) {
+    seedAgeTrackingField.addEventListener("change", () => {
+      syncSeedAgeSetupUi(form);
+      rerenderSeedAgePartitions();
+    });
+  }
+  seedAgeModeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      syncSeedAgeSetupUi(form);
+      rerenderSeedAgePartitions();
+    });
+  });
+  if (seedAgeSameInput instanceof HTMLInputElement) {
+    seedAgeSameInput.addEventListener("input", () => {
+      if (detailSaveMessage) {
+        detailSaveMessage.textContent = "";
+        detailSaveMessage.classList.remove("is-error");
+      }
+      refreshDerivedViews();
     });
   }
 
@@ -30466,11 +30865,16 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
 
   const handleSaveClick = () => {
     const savedSession = persistAdminCstpSession();
-    if (detailSaveMessage) {
-      detailSaveMessage.textContent = savedSession ? "CSTP session saved." : "Could not save CSTP session.";
-      detailSaveMessage.classList.toggle("is-error", !savedSession);
+    if (savedSession) {
+      if (detailSaveMessage) {
+        detailSaveMessage.textContent = "CSTP session saved.";
+        detailSaveMessage.classList.remove("is-error");
+      }
+      renderAdminCstpTestSessionPage(sessionId);
+    } else if (detailSaveMessage && !detailSaveMessage.textContent.trim()) {
+      detailSaveMessage.textContent = "Could not save CSTP session.";
+      detailSaveMessage.classList.add("is-error");
     }
-    renderAdminCstpTestSessionPage(sessionId);
   };
 
   detailSaveShortcutButton?.addEventListener("click", handleSaveClick);
@@ -30592,26 +30996,7 @@ function bindAdminCstpTestSessionPage(sessionId = "") {
     renderAdminCstpTestSessionPage(sessionId);
   });
 
-  if (partitions) {
-    partitions.querySelectorAll(".partition-row").forEach((row) => {
-      row.querySelectorAll("input, select").forEach((field) => {
-        const eventName = field.tagName === "SELECT" ? "change" : "input";
-        field.addEventListener(eventName, () => {
-          validatePartitionRow(row);
-          refreshDerivedViews();
-          if (detailSaveMessage) {
-            detailSaveMessage.textContent = "";
-            detailSaveMessage.classList.remove("is-error");
-          }
-        });
-        field.addEventListener("blur", () => {
-          validatePartitionRow(row);
-          refreshDerivedViews();
-        });
-      });
-      validatePartitionRow(row);
-    });
-  }
+  bindPartitionFieldEvents();
 
   refreshDerivedViews();
   startSessionTimer(() => {
@@ -30638,6 +31023,12 @@ function renderAdminCstpReportPage(recordId = "") {
   const qualificationResult = normalizeAdminCstpQualificationResult(reportSession?.qualificationResult || "");
   const suggestedQualification = getSuggestedAdminCstpQualificationResult(reportSession);
   const canPublish = canPublishAdminCstpCertification(reportSession);
+  const reportSeedAgeLabel = buildSeedAgeDisplayLabel(reportSession, {
+    samePrefix: "Same age",
+    mixedLabel: "Mixed ages",
+    unknownLabel: "Unknown",
+    disabledLabel: "Unknown",
+  });
   const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
     ? "CSTP Certification Published"
     : "Publish CSTP Certification";
@@ -30696,6 +31087,10 @@ function renderAdminCstpReportPage(recordId = "") {
                 <article class="meta-card">
                   <strong>Temperature</strong>
                   <p>${escapeHtml(reportSession.temperature || "Not provided")}</p>
+                </article>
+                <article class="meta-card">
+                  <strong>Seed Age</strong>
+                  <p>${escapeHtml(reportSeedAgeLabel)}</p>
                 </article>
                 <article class="meta-card">
                   <strong>Started At</strong>
@@ -33162,6 +33557,7 @@ function renderGalleryReview() {
             <span class="gallery-card-chip">${escapeHtml(publicDetails.sourceLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(publicDetails.seedTypeLabel)}</span>
+            <span class="gallery-card-chip">${escapeHtml(publicDetails.seedAgeLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds`)}</span>
           </div>
           ${sharedProfileMarkup ? `<div class="gallery-review-profile-row">${sharedProfileMarkup}</div>` : ""}
@@ -35222,6 +35618,7 @@ function renderPublicSessionDetail(snapshotId) {
     { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
     { label: "Type", value: publicDetails.seedTypeLabel },
     { label: "Sex", value: publicDetails.sexLabel },
+    { label: "Seed Age", value: publicDetails.seedAgeLabel },
     { label: "Seed Count", value: publicDetails.seedCountLabel },
     { label: "Germinated", value: publicDetails.germinatedLabel },
     { label: "Germination Rate", value: publicDetails.germinationRateLabel },
@@ -35932,6 +36329,7 @@ function renderGrowNetworkPage() {
                 <span class="gallery-card-chip">${escapeHtml(activity.typeLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(`${activity.germinationRateLabel} germination`)}</span>
                 ${activity.sourceLabel && activity.sourceLabel !== "Unknown source" ? `<span class="gallery-card-chip">${escapeHtml(activity.sourceLabel)}</span>` : ""}
+                ${activity.seedAgeLabel ? `<span class="gallery-card-chip">${escapeHtml(activity.seedAgeLabel)}</span>` : ""}
                 ${activity.typeMeta ? `<span class="gallery-card-chip">${escapeHtml(activity.typeMeta)}</span>` : ""}
               </div>
             </div>

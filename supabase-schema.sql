@@ -128,6 +128,9 @@ create table if not exists public.grow_gallery_snapshots (
   session_date date,
   system_type text not null default 'KAN',
   success_percent integer not null default 0,
+  seed_age_tracking_enabled boolean not null default false,
+  seed_age_mode text,
+  session_seed_age_years numeric,
   submitted_by text default '',
   include_profile_in_gallery boolean not null default false,
   submitted_profile_name text default '',
@@ -416,6 +419,15 @@ alter table public.grow_gallery_snapshots
 
 alter table public.grow_gallery_snapshots
   add column if not exists total_planted integer not null default 0;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists seed_age_tracking_enabled boolean not null default false;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists seed_age_mode text;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists session_seed_age_years numeric;
 
 alter table public.grow_gallery_snapshots
   add column if not exists source_id uuid references public.sources(id) on delete set null;
@@ -774,6 +786,30 @@ begin
       'systemLabel', case
         when upper(coalesce(grow_gallery_snapshots.system_type, 'KAN')) = 'TRA' then 'TRā™'
         else 'KAN®'
+      end,
+      'seedAgeTrackingEnabled', coalesce(grow_gallery_snapshots.seed_age_tracking_enabled, false),
+      'seedAgeMode', coalesce(grow_gallery_snapshots.seed_age_mode, ''),
+      'sessionSeedAgeYears', grow_gallery_snapshots.session_seed_age_years,
+      'seedAgeSummaryKey', case
+        when coalesce(grow_gallery_snapshots.seed_age_tracking_enabled, false) = true
+          and lower(coalesce(grow_gallery_snapshots.seed_age_mode, '')) = 'same'
+          and grow_gallery_snapshots.session_seed_age_years is not null then 'same'
+        when coalesce(grow_gallery_snapshots.seed_age_tracking_enabled, false) = true
+          and lower(coalesce(grow_gallery_snapshots.seed_age_mode, '')) = 'mixed' then 'mixed'
+        else 'unknown'
+      end,
+      'seedAgeSummaryLabel', case
+        when coalesce(grow_gallery_snapshots.seed_age_tracking_enabled, false) = true
+          and lower(coalesce(grow_gallery_snapshots.seed_age_mode, '')) = 'same'
+          and grow_gallery_snapshots.session_seed_age_years is not null
+          then concat(
+            'Same age: ',
+            trim(trailing '.' from trim(trailing '0' from grow_gallery_snapshots.session_seed_age_years::text)),
+            ' years'
+          )
+        when coalesce(grow_gallery_snapshots.seed_age_tracking_enabled, false) = true
+          and lower(coalesce(grow_gallery_snapshots.seed_age_mode, '')) = 'mixed' then 'Mixed ages'
+        else 'Unknown'
       end
     ),
     'public',
