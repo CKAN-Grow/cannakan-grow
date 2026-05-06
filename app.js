@@ -37525,8 +37525,8 @@ function getSpotlightLifecycleEvents(session = null) {
 
   const stageConfig = [
     { key: "soaking", label: "Soaking", tone: "soaking", currentLabel: "Soaking" },
-    { key: "germination", label: "Germination Started", tone: "germination", currentLabel: "Germinating" },
-    { key: "first-germinated", label: "First Germinated", tone: "green", currentLabel: "First Germinated" },
+    { key: "germination", label: "Germinating", tone: "germination", currentLabel: "Germinating" },
+    { key: "first-germinated", label: "Germination Started", tone: "green", currentLabel: "Germination Started" },
     { key: "completed", label: "Completed", tone: "completed", currentLabel: "Completed" },
   ];
 
@@ -37597,8 +37597,8 @@ function getSessionCommandCenterStageBadge(session = null) {
 function getSessionCommandCenterProgressEvents(session = null) {
   const displayLabelByKey = {
     soaking: "Soaking",
-    germination: "Germination",
-    "first-germinated": "First Germinated",
+    germination: "Germinating",
+    "first-germinated": "Germination Started",
     completed: "Completed",
   };
   const iconByKey = {
