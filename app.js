@@ -21912,11 +21912,14 @@ function renderActiveSessionFilterPaperCardMarkup() {
   return `
     <section class="card active-session-supplies-card active-session-supplies-card--${escapeHtml(supply.tone)}" aria-labelledby="active-session-supplies-title">
       <div class="active-session-supplies-head">
-        <div class="active-session-supplies-copy">
-          <p class="eyebrow">Supplies</p>
-          <h4 id="active-session-supplies-title">Lab Filter Paper Supply</h4>
-          <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
-          <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
+        <div class="active-session-supplies-copy-group">
+          ${renderCommandCenterIconMarkup("filter-paper", `command-icon--supply command-icon--supply-${supply.tone}`)}
+          <div class="active-session-supplies-copy">
+            <p class="eyebrow">Supplies</p>
+            <h4 id="active-session-supplies-title">Lab Filter Paper Supply</h4>
+            <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
+            <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
+          </div>
         </div>
         <div class="active-session-supplies-actions">
           <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(supply.statusLabel)}</span>
@@ -42640,10 +42643,12 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
       return `
         <span class="${classes}" aria-hidden="true">
           <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <circle cx="12" cy="12" r="7.7"></circle>
-            <path d="M12 4.9v14.2M4.9 12h14.2" stroke-linecap="round"></path>
-            <path d="m6.9 6.9 10.2 10.2M17.1 6.9 6.9 17.1" stroke-linecap="round" opacity="0.82"></path>
-            <circle cx="12" cy="12" r="2.1" opacity="0.7"></circle>
+            <circle class="filter-disc-shadow" cx="12" cy="12.8" r="7.95"></circle>
+            <circle class="filter-disc-base" cx="12" cy="12" r="7.95"></circle>
+            <circle class="filter-disc-rim" cx="12" cy="12" r="7.95"></circle>
+            <path class="filter-disc-detail" d="M12 4.95v14.1M4.95 12h14.1" stroke-linecap="round"></path>
+            <path class="filter-disc-detail" d="m7.05 7.05 9.9 9.9M16.95 7.05l-9.9 9.9" stroke-linecap="round"></path>
+            <circle class="filter-disc-core" cx="12" cy="12" r="2.15"></circle>
           </svg>
         </span>
       `;
