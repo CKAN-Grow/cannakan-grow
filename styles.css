@@ -5566,6 +5566,124 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.55;
 }
 
+.gallery-seed-age-overview-section {
+  gap: 18px;
+}
+
+.gallery-seed-age-overview-header {
+  margin-bottom: 0;
+}
+
+.gallery-seed-age-overview-header .app-section-header-main {
+  align-items: flex-start;
+}
+
+.gallery-seed-age-overview-header .app-section-header-main > div {
+  display: grid;
+  gap: 8px;
+}
+
+.gallery-seed-age-overview-header .app-section-header-main > div > .eyebrow {
+  width: auto;
+  margin-left: 0;
+  color: #94d159;
+  font-size: 0.82rem;
+  letter-spacing: 0.12em;
+}
+
+.gallery-seed-age-overview-header .app-section-header-main > div > h3 {
+  font-size: clamp(1.55rem, 2.5vw, 2rem);
+  line-height: 1.08;
+}
+
+.gallery-seed-age-overview-header .app-section-header-main > div > p:not(.eyebrow) {
+  max-width: 820px;
+  line-height: 1.55;
+}
+
+.gallery-seed-age-overview-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: start;
+  white-space: nowrap;
+}
+
+.gallery-seed-age-overview-cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-seed-age-overview-cta-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gallery-seed-age-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.gallery-seed-age-kpi-card {
+  display: grid;
+  gap: 10px;
+  min-height: 138px;
+  padding: 18px 18px 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.02) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.08), transparent 42%);
+  box-shadow:
+    0 14px 24px rgba(24, 34, 24, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.gallery-seed-age-kpi-card.is-empty {
+  border-style: dashed;
+}
+
+.gallery-seed-age-kpi-label,
+.gallery-seed-age-kpi-value,
+.gallery-seed-age-kpi-helper {
+  margin: 0;
+}
+
+.gallery-seed-age-kpi-label {
+  color: rgba(189, 204, 192, 0.82);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.gallery-seed-age-kpi-value {
+  color: #94d159;
+  font-size: clamp(1.3rem, 2vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1.08;
+}
+
+.gallery-seed-age-kpi-card.is-empty .gallery-seed-age-kpi-value {
+  color: rgba(233, 239, 234, 0.86);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.gallery-seed-age-kpi-helper {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .gallery-seedtype-highlights {
   display: grid;
   gap: 14px;
@@ -8847,6 +8965,10 @@ body.theme-dark .contact-reason-card.is-active {
   .gallery-leaderboard-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .gallery-seed-age-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -8860,6 +8982,10 @@ body.theme-dark .contact-reason-card.is-active {
 
   .gallery-top-members-summary-list {
     grid-template-columns: 1fr;
+  }
+
+  .gallery-seed-age-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -8959,6 +9085,15 @@ body.theme-dark .contact-reason-card.is-active {
     justify-content: center;
   }
 
+  .gallery-seed-age-overview-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gallery-seed-age-overview-cta {
+    width: fit-content;
+  }
+
   .gallery-leaderboard-row--streak {
     grid-template-columns: 1fr;
     grid-template-areas: none;
@@ -8973,6 +9108,14 @@ body.theme-dark .contact-reason-card.is-active {
   .gallery-leaderboard-icon--feature {
     width: 62px;
     height: 62px;
+  }
+
+  .gallery-seed-age-overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-seed-age-kpi-card {
+    min-height: 0;
   }
 
   .gallery-card-feed-header {
@@ -23065,6 +23208,32 @@ body.theme-dark .gallery-leaderboard-card {
 
 body.theme-dark .gallery-leaderboard-disclaimer {
   color: rgba(189, 204, 192, 0.76);
+}
+
+body.theme-dark .gallery-seed-age-kpi-card {
+  background:
+    linear-gradient(180deg, rgba(22, 29, 24, 0.96) 0%, rgba(14, 20, 16, 0.94) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.05), transparent 46%);
+  border-color: rgba(148, 209, 89, 0.14);
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .gallery-seed-age-kpi-label {
+  color: rgba(189, 204, 192, 0.76);
+}
+
+body.theme-dark .gallery-seed-age-kpi-value {
+  color: #a8ef73;
+}
+
+body.theme-dark .gallery-seed-age-kpi-card.is-empty .gallery-seed-age-kpi-value {
+  color: rgba(238, 243, 236, 0.88);
+}
+
+body.theme-dark .gallery-seed-age-kpi-helper {
+  color: rgba(189, 204, 192, 0.82);
 }
 
 body.theme-dark .phone-mock,

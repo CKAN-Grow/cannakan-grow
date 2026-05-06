@@ -14998,6 +14998,19 @@ function renderCommunityInsightsIconMarkup(iconType = "sources", className = "")
   let symbolMarkup = "";
 
   switch (iconType) {
+    case "seed-age":
+      symbolMarkup = `
+        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+          <rect x="4.5" y="5" width="15" height="14.5" rx="2.5"></rect>
+          <path d="M8 3.75v3"></path>
+          <path d="M16 3.75v3"></path>
+          <path d="M4.5 9.5h15"></path>
+          <path d="M10.2 15.4v-3.2"></path>
+          <path d="M10.2 12.7c0-1.8 1.4-3 3.3-3 0 1.9-1.3 3-3.3 3Z"></path>
+          <path d="M10.2 14c0-1.5-1.2-2.5-2.8-2.5 0 1.5 1.1 2.5 2.8 2.5Z"></path>
+        </svg>
+      `;
+      break;
     case "trends":
       symbolMarkup = `
         <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -15146,6 +15159,228 @@ function renderGalleryLeaderboardSection() {
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Results reflect KAN system community session data, not source performance alone. Informational only. Results may vary.</p>
+  `;
+
+  return section;
+}
+
+function formatSeedAgePercentMetric(value = null) {
+  const normalizedValue = Number(value);
+  if (!Number.isFinite(normalizedValue) || normalizedValue < 0) {
+    return "Not enough data yet";
+  }
+  return `${normalizedValue.toFixed(1)}%`;
+}
+
+function formatSeedAgeMonthCountLabel(monthCount = null) {
+  const normalizedMonths = Number.isFinite(Number(monthCount))
+    ? Math.max(0, Math.round(Number(monthCount)))
+    : null;
+  if (normalizedMonths === null) {
+    return "Not enough data yet";
+  }
+  return `${normalizedMonths} ${normalizedMonths === 1 ? "month" : "months"}`;
+}
+
+function formatSeedAgeMonthsRangeLabel(minMonths = null, maxMonths = null, options = {}) {
+  const normalizedMinMonths = Number.isFinite(Number(minMonths))
+    ? Math.max(0, Math.round(Number(minMonths)))
+    : null;
+  const normalizedMaxMonths = Number.isFinite(Number(maxMonths))
+    ? Math.max(0, Math.round(Number(maxMonths)))
+    : null;
+  if (normalizedMinMonths === null || normalizedMaxMonths === null) {
+    return "Not enough data yet";
+  }
+
+  const plusThreshold = Number.isFinite(Number(options.plusThreshold))
+    ? Math.max(0, Math.round(Number(options.plusThreshold)))
+    : null;
+  if (plusThreshold !== null && normalizedMaxMonths >= plusThreshold) {
+    return normalizedMinMonths === plusThreshold
+      ? `${plusThreshold}+ months`
+      : `${normalizedMinMonths}-${plusThreshold}+ months`;
+  }
+
+  if (normalizedMinMonths === normalizedMaxMonths) {
+    return formatSeedAgeMonthCountLabel(normalizedMinMonths);
+  }
+
+  return `${normalizedMinMonths}-${normalizedMaxMonths} months`;
+}
+
+function getCommunitySeedAgeOverviewSessions() {
+  const sessionsById = new Map();
+  getApprovedPublicGallerySnapshots().forEach((snapshot) => {
+    const linkedSession = getGallerySnapshotSession(snapshot);
+    const fallbackSession = {
+      id: String(snapshot?.sessionId || snapshot?.id || "").trim(),
+      sessionStatus: String(snapshot?.sessionStatus || "completed").trim(),
+      seedAgeTrackingEnabled: snapshot?.seedAgeTrackingEnabled ?? snapshot?.seed_age_tracking_enabled,
+      seedAgeMode: snapshot?.seedAgeMode || snapshot?.seed_age_mode || "",
+      sessionSeedAgeYears: snapshot?.sessionSeedAgeYears ?? snapshot?.session_seed_age_years,
+      partitions: Array.isArray(snapshot?.partitions) ? snapshot.partitions : [],
+      date: snapshot?.date || "",
+      time: snapshot?.time || "",
+    };
+    const normalizedSession = normalizeStoredSession(linkedSession || fallbackSession);
+    const sessionId = String(normalizedSession?.id || fallbackSession.id || "").trim();
+    if (!normalizedSession || !sessionId || sessionsById.has(sessionId)) {
+      return;
+    }
+    sessionsById.set(sessionId, normalizedSession);
+  });
+
+  return [...sessionsById.values()];
+}
+
+// Reusable public/community seed-age rollup for future Source Directory,
+// Community Grow deep-dive analytics, and CSTP/public reporting.
+function buildCommunitySeedAgeOverviewState() {
+  const communitySessions = getCommunitySeedAgeOverviewSessions();
+  const seedAgeEntries = buildSeedAgeBucketSessionEntries(communitySessions)
+    .filter((entry) => entry.seedAgeYears !== null && entry.totalSeeds > 0);
+  const completedEntries = seedAgeEntries.filter((entry) => entry.sessionStatus === "completed");
+  const performanceEntries = completedEntries.length ? completedEntries : seedAgeEntries;
+  const sessionIds = new Set(seedAgeEntries.map((entry) => String(entry.sessionId || "").trim()).filter(Boolean));
+
+  const overallTotals = performanceEntries.reduce((accumulator, entry) => {
+    accumulator.totalSeeds += Math.max(0, Number(entry.totalSeeds) || 0);
+    accumulator.totalPlanted += Math.max(0, Number(entry.totalPlanted) || 0);
+    return accumulator;
+  }, { totalSeeds: 0, totalPlanted: 0 });
+  const overallAverage = overallTotals.totalSeeds > 0
+    ? (overallTotals.totalPlanted / overallTotals.totalSeeds) * 100
+    : null;
+
+  const bucketMap = new Map();
+  performanceEntries.forEach((entry) => {
+    const bucketKey = String(entry.bucketKey || "").trim();
+    if (!bucketKey || bucketKey === "unknown") {
+      return;
+    }
+
+    const bucket = bucketMap.get(bucketKey) || {
+      key: bucketKey,
+      label: getSeedAgeBucketLabel(bucketKey),
+      totalSeeds: 0,
+      totalPlanted: 0,
+      minMonths: Number.POSITIVE_INFINITY,
+      maxMonths: Number.NEGATIVE_INFINITY,
+      weightedMonths: 0,
+    };
+    const seedCount = Math.max(0, Number(entry.totalSeeds) || 0);
+    const plantedCount = Math.max(0, Number(entry.totalPlanted) || 0);
+    const ageMonths = Math.max(0, Number(entry.seedAgeYears) * 12);
+
+    bucket.totalSeeds += seedCount;
+    bucket.totalPlanted += plantedCount;
+    bucket.minMonths = Math.min(bucket.minMonths, ageMonths);
+    bucket.maxMonths = Math.max(bucket.maxMonths, ageMonths);
+    bucket.weightedMonths += ageMonths * seedCount;
+    bucketMap.set(bucketKey, bucket);
+  });
+
+  const bestBucket = [...bucketMap.values()]
+    .map((bucket) => ({
+      ...bucket,
+      germinationRate: bucket.totalSeeds > 0 ? (bucket.totalPlanted / bucket.totalSeeds) * 100 : 0,
+      averageMonths: bucket.totalSeeds > 0 ? (bucket.weightedMonths / bucket.totalSeeds) : null,
+    }))
+    .sort((left, right) => (
+      right.germinationRate - left.germinationRate
+      || right.totalSeeds - left.totalSeeds
+      || left.label.localeCompare(right.label)
+    ))[0] || null;
+
+  const allKnownMonths = seedAgeEntries.map((entry) => Math.max(0, Number(entry.seedAgeYears) * 12));
+  const ageRangeLabel = allKnownMonths.length
+    ? formatSeedAgeMonthsRangeLabel(
+      Math.min(...allKnownMonths),
+      Math.max(...allKnownMonths),
+      { plusThreshold: 60 },
+    )
+    : "Not enough data yet";
+
+  return {
+    hasData: seedAgeEntries.length > 0,
+    optimalAgeRange: bestBucket
+      ? formatSeedAgeMonthsRangeLabel(bestBucket.minMonths, bestBucket.maxMonths)
+      : "Not enough data yet",
+    overallAverage: formatSeedAgePercentMetric(overallAverage),
+    totalSessions: sessionIds.size > 0 ? sessionIds.size.toLocaleString() : "Not enough data yet",
+    ageRange: ageRangeLabel,
+    bestPerformance: bestBucket
+      ? formatSeedAgePercentMetric(bestBucket.germinationRate)
+      : "Not enough data yet",
+    bestPerformanceHelper: bestBucket?.averageMonths !== null && bestBucket?.averageMonths !== undefined
+      ? `Achieved at ${formatSeedAgeMonthCountLabel(bestBucket.averageMonths)} average`
+      : "Not enough data yet",
+  };
+}
+
+function renderCommunitySeedAgeOverviewSection() {
+  const state = buildCommunitySeedAgeOverviewState();
+  const cards = [
+    {
+      label: "Optimal Age Range",
+      value: state.optimalAgeRange,
+      helper: "Highest germination performance window",
+    },
+    {
+      label: "Overall Average",
+      value: state.overallAverage,
+      helper: "Average germination across all ages",
+    },
+    {
+      label: "Total Sessions",
+      value: state.totalSessions,
+      helper: "Sessions with recorded seed age",
+    },
+    {
+      label: "Age Range",
+      value: state.ageRange,
+      helper: "Seed age range in community data",
+    },
+    {
+      label: "Best Performance",
+      value: state.bestPerformance,
+      helper: state.bestPerformanceHelper,
+    },
+  ];
+
+  const section = document.createElement("section");
+  section.id = "community-insights-seed-age";
+  section.className = "card gallery-section gallery-leaderboard-section gallery-seed-age-overview-section";
+  section.innerHTML = `
+    <div class="gallery-seed-age-overview-header app-section-header">
+      <div class="section-title-with-icon app-section-header-main">
+        ${renderCommunityInsightsIconMarkup("seed-age", "gallery-leaderboard-section-icon")}
+        <div>
+          <p class="eyebrow">SEED AGE ANALYTICS</p>
+          <h3>Seed Age Overview</h3>
+          <p class="muted">Analyze how seed age impacts germination performance across the community.</p>
+        </div>
+      </div>
+      <a class="button button-secondary gallery-seed-age-overview-cta" href="/community-grow#community-insights-seed-age">
+        <span>View all Seed Age Insights</span>
+        <span class="gallery-seed-age-overview-cta-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M5 12h14"></path>
+            <path d="m13 7 5 5-5 5"></path>
+          </svg>
+        </span>
+      </a>
+    </div>
+    <div class="gallery-seed-age-overview-grid">
+      ${cards.map((card) => `
+        <article class="gallery-seed-age-kpi-card${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
+          <p class="gallery-seed-age-kpi-label">${escapeHtml(card.label)}</p>
+          <strong class="gallery-seed-age-kpi-value">${escapeHtml(card.value)}</strong>
+          <p class="gallery-seed-age-kpi-helper">${escapeHtml(card.helper)}</p>
+        </article>
+      `).join("")}
+    </div>
   `;
 
   return section;
@@ -33823,7 +34058,10 @@ function renderGallery(targetSnapshotId = "") {
   }
 
   if (galleryFeedSection) {
-    galleryFeedSection.before(renderGalleryLeaderboardSection());
+    const leaderboardSection = renderGalleryLeaderboardSection();
+    const seedAgeOverviewSection = renderCommunitySeedAgeOverviewSection();
+    galleryFeedSection.before(leaderboardSection);
+    leaderboardSection.after(seedAgeOverviewSection);
   }
 
   const isAdminView = isAdminUser();
@@ -34072,6 +34310,11 @@ function renderGallery(targetSnapshotId = "") {
       targetCard.focus({ preventScroll: true });
     } else if (targetSnapshotId === "community-insights") {
       document.querySelector("#community-insights")?.scrollIntoView({
+        block: "start",
+        behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
+      });
+    } else if (targetSnapshotId === "community-insights-seed-age") {
+      document.querySelector("#community-insights-seed-age")?.scrollIntoView({
         block: "start",
         behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
       });
@@ -42114,6 +42357,23 @@ document.addEventListener("click", (event) => {
     : null;
   if (communityInsightsLink instanceof HTMLAnchorElement) {
     const targetHash = "#gallery/community-insights";
+    if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
+      event.preventDefault();
+      event.stopPropagation();
+      promptForUnsavedChangesNavigation(targetHash);
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    navigateToHashRoute(targetHash);
+    return;
+  }
+
+  const communitySeedAgeInsightsLink = event.target instanceof Element
+    ? event.target.closest('a[href="/community-grow#community-insights-seed-age"]')
+    : null;
+  if (communitySeedAgeInsightsLink instanceof HTMLAnchorElement) {
+    const targetHash = "#gallery/community-insights-seed-age";
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
       event.stopPropagation();
