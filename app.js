@@ -20541,8 +20541,13 @@ function renderHomeInstallInfoCardMarkup() {
             </div>
             <div class="home-install-monitor-dashboard">
               <div class="home-install-monitor-ring-panel">
-                <div class="home-install-monitor-ring" aria-hidden="true">
-                  <span>${installPreviewSuccessRate}%</span>
+                <div
+                  class="home-install-monitor-ring"
+                  data-home-install-monitor-ring="true"
+                  data-install-ring-target="${escapeHtml(String(installPreviewSuccessRate))}"
+                  aria-hidden="true"
+                >
+                  <span data-install-ring-value>${installPreviewSuccessRate}%</span>
                 </div>
                 <p class="home-install-monitor-ring-label">Germination</p>
               </div>
@@ -20684,6 +20689,69 @@ function renderHomeInstallInfoCardMarkup() {
       </div>
     </section>
   `;
+}
+
+function initializeHomeInstallMonitorAnimation(scope = document) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  scope.querySelectorAll("[data-home-install-monitor-ring='true']").forEach((ring) => {
+    if (!(ring instanceof HTMLElement)) {
+      return;
+    }
+
+    const valueElement = ring.querySelector("[data-install-ring-value]");
+    const targetValue = Math.max(0, Math.min(100, Number(ring.dataset.installRingTarget) || 98));
+    ring.classList.remove("is-complete");
+
+    if (prefersReducedMotion) {
+      ring.style.setProperty("--home-install-monitor-ring-angle", `${targetValue * 3.6}deg`);
+      if (valueElement) {
+        valueElement.textContent = `${Math.round(targetValue)}%`;
+      }
+      return;
+    }
+
+    if (typeof ring.__installRingRaf === "number") {
+      cancelAnimationFrame(ring.__installRingRaf);
+    }
+
+    ring.style.setProperty("--home-install-monitor-ring-angle", "0deg");
+    if (valueElement) {
+      valueElement.textContent = "0%";
+    }
+
+    const durationMs = 1500;
+    const startTime = performance.now();
+    const easeOutCubic = (progress) => 1 - ((1 - progress) ** 3);
+
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / durationMs);
+      const easedProgress = easeOutCubic(progress);
+      const currentValue = targetValue * easedProgress;
+      ring.style.setProperty("--home-install-monitor-ring-angle", `${currentValue * 3.6}deg`);
+      if (valueElement) {
+        valueElement.textContent = `${Math.round(currentValue)}%`;
+      }
+
+      if (progress < 1) {
+        ring.__installRingRaf = requestAnimationFrame(animate);
+        return;
+      }
+
+      ring.style.setProperty("--home-install-monitor-ring-angle", `${targetValue * 3.6}deg`);
+      if (valueElement) {
+        valueElement.textContent = `${Math.round(targetValue)}%`;
+      }
+      ring.classList.add("is-complete");
+      ring.__installRingRaf = 0;
+    };
+
+    ring.__installRingRaf = requestAnimationFrame(animate);
+  });
 }
 
 function renderHomeAdminUtilityCardMarkup() {
@@ -32390,6 +32458,7 @@ function renderHome() {
   }
   bindMessageBoardImageFallbacks(app);
   bindHomeAnnouncementFallbackRotation(app);
+  initializeHomeInstallMonitorAnimation(app);
   app.querySelector(".home-dashboard-secondary-row [data-install-grow-app]")?.addEventListener("click", async () => {
     await promptInstallGrowApp();
   });

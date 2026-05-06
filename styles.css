@@ -7626,7 +7626,7 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-ring {
-  --home-install-monitor-ring-angle: 352.8deg;
+  --home-install-monitor-ring-angle: 0deg;
   position: relative;
   display: grid;
   place-items: center;
@@ -7640,7 +7640,6 @@ body.theme-dark .contact-reason-card.is-active {
     inset 0 0 16px rgba(148, 209, 89, 0.12),
     0 0 16px rgba(148, 209, 89, 0.08);
   isolation: isolate;
-  animation: home-install-monitor-ring-breathe 8s ease-in-out infinite;
 }
 
 .home-install-monitor-ring::before {
@@ -7653,6 +7652,17 @@ body.theme-dark .contact-reason-card.is-active {
   mask: radial-gradient(circle, transparent 56%, #000 57.5%);
 }
 
+.home-install-monitor-ring::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: inherit;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+}
+
 .home-install-monitor-ring span {
   position: relative;
   z-index: 1;
@@ -7660,6 +7670,14 @@ body.theme-dark .contact-reason-card.is-active {
   font-weight: 800;
   line-height: 1;
   color: #eef8e4;
+}
+
+.home-install-monitor-ring.is-complete {
+  animation: home-install-monitor-ring-pulse 4.2s ease-in-out infinite;
+}
+
+.home-install-monitor-ring.is-complete::after {
+  animation: home-install-monitor-ring-halo 4.2s ease-in-out infinite;
 }
 
 .home-install-monitor-ring-label {
@@ -7816,24 +7834,41 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 12px rgba(148, 209, 89, 0.08);
 }
 
-@keyframes home-install-monitor-ring-breathe {
-  0% {
+@keyframes home-install-monitor-ring-pulse {
+  0%, 72%, 100% {
     box-shadow:
       inset 0 0 16px rgba(148, 209, 89, 0.11),
       0 0 12px rgba(148, 209, 89, 0.06);
+    transform: translateZ(0) scale(1);
   }
 
-  50% {
+  82% {
     box-shadow:
       inset 0 0 18px rgba(148, 209, 89, 0.15),
       0 0 18px rgba(148, 209, 89, 0.1),
       0 0 24px rgba(148, 209, 89, 0.06);
+    transform: translateZ(0) scale(1.025);
   }
 
-  100% {
-    box-shadow:
-      inset 0 0 16px rgba(148, 209, 89, 0.11),
-      0 0 12px rgba(148, 209, 89, 0.06);
+}
+
+@keyframes home-install-monitor-ring-halo {
+  0%, 72%, 100% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  82% {
+    opacity: 0.52;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-install-monitor-ring,
+  .home-install-monitor-ring::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
