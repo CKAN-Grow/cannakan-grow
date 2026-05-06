@@ -20879,7 +20879,7 @@ function renderSourcesLandingPage() {
   const directoryMetrics = getSourceDirectoryMetrics(directoryRecords);
   app.innerHTML = `
     <section class="source-directory-page">
-      <section class="source-directory-hero app-hero app-hero--sources card">
+      <section class="source-directory-hero app-hero app-hero--sources app-hero--contained-right card">
         <div class="app-hero-background" aria-hidden="true"></div>
         <div class="app-hero-overlay" aria-hidden="true"></div>
         <div class="app-hero-content section-title-with-icon app-section-header-main">

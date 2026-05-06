@@ -1297,11 +1297,17 @@ body.theme-dark .install-app-banner-ios-tip {
   --app-hero-art: url("/assets/images/my-sessions-hero-bg.png");
 }
 
-.app-hero--sessions {
-  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png?v=20260506");
-  --app-hero-art-size: auto 88%;
+.app-hero--contained-right {
+  --app-hero-art-size: contain;
   --app-hero-art-position: right center;
   --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.68) 30%, rgba(8, 13, 10, 0.16) 58%, rgba(8, 13, 10, 0.24) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+}
+
+.app-hero--sessions {
+  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png?v=20260506");
 }
 
 .app-hero--gallery {
@@ -1310,12 +1316,6 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .app-hero--sources {
   --app-hero-art: url("/src/assets/images/source-directory-bg.png?v=20260506");
-  --app-hero-art-size: cover;
-  --app-hero-art-position: right center;
-  --app-hero-art-repeat: no-repeat;
-  --app-hero-overlay:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.68) 30%, rgba(8, 13, 10, 0.16) 58%, rgba(8, 13, 10, 0.24) 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 
 body.theme-dark .app-hero {
@@ -17044,16 +17044,6 @@ input::placeholder {
   text-align: center;
 }
 
-.source-directory-hero {
-  --app-hero-art: url("/src/assets/images/source-directory-bg.png?v=20260506");
-  --app-hero-art-size: cover;
-  --app-hero-art-position: right center;
-  --app-hero-art-repeat: no-repeat;
-  --app-hero-overlay:
-    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.68) 30%, rgba(8, 13, 10, 0.16) 58%, rgba(8, 13, 10, 0.24) 100%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
-}
-
 .source-directory-note-card {
   display: flex;
   gap: 14px;
@@ -22707,13 +22697,6 @@ body.theme-dark #session-history-section {
   margin-left: auto;
 }
 
-#grow-sessions-header.app-hero {
-  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png?v=20260506");
-  --app-hero-art-size: auto 88%;
-  --app-hero-art-position: right center;
-  --app-hero-art-repeat: no-repeat;
-}
-
 #grow-sessions-header:not(.app-hero) {
   background:
     radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, rgba(148, 209, 89, 0.04) 34%, transparent 62%),
@@ -22849,11 +22832,6 @@ body.theme-dark #session-history-section .session-row:hover {
     width: 100%;
     margin-left: 0;
     align-self: stretch;
-  }
-
-  #grow-sessions-header.app-hero {
-    --app-hero-art-size: auto 88%;
-    --app-hero-art-position: right center;
   }
 
   .active-sessions-layout {
@@ -24223,11 +24201,6 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     --app-hero-overlay:
       linear-gradient(90deg, rgba(8, 13, 10, 0.97) 0%, rgba(8, 13, 10, 0.88) 38%, rgba(8, 13, 10, 0.48) 66%, rgba(8, 13, 10, 0.38) 100%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-  }
-
-  #grow-sessions-header.app-hero {
-    --app-hero-art-size: auto 88%;
-    --app-hero-art-position: right center;
   }
 
   .gallery-hero-section.app-hero {
