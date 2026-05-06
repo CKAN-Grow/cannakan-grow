@@ -1128,6 +1128,7 @@ const appState = {
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
+  sessionHistoryFilter: "all",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
@@ -32846,6 +32847,281 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
   });
 }
 
+function renderMySessionsInlineIconMarkup(iconName, className = "") {
+  const classes = [className].filter(Boolean).join(" ");
+
+  switch (iconName) {
+    case "check":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.35"></circle>
+            <path d="m8.4 11.9 2.5 2.5 4.9-5.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "history":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.35"></circle>
+            <path d="M12 7.6v4.8l3.1 1.9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </span>
+      `;
+    case "thumb":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M12 19v-7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+            <path d="M12 12c-3.8 0-6.3-2.4-6.3-6 3.9 0 6.3 2.2 6.3 6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+            <path d="M12 13.5c0-3.2 2.3-5.3 6.3-5.3 0 3.6-2.7 5.3-6.3 5.3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path>
+            <path d="M8.3 19h7.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity="0.65"></path>
+          </svg>
+        </span>
+      `;
+    case "trash":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M8.5 6.5h7M10 4.8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+            <path d="M7.6 6.5 8.4 18a1.6 1.6 0 0 0 1.6 1.5h4a1.6 1.6 0 0 0 1.6-1.5l.8-11.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+            <path d="M10.3 10v5.2M13.7 10v5.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    default:
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="2.2" fill="currentColor"></circle>
+          </svg>
+        </span>
+      `;
+  }
+}
+
+function getMySessionsCompletedDateLabel(session = null) {
+  const completedAt = parseCompletedAtValue(session?.completedAt || session?.completed_at || "");
+  if (completedAt) {
+    return formatSessionNameDate(completedAt.toISOString().slice(0, 10));
+  }
+
+  return formatSessionNameDate(session?.date || "");
+}
+
+function getMySessionsHistoryCategory(session = null) {
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  if (normalizedStatus === "completed") {
+    return "completed";
+  }
+  if (normalizedStatus === "failed") {
+    return "failed";
+  }
+  return "active";
+}
+
+function getMySessionsHistoryStatusMeta(session = null) {
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  const dayLabel = formatSessionCommandCenterDayLabel(session);
+
+  if (normalizedStatus === "completed") {
+    return {
+      label: "Completed",
+      tone: "completed",
+      detail: "Completed",
+    };
+  }
+
+  if (normalizedStatus === "failed") {
+    return {
+      label: "Failed",
+      tone: "failed",
+      detail: "Session ended",
+    };
+  }
+
+  const stageBadge = getSessionCommandCenterStageBadge(session);
+  let tone = "inactive";
+  if (stageBadge.className === "is-soaking") {
+    tone = "soaking";
+  } else if (stageBadge.className === "is-germinating") {
+    tone = "germinating";
+  } else if (stageBadge.className === "is-first-germinated") {
+    tone = "first-germinated";
+  }
+
+  return {
+    label: stageBadge.label,
+    tone,
+    detail: dayLabel || "In progress",
+  };
+}
+
+function filterMySessionsHistorySessions(sessions = [], filterValue = "all") {
+  const normalizedFilter = String(filterValue || "all").trim().toLowerCase();
+  if (normalizedFilter === "all") {
+    return [...sessions];
+  }
+
+  return sessions.filter((session) => getMySessionsHistoryCategory(session) === normalizedFilter);
+}
+
+function renderMySessionsRecentCompletedPanelMarkup(completedSessions = []) {
+  return `
+    <section class="sessions-glass-panel recent-completed-panel">
+      <div class="sessions-panel-header sessions-panel-header--compact">
+        <div class="sessions-panel-title">
+          ${renderMySessionsInlineIconMarkup("check", "sessions-inline-icon")}
+          <span>RECENT COMPLETED SESSIONS</span>
+        </div>
+        <a class="sessions-panel-link" href="#sessions" data-history-filter-link="completed">View All Completed <span aria-hidden="true">&rarr;</span></a>
+      </div>
+      <div class="recent-completed-grid">
+        ${completedSessions.length ? completedSessions.map((session) => {
+          const totals = getSessionSeedTotals(session);
+          const percentage = totals.totalSeeds > 0
+            ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
+            : 0;
+
+          return `
+            <a class="recent-completed-compact-card" href="#sessions/${escapeHtml(session.id)}">
+              <div class="recent-completed-card-main">
+                ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb")}
+                <div class="recent-completed-card-copy">
+                  <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+                  <p>Completed ${escapeHtml(getMySessionsCompletedDateLabel(session) || "Not available")}</p>
+                  <span>${escapeHtml(`${totals.totalPlanted} / ${totals.totalSeeds} seeds`)}</span>
+                </div>
+                <div class="recent-completed-card-rate">
+                  <strong>${escapeHtml(`${percentage}%`)}</strong>
+                  <span>Germination Rate</span>
+                </div>
+              </div>
+              <div class="recent-completed-card-progress" aria-hidden="true">
+                <span style="width:${escapeHtml(`${percentage}%`)};"></span>
+              </div>
+            </a>
+          `;
+        }).join("") : `
+          <div class="sessions-panel-empty">
+            <p>No completed sessions yet.</p>
+            <a class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
+          </div>
+        `}
+      </div>
+    </section>
+  `;
+}
+
+function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
+  const filterValue = String(options.filterValue || "all").trim().toLowerCase();
+  const sortValue = String(options.sortValue || "date").trim();
+  const hasAnySessions = Boolean(options.hasAnySessions);
+  const filterPills = [
+    { key: "all", label: "All" },
+    { key: "active", label: "Active" },
+    { key: "completed", label: "Completed" },
+    { key: "failed", label: "Failed" },
+  ];
+
+  return `
+    <section class="sessions-glass-panel session-history-panel">
+      <div class="sessions-panel-header sessions-panel-header--compact sessions-panel-header--history">
+        <div class="sessions-panel-title">
+          ${renderMySessionsInlineIconMarkup("history", "sessions-inline-icon")}
+          <span>SESSION HISTORY</span>
+        </div>
+        <div class="session-history-toolbar">
+          <div class="session-history-filter-pills" role="tablist" aria-label="Session history filters">
+            ${filterPills.map((pill) => `
+              <button
+                type="button"
+                class="session-history-filter-pill${filterValue === pill.key ? " is-active" : ""}"
+                data-session-history-filter="${escapeHtml(pill.key)}"
+                aria-pressed="${filterValue === pill.key ? "true" : "false"}"
+              >${escapeHtml(pill.label)}</button>
+            `).join("")}
+          </div>
+          <label class="session-history-sort-inline">
+            <span>Sort by</span>
+            <select data-session-history-sort="true" aria-label="Sort session history">
+              <option value="date"${sortValue === "date" ? " selected" : ""}>Date</option>
+              <option value="name-asc"${sortValue === "name-asc" ? " selected" : ""}>Name A-Z</option>
+              <option value="name-desc"${sortValue === "name-desc" ? " selected" : ""}>Name Z-A</option>
+              <option value="rate"${sortValue === "rate" ? " selected" : ""}>Germination Rate</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="session-history-table-shell">
+        <div class="session-history-table">
+          <div class="session-history-table-head" aria-hidden="true">
+            <span>SESSION</span>
+            <span>DATE</span>
+            <span>STRAIN</span>
+            <span>STATUS</span>
+            <span>SEEDS</span>
+            <span>GERMINATION</span>
+            <span>ACTIONS</span>
+          </div>
+          <div class="session-history-table-body">
+            ${sessions.length ? sessions.map((session) => {
+              const statusMeta = getMySessionsHistoryStatusMeta(session);
+              const totals = getSessionSeedTotals(session);
+              const germinationRate = totals.totalSeeds > 0 ? `${getSessionSuccessRate(session)}%` : "--";
+              const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
+              const dateContext = getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started";
+
+              return `
+                <div class="session-history-table-row">
+                  <div class="session-history-cell session-history-cell--session" data-label="Session">
+                    ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
+                    <div class="session-history-session-copy">
+                      <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+                    </div>
+                  </div>
+                  <div class="session-history-cell" data-label="Date">
+                    <strong>${escapeHtml(formatSessionNameDate(session.date) || "Not available")}</strong>
+                    <span>${escapeHtml(dateContext)}</span>
+                  </div>
+                  <div class="session-history-cell" data-label="Strain">
+                    <strong>${escapeHtml(strainLabel)}</strong>
+                  </div>
+                  <div class="session-history-cell" data-label="Status">
+                    <strong class="session-history-status session-history-status--${escapeHtml(statusMeta.tone)}">
+                      <span class="session-history-status-dot" aria-hidden="true"></span>
+                      ${escapeHtml(statusMeta.label)}
+                    </strong>
+                    <span>${escapeHtml(statusMeta.detail)}</span>
+                  </div>
+                  <div class="session-history-cell" data-label="Seeds">
+                    <strong>${escapeHtml(`${totals.totalPlanted} / ${totals.totalSeeds}`)}</strong>
+                  </div>
+                  <div class="session-history-cell" data-label="Germination">
+                    <strong>${escapeHtml(germinationRate)}</strong>
+                  </div>
+                  <div class="session-history-cell session-history-cell--actions" data-label="Actions">
+                    <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
+                    <button type="button" class="session-history-delete-button" data-session-delete="${escapeHtml(session.id)}" aria-label="Delete ${escapeHtml(formatSessionLabel(session))}">
+                      ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join("") : `
+              <div class="sessions-panel-empty sessions-panel-empty--history">
+                <p>${escapeHtml(hasAnySessions ? "No sessions match this filter yet." : "No grow sessions yet.")}</p>
+                <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasAnySessions ? "Start New Session" : "Create Your First Session")}</a>
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function getBestCompletedSession(sessions) {
   const completedSessions = (sessions || [])
     .filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed")
@@ -33881,9 +34157,8 @@ function renderSessionsList() {
   const sessions = sortSessionsNewestFirst(getSessions());
   const hasSessionHistory = sessions.length > 0;
   const activeSessionsSection = document.querySelector("#active-sessions-section");
-  const recentCompletedContainer = document.querySelector("#recent-completed-sessions-list");
-  const historyContainer = document.querySelector("#sessions-list");
-  const historySortControl = document.querySelector("#session-history-sort");
+  const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
+  const historySection = document.querySelector("#session-history-section");
 
   const activeSessions = sortActiveSessionsNewestFirst(
     sessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
@@ -33938,29 +34213,106 @@ function renderSessionsList() {
 
   startSessionTimer(renderActiveSessionsCommandCenter);
 
-  renderRecentSessions(recentCompletedContainer, completedSessions.slice(0, 2), sessions, {
-    emptyMessage: "No completed sessions yet.",
-  });
+  const renderRecentCompletedSection = () => {
+    if (!recentCompletedSection) {
+      return;
+    }
 
-  const renderHistorySessions = () => renderSessionCollection(
-    historyContainer,
-    sortSessionHistorySessions(sessions, appState.sessionHistorySort),
-    {
-      emptyMessage: "No grow sessions yet.",
-      emptyActionLabel: "Create your first session",
-      compact: false,
-      variant: "history-grid",
-    },
-  );
+    recentCompletedSection.innerHTML = renderMySessionsRecentCompletedPanelMarkup(completedSessions.slice(0, 2));
+    applySupplyStatusToSessionEntryButtons(recentCompletedSection);
+  };
 
-  if (historySortControl) {
-    historySortControl.value = appState.sessionHistorySort || "date";
-    historySortControl.addEventListener("change", () => {
-      appState.sessionHistorySort = historySortControl.value || "date";
+  const renderHistorySessions = () => {
+    if (!historySection) {
+      return;
+    }
+
+    const filteredSessions = filterMySessionsHistorySessions(sessions, appState.sessionHistoryFilter || "all");
+    const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
+    historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
+      filterValue: appState.sessionHistoryFilter || "all",
+      sortValue: appState.sessionHistorySort || "date",
+      hasAnySessions: sessions.length > 0,
+    });
+    applySupplyStatusToSessionEntryButtons(historySection);
+  };
+
+  if (recentCompletedSection && recentCompletedSection.dataset.sessionsPanelBound !== "true") {
+    recentCompletedSection.dataset.sessionsPanelBound = "true";
+    recentCompletedSection.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const filterLink = target.closest("[data-history-filter-link]");
+      if (!filterLink) {
+        return;
+      }
+
+      event.preventDefault();
+      appState.sessionHistoryFilter = String(filterLink.getAttribute("data-history-filter-link") || "completed");
+      renderHistorySessions();
+      if (historySection) {
+        scrollElementIntoViewAfterLayout(historySection, { delayMs: 80, block: "start" });
+      }
+    });
+  }
+
+  if (historySection && historySection.dataset.sessionsPanelBound !== "true") {
+    historySection.dataset.sessionsPanelBound = "true";
+    historySection.addEventListener("click", async (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const filterButton = target.closest("[data-session-history-filter]");
+      if (filterButton) {
+        event.preventDefault();
+        appState.sessionHistoryFilter = String(filterButton.getAttribute("data-session-history-filter") || "all");
+        renderHistorySessions();
+        return;
+      }
+
+      const deleteButton = target.closest("[data-session-delete]");
+      if (!deleteButton) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      const sessionId = String(deleteButton.getAttribute("data-session-delete") || "");
+      const session = sessions.find((entry) => String(entry.id) === sessionId);
+      if (!sessionId || !session) {
+        return;
+      }
+
+      const confirmed = window.confirm("Delete this session? This cannot be undone.");
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteCloudSession(sessionId);
+        renderSessionsList();
+      } catch (error) {
+        window.alert(error.message || "Could not delete session.");
+      }
+    });
+
+    historySection.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement) || target.getAttribute("data-session-history-sort") !== "true") {
+        return;
+      }
+
+      appState.sessionHistorySort = target.value || "date";
       renderHistorySessions();
     });
   }
 
+  renderRecentCompletedSection();
   renderHistorySessions();
 }
 
