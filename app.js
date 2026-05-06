@@ -30989,85 +30989,26 @@ function renderHome() {
   }
   const sessions = sortSessionsNewestFirst(getSessions());
   const visibleSessions = getVisibleUserSessions(sessions);
-  const aggregateStatsSessions = getAggregateStatsSessions(sessions);
+  const hasSessionHistory = visibleSessions.length > 0;
   const activeSessions = sortActiveSessionsNewestFirst(
     visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
   );
-  const commandCenterCard = document.querySelector("#session-command-center");
-  const summaryGrid = document.querySelector(".summary-grid");
+  const commandCenterHost = document.querySelector("#home-session-command-center-host");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
-  const commandCenterList = document.querySelector("#session-command-list");
-  const commandCenterListSubtext = document.querySelector("#session-command-list-subtext");
-  const commandCenterProgress = document.querySelector("#session-command-progress");
-  const commandCenterStats = document.querySelector("#session-command-stats");
-  const countEl = document.querySelector("#session-count");
-  const activeCountEl = document.querySelector("#active-session-count");
-  const activeSubtextEl = document.querySelector("#active-session-subtext");
-  const activeCard = document.querySelector("#active-sessions-card");
-  const bestSessionCard = document.querySelector("#best-session-card");
-  const bestSessionNameEl = document.querySelector("#best-session-name");
-  const bestSessionDateEl = document.querySelector("#best-session-date");
-  const bestSessionResultEl = document.querySelector("#best-session-result");
-  const bestSessionIndicator = bestSessionCard?.querySelector(".best-session-indicator");
-  const overallRateEl = document.querySelector("#overall-germination-rate");
-  const overallTotalEl = document.querySelector("#overall-germination-total");
-  const overallFillEl = document.querySelector("#overall-germination-fill");
-  const overallRingEl = document.querySelector("#overall-germination-ring");
-  countEl.textContent = String(visibleSessions.length);
-  activeCountEl.textContent = String(activeSessions.length);
-  activeSubtextEl.textContent = activeSessions.length ? "in progress" : "No active sessions";
-  const hasGerminatingActive = activeSessions.some((session) => normalizeSessionStatus(session.sessionStatus) === "germinating");
-  activeCard?.classList.toggle("has-active-sessions", activeSessions.length > 0);
-  activeCard?.classList.toggle("has-germinating-sessions", hasGerminatingActive);
-  activeCard?.classList.toggle("has-soaking-sessions", activeSessions.length > 0 && !hasGerminatingActive);
 
-  const totals = aggregateStatsSessions.reduce((accumulator, session) => {
-    const sessionTotals = getSessionSeedTotals(session);
-    accumulator.totalSeeds += sessionTotals.totalSeeds;
-    accumulator.totalPlanted += sessionTotals.totalPlanted;
-    return accumulator;
-  }, { totalSeeds: 0, totalPlanted: 0 });
-
-  const percentage = totals.totalSeeds > 0
-    ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
-    : 0;
-
-  overallRateEl.textContent = `${percentage}%`;
-  overallTotalEl.textContent = `${totals.totalPlanted} / ${totals.totalSeeds} seeds`;
-  overallFillEl.style.width = `${percentage}%`;
-  overallRingEl?.style.setProperty("--overall-ring-progress", `${percentage}%`);
-
-  const bestSession = getBestCompletedSession(sessions);
-  if (bestSession) {
-    const bestTotals = getSessionSeedTotals(bestSession);
-    const bestPercentage = bestTotals.totalSeeds > 0
-      ? Math.round((bestTotals.totalPlanted / bestTotals.totalSeeds) * 100)
-      : 0;
-    const bestDurationLabel = formatDurationMsShort(getSessionCompletedDurationMs(bestSession));
-    bestSessionCard.href = `#sessions/${bestSession.id}`;
-    bestSessionCard.classList.remove("is-empty");
-    bestSessionIndicator.hidden = false;
-    bestSessionNameEl.textContent = formatSessionLabel(bestSession);
-    bestSessionDateEl.textContent = formatSessionNameDate(bestSession.date);
-    bestSessionResultEl.textContent = bestDurationLabel
-      ? `${bestPercentage}% · ${bestDurationLabel}`
-      : `${bestPercentage}%`;
-  } else {
-    bestSessionCard.href = "#sessions";
-    bestSessionCard.classList.add("is-empty");
-    bestSessionIndicator.hidden = true;
-    bestSessionNameEl.textContent = "No completed sessions yet";
-    bestSessionDateEl.textContent = "";
-    bestSessionResultEl.textContent = "";
-  }
+  mountSharedSessionCommandCenter(commandCenterHost, {
+    activeSessions,
+    sessions: visibleSessions,
+    aggregateSessions: sessions,
+    hasSessionHistory,
+    requiresSignIn: !appState.user,
+  });
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
   if (homeAnnouncementAnchor) {
     homeAnnouncementAnchor.innerHTML = homeSecondaryInfoRowMarkup;
-  } else if (summaryGrid) {
-    summaryGrid.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
-  } else if (commandCenterCard) {
-    commandCenterCard.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
+  } else if (commandCenterHost) {
+    commandCenterHost.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
   } else {
     app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
   }
@@ -31079,74 +31020,6 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
-
-  let selectedCommandCenterSessionId = activeSessions[0]?.id || "";
-  const renderCommandCenter = () => {
-    const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
-    const requiresSignIn = !appState.user;
-
-    if (commandCenterCard) {
-      commandCenterCard.classList.toggle("is-empty-state", !selectedSession || requiresSignIn);
-    }
-    if (commandCenterListSubtext) {
-      commandCenterListSubtext.textContent = requiresSignIn
-        ? "Sign in to continue"
-        : (activeSessions.length
-          ? `${activeSessions.length} in progress`
-          : "No sessions in progress");
-    }
-    if (commandCenterList) {
-      commandCenterList.innerHTML = renderSessionCommandCenterListMarkup(activeSessions, selectedSession?.id || "", {
-        requiresSignIn,
-      });
-    }
-    if (commandCenterProgress) {
-      commandCenterProgress.innerHTML = renderSessionCommandCenterProgressMarkup(selectedSession, {
-        requiresSignIn,
-      });
-    }
-    if (commandCenterStats) {
-      commandCenterStats.innerHTML = renderSessionCommandCenterStatsMarkup(selectedSession, {
-        requiresSignIn,
-      });
-    }
-    if (commandCenterCard) {
-      hydrateAppIconSlots(commandCenterCard);
-      applySupplyStatusToSessionEntryButtons(commandCenterCard);
-    }
-  };
-
-  commandCenterList?.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest("a, button")) {
-      return;
-    }
-    const card = target.closest("[data-session-command-select]");
-    if (!card) {
-      return;
-    }
-    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
-    renderCommandCenter();
-  });
-
-  commandCenterList?.addEventListener("keydown", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    const card = target.closest("[data-session-command-select]");
-    if (!card || (event.key !== "Enter" && event.key !== " ")) {
-      return;
-    }
-    event.preventDefault();
-    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
-    renderCommandCenter();
-  });
-
-  startSessionTimer(renderCommandCenter);
 }
 
 function syncMockDataBanner() {
@@ -34313,55 +34186,13 @@ function renderSessionsList() {
     visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
   );
   const completedSessions = visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
-
-  let selectedCommandCenterSessionId = activeSessions[0]?.id || "";
-  const renderActiveSessionsCommandCenter = () => {
-    if (!activeSessionsSection) {
-      return;
-    }
-
-    const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
-    activeSessionsSection.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
-      hasSessionHistory,
-      requiresSignIn: !appState.user,
-      sessions: visibleSessions,
-      aggregateSessions: sessions,
-    });
-    hydrateAppIconSlots(activeSessionsSection);
-    applySupplyStatusToSessionEntryButtons(activeSessionsSection);
-  };
-
-  activeSessionsSection?.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (target.closest("a, button")) {
-      return;
-    }
-    const card = target.closest("[data-session-command-select]");
-    if (!card) {
-      return;
-    }
-    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
-    renderActiveSessionsCommandCenter();
+  mountSharedSessionCommandCenter(activeSessionsSection, {
+    activeSessions,
+    sessions: visibleSessions,
+    aggregateSessions: sessions,
+    hasSessionHistory,
+    requiresSignIn: !appState.user,
   });
-
-  activeSessionsSection?.addEventListener("keydown", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    const card = target.closest("[data-session-command-select]");
-    if (!card || (event.key !== "Enter" && event.key !== " ")) {
-      return;
-    }
-    event.preventDefault();
-    selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
-    renderActiveSessionsCommandCenter();
-  });
-
-  startSessionTimer(renderActiveSessionsCommandCenter);
 
   const renderRecentCompletedSection = () => {
     if (!recentCompletedSection) {
@@ -37661,65 +37492,6 @@ function getSessionCommandCenterProgressEvents(session = null) {
   });
 }
 
-function renderSessionCommandCenterListMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
-  const requiresSignIn = Boolean(options.requiresSignIn);
-
-  if (requiresSignIn) {
-    return `
-      <div class="session-command-empty">
-        <p>Sign in to start and continue tracking your grow sessions.</p>
-        <a class="button button-primary" href="#new" data-session-entry="true">Sign In to Start Session</a>
-      </div>
-    `;
-  }
-
-  if (!activeSessions.length) {
-    return `
-      <div class="session-command-empty">
-        <p>Start a new grow session to begin tracking stage progress and germination stats.</p>
-        <a class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
-      </div>
-    `;
-  }
-
-  return activeSessions.map((session) => {
-    const isSelected = session.id === selectedSessionId;
-    const stageBadge = getSessionCommandCenterStageBadge(session);
-    const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
-    const dateLabel = formatSessionNameDate(session.date);
-    const dayLabel = formatSessionCommandCenterDayLabel(session);
-
-    return `
-      <article
-        class="session-command-session-card${isSelected ? " is-selected" : ""}"
-        data-session-command-select="${escapeHtml(session.id)}"
-        tabindex="0"
-        role="button"
-        aria-pressed="${isSelected ? "true" : "false"}"
-      >
-        ${renderCommandCenterIconMarkup("session-thumb", "command-icon--session-thumb")}
-        <div class="session-command-session-copy">
-          <strong>${escapeHtml(formatSessionLabel(session))}</strong>
-          <div class="session-command-session-meta">
-            <p class="session-command-session-date">${escapeHtml(dateLabel)}</p>
-            ${dayLabel ? `<p class="session-command-session-day">${escapeHtml(dayLabel)}</p>` : ""}
-            <p class="session-command-session-strain">${escapeHtml(varietyLabel)}</p>
-          </div>
-          <div class="session-command-session-footer">
-            <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
-          </div>
-        </div>
-        <div class="session-command-session-actions">
-          <a class="button button-primary session-command-session-continue session-continue-button" href="#sessions/${escapeHtml(session.id)}"><span class="session-continue-button-icon" aria-hidden="true">&#9654;</span><span>Continue</span></a>
-          <a class="session-command-session-menu" href="#sessions/${escapeHtml(session.id)}" aria-label="Open ${escapeHtml(formatSessionLabel(session))}">
-            <span aria-hidden="true">&bull;&bull;&bull;</span>
-          </a>
-        </div>
-      </article>
-    `;
-  }).join("");
-}
-
 function renderCommandCenterIconMarkup(iconName, className = "") {
   const classes = [
     "command-icon",
@@ -38124,6 +37896,69 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
       </div>
     </section>
   `;
+}
+
+function mountSharedSessionCommandCenter(host, options = {}) {
+  if (!(host instanceof Element)) {
+    return null;
+  }
+
+  const activeSessions = Array.isArray(options.activeSessions) ? options.activeSessions : [];
+  const sessions = Array.isArray(options.sessions) ? options.sessions : [];
+  const aggregateSessions = Array.isArray(options.aggregateSessions) ? options.aggregateSessions : sessions;
+  const hasSessionHistory = Boolean(options.hasSessionHistory);
+  const requiresSignIn = Boolean(options.requiresSignIn);
+  let selectedCommandCenterSessionId = options.selectedSessionId || activeSessions[0]?.id || "";
+
+  const renderSessionCommandCenter = () => {
+    const selectedSession = activeSessions.find((session) => session.id === selectedCommandCenterSessionId) || activeSessions[0] || null;
+    host.innerHTML = renderMySessionsCommandCenterSectionMarkup(activeSessions, selectedSession?.id || "", {
+      hasSessionHistory,
+      requiresSignIn,
+      sessions,
+      aggregateSessions,
+    });
+    hydrateAppIconSlots(host);
+    applySupplyStatusToSessionEntryButtons(host);
+  };
+
+  if (host.dataset.sessionCommandCenterBound !== "true") {
+    host.dataset.sessionCommandCenterBound = "true";
+
+    host.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      if (target.closest("a, button")) {
+        return;
+      }
+      const card = target.closest("[data-session-command-select]");
+      if (!card) {
+        return;
+      }
+      selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+      renderSessionCommandCenter();
+    });
+
+    host.addEventListener("keydown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const card = target.closest("[data-session-command-select]");
+      if (!card || (event.key !== "Enter" && event.key !== " ")) {
+        return;
+      }
+      event.preventDefault();
+      selectedCommandCenterSessionId = String(card.getAttribute("data-session-command-select") || "");
+      renderSessionCommandCenter();
+    });
+  }
+
+  renderSessionCommandCenter();
+  startSessionTimer(renderSessionCommandCenter);
+  return renderSessionCommandCenter;
 }
 
 function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
