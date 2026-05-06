@@ -14448,7 +14448,7 @@ function renderGalleryTopMembersSummary(entries = []) {
           <h4>Source Activity</h4>
           <p class="gallery-top-members-summary-note">Approved source activity and germination averages from community sessions this month.</p>
         </div>
-        ${renderGalleryLeaderboardViewAllButton()}
+        ${renderGalleryLeaderboardViewAllButton("/sources", "View all sources in Source Directory")}
       </div>
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.map((entry, index) => `
@@ -15125,9 +15125,9 @@ function renderGalleryLeaderboardCardHeading(title, subtitle, iconType = "source
   return renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType);
 }
 
-function renderGalleryLeaderboardViewAllButton(href = "#gallery") {
+function renderGalleryLeaderboardViewAllButton(href = "#gallery", ariaLabel = "View all") {
   return `
-    <a class="gallery-leaderboard-viewall button button-secondary" href="${escapeHtml(href)}">View all</a>
+    <a class="gallery-leaderboard-viewall button button-secondary" href="${escapeHtml(href)}" aria-label="${escapeHtml(ariaLabel)}" title="${escapeHtml(ariaLabel)}">View all</a>
   `;
 }
 
