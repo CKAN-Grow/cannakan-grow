@@ -6336,6 +6336,30 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 22px;
 }
 
+.seed-age-analytics-panel--performance {
+  grid-column: 1 / -1;
+  padding: 22px 22px 20px;
+  gap: 18px;
+}
+
+.seed-age-analytics-performance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 0.78fr);
+  gap: 22px;
+  align-items: stretch;
+}
+
+.seed-age-analytics-performance-chart,
+.seed-age-analytics-performance-side {
+  min-width: 0;
+}
+
+.seed-age-analytics-performance-side {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+}
+
 .seed-age-analytics-bottom-grid {
   display: grid;
   grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.68fr);
@@ -6367,11 +6391,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .seed-age-analytics-panel > * {
   position: relative;
   z-index: 1;
-}
-
-.seed-age-analytics-panel--line {
-  padding: 22px 22px 20px;
-  gap: 18px;
 }
 
 .seed-age-analytics-panel-head {
@@ -6412,14 +6431,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .seed-age-analytics-chart-shell {
-  overflow-x: auto;
+  width: 100%;
+  overflow: hidden;
   padding-bottom: 2px;
 }
 
 .seed-age-analytics-line-chart {
   display: block;
   width: 100%;
-  min-width: 760px;
+  min-width: 0;
   height: auto;
 }
 
@@ -6589,19 +6609,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-distribution-layout {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: center;
 }
 
 .seed-age-analytics-donut-shell {
   display: flex;
   justify-content: center;
+  width: min(100%, 252px);
+  margin-inline: auto;
 }
 
 .seed-age-analytics-donut-frame {
   position: relative;
-  width: min(286px, 100%);
+  width: min(252px, 100%);
   aspect-ratio: 1;
 }
 
@@ -6691,7 +6713,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-legend {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .seed-age-analytics-legend-row {
@@ -6700,8 +6722,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   justify-content: space-between;
   gap: 12px;
   color: rgba(236, 241, 231, 0.88);
-  font-size: 0.97rem;
-  padding: 8px 10px;
+  font-size: 0.92rem;
+  padding: 7px 9px;
   border-radius: 12px;
   transition: background-color 180ms ease, transform 180ms ease;
   outline: none;
@@ -6718,6 +6740,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.seed-age-analytics-legend-main span:last-child {
+  white-space: nowrap;
 }
 
 .seed-age-analytics-legend-dot {
@@ -6748,6 +6774,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(220, 228, 215, 0.84);
   font-size: 0.95rem;
   line-height: 1.45;
+}
+
+.seed-age-analytics-performance-foot {
+  padding-top: 2px;
 }
 
 .seed-age-analytics-footnote {
@@ -6971,6 +7001,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-bottom-grid {
     grid-template-columns: 1fr;
   }
+
+  .seed-age-analytics-performance-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {
@@ -6996,7 +7030,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .seed-age-analytics-heatmap-row {
-    grid-template-columns: minmax(120px, 1.15fr) repeat(7, minmax(78px, 1fr));
+    grid-template-columns: minmax(120px, 1.15fr) repeat(6, minmax(78px, 1fr));
   }
 }
 
@@ -7042,10 +7076,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     align-items: flex-start;
   }
 
-  .seed-age-analytics-line-chart {
-    min-width: 680px;
-  }
-
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
@@ -7057,6 +7087,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 @media (max-width: 520px) {
+  .seed-age-analytics-performance-layout {
+    gap: 16px;
+  }
+
+  .seed-age-analytics-donut-shell,
+  .seed-age-analytics-donut-frame {
+    width: min(100%, 228px);
+  }
+
   .seed-age-analytics-kpi-card {
     grid-template-columns: 1fr;
     gap: 14px;

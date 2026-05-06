@@ -16802,45 +16802,42 @@ function renderSeedAgeAnalyticsPage() {
         </section>
 
         <section class="seed-age-analytics-main-grid">
-          <article class="seed-age-analytics-panel seed-age-analytics-panel--line">
+          <article class="seed-age-analytics-panel seed-age-analytics-panel--performance">
             <div class="seed-age-analytics-panel-head">
               <div>
-                <h2>Germination Rate by Seed Age</h2>
-                <p>Average germination rate by seed age buckets across the community.</p>
+                <h2>Seed Age Performance</h2>
+                <p>Germination trends and session distribution by seed age.</p>
               </div>
               <span class="seed-age-analytics-filter-pill">All Time</span>
             </div>
-            ${renderSeedAgeAnalyticsLineChartMarkup(state)}
-          </article>
-
-          <article class="seed-age-analytics-panel seed-age-analytics-panel--donut">
-            <div class="seed-age-analytics-panel-head">
-              <div>
-                <h2>Seed Age Distribution</h2>
-                <p>Distribution of sessions by seed age</p>
+            <div class="seed-age-analytics-performance-layout">
+              <div class="seed-age-analytics-performance-chart">
+                ${renderSeedAgeAnalyticsLineChartMarkup(state)}
               </div>
-            </div>
-            <div class="seed-age-analytics-distribution-layout">
-              ${renderSeedAgeAnalyticsDonutMarkup(state)}
-              <div class="seed-age-analytics-legend">
-                ${state.distributionSegments.map((segment) => `
-                  <div class="seed-age-analytics-legend-row" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
-                    <span class="seed-age-analytics-legend-main">
-                      <span class="seed-age-analytics-legend-dot" style="--seed-age-legend-color:${escapeHtml(segment.color)};"></span>
-                      <span>${escapeHtml(segment.label)}</span>
-                    </span>
-                    <span class="seed-age-analytics-legend-values">${escapeHtml(`${segment.sharePercent.toFixed(1)}% (${segment.count.toLocaleString()})`)}</span>
+              <div class="seed-age-analytics-performance-side">
+                <div class="seed-age-analytics-distribution-layout">
+                  ${renderSeedAgeAnalyticsDonutMarkup(state)}
+                  <div class="seed-age-analytics-legend">
+                    ${state.distributionSegments.map((segment) => `
+                      <div class="seed-age-analytics-legend-row" data-seed-age-legend-key="${escapeHtml(segment.key)}" tabindex="0">
+                        <span class="seed-age-analytics-legend-main">
+                          <span class="seed-age-analytics-legend-dot" style="--seed-age-legend-color:${escapeHtml(segment.color)};"></span>
+                          <span>${escapeHtml(segment.label)}</span>
+                        </span>
+                        <span class="seed-age-analytics-legend-values">${escapeHtml(`${segment.sharePercent.toFixed(1)}% (${segment.count.toLocaleString()})`)}</span>
+                      </div>
+                    `).join("")}
                   </div>
-                `).join("")}
+                </div>
+                <div class="seed-age-analytics-panel-foot seed-age-analytics-performance-foot">
+                  <p>
+                    ${state.mostCommonSegment
+                      ? escapeHtml(`Most common seed age: ${state.mostCommonSegment.label} (${state.mostCommonSegment.sharePercent.toFixed(1)}%)`)
+                      : "Most common seed age will appear here as more sessions are tracked."}
+                  </p>
+                  ${state.hasMixedAgeOverlap ? `<p class="seed-age-analytics-footnote">Mixed-age sessions can appear in more than one age group.</p>` : ""}
+                </div>
               </div>
-            </div>
-            <div class="seed-age-analytics-panel-foot">
-              <p>
-                ${state.mostCommonSegment
-                  ? escapeHtml(`Most common seed age: ${state.mostCommonSegment.label} (${state.mostCommonSegment.sharePercent.toFixed(1)}%)`)
-                  : "Most common seed age will appear here as more sessions are tracked."}
-              </p>
-              ${state.hasMixedAgeOverlap ? `<p class="seed-age-analytics-footnote">Mixed-age sessions can appear in more than one age group.</p>` : ""}
             </div>
           </article>
         </section>
