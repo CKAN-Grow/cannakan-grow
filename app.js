@@ -36530,6 +36530,7 @@ function getSessionDetailElements(scope = document) {
   return {
     title: scope.querySelector("#detail-title"),
     meta: scope.querySelector("#detail-meta"),
+    layoutSection: scope.querySelector("#detail-layout-reference")?.closest(".system-layout-block") || null,
     layoutReference: scope.querySelector("#detail-layout-reference"),
     partitionWorkTitle: scope.querySelector("#detail-partition-work-title"),
     statusField: scope.querySelector("#detail-session-status-control"),
@@ -36591,6 +36592,23 @@ function getSessionDetailElements(scope = document) {
     headerCopy: scope.querySelector(".app-section-header-main div"),
     headerEyebrow: scope.querySelector(".app-section-header-main .eyebrow"),
   };
+}
+
+function isSessionCreateMode(session = null) {
+  return !String(session?.id || "").trim();
+}
+
+function removeSessionLayoutPreview(elements = null) {
+  const layoutSection = elements?.layoutSection || elements?.layoutReference?.closest(".system-layout-block") || null;
+  if (!layoutSection) {
+    return;
+  }
+
+  layoutSection.remove();
+  if (elements && typeof elements === "object") {
+    elements.layoutSection = null;
+    elements.layoutReference = null;
+  }
 }
 
 function renderSessionDetailMetaCards(container, cards = []) {
@@ -36709,6 +36727,7 @@ function renderSessionDetail(sessionId) {
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
   const seedAgeMetadata = getSessionSeedAgeMetadata(session);
+  const isCreateMode = isSessionCreateMode(session);
 
   applySessionDetailHeaderOptions(detail, {
     title: formatSessionLabel(session),
@@ -36730,7 +36749,11 @@ function renderSessionDetail(sessionId) {
   applySessionDetailNotesOptions(detail, {
     value: session.sessionNotes || "",
   });
-  renderSystemLayoutReference(detail.layoutReference, session.systemType);
+  if (isCreateMode && detail.layoutReference) {
+    renderSystemLayoutReference(detail.layoutReference, session.systemType);
+  } else {
+    removeSessionLayoutPreview(detail);
+  }
   if (detail.partitionWorkTitle) {
     updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
   }
