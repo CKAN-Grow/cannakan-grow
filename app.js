@@ -239,10 +239,9 @@ const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
 ]);
 const USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS = Object.freeze([
   "email_notifications",
-  "push_notifications",
-  "follow_notifications",
-  "like_notifications",
-  "community_activity_notifications",
+  "session_reminders",
+  "community_updates",
+  "low_filter_alerts",
 ]);
 const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
@@ -6102,7 +6101,20 @@ function syncUserNotificationPreferencesCache(userId = "", preferences = {}, opt
 }
 
 function logUserNotificationPreferencesFallback(error, details = {}) {
-  appState.notificationPreferencesError = error?.message || "Notification preferences temporarily unavailable.";
+  const fallbackMessage = error?.message || "Notification preferences temporarily unavailable.";
+  appState.notificationPreferencesError = fallbackMessage;
+  const errorSummary = {
+    message: fallbackMessage,
+    details: error?.details || "",
+    hint: error?.hint || "",
+    code: error?.code || "",
+    status: Number(error?.status || error?.statusCode || 0) || 0,
+  };
+  console.warn("[Profile Settings] Notification preferences Supabase fallback.", {
+    ...details,
+    ...errorSummary,
+    error,
+  });
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-backend-fallback",
@@ -6192,14 +6204,17 @@ function getUserNotificationPreferencesBooleanValue(row, keys = [], fallbackValu
   return fallbackValue;
 }
 
-function buildUserNotificationPreferencesSeedPayload(userId = "", existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES) {
-  return {
-    user_id: String(userId || "").trim(),
-    notify_snapshot: existingPreferences.notifySnapshot !== false,
-    notify_completion: existingPreferences.notifyCompletion !== false,
-    notify_follow: existingPreferences.notifyFollow !== false,
-    notify_like: existingPreferences.notifyLike !== false,
-  };
+function buildUserNotificationPreferencesSeedPayload(
+  userId = "",
+  existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  schemaMode = "hybrid",
+) {
+  return buildUserNotificationPreferencesUpsertPayload(
+    userId,
+    existingPreferences,
+    existingPreferences,
+    schemaMode,
+  );
 }
 
 function buildUserNotificationPreferencesUpsertPayload(
@@ -6224,19 +6239,34 @@ function buildUserNotificationPreferencesUpsertPayload(
     preferencesInput?.notifyLike !== undefined
       ? Boolean(preferencesInput.notifyLike)
       : existingPreferences.notifyLike !== false;
-  void schemaMode;
-  return {
+  const normalizedSchemaMode = String(schemaMode || "").trim().toLowerCase();
+  const payload = {
     user_id: String(userId || "").trim(),
-    notify_snapshot: notifySnapshot,
-    notify_completion: notifyCompletion,
-    notify_follow: notifyFollow,
-    notify_like: notifyLike,
   };
+  if (normalizedSchemaMode === "hybrid" || normalizedSchemaMode === "legacy" || !normalizedSchemaMode) {
+    payload.notify_snapshot = notifySnapshot;
+    payload.notify_completion = notifyCompletion;
+    payload.notify_follow = notifyFollow;
+    payload.notify_like = notifyLike;
+  }
+  if (normalizedSchemaMode === "hybrid" || normalizedSchemaMode === "modern") {
+    payload.email_notifications = notifySnapshot;
+    payload.session_reminders = notifyCompletion;
+    payload.community_updates = notifyFollow;
+    payload.low_filter_alerts = notifyLike;
+  }
+  return payload;
 }
 
 function getUserNotificationPreferencesWriteModes(preferredMode = "") {
-  void preferredMode;
-  return ["legacy"];
+  const normalizedMode = String(preferredMode || "").trim().toLowerCase();
+  if (normalizedMode === "modern") {
+    return ["modern", "hybrid", "legacy"];
+  }
+  if (normalizedMode === "legacy") {
+    return ["legacy", "hybrid", "modern"];
+  }
+  return ["hybrid", "legacy", "modern"];
 }
 
 function normalizeSiteAnalyticsTextValue(value = "", fallback = "") {
@@ -6965,28 +6995,45 @@ async function ensureUserNotificationPreferences(user) {
     return syncUserNotificationPreferencesCache(normalizedUserId, existingPreferences);
   }
 
-  const preferencePayload = buildUserNotificationPreferencesSeedPayload(normalizedUserId, storedPreferences);
+  const writeModes = getUserNotificationPreferencesWriteModes(appState.notificationPreferencesSchemaMode);
+  let lastSeedError = null;
 
-  const { data: savedPreferences, error: upsertError } = await appState.supabase
-    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-    .upsert(preferencePayload, { onConflict: "user_id" })
-    .select()
-    .single();
+  for (const writeMode of writeModes) {
+    const preferencePayload = buildUserNotificationPreferencesSeedPayload(normalizedUserId, storedPreferences, writeMode);
+    const { data: savedPreferences, error: upsertError } = await appState.supabase
+      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+      .upsert(preferencePayload, { onConflict: "user_id" })
+      .select()
+      .single();
 
-  if (upsertError) {
-    if (isUserNotificationPreferencesTableMissingError(upsertError)) {
-      markUserNotificationPreferencesTableUnavailable();
+    if (upsertError) {
+      if (isUserNotificationPreferencesSchemaModeError(upsertError)) {
+        lastSeedError = upsertError;
+        continue;
+      }
+      if (isUserNotificationPreferencesTableMissingError(upsertError)) {
+        markUserNotificationPreferencesTableUnavailable();
+        return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
+      }
+      logUserNotificationPreferencesFallback(upsertError, {
+        phase: "seed",
+        userId: normalizedUserId,
+        writeMode,
+      });
       return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
     }
-    logUserNotificationPreferencesFallback(upsertError, {
-      phase: "seed",
-      userId: normalizedUserId,
-    });
-    return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
+
+    setUserNotificationPreferencesSchemaMode(savedPreferences || writeMode);
+    return syncUserNotificationPreferencesCache(normalizedUserId, savedPreferences);
   }
 
-  setUserNotificationPreferencesSchemaMode(savedPreferences);
-  return syncUserNotificationPreferencesCache(normalizedUserId, savedPreferences);
+  if (isUserNotificationPreferencesSchemaModeError(lastSeedError)) {
+    logUserNotificationPreferencesFallback(lastSeedError, {
+      phase: "seed-schema",
+      userId: normalizedUserId,
+    });
+  }
+  return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
 }
 
 async function loadGallerySnapshots(reason = "unspecified") {
@@ -12185,11 +12232,13 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
     normalizedUserId,
     preferencesInput,
     existingPreferences,
-    "modern",
+    "hybrid",
   );
-  const fallbackPreferences = syncUserNotificationPreferencesCache(
+  const fallbackPreferences = normalizeUserNotificationPreferencesRow(fallbackPayload, existingPreferences);
+  const syncFallbackPreferences = (persistLocal = true) => syncUserNotificationPreferencesCache(
     normalizedUserId,
-    normalizeUserNotificationPreferencesRow(fallbackPayload, existingPreferences),
+    fallbackPreferences,
+    { persistLocal },
   );
   const throwNotificationPreferencesSaveError = (message, error = null) => {
     if (!requirePersistence) {
@@ -12203,6 +12252,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
   };
 
   if (appState.notificationPreferencesTableUnavailable) {
+    syncFallbackPreferences();
     throwNotificationPreferencesSaveError("Notification preferences are temporarily unavailable.");
     return fallbackPreferences;
   }
@@ -12315,6 +12365,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
 
     if (isUserNotificationPreferencesTableMissingError(error)) {
       markUserNotificationPreferencesTableUnavailable();
+      syncFallbackPreferences();
       throwNotificationPreferencesSaveError("Notification preferences are temporarily unavailable.", error);
       return fallbackPreferences;
     }
@@ -12324,6 +12375,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       userId: normalizedUserId,
       writeMode,
     });
+    syncFallbackPreferences();
     throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", error);
     return fallbackPreferences;
   }
@@ -12333,11 +12385,12 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       phase: "save-schema",
       userId: normalizedUserId,
     });
+    syncFallbackPreferences();
     throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", lastError);
     return fallbackPreferences;
   }
 
-  return fallbackPreferences;
+  return syncFallbackPreferences();
 }
 
 async function scheduleUserDeletion() {
