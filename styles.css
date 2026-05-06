@@ -17012,10 +17012,10 @@ textarea::placeholder {
 
 .partition-work-heading {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
-    "eyebrow icon"
-    "title icon";
+    "icon eyebrow"
+    "icon title";
   column-gap: 16px;
   row-gap: 6px;
   align-items: center;
@@ -17034,7 +17034,7 @@ textarea::placeholder {
 .partition-product-icon {
   grid-area: icon;
   align-self: center;
-  justify-self: end;
+  justify-self: start;
 }
 
 .partition-work-heading h3 {
@@ -22322,9 +22322,9 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .partition-work-heading {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
+      "icon"
       "eyebrow"
-      "title"
-      "icon";
+      "title";
     row-gap: 10px;
   }
 
