@@ -33166,7 +33166,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
           <div class="session-history-table-head" aria-hidden="true">
             <span>SESSION</span>
             <span>DATE</span>
-            <span>STRAIN</span>
+            <span>VARIETY</span>
             <span>STATUS</span>
             <span>SEEDS</span>
             <span>GERMINATION</span>
@@ -33192,7 +33192,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                     <strong>${escapeHtml(formatSessionNameDate(session.date) || "Not available")}</strong>
                     <span>${escapeHtml(dateContext)}</span>
                   </div>
-                  <div class="session-history-cell" data-label="Strain">
+                  <div class="session-history-cell" data-label="Variety">
                     <strong>${escapeHtml(strainLabel)}</strong>
                   </div>
                   <div class="session-history-cell" data-label="Status">
