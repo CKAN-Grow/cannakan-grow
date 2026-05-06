@@ -4606,6 +4606,10 @@ function getCurrentAppRawRoute() {
   const currentHash = window.location.hash || "";
   const pathRoute = getCurrentAppPathRoute();
 
+  if (pathRoute === "gallery" && currentHash === "#community-insights") {
+    return "gallery/community-insights";
+  }
+
   if (currentHash && !isSupabaseAuthFragmentHash(currentHash)) {
     return currentHash.replace(/^#/, "");
   }
@@ -14329,14 +14333,14 @@ function renderGalleryLeaderboardSection() {
   const topMembers = getGalleryTopMemberSummaryEntries(monthlySnapshots);
 
   const section = document.createElement("section");
-  section.id = "leaderboard-insights";
+  section.id = "community-insights";
   section.className = "card gallery-section gallery-leaderboard-section";
   section.innerHTML = `
     <div class="section-heading app-section-header">
       <div class="section-title-with-icon app-section-header-main">
         ${renderAppSectionHeaderIcon("leaderboard")}
         <div>
-          <p class="eyebrow">Leaderboard Insights</p>
+          <p class="eyebrow">Community Insights</p>
           <h3>Community Grow Insights</h3>
           <p class="muted">Approved public snapshots only. Rankings use germination performance with a 3-snapshot minimum per source or seed variety.<br>Rankings are based on recorded session data and may vary.</p>
         </div>
@@ -14460,8 +14464,8 @@ function renderHomeGalleryRankingsTeaser() {
               <p class="muted home-gallery-rankings-subtitle">Based on approved public session data. Results may vary.</p>
             </div>
           </div>
-          <a class="button button-secondary home-gallery-rankings-cta" href="#gallery/leaderboard-insights">
-            <span>View Community Grow</span>
+          <a class="button button-secondary home-gallery-rankings-cta" href="/community-grow#community-insights">
+            <span>View Insights</span>
             <span class="home-gallery-rankings-cta-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
                 <path d="M5 12h14"></path>
@@ -32749,8 +32753,8 @@ function renderGallery(targetSnapshotId = "") {
         behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
       });
       targetCard.focus({ preventScroll: true });
-    } else if (targetSnapshotId === "leaderboard-insights") {
-      document.querySelector("#leaderboard-insights")?.scrollIntoView({
+    } else if (targetSnapshotId === "community-insights") {
+      document.querySelector("#community-insights")?.scrollIntoView({
         block: "start",
         behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
       });
@@ -39069,6 +39073,23 @@ document.addEventListener("click", (event) => {
       navigateToHashRoute(targetHash);
       return;
     }
+  }
+
+  const communityInsightsLink = event.target instanceof Element
+    ? event.target.closest('a[href="/community-grow#community-insights"]')
+    : null;
+  if (communityInsightsLink instanceof HTMLAnchorElement) {
+    const targetHash = "#gallery/community-insights";
+    if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
+      event.preventDefault();
+      event.stopPropagation();
+      promptForUnsavedChangesNavigation(targetHash);
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    navigateToHashRoute(targetHash);
+    return;
   }
 
   const newSessionTrigger = event.target instanceof Element
