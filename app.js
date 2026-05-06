@@ -18129,6 +18129,8 @@ function initializeSnapshotSection(scope, options) {
     savedSnapshotNotice: options.savedSnapshotNotice || null,
     savedSnapshotText: options.savedSnapshotText || null,
     savedSnapshotLink: options.savedSnapshotLink || null,
+    usageConsentBlock: scope.querySelector(".snapshot-consent-block"),
+    usageConsentHelper: scope.querySelector("[data-snapshot-consent-helper]"),
     selectedImageKey: "",
     generatedBlob: null,
     generatedUrl: "",
@@ -18169,6 +18171,7 @@ function initializeSnapshotSection(scope, options) {
   }
   renderSnapshotSourceSummary(state);
   syncSnapshotGalleryControls(state);
+  syncSnapshotShareActionAvailability(state);
   renderSnapshotSavedNotice(state);
   setSnapshotMessage(state, "");
   setSnapshotPreview(state, null);
@@ -18294,6 +18297,12 @@ function syncSnapshotShareActionAvailability(state) {
 
   const hasGeneratedSnapshot = Boolean(state.generatedBlob);
   const hasConsent = Boolean(state.usageConsentCheckbox?.checked);
+  if (state.usageConsentBlock) {
+    state.usageConsentBlock.dataset.consentState = hasConsent ? "checked" : "unchecked";
+  }
+  if (state.usageConsentHelper) {
+    state.usageConsentHelper.hidden = hasConsent;
+  }
   if (!hasGeneratedSnapshot || !hasConsent) {
     state.shareButton.setAttribute("disabled", "disabled");
     return;
