@@ -14419,6 +14419,11 @@ const APP_ICON_LIBRARY = Object.freeze({
   heartLike: `
     <path d="m12 20-1.2-1.1C6.2 14.8 4 12.8 4 9.9 4 7.6 5.7 6 7.9 6c1.5 0 2.9.7 4.1 2 1.2-1.3 2.6-2 4.1-2 2.2 0 3.9 1.6 3.9 3.9 0 2.9-2.2 4.9-6.8 9Z"></path>
   `,
+  growthTrend: `
+    <path data-solid="true" d="M4.5 19.4c0-.7.5-1.2 1.2-1.2h12.8c.7 0 1.2.5 1.2 1.2v.2H4.5Z"></path>
+    <path d="M6.5 15.8 10 12.3l2.6 2.6 4.9-6"></path>
+    <path d="M14.3 8.9h3.2v3.2"></path>
+  `,
   notificationBell: `
     <path d="M7.5 16.5h9"></path>
     <path d="M9 19a3 3 0 0 0 6 0"></path>
@@ -14773,8 +14778,9 @@ function getAppSectionHeaderIconName(iconType = "overview") {
     case "message-board":
       return "mail";
     case "analytics":
-    case "trending":
       return "chart";
+    case "trending":
+      return "growthTrend";
     case "moderation":
     case "review":
       return "certificationShield";
@@ -37079,7 +37085,7 @@ function renderGrowNetworkPage() {
   const growNetworkStats = [
     {
       icon: "members",
-      tone: "white",
+      tone: "blue",
       value: formatGrowNetworkStatValue(totalFollowersCount),
       label: "Total Followers",
       detail: showPreviewStats ? "preview network reach" : "following your profile",
@@ -37100,7 +37106,7 @@ function renderGrowNetworkPage() {
     },
     {
       icon: "trending",
-      tone: "orange",
+      tone: "gold",
       value: formatGrowNetworkStatValue(sessionsTrendingCount),
       label: "Sessions Trending",
       detail: showPreviewStats ? "recent engagement signals" : "recent public sessions with likes",
