@@ -998,6 +998,7 @@ const appState = {
   notificationPreferencesError: "",
   notificationPreferencesTableUnavailable: false,
   notificationPreferencesSchemaMode: "",
+  sessionHistoryFocusSessionId: "",
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -34400,6 +34401,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   const sortValue = String(options.sortValue || "date").trim();
   const hasAnySessions = Boolean(options.hasAnySessions);
   const visibleCount = Math.max(6, Number(options.visibleCount) || 6);
+  const focusSessionId = String(options.focusSessionId || "").trim();
   const visibleSessions = sessions.slice(0, visibleCount);
   const hasMoreSessions = sessions.length > visibleCount;
   const filterPills = [
@@ -34465,7 +34467,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
               const dateContext = getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started";
 
               return `
-                <div class="session-history-table-row">
+                <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
                   <div class="session-history-cell session-history-cell--session" data-label="Session">
                     ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
                     <div class="session-history-session-copy">
@@ -36449,8 +36451,19 @@ function renderSessionsList() {
       sortValue: appState.sessionHistorySort || "date",
       visibleCount: appState.sessionHistoryVisibleCount || 6,
       hasAnySessions: visibleSessions.length > 0,
+      focusSessionId: appState.sessionHistoryFocusSessionId || "",
     });
     applySupplyStatusToSessionEntryButtons(historySection);
+    const focusSessionId = String(appState.sessionHistoryFocusSessionId || "").trim();
+    if (focusSessionId) {
+      const highlightedRow = historySection.querySelector(`[data-session-history-row="${CSS.escape(focusSessionId)}"]`);
+      if (highlightedRow instanceof Element) {
+        scrollElementIntoViewAfterLayout(highlightedRow, {
+          delayMs: 80,
+          block: "center",
+        });
+      }
+    }
   };
 
   const renderAnalyticsSection = () => {
@@ -37778,10 +37791,34 @@ function renderSessionDetail(sessionId) {
   if (detail.sessionSequenceLabel) {
     const sessionSequenceNumber = getSessionSequenceNumber(session);
     if (sessionSequenceNumber) {
-      detail.sessionSequenceLabel.textContent = `Session #${sessionSequenceNumber}`;
+      const createdDateLabel = getSessionCreatedDateLabel(session);
+      const ordinalLabel = formatOrdinalSessionNumber(sessionSequenceNumber);
+      detail.sessionSequenceLabel.innerHTML = `
+        <a
+          class="session-sequence-badge"
+          href="#sessions"
+          aria-label="${escapeHtml(`Session #${sessionSequenceNumber}. Created ${createdDateLabel}. ${ordinalLabel} session. Open Session History.`)}"
+          title="${escapeHtml(`Created ${createdDateLabel} - ${ordinalLabel} session`)}"
+        >
+          <span class="session-sequence-badge__label">Session #${escapeHtml(String(sessionSequenceNumber))}</span>
+          <span class="session-sequence-badge__tooltip" role="tooltip">
+            <strong>Created</strong>
+            <span>${escapeHtml(createdDateLabel)}</span>
+            <strong>Position</strong>
+            <span>${escapeHtml(`${ordinalLabel} session`)}</span>
+          </span>
+        </a>
+      `;
       detail.sessionSequenceLabel.hidden = false;
+      const sessionSequenceLink = detail.sessionSequenceLabel.querySelector(".session-sequence-badge");
+      if (sessionSequenceLink) {
+        sessionSequenceLink.addEventListener("click", (event) => {
+          event.preventDefault();
+          openSessionHistoryForSession(session.id);
+        });
+      }
     } else {
-      detail.sessionSequenceLabel.textContent = "";
+      detail.sessionSequenceLabel.innerHTML = "";
       detail.sessionSequenceLabel.hidden = true;
     }
   }
@@ -38380,6 +38417,65 @@ function getSessionSequenceNumber(session = null, sessions = getSessions()) {
 
   const sequenceIndex = orderedSessions.findIndex((entry) => String(entry?.id || "").trim() === normalizedSessionId);
   return sequenceIndex >= 0 ? sequenceIndex + 1 : null;
+}
+
+function formatOrdinalSessionNumber(value) {
+  const numberValue = Math.max(0, Number(value) || 0);
+  if (!numberValue) {
+    return "";
+  }
+
+  const mod100 = numberValue % 100;
+  if (mod100 >= 11 && mod100 <= 13) {
+    return `${numberValue}th`;
+  }
+
+  switch (numberValue % 10) {
+    case 1:
+      return `${numberValue}st`;
+    case 2:
+      return `${numberValue}nd`;
+    case 3:
+      return `${numberValue}rd`;
+    default:
+      return `${numberValue}th`;
+  }
+}
+
+function getSessionCreatedDateLabel(session = null, fallback = "Not available") {
+  const createdAt = parseCompletedAtValue(session?.createdAt || session?.created_at);
+  if (createdAt) {
+    return formatSessionNameDate(createdAt.toISOString()) || fallback;
+  }
+
+  const startedAt = parseSessionStartDateTime(session?.date, session?.time);
+  if (startedAt) {
+    return formatSessionNameDate(startedAt.toISOString()) || fallback;
+  }
+
+  return fallback;
+}
+
+function openSessionHistoryForSession(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return;
+  }
+
+  const sessions = getVisibleUserSessions(sortSessionsNewestFirst(getSessions()));
+  const filteredSessions = filterMySessionsHistorySessions(sessions, "all");
+  const sortedSessions = sortSessionHistorySessions(filteredSessions, "date");
+  const sessionIndex = sortedSessions.findIndex((session) => String(session?.id || "").trim() === normalizedSessionId);
+
+  appState.sessionHistoryFocusSessionId = normalizedSessionId;
+  appState.sessionHistoryFilter = "all";
+  appState.sessionHistorySort = "date";
+  appState.sessionHistoryVisibleCount = Math.max(
+    6,
+    Number(appState.sessionHistoryVisibleCount) || 6,
+    sessionIndex >= 0 ? sessionIndex + 1 : 6,
+  );
+  window.location.hash = "#sessions";
 }
 
 function buildPartitionDetailRow(partition, sessionStatus = "") {
