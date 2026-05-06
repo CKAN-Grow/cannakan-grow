@@ -16012,8 +16012,151 @@ function renderSeedAgeAnalyticsLineChartMarkup(state) {
   `;
 }
 
+function parseSeedAgeAnalyticsNumericValue(value = "") {
+  const normalizedValue = Number(String(value || "").replace(/[^0-9.]+/g, ""));
+  return Number.isFinite(normalizedValue) ? normalizedValue : null;
+}
+
+function buildSeedAgeAnalyticsKpiCards(state) {
+  const baseCards = Array.isArray(state?.kpis) ? state.kpis : [];
+  const lineBuckets = Array.isArray(state?.lineBuckets) ? state.lineBuckets : [];
+  const populatedBucketCount = lineBuckets.filter((bucket) => Number(bucket?.totalSeeds) > 0).length;
+  const optimalBuckets = lineBuckets.filter((bucket) => bucket?.isOptimal && Number(bucket?.totalSeeds) > 0);
+  const optimalStrength = optimalBuckets.length
+    ? optimalBuckets.reduce((total, bucket) => total + (Number(bucket?.rate) || 0), 0) / optimalBuckets.length
+    : null;
+  const overallAverage = parseSeedAgeAnalyticsNumericValue(baseCards.find((card) => card.label === "Overall Average")?.value || "");
+  const bestPerformance = parseSeedAgeAnalyticsNumericValue(baseCards.find((card) => card.label === "Best Performance")?.value || "");
+  const totalSessions = parseSeedAgeAnalyticsNumericValue(baseCards.find((card) => card.label === "Total Sessions")?.value || "");
+  const ageCoverage = lineBuckets.length > 0 ? (populatedBucketCount / lineBuckets.length) * 100 : null;
+  const sessionScale = Math.max(state?.isDemo ? 1500 : 600, Math.ceil((Math.max(1, totalSessions || 0) * 1.15) / 100) * 100);
+  const totalSessionCoverage = totalSessions !== null && sessionScale > 0
+    ? Math.min(100, (totalSessions / sessionScale) * 100)
+    : null;
+
+  const fallbackConfig = {
+    "Optimal Age Range": {
+      value: "Building data",
+      helper: "Optimal window will appear as age-tagged sessions publish.",
+      progress: 46,
+      visualValue: "Build",
+      visualLabel: "window",
+      variant: "is-optimal",
+    },
+    "Overall Average": {
+      value: "Awaiting sessions",
+      helper: "Average germination fills in once more seed-age results are shared.",
+      progress: 38,
+      visualValue: "Preview",
+      visualLabel: "avg",
+      variant: "is-average",
+    },
+    "Total Sessions": {
+      value: "Building data",
+      helper: "Coverage increases as more public sessions record seed age.",
+      progress: 42,
+      visualValue: "Queue",
+      visualLabel: "scale",
+      variant: "is-sessions",
+    },
+    "Age Range": {
+      value: "Demo preview",
+      helper: "Spread fills out as more age buckets receive community coverage.",
+      progress: 52,
+      visualValue: "Spread",
+      visualLabel: "buckets",
+      variant: "is-range",
+    },
+    "Best Performance": {
+      value: "Building data",
+      helper: "Peak performance appears once enough comparable sessions land.",
+      progress: 44,
+      visualValue: "Peak",
+      visualLabel: "rate",
+      variant: "is-performance",
+    },
+  };
+
+  return baseCards.map((card) => {
+    const cardLabel = String(card?.label || "").trim();
+    const isPlaceholder = String(card?.value || "").includes("Not enough data yet");
+    const fallback = fallbackConfig[cardLabel] || fallbackConfig["Overall Average"];
+
+    let progress = fallback.progress;
+    let visualValue = fallback.visualValue;
+    let visualLabel = fallback.visualLabel;
+    let variant = fallback.variant;
+
+    if (!isPlaceholder) {
+      switch (cardLabel) {
+        case "Optimal Age Range":
+          progress = Math.max(20, Math.min(100, Number.isFinite(optimalStrength) ? optimalStrength : (bestPerformance || 68)));
+          visualValue = Number.isFinite(optimalStrength) ? `${Math.round(optimalStrength)}%` : "Strong";
+          visualLabel = "window";
+          variant = "is-optimal";
+          break;
+        case "Overall Average":
+          progress = Math.max(0, Math.min(100, overallAverage || 0));
+          visualValue = overallAverage !== null ? `${Math.round(overallAverage)}%` : "Avg";
+          visualLabel = "avg";
+          variant = "is-average";
+          break;
+        case "Total Sessions":
+          progress = Math.max(0, Math.min(100, totalSessionCoverage || 0));
+          visualValue = totalSessions !== null ? `${Math.round(totalSessionCoverage || 0)}%` : "Build";
+          visualLabel = "coverage";
+          variant = "is-sessions";
+          break;
+        case "Age Range":
+          progress = Math.max(18, Math.min(100, ageCoverage || 0));
+          visualValue = `${populatedBucketCount}/${lineBuckets.length || 10}`;
+          visualLabel = "buckets";
+          variant = "is-range";
+          break;
+        case "Best Performance":
+          progress = Math.max(0, Math.min(100, bestPerformance || 0));
+          visualValue = bestPerformance !== null ? `${Math.round(bestPerformance)}%` : "Peak";
+          visualLabel = "peak";
+          variant = "is-performance";
+          break;
+        default:
+          break;
+      }
+    }
+
+    return {
+      label: cardLabel,
+      value: isPlaceholder ? fallback.value : String(card?.value || "").trim(),
+      helper: isPlaceholder ? fallback.helper : String(card?.helper || "").trim(),
+      progress,
+      visualValue,
+      visualLabel,
+      variant,
+      isPlaceholder,
+    };
+  });
+}
+
+function renderSeedAgeAnalyticsKpiVisualMarkup(card) {
+  const progress = Math.max(0, Math.min(100, Number(card?.progress) || 0));
+  return `
+    <div class="seed-age-analytics-kpi-visual ${escapeHtml(card?.variant || "")}" style="--seed-age-kpi-progress:${escapeHtml(progress.toFixed(2))};" aria-hidden="true">
+      <div class="seed-age-analytics-kpi-visual-glow"></div>
+      <svg class="seed-age-analytics-kpi-ring" viewBox="0 0 96 96" focusable="false">
+        <circle class="seed-age-analytics-kpi-ring-track" cx="48" cy="48" r="34" pathLength="100"></circle>
+        <circle class="seed-age-analytics-kpi-ring-progress" cx="48" cy="48" r="34" pathLength="100"></circle>
+      </svg>
+      <div class="seed-age-analytics-kpi-visual-center">
+        <strong>${escapeHtml(card?.visualValue || "")}</strong>
+        <span>${escapeHtml(card?.visualLabel || "")}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderSeedAgeAnalyticsPage() {
   const state = buildPublicSeedAgeAnalyticsState();
+  const kpiCards = buildSeedAgeAnalyticsKpiCards(state);
   const disclaimer = "Results reflect KAN system community session data, not source performance alone. Informational only. Results may vary.";
   app.innerHTML = `
     <section class="seed-age-analytics-page">
@@ -16044,11 +16187,14 @@ function renderSeedAgeAnalyticsPage() {
         </header>
 
         <section class="seed-age-analytics-kpi-grid" aria-label="Seed age key metrics">
-          ${state.kpis.map((card) => `
-            <article class="seed-age-analytics-kpi-card${String(card.value).includes("Not enough data yet") ? " is-empty" : ""}">
-              <p class="seed-age-analytics-kpi-label">${escapeHtml(card.label)}</p>
-              <strong class="seed-age-analytics-kpi-value">${escapeHtml(card.value)}</strong>
-              <p class="seed-age-analytics-kpi-helper">${escapeHtml(card.helper)}</p>
+          ${kpiCards.map((card) => `
+            <article class="seed-age-analytics-kpi-card ${escapeHtml(card.variant || "")}${card.isPlaceholder ? " is-empty" : ""}">
+              <div class="seed-age-analytics-kpi-copy">
+                <p class="seed-age-analytics-kpi-label">${escapeHtml(card.label)}</p>
+                <strong class="seed-age-analytics-kpi-value">${escapeHtml(card.value)}</strong>
+                <p class="seed-age-analytics-kpi-helper">${escapeHtml(card.helper)}</p>
+              </div>
+              ${renderSeedAgeAnalyticsKpiVisualMarkup(card)}
             </article>
           `).join("")}
         </section>

@@ -5840,14 +5840,49 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .seed-age-analytics-kpi-card {
+  --seed-age-kpi-accent: #9dd948;
+  --seed-age-kpi-accent-soft: rgba(157, 217, 72, 0.22);
   display: grid;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
   min-height: 136px;
   padding: 20px 20px 18px;
 }
 
 .seed-age-analytics-kpi-card.is-empty {
   border-style: dashed;
+}
+
+.seed-age-analytics-kpi-card.is-optimal {
+  --seed-age-kpi-accent: #b7ec67;
+  --seed-age-kpi-accent-soft: rgba(183, 236, 103, 0.22);
+}
+
+.seed-age-analytics-kpi-card.is-average {
+  --seed-age-kpi-accent: #8de66b;
+  --seed-age-kpi-accent-soft: rgba(141, 230, 107, 0.24);
+}
+
+.seed-age-analytics-kpi-card.is-sessions {
+  --seed-age-kpi-accent: #79d874;
+  --seed-age-kpi-accent-soft: rgba(121, 216, 116, 0.24);
+}
+
+.seed-age-analytics-kpi-card.is-range {
+  --seed-age-kpi-accent: #9cd66d;
+  --seed-age-kpi-accent-soft: rgba(156, 214, 109, 0.24);
+}
+
+.seed-age-analytics-kpi-card.is-performance {
+  --seed-age-kpi-accent: #c1f16d;
+  --seed-age-kpi-accent-soft: rgba(193, 241, 109, 0.24);
+}
+
+.seed-age-analytics-kpi-copy {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
 }
 
 .seed-age-analytics-kpi-label,
@@ -5865,7 +5900,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .seed-age-analytics-kpi-value {
-  color: #9dd948;
+  color: var(--seed-age-kpi-accent);
   font-size: clamp(1.4rem, 2.2vw, 2rem);
   font-weight: 800;
   line-height: 1.06;
@@ -5881,6 +5916,106 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(217, 225, 214, 0.82);
   font-size: 0.94rem;
   line-height: 1.5;
+}
+
+.seed-age-analytics-kpi-visual {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 94px;
+  min-width: 94px;
+  aspect-ratio: 1;
+  justify-self: end;
+  color: var(--seed-age-kpi-accent);
+}
+
+.seed-age-analytics-kpi-visual::before {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(circle at 34% 30%, color-mix(in srgb, var(--seed-age-kpi-accent) 14%, rgba(255, 255, 255, 0.1)) 0%, rgba(11, 16, 12, 0.94) 68%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 20px rgba(0, 0, 0, 0.18);
+}
+
+.seed-age-analytics-kpi-visual-glow {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--seed-age-kpi-accent-soft) 0%, transparent 72%);
+  filter: blur(10px);
+  opacity: 0.9;
+  z-index: 0;
+}
+
+.seed-age-analytics-kpi-ring {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.seed-age-analytics-kpi-ring-track,
+.seed-age-analytics-kpi-ring-progress {
+  fill: none;
+  stroke-width: 6.5;
+}
+
+.seed-age-analytics-kpi-ring-track {
+  stroke: rgba(255, 255, 255, 0.09);
+}
+
+.seed-age-analytics-kpi-ring-progress {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--seed-age-kpi-progress));
+  filter: drop-shadow(0 0 12px var(--seed-age-kpi-accent-soft));
+  animation: seed-age-analytics-kpi-ring-fill 1.15s cubic-bezier(0.24, 0.86, 0.32, 1) both;
+}
+
+.seed-age-analytics-kpi-visual-center {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 18px;
+}
+
+.seed-age-analytics-kpi-visual-center strong {
+  display: block;
+  color: #f3f9ec;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.seed-age-analytics-kpi-visual-center span {
+  color: rgba(222, 231, 217, 0.68);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@keyframes seed-age-analytics-kpi-ring-fill {
+  from {
+    stroke-dashoffset: 100;
+    opacity: 0.28;
+  }
+  to {
+    stroke-dashoffset: calc(100 - var(--seed-age-kpi-progress));
+    opacity: 1;
+  }
 }
 
 .seed-age-analytics-main-grid {
@@ -6369,6 +6504,15 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     grid-template-columns: 1fr;
   }
 
+  .seed-age-analytics-kpi-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .seed-age-analytics-kpi-visual {
+    justify-self: start;
+  }
+
   .seed-age-analytics-panel-head,
   .seed-age-analytics-community-note-head {
     flex-direction: column;
@@ -6387,6 +6531,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .seed-age-analytics-hero-button {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seed-age-analytics-kpi-ring-progress {
+    animation: none;
   }
 }
 
