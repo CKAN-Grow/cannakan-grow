@@ -16976,12 +16976,13 @@ function getSeedAgeSettingsFromForm(form) {
     };
   }
 
+  const seedAgeDraft = getSeedAgeDraftState(form);
   const trackingEnabled = Boolean(form.elements.seedAgeTrackingEnabled?.checked);
   const mode = trackingEnabled
-    ? normalizeSeedAgeMode(form.querySelector('input[name="seedAgeMode"]:checked')?.value || "")
+    ? normalizeSeedAgeMode(form.querySelector('input[name="seedAgeMode"]:checked')?.value || seedAgeDraft.mode || "same")
     : null;
   const sessionSeedAgeYears = trackingEnabled && mode === "same"
-    ? normalizeSeedAgeYears(form.elements.sessionSeedAgeYears?.value)
+    ? normalizeSeedAgeYears(form.elements.sessionSeedAgeYears?.value ?? seedAgeDraft.sessionSeedAgeYears)
     : null;
 
   return {
@@ -16989,6 +16990,98 @@ function getSeedAgeSettingsFromForm(form) {
     mode,
     sessionSeedAgeYears,
   };
+}
+
+function getSeedAgeDraftState(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return {
+      mode: "same",
+      sessionSeedAgeYears: null,
+    };
+  }
+
+  if (!form.__seedAgeDraft || typeof form.__seedAgeDraft !== "object") {
+    form.__seedAgeDraft = {
+      mode: "same",
+      sessionSeedAgeYears: null,
+    };
+  }
+
+  return form.__seedAgeDraft;
+}
+
+function persistSeedAgeDraftState(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return {
+      mode: "same",
+      sessionSeedAgeYears: null,
+    };
+  }
+
+  const seedAgeDraft = getSeedAgeDraftState(form);
+  const selectedMode = normalizeSeedAgeMode(form.querySelector('input[name="seedAgeMode"]:checked')?.value || seedAgeDraft.mode || "same") || "same";
+  const sessionSeedAgeYears = normalizeSeedAgeYears(form.elements.sessionSeedAgeYears?.value ?? seedAgeDraft.sessionSeedAgeYears);
+
+  form.__seedAgeDraft = {
+    mode: selectedMode,
+    sessionSeedAgeYears,
+  };
+
+  return form.__seedAgeDraft;
+}
+
+function mountSeedAgeSetupSection(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return null;
+  }
+
+  const existingSection = form.querySelector("#seed-age-setup-section");
+  if (existingSection) {
+    return existingSection;
+  }
+
+  const host = form.querySelector("[data-seed-age-setup-host]");
+  const template = form.querySelector("#seed-age-setup-template");
+  if (!(host instanceof Element) || !(template instanceof HTMLTemplateElement)) {
+    return existingSection;
+  }
+
+  const seedAgeDraft = getSeedAgeDraftState(form);
+  const fragment = template.content.cloneNode(true);
+  host.replaceChildren(fragment);
+
+  const setupSection = host.querySelector("#seed-age-setup-section");
+  const sameModeInput = host.querySelector('input[name="seedAgeMode"][value="same"]');
+  const mixedModeInput = host.querySelector('input[name="seedAgeMode"][value="mixed"]');
+  const sameAgeInput = host.querySelector('input[name="sessionSeedAgeYears"]');
+  const nextMode = normalizeSeedAgeMode(seedAgeDraft.mode || "same") || "same";
+
+  if (sameModeInput instanceof HTMLInputElement) {
+    sameModeInput.checked = nextMode === "same";
+  }
+  if (mixedModeInput instanceof HTMLInputElement) {
+    mixedModeInput.checked = nextMode === "mixed";
+  }
+  if (sameAgeInput instanceof HTMLInputElement) {
+    sameAgeInput.value = formatSeedAgeInputValue(seedAgeDraft.sessionSeedAgeYears);
+  }
+
+  return setupSection;
+}
+
+function unmountSeedAgeSetupSection(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  persistSeedAgeDraftState(form);
+  const host = form.querySelector("[data-seed-age-setup-host]");
+  if (host instanceof Element) {
+    host.replaceChildren();
+    return;
+  }
+
+  form.querySelector("#seed-age-setup-section")?.remove();
 }
 
 function applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionContainer, seedAgeMode = null) {
@@ -17022,13 +17115,21 @@ function syncSeedAgeSetupUi(form, options = {}) {
   }
 
   const state = getSeedAgeSettingsFromForm(form);
+  const hasDynamicSeedAgeHost = form.querySelector("[data-seed-age-setup-host]") instanceof Element
+    && form.querySelector("#seed-age-setup-template") instanceof HTMLTemplateElement;
+  if (state.trackingEnabled) {
+    mountSeedAgeSetupSection(form);
+  } else {
+    unmountSeedAgeSetupSection(form);
+  }
+
   const setupSection = form.querySelector("#seed-age-setup-section") || form.querySelector("[data-seed-age-setup]");
   const sameField = form.querySelector("#session-seed-age-same-field") || form.querySelector("[data-seed-age-same-value]");
   const modeGroup = form.querySelector(".session-seed-age-mode-group") || form.querySelector(".session-seed-age-mode-grid");
   const modeHint = form.querySelector("[data-seed-age-mode-hint]");
   const modeCards = [...form.querySelectorAll("[data-seed-age-mode-card]")];
 
-  if (setupSection) {
+  if (setupSection && !hasDynamicSeedAgeHost) {
     setupSection.hidden = !state.trackingEnabled;
   }
 
@@ -17054,6 +17155,8 @@ function syncSeedAgeSetupUi(form, options = {}) {
     sameAgeInput?.classList.remove("is-missing");
   }
 
+  persistSeedAgeDraftState(form);
+
   form.dataset.seedAgeTrackingEnabled = state.trackingEnabled ? "true" : "false";
   form.dataset.seedAgeMode = state.mode || "";
   return state;
@@ -17065,18 +17168,15 @@ function primeNewSessionSeedAgeDefaults(form) {
   }
 
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
-  const sameModeInput = form.querySelector('input[name="seedAgeMode"][value="same"]');
-  const mixedModeInput = form.querySelector('input[name="seedAgeMode"][value="mixed"]');
 
   if (seedAgeTrackingField instanceof HTMLInputElement) {
     seedAgeTrackingField.checked = false;
   }
-  if (sameModeInput instanceof HTMLInputElement) {
-    sameModeInput.checked = true;
-  }
-  if (mixedModeInput instanceof HTMLInputElement) {
-    mixedModeInput.checked = false;
-  }
+  form.__seedAgeDraft = {
+    mode: "same",
+    sessionSeedAgeYears: null,
+  };
+  unmountSeedAgeSetupSection(form);
 }
 
 function validateSeedAgeSettings(form) {
@@ -34982,22 +35082,25 @@ function renderSessionForm(initialSystemType = "KAN") {
       appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: sessionStatusField, stageTrigger: sessionStatusTrigger });
     });
-    seedAgeTrackingField?.addEventListener("change", () => {
-      if (seedAgeTrackingField.checked && !form.querySelector('input[name="seedAgeMode"]:checked')) {
-        const sameModeInput = form.querySelector('input[name="seedAgeMode"][value="same"]');
-        if (sameModeInput instanceof HTMLInputElement) {
-          sameModeInput.checked = true;
-        }
+    form.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
       }
-      rerenderSeedAgePartitions();
-    });
-    seedAgeModeInputs.forEach((input) => {
-      input.addEventListener("change", () => {
+
+      if (target.name === "seedAgeTrackingEnabled" || target.name === "seedAgeMode") {
         rerenderSeedAgePartitions();
-      });
+      }
     });
-    seedAgeSameInput?.addEventListener("input", () => {
-      validateSeedAgeSettings(form);
+    form.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (target.name === "sessionSeedAgeYears") {
+        validateSeedAgeSettings(form);
+      }
     });
     chartShell.addEventListener("click", (event) => {
       if (!event.target.closest("#partition-fields")) {
