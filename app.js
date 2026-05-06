@@ -14437,11 +14437,32 @@ function inferAppIconNameForLegacySectionIcon(iconElement) {
   if (contextText.includes("active session")) {
     return "activeSessionWaveform";
   }
+  if (contextText.includes("timeline") || contextText.includes("lifecycle")) {
+    return "activeSessionWaveform";
+  }
   if (contextText.includes("recent completed")) {
     return "check";
   }
   if (contextText.includes("history")) {
     return "clock";
+  }
+  if (contextText.includes("session duration") || contextText.includes("timing")) {
+    return "clock";
+  }
+  if (contextText.includes("germination progress") || contextText.includes("progress by partition")) {
+    return "chart";
+  }
+  if (contextText.includes("germination rate") || contextText.includes("overall session germination")) {
+    return "chart";
+  }
+  if (contextText.includes("session notes") || contextText.includes("notes")) {
+    return "reportDocument";
+  }
+  if (contextText.includes("session images") || contextText.includes("images")) {
+    return "uploadImage";
+  }
+  if (contextText.includes("share your grow snapshot") || contextText.includes("share")) {
+    return "uploadImage";
   }
   if (contextText.includes("session detail")) {
     return "reportDocument";
