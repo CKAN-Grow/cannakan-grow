@@ -146,10 +146,6 @@ const APP_HINTS = Object.freeze([
   { text: "Dark mode is available from the app theme toggle if you want the testing and report views to feel easier on the eyes." },
   { text: "Admin CSTP sessions are stored separately from member grow sessions, so lab testing never changes a member’s grow history." },
 ]);
-const CSTP_DEFINITION = `CSTP (${BRAND_NAME} Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.`;
-const CSTP_CERTIFICATION_PHILOSOPHY = "CSTP certification is earned, not purchased.";
-const CSTP_RESULTS_CREDIBILITY = "All CSTP results are generated under controlled testing conditions using the KAN® System.";
-const CSTP_BADGE_DISCLAIMER = "CSTP badges reflect performance from a specific tested batch and are time-limited.";
 const BRAND_NAME = "Cannakan®";
 const BRAND_APP_NAME = `${BRAND_NAME} Grow`;
 
@@ -157,6 +153,10 @@ function formatBrandName(value = "") {
   return String(value || "").replace(/\bCannakan\b(?!®)/g, BRAND_NAME);
 }
 
+const CSTP_DEFINITION = `CSTP (${BRAND_NAME} Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.`;
+const CSTP_CERTIFICATION_PHILOSOPHY = "CSTP certification is earned, not purchased.";
+const CSTP_RESULTS_CREDIBILITY = "All CSTP results are generated under controlled testing conditions using the KAN® System.";
+const CSTP_BADGE_DISCLAIMER = "CSTP badges reflect performance from a specific tested batch and are time-limited.";
 const CSTP_SHARING_EXPOSURE = `CSTP-qualified results may be featured within the app and shared across ${BRAND_APP_NAME} channels.`;
 const CSTP_REPORT_LANGUAGE = "This report summarizes results from a controlled CSTP session. All data reflects observed outcomes under standardized conditions.";
 const CSTP_REPORT_NO_GUARANTEE = "No guarantees are implied beyond the tested sample.";
