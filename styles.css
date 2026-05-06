@@ -6326,8 +6326,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
   position: relative;
   padding: 10px 0 4px;
 }
@@ -6362,8 +6362,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   --seed-age-kpi-accent: #9dd948;
   --seed-age-kpi-accent-soft: rgba(157, 217, 72, 0.22);
   display: grid;
-  min-height: 190px;
-  padding: 22px 22px 20px;
+  min-height: 176px;
+  padding: 20px 18px 18px;
   position: relative;
   overflow: hidden;
   box-shadow:
@@ -6421,12 +6421,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .seed-age-analytics-kpi-stack {
-  gap: 10px;
+  gap: 8px;
   justify-items: start;
 }
 
 .seed-age-analytics-kpi-visual-shell {
-  margin-top: 4px;
+  margin-top: 2px;
   justify-self: center;
 }
 
@@ -6440,21 +6440,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .seed-age-analytics-kpi-value {
   color: var(--seed-age-kpi-accent);
-  font-size: clamp(1.44rem, 2vw, 1.98rem);
+  font-size: clamp(1.34rem, 1.6vw, 1.84rem);
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.03em;
   text-wrap: balance;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .seed-age-analytics-kpi-value.is-percent {
-  font-size: clamp(1.6rem, 2.18vw, 2.14rem);
+  font-size: clamp(1.48rem, 1.78vw, 1.98rem);
 }
 
 .seed-age-analytics-kpi-value.is-extended {
-  font-size: clamp(1.3rem, 1.7vw, 1.72rem);
-  line-height: 1.08;
+  font-size: clamp(1.18rem, 1.3vw, 1.5rem);
+  line-height: 1.06;
 }
 
 .seed-age-analytics-kpi-card.is-empty .seed-age-analytics-kpi-value {
@@ -6466,9 +6466,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .seed-age-analytics-kpi-helper {
   color: rgba(217, 225, 214, 0.72);
   justify-self: center;
-  max-width: 22ch;
-  font-size: 0.84rem;
-  line-height: 1.48;
+  max-width: 20ch;
+  font-size: 0.8rem;
+  line-height: 1.42;
   text-align: center;
 }
 
@@ -6477,8 +6477,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   isolation: isolate;
   display: grid;
   place-items: center;
-  width: 88px;
-  min-width: 88px;
+  width: 80px;
+  min-width: 80px;
   aspect-ratio: 1;
   justify-self: center;
   align-self: center;
