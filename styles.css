@@ -23314,6 +23314,18 @@ body.theme-dark #session-analytics-section {
   margin: 16px;
 }
 
+.session-history-pagination {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.session-history-see-more-button.button {
+  min-height: 38px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
 .session-analytics-panel {
   gap: 18px;
 }

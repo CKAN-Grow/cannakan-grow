@@ -1136,6 +1136,7 @@ const appState = {
   theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
   sessionHistorySort: "date",
   sessionHistoryFilter: "all",
+  sessionHistoryVisibleCount: 6,
   sessionDashboardScrollTarget: "",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
@@ -33213,6 +33214,9 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   const filterValue = String(options.filterValue || "all").trim().toLowerCase();
   const sortValue = String(options.sortValue || "date").trim();
   const hasAnySessions = Boolean(options.hasAnySessions);
+  const visibleCount = Math.max(6, Number(options.visibleCount) || 6);
+  const visibleSessions = sessions.slice(0, visibleCount);
+  const hasMoreSessions = sessions.length > visibleCount;
   const filterPills = [
     { key: "all", label: "All" },
     { key: "active", label: "Active" },
@@ -33260,7 +33264,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
             <span>ACTIONS</span>
           </div>
           <div class="session-history-table-body">
-            ${sessions.length ? sessions.map((session) => {
+            ${sessions.length ? visibleSessions.map((session) => {
               const statusMeta = getMySessionsHistoryStatusMeta(session);
               const totals = getSessionSeedTotals(session);
               const germinationRate = totals.totalSeeds > 0 ? `${getSessionSuccessRate(session)}%` : "--";
@@ -33313,6 +33317,13 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
           </div>
         </div>
       </div>
+      ${hasMoreSessions ? `
+        <div class="session-history-pagination">
+          <button type="button" class="button button-secondary session-history-see-more-button" data-session-history-see-more="true">
+            <span>See More <span aria-hidden="true">&darr;</span></span>
+          </button>
+        </div>
+      ` : ""}
     </section>
   `;
 }
@@ -34533,6 +34544,7 @@ function renderSessionsList() {
   if (!["all", "active", "completed"].includes(appState.sessionHistoryFilter || "")) {
     appState.sessionHistoryFilter = "all";
   }
+  appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6);
   const sessions = sortSessionsNewestFirst(getSessions());
   const visibleSessions = getVisibleUserSessions(sessions);
   const hasSessionHistory = visibleSessions.length > 0;
@@ -34572,6 +34584,7 @@ function renderSessionsList() {
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
       filterValue: appState.sessionHistoryFilter || "all",
       sortValue: appState.sessionHistorySort || "date",
+      visibleCount: appState.sessionHistoryVisibleCount || 6,
       hasAnySessions: visibleSessions.length > 0,
     });
     applySupplyStatusToSessionEntryButtons(historySection);
@@ -34622,6 +34635,15 @@ function renderSessionsList() {
       if (filterButton) {
         event.preventDefault();
         appState.sessionHistoryFilter = String(filterButton.getAttribute("data-session-history-filter") || "all");
+        appState.sessionHistoryVisibleCount = 6;
+        renderHistorySessions();
+        return;
+      }
+
+      const seeMoreButton = target.closest("[data-session-history-see-more]");
+      if (seeMoreButton) {
+        event.preventDefault();
+        appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6) + 6;
         renderHistorySessions();
         return;
       }
@@ -34659,6 +34681,7 @@ function renderSessionsList() {
       }
 
       appState.sessionHistorySort = target.value || "date";
+      appState.sessionHistoryVisibleCount = 6;
       renderHistorySessions();
     });
   }
