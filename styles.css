@@ -2332,6 +2332,40 @@ body.theme-dark .spotlight-stat strong {
   align-items: stretch;
 }
 
+#active-sessions-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.theme-dark #active-sessions-section {
+  border-top-width: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-command-center-shell--sessions {
+  display: block;
+  padding: clamp(20px, 2.25vw, 28px);
+  padding-bottom: 28px;
+}
+
+.session-command-center-shell--sessions .session-command-center-header {
+  margin: 0 0 18px;
+}
+
+.session-command-center-shell--sessions .session-command-center-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+
+.session-command-center-shell--sessions .session-command-center-metrics {
+  margin-top: 28px;
+}
+
 .progress-chart-section {
   margin-top: var(--space-section);
   padding: var(--space-card);
@@ -21536,14 +21570,12 @@ body.theme-dark .session-row:hover {
     0 0 18px rgba(148, 209, 89, 0.12);
 }
 
-body.theme-dark #active-sessions-section,
 body.theme-dark #recent-completed-sessions-section,
 body.theme-dark #session-history-section {
   border-top-width: 3px;
 }
 
 #grow-sessions-header:not(.app-hero),
-#active-sessions-section,
 #recent-completed-sessions-section,
 #session-history-section {
   padding: clamp(20px, 2.25vw, 28px);
@@ -21766,7 +21798,6 @@ body.theme-dark #session-history-section .session-row:hover {
 
 @media (max-width: 760px) {
   #grow-sessions-header:not(.app-hero),
-  #active-sessions-section,
   #recent-completed-sessions-section,
   #session-history-section {
     padding: 18px;

@@ -37462,45 +37462,47 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
 
   return `
-    <div class="session-command-center-head app-section-header">
-      <div class="section-title-with-icon app-section-header-main">
-        <span class="section-title-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
-        <div>
-          <p class="eyebrow">ACTIVE SESSION</p>
-          <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
+    <section class="session-command-center-shell session-command-center-shell--sessions card card-accent card-accent-green">
+      <header class="session-command-center-head session-command-center-header app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          <span class="section-title-icon" data-app-icon="activeSessionWaveform" data-icon-variant="plate" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">ACTIVE SESSION</p>
+            <h3 id="active-sessions-command-title">SESSION COMMAND CENTER</h3>
+          </div>
         </div>
-      </div>
-    </div>
-    <div class="session-command-center" data-session-command-center="true">
-      <section class="session-command-panel session-command-panel--sessions" aria-labelledby="active-sessions-command-list-title">
-        <div class="session-command-panel-heading">
-          <div class="session-command-panel-heading-copy">
+      </header>
+      <div class="session-command-center session-command-center-grid" data-session-command-center="true">
+        <section class="session-command-panel session-command-panel--sessions active-sessions-panel" aria-labelledby="active-sessions-command-list-title">
+          <div class="session-command-panel-heading">
+            <div class="session-command-panel-heading-copy">
+              <div class="session-command-panel-heading-row">
+                <h4 id="active-sessions-command-list-title">ACTIVE SESSIONS</h4>
+                <span class="session-command-count-badge">${escapeHtml(countBadgeLabel)}</span>
+              </div>
+            </div>
+            <a class="session-command-panel-link" href="#sessions">View All Active <span aria-hidden="true">&rarr;</span></a>
+          </div>
+          <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
+        </section>
+        <section class="session-command-panel session-command-panel--progress stage-progress-panel" aria-labelledby="active-sessions-command-progress-title">
+          <div class="session-command-panel-heading">
             <div class="session-command-panel-heading-row">
-              <h4 id="active-sessions-command-list-title">ACTIVE SESSIONS</h4>
-              <span class="session-command-count-badge">${escapeHtml(countBadgeLabel)}</span>
+              <h4 id="active-sessions-command-progress-title">STAGE PROGRESS</h4>
             </div>
           </div>
-          <a class="session-command-panel-link" href="#sessions">View All Active <span aria-hidden="true">&rarr;</span></a>
-        </div>
-        <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
-      </section>
-      <section class="session-command-panel session-command-panel--progress" aria-labelledby="active-sessions-command-progress-title">
-        <div class="session-command-panel-heading">
-          <div class="session-command-panel-heading-row">
-            <h4 id="active-sessions-command-progress-title">STAGE PROGRESS</h4>
+          <div class="session-command-progress" aria-label="Selected session progress">
+            ${renderSessionCommandCenterProgressMarkup(selectedSession, { requiresSignIn })}
           </div>
-        </div>
-        <div class="session-command-progress" aria-label="Selected session progress">
-          ${renderSessionCommandCenterProgressMarkup(selectedSession, { requiresSignIn })}
-        </div>
-        <div class="session-command-stats">
-          ${renderSessionCommandCenterStatsMarkup(selectedSession, { requiresSignIn })}
-        </div>
-      </section>
-    </div>
-    <div class="summary-grid session-command-center-metrics">
-      ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions)}
-    </div>
+          <div class="session-command-stats">
+            ${renderSessionCommandCenterStatsMarkup(selectedSession, { requiresSignIn })}
+          </div>
+        </section>
+      </div>
+      <div class="summary-grid session-command-center-metrics">
+        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions)}
+      </div>
+    </section>
   `;
 }
 
