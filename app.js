@@ -23892,8 +23892,8 @@ function renderHomeCstpOverviewSectionMarkup() {
           <div class="section-title-with-icon app-section-header-main home-section-header-main">
             ${renderPremiumSectionHeaderIcon("certificationShield")}
             <div>
-            <p class="eyebrow">${BRAND_NAME} Seed Testing Program (CSTP)</p>
-              <h2>${BRAND_NAME} Seed Testing Program (CSTP)</h2>
+            <p class="eyebrow">${BRAND_NAME} Seed Testing</p>
+              <h2>${BRAND_NAME} - CSTP</h2>
               <p class="home-cstp-overview-description">${escapeHtml(CSTP_DEFINITION)}</p>
             </div>
           </div>
