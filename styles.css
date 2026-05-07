@@ -8314,31 +8314,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 @media (min-width: 981px) {
   .home-dashboard-secondary-row .home-announcement-card {
-    --home-announcement-card-height: clamp(540px, 46vw, 660px);
+    --home-announcement-card-height: clamp(390px, 34vw, 420px);
     min-height: var(--home-announcement-card-height);
     height: var(--home-announcement-card-height);
+    max-height: 420px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-media {
-    flex: 0 0 60%;
-    width: 60%;
+    flex: 0 0 65%;
+    width: 65%;
     min-width: 0;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-body {
-    flex: 0 0 40%;
-    width: 40%;
+    flex: 0 0 35%;
+    width: 35%;
     min-height: 100%;
-    justify-content: flex-start;
-    padding: 36px 32px 36px;
+    justify-content: center;
+    padding: 24px 26px;
     overflow: visible;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-panel {
     min-height: 0;
-    justify-content: flex-start;
+    justify-content: center;
     overflow: visible;
-    padding-top: 2px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-visual-shell {
@@ -8353,18 +8353,32 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy {
-    gap: 16px;
+    gap: 12px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3 {
-    line-height: 1.08;
-    padding-top: 2px;
+    font-size: clamp(1.52rem, 1.6vw, 1.92rem);
+    line-height: 1.1;
+    max-width: 12ch;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-body-text,
   .home-dashboard-secondary-row .home-announcement-card-static-text,
   .home-dashboard-secondary-row .home-announcement-card-static-section p {
-    line-height: 1.66;
+    font-size: 0.95rem;
+    line-height: 1.56;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-static-sections {
+    gap: 12px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-static-section {
+    gap: 4px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-static-section h4 {
+    font-size: 0.84rem;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3,
