@@ -405,7 +405,9 @@
   </template>
 
   <template id="session-form-template">
-    <section class="card session-workspace-shell session-workspace-shell--form">
+    <div class="session-workspace-page-layout">
+      <div id="session-status-alerts" class="session-detail-alerts" hidden aria-live="polite"></div>
+      <section class="card session-workspace-shell session-workspace-shell--form">
       <div class="section-heading app-section-header session-workspace-header">
         <div class="section-title-with-icon app-section-header-main">
           <span class="section-title-icon" data-app-icon="mySessionsSprout" data-icon-variant="plate" aria-hidden="true"></span>
@@ -515,7 +517,6 @@
                 <span>Session Progress</span>
               </h4>
             </div>
-            <p id="session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
             <div id="session-lifecycle-summary" class="session-lifecycle-summary session-lifecycle-detail-layout">
               <div id="session-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
               <div id="session-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor"></div>
@@ -821,7 +822,8 @@
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>
       </form>
-    </section>
+      </section>
+    </div>
   </template>
 
   <template id="sessions-template">
@@ -852,8 +854,10 @@
   </template>
 
   <template id="session-detail-template">
-    <section class="card session-workspace-shell session-workspace-shell--detail">
-      <div class="section-heading app-section-header session-workspace-header">
+    <div class="session-workspace-page-layout">
+      <div id="detail-session-status-alerts" class="session-detail-alerts" hidden aria-live="polite"></div>
+      <section class="card session-workspace-shell session-workspace-shell--detail">
+        <div class="section-heading app-section-header session-workspace-header">
         <div class="section-title-with-icon app-section-header-main">
           <span class="section-title-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
           <div>
@@ -938,7 +942,6 @@
               <span>Session Progress</span>
             </h4>
           </div>
-          <p id="detail-session-status-reminder" class="session-status-reminder" aria-live="polite"></p>
           <div id="detail-lifecycle-summary" class="session-lifecycle-summary session-lifecycle-detail-layout">
             <div id="detail-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
             <div id="detail-lifecycle-supplies-anchor" class="session-lifecycle-supplies-anchor"></div>
@@ -1242,7 +1245,8 @@
           </div>
         </div>
       </section>
-    </section>
+      </section>
+    </div>
   </template>
 
   <script src="/announcement-slides-manifest.js"></script>

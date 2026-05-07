@@ -37846,7 +37846,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const sessionStatusTrigger = document.querySelector("#session-status-trigger");
   const sessionStatusError = document.querySelector("#session-status-error");
   const layoutReference = document.querySelector("#system-layout-reference");
-  const reminder = document.querySelector("#session-status-reminder");
+  const reminder = document.querySelector("#session-status-alerts");
   const sessionSuccessSummary = document.querySelector("#session-success-summary");
   const progressSection = document.querySelector("#partition-progress-section");
   const progressChart = document.querySelector("#partition-progress-chart");
@@ -40501,7 +40501,7 @@ function getSessionDetailElements(scope = document) {
     sessionSequenceLabel: scope.querySelector("#detail-session-sequence"),
     statusField: scope.querySelector("#detail-session-status-control"),
     statusTrigger: scope.querySelector("#detail-session-status-trigger"),
-    statusReminder: scope.querySelector("#detail-session-status-reminder"),
+    statusReminder: scope.querySelector("#detail-session-status-alerts"),
     statusLabel: scope.querySelector(".session-status-label"),
     statusHelp: scope.querySelector(".session-status-help"),
     suppliesAnchor: scope.querySelector("#detail-lifecycle-supplies-anchor"),
@@ -42568,32 +42568,115 @@ function updateSessionStatusAppearance(control, trigger) {
   }
 }
 
-  function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
+function getSessionStatusAlertTone(level = "") {
+  return String(level || "").trim().toLowerCase() === "critical" ? "critical" : "info";
+}
+
+function getSessionStatusAlertTitle(sessionStatus = "", level = "") {
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const isCritical = String(level || "").trim().toLowerCase() === "critical";
+
+  if (normalizedStatus === "soaking") {
+    return isCritical ? "Soaking action needed" : "Soaking reminder";
+  }
+
+  if (normalizedStatus === "germinating") {
+    return isCritical ? "Germination action needed" : "Germination reminder";
+  }
+
+  return isCritical ? "Session action needed" : "Session update";
+}
+
+function getSessionStatusAlertActionText(sessionStatus = "", level = "") {
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  const isCritical = String(level || "").trim().toLowerCase() === "critical";
+
+  if (normalizedStatus === "soaking") {
+    return isCritical
+      ? "Next step: move this session into Germinating when the seeds are ready."
+      : "Next step: inspect the seeds and refresh the stage if progress changes.";
+  }
+
+  if (normalizedStatus === "germinating") {
+    return isCritical
+      ? "Next step: plant ready seeds and complete the session when appropriate."
+      : "Next step: inspect the tray, lid, heat pad, and seed progress.";
+  }
+
+  return "";
+}
+
+function renderSessionStatusAlertIcon(level = "") {
+  const normalizedLevel = String(level || "").trim().toLowerCase();
+  if (normalizedLevel === "critical") {
+    return `
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M12 4.5 20 18.5H4L12 4.5Z"></path>
+        <path d="M12 9v4.5"></path>
+        <path d="M12 16.5h.01"></path>
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+      <circle cx="12" cy="12" r="8"></circle>
+      <path d="M12 10.2v4.2"></path>
+      <path d="M12 7.8h.01"></path>
+    </svg>
+  `;
+}
+
+function renderSessionStatusAlertsMarkup(alerts = []) {
+  const normalizedAlerts = Array.isArray(alerts)
+    ? alerts.filter((alert) => alert && (alert.message || alert.title))
+    : [];
+
+  if (!normalizedAlerts.length) {
+    return "";
+  }
+
+  return normalizedAlerts.map((alert) => {
+    const tone = getSessionStatusAlertTone(alert.level);
+    return `
+      <article class="session-detail-alert session-detail-alert--${escapeHtml(tone)}" role="status">
+        <span class="session-detail-alert-icon" aria-hidden="true">${renderSessionStatusAlertIcon(alert.level)}</span>
+        <div class="session-detail-alert-copy">
+          <strong>${escapeHtml(alert.title || "")}</strong>
+          <p>${escapeHtml(alert.message || "")}</p>
+          ${alert.actionText ? `<span class="session-detail-alert-action">${escapeHtml(alert.actionText)}</span>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
   if (!element) {
     return;
   }
 
-  element.classList.remove("is-guidance", "is-warning");
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
-
-    if (normalizedStatus === "unselected") {
-      element.textContent = "";
-      return;
-    }
-
-  if (!["soaking", "germinating"].includes(normalizedStatus)) {
-    element.textContent = "";
+  if (normalizedStatus === "unselected" || !["soaking", "germinating"].includes(normalizedStatus)) {
+    element.innerHTML = "";
+    element.hidden = true;
     return;
   }
 
   const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt);
   if (!reminder) {
-    element.textContent = "";
+    element.innerHTML = "";
+    element.hidden = true;
     return;
   }
 
-  element.textContent = reminder.message;
-  element.classList.add(reminder.level === "critical" ? "is-warning" : "is-guidance");
+  element.innerHTML = renderSessionStatusAlertsMarkup([{
+    level: reminder.level,
+    title: getSessionStatusAlertTitle(normalizedStatus, reminder.level),
+    message: reminder.message,
+    actionText: getSessionStatusAlertActionText(normalizedStatus, reminder.level),
+  }]);
+  element.hidden = false;
 }
 
   function validateSessionStatus(control, errorElement) {
