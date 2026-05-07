@@ -109,6 +109,7 @@ const GROW_NETWORK_UNLOCK_STORAGE_KEY = "cannakanGrowNetworkUnlocked";
 const GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanGrowNetworkUnlockPendingNotice";
 const COMMUNITY_GROW_UNLOCK_STORAGE_KEY = "cannakanCommunityGrowUnlocked";
 const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowUnlockPendingNotice";
+const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
 
 function getAnnouncementSlideManifestPaths() {
@@ -4199,6 +4200,150 @@ function showNavigationLockToast(config = {}) {
   }, 5200);
 }
 
+function ensureGrowRemindersPromptModal() {
+  let modal = document.querySelector("#grow-reminders-prompt-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "grow-reminders-prompt-modal";
+  modal.className = "snapshot-modal grow-reminders-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card grow-reminders-modal-card" role="document" aria-labelledby="grow-reminders-prompt-title">
+      <div class="snapshot-modal-copy grow-reminders-modal-copy">
+        <p class="eyebrow">Grow Reminders</p>
+        <h3 id="grow-reminders-prompt-title">Enable Grow Reminders</h3>
+        <p>Cannakan® Grow can notify you when it’s time to check soaking, move seeds to germination, update results, capture snapshots, or restock supplies.</p>
+        <p class="muted grow-reminders-modal-note">You can change this anytime in your profile settings.</p>
+      </div>
+      <div class="snapshot-modal-actions grow-reminders-modal-actions">
+        <button type="button" class="button button-primary" data-grow-reminders-enable="true">Enable Notifications</button>
+        <button type="button" class="button button-secondary" data-grow-reminders-dismiss="true">Not Now</button>
+      </div>
+    </div>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal && modal.open) {
+      modal.close("dismissed");
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+async function requestGrowRemindersBrowserPermission() {
+  if (!("Notification" in window) || typeof Notification.requestPermission !== "function") {
+    return "unsupported";
+  }
+
+  try {
+    return await Notification.requestPermission();
+  } catch (error) {
+    console.warn("[Grow Reminders] Notification permission request failed.", error);
+    return "error";
+  }
+}
+
+function shouldShowGrowRemindersPrompt(routeHash = appState.currentRouteHash || window.location.hash || "#home") {
+  if (!appState.user || !hasCompletedProfile() || isAdminAreaRawRoute()) {
+    return false;
+  }
+
+  const normalizedRoute = normalizeNavigationHash(routeHash);
+  if (!["#home", "#sessions"].includes(normalizedRoute)) {
+    return false;
+  }
+
+  if (document.querySelector("#auth-modal")?.open) {
+    return false;
+  }
+
+  const promptState = loadGrowRemindersPromptState(appState.user.id);
+  return promptState.status === "pending";
+}
+
+function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || window.location.hash || "#home") {
+  if (!shouldShowGrowRemindersPrompt(routeHash)) {
+    return;
+  }
+
+  const modal = ensureGrowRemindersPromptModal();
+  if (!(modal instanceof HTMLDialogElement) || modal.open) {
+    return;
+  }
+
+  const enableButton = modal.querySelector('[data-grow-reminders-enable="true"]');
+  const dismissButton = modal.querySelector('[data-grow-reminders-dismiss="true"]');
+  if (!(enableButton instanceof HTMLButtonElement) || !(dismissButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const cleanup = () => {
+    enableButton.disabled = false;
+    dismissButton.disabled = false;
+    enableButton.onclick = null;
+    dismissButton.onclick = null;
+    modal.onclose = null;
+  };
+
+  const closeWithStatus = (status = "dismissed") => {
+    saveGrowRemindersPromptState(status, appState.user?.id || "");
+    cleanup();
+    if (modal.open) {
+      modal.close(status);
+    }
+  };
+
+  modal.onclose = () => {
+    const finalStatus = ["enabled", "dismissed"].includes(String(modal.returnValue || "").trim().toLowerCase())
+      ? String(modal.returnValue).trim().toLowerCase()
+      : "dismissed";
+    saveGrowRemindersPromptState(finalStatus, appState.user?.id || "");
+    cleanup();
+  };
+
+  dismissButton.onclick = () => {
+    closeWithStatus("dismissed");
+  };
+
+  enableButton.onclick = async () => {
+    enableButton.disabled = true;
+    dismissButton.disabled = true;
+    try {
+      const existingPreferences = appState.notificationPreferences
+        || loadStoredUserNotificationPreferences(appState.user?.id || "");
+      await saveUserNotificationPreferences({
+        ...existingPreferences,
+        notifySnapshot: true,
+        notifyCompletion: true,
+        notifyCommunityActivity: true,
+      }, {
+        requirePersistence: false,
+        debugContext: "grow-reminders-prompt",
+      });
+      await requestGrowRemindersBrowserPermission();
+      closeWithStatus("enabled");
+      showNavigationLockToast({
+        title: "Grow Reminders",
+        message: "Notifications are enabled. You can update them anytime in your profile settings.",
+      });
+      safeRender();
+    } catch (error) {
+      console.warn("[Grow Reminders] Could not enable notifications.", error);
+      closeWithStatus("enabled");
+      showNavigationLockToast({
+        title: "Grow Reminders",
+        message: "Notifications are using your current defaults. You can fine-tune them anytime in your profile settings.",
+      });
+    }
+  };
+
+  modal.showModal();
+}
+
 function syncNavigationAvailabilityState() {
   const navigationLinks = document.querySelectorAll(".topbar-nav a, .mobile-nav-link[data-mobile-nav-link='true']");
   navigationLinks.forEach((link) => {
@@ -6624,6 +6769,60 @@ function getUserNotificationPreferencesStorageKey(userId = "") {
   return normalizedUserId
     ? `${USER_NOTIFICATION_PREFERENCES_STORAGE_KEY}:${normalizedUserId}`
     : USER_NOTIFICATION_PREFERENCES_STORAGE_KEY;
+}
+
+function getGrowRemindersPromptStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${GROW_REMINDERS_PROMPT_STORAGE_KEY}:${normalizedUserId}`
+    : GROW_REMINDERS_PROMPT_STORAGE_KEY;
+}
+
+function loadGrowRemindersPromptState(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return { status: "pending", updatedAt: "" };
+  }
+
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(getGrowRemindersPromptStorageKey(normalizedUserId)) || "null");
+    const status = ["enabled", "dismissed"].includes(String(storedValue?.status || "").trim().toLowerCase())
+      ? String(storedValue.status).trim().toLowerCase()
+      : "pending";
+    return {
+      status,
+      updatedAt: String(storedValue?.updatedAt || "").trim(),
+    };
+  } catch (error) {
+    console.warn("[Grow Reminders] Failed to read prompt state.", error);
+    return { status: "pending", updatedAt: "" };
+  }
+}
+
+function saveGrowRemindersPromptState(status = "dismissed", userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return { status: "pending", updatedAt: "" };
+  }
+
+  const normalizedStatus = ["enabled", "dismissed"].includes(String(status || "").trim().toLowerCase())
+    ? String(status).trim().toLowerCase()
+    : "dismissed";
+  const nextState = {
+    status: normalizedStatus,
+    updatedAt: new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(
+      getGrowRemindersPromptStorageKey(normalizedUserId),
+      JSON.stringify(nextState),
+    );
+  } catch (error) {
+    console.warn("[Grow Reminders] Failed to persist prompt state.", error);
+  }
+
+  return nextState;
 }
 
 function loadStoredUserNotificationPreferences(userId = "") {
@@ -21175,6 +21374,9 @@ function render() {
     requestBackToTopButtonVisibilitySync();
     trackSiteAnalyticsPageView(pageContext);
     void refreshSiteVisitorPresence("render", pageContext);
+    queueMicrotask(() => {
+      maybeOpenGrowRemindersPrompt(appState.currentRouteHash || window.location.hash || "#home");
+    });
   };
   const renderProtectedRouteSignInPrompt = () => {
     const homeHash = replaceLocationHashWithoutNavigation("#home");

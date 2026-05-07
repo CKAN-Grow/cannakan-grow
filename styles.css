@@ -18359,6 +18359,66 @@ body.theme-dark .contact-reason-card.is-active {
   box-shadow: 0 24px 60px rgba(24, 34, 24, 0.18);
 }
 
+.grow-reminders-modal-card {
+  width: min(520px, calc(100vw - 32px));
+  display: grid;
+  gap: 18px;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 251, 246, 0.98) 100%);
+}
+
+.grow-reminders-modal-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08) 0%, rgba(148, 209, 89, 0.02) 28%, transparent 62%);
+  opacity: 0.9;
+}
+
+.grow-reminders-modal-copy,
+.grow-reminders-modal-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.grow-reminders-modal-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.grow-reminders-modal-copy h3 {
+  margin: 6px 0 4px;
+}
+
+.grow-reminders-modal-copy > p:not(.eyebrow) {
+  line-height: 1.58;
+}
+
+.grow-reminders-modal-note {
+  font-size: 0.9rem;
+}
+
+.grow-reminders-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .grow-reminders-modal-actions {
+    flex-direction: column;
+  }
+
+  .grow-reminders-modal-actions .button {
+    width: 100%;
+  }
+}
+
 .snapshot-modal-copy h3 {
   margin: 8px 0 10px;
 }
@@ -28248,6 +28308,15 @@ body.theme-dark .snapshot-modal-card {
   box-shadow:
     var(--glass-shadow),
     var(--glass-inset);
+}
+
+body.theme-dark .grow-reminders-modal-card {
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.1) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(18, 27, 20, 0.96) 0%, rgba(10, 16, 12, 0.94) 100%);
+  box-shadow:
+    0 24px 58px rgba(2, 8, 4, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 body.theme-dark .gallery-card-media {
