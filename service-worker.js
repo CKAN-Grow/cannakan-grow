@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v15";
+const CACHE_NAME = "cannakan-grow-shell-v16";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -132,4 +132,93 @@ self.addEventListener("fetch", (event) => {
         .catch(() => isNavigationRequest ? caches.match("/index.html") : undefined);
     }),
   );
+});
+
+function buildNotificationPayload(payload = {}) {
+  const title = String(payload.title || "Cannakan® Grow").trim() || "Cannakan® Grow";
+  const body = String(payload.body || "").trim();
+  const tag = String(payload.tag || "cannakan-grow-notification").trim();
+  const route = String(payload?.data?.route || payload.route || "#home").trim() || "#home";
+  const absoluteUrl = String(payload?.data?.url || "").trim()
+    || `${self.location.origin}/${route.startsWith("#") ? route : `#${route.replace(/^#/, "")}`}`;
+  return {
+    title,
+    options: {
+      body,
+      tag,
+      icon: String(payload.icon || "/icon-192.png").trim() || "/icon-192.png",
+      badge: String(payload.badge || "/favicon-32x32.png").trim() || "/favicon-32x32.png",
+      renotify: Boolean(payload.renotify),
+      data: {
+        route,
+        url: absoluteUrl,
+        sessionId: String(payload?.data?.sessionId || "").trim(),
+        eventKey: String(payload?.data?.eventKey || "").trim(),
+      },
+    },
+  };
+}
+
+async function showPushNotification(payload = {}) {
+  const { title, options } = buildNotificationPayload(payload);
+  await self.registration.showNotification(title, options);
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "SHOW_LOCAL_NOTIFICATION") {
+    return;
+  }
+
+  if (typeof event.waitUntil === "function") {
+    event.waitUntil(showPushNotification(event.data.payload || {}));
+    return;
+  }
+
+  void showPushNotification(event.data.payload || {});
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data?.json?.() || {};
+  } catch (error) {
+    payload = {
+      title: "Cannakan® Grow",
+      body: event.data?.text?.() || "You have a new grow reminder.",
+    };
+  }
+
+  event.waitUntil(showPushNotification(payload));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification?.close();
+  const targetUrl = String(event.notification?.data?.url || `${self.location.origin}/#home`).trim();
+
+  event.waitUntil((async () => {
+    const existingClients = await self.clients.matchAll({
+      type: "window",
+      includeUncontrolled: true,
+    });
+
+    for (const client of existingClients) {
+      if (!client?.url) {
+        continue;
+      }
+
+      if (client.url.startsWith(self.location.origin)) {
+        if ("focus" in client) {
+          await client.focus();
+        }
+        if ("navigate" in client && targetUrl && client.url !== targetUrl) {
+          await client.navigate(targetUrl);
+        }
+        return;
+      }
+    }
+
+    if (self.clients.openWindow) {
+      await self.clients.openWindow(targetUrl);
+    }
+  })());
 });

@@ -20152,6 +20152,25 @@ body.theme-dark .contact-reason-card.is-active {
   margin: 0;
 }
 
+.profile-push-delivery-state {
+  margin-top: 12px;
+}
+
+.profile-push-delivery-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.profile-push-delivery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .profile-preferences-helper {
   margin-top: 10px !important;
   font-size: 0.88rem;

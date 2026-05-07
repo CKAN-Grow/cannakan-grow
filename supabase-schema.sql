@@ -52,6 +52,31 @@ create table if not exists public.user_notification_preferences (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.user_push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  device_key text not null,
+  endpoint text not null default '',
+  subscription jsonb not null default '{}'::jsonb,
+  p256dh_key text not null default '',
+  auth_key text not null default '',
+  permission_state text not null default 'default',
+  push_enabled boolean not null default false,
+  user_agent text not null default '',
+  device_label text not null default '',
+  last_seen_at timestamptz,
+  last_tested_at timestamptz,
+  last_delivery_at timestamptz,
+  disabled_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint user_push_subscriptions_user_device_key unique (user_id, device_key)
+);
+
+create unique index if not exists user_push_subscriptions_endpoint_unique_idx
+  on public.user_push_subscriptions (endpoint)
+  where endpoint <> '';
+
 -- Replaces the old view-based public_member_profiles surface with a writable table
 -- so the app can preserve Community Grow lookups while saving Grow Network settings.
 create table if not exists public.public_member_profiles (
@@ -861,6 +886,16 @@ begin
 end;
 $$;
 
+create or replace function public.set_user_push_subscriptions_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
 create or replace function public.sync_public_member_profiles_identity()
 returns trigger
 language plpgsql
@@ -944,6 +979,12 @@ before update on public.user_notification_preferences
 for each row
 execute procedure public.set_user_notification_preferences_updated_at();
 
+drop trigger if exists user_push_subscriptions_set_updated_at on public.user_push_subscriptions;
+create trigger user_push_subscriptions_set_updated_at
+before update on public.user_push_subscriptions
+for each row
+execute procedure public.set_user_push_subscriptions_updated_at();
+
 drop trigger if exists public_member_profiles_identity_sync on public.public_member_profiles;
 create trigger public_member_profiles_identity_sync
 before insert or update on public.public_member_profiles
@@ -977,6 +1018,7 @@ execute procedure public.set_grow_gallery_snapshots_updated_at();
 alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.user_notification_preferences enable row level security;
+alter table public.user_push_subscriptions enable row level security;
 alter table public.public_member_profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.admin_reports enable row level security;
@@ -1175,6 +1217,41 @@ with check (
     from public.admin_users
     where admin_users.user_id = auth.uid()
   )
+);
+
+drop policy if exists "Users can view their own push subscriptions" on public.user_push_subscriptions;
+create policy "Users can view their own push subscriptions"
+on public.user_push_subscriptions
+for select
+using (
+  auth.uid() = user_id
+);
+
+drop policy if exists "Users can create their own push subscriptions" on public.user_push_subscriptions;
+create policy "Users can create their own push subscriptions"
+on public.user_push_subscriptions
+for insert
+with check (
+  auth.uid() = user_id
+);
+
+drop policy if exists "Users can update their own push subscriptions" on public.user_push_subscriptions;
+create policy "Users can update their own push subscriptions"
+on public.user_push_subscriptions
+for update
+using (
+  auth.uid() = user_id
+)
+with check (
+  auth.uid() = user_id
+);
+
+drop policy if exists "Users can delete their own push subscriptions" on public.user_push_subscriptions;
+create policy "Users can delete their own push subscriptions"
+on public.user_push_subscriptions
+for delete
+using (
+  auth.uid() = user_id
 );
 
 drop policy if exists "Users can view their own admin membership" on public.admin_users;

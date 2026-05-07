@@ -46,6 +46,7 @@ const LEGACY_GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_like";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
+const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
@@ -113,6 +114,8 @@ const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
 const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNotificationEvents";
 const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotificationEvents";
+const USER_PUSH_SUBSCRIPTIONS_STORAGE_KEY = "cannakanGrowUserPushSubscriptions";
+const PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowPushDeliveredNotificationEvents";
 const APP_NOTIFICATION_REMINDER_ENGINE_INTERVAL_MS = 60 * 1000;
 const DEV_QA_BYPASS_STORAGE_KEY = "cannakanGrowDevQaBypass";
 const DEV_QA_BYPASS_USER_ID = "local-dev-qa-user";
@@ -1103,6 +1106,11 @@ const appState = {
   notificationPreferencesTableUnavailable: false,
   notificationPreferencesSchemaMode: "",
   notificationPreferencesAvailableColumns: [],
+  pushSubscriptions: [],
+  currentPushSubscriptionRecord: null,
+  pushSubscriptionsError: "",
+  pushSubscriptionsTableUnavailable: false,
+  serviceWorkerRegistration: null,
   appNotifications: [],
   notificationCenterOpen: false,
   notificationSnoozeMenuOpenId: "",
@@ -1566,6 +1574,9 @@ function resetSessionScopedAppState() {
   // auth resets do not re-trigger repeated 404 requests to Supabase.
   appState.notificationPreferencesSchemaMode = "";
   appState.notificationPreferencesAvailableColumns = [];
+  appState.pushSubscriptions = [];
+  appState.currentPushSubscriptionRecord = null;
+  appState.pushSubscriptionsError = "";
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
@@ -1925,6 +1936,7 @@ function registerServiceWorker() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/service-worker.js").then((registration) => {
+      appState.serviceWorkerRegistration = registration;
       void registration.update();
     }).catch((error) => {
       console.warn("Service worker registration failed", error);
@@ -4169,6 +4181,11 @@ function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
     user.id,
     loadStoredUserNotificationPreferences(user.id),
   );
+  appState.pushSubscriptions = syncUserPushSubscriptionsCache(
+    user.id,
+    loadStoredUserPushSubscriptions(user.id),
+    { persistLocal: false },
+  );
   appState.profilePageSettings = syncProfilePageSettingsCache(
     user.id,
     loadStoredProfilePageSettings(user.id),
@@ -4654,6 +4671,392 @@ function renderNotificationPermissionStateMarkup(options = {}) {
   `;
 }
 
+function getConfiguredPushPublicKey() {
+  return String(
+    window.CANNAKAN_SUPABASE_CONFIG?.pushPublicKey
+    || window.CANNAKAN_SUPABASE_CONFIG?.push_public_key
+    || window.CANNAKAN_PUSH_PUBLIC_KEY
+    || "",
+  ).trim();
+}
+
+function supportsPushSubscriptionApi() {
+  return Boolean(
+    window.isSecureContext
+    && "serviceWorker" in navigator
+    && "PushManager" in window,
+  );
+}
+
+function getCurrentPushDeviceKey() {
+  return getOrCreateSiteVisitorId();
+}
+
+function getPushDeviceLabel() {
+  const environment = getInstallEnvironment();
+  const browserLabel = environment.browser === "edge"
+    ? "Edge"
+    : (environment.browser === "safari"
+      ? "Safari"
+      : (environment.browser === "chrome" ? "Chrome" : "Browser"));
+  const deviceLabel = environment.device === "mobile" ? "Mobile" : "Desktop";
+  return `${browserLabel} on ${deviceLabel}`;
+}
+
+function urlBase64ToUint8Array(value = "") {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = `${value}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((character) => character.charCodeAt(0)));
+}
+
+async function getServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+    return null;
+  }
+
+  if (appState.serviceWorkerRegistration) {
+    return appState.serviceWorkerRegistration;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    appState.serviceWorkerRegistration = registration || null;
+    return registration || null;
+  } catch (error) {
+    console.warn("[Push Delivery] Service worker not ready.", error);
+    return null;
+  }
+}
+
+function getUserPushSubscriptionsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${USER_PUSH_SUBSCRIPTIONS_STORAGE_KEY}:${normalizedUserId}`
+    : USER_PUSH_SUBSCRIPTIONS_STORAGE_KEY;
+}
+
+function getPushDeliveredNotificationEventsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY}:${normalizedUserId}`
+    : PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY;
+}
+
+function normalizePushSubscriptionRecord(record = {}) {
+  const sourceRecord = record && typeof record === "object" ? record : {};
+  const endpoint = String(sourceRecord.endpoint || "").trim();
+  const deviceKey = String(sourceRecord.deviceKey || sourceRecord.device_key || "").trim();
+  const userId = String(sourceRecord.userId || sourceRecord.user_id || "").trim();
+  const subscriptionPayload = sourceRecord.subscription && typeof sourceRecord.subscription === "object"
+    ? sourceRecord.subscription
+    : {};
+
+  if (!deviceKey && !endpoint) {
+    return null;
+  }
+
+  return {
+    id: String(sourceRecord.id || "").trim(),
+    userId,
+    deviceKey: deviceKey || endpoint,
+    endpoint,
+    subscription: subscriptionPayload,
+    p256dhKey: String(sourceRecord.p256dhKey || sourceRecord.p256dh_key || "").trim(),
+    authKey: String(sourceRecord.authKey || sourceRecord.auth_key || "").trim(),
+    permissionState: String(sourceRecord.permissionState || sourceRecord.permission_state || "default").trim().toLowerCase() || "default",
+    pushEnabled: Boolean(sourceRecord.pushEnabled ?? sourceRecord.push_enabled),
+    userAgent: String(sourceRecord.userAgent || sourceRecord.user_agent || "").trim(),
+    deviceLabel: String(sourceRecord.deviceLabel || sourceRecord.device_label || "").trim(),
+    lastSeenAt: String(sourceRecord.lastSeenAt || sourceRecord.last_seen_at || "").trim(),
+    lastTestedAt: String(sourceRecord.lastTestedAt || sourceRecord.last_tested_at || "").trim(),
+    lastDeliveryAt: String(sourceRecord.lastDeliveryAt || sourceRecord.last_delivery_at || "").trim(),
+    disabledAt: String(sourceRecord.disabledAt || sourceRecord.disabled_at || "").trim(),
+    createdAt: String(sourceRecord.createdAt || sourceRecord.created_at || "").trim(),
+    updatedAt: String(sourceRecord.updatedAt || sourceRecord.updated_at || "").trim(),
+  };
+}
+
+function sortPushSubscriptionsCurrentDeviceFirst(records = []) {
+  const currentDeviceKey = getCurrentPushDeviceKey();
+  return [...records].sort((left, right) => {
+    const leftCurrent = left?.deviceKey === currentDeviceKey ? 1 : 0;
+    const rightCurrent = right?.deviceKey === currentDeviceKey ? 1 : 0;
+    if (leftCurrent !== rightCurrent) {
+      return rightCurrent - leftCurrent;
+    }
+    return (Date.parse(right?.updatedAt || right?.lastSeenAt || "") || 0) - (Date.parse(left?.updatedAt || left?.lastSeenAt || "") || 0);
+  });
+}
+
+function loadStoredUserPushSubscriptions(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(getUserPushSubscriptionsStorageKey(normalizedUserId)) || "[]");
+    if (!Array.isArray(storedValue)) {
+      return [];
+    }
+    return sortPushSubscriptionsCurrentDeviceFirst(
+      storedValue
+        .map((record) => normalizePushSubscriptionRecord(record))
+        .filter(Boolean),
+    );
+  } catch (error) {
+    console.warn("[Push Delivery] Failed to read stored push subscriptions.", error);
+    return [];
+  }
+}
+
+function syncUserPushSubscriptionsCache(userId = "", records = [], options = {}) {
+  const normalizedUserId = String(userId || "").trim();
+  const { persistLocal = true } = options || {};
+  const normalizedRecords = sortPushSubscriptionsCurrentDeviceFirst(
+    (Array.isArray(records) ? records : [])
+      .map((record) => normalizePushSubscriptionRecord(record))
+      .filter(Boolean),
+  );
+
+  appState.pushSubscriptions = normalizedRecords;
+  appState.currentPushSubscriptionRecord = normalizedRecords.find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+
+  if (persistLocal && normalizedUserId) {
+    try {
+      localStorage.setItem(
+        getUserPushSubscriptionsStorageKey(normalizedUserId),
+        JSON.stringify(normalizedRecords),
+      );
+    } catch (error) {
+      console.warn("[Push Delivery] Failed to persist local push subscriptions.", error);
+    }
+  }
+
+  return normalizedRecords;
+}
+
+function getCurrentUserPushSubscriptions(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    appState.pushSubscriptions = [];
+    appState.currentPushSubscriptionRecord = null;
+    return [];
+  }
+
+  if (!Array.isArray(appState.pushSubscriptions) || !appState.pushSubscriptions.length) {
+    return syncUserPushSubscriptionsCache(normalizedUserId, loadStoredUserPushSubscriptions(normalizedUserId), {
+      persistLocal: false,
+    });
+  }
+
+  appState.currentPushSubscriptionRecord = appState.pushSubscriptions.find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+  return appState.pushSubscriptions;
+}
+
+function isUserPushSubscriptionsTableMissingError(error) {
+  return isSupabaseTableMissingError(error, USER_PUSH_SUBSCRIPTIONS_TABLE);
+}
+
+function markUserPushSubscriptionsTableUnavailable() {
+  appState.pushSubscriptionsTableUnavailable = true;
+  appState.pushSubscriptionsError = "";
+  logRuntimeIssueOnce(
+    "warn",
+    "push-subscriptions-backend-fallback",
+    "Push subscriptions backend unavailable. Using local device fallback.",
+  );
+}
+
+function getPushSubscriptionSupportState() {
+  const permissionState = getGrowRemindersBrowserPermissionState();
+  const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
+  const currentSubscription = appState.currentPushSubscriptionRecord;
+  const hasActiveSubscription = Boolean(currentSubscription?.endpoint && !currentSubscription?.disabledAt);
+
+  if (!window.isSecureContext || !("serviceWorker" in navigator)) {
+    return "unsupported";
+  }
+  if (permissionState === "denied") {
+    return "denied";
+  }
+  if (permissionState !== "granted") {
+    return "default";
+  }
+  if (currentSubscription?.disabledAt) {
+    return "disabled";
+  }
+  if (hasActiveSubscription) {
+    return "subscribed";
+  }
+  if (!pushPreferenceEnabled) {
+    return "disabled";
+  }
+  if (!supportsPushSubscriptionApi()) {
+    return "local-only";
+  }
+  if (!getConfiguredPushPublicKey()) {
+    return "not-configured";
+  }
+  return "ready";
+}
+
+function getPushSubscriptionSupportMeta(state = getPushSubscriptionSupportState()) {
+  switch (String(state || "").trim()) {
+    case "subscribed":
+      return {
+        tone: "success",
+        label: "Subscribed",
+        title: "This device is ready for push delivery.",
+        description: "Important grow reminders can be delivered through the browser/PWA notification channel on this device.",
+      };
+    case "ready":
+      return {
+        tone: "info",
+        label: "Ready",
+        title: "Push delivery can be activated on this device.",
+        description: "Browser permission is granted. Saving push preferences will connect this device subscription when a public key is available.",
+      };
+    case "not-configured":
+      return {
+        tone: "warning",
+        label: "Key Needed",
+        title: "Browser delivery is available, but no push key is configured yet.",
+        description: "Local notification tests can still run now. A VAPID/public push key must be added before backend push delivery can subscribe this device.",
+      };
+    case "local-only":
+      return {
+        tone: "warning",
+        label: "Local Only",
+        title: "System notifications can run locally, but push subscription APIs are unavailable here.",
+        description: "This device can still use service-worker notification delivery while the app is open, but it cannot create a reusable push subscription record.",
+      };
+    case "disabled":
+      return {
+        tone: "info",
+        label: "Disabled",
+        title: "Push delivery is currently turned off for your account.",
+        description: "Turn Push Notifications Enabled back on to let this device receive important grow reminders outside the in-app notification center.",
+      };
+    case "denied":
+      return {
+        tone: "critical",
+        label: "Blocked",
+        title: "Browser/device notification delivery is blocked.",
+        description: "Re-enable notifications in your browser site settings, then turn push notifications back on here.",
+      };
+    case "default":
+    default:
+      return {
+        tone: "info",
+        label: "Not Enabled",
+        title: "This device has not granted browser notification permission yet.",
+        description: "Enable push notifications to request permission and prepare this device for future reminder delivery.",
+      };
+  }
+}
+
+function renderPushDeliveryStateMarkup() {
+  const meta = getPushSubscriptionSupportMeta();
+  const subscriptions = getCurrentUserPushSubscriptions();
+  const activeDeviceCount = subscriptions.filter((record) => record.pushEnabled && !record.disabledAt).length;
+  const currentDeviceRecord = appState.currentPushSubscriptionRecord;
+  const canSendTest = canUseBrowserNotificationDelivery();
+  const canDisableCurrentDevice = Boolean(currentDeviceRecord && !currentDeviceRecord.disabledAt);
+  return `
+    <div class="profile-notification-permission profile-push-delivery-state is-${escapeHtml(meta.tone)}">
+      <div class="profile-notification-permission-head">
+        <div class="profile-notification-permission-copy">
+          <strong>Push Delivery Status</strong>
+          <span>${escapeHtml(meta.title)}</span>
+        </div>
+        <span class="profile-permission-badge is-${escapeHtml(meta.tone)}">${escapeHtml(meta.label)}</span>
+      </div>
+      <p class="profile-notification-guidance">${escapeHtml(meta.description)}</p>
+      <div class="profile-push-delivery-meta">
+        <span>${escapeHtml(activeDeviceCount === 1 ? "1 active device" : `${activeDeviceCount} active devices`)}</span>
+        <span>${escapeHtml(currentDeviceRecord?.endpoint ? "Current device subscription saved" : "Current device subscription not saved yet")}</span>
+      </div>
+      <div class="profile-push-delivery-actions">
+        <button type="button" class="button button-secondary" data-profile-push-test="true"${canSendTest ? "" : " disabled"}>Send Test Notification</button>
+        <button type="button" class="button button-secondary" data-profile-push-disable="true"${canDisableCurrentDevice ? "" : " disabled"}>Disable On This Device</button>
+      </div>
+    </div>
+  `;
+}
+
+function loadDeliveredPushNotificationEvents(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return new Set();
+  }
+
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(getPushDeliveredNotificationEventsStorageKey(normalizedUserId)) || "[]");
+    if (!Array.isArray(storedValue)) {
+      return new Set();
+    }
+    return new Set(storedValue.map((entry) => String(entry || "").trim()).filter(Boolean));
+  } catch (error) {
+    console.warn("[Push Delivery] Failed to read delivered push events.", error);
+    return new Set();
+  }
+}
+
+function saveDeliveredPushNotificationEvents(eventKeys = new Set(), userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(
+      getPushDeliveredNotificationEventsStorageKey(normalizedUserId),
+      JSON.stringify([...new Set(
+        [...(eventKeys instanceof Set ? eventKeys : new Set(eventKeys || []))]
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean),
+      )]),
+    );
+  } catch (error) {
+    console.warn("[Push Delivery] Failed to persist delivered push events.", error);
+  }
+}
+
+function hasDeliveredPushNotificationEvent(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return false;
+  }
+  return loadDeliveredPushNotificationEvents(normalizedUserId).has(normalizedEventKey);
+}
+
+function markPushNotificationEventDelivered(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+  const deliveredEvents = loadDeliveredPushNotificationEvents(normalizedUserId);
+  deliveredEvents.add(normalizedEventKey);
+  saveDeliveredPushNotificationEvents(deliveredEvents, normalizedUserId);
+}
+
+function clearPushNotificationEventDelivered(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+  const deliveredEvents = loadDeliveredPushNotificationEvents(normalizedUserId);
+  if (!deliveredEvents.delete(normalizedEventKey)) {
+    return;
+  }
+  saveDeliveredPushNotificationEvents(deliveredEvents, normalizedUserId);
+}
+
 function shouldShowGrowRemindersPrompt(routeHash = appState.currentRouteHash || window.location.hash || "#home") {
   if (!appState.user || !hasCompletedProfile() || isAdminAreaRawRoute()) {
     return false;
@@ -4732,6 +5135,13 @@ function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || w
         requirePersistence: false,
         debugContext: "grow-reminders-prompt",
       });
+      if (permissionResult === "granted") {
+        try {
+          await subscribeCurrentDeviceToPushNotifications();
+        } catch (error) {
+          console.warn("[Grow Reminders] Push subscription sync failed after prompt.", error);
+        }
+      }
       if (permissionResult === "denied") {
         closeWithStatus("denied");
         showNavigationLockToast({
@@ -6712,6 +7122,9 @@ async function bootstrapApp() {
 
   appState.initialized = true;
   appState.loading = false;
+  if (appState.user?.id) {
+    void ensureCurrentUserPushSubscriptionState();
+  }
   updateAuthStatus();
   safeRender();
   queueDueGrowReminderEvaluation("bootstrap:complete");
@@ -7636,6 +8049,7 @@ function addAppNotification(notification = {}, options = {}) {
 
   persistAppNotifications(nextNotifications, normalizedUserId);
   renderAppNotificationCenter();
+  void maybeDeliverPushNotificationForAppNotification(normalizedNotification);
   return normalizedNotification;
 }
 
@@ -7722,6 +8136,9 @@ function removeAppNotificationsByEventKeys(eventKeys = []) {
   }
 
   persistAppNotifications(nextNotifications, normalizedUserId);
+  normalizedKeys.forEach((eventKey) => {
+    clearPushNotificationEventDelivered(eventKey, normalizedUserId);
+  });
   renderAppNotificationCenter();
 }
 
@@ -8145,6 +8562,7 @@ function snoozeAppNotification(notification = null, optionKey = "") {
     notification,
   });
   removeAppNotificationsByEventKeys([String(notification.eventKey || "").trim()]);
+  clearPushNotificationEventDelivered(String(notification.eventKey || "").trim());
   appState.notificationSnoozeMenuOpenId = "";
   showNavigationLockToast({
     title: "Reminder snoozed",
@@ -8675,6 +9093,381 @@ async function safelyEnsureUserNotificationPreferences(user) {
       loadStoredUserNotificationPreferences(String(user?.id || "").trim()),
       { persistLocal: false },
     );
+  }
+}
+
+async function loadUserPushSubscriptions(user = appState.user) {
+  const normalizedUserId = String(user?.id || "").trim();
+  const storedRecords = loadStoredUserPushSubscriptions(normalizedUserId);
+  if (!appState.supabase || !normalizedUserId || appState.pushSubscriptionsTableUnavailable) {
+    return syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+  }
+
+  try {
+    const { data, error } = await appState.supabase
+      .from(USER_PUSH_SUBSCRIPTIONS_TABLE)
+      .select("*")
+      .eq("user_id", normalizedUserId)
+      .order("updated_at", { ascending: false });
+    if (error) {
+      throw error;
+    }
+
+    return syncUserPushSubscriptionsCache(normalizedUserId, data || []);
+  } catch (error) {
+    if (isUserPushSubscriptionsTableMissingError(error)) {
+      markUserPushSubscriptionsTableUnavailable();
+    } else {
+      appState.pushSubscriptionsError = error.message || "Push subscriptions could not be loaded right now.";
+      logRuntimeIssueOnce(
+        "warn",
+        "push-subscriptions-load-fallback",
+        "Push subscription backend unavailable. Using local device fallback.",
+        {
+          message: appState.pushSubscriptionsError,
+          code: error?.code || "",
+          status: Number(error?.status || error?.statusCode || 0) || 0,
+        },
+      );
+    }
+    return syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+  }
+}
+
+function buildPushSubscriptionUpsertPayload(subscription = null, options = {}) {
+  const normalizedUserId = String(options.userId || appState.user?.id || "").trim();
+  const permissionState = String(options.permissionState || getGrowRemindersBrowserPermissionState()).trim().toLowerCase() || "default";
+  const pushEnabled = Boolean(options.pushEnabled);
+  const disabledAt = options.disabledAt ? String(options.disabledAt).trim() : "";
+  const currentDeviceKey = String(options.deviceKey || getCurrentPushDeviceKey()).trim();
+  const rawSubscription = subscription && typeof subscription.toJSON === "function"
+    ? subscription.toJSON()
+    : ((subscription && typeof subscription === "object") ? subscription : {});
+  const endpoint = String(rawSubscription?.endpoint || options.endpoint || "").trim();
+  const p256dhKey = subscription?.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey("p256dh") || []))) : String(options.p256dhKey || "").trim();
+  const authKey = subscription?.getKey ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey("auth") || []))) : String(options.authKey || "").trim();
+  return {
+    user_id: normalizedUserId,
+    device_key: currentDeviceKey || endpoint,
+    endpoint,
+    subscription: rawSubscription || {},
+    p256dh_key: p256dhKey,
+    auth_key: authKey,
+    permission_state: permissionState,
+    push_enabled: pushEnabled,
+    user_agent: String(navigator.userAgent || options.userAgent || "").trim(),
+    device_label: String(options.deviceLabel || getPushDeviceLabel()).trim(),
+    last_seen_at: new Date().toISOString(),
+    last_tested_at: options.lastTestedAt ? String(options.lastTestedAt).trim() : null,
+    last_delivery_at: options.lastDeliveryAt ? String(options.lastDeliveryAt).trim() : null,
+    disabled_at: disabledAt || null,
+  };
+}
+
+async function saveUserPushSubscriptionRecord(subscription = null, options = {}) {
+  const normalizedUserId = String(options.userId || appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    throw new Error("You must be signed in to save push subscription details.");
+  }
+
+  const payload = buildPushSubscriptionUpsertPayload(subscription, options);
+  const fallbackRecord = normalizePushSubscriptionRecord(payload);
+  const mergeFallbackRecord = (persistLocal = true) => {
+    const existingRecords = getCurrentUserPushSubscriptions(normalizedUserId);
+    const nextRecords = [
+      ...(Array.isArray(existingRecords) ? existingRecords : []).filter((record) => record.deviceKey !== fallbackRecord.deviceKey),
+      fallbackRecord,
+    ].filter(Boolean);
+    return syncUserPushSubscriptionsCache(normalizedUserId, nextRecords, { persistLocal });
+  };
+
+  if (!appState.supabase || appState.pushSubscriptionsTableUnavailable) {
+    return mergeFallbackRecord();
+  }
+
+  try {
+    const { data, error } = await appState.supabase
+      .from(USER_PUSH_SUBSCRIPTIONS_TABLE)
+      .upsert(payload, { onConflict: "user_id,device_key" })
+      .select()
+      .single();
+    if (error) {
+      throw error;
+    }
+
+    const normalizedRecord = normalizePushSubscriptionRecord(data || payload) || fallbackRecord;
+    const existingRecords = getCurrentUserPushSubscriptions(normalizedUserId);
+    const nextRecords = [
+      ...(Array.isArray(existingRecords) ? existingRecords : []).filter((record) => record.deviceKey !== normalizedRecord.deviceKey),
+      normalizedRecord,
+    ];
+    syncUserPushSubscriptionsCache(normalizedUserId, nextRecords);
+    return normalizedRecord;
+  } catch (error) {
+    if (isUserPushSubscriptionsTableMissingError(error)) {
+      markUserPushSubscriptionsTableUnavailable();
+    } else {
+      appState.pushSubscriptionsError = error.message || "Push subscription details could not be saved right now.";
+    }
+    mergeFallbackRecord();
+    return fallbackRecord;
+  }
+}
+
+async function getCurrentBrowserPushSubscription() {
+  const registration = await getServiceWorkerRegistration();
+  if (!registration || !supportsPushSubscriptionApi()) {
+    return null;
+  }
+
+  try {
+    return await registration.pushManager.getSubscription();
+  } catch (error) {
+    console.warn("[Push Delivery] Could not read browser push subscription.", error);
+    return null;
+  }
+}
+
+async function ensureCurrentUserPushSubscriptionState(options = {}) {
+  const { persistRecord = true } = options || {};
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    appState.currentPushSubscriptionRecord = null;
+    return null;
+  }
+
+  await loadUserPushSubscriptions(appState.user);
+  const subscription = await getCurrentBrowserPushSubscription();
+  if (!subscription) {
+    appState.currentPushSubscriptionRecord = getCurrentUserPushSubscriptions(normalizedUserId)
+      .find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+    return appState.currentPushSubscriptionRecord;
+  }
+
+  if (!persistRecord) {
+    const currentRecord = normalizePushSubscriptionRecord(buildPushSubscriptionUpsertPayload(subscription, {
+      userId: normalizedUserId,
+      pushEnabled: appState.notificationPreferences?.pushNotificationsEnabled === true,
+      permissionState: getGrowRemindersBrowserPermissionState(),
+    }));
+    appState.currentPushSubscriptionRecord = currentRecord;
+    return currentRecord;
+  }
+
+  const savedRecord = await saveUserPushSubscriptionRecord(subscription, {
+    userId: normalizedUserId,
+    pushEnabled: appState.notificationPreferences?.pushNotificationsEnabled === true,
+    permissionState: getGrowRemindersBrowserPermissionState(),
+  });
+  appState.currentPushSubscriptionRecord = savedRecord;
+  return savedRecord;
+}
+
+async function subscribeCurrentDeviceToPushNotifications() {
+  if (!appState.user?.id) {
+    throw new Error("You must be signed in to enable push notifications.");
+  }
+
+  const permissionState = getGrowRemindersBrowserPermissionState();
+  if (permissionState !== "granted") {
+    throw new Error("Browser notification permission must be granted before push delivery can be enabled.");
+  }
+
+  const registration = await getServiceWorkerRegistration();
+  if (!registration) {
+    throw new Error("Service worker registration is not ready on this device.");
+  }
+
+  let subscription = await getCurrentBrowserPushSubscription();
+  if (!subscription && supportsPushSubscriptionApi() && getConfiguredPushPublicKey()) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(getConfiguredPushPublicKey()),
+    });
+  }
+
+  if (!subscription) {
+    const savedRecord = await saveUserPushSubscriptionRecord(null, {
+      userId: appState.user.id,
+      deviceKey: getCurrentPushDeviceKey(),
+      pushEnabled: true,
+      permissionState,
+      disabledAt: "",
+    });
+    appState.currentPushSubscriptionRecord = savedRecord;
+    return savedRecord;
+  }
+
+  return saveUserPushSubscriptionRecord(subscription, {
+    userId: appState.user.id,
+    pushEnabled: true,
+    permissionState,
+  });
+}
+
+async function disableCurrentDevicePushNotifications() {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const existingRecord = appState.currentPushSubscriptionRecord
+    || getCurrentUserPushSubscriptions(normalizedUserId).find((record) => record.deviceKey === getCurrentPushDeviceKey())
+    || null;
+  const subscription = await getCurrentBrowserPushSubscription();
+  if (subscription) {
+    try {
+      await subscription.unsubscribe();
+    } catch (error) {
+      console.warn("[Push Delivery] Browser unsubscribe failed.", error);
+    }
+  }
+
+  const savedRecord = await saveUserPushSubscriptionRecord(subscription || existingRecord?.subscription || null, {
+    userId: normalizedUserId,
+    endpoint: existingRecord?.endpoint || "",
+    deviceKey: existingRecord?.deviceKey || getCurrentPushDeviceKey(),
+    p256dhKey: existingRecord?.p256dhKey || "",
+    authKey: existingRecord?.authKey || "",
+    pushEnabled: false,
+    permissionState: getGrowRemindersBrowserPermissionState(),
+    disabledAt: new Date().toISOString(),
+  });
+  appState.currentPushSubscriptionRecord = savedRecord;
+  return savedRecord;
+}
+
+function buildPushNotificationPayloadFromAppNotification(notification = {}, options = {}) {
+  const route = String(options.route || notification.route || "#home").trim() || "#home";
+  const normalizedRoute = route.startsWith("#") || route.startsWith("/")
+    ? route
+    : `#${route}`;
+  const absoluteUrl = normalizedRoute.startsWith("http")
+    ? normalizedRoute
+    : `${window.location.origin}/${normalizedRoute.startsWith("#") ? normalizedRoute : `#${normalizedRoute.replace(/^#/, "")}`}`;
+  return {
+    title: String(options.title || notification.title || "Cannakan® Grow").trim(),
+    body: String(options.body || notification.message || "").trim(),
+    tag: String(options.tag || notification.eventKey || notification.id || "cannakan-grow-notification").trim(),
+    icon: "/icon-192.png",
+    badge: "/favicon-32x32.png",
+    data: {
+      route: normalizedRoute.startsWith("#") ? normalizedRoute : `#${normalizedRoute.replace(/^#/, "")}`,
+      url: absoluteUrl,
+      sessionId: String(notification.sessionId || options.sessionId || "").trim(),
+      eventKey: String(notification.eventKey || options.eventKey || "").trim(),
+    },
+    renotify: false,
+  };
+}
+
+async function sendServiceWorkerNotificationPayload(payload = {}) {
+  const registration = await getServiceWorkerRegistration();
+  if (!registration?.active) {
+    throw new Error("Service worker notification delivery is not ready yet.");
+  }
+
+  registration.active.postMessage({
+    type: "SHOW_LOCAL_NOTIFICATION",
+    payload,
+  });
+}
+
+function canUseBrowserNotificationDelivery() {
+  if (appState.notificationPreferences?.pushNotificationsEnabled !== true) {
+    return false;
+  }
+  if (getGrowRemindersBrowserPermissionState() !== "granted") {
+    return false;
+  }
+  if (appState.currentPushSubscriptionRecord?.disabledAt) {
+    return false;
+  }
+  return true;
+}
+
+function isPushEligibleAppNotification(notification = {}) {
+  const category = normalizeAppNotificationCategory(notification.category || "");
+  return ["soaking-reminder", "germination-reminder", "snapshot-reminder", "supply-reminder"].includes(category);
+}
+
+async function maybeDeliverPushNotificationForAppNotification(notification = {}, options = {}) {
+  const {
+    force = false,
+    title = "",
+    body = "",
+  } = options || {};
+  const eventKey = String(notification?.eventKey || "").trim();
+  if (!force && (!eventKey || !isPushEligibleAppNotification(notification))) {
+    return false;
+  }
+  if (!force && (!canUseBrowserNotificationDelivery() || hasDeliveredPushNotificationEvent(eventKey))) {
+    return false;
+  }
+  if (!force && document.visibilityState === "visible" && document.hasFocus?.()) {
+    return false;
+  }
+
+  try {
+    await sendServiceWorkerNotificationPayload(buildPushNotificationPayloadFromAppNotification(notification, {
+      title,
+      body,
+    }));
+    if (eventKey) {
+      markPushNotificationEventDelivered(eventKey);
+    }
+    if (appState.currentPushSubscriptionRecord) {
+      await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {
+        userId: appState.user?.id || "",
+        endpoint: appState.currentPushSubscriptionRecord.endpoint,
+        deviceKey: appState.currentPushSubscriptionRecord.deviceKey,
+        p256dhKey: appState.currentPushSubscriptionRecord.p256dhKey,
+        authKey: appState.currentPushSubscriptionRecord.authKey,
+        pushEnabled: true,
+        permissionState: getGrowRemindersBrowserPermissionState(),
+        lastDeliveryAt: new Date().toISOString(),
+        disabledAt: "",
+      });
+    }
+    return true;
+  } catch (error) {
+    console.warn("[Push Delivery] Browser notification delivery failed.", error);
+    return false;
+  }
+}
+
+async function sendProfilePushTestNotification() {
+  if (!appState.user?.id) {
+    throw new Error("You must be signed in to test push notifications.");
+  }
+  if (getGrowRemindersBrowserPermissionState() !== "granted") {
+    throw new Error("Browser notification permission must be granted before a test notification can be sent.");
+  }
+
+  await ensureCurrentUserPushSubscriptionState();
+  await maybeDeliverPushNotificationForAppNotification({
+    id: `push-test-${Date.now()}`,
+    eventKey: `push-test:${Date.now()}`,
+    category: "system-notice",
+    title: "Test notification sent",
+    message: "Cannakan® Grow browser/PWA notification delivery is working on this device.",
+    route: "#profile",
+  }, {
+    force: true,
+  });
+
+  if (appState.currentPushSubscriptionRecord) {
+    await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {
+      userId: appState.user?.id || "",
+      endpoint: appState.currentPushSubscriptionRecord.endpoint,
+      deviceKey: appState.currentPushSubscriptionRecord.deviceKey,
+      p256dhKey: appState.currentPushSubscriptionRecord.p256dhKey,
+      authKey: appState.currentPushSubscriptionRecord.authKey,
+      pushEnabled: appState.notificationPreferences?.pushNotificationsEnabled === true,
+      permissionState: getGrowRemindersBrowserPermissionState(),
+      lastTestedAt: new Date().toISOString(),
+      disabledAt: appState.currentPushSubscriptionRecord.disabledAt || "",
+    });
   }
 }
 
@@ -9282,6 +10075,17 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           getDefaultNotificationPreferences(),
           "Failed to initialize notification preferences during auth hydration.",
           "notificationPreferencesError",
+        );
+        appState.pushSubscriptions = await safelyLoadAppData(
+          () => loadUserPushSubscriptions(appState.user),
+          loadStoredUserPushSubscriptions(String(appState.user?.id || "").trim()),
+          "Failed to initialize push subscriptions during auth hydration.",
+          "pushSubscriptionsError",
+        );
+        await safelyLoadAppData(
+          () => ensureCurrentUserPushSubscriptionState(),
+          null,
+          "Failed to initialize current device push subscription state during auth hydration.",
         );
         appState.profilePageSettings = await safelyLoadAppData(
           () => ensureCurrentUserPublicMemberProfileSettings(appState.user, {
@@ -24230,6 +25034,16 @@ function syncNotificationPermissionStateUi(scope, options = {}) {
   });
 }
 
+function syncPushDeliveryStateUi(scope) {
+  const root = scope instanceof HTMLElement || scope instanceof HTMLFormElement || scope instanceof Document ? scope : document;
+  root.querySelectorAll("[data-push-delivery-state]").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    element.innerHTML = renderPushDeliveryStateMarkup();
+  });
+}
+
 function renderProfileSignInPrompt() {
   app.innerHTML = `
     <section class="card profile-page profile-page--sign-in" aria-label="Profile sign-in prompt">
@@ -24344,6 +25158,8 @@ function bindProfilePageForm(form) {
     });
     syncGrowReminderToggleAvailability(form);
     syncNotificationPermissionStateUi(form);
+    syncPushDeliveryStateUi(form);
+    bindPushDeliveryActions();
   };
 
   const syncLocalProfileState = (nextValues = getFormState()) => {
@@ -24361,6 +25177,32 @@ function bindProfilePageForm(form) {
       showGrowStatsPublicly: nextValues.showGrowStatsPublicly,
     });
     appState.profilePageSettingsUserId = normalizedUserId;
+  };
+
+  const bindPushDeliveryActions = () => {
+    form.querySelector("[data-profile-push-test='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Sending test notification...");
+        await sendProfilePushTestNotification();
+        syncPushDeliveryStateUi(form);
+        bindPushDeliveryActions();
+        setMessage("Test notification sent.");
+      } catch (error) {
+        setMessage(error.message || "Could not send a test notification right now.", true);
+      }
+    });
+
+    form.querySelector("[data-profile-push-disable='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Disabling push delivery on this device...");
+        await disableCurrentDevicePushNotifications();
+        syncPushDeliveryStateUi(form);
+        bindPushDeliveryActions();
+        setMessage("Push delivery was disabled on this device.");
+      } catch (error) {
+        setMessage(error.message || "Could not disable push delivery on this device.", true);
+      }
+    });
   };
 
   const patchSavedFieldsIntoBaseline = (fieldNames, savedValues) => {
@@ -24451,6 +25293,17 @@ function bindProfilePageForm(form) {
         );
       } catch (error) {
         console.warn("[Profile Settings] Notification preferences save failed.", error);
+        cloudSyncUnavailable = true;
+      }
+
+      try {
+        if (notificationPreferencesPayload.pushNotificationsEnabled) {
+          await subscribeCurrentDeviceToPushNotifications();
+        } else {
+          await disableCurrentDevicePushNotifications();
+        }
+      } catch (error) {
+        console.warn("[Profile Settings] Push subscription sync failed.", error);
         cloudSyncUnavailable = true;
       }
 
@@ -24630,6 +25483,7 @@ function renderProfilePage() {
               </div>
             </div>
             <div data-notification-permission-state="true"></div>
+            <div data-push-delivery-state="true">${renderPushDeliveryStateMarkup()}</div>
             <div class="profile-toggle-list">
               ${renderProfileSettingsToggleMarkup({
                 name: "growRemindersEnabled",
@@ -25152,6 +26006,17 @@ function bindProfileForm(form, options = {}) {
         console.warn("[Cannakan Profile] Notification preference save warning", error);
         warnings.push(`Profile saved, but notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
         syncNotificationPreferenceAvailability();
+      }
+
+      try {
+        if (notificationPreferencePayload.pushNotificationsEnabled) {
+          await subscribeCurrentDeviceToPushNotifications();
+        } else {
+          await disableCurrentDevicePushNotifications();
+        }
+      } catch (error) {
+        console.warn("[Cannakan Profile] Push subscription sync warning", error);
+        warnings.push(`Profile saved, but push delivery could not be updated on this device: ${error.message || "Unknown push sync error."}`);
       }
 
       if (state.previewUrl) {
