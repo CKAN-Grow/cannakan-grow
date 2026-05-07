@@ -3410,16 +3410,26 @@ body.theme-dark #active-sessions-section {
 
 .active-session-supplies-card .command-icon--supply,
 .session-command-center-supply-panel .command-icon--supply {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   width: 46px;
   height: 46px;
 }
 
 .active-session-supplies-card .command-icon-tile,
 .session-command-center-supply-panel .command-icon-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   width: 64px;
   height: 64px;
   padding: 10px;
-  border-color: color-mix(in srgb, var(--filter-paper-accent) 34%, rgba(255, 255, 255, 0.08));
+  border: 1px solid color-mix(in srgb, var(--filter-paper-accent) 34%, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  overflow: hidden;
   background:
     linear-gradient(180deg, rgba(20, 27, 21, 0.94) 0%, rgba(12, 16, 13, 0.98) 100%),
     radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--filter-paper-accent) 14%, transparent), transparent 62%);
@@ -3439,10 +3449,21 @@ body.theme-dark #active-sessions-section {
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--filter-paper-accent) 28%, transparent));
 }
 
+.active-session-supplies-card .command-icon svg,
+.session-command-center-supply-panel .command-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .active-session-supplies-card .command-icon-svg,
 .session-command-center-supply-panel .command-icon-svg {
   width: 28px;
   height: 28px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  filter: none;
 }
 
 .command-icon--supply .filter-disc-shadow {
