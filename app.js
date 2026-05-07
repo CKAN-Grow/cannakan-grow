@@ -3612,8 +3612,8 @@ function getFilterPaperSupplyDisplayState() {
       count: inventory.count,
       tone: "unset",
       statusLabel: "Not Set",
-      countLabel: "Filter paper count not set",
-      helperText: "Set your current filter paper count so session reminders stay accurate.",
+      countLabel: "Filter papers remaining: Not set",
+      helperText: "Set your total available filter paper count so reminders stay accurate across all sessions.",
     };
   }
 
@@ -3622,8 +3622,8 @@ function getFilterPaperSupplyDisplayState() {
       count: inventory.count,
       tone: "critical",
       statusLabel: "Critical",
-      countLabel: "Filter Papers: 0 remaining",
-      helperText: "Add filter papers before starting another session.",
+      countLabel: "Filter papers remaining: 0",
+      helperText: "Your global filter paper supply is empty. Add more before starting another session.",
     };
   }
 
@@ -3632,8 +3632,8 @@ function getFilterPaperSupplyDisplayState() {
       count: inventory.count,
       tone: "critical",
       statusLabel: "Critical",
-      countLabel: "Filter Papers: 1 remaining",
-      helperText: "Add filter papers before starting another session.",
+      countLabel: "Filter papers remaining: 1",
+      helperText: "Your global filter paper supply is almost empty. Add more before starting another session.",
     };
   }
 
@@ -3642,8 +3642,8 @@ function getFilterPaperSupplyDisplayState() {
       count: inventory.count,
       tone: "low",
       statusLabel: "Low",
-      countLabel: "Filter Papers: 2 remaining",
-      helperText: "Running low. Add more soon.",
+      countLabel: "Filter papers remaining: 2",
+      helperText: "Your global filter paper supply is running low. Add more soon.",
     };
   }
 
@@ -3651,8 +3651,8 @@ function getFilterPaperSupplyDisplayState() {
     count: inventory.count,
     tone: "ok",
     statusLabel: "Ready",
-    countLabel: `Filter Papers: ${inventory.count} remaining`,
-    helperText: "You have enough filter papers for your next session.",
+    countLabel: `Filter papers remaining: ${inventory.count}`,
+    helperText: "Your global filter paper supply is ready for upcoming sessions.",
   };
 }
 
@@ -22955,7 +22955,7 @@ function renderFilterPaperCardMarkup() {
       <div class="filter-paper-card-head">
         <div>
           <p class="eyebrow">Supplies</p>
-          <h3 id="filter-paper-card-title">Filter Papers</h3>
+          <h3 id="filter-paper-card-title">Global Filter Paper Supply</h3>
         </div>
         <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(statusLabel)}</span>
       </div>
@@ -22996,12 +22996,12 @@ function renderSessionsFilterPaperCardMarkup() {
       <div class="filter-paper-card-head">
         <div>
           <p class="eyebrow">Supplies</p>
-          <h3 id="sessions-filter-paper-card-title">Filter Papers</h3>
+          <h3 id="sessions-filter-paper-card-title">Global Filter Paper Supply</h3>
         </div>
         <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(toneKey)}">${escapeHtml(statusLabel)}</span>
       </div>
       <div class="filter-paper-card-body">
-        <p class="filter-paper-count">Filter Papers: <strong>${escapeHtml(String(countLabel))}</strong>${isInventorySet ? " remaining" : ""}</p>
+        <p class="filter-paper-count">Filter papers remaining: <strong>${escapeHtml(String(countLabel))}</strong></p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
         <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
         <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">Auto subtract: <strong>${escapeHtml(autoSubtractLabel)}</strong></p>
@@ -23024,7 +23024,7 @@ function renderActiveSessionFilterPaperCardMarkup() {
           ${renderCommandCenterIconMarkup("filter-paper", `command-icon--supply command-icon--supply-${supply.tone}`)}
           <div class="active-session-supplies-copy">
             <p class="eyebrow">Supplies</p>
-            <h4 id="active-session-supplies-title">Lab Filter Paper Supply</h4>
+            <h4 id="active-session-supplies-title">Global Filter Paper Supply</h4>
             <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
             <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
           </div>
@@ -23072,14 +23072,14 @@ function ensureFilterPaperInventoryModal() {
       <div class="snapshot-modal-copy filter-paper-modal-header">
         <p class="eyebrow">Supplies Tracker</p>
         <h3>Filter Papers</h3>
-        <p>Keep your current count up to date so ${BRAND_APP_NAME} can give you a gentle reorder reminder when you're getting low.</p>
+        <p>Set your total available filter paper count so reminders stay accurate across all sessions.</p>
       </div>
       <div class="filter-paper-modal-body">
         <div class="filter-paper-modal-grid">
           <label class="filter-paper-modal-field">
-            <span>Filter papers on hand</span>
+            <span>Filter papers remaining</span>
             <input type="number" name="filterPaperCount" min="0" step="1" inputmode="numeric" placeholder="0">
-            <small>Enter the number of unused filter papers currently on hand.</small>
+            <small>Enter the total number of unused filter papers currently available across all sessions.</small>
           </label>
           <label class="filter-paper-modal-field">
             <span>Store region</span>
@@ -23095,7 +23095,7 @@ function ensureFilterPaperInventoryModal() {
             <input type="checkbox" name="autoSubtract">
             <span class="filter-paper-setting-copy">
               <strong>Auto subtract when a session is completed</strong>
-              <small>Automatically remove 1 filter paper from inventory each time a grow session is marked completed.</small>
+              <small>Automatically remove 1 filter paper from your global inventory each time a grow session is marked completed.</small>
             </span>
           </label>
           <label class="filter-paper-setting-row">
@@ -23106,7 +23106,7 @@ function ensureFilterPaperInventoryModal() {
             </span>
           </label>
         </div>
-        <p class="muted filter-paper-modal-note">You can update this any time without affecting session history.</p>
+        <p class="muted filter-paper-modal-note">You can update this global supply count at any time without affecting session history.</p>
       </div>
       <p id="filter-paper-modal-message" class="form-message" role="alert" aria-live="polite"></p>
       <div class="snapshot-modal-actions filter-paper-modal-actions">
@@ -23140,7 +23140,7 @@ function ensureFilterPaperPreSessionWarningModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Supplies</p>
         <h3 id="filter-paper-warning-title">Filter papers needed</h3>
-        <p>You’re out of filter papers. Reorder before starting your next session, or continue if you already have supplies on hand.</p>
+        <p>Your global filter paper supply is empty. Reorder before starting your next session, or continue if you already have supplies on hand.</p>
       </div>
       <div class="filter-paper-warning-actions">
         <button type="button" class="button button-primary" data-filter-paper-warning-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
@@ -23174,10 +23174,10 @@ function ensureFilterPaperSetupModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Supplies</p>
         <h3 id="filter-paper-setup-title">Filter paper setup</h3>
-        <p>Enter how many filter papers you have on hand. ${BRAND_APP_NAME} will track your usage and notify you when you’re running low.</p>
+        <p>Set your total available filter paper count so ${BRAND_APP_NAME} can keep reminders accurate across all sessions.</p>
       </div>
       <label class="filter-paper-setup-field">
-        <span>Filter papers on hand</span>
+        <span>Filter papers remaining</span>
         <input type="number" name="filterPaperSetupCount" min="0" step="1" inputmode="numeric" placeholder="0">
       </label>
       <div class="filter-paper-setup-actions">
@@ -44874,7 +44874,7 @@ function renderSessionCommandCenterFilterPaperSupplyMarkup() {
           ${renderCommandCenterIconMarkup("filter-paper", `command-icon--supply command-icon--supply-${supply.tone}`)}
           <div class="session-command-center-supply-title-group">
             <p class="eyebrow">SUPPLIES</p>
-            <h4 id="session-command-center-supply-title">Filter Paper Supply</h4>
+            <h4 id="session-command-center-supply-title">Global Filter Paper Supply</h4>
           </div>
         </div>
         <p class="session-command-center-supply-count">${escapeHtml(supply.countLabel)}</p>
