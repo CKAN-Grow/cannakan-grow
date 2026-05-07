@@ -27486,6 +27486,93 @@ function bindMessageBoardImageFallbacks(scope = document) {
   });
 }
 
+function renderHomeAnnouncementStaticInfoBlock({ icon = "info", label = "", body = [], bullets = [] } = {}) {
+  const bodyMarkup = Array.isArray(body)
+    ? body
+      .filter((line) => String(line || "").trim().length)
+      .map((line) => `<p>${escapeHtml(String(line))}</p>`)
+      .join("")
+    : "";
+  const listMarkup = Array.isArray(bullets) && bullets.length
+    ? `
+      <ul class="home-announcement-info-list">
+        ${bullets
+      .filter((item) => String(item || "").trim().length)
+      .map((item) => `<li>${escapeHtml(String(item))}</li>`)
+      .join("")}
+      </ul>
+    `
+    : "";
+
+  return `
+    <section class="home-announcement-card-static-section" aria-label="${escapeHtml(label)}">
+      <div class="home-announcement-info-icon-shell">
+        ${renderAppIconMarkup(icon, {
+    variant: "plain",
+    className: "home-announcement-info-icon-glyph",
+  })}
+      </div>
+      <div class="home-announcement-info-copy">
+        <h4>${escapeHtml(label)}</h4>
+        ${bodyMarkup}
+        ${listMarkup}
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeAnnouncementStaticPanelMarkup() {
+  const sections = [
+    {
+      icon: "info",
+      label: "What this is",
+      body: [
+        "A rotating stream of insights, features, and ideas designed to help you improve every session.",
+      ],
+    },
+    {
+      icon: "growthTrend",
+      label: "Why it matters",
+      body: [
+        "Better decisions come from better information.",
+        "The more you track and review, the more consistent your results become.",
+      ],
+    },
+    {
+      icon: "check",
+      label: "How to use it",
+      bullets: [
+        "Check in regularly.",
+        "Apply what stands out.",
+        "Refine your process over time.",
+      ],
+    },
+  ];
+
+  return `
+    <div class="home-announcement-card-panel home-announcement-card-panel--static">
+      <div class="home-announcement-card-copy home-announcement-card-copy--static">
+        <div class="home-announcement-feed-header">
+          ${renderAppIconMarkup("mySessionsSprout", {
+    variant: "plate",
+    className: "home-announcement-feed-header-icon",
+  })}
+          <div class="home-announcement-feed-header-copy">
+            <h3 id="home-announcement-title" class="home-announcement-feed-title">
+              <span class="home-announcement-feed-title-brand">${escapeHtml(BRAND_NAME)}</span>
+              <span class="home-announcement-feed-title-accent">Feed</span>
+            </h3>
+            <p class="home-announcement-card-static-kicker">Small insights. Better outcomes.</p>
+          </div>
+        </div>
+        <div class="home-announcement-card-static-sections">
+          ${sections.map((section) => renderHomeAnnouncementStaticInfoBlock(section)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData(), options = {}) {
   const isFallback = cardData.effectiveDisplayMode !== "announcement";
   const isDynamicContent = cardData.contentMode === "dynamic";
@@ -27510,31 +27597,7 @@ function renderHomeAnnouncementCard(cardData = getHomeAnnouncementCardData(), op
   const announcementButtonLabel = isDynamicContent && cardData.hasButtonText
     ? normalizeAnnouncementButtonText(cardData.buttonText || "")
     : "";
-  const staticPanelMarkup = `
-    <div class="home-announcement-card-panel home-announcement-card-panel--static">
-      <div class="home-announcement-card-copy home-announcement-card-copy--static">
-        <h3 id="home-announcement-title">${escapeHtml(titleText)}</h3>
-        <p class="home-announcement-card-static-kicker">Small insights. Better outcomes.</p>
-        <div class="home-announcement-card-static-sections">
-          <section class="home-announcement-card-static-section" aria-label="What this is">
-            <h4>What this is</h4>
-            <p>A rotating stream of insights, features, and ideas designed to help you improve every session.</p>
-          </section>
-          <section class="home-announcement-card-static-section" aria-label="Why it matters">
-            <h4>Why it matters</h4>
-            <p>Better decisions come from better information.</p>
-            <p>The more you track and review, the more consistent your results become.</p>
-          </section>
-          <section class="home-announcement-card-static-section" aria-label="How to use it">
-            <h4>How to use it</h4>
-            <p>Check in regularly.</p>
-            <p>Apply what stands out.</p>
-            <p>Refine your process over time.</p>
-          </section>
-        </div>
-      </div>
-    </div>
-  `;
+  const staticPanelMarkup = renderHomeAnnouncementStaticPanelMarkup();
   const announcementPanelMarkup = `
     <div class="home-announcement-card-panel home-announcement-card-panel--announcement">
       <div class="home-announcement-card-copy home-announcement-card-copy--announcement">
