@@ -8314,7 +8314,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 @media (min-width: 981px) {
   .home-dashboard-secondary-row .home-announcement-card {
-    --home-announcement-card-height: clamp(460px, 42vw, 560px);
+    --home-announcement-card-height: clamp(540px, 46vw, 660px);
     min-height: var(--home-announcement-card-height);
     height: var(--home-announcement-card-height);
   }
@@ -8330,7 +8330,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     width: 40%;
     min-height: 100%;
     justify-content: flex-start;
-    padding: 30px 30px 32px;
+    padding: 36px 32px 36px;
     overflow: visible;
   }
 
@@ -8338,6 +8338,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     min-height: 0;
     justify-content: flex-start;
     overflow: visible;
+    padding-top: 2px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-visual-shell {
@@ -8349,6 +8350,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   .home-dashboard-secondary-row .home-announcement-card-image {
     object-fit: contain;
     object-position: center center;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-copy {
+    gap: 16px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-copy h3 {
+    line-height: 1.08;
+    padding-top: 2px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-body-text,
+  .home-dashboard-secondary-row .home-announcement-card-static-text,
+  .home-dashboard-secondary-row .home-announcement-card-static-section p {
+    line-height: 1.66;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3,
