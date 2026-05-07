@@ -2383,7 +2383,7 @@ body.theme-dark .spotlight-stat strong {
   font-size: 0.92rem;
   font-weight: 700;
   padding: 10px 2px 0;
-  transition: color 0.18s ease, text-shadow 0.18s ease;
+  transition: color 0.18s ease, opacity 0.18s ease;
 }
 
 .session-command-start-link::before {
@@ -2408,7 +2408,7 @@ body.theme-dark .spotlight-stat strong {
 .session-command-start-link:hover,
 .session-command-start-link:focus-visible {
   color: #ffffff;
-  text-shadow: 0 0 12px rgba(148, 209, 89, 0.16);
+  opacity: 0.96;
 }
 
 .session-command-start-link:hover::after,
@@ -8747,11 +8747,13 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-announcement-card {
+  --home-announcement-card-height: clamp(360px, 36vw, 420px);
   display: flex;
   align-items: stretch;
   gap: 0;
   overflow: hidden;
-  min-height: 320px;
+  min-height: var(--home-announcement-card-height);
+  height: var(--home-announcement-card-height);
   padding: 0;
   transition: box-shadow 0.28s ease, border-color 0.28s ease;
 }
@@ -8773,7 +8775,7 @@ body.theme-dark .contact-reason-card.is-active {
   flex: 0 0 66.666%;
   width: 66.666%;
   position: relative;
-  min-height: 320px;
+  min-height: 0;
   height: 100%;
   padding: 0;
   display: flex;
@@ -8785,7 +8787,7 @@ body.theme-dark .contact-reason-card.is-active {
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 320px;
+  min-height: 0;
   overflow: hidden;
   background: transparent;
   display: flex;
@@ -8941,12 +8943,15 @@ body.theme-dark .contact-reason-card.is-active {
   flex: 0 0 33.333%;
   width: 33.333%;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: stretch;
   gap: 18px;
   padding: 24px;
+  overflow: hidden;
 }
 
 .home-announcement-card-panel {
@@ -8957,6 +8962,7 @@ body.theme-dark .contact-reason-card.is-active {
   align-items: stretch;
   min-height: 100%;
   width: 100%;
+  overflow: hidden;
   animation: home-announcement-panel-fade 240ms ease;
 }
 
@@ -13676,6 +13682,8 @@ body.theme-dark .contact-reason-card.is-active {
 
   .home-announcement-card {
     flex-direction: column;
+    height: auto;
+    min-height: 0;
   }
 
   .home-announcement-card-media,
@@ -17411,7 +17419,6 @@ body.theme-dark .contact-reason-card.is-active {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  text-shadow: 0 0 10px rgba(148, 209, 89, 0.12);
 }
 
 .session-command-start-link.session-entry-supply-urgent:hover,
@@ -17419,7 +17426,6 @@ body.theme-dark .contact-reason-card.is-active {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  text-shadow: 0 0 12px rgba(148, 209, 89, 0.16);
 }
 
 .session-command-start-link.session-entry-supply-urgent:active {
@@ -18461,7 +18467,6 @@ body.theme-dark .session-command-start-link.session-entry-supply-urgent {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  text-shadow: 0 0 10px rgba(148, 209, 89, 0.12);
 }
 
 body.theme-dark .session-command-start-link.session-entry-supply-urgent:hover,
@@ -18469,7 +18474,6 @@ body.theme-dark .session-command-start-link.session-entry-supply-urgent:focus-vi
   border-color: transparent;
   background: transparent;
   box-shadow: none;
-  text-shadow: 0 0 12px rgba(148, 209, 89, 0.16);
 }
 
 body.theme-dark .session-command-start-link.session-entry-supply-urgent:active {
