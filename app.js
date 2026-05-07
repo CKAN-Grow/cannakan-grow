@@ -13870,28 +13870,52 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     : "";
 
   if (compactPreview) {
+    const member = getGallerySnapshotCardMemberProfile(snapshot);
+    const varietyLabel = publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared"
+      ? publicDetails.seedVarietyLabel
+      : (snapshot.title || "Community Grow snapshot");
+    const systemBadgeLabel = formatSnapshotSystemLabel(snapshot.systemType || "KAN");
+    const submittedLabel = getGallerySnapshotSubmittedDateLabel(snapshot);
     return `
-      ${renderGallerySnapshotMediaMarkup(snapshot, details, {
-        interactive: true,
-        previewId: snapshot.id,
-        showPreviewOverlay: true,
-      })}
-      <div class="gallery-card-body gallery-card-body--compact">
-        <div class="gallery-card-feed-header">
-          ${memberMarkup}
-          <div class="gallery-card-performance-badge" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
-            <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
-            <span>Germination</span>
+      <div class="gallery-card-media gallery-card-media--tile" data-gallery-preview="${escapeHtml(snapshot.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`View snapshot for ${varietyLabel}`)}">
+        ${hasGallerySnapshotImage(snapshot)
+          ? `<img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(varietyLabel)}" class="gallery-card-image">`
+          : `
+            <div class="gallery-card-media gallery-card-media--tile-placeholder">
+              <span class="gallery-card-placeholder-orb gallery-card-placeholder-orb--top" aria-hidden="true"></span>
+              <span class="gallery-card-placeholder-orb gallery-card-placeholder-orb--bottom" aria-hidden="true"></span>
+              <div class="gallery-tile-empty-state">
+                <span class="gallery-tile-empty-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="14" rx="2"></rect>
+                    <path d="M8 11h8"></path>
+                    <path d="M8 15h5"></path>
+                    <circle cx="9" cy="9" r="1"></circle>
+                  </svg>
+                </span>
+                <p>Snapshot details only</p>
+              </div>
+            </div>
+          `}
+        <div class="gallery-tile-chrome">
+          <div class="gallery-tile-top-row">
+            <div class="gallery-tile-badge gallery-tile-badge--rate" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
+              <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
+            </div>
+            <div class="gallery-tile-badge gallery-tile-badge--system">${escapeHtml(systemBadgeLabel)}</div>
           </div>
-        </div>
-        <div class="gallery-card-top gallery-card-top--compact">
-          <div class="gallery-card-copy">
-            <strong>${escapeHtml(snapshot.title)}</strong>
-            <p class="gallery-card-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
+          <div class="gallery-tile-bottom-row">
+            <div class="gallery-tile-copy">
+              <strong>${escapeHtml(varietyLabel)}</strong>
+              <p>${escapeHtml(`${member.displayName} • ${submittedLabel}`)}</p>
+            </div>
+            <div class="gallery-tile-like">
+              ${renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" })}
+            </div>
           </div>
-        </div>
-        <div class="gallery-card-footer gallery-card-footer--compact">
-          ${renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" })}
+          <div class="gallery-tile-hover-hint" aria-hidden="true">
+            <span class="gallery-card-media-overlay-pill">View Snapshot</span>
+          </div>
         </div>
       </div>
     `;
@@ -13997,10 +14021,22 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
         openGallerySnapshotOverview(snapshotId);
       }
     });
+    button.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      const snapshotId = button.dataset.galleryPreview || "";
+      if (snapshotId) {
+        openGallerySnapshotOverview(snapshotId);
+      }
+    });
   });
 
   scope.querySelectorAll("[data-gallery-like]").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async (event) => {
+      event.stopPropagation();
       try {
         await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
         rerender();
@@ -14096,6 +14132,28 @@ function openGallerySnapshotOverview(snapshotId) {
   const details = getGallerySnapshotFeedDetails(snapshot);
   const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
   const publicGrowNote = getPublicGrowNoteDetails(snapshot);
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  const detailPartition = (linkedSession?.partitions || []).find((partition) => (
+    normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
+    || normalizeLeaderboardLabel(formatPartitionSource(partition))
+    || normalizeLeaderboardLabel(partition?.seedType)
+    || normalizeLeaderboardLabel(partition?.breeder)
+  )) || linkedSession?.partitions?.[0] || null;
+  const breederLabel = String(detailPartition?.breeder || "").trim() || "Not shared";
+  const startedAt = linkedSession?.date
+    ? parseSessionStartDateTime(linkedSession.date, linkedSession.time || "00:00")
+    : null;
+  const durationLabel = formatDurationMsShort(getGallerySnapshotCompletedDurationMs(snapshot)) || "In progress";
+  const currentStageLabel = capitalize(normalizeSessionStatus(linkedSession?.sessionStatus || "") || "completed").replace("Unselected", "Not started");
+  const timelineFacts = [
+    { label: "Current Stage", value: currentStageLabel || "Not shared" },
+    { label: "Started", value: startedAt ? formatTimingDateTime(startedAt) : "Not shared" },
+    { label: "Progress", value: `${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds germinated` },
+    { label: "Duration", value: durationLabel },
+  ];
+  const overviewTitle = publicDetails.seedVarietyLabel && publicDetails.seedVarietyLabel !== "Not shared"
+    ? publicDetails.seedVarietyLabel
+    : (snapshot.title || "Published snapshot");
   const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
   const status = getGallerySnapshotDisplayStatus(snapshot);
   const isOwner = isGallerySnapshotOwner(snapshot);
@@ -14115,9 +14173,10 @@ function openGallerySnapshotOverview(snapshotId) {
     : "";
   const facts = [
     { label: "System / Partition", value: publicDetails.systemLabel },
+    { label: "Source / Company", value: publicDetails.sourceLabel },
+    { label: "Breeder", value: breederLabel },
     { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
     { label: "Seed Type", value: publicDetails.seedTypeLabel },
-    { label: "Source", value: publicDetails.sourceLabel },
     { label: "Seeds", value: `${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel}` },
     { label: "Seed Age", value: publicDetails.seedAgeLabel },
     { label: "Status", value: visibilityLabel },
@@ -14130,8 +14189,8 @@ function openGallerySnapshotOverview(snapshotId) {
         ${renderAppSectionHeaderIcon("snapshots")}
         <div>
           <p class="eyebrow">Community Grow Snapshot</p>
-          <h3>${escapeHtml(snapshot.title || "Published snapshot")}</h3>
-          <p class="muted">Preview-focused cards open here for the full published session overview.</p>
+          <h3>${escapeHtml(overviewTitle)}</h3>
+          <p class="muted">${escapeHtml(snapshot.title || "Preview-focused cards open here for the full published session overview.")}</p>
         </div>
       </div>
       <div class="gallery-card-performance-badge gallery-card-performance-badge--overview" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
@@ -14158,6 +14217,18 @@ function openGallerySnapshotOverview(snapshotId) {
             </article>
           `).join("")}
         </div>
+        <section class="gallery-snapshot-overview-note-block gallery-snapshot-overview-note-block--timeline" aria-labelledby="gallery-snapshot-overview-progress-title">
+          <p class="eyebrow">Session Progress</p>
+          <h4 id="gallery-snapshot-overview-progress-title">Timeline / Progress</h4>
+          <div class="gallery-snapshot-overview-timeline-grid">
+            ${timelineFacts.map((fact) => `
+              <article class="gallery-snapshot-overview-mini-fact">
+                <span>${escapeHtml(fact.label)}</span>
+                <strong>${escapeHtml(fact.value)}</strong>
+              </article>
+            `).join("")}
+          </div>
+        </section>
         ${publicGrowNote.visible ? `
           <section class="gallery-snapshot-overview-note-block" aria-labelledby="gallery-snapshot-overview-note-title">
             <p class="eyebrow">Community Grow</p>
