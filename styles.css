@@ -4715,6 +4715,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 @media (max-width: 768px) {
   .gallery-sort-controls {
     width: 100%;
+    justify-content: flex-start;
   }
 
   .mock-data-admin-shell {
@@ -5842,6 +5843,12 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-bottom: 6px;
 }
 
+.gallery-feed-section .app-section-header-main {
+  width: auto;
+  flex: 1 1 520px;
+  min-width: min(100%, 320px);
+}
+
 .gallery-sort-state {
   margin: 4px 0 0;
   font-size: 0.88rem;
@@ -5856,7 +5863,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  align-items: flex-end;
+  align-items: flex-start;
+  align-self: flex-start;
+  justify-content: flex-end;
+  margin-top: 0;
 }
 
 .gallery-load-more-shell {
