@@ -105,6 +105,8 @@ const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
 const DEFAULT_MIXED_IMAGE_MODE = "match-type";
 const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/public/assets/wow-fallback.png";
+const GROW_NETWORK_UNLOCK_STORAGE_KEY = "cannakanGrowNetworkUnlocked";
+const GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanGrowNetworkUnlockPendingNotice";
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
 
 function getAnnouncementSlideManifestPaths() {
@@ -3884,6 +3886,120 @@ function saveSessions(sessions) {
   if (!isSupabaseConfigured()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.sessions));
   }
+}
+
+function readBooleanLocalStorageFlag(key = "") {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) {
+    return false;
+  }
+
+  try {
+    return localStorage.getItem(normalizedKey) === "true";
+  } catch (error) {
+    console.error(`Could not read localStorage flag: ${normalizedKey}`, error);
+    return false;
+  }
+}
+
+function writeBooleanLocalStorageFlag(key = "", enabled = false) {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) {
+    return;
+  }
+
+  try {
+    if (enabled) {
+      localStorage.setItem(normalizedKey, "true");
+    } else {
+      localStorage.removeItem(normalizedKey);
+    }
+  } catch (error) {
+    console.error(`Could not write localStorage flag: ${normalizedKey}`, error);
+  }
+}
+
+function hasGrowNetworkUnlockFlag() {
+  return readBooleanLocalStorageFlag(GROW_NETWORK_UNLOCK_STORAGE_KEY);
+}
+
+function hasPendingGrowNetworkUnlockNotice() {
+  return readBooleanLocalStorageFlag(GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY);
+}
+
+function setGrowNetworkUnlocked(enabled = true) {
+  writeBooleanLocalStorageFlag(GROW_NETWORK_UNLOCK_STORAGE_KEY, enabled);
+}
+
+function setPendingGrowNetworkUnlockNotice(enabled = true) {
+  writeBooleanLocalStorageFlag(GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY, enabled);
+}
+
+function isMeaningfulGrowNetworkUnlockSession(session = null) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  if (!normalizedSession || isSessionSoftDeleted(normalizedSession)) {
+    return false;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(normalizedSession.sessionStatus || "");
+  if (!["soaking", "germinating", "completed"].includes(normalizedStatus)) {
+    return false;
+  }
+
+  const partitions = normalizeSessionPartitions(normalizedSession.partitions || []);
+  const hasMeaningfulPartitionData = partitions.some((partition) => hasPartitionContent({
+    ...partition,
+    seedAgeYears: getEffectivePartitionSeedAgeYears(partition, normalizedSession),
+  }));
+  if (!hasMeaningfulPartitionData) {
+    return false;
+  }
+
+  return Boolean(
+    String(normalizedSession.date || "").trim()
+    || String(normalizedSession.time || "").trim()
+    || String(normalizedSession.systemType || "").trim()
+    || normalizeUnitIdValue(normalizedSession.unitId)
+    || String(normalizedSession.customSessionName || normalizedSession.sessionName || "").trim()
+    || String(normalizedSession.createdAt || "").trim()
+  );
+}
+
+function getGrowNetworkUnlockEligibleSession(sessions = getSessions()) {
+  return (Array.isArray(sessions) ? sessions : []).find((session) => isMeaningfulGrowNetworkUnlockSession(session)) || null;
+}
+
+function ensureGrowNetworkUnlockStateSynced(sessions = getSessions()) {
+  if (hasGrowNetworkUnlockFlag()) {
+    return true;
+  }
+
+  if (!getGrowNetworkUnlockEligibleSession(sessions)) {
+    return false;
+  }
+
+  setGrowNetworkUnlocked(true);
+  return true;
+}
+
+function isGrowNetworkUnlocked(sessions = getSessions()) {
+  return ensureGrowNetworkUnlockStateSynced(sessions);
+}
+
+function markGrowNetworkUnlocked(options = {}) {
+  setGrowNetworkUnlocked(true);
+  if (options.showNotice !== false) {
+    setPendingGrowNetworkUnlockNotice(true);
+  }
+}
+
+function consumeGrowNetworkUnlockNotice() {
+  if (!hasPendingGrowNetworkUnlockNotice()) {
+    return false;
+  }
+
+  setPendingGrowNetworkUnlockNotice(false);
+  return true;
 }
 
 function normalizeSessionVisibilityStatus(status = "") {
@@ -23440,35 +23556,85 @@ function renderHomeExploreDividerMarkup({
   `;
 }
 
-function renderHomeSecondaryInfoRowMarkup() {
+function renderHomeGrowNetworkUnlockBannerMarkup() {
+  return `
+    <section class="card home-grow-network-unlock-banner" aria-labelledby="home-grow-network-unlock-title">
+      <div class="home-grow-network-unlock-banner-shell">
+        <div class="home-grow-network-unlock-banner-copy">
+          ${renderAppSectionHeaderIcon("community", {
+            className: "home-grow-network-unlock-banner-icon",
+          })}
+          <div>
+            <p class="eyebrow">Focused First-Session Mode</p>
+            <h3 id="home-grow-network-unlock-title">Unlock the Grow Network</h3>
+            <p>Start your first soaking session to unlock Community Grow, insights, source tracking, rankings, and advanced analytics.</p>
+          </div>
+        </div>
+        <div class="home-grow-network-unlock-banner-actions">
+          <a class="button button-primary" href="#new" data-session-entry="true">Start First Session</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeGrowNetworkUnlockedNoticeMarkup() {
+  return `
+    <section class="home-grow-network-unlocked-notice" aria-live="polite">
+      <span class="home-grow-network-unlocked-notice__icon" aria-hidden="true">
+        ${renderMySessionsInlineIconMarkup("check", "home-grow-network-unlocked-notice__icon-glyph")}
+      </span>
+      <div class="home-grow-network-unlocked-notice__copy">
+        <strong>Grow Network Unlocked</strong>
+        <span>Community insights, rankings, source tracking, and advanced analytics are now active.</span>
+      </div>
+    </section>
+  `;
+}
+
+function renderHomeSecondaryInfoRowMarkup(options = {}) {
+  const growNetworkUnlocked = Boolean(options.growNetworkUnlocked);
+  const showGrowNetworkUnlockNotice = Boolean(options.showGrowNetworkUnlockNotice);
   const announcementMarkup = renderHomeAnnouncementCard(
     getHomeAnnouncementCardData(new Date()),
   );
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
+  const growNetworkPreviewShellClassName = [
+    "home-grow-network-preview-shell",
+    growNetworkUnlocked ? "is-unlocked" : "is-locked",
+    growNetworkUnlocked && showGrowNetworkUnlockNotice ? "is-unlocked-reveal" : "",
+  ].filter(Boolean).join(" ");
+  const lockedPreviewAttributes = growNetworkUnlocked ? "" : ' inert aria-disabled="true"';
   return `
     <div class="home-dashboard-secondary-row">
-      <div class="home-dashboard-secondary-row-top">
-        <div class="home-dashboard-secondary-main-column">
+      <div class="home-dashboard-install-row">
+        ${renderHomeInstallInfoCardMarkup()}
+      </div>
+      <div class="${escapeHtml(growNetworkPreviewShellClassName)}">
+        ${growNetworkUnlocked && showGrowNetworkUnlockNotice ? renderHomeGrowNetworkUnlockedNoticeMarkup() : ""}
+        ${growNetworkUnlocked ? "" : renderHomeGrowNetworkUnlockBannerMarkup()}
+        <div class="home-grow-network-preview-content"${lockedPreviewAttributes}>
+          <div class="home-dashboard-secondary-row-top home-dashboard-secondary-row-top--preview">
+            <div class="home-dashboard-secondary-main-column">
+              ${renderHomeExploreDividerMarkup({
+                title: "Community Insights",
+                subtitle: "Explore approved community session data, source activity, seed type trends, and germination performance patterns.",
+                labelledBy: "home-community-grow-insights-divider-title",
+              })}
+              ${renderHomeGalleryRankingsTeaser()}
+            </div>
+          </div>
+          ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
+          ${renderHomeTestedSourcesPreviewSectionMarkup()}
           ${renderHomeExploreDividerMarkup({
-            title: "Community Insights",
-            subtitle: "Explore approved community session data, source activity, seed type trends, and germination performance patterns.",
-            labelledBy: "home-community-grow-insights-divider-title",
+            title: `CSTP: ${BRAND_NAME} Seed Testing Program`,
+            subtitle: "Standardized testing insights and verified results under controlled KAN® System conditions.",
+            labelledBy: "home-cstp-divider-title",
           })}
-          ${renderHomeGalleryRankingsTeaser()}
-        </div>
-        <div class="home-dashboard-secondary-side-column">
-          ${renderHomeInstallInfoCardMarkup()}
+          ${renderHomeCstpOverviewSectionMarkup()}
+          ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
         </div>
       </div>
-      ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
-      ${renderHomeTestedSourcesPreviewSectionMarkup()}
-      ${renderHomeExploreDividerMarkup({
-        title: `CSTP: ${BRAND_NAME} Seed Testing Program`,
-        subtitle: "Standardized testing insights and verified results under controlled KAN® System conditions.",
-        labelledBy: "home-cstp-divider-title",
-      })}
-      ${renderHomeCstpOverviewSectionMarkup()}
-      ${adminUtilityMarkup ? `<div class="home-dashboard-secondary-row-bottom">${adminUtilityMarkup}</div>` : ""}
     </div>
   `;
 }
@@ -35403,6 +35569,8 @@ function renderHome() {
     });
   }
   const sessions = sortSessionsNewestFirst(getSessions());
+  const growNetworkUnlocked = isGrowNetworkUnlocked(sessions);
+  const showGrowNetworkUnlockNotice = growNetworkUnlocked && consumeGrowNetworkUnlockNotice();
   const visibleSessions = getVisibleUserSessions(sessions);
   const hasSessionHistory = visibleSessions.length > 0;
   const activeSessions = sortActiveSessionsNewestFirst(
@@ -35421,7 +35589,10 @@ function renderHome() {
     metricsVariant: "compact",
   });
 
-  const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
+  const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup({
+    growNetworkUnlocked,
+    showGrowNetworkUnlockNotice,
+  });
   if (homeAnnouncementAnchor) {
     homeAnnouncementAnchor.innerHTML = homeSecondaryInfoRowMarkup;
   } else if (commandCenterHost) {
@@ -38786,6 +38957,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   bindPartitionRowHighlighting(form);
 
   const persistNewSession = async ({ navigateOnSuccess = true } = {}) => {
+    const wasGrowNetworkUnlocked = isGrowNetworkUnlocked(getSessions());
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
       form.elements.timeDisplay?.focus();
       return null;
@@ -38870,6 +39042,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
+      if (!wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession)) {
+        markGrowNetworkUnlocked({ showNotice: true });
+      }
       clearNewSessionNotesDraft();
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
