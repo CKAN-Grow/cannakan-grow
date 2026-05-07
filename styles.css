@@ -19746,6 +19746,11 @@ body.theme-dark .theme-toggle-button:hover {
   display: none;
 }
 
+#detail-lifecycle-section > .session-status-reminder {
+  margin: 12px 0 0;
+  width: 100%;
+}
+
 .session-status-reminder.is-guidance {
   background: rgba(255, 243, 205, 0.6);
   border-color: rgba(183, 139, 26, 0.2);
