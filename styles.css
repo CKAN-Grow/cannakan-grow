@@ -8956,15 +8956,20 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-announcement-card.is-rotating .home-announcement-card-media,
 .home-announcement-card.is-rotating .home-announcement-card-body {
-  transition: none;
-  will-change: auto;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform, filter;
 }
 
 .home-announcement-card.is-rotating.is-transitioning .home-announcement-card-media,
-.home-announcement-card.is-rotating.is-transitioning .home-announcement-card-body {
-  opacity: 1;
-  transform: none;
-  filter: none;
+.home-announcement-card.is-rotating.is-transitioning .home-announcement-card-body,
+.home-announcement-card.is-rotating.is-entering .home-announcement-card-media,
+.home-announcement-card.is-rotating.is-entering .home-announcement-card-body {
+  opacity: 0.04;
+  transform: translateY(8px) scale(0.992);
+  filter: blur(5px);
 }
 
 .home-announcement-card-media {
@@ -9010,6 +9015,10 @@ body.theme-dark .contact-reason-card.is-active {
   opacity: 1;
   filter: none;
   mix-blend-mode: normal;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home-announcement-card-image.is-hidden {
@@ -9148,6 +9157,10 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 18px;
   padding: 24px;
   overflow: hidden;
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home-announcement-card-panel {
@@ -9159,7 +9172,10 @@ body.theme-dark .contact-reason-card.is-active {
   min-height: 100%;
   width: 100%;
   overflow: hidden;
-  animation: home-announcement-panel-fade 240ms ease;
+  animation: home-announcement-panel-fade 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .home-announcement-card-panel--static {
@@ -9373,10 +9389,12 @@ body.theme-dark .contact-reason-card.is-active {
 @keyframes home-announcement-panel-fade {
   from {
     opacity: 0;
+    transform: translateY(10px);
   }
 
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 

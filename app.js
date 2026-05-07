@@ -202,9 +202,11 @@ const CANNAKAN_FACTS = Object.freeze([
 ]);
 const DEFAULT_GROW_JOKES = JOKES;
 const DEFAULT_GROW_FACTS = CANNAKAN_FACTS;
-const HOME_ANNOUNCEMENT_ROTATION_MIN_MS = 6000;
-const HOME_ANNOUNCEMENT_ROTATION_MAX_MS = 8000;
-const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 420;
+const HOME_ANNOUNCEMENT_ROTATION_MIN_MS = 30000;
+const HOME_ANNOUNCEMENT_ROTATION_MAX_MS = 30000;
+const ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MIN_MS = 6000;
+const ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MAX_MS = 8000;
+const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 520;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -27540,6 +27542,11 @@ function getRandomHomeAnnouncementRotationDelayMs() {
   return HOME_ANNOUNCEMENT_ROTATION_MIN_MS + Math.floor(Math.random() * (spread + 1));
 }
 
+function getAdminAnnouncementPreviewRotationDelayMs() {
+  const spread = Math.max(0, ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MAX_MS - ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MIN_MS);
+  return ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MIN_MS + Math.floor(Math.random() * (spread + 1));
+}
+
 function getHomeAnnouncementFallbackLabel(type = "") {
   return ({
     joke: `${BRAND_NAME} Tip`,
@@ -29459,8 +29466,24 @@ function replaceHomeAnnouncementFeedCard(scope = app, step = 1) {
     }
 
     appState.homeAnnouncementRotationFadeTimeoutId = window.setTimeout(() => {
-      currentCard.outerHTML = renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date()));
+      const nextCardMarkup = renderHomeAnnouncementCard(getHomeAnnouncementCardData(new Date()));
+      const nextCardHost = document.createElement("div");
+      nextCardHost.innerHTML = nextCardMarkup.trim();
+      const nextCard = nextCardHost.firstElementChild;
+      if (!(nextCard instanceof HTMLElement)) {
+        currentCard.classList.remove("is-transitioning");
+        stopHomeAnnouncementFallbackRotation();
+        return;
+      }
+
+      nextCard.classList.add("is-entering");
+      currentCard.replaceWith(nextCard);
       bindMessageBoardImageFallbacks(scope);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          nextCard.classList.remove("is-entering");
+        });
+      });
       bindHomeAnnouncementFallbackRotation(scope);
     }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
   }).catch((error) => {
@@ -29628,10 +29651,16 @@ function bindAdminAnnouncementPreviewRotation(scope = app) {
           image.dataset.imageFailed = "false";
           card.dataset.homeAnnouncementSequenceIndex = String(nextIndex);
           appState.adminAnnouncementPreviewSlideIndex = nextIndex;
-          card.classList.remove("is-transitioning");
+          card.classList.add("is-entering");
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              card.classList.remove("is-transitioning");
+              card.classList.remove("is-entering");
+            });
+          });
           scheduleNext();
         }, HOME_ANNOUNCEMENT_ROTATION_FADE_MS);
-      }, getRandomHomeAnnouncementRotationDelayMs());
+      }, getAdminAnnouncementPreviewRotationDelayMs());
     };
 
     if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) {
