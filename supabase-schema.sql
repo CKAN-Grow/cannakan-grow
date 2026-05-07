@@ -241,6 +241,9 @@ alter table public.site_analytics_events
 alter table public.site_analytics_events
   add column if not exists created_at timestamptz default timezone('utc', now());
 
+alter table public.grow_gallery_snapshots
+  add column if not exists image_hash text;
+
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
