@@ -2,6 +2,9 @@
   "name": "cannakan-grow",
   "private": true,
   "version": "1.0.0",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
   "scripts": {
     "build": "node ./scripts/build-config.mjs",
     "generate:profile-migration": "node ./scripts/generate-profile-columns-migration.mjs"

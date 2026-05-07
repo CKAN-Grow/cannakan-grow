@@ -77,6 +77,27 @@ create unique index if not exists user_push_subscriptions_endpoint_unique_idx
   on public.user_push_subscriptions (endpoint)
   where endpoint <> '';
 
+create table if not exists public.push_notification_deliveries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  event_key text not null,
+  device_key text not null,
+  session_id uuid references public.grow_sessions(id) on delete set null,
+  category text not null default '',
+  endpoint text not null default '',
+  status text not null default 'queued',
+  notification_payload jsonb not null default '{}'::jsonb,
+  failure_code text not null default '',
+  failure_reason text not null default '',
+  sent_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint push_notification_deliveries_user_event_device_key unique (user_id, event_key, device_key)
+);
+
+create index if not exists push_notification_deliveries_user_event_idx
+  on public.push_notification_deliveries (user_id, event_key, created_at desc);
+
 -- Replaces the old view-based public_member_profiles surface with a writable table
 -- so the app can preserve Community Grow lookups while saving Grow Network settings.
 create table if not exists public.public_member_profiles (
@@ -896,6 +917,16 @@ begin
 end;
 $$;
 
+create or replace function public.set_push_notification_deliveries_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
 create or replace function public.sync_public_member_profiles_identity()
 returns trigger
 language plpgsql
@@ -985,6 +1016,12 @@ before update on public.user_push_subscriptions
 for each row
 execute procedure public.set_user_push_subscriptions_updated_at();
 
+drop trigger if exists push_notification_deliveries_set_updated_at on public.push_notification_deliveries;
+create trigger push_notification_deliveries_set_updated_at
+before update on public.push_notification_deliveries
+for each row
+execute procedure public.set_push_notification_deliveries_updated_at();
+
 drop trigger if exists public_member_profiles_identity_sync on public.public_member_profiles;
 create trigger public_member_profiles_identity_sync
 before insert or update on public.public_member_profiles
@@ -1019,6 +1056,7 @@ alter table public.grow_sessions enable row level security;
 alter table public.profiles enable row level security;
 alter table public.user_notification_preferences enable row level security;
 alter table public.user_push_subscriptions enable row level security;
+alter table public.push_notification_deliveries enable row level security;
 alter table public.public_member_profiles enable row level security;
 alter table public.admin_users enable row level security;
 alter table public.admin_reports enable row level security;

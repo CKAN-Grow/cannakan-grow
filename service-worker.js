@@ -139,6 +139,26 @@ function buildNotificationPayload(payload = {}) {
   const body = String(payload.body || "").trim();
   const tag = String(payload.tag || "cannakan-grow-notification").trim();
   const route = String(payload?.data?.route || payload.route || "#home").trim() || "#home";
+  const normalizedActions = Array.isArray(payload.actions)
+    ? payload.actions
+      .map((action, index) => {
+        const actionId = String(action?.action || action?.id || `action-${index + 1}`).trim();
+        const actionTitle = String(action?.title || action?.label || "").trim();
+        const actionRoute = String(action?.route || "").trim();
+        if (!actionId || !actionTitle) {
+          return null;
+        }
+        return {
+          action: actionId,
+          title: actionTitle,
+          route: actionRoute,
+          focusTarget: String(action?.focusTarget || "").trim(),
+          sessionId: String(action?.sessionId || "").trim(),
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 2)
+    : [];
   const absoluteUrl = String(payload?.data?.url || "").trim()
     || `${self.location.origin}/${route.startsWith("#") ? route : `#${route.replace(/^#/, "")}`}`;
   return {
@@ -149,11 +169,16 @@ function buildNotificationPayload(payload = {}) {
       icon: String(payload.icon || "/icon-192.png").trim() || "/icon-192.png",
       badge: String(payload.badge || "/favicon-32x32.png").trim() || "/favicon-32x32.png",
       renotify: Boolean(payload.renotify),
+      actions: normalizedActions.map((action) => ({
+        action: action.action,
+        title: action.title,
+      })),
       data: {
         route,
         url: absoluteUrl,
         sessionId: String(payload?.data?.sessionId || "").trim(),
         eventKey: String(payload?.data?.eventKey || "").trim(),
+        actions: normalizedActions,
       },
     },
   };
@@ -193,7 +218,17 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification?.close();
-  const targetUrl = String(event.notification?.data?.url || `${self.location.origin}/#home`).trim();
+  const actionDefinitions = Array.isArray(event.notification?.data?.actions)
+    ? event.notification.data.actions
+    : [];
+  const matchedAction = actionDefinitions.find((action) => String(action?.action || "").trim() === String(event.action || "").trim()) || null;
+  const targetRoute = String(matchedAction?.route || event.notification?.data?.route || "#home").trim() || "#home";
+  const actionUrl = targetRoute.startsWith("http")
+    ? targetRoute
+    : `${self.location.origin}/${targetRoute.startsWith("#") ? targetRoute : targetRoute.startsWith("/") ? targetRoute.replace(/^\//, "") : `#${targetRoute.replace(/^#/, "")}`}`;
+  const targetUrl = String(
+    matchedAction ? actionUrl : (event.notification?.data?.url || actionUrl),
+  ).trim();
 
   event.waitUntil((async () => {
     const existingClients = await self.clients.matchAll({

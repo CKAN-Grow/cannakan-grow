@@ -9345,6 +9345,44 @@ function buildPushNotificationPayloadFromAppNotification(notification = {}, opti
   const absoluteUrl = normalizedRoute.startsWith("http")
     ? normalizedRoute
     : `${window.location.origin}/${normalizedRoute.startsWith("#") ? normalizedRoute : `#${normalizedRoute.replace(/^#/, "")}`}`;
+  const pushActions = Array.isArray(notification.actions)
+    ? notification.actions
+      .map((action, index) => {
+        const actionId = String(action?.kind || action?.action || `action-${index + 1}`).trim();
+        const label = String(action?.label || action?.title || "").trim();
+        if (!actionId || !label) {
+          return null;
+        }
+        const actionRoute = String(action?.route || normalizedRoute).trim() || normalizedRoute;
+        const normalizedActionRoute = actionRoute.startsWith("#") || actionRoute.startsWith("/")
+          ? actionRoute
+          : `#${actionRoute.replace(/^#/, "")}`;
+        let focusTarget = "";
+        switch (actionId) {
+          case "session-focus-results":
+            focusTarget = "results";
+            break;
+          case "session-focus-snapshot":
+            focusTarget = "snapshot";
+            break;
+          case "filter-paper-modal":
+            focusTarget = "supply";
+            break;
+          default:
+            focusTarget = "";
+            break;
+        }
+        return {
+          action: actionId,
+          title: label,
+          route: normalizedActionRoute,
+          focusTarget,
+          sessionId: String(action?.sessionId || notification.sessionId || options.sessionId || "").trim(),
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 2)
+    : [];
   return {
     title: String(options.title || notification.title || "Cannakan® Grow").trim(),
     body: String(options.body || notification.message || "").trim(),
@@ -9358,7 +9396,62 @@ function buildPushNotificationPayloadFromAppNotification(notification = {}, opti
       eventKey: String(notification.eventKey || options.eventKey || "").trim(),
     },
     renotify: false,
+    actions: pushActions,
   };
+}
+
+function getCurrentAuthAccessToken() {
+  return String(appState.authSession?.access_token || "").trim();
+}
+
+function canUseBackendPushMirror() {
+  return Boolean(appState.user?.id && getCurrentAuthAccessToken());
+}
+
+async function sendBackendPushNotificationMirror(notification = {}, options = {}) {
+  const {
+    payload = buildPushNotificationPayloadFromAppNotification(notification),
+    excludeDeviceKeys = [],
+    test = false,
+  } = options || {};
+
+  const accessToken = getCurrentAuthAccessToken();
+  const eventKey = String(notification?.eventKey || "").trim();
+  const category = normalizeAppNotificationCategory(notification?.category || "");
+  if (!canUseBackendPushMirror() || !eventKey || (!test && !isPushEligibleAppNotification(notification))) {
+    return false;
+  }
+
+  try {
+    const response = await fetch("/api/push-send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        eventKey,
+        category: category || (test ? "system-notice" : ""),
+        sessionId: String(notification?.sessionId || "").trim(),
+        route: String(notification?.route || payload?.data?.route || "#home").trim() || "#home",
+        title: String(notification?.title || payload?.title || "Cannakan® Grow").trim(),
+        body: String(notification?.message || payload?.body || "").trim(),
+        payload,
+        excludeDeviceKeys: Array.isArray(excludeDeviceKeys) ? excludeDeviceKeys : [],
+        test: test === true,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Push mirror request returned ${response.status}`);
+    }
+
+    const result = await response.json().catch(() => ({}));
+    return result?.ok === true && Number(result?.sentCount || 0) > 0;
+  } catch (error) {
+    console.warn("[Push Delivery] Backend push mirror failed.", error);
+    return false;
+  }
 }
 
 async function sendServiceWorkerNotificationPayload(payload = {}) {
@@ -9401,39 +9494,51 @@ async function maybeDeliverPushNotificationForAppNotification(notification = {},
   if (!force && (!eventKey || !isPushEligibleAppNotification(notification))) {
     return false;
   }
-  if (!force && (!canUseBrowserNotificationDelivery() || hasDeliveredPushNotificationEvent(eventKey))) {
-    return false;
-  }
-  if (!force && document.visibilityState === "visible" && document.hasFocus?.()) {
-    return false;
+  const payload = buildPushNotificationPayloadFromAppNotification(notification, {
+    title,
+    body,
+  });
+  const pageIsActive = document.visibilityState === "visible" && document.hasFocus?.();
+  let deliveredLocally = false;
+  const excludeDeviceKeys = [];
+
+  if (
+    (force || !pageIsActive)
+    && canUseBrowserNotificationDelivery()
+    && (force || !hasDeliveredPushNotificationEvent(eventKey))
+  ) {
+    try {
+      await sendServiceWorkerNotificationPayload(payload);
+      if (eventKey) {
+        markPushNotificationEventDelivered(eventKey);
+      }
+      deliveredLocally = true;
+      if (appState.currentPushSubscriptionRecord) {
+        excludeDeviceKeys.push(appState.currentPushSubscriptionRecord.deviceKey);
+        await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {
+          userId: appState.user?.id || "",
+          endpoint: appState.currentPushSubscriptionRecord.endpoint,
+          deviceKey: appState.currentPushSubscriptionRecord.deviceKey,
+          p256dhKey: appState.currentPushSubscriptionRecord.p256dhKey,
+          authKey: appState.currentPushSubscriptionRecord.authKey,
+          pushEnabled: true,
+          permissionState: getGrowRemindersBrowserPermissionState(),
+          lastDeliveryAt: new Date().toISOString(),
+          disabledAt: "",
+        });
+      }
+    } catch (error) {
+      console.warn("[Push Delivery] Browser notification delivery failed.", error);
+    }
+  } else if (pageIsActive && appState.currentPushSubscriptionRecord?.deviceKey) {
+    excludeDeviceKeys.push(appState.currentPushSubscriptionRecord.deviceKey);
   }
 
-  try {
-    await sendServiceWorkerNotificationPayload(buildPushNotificationPayloadFromAppNotification(notification, {
-      title,
-      body,
-    }));
-    if (eventKey) {
-      markPushNotificationEventDelivered(eventKey);
-    }
-    if (appState.currentPushSubscriptionRecord) {
-      await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {
-        userId: appState.user?.id || "",
-        endpoint: appState.currentPushSubscriptionRecord.endpoint,
-        deviceKey: appState.currentPushSubscriptionRecord.deviceKey,
-        p256dhKey: appState.currentPushSubscriptionRecord.p256dhKey,
-        authKey: appState.currentPushSubscriptionRecord.authKey,
-        pushEnabled: true,
-        permissionState: getGrowRemindersBrowserPermissionState(),
-        lastDeliveryAt: new Date().toISOString(),
-        disabledAt: "",
-      });
-    }
-    return true;
-  } catch (error) {
-    console.warn("[Push Delivery] Browser notification delivery failed.", error);
-    return false;
-  }
+  const mirroredToBackend = await sendBackendPushNotificationMirror(notification, {
+    payload,
+    excludeDeviceKeys,
+  });
+  return deliveredLocally || mirroredToBackend;
 }
 
 async function sendProfilePushTestNotification() {
@@ -9445,16 +9550,24 @@ async function sendProfilePushTestNotification() {
   }
 
   await ensureCurrentUserPushSubscriptionState();
-  await maybeDeliverPushNotificationForAppNotification({
+  const testNotification = {
     id: `push-test-${Date.now()}`,
     eventKey: `push-test:${Date.now()}`,
     category: "system-notice",
     title: "Test notification sent",
     message: "Cannakan® Grow browser/PWA notification delivery is working on this device.",
     route: "#profile",
-  }, {
-    force: true,
+  };
+  const testPayload = buildPushNotificationPayloadFromAppNotification(testNotification);
+  const mirrored = await sendBackendPushNotificationMirror(testNotification, {
+    payload: testPayload,
+    test: true,
   });
+  if (!mirrored) {
+    await maybeDeliverPushNotificationForAppNotification(testNotification, {
+      force: true,
+    });
+  }
 
   if (appState.currentPushSubscriptionRecord) {
     await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {

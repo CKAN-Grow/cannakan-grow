@@ -3,6 +3,7 @@ import { extname, resolve } from "node:path";
 
 const url = process.env.CANNAKAN_SUPABASE_URL || "";
 const anonKey = process.env.CANNAKAN_SUPABASE_ANON_KEY || "";
+const pushPublicKey = process.env.CANNAKAN_PUSH_PUBLIC_KEY || process.env.CANNAKAN_PUSH_VAPID_PUBLIC_KEY || "";
 const isVercelBuild = process.env.VERCEL === "1";
 
 if ((!url || !anonKey) && isVercelBuild) {
@@ -21,6 +22,7 @@ const iconsFallbackDir = resolve(process.cwd(), "Assets", "Icons");
 const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   url: ${JSON.stringify(url)},
   anonKey: ${JSON.stringify(anonKey)},
+  pushPublicKey: ${JSON.stringify(pushPublicKey)},
 };
 `;
 
