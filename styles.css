@@ -5874,6 +5874,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-bottom: 0;
 }
 
+.gallery-seed-age-overview-header .app-section-header-main .section-title-icon {
+  align-self: center;
+}
+
 .gallery-seed-age-preview-pill {
   display: inline-flex;
   align-items: center;
