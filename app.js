@@ -1401,6 +1401,7 @@ function syncGrowNetworkNavigationVisibility() {
       link.setAttribute("aria-hidden", "true");
     }
   });
+  syncNavigationAvailabilityState();
 }
 
 function resetSessionScopedAppState() {
@@ -4072,6 +4073,159 @@ function consumeCommunityGrowUnlockNotice() {
   return true;
 }
 
+function getNavigationLockStateForHash(hash = "#home") {
+  const normalizedHash = normalizeNavigationHash(hash || "#home");
+  const isAdminContext = isAdminUser();
+  const growNetworkUnlocked = isGrowNetworkUnlocked(getSessions());
+  const communityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
+
+  if (!isAdminContext && (normalizedHash === "#gallery" || normalizedHash.startsWith("#gallery/"))) {
+    if (!growNetworkUnlocked) {
+      return {
+        locked: true,
+        mode: "grow-network",
+        message: "Start your first soaking session to unlock the Grow Network.",
+        ctaLabel: "Start First Session",
+        ctaHref: "#new",
+      };
+    }
+
+    if (!communityGrowUnlocked) {
+      return {
+        locked: true,
+        mode: "community-grow",
+        message: "Create your first grow snapshot in a session to unlock Community Grow.",
+        ctaLabel: "Go To My Sessions",
+        ctaHref: "#sessions",
+      };
+    }
+  }
+
+  if (!isAdminContext && !growNetworkUnlocked && (
+    normalizedHash === "#sources"
+    || normalizedHash.startsWith("#sources/")
+    || normalizedHash === "#network"
+    || normalizedHash.startsWith("#network/")
+  )) {
+    return {
+      locked: true,
+      mode: "grow-network",
+      message: "Start your first soaking session to unlock the Grow Network.",
+      ctaLabel: "Start First Session",
+      ctaHref: "#new",
+    };
+  }
+
+  return {
+    locked: false,
+    mode: "",
+    message: "",
+    ctaLabel: "",
+    ctaHref: "",
+  };
+}
+
+function ensureNavigationLockToast() {
+  let toast = document.querySelector("#navigation-lock-toast");
+  if (toast) {
+    return toast;
+  }
+
+  toast = document.createElement("section");
+  toast.id = "navigation-lock-toast";
+  toast.className = "navigation-lock-toast";
+  toast.hidden = true;
+  toast.innerHTML = `
+    <div class="navigation-lock-toast__shell">
+      <div class="navigation-lock-toast__copy">
+        <strong class="navigation-lock-toast__title">Grow Network Locked</strong>
+        <p class="navigation-lock-toast__message"></p>
+      </div>
+      <div class="navigation-lock-toast__actions">
+        <a class="button button-primary navigation-lock-toast__cta" href="#new" hidden></a>
+        <button type="button" class="navigation-lock-toast__close" aria-label="Dismiss message">×</button>
+      </div>
+    </div>
+  `;
+
+  toast.querySelector(".navigation-lock-toast__close")?.addEventListener("click", () => {
+    toast.hidden = true;
+    toast.classList.remove("is-visible");
+  });
+
+  document.body.appendChild(toast);
+  return toast;
+}
+
+function showNavigationLockToast(config = {}) {
+  const toast = ensureNavigationLockToast();
+  const title = String(config.title || "Grow Network Locked").trim() || "Grow Network Locked";
+  const message = String(config.message || "Start your first soaking session to unlock the Grow Network.").trim();
+  const ctaLabel = String(config.ctaLabel || "").trim();
+  const ctaHref = String(config.ctaHref || "").trim();
+  const titleNode = toast.querySelector(".navigation-lock-toast__title");
+  const messageNode = toast.querySelector(".navigation-lock-toast__message");
+  const ctaNode = toast.querySelector(".navigation-lock-toast__cta");
+
+  if (titleNode) {
+    titleNode.textContent = title;
+  }
+  if (messageNode) {
+    messageNode.textContent = message;
+  }
+  if (ctaNode instanceof HTMLAnchorElement) {
+    if (ctaLabel && ctaHref) {
+      ctaNode.hidden = false;
+      ctaNode.textContent = ctaLabel;
+      ctaNode.setAttribute("href", ctaHref);
+    } else {
+      ctaNode.hidden = true;
+      ctaNode.textContent = "";
+      ctaNode.setAttribute("href", "#home");
+    }
+  }
+
+  toast.hidden = false;
+  toast.classList.add("is-visible");
+
+  if (typeof toast.__hideTimeoutId === "number" && toast.__hideTimeoutId) {
+    window.clearTimeout(toast.__hideTimeoutId);
+  }
+
+  toast.__hideTimeoutId = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    toast.hidden = true;
+    toast.__hideTimeoutId = 0;
+  }, 5200);
+}
+
+function syncNavigationAvailabilityState() {
+  const navigationLinks = document.querySelectorAll(".topbar-nav a, .mobile-nav-link[data-mobile-nav-link='true']");
+  navigationLinks.forEach((link) => {
+    if (!(link instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const lockState = getNavigationLockStateForHash(link.getAttribute("href") || "#home");
+    link.classList.toggle("is-locked", lockState.locked);
+    link.dataset.navLocked = lockState.locked ? "true" : "false";
+    link.dataset.navLockMode = lockState.mode || "";
+    if (lockState.locked) {
+      link.setAttribute("aria-disabled", "true");
+      link.setAttribute("data-lock-message", lockState.message || "");
+      link.setAttribute("data-lock-cta-label", lockState.ctaLabel || "");
+      link.setAttribute("data-lock-cta-href", lockState.ctaHref || "");
+      link.setAttribute("title", lockState.message || "Locked");
+    } else {
+      link.removeAttribute("aria-disabled");
+      link.removeAttribute("data-lock-message");
+      link.removeAttribute("data-lock-cta-label");
+      link.removeAttribute("data-lock-cta-href");
+      link.removeAttribute("title");
+    }
+  });
+}
+
 function normalizeSessionVisibilityStatus(status = "") {
   const normalizedStatus = String(status || "").trim().toLowerCase();
   if (["deleted", "archived", "hidden"].includes(normalizedStatus)) {
@@ -5904,7 +6058,8 @@ function updateNavState() {
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
-    const isActive = href === `#${activeNav}`;
+    const lockState = getNavigationLockStateForHash(href);
+    const isActive = !lockState.locked && href === `#${activeNav}`;
     link.classList.toggle("is-active", isActive);
     if (isActive) {
       link.setAttribute("aria-current", "page");
@@ -5912,6 +6067,7 @@ function updateNavState() {
       link.removeAttribute("aria-current");
     }
   });
+  syncNavigationAvailabilityState();
 }
 
 async function bootstrapApp() {
@@ -46061,6 +46217,22 @@ document.addEventListener("click", (event) => {
     ? event.target.closest('a[href^="#"]')
     : null;
   if (internalLink instanceof HTMLAnchorElement) {
+    const navLockState = getNavigationLockStateForHash(internalLink.getAttribute("href") || "#home");
+    if (navLockState.locked) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (internalLink.closest(".mobile-nav-content")) {
+        closeMobileNavigation();
+      }
+      showNavigationLockToast({
+        title: navLockState.mode === "community-grow" ? "Community Grow Locked" : "Grow Network Locked",
+        message: navLockState.message,
+        ctaLabel: navLockState.ctaLabel,
+        ctaHref: navLockState.ctaHref,
+      });
+      return;
+    }
+
     const targetHash = normalizeNavigationHash(internalLink.getAttribute("href") || "#home");
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
