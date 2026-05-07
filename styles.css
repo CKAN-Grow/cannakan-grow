@@ -3311,6 +3311,13 @@ body.theme-dark #active-sessions-section {
   min-width: 0;
 }
 
+.active-session-supplies-card .command-icon--supply,
+.session-command-center-supply-panel .command-icon--supply {
+  width: 46px;
+  height: 46px;
+}
+
+.active-session-supplies-card .command-icon-tile,
 .session-command-center-supply-panel .command-icon-tile {
   width: 64px;
   height: 64px;
@@ -3325,32 +3332,11 @@ body.theme-dark #active-sessions-section {
     0 12px 24px rgba(0, 0, 0, 0.24);
 }
 
-.active-session-supplies-card .command-icon-tile,
-.session-command-center-supply-panel .command-icon--supply {
-  width: 46px;
-  height: 46px;
-}
-
 .active-session-supplies-card .command-icon-tile {
-  width: 64px;
-  height: 64px;
   flex: 0 0 64px;
-  padding: 10px;
-  border-color: color-mix(in srgb, var(--active-supplies-accent) 34%, rgba(255, 255, 255, 0.08));
-  background:
-    linear-gradient(180deg, rgba(20, 27, 21, 0.94) 0%, rgba(12, 16, 13, 0.98) 100%),
-    radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--active-supplies-accent) 14%, transparent), transparent 62%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 0 0 1px color-mix(in srgb, var(--active-supplies-accent) 10%, transparent),
-    0 12px 24px rgba(0, 0, 0, 0.24);
 }
 
-.active-session-supplies-card .command-icon--supply {
-  color: var(--active-supplies-accent);
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--active-supplies-accent) 28%, transparent));
-}
-
+.active-session-supplies-card .command-icon--supply,
 .session-command-center-supply-panel .command-icon--supply {
   color: var(--filter-paper-accent);
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--filter-paper-accent) 28%, transparent));
@@ -10495,6 +10481,8 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-bg-bottom: rgba(24, 33, 27, 0.88);
   --active-supplies-glow: color-mix(in srgb, var(--active-supplies-accent) 18%, transparent);
   --active-supplies-pill-text: color-mix(in srgb, var(--active-supplies-accent) 78%, white 22%);
+  --filter-paper-accent: #94d159;
+  --filter-paper-panel-glow: rgba(148, 209, 89, 0.16);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -10531,6 +10519,8 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-bg-top: rgba(25, 34, 40, 0.98);
   --active-supplies-bg-bottom: rgba(15, 21, 28, 0.95);
   --active-supplies-glow: rgba(120, 210, 244, 0.16);
+  --filter-paper-accent: #9edbf5;
+  --filter-paper-panel-glow: rgba(120, 210, 244, 0.16);
   background:
     radial-gradient(circle at 84% 58%, rgba(138, 228, 255, 0.1), transparent 30%),
     radial-gradient(circle at 18% 16%, rgba(202, 241, 255, 0.06), transparent 28%),
@@ -10545,6 +10535,8 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-bg-top: rgba(47, 31, 18, 0.97);
   --active-supplies-bg-bottom: rgba(25, 17, 11, 0.93);
   --active-supplies-glow: rgba(217, 139, 43, 0.16);
+  --filter-paper-accent: #d0a14a;
+  --filter-paper-panel-glow: rgba(208, 161, 74, 0.16);
   animation: filter-paper-supply-pulse-low 3.2s ease-in-out infinite;
 }
 
@@ -10556,6 +10548,8 @@ body.theme-dark .contact-reason-card.is-active {
   --active-supplies-bg-top: rgba(48, 24, 24, 0.97);
   --active-supplies-bg-bottom: rgba(24, 12, 13, 0.93);
   --active-supplies-glow: rgba(198, 83, 76, 0.18);
+  --filter-paper-accent: #cb5e57;
+  --filter-paper-panel-glow: rgba(203, 94, 87, 0.18);
   animation: filter-paper-supply-pulse-critical 2.95s ease-in-out infinite;
 }
 
