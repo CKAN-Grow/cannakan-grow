@@ -10930,16 +10930,51 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder {
-  --filter-paper-reorder-border: rgba(198, 83, 76, 0.38);
-  --filter-paper-reorder-bg-start: rgba(117, 38, 42, 0.94);
-  --filter-paper-reorder-bg-end: rgba(74, 21, 25, 0.99);
-  --filter-paper-reorder-text: #ffd1cc;
-  --filter-paper-reorder-halo: rgba(198, 83, 76, 0.2);
-  --filter-paper-reorder-inner-ring: rgba(246, 158, 151, 0.1);
-  --filter-paper-reorder-inner-glow: rgba(198, 83, 76, 0.08);
-  --filter-paper-reorder-hover-border: rgba(232, 124, 117, 0.44);
-  --filter-paper-reorder-hover-halo: rgba(211, 95, 88, 0.28);
-  --filter-paper-reorder-hover-inner-glow: rgba(211, 95, 88, 0.13);
+  --filter-paper-reorder-border: rgba(232, 124, 117, 0.54);
+  --filter-paper-reorder-bg-start: rgba(127, 31, 36, 0.97);
+  --filter-paper-reorder-bg-end: rgba(78, 16, 21, 0.995);
+  --filter-paper-reorder-text: #ffe3de;
+  --filter-paper-reorder-halo: rgba(198, 83, 76, 0.28);
+  --filter-paper-reorder-inner-ring: rgba(255, 182, 176, 0.14);
+  --filter-paper-reorder-inner-glow: rgba(198, 83, 76, 0.12);
+  --filter-paper-reorder-hover-border: rgba(248, 149, 141, 0.66);
+  --filter-paper-reorder-hover-halo: rgba(211, 95, 88, 0.34);
+  --filter-paper-reorder-hover-inner-glow: rgba(232, 124, 117, 0.16);
+  isolation: isolate;
+  animation: filter-paper-reorder-critical-pulse 1.9s ease-in-out infinite;
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder::before {
+  content: "!";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 205, 198, 0.4);
+  background: linear-gradient(180deg, rgba(255, 213, 207, 0.18) 0%, rgba(198, 83, 76, 0.12) 100%);
+  color: #fff3ef;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 12px rgba(198, 83, 76, 0.18);
+  animation: filter-paper-reorder-critical-icon-breathe 1.9s ease-in-out infinite;
+}
+
+.button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid rgba(232, 124, 117, 0.22);
+  background: radial-gradient(circle at 50% 50%, rgba(198, 83, 76, 0.14) 0%, transparent 70%);
+  opacity: 0.48;
+  pointer-events: none;
+  animation: filter-paper-reorder-critical-halo 1.9s ease-in-out infinite;
 }
 
 .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--reorder:hover,
@@ -10993,6 +11028,55 @@ body.theme-dark .contact-reason-card.is-active {
       0 0 12px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 16%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
       inset 0 0 0 1px color-mix(in srgb, var(--active-supplies-accent, var(--filter-paper-accent)) 10%, transparent);
+  }
+}
+
+@keyframes filter-paper-reorder-critical-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 20px rgba(0, 0, 0, 0.18),
+      0 0 20px var(--filter-paper-reorder-halo),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      inset 0 0 0 1px var(--filter-paper-reorder-inner-ring),
+      inset 0 0 20px var(--filter-paper-reorder-inner-glow);
+  }
+  50% {
+    box-shadow:
+      0 14px 24px rgba(0, 0, 0, 0.22),
+      0 0 30px color-mix(in srgb, var(--filter-paper-reorder-halo) 115%, transparent),
+      0 0 14px rgba(255, 166, 158, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 0 0 1px color-mix(in srgb, var(--filter-paper-reorder-inner-ring) 120%, rgba(255, 255, 255, 0.04)),
+      inset 0 0 24px color-mix(in srgb, var(--filter-paper-reorder-inner-glow) 120%, transparent);
+  }
+}
+
+@keyframes filter-paper-reorder-critical-halo {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.018);
+  }
+}
+
+@keyframes filter-paper-reorder-critical-icon-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 0 12px rgba(198, 83, 76, 0.18);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 0 16px rgba(232, 124, 117, 0.24);
   }
 }
 
@@ -11091,6 +11175,13 @@ body.theme-dark .contact-reason-card.is-active {
 
   .filter-paper-supply-button--update::after {
     transition: none;
+  }
+
+  .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder,
+  .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder::before,
+  .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--critical.filter-paper-supply-button--reorder::after {
+    animation: none;
+    transform: none;
   }
 }
 
