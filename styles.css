@@ -17786,12 +17786,41 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 #grow-sessions-header .hero-action-button--primary {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   color: #111612;
   border-color: rgba(18, 24, 19, 0.42);
   background: linear-gradient(180deg, #9ee76a 0%, #94d159 58%, #78b546 100%);
   box-shadow:
     0 0 4px rgba(148, 209, 89, 0.25),
     0 0 8px rgba(148, 209, 89, 0.15);
+  animation: my-sessions-hero-cta-breathe 4.4s ease-in-out infinite;
+}
+
+#grow-sessions-header .hero-action-button--primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: -42%;
+  width: 42%;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.08) 38%,
+    rgba(245, 255, 236, 0.34) 50%,
+    rgba(255, 255, 255, 0.08) 62%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0.72;
+  pointer-events: none;
+  transform: skewX(-18deg);
+  animation: my-sessions-hero-cta-shimmer 5.6s ease-in-out infinite;
+}
+
+#grow-sessions-header .hero-action-button--primary > * {
+  position: relative;
+  z-index: 1;
 }
 
 #grow-sessions-header .hero-action-button--secondary {
@@ -17840,9 +17869,65 @@ body.theme-dark .contact-reason-card.is-active {
     0 0 16px rgba(148, 209, 89, 0.14);
 }
 
+@keyframes my-sessions-hero-cta-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      inset 0 -1px 0 rgba(34, 66, 24, 0.12),
+      0 0 4px rgba(148, 209, 89, 0.24),
+      0 0 8px rgba(148, 209, 89, 0.14),
+      0 12px 22px rgba(39, 69, 30, 0.16);
+  }
+
+  48% {
+    transform: translateY(-1px) scale(1.012);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(41, 82, 30, 0.14),
+      0 0 10px rgba(148, 209, 89, 0.34),
+      0 0 22px rgba(148, 209, 89, 0.2),
+      0 16px 26px rgba(39, 69, 30, 0.2);
+  }
+}
+
+@keyframes my-sessions-hero-cta-shimmer {
+  0%,
+  58%,
+  100% {
+    transform: translateX(0) skewX(-18deg);
+    opacity: 0;
+  }
+
+  64% {
+    opacity: 0.42;
+  }
+
+  78% {
+    transform: translateX(360%) skewX(-18deg);
+    opacity: 0.72;
+  }
+
+  84% {
+    opacity: 0;
+  }
+}
+
 @media (min-width: 1024px) {
   .app-hero {
     gap: clamp(18px, 2.6vw, 34px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #grow-sessions-header .hero-action-button--primary {
+    animation: none;
+  }
+
+  #grow-sessions-header .hero-action-button--primary::before {
+    animation: none;
+    opacity: 0;
   }
 }
 
