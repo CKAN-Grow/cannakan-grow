@@ -37695,8 +37695,8 @@ function renderSessionForm(initialSystemType = "KAN") {
   const partitionFields = document.querySelector("#partition-fields");
   const formMessage = document.querySelector("#form-message");
   const systemTypeField = form.elements.systemType;
-    const sessionStatusField = form.elements.sessionStatus;
-    const sessionStatusTrigger = document.querySelector("#session-status-trigger");
+  const sessionStatusField = form.elements.sessionStatus;
+  const sessionStatusTrigger = document.querySelector("#session-status-trigger");
   const sessionStatusError = document.querySelector("#session-status-error");
   const layoutReference = document.querySelector("#system-layout-reference");
   const reminder = document.querySelector("#session-status-reminder");
@@ -37733,8 +37733,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const runProgressSection = document.querySelector("#run-progress-section");
   const runProgressSummary = document.querySelector("#run-progress-summary");
   const lifecycleSection = document.querySelector("#session-lifecycle-section");
-  const lifecycleSummary = document.querySelector("#session-lifecycle-summary");
+  const lifecycleSummary = document.querySelector("#session-lifecycle-progress");
   const suppliesAnchor = document.querySelector("#session-lifecycle-supplies-anchor");
+  const sessionSequenceLabel = document.querySelector("#session-sequence-label");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
@@ -37813,6 +37814,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   if (partitionWorkTitle) {
     updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
   }
+  renderNewSessionSequencePreview(sessionSequenceLabel);
   ensureSourceCatalogDatalist();
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
@@ -40569,22 +40571,12 @@ function renderSessionDetail(sessionId) {
     if (sessionSequenceNumber) {
       const createdDateLabel = getSessionCreatedDateLabel(session);
       const ordinalLabel = formatOrdinalSessionNumber(sessionSequenceNumber);
-      detail.sessionSequenceLabel.innerHTML = `
-        <a
-          class="session-sequence-badge"
-          href="#sessions"
-          aria-label="${escapeHtml(`Session #${sessionSequenceNumber}. Created ${createdDateLabel}. ${ordinalLabel} session. Open Session History.`)}"
-          title="${escapeHtml(`Created ${createdDateLabel} - ${ordinalLabel} session`)}"
-        >
-          <span class="session-sequence-badge__label">Session #${escapeHtml(String(sessionSequenceNumber))}</span>
-          <span class="session-sequence-badge__tooltip" role="tooltip">
-            <strong>Created</strong>
-            <span>${escapeHtml(createdDateLabel)}</span>
-            <strong>Position</strong>
-            <span>${escapeHtml(`${ordinalLabel} session`)}</span>
-          </span>
-        </a>
-      `;
+      detail.sessionSequenceLabel.innerHTML = renderSessionSequenceBadgeMarkup({
+        sequenceNumber: sessionSequenceNumber,
+        createdDateLabel,
+        ordinalLabel,
+        href: "#sessions",
+      });
       detail.sessionSequenceLabel.hidden = false;
       const sessionSequenceLink = detail.sessionSequenceLabel.querySelector(".session-sequence-badge");
       if (sessionSequenceLink) {
@@ -41215,6 +41207,68 @@ function getSessionSortTime(session) {
 
   const startedAt = parseSessionStartDateTime(session?.date, session?.time);
   return startedAt ? startedAt.getTime() : 0;
+}
+
+function renderSessionSequenceBadgeMarkup({
+  sequenceNumber,
+  createdDateLabel = "",
+  ordinalLabel = "",
+  href = "",
+  preview = false,
+  previewLabel = "Assigned when you save this session.",
+} = {}) {
+  const normalizedSequenceNumber = Math.max(0, Number(sequenceNumber) || 0);
+  if (!normalizedSequenceNumber) {
+    return "";
+  }
+
+  const resolvedOrdinalLabel = ordinalLabel || formatOrdinalSessionNumber(normalizedSequenceNumber);
+  const badgeClassName = `session-sequence-badge${preview ? " session-sequence-badge--preview" : ""}`;
+  const labelMarkup = `<span class="session-sequence-badge__label">Session #${escapeHtml(String(normalizedSequenceNumber))}</span>`;
+
+  if (preview) {
+    return `
+      <span class="${badgeClassName}" title="${escapeHtml(`Session #${normalizedSequenceNumber}. ${previewLabel}`)}">
+        ${labelMarkup}
+        <span class="session-sequence-badge__tooltip" role="tooltip">
+          <strong>Position</strong>
+          <span>${escapeHtml(`${resolvedOrdinalLabel} session`)}</span>
+          <strong>Status</strong>
+          <span>${escapeHtml(previewLabel)}</span>
+        </span>
+      </span>
+    `;
+  }
+
+  return `
+    <a
+      class="${badgeClassName}"
+      href="${escapeHtml(href)}"
+      aria-label="${escapeHtml(`Session #${normalizedSequenceNumber}. Created ${createdDateLabel}. ${resolvedOrdinalLabel} session. Open Session History.`)}"
+      title="${escapeHtml(`Created ${createdDateLabel} - ${resolvedOrdinalLabel} session`)}"
+    >
+      ${labelMarkup}
+      <span class="session-sequence-badge__tooltip" role="tooltip">
+        <strong>Created</strong>
+        <span>${escapeHtml(createdDateLabel)}</span>
+        <strong>Position</strong>
+        <span>${escapeHtml(`${resolvedOrdinalLabel} session`)}</span>
+      </span>
+    </a>
+  `;
+}
+
+function renderNewSessionSequencePreview(target, sessions = getSessions()) {
+  if (!target) {
+    return;
+  }
+
+  const nextSequenceNumber = getVisibleUserSessions(sessions).length + 1;
+  target.innerHTML = renderSessionSequenceBadgeMarkup({
+    sequenceNumber: nextSequenceNumber,
+    preview: true,
+  });
+  target.hidden = nextSequenceNumber <= 0;
 }
 
 function getSessionSequenceNumber(session = null, sessions = getSessions()) {
@@ -41897,7 +41951,7 @@ function attachPartitionValidation(form, formMessage) {
           getPartitionProgressDataFromForm(form),
         );
         updateSessionLifecycleTimeline(
-          form.querySelector("#session-lifecycle-summary"),
+          form.querySelector("#session-lifecycle-progress"),
           form.querySelector("#session-lifecycle-section"),
           buildFormLifecycleState(form),
         );
@@ -41933,7 +41987,7 @@ function attachPartitionValidation(form, formMessage) {
           getPartitionProgressDataFromForm(form),
         );
         updateSessionLifecycleTimeline(
-          form.querySelector("#session-lifecycle-summary"),
+          form.querySelector("#session-lifecycle-progress"),
           form.querySelector("#session-lifecycle-section"),
           buildFormLifecycleState(form),
         );
@@ -41956,7 +42010,7 @@ function attachPartitionValidation(form, formMessage) {
     getPartitionProgressDataFromForm(form),
   );
   updateSessionLifecycleTimeline(
-    form.querySelector("#session-lifecycle-summary"),
+    form.querySelector("#session-lifecycle-progress"),
     form.querySelector("#session-lifecycle-section"),
     buildFormLifecycleState(form),
   );
