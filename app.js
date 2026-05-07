@@ -110,6 +110,7 @@ const GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanGrowNetworkUnloc
 const COMMUNITY_GROW_UNLOCK_STORAGE_KEY = "cannakanCommunityGrowUnlocked";
 const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowUnlockPendingNotice";
 const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
+const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
@@ -1019,6 +1020,14 @@ const appFooter = document.querySelector(".app-footer");
 const mobileNavToggle = document.querySelector("#mobile-nav-toggle");
 const mobileNavDrawer = document.querySelector("#mobile-nav-drawer");
 const mobileNavContent = document.querySelector("#mobile-nav-content");
+const appNotificationCenter = document.querySelector("#app-notification-center");
+const appNotificationTrigger = document.querySelector("#app-notification-trigger");
+const appNotificationTriggerIcon = document.querySelector(".app-notification-trigger-icon");
+const appNotificationBadge = document.querySelector("#app-notification-badge");
+const appNotificationPanel = document.querySelector("#app-notification-panel");
+const appNotificationList = document.querySelector("#app-notification-list");
+const appNotificationMarkAllReadButton = document.querySelector("#app-notification-mark-all-read");
+const appNotificationPanelSubtitle = document.querySelector("#app-notification-panel-subtitle");
 const appState = {
   initialized: false,
   loading: true,
@@ -1041,6 +1050,9 @@ const appState = {
   notificationPreferencesTableUnavailable: false,
   notificationPreferencesSchemaMode: "",
   notificationPreferencesAvailableColumns: [],
+  appNotifications: [],
+  notificationCenterOpen: false,
+  appNotificationsUserId: "",
   sessionHistoryFocusSessionId: "",
   authModalDismissHash: "",
   authNotice: "",
@@ -1298,6 +1310,7 @@ function applyResolvedAuthState(session, reason = "auth-change", profile = appSt
   appState.currentUserEmail = normalizedEmail;
   appState.userRole = resolvedRole;
   appState.isAdmin = isAdmin;
+  syncAppNotificationsUserState(appState.user?.id || "");
 
   console.log("[Cannakan App Init] session email", {
     reason,
@@ -1320,6 +1333,42 @@ function markAuthReady(reason = "auth-change") {
 }
 
 function initializeTopbarControls() {
+  if (appNotificationTrigger && appNotificationTrigger.dataset.bound !== "true") {
+    appNotificationTrigger.dataset.bound = "true";
+    appNotificationTrigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleAppNotificationCenter();
+    });
+  }
+
+  if (appNotificationPanel && appNotificationPanel.dataset.bound !== "true") {
+    appNotificationPanel.dataset.bound = "true";
+    appNotificationPanel.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const openButton = target?.closest("[data-app-notification-open]");
+      if (openButton instanceof HTMLButtonElement) {
+        const notification = getAppNotifications().find((entry) => entry.id === (openButton.dataset.appNotificationOpen || ""));
+        if (notification) {
+          handleAppNotificationAction(notification);
+        }
+        return;
+      }
+
+      const readButton = target?.closest("[data-app-notification-read]");
+      if (readButton instanceof HTMLButtonElement) {
+        markAppNotificationRead(readButton.dataset.appNotificationRead || "");
+      }
+    });
+  }
+
+  if (appNotificationMarkAllReadButton && appNotificationMarkAllReadButton.dataset.bound !== "true") {
+    appNotificationMarkAllReadButton.dataset.bound = "true";
+    appNotificationMarkAllReadButton.addEventListener("click", () => {
+      markAllAppNotificationsRead();
+    });
+  }
+
   if (mobileNavToggle && mobileNavToggle.dataset.bound !== "true") {
     mobileNavToggle.dataset.bound = "true";
     mobileNavToggle.addEventListener("click", () => {
@@ -1337,10 +1386,12 @@ function initializeTopbarControls() {
   }
 
   syncMobileNavigationMenu();
+  renderAppNotificationCenter();
 }
 
 function setTopbarNavigationReadyState() {
   const topbarNav = document.querySelector(".topbar-nav");
+  const shouldShowNotificationCenter = Boolean(appState.authReady && appState.user && isSupabaseConfigured());
   if (topbarNav) {
     topbarNav.hidden = !appState.authReady;
     topbarNav.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
@@ -1348,6 +1399,10 @@ function setTopbarNavigationReadyState() {
   if (mobileNavToggle) {
     mobileNavToggle.hidden = !appState.authReady;
     mobileNavToggle.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
+  }
+  if (appNotificationCenter) {
+    appNotificationCenter.hidden = !shouldShowNotificationCenter;
+    appNotificationCenter.setAttribute("aria-hidden", shouldShowNotificationCenter ? "false" : "true");
   }
 }
 
@@ -1414,6 +1469,9 @@ function resetSessionScopedAppState() {
   appState.currentUserEmail = "";
   appState.userRole = "user";
   appState.isAdmin = false;
+  appState.appNotifications = [];
+  appState.appNotificationsUserId = "";
+  appState.notificationCenterOpen = false;
   appState.profile = null;
   appState.profileError = "";
   appState.notificationPreferences = null;
@@ -3268,9 +3326,16 @@ function hasFilterPaperInventoryBeenSet() {
 }
 
 function saveFilterPaperInventory(inventory) {
+  const previousInventory = getFilterPaperInventory();
+  const previousWasSet = hasFilterPaperInventoryBeenSet();
   const normalizedInventory = normalizeFilterPaperInventory(inventory);
   appState.filterPaperInventory = normalizedInventory;
   localStorage.setItem(FILTER_PAPER_INVENTORY_STORAGE_KEY, JSON.stringify(normalizedInventory));
+  maybeAddSupplyStatusNotification(previousInventory, normalizedInventory, {
+    previousWasSet,
+    nextWasSet: true,
+  });
+  renderAppNotificationCenter();
   return normalizedInventory;
 }
 
@@ -4013,9 +4078,19 @@ function isGrowNetworkUnlocked(sessions = getSessions()) {
 
 function markGrowNetworkUnlocked(options = {}) {
   setGrowNetworkUnlocked(true);
+  addAppNotification({
+    eventKey: "unlock:grow-network",
+    category: "system-notice",
+    title: "Grow Network unlocked",
+    message: "Insights, analytics, rankings, and source discovery are now available.",
+    route: "#home",
+    actionKind: "route",
+    actionLabel: "Explore Home",
+  });
   if (options.showNotice !== false) {
     setPendingGrowNetworkUnlockNotice(true);
   }
+  renderAppNotificationCenter();
 }
 
 function consumeGrowNetworkUnlockNotice() {
@@ -4081,9 +4156,19 @@ function isCommunityGrowUnlocked(sessions = getSessions()) {
 
 function markCommunityGrowUnlocked(options = {}) {
   setCommunityGrowUnlocked(true);
+  addAppNotification({
+    eventKey: "unlock:community-grow",
+    category: "community-activity",
+    title: "Community Grow unlocked",
+    message: "You can now explore community snapshots, rankings, and grow discovery.",
+    route: "#gallery",
+    actionKind: "route",
+    actionLabel: "Open Community Grow",
+  });
   if (options.showNotice !== false) {
     setPendingCommunityGrowUnlockNotice(true);
   }
+  renderAppNotificationCenter();
 }
 
 function consumeCommunityGrowUnlockNotice() {
@@ -6812,6 +6897,376 @@ function getGrowRemindersPromptStorageKey(userId = "") {
   return normalizedUserId
     ? `${GROW_REMINDERS_PROMPT_STORAGE_KEY}:${normalizedUserId}`
     : GROW_REMINDERS_PROMPT_STORAGE_KEY;
+}
+
+function getAppNotificationsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${APP_NOTIFICATIONS_STORAGE_KEY}:${normalizedUserId}`
+    : APP_NOTIFICATIONS_STORAGE_KEY;
+}
+
+function normalizeAppNotificationCategory(category = "") {
+  const normalizedCategory = String(category || "").trim().toLowerCase();
+  if (["soaking", "soaking-reminder"].includes(normalizedCategory)) {
+    return "soaking-reminder";
+  }
+  if (["germination", "germination-reminder"].includes(normalizedCategory)) {
+    return "germination-reminder";
+  }
+  if (["snapshot", "snapshot-reminder"].includes(normalizedCategory)) {
+    return "snapshot-reminder";
+  }
+  if (["supply", "supply-reminder"].includes(normalizedCategory)) {
+    return "supply-reminder";
+  }
+  if (["community", "community-activity"].includes(normalizedCategory)) {
+    return "community-activity";
+  }
+  return "system-notice";
+}
+
+function getAppNotificationCategoryMeta(category = "") {
+  switch (normalizeAppNotificationCategory(category)) {
+    case "soaking-reminder":
+      return { label: "Soaking reminder", icon: "labFlask", tone: "info" };
+    case "germination-reminder":
+      return { label: "Germination reminder", icon: "mySessionsSprout", tone: "success" };
+    case "snapshot-reminder":
+      return { label: "Snapshot reminder", icon: "uploadImage", tone: "info" };
+    case "supply-reminder":
+      return { label: "Supply reminder", icon: "warning", tone: "warning" };
+    case "community-activity":
+      return { label: "Community activity", icon: "communityGroup", tone: "success" };
+    case "system-notice":
+    default:
+      return { label: "System notice", icon: "notificationBell", tone: "info" };
+  }
+}
+
+function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
+  const normalizedNotification = notification && typeof notification === "object" ? notification : {};
+  const createdAt = String(normalizedNotification.createdAt || normalizedNotification.occurredAt || "").trim() || new Date().toISOString();
+  const id = String(normalizedNotification.id || "").trim() || `app-notification-${fallbackIndex + 1}-${Math.random().toString(36).slice(2, 10)}`;
+  const category = normalizeAppNotificationCategory(normalizedNotification.category || normalizedNotification.type || "");
+  const route = String(normalizedNotification.route || "").trim();
+  const sessionId = String(normalizedNotification.sessionId || "").trim();
+  const actionKind = ["route", "filter-paper-modal"].includes(String(normalizedNotification.actionKind || "").trim())
+    ? String(normalizedNotification.actionKind).trim()
+    : (route ? "route" : "");
+  return {
+    id,
+    eventKey: String(normalizedNotification.eventKey || "").trim(),
+    category,
+    title: String(normalizedNotification.title || "").trim() || getAppNotificationCategoryMeta(category).label,
+    message: String(normalizedNotification.message || "").trim(),
+    createdAt,
+    isRead: Boolean(normalizedNotification.isRead),
+    sessionId,
+    sessionLabel: String(normalizedNotification.sessionLabel || "").trim(),
+    route,
+    actionKind,
+    actionLabel: String(normalizedNotification.actionLabel || "").trim(),
+  };
+}
+
+function sortAppNotificationsNewestFirst(notifications = []) {
+  return [...notifications].sort((left, right) => (
+    (Date.parse(right?.createdAt || "") || 0) - (Date.parse(left?.createdAt || "") || 0)
+  ));
+}
+
+function loadStoredAppNotifications(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  try {
+    const rawValue = JSON.parse(localStorage.getItem(getAppNotificationsStorageKey(normalizedUserId)) || "[]");
+    if (!Array.isArray(rawValue)) {
+      return [];
+    }
+    return sortAppNotificationsNewestFirst(rawValue.map((notification, index) => normalizeAppNotificationRecord(notification, index))).slice(0, 80);
+  } catch (error) {
+    console.warn("[Notifications] Failed to read stored app notifications.", error);
+    return [];
+  }
+}
+
+function syncAppNotificationsUserState(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    appState.appNotifications = [];
+    appState.appNotificationsUserId = "";
+    appState.notificationCenterOpen = false;
+    return appState.appNotifications;
+  }
+
+  if (appState.appNotificationsUserId !== normalizedUserId) {
+    appState.appNotifications = loadStoredAppNotifications(normalizedUserId);
+    appState.appNotificationsUserId = normalizedUserId;
+  }
+
+  return Array.isArray(appState.appNotifications) ? appState.appNotifications : [];
+}
+
+function persistAppNotifications(notifications = [], userId = "") {
+  const normalizedUserId = String(userId || appState.user?.id || "").trim();
+  const normalizedNotifications = sortAppNotificationsNewestFirst(
+    (Array.isArray(notifications) ? notifications : []).map((notification, index) => normalizeAppNotificationRecord(notification, index)),
+  ).slice(0, 80);
+
+  appState.appNotifications = normalizedNotifications;
+  appState.appNotificationsUserId = normalizedUserId;
+
+  if (!normalizedUserId) {
+    return normalizedNotifications;
+  }
+
+  try {
+    localStorage.setItem(getAppNotificationsStorageKey(normalizedUserId), JSON.stringify(normalizedNotifications));
+  } catch (error) {
+    console.warn("[Notifications] Failed to persist app notifications.", error);
+  }
+
+  return normalizedNotifications;
+}
+
+function getAppNotifications(userId = appState.user?.id || "") {
+  return syncAppNotificationsUserState(userId);
+}
+
+function getUnreadAppNotificationCount(notifications = getAppNotifications()) {
+  return (Array.isArray(notifications) ? notifications : []).filter((notification) => !notification?.isRead).length;
+}
+
+function formatAppNotificationBadgeCount(count = 0) {
+  const normalizedCount = Math.max(0, Number(count) || 0);
+  if (!normalizedCount) {
+    return "";
+  }
+  if (normalizedCount > 99) {
+    return "99+";
+  }
+  return String(normalizedCount);
+}
+
+function addAppNotification(notification = {}) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const existingNotifications = getAppNotifications(normalizedUserId);
+  const normalizedNotification = normalizeAppNotificationRecord(notification, existingNotifications.length);
+  let nextNotifications = [...existingNotifications];
+  if (normalizedNotification.eventKey) {
+    const existingIndex = nextNotifications.findIndex((entry) => entry.eventKey === normalizedNotification.eventKey);
+    if (existingIndex >= 0) {
+      nextNotifications[existingIndex] = {
+        ...nextNotifications[existingIndex],
+        ...normalizedNotification,
+        id: nextNotifications[existingIndex].id || normalizedNotification.id,
+        isRead: false,
+      };
+    } else {
+      nextNotifications.unshift(normalizedNotification);
+    }
+  } else {
+    nextNotifications.unshift(normalizedNotification);
+  }
+
+  persistAppNotifications(nextNotifications, normalizedUserId);
+  renderAppNotificationCenter();
+  return normalizedNotification;
+}
+
+function markAppNotificationRead(notificationId = "") {
+  const normalizedId = String(notificationId || "").trim();
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedId || !normalizedUserId) {
+    return;
+  }
+
+  const nextNotifications = getAppNotifications(normalizedUserId).map((notification) => (
+    notification.id === normalizedId
+      ? { ...notification, isRead: true }
+      : notification
+  ));
+  persistAppNotifications(nextNotifications, normalizedUserId);
+  renderAppNotificationCenter();
+}
+
+function markAppNotificationEventRead(eventKey = "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+
+  const notifications = getAppNotifications(normalizedUserId);
+  if (!notifications.some((notification) => notification.eventKey === normalizedEventKey && !notification.isRead)) {
+    return;
+  }
+
+  persistAppNotifications(notifications.map((notification) => (
+    notification.eventKey === normalizedEventKey
+      ? { ...notification, isRead: true }
+      : notification
+  )), normalizedUserId);
+  renderAppNotificationCenter();
+}
+
+function markAllAppNotificationsRead() {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    return;
+  }
+
+  const notifications = getAppNotifications(normalizedUserId);
+  if (!notifications.some((notification) => !notification?.isRead)) {
+    return;
+  }
+
+  persistAppNotifications(notifications.map((notification) => ({
+    ...notification,
+    isRead: true,
+  })), normalizedUserId);
+  renderAppNotificationCenter();
+}
+
+function buildAppNotificationSessionLabel(session = null) {
+  if (!session) {
+    return "";
+  }
+  const sessionLabel = formatSessionLabel(session);
+  return sessionLabel ? `Session: ${sessionLabel}` : "";
+}
+
+function hasAnyMeaningfulSnapshotAcrossSessions(sessions = getSessions()) {
+  return (Array.isArray(sessions) ? sessions : []).some((session) => (
+    !isSessionSoftDeleted(session)
+    && hasCreatedMeaningfulSnapshotState(session?.snapshotState)
+  ));
+}
+
+function maybeAddFirstSoakingSessionNotification(session = null, existingSessions = getSessions()) {
+  if (!isFirstRealGrowReminderSession(session, existingSessions)) {
+    return;
+  }
+
+  addAppNotification({
+    eventKey: "onboarding:first-soaking-session-saved",
+    category: "soaking-reminder",
+    title: "First soaking session saved",
+    message: "Your first real KAN® soaking session is underway. Track progress, update partitions, and keep your first grow moving.",
+    sessionId: session?.id || "",
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: session?.id ? `#sessions/${session.id}` : "#sessions",
+    actionKind: "route",
+    actionLabel: "Open session",
+  });
+}
+
+function maybeAddFirstSnapshotReminderNotification(session = null, existingSessions = getSessions()) {
+  if (!session?.id || hasCreatedMeaningfulSnapshotState(session?.snapshotState) || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)) {
+    return;
+  }
+
+  addAppNotification({
+    eventKey: "onboarding:first-snapshot-reminder",
+    category: "snapshot-reminder",
+    title: "Create your first snapshot",
+    message: "Capture a grow snapshot from this session to start learning the snapshot workflow and unlock Community Grow.",
+    sessionId: session.id,
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: `#sessions/${session.id}`,
+    actionKind: "route",
+    actionLabel: "Create snapshot",
+  });
+}
+
+function maybeAddPerfectGerminationNotification(session = null, previousSession = null) {
+  if (!session?.id || isSessionSoftDeleted(session)) {
+    return;
+  }
+
+  const currentTotals = getSessionSeedTotals(session);
+  if (currentTotals.totalSeeds <= 0) {
+    return;
+  }
+
+  const currentRate = Math.round((currentTotals.totalPlanted / currentTotals.totalSeeds) * 100);
+  const previousTotals = previousSession ? getSessionSeedTotals(previousSession) : { totalSeeds: 0, totalPlanted: 0 };
+  const previousRate = previousTotals.totalSeeds > 0
+    ? Math.round((previousTotals.totalPlanted / previousTotals.totalSeeds) * 100)
+    : 0;
+
+  if (currentRate !== 100 || previousRate === 100) {
+    return;
+  }
+
+  addAppNotification({
+    eventKey: `session:${session.id}:perfect-germination`,
+    category: "germination-reminder",
+    title: "100% germination recorded",
+    message: `${formatSessionLabel(session)} has reached 100% germination (${currentTotals.totalPlanted}/${currentTotals.totalSeeds} seeds).`,
+    sessionId: session.id,
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: `#sessions/${session.id}`,
+    actionKind: "route",
+    actionLabel: "View session",
+  });
+}
+
+function processSessionNotificationTriggers(session = null, options = {}) {
+  if (!session) {
+    return;
+  }
+
+  const {
+    existingSessions = getSessions(),
+    previousSession = null,
+    isNewSession = false,
+  } = options || {};
+
+  if (isNewSession) {
+    maybeAddFirstSoakingSessionNotification(session, existingSessions);
+    maybeAddFirstSnapshotReminderNotification(session, existingSessions);
+  }
+
+  maybeAddPerfectGerminationNotification(session, previousSession);
+}
+
+function maybeAddSupplyStatusNotification(previousInventory = null, nextInventory = null, options = {}) {
+  const {
+    previousWasSet = true,
+    nextWasSet = true,
+  } = options || {};
+
+  const normalizedNextInventory = normalizeFilterPaperInventory(nextInventory);
+  if (!nextWasSet || normalizedNextInventory.notifyLowSupply === false) {
+    return;
+  }
+
+  const previousStatus = previousWasSet
+    ? getFilterPaperStatusMeta(Math.max(0, Number(previousInventory?.count) || 0)).key
+    : "unset";
+  const nextStatus = getFilterPaperStatusMeta(Math.max(0, Number(normalizedNextInventory.count) || 0)).key;
+  if (!["low", "critical"].includes(nextStatus) || previousStatus === nextStatus) {
+    return;
+  }
+
+  const nextStatusLabel = nextStatus === "critical" ? "Critical" : "Low";
+  addAppNotification({
+    eventKey: `supply:${nextStatus}`,
+    category: "supply-reminder",
+    title: `Filter paper supply is ${nextStatusLabel.toLowerCase()}`,
+    message: `Global filter paper supply is now ${nextStatusLabel.toLowerCase()} at ${normalizedNextInventory.count} remaining. Update your count or reorder soon.`,
+    actionKind: "filter-paper-modal",
+    actionLabel: "Update supply",
+  });
 }
 
 function loadGrowRemindersPromptState(userId = "") {
@@ -15789,6 +16244,164 @@ function renderAppIconMarkup(iconName = "info", options = {}) {
   `;
 }
 
+function formatAppNotificationDateTime(createdAt = "") {
+  const parsedDate = parseCompletedAtValue(createdAt);
+  if (!parsedDate) {
+    return "Just now";
+  }
+  return formatTimingDateTime(parsedDate);
+}
+
+function closeAppNotificationCenter() {
+  appState.notificationCenterOpen = false;
+  if (appNotificationTrigger) {
+    appNotificationTrigger.setAttribute("aria-expanded", "false");
+  }
+  if (appNotificationPanel) {
+    appNotificationPanel.hidden = true;
+  }
+}
+
+function toggleAppNotificationCenter(forceOpen) {
+  const shouldOpen = typeof forceOpen === "boolean"
+    ? forceOpen
+    : !appState.notificationCenterOpen;
+  appState.notificationCenterOpen = shouldOpen;
+  if (appNotificationTrigger) {
+    appNotificationTrigger.setAttribute("aria-expanded", shouldOpen ? "true" : "false");
+  }
+  if (appNotificationPanel) {
+    appNotificationPanel.hidden = !shouldOpen;
+  }
+}
+
+function handleAppNotificationAction(notification = null) {
+  if (!notification) {
+    return;
+  }
+
+  markAppNotificationRead(notification.id);
+  closeAppNotificationCenter();
+
+  if (notification.actionKind === "filter-paper-modal") {
+    openFilterPaperInventoryModal();
+    return;
+  }
+
+  const targetRoute = String(notification.route || "").trim();
+  if (targetRoute) {
+    if (hasPendingUnsavedChanges()) {
+      promptForUnsavedChangesNavigation(targetRoute);
+      return;
+    }
+    navigateToHashRoute(targetRoute);
+  }
+}
+
+function renderAppNotificationCardMarkup(notification = {}) {
+  const categoryMeta = getAppNotificationCategoryMeta(notification.category);
+  const relativeTime = formatGrowNetworkNotificationRelativeTime(notification.createdAt);
+  const dateTimeLabel = formatAppNotificationDateTime(notification.createdAt);
+  const actionLabel = String(notification.actionLabel || "").trim();
+  const sessionLabel = String(notification.sessionLabel || "").trim();
+  const hasAction = Boolean(actionLabel && (notification.route || notification.actionKind));
+
+  return `
+    <article class="app-notification-card${notification.isRead ? "" : " is-unread"}" data-app-notification-id="${escapeHtml(notification.id)}">
+      <span class="app-notification-card-icon is-${escapeHtml(categoryMeta.tone)}" aria-hidden="true">
+        ${renderAppIconMarkup(categoryMeta.icon, { variant: "plate", className: "app-notification-card-icon-art" })}
+      </span>
+      <div class="app-notification-card-main">
+        <div class="app-notification-card-topline">
+          <span class="app-notification-category is-${escapeHtml(categoryMeta.tone)}">${escapeHtml(categoryMeta.label)}</span>
+          <span class="app-notification-time" title="${escapeHtml(dateTimeLabel)}">${escapeHtml(relativeTime)} • ${escapeHtml(dateTimeLabel)}</span>
+        </div>
+        <h4>${escapeHtml(notification.title)}</h4>
+        <p>${escapeHtml(notification.message || "")}</p>
+        <div class="app-notification-card-footer">
+          ${sessionLabel ? `<span class="app-notification-session-link">${escapeHtml(sessionLabel)}</span>` : '<span class="app-notification-session-link app-notification-session-link--empty">In-app alert</span>'}
+          <div class="app-notification-card-actions">
+            ${hasAction ? `<button type="button" class="button button-secondary app-notification-action-button" data-app-notification-open="${escapeHtml(notification.id)}">${escapeHtml(actionLabel)}</button>` : ""}
+            ${notification.isRead
+              ? '<span class="app-notification-read-state">Read</span>'
+              : `<button type="button" class="button button-secondary app-notification-read-button" data-app-notification-read="${escapeHtml(notification.id)}">Mark read</button>`}
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderAppNotificationCenter() {
+  if (appNotificationTriggerIcon && !appNotificationTriggerIcon.innerHTML.trim()) {
+    appNotificationTriggerIcon.innerHTML = renderAppIconMarkup("notificationBell", {
+      variant: "plate",
+      className: "app-notification-trigger-icon-art",
+    });
+  }
+
+  const shouldShowCenter = Boolean(appState.user && appState.authReady && isSupabaseConfigured());
+  if (appNotificationCenter) {
+    appNotificationCenter.hidden = !shouldShowCenter;
+  }
+  if (!shouldShowCenter) {
+    closeAppNotificationCenter();
+    if (appNotificationBadge) {
+      appNotificationBadge.hidden = true;
+      appNotificationBadge.textContent = "";
+    }
+    return;
+  }
+
+  const notifications = getAppNotifications(appState.user?.id || "");
+  const unreadCount = getUnreadAppNotificationCount(notifications);
+  const totalCount = notifications.length;
+
+  if (appNotificationBadge) {
+    const badgeLabel = formatAppNotificationBadgeCount(unreadCount);
+    appNotificationBadge.hidden = !badgeLabel;
+    appNotificationBadge.textContent = badgeLabel;
+  }
+
+  if (appNotificationTrigger) {
+    appNotificationTrigger.classList.toggle("has-unread", unreadCount > 0);
+    appNotificationTrigger.setAttribute(
+      "aria-label",
+      unreadCount > 0
+        ? `Open notifications (${unreadCount} unread)`
+        : "Open notifications",
+    );
+  }
+
+  if (appNotificationPanelSubtitle) {
+    appNotificationPanelSubtitle.textContent = totalCount
+      ? `${unreadCount} unread of ${totalCount} total notification${totalCount === 1 ? "" : "s"}.`
+      : "Stay on top of session progress, supplies, snapshots, and community updates.";
+  }
+
+  if (appNotificationMarkAllReadButton) {
+    appNotificationMarkAllReadButton.hidden = unreadCount === 0;
+  }
+
+  if (appNotificationList) {
+    appNotificationList.innerHTML = totalCount
+      ? notifications.map((notification) => renderAppNotificationCardMarkup(notification)).join("")
+      : `
+        <div class="app-notification-empty-state">
+          <span class="app-notification-empty-state-icon" aria-hidden="true">
+            ${renderAppIconMarkup("notificationBell", { variant: "plate", className: "app-notification-empty-state-icon-art" })}
+          </span>
+          <div class="app-notification-empty-state-copy">
+            <strong>No notifications yet.</strong>
+            <p>Your future grow reminders, unlocks, supplies alerts, and community activity will show up here.</p>
+          </div>
+        </div>
+      `;
+  }
+
+  toggleAppNotificationCenter(appState.notificationCenterOpen);
+}
+
 function hydrateAppIconSlots(root = document) {
   if (!root || typeof root.querySelectorAll !== "function") {
     return;
@@ -18852,6 +19465,7 @@ function updateAuthStatus() {
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
     syncMobileNavigationMenu();
+    renderAppNotificationCenter();
     return;
   }
 
@@ -18860,6 +19474,7 @@ function updateAuthStatus() {
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
     syncMobileNavigationMenu();
+    renderAppNotificationCenter();
     return;
   }
 
@@ -18874,6 +19489,7 @@ function updateAuthStatus() {
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
     syncMobileNavigationMenu();
+    renderAppNotificationCenter();
     return;
   }
 
@@ -18948,6 +19564,7 @@ function updateAuthStatus() {
   syncAdminNavigationVisibility();
   syncGrowNetworkNavigationVisibility();
   syncMobileNavigationMenu();
+  renderAppNotificationCenter();
 
   menuRoot?.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -20318,6 +20935,9 @@ async function generateSnapshotPreview(state) {
       renderKey,
     });
     const persistedSnapshotState = await persistSnapshotStateForSection(state, buildGeneratedSessionSnapshotState(state));
+    if (hasCreatedMeaningfulSnapshotState(persistedSnapshotState)) {
+      markAppNotificationEventRead("onboarding:first-snapshot-reminder");
+    }
     const unlockedCommunityGrowNow = !wasCommunityGrowUnlocked && hasCreatedMeaningfulSnapshotState(persistedSnapshotState);
     if (unlockedCommunityGrowNow) {
       markCommunityGrowUnlocked({ showNotice: true });
@@ -39645,6 +40265,11 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
         queueGrowRemindersPromptForUser(appState.user?.id || "");
       }
+      processSessionNotificationTriggers(savedSession, {
+        existingSessions: existingSessionsBeforeSave,
+        previousSession: null,
+        isNewSession: true,
+      });
       clearNewSessionNotesDraft();
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
@@ -45886,8 +46511,14 @@ function applyDebugEventToSession(session, stageField, action) {
 
 async function saveSessionUpdate(session) {
   try {
+    const previousSession = getSessions().find((entry) => String(entry?.id || "").trim() === String(session?.id || "").trim()) || null;
     session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
+    processSessionNotificationTriggers(savedSession, {
+      previousSession,
+      existingSessions: getSessions(),
+      isNewSession: false,
+    });
     Object.assign(session, savedSession);
     return savedSession;
   } catch (error) {
@@ -46608,6 +47239,16 @@ document.addEventListener("click", (event) => {
     closeAllCustomSelects();
   }
 
+  if (appState.notificationCenterOpen) {
+    const clickedInsideNotificationCenter = event.target instanceof Node && (
+      appNotificationCenter?.contains(event.target)
+      || appNotificationPanel?.contains(event.target)
+    );
+    if (!clickedInsideNotificationCenter) {
+      closeAppNotificationCenter();
+    }
+  }
+
   if (!appState.accountMenuOpen) {
     return;
   }
@@ -46623,6 +47264,10 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeAllCustomSelects();
+  }
+
+  if (event.key === "Escape" && appState.notificationCenterOpen) {
+    closeAppNotificationCenter();
   }
 
   if (event.key === "Escape" && appState.accountMenuOpen) {

@@ -51,6 +51,32 @@
         <a href="#network" data-network-nav hidden>Grow Network</a>
       </nav>
       <div class="topbar-controls">
+        <div id="app-notification-center" class="app-notification-center" hidden>
+          <button
+            id="app-notification-trigger"
+            class="app-notification-trigger"
+            type="button"
+            aria-label="Open notifications"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+          >
+            <span class="app-notification-trigger-icon" aria-hidden="true"></span>
+            <span id="app-notification-badge" class="app-notification-badge" hidden></span>
+          </button>
+          <section id="app-notification-panel" class="app-notification-panel" hidden aria-label="Notifications">
+            <div class="app-notification-panel-shell">
+              <div class="app-notification-panel-header">
+                <div class="app-notification-panel-copy">
+                  <p class="eyebrow">Notifications</p>
+                  <h3>Grow Alerts</h3>
+                  <p id="app-notification-panel-subtitle" class="muted">Stay on top of session progress, supplies, snapshots, and community updates.</p>
+                </div>
+                <button id="app-notification-mark-all-read" type="button" class="button button-secondary app-notification-mark-all-read">Mark all as read</button>
+              </div>
+              <div id="app-notification-list" class="app-notification-list" aria-live="polite"></div>
+            </div>
+          </section>
+        </div>
         <div id="auth-status" class="auth-status"></div>
         <button
           id="mobile-nav-toggle"
