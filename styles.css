@@ -4856,8 +4856,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   border-radius: 18px;
   border: 1px solid rgba(24, 34, 24, 0.1);
   background:
-    linear-gradient(180deg, rgba(214, 236, 198, 0.7) 0%, rgba(243, 249, 241, 0.88) 18%, rgba(235, 244, 234, 0.8) 100%),
-    linear-gradient(135deg, rgba(148, 209, 89, 0.08), transparent 54%);
+    linear-gradient(180deg, rgba(214, 236, 198, 0.42) 0%, rgba(243, 249, 241, 0.56) 18%, rgba(235, 244, 234, 0.46) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.06), transparent 54%);
   box-shadow:
     0 16px 28px rgba(24, 34, 24, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
@@ -4870,11 +4870,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   z-index: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(10, 16, 12, 0.74) 0%, rgba(10, 16, 12, 0.5) 24%, rgba(10, 16, 12, 0.66) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.18) 0%, transparent 34%),
-    linear-gradient(120deg, rgba(8, 13, 10, 0.84) 0%, rgba(8, 13, 10, 0.44) 42%, rgba(8, 13, 10, 0.78) 100%),
+    linear-gradient(180deg, rgba(10, 16, 12, 0.42) 0%, rgba(10, 16, 12, 0.2) 24%, rgba(10, 16, 12, 0.38) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.14) 0%, transparent 34%),
+    linear-gradient(120deg, rgba(8, 13, 10, 0.58) 0%, rgba(8, 13, 10, 0.18) 42%, rgba(8, 13, 10, 0.48) 100%),
     var(--share-snapshot-hero-art) center center / cover no-repeat;
-  opacity: 0.92;
+  opacity: 0.78;
   transform: scale(1.01);
 }
 
@@ -24699,8 +24699,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   border: 1px solid rgba(148, 209, 89, 0.14);
   border-radius: 22px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 26%),
-    linear-gradient(180deg, rgba(20, 26, 22, 0.96) 0%, rgba(14, 18, 15, 0.96) 100%);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 26%),
+    linear-gradient(180deg, rgba(20, 26, 22, 0.76) 0%, rgba(14, 18, 15, 0.74) 100%);
   box-shadow:
     0 18px 32px rgba(0, 0, 0, 0.2),
     0 0 0 1px rgba(148, 209, 89, 0.04),
@@ -24709,11 +24709,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-workspace-shell .share-snapshot-section::before {
   background:
-    linear-gradient(180deg, rgba(8, 12, 10, 0.88) 0%, rgba(9, 14, 11, 0.72) 24%, rgba(8, 12, 10, 0.9) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16) 0%, transparent 34%),
-    linear-gradient(112deg, rgba(8, 13, 10, 0.94) 0%, rgba(8, 13, 10, 0.5) 40%, rgba(8, 13, 10, 0.82) 100%),
+    linear-gradient(180deg, rgba(8, 12, 10, 0.52) 0%, rgba(9, 14, 11, 0.3) 24%, rgba(8, 12, 10, 0.56) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.14) 0%, transparent 34%),
+    linear-gradient(112deg, rgba(8, 13, 10, 0.68) 0%, rgba(8, 13, 10, 0.22) 40%, rgba(8, 13, 10, 0.56) 100%),
     var(--share-snapshot-hero-art) center center / cover no-repeat;
-  opacity: 0.94;
+  opacity: 0.74;
 }
 
 .session-workspace-shell .session-chart-header > label,
@@ -27467,7 +27467,7 @@ body.theme-dark .run-progress-section {
 body.theme-dark .share-snapshot-section {
   border: 1px solid rgba(148, 209, 89, 0.14);
   background:
-    linear-gradient(180deg, rgba(24, 29, 26, 0.98) 0%, rgba(18, 22, 20, 0.98) 100%);
+    linear-gradient(180deg, rgba(24, 29, 26, 0.82) 0%, rgba(18, 22, 20, 0.8) 100%);
   box-shadow:
     0 18px 32px rgba(0, 0, 0, 0.22),
     0 0 24px rgba(148, 209, 89, 0.04),
@@ -27476,11 +27476,11 @@ body.theme-dark .share-snapshot-section {
 
 body.theme-dark .share-snapshot-section::before {
   background:
-    linear-gradient(180deg, rgba(5, 9, 7, 0.9) 0%, rgba(8, 12, 10, 0.78) 24%, rgba(6, 10, 8, 0.92) 100%),
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.14) 0%, transparent 32%),
-    linear-gradient(115deg, rgba(7, 11, 9, 0.96) 0%, rgba(7, 11, 9, 0.54) 42%, rgba(7, 11, 9, 0.88) 100%),
+    linear-gradient(180deg, rgba(5, 9, 7, 0.56) 0%, rgba(8, 12, 10, 0.36) 24%, rgba(6, 10, 8, 0.58) 100%),
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12) 0%, transparent 32%),
+    linear-gradient(115deg, rgba(7, 11, 9, 0.72) 0%, rgba(7, 11, 9, 0.28) 42%, rgba(7, 11, 9, 0.62) 100%),
     var(--share-snapshot-hero-art) center center / cover no-repeat;
-  opacity: 0.95;
+  opacity: 0.76;
 }
 
 body.theme-dark .share-snapshot-section .snapshot-social-icon {
