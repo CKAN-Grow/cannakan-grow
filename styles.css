@@ -3550,7 +3550,7 @@ body.theme-dark #active-sessions-section {
     "progress status"
     "supplies status";
   gap: 18px 22px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .session-lifecycle-status-column {
@@ -3568,6 +3568,7 @@ body.theme-dark #active-sessions-section {
   display: grid;
   align-content: start;
   grid-area: progress;
+  align-self: start;
 }
 
 .session-lifecycle-detail-layout .session-status-panel {
