@@ -8314,97 +8314,138 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 @media (min-width: 981px) {
   .home-dashboard-secondary-row .home-announcement-card {
-    --home-announcement-card-height: clamp(390px, 34vw, 420px);
+    --home-announcement-card-height: clamp(400px, 35vw, 420px);
+    display: grid;
+    grid-template-columns: minmax(0, 65%) minmax(320px, 35%);
+    align-items: stretch;
     min-height: var(--home-announcement-card-height);
     height: var(--home-announcement-card-height);
     max-height: 420px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-media {
-    flex: 0 0 65%;
-    width: 65%;
+    width: 100%;
+    height: 100%;
     min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 16px 14px 18px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-body {
-    flex: 0 0 35%;
-    width: 35%;
-    min-height: 100%;
-    justify-content: center;
-    padding: 24px 26px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    justify-content: flex-start;
+    padding: 18px 20px 18px 18px;
     overflow: visible;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-panel {
-    min-height: 0;
-    justify-content: center;
+    min-height: 100%;
+    justify-content: flex-start;
     overflow: visible;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-visual-shell {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    aspect-ratio: 16 / 9;
+    margin: auto 0;
+    border-radius: 24px;
+    overflow: hidden;
     background:
       radial-gradient(circle at top left, rgba(148, 209, 89, 0.1), transparent 34%),
       linear-gradient(180deg, rgba(17, 24, 19, 0.96) 0%, rgba(10, 15, 11, 0.98) 100%);
   }
 
   .home-dashboard-secondary-row .home-announcement-card-image {
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     object-position: center center;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy {
-    gap: 12px;
+    gap: 10px;
+    align-content: start;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-card-copy--static {
+    min-height: 100%;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3 {
-    font-size: clamp(1.52rem, 1.6vw, 1.92rem);
-    line-height: 1.1;
+    font-size: clamp(1.46rem, 1.52vw, 1.82rem);
+    line-height: 1.08;
     max-width: 12ch;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-body-text,
   .home-dashboard-secondary-row .home-announcement-card-static-text,
   .home-dashboard-secondary-row .home-announcement-card-static-section p {
-    font-size: 0.95rem;
-    line-height: 1.56;
+    font-size: 0.91rem;
+    line-height: 1.46;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-static-sections {
-    gap: 12px;
+    gap: 8px;
+    align-content: start;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-static-section {
-    gap: 12px;
-    padding: 12px 14px;
+    gap: 10px;
+    padding: 10px 12px;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-static-section h4 {
-    font-size: 0.84rem;
+    font-size: 0.8rem;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3.home-announcement-feed-title {
-    font-size: clamp(1.7rem, 1.9vw, 2.2rem);
-    line-height: 1.04;
+    font-size: clamp(1.56rem, 1.76vw, 2rem);
+    line-height: 1.03;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-static-kicker {
-    font-size: 0.94rem;
+    font-size: 0.9rem;
+    line-height: 1.42;
   }
 
   .home-dashboard-secondary-row .home-announcement-feed-header {
-    gap: 12px;
+    gap: 10px;
+    align-items: start;
   }
 
   .home-dashboard-secondary-row .home-announcement-feed-header-icon.cg-icon--plate {
-    width: 50px;
-    height: 50px;
-    min-width: 50px;
+    width: 46px;
+    height: 46px;
+    min-width: 46px;
   }
 
   .home-dashboard-secondary-row .home-announcement-info-icon-shell {
-    width: 42px;
-    height: 42px;
-    min-width: 42px;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-info-icon-glyph.cg-icon--plain {
+    width: 20px;
+    height: 20px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-info-copy {
+    gap: 4px;
+  }
+
+  .home-dashboard-secondary-row .home-announcement-info-list {
+    gap: 4px;
+    font-size: 0.9rem;
+    line-height: 1.42;
   }
 
   .home-dashboard-secondary-row .home-announcement-card-copy h3,
