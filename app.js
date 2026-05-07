@@ -15580,7 +15580,7 @@ function renderCommunitySeedAgeOverviewSection() {
   section.innerHTML = `
     <div class="gallery-seed-age-overview-header app-section-header">
       <div class="section-title-with-icon app-section-header-main">
-        ${renderCommunityInsightsIconMarkup("seed-age", "gallery-leaderboard-section-icon")}
+        ${renderPremiumSectionHeaderIcon("clock")}
         <div>
           <p class="eyebrow">SEED AGE ANALYTICS</p>
           <h3>Seed Age Overview</h3>
