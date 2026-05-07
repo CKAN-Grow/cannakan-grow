@@ -113,6 +113,7 @@ const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
 const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNotificationEvents";
 const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotificationEvents";
+const APP_NOTIFICATION_REMINDER_ENGINE_INTERVAL_MS = 60 * 1000;
 const DEV_QA_BYPASS_STORAGE_KEY = "cannakanGrowDevQaBypass";
 const DEV_QA_BYPASS_USER_ID = "local-dev-qa-user";
 const DEV_QA_BYPASS_USER_EMAIL = "dev-qa@localhost";
@@ -1281,6 +1282,8 @@ const appState = {
 };
 let sessionTimerInterval = null;
 let appNotificationSnoozeInterval = null;
+let appNotificationReminderEngineInterval = null;
+let appNotificationReminderEngineInProgress = false;
 let appNotificationSnoozeSyncInProgress = false;
 let backToTopScrollFrame = 0;
 let backToTopLastVisibleState = null;
@@ -1391,6 +1394,7 @@ function markAuthReady(reason = "auth-change") {
 
 function initializeTopbarControls() {
   ensureAppNotificationSnoozeInterval();
+  ensureAppNotificationReminderEngineInterval();
   syncDueSnoozedAppNotifications();
 
   if (appNotificationTrigger && appNotificationTrigger.dataset.bound !== "true") {
@@ -3421,6 +3425,7 @@ function saveFilterPaperInventory(inventory) {
     previousWasSet,
     nextWasSet: true,
   });
+  queueDueGrowReminderEvaluation("supply:inventory-saved");
   renderAppNotificationCenter();
   return normalizedInventory;
 }
@@ -4047,6 +4052,7 @@ function saveSessions(sessions) {
   if (!isSupabaseConfigured()) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(appState.sessions));
   }
+  queueDueGrowReminderEvaluation("sessions:saved");
 }
 
 function readBooleanLocalStorageFlag(key = "") {
@@ -6708,6 +6714,7 @@ async function bootstrapApp() {
   appState.loading = false;
   updateAuthStatus();
   safeRender();
+  queueDueGrowReminderEvaluation("bootstrap:complete");
 }
 
 function withTimeout(promise, timeoutMs, timeoutMessage) {
@@ -7900,9 +7907,7 @@ function buildNotificationFromSnoozedEntry(entry = null) {
 
   if (eventKey.startsWith(`stage-progress:${sessionId}:`)) {
     const reminderEntries = buildStageProgressReminderEntries(session);
-    return reminderEntries.find((notification) => String(notification?.eventKey || "").trim() === eventKey)
-      || reminderEntries[0]
-      || null;
+    return reminderEntries.find((notification) => String(notification?.eventKey || "").trim() === eventKey) || null;
   }
 
   if (eventKey === `session:${sessionId}:perfect-germination`) {
@@ -7918,6 +7923,142 @@ function buildNotificationFromSnoozedEntry(entry = null) {
     eventKey,
     sessionId,
   };
+}
+
+function getDueReminderVisibleSessions(sessions = getSessions()) {
+  return getVisibleUserSessions(Array.isArray(sessions) ? sessions : []);
+}
+
+function getFirstSnapshotReminderCandidateSession(sessions = getDueReminderVisibleSessions()) {
+  return (Array.isArray(sessions) ? sessions : []).find((session) => (
+    !isSessionSoftDeleted(session)
+    && isMeaningfulGrowNetworkUnlockSession(session)
+    && !hasCreatedMeaningfulSnapshotState(session?.snapshotState)
+  )) || null;
+}
+
+function buildCurrentSupplyReminderNotification() {
+  const inventoryIsSet = hasFilterPaperInventoryBeenSet();
+  const inventory = getFilterPaperInventory();
+  const statusKey = inventoryIsSet
+    ? getFilterPaperStatusMeta(Math.max(0, Number(inventory?.count) || 0)).key
+    : "unset";
+
+  if (
+    !inventoryIsSet
+    || inventory.notifyLowSupply === false
+    || !areSupplyReminderNotificationsEnabled()
+    || !["low", "critical"].includes(statusKey)
+  ) {
+    return null;
+  }
+
+  const statusLabel = statusKey === "critical" ? "Critical" : "Low";
+  return {
+    eventKey: `supply:${statusKey}`,
+    category: "supply-reminder",
+    title: `Filter paper supply is ${statusLabel.toLowerCase()}`,
+    message: `Global filter paper supply is now ${statusLabel.toLowerCase()} at ${inventory.count} remaining. Update your count or reorder soon.`,
+    actions: [
+      {
+        kind: "filter-paper-modal",
+        label: "Update Supply",
+        eventKey: `supply:${statusKey}`,
+        variant: "secondary",
+      },
+      {
+        kind: "filter-paper-store",
+        label: "Reorder",
+        eventKey: `supply:${statusKey}`,
+        variant: "primary",
+      },
+    ],
+  };
+}
+
+function collectDueGrowReminderNotifications(sessions = getSessions()) {
+  const visibleSessions = getDueReminderVisibleSessions(sessions);
+  const dueNotifications = [];
+
+  visibleSessions.forEach((session) => {
+    dueNotifications.push(...buildStageProgressReminderEntries(session));
+    const perfectNotification = buildPerfectGerminationNotification(session);
+    if (perfectNotification) {
+      dueNotifications.push(perfectNotification);
+    }
+  });
+
+  const snapshotSession = getFirstSnapshotReminderCandidateSession(visibleSessions);
+  const snapshotReminder = snapshotSession
+    ? buildFirstSnapshotReminderNotification(snapshotSession, visibleSessions)
+    : null;
+  if (snapshotReminder) {
+    dueNotifications.push(snapshotReminder);
+  }
+
+  const supplyReminder = buildCurrentSupplyReminderNotification();
+  if (supplyReminder) {
+    dueNotifications.push(supplyReminder);
+  }
+
+  return dueNotifications;
+}
+
+function isManagedDueGrowReminderEventKey(eventKey = "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  return normalizedEventKey === "onboarding:first-snapshot-reminder"
+    || normalizedEventKey === "supply:low"
+    || normalizedEventKey === "supply:critical"
+    || normalizedEventKey.startsWith("stage-progress:")
+    || /^session:[^:]+:perfect-germination$/i.test(normalizedEventKey);
+}
+
+function evaluateDueGrowReminderNotifications(reason = "unspecified", sessions = getSessions()) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId || appNotificationReminderEngineInProgress) {
+    return;
+  }
+
+  appNotificationReminderEngineInProgress = true;
+  try {
+    syncDueSnoozedAppNotifications();
+
+    const dueNotifications = collectDueGrowReminderNotifications(sessions);
+    const activeDueEventKeys = new Set(
+      dueNotifications
+        .map((notification) => String(notification?.eventKey || "").trim())
+        .filter(Boolean),
+    );
+    const obsoleteEventKeys = getAppNotifications(normalizedUserId)
+      .map((notification) => String(notification?.eventKey || "").trim())
+      .filter((eventKey) => isManagedDueGrowReminderEventKey(eventKey) && !activeDueEventKeys.has(eventKey));
+
+    if (obsoleteEventKeys.length) {
+      removeAppNotificationsByEventKeys(obsoleteEventKeys);
+    }
+
+    dueNotifications.forEach((notification) => {
+      addAppNotification(notification);
+    });
+
+    console.log("[Notifications] Due reminder evaluation complete", {
+      reason,
+      dueCount: dueNotifications.length,
+      removedCount: obsoleteEventKeys.length,
+    });
+  } finally {
+    appNotificationReminderEngineInProgress = false;
+  }
+}
+
+function queueDueGrowReminderEvaluation(reason = "unspecified", sessions = getSessions()) {
+  if (!appState.authReady || !appState.user) {
+    return;
+  }
+
+  queueMicrotask(() => {
+    evaluateDueGrowReminderNotifications(reason, sessions);
+  });
 }
 
 function syncDueSnoozedAppNotifications() {
@@ -7971,6 +8112,15 @@ function ensureAppNotificationSnoozeInterval() {
   appNotificationSnoozeInterval = window.setInterval(() => {
     syncDueSnoozedAppNotifications();
   }, 60 * 1000);
+}
+
+function ensureAppNotificationReminderEngineInterval() {
+  if (appNotificationReminderEngineInterval) {
+    return;
+  }
+  appNotificationReminderEngineInterval = window.setInterval(() => {
+    evaluateDueGrowReminderNotifications("interval");
+  }, APP_NOTIFICATION_REMINDER_ENGINE_INTERVAL_MS);
 }
 
 function snoozeAppNotification(notification = null, optionKey = "") {
@@ -8085,60 +8235,7 @@ function buildStageProgressReminderEntries(session = null) {
 }
 
 function syncSessionProgressionReminderNotifications(sessions = getSessions()) {
-  const visibleSessions = getVisibleUserSessions(Array.isArray(sessions) ? sessions : []);
-  const visibleSessionIds = new Set(visibleSessions.map((session) => String(session?.id || "").trim()).filter(Boolean));
-  const orphanedEventKeys = getAppNotifications()
-    .map((notification) => String(notification?.eventKey || "").trim())
-    .filter((eventKey) => (
-      (eventKey.startsWith("stage-progress:") || eventKey.startsWith("session:"))
-      && ![...visibleSessionIds].some((sessionId) => (
-        eventKey.startsWith(`stage-progress:${sessionId}:`)
-        || eventKey === `session:${sessionId}:perfect-germination`
-      ))
-    ));
-  if (orphanedEventKeys.length) {
-    removeAppNotificationsByEventKeys(orphanedEventKeys);
-  }
-
-  if (!areGrowReminderNotificationsEnabled()) {
-    removeAppNotificationsByEventKeys(["onboarding:first-snapshot-reminder", "supply:low", "supply:critical"]);
-    visibleSessions.forEach((session) => {
-      removeAppNotificationsByEventKeyPrefix(`stage-progress:${String(session?.id || "").trim()}:`);
-      removeAppNotificationsByEventKeys([`session:${String(session?.id || "").trim()}:perfect-germination`]);
-    });
-    return;
-  }
-
-  visibleSessions.forEach((session) => {
-    const reminderEntries = buildStageProgressReminderEntries(session);
-    const activeEventKeys = new Set(reminderEntries.map((entry) => entry.eventKey).filter(Boolean));
-    const notificationPrefix = `stage-progress:${String(session?.id || "").trim()}:`;
-    const obsoleteEventKeys = getAppNotifications()
-      .filter((notification) => String(notification?.eventKey || "").trim().startsWith(notificationPrefix))
-      .map((notification) => String(notification?.eventKey || "").trim())
-      .filter((eventKey) => !activeEventKeys.has(eventKey));
-    if (obsoleteEventKeys.length) {
-      removeAppNotificationsByEventKeys(obsoleteEventKeys);
-    }
-
-    reminderEntries.forEach((entry) => {
-      addAppNotification(entry);
-    });
-
-    const totals = getSessionSeedTotals(session);
-    const successRate = totals.totalSeeds > 0
-      ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
-      : 0;
-    const perfectEventKey = `session:${String(session?.id || "").trim()}:perfect-germination`;
-    if (successRate === 100 && normalizeSessionStatus(session?.sessionStatus || "") !== "completed") {
-      const perfectNotification = buildPerfectGerminationNotification(session);
-      if (perfectNotification) {
-        addAppNotification(perfectNotification);
-      }
-    } else {
-      removeAppNotificationsByEventKeys([perfectEventKey]);
-    }
-  });
+  queueDueGrowReminderEvaluation("sync-session-progression", sessions);
 }
 
 function maybeAddFirstSoakingSessionNotification(session = null, existingSessions = getSessions()) {
@@ -9285,6 +9382,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   if (shouldRender !== false) {
     appState.loading = false;
     safeRender();
+    queueDueGrowReminderEvaluation(`auth:${reason}:rendered`);
     maybePromptScheduledDeletion();
   }
 }
