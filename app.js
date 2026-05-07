@@ -34829,6 +34829,7 @@ function renderHome() {
     aggregateSessions: sessions,
     hasSessionHistory,
     requiresSignIn: !appState.user,
+    metricsPlacement: "top",
   });
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
@@ -43543,14 +43544,21 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const viewAllHref = String(options.viewAllHref || getActiveSessionsRouteHash()).trim() || getActiveSessionsRouteHash();
   const showViewAllLink = options.showViewAllLink !== false;
   const showMetrics = options.showMetrics !== false;
+  const metricsPlacement = String(options.metricsPlacement || "bottom").trim().toLowerCase() === "top" ? "top" : "bottom";
   const headerActionHref = String(options.headerActionHref || "").trim();
   const headerActionLabel = String(options.headerActionLabel || "").trim();
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
+  const metricsMarkup = showMetrics
+    ? `
+      <div class="summary-grid session-command-center-metrics">
+        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
+      </div>`
+    : "";
 
   return `
-    <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions${options.compact ? " session-command-center-shell--compact" : ""} card card-accent card-accent-green">
+    <section id="session-command-center" class="session-command-center-shell session-command-center-shell--sessions${options.compact ? " session-command-center-shell--compact" : ""}${metricsPlacement === "top" ? " session-command-center-shell--metrics-top" : ""} card card-accent card-accent-green">
       <header class="session-command-center-head session-command-center-header">
         ${renderCommandCenterIconMarkup("header", "command-icon--header")}
         <div class="session-command-center-header-text session-command-center-title-copy">
@@ -43561,6 +43569,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
         </div>
         ${headerActionHref && headerActionLabel ? `<a class="session-command-center-header-link" href="${escapeHtml(headerActionHref)}">${escapeHtml(headerActionLabel)}</a>` : ""}
       </header>
+      ${metricsPlacement === "top" ? metricsMarkup : ""}
       <div class="session-command-center session-command-center-grid" data-session-command-center="true">
         <section class="session-command-panel session-command-panel--sessions active-sessions-panel" aria-labelledby="active-sessions-command-list-title">
           <div class="session-command-panel-heading">
@@ -43588,10 +43597,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
           </div>
         </section>
       </div>
-      ${showMetrics ? `
-      <div class="summary-grid session-command-center-metrics">
-        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
-      </div>` : ""}
+      ${metricsPlacement === "bottom" ? metricsMarkup : ""}
       ${renderSessionCommandCenterFilterPaperSupplyMarkup()}
     </section>
   `;
@@ -43622,6 +43628,7 @@ function mountSharedSessionCommandCenter(host, options = {}) {
       viewAllHref: options.viewAllHref,
       headerEyebrow: options.headerEyebrow,
       headerTitle: options.headerTitle,
+      metricsPlacement: options.metricsPlacement,
     });
     hydrateAppIconSlots(host);
     applySupplyStatusToSessionEntryButtons(host);

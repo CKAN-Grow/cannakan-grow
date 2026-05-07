@@ -3169,6 +3169,18 @@ body.theme-dark #active-sessions-section {
   margin-top: 28px;
 }
 
+.session-command-center-shell--sessions.session-command-center-shell--metrics-top > .summary-grid {
+  margin-top: 0;
+}
+
+.session-command-center-shell--sessions.session-command-center-shell--metrics-top .session-command-center-grid {
+  margin-top: 28px;
+}
+
+.session-command-center-shell--sessions.session-command-center-shell--metrics-top .session-command-center-metrics {
+  margin-top: 0;
+}
+
 .session-command-center-supply-panel {
   --filter-paper-accent: #94d159;
   --filter-paper-accent-soft: rgba(148, 209, 89, 0.18);
