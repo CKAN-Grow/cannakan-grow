@@ -111,6 +111,7 @@ const COMMUNITY_GROW_UNLOCK_STORAGE_KEY = "cannakanCommunityGrowUnlocked";
 const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowUnlockPendingNotice";
 const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
+const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNotificationEvents";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
@@ -1222,6 +1223,8 @@ const appState = {
   sessionHistoryFilter: "all",
   sessionHistoryVisibleCount: 6,
   sessionDashboardScrollTarget: "",
+  sessionDetailPendingFocusTarget: "",
+  sessionDetailPendingFocusSessionId: "",
   adminSeedAgeAnalyticsFilter: ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
@@ -1376,7 +1379,9 @@ function initializeTopbarControls() {
       if (openButton instanceof HTMLButtonElement) {
         const notification = getAppNotifications().find((entry) => entry.id === (openButton.dataset.appNotificationOpen || ""));
         if (notification) {
-          handleAppNotificationAction(notification);
+          const actionIndex = Math.max(0, Number(openButton.dataset.appNotificationActionIndex) || 0);
+          const action = Array.isArray(notification.actions) ? notification.actions[actionIndex] : null;
+          void handleAppNotificationAction(notification, action);
         }
         return;
       }
@@ -4109,9 +4114,9 @@ function markGrowNetworkUnlocked(options = {}) {
     category: "system-notice",
     title: "Grow Network unlocked",
     message: "Insights, analytics, rankings, and source discovery are now available.",
-    route: "#home",
-    actionKind: "route",
-    actionLabel: "Explore Home",
+    actions: [
+      { kind: "route", label: "Explore Home", route: "#home", variant: "primary" },
+    ],
   });
   if (options.showNotice !== false) {
     setPendingGrowNetworkUnlockNotice(true);
@@ -4187,9 +4192,9 @@ function markCommunityGrowUnlocked(options = {}) {
     category: "community-activity",
     title: "Community Grow unlocked",
     message: "You can now explore community snapshots, rankings, and grow discovery.",
-    route: "#gallery",
-    actionKind: "route",
-    actionLabel: "Open Community Grow",
+    actions: [
+      { kind: "route", label: "Open Community Grow", route: "#gallery", variant: "primary" },
+    ],
   });
   if (options.showNotice !== false) {
     setPendingCommunityGrowUnlockNotice(true);
@@ -6932,6 +6937,121 @@ function getAppNotificationsStorageKey(userId = "") {
     : APP_NOTIFICATIONS_STORAGE_KEY;
 }
 
+function getDismissedAppNotificationEventsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY}:${normalizedUserId}`
+    : DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY;
+}
+
+function loadDismissedAppNotificationEvents(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return new Set();
+  }
+
+  try {
+    const rawValue = JSON.parse(localStorage.getItem(getDismissedAppNotificationEventsStorageKey(normalizedUserId)) || "[]");
+    if (!Array.isArray(rawValue)) {
+      return new Set();
+    }
+    return new Set(rawValue.map((entry) => String(entry || "").trim()).filter(Boolean));
+  } catch (error) {
+    console.warn("[Notifications] Failed to read dismissed notification events.", error);
+    return new Set();
+  }
+}
+
+function saveDismissedAppNotificationEvents(eventKeys = new Set(), userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return;
+  }
+
+  const normalizedEventKeys = [...new Set(
+    [...(eventKeys instanceof Set ? eventKeys : new Set(eventKeys || []))]
+      .map((eventKey) => String(eventKey || "").trim())
+      .filter(Boolean),
+  )];
+  try {
+    localStorage.setItem(
+      getDismissedAppNotificationEventsStorageKey(normalizedUserId),
+      JSON.stringify(normalizedEventKeys),
+    );
+  } catch (error) {
+    console.warn("[Notifications] Failed to persist dismissed notification events.", error);
+  }
+}
+
+function isAppNotificationEventDismissed(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return false;
+  }
+  return loadDismissedAppNotificationEvents(normalizedUserId).has(normalizedEventKey);
+}
+
+function dismissAppNotificationEvent(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+  const dismissedEvents = loadDismissedAppNotificationEvents(normalizedUserId);
+  dismissedEvents.add(normalizedEventKey);
+  saveDismissedAppNotificationEvents(dismissedEvents, normalizedUserId);
+}
+
+function clearDismissedAppNotificationEvent(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+  const dismissedEvents = loadDismissedAppNotificationEvents(normalizedUserId);
+  if (!dismissedEvents.delete(normalizedEventKey)) {
+    return;
+  }
+  saveDismissedAppNotificationEvents(dismissedEvents, normalizedUserId);
+}
+
+const APP_NOTIFICATION_ACTION_KINDS = [
+  "route",
+  "filter-paper-modal",
+  "filter-paper-store",
+  "session-stage-germinating",
+  "session-complete",
+  "session-focus-results",
+  "session-focus-snapshot",
+  "dismiss-event",
+];
+
+function normalizeAppNotificationAction(action = {}, fallbackAction = null) {
+  const sourceAction = action && typeof action === "object" ? action : {};
+  const fallback = fallbackAction && typeof fallbackAction === "object" ? fallbackAction : {};
+  const kind = APP_NOTIFICATION_ACTION_KINDS.includes(String(sourceAction.kind || fallback.kind || "").trim())
+    ? String(sourceAction.kind || fallback.kind || "").trim()
+    : "";
+  const label = String(sourceAction.label || fallback.label || "").trim();
+  const route = String(sourceAction.route || fallback.route || "").trim();
+  const eventKey = String(sourceAction.eventKey || fallback.eventKey || "").trim();
+  const sessionId = String(sourceAction.sessionId || fallback.sessionId || "").trim();
+  const variant = ["primary", "secondary", "ghost"].includes(String(sourceAction.variant || fallback.variant || "").trim())
+    ? String(sourceAction.variant || fallback.variant || "").trim()
+    : "secondary";
+  return kind && label
+    ? {
+      kind,
+      label,
+      route,
+      eventKey,
+      sessionId,
+      variant,
+    }
+    : null;
+}
+
 function normalizeAppNotificationCategory(category = "") {
   const normalizedCategory = String(category || "").trim().toLowerCase();
   if (["soaking", "soaking-reminder"].includes(normalizedCategory)) {
@@ -6977,9 +7097,25 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
   const category = normalizeAppNotificationCategory(normalizedNotification.category || normalizedNotification.type || "");
   const route = String(normalizedNotification.route || "").trim();
   const sessionId = String(normalizedNotification.sessionId || "").trim();
-  const actionKind = ["route", "filter-paper-modal"].includes(String(normalizedNotification.actionKind || "").trim())
+  const actionKind = APP_NOTIFICATION_ACTION_KINDS.includes(String(normalizedNotification.actionKind || "").trim())
     ? String(normalizedNotification.actionKind).trim()
     : (route ? "route" : "");
+  const fallbackAction = normalizeAppNotificationAction({
+    kind: actionKind,
+    label: String(normalizedNotification.actionLabel || "").trim(),
+    route,
+    eventKey: String(normalizedNotification.eventKey || "").trim(),
+    sessionId,
+    variant: "secondary",
+  });
+  const actions = Array.isArray(normalizedNotification.actions)
+    ? normalizedNotification.actions
+      .map((action) => normalizeAppNotificationAction(action))
+      .filter(Boolean)
+    : [];
+  if (!actions.length && fallbackAction) {
+    actions.push(fallbackAction);
+  }
   return {
     id,
     eventKey: String(normalizedNotification.eventKey || "").trim(),
@@ -6993,6 +7129,7 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
     route,
     actionKind,
     actionLabel: String(normalizedNotification.actionLabel || "").trim(),
+    actions,
   };
 }
 
@@ -7078,25 +7215,33 @@ function formatAppNotificationBadgeCount(count = 0) {
   return String(normalizedCount);
 }
 
-function addAppNotification(notification = {}) {
+function addAppNotification(notification = {}, options = {}) {
   const normalizedUserId = String(appState.user?.id || "").trim();
   if (!normalizedUserId) {
     return null;
   }
 
+  const {
+    preserveReadIfExists = true,
+  } = options || {};
   const existingNotifications = getAppNotifications(normalizedUserId);
   const normalizedNotification = normalizeAppNotificationRecord(notification, existingNotifications.length);
+  if (normalizedNotification.eventKey && isAppNotificationEventDismissed(normalizedNotification.eventKey, normalizedUserId)) {
+    return null;
+  }
   let nextNotifications = [...existingNotifications];
   if (normalizedNotification.eventKey) {
     const existingIndex = nextNotifications.findIndex((entry) => entry.eventKey === normalizedNotification.eventKey);
     if (existingIndex >= 0) {
+      const existingNotification = nextNotifications[existingIndex];
       nextNotifications[existingIndex] = {
-        ...nextNotifications[existingIndex],
+        ...existingNotification,
         ...normalizedNotification,
-        id: nextNotifications[existingIndex].id || normalizedNotification.id,
-        isRead: false,
+        id: existingNotification.id || normalizedNotification.id,
+        isRead: preserveReadIfExists ? Boolean(existingNotification.isRead) : false,
       };
     } else {
+      clearDismissedAppNotificationEvent(normalizedNotification.eventKey, normalizedUserId);
       nextNotifications.unshift(normalizedNotification);
     }
   } else {
@@ -7249,8 +7394,39 @@ function buildStageProgressReminderEntries(session = null) {
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
-    actionKind: "route",
-    actionLabel: normalizedStatus === "soaking" ? "Open session" : "Update session",
+    actions: normalizedStatus === "soaking"
+      ? [
+        {
+          kind: "session-stage-germinating",
+          label: "Mark Germination Started",
+          sessionId: session.id,
+          eventKey: buildStageProgressReminderEventKey(session.id, latestDueReminder.hours, normalizedStatus),
+          variant: "primary",
+        },
+        {
+          kind: "route",
+          label: "Open Session",
+          route: `#sessions/${session.id}`,
+          sessionId: session.id,
+          variant: "secondary",
+        },
+      ]
+      : [
+        {
+          kind: "session-focus-results",
+          label: "Update Results",
+          route: `#sessions/${session.id}`,
+          sessionId: session.id,
+          variant: "primary",
+        },
+        {
+          kind: "route",
+          label: "Open Session",
+          route: `#sessions/${session.id}`,
+          sessionId: session.id,
+          variant: "secondary",
+        },
+      ],
     level: latestDueReminder.level,
     reminderHours: Math.max(0, Number(latestDueReminder?.hours) || 0),
   }];
@@ -7311,8 +7487,29 @@ function syncSessionProgressionReminderNotifications(sessions = getSessions()) {
         sessionId: session.id,
         sessionLabel: buildAppNotificationSessionLabel(session),
         route: `#sessions/${session.id}`,
-        actionKind: "route",
-        actionLabel: "Mark complete",
+        actions: [
+          {
+            kind: "session-complete",
+            label: "Complete Session",
+            sessionId: session.id,
+            eventKey: perfectEventKey,
+            variant: "primary",
+          },
+          {
+            kind: "dismiss-event",
+            label: "Keep Active",
+            sessionId: session.id,
+            eventKey: perfectEventKey,
+            variant: "ghost",
+          },
+          {
+            kind: "route",
+            label: "Open Session",
+            route: `#sessions/${session.id}`,
+            sessionId: session.id,
+            variant: "secondary",
+          },
+        ],
       });
     } else {
       removeAppNotificationsByEventKeys([perfectEventKey]);
@@ -7333,8 +7530,13 @@ function maybeAddFirstSoakingSessionNotification(session = null, existingSession
     sessionId: session?.id || "",
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: session?.id ? `#sessions/${session.id}` : "#sessions",
-    actionKind: "route",
-    actionLabel: "Open session",
+    actions: [{
+      kind: "route",
+      label: "Open Session",
+      route: session?.id ? `#sessions/${session.id}` : "#sessions",
+      sessionId: session?.id || "",
+      variant: "secondary",
+    }],
   });
 }
 
@@ -7356,8 +7558,22 @@ function maybeAddFirstSnapshotReminderNotification(session = null, existingSessi
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
-    actionKind: "route",
-    actionLabel: "Create snapshot",
+    actions: [
+      {
+        kind: "session-focus-snapshot",
+        label: "Create Snapshot",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "primary",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ],
   });
 }
 
@@ -7389,8 +7605,29 @@ function maybeAddPerfectGerminationNotification(session = null, previousSession 
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
-    actionKind: "route",
-    actionLabel: "Mark complete",
+    actions: [
+      {
+        kind: "session-complete",
+        label: "Complete Session",
+        sessionId: session.id,
+        eventKey: `session:${session.id}:perfect-germination`,
+        variant: "primary",
+      },
+      {
+        kind: "dismiss-event",
+        label: "Keep Active",
+        sessionId: session.id,
+        eventKey: `session:${session.id}:perfect-germination`,
+        variant: "ghost",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ],
   });
 }
 
@@ -7440,8 +7677,20 @@ function maybeAddSupplyStatusNotification(previousInventory = null, nextInventor
     category: "supply-reminder",
     title: `Filter paper supply is ${nextStatusLabel.toLowerCase()}`,
     message: `Global filter paper supply is now ${nextStatusLabel.toLowerCase()} at ${normalizedNextInventory.count} remaining. Update your count or reorder soon.`,
-    actionKind: "filter-paper-modal",
-    actionLabel: "Update supply",
+    actions: [
+      {
+        kind: "filter-paper-modal",
+        label: "Update Supply",
+        eventKey: `supply:${nextStatus}`,
+        variant: "secondary",
+      },
+      {
+        kind: "filter-paper-store",
+        label: "Reorder",
+        eventKey: `supply:${nextStatus}`,
+        variant: "primary",
+      },
+    ],
   });
 }
 
@@ -16438,6 +16687,133 @@ function closeAppNotificationCenter() {
   }
 }
 
+function getNotificationActionButtonClassName(action = {}) {
+  const variant = String(action?.variant || "secondary").trim();
+  if (variant === "primary") {
+    return "button button-primary app-notification-action-button app-notification-action-button--primary";
+  }
+  if (variant === "ghost") {
+    return "button button-secondary app-notification-action-button app-notification-action-button--ghost";
+  }
+  return "button button-secondary app-notification-action-button";
+}
+
+function queueSessionDetailNotificationFocus(sessionId = "", target = "") {
+  appState.sessionDetailPendingFocusSessionId = String(sessionId || "").trim();
+  appState.sessionDetailPendingFocusTarget = String(target || "").trim();
+}
+
+function clearSessionDetailNotificationFocus() {
+  appState.sessionDetailPendingFocusSessionId = "";
+  appState.sessionDetailPendingFocusTarget = "";
+}
+
+function navigateToNotificationSessionTarget(sessionId = "", options = {}) {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return;
+  }
+  const {
+    focusTarget = "",
+  } = options || {};
+  if (focusTarget) {
+    queueSessionDetailNotificationFocus(normalizedSessionId, focusTarget);
+  } else {
+    clearSessionDetailNotificationFocus();
+  }
+  const targetRoute = `#sessions/${normalizedSessionId}`;
+  if (hasPendingUnsavedChanges()) {
+    promptForUnsavedChangesNavigation(targetRoute);
+    return;
+  }
+  navigateToHashRoute(targetRoute);
+}
+
+function canApplySessionNotificationMutation(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  const currentRoute = getCurrentAppPathRoute();
+  const isCurrentSessionDetail = String(currentRoute?.name || "").trim() === "session-detail"
+    && String(currentRoute?.params?.id || "").trim() === normalizedSessionId;
+  if (!normalizedSessionId || !isCurrentSessionDetail || !hasPendingUnsavedChanges()) {
+    return true;
+  }
+
+  showNavigationLockToast({
+    title: "Save changes first",
+    message: "Please save or discard your current session edits before using a one-tap notification action for this session.",
+  });
+  return false;
+}
+
+function applyPendingSessionDetailNotificationFocus(session = null, detail = null) {
+  const sessionId = String(session?.id || "").trim();
+  if (
+    !sessionId
+    || !detail
+    || appState.sessionDetailPendingFocusSessionId !== sessionId
+    || !appState.sessionDetailPendingFocusTarget
+  ) {
+    return;
+  }
+
+  const focusTarget = appState.sessionDetailPendingFocusTarget;
+  let targetElement = null;
+  if (focusTarget === "results") {
+    targetElement = detail.chartShell || detail.progressSection || detail.runProgressSection;
+  } else if (focusTarget === "snapshot") {
+    targetElement = detail.snapshotSection || detail.generateSnapshotButton;
+  }
+
+  if (targetElement) {
+    scrollElementIntoViewAfterLayout(targetElement, {
+      delayMs: 180,
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  if (focusTarget === "snapshot" && detail.generateSnapshotButton instanceof HTMLElement) {
+    window.setTimeout(() => {
+      detail.generateSnapshotButton?.focus?.({ preventScroll: true });
+    }, 240);
+  }
+
+  clearSessionDetailNotificationFocus();
+}
+
+async function updateSessionFromNotification(sessionId = "", updater = null, options = {}) {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId || typeof updater !== "function") {
+    return null;
+  }
+
+  const session = getSessions().find((entry) => String(entry?.id || "").trim() === normalizedSessionId);
+  if (!session || isSessionSoftDeleted(session)) {
+    showNavigationLockToast({
+      title: "Session unavailable",
+      message: "This session is no longer available from notifications.",
+    });
+    return null;
+  }
+
+  const previousStatus = session.sessionStatus || "";
+  const updateResult = updater(session) || {};
+  const shouldDeductFilterPaper = Boolean(
+    Object.prototype.hasOwnProperty.call(updateResult, "shouldDeductFilterPaper")
+      ? updateResult.shouldDeductFilterPaper
+      : shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus)
+  );
+  const savedSession = await saveSessionUpdate(session);
+  if (savedSession && shouldDeductFilterPaper) {
+    applyFilterPaperDeductionForCompletedSession(savedSession);
+    Object.assign(session, savedSession);
+  }
+  if (savedSession) {
+    markUnsavedChangesSaved();
+  }
+  return savedSession;
+}
+
 function toggleAppNotificationCenter(forceOpen) {
   const shouldOpen = typeof forceOpen === "boolean"
     ? forceOpen
@@ -16451,21 +16827,96 @@ function toggleAppNotificationCenter(forceOpen) {
   }
 }
 
-function handleAppNotificationAction(notification = null) {
-  if (!notification) {
+async function handleAppNotificationAction(notification = null, action = null) {
+  if (!notification || !action) {
+    return;
+  }
+
+  const normalizedKind = String(action.kind || "").trim();
+  const targetRoute = String(action.route || notification.route || "").trim();
+  const targetSessionId = String(action.sessionId || notification.sessionId || "").trim();
+  const targetEventKey = String(action.eventKey || notification.eventKey || "").trim();
+
+  if (normalizedKind === "dismiss-event") {
+    if (targetEventKey) {
+      dismissAppNotificationEvent(targetEventKey);
+      removeAppNotificationsByEventKeys([targetEventKey]);
+    } else {
+      markAppNotificationRead(notification.id);
+    }
+    closeAppNotificationCenter();
+    showNavigationLockToast({
+      title: "Session kept active",
+      message: "The completion reminder was dismissed for now. You can continue updating the session whenever you’re ready.",
+    });
     return;
   }
 
   markAppNotificationRead(notification.id);
   closeAppNotificationCenter();
 
-  if (notification.actionKind === "filter-paper-modal") {
+  if (normalizedKind === "filter-paper-modal") {
     openFilterPaperInventoryModal();
     return;
   }
 
-  const targetRoute = String(notification.route || "").trim();
-  if (targetRoute) {
+  if (normalizedKind === "filter-paper-store") {
+    openFilterPaperStore();
+    return;
+  }
+
+  if (normalizedKind === "session-stage-germinating") {
+    if (!canApplySessionNotificationMutation(targetSessionId)) {
+      return;
+    }
+    const savedSession = await updateSessionFromNotification(targetSessionId, (session) => {
+      session.sessionStatus = "germinating";
+      session.germinationStartedAt = session.germinationStartedAt || new Date().toISOString();
+      session.completedAt = "";
+      return { shouldDeductFilterPaper: false };
+    });
+    if (savedSession) {
+      safeRender();
+      showNavigationLockToast({
+        title: "Germination started",
+        message: "The session stage was updated to Germinating so timing data stays accurate.",
+      });
+    }
+    return;
+  }
+
+  if (normalizedKind === "session-complete") {
+    if (!canApplySessionNotificationMutation(targetSessionId)) {
+      return;
+    }
+    const savedSession = await updateSessionFromNotification(targetSessionId, (session) => {
+      captureFirstPlantedEventForSession(session);
+      session.sessionStatus = "completed";
+      session.germinationStartedAt = session.germinationStartedAt || parseSessionStartDateTime(session.date, session.time)?.toISOString() || new Date().toISOString();
+      session.completedAt = session.completedAt || new Date().toISOString();
+      return { shouldDeductFilterPaper: true };
+    });
+    if (savedSession) {
+      safeRender();
+      showNavigationLockToast({
+        title: "Session completed",
+        message: "The session was marked complete and timing analytics were finalized.",
+      });
+    }
+    return;
+  }
+
+  if (normalizedKind === "session-focus-results") {
+    navigateToNotificationSessionTarget(targetSessionId, { focusTarget: "results" });
+    return;
+  }
+
+  if (normalizedKind === "session-focus-snapshot") {
+    navigateToNotificationSessionTarget(targetSessionId, { focusTarget: "snapshot" });
+    return;
+  }
+
+  if (normalizedKind === "route" && targetRoute) {
     if (hasPendingUnsavedChanges()) {
       promptForUnsavedChangesNavigation(targetRoute);
       return;
@@ -16478,9 +16929,8 @@ function renderAppNotificationCardMarkup(notification = {}) {
   const categoryMeta = getAppNotificationCategoryMeta(notification.category);
   const relativeTime = formatGrowNetworkNotificationRelativeTime(notification.createdAt);
   const dateTimeLabel = formatAppNotificationDateTime(notification.createdAt);
-  const actionLabel = String(notification.actionLabel || "").trim();
   const sessionLabel = String(notification.sessionLabel || "").trim();
-  const hasAction = Boolean(actionLabel && (notification.route || notification.actionKind));
+  const actions = Array.isArray(notification.actions) ? notification.actions.filter(Boolean) : [];
 
   return `
     <article class="app-notification-card${notification.isRead ? "" : " is-unread"}" data-app-notification-id="${escapeHtml(notification.id)}">
@@ -16497,7 +16947,14 @@ function renderAppNotificationCardMarkup(notification = {}) {
         <div class="app-notification-card-footer">
           ${sessionLabel ? `<span class="app-notification-session-link">${escapeHtml(sessionLabel)}</span>` : '<span class="app-notification-session-link app-notification-session-link--empty">In-app alert</span>'}
           <div class="app-notification-card-actions">
-            ${hasAction ? `<button type="button" class="button button-secondary app-notification-action-button" data-app-notification-open="${escapeHtml(notification.id)}">${escapeHtml(actionLabel)}</button>` : ""}
+            ${actions.map((action, index) => `
+              <button
+                type="button"
+                class="${escapeHtml(getNotificationActionButtonClassName(action))}"
+                data-app-notification-open="${escapeHtml(notification.id)}"
+                data-app-notification-action-index="${escapeHtml(String(index))}"
+              >${escapeHtml(action.label)}</button>
+            `).join("")}
             ${notification.isRead
               ? '<span class="app-notification-read-state">Read</span>'
               : `<button type="button" class="button button-secondary app-notification-read-button" data-app-notification-read="${escapeHtml(notification.id)}">Mark read</button>`}
@@ -43387,6 +43844,7 @@ function renderSessionDetail(sessionId) {
       window.alert(error.message || "Could not delete session.");
     }
   });
+  applyPendingSessionDetailNotificationFocus(session, detail);
   scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
     delayMs: 140,
   });
