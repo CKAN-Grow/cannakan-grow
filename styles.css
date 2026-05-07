@@ -20171,6 +20171,51 @@ body.theme-dark .contact-reason-card.is-active {
   gap: 10px;
 }
 
+.profile-push-diagnostics-panel {
+  margin-top: 12px;
+}
+
+.profile-push-diagnostics-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.profile-push-diagnostics-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.028);
+}
+
+.profile-push-diagnostics-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.profile-push-diagnostics-copy strong {
+  color: var(--profile-ink);
+  font-size: 0.92rem;
+}
+
+.profile-push-diagnostics-copy span {
+  color: var(--profile-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.profile-push-diagnostics-meta {
+  margin-top: 4px;
+}
+
+.profile-push-diagnostics-actions {
+  margin-top: 2px;
+}
+
 .profile-preferences-helper {
   margin-top: 10px !important;
   font-size: 0.88rem;
@@ -20806,6 +20851,19 @@ body.theme-dark .profile-notification-permission-copy strong {
 
 body.theme-dark .profile-notification-permission-copy span,
 body.theme-dark .profile-notification-guidance {
+  color: #b7c0b7;
+}
+
+body.theme-dark .profile-push-diagnostics-row {
+  border-color: rgba(148, 209, 89, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+body.theme-dark .profile-push-diagnostics-copy strong {
+  color: #f6f8f5;
+}
+
+body.theme-dark .profile-push-diagnostics-copy span {
   color: #b7c0b7;
 }
 

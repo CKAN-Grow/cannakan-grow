@@ -309,12 +309,23 @@ function shouldTreatSubscriptionAsExpired(error) {
 }
 
 module.exports = async function handler(request, response) {
+  const config = getRuntimeConfig();
+  if (request.method === "GET") {
+    return json(response, 200, {
+      ok: true,
+      reachable: true,
+      configured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey && config.vapidPublicKey && config.vapidPrivateKey),
+      supabaseConfigured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey),
+      vapidPublicKeyAvailable: Boolean(config.vapidPublicKey),
+      vapidPrivateKeyAvailable: Boolean(config.vapidPrivateKey),
+    });
+  }
+
   if (request.method !== "POST") {
-    response.setHeader("Allow", "POST");
+    response.setHeader("Allow", "GET, POST");
     return json(response, 405, { ok: false, error: "Method not allowed" });
   }
 
-  const config = getRuntimeConfig();
   if (!config.supabaseUrl || !config.supabaseServiceRoleKey || !config.vapidPublicKey || !config.vapidPrivateKey) {
     return json(response, 202, {
       ok: false,

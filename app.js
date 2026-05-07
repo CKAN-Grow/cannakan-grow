@@ -1111,6 +1111,22 @@ const appState = {
   pushSubscriptionsError: "",
   pushSubscriptionsTableUnavailable: false,
   serviceWorkerRegistration: null,
+  pushDiagnostics: {
+    loading: false,
+    serviceWorkerStatus: "unknown",
+    permissionState: "default",
+    pushSupportState: "default",
+    vapidKeyAvailable: false,
+    backendReachable: false,
+    backendConfigured: false,
+    backendStatusLabel: "Unchecked",
+    currentDeviceRegistered: false,
+    currentDeviceSaved: false,
+    lastTestResult: "",
+    lastTestAt: "",
+    lastErrorMessage: "",
+    lastRefreshedAt: "",
+  },
   appNotifications: [],
   notificationCenterOpen: false,
   notificationSnoozeMenuOpenId: "",
@@ -1577,6 +1593,22 @@ function resetSessionScopedAppState() {
   appState.pushSubscriptions = [];
   appState.currentPushSubscriptionRecord = null;
   appState.pushSubscriptionsError = "";
+  appState.pushDiagnostics = {
+    loading: false,
+    serviceWorkerStatus: "unknown",
+    permissionState: "default",
+    pushSupportState: "default",
+    vapidKeyAvailable: false,
+    backendReachable: false,
+    backendConfigured: false,
+    backendStatusLabel: "Unchecked",
+    currentDeviceRegistered: false,
+    currentDeviceSaved: false,
+    lastTestResult: "",
+    lastTestAt: "",
+    lastErrorMessage: "",
+    lastRefreshedAt: "",
+  };
   appState.authModalDismissHash = "";
   appState.deletionPromptShown = false;
   appState.accountMenuOpen = false;
@@ -4984,6 +5016,193 @@ function renderPushDeliveryStateMarkup() {
       </div>
     </div>
   `;
+}
+
+function canViewPushDiagnosticsPanel() {
+  return Boolean(appState.user && (isAdminUser() || isLocalDevQaBypassActive()));
+}
+
+function formatPushDiagnosticsTimestamp(value = "") {
+  const timestamp = Date.parse(String(value || "").trim());
+  if (!Number.isFinite(timestamp)) {
+    return "Not recorded yet";
+  }
+  return new Date(timestamp).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getPushDiagnosticsStatusMeta(isPositive, positiveLabel = "Ready", negativeLabel = "Unavailable") {
+  return isPositive
+    ? { tone: "success", label: positiveLabel }
+    : { tone: "warning", label: negativeLabel };
+}
+
+function renderPushDiagnosticsRowMarkup(label = "", value = "", tone = "info", helper = "") {
+  return `
+    <div class="profile-push-diagnostics-row">
+      <div class="profile-push-diagnostics-copy">
+        <strong>${escapeHtml(label)}</strong>
+        ${helper ? `<span>${escapeHtml(helper)}</span>` : ""}
+      </div>
+      <span class="profile-permission-badge is-${escapeHtml(tone)}">${escapeHtml(value)}</span>
+    </div>
+  `;
+}
+
+function renderPushDiagnosticsPanelMarkup() {
+  if (!canViewPushDiagnosticsPanel()) {
+    return "";
+  }
+
+  const diagnostics = appState.pushDiagnostics || {};
+  const serviceWorkerBadge = diagnostics.serviceWorkerStatus === "active"
+    ? getPushDiagnosticsStatusMeta(true, "Active", "Missing")
+    : diagnostics.serviceWorkerStatus === "unsupported"
+      ? { tone: "warning", label: "Unsupported" }
+      : { tone: "info", label: diagnostics.serviceWorkerStatus === "loading" ? "Checking" : "Inactive" };
+  const permissionMeta = getNotificationPermissionStateMeta(diagnostics.permissionState || getGrowRemindersBrowserPermissionState());
+  const subscriptionMeta = getPushSubscriptionSupportMeta(diagnostics.pushSupportState || getPushSubscriptionSupportState());
+  const vapidMeta = getPushDiagnosticsStatusMeta(Boolean(diagnostics.vapidKeyAvailable), "Available", "Missing");
+  const backendMeta = diagnostics.backendReachable
+    ? getPushDiagnosticsStatusMeta(Boolean(diagnostics.backendConfigured), diagnostics.backendConfigured ? "Configured" : "Reachable")
+    : { tone: diagnostics.loading ? "info" : "warning", label: diagnostics.loading ? "Checking" : "Unavailable" };
+  const deviceMeta = diagnostics.currentDeviceRegistered
+    ? getPushDiagnosticsStatusMeta(true, diagnostics.currentDeviceSaved ? "Registered" : "Subscribed")
+    : { tone: "info", label: "Unregistered" };
+  const canRegister = !diagnostics.loading && diagnostics.permissionState !== "unsupported";
+  const canSendTest = !diagnostics.loading && diagnostics.currentDeviceRegistered && diagnostics.backendReachable && diagnostics.backendConfigured;
+  const lastTestLabel = diagnostics.lastTestResult
+    ? `${diagnostics.lastTestResult} · ${formatPushDiagnosticsTimestamp(diagnostics.lastTestAt)}`
+    : "No test sent yet";
+  const canUnregister = !diagnostics.loading && diagnostics.currentDeviceRegistered;
+
+  return `
+    <div class="profile-notification-permission profile-push-diagnostics-panel is-info">
+      <div class="profile-notification-permission-head">
+        <div class="profile-notification-permission-copy">
+          <strong>Push Diagnostics</strong>
+          <span>Admin/dev-only health checks for browser push setup and backend delivery.</span>
+        </div>
+        <span class="profile-permission-badge is-info">Dev</span>
+      </div>
+      <div class="profile-push-diagnostics-grid">
+        ${renderPushDiagnosticsRowMarkup("Service worker", serviceWorkerBadge.label, serviceWorkerBadge.tone, "Install + runtime notification shell status")}
+        ${renderPushDiagnosticsRowMarkup("Browser permission", permissionMeta.label, permissionMeta.tone, "Current browser/device notification permission")}
+        ${renderPushDiagnosticsRowMarkup("Push subscription", subscriptionMeta.label, subscriptionMeta.tone, "Current Push API readiness for this device")}
+        ${renderPushDiagnosticsRowMarkup("VAPID public key", vapidMeta.label, vapidMeta.tone, "Public push key availability in runtime config")}
+        ${renderPushDiagnosticsRowMarkup("Backend /api/push-send", backendMeta.label, backendMeta.tone, diagnostics.backendReachable ? "Serverless route responded to diagnostics check" : "Push sender route has not responded yet")}
+        ${renderPushDiagnosticsRowMarkup("Current device", deviceMeta.label, deviceMeta.tone, diagnostics.currentDeviceSaved ? "Device record is stored for this signed-in user" : "No saved device record yet")}
+      </div>
+      <div class="profile-push-delivery-meta profile-push-diagnostics-meta">
+        <span>Last refresh: ${escapeHtml(formatPushDiagnosticsTimestamp(diagnostics.lastRefreshedAt))}</span>
+        <span>Last test: ${escapeHtml(lastTestLabel)}</span>
+      </div>
+      ${diagnostics.lastErrorMessage ? `<p class="profile-notification-guidance">Last error: ${escapeHtml(diagnostics.lastErrorMessage)}</p>` : ""}
+      <div class="profile-push-delivery-actions profile-push-diagnostics-actions">
+        <button type="button" class="button button-secondary" data-profile-push-diagnostics-register="true"${canRegister ? "" : " disabled"}>Register This Device</button>
+        <button type="button" class="button button-secondary" data-profile-push-diagnostics-test="true"${canSendTest ? "" : " disabled"}>Send Test Push</button>
+        <button type="button" class="button button-secondary" data-profile-push-diagnostics-refresh="true"${diagnostics.loading ? " disabled" : ""}>Refresh Status</button>
+        <button type="button" class="button button-secondary" data-profile-push-diagnostics-unregister="true"${canUnregister ? "" : " disabled"}>Unregister This Device</button>
+      </div>
+    </div>
+  `;
+}
+
+async function refreshPushDiagnosticsState(options = {}) {
+  const {
+    scope = document,
+    preserveLastStatus = true,
+  } = options || {};
+
+  if (!canViewPushDiagnosticsPanel()) {
+    return null;
+  }
+
+  const nextState = {
+    ...(appState.pushDiagnostics || {}),
+    loading: true,
+    lastErrorMessage: preserveLastStatus ? String(appState.pushDiagnostics?.lastErrorMessage || "").trim() : "",
+  };
+  appState.pushDiagnostics = nextState;
+  syncPushDiagnosticsStateUi(scope);
+
+  let backendReachable = false;
+  let backendConfigured = false;
+  let backendStatusLabel = "Unavailable";
+  let lastErrorMessage = preserveLastStatus ? String(appState.pushDiagnostics?.lastErrorMessage || "").trim() : "";
+
+  try {
+    const registration = await getServiceWorkerRegistration();
+    await ensureCurrentUserPushSubscriptionState({ persistRecord: false });
+    const browserSubscription = await getCurrentBrowserPushSubscription();
+    const currentDeviceRecord = appState.currentPushSubscriptionRecord;
+    const serviceWorkerStatus = !("serviceWorker" in navigator)
+      ? "unsupported"
+      : registration?.active
+        ? "active"
+        : registration?.installing
+          ? "installing"
+          : registration?.waiting
+            ? "waiting"
+            : "inactive";
+
+    try {
+      const response = await fetch("/api/push-send", {
+        method: "GET",
+        cache: "no-store",
+      });
+      backendReachable = response.ok;
+      const payload = await response.json().catch(() => ({}));
+      backendConfigured = payload?.configured === true;
+      backendStatusLabel = response.ok
+        ? (backendConfigured ? "Configured" : "Reachable")
+        : `HTTP ${response.status}`;
+    } catch (error) {
+      backendReachable = false;
+      backendConfigured = false;
+      backendStatusLabel = "Unavailable";
+      lastErrorMessage = error?.message || "Could not reach /api/push-send.";
+    }
+
+    appState.pushDiagnostics = {
+      ...(appState.pushDiagnostics || {}),
+      loading: false,
+      serviceWorkerStatus,
+      permissionState: getGrowRemindersBrowserPermissionState(),
+      pushSupportState: getPushSubscriptionSupportState(),
+      vapidKeyAvailable: Boolean(getConfiguredPushPublicKey()),
+      backendReachable,
+      backendConfigured,
+      backendStatusLabel,
+      currentDeviceRegistered: Boolean(browserSubscription || (currentDeviceRecord && !currentDeviceRecord.disabledAt && (currentDeviceRecord.endpoint || currentDeviceRecord.pushEnabled))),
+      currentDeviceSaved: Boolean(currentDeviceRecord && !currentDeviceRecord.disabledAt && currentDeviceRecord.deviceKey),
+      lastErrorMessage,
+      lastRefreshedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    appState.pushDiagnostics = {
+      ...(appState.pushDiagnostics || {}),
+      loading: false,
+      serviceWorkerStatus: "inactive",
+      permissionState: getGrowRemindersBrowserPermissionState(),
+      pushSupportState: getPushSubscriptionSupportState(),
+      vapidKeyAvailable: Boolean(getConfiguredPushPublicKey()),
+      backendReachable,
+      backendConfigured,
+      backendStatusLabel,
+      currentDeviceRegistered: false,
+      currentDeviceSaved: false,
+      lastErrorMessage: error?.message || "Push diagnostics could not be refreshed.",
+      lastRefreshedAt: new Date().toISOString(),
+    };
+  }
+
+  syncPushDiagnosticsStateUi(scope);
+  return appState.pushDiagnostics;
 }
 
 function loadDeliveredPushNotificationEvents(userId = "") {
@@ -25157,6 +25376,16 @@ function syncPushDeliveryStateUi(scope) {
   });
 }
 
+function syncPushDiagnosticsStateUi(scope) {
+  const root = scope instanceof HTMLElement || scope instanceof HTMLFormElement || scope instanceof Document ? scope : document;
+  root.querySelectorAll("[data-push-diagnostics-state]").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    element.innerHTML = renderPushDiagnosticsPanelMarkup();
+  });
+}
+
 function renderProfileSignInPrompt() {
   app.innerHTML = `
     <section class="card profile-page profile-page--sign-in" aria-label="Profile sign-in prompt">
@@ -25272,7 +25501,9 @@ function bindProfilePageForm(form) {
     syncGrowReminderToggleAvailability(form);
     syncNotificationPermissionStateUi(form);
     syncPushDeliveryStateUi(form);
+    syncPushDiagnosticsStateUi(form);
     bindPushDeliveryActions();
+    bindPushDiagnosticsActions();
   };
 
   const syncLocalProfileState = (nextValues = getFormState()) => {
@@ -25314,6 +25545,116 @@ function bindProfilePageForm(form) {
         setMessage("Push delivery was disabled on this device.");
       } catch (error) {
         setMessage(error.message || "Could not disable push delivery on this device.", true);
+      }
+    });
+  };
+
+  const enablePushPreferenceForDiagnostics = async () => {
+    const nextPreferences = {
+      ...(appState.notificationPreferences || getDefaultNotificationPreferences()),
+      pushNotificationsEnabled: true,
+    };
+    appState.notificationPreferences = syncUserNotificationPreferencesCache(
+      String(appState.user?.id || "").trim(),
+      nextPreferences,
+    );
+    if (form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+      form.elements.pushNotificationsEnabled.checked = true;
+    }
+    updateUnsavedState();
+    try {
+      appState.notificationPreferences = await saveUserNotificationPreferences(nextPreferences, {
+        requirePersistence: true,
+        debugContext: "push-diagnostics-register",
+        verifyAfterSave: true,
+      });
+    } catch (error) {
+      console.warn("[Push Diagnostics] Push preference save fell back to local storage.", error);
+    }
+  };
+
+  const bindPushDiagnosticsActions = () => {
+    form.querySelector("[data-profile-push-diagnostics-refresh='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Refreshing push diagnostics...");
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        setMessage("Push diagnostics refreshed.");
+      } catch (error) {
+        setMessage(error.message || "Could not refresh push diagnostics right now.", true);
+      }
+    });
+
+    form.querySelector("[data-profile-push-diagnostics-register='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Registering this device for push delivery...");
+        let permissionState = getGrowRemindersBrowserPermissionState();
+        if (permissionState === "unsupported") {
+          throw new Error("This browser/device does not support push notification registration.");
+        }
+        if (permissionState !== "granted") {
+          permissionState = await requestGrowRemindersBrowserPermission();
+          if (permissionState !== "granted") {
+            throw new Error("Browser notification permission must be granted before this device can be registered.");
+          }
+        }
+        await enablePushPreferenceForDiagnostics();
+        await subscribeCurrentDeviceToPushNotifications();
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        setMessage("This device is registered for push delivery.");
+      } catch (error) {
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          lastErrorMessage: error.message || "Could not register this device for push delivery.",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        setMessage(error.message || "Could not register this device for push delivery.", true);
+      }
+    });
+
+    form.querySelector("[data-profile-push-diagnostics-test='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Sending test push...");
+        await sendProfilePushTestNotification();
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          lastTestResult: "Test push sent",
+          lastTestAt: new Date().toISOString(),
+          lastErrorMessage: "",
+        };
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        setMessage("Test push sent.");
+      } catch (error) {
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          lastTestResult: "Test push failed",
+          lastTestAt: new Date().toISOString(),
+          lastErrorMessage: error.message || "Could not send a test push right now.",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        setMessage(error.message || "Could not send a test push right now.", true);
+      }
+    });
+
+    form.querySelector("[data-profile-push-diagnostics-unregister='true']")?.addEventListener("click", async () => {
+      try {
+        setMessage("Unregistering this device...");
+        await disableCurrentDevicePushNotifications();
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        setMessage("This device is no longer registered for push delivery.");
+      } catch (error) {
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          lastErrorMessage: error.message || "Could not unregister this device right now.",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        setMessage(error.message || "Could not unregister this device right now.", true);
       }
     });
   };
@@ -25520,6 +25861,12 @@ function bindProfilePageForm(form) {
     allowFollowers: profilePageSettings.allowFollowers,
     showGrowStatsPublicly: profilePageSettings.showGrowStatsPublicly,
   });
+
+  if (canViewPushDiagnosticsPanel()) {
+    void refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true }).then(() => {
+      bindPushDiagnosticsActions();
+    });
+  }
 }
 
 function renderProfilePage() {
@@ -25597,6 +25944,7 @@ function renderProfilePage() {
             </div>
             <div data-notification-permission-state="true"></div>
             <div data-push-delivery-state="true">${renderPushDeliveryStateMarkup()}</div>
+            ${canViewPushDiagnosticsPanel() ? `<div data-push-diagnostics-state="true">${renderPushDiagnosticsPanelMarkup()}</div>` : ""}
             <div class="profile-toggle-list">
               ${renderProfileSettingsToggleMarkup({
                 name: "growRemindersEnabled",
