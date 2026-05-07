@@ -841,17 +841,43 @@ const ACTIVE_SECTION_STYLE = {
 };
 const STAGE_REMINDER_SCHEDULES = {
   soaking: [
-    { hours: 18, message: "Check your seeds.", level: "guidance" },
-    { hours: 24, message: "Stop soaking. Move to germination.", level: "critical" },
+    {
+      hours: 18,
+      title: "Check soaking progress",
+      message: "Check soaking progress. If soaking is complete, move the session to Germination so stage timing stays accurate.",
+      actionText: "Next step: inspect the seeds and update the session stage when soaking is complete.",
+      level: "guidance",
+    },
+    {
+      hours: 24,
+      title: "Ready For Germination?",
+      message: "If soaking is complete, update the session stage to Germination so timing remains accurate.",
+      actionText: "Next step: move this session into Germinating as soon as soaking is finished.",
+      level: "critical",
+    },
   ],
   germinating: [
-    { hours: 2, message: "Check heat pad and lid (condensation).", level: "guidance" },
-    { hours: 12, message: "Check seeds.", level: "guidance" },
-    { hours: 24, message: "Check seeds.", level: "guidance" },
-    { hours: 36, message: "Check seeds. Plant if ready.", level: "guidance" },
-    { hours: 48, message: "Plant when ready. Mark session complete.", level: "critical" },
-    { hours: 72, message: "Check seeds. Plant and complete session.", level: "critical" },
-    { hours: 120, message: "This session has been running for several days. Check seeds and complete when ready.", level: "critical" },
+    {
+      hours: 12,
+      title: "Check Germination Progress",
+      message: "Update germination results and mark the session complete once all seeds have finished germinating.",
+      actionText: "Next step: record current germination progress so timing and analytics stay accurate.",
+      level: "guidance",
+    },
+    {
+      hours: 48,
+      title: "Update results if germination has finished",
+      message: "If germination is wrapping up, record the latest results and complete the session so timing data stays meaningful.",
+      actionText: "Next step: update germination counts and complete the session when appropriate.",
+      level: "guidance",
+    },
+    {
+      hours: 60,
+      title: "Don’t Forget To Mark Complete",
+      message: "If germination is finished, mark the session complete to preserve accurate germination timing and analytics.",
+      actionText: "Next step: finalize the session once all germination activity has finished.",
+      level: "critical",
+    },
   ],
 };
 const MOCK_ADMIN_REPORTS = Object.freeze([
@@ -7151,6 +7177,149 @@ function hasAnyMeaningfulSnapshotAcrossSessions(sessions = getSessions()) {
   ));
 }
 
+function removeAppNotificationsByEventKeys(eventKeys = []) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const normalizedKeys = new Set((Array.isArray(eventKeys) ? eventKeys : []).map((eventKey) => String(eventKey || "").trim()).filter(Boolean));
+  if (!normalizedUserId || !normalizedKeys.size) {
+    return;
+  }
+
+  const notifications = getAppNotifications(normalizedUserId);
+  const nextNotifications = notifications.filter((notification) => !normalizedKeys.has(String(notification?.eventKey || "").trim()));
+  if (nextNotifications.length === notifications.length) {
+    return;
+  }
+
+  persistAppNotifications(nextNotifications, normalizedUserId);
+  renderAppNotificationCenter();
+}
+
+function removeAppNotificationsByEventKeyPrefix(prefix = "") {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const normalizedPrefix = String(prefix || "").trim();
+  if (!normalizedUserId || !normalizedPrefix) {
+    return;
+  }
+
+  const notifications = getAppNotifications(normalizedUserId);
+  const nextNotifications = notifications.filter((notification) => !String(notification?.eventKey || "").trim().startsWith(normalizedPrefix));
+  if (nextNotifications.length === notifications.length) {
+    return;
+  }
+
+  persistAppNotifications(nextNotifications, normalizedUserId);
+  renderAppNotificationCenter();
+}
+
+function buildStageProgressReminderEventKey(sessionId = "", reminderHours = 0, reminderKind = "stage") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedKind = String(reminderKind || "stage").trim();
+  return normalizedSessionId ? `stage-progress:${normalizedSessionId}:${normalizedKind}-${Math.max(0, Number(reminderHours) || 0)}` : "";
+}
+
+function buildStageProgressReminderEntries(session = null) {
+  if (!session?.id || isSessionSoftDeleted(session) || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
+    return [];
+  }
+
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  const schedule = STAGE_REMINDER_SCHEDULES[normalizedStatus];
+  if (!Array.isArray(schedule) || !schedule.length) {
+    return [];
+  }
+
+  const stageStart = getStageStartDateTime(session?.date || "", session?.time || "", normalizedStatus, session?.germinationStartedAt || "");
+  if (!stageStart) {
+    return [];
+  }
+
+  const elapsedHours = Math.max(0, (Date.now() - stageStart.getTime()) / (60 * 60 * 1000));
+  const latestDueReminder = [...schedule]
+    .filter((reminder) => elapsedHours >= Math.max(0, Number(reminder?.hours) || 0))
+    .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0];
+  if (!latestDueReminder) {
+    return [];
+  }
+
+  return [{
+    eventKey: buildStageProgressReminderEventKey(session.id, latestDueReminder.hours, normalizedStatus),
+    category: normalizedStatus === "soaking" ? "soaking-reminder" : "germination-reminder",
+    title: latestDueReminder.title || getSessionStatusAlertTitle(normalizedStatus, latestDueReminder.level),
+    message: latestDueReminder.message,
+    sessionId: session.id,
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: `#sessions/${session.id}`,
+    actionKind: "route",
+    actionLabel: normalizedStatus === "soaking" ? "Open session" : "Update session",
+    level: latestDueReminder.level,
+    reminderHours: Math.max(0, Number(latestDueReminder?.hours) || 0),
+  }];
+}
+
+function syncSessionProgressionReminderNotifications(sessions = getSessions()) {
+  const visibleSessions = getVisibleUserSessions(Array.isArray(sessions) ? sessions : []);
+  const visibleSessionIds = new Set(visibleSessions.map((session) => String(session?.id || "").trim()).filter(Boolean));
+  const orphanedEventKeys = getAppNotifications()
+    .map((notification) => String(notification?.eventKey || "").trim())
+    .filter((eventKey) => (
+      (eventKey.startsWith("stage-progress:") || eventKey.startsWith("session:"))
+      && ![...visibleSessionIds].some((sessionId) => (
+        eventKey.startsWith(`stage-progress:${sessionId}:`)
+        || eventKey === `session:${sessionId}:perfect-germination`
+      ))
+    ));
+  if (orphanedEventKeys.length) {
+    removeAppNotificationsByEventKeys(orphanedEventKeys);
+  }
+
+  if (!areGrowReminderNotificationsEnabled()) {
+    removeAppNotificationsByEventKeys(["onboarding:first-snapshot-reminder", "supply:low", "supply:critical"]);
+    visibleSessions.forEach((session) => {
+      removeAppNotificationsByEventKeyPrefix(`stage-progress:${String(session?.id || "").trim()}:`);
+      removeAppNotificationsByEventKeys([`session:${String(session?.id || "").trim()}:perfect-germination`]);
+    });
+    return;
+  }
+
+  visibleSessions.forEach((session) => {
+    const reminderEntries = buildStageProgressReminderEntries(session);
+    const activeEventKeys = new Set(reminderEntries.map((entry) => entry.eventKey).filter(Boolean));
+    const notificationPrefix = `stage-progress:${String(session?.id || "").trim()}:`;
+    const obsoleteEventKeys = getAppNotifications()
+      .filter((notification) => String(notification?.eventKey || "").trim().startsWith(notificationPrefix))
+      .map((notification) => String(notification?.eventKey || "").trim())
+      .filter((eventKey) => !activeEventKeys.has(eventKey));
+    if (obsoleteEventKeys.length) {
+      removeAppNotificationsByEventKeys(obsoleteEventKeys);
+    }
+
+    reminderEntries.forEach((entry) => {
+      addAppNotification(entry);
+    });
+
+    const totals = getSessionSeedTotals(session);
+    const successRate = totals.totalSeeds > 0
+      ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
+      : 0;
+    const perfectEventKey = `session:${String(session?.id || "").trim()}:perfect-germination`;
+    if (successRate === 100 && normalizeSessionStatus(session?.sessionStatus || "") !== "completed") {
+      addAppNotification({
+        eventKey: perfectEventKey,
+        category: "germination-reminder",
+        title: "All seeds have germinated successfully",
+        message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
+        sessionId: session.id,
+        sessionLabel: buildAppNotificationSessionLabel(session),
+        route: `#sessions/${session.id}`,
+        actionKind: "route",
+        actionLabel: "Mark complete",
+      });
+    } else {
+      removeAppNotificationsByEventKeys([perfectEventKey]);
+    }
+  });
+}
+
 function maybeAddFirstSoakingSessionNotification(session = null, existingSessions = getSessions()) {
   if (!isFirstRealGrowReminderSession(session, existingSessions)) {
     return;
@@ -7170,7 +7339,12 @@ function maybeAddFirstSoakingSessionNotification(session = null, existingSession
 }
 
 function maybeAddFirstSnapshotReminderNotification(session = null, existingSessions = getSessions()) {
-  if (!session?.id || hasCreatedMeaningfulSnapshotState(session?.snapshotState) || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)) {
+  if (
+    !session?.id
+    || !areGrowReminderNotificationsEnabled()
+    || hasCreatedMeaningfulSnapshotState(session?.snapshotState)
+    || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)
+  ) {
     return;
   }
 
@@ -7188,7 +7362,7 @@ function maybeAddFirstSnapshotReminderNotification(session = null, existingSessi
 }
 
 function maybeAddPerfectGerminationNotification(session = null, previousSession = null) {
-  if (!session?.id || isSessionSoftDeleted(session)) {
+  if (!session?.id || isSessionSoftDeleted(session) || !areGrowReminderNotificationsEnabled()) {
     return;
   }
 
@@ -7203,20 +7377,20 @@ function maybeAddPerfectGerminationNotification(session = null, previousSession 
     ? Math.round((previousTotals.totalPlanted / previousTotals.totalSeeds) * 100)
     : 0;
 
-  if (currentRate !== 100 || previousRate === 100) {
+  if (currentRate !== 100 || previousRate === 100 || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
     return;
   }
 
   addAppNotification({
     eventKey: `session:${session.id}:perfect-germination`,
     category: "germination-reminder",
-    title: "100% germination recorded",
-    message: `${formatSessionLabel(session)} has reached 100% germination (${currentTotals.totalPlanted}/${currentTotals.totalSeeds} seeds).`,
+    title: "All seeds have germinated successfully",
+    message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
     actionKind: "route",
-    actionLabel: "View session",
+    actionLabel: "Mark complete",
   });
 }
 
@@ -7237,6 +7411,7 @@ function processSessionNotificationTriggers(session = null, options = {}) {
   }
 
   maybeAddPerfectGerminationNotification(session, previousSession);
+  syncSessionProgressionReminderNotifications(getSessions());
 }
 
 function maybeAddSupplyStatusNotification(previousInventory = null, nextInventory = null, options = {}) {
@@ -7246,7 +7421,7 @@ function maybeAddSupplyStatusNotification(previousInventory = null, nextInventor
   } = options || {};
 
   const normalizedNextInventory = normalizeFilterPaperInventory(nextInventory);
-  if (!nextWasSet || normalizedNextInventory.notifyLowSupply === false) {
+  if (!nextWasSet || normalizedNextInventory.notifyLowSupply === false || !areGrowReminderNotificationsEnabled()) {
     return;
   }
 
@@ -7259,6 +7434,7 @@ function maybeAddSupplyStatusNotification(previousInventory = null, nextInventor
   }
 
   const nextStatusLabel = nextStatus === "critical" ? "Critical" : "Low";
+  removeAppNotificationsByEventKeys([`supply:${nextStatus === "critical" ? "low" : "critical"}`]);
   addAppNotification({
     eventKey: `supply:${nextStatus}`,
     category: "supply-reminder",
@@ -22103,6 +22279,9 @@ function render() {
     }));
     return;
   }
+
+  syncSessionProgressionReminderNotifications(getSessions());
+  renderAppNotificationCenter();
 
   if (route === "gallery") {
     renderGallery(id || "");
@@ -44497,6 +44676,11 @@ function getSessionStatusAlertActionText(sessionStatus = "", level = "") {
   return "";
 }
 
+function areGrowReminderNotificationsEnabled() {
+  const notificationPreferences = appState.notificationPreferences || getDefaultNotificationPreferences();
+  return notificationPreferences.notifyCompletion !== false;
+}
+
 function renderSessionStatusAlertIcon(level = "") {
   const normalizedLevel = String(level || "").trim().toLowerCase();
   if (normalizedLevel === "critical") {
@@ -44563,9 +44747,9 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
 
   element.innerHTML = renderSessionStatusAlertsMarkup([{
     level: reminder.level,
-    title: getSessionStatusAlertTitle(normalizedStatus, reminder.level),
+    title: reminder.title || getSessionStatusAlertTitle(normalizedStatus, reminder.level),
     message: reminder.message,
-    actionText: getSessionStatusAlertActionText(normalizedStatus, reminder.level),
+    actionText: reminder.actionText || getSessionStatusAlertActionText(normalizedStatus, reminder.level),
   }]);
   element.hidden = false;
 }
@@ -44605,20 +44789,9 @@ function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germina
   }
 
   const elapsedHours = Math.max(0, (Date.now() - stageStart.getTime()) / (60 * 60 * 1000));
-  let activeReminder = schedule[0];
-  for (const reminder of schedule) {
-    if (elapsedHours >= reminder.hours) {
-      activeReminder = reminder;
-      continue;
-    }
-
-    if (activeReminder.hours > elapsedHours) {
-      activeReminder = reminder;
-    }
-    break;
-  }
-
-  return activeReminder;
+  return [...schedule]
+    .filter((reminder) => elapsedHours >= Math.max(0, Number(reminder?.hours) || 0))
+    .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0] || null;
 }
 
 function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
