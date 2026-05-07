@@ -2923,7 +2923,11 @@ function renderAdminSubnavMarkup(activeKey = "dashboard") {
 }
 
 function syncAdminSubnav() {
-  app.querySelector('[data-admin-subnav="true"]')?.remove();
+  const existingSubnav = app.querySelector('[data-admin-subnav="true"]');
+  if (existingSubnav?.__adminSubnavStickyCleanup) {
+    existingSubnav.__adminSubnavStickyCleanup();
+  }
+  existingSubnav?.remove();
   if (!appState.user || !hasResolvedAdminAccess()) {
     return false;
   }
@@ -2934,7 +2938,75 @@ function syncAdminSubnav() {
   }
 
   app.insertAdjacentHTML("afterbegin", renderAdminSubnavMarkup(activeKey));
+  bindAdminSubnavStickyState();
   return true;
+}
+
+function bindAdminSubnavStickyState() {
+  const subnavShell = app.querySelector('[data-admin-subnav="true"]');
+  if (!(subnavShell instanceof HTMLElement)) {
+    return;
+  }
+
+  const desktopQuery = window.matchMedia?.("(min-width: 1024px)");
+  const stickySentinel = document.createElement("div");
+  stickySentinel.className = "admin-subnav-sticky-sentinel";
+  stickySentinel.setAttribute("aria-hidden", "true");
+  subnavShell.before(stickySentinel);
+
+  let stickyObserver = null;
+  const stickyTopPx = 12;
+
+  const stopObserving = () => {
+    if (stickyObserver) {
+      stickyObserver.disconnect();
+      stickyObserver = null;
+    }
+  };
+
+  const updateStickyMode = () => {
+    stopObserving();
+    subnavShell.classList.remove("admin-subnav--sticky-active");
+    if (!desktopQuery?.matches) {
+      subnavShell.classList.remove("admin-subnav--sticky-ready");
+      return;
+    }
+
+    subnavShell.classList.add("admin-subnav--sticky-ready");
+    stickyObserver = new IntersectionObserver(
+      ([entry]) => {
+        subnavShell.classList.toggle("admin-subnav--sticky-active", !entry.isIntersecting);
+      },
+      {
+        rootMargin: `-${stickyTopPx}px 0px 0px 0px`,
+        threshold: 0,
+      },
+    );
+    stickyObserver.observe(stickySentinel);
+  };
+
+  const handleQueryChange = () => {
+    updateStickyMode();
+  };
+
+  if (desktopQuery?.addEventListener) {
+    desktopQuery.addEventListener("change", handleQueryChange);
+  } else if (desktopQuery?.addListener) {
+    desktopQuery.addListener(handleQueryChange);
+  }
+
+  subnavShell.__adminSubnavStickyCleanup = () => {
+    stopObserving();
+    subnavShell.classList.remove("admin-subnav--sticky-active", "admin-subnav--sticky-ready");
+    if (desktopQuery?.removeEventListener) {
+      desktopQuery.removeEventListener("change", handleQueryChange);
+    } else if (desktopQuery?.removeListener) {
+      desktopQuery.removeListener(handleQueryChange);
+    }
+    stickySentinel.remove();
+  };
+
+  updateStickyMode();
 }
 
 function focusAdminDashboardSection(sectionConfig = null) {
