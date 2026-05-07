@@ -25745,6 +25745,10 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   gap: 6px;
 }
 
+.detail-row .detail-cell p:empty {
+  display: none;
+}
+
 .partition-row input,
 .partition-row select {
   padding: 12px 12px;
