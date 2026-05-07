@@ -107,6 +107,8 @@ const DEFAULT_MIXED_IMAGE_MODE = "match-type";
 const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/public/assets/wow-fallback.png";
 const GROW_NETWORK_UNLOCK_STORAGE_KEY = "cannakanGrowNetworkUnlocked";
 const GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanGrowNetworkUnlockPendingNotice";
+const COMMUNITY_GROW_UNLOCK_STORAGE_KEY = "cannakanCommunityGrowUnlocked";
+const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowUnlockPendingNotice";
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
 
 function getAnnouncementSlideManifestPaths() {
@@ -3999,6 +4001,74 @@ function consumeGrowNetworkUnlockNotice() {
   }
 
   setPendingGrowNetworkUnlockNotice(false);
+  return true;
+}
+
+function hasCommunityGrowUnlockFlag() {
+  return readBooleanLocalStorageFlag(COMMUNITY_GROW_UNLOCK_STORAGE_KEY);
+}
+
+function hasPendingCommunityGrowUnlockNotice() {
+  return readBooleanLocalStorageFlag(COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY);
+}
+
+function setCommunityGrowUnlocked(enabled = true) {
+  writeBooleanLocalStorageFlag(COMMUNITY_GROW_UNLOCK_STORAGE_KEY, enabled);
+}
+
+function setPendingCommunityGrowUnlockNotice(enabled = true) {
+  writeBooleanLocalStorageFlag(COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY, enabled);
+}
+
+function hasCreatedMeaningfulSnapshotState(snapshotState = null) {
+  const normalizedSnapshotState = normalizePersistedSessionSnapshotState(snapshotState);
+  if (!normalizedSnapshotState) {
+    return false;
+  }
+
+  return Boolean(
+    String(normalizedSnapshotState.referenceId || "").trim()
+    && String(normalizedSnapshotState.createdAt || "").trim()
+  );
+}
+
+function getCommunityGrowUnlockEligibleSession(sessions = getSessions()) {
+  return (Array.isArray(sessions) ? sessions : []).find((session) => (
+    !isSessionSoftDeleted(session)
+    && hasCreatedMeaningfulSnapshotState(session?.snapshotState)
+  )) || null;
+}
+
+function ensureCommunityGrowUnlockStateSynced(sessions = getSessions()) {
+  if (hasCommunityGrowUnlockFlag()) {
+    return true;
+  }
+
+  if (!getCommunityGrowUnlockEligibleSession(sessions)) {
+    return false;
+  }
+
+  setCommunityGrowUnlocked(true);
+  return true;
+}
+
+function isCommunityGrowUnlocked(sessions = getSessions()) {
+  return ensureCommunityGrowUnlockStateSynced(sessions);
+}
+
+function markCommunityGrowUnlocked(options = {}) {
+  setCommunityGrowUnlocked(true);
+  if (options.showNotice !== false) {
+    setPendingCommunityGrowUnlockNotice(true);
+  }
+}
+
+function consumeCommunityGrowUnlockNotice() {
+  if (!hasPendingCommunityGrowUnlockNotice()) {
+    return false;
+  }
+
+  setPendingCommunityGrowUnlockNotice(false);
   return true;
 }
 
@@ -19822,6 +19892,7 @@ async function generateSnapshotPreview(state) {
   try {
     setSnapshotMessage(state, "");
     state.generateButton?.setAttribute("disabled", "disabled");
+    const wasCommunityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
     const baseData = state.getSnapshotData?.();
     if (!baseData) {
       throw new Error("Snapshot data is not available yet.");
@@ -19840,8 +19911,17 @@ async function generateSnapshotPreview(state) {
       imageUrl: selectedImage?.displayUrl || "",
       renderKey,
     });
-    await persistSnapshotStateForSection(state, buildGeneratedSessionSnapshotState(state));
-    setSnapshotMessage(state, selectedImage ? "Snapshot ready with your selected image." : "Snapshot ready as a text-only share image.");
+    const persistedSnapshotState = await persistSnapshotStateForSection(state, buildGeneratedSessionSnapshotState(state));
+    const unlockedCommunityGrowNow = !wasCommunityGrowUnlocked && hasCreatedMeaningfulSnapshotState(persistedSnapshotState);
+    if (unlockedCommunityGrowNow) {
+      markCommunityGrowUnlocked({ showNotice: true });
+    }
+    setSnapshotMessage(
+      state,
+      unlockedCommunityGrowNow
+        ? "Snapshot ready. Community Grow unlocked."
+        : (selectedImage ? "Snapshot ready with your selected image." : "Snapshot ready as a text-only share image.")
+    );
     return {
       blob,
       fileName: buildSnapshotFileName(data),
@@ -23567,7 +23647,7 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
           <div>
             <p class="eyebrow">Focused First-Session Mode</p>
             <h3 id="home-grow-network-unlock-title">Unlock the Grow Network</h3>
-            <p>Start your first soaking session to unlock Community Grow, insights, source tracking, rankings, and advanced analytics.</p>
+            <p>Start your first soaking session to unlock insights, source tracking, rankings, analytics, and more.</p>
           </div>
         </div>
         <div class="home-grow-network-unlock-banner-actions">
@@ -35609,6 +35689,19 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
+
+  if (showGrowNetworkUnlockNotice) {
+    const targetSection = app.querySelector(".home-grow-network-preview-shell");
+    if (targetSection instanceof HTMLElement) {
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+      requestAnimationFrame(() => {
+        targetSection.scrollIntoView({
+          block: "start",
+          behavior: prefersReducedMotion ? "auto" : "smooth",
+        });
+      });
+    }
+  }
 }
 
 function syncMockDataBanner() {
@@ -36974,6 +37067,9 @@ function renderGallery(targetSnapshotId = "") {
   }
 
   const isAdminView = isAdminUser();
+  const communityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
+  const showCommunityGrowUnlockNotice = communityGrowUnlocked && consumeCommunityGrowUnlockNotice();
+  const isCommunityGrowLocked = !isAdminView && !communityGrowUnlocked;
   const gallerySnapshots = getGallerySnapshotsForDisplay().filter((entry) => {
     const status = getGallerySnapshotDisplayStatus(entry);
     if (isAdminView) {
@@ -36987,6 +37083,7 @@ function renderGallery(targetSnapshotId = "") {
   logGrowGalleryDebug("renderGallery:start", {
     targetSnapshotId,
     isAdminView,
+    isCommunityGrowLocked,
     currentUserId: appState.user?.id || "",
     currentUserEmail: appState.user?.email || "",
     loadedSnapshots: getGallerySnapshotsForDisplay().map((entry) => ({
@@ -36998,6 +37095,23 @@ function renderGallery(targetSnapshotId = "") {
     })),
     visibleSnapshotIds: gallerySnapshots.map((entry) => entry.id),
   });
+
+  const leaderboardSection = document.querySelector(".gallery-leaderboard-section");
+  const seedAgeOverviewSection = document.querySelector("#community-insights-seed-age");
+  if (isCommunityGrowLocked) {
+    const lockedBannerMarkup = renderCommunityGrowLockedBannerMarkup();
+    leaderboardSection?.insertAdjacentHTML("beforebegin", lockedBannerMarkup);
+    [leaderboardSection, seedAgeOverviewSection, galleryFeedSection].forEach((section) => {
+      if (!(section instanceof HTMLElement)) {
+        return;
+      }
+      section.classList.add("community-grow-preview-section", "is-locked");
+      section.setAttribute("aria-disabled", "true");
+      section.setAttribute("inert", "");
+    });
+  } else if (showCommunityGrowUnlockNotice) {
+    leaderboardSection?.insertAdjacentHTML("beforebegin", renderCommunityGrowUnlockedNoticeMarkup());
+  }
 
   if (isAdminView && galleryFeedSection) {
     const pendingSnapshots = getAdminReviewPendingSnapshots();
@@ -37481,6 +37595,42 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
     `;
     container.appendChild(card);
   });
+}
+
+function renderCommunityGrowLockedBannerMarkup() {
+  return `
+    <section class="card community-grow-locked-banner" aria-labelledby="community-grow-locked-title">
+      <div class="community-grow-locked-banner-shell">
+        <div class="community-grow-locked-banner-copy">
+          ${renderAppSectionHeaderIcon("community", {
+            className: "community-grow-locked-banner-icon",
+          })}
+          <div>
+            <p class="eyebrow">Snapshot Progression</p>
+            <h3 id="community-grow-locked-title">Community Grow Locked</h3>
+            <p>Create your first grow snapshot in a session to unlock the Community Grow gallery and rankings.</p>
+          </div>
+        </div>
+        <div class="community-grow-locked-banner-actions">
+          <a class="button button-primary" href="#sessions">Go To My Sessions</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderCommunityGrowUnlockedNoticeMarkup() {
+  return `
+    <section class="community-grow-unlocked-notice" aria-live="polite">
+      <span class="community-grow-unlocked-notice__icon" aria-hidden="true">
+        ${renderMySessionsInlineIconMarkup("check", "community-grow-unlocked-notice__icon-glyph")}
+      </span>
+      <div class="community-grow-unlocked-notice__copy">
+        <strong>Community Grow Unlocked</strong>
+        <span>You can now explore community snapshots, rankings, and grow discovery.</span>
+      </div>
+    </section>
+  `;
 }
 
 function renderMySessionsInlineIconMarkup(iconName, className = "") {
@@ -39042,7 +39192,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
-      if (!wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession)) {
+      const unlockedGrowNetworkNow = !wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession);
+      if (unlockedGrowNetworkNow) {
         markGrowNetworkUnlocked({ showNotice: true });
       }
       clearNewSessionNotesDraft();
@@ -39055,7 +39206,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       markUnsavedChangesSaved();
       if (navigateOnSuccess) {
-        navigateWithUnsavedChangesBypass(`#sessions/${savedSession.id}`);
+        navigateWithUnsavedChangesBypass(unlockedGrowNetworkNow ? "#home" : `#sessions/${savedSession.id}`);
       }
       return savedSession;
     } catch (error) {
