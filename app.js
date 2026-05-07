@@ -22834,10 +22834,13 @@ function initializeHomeInstallMonitorAnimation(scope = document) {
 
     const valueElement = ring.querySelector("[data-install-ring-value]");
     const targetValue = Math.max(0, Math.min(100, Number(ring.dataset.installRingTarget) || 98));
+    const targetAngle = `${targetValue * 3.6}deg`;
     ring.classList.remove("is-complete");
+    ring.style.setProperty("--home-install-monitor-ring-target-angle", targetAngle);
+    ring.style.setProperty("--install-ring-target-angle", targetAngle);
 
     if (prefersReducedMotion) {
-      ring.style.setProperty("--home-install-monitor-ring-angle", `${targetValue * 3.6}deg`);
+      ring.style.setProperty("--home-install-monitor-ring-angle", targetAngle);
       if (valueElement) {
         valueElement.textContent = `${Math.round(targetValue)}%`;
       }
@@ -22872,7 +22875,7 @@ function initializeHomeInstallMonitorAnimation(scope = document) {
         return;
       }
 
-      ring.style.setProperty("--home-install-monitor-ring-angle", `${targetValue * 3.6}deg`);
+      ring.style.setProperty("--home-install-monitor-ring-angle", targetAngle);
       if (valueElement) {
         valueElement.textContent = `${Math.round(targetValue)}%`;
       }

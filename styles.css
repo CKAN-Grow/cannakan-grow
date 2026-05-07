@@ -9883,6 +9883,8 @@ body.theme-dark .contact-reason-card.is-active {
 
 .home-install-monitor-ring {
   --home-install-monitor-ring-angle: 0deg;
+  --home-install-monitor-ring-target-angle: 352.8deg;
+  --home-install-monitor-ring-loop-duration: 4.5s;
   position: relative;
   display: grid;
   place-items: center;
@@ -9903,7 +9905,10 @@ body.theme-dark .contact-reason-card.is-active {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: conic-gradient(#94d159 0 var(--home-install-monitor-ring-angle), transparent var(--home-install-monitor-ring-angle) 360deg);
+  background: conic-gradient(
+    #94d159 0 var(--install-ring-angle, var(--home-install-monitor-ring-angle)),
+    transparent var(--install-ring-angle, var(--home-install-monitor-ring-angle)) 360deg
+  );
   -webkit-mask: radial-gradient(circle, transparent 56%, #000 57.5%);
   mask: radial-gradient(circle, transparent 56%, #000 57.5%);
 }
@@ -9929,11 +9934,17 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-install-monitor-ring.is-complete {
-  animation: home-install-monitor-ring-pulse 4.2s ease-in-out infinite;
+  animation: home-install-monitor-ring-pulse var(--home-install-monitor-ring-loop-duration) ease-in-out infinite;
+}
+
+.home-install-monitor-ring.is-complete::before {
+  --install-ring-angle: 0deg;
+  --install-ring-target-angle: var(--home-install-monitor-ring-target-angle);
+  animation: home-install-ring-loop var(--home-install-monitor-ring-loop-duration) linear infinite;
 }
 
 .home-install-monitor-ring.is-complete::after {
-  animation: home-install-monitor-ring-halo 4.2s ease-in-out infinite;
+  animation: home-install-monitor-ring-halo var(--home-install-monitor-ring-loop-duration) ease-in-out infinite;
 }
 
 .home-install-monitor-ring-label {
@@ -10122,6 +10133,7 @@ body.theme-dark .contact-reason-card.is-active {
 
 @media (prefers-reduced-motion: reduce) {
   .home-install-monitor-ring,
+  .home-install-monitor-ring::before,
   .home-install-monitor-ring::after {
     animation: none !important;
     transition: none !important;
