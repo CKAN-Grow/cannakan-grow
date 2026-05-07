@@ -41951,13 +41951,8 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
   const plantedInputs = [...partitionContainer.querySelectorAll('input[name="plantedCount"]')];
 
   if (headerCell) {
-    if (isVisible) {
-      headerCell.style.setProperty("background", "rgba(148, 209, 89, 0.12)", "important");
-      headerCell.style.setProperty("color", "#5f8f2f", "important");
-    } else {
-      headerCell.style.removeProperty("background");
-      headerCell.style.removeProperty("color");
-    }
+    headerCell.style.removeProperty("background");
+    headerCell.style.removeProperty("color");
   }
 
   plantedCells.forEach((cell) => {
