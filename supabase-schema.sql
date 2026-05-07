@@ -2003,3 +2003,5 @@ using (
     )
   )
 );
+
+-- End of Cannakan Grow Supabase schema.
