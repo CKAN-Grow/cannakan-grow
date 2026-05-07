@@ -3181,6 +3181,91 @@ body.theme-dark #active-sessions-section {
   margin-top: 0;
 }
 
+.home-session-summary-grid--compact {
+  gap: 14px;
+}
+
+.home-session-summary-card--compact {
+  min-height: 142px;
+  padding: 13px 14px 12px;
+  border-radius: 16px;
+}
+
+#session-command-center .home-session-summary-card--compact .card-content {
+  gap: 8px;
+}
+
+#session-command-center .home-session-summary-card--compact .summary-card-head,
+#session-command-center .home-session-summary-card--compact .summary-card-head-main {
+  gap: 8px;
+}
+
+#session-command-center .home-session-summary-card--compact .command-icon--metric {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.home-session-summary-card--compact .summary-card-body {
+  gap: 5px;
+}
+
+.home-session-summary-card--compact .stat-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+}
+
+.home-session-summary-card--compact .stat-value {
+  font-size: 1.58rem;
+}
+
+.home-session-summary-card--compact .summary-subtext {
+  font-size: 0.81rem;
+  line-height: 1.35;
+}
+
+.home-session-summary-card--compact .best-session-indicator {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+}
+
+.home-session-summary-card--compact .best-session-name {
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.home-session-summary-card--compact .best-session-result,
+.home-session-summary-card--compact .overall-rate-total {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.home-session-summary-card--compact .summary-card-action {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+}
+
+.home-session-summary-card--compact .overall-rate-content {
+  gap: 10px;
+}
+
+.home-session-summary-card--compact .overall-rate-ring {
+  --overall-ring-size: 60px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 16px rgba(148, 209, 89, 0.1);
+}
+
+.home-session-summary-card--compact .overall-rate-ring.overall-rate-ring--compact .overall-rate-value,
+.home-session-summary-card--compact .overall-rate-value {
+  font-size: 0.92rem;
+}
+
+.home-session-summary-card--compact .overall-rate-bar {
+  margin-top: 2px;
+}
+
 .session-command-center-supply-panel {
   --filter-paper-accent: #94d159;
   --filter-paper-accent-soft: rgba(148, 209, 89, 0.18);

@@ -34830,6 +34830,7 @@ function renderHome() {
     hasSessionHistory,
     requiresSignIn: !appState.user,
     metricsPlacement: "top",
+    metricsVariant: "compact",
   });
 
   const homeSecondaryInfoRowMarkup = renderHomeSecondaryInfoRowMarkup();
@@ -43438,6 +43439,9 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
 }
 
 function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSessions = [], options = {}) {
+  const compactVariant = String(options.metricsVariant || "").trim().toLowerCase() === "compact";
+  const compactCardClass = compactVariant ? " home-session-summary-card--compact" : "";
+  const compactRateRingClass = compactVariant ? " overall-rate-ring--compact" : "";
   const totalSessions = sessions.length;
   const activeCount = activeSessions.length;
   const activeSubtext = activeCount ? "in progress" : "No active sessions";
@@ -43468,7 +43472,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
     : 0;
 
   return `
-    <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue" href="#active-sessions">
+    <a id="active-sessions-card" class="card stat-card summary-link-card card-accent card-accent-blue${compactCardClass}" href="#active-sessions">
       <div class="card-content">
         <div class="summary-card-head">
           ${renderCommandCenterIconMarkup("metric-active", "command-icon--metric command-icon--metric-active")}
@@ -43481,7 +43485,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
       </div>
       <span class="summary-card-action card-action">View All <span aria-hidden="true">&rarr;</span></span>
     </a>
-    <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange" href="#sessions" data-session-scroll-target="session-history">
+    <a id="saved-sessions-card" class="card stat-card summary-link-card card-accent card-accent-orange${compactCardClass}" href="#sessions" data-session-scroll-target="session-history">
       <div class="card-content">
         <div class="summary-card-head">
           ${renderCommandCenterIconMarkup("metric-saved", "command-icon--metric command-icon--metric-saved")}
@@ -43494,7 +43498,7 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
       </div>
       <span class="summary-card-action card-action">View All <span aria-hidden="true">&rarr;</span></span>
     </a>
-    <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green" href="${escapeHtml(bestSession ? `#sessions/${bestSession.id}` : "#sessions")}">
+    <a id="best-session-card" class="card stat-card best-session-card summary-link-card card-accent card-accent-green${compactCardClass}" href="${escapeHtml(bestSession ? `#sessions/${bestSession.id}` : "#sessions")}">
       <div class="card-content">
         <div class="summary-card-head best-session-header">
           <div class="summary-card-head-main">
@@ -43511,14 +43515,14 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
       </div>
       <span class="summary-card-action card-action">View Details <span aria-hidden="true">&rarr;</span></span>
     </a>
-    <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown" href="#sessions" data-session-scroll-target="session-analytics">
+    <a id="overall-rate-card" class="card stat-card overall-rate-card summary-link-card card-accent card-accent-brown${compactCardClass}" href="#sessions" data-session-scroll-target="session-analytics">
       <div class="card-content">
         <div class="summary-card-head">
           ${renderCommandCenterIconMarkup("metric-rate", "command-icon--metric command-icon--metric-rate")}
           <span class="stat-label">All Sessions Germination Rate</span>
         </div>
         <div class="overall-rate-content">
-          <div class="overall-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallPercentage}%`)};">
+          <div class="overall-rate-ring${compactRateRingClass}" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallPercentage}%`)};">
             <strong class="overall-rate-value">${escapeHtml(`${overallPercentage}%`)}</strong>
           </div>
           <div class="overall-rate-copy">
@@ -43545,6 +43549,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const showViewAllLink = options.showViewAllLink !== false;
   const showMetrics = options.showMetrics !== false;
   const metricsPlacement = String(options.metricsPlacement || "bottom").trim().toLowerCase() === "top" ? "top" : "bottom";
+  const metricsVariant = String(options.metricsVariant || "").trim().toLowerCase();
   const headerActionHref = String(options.headerActionHref || "").trim();
   const headerActionLabel = String(options.headerActionLabel || "").trim();
   const countBadgeLabel = requiresSignIn
@@ -43552,8 +43557,11 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
     : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
   const metricsMarkup = showMetrics
     ? `
-      <div class="summary-grid session-command-center-metrics">
-        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, { aggregateSessions: options.aggregateSessions || sessions })}
+      <div class="summary-grid session-command-center-metrics${metricsVariant === "compact" ? " home-session-summary-grid--compact" : ""}">
+        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, {
+          aggregateSessions: options.aggregateSessions || sessions,
+          metricsVariant,
+        })}
       </div>`
     : "";
 
@@ -43629,6 +43637,7 @@ function mountSharedSessionCommandCenter(host, options = {}) {
       headerEyebrow: options.headerEyebrow,
       headerTitle: options.headerTitle,
       metricsPlacement: options.metricsPlacement,
+      metricsVariant: options.metricsVariant,
     });
     hydrateAppIconSlots(host);
     applySupplyStatusToSessionEntryButtons(host);
