@@ -110,6 +110,9 @@ const GROW_NETWORK_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanGrowNetworkUnloc
 const COMMUNITY_GROW_UNLOCK_STORAGE_KEY = "cannakanCommunityGrowUnlocked";
 const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowUnlockPendingNotice";
 const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
+const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
+const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
+const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
 
 function getAnnouncementSlideManifestPaths() {
@@ -3543,7 +3546,7 @@ function getSessionSeedAgeMetadata(session = null) {
     .filter((value) => value !== null);
 
   let summaryKey = "disabled";
-  let summaryLabel = "";
+  let summaryLabel = DEFAULT_UNTRACKED_SEED_AGE_LABEL;
 
   if (trackingEnabled) {
     if (mode === "same" && sessionSeedAgeYears !== null) {
@@ -3577,7 +3580,7 @@ function buildSeedAgeDisplayLabel(source = null, options = {}) {
   const unknownLabel = String(options.unknownLabel || "Age unknown").trim() || "Age unknown";
   const disabledLabel = Object.prototype.hasOwnProperty.call(options, "disabledLabel")
     ? String(options.disabledLabel || "").trim()
-    : "";
+    : DEFAULT_UNTRACKED_SEED_AGE_LABEL;
 
   if (metadata.summaryKey === "same" && metadata.sessionSeedAgeYears !== null) {
     return `${samePrefix}: ${formatSeedAgeYearsLabel(metadata.sessionSeedAgeYears)}`;
@@ -3602,7 +3605,10 @@ function buildSeedAgeSnapshotLabel(source = null) {
   if (metadata.summaryKey === "mixed") {
     return "Mixed seed ages";
   }
-  return "";
+  if (metadata.summaryKey === "unknown") {
+    return "Seed age: Age unknown";
+  }
+  return `Seed age: ${DEFAULT_UNTRACKED_SEED_AGE_LABEL}`;
 }
 
 function getFilterPaperSupplyDisplayState() {
@@ -3693,13 +3699,13 @@ function getSeedAgeBucketDefinitions() {
   return [
     {
       key: "under-1",
-      label: "Under 1 year",
-      matches: (ageYears) => ageYears < 1,
+      label: "0-1 year",
+      matches: (ageYears) => ageYears >= 0 && ageYears < 1.000001,
     },
     {
       key: "1-2",
       label: "1-2 years",
-      matches: (ageYears) => ageYears >= 1 && ageYears < 3,
+      matches: (ageYears) => ageYears >= 1.000001 && ageYears < 3,
     },
     {
       key: "3-5",
@@ -10723,7 +10729,7 @@ function buildCommunityActivityFeedEntry(activity) {
     samePrefix: "Same age",
     mixedLabel: "Mixed ages",
     unknownLabel: "Unknown",
-    disabledLabel: "Unknown",
+    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
 
   return {
@@ -10873,7 +10879,7 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     samePrefix: "Same age",
     mixedLabel: "Mixed ages",
     unknownLabel: "Unknown",
-    disabledLabel: "Unknown",
+    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
   const metadata = {
     activityTypeLabel: "",
@@ -16325,6 +16331,7 @@ function hasCommunitySeedAgeOverviewRealData(session = null) {
   const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
   return partitions.some((partition) => (
     normalizeSeedAgeAnalyticsYears(partition?.seedAgeYears ?? partition?.seed_age_years) !== null
+    || (Math.max(0, Number(partition?.seedCount) || 0) > 0)
   ));
 }
 
@@ -16332,7 +16339,7 @@ function getCommunitySeedAgeOverviewMockCards() {
   return [
     {
       label: "Optimal Age Range",
-      value: "1–2 yrs",
+      value: "0–1 yr",
       helper: "Highest germination performance window",
       progress: 88,
       visualValue: "88%",
@@ -16351,7 +16358,7 @@ function getCommunitySeedAgeOverviewMockCards() {
     {
       label: "Total Sessions",
       value: "1,284",
-      helper: "Sessions with recorded seed age",
+      helper: "Sessions contributing to seed age analysis",
       progress: 86,
       visualValue: "86%",
       visualLabel: "coverage",
@@ -16359,7 +16366,7 @@ function getCommunitySeedAgeOverviewMockCards() {
     },
     {
       label: "Age Range",
-      value: "1–20+ yrs",
+      value: "0–20+ yrs",
       helper: "Seed age range in community data",
       progress: 100,
       visualValue: "10/10",
@@ -16468,8 +16475,8 @@ function renderCommunitySeedAgeOverviewSection() {
 
 function getSeedAgeAnalyticsBucketDefinitions() {
   return [
-    { key: "1-2", label: "1-2 yrs", legendLabel: "1-2 yrs", fullLabel: "1-2 years", minYears: 0, maxYears: 2, averageYears: 1.5, color: "#b8ec68" },
-    { key: "2-5", label: "2-5 yrs", legendLabel: "2-5 yrs", fullLabel: "2-5 years", minYears: 2, maxYears: 5, averageYears: 3.5, color: "#98dd65" },
+    { key: "1-2", label: "0-1 yr", legendLabel: "0-1 yr", fullLabel: "0-1 year", minYears: 0, maxYears: 1.000001, averageYears: 0.5, color: "#b8ec68" },
+    { key: "2-5", label: "1-5 yrs", legendLabel: "1-5 yrs", fullLabel: "1-5 years", minYears: 1.000001, maxYears: 5, averageYears: 3, color: "#98dd65" },
     { key: "5-10", label: "5-10 yrs", legendLabel: "5-10 yrs", fullLabel: "5-10 years", minYears: 5, maxYears: 10, averageYears: 7.5, color: "#cdd95a" },
     { key: "10-15", label: "10-15 yrs", legendLabel: "10-15 yrs", fullLabel: "10-15 years", minYears: 10, maxYears: 15, averageYears: 12.5, color: "#d6b24d" },
     { key: "15-20", label: "15-20 yrs", legendLabel: "15-20 yrs", fullLabel: "15-20 years", minYears: 15, maxYears: 20, averageYears: 17.5, color: "#d88747" },
@@ -16499,7 +16506,7 @@ function normalizeSeedAgeAnalyticsYears(value = null) {
 }
 
 function getSeedAgeAnalyticsDefaultAgeYears() {
-  return 1.5;
+  return DEFAULT_UNTRACKED_SEED_AGE_YEARS;
 }
 
 function matchesSeedAgeAnalyticsBucket(ageYears = null, bucket = null) {
@@ -16590,7 +16597,7 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
         totalPlanted,
         seedAgeYears,
         bucketKey: ageBucket?.key || "1-2",
-        bucketLabel: ageBucket?.fullLabel || "1-2 years",
+        bucketLabel: ageBucket?.fullLabel || "0-1 year",
         seedType,
         feminized,
         usedDefaultAge: Boolean(seedAgeResolution.usedDefaultAge),
@@ -16643,7 +16650,7 @@ function buildSeedAgeAnalyticsNoDataState() {
     kpis: [
       { label: "Optimal Age Range", value: "Not enough data yet", helper: "Highest germination performance window" },
       { label: "Overall Average", value: "Not enough data yet", helper: "Average germination across all ages" },
-      { label: "Total Sessions", value: "Not enough data yet", helper: "Sessions with recorded seed age" },
+      { label: "Total Sessions", value: "Not enough data yet", helper: "Sessions contributing to seed age analysis" },
       { label: "Age Range", value: "Not enough data yet", helper: "Seed age range in community data" },
       { label: "Best Performance", value: "Not enough data yet", helper: "Not enough data yet" },
     ],
@@ -16716,7 +16723,7 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
     "20-plus": 31.7,
   };
   const averageYearsByKey = {
-    "1-2": 1.5,
+    "1-2": 0.5,
     "2-5": 3.4,
     "5-10": 7.1,
     "10-15": 12.2,
@@ -16807,13 +16814,13 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
   }));
 
   const kpis = {
-    optimalAgeRange: "1-2 years",
+    optimalAgeRange: "0-1 year",
     overallAverage: `${overallAverage.toFixed(1)}%`,
     totalSessions,
-    ageRange: "1-20+ years",
+    ageRange: "0-20+ years",
     bestPerformance: "91.8%",
     bestPerformanceBucket: "1-2",
-    bestPerformanceHelper: "Highest rate in the 1-2 years bucket",
+    bestPerformanceHelper: "Highest rate in the youngest tracked bucket",
   };
 
   return {
@@ -16976,7 +16983,7 @@ function buildSeedAgeAnalyticsDemoState() {
     kpis: [
       { label: "Optimal Age Range", value: mockDataset.kpis.optimalAgeRange, helper: "Highest germination performance window" },
       { label: "Overall Average", value: mockDataset.kpis.overallAverage, helper: "Average germination across all ages" },
-      { label: "Total Sessions", value: Number(mockDataset.kpis.totalSessions || 0).toLocaleString(), helper: "Sessions with recorded seed age" },
+      { label: "Total Sessions", value: Number(mockDataset.kpis.totalSessions || 0).toLocaleString(), helper: "Sessions contributing to seed age analysis" },
       { label: "Age Range", value: mockDataset.kpis.ageRange, helper: "Seed age range in community data" },
       { label: "Best Performance", value: mockDataset.kpis.bestPerformance, helper: mockDataset.kpis.bestPerformanceHelper },
     ],
@@ -17098,8 +17105,8 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     bucket.isOptimal = bucket.key === "1-2";
   });
 
-  const ageRangeLabel = "1-20+ years";
-  const optimalRangeLabel = "1-2 years";
+  const ageRangeLabel = formatSeedAgeAnalyticsRangeLabel(lineBuckets[0], lineBuckets[lineBuckets.length - 1]);
+  const optimalRangeLabel = optimalBucket?.fullLabel || "Not enough data yet";
 
   const distributionSegments = bucketDefinitions.map((bucket) => {
     const sessionIds = new Set(
@@ -17192,8 +17199,8 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
       icon: "alert",
       title: "Age Matters",
       body: bestSingleBucket && freshestBucket && Number.isFinite(freshestBucket.rate)
-        ? `Seeds beyond 20 years trail the 1-2 years baseline by ${Math.max(0, (freshestBucket.rate || 0) - (oldestBucket?.rate || 0)).toFixed(1)} points.`
-        : "Sessions without explicit seed age default into the 1-2 years baseline for clean community comparisons.",
+        ? `Seeds beyond 20 years trail the 0-1 year baseline by ${Math.max(0, (freshestBucket.rate || 0) - (oldestBucket?.rate || 0)).toFixed(1)} points.`
+        : "Sessions without explicit seed age default into the 0-1 year baseline for clean community comparisons.",
     },
   ];
 
@@ -17205,20 +17212,20 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     hasMixedAgeOverlap,
     demoNotice: "",
     summaryNotice: defaultAssignedSessionIds.size > 0
-      ? `${defaultAssignedSessionIds.size} public session${defaultAssignedSessionIds.size === 1 ? "" : "s"} use the default 1-2 years baseline because seed age tracking was off or not provided.`
+      ? `${defaultAssignedSessionIds.size} public session${defaultAssignedSessionIds.size === 1 ? "" : "s"} use the default 0-1 year baseline because seed age tracking was off or not provided.`
       : "",
     optimalRangeLabel,
     bestPerformanceLabel: optimalBucket ? formatSeedAgePercentMetric(optimalBucket.rate) : "Not enough data yet",
-    bestPerformanceHelper: "Highest rate in the 1-2 years bucket",
+    bestPerformanceHelper: "Highest rate in the youngest tracked bucket",
     kpis: [
       { label: "Optimal Age Range", value: optimalRangeLabel, helper: "Highest germination performance window" },
       { label: "Overall Average", value: formatSeedAgePercentMetric(overallAverageRate), helper: "Average germination across all ages" },
-      { label: "Total Sessions", value: trackedSessionIds.size.toLocaleString(), helper: "Sessions with recorded seed age" },
+      { label: "Total Sessions", value: trackedSessionIds.size.toLocaleString(), helper: "Sessions contributing to seed age analysis" },
       { label: "Age Range", value: ageRangeLabel, helper: "Seed age range in community data" },
       {
         label: "Best Performance",
         value: optimalBucket ? formatSeedAgePercentMetric(optimalBucket.rate) : "Not enough data yet",
-        helper: "Highest rate in the 1-2 years bucket",
+        helper: "Highest rate in the youngest tracked bucket",
       },
     ],
     lineBuckets,
@@ -18531,7 +18538,7 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
       samePrefix: "Same age",
       mixedLabel: "Mixed ages",
       unknownLabel: "Unknown",
-      disabledLabel: "Unknown",
+      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     }),
     seedAgeSummaryKey: seedAgeMetadata.summaryKey === "disabled" ? "unknown" : seedAgeMetadata.summaryKey,
     seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
@@ -32705,7 +32712,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
               <input type="checkbox" name="seedAgeTrackingEnabled"${seedAgeTrackingEnabled ? " checked" : ""}>
               <span>Track Seed Age</span>
             </label>
-            <p class="admin-message-help-text" data-seed-age-toggle-hint>Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</p>
+            <p class="admin-message-help-text" data-seed-age-toggle-hint>${escapeHtml(TRACK_SEED_AGE_HELPER_TEXT)}</p>
             <div class="session-seed-age-setup"${seedAgeTrackingEnabled ? "" : " hidden"} data-seed-age-setup>
               <div class="session-seed-age-mode-group session-seed-age-mode-grid">
                 <label class="session-seed-age-mode-card${seedAgeMode === "same" ? " is-selected" : ""}" data-seed-age-mode-card="same">
@@ -33646,7 +33653,7 @@ function getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentit
       samePrefix: "Same age",
       mixedLabel: "Mixed ages",
       unknownLabel: "Unknown",
-      disabledLabel: "Unknown",
+      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     }),
   };
 }
@@ -33965,7 +33972,7 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
       samePrefix: "Same age",
       mixedLabel: "Mixed ages",
       unknownLabel: "Unknown",
-      disabledLabel: "Unknown",
+      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     })
     : "Not connected";
   return `
@@ -34736,7 +34743,7 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
         samePrefix: "Same age",
         mixedLabel: "Mixed ages",
         unknownLabel: "Unknown",
-        disabledLabel: "Unknown",
+        disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
       }),
     },
     { label: "CSTP Session ID", value: session.id },
@@ -35237,8 +35244,8 @@ function renderAdminCstpReportPage(recordId = "") {
   const reportSeedAgeLabel = buildSeedAgeDisplayLabel(reportSession, {
     samePrefix: "Same age",
     mixedLabel: "Mixed ages",
-    unknownLabel: "Unknown",
-    disabledLabel: "Unknown",
+      unknownLabel: "Unknown",
+      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
   const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
     ? "CSTP Certification Published"
