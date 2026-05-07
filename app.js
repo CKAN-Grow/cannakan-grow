@@ -12925,6 +12925,10 @@ function mapRowToGallerySnapshot(row) {
     status: normalizedStatus,
     published: Boolean(row.is_published),
     includeNotes: Boolean(row.include_notes),
+    publicGrowNote: normalizePublicGrowNote(row.public_grow_note || row.snapshot_public_note || row.public_note || ""),
+    includePublicGrowNote: Object.prototype.hasOwnProperty.call(row, "include_public_grow_note")
+      ? Boolean(row.include_public_grow_note)
+      : Boolean(row.include_notes),
     publishedAt: row.published_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
@@ -13104,7 +13108,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     usage_consent: Boolean(options.usageConsent),
     status: "pending_review",
     is_published: false,
-    include_notes: false,
+    include_notes: Boolean(options.includeNotes),
     published_at: new Date().toISOString(),
   };
 
@@ -14091,6 +14095,7 @@ function openGallerySnapshotOverview(snapshotId) {
 
   const details = getGallerySnapshotFeedDetails(snapshot);
   const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const publicGrowNote = getPublicGrowNoteDetails(snapshot);
   const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
   const status = getGallerySnapshotDisplayStatus(snapshot);
   const isOwner = isGallerySnapshotOwner(snapshot);
@@ -14153,6 +14158,13 @@ function openGallerySnapshotOverview(snapshotId) {
             </article>
           `).join("")}
         </div>
+        ${publicGrowNote.visible ? `
+          <section class="gallery-snapshot-overview-note-block" aria-labelledby="gallery-snapshot-overview-note-title">
+            <p class="eyebrow">Community Grow</p>
+            <h4 id="gallery-snapshot-overview-note-title">Grow Notes</h4>
+            <p class="gallery-snapshot-overview-note-copy">${escapeHtml(publicGrowNote.note)}</p>
+          </section>
+        ` : ""}
         ${isOwner && status === "approved" ? '<p class="gallery-snapshot-overview-note">This snapshot is published. To make changes, contact support or request removal.</p>' : ""}
         <div class="gallery-snapshot-overview-actions">
           ${primaryActionMarkup}
@@ -17948,12 +17960,17 @@ function normalizeSessionSnapshotGalleryStatus(status) {
     : "";
 }
 
+function normalizePublicGrowNote(value) {
+  return String(value || "").slice(0, 500).trim();
+}
+
 function normalizePersistedSessionSnapshotState(snapshotState) {
   if (!snapshotState || typeof snapshotState !== "object" || Array.isArray(snapshotState)) {
     return null;
   }
 
   const hasIncludeProfilePreference = Object.prototype.hasOwnProperty.call(snapshotState, "includeProfileInGallery");
+  const hasIncludePublicGrowNotePreference = Object.prototype.hasOwnProperty.call(snapshotState, "includePublicGrowNote");
   const normalized = {
     referenceId: String(snapshotState.referenceId || snapshotState.id || "").trim(),
     createdAt: String(snapshotState.createdAt || "").trim(),
@@ -17965,9 +17982,13 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     imagePath: String(snapshotState.imagePath || "").trim(),
     gallerySnapshotId: String(snapshotState.gallerySnapshotId || snapshotState.snapshotId || "").trim(),
     galleryRoute: String(snapshotState.galleryRoute || "").trim(),
+    publicGrowNote: normalizePublicGrowNote(snapshotState.publicGrowNote),
   };
   if (hasIncludeProfilePreference) {
     normalized.includeProfileInGallery = Boolean(snapshotState.includeProfileInGallery);
+  }
+  if (hasIncludePublicGrowNotePreference) {
+    normalized.includePublicGrowNote = Boolean(snapshotState.includePublicGrowNote);
   }
 
   const hasSubmittedStatus = ["pending_review", "approved", "rejected"].includes(normalized.galleryStatus);
@@ -17986,7 +18007,7 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     normalized.galleryStatus = "private";
   }
 
-  return Object.values(normalized).some(Boolean) || hasIncludeProfilePreference ? normalized : null;
+  return Object.values(normalized).some(Boolean) || hasIncludeProfilePreference || hasIncludePublicGrowNotePreference ? normalized : null;
 }
 
 function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotState = null) {
@@ -18008,6 +18029,12 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
     includeProfileInGallery: Object.prototype.hasOwnProperty.call(snapshot, "includeProfileInGallery")
       ? Boolean(snapshot.includeProfileInGallery)
       : normalizedBase?.includeProfileInGallery,
+    publicGrowNote: Object.prototype.hasOwnProperty.call(snapshot, "publicGrowNote")
+      ? normalizePublicGrowNote(snapshot.publicGrowNote)
+      : normalizedBase?.publicGrowNote,
+    includePublicGrowNote: Object.prototype.hasOwnProperty.call(snapshot, "includePublicGrowNote")
+      ? Boolean(snapshot.includePublicGrowNote)
+      : normalizedBase?.includePublicGrowNote,
   });
 }
 
@@ -18054,6 +18081,28 @@ function getSessionSnapshotState(session) {
   return gallerySnapshot
     ? buildSessionSnapshotStateFromGallerySnapshot(gallerySnapshot, baseSnapshotState)
     : (baseSnapshotState?.gallerySnapshotId ? clearStaleGallerySnapshotState(session, baseSnapshotState) : baseSnapshotState);
+}
+
+function getPublicGrowNoteDetails(snapshot = null, session = null) {
+  const linkedSession = session || getGallerySnapshotSession(snapshot);
+  const snapshotState = normalizePersistedSessionSnapshotState(
+    linkedSession?.snapshotState
+    || snapshot?.snapshotState
+    || null,
+  );
+  const directNote = normalizePublicGrowNote(snapshot?.publicGrowNote);
+  const note = normalizePublicGrowNote(snapshotState?.publicGrowNote || directNote);
+  const included = Boolean(
+    snapshotState?.includePublicGrowNote
+    || (snapshot?.includePublicGrowNote && note)
+    || (snapshot?.includeNotes && note),
+  );
+
+  return {
+    note,
+    included,
+    visible: Boolean(note && included),
+  };
 }
 
 function mapSessionToRecord(session, userId) {
@@ -18707,6 +18756,9 @@ function initializeSnapshotSection(scope, options) {
     savedSnapshotNotice: options.savedSnapshotNotice || null,
     savedSnapshotText: options.savedSnapshotText || null,
     savedSnapshotLink: options.savedSnapshotLink || null,
+    publicGrowNoteField: options.publicGrowNoteField || null,
+    publicGrowNoteToggle: options.publicGrowNoteToggle || null,
+    publicGrowNoteCount: options.publicGrowNoteCount || null,
     usageConsentBlock: scope.querySelector(".snapshot-consent-block"),
     usageConsentHelper: scope.querySelector("[data-snapshot-consent-helper]"),
     selectedImageKey: "",
@@ -18738,6 +18790,43 @@ function initializeSnapshotSection(scope, options) {
       }
 
       await generateSnapshotPreview(state);
+    });
+  }
+  const persistedSnapshotState = getSnapshotStateForSection(state);
+  if (state.publicGrowNoteField) {
+    state.publicGrowNoteField.value = normalizePublicGrowNote(persistedSnapshotState?.publicGrowNote || "");
+  }
+  if (state.publicGrowNoteToggle) {
+    state.publicGrowNoteToggle.checked = Boolean(persistedSnapshotState?.includePublicGrowNote);
+  }
+  syncSnapshotPublicGrowNoteControls(state);
+  state.pendingSnapshotState = normalizePersistedSessionSnapshotState({
+    ...(persistedSnapshotState || {}),
+    publicGrowNote: normalizePublicGrowNote(state.publicGrowNoteField?.value || ""),
+    includePublicGrowNote: Boolean(state.publicGrowNoteToggle?.checked),
+  });
+  if (state.publicGrowNoteField) {
+    state.publicGrowNoteField.addEventListener("input", () => {
+      const normalizedNote = normalizePublicGrowNote(state.publicGrowNoteField.value);
+      if (state.publicGrowNoteField.value !== normalizedNote) {
+        state.publicGrowNoteField.value = normalizedNote;
+      }
+      syncSnapshotPublicGrowNoteControls(state);
+      state.pendingSnapshotState = normalizePersistedSessionSnapshotState({
+        ...(getSnapshotStateForSection(state) || {}),
+        publicGrowNote: normalizedNote,
+        includePublicGrowNote: Boolean(state.publicGrowNoteToggle?.checked),
+      });
+    });
+  }
+  if (state.publicGrowNoteToggle) {
+    state.publicGrowNoteToggle.addEventListener("change", () => {
+      syncSnapshotPublicGrowNoteControls(state);
+      state.pendingSnapshotState = normalizePersistedSessionSnapshotState({
+        ...(getSnapshotStateForSection(state) || {}),
+        publicGrowNote: normalizePublicGrowNote(state.publicGrowNoteField?.value || ""),
+        includePublicGrowNote: Boolean(state.publicGrowNoteToggle.checked),
+      });
     });
   }
   if (state.destinationInputs.length) {
@@ -18889,6 +18978,17 @@ function syncSnapshotShareActionAvailability(state) {
   state.shareButton.removeAttribute("disabled");
 }
 
+function syncSnapshotPublicGrowNoteControls(state) {
+  if (!state) {
+    return;
+  }
+
+  const noteValue = normalizePublicGrowNote(state.publicGrowNoteField?.value || "");
+  if (state.publicGrowNoteCount) {
+    state.publicGrowNoteCount.textContent = `${noteValue.length} / 500`;
+  }
+}
+
 function formatSnapshotSavedDateTime(value) {
   const parsedDate = parseCompletedAtValue(value);
   return parsedDate ? formatTimingDateTime(parsedDate) : "Unknown date";
@@ -18896,9 +18996,16 @@ function formatSnapshotSavedDateTime(value) {
 
 function getSnapshotStateForSection(state) {
   const session = state?.getGallerySession?.() || null;
-  return session
-    ? getSessionSnapshotState(session)
-    : normalizePersistedSessionSnapshotState(state?.pendingSnapshotState);
+  const pendingSnapshotState = normalizePersistedSessionSnapshotState(state?.pendingSnapshotState);
+  if (!session) {
+    return pendingSnapshotState;
+  }
+
+  const sessionSnapshotState = getSessionSnapshotState(session);
+  return normalizePersistedSessionSnapshotState({
+    ...(sessionSnapshotState || {}),
+    ...(pendingSnapshotState || {}),
+  }) || sessionSnapshotState || pendingSnapshotState;
 }
 
 function hasSubmittedGallerySnapshotState(snapshotState) {
@@ -19211,6 +19318,7 @@ async function maybePublishSnapshotFromState(state, result) {
 
   const session = state.getGallerySession?.();
   const snapshotData = state.getSnapshotData?.();
+  const snapshotState = getSnapshotStateForSection(state);
   if (hasExistingGallerySnapshotForState(state)) {
     logGrowGalleryDebug("maybePublishSnapshotFromState:blocked-existing", {
       sessionId: session?.id || "",
@@ -19224,6 +19332,7 @@ async function maybePublishSnapshotFromState(state, result) {
   try {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
+      includeNotes: Boolean(snapshotState?.includePublicGrowNote && normalizePublicGrowNote(snapshotState?.publicGrowNote)),
       usageConsent: Boolean(state.usageConsentCheckbox?.checked),
     });
     logGrowGalleryDebug("maybePublishSnapshotFromState:publish-result", {
@@ -38115,6 +38224,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
   const notesField = document.querySelector("#session-notes");
+  const publicGrowNoteField = document.querySelector("#session-public-grow-note");
+  const publicGrowNoteToggle = document.querySelector("#session-public-grow-note-include");
+  const publicGrowNoteCount = document.querySelector("#session-public-grow-note-count");
   const notesSaveButton = document.querySelector("#session-notes-save");
   const notesMessage = document.querySelector("#session-notes-message");
   const today = new Date();
@@ -38130,6 +38242,12 @@ function renderSessionForm(initialSystemType = "KAN") {
   systemTypeField.value = normalizedSystemType;
   if (notesField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
+  }
+  if (publicGrowNoteField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+    publicGrowNoteField.value = normalizePublicGrowNote(notesDraft.publicGrowNote || "");
+  }
+  if (publicGrowNoteToggle && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
+    publicGrowNoteToggle.checked = Boolean(notesDraft.includePublicGrowNote);
   }
   initializeSessionImageState(form, {
     input: imageInput,
@@ -38164,6 +38282,9 @@ function renderSessionForm(initialSystemType = "KAN") {
     actionDescription: snapshotActionDescription,
     emptyExploreCard: snapshotEmptyExploreCard,
     galleryNote: snapshotGalleryNote,
+    publicGrowNoteField,
+    publicGrowNoteToggle,
+    publicGrowNoteCount,
     unpublishButton: snapshotUnpublishButton,
     canPublish: false,
     getGallerySession: () => null,
@@ -38311,6 +38432,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       saveNewSessionNotesDraft({
         systemType: systemTypeField.value,
         sessionNotes: notesField.value.trim(),
+        publicGrowNote: normalizePublicGrowNote(publicGrowNoteField?.value || ""),
+        includePublicGrowNote: Boolean(publicGrowNoteToggle?.checked),
       });
       if (notesMessage) {
         notesMessage.textContent = "Note saved.";
@@ -38330,6 +38453,22 @@ function renderSessionForm(initialSystemType = "KAN") {
     persistNewSessionNoteDraft();
   });
   notesField?.addEventListener("input", () => {
+    if (!notesMessage?.textContent) {
+      return;
+    }
+
+    notesMessage.textContent = "";
+    notesMessage.classList.remove("is-error");
+  });
+  publicGrowNoteField?.addEventListener("input", () => {
+    if (!notesMessage?.textContent) {
+      return;
+    }
+
+    notesMessage.textContent = "";
+    notesMessage.classList.remove("is-error");
+  });
+  publicGrowNoteToggle?.addEventListener("change", () => {
     if (!notesMessage?.textContent) {
       return;
     }
@@ -40734,9 +40873,12 @@ function getSessionDetailElements(scope = document) {
     suppliesAnchor: scope.querySelector("#detail-lifecycle-supplies-anchor"),
     notesField: scope.querySelector("#detail-session-notes"),
     notesLabel: scope.querySelector("#detail-session-notes-label span:last-child"),
-    notesHelp: scope.querySelector(".session-notes-help"),
+    notesHelp: scope.querySelector(".session-private-notes-help"),
     notesSaveButton: scope.querySelector("#detail-session-notes-save"),
     notesMessage: scope.querySelector("#detail-session-notes-message"),
+    publicGrowNoteField: scope.querySelector("#detail-session-public-grow-note"),
+    publicGrowNoteToggle: scope.querySelector("#detail-session-public-grow-note-include"),
+    publicGrowNoteCount: scope.querySelector("#detail-session-public-grow-note-count"),
     saveShortcutButton: scope.querySelector("#detail-save-shortcut"),
     saveButton: scope.querySelector("#detail-save-session"),
     saveMessage: scope.querySelector("#detail-save-message"),
@@ -41126,6 +41268,9 @@ function renderSessionDetail(sessionId) {
     actionDescription: detail.snapshotActionDescription,
     emptyExploreCard: detail.snapshotEmptyExploreCard,
     galleryNote: detail.snapshotGalleryNote,
+    publicGrowNoteField: detail.publicGrowNoteField,
+    publicGrowNoteToggle: detail.publicGrowNoteToggle,
+    publicGrowNoteCount: detail.publicGrowNoteCount,
     unpublishButton: detail.snapshotUnpublishButton,
     canPublish: true,
     getGallerySession: () => session,
@@ -41418,6 +41563,7 @@ function renderSessionDetail(sessionId) {
     syncSessionPartitionsFromContainer(session, partitions);
     captureFirstPlantedEventForSession(session);
     session.sessionNotes = detail.notesField.value.trim();
+    session.snapshotState = normalizePersistedSessionSnapshotState(detail.snapshotSection?.__snapshotState?.pendingSnapshotState);
     detail.saveMessage.textContent = "";
     syncSessionDetailHeaderMeta(detail, session);
     if (detail.layoutReference && detail.layoutSection) {
@@ -41527,6 +41673,24 @@ function renderSessionDetail(sessionId) {
     detail.notesMessage.textContent = "";
     detail.notesMessage.classList.remove("is-error");
     refreshDetailUnsavedChanges();
+  });
+  detail.publicGrowNoteField?.addEventListener("input", refreshDetailUnsavedChanges);
+  detail.publicGrowNoteToggle?.addEventListener("change", refreshDetailUnsavedChanges);
+  detail.publicGrowNoteField?.addEventListener("input", () => {
+    if (!detail.notesMessage?.textContent) {
+      return;
+    }
+
+    detail.notesMessage.textContent = "";
+    detail.notesMessage.classList.remove("is-error");
+  });
+  detail.publicGrowNoteToggle?.addEventListener("change", () => {
+    if (!detail.notesMessage?.textContent) {
+      return;
+    }
+
+    detail.notesMessage.textContent = "";
+    detail.notesMessage.classList.remove("is-error");
   });
 
   detail.deleteButton.addEventListener("click", async () => {
@@ -45138,6 +45302,8 @@ function buildNewSessionDraftSignature(form) {
     seedAgeMode: String(form.querySelector('input[name="seedAgeMode"]:checked')?.value || "").trim(),
     sessionSeedAgeYears: String(form.elements.sessionSeedAgeYears?.value || "").trim(),
     sessionNotes: String(form.elements.sessionNotes?.value || "").trim(),
+    publicGrowNote: normalizePublicGrowNote(form.elements.publicGrowNote?.value || ""),
+    includePublicGrowNote: Boolean(form.elements.includePublicGrowNote?.checked),
     germinationStartedAt: String(form.dataset.germinationStartedAt || "").trim(),
     firstPlantedAt: String(form.dataset.firstPlantedAt || "").trim(),
     completedAt: String(form.dataset.completedAt || "").trim(),
@@ -45146,6 +45312,14 @@ function buildNewSessionDraftSignature(form) {
 }
 
 function buildSessionDetailDraftSignature(session, partitions, statusField, notesField, detailsForm = null) {
+  const detailPublicGrowNoteField = document.querySelector("#detail-session-public-grow-note");
+  const detailPublicGrowNoteToggle = document.querySelector("#detail-session-public-grow-note-include");
+  const detailPublicGrowNoteValue = detailPublicGrowNoteField
+    ? detailPublicGrowNoteField.value
+    : (session?.snapshotState?.publicGrowNote || "");
+  const detailIncludePublicGrowNote = detailPublicGrowNoteToggle
+    ? detailPublicGrowNoteToggle.checked
+    : Boolean(session?.snapshotState?.includePublicGrowNote);
   return JSON.stringify({
     sessionId: String(session?.id || "").trim(),
     sessionName: String(detailsForm?.elements?.sessionName?.value || getSessionDetailEditableName(session)).trim(),
@@ -45156,6 +45330,8 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
     unitId: String(detailsForm?.elements?.unitId?.value || session?.unitId || "").trim(),
     sessionStatus: String(statusField?.value || session?.sessionStatus || "").trim(),
     sessionNotes: String(notesField?.value || session?.sessionNotes || "").trim(),
+    publicGrowNote: normalizePublicGrowNote(detailPublicGrowNoteValue),
+    includePublicGrowNote: detailIncludePublicGrowNote,
     germinationStartedAt: String(session?.germinationStartedAt || "").trim(),
     firstPlantedAt: String(session?.firstPlantedAt || "").trim(),
     completedAt: String(session?.completedAt || "").trim(),

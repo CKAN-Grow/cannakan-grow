@@ -670,7 +670,31 @@
                 placeholder="Add notes about this run (soak time, conditions, observations...)"
               ></textarea>
             </label>
-            <p class="session-notes-help">Notes help you understand results later.</p>
+            <p class="session-notes-help session-private-notes-help">Notes help you understand results later.</p>
+            <div class="session-public-note-block">
+              <label class="session-notes-field session-public-note-field" for="session-public-grow-note">
+                <span>
+                  <span class="eyebrow">Community Grow</span>
+                  <strong>Public Grow Note</strong>
+                </span>
+                <textarea
+                  id="session-public-grow-note"
+                  name="publicGrowNote"
+                  rows="4"
+                  maxlength="500"
+                  placeholder="Share a short note about this session in Community Grow."
+                ></textarea>
+              </label>
+              <div class="session-public-note-meta">
+                <p class="session-public-note-help">Share a short note about this session in Community Grow.</p>
+                <span id="session-public-grow-note-count" class="session-public-note-count" aria-live="polite">0 / 500</span>
+              </div>
+              <label class="session-public-note-toggle" for="session-public-grow-note-include">
+                <input id="session-public-grow-note-include" name="includePublicGrowNote" type="checkbox">
+                <span class="session-public-note-toggle-control" aria-hidden="true"></span>
+                <span class="session-public-note-toggle-copy">Include this note in public snapshot details</span>
+              </label>
+            </div>
             <div class="session-notes-actions">
               <button id="session-notes-save" type="button" class="button button-secondary">Save Note</button>
               <p id="session-notes-message" class="session-notes-message" aria-live="polite"></p>
@@ -1091,7 +1115,30 @@
               placeholder="Add notes about this run (soak time, conditions, observations...)"
             ></textarea>
           </label>
-          <p class="session-notes-help">Notes help you understand results later.</p>
+          <p class="session-notes-help session-private-notes-help">Notes help you understand results later.</p>
+          <div class="session-public-note-block">
+            <label class="session-notes-field session-public-note-field" for="detail-session-public-grow-note">
+              <span>
+                <span class="eyebrow">Community Grow</span>
+                <strong>Public Grow Note</strong>
+              </span>
+              <textarea
+                id="detail-session-public-grow-note"
+                rows="4"
+                maxlength="500"
+                placeholder="Share a short note about this session in Community Grow."
+              ></textarea>
+            </label>
+            <div class="session-public-note-meta">
+              <p class="session-public-note-help">Share a short note about this session in Community Grow.</p>
+              <span id="detail-session-public-grow-note-count" class="session-public-note-count" aria-live="polite">0 / 500</span>
+            </div>
+            <label class="session-public-note-toggle" for="detail-session-public-grow-note-include">
+              <input id="detail-session-public-grow-note-include" name="detailIncludePublicGrowNote" type="checkbox">
+              <span class="session-public-note-toggle-control" aria-hidden="true"></span>
+              <span class="session-public-note-toggle-copy">Include this note in public snapshot details</span>
+            </label>
+          </div>
           <div class="session-notes-actions">
             <button id="detail-session-notes-save" type="button" class="button button-secondary">Save Note</button>
             <p id="detail-session-notes-message" class="session-notes-message" aria-live="polite"></p>
