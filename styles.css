@@ -10502,44 +10502,95 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .filter-paper-modal-card {
-  width: min(94vw, 560px);
+  width: min(94vw, 680px);
+  max-width: 680px;
+}
+
+.filter-paper-modal-form {
+  display: grid;
+  gap: 18px;
+  overflow: hidden;
+}
+
+.filter-paper-modal-header {
+  display: grid;
+  gap: 6px;
+}
+
+.filter-paper-modal-body {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
 }
 
 .filter-paper-modal-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-top: 18px;
 }
 
-.filter-paper-modal-toggle {
-  margin-top: 18px;
+.filter-paper-modal-field {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.filter-paper-toggle-row {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.filter-paper-modal-field > span {
   color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.filter-paper-modal-field > small,
+.filter-paper-setting-copy > small {
+  color: var(--muted);
+  font-size: 0.82rem;
   line-height: 1.45;
+}
+
+.filter-paper-modal-settings {
+  display: grid;
+  gap: 12px;
+}
+
+.filter-paper-setting-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
 }
 
-.filter-paper-toggle-row input {
-  margin: 0;
-  flex: 0 0 auto;
+.filter-paper-setting-row input {
+  margin: 2px 0 0;
+  accent-color: #94d159;
 }
 
-.filter-paper-toggle-row span {
-  display: inline-block;
-  color: var(--muted);
+.filter-paper-setting-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filter-paper-setting-copy strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+  line-height: 1.35;
 }
 
 .filter-paper-modal-note {
-  margin-top: 12px;
+  margin: 0;
+  padding-top: 2px;
+  line-height: 1.5;
+}
+
+.filter-paper-modal-actions {
+  margin-top: 0;
 }
 
 .filter-paper-warning-modal-card {
@@ -10581,6 +10632,21 @@ body.theme-dark .contact-reason-card.is-active {
 
 .filter-paper-setup-actions .button {
   width: 100%;
+}
+
+@media (max-width: 640px) {
+  .filter-paper-modal-card {
+    width: min(94vw, 100%);
+    padding: 20px;
+  }
+
+  .filter-paper-modal-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-paper-setting-row {
+    padding: 12px 14px;
+  }
 }
 
 .active-session-supplies-card {

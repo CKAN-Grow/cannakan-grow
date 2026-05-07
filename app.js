@@ -22307,38 +22307,48 @@ function ensureFilterPaperInventoryModal() {
   modal.id = "filter-paper-inventory-modal";
   modal.className = "snapshot-modal filter-paper-modal";
   modal.innerHTML = `
-    <form method="dialog" class="snapshot-modal-card filter-paper-modal-card">
-      <div class="snapshot-modal-copy">
+    <form method="dialog" class="snapshot-modal-card filter-paper-modal-card filter-paper-modal-form">
+      <div class="snapshot-modal-copy filter-paper-modal-header">
         <p class="eyebrow">Supplies Tracker</p>
         <h3>Filter Papers</h3>
         <p>Keep your current count up to date so ${BRAND_APP_NAME} can give you a gentle reorder reminder when you're getting low.</p>
       </div>
-      <div class="filter-paper-modal-grid">
-        <label>
-          <span>Filter papers on hand</span>
-          <input type="number" name="filterPaperCount" min="0" step="1" inputmode="numeric" placeholder="0">
-        </label>
-        <label>
-          <span>Store region</span>
-          <select name="storeRegion">
-            <option value="US">US - cannakan.com</option>
-            <option value="EU">EU - cannakan.eu</option>
-          </select>
-        </label>
+      <div class="filter-paper-modal-body">
+        <div class="filter-paper-modal-grid">
+          <label class="filter-paper-modal-field">
+            <span>Filter papers on hand</span>
+            <input type="number" name="filterPaperCount" min="0" step="1" inputmode="numeric" placeholder="0">
+            <small>Enter the number of unused filter papers currently on hand.</small>
+          </label>
+          <label class="filter-paper-modal-field">
+            <span>Store region</span>
+            <select name="storeRegion">
+              <option value="US">US - cannakan.com</option>
+              <option value="EU">EU - cannakan.eu</option>
+            </select>
+            <small>Used for the reorder link destination when supplies run low.</small>
+          </label>
+        </div>
+        <div class="filter-paper-modal-settings" role="group" aria-label="Filter paper settings">
+          <label class="filter-paper-setting-row">
+            <input type="checkbox" name="autoSubtract">
+            <span class="filter-paper-setting-copy">
+              <strong>Auto subtract when a session is completed</strong>
+              <small>Automatically remove 1 filter paper from inventory each time a grow session is marked completed.</small>
+            </span>
+          </label>
+          <label class="filter-paper-setting-row">
+            <input type="checkbox" name="notifyLowSupply">
+            <span class="filter-paper-setting-copy">
+              <strong>Low supply reminders</strong>
+              <small>Keep reorder reminders enabled when your inventory drops into low or critical status.</small>
+            </span>
+          </label>
+        </div>
+        <p class="muted filter-paper-modal-note">You can update this any time without affecting session history.</p>
       </div>
-      <div class="filter-paper-modal-toggle">
-        <label class="filter-paper-toggle-row">
-          <input type="checkbox" name="autoSubtract">
-          <span>Auto subtract 1 filter paper when a session is completed</span>
-        </label>
-        <label class="filter-paper-toggle-row">
-          <input type="checkbox" name="notifyLowSupply">
-          <span>Notify me when I'm running low</span>
-        </label>
-      </div>
-      <p class="muted filter-paper-modal-note">You can update this any time without affecting session history.</p>
       <p id="filter-paper-modal-message" class="form-message" role="alert" aria-live="polite"></p>
-      <div class="snapshot-modal-actions">
+      <div class="snapshot-modal-actions filter-paper-modal-actions">
         <button type="button" class="button button-secondary" data-filter-paper-modal-cancel="true">Cancel</button>
         <button type="button" class="button button-primary" data-filter-paper-modal-save="true">Save</button>
       </div>
