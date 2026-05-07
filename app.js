@@ -11437,7 +11437,7 @@ function ensureSessionDeleteConfirmModal() {
       <div class="snapshot-modal-copy">
         <p class="eyebrow">Delete Session</p>
         <h3 id="session-delete-confirm-title">Delete session?</h3>
-        <p id="session-delete-confirm-message">This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity.</p>
+        <p id="session-delete-confirm-message">This will mark the session as deleted. It will remain in Session History as a permanent deleted record, but it can no longer be opened or edited.</p>
       </div>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-session-delete-cancel>Cancel</button>
@@ -11457,14 +11457,14 @@ function confirmSessionArchive(session) {
   const confirmButton = modal.querySelector("[data-session-delete-confirm]");
 
   if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
-    return Promise.resolve(window.confirm("Delete session? This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity."));
+    return Promise.resolve(window.confirm("Delete session? This will mark the session as deleted. It will remain in Session History as a permanent deleted record, but it can no longer be opened or edited."));
   }
 
   if (title) {
     title.textContent = "Delete session?";
   }
   if (message) {
-    message.textContent = "This will remove the session from your history view. Completed sessions may still contribute to overall germination statistics to preserve result integrity.";
+    message.textContent = "This will mark the session as deleted. It will remain in Session History as a permanent deleted record, but it can no longer be opened or edited.";
   }
 
   return new Promise((resolve) => {
@@ -36982,6 +36982,10 @@ function getMySessionsCompletedDateLabel(session = null) {
 }
 
 function getMySessionsHistoryCategory(session = null) {
+  if (isSessionSoftDeleted(session)) {
+    return "deleted";
+  }
+
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   if (normalizedStatus === "completed") {
     return "completed";
@@ -36993,6 +36997,22 @@ function getMySessionsHistoryCategory(session = null) {
 }
 
 function getMySessionsHistoryStatusMeta(session = null) {
+  if (isSessionSoftDeleted(session)) {
+    const deletedAt = parseCompletedAtValue(session?.deletedAt || session?.deleted_at || "");
+    const deletedLabel = deletedAt
+      ? new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(deletedAt)
+      : "";
+    return {
+      label: "Deleted",
+      tone: "deleted",
+      detail: deletedLabel ? `Removed ${deletedLabel}` : "Unavailable",
+    };
+  }
+
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   const dayLabel = formatSessionCommandCenterDayLabel(session);
   const lifecycleState = session ? buildSessionLifecycleState(session) : null;
@@ -37040,7 +37060,12 @@ function filterMySessionsHistorySessions(sessions = [], filterValue = "all") {
     return [...sessions];
   }
 
-  return sessions.filter((session) => getMySessionsHistoryCategory(session) === normalizedFilter);
+  return sessions.filter((session) => {
+    if (isSessionSoftDeleted(session)) {
+      return false;
+    }
+    return getMySessionsHistoryCategory(session) === normalizedFilter;
+  });
 }
 
 function renderMySessionsRecentCompletedPanelMarkup(completedSessions = []) {
@@ -37146,26 +37171,47 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
           </div>
           <div class="session-history-table-body">
             ${sessions.length ? visibleSessions.map((session) => {
+              const isDeleted = isSessionSoftDeleted(session);
               const statusMeta = getMySessionsHistoryStatusMeta(session);
               const totals = getSessionSeedTotals(session);
-              const germinationRateValue = totals.totalSeeds > 0 ? getSessionSuccessRate(session) : null;
+              const sessionSequenceNumber = getSessionSequenceNumber(session);
+              const seedSummary = totals.totalSeeds > 0 ? `${totals.totalPlanted} / ${totals.totalSeeds}` : "--";
+              const germinationRateValue = !isDeleted && totals.totalSeeds > 0 ? getSessionSuccessRate(session) : null;
               const germinationRate = germinationRateValue !== null ? `${germinationRateValue}%` : "--";
               const germinationRateTone = (
-                germinationRateValue !== null
+                !isDeleted
+                && germinationRateValue !== null
                 && germinationRateValue > 0
                 && ["first-germinated", "completed"].includes(statusMeta.tone)
               )
                 ? " session-history-germination-rate--success"
                 : "";
               const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
-              const dateContext = getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started";
+              const dateContext = isDeleted
+                ? "Created"
+                : (getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started");
+              const actionMarkup = isDeleted
+                ? `<span class="session-history-open-button session-history-open-button--disabled" aria-disabled="true">Deleted</span>`
+                : `
+                    <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
+                    <button
+                      type="button"
+                      class="session-history-delete-button"
+                      data-session-delete="${escapeHtml(session.id)}"
+                      aria-label="Delete session"
+                      title="Delete session"
+                    >
+                      ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
+                    </button>
+                  `;
 
               return `
-                <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
+                <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}${isDeleted ? " is-deleted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
                   <div class="session-history-cell session-history-cell--session" data-label="Session">
                     ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
                     <div class="session-history-session-copy">
                       <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+                      <span class="session-history-session-sequence">${escapeHtml(sessionSequenceNumber ? `Session #${sessionSequenceNumber}` : "Session #--")}</span>
                     </div>
                   </div>
                   <div class="session-history-cell" data-label="Date">
@@ -37183,22 +37229,13 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                     <span class="session-history-status-detail session-history-status-detail--${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.detail)}</span>
                   </div>
                   <div class="session-history-cell" data-label="Seeds">
-                    <strong>${escapeHtml(`${totals.totalPlanted} / ${totals.totalSeeds}`)}</strong>
+                    <strong>${escapeHtml(seedSummary)}</strong>
                   </div>
                   <div class="session-history-cell" data-label="Germination">
-                    <strong class="session-history-germination-rate${germinationRateTone}">${escapeHtml(germinationRate)}</strong>
+                    <strong class="session-history-germination-rate${germinationRateTone}${isDeleted ? " session-history-germination-rate--deleted" : ""}">${escapeHtml(germinationRate)}</strong>
                   </div>
                   <div class="session-history-cell session-history-cell--actions" data-label="Actions">
-                    <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
-                    <button
-                      type="button"
-                      class="session-history-delete-button"
-                      data-session-delete="${escapeHtml(session.id)}"
-                      aria-label="Delete session"
-                      title="Delete session"
-                    >
-                      ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
-                    </button>
+                    ${actionMarkup}
                   </div>
                 </div>
               `;
@@ -39259,8 +39296,9 @@ function renderSessionsList() {
   }
   appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6);
   const sessions = sortSessionsNewestFirst(getSessions());
+  const historySessions = sessions;
   const visibleSessions = getVisibleUserSessions(sessions);
-  const hasSessionHistory = visibleSessions.length > 0;
+  const hasSessionHistory = historySessions.length > 0;
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
   const historySection = document.querySelector("#session-history-section");
@@ -39292,13 +39330,14 @@ function renderSessionsList() {
       return;
     }
 
-    const filteredSessions = filterMySessionsHistorySessions(visibleSessions, appState.sessionHistoryFilter || "all");
+    const historySource = appState.sessionHistoryFilter === "all" ? historySessions : visibleSessions;
+    const filteredSessions = filterMySessionsHistorySessions(historySource, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
       filterValue: appState.sessionHistoryFilter || "all",
       sortValue: appState.sessionHistorySort || "date",
       visibleCount: appState.sessionHistoryVisibleCount || 6,
-      hasAnySessions: visibleSessions.length > 0,
+      hasAnySessions: historySessions.length > 0,
       focusSessionId: appState.sessionHistoryFocusSessionId || "",
     });
     applySupplyStatusToSessionEntryButtons(historySection);
@@ -39392,6 +39431,8 @@ function renderSessionsList() {
 
       try {
         await deleteCloudSession(sessionId);
+        appState.sessionHistoryFocusSessionId = sessionId;
+        appState.sessionHistoryFilter = "all";
         renderSessionsList();
       } catch (error) {
         window.alert(error.message || "Could not delete session.");
@@ -40721,6 +40762,11 @@ function renderSessionDetail(sessionId) {
     return;
   }
 
+  if (isSessionSoftDeleted(session)) {
+    openSessionHistoryForSession(session.id);
+    return;
+  }
+
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
   const isCreateMode = isSessionCreateMode(session);
@@ -41224,6 +41270,8 @@ function renderSessionDetail(sessionId) {
 
     try {
       await deleteCloudSession(sessionId);
+      appState.sessionHistoryFocusSessionId = sessionId;
+      appState.sessionHistoryFilter = "all";
       navigateWithUnsavedChangesBypass("#sessions");
     } catch (error) {
       window.alert(error.message || "Could not delete session.");
@@ -41317,6 +41365,8 @@ function renderSessionCollection(container, sessions, options) {
 
       try {
         await deleteCloudSession(session.id);
+        appState.sessionHistoryFocusSessionId = session.id;
+        appState.sessionHistoryFilter = "all";
         renderSessionsList();
       } catch (error) {
         window.alert(error.message || "Could not delete session.");
@@ -41503,7 +41553,7 @@ function renderNewSessionSequencePreview(target, sessions = getSessions()) {
     return;
   }
 
-  const nextSequenceNumber = getVisibleUserSessions(sessions).length + 1;
+  const nextSequenceNumber = (Array.isArray(sessions) ? sessions : []).filter((session) => String(session?.id || "").trim()).length + 1;
   target.innerHTML = renderSessionSequenceBadgeMarkup({
     sequenceNumber: nextSequenceNumber,
     preview: true,
@@ -41574,7 +41624,7 @@ function openSessionHistoryForSession(sessionId = "") {
     return;
   }
 
-  const sessions = getVisibleUserSessions(sortSessionsNewestFirst(getSessions()));
+  const sessions = sortSessionsNewestFirst(getSessions());
   const filteredSessions = filterMySessionsHistorySessions(sessions, "all");
   const sortedSessions = sortSessionHistorySessions(filteredSessions, "date");
   const sessionIndex = sortedSessions.findIndex((session) => String(session?.id || "").trim() === normalizedSessionId);
