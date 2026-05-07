@@ -29099,6 +29099,13 @@ body.theme-dark #session-analytics-section {
   gap: 18px;
 }
 
+.session-analytics-panel,
+.admin-seed-age-analytics-section {
+  --session-analytics-track-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015) 100%), rgba(8, 13, 10, 0.72);
+  --session-analytics-track-border: rgba(148, 209, 89, 0.12);
+  --session-analytics-track-total: rgba(255, 255, 255, 0.08);
+}
+
 .admin-seed-age-analytics-shell {
   margin-top: 18px;
 }
@@ -29194,6 +29201,20 @@ body.theme-dark #session-analytics-section {
     0 12px 24px rgba(0, 0, 0, 0.16);
 }
 
+.session-analytics-card--overview {
+  background:
+    radial-gradient(circle at top right, rgba(148, 209, 89, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 26%),
+    rgba(11, 18, 14, 0.8);
+}
+
+.session-analytics-card--average {
+  background:
+    radial-gradient(circle at top right, rgba(127, 184, 255, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 26%),
+    rgba(11, 18, 14, 0.8);
+}
+
 .session-analytics-card-heading {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -29233,6 +29254,76 @@ body.theme-dark #session-analytics-section {
   --overall-ring-size: 88px;
 }
 
+.session-analytics-panel .session-analytics-rate-ring,
+.admin-seed-age-analytics-section .session-analytics-rate-ring {
+  --overall-ring-track: rgba(214, 226, 214, 0.08);
+  --session-analytics-radial-start: #94d159;
+  --session-analytics-radial-mid: #b8ef84;
+  --session-analytics-radial-end: #efffb6;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at center, rgba(10, 16, 12, 0.98) 49%, transparent 52%),
+    radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.09), transparent 54%),
+    conic-gradient(
+      from -90deg,
+      var(--session-analytics-radial-start) 0%,
+      var(--session-analytics-radial-mid) 36%,
+      var(--session-analytics-radial-end) var(--overall-ring-progress),
+      var(--overall-ring-track) 0%,
+      var(--overall-ring-track) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 18px rgba(148, 209, 89, 0.12),
+    0 14px 26px rgba(0, 0, 0, 0.18);
+}
+
+.session-analytics-panel .session-analytics-rate-ring::before,
+.admin-seed-age-analytics-section .session-analytics-rate-ring::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.1), transparent 42%),
+    radial-gradient(circle at center, rgba(14, 22, 16, 0.9) 46%, rgba(10, 15, 12, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -12px 20px rgba(0, 0, 0, 0.24);
+  z-index: 0;
+}
+
+.session-analytics-panel .session-analytics-rate-ring > .overall-rate-value,
+.admin-seed-age-analytics-section .session-analytics-rate-ring > .overall-rate-value {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.22);
+}
+
+.chart-gradient-radial-primary {
+  --session-analytics-radial-start: #88d55d;
+  --session-analytics-radial-mid: #b4ee73;
+  --session-analytics-radial-end: #f0ffb0;
+}
+
+.chart-gradient-radial-secondary {
+  --session-analytics-radial-start: #6caeff;
+  --session-analytics-radial-mid: #4fd4a4;
+  --session-analytics-radial-end: #bdf18d;
+}
+
+.chart-gradient-radial-tertiary {
+  --session-analytics-radial-start: #e49a5b;
+  --session-analytics-radial-mid: #c7b161;
+  --session-analytics-radial-end: #b8ee85;
+}
+
+.chart-gradient-radial-quaternary {
+  --session-analytics-radial-start: #8d6a49;
+  --session-analytics-radial-mid: #c19a62;
+  --session-analytics-radial-end: #a5e274;
+}
+
 .session-analytics-overview-copy {
   display: grid;
   gap: 6px;
@@ -29252,6 +29343,55 @@ body.theme-dark #session-analytics-section {
 
 .session-analytics-rate-bar {
   height: 8px;
+}
+
+.session-analytics-panel .session-analytics-rate-bar,
+.session-analytics-panel .session-analytics-progress-track,
+.admin-seed-age-analytics-section .session-analytics-rate-bar,
+.admin-seed-age-analytics-section .session-analytics-progress-track {
+  position: relative;
+  background: var(--session-analytics-track-bg);
+  border: 1px solid var(--session-analytics-track-border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.18);
+}
+
+.session-analytics-panel .session-analytics-rate-fill,
+.session-analytics-panel .session-analytics-progress-fill,
+.session-analytics-panel .session-analytics-summary-fill,
+.admin-seed-age-analytics-section .session-analytics-rate-fill,
+.admin-seed-age-analytics-section .session-analytics-progress-fill,
+.admin-seed-age-analytics-section .session-analytics-summary-fill {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 0 14px rgba(148, 209, 89, 0.16),
+    0 8px 16px rgba(0, 0, 0, 0.14);
+}
+
+.session-analytics-panel .progress-bar-total,
+.admin-seed-age-analytics-section .progress-bar-total {
+  background: var(--session-analytics-track-total);
+}
+
+.session-analytics-panel .chart-gradient-bar-green-lime,
+.admin-seed-age-analytics-section .chart-gradient-bar-green-lime {
+  background: linear-gradient(90deg, #7fd157 0%, #a8e86d 52%, #f0ffb5 100%);
+}
+
+.session-analytics-panel .chart-gradient-bar-green-blue,
+.admin-seed-age-analytics-section .chart-gradient-bar-green-blue {
+  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
+}
+
+.session-analytics-panel .chart-gradient-bar-orange-green,
+.admin-seed-age-analytics-section .chart-gradient-bar-orange-green {
+  background: linear-gradient(90deg, #e08a4d 0%, #d2b15c 48%, #9fdd71 100%);
+}
+
+.session-analytics-panel .chart-gradient-bar-gold-green,
+.admin-seed-age-analytics-section .chart-gradient-bar-gold-green {
+  background: linear-gradient(90deg, #8b6547 0%, #c39b5d 46%, #a4e06f 100%);
 }
 
 .session-analytics-breakdown-grid {
@@ -29287,7 +29427,6 @@ body.theme-dark #session-analytics-section {
 
 .session-analytics-progress-track {
   height: 10px;
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .session-analytics-summary-grid {
@@ -29338,11 +29477,11 @@ body.theme-dark #session-analytics-section {
 }
 
 .session-analytics-summary-fill--completed {
-  background: linear-gradient(90deg, #94d159 0%, #b5e86f 100%);
+  background: linear-gradient(90deg, #8b6547 0%, #c39b5d 46%, #a4e06f 100%);
 }
 
 .session-analytics-summary-fill--active {
-  background: linear-gradient(90deg, #7fb8ff 0%, #94d159 100%);
+  background: linear-gradient(90deg, #6aaeff 0%, #4dd0a2 58%, #b4ef89 100%);
 }
 
 @media (max-width: 1100px) {

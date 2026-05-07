@@ -37276,13 +37276,47 @@ function renderSessionAnalyticsProgressRows(rows = [], options = {}) {
           <div class="progress-chart-label">${escapeHtml(row.label || "")}</div>
           <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
             <span class="progress-bar-total" style="width:${escapeHtml(row.totalWidth || "100%")};"></span>
-            <span class="progress-bar-fill" style="width:${escapeHtml(row.fillWidth || "0%")};"></span>
+            <span class="progress-bar-fill session-analytics-progress-fill${row.tone ? ` chart-gradient-bar-${escapeHtml(row.tone)}` : ""}" style="width:${escapeHtml(row.fillWidth || "0%")};"></span>
           </div>
           <div class="progress-chart-values">${escapeHtml(row.value || "")}</div>
         </div>
       `).join("")}
     </div>
   `;
+}
+
+function getSessionAnalyticsBreakdownTone(key = "", label = "", index = 0) {
+  const normalizedKey = String(key || "").trim().toLowerCase();
+  const normalizedLabel = String(label || "").trim().toLowerCase();
+  const fallbackTones = ["green-lime", "green-blue", "orange-green", "gold-green"];
+
+  if (normalizedKey === "seedtype") {
+    if (normalizedLabel.includes("auto")) {
+      return "green-blue";
+    }
+    if (normalizedLabel.includes("photo")) {
+      return "orange-green";
+    }
+    if (normalizedLabel.includes("regular")) {
+      return "gold-green";
+    }
+    return fallbackTones[index % fallbackTones.length];
+  }
+
+  if (normalizedKey === "feminized") {
+    if (normalizedLabel.includes("fem") || normalizedLabel.includes("female")) {
+      return "green-lime";
+    }
+    if (normalizedLabel.includes("male")) {
+      return "orange-green";
+    }
+    if (normalizedLabel.includes("regular")) {
+      return "gold-green";
+    }
+    return fallbackTones[(index + 1) % fallbackTones.length];
+  }
+
+  return fallbackTones[index % fallbackTones.length];
 }
 
 function buildSessionAnalyticsCategoryRows(partitions = [], key = "") {
@@ -37306,19 +37340,25 @@ function buildSessionAnalyticsCategoryRows(partitions = [], key = "") {
     buckets.set(label, bucket);
   });
 
-  return [...buckets.values()]
+  const sortedRows = [...buckets.values()]
     .map((bucket) => {
       const rate = bucket.totalSeeds > 0
         ? Math.round((bucket.totalPlanted / bucket.totalSeeds) * 100)
         : 0;
       return {
         label: bucket.label,
+        rate,
         fillWidth: `${rate}%`,
         totalWidth: "100%",
         value: `${rate}%`,
       };
     })
-    .sort((left, right) => right.fillWidth.localeCompare(left.fillWidth) || left.label.localeCompare(right.label));
+    .sort((left, right) => right.rate - left.rate || left.label.localeCompare(right.label));
+
+  return sortedRows.map((row, index) => ({
+    ...row,
+    tone: getSessionAnalyticsBreakdownTone(key, row.label, index),
+  }));
 }
 
 function renderSessionAnalyticsBreakdownSectionMarkup(title = "", rows = [], options = {}) {
@@ -37427,7 +37467,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
             </div>
           </div>
           <div class="session-analytics-overview">
-            <div class="overall-rate-ring session-analytics-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallRate}%`)};">
+            <div class="overall-rate-ring session-analytics-rate-ring session-analytics-rate-ring--overall chart-gradient-radial-primary" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${overallRate}%`)};">
               <strong class="overall-rate-value">${escapeHtml(`${overallRate}%`)}</strong>
             </div>
             <div class="session-analytics-overview-copy">
@@ -37436,10 +37476,10 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
             </div>
           </div>
           <div class="overall-rate-bar session-analytics-rate-bar" aria-label="Overall germination rate">
-            <div class="overall-rate-fill" style="width:${escapeHtml(`${overallRate}%`)};"></div>
+            <div class="overall-rate-fill session-analytics-rate-fill chart-gradient-bar-green-lime" style="width:${escapeHtml(`${overallRate}%`)};"></div>
           </div>
         </article>
-        <article class="session-analytics-card">
+        <article class="session-analytics-card session-analytics-card--average">
           <div class="session-analytics-card-heading">
             ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-icon")}
             <div>
@@ -37449,7 +37489,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
           </div>
           ${averageRateSessions.length ? `
             <div class="session-analytics-average-card">
-              <div class="overall-rate-ring session-analytics-rate-ring" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${averageOverallGermination}%`)};">
+              <div class="overall-rate-ring session-analytics-rate-ring session-analytics-rate-ring--average chart-gradient-radial-secondary" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(`${averageOverallGermination}%`)};">
                 <strong class="overall-rate-value">${escapeHtml(`${averageOverallGermination}%`)}</strong>
               </div>
               <div class="session-analytics-overview-copy">
@@ -37505,14 +37545,14 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
             <div class="session-analytics-summary-row">
               <span>Completed</span>
               <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
-                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--completed" style="width:${escapeHtml(`${completedShare}%`)};"></span>
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--completed chart-gradient-bar-gold-green" style="width:${escapeHtml(`${completedShare}%`)};"></span>
               </div>
               <strong>${escapeHtml(`${completedShare}%`)}</strong>
             </div>
             <div class="session-analytics-summary-row">
               <span>Active</span>
               <div class="progress-bar-track session-analytics-progress-track" aria-hidden="true">
-                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active" style="width:${escapeHtml(`${activeShare}%`)};"></span>
+                <span class="progress-bar-fill session-analytics-summary-fill session-analytics-summary-fill--active chart-gradient-bar-green-blue" style="width:${escapeHtml(`${activeShare}%`)};"></span>
               </div>
               <strong>${escapeHtml(`${activeShare}%`)}</strong>
             </div>
