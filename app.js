@@ -105,16 +105,19 @@ const DEFAULT_MESSAGE_BOARD_DISPLAY_MODE = "announcement";
 const DEFAULT_FALLBACK_CONTENT_MODE = "mixed";
 const DEFAULT_MIXED_IMAGE_MODE = "match-type";
 const MESSAGE_BOARD_IMAGE_FALLBACK_URL = "/public/assets/wow-fallback.png";
-const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze([
-  "Assets/Announcement-Slides/slide-09.png",
-  "Assets/Announcement-Slides/slide-02.png",
-  "Assets/Announcement-Slides/slide-03.png",
-  "Assets/Announcement-Slides/slide-04.png",
-  "Assets/Announcement-Slides/slide-05.png",
-  "Assets/Announcement-Slides/slide-06.png",
-  "Assets/Announcement-Slides/slide-07.png",
-  "Assets/Announcement-Slides/slide-08.png",
-]);
+const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
+
+function getAnnouncementSlideManifestPaths() {
+  const candidatePaths = Array.isArray(globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES)
+    ? globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES
+    : [];
+
+  return candidatePaths
+    .map((path) => String(path || "").trim())
+    .filter((path) => /\.(png|jpe?g|webp)$/i.test(path))
+    .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }));
+}
+
 const JOKES = Object.freeze([
   { question: "Why did the seed bring a blanket?", answer: "It wanted to stay warm before sprouting." },
   { question: "Why was the gardener so calm?", answer: "They knew everything would grow in due thyme." },
@@ -27062,6 +27065,10 @@ function getLoadedHomeAnnouncementSlidePaths() {
   return DEFAULT_ANNOUNCEMENT_SLIDE_PATHS.filter((path) => appState.homeAnnouncementSlideLoadState?.[path] === "loaded");
 }
 
+function getDefaultAnnouncementSlideFallbackPath() {
+  return DEFAULT_ANNOUNCEMENT_SLIDE_PATHS[0] || MESSAGE_BOARD_IMAGE_FALLBACK_URL;
+}
+
 function getHomeAnnouncementSlidePathForIndex(index = 0) {
   const loadedSlides = getLoadedHomeAnnouncementSlidePaths();
   const slidePool = loadedSlides.length ? loadedSlides : DEFAULT_ANNOUNCEMENT_SLIDE_PATHS;
@@ -27710,7 +27717,7 @@ function renderAdminAnnouncementStatusPillMarkup(status) {
 function renderAdminAnnouncementCardMarkup(announcement) {
   const title = announcement.title || "Untitled announcement";
   const body = announcement.body || "No message added yet.";
-  const announcementImageUrl = normalizeMediaUrl(announcement.imageUrl || "") || DEFAULT_ANNOUNCEMENT_SLIDE_PATHS[0];
+  const announcementImageUrl = normalizeMediaUrl(announcement.imageUrl || "") || getDefaultAnnouncementSlideFallbackPath();
   const imageMarkup = `
     <img
       src="${escapeHtml(announcementImageUrl)}"
@@ -27758,14 +27765,14 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
           <div>
             <p class="eyebrow">Announcement CMS</p>
             <h4>Control the Home announcement</h4>
-            <p class="muted">Use one announcement to override the default ${BRAND_NAME} Feed state. When it is inactive, Home returns to rotating default slides and the static feed info panel.</p>
+            <p class="muted">Use one announcement to override the default ${BRAND_NAME} Feed state. When it is inactive, Home returns to the rotating Announcement-Slides folder and the static feed info panel.</p>
           </div>
         </div>
       </div>
       <div class="admin-source-form-grid">
         <div class="admin-source-form-full admin-message-board-subsection">
           <strong>Announcement</strong>
-          <p class="muted">Use an image to fully replace the default slides. If you leave the image blank, the announcement will use the rotating default slides on the left.</p>
+          <p class="muted">Use an image to fully replace the folder-driven fallback slides. If you leave the image blank, the announcement will use the rotating Announcement-Slides images on the left.</p>
         </div>
         <label class="admin-source-form-full">
           <span>Title</span>
@@ -27781,8 +27788,8 @@ function renderAdminAnnouncementEditorMarkup(announcement = null) {
     uploadName: "announcementImageUpload",
     clearButtonId: "admin-message-board-clear-announcement-image",
     value: announcement?.imageUrl || "",
-    placeholder: "Assets/Announcement-Slides/slide-09.png or /assets/custom-image.png",
-    emptyStateLabel: "If nothing is set, Home will use the rotating default slide images on the left side.",
+    placeholder: "Leave blank to use the Announcement-Slides folder or enter a custom image URL",
+    emptyStateLabel: "If nothing is set, Home will use every valid image in the Announcement-Slides folder on the left side.",
   })}
         <label class="admin-source-form-full">
           <span>Button URL</span>

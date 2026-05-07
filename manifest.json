@@ -1,7 +1,6 @@
 {
   "name": "Cannakan Grow",
-  "short_name": "Cannakan",
-  "description": "Cannakan Grow session tracking, Community Grow sharing, and CSTP testing workflows.",
+  "short_name": "Grow",
   "id": "/",
   "start_url": "/",
   "scope": "/",

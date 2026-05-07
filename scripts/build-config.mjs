@@ -1,5 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+import { extname, resolve } from "node:path";
 
 const url = process.env.CANNAKAN_SUPABASE_URL || "";
 const anonKey = process.env.CANNAKAN_SUPABASE_ANON_KEY || "";
@@ -14,6 +14,9 @@ const outputPath = resolve(process.cwd(), "supabase-config.js");
 const manifestPath = resolve(process.cwd(), "manifest.json");
 const publicDir = resolve(process.cwd(), "public");
 const publicManifestPath = resolve(publicDir, "manifest.json");
+const announcementSlidesDir = resolve(process.cwd(), "src", "assets", "Announcement-Slides");
+const announcementSlidesManifestPath = resolve(process.cwd(), "announcement-slides-manifest.js");
+const publicAnnouncementSlidesManifestPath = resolve(publicDir, "announcement-slides-manifest.js");
 const iconsFallbackDir = resolve(process.cwd(), "Assets", "Icons");
 const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   url: ${JSON.stringify(url)},
@@ -60,6 +63,21 @@ const manifestContents = {
   ],
 };
 
+const announcementSlideExtensions = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+
+function buildAnnouncementSlidesManifestContents() {
+  const slidePaths = existsSync(announcementSlidesDir)
+    ? readdirSync(announcementSlidesDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((fileName) => announcementSlideExtensions.has(extname(fileName).toLowerCase()))
+      .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }))
+      .map((fileName) => `/src/assets/Announcement-Slides/${encodeURIComponent(fileName)}`)
+    : [];
+
+  return `globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES = Object.freeze(${JSON.stringify(slidePaths, null, 2)});\n`;
+}
+
 mkdirSync(publicDir, { recursive: true });
 
 function ensurePwaAsset(targetDir, name, fallbackName) {
@@ -88,6 +106,9 @@ requiredPwaAssets.forEach(({ name, fallbackName }) => {
 writeFileSync(outputPath, configContents, "utf8");
 writeFileSync(manifestPath, `${JSON.stringify(manifestContents, null, 2)}\n`, "utf8");
 writeFileSync(publicManifestPath, `${JSON.stringify(manifestContents, null, 2)}\n`, "utf8");
+const announcementSlidesManifestContents = buildAnnouncementSlidesManifestContents();
+writeFileSync(announcementSlidesManifestPath, announcementSlidesManifestContents, "utf8");
+writeFileSync(publicAnnouncementSlidesManifestPath, announcementSlidesManifestContents, "utf8");
 
 if (!url || !anonKey) {
   console.warn("Supabase runtime config was generated without values. The app will show the setup screen until config values are provided.");
