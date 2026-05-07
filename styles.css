@@ -24958,6 +24958,86 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   align-items: flex-start;
 }
 
+.detail-top-stack {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.session-detail-edit-panel {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+}
+
+.session-detail-edit-panel[hidden] {
+  display: none;
+}
+
+.session-detail-edit-panel-head,
+.session-detail-edit-panel-copy,
+.session-detail-edit-form {
+  display: grid;
+  gap: 10px;
+}
+
+.session-detail-edit-panel-head {
+  padding-bottom: 2px;
+}
+
+.session-detail-edit-panel-copy h3,
+.session-detail-edit-panel-description,
+.session-detail-edit-message {
+  margin: 0;
+}
+
+.session-detail-edit-panel-copy h3 {
+  font-size: clamp(1.18rem, 2vw, 1.4rem);
+  line-height: 1.08;
+  color: #f3f6f1;
+}
+
+.session-detail-edit-panel-description {
+  max-width: 72ch;
+  color: #b7c0b7;
+  line-height: 1.55;
+}
+
+.session-detail-edit-grid {
+  row-gap: 14px;
+}
+
+.session-detail-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.session-detail-edit-message {
+  color: #b7c0b7;
+  min-height: 1.25rem;
+}
+
+.session-detail-edit-message.is-error {
+  color: #ffb3b3;
+}
+
+.session-detail-edit-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.session-workspace-shell .inline-actions #detail-edit-session-details.is-active {
+  border-color: rgba(148, 209, 89, 0.38);
+  background: rgba(148, 209, 89, 0.12);
+  color: #f6f8f5;
+}
+
 .session-workspace-shell .time-format-toggle {
   border-color: rgba(148, 209, 89, 0.18);
   background: rgba(255, 255, 255, 0.035);
@@ -25955,8 +26035,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     width: 100%;
   }
 
+  .session-detail-edit-actions,
+  .session-detail-edit-action-buttons {
+    width: 100%;
+  }
+
+  .session-detail-edit-action-buttons {
+    justify-content: stretch;
+    margin-left: 0;
+  }
+
   .session-workspace-shell .session-workspace-header .inline-actions > *,
-  .session-workspace-actions > * {
+  .session-workspace-actions > *,
+  .session-detail-edit-action-buttons > * {
     flex: 1 1 100%;
   }
 }

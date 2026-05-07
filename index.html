@@ -862,6 +862,7 @@
           </div>
         </div>
         <div class="inline-actions">
+          <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Details</button>
           <a class="button button-secondary" href="#sessions">Back</a>
           <button id="delete-session" class="button button-danger" type="button">Delete</button>
         </div>
@@ -869,7 +870,59 @@
 
       <section class="session-overview-panel session-workspace-overview">
         <section class="session-top-grid detail-top-grid">
-          <section id="detail-meta" class="session-chart-header detail-header"></section>
+          <div class="detail-top-stack">
+            <section id="detail-meta" class="session-chart-header detail-header"></section>
+            <section id="detail-session-editor" class="session-detail-edit-panel session-glass-panel" aria-labelledby="detail-session-editor-title" hidden>
+              <div class="session-detail-edit-panel-head">
+                <div class="session-detail-edit-panel-copy">
+                  <p class="eyebrow">Edit</p>
+                  <h3 id="detail-session-editor-title">Session Details</h3>
+                  <p class="session-detail-edit-panel-description">Update core session info without resetting stage progress, partition data, notes, analytics, or snapshots.</p>
+                </div>
+              </div>
+              <form id="detail-session-details-form" class="session-detail-edit-form" novalidate>
+                <div class="session-chart-header session-detail-edit-grid">
+                  <label>
+                    <span>Session Name</span>
+                    <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
+                  </label>
+                  <label>
+                    <span>Date</span>
+                    <input type="date" name="date" required>
+                  </label>
+                  <label class="time-format-field">
+                    <div class="field-label-row">
+                      <span>Time</span>
+                      <div class="time-format-toggle" role="group" aria-label="Time format">
+                        <button type="button" class="time-format-button" data-time-format="12h">12h</button>
+                        <button type="button" class="time-format-button" data-time-format="24h">24h</button>
+                      </div>
+                    </div>
+                    <input type="hidden" name="time">
+                    <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
+                  </label>
+                  <label>
+                    <span>System Type</span>
+                    <select name="systemType" required>
+                      <option value="KAN">KAN</option>
+                      <option value="TRA">TRA</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Unit ID</span>
+                    <input type="text" name="unitId" placeholder="Ex: A, B, C" maxlength="12">
+                  </label>
+                </div>
+                <div class="session-detail-edit-actions">
+                  <p id="detail-session-details-message" class="session-detail-edit-message" aria-live="polite"></p>
+                  <div class="session-detail-edit-action-buttons">
+                    <button id="detail-session-details-cancel" type="button" class="button button-secondary">Cancel</button>
+                    <button id="detail-session-details-save" type="submit" class="button button-primary">Save Details</button>
+                  </div>
+                </div>
+              </form>
+            </section>
+          </div>
         </section>
         <section class="system-layout-block session-glass-panel" aria-labelledby="detail-system-layout-label">
           <p id="detail-system-layout-label" class="system-layout-label">System Layout</p>

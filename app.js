@@ -40401,6 +40401,12 @@ function getSessionDetailElements(scope = document) {
   return {
     title: scope.querySelector("#detail-title"),
     meta: scope.querySelector("#detail-meta"),
+    editButton: scope.querySelector("#detail-edit-session-details"),
+    detailsPanel: scope.querySelector("#detail-session-editor"),
+    detailsForm: scope.querySelector("#detail-session-details-form"),
+    detailsSaveButton: scope.querySelector("#detail-session-details-save"),
+    detailsCancelButton: scope.querySelector("#detail-session-details-cancel"),
+    detailsMessage: scope.querySelector("#detail-session-details-message"),
     layoutSection: scope.querySelector("#detail-layout-reference")?.closest(".system-layout-block") || null,
     layoutReference: scope.querySelector("#detail-layout-reference"),
     partitionWorkTitle: scope.querySelector("#detail-partition-work-title"),
@@ -40494,6 +40500,118 @@ function renderSessionDetailMetaCards(container, cards = []) {
       <p>${escapeHtml(card.value || "")}</p>
     </article>
   `).join("");
+}
+
+function getSessionDetailEditableName(session = null) {
+  const customName = String(session?.customSessionName || "").trim();
+  if (customName) {
+    return customName;
+  }
+
+  const sessionName = String(session?.sessionName || "").trim();
+  const sessionDate = String(session?.date || "").trim();
+  if (!sessionName) {
+    return "";
+  }
+
+  const dateSuffix = sessionDate ? ` - ${formatSessionNameDate(sessionDate)}` : "";
+  if (dateSuffix && sessionName.endsWith(dateSuffix)) {
+    return sessionName.slice(0, -dateSuffix.length).trim();
+  }
+
+  return sessionName;
+}
+
+function buildSessionDetailMetaCards(session = null) {
+  const seedAgeMetadata = getSessionSeedAgeMetadata(session);
+  const cards = [
+    { label: "Status", value: capitalize(normalizeSessionStatus(session?.sessionStatus || "")).replace("Unselected", "Not started") },
+    { label: "System Type", value: session?.systemType || "Not set" },
+    { label: "Unit ID", value: normalizeUnitIdValue(session?.unitId) },
+    { label: "Date", value: session?.date || "Not set" },
+    { label: "Time", value: formatStoredTime(session?.time || "") || "Not set" },
+  ];
+
+  if (seedAgeMetadata.trackingEnabled) {
+    cards.push({
+      label: "Seed Age",
+      value: seedAgeMetadata.summaryLabel,
+    });
+  }
+
+  return cards;
+}
+
+function populateSessionDetailEditorForm(form, session = null) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  form.elements.sessionName.value = getSessionDetailEditableName(session);
+  form.elements.date.value = String(session?.date || "").trim();
+  form.elements.time.value = String(session?.time || "").trim();
+  form.elements.systemType.value = String(session?.systemType || "KAN").trim() || "KAN";
+  form.elements.unitId.value = normalizeUnitIdValue(session?.unitId);
+  initializeTimeFormatField(form, String(session?.time || "").trim());
+}
+
+function setSessionDetailEditorOpen(detail, isOpen) {
+  if (!detail?.detailsPanel) {
+    return;
+  }
+
+  detail.detailsPanel.hidden = !isOpen;
+  if (detail.editButton) {
+    detail.editButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    detail.editButton.classList.toggle("is-active", isOpen);
+  }
+}
+
+function clearSessionDetailEditorMessage(detail) {
+  if (!detail?.detailsMessage) {
+    return;
+  }
+
+  detail.detailsMessage.textContent = "";
+  detail.detailsMessage.classList.remove("is-error");
+}
+
+function syncSessionDetailHeaderMeta(detail, session) {
+  applySessionDetailHeaderOptions(detail, {
+    title: formatSessionLabel(session),
+  });
+  renderSessionDetailMetaCards(detail.meta, buildSessionDetailMetaCards(session));
+}
+
+function applySessionDetailEditorValues(form, session) {
+  if (!(form instanceof HTMLFormElement)) {
+    return true;
+  }
+
+  syncStoredTimeFromDisplay(form, { normalize: true, forceError: true });
+  if (!String(form.elements.time?.value || "").trim()) {
+    form.elements.timeDisplay?.focus();
+    return false;
+  }
+
+  if (!form.reportValidity()) {
+    return false;
+  }
+
+  const nextDate = String(form.elements.date?.value || "").trim();
+  const nextTime = String(form.elements.time?.value || "").trim();
+  const nextSystemType = String(form.elements.systemType?.value || "KAN").trim() || "KAN";
+  const nextUnitId = normalizeUnitIdValue(form.elements.unitId?.value);
+  const nextCustomSessionName = String(form.elements.sessionName?.value || "").trim();
+  const firstPartition = normalizeSessionPartitions(session?.partitions || [])[0];
+
+  session.date = nextDate;
+  session.time = nextTime;
+  session.systemType = nextSystemType;
+  session.unitId = nextUnitId;
+  session.customSessionName = nextCustomSessionName;
+  session.sessionName = buildFinalSessionName(nextCustomSessionName, firstPartition, nextDate);
+  return true;
 }
 
 function applySessionDetailHeaderOptions(elements, options = {}) {
@@ -40598,26 +40716,12 @@ function renderSessionDetail(sessionId) {
 
   app.replaceChildren(cloneTemplate(templates.detail));
   const detail = getSessionDetailElements(app);
-  const seedAgeMetadata = getSessionSeedAgeMetadata(session);
   const isCreateMode = isSessionCreateMode(session);
 
-  applySessionDetailHeaderOptions(detail, {
-    title: formatSessionLabel(session),
-  });
-  const detailMetaCards = [
-    { label: "Status", value: capitalize(normalizeSessionStatus(session.sessionStatus || "")).replace("Unselected", "Not started") },
-    { label: "System Type", value: session.systemType },
-    { label: "Unit ID", value: normalizeUnitIdValue(session.unitId) },
-    { label: "Date", value: session.date },
-    { label: "Time", value: formatStoredTime(session.time) },
-  ];
-  if (seedAgeMetadata.trackingEnabled) {
-    detailMetaCards.push({
-      label: "Seed Age",
-      value: seedAgeMetadata.summaryLabel,
-    });
-  }
-  renderSessionDetailMetaCards(detail.meta, detailMetaCards);
+  syncSessionDetailHeaderMeta(detail, session);
+  populateSessionDetailEditorForm(detail.detailsForm, session);
+  setSessionDetailEditorOpen(detail, false);
+  clearSessionDetailEditorMessage(detail);
   applySessionDetailNotesOptions(detail, {
     value: session.sessionNotes || "",
   });
@@ -40864,6 +40968,7 @@ function renderSessionDetail(sessionId) {
   bindSessionTimelineDebugTools(detail.lifecycleSection, (action) => {
     const previousStatus = session.sessionStatus || "";
     applyDebugEventToSession(session, detail.statusField, action);
+    syncSessionDetailHeaderMeta(detail, session);
     syncSessionStatusControlDatasets(detail.statusField, {
       startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
       germinationStartedAt: session.germinationStartedAt || "",
@@ -40941,6 +41046,7 @@ function renderSessionDetail(sessionId) {
     const previousStatus = session.sessionStatus || "";
     syncSessionPartitionsFromContainer(session, partitions);
     session.sessionStatus = detail.statusField.value;
+    syncSessionDetailHeaderMeta(detail, session);
     if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detail.statusField.value) === "germinating") {
       session.germinationStartedAt = new Date().toISOString();
     }
@@ -40981,15 +41087,49 @@ function renderSessionDetail(sessionId) {
   });
 
   const persistDetailSession = async () => {
+    clearSessionDetailEditorMessage(detail);
+    if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
+      if (detail.detailsMessage) {
+        detail.detailsMessage.textContent = "Please correct the session details above.";
+        detail.detailsMessage.classList.add("is-error");
+      }
+      return null;
+    }
     syncSessionPartitionsFromContainer(session, partitions);
     captureFirstPlantedEventForSession(session);
     session.sessionNotes = detail.notesField.value.trim();
     detail.saveMessage.textContent = "";
+    syncSessionDetailHeaderMeta(detail, session);
+    if (detail.layoutReference && detail.layoutSection) {
+      void renderSystemLayoutReference(detail.layoutReference, session.systemType);
+    }
+    if (detail.partitionWorkTitle) {
+      updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
+    }
+    syncSessionStatusControlDatasets(detail.statusField, {
+      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+      germinationStartedAt: session.germinationStartedAt || "",
+      firstPlantedAt: session.firstPlantedAt || "",
+      completedAt: session.completedAt || "",
+    });
+    updateSessionStatusReminder(
+      detail.statusReminder,
+      session.date,
+      session.time,
+      detail.statusField.value,
+      session.germinationStartedAt || "",
+    );
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
     detail.saveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
     if (savedSession) {
+      syncSessionDetailHeaderMeta(detail, session);
+      populateSessionDetailEditorForm(detail.detailsForm, session);
+      setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
+    } else if (detail.detailsPanel && !detail.detailsPanel.hidden && detail.detailsMessage) {
+      detail.detailsMessage.textContent = "Could not save session details.";
+      detail.detailsMessage.classList.add("is-error");
     }
     return savedSession;
   };
@@ -40997,12 +41137,42 @@ function renderSessionDetail(sessionId) {
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
     contextType: "session",
-    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detail.statusField, detail.notesField),
+    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detail.statusField, detail.notesField, detail.detailsForm),
     saveFn: persistDetailSession,
   });
 
   detail.saveShortcutButton?.addEventListener("click", persistDetailSession);
   detail.saveButton?.addEventListener("click", persistDetailSession);
+  detail.detailsForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await persistDetailSession();
+  });
+  detail.editButton?.addEventListener("click", () => {
+    if (detail.detailsPanel && !detail.detailsPanel.hidden) {
+      detail.detailsForm?.elements?.sessionName?.focus();
+      return;
+    }
+
+    populateSessionDetailEditorForm(detail.detailsForm, session);
+    clearSessionDetailEditorMessage(detail);
+    setSessionDetailEditorOpen(detail, true);
+    detail.detailsForm?.elements?.sessionName?.focus();
+    refreshDetailUnsavedChanges();
+  });
+  detail.detailsCancelButton?.addEventListener("click", () => {
+    populateSessionDetailEditorForm(detail.detailsForm, session);
+    clearSessionDetailEditorMessage(detail);
+    setSessionDetailEditorOpen(detail, false);
+    refreshDetailUnsavedChanges();
+  });
+  detail.detailsForm?.querySelectorAll("input, select").forEach((field) => {
+    const eventName = field instanceof HTMLSelectElement ? "change" : "input";
+    field.addEventListener(eventName, () => {
+      clearSessionDetailEditorMessage(detail);
+      detail.saveMessage.textContent = "";
+      refreshDetailUnsavedChanges();
+    });
+  });
 
   const persistDetailNote = async () => {
     try {
@@ -44353,6 +44523,12 @@ function initializeTimeFormatField(form, initialTime = "") {
   displayTimeField.placeholder = preferredFormat === "12h" ? "7:04 PM" : "19:04";
   displayTimeField.value = formatStoredTime(storedTimeField.value, preferredFormat);
 
+  if (form.dataset.timeFormatInitialized === "true") {
+    return;
+  }
+
+  form.dataset.timeFormatInitialized = "true";
+
   form.querySelectorAll("[data-time-format]").forEach((button) => {
     button.addEventListener("click", () => {
       const nextFormat = button.dataset.timeFormat;
@@ -44562,9 +44738,15 @@ function buildNewSessionDraftSignature(form) {
   });
 }
 
-function buildSessionDetailDraftSignature(session, partitions, statusField, notesField) {
+function buildSessionDetailDraftSignature(session, partitions, statusField, notesField, detailsForm = null) {
   return JSON.stringify({
     sessionId: String(session?.id || "").trim(),
+    sessionName: String(detailsForm?.elements?.sessionName?.value || getSessionDetailEditableName(session)).trim(),
+    date: String(detailsForm?.elements?.date?.value || session?.date || "").trim(),
+    time: String(detailsForm?.elements?.time?.value || session?.time || "").trim(),
+    timeDisplay: String(detailsForm?.elements?.timeDisplay?.value || formatStoredTime(session?.time || "", getPreferredTimeFormat())).trim(),
+    systemType: String(detailsForm?.elements?.systemType?.value || session?.systemType || "").trim(),
+    unitId: String(detailsForm?.elements?.unitId?.value || session?.unitId || "").trim(),
     sessionStatus: String(statusField?.value || session?.sessionStatus || "").trim(),
     sessionNotes: String(notesField?.value || session?.sessionNotes || "").trim(),
     germinationStartedAt: String(session?.germinationStartedAt || "").trim(),
