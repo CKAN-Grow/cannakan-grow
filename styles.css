@@ -10891,16 +10891,16 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--ok.filter-paper-supply-button--reorder {
-  --filter-paper-reorder-border: rgba(126, 198, 226, 0.28);
-  --filter-paper-reorder-bg-start: rgba(38, 72, 93, 0.84);
-  --filter-paper-reorder-bg-end: rgba(20, 39, 54, 0.95);
-  --filter-paper-reorder-text: #def5ff;
-  --filter-paper-reorder-halo: rgba(93, 191, 227, 0.12);
-  --filter-paper-reorder-inner-ring: rgba(166, 221, 242, 0.1);
-  --filter-paper-reorder-inner-glow: rgba(103, 199, 235, 0.05);
-  --filter-paper-reorder-hover-border: rgba(155, 223, 246, 0.34);
-  --filter-paper-reorder-hover-halo: rgba(103, 199, 235, 0.18);
-  --filter-paper-reorder-hover-inner-glow: rgba(103, 199, 235, 0.09);
+  --filter-paper-reorder-border: rgba(148, 209, 89, 0.34);
+  --filter-paper-reorder-bg-start: rgba(54, 89, 48, 0.94);
+  --filter-paper-reorder-bg-end: rgba(24, 42, 24, 0.98);
+  --filter-paper-reorder-text: #ecfadf;
+  --filter-paper-reorder-halo: rgba(148, 209, 89, 0.18);
+  --filter-paper-reorder-inner-ring: rgba(198, 236, 145, 0.11);
+  --filter-paper-reorder-inner-glow: rgba(148, 209, 89, 0.07);
+  --filter-paper-reorder-hover-border: rgba(181, 232, 111, 0.42);
+  --filter-paper-reorder-hover-halo: rgba(148, 209, 89, 0.24);
+  --filter-paper-reorder-hover-inner-glow: rgba(163, 227, 98, 0.12);
 }
 
 .button.button-primary.filter-paper-supply-button.filter-paper-supply-button--unset.filter-paper-supply-button--reorder {
