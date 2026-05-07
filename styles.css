@@ -9844,8 +9844,8 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-announcement-feed-title-accent {
-  color: #6fd934;
-  text-shadow: 0 0 18px rgba(111, 217, 52, 0.18);
+  color: #94d159;
+  text-shadow: 0 0 18px rgba(148, 209, 89, 0.18);
 }
 
 .home-announcement-card-static-sections {
@@ -9907,7 +9907,7 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 .home-announcement-card-static-section h4 {
-  color: #72dc3a;
+  color: #94d159;
   font-size: 0.8rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -9924,13 +9924,13 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   gap: 5px;
   padding-left: 1.1rem;
-  color: rgba(205, 216, 206, 0.84);
+  color: #94d159;
   font-size: 0.92rem;
   line-height: 1.48;
 }
 
 .home-announcement-info-list li::marker {
-  color: #72dc3a;
+  color: #94d159;
 }
 
 .home-announcement-card.is-fallback .home-announcement-card-copy {
@@ -28834,11 +28834,11 @@ body.theme-dark .home-announcement-feed-title-brand {
 }
 
 body.theme-dark .home-announcement-feed-title-accent {
-  color: #72dc3a;
+  color: #94d159;
 }
 
 body.theme-dark .home-announcement-info-list {
-  color: rgba(205, 216, 206, 0.84);
+  color: #94d159;
 }
 
 body.theme-dark .home-announcement-card-feed-panel {
