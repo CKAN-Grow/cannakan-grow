@@ -1312,7 +1312,24 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .app-hero--sessions {
-  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png?v=20260506");
+  --app-hero-art: url("/src/assets/images/1-grow-tracking-my-sessions-bg.png?v=20260507");
+  --app-hero-art-size: cover;
+  --app-hero-art-position: center right;
+  --app-hero-art-repeat: no-repeat;
+  --app-hero-overlay:
+    linear-gradient(90deg, rgba(8, 13, 10, 0.9) 0%, rgba(8, 13, 10, 0.76) 28%, rgba(8, 13, 10, 0.36) 58%, rgba(8, 13, 10, 0.2) 100%),
+    radial-gradient(circle at 82% 18%, rgba(148, 209, 89, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+}
+
+@media (max-width: 980px) {
+  .app-hero--sessions {
+    --app-hero-art-position: 64% center;
+    --app-hero-overlay:
+      linear-gradient(180deg, rgba(8, 13, 10, 0.8) 0%, rgba(8, 13, 10, 0.54) 46%, rgba(8, 13, 10, 0.74) 100%),
+      radial-gradient(circle at 72% 18%, rgba(148, 209, 89, 0.1), transparent 36%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0.01) 100%);
+  }
 }
 
 .app-hero--gallery {
