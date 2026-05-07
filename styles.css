@@ -8719,10 +8719,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-cstp-coming-soon {
   display: block;
-  width: calc(100% + (var(--space-card) * 2));
+  width: clamp(15.5rem, 68%, calc(100% + (var(--space-card) * 2)));
   max-width: calc(100% + (var(--space-card) * 2));
   margin-left: calc(-1 * var(--space-card));
-  margin-right: calc(-1 * var(--space-card));
+  margin-right: auto;
   padding: 12px 14px;
   border-radius: 0;
   background: #b3261e;
