@@ -23687,14 +23687,11 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
   const lockedPreviewAttributes = growNetworkUnlocked ? "" : ' inert aria-disabled="true"';
   return `
     <div class="home-dashboard-secondary-row">
-      <div class="home-dashboard-install-row">
-        ${renderHomeInstallInfoCardMarkup()}
-      </div>
-      <div class="${escapeHtml(growNetworkPreviewShellClassName)}">
-        ${growNetworkUnlocked && showGrowNetworkUnlockNotice ? renderHomeGrowNetworkUnlockedNoticeMarkup() : ""}
-        ${growNetworkUnlocked ? "" : renderHomeGrowNetworkUnlockBannerMarkup()}
-        <div class="home-grow-network-preview-content"${lockedPreviewAttributes}>
-          <div class="home-dashboard-secondary-row-top home-dashboard-secondary-row-top--preview">
+      <div class="home-dashboard-secondary-row-top">
+        <div class="${escapeHtml(`${growNetworkPreviewShellClassName} home-grow-network-preview-shell--top`)}}">
+          ${growNetworkUnlocked && showGrowNetworkUnlockNotice ? renderHomeGrowNetworkUnlockedNoticeMarkup() : ""}
+          ${growNetworkUnlocked ? "" : renderHomeGrowNetworkUnlockBannerMarkup()}
+          <div class="home-grow-network-preview-content"${lockedPreviewAttributes}>
             <div class="home-dashboard-secondary-main-column">
               ${renderHomeExploreDividerMarkup({
                 title: "Community Insights",
@@ -23704,6 +23701,13 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
               ${renderHomeGalleryRankingsTeaser()}
             </div>
           </div>
+        </div>
+        <div class="home-dashboard-secondary-side-column">
+          ${renderHomeInstallInfoCardMarkup()}
+        </div>
+      </div>
+      <div class="${escapeHtml(`${growNetworkPreviewShellClassName} home-grow-network-preview-shell--secondary`)}">
+        <div class="home-grow-network-preview-content"${lockedPreviewAttributes}>
           ${announcementMarkup ? `<div class="home-dashboard-secondary-row-bottom">${announcementMarkup}</div>` : ""}
           ${renderHomeTestedSourcesPreviewSectionMarkup()}
           ${renderHomeExploreDividerMarkup({
