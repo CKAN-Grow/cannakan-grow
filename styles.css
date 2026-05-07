@@ -19054,24 +19054,18 @@ body.theme-dark .contact-reason-card.is-active {
 
 .session-entry-supply-low {
   border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+  box-shadow: none;
 }
 
 .session-entry-supply-low:hover,
 .session-entry-supply-low:focus-visible {
   border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+  box-shadow: none;
 }
 
 .session-entry-supply-low:active {
   border-color: rgba(18, 24, 19, 0.42);
-  box-shadow:
-    0 0 6px rgba(148, 209, 89, 0.42),
-    0 0 12px rgba(148, 209, 89, 0.28);
+  box-shadow: none;
 }
 
 .session-command-start-link.session-entry-supply-urgent {
@@ -20187,24 +20181,18 @@ body.theme-dark .button-new-session:active {
 
 body.theme-dark .session-entry-supply-low {
   border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 8px rgba(148, 209, 89, 0.5),
-    0 0 16px rgba(148, 209, 89, 0.35);
+  box-shadow: none;
 }
 
 body.theme-dark .session-entry-supply-low:hover,
 body.theme-dark .session-entry-supply-low:focus-visible {
   border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 12px rgba(148, 209, 89, 0.7),
-    0 0 24px rgba(148, 209, 89, 0.5);
+  box-shadow: none;
 }
 
 body.theme-dark .session-entry-supply-low:active {
   border-color: rgba(13, 18, 14, 0.68);
-  box-shadow:
-    0 0 6px rgba(148, 209, 89, 0.42),
-    0 0 12px rgba(148, 209, 89, 0.28);
+  box-shadow: none;
 }
 
 body.theme-dark .session-command-start-link.session-entry-supply-urgent {
