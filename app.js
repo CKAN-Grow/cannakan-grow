@@ -4084,7 +4084,7 @@ function getNavigationLockStateForHash(hash = "#home") {
       return {
         locked: true,
         mode: "grow-network",
-        message: "Start your first soaking session to unlock the Grow Network.",
+        message: "Start your first soaking session to begin unlocking the Grow Network.",
         ctaLabel: "Start First Session",
         ctaHref: "#new",
       };
@@ -4094,7 +4094,7 @@ function getNavigationLockStateForHash(hash = "#home") {
       return {
         locked: true,
         mode: "community-grow",
-        message: "Create your first grow snapshot in a session to unlock Community Grow.",
+        message: "Community Grow becomes available after your first grow snapshot is created.",
         ctaLabel: "Go To My Sessions",
         ctaHref: "#sessions",
       };
@@ -4110,7 +4110,7 @@ function getNavigationLockStateForHash(hash = "#home") {
     return {
       locked: true,
       mode: "grow-network",
-      message: "Start your first soaking session to unlock the Grow Network.",
+      message: "Start your first soaking session to begin unlocking the Grow Network.",
       ctaLabel: "Start First Session",
       ctaHref: "#new",
     };
@@ -4138,7 +4138,7 @@ function ensureNavigationLockToast() {
   toast.innerHTML = `
     <div class="navigation-lock-toast__shell">
       <div class="navigation-lock-toast__copy">
-        <strong class="navigation-lock-toast__title">Grow Network Locked</strong>
+        <strong class="navigation-lock-toast__title">Grow Network</strong>
         <p class="navigation-lock-toast__message"></p>
       </div>
       <div class="navigation-lock-toast__actions">
@@ -4159,8 +4159,8 @@ function ensureNavigationLockToast() {
 
 function showNavigationLockToast(config = {}) {
   const toast = ensureNavigationLockToast();
-  const title = String(config.title || "Grow Network Locked").trim() || "Grow Network Locked";
-  const message = String(config.message || "Start your first soaking session to unlock the Grow Network.").trim();
+  const title = String(config.title || "Grow Network").trim() || "Grow Network";
+  const message = String(config.message || "Start your first soaking session to begin unlocking the Grow Network.").trim();
   const ctaLabel = String(config.ctaLabel || "").trim();
   const ctaHref = String(config.ctaHref || "").trim();
   const titleNode = toast.querySelector(".navigation-lock-toast__title");
@@ -23801,9 +23801,9 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
             className: "home-grow-network-unlock-banner-icon",
           })}
           <div>
-            <p class="eyebrow">Focused First-Session Mode</p>
-            <h3 id="home-grow-network-unlock-title">Unlock the Grow Network</h3>
-            <p>Start your first soaking session to unlock insights, source tracking, rankings, analytics, and more.</p>
+            <p class="eyebrow">Grow Network</p>
+            <h3 id="home-grow-network-unlock-title">Start your first soaking session to begin unlocking community insights, rankings, source discovery, and advanced grow tracking.</h3>
+            <p>The ecosystem below will begin waking up naturally as you start growing.</p>
           </div>
         </div>
         <div class="home-grow-network-unlock-banner-actions">
@@ -37766,9 +37766,9 @@ function renderCommunityGrowLockedBannerMarkup() {
             className: "community-grow-locked-banner-icon",
           })}
           <div>
-            <p class="eyebrow">Snapshot Progression</p>
-            <h3 id="community-grow-locked-title">Community Grow Locked</h3>
-            <p>Create your first grow snapshot in a session to unlock the Community Grow gallery and rankings.</p>
+            <p class="eyebrow">Community Grow</p>
+            <h3 id="community-grow-locked-title">Community Grow becomes available after your first grow snapshot is created.</h3>
+            <p>Snapshot creation activates the gallery, rankings, and grow discovery experience.</p>
           </div>
         </div>
         <div class="community-grow-locked-banner-actions">
@@ -46225,7 +46225,7 @@ document.addEventListener("click", (event) => {
         closeMobileNavigation();
       }
       showNavigationLockToast({
-        title: navLockState.mode === "community-grow" ? "Community Grow Locked" : "Grow Network Locked",
+        title: navLockState.mode === "community-grow" ? "Community Grow" : "Grow Network",
         message: navLockState.message,
         ctaLabel: navLockState.ctaLabel,
         ctaHref: navLockState.ctaHref,
