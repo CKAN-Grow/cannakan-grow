@@ -13598,12 +13598,38 @@ function getGallerySnapshotSubmittedDateTimeLabel(snapshot) {
   }).format(parsedDate);
 }
 
-function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
+function renderGallerySnapshotMediaMarkup(snapshot, details = {}, options = {}) {
+  const {
+    interactive = false,
+    previewId = "",
+    showPreviewOverlay = false,
+    overlayLabel = "View full snapshot",
+    className = "gallery-card-media",
+  } = options;
+  const mediaClasses = [className];
+  if (!hasGallerySnapshotImage(snapshot)) {
+    mediaClasses.push("gallery-card-media--details-only");
+  }
+  if (interactive) {
+    mediaClasses.push("gallery-card-media--button");
+  }
+
+  const buttonAttributes = interactive
+    ? ` type="button" data-gallery-preview="${escapeHtml(previewId || snapshot?.id || "")}" aria-label="${escapeHtml(`View full snapshot for ${snapshot?.title || "Community Grow snapshot"}`)}"`
+    : "";
+  const wrapperTag = interactive ? "button" : "div";
+  const overlayMarkup = showPreviewOverlay ? `
+      <span class="gallery-card-media-overlay">
+        <span class="gallery-card-media-overlay-pill">${escapeHtml(overlayLabel)}</span>
+      </span>
+    ` : "";
+
   if (hasGallerySnapshotImage(snapshot)) {
     return `
-      <div class="gallery-card-media">
+      <${wrapperTag} class="${escapeHtml(mediaClasses.join(" "))}"${buttonAttributes}>
         <img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(snapshot.title)}" class="gallery-card-image">
-      </div>
+        ${overlayMarkup}
+      </${wrapperTag}>
     `;
   }
 
@@ -13615,8 +13641,8 @@ function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
   const safeSubmitted = getGallerySnapshotSubmittedDateLabel(snapshot);
 
   return `
-    <div
-      class="gallery-card-media gallery-card-media--details-only"
+    <${wrapperTag}
+      class="${escapeHtml(mediaClasses.join(" "))}"${buttonAttributes}
       style="--gallery-placeholder-bg:${escapeHtml(palette.background)};--gallery-placeholder-accent:${escapeHtml(palette.accent)};--gallery-placeholder-text:${escapeHtml(palette.text)};"
     >
       <span class="gallery-card-placeholder-orb gallery-card-placeholder-orb--top" aria-hidden="true"></span>
@@ -13655,7 +13681,8 @@ function renderGallerySnapshotMediaMarkup(snapshot, details = {}) {
           </div>
         </div>
       </div>
-    </div>
+      ${overlayMarkup}
+    </${wrapperTag}>
   `;
 }
 
@@ -13780,6 +13807,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     linkSharedProfile = true,
     alwaysShowPublicSessionAction = false,
     showFollowAction = true,
+    compactPreview = false,
   } = options;
   const isOwner = isGallerySnapshotOwner(snapshot);
   const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
@@ -13837,6 +13865,34 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     )
     : "";
 
+  if (compactPreview) {
+    return `
+      ${renderGallerySnapshotMediaMarkup(snapshot, details, {
+        interactive: true,
+        previewId: snapshot.id,
+        showPreviewOverlay: true,
+      })}
+      <div class="gallery-card-body gallery-card-body--compact">
+        <div class="gallery-card-feed-header">
+          ${memberMarkup}
+          <div class="gallery-card-performance-badge" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
+            <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
+            <span>Germination</span>
+          </div>
+        </div>
+        <div class="gallery-card-top gallery-card-top--compact">
+          <div class="gallery-card-copy">
+            <strong>${escapeHtml(snapshot.title)}</strong>
+            <p class="gallery-card-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
+          </div>
+        </div>
+        <div class="gallery-card-footer gallery-card-footer--compact">
+          ${renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" })}
+        </div>
+      </div>
+    `;
+  }
+
   return `
     ${renderGallerySnapshotMediaMarkup(snapshot, details)}
     <div class="gallery-card-body">
@@ -13893,6 +13949,25 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   `;
 }
 
+async function handleGallerySnapshotOwnerAction(snapshotId, ownerAction = "") {
+  const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry.id === snapshotId)
+    || getGalleryReviewSnapshotById(snapshotId);
+  if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
+    throw new Error("You can only manage your own Community Grow snapshots.");
+  }
+
+  if (ownerAction === "request-removal") {
+    console.info("[GrowGallery] Removal requested for approved snapshot", {
+      snapshotId,
+      userId: appState.user?.id || "",
+    });
+    window.alert("Removal request noted. Contact support for published Community Grow changes.");
+    return;
+  }
+
+  await deleteGallerySnapshot(snapshotId);
+}
+
 function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], rerender = () => {}) {
   if (!scope) {
     return;
@@ -13903,23 +13978,19 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
       try {
         const snapshotId = button.dataset.galleryRemove || "";
         const ownerAction = button.dataset.galleryOwnerAction || "";
-        const snapshot = visibleSnapshots.find((entry) => entry.id === snapshotId);
-        if (!snapshot || !isGallerySnapshotOwner(snapshot)) {
-          throw new Error("You can only manage your own Community Grow snapshots.");
-        }
-        if (ownerAction === "request-removal") {
-          console.info("[GrowGallery] Removal requested for approved snapshot", {
-            snapshotId,
-            userId: appState.user?.id || "",
-          });
-          window.alert("Removal request noted. Contact support for published Community Grow changes.");
-          return;
-        }
-
-        await deleteGallerySnapshot(snapshotId);
+        await handleGallerySnapshotOwnerAction(snapshotId, ownerAction);
         rerender();
       } catch (error) {
         window.alert(error.message || "Could not remove this Community Grow snapshot.");
+      }
+    });
+  });
+
+  scope.querySelectorAll("[data-gallery-preview]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const snapshotId = button.dataset.galleryPreview || "";
+      if (snapshotId) {
+        openGallerySnapshotOverview(snapshotId);
       }
     });
   });
@@ -13948,6 +14019,151 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
       }
     });
   });
+}
+
+function ensureGallerySnapshotOverviewModal() {
+  let modal = document.querySelector("#gallery-snapshot-overview-modal");
+  if (modal) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "gallery-snapshot-overview-modal";
+  modal.className = "snapshot-modal gallery-snapshot-overview-modal";
+  modal.innerHTML = `
+    <div class="snapshot-modal-card gallery-snapshot-overview-card" role="document">
+      <button type="button" class="modal-close gallery-snapshot-overview-close" aria-label="Close snapshot overview">×</button>
+      <div class="gallery-snapshot-overview-content"></div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector(".gallery-snapshot-overview-close")?.addEventListener("click", () => {
+    if (modal.open) {
+      modal.close();
+    }
+  });
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.close();
+    }
+  });
+
+  modal.addEventListener("click", async (event) => {
+    const actionButton = event.target instanceof Element
+      ? event.target.closest("[data-gallery-modal-owner-action]")
+      : null;
+    if (!actionButton) {
+      return;
+    }
+
+    try {
+      await handleGallerySnapshotOwnerAction(
+        actionButton.dataset.galleryModalRemove || "",
+        actionButton.dataset.galleryModalOwnerAction || "",
+      );
+      if (modal.open) {
+        modal.close();
+      }
+      safeRender();
+    } catch (error) {
+      window.alert(error.message || "Could not update this Community Grow snapshot.");
+    }
+  });
+
+  return modal;
+}
+
+function openGallerySnapshotOverview(snapshotId) {
+  const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry.id === snapshotId)
+    || getGalleryReviewSnapshotById(snapshotId);
+  if (!snapshot) {
+    window.alert("Could not find this Community Grow snapshot.");
+    return;
+  }
+
+  const modal = ensureGallerySnapshotOverviewModal();
+  const content = modal.querySelector(".gallery-snapshot-overview-content");
+  if (!content) {
+    return;
+  }
+
+  const details = getGallerySnapshotFeedDetails(snapshot);
+  const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+  const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
+  const status = getGallerySnapshotDisplayStatus(snapshot);
+  const isOwner = isGallerySnapshotOwner(snapshot);
+  const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
+  const visibilityLabel = status === "pending_review"
+    ? "Visible to you while under review"
+    : status === "rejected"
+      ? "Rejected submission"
+      : status === "private"
+        ? "Private submission"
+        : "Approved public snapshot";
+  const primaryActionMarkup = isOwner && snapshot.sessionId
+    ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
+    : `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Session</a>`;
+  const ownerActionMarkup = ownerAction
+    ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-modal-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-modal-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
+    : "";
+  const facts = [
+    { label: "System / Partition", value: publicDetails.systemLabel },
+    { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
+    { label: "Seed Type", value: publicDetails.seedTypeLabel },
+    { label: "Source", value: publicDetails.sourceLabel },
+    { label: "Seeds", value: `${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel}` },
+    { label: "Seed Age", value: publicDetails.seedAgeLabel },
+    { label: "Status", value: visibilityLabel },
+    { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) },
+  ];
+
+  content.innerHTML = `
+    <div class="gallery-snapshot-overview-header">
+      <div class="section-title-with-icon app-section-header-main gallery-snapshot-overview-heading">
+        ${renderAppSectionHeaderIcon("snapshots")}
+        <div>
+          <p class="eyebrow">Community Grow Snapshot</p>
+          <h3>${escapeHtml(snapshot.title || "Published snapshot")}</h3>
+          <p class="muted">Preview-focused cards open here for the full published session overview.</p>
+        </div>
+      </div>
+      <div class="gallery-card-performance-badge gallery-card-performance-badge--overview" aria-label="${escapeHtml(`${publicDetails.germinationRateLabel} germination`)}">
+        <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
+        <span>Germination</span>
+      </div>
+    </div>
+    <div class="gallery-snapshot-overview-layout">
+      <div class="gallery-snapshot-overview-media">
+        ${renderGallerySnapshotMediaMarkup(snapshot, details, {
+          className: "gallery-card-media gallery-card-media--overview",
+        })}
+      </div>
+      <div class="gallery-snapshot-overview-panel">
+        <div class="gallery-snapshot-overview-member">
+          ${memberMarkup}
+        </div>
+        <p class="gallery-snapshot-overview-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
+        <div class="gallery-snapshot-overview-facts">
+          ${facts.map((fact) => `
+            <article class="gallery-snapshot-overview-fact">
+              <span>${escapeHtml(fact.label)}</span>
+              <strong>${escapeHtml(fact.value)}</strong>
+            </article>
+          `).join("")}
+        </div>
+        ${isOwner && status === "approved" ? '<p class="gallery-snapshot-overview-note">This snapshot is published. To make changes, contact support or request removal.</p>' : ""}
+        <div class="gallery-snapshot-overview-actions">
+          ${primaryActionMarkup}
+          ${ownerActionMarkup}
+        </div>
+      </div>
+    </div>
+  `;
+
+  modal.showModal();
+  modal.querySelector(".gallery-snapshot-overview-close")?.focus();
 }
 
 function ensureGalleryReviewPreviewModal() {
@@ -17456,22 +17672,30 @@ function renderHomeGalleryRankingRowIcon(iconType = "source") {
   }
 }
 
-function renderGalleryLikeButtonMarkup(snapshot) {
+function renderGalleryLikeButtonMarkup(snapshot, options = {}) {
+  const { variant = "heart" } = options;
   const likeCount = Math.max(0, Number(snapshot?.likeCount) || 0);
   const isLiked = Boolean(snapshot?.likedByCurrentUser);
   const isMock = isMockGallerySnapshot(snapshot);
+  const isThumbVariant = variant === "thumb";
+  const iconMarkup = isThumbVariant
+    ? renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb gallery-like-icon gallery-like-icon--thumb")
+    : renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true });
 
   return `
     <button
       type="button"
-      class="gallery-like-button${isLiked ? " is-liked" : ""}"
+      class="gallery-like-button${isLiked ? " is-liked" : ""}${isThumbVariant ? " gallery-like-button--thumb" : ""}"
       data-gallery-like="${escapeHtml(snapshot?.id || "")}"
       aria-pressed="${isLiked ? "true" : "false"}"
       aria-label="${isMock ? "Mock likes are preview-only" : (isLiked ? "Unlike this Community Grow snapshot" : "Like this Community Grow snapshot")}"
       ${isMock ? "disabled" : ""}
     >
-      ${renderAppIconMarkup("heartLike", { variant: "plain", className: "gallery-like-icon", interactive: true })}
-      <span class="gallery-like-count">${escapeHtml(String(likeCount))}</span>
+      ${iconMarkup}
+      <span class="gallery-like-count-wrap">
+        ${isThumbVariant ? '<span class="gallery-like-label">Likes</span>' : ""}
+        <span class="gallery-like-count">${escapeHtml(String(likeCount))}</span>
+      </span>
     </button>
   `;
 }
@@ -36614,10 +36838,12 @@ function renderGallery(targetSnapshotId = "") {
 
     visibleSnapshots.forEach((snapshot) => {
       const card = document.createElement("article");
-      card.className = "gallery-card";
+      card.className = "gallery-card gallery-card--compact-preview";
       card.dataset.gallerySnapshotId = snapshot.id;
       card.tabIndex = -1;
-      card.innerHTML = renderGallerySnapshotCardMarkup(snapshot);
+      card.innerHTML = renderGallerySnapshotCardMarkup(snapshot, {
+        compactPreview: true,
+      });
       if (targetSnapshotId && snapshot.id === targetSnapshotId) {
         card.classList.add("is-targeted");
         targetCard = card;
@@ -39840,13 +40066,14 @@ function renderPublicMemberProfile(memberId) {
 
   approvedSnapshots.forEach((snapshot) => {
     const card = document.createElement("article");
-    card.className = "gallery-card";
+    card.className = "gallery-card gallery-card--compact-preview";
     card.dataset.gallerySnapshotId = snapshot.id;
     card.innerHTML = renderGallerySnapshotCardMarkup(snapshot, {
       allowOwnerManagement: false,
       linkSharedProfile: false,
       alwaysShowPublicSessionAction: true,
       showFollowAction: false,
+      compactPreview: true,
     });
     profileGrid.appendChild(card);
   });
