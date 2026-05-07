@@ -113,6 +113,10 @@ const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
 const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNotificationEvents";
 const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotificationEvents";
+const DEV_QA_BYPASS_STORAGE_KEY = "cannakanGrowDevQaBypass";
+const DEV_QA_BYPASS_USER_ID = "local-dev-qa-user";
+const DEV_QA_BYPASS_USER_EMAIL = "dev-qa@localhost";
+const DEV_QA_BYPASS_USERNAME = "Dev QA Grower";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
@@ -1469,7 +1473,7 @@ function initializeTopbarControls() {
 
 function setTopbarNavigationReadyState() {
   const topbarNav = document.querySelector(".topbar-nav");
-  const shouldShowNotificationCenter = Boolean(appState.authReady && appState.user && isSupabaseConfigured());
+  const shouldShowNotificationCenter = canRenderAuthenticatedAppShell();
   if (topbarNav) {
     topbarNav.hidden = !appState.authReady;
     topbarNav.setAttribute("aria-hidden", appState.authReady ? "false" : "true");
@@ -1707,6 +1711,10 @@ async function resolveSupabaseAuthSession(reason = "unspecified", sessionHint = 
 }
 
 async function getAuthenticatedSupabaseUser(friendlyMessage = "Please sign in to save your session.") {
+  if (isLocalDevQaBypassActive() && appState.user?.id) {
+    return appState.user;
+  }
+
   if (!appState.supabase) {
     throw new Error("Cloud sync is not available right now.");
   }
@@ -4072,6 +4080,142 @@ function writeBooleanLocalStorageFlag(key = "", enabled = false) {
   }
 }
 
+function isLocalDevelopmentHost() {
+  const hostname = String(window.location.hostname || "").trim().toLowerCase();
+  return hostname === "localhost"
+    || hostname === "127.0.0.1"
+    || hostname === "::1"
+    || hostname === "[::1]";
+}
+
+function isLocalDevQaBypassEnabled() {
+  return isLocalDevelopmentHost() && readBooleanLocalStorageFlag(DEV_QA_BYPASS_STORAGE_KEY);
+}
+
+function setLocalDevQaBypassEnabled(enabled = false) {
+  if (!isLocalDevelopmentHost()) {
+    return;
+  }
+
+  writeBooleanLocalStorageFlag(DEV_QA_BYPASS_STORAGE_KEY, enabled);
+}
+
+function isLocalDevQaBypassActive() {
+  return isLocalDevelopmentHost() && !isSupabaseConfigured() && isLocalDevQaBypassEnabled();
+}
+
+function canRenderAuthenticatedAppShell() {
+  return Boolean(appState.authReady && appState.user && (isSupabaseConfigured() || isLocalDevQaBypassActive()));
+}
+
+function createLocalDevQaUser() {
+  return {
+    id: DEV_QA_BYPASS_USER_ID,
+    email: DEV_QA_BYPASS_USER_EMAIL,
+    created_at: "2026-05-07T09:00:00.000Z",
+    app_metadata: {
+      provider: "local-dev-bypass",
+      role: "user",
+    },
+    user_metadata: {
+      name: DEV_QA_BYPASS_USERNAME,
+      full_name: DEV_QA_BYPASS_USERNAME,
+    },
+    aud: "authenticated",
+    role: "authenticated",
+  };
+}
+
+function createLocalDevQaProfile(user = createLocalDevQaUser()) {
+  const createdAt = String(user?.created_at || new Date().toISOString()).trim();
+  return {
+    id: String(user?.id || DEV_QA_BYPASS_USER_ID).trim(),
+    email: String(user?.email || DEV_QA_BYPASS_USER_EMAIL).trim().toLowerCase(),
+    username: DEV_QA_BYPASS_USERNAME,
+    avatarUrl: "",
+    role: "user",
+    accountStatus: "active",
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
+  const user = createLocalDevQaUser();
+  const profile = createLocalDevQaProfile(user);
+
+  appState.authSession = {
+    user,
+    access_token: "local-dev-qa-bypass",
+    token_type: "bearer",
+  };
+  appState.user = user;
+  appState.currentUserEmail = String(user.email || "").trim().toLowerCase();
+  appState.userRole = "user";
+  appState.isAdmin = false;
+  appState.profile = profile;
+  appState.profileError = "";
+  appState.notificationPreferencesTableUnavailable = true;
+  appState.notificationPreferencesError = "";
+  appState.notificationPreferencesSchemaMode = "";
+  appState.notificationPreferencesAvailableColumns = [];
+  appState.notificationPreferences = syncUserNotificationPreferencesCache(
+    user.id,
+    loadStoredUserNotificationPreferences(user.id),
+  );
+  appState.profilePageSettings = syncProfilePageSettingsCache(
+    user.id,
+    loadStoredProfilePageSettings(user.id),
+  );
+  syncAppNotificationsUserState(user.id);
+
+  console.log("[Cannakan Dev QA] Local bypass activated", {
+    reason,
+    userId: user.id,
+    email: user.email,
+  });
+}
+
+function syncLocalDevQaBypassBanner() {
+  const appShell = document.querySelector(".app-shell");
+  const topbar = document.querySelector(".topbar");
+  if (!appShell || !topbar) {
+    return;
+  }
+
+  const existingBanner = appShell.querySelector("#local-dev-qa-bypass-banner");
+  if (!isLocalDevQaBypassActive()) {
+    existingBanner?.remove();
+    return;
+  }
+
+  const banner = existingBanner || document.createElement("section");
+  banner.id = "local-dev-qa-bypass-banner";
+  banner.className = "card local-dev-qa-bypass-banner";
+  banner.innerHTML = `
+    <div class="local-dev-qa-bypass-banner-shell">
+      <div class="local-dev-qa-bypass-banner-copy">
+        <span class="local-dev-qa-bypass-banner-badge">Dev Mode</span>
+        <div>
+          <strong>Local QA bypass is active</strong>
+          <p>Using a localhost-only mock user so session, reminder, and notification flows can be tested without Supabase auth.</p>
+        </div>
+      </div>
+      <button type="button" class="button button-secondary local-dev-qa-bypass-banner-button" data-dev-qa-bypass-disable="true">Disable</button>
+    </div>
+  `;
+
+  const installBanner = appShell.querySelector("#install-grow-app-banner");
+  if (!existingBanner) {
+    (installBanner || topbar).insertAdjacentElement("afterend", banner);
+  }
+
+  banner.querySelector("[data-dev-qa-bypass-disable='true']")?.addEventListener("click", () => {
+    setLocalDevQaBypassEnabled(false);
+    window.location.reload();
+  });
+}
+
 function hasGrowNetworkUnlockFlag() {
   return readBooleanLocalStorageFlag(GROW_NETWORK_UNLOCK_STORAGE_KEY);
 }
@@ -4091,6 +4235,9 @@ function setPendingGrowNetworkUnlockNotice(enabled = true) {
 function isMeaningfulGrowNetworkUnlockSession(session = null) {
   const normalizedSession = normalizeStoredSession(session) || session;
   if (!normalizedSession || isSessionSoftDeleted(normalizedSession)) {
+    return false;
+  }
+  if (normalizedSession.isSample) {
     return false;
   }
 
@@ -6538,8 +6685,13 @@ async function bootstrapApp() {
     }
   } else {
     resetSessionScopedAppState();
-    await rehydratePersistentBrowserState("local-no-supabase");
-    ensureSampleSessions();
+    const localBypassActive = isLocalDevQaBypassActive();
+    await rehydratePersistentBrowserState(localBypassActive ? "local-dev-qa-bypass" : "local-no-supabase");
+    if (localBypassActive) {
+      applyLocalDevQaBypassState("bootstrap:no-supabase");
+    } else {
+      ensureSampleSessions();
+    }
     saveSessions(loadLocalSessions());
     appState.sources = [];
     appState.sourcesLoaded = true;
@@ -6547,9 +6699,9 @@ async function bootstrapApp() {
     appState.members = [];
     appState.membersLoaded = true;
     appState.membersError = "";
-    appState.gallerySnapshots = await loadGallerySnapshots("local-no-supabase");
+    appState.gallerySnapshots = await loadGallerySnapshots(localBypassActive ? "local-dev-qa-bypass" : "local-no-supabase");
     appState.gallerySnapshotsLoaded = true;
-    markAuthReady("local-no-supabase");
+    markAuthReady(localBypassActive ? "local-dev-qa-bypass" : "local-no-supabase");
   }
 
   appState.initialized = true;
@@ -13295,6 +13447,23 @@ function isDeletionScheduled(profile = appState.profile) {
 }
 
 async function createCloudSession(session) {
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    const timestamp = new Date().toISOString();
+    const savedSession = normalizeStoredSession({
+      ...session,
+      id: String(session?.id || "").trim() || crypto.randomUUID(),
+      createdAt: String(session?.createdAt || timestamp).trim(),
+      updatedAt: timestamp,
+    });
+    savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
+    const intendedImages = normalizePersistedSessionImages(session?.sessionImages);
+    if (intendedImages.length > 0) {
+      savedSession.sessionImages = intendedImages;
+    }
+    saveSessions([savedSession, ...getSessions().filter((item) => item.id !== savedSession.id)]);
+    return savedSession;
+  }
+
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
   const record = mapSessionToRecord(session, authUser.id);
   const { data, error } = await appState.supabase
@@ -13318,6 +13487,23 @@ async function createCloudSession(session) {
 }
 
 async function updateCloudSession(session) {
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    const existingSession = getSessions().find((item) => item.id === session.id) || null;
+    const savedSession = normalizeStoredSession({
+      ...(existingSession || {}),
+      ...session,
+      id: String(session?.id || existingSession?.id || "").trim(),
+      createdAt: String(session?.createdAt || existingSession?.createdAt || new Date().toISOString()).trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
+    const nextSessions = existingSession
+      ? getSessions().map((item) => (item.id === savedSession.id ? savedSession : item))
+      : [savedSession, ...getSessions()];
+    saveSessions(nextSessions);
+    return savedSession;
+  }
+
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
   const record = mapSessionToRecord(session, authUser.id);
   const { data: previousRow, error: previousRowError } = await appState.supabase
@@ -13352,6 +13538,22 @@ async function updateCloudSession(session) {
 }
 
 async function updateCloudSessionNotes(sessionId, sessionNotes) {
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    const existingSession = getSessions().find((item) => item.id === sessionId) || null;
+    if (!existingSession) {
+      throw new Error("Session not found.");
+    }
+
+    const savedSession = normalizeStoredSession({
+      ...existingSession,
+      sessionNotes: String(sessionNotes || "").trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    savedSession.filterPaperDeducted = getSessionFilterPaperDeducted({ id: sessionId });
+    saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
+    return savedSession;
+  }
+
   const { data, error } = await appState.supabase
     .from("grow_sessions")
     .update({ session_notes: String(sessionNotes || "").trim() })
@@ -17473,7 +17675,7 @@ function renderAppNotificationCenter() {
     });
   }
 
-  const shouldShowCenter = Boolean(appState.user && appState.authReady && isSupabaseConfigured());
+  const shouldShowCenter = canRenderAuthenticatedAppShell();
   if (appNotificationCenter) {
     appNotificationCenter.hidden = !shouldShowCenter;
   }
@@ -20592,6 +20794,8 @@ function updateAuthStatus() {
   }
 
   setTopbarNavigationReadyState();
+  syncLocalDevQaBypassBanner();
+  const localDevQaBypassActive = isLocalDevQaBypassActive();
 
   if (isSupabaseConfigured() && !appState.authReady) {
     authStatus.innerHTML = `<span class="auth-pill">Checking session...</span>`;
@@ -20602,7 +20806,7 @@ function updateAuthStatus() {
     return;
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() && !localDevQaBypassActive) {
     authStatus.innerHTML = `<span class="auth-pill">Supabase setup needed</span>`;
     syncAdminNavigationVisibility();
     syncGrowNetworkNavigationVisibility();
@@ -20725,6 +20929,11 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     closeAccountMenu();
+    if (isLocalDevQaBypassActive()) {
+      setLocalDevQaBypassEnabled(false);
+      window.location.reload();
+      return;
+    }
     appState.userRole = "user";
     appState.isAdmin = false;
     updateAuthStatus();
@@ -23226,7 +23435,7 @@ function render() {
     return;
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseConfigured() && !isLocalDevQaBypassActive()) {
     renderSetupScreen();
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "setup",
@@ -23685,7 +23894,31 @@ function render() {
 }
 
 function renderSetupScreen() {
-  app.replaceChildren(cloneTemplate(templates.setup));
+  const setupCard = cloneTemplate(templates.setup);
+  if (setupCard instanceof DocumentFragment && isLocalDevelopmentHost() && !isSupabaseConfigured()) {
+    const setupSection = setupCard.firstElementChild;
+    if (setupSection instanceof HTMLElement) {
+      const helper = document.createElement("section");
+      helper.className = "local-dev-qa-setup-helper";
+      helper.innerHTML = `
+        <div class="local-dev-qa-setup-helper-copy">
+          <p class="eyebrow">Local QA</p>
+          <h3>Run the app shell without Supabase</h3>
+          <p class="muted">Enable a localhost-only mock user so you can test sessions, reminders, and notifications while the real setup screen stays intact for production.</p>
+          <p class="local-dev-qa-setup-helper-note">Storage key: <code>${escapeHtml(DEV_QA_BYPASS_STORAGE_KEY)}</code></p>
+        </div>
+        <div class="local-dev-qa-setup-helper-actions">
+          <button type="button" class="button button-secondary" data-enable-dev-qa-bypass="true">Enable Dev QA Bypass</button>
+        </div>
+      `;
+      helper.querySelector("[data-enable-dev-qa-bypass='true']")?.addEventListener("click", () => {
+        setLocalDevQaBypassEnabled(true);
+        window.location.reload();
+      });
+      setupSection.append(helper);
+    }
+  }
+  app.replaceChildren(setupCard);
 }
 
 function closeNewSessionSystemModal({ navigateBack = false } = {}) {

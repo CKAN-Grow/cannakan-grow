@@ -1519,6 +1519,16 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
   .mobile-nav-toggle {
     display: inline-flex;
   }
+
+  .local-dev-qa-bypass-banner-shell,
+  .local-dev-qa-bypass-banner-copy {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .local-dev-qa-bypass-banner-button {
+    width: 100%;
+  }
 }
 
 @keyframes accountMenuIn {
@@ -1557,6 +1567,67 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
   box-shadow:
     0 0 0 1px rgba(255, 107, 107, 0.14),
     0 0 18px rgba(255, 107, 107, 0.2);
+}
+
+.local-dev-qa-bypass-banner {
+  margin-top: 12px;
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(29, 40, 31, 0.96) 0%, rgba(22, 30, 24, 0.92) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.11), rgba(61, 127, 76, 0.04) 62%);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.local-dev-qa-bypass-banner-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.local-dev-qa-bypass-banner-copy {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.local-dev-qa-bypass-banner-copy strong {
+  display: block;
+  color: #f3f7f1;
+  font-size: 1rem;
+}
+
+.local-dev-qa-bypass-banner-copy p {
+  margin: 4px 0 0;
+  color: rgba(217, 227, 214, 0.82);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.local-dev-qa-bypass-banner-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.13);
+  color: #b8ef84;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 0 20px rgba(148, 209, 89, 0.08);
+}
+
+.local-dev-qa-bypass-banner-button {
+  white-space: nowrap;
 }
 
 .topbar-nav-notification-badge {
@@ -19873,6 +19944,37 @@ body.theme-dark .contact-reason-card.is-active {
 .setup-list {
   display: grid;
   gap: 14px;
+}
+
+.local-dev-qa-setup-helper {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(25, 34, 27, 0.92) 0%, rgba(20, 27, 22, 0.88) 100%),
+    linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(61, 127, 76, 0.03) 62%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 26px rgba(0, 0, 0, 0.14);
+}
+
+.local-dev-qa-setup-helper-copy h3 {
+  margin-bottom: 8px;
+  color: #f3f7f1;
+}
+
+.local-dev-qa-setup-helper-note {
+  margin: 10px 0 0;
+  color: rgba(217, 227, 214, 0.82);
+  font-size: 0.84rem;
+}
+
+.local-dev-qa-setup-helper-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .auth-helper-row {
