@@ -3975,6 +3975,21 @@ function isMeaningfulGrowNetworkUnlockSession(session = null) {
   );
 }
 
+function isFirstRealGrowReminderSession(savedSession = null, existingSessions = getSessions()) {
+  if (!isMeaningfulGrowNetworkUnlockSession(savedSession)) {
+    return false;
+  }
+
+  if (normalizeSessionStatus(savedSession?.sessionStatus || "") !== "soaking") {
+    return false;
+  }
+
+  const otherMeaningfulSessions = (Array.isArray(existingSessions) ? existingSessions : [])
+    .filter((session) => String(session?.id || "").trim() !== String(savedSession?.id || "").trim())
+    .filter((session) => isMeaningfulGrowNetworkUnlockSession(session));
+  return otherMeaningfulSessions.length === 0;
+}
+
 function getGrowNetworkUnlockEligibleSession(sessions = getSessions()) {
   return (Array.isArray(sessions) ? sessions : []).find((session) => isMeaningfulGrowNetworkUnlockSession(session)) || null;
 }
@@ -4253,6 +4268,14 @@ async function requestGrowRemindersBrowserPermission() {
   }
 }
 
+function getGrowRemindersBrowserPermissionState() {
+  if (!("Notification" in window)) {
+    return "unsupported";
+  }
+
+  return String(Notification.permission || "default").trim().toLowerCase() || "default";
+}
+
 function shouldShowGrowRemindersPrompt(routeHash = appState.currentRouteHash || window.location.hash || "#home") {
   if (!appState.user || !hasCompletedProfile() || isAdminAreaRawRoute()) {
     return false;
@@ -4304,7 +4327,7 @@ function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || w
   };
 
   modal.onclose = () => {
-    const finalStatus = ["enabled", "dismissed"].includes(String(modal.returnValue || "").trim().toLowerCase())
+    const finalStatus = ["enabled", "dismissed", "denied"].includes(String(modal.returnValue || "").trim().toLowerCase())
       ? String(modal.returnValue).trim().toLowerCase()
       : "dismissed";
     saveGrowRemindersPromptState(finalStatus, appState.user?.id || "");
@@ -4321,28 +4344,35 @@ function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || w
     try {
       const existingPreferences = appState.notificationPreferences
         || loadStoredUserNotificationPreferences(appState.user?.id || "");
+      const permissionResult = await requestGrowRemindersBrowserPermission();
+      const notificationsEnabled = permissionResult === "granted" || permissionResult === "unsupported";
       await saveUserNotificationPreferences({
         ...existingPreferences,
-        notifySnapshot: true,
-        notifyCompletion: true,
-        notifyCommunityActivity: true,
+        notifyCompletion: notificationsEnabled,
       }, {
         requirePersistence: false,
         debugContext: "grow-reminders-prompt",
       });
-      await requestGrowRemindersBrowserPermission();
-      closeWithStatus("enabled");
-      showNavigationLockToast({
-        title: "Grow Reminders",
-        message: "Notifications are enabled. You can update them anytime in your profile settings.",
-      });
+      if (permissionResult === "denied") {
+        closeWithStatus("denied");
+        showNavigationLockToast({
+          title: "Grow Reminders",
+          message: "Notifications are currently blocked in your browser. You can change this later in your browser and profile settings.",
+        });
+      } else {
+        closeWithStatus("enabled");
+        showNavigationLockToast({
+          title: "Grow Reminders",
+          message: "Notifications are enabled. You can update them anytime in your profile settings.",
+        });
+      }
       safeRender();
     } catch (error) {
       console.warn("[Grow Reminders] Could not enable notifications.", error);
-      closeWithStatus("enabled");
+      closeWithStatus("denied");
       showNavigationLockToast({
         title: "Grow Reminders",
-        message: "Notifications are using your current defaults. You can fine-tune them anytime in your profile settings.",
+        message: "We couldn't enable notifications right now. You can try again anytime in your profile settings.",
       });
     }
   };
@@ -6787,31 +6817,31 @@ function getGrowRemindersPromptStorageKey(userId = "") {
 function loadGrowRemindersPromptState(userId = "") {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) {
-    return { status: "pending", updatedAt: "" };
+    return { status: "idle", updatedAt: "" };
   }
 
   try {
     const storedValue = JSON.parse(localStorage.getItem(getGrowRemindersPromptStorageKey(normalizedUserId)) || "null");
-    const status = ["enabled", "dismissed"].includes(String(storedValue?.status || "").trim().toLowerCase())
+    const status = ["idle", "pending", "enabled", "dismissed", "denied"].includes(String(storedValue?.status || "").trim().toLowerCase())
       ? String(storedValue.status).trim().toLowerCase()
-      : "pending";
+      : "idle";
     return {
       status,
       updatedAt: String(storedValue?.updatedAt || "").trim(),
     };
   } catch (error) {
     console.warn("[Grow Reminders] Failed to read prompt state.", error);
-    return { status: "pending", updatedAt: "" };
+    return { status: "idle", updatedAt: "" };
   }
 }
 
 function saveGrowRemindersPromptState(status = "dismissed", userId = "") {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) {
-    return { status: "pending", updatedAt: "" };
+    return { status: "idle", updatedAt: "" };
   }
 
-  const normalizedStatus = ["enabled", "dismissed"].includes(String(status || "").trim().toLowerCase())
+  const normalizedStatus = ["idle", "pending", "enabled", "dismissed", "denied"].includes(String(status || "").trim().toLowerCase())
     ? String(status).trim().toLowerCase()
     : "dismissed";
   const nextState = {
@@ -6829,6 +6859,20 @@ function saveGrowRemindersPromptState(status = "dismissed", userId = "") {
   }
 
   return nextState;
+}
+
+function queueGrowRemindersPromptForUser(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return { status: "idle", updatedAt: "" };
+  }
+
+  const currentState = loadGrowRemindersPromptState(normalizedUserId);
+  if (["enabled", "dismissed", "denied", "pending"].includes(currentState.status)) {
+    return currentState;
+  }
+
+  return saveGrowRemindersPromptState("pending", normalizedUserId);
 }
 
 function loadStoredUserNotificationPreferences(userId = "") {
@@ -22773,9 +22817,38 @@ function bindProfileForm(form, options = {}) {
       const warnings = [];
       let avatarUrl = state.profile?.avatarUrl || "";
       let avatarPath = state.profile?.avatarPath || "";
+      let growRemindersPromptStatusToPersist = "";
+      let growRemindersEnabled = Boolean(notifyPushInput?.checked);
+      if (growRemindersEnabled) {
+        const permissionState = getGrowRemindersBrowserPermissionState();
+        let nextPermissionState = permissionState;
+        if (!["granted", "unsupported"].includes(nextPermissionState)) {
+          nextPermissionState = await requestGrowRemindersBrowserPermission();
+        }
+
+        if (nextPermissionState === "denied") {
+          growRemindersEnabled = false;
+          growRemindersPromptStatusToPersist = "denied";
+          if (notifyPushInput instanceof HTMLInputElement) {
+            notifyPushInput.checked = false;
+          }
+          warnings.push("Grow reminders stay off because browser notifications are blocked. You can enable them later in your browser and profile settings.");
+        } else if (["granted", "unsupported"].includes(nextPermissionState)) {
+          growRemindersPromptStatusToPersist = "enabled";
+        } else {
+          growRemindersEnabled = false;
+          growRemindersPromptStatusToPersist = "dismissed";
+          if (notifyPushInput instanceof HTMLInputElement) {
+            notifyPushInput.checked = false;
+          }
+          warnings.push("Grow reminders were not enabled because notification permission was not granted.");
+        }
+      } else {
+        growRemindersPromptStatusToPersist = "dismissed";
+      }
       const notificationPreferencePayload = {
         notifySnapshot: Boolean(notifyEmailInput?.checked),
-        notifyCompletion: Boolean(notifyPushInput?.checked),
+        notifyCompletion: growRemindersEnabled,
         notifyFollow: Boolean(notifyFollowInput?.checked),
         notifyLike: Boolean(notifyLikeInput?.checked),
       };
@@ -22838,6 +22911,9 @@ function bindProfileForm(form, options = {}) {
 
       try {
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
+        if (growRemindersPromptStatusToPersist) {
+          saveGrowRemindersPromptState(growRemindersPromptStatusToPersist, appState.user?.id || "");
+        }
         syncNotificationPreferenceAvailability();
         if (appState.notificationPreferencesTableUnavailable) {
           warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
@@ -39552,7 +39628,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       partitions: partitionEntries,
       createdAt: new Date().toISOString(),
     };
-    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
+  const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
+  const existingSessionsBeforeSave = getSessions();
 
     try {
       const canProceedWithoutFilterPapers = await promptFilterPaperPreSessionWarning();
@@ -39564,6 +39641,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       const unlockedGrowNetworkNow = !wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession);
       if (unlockedGrowNetworkNow) {
         markGrowNetworkUnlocked({ showNotice: true });
+      }
+      if (isFirstRealGrowReminderSession(savedSession, existingSessionsBeforeSave)) {
+        queueGrowRemindersPromptForUser(appState.user?.id || "");
       }
       clearNewSessionNotesDraft();
       savedSession.sessionImages = normalizePersistedSessionImages(savedSession.sessionImages || session.sessionImages || []);
