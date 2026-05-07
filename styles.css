@@ -543,6 +543,29 @@ textarea {
   font-size: 0.84rem;
 }
 
+.app-notification-action-button--snooze.is-open {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.08);
+  color: #d7f2b7;
+}
+
+.app-notification-snooze-menu {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.app-notification-snooze-option {
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .app-notification-read-state {
   color: rgba(198, 209, 194, 0.62);
   font-size: 0.78rem;
@@ -621,6 +644,15 @@ textarea {
 
   .app-notification-list {
     max-height: calc(100vh - 180px);
+  }
+
+  .app-notification-snooze-menu {
+    justify-content: stretch;
+  }
+
+  .app-notification-snooze-option {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
   }
 }
 

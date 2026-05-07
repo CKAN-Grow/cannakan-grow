@@ -112,10 +112,18 @@ const COMMUNITY_GROW_UNLOCK_PENDING_NOTICE_STORAGE_KEY = "cannakanCommunityGrowU
 const GROW_REMINDERS_PROMPT_STORAGE_KEY = "cannakanGrowRemindersPromptState";
 const APP_NOTIFICATIONS_STORAGE_KEY = "cannakanGrowAppNotifications";
 const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNotificationEvents";
+const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotificationEvents";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
+const APP_NOTIFICATION_SNOOZE_OPTIONS = Object.freeze([
+  { key: "30m", label: "In 30 minutes", confirmationLabel: "30 minutes" },
+  { key: "1h", label: "In 1 hour", confirmationLabel: "1 hour" },
+  { key: "2h", label: "In 2 hours", confirmationLabel: "2 hours" },
+  { key: "tonight", label: "Tonight", confirmationLabel: "tonight" },
+  { key: "tomorrow-morning", label: "Tomorrow morning", confirmationLabel: "tomorrow morning" },
+]);
 
 function getAnnouncementSlideManifestPaths() {
   const candidatePaths = Array.isArray(globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES)
@@ -1092,6 +1100,7 @@ const appState = {
   notificationPreferencesAvailableColumns: [],
   appNotifications: [],
   notificationCenterOpen: false,
+  notificationSnoozeMenuOpenId: "",
   appNotificationsUserId: "",
   sessionHistoryFocusSessionId: "",
   authModalDismissHash: "",
@@ -1267,6 +1276,8 @@ const appState = {
   },
 };
 let sessionTimerInterval = null;
+let appNotificationSnoozeInterval = null;
+let appNotificationSnoozeSyncInProgress = false;
 let backToTopScrollFrame = 0;
 let backToTopLastVisibleState = null;
 const templates = {
@@ -1375,6 +1386,9 @@ function markAuthReady(reason = "auth-change") {
 }
 
 function initializeTopbarControls() {
+  ensureAppNotificationSnoozeInterval();
+  syncDueSnoozedAppNotifications();
+
   if (appNotificationTrigger && appNotificationTrigger.dataset.bound !== "true") {
     appNotificationTrigger.dataset.bound = "true";
     appNotificationTrigger.addEventListener("click", (event) => {
@@ -1388,6 +1402,25 @@ function initializeTopbarControls() {
     appNotificationPanel.dataset.bound = "true";
     appNotificationPanel.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
+      const snoozeToggle = target?.closest("[data-app-notification-snooze-toggle]");
+      if (snoozeToggle instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleNotificationSnoozeMenu(snoozeToggle.dataset.appNotificationSnoozeToggle || "");
+        return;
+      }
+
+      const snoozeOptionButton = target?.closest("[data-app-notification-snooze-option]");
+      if (snoozeOptionButton instanceof HTMLButtonElement) {
+        event.preventDefault();
+        event.stopPropagation();
+        const notification = getAppNotifications().find((entry) => entry.id === (snoozeOptionButton.dataset.appNotificationSnoozeNotification || ""));
+        if (notification) {
+          snoozeAppNotification(notification, snoozeOptionButton.dataset.appNotificationSnoozeOption || "");
+        }
+        return;
+      }
+
       const openButton = target?.closest("[data-app-notification-open]");
       if (openButton instanceof HTMLButtonElement) {
         const notification = getAppNotifications().find((entry) => entry.id === (openButton.dataset.appNotificationOpen || ""));
@@ -1401,6 +1434,7 @@ function initializeTopbarControls() {
 
       const readButton = target?.closest("[data-app-notification-read]");
       if (readButton instanceof HTMLButtonElement) {
+        appState.notificationSnoozeMenuOpenId = "";
         markAppNotificationRead(readButton.dataset.appNotificationRead || "");
       }
     });
@@ -7020,6 +7054,119 @@ function getDismissedAppNotificationEventsStorageKey(userId = "") {
     : DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY;
 }
 
+function getSnoozedAppNotificationEventsStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY}:${normalizedUserId}`
+    : SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY;
+}
+
+function normalizeSnoozedAppNotificationEntry(entry = {}) {
+  const sourceEntry = entry && typeof entry === "object" ? entry : {};
+  const notification = normalizeAppNotificationRecord(sourceEntry.notification || {}, 0);
+  const eventKey = String(sourceEntry.eventKey || notification.eventKey || "").trim();
+  const snoozeUntil = String(sourceEntry.snoozeUntil || "").trim();
+  return eventKey && snoozeUntil
+    ? {
+      eventKey,
+      snoozeOptionKey: String(sourceEntry.snoozeOptionKey || "").trim(),
+      snoozedAt: String(sourceEntry.snoozedAt || "").trim() || new Date().toISOString(),
+      snoozeUntil,
+      originalCreatedAt: String(sourceEntry.originalCreatedAt || notification.createdAt || "").trim(),
+      sessionId: String(sourceEntry.sessionId || notification.sessionId || "").trim(),
+      category: normalizeAppNotificationCategory(sourceEntry.category || notification.category || ""),
+      notification,
+    }
+    : null;
+}
+
+function loadSnoozedAppNotificationEvents(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  try {
+    const rawValue = JSON.parse(localStorage.getItem(getSnoozedAppNotificationEventsStorageKey(normalizedUserId)) || "[]");
+    if (!Array.isArray(rawValue)) {
+      return [];
+    }
+    return rawValue
+      .map((entry) => normalizeSnoozedAppNotificationEntry(entry))
+      .filter(Boolean)
+      .sort((left, right) => (Date.parse(left?.snoozeUntil || "") || 0) - (Date.parse(right?.snoozeUntil || "") || 0));
+  } catch (error) {
+    console.warn("[Notifications] Failed to read snoozed notification events.", error);
+    return [];
+  }
+}
+
+function saveSnoozedAppNotificationEvents(entries = [], userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return [];
+  }
+
+  const normalizedEntries = (Array.isArray(entries) ? entries : [])
+    .map((entry) => normalizeSnoozedAppNotificationEntry(entry))
+    .filter(Boolean)
+    .sort((left, right) => (Date.parse(left?.snoozeUntil || "") || 0) - (Date.parse(right?.snoozeUntil || "") || 0));
+  try {
+    localStorage.setItem(
+      getSnoozedAppNotificationEventsStorageKey(normalizedUserId),
+      JSON.stringify(normalizedEntries),
+    );
+  } catch (error) {
+    console.warn("[Notifications] Failed to persist snoozed notification events.", error);
+  }
+  return normalizedEntries;
+}
+
+function getSnoozedAppNotificationEntry(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return null;
+  }
+  return loadSnoozedAppNotificationEvents(normalizedUserId)
+    .find((entry) => String(entry?.eventKey || "").trim() === normalizedEventKey) || null;
+}
+
+function isAppNotificationEventSnoozed(eventKey = "", userId = appState.user?.id || "") {
+  const snoozedEntry = getSnoozedAppNotificationEntry(eventKey, userId);
+  if (!snoozedEntry) {
+    return false;
+  }
+  const snoozeUntil = Date.parse(snoozedEntry.snoozeUntil || "");
+  return Number.isFinite(snoozeUntil) && snoozeUntil > Date.now();
+}
+
+function clearSnoozedAppNotificationEvent(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+
+  const remainingEntries = loadSnoozedAppNotificationEvents(normalizedUserId)
+    .filter((entry) => String(entry?.eventKey || "").trim() !== normalizedEventKey);
+  saveSnoozedAppNotificationEvents(remainingEntries, normalizedUserId);
+}
+
+function upsertSnoozedAppNotificationEvent(entry = {}, userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedEntry = normalizeSnoozedAppNotificationEntry(entry);
+  if (!normalizedUserId || !normalizedEntry) {
+    return null;
+  }
+
+  const nextEntries = loadSnoozedAppNotificationEvents(normalizedUserId)
+    .filter((existingEntry) => String(existingEntry?.eventKey || "").trim() !== normalizedEntry.eventKey);
+  nextEntries.push(normalizedEntry);
+  saveSnoozedAppNotificationEvents(nextEntries, normalizedUserId);
+  return normalizedEntry;
+}
+
 function loadDismissedAppNotificationEvents(userId = "") {
   const normalizedUserId = String(userId || "").trim();
   if (!normalizedUserId) {
@@ -7093,6 +7240,7 @@ function clearDismissedAppNotificationEvent(eventKey = "", userId = appState.use
 }
 
 const APP_NOTIFICATION_ACTION_KINDS = [
+  "open-snooze",
   "route",
   "filter-paper-modal",
   "filter-paper-store",
@@ -7302,6 +7450,9 @@ function addAppNotification(notification = {}, options = {}) {
   } = options || {};
   const existingNotifications = getAppNotifications(normalizedUserId);
   const normalizedNotification = normalizeAppNotificationRecord(notification, existingNotifications.length);
+  if (normalizedNotification.eventKey && isAppNotificationEventSnoozed(normalizedNotification.eventKey, normalizedUserId)) {
+    return null;
+  }
   if (normalizedNotification.eventKey && isAppNotificationEventDismissed(normalizedNotification.eventKey, normalizedUserId)) {
     return null;
   }
@@ -7430,6 +7581,273 @@ function removeAppNotificationsByEventKeyPrefix(prefix = "") {
 
   persistAppNotifications(nextNotifications, normalizedUserId);
   renderAppNotificationCenter();
+}
+
+function closeNotificationSnoozeMenu() {
+  if (!appState.notificationSnoozeMenuOpenId) {
+    return;
+  }
+  appState.notificationSnoozeMenuOpenId = "";
+  renderAppNotificationCenter();
+}
+
+function toggleNotificationSnoozeMenu(notificationId = "") {
+  const normalizedNotificationId = String(notificationId || "").trim();
+  appState.notificationSnoozeMenuOpenId = appState.notificationSnoozeMenuOpenId === normalizedNotificationId
+    ? ""
+    : normalizedNotificationId;
+  renderAppNotificationCenter();
+}
+
+function canSnoozeNotification(notification = null) {
+  const eventKey = String(notification?.eventKey || "").trim();
+  const sessionId = String(notification?.sessionId || "").trim();
+  if (!eventKey || !sessionId) {
+    return false;
+  }
+  return (
+    eventKey.startsWith(`stage-progress:${sessionId}:`)
+    || eventKey === `session:${sessionId}:perfect-germination`
+    || eventKey === "onboarding:first-snapshot-reminder"
+  );
+}
+
+function resolveNotificationSnoozeUntil(optionKey = "", now = new Date()) {
+  const baseDate = now instanceof Date && !Number.isNaN(now.getTime()) ? new Date(now) : new Date();
+  const targetDate = new Date(baseDate);
+  switch (String(optionKey || "").trim()) {
+    case "30m":
+      targetDate.setMinutes(targetDate.getMinutes() + 30);
+      return targetDate;
+    case "1h":
+      targetDate.setHours(targetDate.getHours() + 1);
+      return targetDate;
+    case "2h":
+      targetDate.setHours(targetDate.getHours() + 2);
+      return targetDate;
+    case "tonight": {
+      targetDate.setHours(20, 0, 0, 0);
+      if (targetDate.getTime() <= baseDate.getTime()) {
+        targetDate.setDate(targetDate.getDate() + 1);
+        targetDate.setHours(20, 0, 0, 0);
+      }
+      return targetDate;
+    }
+    case "tomorrow-morning":
+      targetDate.setDate(targetDate.getDate() + 1);
+      targetDate.setHours(8, 0, 0, 0);
+      return targetDate;
+    default:
+      return null;
+  }
+}
+
+function getNotificationSnoozeOptionMeta(optionKey = "") {
+  return APP_NOTIFICATION_SNOOZE_OPTIONS.find((option) => option.key === String(optionKey || "").trim()) || null;
+}
+
+function buildFirstSnapshotReminderNotification(session = null, existingSessions = getSessions()) {
+  if (
+    !session?.id
+    || !areSnapshotReminderNotificationsEnabled()
+    || hasCreatedMeaningfulSnapshotState(session?.snapshotState)
+    || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)
+  ) {
+    return null;
+  }
+
+  return {
+    eventKey: "onboarding:first-snapshot-reminder",
+    category: "snapshot-reminder",
+    title: "Create your first snapshot",
+    message: "Capture a grow snapshot from this session to start learning the snapshot workflow and unlock Community Grow.",
+    sessionId: session.id,
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: `#sessions/${session.id}`,
+    actions: [
+      {
+        kind: "session-focus-snapshot",
+        label: "Create Snapshot",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "primary",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ],
+  };
+}
+
+function buildPerfectGerminationNotification(session = null) {
+  if (!session?.id || isSessionSoftDeleted(session) || !areGerminationReminderNotificationsEnabled()) {
+    return null;
+  }
+
+  const currentTotals = getSessionSeedTotals(session);
+  if (currentTotals.totalSeeds <= 0) {
+    return null;
+  }
+
+  const currentRate = Math.round((currentTotals.totalPlanted / currentTotals.totalSeeds) * 100);
+  if (currentRate !== 100 || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
+    return null;
+  }
+
+  const eventKey = `session:${session.id}:perfect-germination`;
+  return {
+    eventKey,
+    category: "germination-reminder",
+    title: "All seeds have germinated successfully",
+    message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
+    sessionId: session.id,
+    sessionLabel: buildAppNotificationSessionLabel(session),
+    route: `#sessions/${session.id}`,
+    actions: [
+      {
+        kind: "session-complete",
+        label: "Complete Session",
+        sessionId: session.id,
+        eventKey,
+        variant: "primary",
+      },
+      {
+        kind: "dismiss-event",
+        label: "Keep Active",
+        sessionId: session.id,
+        eventKey,
+        variant: "ghost",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ],
+  };
+}
+
+function buildNotificationFromSnoozedEntry(entry = null) {
+  const normalizedEntry = normalizeSnoozedAppNotificationEntry(entry);
+  const eventKey = String(normalizedEntry?.eventKey || "").trim();
+  const sessionId = String(normalizedEntry?.sessionId || "").trim();
+  if (!normalizedEntry || !eventKey || !sessionId) {
+    return null;
+  }
+
+  const session = getSessions().find((item) => String(item?.id || "").trim() === sessionId);
+  if (!session || isSessionSoftDeleted(session)) {
+    return null;
+  }
+
+  if (eventKey.startsWith(`stage-progress:${sessionId}:`)) {
+    const reminderEntries = buildStageProgressReminderEntries(session);
+    return reminderEntries.find((notification) => String(notification?.eventKey || "").trim() === eventKey)
+      || reminderEntries[0]
+      || null;
+  }
+
+  if (eventKey === `session:${sessionId}:perfect-germination`) {
+    return buildPerfectGerminationNotification(session);
+  }
+
+  if (eventKey === "onboarding:first-snapshot-reminder") {
+    return buildFirstSnapshotReminderNotification(session, getSessions());
+  }
+
+  return {
+    ...normalizedEntry.notification,
+    eventKey,
+    sessionId,
+  };
+}
+
+function syncDueSnoozedAppNotifications() {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId || appNotificationSnoozeSyncInProgress) {
+    return;
+  }
+
+  appNotificationSnoozeSyncInProgress = true;
+  try {
+    const now = Date.now();
+    const snoozedEntries = loadSnoozedAppNotificationEvents(normalizedUserId);
+    if (!snoozedEntries.length) {
+      return;
+    }
+
+    const remainingEntries = [];
+    let reactivatedCount = 0;
+    snoozedEntries.forEach((entry) => {
+      const snoozeUntil = Date.parse(entry?.snoozeUntil || "");
+      if (!Number.isFinite(snoozeUntil) || snoozeUntil <= now) {
+        const nextNotification = buildNotificationFromSnoozedEntry(entry);
+        if (nextNotification) {
+          addAppNotification({
+            ...nextNotification,
+            createdAt: new Date().toISOString(),
+            isRead: false,
+          }, {
+            preserveReadIfExists: false,
+          });
+          reactivatedCount += 1;
+        }
+        return;
+      }
+
+      remainingEntries.push(entry);
+    });
+
+    if (remainingEntries.length !== snoozedEntries.length || reactivatedCount > 0) {
+      saveSnoozedAppNotificationEvents(remainingEntries, normalizedUserId);
+    }
+  } finally {
+    appNotificationSnoozeSyncInProgress = false;
+  }
+}
+
+function ensureAppNotificationSnoozeInterval() {
+  if (appNotificationSnoozeInterval) {
+    return;
+  }
+  appNotificationSnoozeInterval = window.setInterval(() => {
+    syncDueSnoozedAppNotifications();
+  }, 60 * 1000);
+}
+
+function snoozeAppNotification(notification = null, optionKey = "") {
+  if (!canSnoozeNotification(notification)) {
+    return;
+  }
+
+  const snoozeOption = getNotificationSnoozeOptionMeta(optionKey);
+  const snoozeUntil = resolveNotificationSnoozeUntil(optionKey);
+  if (!snoozeOption || !(snoozeUntil instanceof Date) || Number.isNaN(snoozeUntil.getTime())) {
+    return;
+  }
+
+  upsertSnoozedAppNotificationEvent({
+    eventKey: String(notification.eventKey || "").trim(),
+    snoozeOptionKey: snoozeOption.key,
+    snoozedAt: new Date().toISOString(),
+    snoozeUntil: snoozeUntil.toISOString(),
+    originalCreatedAt: String(notification.createdAt || "").trim(),
+    sessionId: String(notification.sessionId || "").trim(),
+    category: normalizeAppNotificationCategory(notification.category || ""),
+    notification,
+  });
+  removeAppNotificationsByEventKeys([String(notification.eventKey || "").trim()]);
+  appState.notificationSnoozeMenuOpenId = "";
+  showNavigationLockToast({
+    title: "Reminder snoozed",
+    message: `Reminder snoozed for ${snoozeOption.confirmationLabel}.`,
+  });
 }
 
 function buildStageProgressReminderEventKey(sessionId = "", reminderHours = 0, reminderKind = "stage") {
@@ -7561,38 +7979,10 @@ function syncSessionProgressionReminderNotifications(sessions = getSessions()) {
       : 0;
     const perfectEventKey = `session:${String(session?.id || "").trim()}:perfect-germination`;
     if (successRate === 100 && normalizeSessionStatus(session?.sessionStatus || "") !== "completed") {
-      addAppNotification({
-        eventKey: perfectEventKey,
-        category: "germination-reminder",
-        title: "All seeds have germinated successfully",
-        message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
-        sessionId: session.id,
-        sessionLabel: buildAppNotificationSessionLabel(session),
-        route: `#sessions/${session.id}`,
-        actions: [
-          {
-            kind: "session-complete",
-            label: "Complete Session",
-            sessionId: session.id,
-            eventKey: perfectEventKey,
-            variant: "primary",
-          },
-          {
-            kind: "dismiss-event",
-            label: "Keep Active",
-            sessionId: session.id,
-            eventKey: perfectEventKey,
-            variant: "ghost",
-          },
-          {
-            kind: "route",
-            label: "Open Session",
-            route: `#sessions/${session.id}`,
-            sessionId: session.id,
-            variant: "secondary",
-          },
-        ],
-      });
+      const perfectNotification = buildPerfectGerminationNotification(session);
+      if (perfectNotification) {
+        addAppNotification(perfectNotification);
+      }
     } else {
       removeAppNotificationsByEventKeys([perfectEventKey]);
     }
@@ -7623,94 +8013,25 @@ function maybeAddFirstSoakingSessionNotification(session = null, existingSession
 }
 
 function maybeAddFirstSnapshotReminderNotification(session = null, existingSessions = getSessions()) {
-  if (
-    !session?.id
-    || !areSnapshotReminderNotificationsEnabled()
-    || hasCreatedMeaningfulSnapshotState(session?.snapshotState)
-    || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)
-  ) {
+  const snapshotReminder = buildFirstSnapshotReminderNotification(session, existingSessions);
+  if (!snapshotReminder) {
     return;
   }
 
-  addAppNotification({
-    eventKey: "onboarding:first-snapshot-reminder",
-    category: "snapshot-reminder",
-    title: "Create your first snapshot",
-    message: "Capture a grow snapshot from this session to start learning the snapshot workflow and unlock Community Grow.",
-    sessionId: session.id,
-    sessionLabel: buildAppNotificationSessionLabel(session),
-    route: `#sessions/${session.id}`,
-    actions: [
-      {
-        kind: "session-focus-snapshot",
-        label: "Create Snapshot",
-        route: `#sessions/${session.id}`,
-        sessionId: session.id,
-        variant: "primary",
-      },
-      {
-        kind: "route",
-        label: "Open Session",
-        route: `#sessions/${session.id}`,
-        sessionId: session.id,
-        variant: "secondary",
-      },
-    ],
-  });
+  addAppNotification(snapshotReminder);
 }
 
 function maybeAddPerfectGerminationNotification(session = null, previousSession = null) {
-  if (!session?.id || isSessionSoftDeleted(session) || !areGerminationReminderNotificationsEnabled()) {
-    return;
-  }
-
-  const currentTotals = getSessionSeedTotals(session);
-  if (currentTotals.totalSeeds <= 0) {
-    return;
-  }
-
-  const currentRate = Math.round((currentTotals.totalPlanted / currentTotals.totalSeeds) * 100);
   const previousTotals = previousSession ? getSessionSeedTotals(previousSession) : { totalSeeds: 0, totalPlanted: 0 };
   const previousRate = previousTotals.totalSeeds > 0
     ? Math.round((previousTotals.totalPlanted / previousTotals.totalSeeds) * 100)
     : 0;
-
-  if (currentRate !== 100 || previousRate === 100 || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
+  const perfectNotification = buildPerfectGerminationNotification(session);
+  if (!perfectNotification || previousRate === 100) {
     return;
   }
 
-  addAppNotification({
-    eventKey: `session:${session.id}:perfect-germination`,
-    category: "germination-reminder",
-    title: "All seeds have germinated successfully",
-    message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
-    sessionId: session.id,
-    sessionLabel: buildAppNotificationSessionLabel(session),
-    route: `#sessions/${session.id}`,
-    actions: [
-      {
-        kind: "session-complete",
-        label: "Complete Session",
-        sessionId: session.id,
-        eventKey: `session:${session.id}:perfect-germination`,
-        variant: "primary",
-      },
-      {
-        kind: "dismiss-event",
-        label: "Keep Active",
-        sessionId: session.id,
-        eventKey: `session:${session.id}:perfect-germination`,
-        variant: "ghost",
-      },
-      {
-        kind: "route",
-        label: "Open Session",
-        route: `#sessions/${session.id}`,
-        sessionId: session.id,
-        variant: "secondary",
-      },
-    ],
-  });
+  addAppNotification(perfectNotification);
 }
 
 function processSessionNotificationTriggers(session = null, options = {}) {
@@ -16834,6 +17155,7 @@ function formatAppNotificationDateTime(createdAt = "") {
 
 function closeAppNotificationCenter() {
   appState.notificationCenterOpen = false;
+  appState.notificationSnoozeMenuOpenId = "";
   if (appNotificationTrigger) {
     appNotificationTrigger.setAttribute("aria-expanded", "false");
   }
@@ -17086,6 +17408,8 @@ function renderAppNotificationCardMarkup(notification = {}) {
   const dateTimeLabel = formatAppNotificationDateTime(notification.createdAt);
   const sessionLabel = String(notification.sessionLabel || "").trim();
   const actions = Array.isArray(notification.actions) ? notification.actions.filter(Boolean) : [];
+  const canSnooze = canSnoozeNotification(notification);
+  const isSnoozeMenuOpen = canSnooze && appState.notificationSnoozeMenuOpenId === notification.id;
 
   return `
     <article class="app-notification-card${notification.isRead ? "" : " is-unread"}" data-app-notification-id="${escapeHtml(notification.id)}">
@@ -17110,10 +17434,30 @@ function renderAppNotificationCardMarkup(notification = {}) {
                 data-app-notification-action-index="${escapeHtml(String(index))}"
               >${escapeHtml(action.label)}</button>
             `).join("")}
+            ${canSnooze ? `
+              <button
+                type="button"
+                class="button button-secondary app-notification-action-button app-notification-action-button--snooze${isSnoozeMenuOpen ? " is-open" : ""}"
+                data-app-notification-snooze-toggle="${escapeHtml(notification.id)}"
+                aria-expanded="${isSnoozeMenuOpen ? "true" : "false"}"
+              >Remind Me Later</button>
+            ` : ""}
             ${notification.isRead
               ? '<span class="app-notification-read-state">Read</span>'
               : `<button type="button" class="button button-secondary app-notification-read-button" data-app-notification-read="${escapeHtml(notification.id)}">Mark read</button>`}
           </div>
+          ${isSnoozeMenuOpen ? `
+            <div class="app-notification-snooze-menu" role="group" aria-label="Snooze reminder options">
+              ${APP_NOTIFICATION_SNOOZE_OPTIONS.map((option) => `
+                <button
+                  type="button"
+                  class="button button-secondary app-notification-snooze-option"
+                  data-app-notification-snooze-option="${escapeHtml(option.key)}"
+                  data-app-notification-snooze-notification="${escapeHtml(notification.id)}"
+                >${escapeHtml(option.label)}</button>
+              `).join("")}
+            </div>
+          ` : ""}
         </div>
       </div>
     </article>
@@ -17121,6 +17465,7 @@ function renderAppNotificationCardMarkup(notification = {}) {
 }
 
 function renderAppNotificationCenter() {
+  syncDueSnoozedAppNotifications();
   if (appNotificationTriggerIcon && !appNotificationTriggerIcon.innerHTML.trim()) {
     appNotificationTriggerIcon.innerHTML = renderAppIconMarkup("notificationBell", {
       variant: "plate",
@@ -48203,6 +48548,7 @@ document.addEventListener("click", (event) => {
       || appNotificationPanel?.contains(event.target)
     );
     if (!clickedInsideNotificationCenter) {
+      appState.notificationSnoozeMenuOpenId = "";
       closeAppNotificationCenter();
     }
   }
@@ -48225,6 +48571,7 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key === "Escape" && appState.notificationCenterOpen) {
+    appState.notificationSnoozeMenuOpenId = "";
     closeAppNotificationCenter();
   }
 
