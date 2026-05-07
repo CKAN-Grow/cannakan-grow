@@ -24720,6 +24720,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-workspace-shell .session-chart-header > label > span,
+.session-workspace-shell .session-chart-header .field-label-row > span,
 .session-workspace-shell .detail-header .meta-card strong {
   font-size: 0.75rem;
   font-weight: 800;
