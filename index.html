@@ -223,40 +223,65 @@
           <div>
             <p class="eyebrow">Preferences</p>
             <h3 id="profile-preferences-title">Notifications</h3>
-            <p class="muted">Choose which account alerts Cannakan® Grow should use for your profile as notification delivery rolls out.</p>
+            <p class="muted">Choose which grow reminders and community alerts Cannakan® Grow should use for your profile.</p>
             <p id="profile-preferences-default-note" class="profile-preferences-helper muted" hidden>Notification preferences are using defaults until preferences are enabled.</p>
           </div>
+          <div data-notification-permission-state="true" data-notification-permission-state-compact="true" data-notification-permission-title="Browser / Device Permission"></div>
           <div class="profile-preferences-list">
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyEmail">
-              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
-              <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Email notifications</span>
-                <span class="profile-preference-toggle-detail">General account email alerts when notification delivery is enabled.</span>
-              </span>
-            </label>
-            <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyPush">
+              <input type="checkbox" name="growRemindersEnabled">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
                 <span class="profile-preference-toggle-copy">Grow reminders</span>
-                <span class="profile-preference-toggle-detail">Browser or device reminders for important grow updates like soaking checks, germination moves, snapshots, and supply restocks.</span>
+                <span class="profile-preference-toggle-detail">Master control for in-app grow reminders and timing guidance.</span>
               </span>
             </label>
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyFollow">
+              <input type="checkbox" name="notifySoakingReminders">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Follow notifications</span>
-                <span class="profile-preference-toggle-detail">Get notified when someone follows your public grow profile.</span>
+                <span class="profile-preference-toggle-copy">Soaking reminders</span>
+                <span class="profile-preference-toggle-detail">Check soaking progress and move sessions into Germination at the right time.</span>
               </span>
             </label>
             <label class="profile-preference-toggle">
-              <input type="checkbox" name="notifyLike">
+              <input type="checkbox" name="notifyGerminationReminders">
               <span class="profile-preference-toggle-control" aria-hidden="true"></span>
               <span class="profile-preference-toggle-text">
-                <span class="profile-preference-toggle-copy">Like notifications</span>
-                <span class="profile-preference-toggle-detail">Get notified when someone likes your shared Community Grow snapshot.</span>
+                <span class="profile-preference-toggle-copy">Germination reminders</span>
+                <span class="profile-preference-toggle-detail">Update germination progress and mark completion when timing matters.</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifySnapshotReminders">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Snapshot reminders</span>
+                <span class="profile-preference-toggle-detail">Remember to capture grow snapshots for your session record and Community Grow unlocks.</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifySupplyReminders">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Supply reminders</span>
+                <span class="profile-preference-toggle-detail">Get reminded when global filter paper supply is low or critical.</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="notifyCommunityActivity">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Community / activity notifications</span>
+                <span class="profile-preference-toggle-detail">Community Grow activity, unlock notices, and discovery-related updates.</span>
+              </span>
+            </label>
+            <label class="profile-preference-toggle">
+              <input type="checkbox" name="pushNotificationsEnabled">
+              <span class="profile-preference-toggle-control" aria-hidden="true"></span>
+              <span class="profile-preference-toggle-text">
+                <span class="profile-preference-toggle-copy">Push notifications enabled</span>
+                <span class="profile-preference-toggle-detail">Allow browser/device reminder delivery when permission is available.</span>
               </span>
             </label>
           </div>

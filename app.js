@@ -234,11 +234,17 @@ const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   storeRegion: "US",
 });
 const DEFAULT_NOTIFICATION_PREFERENCES = Object.freeze({
+  growRemindersEnabled: true,
+  notifySoakingReminders: true,
+  notifyGerminationReminders: true,
+  notifySnapshotReminders: true,
+  notifySupplyReminders: true,
+  notifyCommunityActivity: true,
+  pushNotificationsEnabled: false,
   notifySnapshot: true,
   notifyCompletion: true,
   notifyFollow: true,
   notifyLike: true,
-  notifyCommunityActivity: true,
   createdAt: "",
   updatedAt: "",
 });
@@ -261,6 +267,13 @@ const USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS = Object.freeze([
   "session_reminders",
   "community_updates",
   "low_filter_alerts",
+  "grow_reminders_enabled",
+  "soaking_reminders",
+  "germination_reminders",
+  "snapshot_reminders",
+  "supply_reminders",
+  "community_activity_notifications",
+  "push_notifications_enabled",
 ]);
 const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
@@ -4187,15 +4200,17 @@ function isCommunityGrowUnlocked(sessions = getSessions()) {
 
 function markCommunityGrowUnlocked(options = {}) {
   setCommunityGrowUnlocked(true);
-  addAppNotification({
-    eventKey: "unlock:community-grow",
-    category: "community-activity",
-    title: "Community Grow unlocked",
-    message: "You can now explore community snapshots, rankings, and grow discovery.",
-    actions: [
-      { kind: "route", label: "Open Community Grow", route: "#gallery", variant: "primary" },
-    ],
-  });
+  if (areCommunityActivityNotificationsEnabled()) {
+    addAppNotification({
+      eventKey: "unlock:community-grow",
+      category: "community-activity",
+      title: "Community Grow unlocked",
+      message: "You can now explore community snapshots, rankings, and grow discovery.",
+      actions: [
+        { kind: "route", label: "Open Community Grow", route: "#gallery", variant: "primary" },
+      ],
+    });
+  }
   if (options.showNotice !== false) {
     setPendingCommunityGrowUnlockNotice(true);
   }
@@ -4392,6 +4407,66 @@ function getGrowRemindersBrowserPermissionState() {
   return String(Notification.permission || "default").trim().toLowerCase() || "default";
 }
 
+function getNotificationPermissionStateMeta(permissionState = getGrowRemindersBrowserPermissionState()) {
+  const normalizedState = String(permissionState || "default").trim().toLowerCase();
+  switch (normalizedState) {
+    case "granted":
+      return {
+        key: "granted",
+        label: "Granted",
+        tone: "success",
+        description: "This browser can receive Cannakan® Grow reminder notifications when push delivery is enabled.",
+        guidance: "",
+      };
+    case "denied":
+      return {
+        key: "denied",
+        label: "Denied",
+        tone: "critical",
+        description: "This browser is currently blocking notification permission requests.",
+        guidance: "To re-enable later, open your browser site settings for this app and allow notifications, then turn Push Notifications Enabled back on here.",
+      };
+    case "unsupported":
+      return {
+        key: "unsupported",
+        label: "Unsupported",
+        tone: "warning",
+        description: "This browser or device does not currently support notification permission prompts.",
+        guidance: "In-app notifications still work here, but browser/device push reminders are not available on this device.",
+      };
+    case "default":
+    default:
+      return {
+        key: "default",
+        label: "Not enabled",
+        tone: "info",
+        description: "Notification permission has not been granted yet for this browser.",
+        guidance: "Turn on Push Notifications Enabled to request permission when you’re ready.",
+      };
+  }
+}
+
+function renderNotificationPermissionStateMarkup(options = {}) {
+  const {
+    permissionState = getGrowRemindersBrowserPermissionState(),
+    title = "Browser / Device Permission",
+    compact = false,
+  } = options || {};
+  const meta = getNotificationPermissionStateMeta(permissionState);
+  return `
+    <div class="profile-notification-permission${compact ? " profile-notification-permission--compact" : ""} is-${escapeHtml(meta.tone)}">
+      <div class="profile-notification-permission-head">
+        <div class="profile-notification-permission-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(meta.description)}</span>
+        </div>
+        <span class="profile-permission-badge is-${escapeHtml(meta.tone)}">${escapeHtml(meta.label)}</span>
+      </div>
+      ${meta.guidance ? `<p class="profile-notification-guidance">${escapeHtml(meta.guidance)}</p>` : ""}
+    </div>
+  `;
+}
+
 function shouldShowGrowRemindersPrompt(routeHash = appState.currentRouteHash || window.location.hash || "#home") {
   if (!appState.user || !hasCompletedProfile() || isAdminAreaRawRoute()) {
     return false;
@@ -4464,7 +4539,8 @@ function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || w
       const notificationsEnabled = permissionResult === "granted" || permissionResult === "unsupported";
       await saveUserNotificationPreferences({
         ...existingPreferences,
-        notifyCompletion: notificationsEnabled,
+        growRemindersEnabled: notificationsEnabled,
+        pushNotificationsEnabled: permissionResult === "granted",
       }, {
         requirePersistence: false,
         debugContext: "grow-reminders-prompt",
@@ -7368,6 +7444,12 @@ function buildStageProgressReminderEntries(session = null) {
   }
 
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  if (normalizedStatus === "soaking" && !areSoakingReminderNotificationsEnabled()) {
+    return [];
+  }
+  if (normalizedStatus === "germinating" && !areGerminationReminderNotificationsEnabled()) {
+    return [];
+  }
   const schedule = STAGE_REMINDER_SCHEDULES[normalizedStatus];
   if (!Array.isArray(schedule) || !schedule.length) {
     return [];
@@ -7543,7 +7625,7 @@ function maybeAddFirstSoakingSessionNotification(session = null, existingSession
 function maybeAddFirstSnapshotReminderNotification(session = null, existingSessions = getSessions()) {
   if (
     !session?.id
-    || !areGrowReminderNotificationsEnabled()
+    || !areSnapshotReminderNotificationsEnabled()
     || hasCreatedMeaningfulSnapshotState(session?.snapshotState)
     || hasAnyMeaningfulSnapshotAcrossSessions(existingSessions)
   ) {
@@ -7578,7 +7660,7 @@ function maybeAddFirstSnapshotReminderNotification(session = null, existingSessi
 }
 
 function maybeAddPerfectGerminationNotification(session = null, previousSession = null) {
-  if (!session?.id || isSessionSoftDeleted(session) || !areGrowReminderNotificationsEnabled()) {
+  if (!session?.id || isSessionSoftDeleted(session) || !areGerminationReminderNotificationsEnabled()) {
     return;
   }
 
@@ -7658,7 +7740,7 @@ function maybeAddSupplyStatusNotification(previousInventory = null, nextInventor
   } = options || {};
 
   const normalizedNextInventory = normalizeFilterPaperInventory(nextInventory);
-  if (!nextWasSet || normalizedNextInventory.notifyLowSupply === false || !areGrowReminderNotificationsEnabled()) {
+  if (!nextWasSet || normalizedNextInventory.notifyLowSupply === false || !areSupplyReminderNotificationsEnabled()) {
     return;
   }
 
@@ -7888,22 +7970,40 @@ function getSafeNotificationPreferencePayload(
   existingPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
   schemaMode = "",
 ) {
-  const notifySnapshot =
-    preferencesInput?.notifySnapshot !== undefined
-      ? Boolean(preferencesInput.notifySnapshot)
-      : existingPreferences.notifySnapshot !== false;
-  const notifyCompletion =
-    preferencesInput?.notifyCompletion !== undefined
-      ? Boolean(preferencesInput.notifyCompletion)
-      : existingPreferences.notifyCompletion !== false;
-  const notifyFollow =
-    preferencesInput?.notifyFollow !== undefined
-      ? Boolean(preferencesInput.notifyFollow)
-      : existingPreferences.notifyFollow !== false;
-  const notifyLike =
-    preferencesInput?.notifyLike !== undefined
-      ? Boolean(preferencesInput.notifyLike)
-      : existingPreferences.notifyLike !== false;
+  const growRemindersEnabled =
+    preferencesInput?.growRemindersEnabled !== undefined
+      ? Boolean(preferencesInput.growRemindersEnabled)
+      : existingPreferences.growRemindersEnabled !== false;
+  const notifySoakingReminders =
+    preferencesInput?.notifySoakingReminders !== undefined
+      ? Boolean(preferencesInput.notifySoakingReminders)
+      : existingPreferences.notifySoakingReminders !== false;
+  const notifyGerminationReminders =
+    preferencesInput?.notifyGerminationReminders !== undefined
+      ? Boolean(preferencesInput.notifyGerminationReminders)
+      : existingPreferences.notifyGerminationReminders !== false;
+  const notifySnapshotReminders =
+    preferencesInput?.notifySnapshotReminders !== undefined
+      ? Boolean(preferencesInput.notifySnapshotReminders)
+      : (preferencesInput?.notifySnapshot !== undefined
+        ? Boolean(preferencesInput.notifySnapshot)
+        : existingPreferences.notifySnapshotReminders !== false);
+  const notifySupplyReminders =
+    preferencesInput?.notifySupplyReminders !== undefined
+      ? Boolean(preferencesInput.notifySupplyReminders)
+      : (preferencesInput?.notifyLike !== undefined
+        ? Boolean(preferencesInput.notifyLike)
+        : existingPreferences.notifySupplyReminders !== false);
+  const notifyCommunityActivity =
+    preferencesInput?.notifyCommunityActivity !== undefined
+      ? Boolean(preferencesInput.notifyCommunityActivity)
+      : (preferencesInput?.notifyFollow !== undefined
+        ? Boolean(preferencesInput.notifyFollow)
+        : existingPreferences.notifyCommunityActivity !== false);
+  const pushNotificationsEnabled =
+    preferencesInput?.pushNotificationsEnabled !== undefined
+      ? Boolean(preferencesInput.pushNotificationsEnabled)
+      : existingPreferences.pushNotificationsEnabled === true;
   const normalizedSchemaMode = String(schemaMode || "").trim().toLowerCase();
   const hasKnownColumns = Array.isArray(appState.notificationPreferencesAvailableColumns)
     && appState.notificationPreferencesAvailableColumns.length > 0;
@@ -7937,28 +8037,52 @@ function getSafeNotificationPreferencePayload(
   };
 
   if (includeColumn("notify_snapshot", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
-    payload.notify_snapshot = notifySnapshot;
+    payload.notify_snapshot = notifySnapshotReminders;
   }
   if (includeColumn("notify_completion", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
-    payload.notify_completion = notifyCompletion;
+    payload.notify_completion = growRemindersEnabled;
   }
   if (includeColumn("notify_follow", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
-    payload.notify_follow = notifyFollow;
+    payload.notify_follow = notifyCommunityActivity;
   }
   if (includeColumn("notify_like", { allowLegacyByDefault: true, allowWhenUnknown: true })) {
-    payload.notify_like = notifyLike;
+    payload.notify_like = notifySupplyReminders;
   }
   if (includeColumn("email_notifications", { allowModernByDefault: true })) {
-    payload.email_notifications = notifySnapshot;
+    payload.email_notifications = notifySnapshotReminders;
   }
   if (includeColumn("session_reminders", { allowModernByDefault: true })) {
-    payload.session_reminders = notifyCompletion;
+    payload.session_reminders = growRemindersEnabled;
   }
   if (includeColumn("community_updates", { requireConfirmation: true })) {
-    payload.community_updates = notifyFollow;
+    payload.community_updates = notifyCommunityActivity;
   }
   if (includeColumn("low_filter_alerts", { requireConfirmation: true })) {
-    payload.low_filter_alerts = notifyLike;
+    payload.low_filter_alerts = notifySupplyReminders;
+  }
+  if (includeColumn("grow_reminders_enabled", { requireConfirmation: true })) {
+    payload.grow_reminders_enabled = growRemindersEnabled;
+  }
+  if (includeColumn("soaking_reminders", { requireConfirmation: true })) {
+    payload.soaking_reminders = notifySoakingReminders;
+  }
+  if (includeColumn("germination_reminders", { requireConfirmation: true })) {
+    payload.germination_reminders = notifyGerminationReminders;
+  }
+  if (includeColumn("snapshot_reminders", { requireConfirmation: true })) {
+    payload.snapshot_reminders = notifySnapshotReminders;
+  }
+  if (includeColumn("supply_reminders", { requireConfirmation: true })) {
+    payload.supply_reminders = notifySupplyReminders;
+  }
+  if (includeColumn("community_activity_notifications", { requireConfirmation: true })) {
+    payload.community_activity_notifications = notifyCommunityActivity;
+  }
+  if (includeColumn("push_notifications_enabled", { requireConfirmation: true })) {
+    payload.push_notifications_enabled = pushNotificationsEnabled;
+  }
+  if (includeColumn("push_notifications", { requireConfirmation: true })) {
+    payload.push_notifications = pushNotificationsEnabled;
   }
 
   return payload;
@@ -8759,7 +8883,10 @@ async function ensureUserNotificationPreferences(user) {
   if (existingPreferences) {
     setUserNotificationPreferencesSchemaMode(existingPreferences);
     setUserNotificationPreferencesAvailableColumns(existingPreferences);
-    return syncUserNotificationPreferencesCache(normalizedUserId, existingPreferences);
+    return syncUserNotificationPreferencesCache(normalizedUserId, {
+      ...storedPreferences,
+      ...existingPreferences,
+    });
   }
 
   const writeModes = getUserNotificationPreferencesWriteModes(appState.notificationPreferencesSchemaMode);
@@ -8793,7 +8920,10 @@ async function ensureUserNotificationPreferences(user) {
 
     setUserNotificationPreferencesSchemaMode(savedPreferences || writeMode);
     setUserNotificationPreferencesAvailableColumns(savedPreferences || []);
-    return syncUserNotificationPreferencesCache(normalizedUserId, savedPreferences);
+    return syncUserNotificationPreferencesCache(normalizedUserId, {
+      ...storedPreferences,
+      ...(savedPreferences || {}),
+    });
   }
 
   if (isUserNotificationPreferencesSchemaModeError(lastSeedError)) {
@@ -9778,32 +9908,54 @@ function normalizeUserNotificationPreferencesRow(row, fallbackPreferences = DEFA
     ...DEFAULT_NOTIFICATION_PREFERENCES,
     ...(fallbackPreferences || {}),
   };
+  const growRemindersEnabled = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["growRemindersEnabled", "grow_reminders_enabled", "grow_reminders", "notifyCompletion", "notify_completion", "session_reminders"],
+    normalizedFallbackPreferences.growRemindersEnabled !== false,
+  );
+  const notifySoakingReminders = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["notifySoakingReminders", "soaking_reminders"],
+    growRemindersEnabled && normalizedFallbackPreferences.notifySoakingReminders !== false,
+  );
+  const notifyGerminationReminders = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["notifyGerminationReminders", "germination_reminders"],
+    growRemindersEnabled && normalizedFallbackPreferences.notifyGerminationReminders !== false,
+  );
+  const notifySnapshotReminders = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["notifySnapshotReminders", "snapshot_reminders", "notifySnapshot", "notify_snapshot", "email_notifications"],
+    normalizedFallbackPreferences.notifySnapshotReminders !== false,
+  );
+  const notifySupplyReminders = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["notifySupplyReminders", "supply_reminders", "notifyLike", "notify_like", "low_filter_alerts"],
+    normalizedFallbackPreferences.notifySupplyReminders !== false,
+  );
+  const notifyCommunityActivity = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["notifyCommunityActivity", "community_activity_notifications", "notifyFollow", "notify_follow", "follow_notifications", "community_updates"],
+    normalizedFallbackPreferences.notifyCommunityActivity === true,
+  );
+  const pushNotificationsEnabled = getUserNotificationPreferencesBooleanValue(
+    row,
+    ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"],
+    normalizedFallbackPreferences.pushNotificationsEnabled === true,
+  );
+
   return {
-    notifySnapshot: getUserNotificationPreferencesBooleanValue(
-      row,
-      ["notifySnapshot", "notify_snapshot", "email_notifications"],
-      normalizedFallbackPreferences.notifySnapshot !== false,
-    ),
-    notifyCompletion: getUserNotificationPreferencesBooleanValue(
-      row,
-      ["notifyCompletion", "notify_completion", "push_notifications", "session_reminders"],
-      normalizedFallbackPreferences.notifyCompletion !== false,
-    ),
-    notifyFollow: getUserNotificationPreferencesBooleanValue(
-      row,
-      ["notifyFollow", "notify_follow", "follow_notifications", "community_updates"],
-      normalizedFallbackPreferences.notifyFollow !== false,
-    ),
-    notifyLike: getUserNotificationPreferencesBooleanValue(
-      row,
-      ["notifyLike", "notify_like", "like_notifications", "low_filter_alerts"],
-      normalizedFallbackPreferences.notifyLike !== false,
-    ),
-    notifyCommunityActivity: getUserNotificationPreferencesBooleanValue(
-      row,
-      ["notifyCommunityActivity", "community_activity_notifications"],
-      normalizedFallbackPreferences.notifyCommunityActivity === true,
-    ),
+    growRemindersEnabled,
+    notifySoakingReminders,
+    notifyGerminationReminders,
+    notifySnapshotReminders,
+    notifySupplyReminders,
+    notifyCommunityActivity,
+    pushNotificationsEnabled,
+    notifySnapshot: notifySnapshotReminders,
+    notifyCompletion: growRemindersEnabled,
+    notifyFollow: notifyCommunityActivity,
+    notifyLike: notifySupplyReminders,
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -14125,7 +14277,10 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
 
       setUserNotificationPreferencesSchemaMode(resolvedRow || writeMode);
       setUserNotificationPreferencesAvailableColumns(resolvedRow || payload);
-      return syncUserNotificationPreferencesCache(normalizedUserId, resolvedRow || fallbackPreferences);
+      return syncUserNotificationPreferencesCache(normalizedUserId, {
+        ...fallbackPreferences,
+        ...(resolvedRow || {}),
+      });
     }
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
@@ -23323,6 +23478,82 @@ function renderProfileSettingsToggleMarkup({
   `;
 }
 
+const PROFILE_NOTIFICATION_PREFERENCE_FIELD_NAMES = Object.freeze([
+  "growRemindersEnabled",
+  "notifySoakingReminders",
+  "notifyGerminationReminders",
+  "notifySnapshotReminders",
+  "notifySupplyReminders",
+  "notifyCommunityActivity",
+  "pushNotificationsEnabled",
+]);
+
+const PROFILE_GROW_REMINDER_DEPENDENT_FIELDS = Object.freeze([
+  "notifySoakingReminders",
+  "notifyGerminationReminders",
+  "notifySnapshotReminders",
+  "notifySupplyReminders",
+]);
+
+function getNormalizedNotificationPreferenceState(values = {}, fallbackPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES) {
+  const normalizedValues = normalizeUserNotificationPreferencesRow(values, fallbackPreferences);
+  return {
+    growRemindersEnabled: normalizedValues.growRemindersEnabled !== false,
+    notifySoakingReminders: normalizedValues.notifySoakingReminders !== false,
+    notifyGerminationReminders: normalizedValues.notifyGerminationReminders !== false,
+    notifySnapshotReminders: normalizedValues.notifySnapshotReminders !== false,
+    notifySupplyReminders: normalizedValues.notifySupplyReminders !== false,
+    notifyCommunityActivity: normalizedValues.notifyCommunityActivity !== false,
+    pushNotificationsEnabled: normalizedValues.pushNotificationsEnabled === true,
+  };
+}
+
+function applyNotificationPreferenceStateToForm(form, values = {}) {
+  if (!form) {
+    return;
+  }
+
+  const normalizedValues = getNormalizedNotificationPreferenceState(values);
+  PROFILE_NOTIFICATION_PREFERENCE_FIELD_NAMES.forEach((fieldName) => {
+    const field = form.elements?.[fieldName];
+    if (field instanceof HTMLInputElement && field.type === "checkbox") {
+      field.checked = Boolean(normalizedValues[fieldName]);
+    }
+  });
+}
+
+function syncGrowReminderToggleAvailability(form) {
+  if (!form) {
+    return;
+  }
+
+  const growRemindersField = form.elements?.growRemindersEnabled;
+  const growRemindersEnabled = !(growRemindersField instanceof HTMLInputElement) || growRemindersField.checked;
+  PROFILE_GROW_REMINDER_DEPENDENT_FIELDS.forEach((fieldName) => {
+    const field = form.elements?.[fieldName];
+    if (!(field instanceof HTMLInputElement)) {
+      return;
+    }
+    field.disabled = !growRemindersEnabled;
+    const wrapper = field.closest(".profile-toggle-row, .profile-preference-toggle");
+    wrapper?.classList.toggle("is-disabled", !growRemindersEnabled);
+  });
+}
+
+function syncNotificationPermissionStateUi(scope, options = {}) {
+  const root = scope instanceof HTMLElement || scope instanceof HTMLFormElement || scope instanceof Document ? scope : document;
+  root.querySelectorAll("[data-notification-permission-state]").forEach((element) => {
+    if (!(element instanceof HTMLElement)) {
+      return;
+    }
+    element.innerHTML = renderNotificationPermissionStateMarkup({
+      compact: element.dataset.notificationPermissionStateCompact === "true",
+      title: element.dataset.notificationPermissionTitle || "Browser / Device Permission",
+      ...options,
+    });
+  });
+}
+
 function renderProfileSignInPrompt() {
   app.innerHTML = `
     <section class="card profile-page profile-page--sign-in" aria-label="Profile sign-in prompt">
@@ -23373,7 +23604,7 @@ function bindProfilePageForm(form) {
     resaveRequested: false,
     savePromise: null,
   };
-  const notificationFieldNames = ["notifySnapshot", "notifyCompletion", "notifyFollow", "notifyLike"];
+  const notificationFieldNames = [...PROFILE_NOTIFICATION_PREFERENCE_FIELD_NAMES];
   const privacyFieldNames = [
     "notifyCommunityActivity",
     "showProfileInCommunityGrow",
@@ -23382,11 +23613,13 @@ function bindProfilePageForm(form) {
   ];
 
   const getFormState = () => ({
-    notifySnapshot: Boolean(form.elements.notifySnapshot?.checked),
-    notifyCompletion: Boolean(form.elements.notifyCompletion?.checked),
-    notifyFollow: Boolean(form.elements.notifyFollow?.checked),
-    notifyLike: Boolean(form.elements.notifyLike?.checked),
+    growRemindersEnabled: Boolean(form.elements.growRemindersEnabled?.checked),
+    notifySoakingReminders: Boolean(form.elements.notifySoakingReminders?.checked),
+    notifyGerminationReminders: Boolean(form.elements.notifyGerminationReminders?.checked),
+    notifySnapshotReminders: Boolean(form.elements.notifySnapshotReminders?.checked),
+    notifySupplyReminders: Boolean(form.elements.notifySupplyReminders?.checked),
     notifyCommunityActivity: Boolean(form.elements.notifyCommunityActivity?.checked),
+    pushNotificationsEnabled: Boolean(form.elements.pushNotificationsEnabled?.checked),
     showProfileInCommunityGrow: Boolean(form.elements.showProfileInCommunityGrow?.checked),
     allowFollowers: Boolean(form.elements.allowFollowers?.checked),
     showGrowStatsPublicly: Boolean(form.elements.showGrowStatsPublicly?.checked),
@@ -23420,11 +23653,8 @@ function bindProfilePageForm(form) {
   };
 
   const applyFormState = (nextValues = {}) => {
+    applyNotificationPreferenceStateToForm(form, nextValues);
     const fieldNames = [
-      "notifySnapshot",
-      "notifyCompletion",
-      "notifyFollow",
-      "notifyLike",
       "notifyCommunityActivity",
       "showProfileInCommunityGrow",
       "allowFollowers",
@@ -23436,17 +23666,16 @@ function bindProfilePageForm(form) {
         field.checked = Boolean(nextValues[fieldName]);
       }
     });
+    syncGrowReminderToggleAvailability(form);
+    syncNotificationPermissionStateUi(form);
   };
 
   const syncLocalProfileState = (nextValues = getFormState()) => {
     const normalizedUserId = String(appState.user?.id || "").trim();
+    const notificationPreferenceState = getNormalizedNotificationPreferenceState(nextValues);
     appState.notificationPreferences = syncUserNotificationPreferencesCache(normalizedUserId, {
       ...(appState.notificationPreferences || loadStoredUserNotificationPreferences(normalizedUserId)),
-      notifySnapshot: nextValues.notifySnapshot,
-      notifyCompletion: nextValues.notifyCompletion,
-      notifyFollow: nextValues.notifyFollow,
-      notifyLike: nextValues.notifyLike,
-      notifyCommunityActivity: nextValues.notifyCommunityActivity,
+      ...notificationPreferenceState,
     });
     appState.profilePageSettings = syncProfilePageSettingsCache(normalizedUserId, {
       ...getCurrentProfilePageSettings(),
@@ -23497,21 +23726,37 @@ function bindProfilePageForm(form) {
     }
 
     const pendingValues = getFormState();
+    let permissionState = getGrowRemindersBrowserPermissionState();
+    let pushNotificationsEnabled = Boolean(pendingValues.pushNotificationsEnabled);
+    if (pushNotificationsEnabled && permissionState === "unsupported") {
+      pushNotificationsEnabled = false;
+      if (!pushNotificationsEnabled && form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+        form.elements.pushNotificationsEnabled.checked = false;
+      }
+    } else if (pushNotificationsEnabled && permissionState !== "granted") {
+      const requestedPermission = await requestGrowRemindersBrowserPermission();
+      permissionState = requestedPermission;
+      pushNotificationsEnabled = requestedPermission === "granted";
+      if (!pushNotificationsEnabled && form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+        form.elements.pushNotificationsEnabled.checked = false;
+      }
+    }
+    const normalizedPendingValues = {
+      ...pendingValues,
+      pushNotificationsEnabled,
+    };
     const notificationPreferencesPayload = {
-      notifySnapshot: pendingValues.notifySnapshot,
-      notifyCompletion: pendingValues.notifyCompletion,
-      notifyFollow: pendingValues.notifyFollow,
-      notifyLike: pendingValues.notifyLike,
-      notifyCommunityActivity: pendingValues.notifyCommunityActivity,
+      ...getNormalizedNotificationPreferenceState(normalizedPendingValues),
+      notifyCommunityActivity: normalizedPendingValues.notifyCommunityActivity,
     };
     const profilePageSettingsPayload = {
-      notifyCommunityActivity: pendingValues.notifyCommunityActivity,
-      showProfileInCommunityGrow: pendingValues.showProfileInCommunityGrow,
-      allowFollowers: pendingValues.allowFollowers,
-      showGrowStatsPublicly: pendingValues.showGrowStatsPublicly,
+      notifyCommunityActivity: normalizedPendingValues.notifyCommunityActivity,
+      showProfileInCommunityGrow: normalizedPendingValues.showProfileInCommunityGrow,
+      allowFollowers: normalizedPendingValues.allowFollowers,
+      showGrowStatsPublicly: normalizedPendingValues.showGrowStatsPublicly,
     };
 
-    syncLocalProfileState(pendingValues);
+    syncLocalProfileState(normalizedPendingValues);
     updateUnsavedState();
     setSavingState(true);
     setMessage("Saving...");
@@ -23552,11 +23797,13 @@ function bindProfilePageForm(form) {
       patchSavedFieldsIntoBaseline(privacyFieldNames, appState.profilePageSettings || pendingValues);
 
       applyFormState({
-        notifySnapshot: appState.notificationPreferences?.notifySnapshot,
-        notifyCompletion: appState.notificationPreferences?.notifyCompletion,
-        notifyFollow: appState.notificationPreferences?.notifyFollow,
-        notifyLike: appState.notificationPreferences?.notifyLike,
+        growRemindersEnabled: appState.notificationPreferences?.growRemindersEnabled,
+        notifySoakingReminders: appState.notificationPreferences?.notifySoakingReminders,
+        notifyGerminationReminders: appState.notificationPreferences?.notifyGerminationReminders,
+        notifySnapshotReminders: appState.notificationPreferences?.notifySnapshotReminders,
+        notifySupplyReminders: appState.notificationPreferences?.notifySupplyReminders,
         notifyCommunityActivity: appState.profilePageSettings?.notifyCommunityActivity,
+        pushNotificationsEnabled: appState.notificationPreferences?.pushNotificationsEnabled,
         showProfileInCommunityGrow: appState.profilePageSettings?.showProfileInCommunityGrow,
         allowFollowers: appState.profilePageSettings?.allowFollowers,
         showGrowStatsPublicly: appState.profilePageSettings?.showGrowStatsPublicly,
@@ -23564,6 +23811,14 @@ function bindProfilePageForm(form) {
       syncLocalProfileState();
       updateUnsavedState();
 
+      if (permissionState === "unsupported") {
+        setMessage("Preferences saved. This browser/device does not support push notifications, so in-app reminders will stay available without browser delivery.");
+        return true;
+      }
+      if (permissionState === "denied") {
+        setMessage("Preferences saved. Browser/device push notifications remain blocked until you re-enable notifications in your browser settings.");
+        return true;
+      }
       if (cloudSyncUnavailable) {
         setMessage("Preferences saved locally. Cloud sync unavailable.");
         return true;
@@ -23594,6 +23849,7 @@ function bindProfilePageForm(form) {
 
   form.addEventListener("input", () => {
     syncLocalProfileState();
+    syncGrowReminderToggleAvailability(form);
     updateUnsavedState();
     if (!state.saving && appState.unsavedChanges.hasUnsavedChanges && !messageElement?.classList.contains("is-error")) {
       setMessage("Changes are waiting to be saved.");
@@ -23605,6 +23861,7 @@ function bindProfilePageForm(form) {
       return;
     }
     syncLocalProfileState();
+    syncGrowReminderToggleAvailability(form);
     updateUnsavedState();
     void persistProfileSettings({ source: "auto" });
   });
@@ -23612,6 +23869,14 @@ function bindProfilePageForm(form) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await persistProfileSettings({ source: "manual" });
+  });
+
+  applyFormState({
+    ...notificationPreferences,
+    notifyCommunityActivity: profilePageSettings.notifyCommunityActivity,
+    showProfileInCommunityGrow: profilePageSettings.showProfileInCommunityGrow,
+    allowFollowers: profilePageSettings.allowFollowers,
+    showGrowStatsPublicly: profilePageSettings.showGrowStatsPublicly,
   });
 }
 
@@ -23685,44 +23950,57 @@ function renderProfilePage() {
               <div>
                 <p class="eyebrow">Notifications</p>
                 <h3>Notification Preferences</h3>
-                <p class="profile-section-subtitle">Control the alerts ${BRAND_APP_NAME} sends and previews for your account.</p>
+                <p class="profile-section-subtitle">Control grow-stage reminders, community activity, and browser/device notification readiness.</p>
               </div>
             </div>
+            <div data-notification-permission-state="true"></div>
             <div class="profile-toggle-list">
               ${renderProfileSettingsToggleMarkup({
-                name: "notifySnapshot",
-                title: "Email notifications",
-                description: "Receive account and grow updates by email.",
-                checked: notificationPreferences.notifySnapshot !== false,
+                name: "growRemindersEnabled",
+                title: "Grow reminders",
+                description: "Master control for in-app reminders that help keep stage timing, updates, and analytics accurate.",
+                checked: notificationPreferences.growRemindersEnabled !== false,
               })}
               ${renderProfileSettingsToggleMarkup({
-                name: "notifyCompletion",
-                title: "Push notifications",
-                description: "Stay on top of reminders and grow milestones.",
-                checked: notificationPreferences.notifyCompletion !== false,
+                name: "notifySoakingReminders",
+                title: "Soaking reminders",
+                description: "Remind me when it is time to check soaking progress and move sessions into Germination.",
+                checked: notificationPreferences.notifySoakingReminders !== false,
               })}
               ${renderProfileSettingsToggleMarkup({
-                name: "notifyFollow",
-                title: "Follow notifications",
-                description: "Know when growers start following you.",
-                checked: notificationPreferences.notifyFollow !== false,
+                name: "notifyGerminationReminders",
+                title: "Germination reminders",
+                description: "Remind me to update germination results and mark sessions complete when timing matters.",
+                checked: notificationPreferences.notifyGerminationReminders !== false,
               })}
               ${renderProfileSettingsToggleMarkup({
-                name: "notifyLike",
-                title: "Like notifications",
-                description: "Get notified when your sessions or snapshots are liked.",
-                checked: notificationPreferences.notifyLike !== false,
+                name: "notifySnapshotReminders",
+                title: "Snapshot reminders",
+                description: "Prompt me to capture grow snapshots so Community Grow and snapshot workflows stay active.",
+                checked: notificationPreferences.notifySnapshotReminders !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "notifySupplyReminders",
+                title: "Supply reminders",
+                description: "Alert me when global filter paper supply is running low or critical.",
+                checked: notificationPreferences.notifySupplyReminders !== false,
               })}
               ${renderProfileSettingsToggleMarkup({
                 name: "notifyCommunityActivity",
                 title: "Community activity",
-                description: "Preview upcoming Community Grow activity alerts in this browser.",
-                checked: profilePageSettings.notifyCommunityActivity === true,
+                description: "Receive Community Grow activity, unlock, and discovery notifications in the app.",
+                checked: notificationPreferences.notifyCommunityActivity !== false,
+              })}
+              ${renderProfileSettingsToggleMarkup({
+                name: "pushNotificationsEnabled",
+                title: "Push notifications enabled",
+                description: "Allow browser/device notification delivery for important grow reminders when permission is granted.",
+                checked: notificationPreferences.pushNotificationsEnabled === true,
               })}
             </div>
             <p class="profile-section-note">${usesNotificationFallback
               ? "Notification preferences are currently using your latest saved browser fallback while the backend is unavailable."
-              : `Notification settings are connected to your saved ${BRAND_APP_NAME} preferences.`}</p>
+              : `Notification settings are connected to your saved ${BRAND_APP_NAME} preferences and will reload whenever you sign back in.`}</p>
           </article>
           <article class="profile-section-card" id="profile-privacy-community-card">
             <div class="profile-section-heading">
@@ -23929,10 +24207,6 @@ function bindProfileForm(form, options = {}) {
   const deleteButton = form.querySelector("#profile-delete-account");
   const submitButton = form.querySelector("#profile-submit");
   const notificationDefaultsNote = form.querySelector("#profile-preferences-default-note");
-  const notifyEmailInput = form.elements.notifyEmail;
-  const notifyPushInput = form.elements.notifyPush;
-  const notifyFollowInput = form.elements.notifyFollow;
-  const notifyLikeInput = form.elements.notifyLike;
   const defaultSubmitLabel = submitButton?.textContent || "Save Profile";
   const state = {
     profile,
@@ -23956,25 +24230,26 @@ function bindProfileForm(form, options = {}) {
     if (notificationDefaultsNote) {
       notificationDefaultsNote.hidden = !appState.notificationPreferencesTableUnavailable;
     }
+    syncNotificationPermissionStateUi(form);
+    syncGrowReminderToggleAvailability(form);
   };
 
   usernameInput.value = profile?.username || "";
-  if (notifyEmailInput) {
-    notifyEmailInput.checked = notificationPreferences.notifySnapshot !== false;
-  }
-  if (notifyPushInput) {
-    notifyPushInput.checked = notificationPreferences.notifyCompletion !== false;
-  }
-  if (notifyFollowInput) {
-    notifyFollowInput.checked = notificationPreferences.notifyFollow !== false;
-  }
-  if (notifyLikeInput) {
-    notifyLikeInput.checked = notificationPreferences.notifyLike !== false;
-  }
+  applyNotificationPreferenceStateToForm(form, notificationPreferences);
   syncNotificationPreferenceAvailability();
   bindFileUploadControl(avatarInput);
   updateFileUploadName(avatarInput);
   renderProfileAvatarPreview(preview, removeButton, state, profile);
+
+  form.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement) || event.target.type !== "checkbox") {
+      return;
+    }
+    syncNotificationPreferenceAvailability();
+    if (!message?.classList.contains("is-error")) {
+      setProfileFormMessage("");
+    }
+  });
 
   avatarInput.addEventListener("change", () => {
     const file = avatarInput.files?.[0];
@@ -24074,39 +24349,53 @@ function bindProfileForm(form, options = {}) {
       let avatarUrl = state.profile?.avatarUrl || "";
       let avatarPath = state.profile?.avatarPath || "";
       let growRemindersPromptStatusToPersist = "";
-      let growRemindersEnabled = Boolean(notifyPushInput?.checked);
-      if (growRemindersEnabled) {
+      const notificationPreferenceValues = getNormalizedNotificationPreferenceState({
+        growRemindersEnabled: Boolean(form.elements.growRemindersEnabled?.checked),
+        notifySoakingReminders: Boolean(form.elements.notifySoakingReminders?.checked),
+        notifyGerminationReminders: Boolean(form.elements.notifyGerminationReminders?.checked),
+        notifySnapshotReminders: Boolean(form.elements.notifySnapshotReminders?.checked),
+        notifySupplyReminders: Boolean(form.elements.notifySupplyReminders?.checked),
+        notifyCommunityActivity: Boolean(form.elements.notifyCommunityActivity?.checked),
+        pushNotificationsEnabled: Boolean(form.elements.pushNotificationsEnabled?.checked),
+      }, notificationPreferences);
+      let pushNotificationsEnabled = notificationPreferenceValues.pushNotificationsEnabled;
+      if (pushNotificationsEnabled) {
         const permissionState = getGrowRemindersBrowserPermissionState();
         let nextPermissionState = permissionState;
-        if (!["granted", "unsupported"].includes(nextPermissionState)) {
+        if (nextPermissionState === "unsupported") {
+          pushNotificationsEnabled = false;
+          growRemindersPromptStatusToPersist = "enabled";
+          if (form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+            form.elements.pushNotificationsEnabled.checked = false;
+          }
+          warnings.push("Push notifications are not available on this browser/device. In-app grow reminders will still stay available.");
+        } else if (nextPermissionState !== "granted") {
           nextPermissionState = await requestGrowRemindersBrowserPermission();
         }
 
         if (nextPermissionState === "denied") {
-          growRemindersEnabled = false;
+          pushNotificationsEnabled = false;
           growRemindersPromptStatusToPersist = "denied";
-          if (notifyPushInput instanceof HTMLInputElement) {
-            notifyPushInput.checked = false;
+          if (form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+            form.elements.pushNotificationsEnabled.checked = false;
           }
-          warnings.push("Grow reminders stay off because browser notifications are blocked. You can enable them later in your browser and profile settings.");
-        } else if (["granted", "unsupported"].includes(nextPermissionState)) {
+          warnings.push("Push notifications stay off because browser notifications are blocked. You can enable them later in your browser and profile settings.");
+        } else if (nextPermissionState === "granted") {
           growRemindersPromptStatusToPersist = "enabled";
-        } else {
-          growRemindersEnabled = false;
+        } else if (nextPermissionState !== "unsupported") {
+          pushNotificationsEnabled = false;
           growRemindersPromptStatusToPersist = "dismissed";
-          if (notifyPushInput instanceof HTMLInputElement) {
-            notifyPushInput.checked = false;
+          if (form.elements.pushNotificationsEnabled instanceof HTMLInputElement) {
+            form.elements.pushNotificationsEnabled.checked = false;
           }
-          warnings.push("Grow reminders were not enabled because notification permission was not granted.");
+          warnings.push("Push notifications were not enabled because notification permission was not granted.");
         }
       } else {
         growRemindersPromptStatusToPersist = "dismissed";
       }
       const notificationPreferencePayload = {
-        notifySnapshot: Boolean(notifyEmailInput?.checked),
-        notifyCompletion: growRemindersEnabled,
-        notifyFollow: Boolean(notifyFollowInput?.checked),
-        notifyLike: Boolean(notifyLikeInput?.checked),
+        ...notificationPreferenceValues,
+        pushNotificationsEnabled,
       };
 
       // Save the profile name first so avatar storage problems do not block the main profile save.
@@ -24167,9 +24456,18 @@ function bindProfileForm(form, options = {}) {
 
       try {
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
+        appState.profilePageSettings = await savePublicMemberProfileSettings({
+          notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
+        }, {
+          requirePersistence: false,
+          debugContext: "profile-editor-notification-settings",
+          verifyAfterSave: false,
+        });
+        appState.profilePageSettingsUserId = String(appState.user?.id || "").trim();
         if (growRemindersPromptStatusToPersist) {
           saveGrowRemindersPromptState(growRemindersPromptStatusToPersist, appState.user?.id || "");
         }
+        applyNotificationPreferenceStateToForm(form, appState.notificationPreferences);
         syncNotificationPreferenceAvailability();
         if (appState.notificationPreferencesTableUnavailable) {
           warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
@@ -45136,7 +45434,36 @@ function getSessionStatusAlertActionText(sessionStatus = "", level = "") {
 
 function areGrowReminderNotificationsEnabled() {
   const notificationPreferences = appState.notificationPreferences || getDefaultNotificationPreferences();
-  return notificationPreferences.notifyCompletion !== false;
+  return notificationPreferences.growRemindersEnabled !== false;
+}
+
+function areSpecificGrowReminderNotificationsEnabled(preferenceKey = "") {
+  const notificationPreferences = appState.notificationPreferences || getDefaultNotificationPreferences();
+  if (notificationPreferences.growRemindersEnabled === false) {
+    return false;
+  }
+  return notificationPreferences?.[preferenceKey] !== false;
+}
+
+function areSoakingReminderNotificationsEnabled() {
+  return areSpecificGrowReminderNotificationsEnabled("notifySoakingReminders");
+}
+
+function areGerminationReminderNotificationsEnabled() {
+  return areSpecificGrowReminderNotificationsEnabled("notifyGerminationReminders");
+}
+
+function areSnapshotReminderNotificationsEnabled() {
+  return areSpecificGrowReminderNotificationsEnabled("notifySnapshotReminders");
+}
+
+function areSupplyReminderNotificationsEnabled() {
+  return areSpecificGrowReminderNotificationsEnabled("notifySupplyReminders");
+}
+
+function areCommunityActivityNotificationsEnabled() {
+  const notificationPreferences = appState.notificationPreferences || getDefaultNotificationPreferences();
+  return notificationPreferences.notifyCommunityActivity !== false;
 }
 
 function renderSessionStatusAlertIcon(level = "") {
