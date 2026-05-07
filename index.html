@@ -864,7 +864,6 @@
         <div class="inline-actions">
           <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Details</button>
           <a class="button button-secondary" href="#sessions">Back</a>
-          <button id="delete-session" class="button button-danger" type="button">Delete</button>
         </div>
       </div>
 
@@ -1234,8 +1233,13 @@
         </section>
         <p id="detail-save-message" class="form-message" role="alert" aria-live="polite"></p>
         <div class="form-actions session-workspace-actions">
-          <button id="detail-save-session" type="button" class="button button-primary">Save Session</button>
-          <a class="button button-secondary" href="#sessions">Back</a>
+          <div class="session-workspace-actions-main">
+            <button id="detail-save-session" type="button" class="button button-primary">Save Session</button>
+            <a class="button button-secondary" href="#sessions">Back</a>
+          </div>
+          <div class="session-workspace-actions-danger">
+            <button id="delete-session" class="button button-danger" type="button">Delete</button>
+          </div>
         </div>
       </section>
     </section>

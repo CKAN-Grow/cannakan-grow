@@ -26076,10 +26076,31 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-actions {
-  justify-content: flex-start;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
   margin-top: 4px;
   padding-top: 4px;
+  width: 100%;
+}
+
+.session-workspace-actions-main,
+.session-workspace-actions-danger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.session-workspace-actions-main {
+  justify-content: flex-start;
+}
+
+.session-workspace-actions-danger {
+  justify-content: flex-end;
+  margin-left: auto;
+  padding-left: clamp(20px, 4vw, 48px);
 }
 
 .session-workspace-shell .button-primary,
@@ -26180,6 +26201,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     width: 100%;
   }
 
+  .session-workspace-actions {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .session-workspace-actions-main,
+  .session-workspace-actions-danger {
+    width: 100%;
+    padding-left: 0;
+    margin-left: 0;
+  }
+
   .session-detail-edit-actions,
   .session-detail-edit-action-buttons {
     width: 100%;
@@ -26191,7 +26225,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   }
 
   .session-workspace-shell .session-workspace-header .inline-actions > *,
-  .session-workspace-actions > *,
+  .session-workspace-actions-main > *,
+  .session-workspace-actions-danger > *,
   .session-detail-edit-action-buttons > * {
     flex: 1 1 100%;
   }
