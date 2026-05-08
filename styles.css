@@ -12656,6 +12656,11 @@ body.theme-dark .contact-reason-card.is-active {
   margin: 0;
 }
 
+.session-detail-supplies-section {
+  display: grid;
+  gap: 0;
+}
+
 .session-detail-supplies-anchor {
   display: grid;
   min-width: 0;

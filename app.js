@@ -45528,7 +45528,7 @@ function getSessionDetailElements(scope = document) {
     statusReminder: scope.querySelector("#detail-session-status-alerts"),
     statusLabel: scope.querySelector(".session-status-label"),
     statusHelp: scope.querySelector(".session-status-help"),
-    suppliesAnchor: scope.querySelector("#detail-lifecycle-supplies-anchor"),
+    suppliesAnchor: scope.querySelector("#detail-supplies-anchor"),
     notesField: scope.querySelector("#detail-session-notes"),
     notesLabel: scope.querySelector("#detail-session-notes-label span:last-child"),
     notesHelp: scope.querySelector(".session-private-notes-help"),
