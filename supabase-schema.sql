@@ -266,6 +266,9 @@ alter table public.announcements
   add column if not exists status text not null default 'inactive';
 
 alter table public.announcements
+  add column if not exists caption text default '';
+
+alter table public.announcements
   add column if not exists created_at timestamptz not null default timezone('utc', now());
 
 alter table public.announcements
@@ -273,6 +276,30 @@ alter table public.announcements
 
 alter table public.grow_gallery_snapshots
   add column if not exists status text not null default 'private';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists snapshot_title text not null default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists session_date date;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists system_type text not null default 'KAN';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists success_percent integer not null default 0;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists is_published boolean not null default true;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists published_at timestamptz not null default timezone('utc', now());
+
+alter table public.grow_gallery_snapshots
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.grow_gallery_snapshots
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
