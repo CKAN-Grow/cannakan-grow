@@ -36836,7 +36836,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
                 <label>
                   <span>Seed age</span>
                   <div class="session-seed-age-input-shell">
-                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.1" inputmode="decimal" placeholder="Years old" value="${escapeHtml(sessionSeedAgeYears)}">
+                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.1" inputmode="decimal" placeholder="#" value="${escapeHtml(sessionSeedAgeYears)}">
                     <span>years</span>
                   </div>
                 </label>
