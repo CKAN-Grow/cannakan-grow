@@ -220,7 +220,7 @@ function normalizeNotificationPreferencesRow(row = {}) {
     ["growRemindersEnabled", "grow_reminders_enabled", "session_reminders", "notifyCompletion", "notify_completion"],
     true,
   );
-  const pushPreferenceKeys = ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"];
+  const pushPreferenceKeys = ["push_notifications_enabled", "pushNotificationsEnabled", "push_notifications"];
   const hasPushPreference = hasAnyObjectKey(row, pushPreferenceKeys);
   return {
     growRemindersEnabled,
@@ -237,7 +237,12 @@ function normalizeNotificationPreferencesRow(row = {}) {
     pushNotificationsEnabled: getObjectBooleanValue(
       row,
       pushPreferenceKeys,
-      hasPushPreference ? false : (hasPreferenceRow ? growRemindersEnabled : false),
+      hasPushPreference ? growRemindersEnabled : (hasPreferenceRow ? growRemindersEnabled : false),
+    ),
+    push_notifications_enabled: getObjectBooleanValue(
+      row,
+      pushPreferenceKeys,
+      hasPushPreference ? growRemindersEnabled : (hasPreferenceRow ? growRemindersEnabled : false),
     ),
     pushPreferenceConfigured: hasPushPreference,
   };
@@ -568,6 +573,12 @@ async function loadUserNotificationPreferences(userId, config, cache) {
   const normalized = Array.isArray(rows) && rows.length
     ? normalizeNotificationPreferencesRow(rows[0])
     : normalizeNotificationPreferencesRow({});
+  console.info("[Push Preferences] grow-reminders loaded", {
+    userId,
+    rowPushNotificationsEnabled: Array.isArray(rows) && rows.length ? rows[0]?.push_notifications_enabled : undefined,
+    rowCachedPushNotificationsEnabled: Array.isArray(rows) && rows.length ? rows[0]?.pushNotificationsEnabled : undefined,
+    computedPushNotificationsEnabled: normalized.pushNotificationsEnabled,
+  });
   cache.set(userId, normalized);
   return normalized;
 }

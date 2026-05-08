@@ -108,7 +108,7 @@ function normalizeNotificationPreferencesRow(row = {}) {
     ["growRemindersEnabled", "grow_reminders_enabled", "session_reminders", "notifyCompletion", "notify_completion"],
     true,
   );
-  const pushPreferenceKeys = ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"];
+  const pushPreferenceKeys = ["push_notifications_enabled", "pushNotificationsEnabled", "push_notifications"];
   const hasPushPreference = hasAnyObjectKey(row, pushPreferenceKeys);
   return {
     growRemindersEnabled,
@@ -140,7 +140,12 @@ function normalizeNotificationPreferencesRow(row = {}) {
     pushNotificationsEnabled: getObjectBooleanValue(
       row,
       pushPreferenceKeys,
-      hasPushPreference ? false : (hasPreferenceRow ? growRemindersEnabled : false),
+      hasPushPreference ? growRemindersEnabled : (hasPreferenceRow ? growRemindersEnabled : false),
+    ),
+    push_notifications_enabled: getObjectBooleanValue(
+      row,
+      pushPreferenceKeys,
+      hasPushPreference ? growRemindersEnabled : (hasPreferenceRow ? growRemindersEnabled : false),
     ),
     pushPreferenceConfigured: hasPushPreference,
   };
@@ -378,7 +383,15 @@ async function loadUserNotificationPreferences(userId, config) {
     `${USER_NOTIFICATION_PREFERENCES_TABLE}?user_id=eq.${encodeURIComponent(userId)}&select=*`,
     config,
   );
-  return Array.isArray(records) && records.length ? normalizeNotificationPreferencesRow(records[0]) : normalizeNotificationPreferencesRow({});
+  const sourceRow = Array.isArray(records) && records.length ? records[0] : {};
+  const normalized = normalizeNotificationPreferencesRow(sourceRow);
+  console.info("[Push Preferences] /api/push-send loaded", {
+    userId,
+    rowPushNotificationsEnabled: sourceRow?.push_notifications_enabled,
+    rowCachedPushNotificationsEnabled: sourceRow?.pushNotificationsEnabled,
+    computedPushNotificationsEnabled: normalized.pushNotificationsEnabled,
+  });
+  return normalized;
 }
 
 async function loadActivePushSubscriptions(userId, excludeDeviceKeys = [], config, targetDeviceKeys = []) {

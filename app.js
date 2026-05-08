@@ -5456,6 +5456,14 @@ function renderPushDiagnosticsPanelMarkup() {
   const permissionMeta = getNotificationPermissionStateMeta(diagnostics.permissionState || getGrowRemindersBrowserPermissionState());
   const subscriptionMeta = getPushSubscriptionSupportMeta(diagnostics.pushSupportState || getPushSubscriptionSupportState());
   const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
+  console.info("[Push Diagnostics] computed state", {
+    pushNotificationsEnabled: pushPreferenceEnabled,
+    canonicalPreferenceValue: appState.notificationPreferences?.push_notifications_enabled,
+    activeRegisteredDeviceCount: getActiveRegisteredPushDevices().length,
+    currentDeviceRegistered: diagnostics.currentDeviceRegistered === true,
+    backendReachable: diagnostics.backendReachable === true,
+    backendConfigured: diagnostics.backendConfigured === true,
+  });
   const preferenceMeta = pushPreferenceEnabled
     ? { tone: "success", label: "Enabled" }
     : { tone: "warning", label: "Paused" };
@@ -9674,6 +9682,12 @@ function syncUserNotificationPreferencesCache(userId = "", preferences = {}, opt
   );
 
   appState.notificationPreferences = normalizedPreferences;
+  console.info("[Push Preferences] loaded/synced", {
+    userId: normalizedUserId,
+    savedPreferenceValue: preferences?.push_notifications_enabled,
+    cachedPreferenceValue: preferences?.pushNotificationsEnabled,
+    computedPushNotificationsEnabled: normalizedPreferences.pushNotificationsEnabled,
+  });
 
   if (persistLocal && normalizedUserId) {
     try {
@@ -12369,7 +12383,7 @@ function normalizeUserNotificationPreferencesRow(row, fallbackPreferences = DEFA
   );
   const pushNotificationsEnabled = getUserNotificationPreferencesBooleanValue(
     row,
-    ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"],
+    ["push_notifications_enabled", "pushNotificationsEnabled", "push_notifications"],
     normalizedFallbackPreferences.pushNotificationsEnabled === true,
   );
 
@@ -12381,6 +12395,7 @@ function normalizeUserNotificationPreferencesRow(row, fallbackPreferences = DEFA
     notifySupplyReminders,
     notifyCommunityActivity,
     pushNotificationsEnabled,
+    push_notifications_enabled: pushNotificationsEnabled,
     notifySnapshot: notifySnapshotReminders,
     notifyCompletion: growRemindersEnabled,
     notifyFollow: notifyCommunityActivity,
@@ -16678,6 +16693,12 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
           writeMode,
         });
       }
+      console.info("[Push Preferences] save request", {
+        userId: normalizedUserId,
+        writeMode,
+        payloadPushNotificationsEnabled: payload.push_notifications_enabled,
+        inputPushNotificationsEnabled: preferencesInput?.pushNotificationsEnabled,
+      });
       const response = await appState.supabase
         .from(USER_NOTIFICATION_PREFERENCES_TABLE)
         .upsert(payload, { onConflict: "user_id" })
@@ -16685,6 +16706,12 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         .single();
       data = response?.data || null;
       error = response?.error || null;
+      console.info("[Push Preferences] save response", {
+        userId: normalizedUserId,
+        writeMode,
+        rowPushNotificationsEnabled: data?.push_notifications_enabled,
+        error: error?.message || "",
+      });
       if (debugContext === "profile-settings") {
         logProfileSettingsDebug("user-notification-preferences:upsert:response", {
           table: USER_NOTIFICATION_PREFERENCES_TABLE,
@@ -16750,6 +16777,12 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         }
 
         if (readbackData) {
+          console.info("[Push Preferences] readback", {
+            userId: normalizedUserId,
+            writeMode,
+            rowPushNotificationsEnabled: readbackData?.push_notifications_enabled,
+            rowCachedPushNotificationsEnabled: readbackData?.pushNotificationsEnabled,
+          });
           resolvedRow = readbackData;
         }
       }
@@ -26227,6 +26260,7 @@ function getNormalizedNotificationPreferenceState(values = {}, fallbackPreferenc
     notifySupplyReminders: normalizedValues.notifySupplyReminders !== false,
     notifyCommunityActivity: normalizedValues.notifyCommunityActivity !== false,
     pushNotificationsEnabled: normalizedValues.pushNotificationsEnabled === true,
+    push_notifications_enabled: normalizedValues.pushNotificationsEnabled === true,
   };
 }
 
@@ -26435,6 +26469,13 @@ function bindProfilePageForm(form) {
     appState.profilePageSettingsUserId = normalizedUserId;
   };
 
+  const refreshPushPreferenceDependentUi = () => {
+    syncPushDeliveryStateUi(form);
+    syncPushDiagnosticsStateUi(form);
+    bindPushDeliveryActions();
+    bindPushDiagnosticsActions();
+  };
+
   const bindPushDeliveryActions = () => {
     form.querySelector("[data-profile-push-test='true']")?.addEventListener("click", async () => {
       try {
@@ -26465,6 +26506,7 @@ function bindProfilePageForm(form) {
     const nextPreferences = {
       ...(appState.notificationPreferences || getDefaultNotificationPreferences()),
       pushNotificationsEnabled: true,
+      push_notifications_enabled: true,
     };
     appState.notificationPreferences = syncUserNotificationPreferencesCache(
       String(appState.user?.id || "").trim(),
@@ -26869,6 +26911,7 @@ function bindProfilePageForm(form) {
   form.addEventListener("input", () => {
     syncLocalProfileState();
     syncGrowReminderToggleAvailability(form);
+    refreshPushPreferenceDependentUi();
     updateUnsavedState();
     if (!state.saving && appState.unsavedChanges.hasUnsavedChanges && !messageElement?.classList.contains("is-error")) {
       setMessage("Changes are waiting to be saved.");
@@ -26881,6 +26924,7 @@ function bindProfilePageForm(form) {
     }
     syncLocalProfileState();
     syncGrowReminderToggleAvailability(form);
+    refreshPushPreferenceDependentUi();
     updateUnsavedState();
     void persistProfileSettings({ source: "auto" });
   });
