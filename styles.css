@@ -18881,6 +18881,81 @@ body.theme-dark .contact-reason-card.is-active {
   box-shadow: 0 24px 60px rgba(24, 34, 24, 0.18);
 }
 
+.auth-modal-card {
+  position: relative;
+}
+
+.auth-modal .modal-close {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01) 42%),
+    rgba(10, 16, 12, 0.72);
+  color: #f3f7f1;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  box-shadow:
+    0 12px 22px rgba(0, 0, 0, 0.2),
+    0 0 18px rgba(148, 209, 89, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.08);
+  backdrop-filter: blur(10px);
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.auth-modal .modal-close:hover {
+  border-color: rgba(181, 232, 111, 0.34);
+  background:
+    linear-gradient(180deg, rgba(181, 232, 111, 0.1), rgba(255, 255, 255, 0.015) 48%),
+    rgba(12, 20, 14, 0.82);
+  color: #ffffff;
+  box-shadow:
+    0 14px 24px rgba(0, 0, 0, 0.24),
+    0 0 22px rgba(148, 209, 89, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0 1px rgba(148, 209, 89, 0.12);
+  transform: translateY(-1px);
+}
+
+.auth-modal .modal-close:focus-visible {
+  outline: none;
+  border-color: rgba(181, 232, 111, 0.48);
+  box-shadow:
+    0 0 0 3px rgba(148, 209, 89, 0.18),
+    0 12px 24px rgba(0, 0, 0, 0.24),
+    0 0 24px rgba(148, 209, 89, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.auth-modal .modal-close:active {
+  border-color: rgba(148, 209, 89, 0.28);
+  transform: translateY(0) scale(0.98);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.2),
+    0 0 14px rgba(148, 209, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 .grow-reminders-modal-card {
   width: min(520px, calc(100vw - 32px));
   display: grid;
