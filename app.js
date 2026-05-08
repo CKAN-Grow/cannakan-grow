@@ -4770,6 +4770,30 @@ function urlBase64ToUint8Array(value = "") {
 
 const SERVICE_WORKER_READY_TIMEOUT_MS = 12000;
 const SERVICE_WORKER_DIAGNOSTIC_READY_TIMEOUT_MS = 3500;
+const PUSH_SERVICE_INITIALIZING_TITLE = "Push notifications are still initializing on this device.";
+const PUSH_SERVICE_INITIALIZING_GUIDANCE = "Give the app a moment to finish connecting, then try again.";
+const PUSH_SERVICE_INITIALIZING_MESSAGE = `${PUSH_SERVICE_INITIALIZING_TITLE} ${PUSH_SERVICE_INITIALIZING_GUIDANCE}`;
+
+function isPushServiceInitializingMessage(value = "") {
+  const message = String(value || "").trim().toLowerCase();
+  return Boolean(
+    message
+    && (
+      message.includes("service worker registration is not ready")
+      || message.includes("service worker notification delivery is not ready")
+      || message.includes("no active service worker")
+      || (message.includes("pushmanager") && message.includes("subscription failed"))
+    ),
+  );
+}
+
+function getUserFacingPushMessage(value = "", fallback = "") {
+  const message = String(value || "").trim();
+  if (isPushServiceInitializingMessage(message)) {
+    return PUSH_SERVICE_INITIALIZING_MESSAGE;
+  }
+  return message || fallback;
+}
 
 function getServiceWorkerLifecycleStatus(registration = null) {
   if (!("serviceWorker" in navigator) || !window.isSecureContext) {
@@ -5179,10 +5203,10 @@ function getPushSubscriptionSupportMeta(state = getPushSubscriptionSupportState(
       };
     case "service-worker-pending":
       return {
-        tone: "info",
-        label: "SW Pending",
-        title: "Service worker activation is still in progress.",
-        description: "This device can register for push delivery once the active service worker is ready.",
+        tone: "warning",
+        label: "Preparing",
+        title: PUSH_SERVICE_INITIALIZING_TITLE,
+        description: PUSH_SERVICE_INITIALIZING_GUIDANCE,
       };
     case "local-only":
       return {
@@ -10121,7 +10145,7 @@ async function subscribeCurrentDeviceToPushNotifications() {
     update: true,
   });
   if (!registration?.active) {
-    throw new Error("Service worker registration is not ready on this device.");
+    throw new Error(PUSH_SERVICE_INITIALIZING_MESSAGE);
   }
 
   let subscription = await getCurrentBrowserPushSubscription({ registration });
@@ -10404,7 +10428,7 @@ async function sendServiceWorkerNotificationPayload(payload = {}) {
     timeoutMs: SERVICE_WORKER_READY_TIMEOUT_MS,
   });
   if (!registration?.active) {
-    throw new Error("Service worker notification delivery is not ready yet.");
+    throw new Error(PUSH_SERVICE_INITIALIZING_MESSAGE);
   }
 
   registration.active.postMessage({
@@ -26407,8 +26431,11 @@ function bindProfilePageForm(form) {
     if (!messageElement) {
       return;
     }
-    messageElement.textContent = message;
-    messageElement.classList.toggle("is-error", Boolean(message && isError));
+    const displayMessage = getUserFacingPushMessage(message);
+    const isInitializing = isPushServiceInitializingMessage(message) || displayMessage === PUSH_SERVICE_INITIALIZING_MESSAGE;
+    messageElement.textContent = displayMessage;
+    messageElement.classList.toggle("is-error", Boolean(displayMessage && isError && !isInitializing));
+    messageElement.classList.toggle("is-warning", Boolean(displayMessage && isInitializing));
   };
 
   const setSavingState = (isSaving) => {
