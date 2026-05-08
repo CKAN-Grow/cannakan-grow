@@ -244,6 +244,36 @@ alter table public.site_analytics_events
 alter table public.grow_gallery_snapshots
   add column if not exists image_hash text;
 
+-- Backfill newer columns on legacy tables before any indexes, functions, or
+-- policies reference them. `create table if not exists` does not add missing
+-- columns on existing databases.
+alter table public.admin_reports
+  add column if not exists status text not null default 'new';
+
+alter table public.admin_reports
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.sources
+  add column if not exists status text not null default 'active';
+
+alter table public.sources
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.sources
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+alter table public.announcements
+  add column if not exists status text not null default 'inactive';
+
+alter table public.announcements
+  add column if not exists created_at timestamptz not null default timezone('utc', now());
+
+alter table public.announcements
+  add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+alter table public.grow_gallery_snapshots
+  add column if not exists status text not null default 'private';
+
 create unique index if not exists grow_gallery_snapshots_user_session_idx
   on public.grow_gallery_snapshots (user_id, session_id)
   where session_id is not null;
