@@ -2288,7 +2288,7 @@ function syncInstallPromptBanner() {
         </span>
         <div>
           <p class="eyebrow">Install App</p>
-          <h3>Install Grow App</h3>
+          <h3>Install Cannakan Grow</h3>
           <p class="muted install-app-banner-subtitle">${mode === "prompt"
       ? `Add ${BRAND_APP_NAME} to your home screen for a faster, full-screen experience.`
       : `Save ${BRAND_APP_NAME} to your iPhone home screen for a full-screen app experience.`}</p>

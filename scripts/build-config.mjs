@@ -38,7 +38,7 @@ const requiredPwaAssets = [
 
 const manifestContents = {
   name: "Cannakan Grow",
-  short_name: "Grow",
+  short_name: "Cannakan Grow",
   id: "/",
   start_url: "/",
   scope: "/",
