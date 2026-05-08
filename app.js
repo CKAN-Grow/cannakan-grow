@@ -43980,7 +43980,6 @@ function closeGrowthStageModal() {
   const overlay = document.querySelector("#growth-stage-modal-overlay");
   const modal = overlay?.querySelector(".growth-stage-modal");
 
-  console.log("Closing growth stage modal");
   if (!overlay || overlay.dataset.closing === "true") {
     return;
   }
@@ -44004,9 +44003,29 @@ function closeGrowthStageModal() {
   }, 180);
 }
 
+function bindGrowthStageModalCloseControls(overlay) {
+  if (!overlay || overlay.dataset.closeControlsBound === "true") {
+    return;
+  }
+
+  overlay.addEventListener("click", (event) => {
+    const closeButton = event.target instanceof Element
+      ? event.target.closest("[data-growth-stage-modal-close]")
+      : null;
+    if (closeButton || event.target === overlay) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeGrowthStageModal();
+    }
+  });
+
+  overlay.dataset.closeControlsBound = "true";
+}
+
 function ensureGrowthStageModal() {
   let overlay = document.querySelector("#growth-stage-modal-overlay");
   if (overlay) {
+    bindGrowthStageModalCloseControls(overlay);
     return overlay;
   }
 
@@ -44017,7 +44036,7 @@ function ensureGrowthStageModal() {
   overlay.dataset.closing = "false";
   overlay.innerHTML = `
     <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title">
-      <button type="button" class="modal-close" aria-label="Close">×</button>
+      <button type="button" class="modal-close" data-growth-stage-modal-close aria-label="Close">×</button>
       <div class="growth-stage-modal-copy">
         <h2 id="growth-stage-modal-title">Choose Growth Stage</h2>
       </div>
@@ -44025,21 +44044,7 @@ function ensureGrowthStageModal() {
     </div>
   `;
 
-  overlay.addEventListener("click", (event) => {
-    if (event.target === overlay) {
-      console.log("Overlay clicked");
-      event.preventDefault();
-      event.stopPropagation();
-      closeGrowthStageModal();
-    }
-  });
-
-  overlay.querySelector(".modal-close")?.addEventListener("click", (event) => {
-    console.log("X clicked");
-    event.preventDefault();
-    event.stopPropagation();
-    closeGrowthStageModal();
-  });
+  bindGrowthStageModalCloseControls(overlay);
 
   if (!ensureGrowthStageModal.escapeBound) {
     document.addEventListener("keydown", (event) => {

@@ -22592,6 +22592,7 @@ body.theme-dark .theme-toggle-button:hover {
   position: absolute;
   top: 12px;
   right: 12px;
+  z-index: 3;
   width: 40px;
   height: 40px;
   display: inline-flex;
@@ -22602,6 +22603,7 @@ body.theme-dark .theme-toggle-button:hover {
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.06);
   cursor: pointer;
+  pointer-events: auto;
   color: rgba(222, 230, 218, 0.72);
   border-radius: 999px;
   transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
