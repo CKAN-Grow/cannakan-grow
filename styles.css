@@ -12721,6 +12721,13 @@ body.theme-dark .contact-reason-card.is-active {
 
 .session-detail-seed-age-form {
   margin: 0;
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.session-detail-seed-age-form .session-seed-age-setup-host:empty {
+  display: none;
 }
 
 .session-detail-supplies-section {
@@ -27995,16 +28002,34 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
     "seed-age-setup seed-age-setup";
 }
 
-.session-workspace-form .partition-work-header .partition-work-heading {
+.session-workspace-shell--detail .partition-work-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "heading sequence"
+    "seed-age seed-age";
+  gap: 14px 18px;
+}
+
+.session-workspace-shell--detail .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
+  grid-template-areas:
+    "heading sequence"
+    "seed-age seed-age";
+}
+
+.session-workspace-form .partition-work-header .partition-work-heading,
+.session-workspace-shell--detail .partition-work-header .partition-work-heading {
   grid-area: heading;
 }
 
-.session-workspace-form .partition-work-header .session-seed-age-toggle {
+.session-workspace-form .partition-work-header .session-seed-age-toggle,
+.session-workspace-shell--detail .partition-work-header .session-detail-seed-age-form {
   grid-area: seed-age;
   width: 100%;
 }
 
-.session-workspace-form .partition-work-header .session-sequence-label {
+.session-workspace-form .partition-work-header .session-sequence-label,
+.session-workspace-shell--detail .partition-work-header .session-sequence-label {
   grid-area: sequence;
 }
 
@@ -28048,6 +28073,24 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .session-workspace-form .partition-work-header .session-sequence-label {
+    justify-self: start;
+  }
+
+  .session-workspace-shell--detail .partition-work-header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "heading"
+      "seed-age";
+  }
+
+  .session-workspace-shell--detail .partition-work-header:has(.session-sequence-label:not([hidden])) {
+    grid-template-areas:
+      "heading"
+      "seed-age"
+      "sequence";
+  }
+
+  .session-workspace-shell--detail .partition-work-header .session-sequence-label {
     justify-self: start;
   }
 }
