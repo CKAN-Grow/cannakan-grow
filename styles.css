@@ -4199,7 +4199,7 @@ body.theme-dark #active-sessions-section {
   grid-template-areas:
     "progress status";
   gap: 18px 22px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .session-lifecycle-status-column {
@@ -4225,18 +4225,18 @@ body.theme-dark #active-sessions-section {
 }
 
 .session-lifecycle-detail-layout .session-lifecycle-status-column {
-  align-self: stretch;
-  height: 100%;
-  grid-template-rows: minmax(0, 1fr) auto;
+  align-self: start;
+  height: auto;
+  grid-template-rows: auto;
 }
 
 .session-lifecycle-detail-layout .session-lifecycle-status-column .session-status-panel {
-  height: 100%;
+  height: auto;
 }
 
 .session-lifecycle-detail-layout .session-lifecycle-status-column .session-status-card {
-  min-height: 100%;
-  height: 100%;
+  min-height: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
