@@ -1130,7 +1130,7 @@
         </div>
         <div class="timeline-save-shortcut session-glass-panel detail-session-action-bar">
           <p class="timeline-save-shortcut-text detail-session-action-copy">Review your progress and update your growth stage when ready.</p>
-          <button type="button" class="detail-stage-progress-card" data-detail-stage-progress-trigger aria-label="Update growth stage">
+          <div class="detail-stage-progress-card" data-detail-stage-progress-card>
             <span class="detail-stage-progress-step" data-stage-role="current">
               <span class="detail-stage-progress-label">Current Stage</span>
               <strong data-detail-action-current-stage>Soaking</strong>
@@ -1140,11 +1140,12 @@
               <span class="detail-stage-progress-label">Next Stage</span>
               <strong data-detail-action-next-stage>Germinating</strong>
             </span>
-            <span class="detail-stage-progress-switch" role="switch" aria-checked="false" aria-hidden="true">
-              <span class="detail-stage-progress-switch-thumb"></span>
-            </span>
+            <button type="button" class="detail-stage-progress-action" data-detail-stage-progress-trigger aria-label="Update growth stage">
+              <span data-detail-stage-progress-action-label>Update Stage</span>
+              <span data-detail-stage-progress-action-arrow aria-hidden="true">→</span>
+            </button>
             <span class="detail-stage-progress-helper">Update your growth stage to continue tracking.</span>
-          </button>
+          </div>
           <button id="detail-save-shortcut" type="button" class="button button-primary detail-save-shortcut-button">
             <span class="detail-save-shortcut-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">

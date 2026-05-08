@@ -28622,13 +28622,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .detail-stage-progress-card {
   --current-stage-accent: #7fb8ff;
   --next-stage-accent: #f39a53;
-  appearance: none;
-  -webkit-appearance: none;
   position: relative;
   display: grid;
   grid-template-columns: minmax(120px, 1fr) auto minmax(140px, 1fr) auto;
   grid-template-areas:
-    "current arrow next switch"
+    "current arrow next action"
     "helper helper helper helper";
   align-items: center;
   gap: 8px 18px;
@@ -28644,12 +28642,15 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     linear-gradient(180deg, rgba(20, 27, 22, 0.92) 0%, rgba(12, 17, 14, 0.96) 100%);
   color: #f3f7f1;
   text-align: left;
-  cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     inset 0 0 0 1px rgba(148, 209, 89, 0.05),
     0 14px 28px rgba(0, 0, 0, 0.18);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.detail-session-action-bar[data-current-stage-tone="not-started"] {
+  --current-stage-accent: #dfe8dc;
 }
 
 .detail-session-action-bar[data-current-stage-tone="soaking"] {
@@ -28688,27 +28689,17 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   --next-stage-accent: #7fb8ff;
 }
 
-.detail-stage-progress-card:hover,
-.detail-stage-progress-card:focus-visible {
+.detail-stage-progress-card:focus-within {
   border-color: rgba(181, 232, 111, 0.28);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset 0 0 0 1px rgba(148, 209, 89, 0.08),
     0 16px 30px rgba(0, 0, 0, 0.22),
     0 0 22px rgba(148, 209, 89, 0.1);
-  transform: translateY(-1px);
 }
 
-.detail-stage-progress-card:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 3px rgba(148, 209, 89, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 16px 30px rgba(0, 0, 0, 0.22);
-}
-
-.detail-stage-progress-card:active {
-  transform: translateY(0);
+.detail-stage-progress-card.is-session-complete {
+  opacity: 0.88;
 }
 
 .detail-stage-progress-step {
@@ -28759,32 +28750,63 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   line-height: 1.35;
 }
 
-.detail-stage-progress-switch {
-  grid-area: switch;
-  position: relative;
-  width: 54px;
-  height: 28px;
+.detail-stage-progress-action {
+  appearance: none;
+  -webkit-appearance: none;
+  grid-area: action;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 132px;
+  min-height: 42px;
+  padding: 0 16px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--next-stage-accent) 46%, rgba(255, 255, 255, 0.08));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
     color-mix(in srgb, var(--next-stage-accent) 20%, rgba(9, 13, 11, 0.9));
+  color: #f7fbf4;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 0 14px color-mix(in srgb, var(--next-stage-accent) 18%, transparent);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background 180ms ease;
 }
 
-.detail-stage-progress-switch-thumb {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  background: #f7fbf4;
+.detail-stage-progress-action:not(:disabled):hover,
+.detail-stage-progress-action:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--next-stage-accent) 68%, rgba(255, 255, 255, 0.16));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+    color-mix(in srgb, var(--next-stage-accent) 28%, rgba(9, 13, 11, 0.86));
   box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.28),
-    0 0 10px color-mix(in srgb, var(--next-stage-accent) 32%, transparent);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 18px color-mix(in srgb, var(--next-stage-accent) 24%, transparent);
+  transform: translateY(-1px);
+}
+
+.detail-stage-progress-action:not(:disabled):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(148, 209, 89, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 18px color-mix(in srgb, var(--next-stage-accent) 24%, transparent);
+}
+
+.detail-stage-progress-action:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.detail-stage-progress-action:disabled {
+  cursor: default;
+  opacity: 0.7;
+  transform: none;
 }
 
 .detail-save-shortcut-button {
@@ -28973,9 +28995,9 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .detail-stage-progress-card {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
-      "current switch"
-      "arrow switch"
-      "next switch"
+      "current action"
+      "arrow action"
+      "next action"
       "helper helper";
     gap: 8px 14px;
   }

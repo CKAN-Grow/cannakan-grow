@@ -44108,14 +44108,19 @@ function getSessionStageProgressionState(control) {
   const progressKey = getSessionStatusProgressKey(control);
   const normalizedStatus = normalizeSessionStatus(control?.value || "");
   const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
-  const currentKey = progressKey || (normalizedStatus === "unselected" ? "soaking" : normalizedStatus);
+  const currentKey = progressKey || (normalizedStatus === "unselected" ? "not-started" : normalizedStatus);
   const currentIndex = stageOrder.indexOf(currentKey);
-  const resolvedCurrentKey = currentIndex >= 0 ? currentKey : "soaking";
-  const nextKey = resolvedCurrentKey === "completed"
+  const resolvedCurrentKey = currentKey === "not-started"
+    ? "not-started"
+    : (currentIndex >= 0 ? currentKey : "not-started");
+  const nextKey = resolvedCurrentKey === "not-started"
+    ? "soaking"
+    : resolvedCurrentKey === "completed"
     ? "session-complete"
     : stageOrder[Math.min(stageOrder.indexOf(resolvedCurrentKey) + 1, stageOrder.length - 1)];
 
   const labelByKey = {
+    "not-started": "Not Started",
     soaking: "Soaking",
     germination: "Germinating",
     "first-germinated": "Germination Started",
@@ -44123,6 +44128,7 @@ function getSessionStageProgressionState(control) {
     "session-complete": "Session Complete",
   };
   const toneByKey = {
+    "not-started": "not-started",
     soaking: "soaking",
     germination: "germinating",
     "first-germinated": "first-germinated",
@@ -44137,6 +44143,10 @@ function getSessionStageProgressionState(control) {
     nextKey,
     nextLabel: labelByKey[nextKey] || "Germinating",
     nextTone: toneByKey[nextKey] || "germinating",
+    actionLabel: resolvedCurrentKey === "not-started"
+      ? "Start Soaking"
+      : (resolvedCurrentKey === "completed" ? "Session Complete" : "Update Stage"),
+    isComplete: resolvedCurrentKey === "completed",
   };
 }
 
@@ -44150,7 +44160,9 @@ function syncDetailSessionActionBar(control) {
   const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
   const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
   const stageTrigger = actionBar.querySelector("[data-detail-stage-progress-trigger]");
-  const stageSwitch = actionBar.querySelector(".detail-stage-progress-switch");
+  const stageActionLabel = actionBar.querySelector("[data-detail-stage-progress-action-label]");
+  const stageActionArrow = actionBar.querySelector("[data-detail-stage-progress-action-arrow]");
+  const stageCard = actionBar.querySelector("[data-detail-stage-progress-card]");
 
   if (currentStageElement) {
     currentStageElement.textContent = state.currentLabel;
@@ -44158,17 +44170,31 @@ function syncDetailSessionActionBar(control) {
   if (nextStageElement) {
     nextStageElement.textContent = state.nextLabel;
   }
+  if (stageActionLabel) {
+    stageActionLabel.textContent = state.actionLabel;
+  }
+  if (stageActionArrow) {
+    stageActionArrow.hidden = state.isComplete;
+  }
 
   actionBar.dataset.currentStageTone = state.currentTone;
   actionBar.dataset.nextStageTone = state.nextTone;
   actionBar.dataset.currentStageKey = state.currentKey;
   actionBar.dataset.nextStageKey = state.nextKey;
+  actionBar.dataset.stageActionState = state.isComplete ? "complete" : "available";
+
+  if (stageCard) {
+    stageCard.classList.toggle("is-session-complete", state.isComplete);
+  }
 
   if (stageTrigger) {
-    stageTrigger.setAttribute("aria-label", `Update growth stage. Current stage ${state.currentLabel}. Next stage ${state.nextLabel}.`);
-  }
-  if (stageSwitch) {
-    stageSwitch.setAttribute("aria-checked", state.currentKey === "completed" ? "true" : "false");
+    stageTrigger.disabled = state.isComplete;
+    stageTrigger.setAttribute(
+      "aria-label",
+      state.isComplete
+        ? "Session complete"
+        : `${state.actionLabel}. Current stage ${state.currentLabel}. Next stage ${state.nextLabel}.`,
+    );
   }
 }
 
