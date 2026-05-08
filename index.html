@@ -1128,9 +1128,34 @@
           </div>
           <div id="detail-partitions" class="partition-table"></div>
         </div>
-        <div class="timeline-save-shortcut session-glass-panel">
-          <p class="timeline-save-shortcut-text">Review your progress and save your session</p>
-          <button id="detail-save-shortcut" type="button" class="button button-primary">Save Session</button>
+        <div class="timeline-save-shortcut session-glass-panel detail-session-action-bar">
+          <p class="timeline-save-shortcut-text detail-session-action-copy">Review your progress and update your growth stage when ready.</p>
+          <button type="button" class="detail-stage-progress-card" data-detail-stage-progress-trigger aria-label="Update growth stage">
+            <span class="detail-stage-progress-step" data-stage-role="current">
+              <span class="detail-stage-progress-label">Current Stage</span>
+              <strong data-detail-action-current-stage>Soaking</strong>
+            </span>
+            <span class="detail-stage-progress-arrow" aria-hidden="true">→</span>
+            <span class="detail-stage-progress-step" data-stage-role="next">
+              <span class="detail-stage-progress-label">Next Stage</span>
+              <strong data-detail-action-next-stage>Germinating</strong>
+            </span>
+            <span class="detail-stage-progress-switch" role="switch" aria-checked="false" aria-hidden="true">
+              <span class="detail-stage-progress-switch-thumb"></span>
+            </span>
+            <span class="detail-stage-progress-helper">Update your growth stage to continue tracking.</span>
+          </button>
+          <button id="detail-save-shortcut" type="button" class="button button-primary detail-save-shortcut-button">
+            <span class="detail-save-shortcut-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M5 4.75h11.2L19.25 7.8v11.45H5V4.75Z"></path>
+                <path d="M8 4.75v5h7.5v-5"></path>
+                <path d="M8 19.25v-5.5h8v5.5"></path>
+                <path d="M13.6 6.25v2"></path>
+              </svg>
+            </span>
+            <span>Save Session</span>
+          </button>
         </div>
         <section id="detail-timing-section" class="session-timing-section session-glass-panel" aria-labelledby="detail-timing-title">
           <div class="progress-chart-heading">

@@ -43661,11 +43661,12 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
 
   const timelineSaveShortcut = scope.querySelector(".timeline-save-shortcut");
   if (timelineSaveShortcut) {
-    timelineSaveShortcut.hidden = isCompleted;
+    timelineSaveShortcut.hidden = isCompleted && !timelineSaveShortcut.classList.contains("detail-session-action-bar");
   }
 
   saveButtons.forEach((button) => {
-    button.hidden = isCompleted;
+    const isDetailActionShortcut = Boolean(button.closest(".detail-session-action-bar"));
+    button.hidden = isCompleted && !isDetailActionShortcut;
     button.disabled = false;
   });
 
@@ -43852,6 +43853,74 @@ function getSessionProgressDisplayLabel(progressKey, value) {
     return getCanonicalSessionStageDisplayLabel(progressKey);
   }
   return getSessionStageDisplayLabel(value);
+}
+
+function getSessionStageProgressionState(control) {
+  const progressKey = getSessionStatusProgressKey(control);
+  const normalizedStatus = normalizeSessionStatus(control?.value || "");
+  const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
+  const currentKey = progressKey || (normalizedStatus === "unselected" ? "soaking" : normalizedStatus);
+  const currentIndex = stageOrder.indexOf(currentKey);
+  const resolvedCurrentKey = currentIndex >= 0 ? currentKey : "soaking";
+  const nextKey = resolvedCurrentKey === "completed"
+    ? "session-complete"
+    : stageOrder[Math.min(stageOrder.indexOf(resolvedCurrentKey) + 1, stageOrder.length - 1)];
+
+  const labelByKey = {
+    soaking: "Soaking",
+    germination: "Germinating",
+    "first-germinated": "Germination Started",
+    completed: "Completed",
+    "session-complete": "Session Complete",
+  };
+  const toneByKey = {
+    soaking: "soaking",
+    germination: "germinating",
+    "first-germinated": "first-germinated",
+    completed: "completed",
+    "session-complete": "session-complete",
+  };
+
+  return {
+    currentKey: resolvedCurrentKey,
+    currentLabel: labelByKey[resolvedCurrentKey] || getSessionProgressDisplayLabel(progressKey, control?.value || ""),
+    currentTone: toneByKey[resolvedCurrentKey] || "soaking",
+    nextKey,
+    nextLabel: labelByKey[nextKey] || "Germinating",
+    nextTone: toneByKey[nextKey] || "germinating",
+  };
+}
+
+function syncDetailSessionActionBar(control) {
+  const actionBar = document.querySelector(".detail-session-action-bar");
+  if (!actionBar) {
+    return;
+  }
+
+  const state = getSessionStageProgressionState(control);
+  const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
+  const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
+  const stageTrigger = actionBar.querySelector("[data-detail-stage-progress-trigger]");
+  const stageSwitch = actionBar.querySelector(".detail-stage-progress-switch");
+
+  if (currentStageElement) {
+    currentStageElement.textContent = state.currentLabel;
+  }
+  if (nextStageElement) {
+    nextStageElement.textContent = state.nextLabel;
+  }
+
+  actionBar.dataset.currentStageTone = state.currentTone;
+  actionBar.dataset.nextStageTone = state.nextTone;
+  actionBar.dataset.currentStageKey = state.currentKey;
+  actionBar.dataset.nextStageKey = state.nextKey;
+
+  if (stageTrigger) {
+    stageTrigger.setAttribute("aria-label", `Update growth stage. Current stage ${state.currentLabel}. Next stage ${state.nextLabel}.`);
+  }
+  if (stageSwitch) {
+    stageSwitch.setAttribute("aria-checked", state.currentKey === "completed" ? "true" : "false");
+  }
 }
 
 function syncSessionStatusControlDatasets(control, source = {}) {
@@ -45538,6 +45607,7 @@ function getSessionDetailElements(scope = document) {
     publicGrowNoteToggle: scope.querySelector("#detail-session-public-grow-note-include"),
     publicGrowNoteCount: scope.querySelector("#detail-session-public-grow-note-count"),
     saveShortcutButton: scope.querySelector("#detail-save-shortcut"),
+    actionStageTrigger: scope.querySelector("[data-detail-stage-progress-trigger]"),
     saveButton: scope.querySelector("#detail-save-session"),
     saveMessage: scope.querySelector("#detail-save-message"),
     imageSection: scope.querySelector(".session-images-section"),
@@ -46209,6 +46279,9 @@ function renderSessionDetail(sessionId) {
     detail.statusTrigger?.addEventListener("click", () => {
       appState.growthStageModalDismissed = false;
       openGrowthStageModal({ stageField: detail.statusField, stageTrigger: detail.statusTrigger });
+    });
+    detail.actionStageTrigger?.addEventListener("click", () => {
+      detail.statusTrigger?.click();
     });
 
   detail.statusField.addEventListener("change", async () => {
@@ -47678,6 +47751,8 @@ function updateSessionStatusAppearance(control, trigger) {
       trigger.textContent = getSessionStageButtonLabel(value);
     }
   }
+
+  syncDetailSessionActionBar(control);
 }
 
 function getSessionStatusAlertTone(level = "") {
