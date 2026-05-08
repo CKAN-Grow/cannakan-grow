@@ -872,40 +872,54 @@ const ACTIVE_SECTION_STYLE = {
 const STAGE_REMINDER_SCHEDULES = {
   soaking: [
     {
+      key: "soaking-check-18h",
       hours: 18,
-      title: "Check soaking progress",
-      message: "Check soaking progress. If soaking is complete, move the session to Germination so stage timing stays accurate.",
-      actionText: "Next step: inspect the seeds and update the session stage when soaking is complete.",
+      title: "Time to check soaking progress",
+      message: "Time to check soaking progress.",
+      actionText: "Next step: inspect the seeds and move the session into Germination if soaking is complete.",
       level: "guidance",
     },
     {
+      key: "soaking-warning-24h",
       hours: 24,
-      title: "Ready For Germination?",
-      message: "If soaking is complete, update the session stage to Germination so timing remains accurate.",
+      title: "Urgent soaking warning",
+      message: "Your seeds should not remain soaking much longer. Move them into germination to avoid drowning risk.",
       actionText: "Next step: move this session into Germinating as soon as soaking is finished.",
       level: "critical",
     },
   ],
   germinating: [
     {
-      hours: 12,
-      title: "Check Germination Progress",
-      message: "Update germination results and mark the session complete once all seeds have finished germinating.",
-      actionText: "Next step: record current germination progress so timing and analytics stay accurate.",
+      key: "germination-check-window",
+      hours: 18,
+      maxHours: 30,
+      title: "Time to check germination progress",
+      message: "Time to check germination progress.",
+      actionText: "Next step: inspect the session and record current germination progress.",
       level: "guidance",
     },
     {
-      hours: 48,
-      title: "Update results if germination has finished",
-      message: "If germination is wrapping up, record the latest results and complete the session so timing data stays meaningful.",
-      actionText: "Next step: update germination counts and complete the session when appropriate.",
+      key: "completion-reminder-42h",
+      hours: 42,
+      title: "Review your session when ready",
+      message: "Review your session and mark completed when ready.",
+      actionText: "Next step: update results and complete the session when appropriate.",
       level: "guidance",
     },
     {
-      hours: 60,
-      title: "Don’t Forget To Mark Complete",
-      message: "If germination is finished, mark the session complete to preserve accurate germination timing and analytics.",
-      actionText: "Next step: finalize the session once all germination activity has finished.",
+      key: "completion-urgent-54h",
+      hours: 54,
+      title: "Session may need attention",
+      message: "Your session may need attention. Mark completed or postpone the reminder.",
+      actionText: "Next step: finalize the session or snooze the reminder from the notification center if you need more time.",
+      level: "critical",
+    },
+    {
+      key: "wellness-check-72h",
+      hours: 72,
+      title: "Session wellness check",
+      message: "Is everything okay with this session?",
+      actionText: "Next step: review the session, record progress, and complete it when ready.",
       level: "critical",
     },
   ],
@@ -8803,10 +8817,12 @@ function snoozeAppNotification(notification = null, optionKey = "") {
   });
 }
 
-function buildStageProgressReminderEventKey(sessionId = "", reminderHours = 0, reminderKind = "stage") {
+function buildStageProgressReminderEventKey(sessionId = "", reminderIdentifier = "", reminderKind = "stage") {
   const normalizedSessionId = String(sessionId || "").trim();
   const normalizedKind = String(reminderKind || "stage").trim();
-  return normalizedSessionId ? `stage-progress:${normalizedSessionId}:${normalizedKind}-${Math.max(0, Number(reminderHours) || 0)}` : "";
+  const normalizedIdentifier = String(reminderIdentifier || "").trim()
+    || `after-${Math.max(0, Number(reminderIdentifier) || 0)}h`;
+  return normalizedSessionId ? `stage-progress:${normalizedSessionId}:${normalizedIdentifier}` : "";
 }
 
 function buildStageProgressReminderEntries(session = null) {
@@ -8833,53 +8849,88 @@ function buildStageProgressReminderEntries(session = null) {
 
   const elapsedHours = Math.max(0, (Date.now() - stageStart.getTime()) / (60 * 60 * 1000));
   const latestDueReminder = [...schedule]
-    .filter((reminder) => elapsedHours >= Math.max(0, Number(reminder?.hours) || 0))
+    .filter((reminder) => {
+      const minimumHours = Math.max(0, Number(reminder?.hours) || 0);
+      const maximumHours = Number(reminder?.maxHours);
+      if (elapsedHours < minimumHours) {
+        return false;
+      }
+      if (Number.isFinite(maximumHours) && elapsedHours > maximumHours) {
+        return false;
+      }
+      return true;
+    })
     .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0];
   if (!latestDueReminder) {
     return [];
   }
 
+  const reminderEventKey = buildStageProgressReminderEventKey(
+    session.id,
+    String(latestDueReminder?.key || `${normalizedStatus}-${Math.max(0, Number(latestDueReminder?.hours) || 0)}h`).trim(),
+    normalizedStatus,
+  );
+  const defaultActions = normalizedStatus === "soaking"
+    ? [
+      {
+        kind: "session-stage-germinating",
+        label: "Mark Germination Started",
+        sessionId: session.id,
+        eventKey: reminderEventKey,
+        variant: "primary",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ]
+    : [
+      {
+        kind: "session-focus-results",
+        label: "Update Results",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "primary",
+      },
+      {
+        kind: "route",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        variant: "secondary",
+      },
+    ];
+  const criticalCompletionActions = [
+    {
+      kind: "session-complete",
+      label: "Mark Completed",
+      sessionId: session.id,
+      eventKey: reminderEventKey,
+      variant: "primary",
+    },
+    {
+      kind: "route",
+      label: "Open Session",
+      route: `#sessions/${session.id}`,
+      sessionId: session.id,
+      variant: "secondary",
+    },
+  ];
+
   return [{
-    eventKey: buildStageProgressReminderEventKey(session.id, latestDueReminder.hours, normalizedStatus),
+    eventKey: reminderEventKey,
     category: normalizedStatus === "soaking" ? "soaking-reminder" : "germination-reminder",
     title: latestDueReminder.title || getSessionStatusAlertTitle(normalizedStatus, latestDueReminder.level),
     message: latestDueReminder.message,
     sessionId: session.id,
     sessionLabel: buildAppNotificationSessionLabel(session),
     route: `#sessions/${session.id}`,
-    actions: normalizedStatus === "soaking"
-      ? [
-        {
-          kind: "session-stage-germinating",
-          label: "Mark Germination Started",
-          sessionId: session.id,
-          eventKey: buildStageProgressReminderEventKey(session.id, latestDueReminder.hours, normalizedStatus),
-          variant: "primary",
-        },
-        {
-          kind: "route",
-          label: "Open Session",
-          route: `#sessions/${session.id}`,
-          sessionId: session.id,
-          variant: "secondary",
-        },
-      ]
-      : [
-        {
-          kind: "session-focus-results",
-          label: "Update Results",
-          route: `#sessions/${session.id}`,
-          sessionId: session.id,
-          variant: "primary",
-        },
-        {
-          kind: "route",
-          label: "Open Session",
-          route: `#sessions/${session.id}`,
-          sessionId: session.id,
-          variant: "secondary",
-        },
-      ],
+    actions: latestDueReminder?.key === "completion-urgent-54h"
+      ? criticalCompletionActions
+      : defaultActions,
     level: latestDueReminder.level,
     reminderHours: Math.max(0, Number(latestDueReminder?.hours) || 0),
   }];
@@ -47710,7 +47761,17 @@ function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germina
 
   const elapsedHours = Math.max(0, (Date.now() - stageStart.getTime()) / (60 * 60 * 1000));
   return [...schedule]
-    .filter((reminder) => elapsedHours >= Math.max(0, Number(reminder?.hours) || 0))
+    .filter((reminder) => {
+      const minimumHours = Math.max(0, Number(reminder?.hours) || 0);
+      const maximumHours = Number(reminder?.maxHours);
+      if (elapsedHours < minimumHours) {
+        return false;
+      }
+      if (Number.isFinite(maximumHours) && elapsedHours > maximumHours) {
+        return false;
+      }
+      return true;
+    })
     .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0] || null;
 }
 

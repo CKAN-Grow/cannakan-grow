@@ -2,6 +2,12 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/grow-reminders-run",
+      "schedule": "0 * * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/manifest.json",
