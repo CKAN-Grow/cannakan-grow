@@ -96,12 +96,20 @@ function getObjectBooleanValue(source, keys, fallback = false) {
   return fallback;
 }
 
+function hasAnyObjectKey(source, keys) {
+  const normalizedKeys = Array.isArray(keys) ? keys : [keys];
+  return normalizedKeys.some((key) => Object.prototype.hasOwnProperty.call(source || {}, key));
+}
+
 function normalizeNotificationPreferencesRow(row = {}) {
+  const hasPreferenceRow = Boolean(row && typeof row === "object" && Object.keys(row).length);
   const growRemindersEnabled = getObjectBooleanValue(
     row,
     ["growRemindersEnabled", "grow_reminders_enabled", "session_reminders", "notifyCompletion", "notify_completion"],
     true,
   );
+  const pushPreferenceKeys = ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"];
+  const hasPushPreference = hasAnyObjectKey(row, pushPreferenceKeys);
   return {
     growRemindersEnabled,
     notifySoakingReminders: getObjectBooleanValue(
@@ -131,9 +139,10 @@ function normalizeNotificationPreferencesRow(row = {}) {
     ),
     pushNotificationsEnabled: getObjectBooleanValue(
       row,
-      ["pushNotificationsEnabled", "push_notifications_enabled", "push_notifications"],
-      false,
+      pushPreferenceKeys,
+      hasPushPreference ? false : (hasPreferenceRow ? growRemindersEnabled : false),
     ),
+    pushPreferenceConfigured: hasPushPreference,
   };
 }
 

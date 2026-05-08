@@ -5139,11 +5139,11 @@ function getPushSubscriptionSupportState() {
   if (!supportsPushSubscriptionApi()) {
     return "local-only";
   }
+  if (!pushPreferenceEnabled) {
+    return "preference-paused";
+  }
   if (hasActiveSubscription) {
     return serviceWorkerReady ? "subscribed" : "service-worker-pending";
-  }
-  if (!pushPreferenceEnabled) {
-    return "disabled";
   }
   if (!serviceWorkerReady) {
     return "service-worker-pending";
@@ -5195,8 +5195,15 @@ function getPushSubscriptionSupportMeta(state = getPushSubscriptionSupportState(
       return {
         tone: "info",
         label: "Disabled",
-        title: "Push delivery is currently turned off for your account.",
-        description: "Turn Push Notifications Enabled back on to let this device receive important grow reminders outside the in-app notification center.",
+        title: "Push delivery is disabled on this device.",
+        description: "Register this device again when you want it to receive browser/device reminders.",
+      };
+    case "preference-paused":
+      return {
+        tone: "warning",
+        label: "Paused",
+        title: "Push notifications are paused by your account preference.",
+        description: "Turn on Enable Push Notifications to let registered devices receive test pushes and grow reminders.",
       };
     case "denied":
       return {
@@ -5389,16 +5396,20 @@ function renderPushRegisteredDeviceMarkup(record = {}, options = {}) {
 function renderPushRegisteredDevicesMarkup(options = {}) {
   const diagnostics = appState.pushDiagnostics || {};
   const devices = getActiveRegisteredPushDevices();
-  const canSend = !diagnostics.loading && diagnostics.backendReachable && diagnostics.backendConfigured && Boolean(getCurrentAuthAccessToken()) && devices.length > 0;
+  const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
+  const canSend = pushPreferenceEnabled && !diagnostics.loading && diagnostics.backendReachable && diagnostics.backendConfigured && Boolean(getCurrentAuthAccessToken()) && devices.length > 0;
   const sendingKey = String(diagnostics.sendingDeviceKey || "").trim();
   const isSendingAll = sendingKey === "__all__";
+  const helperText = pushPreferenceEnabled
+    ? "Send test pushes to a specific saved endpoint to verify phone and PC delivery separately."
+    : "Registered devices are saved, but delivery is paused until Enable Push Notifications is turned on.";
 
   return `
     <section class="profile-push-devices-panel" aria-label="Registered push devices">
       <div class="profile-push-devices-head">
         <div class="profile-push-diagnostics-copy">
           <strong>Registered Push Devices</strong>
-          <span>Send test pushes to a specific saved endpoint to verify phone and PC delivery separately.</span>
+          <span>${escapeHtml(helperText)}</span>
         </div>
         <button
           type="button"
@@ -5444,6 +5455,10 @@ function renderPushDiagnosticsPanelMarkup() {
   })();
   const permissionMeta = getNotificationPermissionStateMeta(diagnostics.permissionState || getGrowRemindersBrowserPermissionState());
   const subscriptionMeta = getPushSubscriptionSupportMeta(diagnostics.pushSupportState || getPushSubscriptionSupportState());
+  const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
+  const preferenceMeta = pushPreferenceEnabled
+    ? { tone: "success", label: "Enabled" }
+    : { tone: "warning", label: "Paused" };
   const vapidMeta = getPushDiagnosticsStatusMeta(Boolean(diagnostics.vapidKeyAvailable), "Available", "Missing");
   const backendMeta = diagnostics.backendReachable
     ? {
@@ -5453,10 +5468,12 @@ function renderPushDiagnosticsPanelMarkup() {
     : { tone: diagnostics.loading ? "info" : "warning", label: diagnostics.loading ? "Checking" : "Unavailable" };
   const serviceWorkerReady = serviceWorkerStatus === "active";
   const deviceMeta = serviceWorkerReady && diagnostics.currentDeviceRegistered
-    ? getPushDiagnosticsStatusMeta(true, diagnostics.currentDeviceSaved ? "Registered" : "Subscribed")
+    ? (pushPreferenceEnabled
+      ? getPushDiagnosticsStatusMeta(true, diagnostics.currentDeviceSaved ? "Registered" : "Subscribed")
+      : { tone: "warning", label: diagnostics.currentDeviceSaved ? "Registered / Paused" : "Subscribed / Paused" })
     : { tone: serviceWorkerReady ? "info" : "warning", label: serviceWorkerReady ? "Unregistered" : "SW Pending" };
   const canRegister = !diagnostics.loading && diagnostics.permissionState !== "unsupported" && serviceWorkerStatus !== "unsupported";
-  const canSendTest = !diagnostics.loading && serviceWorkerReady && diagnostics.currentDeviceRegistered && diagnostics.backendReachable && diagnostics.backendConfigured;
+  const canSendTest = pushPreferenceEnabled && !diagnostics.loading && serviceWorkerReady && diagnostics.currentDeviceRegistered && diagnostics.backendReachable && diagnostics.backendConfigured;
   const lastTestLabel = diagnostics.lastTestResult
     ? `${diagnostics.lastTestResult} · ${formatPushDiagnosticsTimestamp(diagnostics.lastTestAt)}`
     : "No test sent yet";
@@ -5474,6 +5491,7 @@ function renderPushDiagnosticsPanelMarkup() {
       <div class="profile-push-diagnostics-grid">
         ${renderPushDiagnosticsRowMarkup("Service worker", serviceWorkerBadge.label, serviceWorkerBadge.tone, "Install + runtime notification shell status")}
         ${renderPushDiagnosticsRowMarkup("Browser permission", permissionMeta.label, permissionMeta.tone, "Current browser/device notification permission")}
+        ${renderPushDiagnosticsRowMarkup("User preference", preferenceMeta.label, preferenceMeta.tone, pushPreferenceEnabled ? "Registered devices are active delivery targets" : "Notifications are paused by user preference; subscriptions remain saved")}
         ${renderPushDiagnosticsRowMarkup("Push subscription", subscriptionMeta.label, subscriptionMeta.tone, "Current Push API readiness for this device")}
         ${renderPushDiagnosticsRowMarkup("VAPID public key", vapidMeta.label, vapidMeta.tone, "Public push key availability in runtime config")}
         ${renderPushDiagnosticsRowMarkup("Backend /api/push-send", backendMeta.label, backendMeta.tone, diagnostics.backendReachable ? (String(diagnostics.backendMessage || "").trim() || "Serverless route responded to diagnostics check") : "Push sender route has not responded yet")}
@@ -5483,6 +5501,7 @@ function renderPushDiagnosticsPanelMarkup() {
         <span>Last refresh: ${escapeHtml(formatPushDiagnosticsTimestamp(diagnostics.lastRefreshedAt))}</span>
         <span>Last test: ${escapeHtml(lastTestLabel)}</span>
       </div>
+      ${!pushPreferenceEnabled ? '<p class="profile-notification-guidance">Push notifications are paused by user preference. Turn on Enable Push Notifications and save to allow tests and grow reminders to deliver.</p>' : ""}
       ${diagnostics.lastErrorMessage ? `<p class="profile-notification-guidance">Last error: ${escapeHtml(diagnostics.lastErrorMessage)}</p>` : ""}
       <div class="profile-push-delivery-actions profile-push-diagnostics-actions">
         <button type="button" class="button button-secondary" data-profile-push-diagnostics-register="true"${canRegister ? "" : " disabled"}>Register This Device</button>
@@ -9872,7 +9891,7 @@ function getSafeNotificationPreferencePayload(
   if (includeColumn("community_activity_notifications", { requireConfirmation: true })) {
     payload.community_activity_notifications = notifyCommunityActivity;
   }
-  if (includeColumn("push_notifications_enabled", { requireConfirmation: true })) {
+  if (includeColumn("push_notifications_enabled", { allowLegacyByDefault: true, allowModernByDefault: true })) {
     payload.push_notifications_enabled = pushNotificationsEnabled;
   }
   if (includeColumn("push_notifications", { requireConfirmation: true })) {
@@ -10310,6 +10329,9 @@ async function sendBackendPushTestToRegisteredDevices(options = {}) {
   if (!appState.user?.id || !accessToken) {
     throw new Error("You must be signed in with backend access to send device push tests.");
   }
+  if (appState.notificationPreferences?.pushNotificationsEnabled !== true) {
+    throw new Error("Enable Push Notifications before sending test pushes to registered devices.");
+  }
 
   const normalizedTargetDeviceKeys = (Array.isArray(targetDeviceKeys) ? targetDeviceKeys : [])
     .map((entry) => String(entry || "").trim())
@@ -10456,6 +10478,9 @@ async function sendProfilePushTestNotification() {
   if (!appState.user?.id) {
     throw new Error("You must be signed in to test push notifications.");
   }
+  if (appState.notificationPreferences?.pushNotificationsEnabled !== true) {
+    throw new Error("Enable Push Notifications before sending a test notification.");
+  }
   if (getGrowRemindersBrowserPermissionState() !== "granted") {
     throw new Error("Browser notification permission must be granted before a test notification can be sent.");
   }
@@ -10547,7 +10572,7 @@ function getUserNotificationPreferencesWriteModes(preferredMode = "") {
     return ["legacy", "hybrid", "modern"];
   }
   if (!normalizedMode) {
-    return ["legacy", "modern", "hybrid"];
+    return ["modern", "hybrid", "legacy"];
   }
   return ["hybrid", "legacy", "modern"];
 }
@@ -11308,8 +11333,7 @@ async function ensureUserNotificationPreferences(user) {
     if (upsertError) {
       if (isUserNotificationPreferencesSchemaModeError(upsertError)) {
         lastSeedError = upsertError;
-        markUserNotificationPreferencesTableUnavailable();
-        break;
+        continue;
       }
       if (isUserNotificationPreferencesTableMissingError(upsertError)) {
         markUserNotificationPreferencesTableUnavailable();
@@ -16740,8 +16764,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
       lastError = error;
-      markUserNotificationPreferencesTableUnavailable();
-      break;
+      continue;
     }
 
     if (isUserNotificationPreferencesTableMissingError(error)) {
@@ -26768,8 +26791,6 @@ function bindProfilePageForm(form) {
       try {
         if (notificationPreferencesPayload.pushNotificationsEnabled) {
           await subscribeCurrentDeviceToPushNotifications();
-        } else {
-          await disableCurrentDevicePushNotifications();
         }
       } catch (error) {
         console.warn("[Profile Settings] Push subscription sync failed.", error);
@@ -26999,8 +27020,8 @@ function renderProfilePage() {
               })}
               ${renderProfileSettingsToggleMarkup({
                 name: "pushNotificationsEnabled",
-                title: "Push notifications enabled",
-                description: "Allow browser/device notification delivery for important grow reminders when permission is granted.",
+                title: "Enable Push Notifications",
+                description: "Master control for browser/device delivery to registered push devices.",
                 checked: notificationPreferences.pushNotificationsEnabled === true,
               })}
             </div>
@@ -27487,8 +27508,6 @@ function bindProfileForm(form, options = {}) {
       try {
         if (notificationPreferencePayload.pushNotificationsEnabled) {
           await subscribeCurrentDeviceToPushNotifications();
-        } else {
-          await disableCurrentDevicePushNotifications();
         }
       } catch (error) {
         console.warn("[Cannakan Profile] Push subscription sync warning", error);

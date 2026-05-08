@@ -11,6 +11,7 @@ create table if not exists public.user_notification_preferences (
   notify_completion boolean not null default true,
   notify_follow boolean not null default true,
   notify_like boolean not null default true,
+  push_notifications_enabled boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -51,6 +52,9 @@ alter table public.user_notification_preferences
 
 alter table public.user_notification_preferences
   add column if not exists notify_like boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists push_notifications_enabled boolean not null default false;
 
 alter table public.user_notification_preferences
   add column if not exists created_at timestamptz not null default now();

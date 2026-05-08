@@ -21,6 +21,9 @@ alter table public.user_notification_preferences
   add column if not exists notify_like boolean not null default true;
 
 alter table public.user_notification_preferences
+  add column if not exists push_notifications_enabled boolean not null default false;
+
+alter table public.user_notification_preferences
   add column if not exists created_at timestamptz not null default timezone('utc', now());
 
 alter table public.user_notification_preferences
