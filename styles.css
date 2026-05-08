@@ -4287,10 +4287,12 @@ body.theme-dark #active-sessions-section {
   padding-top: 6px;
 }
 
+#session-lifecycle-section .session-lifecycle-detail-layout,
 #detail-lifecycle-section .session-lifecycle-detail-layout {
   align-items: stretch;
 }
 
+#session-lifecycle-section .session-lifecycle-status-column,
 #detail-lifecycle-section .session-lifecycle-status-column {
   align-self: stretch;
   height: 100%;
@@ -4298,18 +4300,21 @@ body.theme-dark #active-sessions-section {
   grid-template-rows: minmax(0, 1fr);
 }
 
+#session-lifecycle-section .session-lifecycle-status-column .session-status-panel,
 #detail-lifecycle-section .session-lifecycle-status-column .session-status-panel {
   align-self: stretch;
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
 }
 
+#session-lifecycle-section .session-lifecycle-status-column .session-status-card,
 #detail-lifecycle-section .session-lifecycle-status-column .session-status-card {
   align-self: stretch;
   height: 100%;
   min-height: 100%;
 }
 
+#session-lifecycle-section .session-lifecycle-status-column .session-status-meta,
 #detail-lifecycle-section .session-lifecycle-status-column .session-status-meta {
   margin-top: 6px;
 }
