@@ -28021,6 +28021,95 @@ function getSourceDirectoryPreviewMockRecord(sourceId = "") {
   return previewRecord || null;
 }
 
+function getSampleSourceProfileRecord(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const sampleSessions = buildSampleSessions();
+  const matchingSessions = sampleSessions.filter((session) => {
+    const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
+    return partitions.some((partition) => normalizeComparableSourceKey(formatPartitionSource(partition)) === normalizedId);
+  });
+  if (!matchingSessions.length) {
+    return null;
+  }
+
+  const aggregate = {
+    name: "",
+    sessionsLogged: 0,
+    totalSeeds: 0,
+    totalGerminated: 0,
+    varieties: new Map(),
+    lastLoggedAt: "",
+    lastLoggedTime: 0,
+  };
+
+  matchingSessions.forEach((session) => {
+    const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
+    let countedSession = false;
+    const sessionLoggedAt = getSourceDirectorySessionLoggedAt(session);
+    const sessionLoggedTime = sessionLoggedAt?.getTime() || 0;
+    const sessionLoggedValue = sessionLoggedAt?.toISOString() || "";
+
+    partitions.forEach((partition) => {
+      const sourceName = formatPartitionSource(partition);
+      if (normalizeComparableSourceKey(sourceName) !== normalizedId) {
+        return;
+      }
+
+      aggregate.name = aggregate.name || sourceName;
+      aggregate.totalSeeds += Math.max(0, Number(partition?.seedCount) || 0);
+      aggregate.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
+      const varietyName = formatPartitionSeedVariety(partition);
+      if (varietyName) {
+        aggregate.varieties.set(normalizeComparableSourceKey(varietyName), varietyName);
+      }
+      if (!countedSession) {
+        aggregate.sessionsLogged += 1;
+        countedSession = true;
+      }
+      if (sessionLoggedTime > aggregate.lastLoggedTime) {
+        aggregate.lastLoggedTime = sessionLoggedTime;
+        aggregate.lastLoggedAt = sessionLoggedValue;
+      }
+    });
+  });
+
+  if (!aggregate.name) {
+    return null;
+  }
+
+  const averageRate = aggregate.totalSeeds > 0
+    ? Math.round((aggregate.totalGerminated / aggregate.totalSeeds) * 100)
+    : 0;
+  const trackRecord = getSourceDirectoryTrackRecordForSource(aggregate.name, {});
+
+  return normalizeTestedSourceMockRecord({
+    id: normalizedId,
+    name: aggregate.name,
+    type: "Source / Breeder",
+    sourceTypeLabel: "Source / Breeder",
+    logoUrl: "",
+    websiteUrl: "",
+    description: "",
+    community: {
+      avgRate: averageRate,
+      sessions: aggregate.sessionsLogged,
+      rank: 0,
+      seedsTracked: aggregate.totalSeeds,
+    },
+    cstp: {},
+    trackRecord,
+    directoryStats: {
+      sessionsLogged: aggregate.sessionsLogged,
+      varietiesLogged: aggregate.varieties.size,
+      lastLoggedAt: aggregate.lastLoggedAt,
+    },
+  });
+}
+
 function buildRealSourceProfileRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim();
   if (!normalizedId) {
@@ -28082,7 +28171,8 @@ function getSourceProfileRecord(sourceId = "") {
     return getSourceProfileMockRecord(normalizedId);
   }
   return buildRealSourceProfileRecord(normalizedId)
-    || getSourceDirectoryPreviewMockRecord(normalizedId);
+    || getSourceDirectoryPreviewMockRecord(normalizedId)
+    || getSampleSourceProfileRecord(normalizedId);
 }
 
 function formatSourceProfileMonthYear(value = "", fallback = "Not available") {
