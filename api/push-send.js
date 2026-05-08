@@ -217,10 +217,21 @@ function parseRequestBody(body) {
 
 function normalizePushPayload(payload = {}, fallback = {}) {
   const route = normalizeRoute(payload?.data?.route || payload.route || fallback.route || "#home");
-  const actions = Array.isArray(payload.actions)
-    ? payload.actions
+  const notificationType = String(
+    payload.notification_type
+    || payload.notificationType
+    || payload?.data?.notification_type
+    || payload?.data?.notificationType
+    || fallback.notificationType
+    || "",
+  ).trim();
+  const rawAvailableActions = Array.isArray(payload.available_actions)
+    ? payload.available_actions
+    : (Array.isArray(payload.availableActions) ? payload.availableActions : payload.actions);
+  const availableActions = Array.isArray(rawAvailableActions)
+    ? rawAvailableActions
       .map((action, index) => {
-        const actionId = String(action?.action || action?.id || `action-${index + 1}`).trim();
+        const actionId = String(action?.action || action?.kind || action?.id || `action-${index + 1}`).trim();
         const title = String(action?.title || action?.label || "").trim();
         const actionRoute = normalizeRoute(action?.route || route);
         if (!actionId || !title) {
@@ -228,15 +239,24 @@ function normalizePushPayload(payload = {}, fallback = {}) {
         }
         return {
           action: actionId,
+          kind: String(action?.kind || actionId).trim(),
           title,
+          label: title,
           route: actionRoute,
-          focusTarget: String(action?.focusTarget || "").trim(),
-          sessionId: String(action?.sessionId || payload?.data?.sessionId || fallback.sessionId || "").trim(),
+          focusTarget: String(action?.focusTarget || action?.focus_target || "").trim(),
+          sessionId: String(action?.sessionId || action?.session_id || payload?.data?.sessionId || fallback.sessionId || "").trim(),
+          eventKey: String(action?.eventKey || action?.event_key || payload?.data?.eventKey || fallback.eventKey || "").trim(),
+          snoozeOptions: Array.isArray(action?.snoozeOptions || action?.snooze_options)
+            ? (action.snoozeOptions || action.snooze_options).map((option) => String(option || "").trim()).filter(Boolean)
+            : [],
+          notificationButton: action?.notificationButton !== false && action?.showButton !== false,
         };
       })
       .filter(Boolean)
-      .slice(0, 2)
     : [];
+  const actions = availableActions
+    .filter((action) => action.notificationButton !== false && action.kind !== "open-session")
+    .slice(0, 2);
 
   return {
     title: String(payload.title || fallback.title || "Cannakan® Grow").trim() || "Cannakan® Grow",
@@ -248,9 +268,15 @@ function normalizePushPayload(payload = {}, fallback = {}) {
     data: {
       route,
       url: "",
+      notificationType,
+      notification_type: notificationType,
       sessionId: String(payload?.data?.sessionId || fallback.sessionId || "").trim(),
       eventKey: String(payload?.data?.eventKey || fallback.eventKey || "").trim(),
+      availableActions,
+      available_actions: availableActions,
     },
+    availableActions,
+    available_actions: availableActions,
     actions,
   };
 }

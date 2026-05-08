@@ -7,6 +7,7 @@ const PUSH_DELIVERIES_TABLE = "push_notification_deliveries";
 const REMINDER_EVENTS_TABLE = "grow_session_reminder_events";
 const PAGE_SIZE = 500;
 const MAX_SEND_ATTEMPTS = 3;
+const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "tonight", "tomorrow-morning"]);
 
 const GROW_REMINDER_RULES = Object.freeze([
   Object.freeze({
@@ -306,17 +307,99 @@ function buildReminderRoute(session = {}) {
   return sessionId ? `#sessions/${sessionId}` : "#sessions";
 }
 
+function buildReminderActionRoute(sessionId = "", actionKind = "open-session", eventKey = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return "#sessions";
+  }
+  const normalizedActionKind = String(actionKind || "open-session").trim();
+  if (!normalizedActionKind || normalizedActionKind === "open-session") {
+    return `#sessions/${normalizedSessionId}`;
+  }
+  return `#sessions/${normalizedSessionId}/notify/${normalizedActionKind}/${encodeURIComponent(String(eventKey || "").trim())}`;
+}
+
+function buildReminderAvailableActions(rule, session, eventKey) {
+  const sessionId = String(session?.id || "").trim();
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  if (!sessionId) {
+    return [];
+  }
+
+  const actions = [
+    {
+      kind: "open-session",
+      action: "open-session",
+      label: "Open Session",
+      title: "Open Session",
+      route: buildReminderActionRoute(sessionId, "open-session", eventKey),
+      sessionId,
+      eventKey,
+      notificationButton: false,
+    },
+    {
+      kind: "snooze-reminder",
+      action: "snooze-reminder",
+      label: "Remind Me Later",
+      title: "Remind Me Later",
+      route: buildReminderActionRoute(sessionId, "snooze", eventKey),
+      sessionId,
+      eventKey,
+      snoozeOptions: PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS,
+    },
+    {
+      kind: "session-update-stage",
+      action: "session-update-stage",
+      label: "Update Stage",
+      title: "Update Stage",
+      route: buildReminderActionRoute(sessionId, "update-stage", eventKey),
+      sessionId,
+      eventKey,
+    },
+  ];
+
+  if (normalizedStatus === "soaking") {
+    actions.push({
+      kind: "session-stage-germinating",
+      action: "session-stage-germinating",
+      label: "Mark Germinating",
+      title: "Mark Germinating",
+      route: buildReminderActionRoute(sessionId, "mark-germinating", eventKey),
+      sessionId,
+      eventKey,
+    });
+  } else if (normalizedStatus === "germinating" && String(rule?.key || "").trim() === "completion-urgent-54h") {
+    actions.push({
+      kind: "session-stage-completed",
+      action: "session-stage-completed",
+      label: "Mark Completed",
+      title: "Mark Completed",
+      route: buildReminderActionRoute(sessionId, "mark-completed", eventKey),
+      sessionId,
+      eventKey,
+    });
+  } else if (normalizedStatus === "germinating") {
+    actions.push({
+      kind: "session-stage-first-germinated",
+      action: "session-stage-first-germinated",
+      label: "Mark Germination Started",
+      title: "Mark Germination Started",
+      route: buildReminderActionRoute(sessionId, "mark-first-germinated", eventKey),
+      sessionId,
+      eventKey,
+    });
+  }
+
+  return actions;
+}
+
 function buildReminderNotificationPayload(rule, session, appOrigin, attemptCount = 1) {
   const route = buildReminderRoute(session);
   const eventKey = buildStageProgressReminderEventKey(session?.id || "", rule?.key || "", attemptCount);
-  const actions = Array.isArray(rule?.actions)
-    ? rule.actions.map((action) => ({
-      action: String(action?.action || "").trim() || "open-session",
-      title: String(action?.title || "").trim() || "Open Session",
-      route: action?.routeMode === "session" ? route : String(action?.route || route).trim() || route,
-      sessionId: String(session?.id || "").trim(),
-    }))
-    : [];
+  const availableActions = buildReminderAvailableActions(rule, session, eventKey);
+  const actions = availableActions
+    .filter((action) => action.notificationButton !== false && action.kind !== "open-session")
+    .slice(0, 2);
 
   return {
     eventKey,
@@ -324,15 +407,23 @@ function buildReminderNotificationPayload(rule, session, appOrigin, attemptCount
       title: String(rule?.title || "Cannakan Grow reminder").trim(),
       body: String(rule?.body || "").trim(),
       tag: eventKey,
+      notification_type: "grow-reminder",
+      notificationType: "grow-reminder",
       data: {
         route,
         url: buildAbsoluteUrl(appOrigin, route),
+        notificationType: "grow-reminder",
+        notification_type: "grow-reminder",
         sessionId: String(session?.id || "").trim(),
         eventKey,
         reminderKey: String(rule?.key || "").trim(),
         supportsPostpone: rule?.supportsPostpone === true,
         postponeOptionsHours: Array.isArray(rule?.postponeOptionsHours) ? rule.postponeOptionsHours : [],
+        availableActions,
+        available_actions: availableActions,
       },
+      availableActions,
+      available_actions: availableActions,
       actions,
     },
   };

@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v18";
+const CACHE_NAME = "cannakan-grow-shell-v19";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -134,31 +134,95 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
+function normalizeNotificationAction(action = {}, index = 0, fallback = {}) {
+  const source = action && typeof action === "object" ? action : {};
+  const actionId = String(source.action || source.kind || source.id || `action-${index + 1}`).trim();
+  const actionTitle = String(source.title || source.label || "").trim();
+  const sessionId = String(source.sessionId || source.session_id || fallback.sessionId || "").trim();
+  const eventKey = String(source.eventKey || source.event_key || fallback.eventKey || "").trim();
+  const route = String(source.route || fallback.route || "").trim();
+  if (!actionId || !actionTitle) {
+    return null;
+  }
+
+  return {
+    action: actionId,
+    kind: String(source.kind || actionId).trim(),
+    title: actionTitle,
+    label: actionTitle,
+    route,
+    focusTarget: String(source.focusTarget || source.focus_target || "").trim(),
+    sessionId,
+    eventKey,
+    snoozeOptions: Array.isArray(source.snoozeOptions || source.snooze_options)
+      ? (source.snoozeOptions || source.snooze_options).map((option) => String(option || "").trim()).filter(Boolean)
+      : [],
+    showButton: source.showButton !== false && source.notificationButton !== false,
+  };
+}
+
+function buildNotificationActionRoute(action = {}, fallback = {}) {
+  const explicitRoute = String(action?.route || "").trim();
+  if (explicitRoute) {
+    return explicitRoute;
+  }
+
+  const sessionId = String(action?.sessionId || fallback.sessionId || "").trim();
+  const eventKey = encodeURIComponent(String(action?.eventKey || fallback.eventKey || "").trim());
+  const actionKind = String(action?.kind || action?.action || "").trim();
+  if (!sessionId || !actionKind) {
+    return String(fallback.route || "#home").trim() || "#home";
+  }
+
+  switch (actionKind) {
+    case "snooze-reminder":
+      return `#sessions/${sessionId}/notify/snooze/${eventKey}`;
+    case "session-update-stage":
+      return `#sessions/${sessionId}/notify/update-stage/${eventKey}`;
+    case "session-stage-germinating":
+      return `#sessions/${sessionId}/notify/mark-germinating/${eventKey}`;
+    case "session-stage-first-germinated":
+      return `#sessions/${sessionId}/notify/mark-first-germinated/${eventKey}`;
+    case "session-stage-completed":
+    case "session-complete":
+      return `#sessions/${sessionId}/notify/mark-completed/${eventKey}`;
+    case "open-session":
+    case "route":
+    default:
+      return `#sessions/${sessionId}`;
+  }
+}
+
 function buildNotificationPayload(payload = {}) {
   const title = String(payload.title || "Cannakan® Grow").trim() || "Cannakan® Grow";
   const body = String(payload.body || "").trim();
   const tag = String(payload.tag || "cannakan-grow-notification").trim();
   const route = String(payload?.data?.route || payload.route || "#home").trim() || "#home";
-  const normalizedActions = Array.isArray(payload.actions)
-    ? payload.actions
-      .map((action, index) => {
-        const actionId = String(action?.action || action?.id || `action-${index + 1}`).trim();
-        const actionTitle = String(action?.title || action?.label || "").trim();
-        const actionRoute = String(action?.route || "").trim();
-        if (!actionId || !actionTitle) {
-          return null;
-        }
-        return {
-          action: actionId,
-          title: actionTitle,
-          route: actionRoute,
-          focusTarget: String(action?.focusTarget || "").trim(),
-          sessionId: String(action?.sessionId || "").trim(),
-        };
-      })
-      .filter(Boolean)
-      .slice(0, 2)
+  const notificationType = String(
+    payload.notification_type
+    || payload.notificationType
+    || payload?.data?.notification_type
+    || payload?.data?.notificationType
+    || "",
+  ).trim();
+  const fallback = {
+    route,
+    sessionId: String(payload?.data?.sessionId || payload?.data?.session_id || "").trim(),
+    eventKey: String(payload?.data?.eventKey || payload?.data?.event_key || "").trim(),
+  };
+  const rawAvailableActions = Array.isArray(payload.available_actions)
+    ? payload.available_actions
+    : (Array.isArray(payload.availableActions) ? payload.availableActions : payload.actions);
+  const availableActions = Array.isArray(rawAvailableActions)
+    ? rawAvailableActions.map((action, index) => normalizeNotificationAction(action, index, fallback)).filter(Boolean)
     : [];
+  const visibleActions = availableActions
+    .filter((action) => action.showButton && action.kind !== "open-session")
+    .map((action) => ({
+      ...action,
+      route: buildNotificationActionRoute(action, fallback),
+    }))
+    .slice(0, 2);
   const absoluteUrl = String(payload?.data?.url || "").trim()
     || `${self.location.origin}/${route.startsWith("#") ? route : `#${route.replace(/^#/, "")}`}`;
   return {
@@ -169,16 +233,20 @@ function buildNotificationPayload(payload = {}) {
       icon: String(payload.icon || "/icon-192.png").trim() || "/icon-192.png",
       badge: String(payload.badge || "/favicon-32x32.png").trim() || "/favicon-32x32.png",
       renotify: Boolean(payload.renotify),
-      actions: normalizedActions.map((action) => ({
+      actions: visibleActions.map((action) => ({
         action: action.action,
         title: action.title,
       })),
       data: {
         route,
         url: absoluteUrl,
-        sessionId: String(payload?.data?.sessionId || "").trim(),
-        eventKey: String(payload?.data?.eventKey || "").trim(),
-        actions: normalizedActions,
+        notificationType,
+        notification_type: notificationType,
+        sessionId: fallback.sessionId,
+        eventKey: fallback.eventKey,
+        availableActions,
+        available_actions: availableActions,
+        actions: visibleActions,
       },
     },
   };
@@ -218,11 +286,19 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification?.close();
-  const actionDefinitions = Array.isArray(event.notification?.data?.actions)
+  const actionDefinitions = Array.isArray(event.notification?.data?.availableActions)
+    ? event.notification.data.availableActions
+    : Array.isArray(event.notification?.data?.available_actions)
+    ? event.notification.data.available_actions
+    : Array.isArray(event.notification?.data?.actions)
     ? event.notification.data.actions
     : [];
-  const matchedAction = actionDefinitions.find((action) => String(action?.action || "").trim() === String(event.action || "").trim()) || null;
-  const targetRoute = String(matchedAction?.route || event.notification?.data?.route || "#home").trim() || "#home";
+  const matchedAction = actionDefinitions.find((action) => String(action?.action || action?.kind || "").trim() === String(event.action || "").trim()) || null;
+  const targetRoute = String(
+    matchedAction
+      ? buildNotificationActionRoute(matchedAction, event.notification?.data || {})
+      : (event.notification?.data?.route || "#home"),
+  ).trim() || "#home";
   const actionUrl = targetRoute.startsWith("http")
     ? targetRoute
     : `${self.location.origin}/${targetRoute.startsWith("#") ? targetRoute : targetRoute.startsWith("/") ? targetRoute.replace(/^\//, "") : `#${targetRoute.replace(/^#/, "")}`}`;

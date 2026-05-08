@@ -132,6 +132,7 @@ const APP_NOTIFICATION_SNOOZE_OPTIONS = Object.freeze([
   { key: "tonight", label: "Tonight", confirmationLabel: "tonight" },
   { key: "tomorrow-morning", label: "Tomorrow morning", confirmationLabel: "tomorrow morning" },
 ]);
+const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "tonight", "tomorrow-morning"]);
 
 function getAnnouncementSlideManifestPaths() {
   const candidatePaths = Array.isArray(globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES)
@@ -1291,6 +1292,7 @@ const appState = {
   sessionDashboardScrollTarget: "",
   sessionDetailPendingFocusTarget: "",
   sessionDetailPendingFocusSessionId: "",
+  sessionDetailPendingNotificationAction: null,
   adminSeedAgeAnalyticsFilter: ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
@@ -8425,10 +8427,15 @@ function clearDismissedAppNotificationEvent(eventKey = "", userId = appState.use
 
 const APP_NOTIFICATION_ACTION_KINDS = [
   "open-snooze",
+  "open-session",
   "route",
   "filter-paper-modal",
   "filter-paper-store",
+  "snooze-reminder",
+  "session-update-stage",
   "session-stage-germinating",
+  "session-stage-first-germinated",
+  "session-stage-completed",
   "session-complete",
   "session-focus-results",
   "session-focus-snapshot",
@@ -8445,6 +8452,12 @@ function normalizeAppNotificationAction(action = {}, fallbackAction = null) {
   const route = String(sourceAction.route || fallback.route || "").trim();
   const eventKey = String(sourceAction.eventKey || fallback.eventKey || "").trim();
   const sessionId = String(sourceAction.sessionId || fallback.sessionId || "").trim();
+  const snoozeOptions = Array.isArray(sourceAction.snoozeOptions || sourceAction.snooze_options || fallback.snoozeOptions || fallback.snooze_options)
+    ? (sourceAction.snoozeOptions || sourceAction.snooze_options || fallback.snoozeOptions || fallback.snooze_options)
+      .map((option) => String(option || "").trim())
+      .filter(Boolean)
+    : [];
+  const notificationButton = sourceAction.notificationButton ?? sourceAction.showButton ?? fallback.notificationButton ?? fallback.showButton;
   const variant = ["primary", "secondary", "ghost"].includes(String(sourceAction.variant || fallback.variant || "").trim())
     ? String(sourceAction.variant || fallback.variant || "").trim()
     : "secondary";
@@ -8455,6 +8468,8 @@ function normalizeAppNotificationAction(action = {}, fallbackAction = null) {
       route,
       eventKey,
       sessionId,
+      snoozeOptions,
+      notificationButton: notificationButton !== false,
       variant,
     }
     : null;
@@ -8503,6 +8518,8 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
   const createdAt = String(normalizedNotification.createdAt || normalizedNotification.occurredAt || "").trim() || new Date().toISOString();
   const id = String(normalizedNotification.id || "").trim() || `app-notification-${fallbackIndex + 1}-${Math.random().toString(36).slice(2, 10)}`;
   const category = normalizeAppNotificationCategory(normalizedNotification.category || normalizedNotification.type || "");
+  const notificationType = String(normalizedNotification.notificationType || normalizedNotification.notification_type || "").trim()
+    || (["soaking-reminder", "germination-reminder"].includes(category) ? "grow-reminder" : category);
   const route = String(normalizedNotification.route || "").trim();
   const sessionId = String(normalizedNotification.sessionId || "").trim();
   const actionKind = APP_NOTIFICATION_ACTION_KINDS.includes(String(normalizedNotification.actionKind || "").trim())
@@ -8516,11 +8533,20 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
     sessionId,
     variant: "secondary",
   });
+  const rawAvailableActions = Array.isArray(normalizedNotification.availableActions)
+    ? normalizedNotification.availableActions
+    : (Array.isArray(normalizedNotification.available_actions) ? normalizedNotification.available_actions : []);
+  const availableActions = rawAvailableActions
+    .map((action) => normalizeAppNotificationAction(action, fallbackAction))
+    .filter(Boolean);
   const actions = Array.isArray(normalizedNotification.actions)
     ? normalizedNotification.actions
       .map((action) => normalizeAppNotificationAction(action))
       .filter(Boolean)
     : [];
+  if (!actions.length && availableActions.length) {
+    actions.push(...availableActions.filter((action) => action.kind !== "open-session"));
+  }
   if (!actions.length && fallbackAction) {
     actions.push(fallbackAction);
   }
@@ -8528,6 +8554,7 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
     id,
     eventKey: String(normalizedNotification.eventKey || "").trim(),
     category,
+    notificationType,
     title: String(normalizedNotification.title || "").trim() || getAppNotificationCategoryMeta(category).label,
     message: String(normalizedNotification.message || "").trim(),
     createdAt,
@@ -8538,6 +8565,7 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
     actionKind,
     actionLabel: String(normalizedNotification.actionLabel || "").trim(),
     actions,
+    availableActions,
   };
 }
 
@@ -8890,6 +8918,7 @@ function buildPerfectGerminationNotification(session = null) {
   return {
     eventKey,
     category: "germination-reminder",
+    notificationType: "grow-reminder",
     title: "All seeds have germinated successfully",
     message: `All seeds have germinated successfully in ${formatSessionLabel(session)}. Mark the session complete to finalize accurate timing data for analytics and rankings.`,
     sessionId: session.id,
@@ -8916,6 +8945,42 @@ function buildPerfectGerminationNotification(session = null) {
         route: `#sessions/${session.id}`,
         sessionId: session.id,
         variant: "secondary",
+      },
+    ],
+    availableActions: [
+      {
+        kind: "open-session",
+        label: "Open Session",
+        route: `#sessions/${session.id}`,
+        sessionId: session.id,
+        eventKey,
+        variant: "secondary",
+        notificationButton: false,
+      },
+      {
+        kind: "snooze-reminder",
+        label: "Remind Me Later",
+        route: buildNotificationSessionActionRoute(session.id, "snooze", eventKey),
+        sessionId: session.id,
+        eventKey,
+        snoozeOptions: PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS,
+        variant: "secondary",
+      },
+      {
+        kind: "session-stage-completed",
+        label: "Mark Completed",
+        route: buildNotificationSessionActionRoute(session.id, "mark-completed", eventKey),
+        sessionId: session.id,
+        eventKey,
+        variant: "primary",
+      },
+      {
+        kind: "session-update-stage",
+        label: "Update Stage",
+        route: buildNotificationSessionActionRoute(session.id, "update-stage", eventKey),
+        sessionId: session.id,
+        eventKey,
+        variant: "primary",
       },
     ],
   };
@@ -9190,6 +9255,91 @@ function buildStageProgressReminderEventKey(sessionId = "", reminderIdentifier =
   return normalizedSessionId ? `stage-progress:${normalizedSessionId}:${normalizedIdentifier}` : "";
 }
 
+function buildNotificationSessionActionRoute(sessionId = "", actionKind = "open-session", eventKey = "", optionKey = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return "#sessions";
+  }
+  const normalizedActionKind = String(actionKind || "open-session").trim();
+  const encodedEventKey = encodeURIComponent(String(eventKey || "").trim());
+  const normalizedOptionKey = String(optionKey || "").trim();
+  if (!normalizedActionKind || normalizedActionKind === "open-session") {
+    return `#sessions/${normalizedSessionId}`;
+  }
+  const optionSegment = normalizedOptionKey ? `/${encodeURIComponent(normalizedOptionKey)}` : "";
+  return `#sessions/${normalizedSessionId}/notify/${normalizedActionKind}/${encodedEventKey}${optionSegment}`;
+}
+
+function buildGrowReminderAvailableActions(session = null, options = {}) {
+  const sessionId = String(session?.id || options.sessionId || "").trim();
+  const eventKey = String(options.eventKey || "").trim();
+  const normalizedStatus = normalizeSessionStatus(options.status || session?.sessionStatus || "");
+  const reminderKey = String(options.reminderKey || "").trim();
+  if (!sessionId) {
+    return [];
+  }
+
+  const actions = [
+    {
+      kind: "open-session",
+      label: "Open Session",
+      route: `#sessions/${sessionId}`,
+      sessionId,
+      eventKey,
+      variant: "secondary",
+      notificationButton: false,
+    },
+    {
+      kind: "snooze-reminder",
+      label: "Remind Me Later",
+      route: buildNotificationSessionActionRoute(sessionId, "snooze", eventKey),
+      sessionId,
+      eventKey,
+      snoozeOptions: PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS,
+      variant: "secondary",
+    },
+    {
+      kind: "session-update-stage",
+      label: "Update Stage",
+      route: buildNotificationSessionActionRoute(sessionId, "update-stage", eventKey),
+      sessionId,
+      eventKey,
+      variant: "primary",
+    },
+  ];
+
+  if (normalizedStatus === "soaking") {
+    actions.push({
+      kind: "session-stage-germinating",
+      label: "Mark Germinating",
+      route: buildNotificationSessionActionRoute(sessionId, "mark-germinating", eventKey),
+      sessionId,
+      eventKey,
+      variant: "primary",
+    });
+  } else if (normalizedStatus === "germinating" && reminderKey === "completion-urgent-54h") {
+    actions.push({
+      kind: "session-stage-completed",
+      label: "Mark Completed",
+      route: buildNotificationSessionActionRoute(sessionId, "mark-completed", eventKey),
+      sessionId,
+      eventKey,
+      variant: "primary",
+    });
+  } else if (normalizedStatus === "germinating") {
+    actions.push({
+      kind: "session-stage-first-germinated",
+      label: "Mark Germination Started",
+      route: buildNotificationSessionActionRoute(sessionId, "mark-first-germinated", eventKey),
+      sessionId,
+      eventKey,
+      variant: "primary",
+    });
+  }
+
+  return actions;
+}
+
 function buildStageProgressReminderEntries(session = null) {
   if (!session?.id || isSessionSoftDeleted(session) || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
     return [];
@@ -9239,7 +9389,7 @@ function buildStageProgressReminderEntries(session = null) {
     ? [
       {
         kind: "session-stage-germinating",
-        label: "Mark Germination Started",
+        label: "Mark Germinating",
         sessionId: session.id,
         eventKey: reminderEventKey,
         variant: "primary",
@@ -9284,10 +9434,16 @@ function buildStageProgressReminderEntries(session = null) {
       variant: "secondary",
     },
   ];
+  const availableActions = buildGrowReminderAvailableActions(session, {
+    eventKey: reminderEventKey,
+    reminderKey: String(latestDueReminder?.key || "").trim(),
+    status: normalizedStatus,
+  });
 
   return [{
     eventKey: reminderEventKey,
     category: normalizedStatus === "soaking" ? "soaking-reminder" : "germination-reminder",
+    notificationType: "grow-reminder",
     title: latestDueReminder.title || getSessionStatusAlertTitle(normalizedStatus, latestDueReminder.level),
     message: latestDueReminder.message,
     sessionId: session.id,
@@ -9296,6 +9452,7 @@ function buildStageProgressReminderEntries(session = null) {
     actions: latestDueReminder?.key === "completion-urgent-54h"
       ? criticalCompletionActions
       : defaultActions,
+    availableActions,
     level: latestDueReminder.level,
     reminderHours: Math.max(0, Number(latestDueReminder?.hours) || 0),
   }];
@@ -10015,8 +10172,12 @@ function buildPushNotificationPayloadFromAppNotification(notification = {}, opti
   const absoluteUrl = normalizedRoute.startsWith("http")
     ? normalizedRoute
     : `${window.location.origin}/${normalizedRoute.startsWith("#") ? normalizedRoute : `#${normalizedRoute.replace(/^#/, "")}`}`;
-  const pushActions = Array.isArray(notification.actions)
-    ? notification.actions
+  const notificationType = String(options.notificationType || notification.notificationType || notification.notification_type || "").trim();
+  const notificationActions = Array.isArray(notification.availableActions) && notification.availableActions.length
+    ? notification.availableActions
+    : (Array.isArray(notification.actions) ? notification.actions : []);
+  const pushActions = notificationActions.length
+    ? notificationActions
       .map((action, index) => {
         const actionId = String(action?.kind || action?.action || `action-${index + 1}`).trim();
         const label = String(action?.label || action?.title || "").trim();
@@ -10044,15 +10205,22 @@ function buildPushNotificationPayloadFromAppNotification(notification = {}, opti
         }
         return {
           action: actionId,
+          kind: actionId,
           title: label,
+          label,
           route: normalizedActionRoute,
           focusTarget,
           sessionId: String(action?.sessionId || notification.sessionId || options.sessionId || "").trim(),
+          eventKey: String(action?.eventKey || notification.eventKey || options.eventKey || "").trim(),
+          snoozeOptions: Array.isArray(action?.snoozeOptions) ? action.snoozeOptions : [],
+          notificationButton: action?.notificationButton !== false,
         };
       })
       .filter(Boolean)
-      .slice(0, 2)
     : [];
+  const visiblePushActions = pushActions
+    .filter((action) => action.notificationButton !== false && action.kind !== "open-session")
+    .slice(0, 2);
   return {
     title: String(options.title || notification.title || "Cannakan® Grow").trim(),
     body: String(options.body || notification.message || "").trim(),
@@ -10062,11 +10230,17 @@ function buildPushNotificationPayloadFromAppNotification(notification = {}, opti
     data: {
       route: normalizedRoute.startsWith("#") ? normalizedRoute : `#${normalizedRoute.replace(/^#/, "")}`,
       url: absoluteUrl,
+      notificationType,
+      notification_type: notificationType,
       sessionId: String(notification.sessionId || options.sessionId || "").trim(),
       eventKey: String(notification.eventKey || options.eventKey || "").trim(),
+      availableActions: pushActions,
+      available_actions: pushActions,
     },
     renotify: false,
-    actions: pushActions,
+    availableActions: pushActions,
+    available_actions: pushActions,
+    actions: visiblePushActions,
   };
 }
 
@@ -19145,6 +19319,25 @@ function clearSessionDetailNotificationFocus() {
   appState.sessionDetailPendingFocusTarget = "";
 }
 
+function queueSessionDetailNotificationAction(sessionId = "", actionKind = "", options = {}) {
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedActionKind = String(actionKind || "").trim();
+  if (!normalizedSessionId || !normalizedActionKind) {
+    appState.sessionDetailPendingNotificationAction = null;
+    return;
+  }
+  appState.sessionDetailPendingNotificationAction = {
+    sessionId: normalizedSessionId,
+    actionKind: normalizedActionKind,
+    eventKey: String(options.eventKey || "").trim(),
+    optionKey: String(options.optionKey || "").trim(),
+  };
+}
+
+function clearSessionDetailNotificationAction() {
+  appState.sessionDetailPendingNotificationAction = null;
+}
+
 function navigateToNotificationSessionTarget(sessionId = "", options = {}) {
   const normalizedSessionId = String(sessionId || "").trim();
   if (!normalizedSessionId) {
@@ -19216,6 +19409,100 @@ function applyPendingSessionDetailNotificationFocus(session = null, detail = nul
   }
 
   clearSessionDetailNotificationFocus();
+}
+
+async function logGrowReminderNotificationAction(actionRecord = {}) {
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken || !actionRecord?.eventKey) {
+    return false;
+  }
+
+  try {
+    const response = await fetch("/api/grow-reminder-action", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(actionRecord),
+    });
+    return response.ok;
+  } catch (error) {
+    console.warn("[Notifications] Could not log grow reminder action.", error);
+    return false;
+  }
+}
+
+function findAppNotificationByEventKey(eventKey = "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  if (!normalizedEventKey) {
+    return null;
+  }
+  return getAppNotifications().find((entry) => String(entry?.eventKey || "").trim() === normalizedEventKey) || null;
+}
+
+async function applyPendingSessionDetailNotificationAction(session = null, detail = null) {
+  const pendingAction = appState.sessionDetailPendingNotificationAction;
+  const sessionId = String(session?.id || "").trim();
+  if (!pendingAction || !sessionId || pendingAction.sessionId !== sessionId) {
+    return;
+  }
+
+  clearSessionDetailNotificationAction();
+  const eventKey = String(pendingAction.eventKey || "").trim();
+  const optionKey = String(pendingAction.optionKey || "").trim();
+  const notification = findAppNotificationByEventKey(eventKey) || {
+    id: `push-action-${Date.now()}`,
+    eventKey,
+    category: normalizeSessionStatus(session?.sessionStatus || "") === "soaking" ? "soaking-reminder" : "germination-reminder",
+    notificationType: "grow-reminder",
+    route: `#sessions/${sessionId}`,
+    sessionId,
+  };
+
+  switch (pendingAction.actionKind) {
+    case "update-stage":
+      void logGrowReminderNotificationAction({ eventKey, sessionId, action: "update-stage-opened" });
+      window.setTimeout(() => detail?.statusTrigger?.click?.(), 180);
+      return;
+    case "snooze": {
+      const resolvedOptionKey = optionKey || "30m";
+      if (canSnoozeNotification(notification)) {
+        snoozeAppNotification(notification, resolvedOptionKey);
+      }
+      void logGrowReminderNotificationAction({ eventKey, sessionId, action: "snooze-reminder", snoozeOption: resolvedOptionKey });
+      return;
+    }
+    case "mark-germinating":
+      await handleAppNotificationAction(notification, {
+        kind: "session-stage-germinating",
+        label: "Mark Germinating",
+        sessionId,
+        eventKey,
+      });
+      void logGrowReminderNotificationAction({ eventKey, sessionId, action: "mark-germinating" });
+      return;
+    case "mark-first-germinated":
+      await handleAppNotificationAction(notification, {
+        kind: "session-stage-first-germinated",
+        label: "Mark Germination Started",
+        sessionId,
+        eventKey,
+      });
+      void logGrowReminderNotificationAction({ eventKey, sessionId, action: "mark-first-germinated" });
+      return;
+    case "mark-completed":
+      await handleAppNotificationAction(notification, {
+        kind: "session-stage-completed",
+        label: "Mark Completed",
+        sessionId,
+        eventKey,
+      });
+      void logGrowReminderNotificationAction({ eventKey, sessionId, action: "mark-completed" });
+      return;
+    default:
+      return;
+  }
 }
 
 async function updateSessionFromNotification(sessionId = "", updater = null, options = {}) {
@@ -19302,6 +19589,11 @@ async function handleAppNotificationAction(notification = null, action = null) {
     return;
   }
 
+  if (normalizedKind === "session-update-stage") {
+    navigateToHashRoute(targetRoute || `#sessions/${targetSessionId}/notify/update-stage/${encodeURIComponent(targetEventKey)}`);
+    return;
+  }
+
   if (normalizedKind === "session-stage-germinating") {
     if (!canApplySessionNotificationMutation(targetSessionId)) {
       return;
@@ -19322,7 +19614,30 @@ async function handleAppNotificationAction(notification = null, action = null) {
     return;
   }
 
-  if (normalizedKind === "session-complete") {
+  if (normalizedKind === "session-stage-first-germinated") {
+    if (!canApplySessionNotificationMutation(targetSessionId)) {
+      return;
+    }
+    const savedSession = await updateSessionFromNotification(targetSessionId, (session) => {
+      const timestamp = new Date().toISOString();
+      session.sessionStatus = "germinating";
+      session.germinationStartedAt = session.germinationStartedAt || parseSessionStartDateTime(session.date, session.time)?.toISOString() || timestamp;
+      captureFirstPlantedEventForSession(session);
+      session.firstPlantedAt = session.firstPlantedAt || timestamp;
+      session.completedAt = "";
+      return { shouldDeductFilterPaper: false };
+    });
+    if (savedSession) {
+      safeRender();
+      showNavigationLockToast({
+        title: "Germination started",
+        message: "First sprout timing was recorded for this session.",
+      });
+    }
+    return;
+  }
+
+  if (normalizedKind === "session-complete" || normalizedKind === "session-stage-completed") {
     if (!canApplySessionNotificationMutation(targetSessionId)) {
       return;
     }
@@ -19353,7 +19668,7 @@ async function handleAppNotificationAction(notification = null, action = null) {
     return;
   }
 
-  if (normalizedKind === "route" && targetRoute) {
+  if ((normalizedKind === "route" || normalizedKind === "open-session") && targetRoute) {
     if (hasPendingUnsavedChanges()) {
       promptForUnsavedChangesNavigation(targetRoute);
       return;
@@ -25153,7 +25468,8 @@ function render() {
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
   const pathRoute = getCurrentAppPathRoute();
   const rawRoute = getCurrentAppRawRoute();
-  const [route, id, subroute] = rawRoute.split("/");
+  const routeParts = rawRoute.split("/");
+  const [route, id, subroute] = routeParts;
   const isEditableSessionRoute = route === "new" || (route === "sessions" && id && id !== "public");
   if (!isEditableSessionRoute) {
     clearUnsavedChangesContext();
@@ -25666,6 +25982,16 @@ function render() {
   }
 
   if (route === "sessions" && id) {
+    if (subroute === "notify") {
+      const actionKind = String(routeParts[3] || "").trim();
+      const eventKey = decodeURIComponent(String(routeParts[4] || "").trim());
+      const optionKey = decodeURIComponent(String(routeParts[5] || "").trim());
+      if (actionKind) {
+        queueSessionDetailNotificationAction(id, actionKind, { eventKey, optionKey });
+        replaceLocationHashWithoutNavigation(`#sessions/${id}`);
+        appState.currentRouteHash = `#sessions/${id}`;
+      }
+    }
     renderSessionDetail(id);
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
@@ -47186,6 +47512,7 @@ function renderSessionDetail(sessionId) {
     }
   });
   applyPendingSessionDetailNotificationFocus(session, detail);
+  void applyPendingSessionDetailNotificationAction(session, detail);
   scrollElementIntoViewAfterLayout(detail.topBackLink?.closest(".app-section-header") || app.firstElementChild, {
     delayMs: 140,
   });
