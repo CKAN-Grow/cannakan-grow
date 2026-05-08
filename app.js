@@ -28004,6 +28004,23 @@ function getSourceProfileMockRecord(sourceId = "") {
   });
 }
 
+function getSourceDirectoryPreviewMockRecord(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  if (!normalizedId) {
+    return null;
+  }
+
+  if (normalizedId === String(SOURCE_PROFILE_DEFAULT_MOCK_ID || "").trim().toLowerCase()) {
+    return getSourceProfileMockRecord(normalizedId);
+  }
+
+  const previewRecord = testedSourcesMock
+    .map((source) => normalizeTestedSourceMockRecord(source))
+    .find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId);
+
+  return previewRecord || null;
+}
+
 function buildRealSourceProfileRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim();
   if (!normalizedId) {
@@ -28064,7 +28081,8 @@ function getSourceProfileRecord(sourceId = "") {
   if (mockDataEnabled) {
     return getSourceProfileMockRecord(normalizedId);
   }
-  return buildRealSourceProfileRecord(normalizedId);
+  return buildRealSourceProfileRecord(normalizedId)
+    || getSourceDirectoryPreviewMockRecord(normalizedId);
 }
 
 function formatSourceProfileMonthYear(value = "", fallback = "Not available") {
@@ -29191,6 +29209,9 @@ function renderSourceProfilePage(sourceId = "") {
   const sourceProfile = getSourceProfileRecord(requestedId);
 
   if (!sourceProfile) {
+    const unavailableCopy = isMockDataEnabled()
+      ? "This mock source profile could not be loaded."
+      : "This source profile could not be loaded.";
     app.innerHTML = `
       <section class="card source-profile-page">
         <div class="section-heading app-section-header">
@@ -29199,7 +29220,7 @@ function renderSourceProfilePage(sourceId = "") {
             <div>
               <p class="eyebrow">Source Profile</p>
               <h2>Source profile unavailable</h2>
-              <p class="muted">This mock source profile could not be loaded.</p>
+              <p class="muted">${escapeHtml(unavailableCopy)}</p>
             </div>
           </div>
           <div class="inline-actions">
