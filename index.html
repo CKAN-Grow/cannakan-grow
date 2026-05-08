@@ -1038,7 +1038,12 @@
             </h4>
           </div>
           <div id="detail-lifecycle-summary" class="session-lifecycle-summary session-lifecycle-detail-layout">
-            <div id="detail-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
+            <div class="session-lifecycle-detail-main">
+              <div id="detail-lifecycle-progress" class="session-lifecycle-progress-shell"></div>
+              <section id="detail-supplies-section" class="session-detail-supplies-section" aria-label="Supplies">
+                <div id="detail-supplies-anchor" class="session-detail-supplies-anchor"></div>
+              </section>
+            </div>
             <div class="session-lifecycle-status-column">
               <div class="session-status-panel">
                 <div class="session-status-card">
@@ -1096,9 +1101,6 @@
               <button type="button" class="button button-secondary" data-debug-event="reset">Reset Debug Timeline</button>
             </div>
           </details>
-        </section>
-        <section id="detail-supplies-section" class="session-detail-supplies-section" aria-label="Supplies">
-          <div id="detail-supplies-anchor" class="session-detail-supplies-anchor"></div>
         </section>
       </section>
       <section class="session-workspace-content">
