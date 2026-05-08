@@ -940,7 +940,7 @@
           </div>
         </div>
         <div class="inline-actions">
-          <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Details</button>
+          <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Name</button>
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>
       </div>
@@ -953,48 +953,22 @@
               <div class="session-detail-edit-panel-head">
                 <div class="session-detail-edit-panel-copy">
                   <p class="eyebrow">Edit</p>
-                  <h3 id="detail-session-editor-title">Session Details</h3>
-                  <p class="session-detail-edit-panel-description">Update core session info without resetting stage progress, partition data, notes, analytics, or snapshots.</p>
+                  <h3 id="detail-session-editor-title">Edit Session Name</h3>
+                  <p class="session-detail-edit-panel-description">Rename this session without affecting progress, analytics, reminders, or snapshots.</p>
                 </div>
               </div>
               <form id="detail-session-details-form" class="session-detail-edit-form" novalidate>
-                <div class="session-chart-header session-detail-edit-grid">
+                <div class="session-detail-edit-grid">
                   <label>
                     <span>Session Name</span>
-                    <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
-                  </label>
-                  <label>
-                    <span>Date</span>
-                    <input type="date" name="date" required>
-                  </label>
-                  <label class="time-format-field">
-                    <div class="field-label-row">
-                      <span>Time</span>
-                      <div class="time-format-toggle" role="group" aria-label="Time format">
-                        <button type="button" class="time-format-button" data-time-format="12h">12h</button>
-                        <button type="button" class="time-format-button" data-time-format="24h">24h</button>
-                      </div>
-                    </div>
-                    <input type="hidden" name="time">
-                    <input type="text" name="timeDisplay" inputmode="numeric" autocomplete="off" required>
-                  </label>
-                  <label>
-                    <span>System Type</span>
-                    <select name="systemType" required>
-                      <option value="KAN">KAN</option>
-                      <option value="TRA">TRA</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Unit ID</span>
-                    <input type="text" name="unitId" placeholder="Ex: A, B, C" maxlength="12">
+                    <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80" required>
                   </label>
                 </div>
                 <div class="session-detail-edit-actions">
                   <p id="detail-session-details-message" class="session-detail-edit-message" aria-live="polite"></p>
                   <div class="session-detail-edit-action-buttons">
                     <button id="detail-session-details-cancel" type="button" class="button button-secondary">Cancel</button>
-                    <button id="detail-session-details-save" type="submit" class="button button-primary">Save Details</button>
+                    <button id="detail-session-details-save" type="submit" class="button button-primary">Save Name</button>
                   </div>
                 </div>
               </form>

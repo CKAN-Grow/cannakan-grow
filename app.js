@@ -45624,12 +45624,13 @@ function populateSessionDetailEditorForm(form, session = null) {
     return;
   }
 
-  form.elements.sessionName.value = getSessionDetailEditableName(session);
-  form.elements.date.value = String(session?.date || "").trim();
-  form.elements.time.value = String(session?.time || "").trim();
-  form.elements.systemType.value = String(session?.systemType || "KAN").trim() || "KAN";
-  form.elements.unitId.value = normalizeUnitIdValue(session?.unitId);
-  initializeTimeFormatField(form, String(session?.time || "").trim());
+  const sessionNameField = form.elements.sessionName;
+  if (!(sessionNameField instanceof HTMLInputElement)) {
+    return;
+  }
+
+  sessionNameField.value = getSessionDetailEditableName(session);
+  sessionNameField.setCustomValidity("");
 }
 
 function setSessionDetailEditorOpen(detail, isOpen) {
@@ -45665,9 +45666,20 @@ function applySessionDetailEditorValues(form, session) {
     return true;
   }
 
-  syncStoredTimeFromDisplay(form, { normalize: true, forceError: true });
-  if (!String(form.elements.time?.value || "").trim()) {
-    form.elements.timeDisplay?.focus();
+  const sessionNameField = form.elements.sessionName;
+  if (!(sessionNameField instanceof HTMLInputElement)) {
+    return false;
+  }
+
+  const nextCustomSessionName = String(sessionNameField.value || "").trim();
+  const maxSessionNameLength = Number(sessionNameField.maxLength) > 0
+    ? Number(sessionNameField.maxLength)
+    : 80;
+
+  sessionNameField.setCustomValidity(nextCustomSessionName ? "" : "Please enter a session name.");
+
+  if (!nextCustomSessionName) {
+    sessionNameField.focus();
     return false;
   }
 
@@ -45675,19 +45687,13 @@ function applySessionDetailEditorValues(form, session) {
     return false;
   }
 
-  const nextDate = String(form.elements.date?.value || "").trim();
-  const nextTime = String(form.elements.time?.value || "").trim();
-  const nextSystemType = String(form.elements.systemType?.value || "KAN").trim() || "KAN";
-  const nextUnitId = normalizeUnitIdValue(form.elements.unitId?.value);
-  const nextCustomSessionName = String(form.elements.sessionName?.value || "").trim();
   const firstPartition = normalizeSessionPartitions(session?.partitions || [])[0];
+  const safeCustomSessionName = nextCustomSessionName.slice(0, maxSessionNameLength);
 
-  session.date = nextDate;
-  session.time = nextTime;
-  session.systemType = nextSystemType;
-  session.unitId = nextUnitId;
-  session.customSessionName = nextCustomSessionName;
-  session.sessionName = buildFinalSessionName(nextCustomSessionName, firstPartition, nextDate);
+  sessionNameField.value = safeCustomSessionName;
+  sessionNameField.setCustomValidity("");
+  session.customSessionName = safeCustomSessionName;
+  session.sessionName = buildFinalSessionName(safeCustomSessionName, firstPartition, session?.date);
   return true;
 }
 
@@ -46175,7 +46181,7 @@ function renderSessionDetail(sessionId) {
     clearSessionDetailEditorMessage(detail);
     if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
       if (detail.detailsMessage) {
-        detail.detailsMessage.textContent = "Please correct the session details above.";
+        detail.detailsMessage.textContent = "Please enter a session name to continue.";
         detail.detailsMessage.classList.add("is-error");
       }
       return null;
@@ -46214,7 +46220,7 @@ function renderSessionDetail(sessionId) {
       setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
     } else if (detail.detailsPanel && !detail.detailsPanel.hidden && detail.detailsMessage) {
-      detail.detailsMessage.textContent = "Could not save session details.";
+      detail.detailsMessage.textContent = "Could not save session name.";
       detail.detailsMessage.classList.add("is-error");
     }
     return savedSession;
@@ -49983,11 +49989,11 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
   return JSON.stringify({
     sessionId: String(session?.id || "").trim(),
     sessionName: String(detailsForm?.elements?.sessionName?.value || getSessionDetailEditableName(session)).trim(),
-    date: String(detailsForm?.elements?.date?.value || session?.date || "").trim(),
-    time: String(detailsForm?.elements?.time?.value || session?.time || "").trim(),
-    timeDisplay: String(detailsForm?.elements?.timeDisplay?.value || formatStoredTime(session?.time || "", getPreferredTimeFormat())).trim(),
-    systemType: String(detailsForm?.elements?.systemType?.value || session?.systemType || "").trim(),
-    unitId: String(detailsForm?.elements?.unitId?.value || session?.unitId || "").trim(),
+    date: String(session?.date || "").trim(),
+    time: String(session?.time || "").trim(),
+    timeDisplay: String(formatStoredTime(session?.time || "", getPreferredTimeFormat())).trim(),
+    systemType: String(session?.systemType || "").trim(),
+    unitId: String(session?.unitId || "").trim(),
     sessionStatus: String(statusField?.value || session?.sessionStatus || "").trim(),
     sessionNotes: String(notesField?.value || session?.sessionNotes || "").trim(),
     publicGrowNote: normalizePublicGrowNote(detailPublicGrowNoteValue),
