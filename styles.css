@@ -3676,21 +3676,21 @@ body.theme-dark .spotlight-stat strong {
 }
 
 #detail-lifecycle-section .session-lifecycle-stage {
-  grid-template-rows: minmax(94px, auto) minmax(1.85em, auto) minmax(2.35em, auto) minmax(76px, auto);
-  gap: 5px;
-  padding-top: 6px;
+  grid-template-rows: auto auto auto auto;
+  gap: 4px;
+  padding-top: 0;
 }
 
 #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-icon-wrap {
-  min-height: 94px;
+  min-height: 84px;
 }
 
 #detail-lifecycle-section .session-lifecycle-stage strong {
-  min-height: 1.85em;
+  min-height: 0;
 }
 
 #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-helper {
-  min-height: 2.35em;
+  min-height: 0;
 }
 
 #detail-lifecycle-section .session-lifecycle-stage.session-command-stage--green strong {
@@ -21820,8 +21820,8 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   #detail-lifecycle-section .session-lifecycle-stage {
-    grid-template-rows: minmax(84px, auto) minmax(1.8em, auto) minmax(2.2em, auto) minmax(76px, auto);
-    gap: 5px;
+    grid-template-rows: auto auto auto auto;
+    gap: 4px;
   }
 
   #detail-lifecycle-section .session-lifecycle-stage .session-command-stage-icon-wrap {
