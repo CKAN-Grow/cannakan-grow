@@ -3,7 +3,10 @@ import { extname, resolve } from "node:path";
 
 const url = process.env.CANNAKAN_SUPABASE_URL || "";
 const anonKey = process.env.CANNAKAN_SUPABASE_ANON_KEY || "";
-const pushPublicKey = process.env.CANNAKAN_PUSH_PUBLIC_KEY || process.env.CANNAKAN_PUSH_VAPID_PUBLIC_KEY || "";
+const pushPublicKey = process.env.VAPID_PUBLIC_KEY
+  || process.env.CANNAKAN_PUSH_PUBLIC_KEY
+  || process.env.CANNAKAN_PUSH_VAPID_PUBLIC_KEY
+  || "";
 const isVercelBuild = process.env.VERCEL === "1";
 
 if ((!url || !anonKey) && isVercelBuild) {

@@ -19,9 +19,18 @@ function getRuntimeConfig() {
   return {
     supabaseUrl: getEnv("CANNAKAN_SUPABASE_URL"),
     supabaseServiceRoleKey: getEnv("CANNAKAN_SUPABASE_SERVICE_ROLE_KEY"),
-    vapidPublicKey: getEnv("CANNAKAN_PUSH_PUBLIC_KEY", getEnv("CANNAKAN_PUSH_VAPID_PUBLIC_KEY")),
-    vapidPrivateKey: getEnv("CANNAKAN_PUSH_VAPID_PRIVATE_KEY"),
-    vapidSubject: getEnv("CANNAKAN_PUSH_VAPID_SUBJECT", "mailto:info@cannakan.com"),
+    vapidPublicKey: getEnv(
+      "VAPID_PUBLIC_KEY",
+      getEnv("CANNAKAN_PUSH_PUBLIC_KEY", getEnv("CANNAKAN_PUSH_VAPID_PUBLIC_KEY")),
+    ),
+    vapidPrivateKey: getEnv(
+      "VAPID_PRIVATE_KEY",
+      getEnv("CANNAKAN_PUSH_VAPID_PRIVATE_KEY"),
+    ),
+    vapidSubject: getEnv(
+      "VAPID_SUBJECT",
+      getEnv("CANNAKAN_PUSH_VAPID_SUBJECT", "mailto:info@cannakan.com"),
+    ),
   };
 }
 
@@ -125,6 +134,16 @@ function buildAbsoluteUrl(appOrigin = "", route = "#home") {
     return `${normalizedOrigin}${normalizedRoute}`;
   }
   return `${normalizedOrigin}/${normalizedRoute}`;
+}
+
+function getRequestOrigin(request) {
+  const forwardedProto = String(request?.headers?.["x-forwarded-proto"] || "").trim();
+  const forwardedHost = String(request?.headers?.["x-forwarded-host"] || request?.headers?.host || "").trim();
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return "";
 }
 
 function normalizePushPayload(payload = {}, fallback = {}) {
@@ -317,7 +336,6 @@ module.exports = async function handler(request, response) {
       configured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey && config.vapidPublicKey && config.vapidPrivateKey),
       supabaseConfigured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey),
       vapidPublicKeyAvailable: Boolean(config.vapidPublicKey),
-      vapidPrivateKeyAvailable: Boolean(config.vapidPrivateKey),
     });
   }
 
@@ -354,6 +372,7 @@ module.exports = async function handler(request, response) {
     const payload = typeof request.body === "string"
       ? JSON.parse(request.body || "{}")
       : (request.body || {});
+    const appOrigin = getEnv("CANNAKAN_APP_ORIGIN") || getRequestOrigin(request);
     const eventKey = String(payload.eventKey || "").trim();
     const category = String(payload.category || "").trim();
     const sessionId = String(payload.sessionId || payload?.notification?.sessionId || "").trim();
@@ -412,7 +431,7 @@ module.exports = async function handler(request, response) {
         ...notificationPayload,
         data: {
           ...notificationPayload.data,
-          url: buildAbsoluteUrl(getEnv("CANNAKAN_APP_ORIGIN"), notificationPayload.data.route),
+          url: buildAbsoluteUrl(appOrigin, notificationPayload.data.route),
         },
       };
 
