@@ -1332,6 +1332,9 @@ const ADMIN_EMAILS = new Set([
 // Database access should be protected with Supabase RLS policies.
 
 function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
+  if (isLocalDevQaBypassActive()) {
+    return true;
+  }
   const normalizedEmail = getNormalizedUserEmail(userOrEmail);
   return ADMIN_EMAILS.has(normalizedEmail);
 }
@@ -1380,7 +1383,7 @@ function hasResolvedAdminAccess() {
   // Admin visibility is derived from Supabase auth/session.
   // Do not use localStorage as the source of truth for admin permissions.
   // Database access should be protected with Supabase RLS policies.
-  return appState.userRole === "admin";
+  return appState.userRole === "admin" || isLocalDevQaBypassActive();
 }
 
 function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile) {
@@ -4193,6 +4196,7 @@ function createLocalDevQaProfile(user = createLocalDevQaUser()) {
 function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
   const user = createLocalDevQaUser();
   const profile = createLocalDevQaProfile(user);
+  profile.role = "admin";
 
   appState.authSession = {
     user,
@@ -4201,8 +4205,8 @@ function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
   };
   appState.user = user;
   appState.currentUserEmail = String(user.email || "").trim().toLowerCase();
-  appState.userRole = "user";
-  appState.isAdmin = false;
+  appState.userRole = "admin";
+  appState.isAdmin = true;
   appState.profile = profile;
   appState.profileError = "";
   appState.notificationPreferencesTableUnavailable = true;
@@ -9624,6 +9628,9 @@ function getCurrentAuthAccessToken() {
 }
 
 function canUseBackendPushMirror() {
+  if (isLocalDevQaBypassActive()) {
+    return false;
+  }
   return Boolean(appState.user?.id && getCurrentAuthAccessToken());
 }
 
@@ -25431,6 +25438,8 @@ function bindProfilePageForm(form) {
 
   const messageElement = form.querySelector("#profile-settings-message");
   const submitButton = form.querySelector("#profile-settings-submit");
+  const notificationPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const profilePageSettings = getCurrentProfilePageSettings();
   const state = {
     saving: false,
     resaveRequested: false,
@@ -28001,16 +28010,19 @@ function buildRealSourceProfileRecord(sourceId = "") {
     return null;
   }
 
+  const { sourceMap } = buildSourceDirectorySessionAggregate();
   const sourceRecord = findSourceById(normalizedId) || null;
-  if (!sourceRecord) {
+  const sourceAggregateKey = sourceRecord
+    ? normalizeComparableSourceKey(sourceRecord.name || sourceRecord.id || "")
+    : normalizedId;
+  const sessionAggregate = sourceMap.get(sourceAggregateKey) || null;
+  if (!sourceRecord && !sessionAggregate) {
     return null;
   }
-
-  const { sourceMap } = buildSourceDirectorySessionAggregate();
-  const sessionAggregate = sourceMap.get(normalizeComparableSourceKey(sourceRecord.name || sourceRecord.id || "")) || null;
   const totalSeeds = Math.max(0, Number(sessionAggregate?.totalSeeds) || 0);
   const totalGerminated = Math.max(0, Number(sessionAggregate?.totalGerminated) || 0);
   const averageRate = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : 0;
+  const sourceName = String(sourceRecord?.name || sessionAggregate?.name || normalizedId).trim();
   const rankedSources = Array.from(sourceMap.values())
     .sort((left, right) => {
       const sessionDelta = Math.max(0, Number(right?.sessionsLogged) || 0) - Math.max(0, Number(left?.sessionsLogged) || 0);
@@ -28019,17 +28031,17 @@ function buildRealSourceProfileRecord(sourceId = "") {
       }
       return String(left?.name || "").localeCompare(String(right?.name || ""));
     });
-  const rankIndex = rankedSources.findIndex((entry) => normalizeComparableSourceKey(entry?.name || "") === normalizeComparableSourceKey(sourceRecord.name || ""));
-  const trackRecord = getSourceDirectoryTrackRecordForSource(sourceRecord.name || "", {});
+  const rankIndex = rankedSources.findIndex((entry) => normalizeComparableSourceKey(entry?.name || "") === normalizeComparableSourceKey(sourceName));
+  const trackRecord = getSourceDirectoryTrackRecordForSource(sourceName, {});
 
   return normalizeTestedSourceMockRecord({
-    id: sourceRecord.id,
-    name: sourceRecord.name,
-    type: "Breeder / Seed Source",
-    sourceTypeLabel: "Breeder / Seed Source",
-    logoUrl: sourceRecord.logoUrl || "",
-    websiteUrl: sourceRecord.websiteUrl || "",
-    description: sourceRecord.description || "",
+    id: sourceRecord?.id || normalizedId,
+    name: sourceName,
+    type: sourceRecord ? "Breeder / Seed Source" : "Source / Breeder",
+    sourceTypeLabel: sourceRecord ? "Breeder / Seed Source" : "Source / Breeder",
+    logoUrl: sourceRecord?.logoUrl || "",
+    websiteUrl: sourceRecord?.websiteUrl || "",
+    description: sourceRecord?.description || "",
     community: {
       avgRate: averageRate,
       sessions: Math.max(0, Number(sessionAggregate?.sessionsLogged) || 0),
