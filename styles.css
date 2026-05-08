@@ -4212,6 +4212,9 @@ body.theme-dark #active-sessions-section {
   gap: 12px;
   min-width: 0;
   align-content: start;
+  width: 100%;
+  max-width: 360px;
+  justify-self: end;
 }
 
 .session-lifecycle-progress-shell {
@@ -22003,6 +22006,22 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-detail-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    gap: 16px 18px;
+  }
+
+  .session-lifecycle-detail-main {
+    gap: 16px;
+  }
+
+  .session-lifecycle-status-column {
+    justify-self: end;
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 920px) {
+  .session-lifecycle-detail-layout {
     grid-template-columns: 1fr;
     gap: 16px;
   }
@@ -22013,6 +22032,8 @@ body.theme-dark .theme-toggle-button:hover {
 
   .session-lifecycle-status-column {
     order: 2;
+    justify-self: stretch;
+    max-width: none;
   }
 
   .session-lifecycle-detail-layout .session-lifecycle-status-column {
