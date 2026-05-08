@@ -4230,6 +4230,24 @@ body.theme-dark #active-sessions-section {
   align-self: start;
 }
 
+#session-lifecycle-progress .session-lifecycle-progress-grid {
+  align-items: stretch;
+}
+
+#session-lifecycle-progress .session-lifecycle-stage {
+  height: 100%;
+  grid-template-rows: 72px 2.7em 3.5em minmax(76px, auto);
+}
+
+#session-lifecycle-progress .session-lifecycle-stage strong,
+#session-lifecycle-progress .session-lifecycle-stage .session-command-stage-helper {
+  min-height: 0;
+}
+
+#session-lifecycle-progress .session-lifecycle-stage-card {
+  align-self: end;
+}
+
 .session-lifecycle-detail-layout .session-status-panel {
   min-width: 0;
 }
@@ -22011,6 +22029,11 @@ body.theme-dark .theme-toggle-button:hover {
     text-align: left;
     grid-template-rows: auto auto auto auto;
     gap: 8px;
+  }
+
+  #session-lifecycle-progress .session-lifecycle-stage {
+    height: auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .session-lifecycle-stage p {
