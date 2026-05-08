@@ -511,6 +511,52 @@
             <div id="system-layout-reference" class="system-layout-visual"></div>
           </section>
 
+          <section id="seed-age-panel" class="session-seed-age-panel session-glass-panel" aria-labelledby="seed-age-title">
+            <label class="session-seed-age-toggle">
+              <input id="session-seed-age-tracking" type="checkbox" name="seedAgeTrackingEnabled">
+              <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
+              <span class="session-seed-age-toggle-text">
+                <span id="seed-age-title" class="session-seed-age-toggle-copy">Track Seed Age</span>
+                <span class="session-seed-age-toggle-helper">By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</span>
+              </span>
+            </label>
+            <div id="seed-age-setup-host" data-seed-age-setup-host></div>
+            <template id="seed-age-setup-template">
+              <div id="seed-age-setup-section" class="session-seed-age-setup">
+                <div class="session-seed-age-setup-header">
+                  <p class="eyebrow">Seed Age Setup</p>
+                  <p class="muted">Choose how seed age should be recorded for this session.</p>
+                </div>
+                <fieldset class="session-seed-age-mode-group">
+                  <legend>Seed age mode</legend>
+                  <label class="session-seed-age-mode-card" data-seed-age-mode-card="same">
+                    <input type="radio" name="seedAgeMode" value="same">
+                    <span class="session-seed-age-mode-copy">
+                      <strong>Same age for all seeds</strong>
+                      <span>Use one age value across this session.</span>
+                    </span>
+                  </label>
+                  <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
+                    <input type="radio" name="seedAgeMode" value="mixed">
+                    <span class="session-seed-age-mode-copy">
+                      <strong>Mixed ages by partition</strong>
+                      <span>Enter seed age separately for each partition.</span>
+                    </span>
+                  </label>
+                </fieldset>
+                <div id="session-seed-age-same-field" class="session-seed-age-same-field" hidden>
+                  <label class="session-seed-age-input-field">
+                    <span>Seed age</span>
+                    <div class="session-seed-age-input-wrap">
+                      <input type="number" name="sessionSeedAgeYears" inputmode="decimal" min="0" step="0.1" placeholder="Years old">
+                      <span class="session-seed-age-input-unit">years</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </template>
+          </section>
+
           <section id="session-lifecycle-section" class="session-lifecycle-section session-glass-panel" aria-labelledby="session-lifecycle-title">
             <div class="progress-chart-heading">
               <p class="eyebrow">Timeline</p>
@@ -587,51 +633,6 @@
         </section>
 
         <section class="partitions-panel session-workspace-content">
-          <section id="seed-age-panel" class="session-seed-age-panel session-glass-panel" aria-labelledby="seed-age-title">
-            <label class="session-seed-age-toggle">
-              <input id="session-seed-age-tracking" type="checkbox" name="seedAgeTrackingEnabled">
-              <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
-              <span class="session-seed-age-toggle-text">
-                <span id="seed-age-title" class="session-seed-age-toggle-copy">Track Seed Age</span>
-                <span class="session-seed-age-toggle-helper">By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.</span>
-              </span>
-            </label>
-            <div id="seed-age-setup-host" data-seed-age-setup-host></div>
-            <template id="seed-age-setup-template">
-              <div id="seed-age-setup-section" class="session-seed-age-setup">
-                <div class="session-seed-age-setup-header">
-                  <p class="eyebrow">Seed Age Setup</p>
-                  <p class="muted">Choose how seed age should be recorded for this session.</p>
-                </div>
-                <fieldset class="session-seed-age-mode-group">
-                  <legend>Seed age mode</legend>
-                  <label class="session-seed-age-mode-card" data-seed-age-mode-card="same">
-                    <input type="radio" name="seedAgeMode" value="same">
-                    <span class="session-seed-age-mode-copy">
-                      <strong>Same age for all seeds</strong>
-                      <span>Use one age value across this session.</span>
-                    </span>
-                  </label>
-                  <label class="session-seed-age-mode-card" data-seed-age-mode-card="mixed">
-                    <input type="radio" name="seedAgeMode" value="mixed">
-                    <span class="session-seed-age-mode-copy">
-                      <strong>Mixed ages by partition</strong>
-                      <span>Enter seed age separately for each partition.</span>
-                    </span>
-                  </label>
-                </fieldset>
-                <div id="session-seed-age-same-field" class="session-seed-age-same-field" hidden>
-                  <label class="session-seed-age-input-field">
-                    <span>Seed age</span>
-                    <div class="session-seed-age-input-wrap">
-                      <input type="number" name="sessionSeedAgeYears" inputmode="decimal" min="0" step="0.1" placeholder="Years old">
-                      <span class="session-seed-age-input-unit">years</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            </template>
-          </section>
           <div class="partition-work-header session-glass-panel session-workspace-panel-head">
             <div class="partition-work-heading">
               <span class="partition-product-icon" aria-hidden="true">

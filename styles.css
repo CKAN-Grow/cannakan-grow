@@ -12666,18 +12666,6 @@ body.theme-dark .contact-reason-card.is-active {
   margin: 0;
 }
 
-.session-workspace-shell--detail .system-layout-block {
-  order: 1;
-}
-
-.session-workspace-shell--detail .session-detail-seed-age-form {
-  order: 2;
-}
-
-.session-workspace-shell--detail .session-lifecycle-section {
-  order: 3;
-}
-
 .session-detail-supplies-section {
   display: grid;
   gap: 0;
