@@ -4196,23 +4196,29 @@ body.theme-dark #active-sessions-section {
 .session-lifecycle-detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-areas: "main status";
   gap: 18px 22px;
   align-items: start;
 }
 
 .session-lifecycle-detail-main {
+  grid-area: main;
   display: grid;
   gap: 18px;
   min-width: 0;
+  width: 100%;
+  justify-self: stretch;
   align-content: start;
 }
 
 .session-lifecycle-status-column {
+  grid-area: status;
   display: grid;
   gap: 12px;
   min-width: 0;
   align-content: start;
   width: 100%;
+  align-self: start;
   max-width: 360px;
   justify-self: end;
 }
@@ -12664,12 +12670,16 @@ body.theme-dark .contact-reason-card.is-active {
   display: grid;
   gap: 0;
   min-width: 0;
+  width: 100%;
+  justify-self: stretch;
   align-content: start;
 }
 
 .session-detail-supplies-anchor {
   display: grid;
   min-width: 0;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .session-detail-supplies-anchor .active-session-supplies-card {
@@ -22007,6 +22017,7 @@ body.theme-dark .theme-toggle-button:hover {
 
   .session-lifecycle-detail-layout {
     grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+    grid-template-areas: "main status";
     gap: 16px 18px;
   }
 
@@ -22023,6 +22034,9 @@ body.theme-dark .theme-toggle-button:hover {
 @media (max-width: 920px) {
   .session-lifecycle-detail-layout {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "status";
     gap: 16px;
   }
 
@@ -22031,7 +22045,6 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-status-column {
-    order: 2;
     justify-self: stretch;
     max-width: none;
   }
