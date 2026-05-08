@@ -27818,6 +27818,79 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   padding: 20px 22px;
 }
 
+.session-workspace-form .partition-work-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "heading sequence"
+    "seed-age seed-age";
+  gap: 14px 18px;
+}
+
+.session-workspace-form .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
+  grid-template-areas:
+    "heading sequence"
+    "seed-age seed-age"
+    "seed-age-setup seed-age-setup";
+}
+
+.session-workspace-form .partition-work-header .partition-work-heading {
+  grid-area: heading;
+}
+
+.session-workspace-form .partition-work-header .session-seed-age-toggle {
+  grid-area: seed-age;
+  width: 100%;
+}
+
+.session-workspace-form .partition-work-header .session-sequence-label {
+  grid-area: sequence;
+}
+
+.session-workspace-form .partition-work-header .session-seed-age-setup-host {
+  grid-area: seed-age-setup;
+  width: 100%;
+}
+
+.session-workspace-form .partition-work-header .session-seed-age-setup-host:empty {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .session-workspace-form .partition-work-header {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "heading"
+      "seed-age";
+  }
+
+  .session-workspace-form .partition-work-header:has(.session-sequence-label:not([hidden])) {
+    grid-template-areas:
+      "heading"
+      "seed-age"
+      "sequence";
+  }
+
+  .session-workspace-form .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
+    grid-template-areas:
+      "heading"
+      "seed-age"
+      "seed-age-setup";
+  }
+
+  .session-workspace-form .partition-work-header:has(.session-sequence-label:not([hidden])):has(.session-seed-age-setup-host:not(:empty)) {
+    grid-template-areas:
+      "heading"
+      "seed-age"
+      "sequence"
+      "seed-age-setup";
+  }
+
+  .session-workspace-form .partition-work-header .session-sequence-label {
+    justify-self: start;
+  }
+}
+
 .session-workspace-shell .partition-work-heading {
   column-gap: 14px;
   row-gap: 4px;
