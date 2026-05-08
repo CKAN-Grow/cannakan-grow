@@ -5368,23 +5368,54 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   width: 100%;
   min-width: 0;
   padding: 10px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid var(--line);
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.13) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 28%),
+    rgba(10, 16, 12, 0.84);
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.24),
+    0 0 24px rgba(148, 209, 89, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px) saturate(135%);
 }
 
 .session-image-frame {
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  background:
+    linear-gradient(180deg, rgba(17, 25, 19, 0.95), rgba(7, 11, 8, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 -28px 44px rgba(0, 0, 0, 0.22),
+    0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.session-image-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.2)),
+    radial-gradient(circle at 50% 15%, transparent 0%, transparent 52%, rgba(0, 0, 0, 0.18) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 0 28px rgba(0, 0, 0, 0.22);
 }
 
 .session-image-thumb {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
-  border-radius: 12px;
-  background: rgba(24, 34, 24, 0.08);
+  border-radius: 13px;
+  background: rgba(7, 12, 8, 0.8);
   display: block;
   transition: filter 0.18s ease, transform 0.18s ease;
 }
@@ -5484,6 +5515,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .session-image-badge {
   position: absolute;
+  z-index: 2;
   left: 10px;
   bottom: 10px;
   padding: 4px 8px;
@@ -5499,25 +5531,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   position: absolute;
   top: 10px;
   right: 10px;
+  z-index: 3;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.5);
-  color: #ff8a8a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.02)),
+    rgba(8, 12, 9, 0.7);
+  color: #f0c1bd;
   border-radius: 999px;
   cursor: pointer;
-  opacity: 0.88;
-  backdrop-filter: blur(8px);
-  transition: background-color 0.18s ease, color 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+  opacity: 0.92;
+  backdrop-filter: blur(12px) saturate(135%);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .session-image-remove svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   stroke: currentColor;
   stroke-width: 1.9;
   stroke-linecap: round;
@@ -5528,14 +5566,29 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .session-image-card:hover .session-image-remove,
 .session-image-remove:focus-visible {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.68);
-  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.14);
+  border-color: rgba(255, 116, 108, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 119, 108, 0.16), rgba(255, 119, 108, 0.06)),
+    rgba(10, 12, 10, 0.82);
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.34),
+    0 0 0 3px rgba(255, 107, 107, 0.12),
+    0 0 18px rgba(255, 107, 107, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .session-image-remove:hover,
 .session-image-remove:focus-visible {
-  color: #ffb2b2;
+  color: #ffd2ce;
   transform: translateY(-1px);
+}
+
+.session-image-remove:active {
+  transform: translateY(0);
+  border-color: rgba(255, 116, 108, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 119, 108, 0.24), rgba(255, 119, 108, 0.1)),
+    rgba(10, 12, 10, 0.88);
 }
 
 .session-image-remove:disabled {
@@ -18320,12 +18373,20 @@ body.theme-dark .contact-reason-card.is-active {
   width: 100%;
   max-width: 400px;
   min-width: 0;
-  padding: 0;
-  border-radius: 16px;
+  padding: 10px;
+  border-radius: 20px;
   overflow: hidden;
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 30%),
+    rgba(10, 16, 12, 0.86);
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.28),
+    0 0 26px rgba(148, 209, 89, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(16px) saturate(135%);
   display: block;
 }
 
@@ -18334,6 +18395,25 @@ body.theme-dark .contact-reason-card.is-active {
   border-radius: 16px;
   overflow: hidden;
   width: 100%;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background: rgba(7, 12, 8, 0.86);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 -34px 52px rgba(0, 0, 0, 0.22);
+}
+
+.snapshot-preview-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.18)),
+    radial-gradient(circle at 50% 12%, transparent 0%, transparent 54%, rgba(0, 0, 0, 0.18) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    inset 0 0 30px rgba(0, 0, 0, 0.18);
 }
 
 .snapshot-preview-media > img,
@@ -18344,8 +18424,8 @@ body.theme-dark .contact-reason-card.is-active {
   max-width: 100%;
   margin: 0;
   object-fit: contain;
-  background: transparent;
-  border-radius: 16px;
+  background: rgba(7, 12, 8, 0.86);
+  border-radius: 15px;
 }
 
 .snapshot-preview-modal::backdrop {
@@ -31125,9 +31205,16 @@ body.theme-dark .share-snapshot-section .snapshot-source-placeholder {
 }
 
 body.theme-dark .share-snapshot-section .snapshot-preview-card {
-  background: #ffffff !important;
-  border: none !important;
-  box-shadow: none !important;
+  border-color: rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.14) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0) 30%),
+    rgba(10, 16, 12, 0.86);
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.28),
+    0 0 26px rgba(148, 209, 89, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
 }
 
 body.theme-dark .snapshot-action-row {
