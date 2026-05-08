@@ -43771,7 +43771,10 @@ function buildPartitionFormCard(partition, index, options = {}) {
     ${showSeedAgeField ? `
     <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="Age" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+      <span class="partition-seed-age-input-wrap">
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
+      </span>
       <span class="field-warning" aria-live="polite">Enter a valid age in years or leave blank.</span>
     </label>
     ` : ""}

@@ -29561,6 +29561,30 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   text-align: center;
 }
 
+.partition-seed-age-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.partition-seed-age-input-wrap input[name^="seedAgeYears-"] {
+  width: 52px;
+  min-width: 0;
+  flex: 0 0 52px;
+  text-align: center;
+}
+
+.partition-seed-age-input-unit {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
 .partition-row.partition-row--filled {
   background-color: #f1f3f2 !important;
 }
