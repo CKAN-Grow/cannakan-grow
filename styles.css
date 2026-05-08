@@ -27914,9 +27914,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-seed-age-input-wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(70px, 92px) auto;
   gap: 10px;
   align-items: center;
+  justify-content: start;
 }
 
 .session-seed-age-input-unit {
@@ -33780,7 +33781,7 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .session-seed-age-input-wrap {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(70px, 92px) auto;
   }
 }
 

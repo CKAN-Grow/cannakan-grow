@@ -36836,7 +36836,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
                 <label>
                   <span>Seed age</span>
                   <div class="session-seed-age-input-shell">
-                    <input type="number" name="sessionSeedAgeYears" min="0" step="0.1" inputmode="decimal" placeholder="Years old" value="${escapeHtml(sessionSeedAgeYears)}">
+                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.1" inputmode="decimal" placeholder="Years old" value="${escapeHtml(sessionSeedAgeYears)}">
                     <span>years</span>
                   </div>
                 </label>
@@ -43771,7 +43771,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
     ${showSeedAgeField ? `
     <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="Years" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="Age" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
       <span class="field-warning" aria-live="polite">Enter a valid age in years or leave blank.</span>
     </label>
     ` : ""}
