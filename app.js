@@ -5072,7 +5072,10 @@ function renderPushDiagnosticsPanelMarkup() {
   const subscriptionMeta = getPushSubscriptionSupportMeta(diagnostics.pushSupportState || getPushSubscriptionSupportState());
   const vapidMeta = getPushDiagnosticsStatusMeta(Boolean(diagnostics.vapidKeyAvailable), "Available", "Missing");
   const backendMeta = diagnostics.backendReachable
-    ? getPushDiagnosticsStatusMeta(Boolean(diagnostics.backendConfigured), diagnostics.backendConfigured ? "Configured" : "Reachable")
+    ? {
+      tone: diagnostics.backendConfigured ? "success" : "warning",
+      label: String(diagnostics.backendStatusLabel || (diagnostics.backendConfigured ? "Configured" : "Reachable")).trim() || (diagnostics.backendConfigured ? "Configured" : "Reachable"),
+    }
     : { tone: diagnostics.loading ? "info" : "warning", label: diagnostics.loading ? "Checking" : "Unavailable" };
   const deviceMeta = diagnostics.currentDeviceRegistered
     ? getPushDiagnosticsStatusMeta(true, diagnostics.currentDeviceSaved ? "Registered" : "Subscribed")
@@ -5098,7 +5101,7 @@ function renderPushDiagnosticsPanelMarkup() {
         ${renderPushDiagnosticsRowMarkup("Browser permission", permissionMeta.label, permissionMeta.tone, "Current browser/device notification permission")}
         ${renderPushDiagnosticsRowMarkup("Push subscription", subscriptionMeta.label, subscriptionMeta.tone, "Current Push API readiness for this device")}
         ${renderPushDiagnosticsRowMarkup("VAPID public key", vapidMeta.label, vapidMeta.tone, "Public push key availability in runtime config")}
-        ${renderPushDiagnosticsRowMarkup("Backend /api/push-send", backendMeta.label, backendMeta.tone, diagnostics.backendReachable ? "Serverless route responded to diagnostics check" : "Push sender route has not responded yet")}
+        ${renderPushDiagnosticsRowMarkup("Backend /api/push-send", backendMeta.label, backendMeta.tone, diagnostics.backendReachable ? (String(diagnostics.backendMessage || "").trim() || "Serverless route responded to diagnostics check") : "Push sender route has not responded yet")}
         ${renderPushDiagnosticsRowMarkup("Current device", deviceMeta.label, deviceMeta.tone, diagnostics.currentDeviceSaved ? "Device record is stored for this signed-in user" : "No saved device record yet")}
       </div>
       <div class="profile-push-delivery-meta profile-push-diagnostics-meta">
@@ -5137,6 +5140,7 @@ async function refreshPushDiagnosticsState(options = {}) {
   let backendReachable = false;
   let backendConfigured = false;
   let backendStatusLabel = "Unavailable";
+  let backendMessage = "";
   let lastErrorMessage = preserveLastStatus ? String(appState.pushDiagnostics?.lastErrorMessage || "").trim() : "";
 
   try {
@@ -5163,12 +5167,16 @@ async function refreshPushDiagnosticsState(options = {}) {
       const payload = await response.json().catch(() => ({}));
       backendConfigured = payload?.configured === true;
       backendStatusLabel = response.ok
-        ? (backendConfigured ? "Configured" : "Reachable")
+        ? (String(payload?.statusLabel || "").trim() || (backendConfigured ? "Configured" : "Reachable"))
         : `HTTP ${response.status}`;
+      backendMessage = response.ok
+        ? String(payload?.message || "").trim()
+        : "";
     } catch (error) {
       backendReachable = false;
       backendConfigured = false;
       backendStatusLabel = "Unavailable";
+      backendMessage = "";
       lastErrorMessage = error?.message || "Could not reach /api/push-send.";
     }
 
@@ -5182,6 +5190,7 @@ async function refreshPushDiagnosticsState(options = {}) {
       backendReachable,
       backendConfigured,
       backendStatusLabel,
+      backendMessage,
       currentDeviceRegistered: Boolean(browserSubscription || (currentDeviceRecord && !currentDeviceRecord.disabledAt && (currentDeviceRecord.endpoint || currentDeviceRecord.pushEnabled))),
       currentDeviceSaved: Boolean(currentDeviceRecord && !currentDeviceRecord.disabledAt && currentDeviceRecord.deviceKey),
       lastErrorMessage,
@@ -5198,6 +5207,7 @@ async function refreshPushDiagnosticsState(options = {}) {
       backendReachable,
       backendConfigured,
       backendStatusLabel,
+      backendMessage: "",
       currentDeviceRegistered: false,
       currentDeviceSaved: false,
       lastErrorMessage: error?.message || "Push diagnostics could not be refreshed.",

@@ -17,8 +17,14 @@ function getEnv(name, fallback = "") {
 
 function getRuntimeConfig() {
   return {
-    supabaseUrl: getEnv("CANNAKAN_SUPABASE_URL"),
-    supabaseServiceRoleKey: getEnv("CANNAKAN_SUPABASE_SERVICE_ROLE_KEY"),
+    supabaseUrl: getEnv(
+      "CANNAKAN_SUPABASE_URL",
+      getEnv("SUPABASE_URL", getEnv("NEXT_PUBLIC_SUPABASE_URL")),
+    ),
+    supabaseServiceRoleKey: getEnv(
+      "CANNAKAN_SUPABASE_SERVICE_ROLE_KEY",
+      getEnv("SUPABASE_SERVICE_ROLE_KEY", getEnv("SUPABASE_SERVICE_KEY", getEnv("SUPABASE_SECRET_KEY"))),
+    ),
     vapidPublicKey: getEnv(
       "VAPID_PUBLIC_KEY",
       getEnv("CANNAKAN_PUSH_PUBLIC_KEY", getEnv("CANNAKAN_PUSH_VAPID_PUBLIC_KEY")),
@@ -31,6 +37,41 @@ function getRuntimeConfig() {
       "VAPID_SUBJECT",
       getEnv("CANNAKAN_PUSH_VAPID_SUBJECT", "mailto:info@cannakan.com"),
     ),
+  };
+}
+
+function getBackendReadiness(config = {}) {
+  const supabaseUrlAvailable = Boolean(config.supabaseUrl);
+  const supabaseServerKeyAvailable = Boolean(config.supabaseServiceRoleKey);
+  const vapidPublicKeyAvailable = Boolean(config.vapidPublicKey);
+  const vapidConfigured = Boolean(config.vapidPublicKey && config.vapidPrivateKey);
+  const configured = Boolean(supabaseUrlAvailable && supabaseServerKeyAvailable && vapidConfigured);
+
+  let statusLabel = "Ready";
+  let message = "Push delivery backend is fully configured.";
+  if (!supabaseUrlAvailable) {
+    statusLabel = "Needs Supabase URL";
+    message = "The push delivery backend is missing its Supabase project URL.";
+  } else if (!supabaseServerKeyAvailable) {
+    statusLabel = "Needs server key";
+    message = "The push delivery backend is missing its Supabase server/service-role key.";
+  } else if (!vapidPublicKeyAvailable) {
+    statusLabel = "Needs public key";
+    message = "The push delivery backend is missing its VAPID public key.";
+  } else if (!vapidConfigured) {
+    statusLabel = "Needs VAPID keys";
+    message = "The push delivery backend is missing one or more VAPID server keys.";
+  }
+
+  return {
+    configured,
+    supabaseConfigured: Boolean(supabaseUrlAvailable && supabaseServerKeyAvailable),
+    supabaseUrlAvailable,
+    supabaseServerKeyAvailable,
+    vapidConfigured,
+    vapidPublicKeyAvailable,
+    statusLabel,
+    message,
   };
 }
 
@@ -144,6 +185,34 @@ function getRequestOrigin(request) {
   }
 
   return "";
+}
+
+function getAuthorizationHeader(request) {
+  const headers = request?.headers || {};
+  return String(
+    headers.authorization
+    || headers.Authorization
+    || "",
+  ).trim();
+}
+
+function parseRequestBody(body) {
+  if (body === undefined || body === null || body === "") {
+    return {};
+  }
+  if (typeof body === "string") {
+    return JSON.parse(body || "{}");
+  }
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(body)) {
+    return JSON.parse(body.toString("utf8") || "{}");
+  }
+  if (body instanceof Uint8Array) {
+    return JSON.parse(Buffer.from(body).toString("utf8") || "{}");
+  }
+  if (typeof body === "object") {
+    return body;
+  }
+  throw new Error("Unsupported request body.");
 }
 
 function normalizePushPayload(payload = {}, fallback = {}) {
@@ -329,13 +398,19 @@ function shouldTreatSubscriptionAsExpired(error) {
 
 module.exports = async function handler(request, response) {
   const config = getRuntimeConfig();
+  const readiness = getBackendReadiness(config);
   if (request.method === "GET") {
     return json(response, 200, {
       ok: true,
       reachable: true,
-      configured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey && config.vapidPublicKey && config.vapidPrivateKey),
-      supabaseConfigured: Boolean(config.supabaseUrl && config.supabaseServiceRoleKey),
-      vapidPublicKeyAvailable: Boolean(config.vapidPublicKey),
+      configured: readiness.configured,
+      supabaseConfigured: readiness.supabaseConfigured,
+      vapidConfigured: readiness.vapidConfigured,
+      vapidPublicKeyAvailable: readiness.vapidPublicKeyAvailable,
+      supabaseUrlAvailable: readiness.supabaseUrlAvailable,
+      supabaseServerKeyAvailable: readiness.supabaseServerKeyAvailable,
+      statusLabel: readiness.statusLabel,
+      message: readiness.message,
     });
   }
 
@@ -344,15 +419,19 @@ module.exports = async function handler(request, response) {
     return json(response, 405, { ok: false, error: "Method not allowed" });
   }
 
-  if (!config.supabaseUrl || !config.supabaseServiceRoleKey || !config.vapidPublicKey || !config.vapidPrivateKey) {
+  if (!readiness.configured) {
     return json(response, 202, {
       ok: false,
       skipped: true,
-      reason: "Push delivery backend is not configured yet.",
+      reason: readiness.message,
+      statusLabel: readiness.statusLabel,
+      supabaseConfigured: readiness.supabaseConfigured,
+      vapidConfigured: readiness.vapidConfigured,
+      vapidPublicKeyAvailable: readiness.vapidPublicKeyAvailable,
     });
   }
 
-  const authorizationHeader = String(request.headers.authorization || "").trim();
+  const authorizationHeader = getAuthorizationHeader(request);
   const accessToken = authorizationHeader.startsWith("Bearer ")
     ? authorizationHeader.slice("Bearer ".length).trim()
     : "";
@@ -369,9 +448,15 @@ module.exports = async function handler(request, response) {
       return json(response, 401, { ok: false, error: "Could not verify the signed-in user." });
     }
 
-    const payload = typeof request.body === "string"
-      ? JSON.parse(request.body || "{}")
-      : (request.body || {});
+    let payload = {};
+    try {
+      payload = parseRequestBody(request.body);
+    } catch (error) {
+      return json(response, 400, {
+        ok: false,
+        error: "Request body must be valid JSON.",
+      });
+    }
     const appOrigin = getEnv("CANNAKAN_APP_ORIGIN") || getRequestOrigin(request);
     const eventKey = String(payload.eventKey || "").trim();
     const category = String(payload.category || "").trim();
