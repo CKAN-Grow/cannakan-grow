@@ -12662,6 +12662,14 @@ body.theme-dark .contact-reason-card.is-active {
   margin-top: 16px;
 }
 
+#session-lifecycle-section .session-lifecycle-detail-main {
+  gap: 10px;
+}
+
+#session-lifecycle-section .session-lifecycle-supplies-anchor {
+  margin-top: 0;
+}
+
 .session-detail-seed-age-form {
   margin: 0;
 }
