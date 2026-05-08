@@ -46269,6 +46269,22 @@ function renderSessionDetail(sessionId) {
     firstPlantedAt: session.firstPlantedAt || "",
     completedAt: session.completedAt || "",
   });
+  if (detail.seedAgeForm instanceof HTMLFormElement) {
+    detail.seedAgeForm.dataset.seedAgeEditingUnlocked = "false";
+  }
+  const syncDetailSeedAgeVisibility = () => {
+    if (!(detail.seedAgeForm instanceof HTMLFormElement)) {
+      return false;
+    }
+
+    const visible = shouldShowDetailSeedAgeEditor({
+      isCreateMode,
+      sessionStatus: detail.statusField?.value || "",
+      seedAgeEditingUnlocked: detail.seedAgeForm.dataset.seedAgeEditingUnlocked === "true",
+    });
+    detail.seedAgeForm.hidden = !visible;
+    return visible;
+  };
   initializeSessionImageState(detail.imageSection, {
     input: detail.imageInput,
     grid: detail.imageGrid,
@@ -46324,6 +46340,7 @@ function renderSessionDetail(sessionId) {
     },
   });
   updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+  syncDetailSeedAgeVisibility();
   updateSessionStatusReminder(
     detail.statusReminder,
     session.date,
@@ -46479,6 +46496,10 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
+    if (!syncDetailSeedAgeVisibility()) {
+      return;
+    }
+
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
@@ -46526,6 +46547,10 @@ function renderSessionDetail(sessionId) {
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
     applyStageEditingMode(app, detail.statusField.value);
+    if (detail.seedAgeForm instanceof HTMLFormElement) {
+      detail.seedAgeForm.dataset.seedAgeEditingUnlocked = "false";
+    }
+    syncDetailSeedAgeVisibility();
     updateSessionStatusReminder(
       detail.statusReminder,
       session.date,
@@ -46594,9 +46619,20 @@ function renderSessionDetail(sessionId) {
 
   detail.statusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
+    const previousProgressKey = getSessionProgressKeyFromSession(session);
+    const selectedProgressKey = getSessionStatusProgressKey(detail.statusField);
+    const manuallyRevertedToSoaking = selectedProgressKey === "soaking"
+      && previousProgressKey
+      && previousProgressKey !== "soaking";
+    if (detail.seedAgeForm instanceof HTMLFormElement) {
+      detail.seedAgeForm.dataset.seedAgeEditingUnlocked = manuallyRevertedToSoaking ? "true" : "false";
+    }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     session.sessionStatus = detail.statusField.value;
+    session.germinationStartedAt = detail.statusField.dataset.germinationStartedAt || "";
+    session.firstPlantedAt = detail.statusField.dataset.firstPlantedAt || "";
+    session.completedAt = detail.statusField.dataset.completedAt || "";
     syncSessionDetailHeaderMeta(detail, session);
     if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detail.statusField.value) === "germinating") {
       session.germinationStartedAt = new Date().toISOString();
@@ -46624,6 +46660,7 @@ function renderSessionDetail(sessionId) {
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
     applyStageEditingMode(app, detail.statusField.value);
+    syncDetailSeedAgeVisibility();
     refreshDetailDerivedViews();
 
     const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
@@ -46646,7 +46683,9 @@ function renderSessionDetail(sessionId) {
       }
       return null;
     }
-    const seedAgeValidation = validateSeedAgeSettings(detail.seedAgeForm);
+    const seedAgeValidation = detail.seedAgeForm?.hidden
+      ? { isValid: true, message: "", firstInvalidField: null }
+      : validateSeedAgeSettings(detail.seedAgeForm);
     if (!seedAgeValidation.isValid) {
       detail.saveMessage.textContent = seedAgeValidation.message;
       seedAgeValidation.firstInvalidField?.focus();
@@ -46685,6 +46724,7 @@ function renderSessionDetail(sessionId) {
       syncSessionDetailHeaderMeta(detail, session);
       populateSessionDetailEditorForm(detail.detailsForm, session);
       populateSessionSeedAgeForm(detail.seedAgeForm, session);
+      syncDetailSeedAgeVisibility();
       setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
     } else if (detail.detailsPanel && !detail.detailsPanel.hidden && detail.detailsMessage) {
@@ -47989,6 +48029,32 @@ function getSessionStatusProgressKey(control) {
     return "soaking";
   }
   return "";
+}
+
+function getSessionProgressKeyFromSession(session = {}) {
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
+  if (normalizedStatus === "completed" || session?.completedAt) {
+    return "completed";
+  }
+  if (session?.firstPlantedAt) {
+    return "first-germinated";
+  }
+  if (normalizedStatus === "germinating" || session?.germinationStartedAt) {
+    return "germination";
+  }
+  if (normalizedStatus === "soaking") {
+    return "soaking";
+  }
+  return "";
+}
+
+function shouldShowDetailSeedAgeEditor({
+  isCreateMode = false,
+  sessionStatus = "",
+  seedAgeEditingUnlocked = false,
+} = {}) {
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  return Boolean(isCreateMode || (seedAgeEditingUnlocked && normalizedStatus === "soaking"));
 }
 
 function updateSessionStatusAppearance(control, trigger) {

@@ -12726,6 +12726,10 @@ body.theme-dark .contact-reason-card.is-active {
   width: 100%;
 }
 
+.session-detail-seed-age-form[hidden] {
+  display: none !important;
+}
+
 .session-detail-seed-age-form .session-seed-age-setup-host:empty {
   display: none;
 }
@@ -28005,13 +28009,17 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .session-workspace-shell--detail .partition-work-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    "heading sequence"
-    "seed-age seed-age";
+  grid-template-areas: "heading sequence";
   gap: 14px 18px;
 }
 
-.session-workspace-shell--detail .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
+.session-workspace-shell--detail .partition-work-header:has(.session-detail-seed-age-form:not([hidden])) {
+  grid-template-areas:
+    "heading sequence"
+    "seed-age seed-age";
+}
+
+.session-workspace-shell--detail .partition-work-header:has(.session-detail-seed-age-form:not([hidden])):has(.session-seed-age-setup-host:not(:empty)) {
   grid-template-areas:
     "heading sequence"
     "seed-age seed-age";
@@ -28078,12 +28086,22 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .session-workspace-shell--detail .partition-work-header {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "heading";
+  }
+
+  .session-workspace-shell--detail .partition-work-header:has(.session-detail-seed-age-form:not([hidden])) {
     grid-template-areas:
       "heading"
       "seed-age";
   }
 
   .session-workspace-shell--detail .partition-work-header:has(.session-sequence-label:not([hidden])) {
+    grid-template-areas:
+      "heading"
+      "sequence";
+  }
+
+  .session-workspace-shell--detail .partition-work-header:has(.session-detail-seed-age-form:not([hidden])):has(.session-sequence-label:not([hidden])) {
     grid-template-areas:
       "heading"
       "seed-age"
