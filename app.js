@@ -1984,9 +1984,13 @@ function registerServiceWorker() {
   }
 
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/service-worker.js").then((registration) => {
-      appState.serviceWorkerRegistration = registration;
-      void registration.update();
+    getServiceWorkerRegistration({ requireActive: false, update: true }).then((registration) => {
+      if (!registration?.active) {
+        void getServiceWorkerRegistration({
+          requireActive: true,
+          timeoutMs: SERVICE_WORKER_DIAGNOSTIC_READY_TIMEOUT_MS,
+        });
+      }
     }).catch((error) => {
       console.warn("Service worker registration failed", error);
     });
@@ -4760,21 +4764,211 @@ function urlBase64ToUint8Array(value = "") {
   return Uint8Array.from([...rawData].map((character) => character.charCodeAt(0)));
 }
 
-async function getServiceWorkerRegistration() {
+const SERVICE_WORKER_READY_TIMEOUT_MS = 12000;
+const SERVICE_WORKER_DIAGNOSTIC_READY_TIMEOUT_MS = 3500;
+
+function getServiceWorkerLifecycleStatus(registration = null) {
   if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+    return "unsupported";
+  }
+
+  if (!registration) {
+    return "inactive";
+  }
+
+  if (registration.active) {
+    return "active";
+  }
+
+  const installingState = String(registration.installing?.state || "").trim().toLowerCase();
+  const waitingState = String(registration.waiting?.state || "").trim().toLowerCase();
+
+  if (installingState === "activating" || waitingState === "activating") {
+    return "activating";
+  }
+  if (registration.installing) {
+    return "installing";
+  }
+  if (registration.waiting) {
+    return "waiting";
+  }
+
+  return "inactive";
+}
+
+function syncPushDiagnosticsServiceWorkerStatus(registration = null) {
+  if (!appState.pushDiagnostics) {
+    return;
+  }
+
+  appState.pushDiagnostics = {
+    ...appState.pushDiagnostics,
+    serviceWorkerStatus: getServiceWorkerLifecycleStatus(registration),
+  };
+}
+
+async function waitForServiceWorkerActivation(registration = null, timeoutMs = SERVICE_WORKER_READY_TIMEOUT_MS) {
+  if (!registration) {
     return null;
   }
 
-  if (appState.serviceWorkerRegistration) {
-    return appState.serviceWorkerRegistration;
+  if (registration.active) {
+    return registration;
+  }
+
+  return new Promise((resolve) => {
+    let finished = false;
+    const trackedWorkers = new Set();
+    const safeTimeoutMs = Math.max(1000, Number(timeoutMs) || SERVICE_WORKER_READY_TIMEOUT_MS);
+
+    const cleanup = () => {
+      registration.removeEventListener?.("updatefound", handleUpdateFound);
+      navigator.serviceWorker.removeEventListener?.("controllerchange", handleControllerChange);
+      trackedWorkers.forEach((worker) => {
+        worker.removeEventListener?.("statechange", handleWorkerStateChange);
+      });
+      trackedWorkers.clear();
+      window.clearTimeout(timeoutId);
+    };
+
+    const finish = (nextRegistration = registration) => {
+      if (finished) {
+        return;
+      }
+
+      const activeRegistration = nextRegistration?.active
+        ? nextRegistration
+        : (registration.active ? registration : null);
+      if (!activeRegistration) {
+        return;
+      }
+
+      finished = true;
+      appState.serviceWorkerRegistration = activeRegistration;
+      syncPushDiagnosticsServiceWorkerStatus(activeRegistration);
+      cleanup();
+      resolve(activeRegistration);
+    };
+
+    const refreshRegistration = async () => {
+      try {
+        const latestRegistration = await navigator.serviceWorker.getRegistration(registration.scope);
+        if (latestRegistration) {
+          appState.serviceWorkerRegistration = latestRegistration;
+          trackWorker(latestRegistration.installing);
+          trackWorker(latestRegistration.waiting);
+          finish(latestRegistration);
+        } else {
+          finish(registration);
+        }
+      } catch (error) {
+        finish(registration);
+      }
+    };
+
+    function handleWorkerStateChange() {
+      void refreshRegistration();
+    }
+
+    function handleUpdateFound() {
+      trackWorker(registration.installing);
+      trackWorker(registration.waiting);
+      void refreshRegistration();
+    }
+
+    function handleControllerChange() {
+      void refreshRegistration();
+    }
+
+    function trackWorker(worker) {
+      if (!worker || trackedWorkers.has(worker)) {
+        return;
+      }
+
+      trackedWorkers.add(worker);
+      worker.addEventListener?.("statechange", handleWorkerStateChange);
+      if (worker.state === "activated") {
+        void refreshRegistration();
+      }
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+      cleanup();
+      resolve(registration.active ? registration : null);
+    }, safeTimeoutMs);
+
+    registration.addEventListener?.("updatefound", handleUpdateFound);
+    navigator.serviceWorker.addEventListener?.("controllerchange", handleControllerChange);
+    trackWorker(registration.installing);
+    trackWorker(registration.waiting);
+    void refreshRegistration();
+  });
+}
+
+async function waitForNavigatorServiceWorkerReady(timeoutMs = SERVICE_WORKER_READY_TIMEOUT_MS) {
+  const safeTimeoutMs = Math.max(1000, Number(timeoutMs) || SERVICE_WORKER_READY_TIMEOUT_MS);
+  return Promise.race([
+    navigator.serviceWorker.ready.then((registration) => registration || null).catch(() => null),
+    new Promise((resolve) => {
+      window.setTimeout(() => resolve(null), safeTimeoutMs);
+    }),
+  ]);
+}
+
+async function getServiceWorkerRegistration(options = {}) {
+  const {
+    requireActive = true,
+    timeoutMs = SERVICE_WORKER_READY_TIMEOUT_MS,
+    update = false,
+  } = options || {};
+
+  if (!("serviceWorker" in navigator) || !window.isSecureContext) {
+    syncPushDiagnosticsServiceWorkerStatus(null);
+    return null;
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    let registration = appState.serviceWorkerRegistration || await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      registration = await navigator.serviceWorker.register("/service-worker.js");
+    }
+
     appState.serviceWorkerRegistration = registration || null;
-    return registration || null;
+    syncPushDiagnosticsServiceWorkerStatus(registration);
+
+    if (registration && update) {
+      void registration.update().catch((error) => {
+        console.warn("[Push Delivery] Service worker update check failed.", error);
+      });
+    }
+
+    if (!registration || !requireActive) {
+      return registration || null;
+    }
+
+    const readyRegistration = await Promise.race([
+      waitForNavigatorServiceWorkerReady(timeoutMs),
+      waitForServiceWorkerActivation(registration, timeoutMs).then((nextRegistration) => {
+        return nextRegistration?.active
+          ? waitForNavigatorServiceWorkerReady(Math.min(Math.max(1000, Number(timeoutMs) || SERVICE_WORKER_READY_TIMEOUT_MS), 3000))
+          : null;
+      }),
+    ]);
+    const activeRegistration = readyRegistration?.active
+      ? readyRegistration
+      : null;
+
+    appState.serviceWorkerRegistration = activeRegistration || registration || null;
+    syncPushDiagnosticsServiceWorkerStatus(appState.serviceWorkerRegistration);
+    return activeRegistration || null;
   } catch (error) {
     console.warn("[Push Delivery] Service worker not ready.", error);
+    syncPushDiagnosticsServiceWorkerStatus(appState.serviceWorkerRegistration || null);
     return null;
   }
 }
@@ -4924,6 +5118,7 @@ function getPushSubscriptionSupportState() {
   const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
   const currentSubscription = appState.currentPushSubscriptionRecord;
   const hasActiveSubscription = Boolean(currentSubscription?.endpoint && !currentSubscription?.disabledAt);
+  const serviceWorkerReady = Boolean(appState.serviceWorkerRegistration?.active);
 
   if (!window.isSecureContext || !("serviceWorker" in navigator)) {
     return "unsupported";
@@ -4937,14 +5132,17 @@ function getPushSubscriptionSupportState() {
   if (currentSubscription?.disabledAt) {
     return "disabled";
   }
+  if (!supportsPushSubscriptionApi()) {
+    return "local-only";
+  }
   if (hasActiveSubscription) {
-    return "subscribed";
+    return serviceWorkerReady ? "subscribed" : "service-worker-pending";
   }
   if (!pushPreferenceEnabled) {
     return "disabled";
   }
-  if (!supportsPushSubscriptionApi()) {
-    return "local-only";
+  if (!serviceWorkerReady) {
+    return "service-worker-pending";
   }
   if (!getConfiguredPushPublicKey()) {
     return "not-configured";
@@ -4974,6 +5172,13 @@ function getPushSubscriptionSupportMeta(state = getPushSubscriptionSupportState(
         label: "Key Needed",
         title: "Browser delivery is available, but no push key is configured yet.",
         description: "Local notification tests can still run now. A VAPID/public push key must be added before backend push delivery can subscribe this device.",
+      };
+    case "service-worker-pending":
+      return {
+        tone: "info",
+        label: "SW Pending",
+        title: "Service worker activation is still in progress.",
+        description: "This device can register for push delivery once the active service worker is ready.",
       };
     case "local-only":
       return {
@@ -5077,11 +5282,25 @@ function renderPushDiagnosticsPanelMarkup() {
   }
 
   const diagnostics = appState.pushDiagnostics || {};
-  const serviceWorkerBadge = diagnostics.serviceWorkerStatus === "active"
-    ? getPushDiagnosticsStatusMeta(true, "Active", "Missing")
-    : diagnostics.serviceWorkerStatus === "unsupported"
-      ? { tone: "warning", label: "Unsupported" }
-      : { tone: "info", label: diagnostics.serviceWorkerStatus === "loading" ? "Checking" : "Inactive" };
+  const serviceWorkerStatus = String(diagnostics.serviceWorkerStatus || "unknown").trim().toLowerCase();
+  const serviceWorkerBadge = (() => {
+    switch (serviceWorkerStatus) {
+      case "active":
+        return getPushDiagnosticsStatusMeta(true, "Active", "Missing");
+      case "installing":
+        return { tone: "info", label: "Installing" };
+      case "waiting":
+        return { tone: "info", label: "Waiting" };
+      case "activating":
+        return { tone: "info", label: "Activating" };
+      case "unsupported":
+        return { tone: "warning", label: "Unsupported" };
+      case "loading":
+        return { tone: "info", label: "Checking" };
+      default:
+        return { tone: "warning", label: "Inactive" };
+    }
+  })();
   const permissionMeta = getNotificationPermissionStateMeta(diagnostics.permissionState || getGrowRemindersBrowserPermissionState());
   const subscriptionMeta = getPushSubscriptionSupportMeta(diagnostics.pushSupportState || getPushSubscriptionSupportState());
   const vapidMeta = getPushDiagnosticsStatusMeta(Boolean(diagnostics.vapidKeyAvailable), "Available", "Missing");
@@ -5091,15 +5310,16 @@ function renderPushDiagnosticsPanelMarkup() {
       label: String(diagnostics.backendStatusLabel || (diagnostics.backendConfigured ? "Configured" : "Reachable")).trim() || (diagnostics.backendConfigured ? "Configured" : "Reachable"),
     }
     : { tone: diagnostics.loading ? "info" : "warning", label: diagnostics.loading ? "Checking" : "Unavailable" };
-  const deviceMeta = diagnostics.currentDeviceRegistered
+  const serviceWorkerReady = serviceWorkerStatus === "active";
+  const deviceMeta = serviceWorkerReady && diagnostics.currentDeviceRegistered
     ? getPushDiagnosticsStatusMeta(true, diagnostics.currentDeviceSaved ? "Registered" : "Subscribed")
-    : { tone: "info", label: "Unregistered" };
-  const canRegister = !diagnostics.loading && diagnostics.permissionState !== "unsupported";
-  const canSendTest = !diagnostics.loading && diagnostics.currentDeviceRegistered && diagnostics.backendReachable && diagnostics.backendConfigured;
+    : { tone: serviceWorkerReady ? "info" : "warning", label: serviceWorkerReady ? "Unregistered" : "SW Pending" };
+  const canRegister = !diagnostics.loading && diagnostics.permissionState !== "unsupported" && serviceWorkerStatus !== "unsupported";
+  const canSendTest = !diagnostics.loading && serviceWorkerReady && diagnostics.currentDeviceRegistered && diagnostics.backendReachable && diagnostics.backendConfigured;
   const lastTestLabel = diagnostics.lastTestResult
     ? `${diagnostics.lastTestResult} · ${formatPushDiagnosticsTimestamp(diagnostics.lastTestAt)}`
     : "No test sent yet";
-  const canUnregister = !diagnostics.loading && diagnostics.currentDeviceRegistered;
+  const canUnregister = !diagnostics.loading && serviceWorkerReady && diagnostics.currentDeviceRegistered;
 
   return `
     <div class="profile-notification-permission profile-push-diagnostics-panel is-info">
@@ -5116,7 +5336,7 @@ function renderPushDiagnosticsPanelMarkup() {
         ${renderPushDiagnosticsRowMarkup("Push subscription", subscriptionMeta.label, subscriptionMeta.tone, "Current Push API readiness for this device")}
         ${renderPushDiagnosticsRowMarkup("VAPID public key", vapidMeta.label, vapidMeta.tone, "Public push key availability in runtime config")}
         ${renderPushDiagnosticsRowMarkup("Backend /api/push-send", backendMeta.label, backendMeta.tone, diagnostics.backendReachable ? (String(diagnostics.backendMessage || "").trim() || "Serverless route responded to diagnostics check") : "Push sender route has not responded yet")}
-        ${renderPushDiagnosticsRowMarkup("Current device", deviceMeta.label, deviceMeta.tone, diagnostics.currentDeviceSaved ? "Device record is stored for this signed-in user" : "No saved device record yet")}
+        ${renderPushDiagnosticsRowMarkup("Current device", deviceMeta.label, deviceMeta.tone, serviceWorkerReady ? (diagnostics.currentDeviceSaved ? "Device record is stored for this signed-in user" : "No saved device record yet") : "Waiting for an active service worker before reporting this device ready")}
       </div>
       <div class="profile-push-delivery-meta profile-push-diagnostics-meta">
         <span>Last refresh: ${escapeHtml(formatPushDiagnosticsTimestamp(diagnostics.lastRefreshedAt))}</span>
@@ -5146,6 +5366,7 @@ async function refreshPushDiagnosticsState(options = {}) {
   const nextState = {
     ...(appState.pushDiagnostics || {}),
     loading: true,
+    serviceWorkerStatus: "loading",
     lastErrorMessage: preserveLastStatus ? String(appState.pushDiagnostics?.lastErrorMessage || "").trim() : "",
   };
   appState.pushDiagnostics = nextState;
@@ -5158,19 +5379,23 @@ async function refreshPushDiagnosticsState(options = {}) {
   let lastErrorMessage = preserveLastStatus ? String(appState.pushDiagnostics?.lastErrorMessage || "").trim() : "";
 
   try {
-    const registration = await getServiceWorkerRegistration();
-    await ensureCurrentUserPushSubscriptionState({ persistRecord: false });
-    const browserSubscription = await getCurrentBrowserPushSubscription();
+    let registration = await getServiceWorkerRegistration({ requireActive: false });
+    if (registration && !registration.active) {
+      const readyRegistration = await getServiceWorkerRegistration({
+        requireActive: true,
+        timeoutMs: SERVICE_WORKER_DIAGNOSTIC_READY_TIMEOUT_MS,
+      });
+      registration = readyRegistration || registration;
+    }
+    const serviceWorkerStatus = getServiceWorkerLifecycleStatus(registration);
+    const serviceWorkerReady = serviceWorkerStatus === "active";
+    if (appState.user?.id) {
+      await loadUserPushSubscriptions(appState.user);
+    }
+    const browserSubscription = serviceWorkerReady
+      ? await getCurrentBrowserPushSubscription({ registration })
+      : null;
     const currentDeviceRecord = appState.currentPushSubscriptionRecord;
-    const serviceWorkerStatus = !("serviceWorker" in navigator)
-      ? "unsupported"
-      : registration?.active
-        ? "active"
-        : registration?.installing
-          ? "installing"
-          : registration?.waiting
-            ? "waiting"
-            : "inactive";
 
     try {
       const response = await fetch("/api/push-send", {
@@ -5205,8 +5430,8 @@ async function refreshPushDiagnosticsState(options = {}) {
       backendConfigured,
       backendStatusLabel,
       backendMessage,
-      currentDeviceRegistered: Boolean(browserSubscription || (currentDeviceRecord && !currentDeviceRecord.disabledAt && (currentDeviceRecord.endpoint || currentDeviceRecord.pushEnabled))),
-      currentDeviceSaved: Boolean(currentDeviceRecord && !currentDeviceRecord.disabledAt && currentDeviceRecord.deviceKey),
+      currentDeviceRegistered: Boolean(serviceWorkerReady && (browserSubscription || (currentDeviceRecord && !currentDeviceRecord.disabledAt && (currentDeviceRecord.endpoint || currentDeviceRecord.pushEnabled)))),
+      currentDeviceSaved: Boolean(serviceWorkerReady && currentDeviceRecord && !currentDeviceRecord.disabledAt && currentDeviceRecord.deviceKey),
       lastErrorMessage,
       lastRefreshedAt: new Date().toISOString(),
     };
@@ -5214,7 +5439,7 @@ async function refreshPushDiagnosticsState(options = {}) {
     appState.pushDiagnostics = {
       ...(appState.pushDiagnostics || {}),
       loading: false,
-      serviceWorkerStatus: "inactive",
+      serviceWorkerStatus: getServiceWorkerLifecycleStatus(appState.serviceWorkerRegistration || null),
       permissionState: getGrowRemindersBrowserPermissionState(),
       pushSupportState: getPushSubscriptionSupportState(),
       vapidKeyAvailable: Boolean(getConfiguredPushPublicKey()),
@@ -9498,9 +9723,12 @@ async function saveUserPushSubscriptionRecord(subscription = null, options = {})
   }
 }
 
-async function getCurrentBrowserPushSubscription() {
-  const registration = await getServiceWorkerRegistration();
-  if (!registration || !supportsPushSubscriptionApi()) {
+async function getCurrentBrowserPushSubscription(options = {}) {
+  const registration = options.registration || await getServiceWorkerRegistration({
+    requireActive: options.requireActive !== false,
+    timeoutMs: options.timeoutMs || SERVICE_WORKER_READY_TIMEOUT_MS,
+  });
+  if (!registration?.active || !supportsPushSubscriptionApi()) {
     return null;
   }
 
@@ -9557,17 +9785,35 @@ async function subscribeCurrentDeviceToPushNotifications() {
     throw new Error("Browser notification permission must be granted before push delivery can be enabled.");
   }
 
-  const registration = await getServiceWorkerRegistration();
-  if (!registration) {
+  let registration = await getServiceWorkerRegistration({
+    requireActive: true,
+    timeoutMs: SERVICE_WORKER_READY_TIMEOUT_MS,
+    update: true,
+  });
+  if (!registration?.active) {
     throw new Error("Service worker registration is not ready on this device.");
   }
 
-  let subscription = await getCurrentBrowserPushSubscription();
+  let subscription = await getCurrentBrowserPushSubscription({ registration });
   if (!subscription && supportsPushSubscriptionApi() && getConfiguredPushPublicKey()) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(getConfiguredPushPublicKey()),
-    });
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(getConfiguredPushPublicKey()),
+      });
+    } catch (error) {
+      registration = await getServiceWorkerRegistration({
+        requireActive: true,
+        timeoutMs: SERVICE_WORKER_READY_TIMEOUT_MS,
+      });
+      if (!registration?.active) {
+        throw error;
+      }
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(getConfiguredPushPublicKey()),
+      });
+    }
   }
 
   if (!subscription) {
@@ -9742,7 +9988,10 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
 }
 
 async function sendServiceWorkerNotificationPayload(payload = {}) {
-  const registration = await getServiceWorkerRegistration();
+  const registration = await getServiceWorkerRegistration({
+    requireActive: true,
+    timeoutMs: SERVICE_WORKER_READY_TIMEOUT_MS,
+  });
   if (!registration?.active) {
     throw new Error("Service worker notification delivery is not ready yet.");
   }
