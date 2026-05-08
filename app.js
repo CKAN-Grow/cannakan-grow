@@ -1136,6 +1136,7 @@ const appState = {
     backendStatusLabel: "Unchecked",
     currentDeviceRegistered: false,
     currentDeviceSaved: false,
+    deviceTestResults: {},
     lastTestResult: "",
     lastTestAt: "",
     lastErrorMessage: "",
@@ -1621,6 +1622,7 @@ function resetSessionScopedAppState() {
     backendStatusLabel: "Unchecked",
     currentDeviceRegistered: false,
     currentDeviceSaved: false,
+    deviceTestResults: {},
     lastTestResult: "",
     lastTestAt: "",
     lastErrorMessage: "",
@@ -5276,6 +5278,143 @@ function renderPushDiagnosticsRowMarkup(label = "", value = "", tone = "info", h
   `;
 }
 
+function getActiveRegisteredPushDevices(records = getCurrentUserPushSubscriptions()) {
+  return sortPushSubscriptionsCurrentDeviceFirst(
+    (Array.isArray(records) ? records : [])
+      .map((record) => normalizePushSubscriptionRecord(record))
+      .filter((record) => (
+        record
+        && record.pushEnabled === true
+        && !record.disabledAt
+        && record.permissionState === "granted"
+        && Boolean(record.endpoint)
+        && Boolean(record.deviceKey)
+      )),
+  );
+}
+
+function getPushDeviceDisplayLabel(record = {}) {
+  const label = String(record?.deviceLabel || "").trim();
+  if (label) {
+    return record?.deviceKey === getCurrentPushDeviceKey() ? `${label} · Current device` : label;
+  }
+
+  const userAgent = String(record?.userAgent || "").toLowerCase();
+  const browser = userAgent.includes("edg/")
+    ? "Edge"
+    : (userAgent.includes("firefox")
+      ? "Firefox"
+      : (userAgent.includes("safari") && !userAgent.includes("chrome") ? "Safari" : "Browser"));
+  const platform = userAgent.includes("windows")
+    ? "Windows"
+    : (userAgent.includes("android")
+      ? "Android"
+      : (userAgent.includes("iphone") || userAgent.includes("ipad") ? "iOS" : "Device"));
+  const fallback = `${browser} on ${platform}`;
+  return record?.deviceKey === getCurrentPushDeviceKey() ? `${fallback} · Current device` : fallback;
+}
+
+function getPushDeviceTestResult(record = {}) {
+  const key = String(record?.deviceKey || "").trim();
+  return key ? (appState.pushDiagnostics?.deviceTestResults?.[key] || null) : null;
+}
+
+function setPushDeviceTestResults(deviceKeys = [], result = {}) {
+  const normalizedKeys = (Array.isArray(deviceKeys) ? deviceKeys : [deviceKeys])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+  if (!normalizedKeys.length) {
+    return;
+  }
+
+  const timestamp = new Date().toISOString();
+  const nextResults = {
+    ...(appState.pushDiagnostics?.deviceTestResults || {}),
+  };
+  normalizedKeys.forEach((deviceKey) => {
+    nextResults[deviceKey] = {
+      ok: result.ok === true,
+      message: String(result.message || "").trim(),
+      at: timestamp,
+    };
+  });
+  appState.pushDiagnostics = {
+    ...(appState.pushDiagnostics || {}),
+    deviceTestResults: nextResults,
+    lastTestResult: result.ok === true ? "Test push sent" : "Test push failed",
+    lastTestAt: timestamp,
+    lastErrorMessage: result.ok === true ? "" : String(result.message || "").trim(),
+  };
+}
+
+function renderPushRegisteredDeviceMarkup(record = {}, options = {}) {
+  const { canSend = false, sendingKey = "" } = options || {};
+  const deviceKey = String(record?.deviceKey || "").trim();
+  const isSending = sendingKey === deviceKey;
+  const result = getPushDeviceTestResult(record);
+  const resultTone = result?.ok === true ? "success" : "warning";
+  const lastSeen = record?.lastSeenAt ? formatPushDiagnosticsTimestamp(record.lastSeenAt) : "";
+  const created = record?.createdAt ? formatPushDiagnosticsTimestamp(record.createdAt) : "";
+  const lastTested = record?.lastTestedAt ? formatPushDiagnosticsTimestamp(record.lastTestedAt) : "";
+  const details = [
+    lastSeen ? `Last seen ${lastSeen}` : "",
+    created ? `Created ${created}` : "",
+    lastTested ? `Last tested ${lastTested}` : "",
+  ].filter(Boolean);
+
+  return `
+    <article class="profile-push-device-card">
+      <div class="profile-push-device-main">
+        <div class="profile-push-diagnostics-copy">
+          <strong>${escapeHtml(getPushDeviceDisplayLabel(record))}</strong>
+          <span>${escapeHtml(details.length ? details.join(" · ") : "No device timestamps recorded yet")}</span>
+        </div>
+        <span class="profile-permission-badge is-success">Registered</span>
+      </div>
+      <div class="profile-push-device-actions">
+        <button
+          type="button"
+          class="button button-secondary"
+          data-profile-push-diagnostics-test-device="${escapeHtml(deviceKey)}"
+          ${canSend && deviceKey && !isSending ? "" : "disabled"}
+        >${isSending ? "Sending..." : "Send Test To This Device"}</button>
+      </div>
+      ${result ? `<p class="profile-push-device-feedback is-${escapeHtml(resultTone)}">${escapeHtml(result.message || (result.ok ? "Test push sent." : "Test push failed."))}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderPushRegisteredDevicesMarkup(options = {}) {
+  const diagnostics = appState.pushDiagnostics || {};
+  const devices = getActiveRegisteredPushDevices();
+  const canSend = !diagnostics.loading && diagnostics.backendReachable && diagnostics.backendConfigured && Boolean(getCurrentAuthAccessToken()) && devices.length > 0;
+  const sendingKey = String(diagnostics.sendingDeviceKey || "").trim();
+  const isSendingAll = sendingKey === "__all__";
+
+  return `
+    <section class="profile-push-devices-panel" aria-label="Registered push devices">
+      <div class="profile-push-devices-head">
+        <div class="profile-push-diagnostics-copy">
+          <strong>Registered Push Devices</strong>
+          <span>Send test pushes to a specific saved endpoint to verify phone and PC delivery separately.</span>
+        </div>
+        <button
+          type="button"
+          class="button button-secondary"
+          data-profile-push-diagnostics-test-all="true"
+          ${canSend && !isSendingAll ? "" : "disabled"}
+        >${isSendingAll ? "Sending..." : "Send Test To All Devices"}</button>
+      </div>
+      <div class="profile-push-device-list">
+        ${devices.length
+          ? devices.map((record) => renderPushRegisteredDeviceMarkup(record, { canSend, sendingKey })).join("")
+          : '<p class="profile-notification-guidance">No active registered push devices found yet.</p>'}
+      </div>
+      ${options.feedback ? `<p class="profile-push-device-feedback is-${escapeHtml(options.feedbackTone || "info")}">${escapeHtml(options.feedback)}</p>` : ""}
+    </section>
+  `;
+}
+
 function renderPushDiagnosticsPanelMarkup() {
   if (!canViewPushDiagnosticsPanel()) {
     return "";
@@ -5349,6 +5488,7 @@ function renderPushDiagnosticsPanelMarkup() {
         <button type="button" class="button button-secondary" data-profile-push-diagnostics-refresh="true"${diagnostics.loading ? " disabled" : ""}>Refresh Status</button>
         <button type="button" class="button button-secondary" data-profile-push-diagnostics-unregister="true"${canUnregister ? "" : " disabled"}>Unregister This Device</button>
       </div>
+      ${renderPushRegisteredDevicesMarkup()}
     </div>
   `;
 }
@@ -9987,6 +10127,67 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
   }
 }
 
+async function sendBackendPushTestToRegisteredDevices(options = {}) {
+  const {
+    targetDeviceKeys = [],
+    allDevices = false,
+  } = options || {};
+  const accessToken = getCurrentAuthAccessToken();
+  if (!appState.user?.id || !accessToken) {
+    throw new Error("You must be signed in with backend access to send device push tests.");
+  }
+
+  const normalizedTargetDeviceKeys = (Array.isArray(targetDeviceKeys) ? targetDeviceKeys : [])
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+  if (!allDevices && !normalizedTargetDeviceKeys.length) {
+    throw new Error("Choose a registered device before sending a test push.");
+  }
+
+  const eventStamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const body = allDevices
+    ? "Test push sent to all registered devices."
+    : "Test push sent to this device.";
+  const testNotification = {
+    id: `push-device-test-${eventStamp}`,
+    eventKey: `push-device-test:${eventStamp}`,
+    category: "system-notice",
+    title: "Cannakan® Grow Test Notification",
+    message: body,
+    route: "#profile",
+  };
+  const payload = buildPushNotificationPayloadFromAppNotification(testNotification, {
+    title: "Cannakan® Grow Test Notification",
+    body,
+    tag: `cannakan-grow-test-${eventStamp}`,
+  });
+
+  const response = await fetch("/api/push-send", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      eventKey: testNotification.eventKey,
+      category: "system-notice",
+      route: "#profile",
+      title: testNotification.title,
+      body: testNotification.message,
+      payload,
+      targetDeviceKeys: allDevices ? [] : normalizedTargetDeviceKeys,
+      test: true,
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.ok !== true) {
+    throw new Error(result?.error || result?.reason || `Push test request returned ${response.status}.`);
+  }
+
+  return result;
+}
+
 async function sendServiceWorkerNotificationPayload(payload = {}) {
   const registration = await getServiceWorkerRegistration({
     requireActive: true,
@@ -10090,15 +10291,21 @@ async function sendProfilePushTestNotification() {
     id: `push-test-${Date.now()}`,
     eventKey: `push-test:${Date.now()}`,
     category: "system-notice",
-    title: "Test notification sent",
-    message: "Cannakan® Grow browser/PWA notification delivery is working on this device.",
+    title: "Cannakan® Grow Test Notification",
+    message: "Test push sent to this device.",
     route: "#profile",
   };
-  const testPayload = buildPushNotificationPayloadFromAppNotification(testNotification);
-  const mirrored = await sendBackendPushNotificationMirror(testNotification, {
-    payload: testPayload,
-    test: true,
-  });
+  let mirrored = false;
+  if (appState.currentPushSubscriptionRecord?.deviceKey && getCurrentAuthAccessToken()) {
+    try {
+      const result = await sendBackendPushTestToRegisteredDevices({
+        targetDeviceKeys: [appState.currentPushSubscriptionRecord.deviceKey],
+      });
+      mirrored = result?.ok === true && Number(result?.sentCount || 0) > 0;
+    } catch (error) {
+      console.warn("[Push Delivery] Backend current-device test failed.", error);
+    }
+  }
   if (!mirrored) {
     await maybeDeliverPushNotificationForAppNotification(testNotification, {
       force: true,
@@ -25930,6 +26137,132 @@ function bindProfilePageForm(form) {
   };
 
   const bindPushDiagnosticsActions = () => {
+    const testAllButton = form.querySelector("[data-profile-push-diagnostics-test-all='true']");
+    if (testAllButton instanceof HTMLButtonElement && testAllButton.dataset.bound !== "true") {
+      testAllButton.dataset.bound = "true";
+      testAllButton.addEventListener("click", async () => {
+        const devices = getActiveRegisteredPushDevices();
+        const deviceKeys = devices.map((record) => record.deviceKey).filter(Boolean);
+        try {
+          if (!deviceKeys.length) {
+            throw new Error("No active registered push devices are available for a test.");
+          }
+          setMessage("Sending test push to all registered devices...");
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "__all__",
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          const result = await sendBackendPushTestToRegisteredDevices({ allDevices: true });
+          const sentCount = Number(result?.sentCount || 0);
+          const failedCount = Number(result?.failedCount || 0) + Number(result?.invalidatedCount || 0);
+          const sentDeviceKeys = Array.isArray(result?.sentDeviceKeys) ? result.sentDeviceKeys : [];
+          const failedDeviceKeys = [
+            ...(Array.isArray(result?.failedDeviceKeys) ? result.failedDeviceKeys : []),
+            ...(Array.isArray(result?.invalidatedDeviceKeys) ? result.invalidatedDeviceKeys : []),
+          ];
+          const message = sentCount > 0
+            ? `Test push sent to ${sentCount} registered device${sentCount === 1 ? "" : "s"}.`
+            : (result?.reason || "No registered devices accepted the test push.");
+          if (sentDeviceKeys.length) {
+            setPushDeviceTestResults(sentDeviceKeys, {
+              ok: true,
+              message: "Test push sent to all registered devices.",
+            });
+          }
+          if (failedDeviceKeys.length) {
+            setPushDeviceTestResults(failedDeviceKeys, {
+              ok: false,
+              message: "Test push failed for this device.",
+            });
+          }
+          if (!sentDeviceKeys.length && !failedDeviceKeys.length) {
+            setPushDeviceTestResults(deviceKeys, {
+              ok: false,
+              message,
+            });
+          }
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+            lastTestResult: sentCount > 0 && failedCount === 0 ? "Test push sent" : "Test push failed",
+            lastTestAt: new Date().toISOString(),
+            lastErrorMessage: failedCount > 0 || sentCount <= 0 ? message : "",
+          };
+          await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+          bindPushDiagnosticsActions();
+          setMessage(message, sentCount <= 0 || failedCount > 0);
+        } catch (error) {
+          setPushDeviceTestResults(deviceKeys, {
+            ok: false,
+            message: error.message || "Could not send test push to registered devices.",
+          });
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+            lastErrorMessage: error.message || "Could not send test push to registered devices.",
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          setMessage(error.message || "Could not send test push to registered devices.", true);
+        }
+      });
+    }
+
+    form.querySelectorAll("[data-profile-push-diagnostics-test-device]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.dataset.bound === "true") {
+        return;
+      }
+      button.dataset.bound = "true";
+      button.addEventListener("click", async () => {
+        const deviceKey = String(button.dataset.profilePushDiagnosticsTestDevice || "").trim();
+        const device = getActiveRegisteredPushDevices().find((record) => record.deviceKey === deviceKey) || null;
+        try {
+          if (!deviceKey || !device) {
+            throw new Error("That registered push device is no longer available.");
+          }
+          setMessage(`Sending test push to ${getPushDeviceDisplayLabel(device)}...`);
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: deviceKey,
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          const result = await sendBackendPushTestToRegisteredDevices({ targetDeviceKeys: [deviceKey] });
+          const sentCount = Number(result?.sentCount || 0);
+          const failedCount = Number(result?.failedCount || 0) + Number(result?.invalidatedCount || 0);
+          const message = sentCount > 0
+            ? "Test push sent to this device."
+            : (result?.reason || "This device did not accept the test push.");
+          setPushDeviceTestResults([deviceKey], {
+            ok: sentCount > 0 && failedCount === 0,
+            message,
+          });
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+          };
+          await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+          bindPushDiagnosticsActions();
+          setMessage(message, sentCount <= 0 || failedCount > 0);
+        } catch (error) {
+          setPushDeviceTestResults([deviceKey], {
+            ok: false,
+            message: error.message || "Could not send a test push to this device.",
+          });
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+            lastErrorMessage: error.message || "Could not send a test push to this device.",
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          setMessage(error.message || "Could not send a test push to this device.", true);
+        }
+      });
+    });
+
     form.querySelector("[data-profile-push-diagnostics-refresh='true']")?.addEventListener("click", async () => {
       try {
         setMessage("Refreshing push diagnostics...");

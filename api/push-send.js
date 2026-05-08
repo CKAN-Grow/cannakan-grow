@@ -346,15 +346,17 @@ async function loadUserNotificationPreferences(userId, config) {
   return Array.isArray(records) && records.length ? normalizeNotificationPreferencesRow(records[0]) : normalizeNotificationPreferencesRow({});
 }
 
-async function loadActivePushSubscriptions(userId, excludeDeviceKeys = [], config) {
+async function loadActivePushSubscriptions(userId, excludeDeviceKeys = [], config, targetDeviceKeys = []) {
   const rows = await supabaseRest(
     `${PUSH_SUBSCRIPTIONS_TABLE}?user_id=eq.${encodeURIComponent(userId)}&push_enabled=is.true&permission_state=eq.granted&disabled_at=is.null&select=*`,
     config,
   );
   const excluded = new Set((Array.isArray(excludeDeviceKeys) ? excludeDeviceKeys : []).map((entry) => String(entry || "").trim()).filter(Boolean));
+  const targeted = new Set((Array.isArray(targetDeviceKeys) ? targetDeviceKeys : []).map((entry) => String(entry || "").trim()).filter(Boolean));
   return (Array.isArray(rows) ? rows : [])
     .map((row) => normalizePushSubscriptionRecord(row))
-    .filter((record) => record && !excluded.has(record.deviceKey));
+    .filter((record) => record && !excluded.has(record.deviceKey))
+    .filter((record) => !targeted.size || targeted.has(record.deviceKey));
 }
 
 async function loadExistingPushDeliveries(userId, eventKey, config) {
@@ -462,6 +464,7 @@ module.exports = async function handler(request, response) {
     const category = String(payload.category || "").trim();
     const sessionId = String(payload.sessionId || payload?.notification?.sessionId || "").trim();
     const excludeDeviceKeys = Array.isArray(payload.excludeDeviceKeys) ? payload.excludeDeviceKeys : [];
+    const targetDeviceKeys = Array.isArray(payload.targetDeviceKeys) ? payload.targetDeviceKeys : [];
     const isTest = payload.test === true;
     const notificationPayload = normalizePushPayload(payload.payload || {}, {
       eventKey,
@@ -486,7 +489,7 @@ module.exports = async function handler(request, response) {
       return json(response, 200, { ok: true, skipped: true, reason: "This notification category is disabled for this user." });
     }
 
-    const subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config);
+    const subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config, targetDeviceKeys);
     if (!subscriptions.length) {
       return json(response, 200, { ok: true, skipped: true, reason: "No active push subscriptions are available for this user." });
     }
