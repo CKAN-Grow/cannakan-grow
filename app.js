@@ -23992,6 +23992,43 @@ function validateSeedAgeSettings(form) {
   };
 }
 
+function populateSessionSeedAgeForm(form, session = null) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
+  const seedAgeMetadata = getSessionSeedAgeMetadata(session);
+
+  if (seedAgeTrackingField instanceof HTMLInputElement) {
+    seedAgeTrackingField.checked = seedAgeMetadata.trackingEnabled;
+  }
+
+  form.__seedAgeDraft = {
+    mode: normalizeSeedAgeMode(seedAgeMetadata.mode || "same") || "same",
+    sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
+  };
+
+  syncSeedAgeSetupUi(form);
+}
+
+function applySessionSeedAgeSettingsFromForm(session, form) {
+  const fallbackState = getSessionSeedAgeMetadata(session);
+  if (!session || !(form instanceof HTMLFormElement)) {
+    return fallbackState;
+  }
+
+  const seedAgeState = getSeedAgeSettingsFromForm(form);
+  session.seedAgeTrackingEnabled = seedAgeState.trackingEnabled;
+  session.seedAgeMode = seedAgeState.trackingEnabled
+    ? (normalizeSeedAgeMode(seedAgeState.mode || "same") || "same")
+    : "";
+  session.sessionSeedAgeYears = seedAgeState.trackingEnabled && seedAgeState.mode === "same"
+    ? seedAgeState.sessionSeedAgeYears
+    : null;
+  return seedAgeState;
+}
+
 function getFormSnapshotData(form) {
   if (!form) {
     return null;
@@ -45481,6 +45518,7 @@ function getSessionDetailElements(scope = document) {
     detailsSaveButton: scope.querySelector("#detail-session-details-save"),
     detailsCancelButton: scope.querySelector("#detail-session-details-cancel"),
     detailsMessage: scope.querySelector("#detail-session-details-message"),
+    seedAgeForm: scope.querySelector("#detail-seed-age-form"),
     layoutSection: scope.querySelector("#detail-layout-reference")?.closest(".system-layout-block") || null,
     layoutReference: scope.querySelector("#detail-layout-reference"),
     partitionWorkTitle: scope.querySelector("#detail-partition-work-title"),
@@ -45808,6 +45846,7 @@ function renderSessionDetail(sessionId) {
 
   syncSessionDetailHeaderMeta(detail, session);
   populateSessionDetailEditorForm(detail.detailsForm, session);
+  populateSessionSeedAgeForm(detail.seedAgeForm, session);
   setSessionDetailEditorOpen(detail, false);
   clearSessionDetailEditorMessage(detail);
   applySessionDetailNotesOptions(detail, {
@@ -45968,7 +46007,8 @@ function renderSessionDetail(sessionId) {
         const eventName = field.tagName === "SELECT" ? "change" : "input";
         field.addEventListener(eventName, () => {
           validatePartitionRow(row);
-          syncSessionPartitionsFromContainer(session, partitions);
+          applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+          syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
           captureFirstPlantedEventForSession(session);
           syncSessionStatusControlDatasets(detail.statusField, {
             startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
@@ -45984,7 +46024,8 @@ function renderSessionDetail(sessionId) {
         });
         field.addEventListener("blur", () => {
           validatePartitionRow(row);
-          syncSessionPartitionsFromContainer(session, partitions);
+          applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+          syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
           captureFirstPlantedEventForSession(session);
           syncSessionStatusControlDatasets(detail.statusField, {
             startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
@@ -46055,7 +46096,44 @@ function renderSessionDetail(sessionId) {
   const refreshDetailUnsavedChanges = () => {
     refreshUnsavedChangesState();
   };
+  const rerenderDetailSeedAgeState = () => {
+    if (!(detail.seedAgeForm instanceof HTMLFormElement)) {
+      return;
+    }
+
+    applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+    renderDetailPartitions();
+    bindDetailPartitionInputListeners();
+    refreshDetailDerivedViews();
+    detail.saveMessage.textContent = "";
+    refreshDetailUnsavedChanges();
+  };
   refreshDetailDerivedViews();
+  if (detail.seedAgeForm instanceof HTMLFormElement && detail.seedAgeForm.dataset.bound !== "true") {
+    detail.seedAgeForm.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (target.name === "seedAgeTrackingEnabled" || target.name === "seedAgeMode") {
+        syncSeedAgeSetupUi(detail.seedAgeForm);
+        rerenderDetailSeedAgeState();
+      }
+    });
+    detail.seedAgeForm.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+
+      if (target.name === "sessionSeedAgeYears") {
+        detail.saveMessage.textContent = "";
+        rerenderDetailSeedAgeState();
+      }
+    });
+    detail.seedAgeForm.dataset.bound = "true";
+  }
   bindSessionTimelineDebugTools(detail.lifecycleSection, (action) => {
     const previousStatus = session.sessionStatus || "";
     applyDebugEventToSession(session, detail.statusField, action);
@@ -46135,7 +46213,8 @@ function renderSessionDetail(sessionId) {
 
   detail.statusField.addEventListener("change", async () => {
     const previousStatus = session.sessionStatus || "";
-    syncSessionPartitionsFromContainer(session, partitions);
+    applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+    syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     session.sessionStatus = detail.statusField.value;
     syncSessionDetailHeaderMeta(detail, session);
     if (normalizeSessionStatus(previousStatus) !== "germinating" && normalizeSessionStatus(detail.statusField.value) === "germinating") {
@@ -46186,7 +46265,14 @@ function renderSessionDetail(sessionId) {
       }
       return null;
     }
-    syncSessionPartitionsFromContainer(session, partitions);
+    const seedAgeValidation = validateSeedAgeSettings(detail.seedAgeForm);
+    if (!seedAgeValidation.isValid) {
+      detail.saveMessage.textContent = seedAgeValidation.message;
+      seedAgeValidation.firstInvalidField?.focus();
+      return null;
+    }
+    applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
+    syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
     captureFirstPlantedEventForSession(session);
     session.sessionNotes = detail.notesField.value.trim();
     session.snapshotState = normalizePersistedSessionSnapshotState(detail.snapshotSection?.__snapshotState?.pendingSnapshotState);
@@ -46217,6 +46303,7 @@ function renderSessionDetail(sessionId) {
     if (savedSession) {
       syncSessionDetailHeaderMeta(detail, session);
       populateSessionDetailEditorForm(detail.detailsForm, session);
+      populateSessionSeedAgeForm(detail.seedAgeForm, session);
       setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
     } else if (detail.detailsPanel && !detail.detailsPanel.hidden && detail.detailsMessage) {
@@ -46229,7 +46316,14 @@ function renderSessionDetail(sessionId) {
   registerUnsavedChangesContext({
     pageHash: appState.currentRouteHash,
     contextType: "session",
-    getSignature: () => buildSessionDetailDraftSignature(session, partitions, detail.statusField, detail.notesField, detail.detailsForm),
+    getSignature: () => buildSessionDetailDraftSignature(
+      session,
+      partitions,
+      detail.statusField,
+      detail.notesField,
+      detail.detailsForm,
+      detail.seedAgeForm,
+    ),
     saveFn: persistDetailSession,
   });
 
@@ -49501,7 +49595,7 @@ function captureFirstPlantedEventForSession(session) {
   }
 }
 
-function syncSessionPartitionsFromContainer(session, container) {
+function syncSessionPartitionsFromContainer(session, container, options = {}) {
   if (!session || !container) {
     return;
   }
@@ -49511,7 +49605,12 @@ function syncSessionPartitionsFromContainer(session, container) {
     return;
   }
 
-  const seedAgeState = getSeedAgeSettingsFromForm(container.closest("form"));
+  const seedAgeForm = options.form instanceof HTMLFormElement
+    ? options.form
+    : container.closest("form");
+  const seedAgeState = seedAgeForm
+    ? getSeedAgeSettingsFromForm(seedAgeForm)
+    : getSessionSeedAgeMetadata(session);
   session.partitions = [...container.querySelectorAll(".partition-row")].map((row, index) => {
     const existingPartition = session.partitions?.[index] || {};
     return {
@@ -49977,7 +50076,7 @@ function buildNewSessionDraftSignature(form) {
   });
 }
 
-function buildSessionDetailDraftSignature(session, partitions, statusField, notesField, detailsForm = null) {
+function buildSessionDetailDraftSignature(session, partitions, statusField, notesField, detailsForm = null, seedAgeForm = null) {
   const detailPublicGrowNoteField = document.querySelector("#detail-session-public-grow-note");
   const detailPublicGrowNoteToggle = document.querySelector("#detail-session-public-grow-note-include");
   const detailPublicGrowNoteValue = detailPublicGrowNoteField
@@ -49986,6 +50085,9 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
   const detailIncludePublicGrowNote = detailPublicGrowNoteToggle
     ? detailPublicGrowNoteToggle.checked
     : Boolean(session?.snapshotState?.includePublicGrowNote);
+  const detailSeedAgeState = seedAgeForm instanceof HTMLFormElement
+    ? getSeedAgeSettingsFromForm(seedAgeForm)
+    : getSessionSeedAgeMetadata(session);
   return JSON.stringify({
     sessionId: String(session?.id || "").trim(),
     sessionName: String(detailsForm?.elements?.sessionName?.value || getSessionDetailEditableName(session)).trim(),
@@ -49994,6 +50096,11 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
     timeDisplay: String(formatStoredTime(session?.time || "", getPreferredTimeFormat())).trim(),
     systemType: String(session?.systemType || "").trim(),
     unitId: String(session?.unitId || "").trim(),
+    seedAgeTrackingEnabled: Boolean(detailSeedAgeState?.trackingEnabled),
+    seedAgeMode: String(detailSeedAgeState?.mode || "").trim(),
+    sessionSeedAgeYears: detailSeedAgeState?.sessionSeedAgeYears === null || detailSeedAgeState?.sessionSeedAgeYears === undefined
+      ? ""
+      : String(detailSeedAgeState.sessionSeedAgeYears).trim(),
     sessionStatus: String(statusField?.value || session?.sessionStatus || "").trim(),
     sessionNotes: String(notesField?.value || session?.sessionNotes || "").trim(),
     publicGrowNote: normalizePublicGrowNote(detailPublicGrowNoteValue),

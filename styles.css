@@ -12652,6 +12652,10 @@ body.theme-dark .contact-reason-card.is-active {
   margin-top: 16px;
 }
 
+.session-detail-seed-age-form {
+  margin: 0;
+}
+
 .session-detail-supplies-anchor {
   display: grid;
   min-width: 0;
