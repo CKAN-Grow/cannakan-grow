@@ -14,6 +14,10 @@ if ((!url || !anonKey) && isVercelBuild) {
   process.exit(1);
 }
 
+if (!pushPublicKey && isVercelBuild) {
+  console.warn("VAPID_PUBLIC_KEY was not available during this Vercel build. Push subscriptions will remain disabled until the public key is exposed to the build environment.");
+}
+
 const outputPath = resolve(process.cwd(), "supabase-config.js");
 const manifestPath = resolve(process.cwd(), "manifest.json");
 const publicDir = resolve(process.cwd(), "public");

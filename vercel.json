@@ -67,7 +67,7 @@
       ]
     },
     {
-      "source": "/(index\\.html|app\\.js|styles\\.css|manifest\\.json)",
+      "source": "/(index\\.html|app\\.js|styles\\.css|manifest\\.json|supabase-config\\.js)",
       "headers": [
         {
           "key": "Cache-Control",
