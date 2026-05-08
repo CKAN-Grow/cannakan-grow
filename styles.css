@@ -28662,7 +28662,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-session-action-bar[data-current-stage-tone="not-started"] {
-  --current-stage-accent: #dfe8dc;
+  --current-stage-accent: #b7dca4;
 }
 
 .detail-session-action-bar[data-current-stage-tone="soaking"] {
@@ -28698,7 +28698,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-session-action-bar[data-next-stage-tone="session-complete"] {
-  --next-stage-accent: #7fb8ff;
+  --next-stage-accent: #b58a61;
 }
 
 .detail-stage-progress-card:focus-within {
@@ -28715,7 +28715,10 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-step {
+  --stage-progress-accent: var(--current-stage-accent);
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 4px;
   min-width: 0;
 }
@@ -28725,11 +28728,56 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-step[data-stage-role="next"] {
+  --stage-progress-accent: var(--next-stage-accent);
   grid-area: next;
 }
 
 .detail-stage-progress-step[data-stage-role="next"] {
-  gap: 5px;
+  gap: 8px;
+}
+
+.detail-stage-progress-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.detail-stage-progress-icon-slot {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+  color: var(--stage-progress-accent);
+}
+
+.detail-stage-progress-icon.command-icon,
+.detail-stage-progress-icon.command-icon-tile {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  color: var(--stage-progress-accent);
+  border-color: color-mix(in srgb, var(--stage-progress-accent) 38%, rgba(255, 255, 255, 0.08));
+  background:
+    radial-gradient(circle at 38% 28%, color-mix(in srgb, var(--stage-progress-accent) 18%, rgba(255, 255, 255, 0.08)) 0%, transparent 54%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+    rgba(10, 15, 12, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 16px color-mix(in srgb, var(--stage-progress-accent) 20%, transparent);
+}
+
+.detail-stage-progress-icon .command-icon-svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.7;
+}
+
+.detail-stage-progress-icon--not-started .command-icon-svg {
+  width: 23px;
+  height: 23px;
 }
 
 .detail-stage-progress-label {
@@ -28741,16 +28789,15 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-step strong {
-  color: var(--current-stage-accent);
+  color: var(--stage-progress-accent);
   font-size: 1rem;
   line-height: 1.2;
 }
 
 .detail-stage-progress-step[data-stage-role="next"] strong {
-  color: var(--next-stage-accent);
   font-size: 1.08rem;
   font-weight: 950;
-  text-shadow: 0 0 16px color-mix(in srgb, var(--next-stage-accent) 26%, transparent);
+  text-shadow: 0 0 16px color-mix(in srgb, var(--stage-progress-accent) 26%, transparent);
 }
 
 .detail-stage-progress-arrow {

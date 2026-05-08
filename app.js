@@ -44140,14 +44140,34 @@ function getSessionStageProgressionState(control) {
     completed: "completed",
     "session-complete": "session-complete",
   };
+  const iconKeyByStage = {
+    "not-started": "header",
+    soaking: "stage-soaking",
+    germination: "stage-germination",
+    "first-germinated": "stage-first-germinated",
+    completed: "stage-completed",
+    "session-complete": "stage-completed",
+  };
+  const iconClassByStage = {
+    "not-started": "detail-stage-progress-icon detail-stage-progress-icon--not-started",
+    soaking: "detail-stage-progress-icon command-icon--stage command-icon--stage-soaking",
+    germination: "detail-stage-progress-icon command-icon--stage command-icon--stage-germination",
+    "first-germinated": "detail-stage-progress-icon command-icon--stage command-icon--stage-first-germinated",
+    completed: "detail-stage-progress-icon command-icon--stage command-icon--stage-completed",
+    "session-complete": "detail-stage-progress-icon command-icon--stage command-icon--stage-completed",
+  };
 
   return {
     currentKey: resolvedCurrentKey,
     currentLabel: labelByKey[resolvedCurrentKey] || getSessionProgressDisplayLabel(progressKey, control?.value || ""),
     currentTone: toneByKey[resolvedCurrentKey] || "soaking",
+    currentIconKey: iconKeyByStage[resolvedCurrentKey] || "stage-soaking",
+    currentIconClass: iconClassByStage[resolvedCurrentKey] || iconClassByStage.soaking,
     nextKey,
     nextLabel: labelByKey[nextKey] || "Germinating",
     nextTone: toneByKey[nextKey] || "germinating",
+    nextIconKey: iconKeyByStage[nextKey] || "stage-germination",
+    nextIconClass: iconClassByStage[nextKey] || iconClassByStage.germination,
     actionLabel: resolvedCurrentKey === "not-started"
       ? "Start Soaking"
       : (resolvedCurrentKey === "completed" ? "Session Complete" : "Update Stage"),
@@ -44164,6 +44184,8 @@ function syncDetailSessionActionBar(control) {
   const state = getSessionStageProgressionState(control);
   const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
   const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
+  const currentIconElement = actionBar.querySelector("[data-detail-action-current-icon]");
+  const nextIconElement = actionBar.querySelector("[data-detail-action-next-icon]");
   const stageTrigger = actionBar.querySelector("[data-detail-stage-progress-trigger]");
   const stageActionLabel = actionBar.querySelector("[data-detail-stage-progress-action-label]");
   const stageActionArrow = actionBar.querySelector("[data-detail-stage-progress-action-arrow]");
@@ -44174,6 +44196,12 @@ function syncDetailSessionActionBar(control) {
   }
   if (nextStageElement) {
     nextStageElement.textContent = state.nextLabel;
+  }
+  if (currentIconElement) {
+    currentIconElement.innerHTML = renderCommandCenterIconMarkup(state.currentIconKey, state.currentIconClass);
+  }
+  if (nextIconElement) {
+    nextIconElement.innerHTML = renderCommandCenterIconMarkup(state.nextIconKey, state.nextIconClass);
   }
   if (stageActionLabel) {
     stageActionLabel.textContent = state.actionLabel;
