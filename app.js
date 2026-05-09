@@ -33302,6 +33302,59 @@ function renderHomeGrowNetworkUnlockedNoticeMarkup() {
   `;
 }
 
+function renderHomeLearnSectionMarkup() {
+  return `
+    <section class="card home-learn-section" aria-labelledby="home-learn-title">
+      <div class="home-learn-copy">
+        <p class="eyebrow">Education Hub</p>
+        <h2 id="home-learn-title">Learn</h2>
+        <p class="home-learn-subtitle">Tutorials, Seed Sessions, guided education, and grow science for the Cannakan® ecosystem.</p>
+        <p class="home-learn-support">Explore walkthroughs, featured replays, educational sessions, and grow insights designed to help improve consistency and confidence.</p>
+        <div class="home-learn-actions">
+          <a class="button button-primary home-learn-action" href="#learn" data-public-learn-link="true">Explore Learn</a>
+          <a class="button button-secondary home-learn-action" href="#learn/kan-system" data-public-learn-link="true">Featured Tutorials</a>
+        </div>
+      </div>
+      <div class="home-learn-media" aria-label="Featured Learn previews">
+        <article class="home-learn-feature-card home-learn-feature-card--spotlight" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/kan-system-walkthrough.webp');">
+          <div class="home-learn-feature-thumb" aria-hidden="true">
+            <span class="home-learn-feature-grid"></span>
+            <span class="home-learn-feature-play">▶</span>
+          </div>
+          <div class="home-learn-feature-copy">
+            <span class="home-learn-feature-label home-learn-feature-label--seed">
+              <span class="home-learn-feature-live-dot" aria-hidden="true"></span>
+              Seed Sessions
+            </span>
+            <h3>KAN® System Walkthrough</h3>
+            <p>Launching Soon</p>
+          </div>
+        </article>
+        <article class="home-learn-feature-card home-learn-feature-card--replay" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/germination-stages.webp');">
+          <div class="home-learn-feature-thumb" aria-hidden="true">
+            <span class="home-learn-feature-grid"></span>
+            <span class="home-learn-feature-play">▶</span>
+          </div>
+          <div class="home-learn-feature-copy">
+            <span class="home-learn-feature-label">FEATURED REPLAY</span>
+            <h3>Understanding Germination Stages</h3>
+          </div>
+        </article>
+        <article class="home-learn-feature-card home-learn-feature-card--guide" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/getting-started-grow.webp');">
+          <div class="home-learn-feature-thumb" aria-hidden="true">
+            <span class="home-learn-feature-grid"></span>
+            <span class="home-learn-feature-play">▶</span>
+          </div>
+          <div class="home-learn-feature-copy">
+            <span class="home-learn-feature-label">BEGINNER GUIDE</span>
+            <h3>Getting Started With Cannakan Grow</h3>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderHomeSecondaryInfoRowMarkup(options = {}) {
   const growNetworkUnlocked = Boolean(options.growNetworkUnlocked);
   const showGrowNetworkUnlockNotice = Boolean(options.showGrowNetworkUnlockNotice);
@@ -46350,12 +46403,16 @@ function renderHome() {
     growNetworkUnlocked,
     showGrowNetworkUnlockNotice,
   });
+  const homeEcosystemMarkup = `
+    ${renderHomeLearnSectionMarkup()}
+    ${homeSecondaryInfoRowMarkup}
+  `;
   if (homeAnnouncementAnchor) {
-    homeAnnouncementAnchor.innerHTML = homeSecondaryInfoRowMarkup;
+    homeAnnouncementAnchor.innerHTML = homeEcosystemMarkup;
   } else if (commandCenterHost) {
-    commandCenterHost.insertAdjacentHTML("afterend", homeSecondaryInfoRowMarkup);
+    commandCenterHost.insertAdjacentHTML("afterend", homeEcosystemMarkup);
   } else {
-    app.insertAdjacentHTML("beforeend", homeSecondaryInfoRowMarkup);
+    app.insertAdjacentHTML("beforeend", homeEcosystemMarkup);
   }
   bindMessageBoardImageFallbacks(app);
   bindHomeAnnouncementFallbackRotation(app);
