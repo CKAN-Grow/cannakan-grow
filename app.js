@@ -26631,6 +26631,7 @@ function openNewSessionNamePrompt(form) {
   overlay.classList.remove("closing");
   overlay.querySelector(".new-session-name-modal")?.classList.remove("closing");
   document.body.classList.add("modal-open");
+  refreshLearnContinueWatchingSection();
   window.setTimeout(() => {
     if (modalInput instanceof HTMLInputElement) {
       modalInput.focus();
@@ -27056,6 +27057,7 @@ function normalizeTutorialProgressRecord(record = {}) {
     started,
     completed,
     lastOpenedAt: String(record?.lastOpenedAt || "").trim(),
+    lastProgressTimestamp: String(record?.lastProgressTimestamp || "").trim(),
     completedAt: String(record?.completedAt || "").trim(),
     persistence: "local",
     userId: String(record?.userId || appState.user?.id || "").trim(),
@@ -27115,12 +27117,14 @@ function saveTutorialProgress(tutorialId = "", updates = {}) {
     nextRecord.completed = true;
     nextRecord.started = true;
     nextRecord.viewed = true;
+    nextRecord.lastProgressTimestamp = String(updates.lastProgressTimestamp || nextRecord.lastProgressTimestamp || timestamp);
     nextRecord.completedAt = String(updates.completedAt || nextRecord.completedAt || timestamp);
   }
 
   if (updates.started) {
     nextRecord.started = true;
     nextRecord.viewed = true;
+    nextRecord.lastProgressTimestamp = String(updates.lastProgressTimestamp || nextRecord.lastProgressTimestamp || timestamp);
   }
 
   if (updates.viewed) {
@@ -27129,6 +27133,10 @@ function saveTutorialProgress(tutorialId = "", updates = {}) {
 
   if (updates.lastOpenedAt) {
     nextRecord.lastOpenedAt = String(updates.lastOpenedAt || "").trim();
+  }
+
+  if (updates.lastProgressTimestamp) {
+    nextRecord.lastProgressTimestamp = String(updates.lastProgressTimestamp || "").trim();
   }
 
   progressMap[normalizedTutorialId] = nextRecord;
@@ -27931,6 +27939,80 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
   `;
 }
 
+function getContinueWatchingTutorials(categories = getLearnTutorialCategories(), limit = 4) {
+  const progressMap = loadTutorialProgressMapFromStorage();
+  return categories
+    .flatMap((category) => category.tutorials
+      .filter((tutorial) => shouldShowTutorialOnPublicLearn(tutorial))
+      .map((tutorial) => ({
+        category,
+        tutorial,
+        progress: normalizeTutorialProgressRecord(progressMap[tutorial.id]),
+      })))
+    .filter(({ progress }) => {
+      const hasOpened = Boolean(progress.lastOpenedAt);
+      return (progress.started && !progress.completed) || hasOpened;
+    })
+    .sort((left, right) => {
+      const leftOpened = Date.parse(left.progress.lastOpenedAt || left.progress.lastProgressTimestamp || "") || 0;
+      const rightOpened = Date.parse(right.progress.lastOpenedAt || right.progress.lastProgressTimestamp || "") || 0;
+      if (rightOpened !== leftOpened) {
+        return rightOpened - leftOpened;
+      }
+      return String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
+    })
+    .slice(0, limit);
+}
+
+function renderContinueWatchingSectionMarkup(categories = getLearnTutorialCategories()) {
+  const continueTutorials = getContinueWatchingTutorials(categories);
+  if (!continueTutorials.length) {
+    return "";
+  }
+
+  return `
+    <section class="card learn-continue-watching" aria-labelledby="learn-continue-watching-title">
+      <div class="learn-continue-watching-header">
+        <div>
+          <p class="eyebrow">Resume</p>
+          <h2 id="learn-continue-watching-title">Continue Watching</h2>
+          <p class="muted">Pick up recent tutorials and started walkthroughs.</p>
+        </div>
+      </div>
+      <div class="learn-continue-watching-row">
+        ${continueTutorials.map(({ tutorial, category, progress }) => {
+          const progressStatus = getTutorialProgressStatus(tutorial.id);
+          const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
+          const actionLabel = progress.completed ? "Watch Again" : "Continue Watching";
+          return `
+            <button
+              type="button"
+              class="learn-continue-card"
+              data-learn-continue-tutorial="${escapeHtml(tutorial.id)}"
+              data-learn-progress-status="${escapeHtml(progressStatus)}"
+            >
+              <span class="learn-continue-card-copy">
+                <span class="learn-continue-card-kicker">${escapeHtml(actionLabel)}</span>
+                <strong>${escapeHtml(tutorial.title)}</strong>
+                <small>${escapeHtml(`${category.title} • ${getLearnTutorialDurationLabel(tutorial)}`)}</small>
+                <span
+                  class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
+                  data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
+                >${escapeHtml(progressLabel)}</span>
+              </span>
+              <span class="learn-continue-card-action">${escapeHtml(actionLabel)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderContinueWatchingSlotMarkup(categories = getLearnTutorialCategories()) {
+  return `<div data-learn-continue-slot>${renderContinueWatchingSectionMarkup(categories)}</div>`;
+}
+
 function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
@@ -28380,6 +28462,7 @@ function renderLearnPage(targetCategoryId = "") {
       </section>
       ${renderLearnGettingStartedChecklistMarkup()}
       ${renderFeaturedLearnTutorialsMarkup(categories)}
+      ${renderContinueWatchingSlotMarkup(categories)}
       ${renderLearnTutorialSearchControlsMarkup()}
       ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
     </section>
@@ -28478,6 +28561,16 @@ function removeCompletedTutorialPrompts(tutorialId = "") {
   });
 }
 
+function refreshLearnContinueWatchingSection() {
+  const slot = document.querySelector("[data-learn-continue-slot]");
+  if (!(slot instanceof HTMLElement)) {
+    return;
+  }
+
+  slot.innerHTML = renderContinueWatchingSectionMarkup(getLearnTutorialCategories());
+  bindLearnContinueWatchingInteractions(slot);
+}
+
 function refreshTutorialProgressUi(tutorialId = "") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
@@ -28521,6 +28614,7 @@ function refreshTutorialProgressUi(tutorialId = "") {
     removeCompletedTutorialPrompts(normalizedTutorialId);
     refreshLearnGettingStartedChecklistUi(document);
   }
+  refreshLearnContinueWatchingSection();
   applyLearnTutorialFilters(document);
 }
 
@@ -28544,6 +28638,26 @@ function bindLearnTutorialProgressActions(scope = document, tutorialId = "") {
     button.addEventListener("click", () => {
       markTutorialCompleted(button.dataset.learnProgressComplete || tutorialId);
       refreshTutorialProgressUi(button.dataset.learnProgressComplete || tutorialId);
+    });
+  });
+}
+
+function bindLearnContinueWatchingInteractions(scope = document) {
+  scope.querySelectorAll("[data-learn-continue-tutorial]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnContinueBound === "true") {
+      return;
+    }
+    button.dataset.learnContinueBound = "true";
+    button.addEventListener("click", () => {
+      const tutorialId = button.dataset.learnContinueTutorial || "";
+      const tutorialEntry = getLearnTutorialById(tutorialId);
+      trackTutorialAnalyticsEvent("tutorial_card_clicked", {
+        tutorialId,
+        category: tutorialEntry?.category?.title || "",
+        categoryId: tutorialEntry?.category?.id || "",
+        source: "Continue Watching",
+      });
+      openLearnTutorialModal(tutorialId, { source: "Continue Watching" });
     });
   });
 }
@@ -28840,6 +28954,7 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
 function bindLearnPageInteractions(scope = document) {
   bindLearnGettingStartedChecklist(scope);
   bindLearnTutorialFilters(scope);
+  bindLearnContinueWatchingInteractions(scope);
 
   scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
     if (button.dataset.learnTutorialBound === "true") {
