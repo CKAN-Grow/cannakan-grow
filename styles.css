@@ -14040,6 +14040,39 @@ body.theme-dark .contact-reason-card.is-active {
   white-space: nowrap;
 }
 
+.seed-type-chip {
+  border-color: rgba(148, 209, 89, 0.18);
+  background: rgba(148, 209, 89, 0.12);
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.08);
+}
+
+.seed-type-chip--auto,
+.seed-type-chip--vegetable {
+  border-color: rgba(74, 163, 223, 0.28);
+  background: rgba(74, 163, 223, 0.14);
+  color: #d7efff;
+}
+
+.seed-type-chip--fast,
+.seed-type-chip--other {
+  border-color: rgba(221, 168, 82, 0.3);
+  background: rgba(221, 168, 82, 0.14);
+  color: #ffe3b5;
+}
+
+.seed-type-chip--photoperiod,
+.seed-type-chip--fruit {
+  border-color: rgba(217, 122, 74, 0.32);
+  background: rgba(217, 122, 74, 0.15);
+  color: #ffd0b6;
+}
+
+.seed-type-chip--flower {
+  border-color: rgba(181, 232, 111, 0.3);
+  background: rgba(148, 209, 89, 0.15);
+  color: #def8bb;
+}
+
 .gallery-card-footer-main {
   display: flex;
   flex: 1 1 220px;

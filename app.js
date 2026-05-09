@@ -126,6 +126,15 @@ const DEV_QA_BYPASS_USERNAME = "Dev QA Grower";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
+const SEED_TYPE_OPTIONS = Object.freeze([
+  { id: "auto", label: "Auto", tone: "green-blue" },
+  { id: "fast", label: "Fast", tone: "gold-green" },
+  { id: "photoperiod", label: "Photoperiod", tone: "orange-green", aliases: ["photo"] },
+  { id: "flower", label: "Flower", tone: "green-lime" },
+  { id: "vegetable", label: "Vegetable", tone: "green-blue" },
+  { id: "fruit", label: "Fruit", tone: "orange-green" },
+  { id: "other", label: "Other", tone: "gold-green", aliases: ["not-applicable", "n/a", "na"] },
+]);
 const DEFAULT_ANNOUNCEMENT_SLIDE_PATHS = Object.freeze(getAnnouncementSlideManifestPaths());
 const APP_NOTIFICATION_SNOOZE_OPTIONS = Object.freeze([
   { key: "30m", label: "In 30 minutes", confirmationLabel: "30 minutes" },
@@ -322,18 +331,18 @@ const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   },
 ]);
 const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
-  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photo", favoriteSource: "Humboldt Seed Co", followerCount: 218, followingCount: 64, isFollowing: true },
-  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photo", favoriteSource: "Royal Queen Seeds", followerCount: 194, followingCount: 58, isFollowing: true },
+  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photoperiod", favoriteSource: "Humboldt Seed Co", followerCount: 218, followingCount: 64, isFollowing: true },
+  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photoperiod", favoriteSource: "Royal Queen Seeds", followerCount: 194, followingCount: 58, isFollowing: true },
   { id: "mock-mo", displayName: "Mo", averageGermination: 94, approvedSnapshots: 18, likes: 611, favoriteSeedType: "Auto", favoriteSource: "Barney's Farm", followerCount: 167, followingCount: 46, isFollowing: true },
-  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photo", favoriteSource: "Green House", followerCount: 123, followingCount: 35, isFollowing: true },
+  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photoperiod", favoriteSource: "Green House", followerCount: 123, followingCount: 35, isFollowing: true },
   { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", favoriteSource: "Fast Buds", followerCount: 176, followingCount: 40, isFollowing: true },
   { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", favoriteSource: "Fast Buds", followerCount: 72, followingCount: 22, isFollowing: true },
-  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photo", favoriteSource: "Ethos Genetics", followerCount: 144, followingCount: 39, isFollowing: true },
+  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photoperiod", favoriteSource: "Ethos Genetics", followerCount: 144, followingCount: 39, isFollowing: true },
   { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", favoriteSource: "Cannakan® Labs", followerCount: 58, followingCount: 18, isFollowing: true },
-  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Regular", favoriteSource: "Archive Seeds", followerCount: 86, followingCount: 28, isFollowing: false },
-  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photo", favoriteSource: "Humboldt Seed Co", followerCount: 162, followingCount: 44, isFollowing: false },
+  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Other", favoriteSource: "Archive Seeds", followerCount: 86, followingCount: 28, isFollowing: false },
+  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photoperiod", favoriteSource: "Humboldt Seed Co", followerCount: 162, followingCount: 44, isFollowing: false },
   { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", favoriteSource: "Sweet Seeds", followerCount: 108, followingCount: 32, isFollowing: false },
-  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Mixed", favoriteSource: "Multi-Source", followerCount: 79, followingCount: 24, isFollowing: false },
+  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Other", favoriteSource: "Multi-Source", followerCount: 79, followingCount: 24, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
@@ -347,9 +356,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     typeLabel: "New approved Community Grow snapshot",
     typeMeta: "Approved in Community Grow",
     title: "Avery Moss submitted a 96% germination snapshot",
-    summary: "Photo run with a strong early finish and clean germination consistency.",
+    summary: "Photoperiod run with a strong early finish and clean germination consistency.",
     germinationRateLabel: "96%",
-    sourceLabel: "Photo",
+    sourceLabel: "Photoperiod",
     occurredAt: "2026-05-01T09:18:00.000Z",
     sessionRoute: "#gallery",
   },
@@ -360,9 +369,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     typeLabel: "Public session shared",
     typeMeta: "Public session now visible",
     title: "Don-Cannakan started a new KAN® session",
-    summary: "Fresh public session shared for photo-line benchmarking.",
+    summary: "Fresh public session shared for photoperiod-line benchmarking.",
     germinationRateLabel: "98%",
-    sourceLabel: "Photo",
+    sourceLabel: "Photoperiod",
     occurredAt: "2026-05-01T08:02:00.000Z",
     sessionRoute: "#gallery",
   },
@@ -386,9 +395,9 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     typeLabel: "Completed public session",
     typeMeta: "Approved in Community Grow",
     title: "GreenLab reached 100% germination",
-    summary: "Perfect completion on a photo trial with a public wrap-up.",
+    summary: "Perfect completion on a photoperiod trial with a public wrap-up.",
     germinationRateLabel: "100%",
-    sourceLabel: "Photo",
+    sourceLabel: "Photoperiod",
     occurredAt: "2026-04-30T20:14:00.000Z",
     sessionRoute: "#gallery",
   },
@@ -427,7 +436,7 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     title: "SproutScout completed a multi-variety session",
     summary: "Shared the final public results from a mixed-variety comparison.",
     germinationRateLabel: "93%",
-    sourceLabel: "Photo",
+    sourceLabel: "Photoperiod",
     occurredAt: "2026-04-30T10:11:00.000Z",
     sessionRoute: "#gallery",
   },
@@ -790,7 +799,7 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     name: "Perfect Run",
     seedVarietyName: "Blue Dream",
     sourceName: "Humboldt Seed Co",
-    seedTypeName: "Photo",
+    seedTypeName: "Photoperiod",
     sexLabel: "Feminized",
     totalSeeds: 24,
     totalPlanted: 24,
@@ -807,7 +816,7 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     name: "Strong Average Run",
     seedVarietyName: "Gorilla Glue #4",
     sourceName: "Seedsman",
-    seedTypeName: "Photo",
+    seedTypeName: "Photoperiod",
     sexLabel: "Feminized",
     totalSeeds: 26,
     totalPlanted: 22,
@@ -824,7 +833,7 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     name: "Difficult Seed Recovery",
     seedVarietyName: "Old Stock Test",
     sourceName: "SeedVault",
-    seedTypeName: "Regular",
+    seedTypeName: "Other",
     sexLabel: "Not shared",
     totalSeeds: 24,
     totalPlanted: 17,
@@ -3717,6 +3726,58 @@ function formatSeedAgeYearsLabel(value) {
   return `${normalizedValue} ${normalizedValue === 1 ? "year" : "years"}`;
 }
 
+function normalizeSeedTypeId(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase().replace(/\s+/g, "-");
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const directMatch = SEED_TYPE_OPTIONS.find((option) => option.id === normalizedValue);
+  if (directMatch) {
+    return directMatch.id;
+  }
+
+  const aliasMatch = SEED_TYPE_OPTIONS.find((option) => (
+    Array.isArray(option.aliases) && option.aliases.includes(normalizedValue)
+  ));
+  return aliasMatch ? aliasMatch.id : normalizedValue;
+}
+
+function getSeedTypeOption(value = "") {
+  const seedTypeId = normalizeSeedTypeId(value);
+  return SEED_TYPE_OPTIONS.find((option) => option.id === seedTypeId) || null;
+}
+
+function getSeedTypeLabel(value = "", fallback = "") {
+  const option = getSeedTypeOption(value);
+  if (option) {
+    return option.label;
+  }
+
+  const rawValue = String(value || fallback || "").trim();
+  return rawValue ? capitalize(rawValue.replace(/-/g, " ")) : "";
+}
+
+function getSeedTypeTone(value = "", fallbackIndex = 0) {
+  const option = getSeedTypeOption(value);
+  if (option?.tone) {
+    return option.tone;
+  }
+
+  const fallbackTones = ["green-lime", "green-blue", "orange-green", "gold-green"];
+  return fallbackTones[Math.max(0, Number(fallbackIndex) || 0) % fallbackTones.length];
+}
+
+function renderSeedTypeSelectOptions(selectedValue = "") {
+  const normalizedSelectedValue = normalizeSeedTypeId(selectedValue);
+  return [
+    `<option value=""${normalizedSelectedValue ? "" : " selected"}>Select Type</option>`,
+    ...SEED_TYPE_OPTIONS.map((option) => (
+      `<option value="${escapeHtml(option.id)}"${option.id === normalizedSelectedValue ? " selected" : ""}>${escapeHtml(option.label)}</option>`
+    )),
+  ].join("");
+}
+
 function normalizeStoredPartition(partition, fallback = {}) {
   const sourcePartition = partition && typeof partition === "object" ? partition : {};
   const fallbackPartition = fallback && typeof fallback === "object" ? fallback : {};
@@ -3727,7 +3788,7 @@ function normalizeStoredPartition(partition, fallback = {}) {
     source: String(sourcePartition.source || "").trim(),
     seedVariety: String(sourcePartition.seedVariety || sourcePartition.seed_variety || "").trim(),
     breeder: String(sourcePartition.breeder || fallbackPartition.breeder || "").trim(),
-    seedType: String(sourcePartition.seedType || sourcePartition.seed_type || "").trim(),
+    seedType: normalizeSeedTypeId(sourcePartition.seedType || sourcePartition.seed_type || ""),
     feminized: String(sourcePartition.feminized || "").trim(),
     seedCount: Math.max(0, Number(sourcePartition.seedCount ?? sourcePartition.seed_count) || 0),
     plantedCount: String(sourcePartition.plantedCount ?? sourcePartition.planted_count ?? "").trim(),
@@ -3749,7 +3810,7 @@ function serializeSessionPartitions(partitions = []) {
     source: partition.source,
     seedVariety: partition.seedVariety,
     breeder: partition.breeder,
-    seedType: partition.seedType,
+    seedType: normalizeSeedTypeId(partition.seedType || ""),
     feminized: partition.feminized,
     seedCount: partition.seedCount,
     plantedCount: partition.plantedCount,
@@ -5947,9 +6008,9 @@ function buildSampleSessions() {
       firstPlantedAt: "2026-04-22T09:05:00",
       sessionNotes: "Moved to paper towel after 11 hours soaking. Dome is holding steady humidity and the Blue Dream partitions are opening first.",
       partitionSeeds: [
-        ["Blue Dream", "Seedsman", "photo", "feminized", 12, 9],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 10, 8],
-        ["Blue Dream", "Seedsman", "photo", "feminized", 14, 11],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 12, 9],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 10, 8],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 14, 11],
       ],
     }),
     createSampleSession({
@@ -5965,10 +6026,10 @@ function buildSampleSessions() {
       completedAt: "2026-04-20T09:18:00",
       sessionNotes: "Strong early tails on partitions 2, 3, and 4. One slower pocket stayed in the dome an extra half day before planting.",
       partitionSeeds: [
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 10, 10],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 12, 11],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 8, 7],
-        ["Lemon Cherry Gelato", "Elev8", "photo", "feminized", 9, 8],
+        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 10, 10],
+        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 12, 11],
+        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 8, 7],
+        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 9, 8],
       ],
     }),
     createSampleSession({
@@ -6002,10 +6063,10 @@ function buildSampleSessions() {
       completedAt: "2026-04-14T09:42:00",
       sessionNotes: "",
       partitionSeeds: [
-        ["Orange Creamsicle", "Humboldt Seed Co", "photo", "feminized", 15, 14],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photo", "feminized", 12, 11],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photo", "feminized", 10, 8],
-        ["Jelly Donutz", "Humboldt Seed Co", "photo", "feminized", 9, 8],
+        ["Orange Creamsicle", "Humboldt Seed Co", "photoperiod", "feminized", 15, 14],
+        ["Blueberry Muffin", "Humboldt Seed Co", "photoperiod", "feminized", 12, 11],
+        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photoperiod", "feminized", 10, 8],
+        ["Jelly Donutz", "Humboldt Seed Co", "photoperiod", "feminized", 9, 8],
       ],
     }),
   ];
@@ -6283,7 +6344,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   const varietyBaseRates = [92, 87, 79, 71, 55, 83];
   const sourceAdjustments = [4, 2, -1, -4, 1, -7];
   const rowAdjustments = [6, 1, -4, 3, -8, 0];
-  const seedTypePattern = ["photo", "photo", "auto", "photo", "auto", "photo"];
+  const seedTypePattern = ["photoperiod", "auto", "fast", "flower", "vegetable", "fruit", "other"];
   const seedCountPattern = [18, 22, 24, 28, 32, 36];
   const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
   const hourPattern = [8, 10, 12, 15, 17, 19];
@@ -6377,7 +6438,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       sourceName: record.source,
       sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
-      seedTypeName: record.seedType,
+      seedTypeName: getSeedTypeLabel(record.seedType),
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
       profileName: sharedProfile.profileName,
       profileImageUrl: sharedProfile.profileImageUrl,
@@ -6439,7 +6500,7 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
       sourceName: record.source,
       sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
-      seedTypeName: record.seedType,
+      seedTypeName: getSeedTypeLabel(record.seedType),
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
       profileName: sharedProfile.profileName,
       profileImageUrl: sharedProfile.profileImageUrl,
@@ -18645,7 +18706,7 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
   const firstPartitionWithSeedType = (linkedSession?.partitions || []).find((partition) => (
     normalizeLeaderboardLabel(partition?.seedType)
   )) || linkedSession?.partitions?.[0] || null;
-  const normalizedSeedType = normalizeLeaderboardLabel(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
+  const normalizedSeedType = normalizeSeedTypeId(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
   const sourceDisplay = getSourceDisplayMetadata(snapshot);
   const fallbackSourceName = normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity));
 
@@ -18653,7 +18714,7 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
     sourceName: sourceDisplay.name || fallbackSourceName,
     sourceLogoUrl: String(sourceDisplay.logoUrl || "").trim(),
     seedVarietyName: normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity)),
-    seedTypeName: normalizedSeedType ? capitalize(normalizedSeedType) : "",
+    seedTypeName: normalizedSeedType ? getSeedTypeLabel(normalizedSeedType) : "",
   };
 }
 
@@ -20743,7 +20804,7 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
       const seedAgeYears = seedAgeResolution.years;
       const ageBucket = getSeedAgeAnalyticsBucketForYears(seedAgeYears);
       const sessionId = String(normalizedSession?.id || "").trim();
-      const seedType = String(partition?.seedType || "").trim().toLowerCase();
+      const seedType = normalizeSeedTypeId(partition?.seedType || "");
       const feminized = String(partition?.feminized || "").trim().toLowerCase();
 
       return {
@@ -20834,7 +20895,7 @@ function buildSeedAgeAnalyticsNoDataState() {
     heatmap: {
       columns: getSeedAgeAnalyticsHeatmapBucketDefinitions(),
       rows: [
-        { label: "Photo", cells: [] },
+        { label: "Photoperiod", cells: [] },
         { label: "Auto", cells: [] },
         { label: "Feminized", cells: [] },
         { label: "Overall", cells: [] },
@@ -20935,7 +20996,7 @@ function buildDefaultSeedAgeAnalyticsMockDataset() {
     "20-plus": distributionCountsByKey["20-plus"] * 8,
   };
   const heatmapConfig = {
-    Photo: {
+    Photoperiod: {
       rates: [90, 84, 76, 65, 51, 36],
       shares: [0.42, 0.42, 0.43, 0.44, 0.44, 0.45],
     },
@@ -21290,7 +21351,7 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
   ))[0] || null;
 
   const heatmapRows = [
-    { label: "Photo", filterFn: (entry) => entry.seedType === "photo" },
+    { label: "Photoperiod", filterFn: (entry) => entry.seedType === "photoperiod" },
     { label: "Auto", filterFn: (entry) => entry.seedType === "auto" },
     { label: "Feminized", filterFn: (entry) => entry.feminized === "feminized" },
     { label: "Overall", filterFn: () => true },
@@ -22719,7 +22780,7 @@ function getMockPublicSessionDetails(snapshot, scenario) {
     systemLabel: formatSnapshotSystemLabel(snapshot?.systemType || "KAN"),
     sourceLabel: scenario.sourceName,
     seedVarietyLabel: scenario.seedVarietyName,
-    seedTypeLabel: scenario.seedTypeName,
+    seedTypeLabel: getSeedTypeLabel(scenario.seedTypeName) || scenario.seedTypeName,
     sexLabel: scenario.sexLabel,
     seedAgeLabel: String(scenario.seedAgeLabel || "").trim() || "Unknown",
     seedAgeSummaryKey: "unknown",
@@ -31131,7 +31192,9 @@ function renderContactFormFieldsMarkup(reasonKey = "") {
         <div class="contact-form-grid">
           <label class="admin-message-field">
             <span>Seed type / category</span>
-            <input name="seedCategory" type="text" maxlength="160" required>
+            <select name="seedCategory" required>
+              ${renderSeedTypeSelectOptions()}
+            </select>
           </label>
           <label class="admin-message-field">
             <span>Batch or lot info</span>
@@ -31310,7 +31373,7 @@ function buildContactSubmissionPayload(reasonKey = "", formData) {
           "Reason: CSTP Testing Request",
           `Company / Source Name: ${getValue("companyName")}`,
           `Website: ${getValue("websiteUrl") || "Not provided"}`,
-          `Seed Type / Category: ${getValue("seedCategory")}`,
+          `Seed Type / Category: ${getSeedTypeLabel(getValue("seedCategory")) || getValue("seedCategory")}`,
           `Batch or Lot Info: ${getValue("batchInfo")}`,
           `Approximate Seeds Available: ${getValue("seedCount")}`,
           "",
@@ -36492,7 +36555,7 @@ function normalizeAdminCstpSessionPartitions(partitions = [], systemType = "KAN"
       source: String(source.source || fallback.source || "").trim(),
       seedVariety: String(source.seedVariety || fallback.seedVariety || "").trim(),
       breeder: String(source.breeder || fallback.breeder || "").trim(),
-      seedType: String(source.seedType || fallback.seedType || "").trim(),
+      seedType: normalizeSeedTypeId(source.seedType || fallback.seedType || ""),
       feminized: String(source.feminized || fallback.feminized || "").trim(),
       seedCount: Math.max(0, Number(source.seedCount ?? fallback.seedCount ?? 0) || 0),
       seedAgeYears: normalizeSeedAgeYears(
@@ -41023,7 +41086,7 @@ function normalizeLeaderboardAuditFilters(filters = {}) {
     endDate: String(filters.endDate || "").trim(),
     source: String(filters.source || "").trim(),
     seedVariety: String(filters.seedVariety || "").trim(),
-    seedType: String(filters.seedType || "").trim(),
+    seedType: getSeedTypeLabel(filters.seedType || "") || String(filters.seedType || "").trim(),
     profile: String(filters.profile || "").trim(),
     status: ["all", "approved", "pending_review", "rejected", "private"].includes(normalizedStatus)
       ? normalizedStatus
@@ -41808,7 +41871,7 @@ function renderLeaderboardAuditExpandedPartitionRowsMarkup(session) {
                 <td>${escapeHtml(String(partition?.id || "—"))}</td>
                 <td>${escapeHtml(formatPartitionSource(partition) || "Not set")}</td>
                 <td>${escapeHtml(formatPartitionSeedVariety(partition) || "Not set")}</td>
-                <td>${escapeHtml(partition?.seedType ? capitalize(partition.seedType) : "Not selected")}</td>
+                <td>${escapeHtml(partition?.seedType ? getSeedTypeLabel(partition.seedType) : "Not selected")}</td>
                 <td>${escapeHtml(partition?.feminized ? capitalize(partition.feminized) : "Not selected")}</td>
                 <td>${escapeHtml(String(seedCount))}</td>
                 <td>${escapeHtml(String(germinatedCount))}</td>
@@ -42437,7 +42500,7 @@ function renderGallery(targetSnapshotId = "") {
                 <span class="gallery-card-chip">${escapeHtml(publicDetails.systemLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(publicDetails.sourceLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>
-                <span class="gallery-card-chip">${escapeHtml(publicDetails.seedTypeLabel)}</span>
+                <span class="gallery-card-chip seed-type-chip seed-type-chip--${escapeHtml(normalizeSeedTypeId(publicDetails.seedTypeLabel))}">${escapeHtml(publicDetails.seedTypeLabel)}</span>
                 <span class="gallery-card-chip">${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds`)}</span>
               </div>
               ${sharedProfileMarkup ? `<div class="gallery-review-profile-row">${sharedProfileMarkup}</div>` : ""}
@@ -42721,7 +42784,7 @@ function renderGalleryReview() {
             <span class="gallery-card-chip">${escapeHtml(publicDetails.systemLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(publicDetails.sourceLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(publicDetails.seedVarietyLabel)}</span>
-            <span class="gallery-card-chip">${escapeHtml(publicDetails.seedTypeLabel)}</span>
+            <span class="gallery-card-chip seed-type-chip seed-type-chip--${escapeHtml(normalizeSeedTypeId(publicDetails.seedTypeLabel))}">${escapeHtml(publicDetails.seedTypeLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(publicDetails.seedAgeLabel)}</span>
             <span class="gallery-card-chip">${escapeHtml(`${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel} seeds`)}</span>
           </div>
@@ -43280,16 +43343,7 @@ function getSessionAnalyticsBreakdownTone(key = "", label = "", index = 0) {
   const fallbackTones = ["green-lime", "green-blue", "orange-green", "gold-green"];
 
   if (normalizedKey === "seedtype") {
-    if (normalizedLabel.includes("auto")) {
-      return "green-blue";
-    }
-    if (normalizedLabel.includes("photo")) {
-      return "orange-green";
-    }
-    if (normalizedLabel.includes("regular")) {
-      return "gold-green";
-    }
-    return fallbackTones[index % fallbackTones.length];
+    return getSeedTypeTone(normalizedLabel, index);
   }
 
   if (normalizedKey === "feminized") {
@@ -43312,7 +43366,9 @@ function buildSessionAnalyticsCategoryRows(partitions = [], key = "") {
   const buckets = new Map();
 
   (partitions || []).forEach((partition) => {
-    const label = String(partition?.[key] || "").trim();
+    const label = String(key || "").trim().toLowerCase() === "seedtype"
+      ? getSeedTypeLabel(partition?.[key] || "")
+      : String(partition?.[key] || "").trim();
     const seeds = Math.max(0, Number(partition?.seedCount) || 0);
     const planted = Math.max(0, Number(partition?.plantedCount) || 0);
     if (!label || seeds <= 0) {
@@ -44377,7 +44433,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         source: String(formData.get(`source-${index}`) || "").trim(),
         seedVariety: String(formData.get(`seedVariety-${index}`) || "").trim(),
         breeder: "",
-        seedType: formData.get(`seedType-${index}`),
+        seedType: normalizeSeedTypeId(formData.get(`seedType-${index}`)),
         feminized: formData.get(`feminized-${index}`),
         seedCount: Number(formData.get(`seedCount-${index}`)) || 0,
         plantedCount: row?.querySelector('input[name="plantedCount"]')?.value.trim() || "",
@@ -44496,11 +44552,7 @@ function buildPartitionFormCard(partition, index, options = {}) {
       <span class="mobile-field-label">Type</span>
       <div class="custom-select" data-dropdown-key="partition-${partition.id}-type-${index}">
         <select name="seedType-${index}" class="partition-input custom-select-native" data-custom-select="true" data-required-choice="true" aria-label="Partition ${partition.id} type">
-          <option value="" selected>Select Type</option>
-          <option value="auto">Auto</option>
-          <option value="fast">Fast</option>
-          <option value="photo">Photo</option>
-          <option value="not-applicable">Not applicable</option>
+          ${renderSeedTypeSelectOptions()}
         </select>
         <button type="button" class="custom-select-trigger partition-input" aria-haspopup="listbox" aria-expanded="false">
           <span class="custom-select-value">Select Type</span>
@@ -45293,7 +45345,7 @@ function renderTraPartitionSections(container, partitions, options = {}) {
 function hydratePartitionRow(row, partition) {
   row.querySelector('input[name^="source-"]').value = formatPartitionSource(partition);
   row.querySelector('input[name^="seedVariety-"]').value = formatPartitionSeedVariety(partition);
-  row.querySelector('select[name^="seedType-"]').value = partition.seedType || "";
+  row.querySelector('select[name^="seedType-"]').value = normalizeSeedTypeId(partition.seedType || "");
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
   row.querySelector('input[name^="seedCount-"]').value = partition.seedCount > 0 ? partition.seedCount : "";
   const seedAgeField = row.querySelector('input[name^="seedAgeYears-"]');
@@ -45316,7 +45368,7 @@ function getCurrentPartitionValues(form) {
     source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
     seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
     breeder: "",
-    seedType: row.querySelector('select[name^="seedType-"]')?.value || "",
+    seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
     feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
     seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
     plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
@@ -45381,7 +45433,7 @@ function shouldShowPartitionSeedAgeFieldForPartition(partition = {}) {
   return shouldShowPartitionSeedAgeFieldForValues({
     source: partition.source,
     seedVariety: partition.seedVariety,
-    seedType: partition.seedType,
+    seedType: normalizeSeedTypeId(partition.seedType || ""),
     feminized: partition.feminized,
     seedCount: partition.seedCount,
     plantedCount: partition.plantedCount,
@@ -48004,14 +48056,14 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   const seedAgeValue = getEffectivePartitionSeedAgeYears(partition, options.session || null);
   const sourceLabel = formatPartitionSource(partition);
   const varietyLabel = formatPartitionSeedVariety(partition);
-  const seedTypeLabel = partition?.seedType ? capitalize(partition.seedType) : "";
+  const seedTypeLabel = getSeedTypeLabel(partition?.seedType || "");
   const sexLabel = partition?.feminized ? capitalize(partition.feminized) : "";
   const seedCountLabel = Number(partition?.seedCount) > 0 ? String(partition.seedCount) : "";
   const seedAgeLabel = seedAgeValue !== null ? formatSeedAgeYearsLabel(seedAgeValue) : "";
   const basePartitionState = getPartitionBaseRowState({
     sourceValue: sourceLabel,
     varietyValue: varietyLabel,
-    typeValue: partition?.seedType || "",
+    typeValue: normalizeSeedTypeId(partition?.seedType || ""),
     sexValue: partition?.feminized || "",
     seedValue: seedCountLabel,
     seedAgeValue: seedAgeValue ?? "",
@@ -48025,7 +48077,7 @@ function buildPartitionDetailRow(partition, sessionStatus = "") {
   row.dataset.partitionBaseState = basePartitionState;
   row.dataset.partitionSource = sourceLabel;
   row.dataset.partitionSeedVariety = varietyLabel;
-  row.dataset.partitionSeedType = partition?.seedType || "";
+  row.dataset.partitionSeedType = normalizeSeedTypeId(partition?.seedType || "");
   row.dataset.partitionFeminized = partition?.feminized || "";
   row.dataset.partitionSeedCount = seedCountLabel;
   row.dataset.partitionSeedAgeYears = seedAgeValue === null ? "" : String(seedAgeValue);
@@ -48107,7 +48159,7 @@ function getPartitionRowStateFromPartition(partition, sessionStatus = "") {
   return getPartitionRowState({
     sourceValue: formatPartitionSource(partition),
     varietyValue: formatPartitionSeedVariety(partition),
-    typeValue: partition?.seedType || "",
+    typeValue: normalizeSeedTypeId(partition?.seedType || ""),
     sexValue: partition?.feminized || "",
     seedValue: partition?.seedCount ?? "",
     plantedValue: partition?.plantedCount ?? "",
@@ -48158,7 +48210,7 @@ function getPartitionBaseRowStateFromRow(row) {
   return getPartitionBaseRowState({
     sourceValue: getPartitionRowFieldValue(row, "source"),
     varietyValue: getPartitionRowFieldValue(row, "seedVariety"),
-    typeValue: getPartitionRowFieldValue(row, "seedType"),
+    typeValue: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
     sexValue: getPartitionRowFieldValue(row, "feminized"),
     seedValue: getPartitionRowFieldValue(row, "seedCount"),
     seedAgeValue: getPartitionRowFieldValue(row, "seedAgeYears"),
@@ -48271,7 +48323,7 @@ function syncPartitionSeedAgeFieldState(row) {
   const shouldShow = shouldShowPartitionSeedAgeFieldForValues({
     sourceValue: row.querySelector('input[name^="source-"]')?.value || "",
     varietyValue: row.querySelector('input[name^="seedVariety-"]')?.value || "",
-    typeValue: row.querySelector('select[name^="seedType-"]')?.value || "",
+    typeValue: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
     sexValue: row.querySelector('select[name^="feminized-"]')?.value || "",
     seedValue: row.querySelector('input[name^="seedCount-"]')?.value || "",
     plantedValue: row.querySelector('input[name="plantedCount"]')?.value || "",
@@ -48515,7 +48567,7 @@ function syncPartitionButtonStates(partitionContainer, sessionStatus = "") {
 function hasPartitionContent(partition = null) {
   const source = formatPartitionSource(partition).trim();
   const variety = formatPartitionSeedVariety(partition).trim();
-  const seedType = String(partition?.seedType || "").trim();
+  const seedType = normalizeSeedTypeId(partition?.seedType || "");
   const sex = String(partition?.feminized || "").trim();
   const seeds = Number(partition?.seedCount) || 0;
   const plantedRaw = String(partition?.plantedCount ?? "").trim();
@@ -50907,7 +50959,7 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
       source: getPartitionRowFieldValue(row, "source").trim(),
       seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
       breeder: existingPartition.breeder || "",
-      seedType: getPartitionRowFieldValue(row, "seedType").trim(),
+      seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
       feminized: getPartitionRowFieldValue(row, "feminized").trim(),
       seedCount: Number(getPartitionRowFieldValue(row, "seedCount")) || 0,
       seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
@@ -51324,7 +51376,7 @@ function buildPartitionDraftValuesFromContainer(container) {
       id: Number(partition.id) || 0,
       source: String(partition.source || "").trim(),
       seedVariety: String(partition.seedVariety || "").trim(),
-      seedType: String(partition.seedType || "").trim(),
+      seedType: normalizeSeedTypeId(partition.seedType || ""),
       feminized: String(partition.feminized || "").trim(),
       seedCount: String(partition.seedCount ?? "").trim(),
       seedAgeYears: String(partition.seedAgeYears ?? "").trim(),
@@ -51336,7 +51388,7 @@ function buildPartitionDraftValuesFromContainer(container) {
     id: Number(row.dataset.partitionId) || index + 1,
     source: getPartitionRowFieldValue(row, "source").trim(),
     seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
-    seedType: getPartitionRowFieldValue(row, "seedType").trim(),
+    seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
     feminized: getPartitionRowFieldValue(row, "feminized").trim(),
     seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
     seedAgeYears: getPartitionRowFieldValue(row, "seedAgeYears").trim(),
