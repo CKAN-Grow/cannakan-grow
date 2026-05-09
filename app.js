@@ -70,6 +70,7 @@ const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagem
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
 const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
+const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -26821,6 +26822,51 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
   }),
 });
 
+const LEARN_GETTING_STARTED_CHECKLIST = Object.freeze([
+  Object.freeze({
+    id: "watch-kan-system-overview",
+    label: "Watch KAN® System Overview",
+    helper: "Learn the system flow before loading seeds.",
+    type: "tutorial",
+    tutorialId: "kan-system-overview",
+  }),
+  Object.freeze({
+    id: "watch-creating-first-session",
+    label: "Watch Creating Your First Session",
+    helper: "See the app workflow from setup to tracking.",
+    type: "tutorial",
+    tutorialId: "creating-your-first-session",
+  }),
+  Object.freeze({
+    id: "create-first-grow-session",
+    label: "Create your first grow session",
+    helper: "Start tracking a real KAN® run.",
+    type: "app-action",
+    action: "create-session",
+  }),
+  Object.freeze({
+    id: "add-notes-or-images",
+    label: "Add notes or images",
+    helper: "Capture observations, conditions, or photos.",
+    type: "app-action",
+    action: "add-notes-images",
+  }),
+  Object.freeze({
+    id: "generate-first-snapshot",
+    label: "Generate your first snapshot",
+    helper: "Create a share-ready session summary.",
+    type: "app-action",
+    action: "generate-snapshot",
+  }),
+  Object.freeze({
+    id: "explore-community-grow",
+    label: "Explore Community Grow",
+    helper: "Browse public grow snapshots and insights.",
+    type: "app-action",
+    action: "explore-community-grow",
+  }),
+]);
+
 function normalizeTutorialPublishStatus(status = "coming-soon") {
   const normalizedStatus = String(status || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
   return ["coming-soon", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
@@ -27054,6 +27100,109 @@ function isTutorialCompleted(tutorialId = "") {
   return getTutorialProgress(tutorialId).completed;
 }
 
+function normalizeLearnGettingStartedRecord(record = {}) {
+  return {
+    completed: Boolean(record?.completed),
+    updatedAt: String(record?.updatedAt || "").trim(),
+    source: String(record?.source || "manual").trim() || "manual",
+    persistence: "local",
+    userId: String(record?.userId || appState.user?.id || "").trim(),
+  };
+}
+
+function loadLearnGettingStartedStateFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(LEARN_GETTING_STARTED_STORAGE_KEY) || "{}");
+    if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+      return {};
+    }
+    return Object.entries(storedValue).reduce((stateMap, [itemId, record]) => {
+      const normalizedItemId = String(itemId || "").trim();
+      if (normalizedItemId) {
+        stateMap[normalizedItemId] = normalizeLearnGettingStartedRecord(record);
+      }
+      return stateMap;
+    }, {});
+  } catch (error) {
+    console.warn("[Learn Checklist] Failed to read getting started progress.", error);
+    return {};
+  }
+}
+
+function saveLearnGettingStartedStateToStorage(stateMap = {}) {
+  try {
+    localStorage.setItem(LEARN_GETTING_STARTED_STORAGE_KEY, JSON.stringify(stateMap || {}));
+  } catch (error) {
+    console.warn("[Learn Checklist] Failed to save getting started progress.", error);
+  }
+}
+
+function getLearnGettingStartedChecklistItem(itemId = "") {
+  const normalizedItemId = String(itemId || "").trim();
+  return LEARN_GETTING_STARTED_CHECKLIST.find((item) => item.id === normalizedItemId) || null;
+}
+
+function setLearnGettingStartedChecklistItemState(itemId = "", completed = true, source = "manual") {
+  const normalizedItemId = String(itemId || "").trim();
+  if (!normalizedItemId || !getLearnGettingStartedChecklistItem(normalizedItemId)) {
+    return;
+  }
+
+  const stateMap = loadLearnGettingStartedStateFromStorage();
+  stateMap[normalizedItemId] = normalizeLearnGettingStartedRecord({
+    completed,
+    source,
+    updatedAt: new Date().toISOString(),
+    userId: appState.user?.id || stateMap[normalizedItemId]?.userId || "",
+  });
+  saveLearnGettingStartedStateToStorage(stateMap);
+}
+
+function getLearnGettingStartedAutoCompleted(item = {}) {
+  if (item.type === "tutorial") {
+    return isTutorialCompleted(item.tutorialId);
+  }
+
+  const sessions = getSessions().filter((session) => !isSessionSoftDeleted(session));
+  if (item.action === "create-session") {
+    return sessions.length > 0;
+  }
+  if (item.action === "add-notes-images") {
+    return sessions.some((session) => (
+      String(session.sessionNotes || "").trim()
+      || normalizePersistedSessionImages(session.sessionImages).length > 0
+    ));
+  }
+  if (item.action === "generate-snapshot") {
+    return sessions.some((session) => hasCreatedMeaningfulSnapshotState(session?.snapshotState));
+  }
+  return false;
+}
+
+function getLearnGettingStartedChecklistState() {
+  const manualState = loadLearnGettingStartedStateFromStorage();
+  return LEARN_GETTING_STARTED_CHECKLIST.map((item) => {
+    const manualRecord = manualState[item.id] || null;
+    const autoCompleted = getLearnGettingStartedAutoCompleted(item);
+    const completed = autoCompleted || Boolean(manualRecord?.completed);
+    return {
+      ...item,
+      completed,
+      autoCompleted,
+      manualCompleted: Boolean(manualRecord?.completed),
+      updatedAt: String(manualRecord?.updatedAt || "").trim(),
+      source: autoCompleted ? "app" : String(manualRecord?.source || "manual"),
+    };
+  });
+}
+
+function markLearnGettingStartedActionCompleted(action = "") {
+  const checklistItem = LEARN_GETTING_STARTED_CHECKLIST.find((item) => item.action === action);
+  if (checklistItem) {
+    setLearnGettingStartedChecklistItemState(checklistItem.id, true, "app");
+  }
+}
+
 function getAdminTutorialDraft(tutorialId = "") {
   const drafts = loadAdminTutorialDraftsFromStorage();
   return drafts[String(tutorialId || "").trim()] || null;
@@ -27258,6 +27407,43 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
       .filter((item) => item.id !== tutorial.id && (!item.hiddenOnLearn || tutorial.hiddenOnLearn))
       .slice(0, 3)
     : [];
+}
+
+function renderLearnGettingStartedChecklistMarkup() {
+  const checklistState = getLearnGettingStartedChecklistState();
+  const completedCount = checklistState.filter((item) => item.completed).length;
+  return `
+    <section class="card learn-getting-started" aria-labelledby="learn-getting-started-title">
+      <div class="learn-getting-started-header">
+        <div>
+          <p class="eyebrow">Guided Start</p>
+          <h2 id="learn-getting-started-title">Getting Started</h2>
+          <p class="muted">A simple path through the KAN® System and Cannakan Grow workflow.</p>
+        </div>
+        <span class="learn-getting-started-count" data-learn-checklist-count>${escapeHtml(`${completedCount}/${checklistState.length} complete`)}</span>
+      </div>
+      <div class="learn-getting-started-list" data-learn-checklist>
+        ${checklistState.map((item) => `
+          <label
+            class="learn-getting-started-item ${item.completed ? "is-completed" : ""} ${item.autoCompleted ? "is-auto-completed" : ""}"
+            data-learn-checklist-item="${escapeHtml(item.id)}"
+          >
+            <input
+              type="checkbox"
+              data-learn-checklist-toggle="${escapeHtml(item.id)}"
+              ${item.completed ? "checked" : ""}
+              ${item.autoCompleted ? "disabled" : ""}
+            >
+            <span class="learn-getting-started-check" aria-hidden="true">✓</span>
+            <span class="learn-getting-started-copy">
+              <span>${escapeHtml(item.label)}</span>
+              <small>${escapeHtml(item.helper)}</small>
+            </span>
+          </label>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderLearnTutorialCardMarkup(tutorial, category) {
@@ -27602,6 +27788,7 @@ function renderLearnPage(targetCategoryId = "") {
           `).join("")}
         </div>
       </section>
+      ${renderLearnGettingStartedChecklistMarkup()}
       ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
     </section>
   `;
@@ -27729,6 +27916,7 @@ function refreshTutorialProgressUi(tutorialId = "") {
 
   if (progressStatus === "completed") {
     removeCompletedTutorialPrompts(normalizedTutorialId);
+    refreshLearnGettingStartedChecklistUi(document);
   }
 }
 
@@ -27754,6 +27942,50 @@ function bindLearnTutorialProgressActions(scope = document, tutorialId = "") {
       refreshTutorialProgressUi(button.dataset.learnProgressComplete || tutorialId);
     });
   });
+}
+
+function refreshLearnGettingStartedChecklistUi(scope = document) {
+  const root = scope instanceof Document ? scope : document;
+  const checklistState = getLearnGettingStartedChecklistState();
+  const checklistMap = new Map(checklistState.map((item) => [item.id, item]));
+  const completedCount = checklistState.filter((item) => item.completed).length;
+
+  root.querySelectorAll("[data-learn-checklist-count]").forEach((countElement) => {
+    if (countElement instanceof HTMLElement) {
+      countElement.textContent = `${completedCount}/${checklistState.length} complete`;
+    }
+  });
+
+  root.querySelectorAll("[data-learn-checklist-item]").forEach((itemElement) => {
+    if (!(itemElement instanceof HTMLElement)) {
+      return;
+    }
+    const checklistItem = checklistMap.get(itemElement.dataset.learnChecklistItem || "");
+    if (!checklistItem) {
+      return;
+    }
+    itemElement.classList.toggle("is-completed", checklistItem.completed);
+    itemElement.classList.toggle("is-auto-completed", checklistItem.autoCompleted);
+    const toggle = itemElement.querySelector("[data-learn-checklist-toggle]");
+    if (toggle instanceof HTMLInputElement) {
+      toggle.checked = checklistItem.completed;
+      toggle.disabled = checklistItem.autoCompleted;
+    }
+  });
+}
+
+function bindLearnGettingStartedChecklist(scope = document) {
+  scope.querySelectorAll("[data-learn-checklist-toggle]").forEach((toggle) => {
+    if (!(toggle instanceof HTMLInputElement) || toggle.dataset.learnChecklistBound === "true") {
+      return;
+    }
+    toggle.dataset.learnChecklistBound = "true";
+    toggle.addEventListener("change", () => {
+      setLearnGettingStartedChecklistItemState(toggle.dataset.learnChecklistToggle || "", toggle.checked, "manual");
+      refreshLearnGettingStartedChecklistUi(document);
+    });
+  });
+  refreshLearnGettingStartedChecklistUi(document);
 }
 
 function openLearnTutorialModal(tutorialId = "") {
@@ -27788,6 +28020,8 @@ function openLearnTutorialModal(tutorialId = "") {
 }
 
 function bindLearnPageInteractions(scope = document) {
+  bindLearnGettingStartedChecklist(scope);
+
   scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
     if (button.dataset.learnTutorialBound === "true") {
       return;
@@ -44171,6 +44405,7 @@ function setMockDataEnabledAndRefresh(enabled) {
 }
 
 function renderGallery(targetSnapshotId = "") {
+  markLearnGettingStartedActionCompleted("explore-community-grow");
   app.replaceChildren(cloneTemplate(templates.gallery));
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
