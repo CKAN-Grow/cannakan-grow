@@ -22399,6 +22399,15 @@ function renderSeedAgeAnalyticsPage() {
       </article>
     </section>
   `;
+  mountContextualOnboardingPrompt(
+    app.querySelector(".seed-age-analytics-hero") || app.querySelector(".seed-age-analytics-dashboard") || app,
+    "analytics",
+    {
+      position: "afterend",
+      eyebrow: "Analytics Help",
+      className: "contextual-onboarding-card--analytics",
+    },
+  );
   enhanceSeedAgeAnalyticsPage();
 }
 
@@ -23714,6 +23723,15 @@ function initializeSnapshotSection(scope, options) {
   renderSnapshotSavedNotice(state);
   setSnapshotMessage(state, "");
   setSnapshotPreview(state, null);
+  mountContextualOnboardingPrompt(
+    scope.querySelector(".snapshot-gallery-controls") || scope,
+    "snapshot",
+    {
+      position: scope.querySelector(".snapshot-gallery-controls") ? "afterend" : "afterbegin",
+      eyebrow: "Snapshot Help",
+      className: "contextual-onboarding-card--snapshot",
+    },
+  );
 
   state.generateButton?.addEventListener("click", async () => {
     await generateSnapshotPreview(state);
@@ -26726,9 +26744,65 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           poster: "",
         }),
       }),
+      Object.freeze({
+        id: "understanding-grow-analytics",
+        title: "Understanding Grow Analytics",
+        duration: "3 min • Beginner",
+        description: "Placeholder walkthrough for reading grow analytics, confidence indicators, and community performance trends.",
+        hiddenOnLearn: true,
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
     ]),
   }),
 ]);
+
+const CONTEXTUAL_ONBOARDING_STORAGE_PREFIX = "cannakan:onboarding-prompt:v1:";
+const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
+  "new-session": Object.freeze({
+    title: "Need help getting started?",
+    body: "A quick setup guide can walk you through the KAN® System and the Grow App workflow.",
+    variant: "new-session",
+    actions: Object.freeze([
+      Object.freeze({ label: "▶ Watch KAN® Setup", tutorialId: "loading-seeds-into-kan" }),
+      Object.freeze({ label: "▶ Grow App Walkthrough", tutorialId: "creating-your-first-session" }),
+    ]),
+  }),
+  snapshot: Object.freeze({
+    title: "New to Grow Snapshots?",
+    body: "Learn how snapshot generation turns your session into a share-ready grow summary.",
+    variant: "compact",
+    actions: Object.freeze([
+      Object.freeze({ label: "Watch Snapshot Tutorial", tutorialId: "generating-grow-snapshots" }),
+    ]),
+  }),
+  "community-grow": Object.freeze({
+    title: "How Community Grow works",
+    body: "A quick overview of snapshot guidelines, sharing flow, and community tips.",
+    variant: "panel",
+    bullets: Object.freeze([
+      "Share grow snapshots after your session has useful progress.",
+      "Keep public notes short, helpful, and clear.",
+      "Community Grow submissions may be reviewed before publishing.",
+    ]),
+    actions: Object.freeze([
+      Object.freeze({ label: "Learn More", tutorialId: "community-grow-basics" }),
+    ]),
+  }),
+  analytics: Object.freeze({
+    title: "Understand your grow data",
+    body: "Learn how to read rates, confidence, and trends before comparing community results.",
+    variant: "compact",
+    actions: Object.freeze([
+      Object.freeze({ label: "Watch Analytics Tutorial", tutorialId: "understanding-grow-analytics" }),
+    ]),
+  }),
+});
 
 function getLearnTutorialCategories() {
   return LEARN_TUTORIAL_CATEGORIES;
@@ -26746,6 +26820,63 @@ function getLearnTutorialById(tutorialId = "") {
     }
   }
   return null;
+}
+
+function getContextualOnboardingPrompt(promptId = "") {
+  return CONTEXTUAL_ONBOARDING_PROMPTS[String(promptId || "").trim()] || null;
+}
+
+function getContextualOnboardingStorageKey(promptId = "") {
+  return `${CONTEXTUAL_ONBOARDING_STORAGE_PREFIX}${String(promptId || "").trim()}`;
+}
+
+function getContextualOnboardingPromptState(promptId = "") {
+  const key = getContextualOnboardingStorageKey(promptId);
+  if (!key) {
+    return null;
+  }
+
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(key) || "null");
+    const status = String(storedValue?.status || "").trim().toLowerCase();
+    if (!["dismissed", "completed"].includes(status)) {
+      return null;
+    }
+    return {
+      status,
+      tutorialId: String(storedValue?.tutorialId || "").trim(),
+      updatedAt: String(storedValue?.updatedAt || "").trim(),
+      persistence: "local",
+      userId: String(storedValue?.userId || "").trim(),
+    };
+  } catch (error) {
+    console.warn("[Onboarding] Failed to read prompt state.", { promptId, error });
+    return null;
+  }
+}
+
+function saveContextualOnboardingPromptState(promptId = "", status = "dismissed", tutorialId = "") {
+  const normalizedPromptId = String(promptId || "").trim();
+  const normalizedStatus = String(status || "").trim().toLowerCase() === "completed" ? "completed" : "dismissed";
+  if (!normalizedPromptId) {
+    return;
+  }
+
+  try {
+    localStorage.setItem(getContextualOnboardingStorageKey(normalizedPromptId), JSON.stringify({
+      status: normalizedStatus,
+      tutorialId: String(tutorialId || "").trim(),
+      updatedAt: new Date().toISOString(),
+      persistence: "local",
+      userId: appState.user?.id || "",
+    }));
+  } catch (error) {
+    console.warn("[Onboarding] Failed to save prompt state.", { promptId: normalizedPromptId, error });
+  }
+}
+
+function shouldShowContextualOnboardingPrompt(promptId = "") {
+  return Boolean(getContextualOnboardingPrompt(promptId) && !getContextualOnboardingPromptState(promptId));
 }
 
 function getLearnTutorialDurationLabel(tutorial = {}) {
@@ -26772,7 +26903,9 @@ function getLearnTutorialLearningPoints(tutorial = {}, category = {}) {
 
 function getRelatedLearnTutorials(category = {}, tutorial = {}) {
   return Array.isArray(category.tutorials)
-    ? category.tutorials.filter((item) => item.id !== tutorial.id).slice(0, 3)
+    ? category.tutorials
+      .filter((item) => item.id !== tutorial.id && (!item.hiddenOnLearn || tutorial.hiddenOnLearn))
+      .slice(0, 3)
     : [];
 }
 
@@ -26880,6 +27013,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
 }
 
 function renderLearnTutorialCategoryMarkup(category) {
+  const visibleTutorials = category.tutorials.filter((tutorial) => !tutorial.hiddenOnLearn);
   return `
     <section class="learn-category" id="learn-${escapeHtml(category.id)}" data-learn-category="${escapeHtml(category.id)}">
       <div class="section-heading app-section-header learn-category-header">
@@ -26893,10 +27027,103 @@ function renderLearnTutorialCategoryMarkup(category) {
         </div>
       </div>
       <div class="learn-tutorial-grid">
-        ${category.tutorials.map((tutorial) => renderLearnTutorialCardMarkup(tutorial, category)).join("")}
+        ${visibleTutorials.map((tutorial) => renderLearnTutorialCardMarkup(tutorial, category)).join("")}
       </div>
     </section>
   `;
+}
+
+function renderContextualOnboardingPromptMarkup(promptId = "", options = {}) {
+  const prompt = getContextualOnboardingPrompt(promptId);
+  if (!prompt) {
+    return "";
+  }
+
+  const variant = options.variant || prompt.variant || "compact";
+  const actionsMarkup = (prompt.actions || []).map((action, index) => `
+    <button
+      type="button"
+      class="contextual-onboarding-action ${index === 0 ? "is-primary" : "is-secondary"}"
+      data-onboarding-tutorial-id="${escapeHtml(action.tutorialId || "")}"
+    >
+      ${escapeHtml(action.label || "Watch Tutorial")}
+    </button>
+  `).join("");
+  const bulletsMarkup = Array.isArray(prompt.bullets) && prompt.bullets.length
+    ? `
+      <ul class="contextual-onboarding-list">
+        ${prompt.bullets.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    `
+    : "";
+
+  return `
+    <section class="contextual-onboarding-card contextual-onboarding-card--${escapeHtml(variant)} ${escapeHtml(options.className || "")}" data-contextual-onboarding-prompt="${escapeHtml(promptId)}">
+      <div class="contextual-onboarding-copy">
+        <p class="eyebrow">${escapeHtml(options.eyebrow || "Quick Tutorial")}</p>
+        <h3>${escapeHtml(prompt.title)}</h3>
+        <p>${escapeHtml(prompt.body || "")}</p>
+        ${bulletsMarkup}
+      </div>
+      <div class="contextual-onboarding-actions">
+        ${actionsMarkup}
+        <button type="button" class="contextual-onboarding-dismiss" data-onboarding-dismiss="true">Dismiss</button>
+      </div>
+    </section>
+  `;
+}
+
+function bindContextualOnboardingPrompt(promptElement, promptId = "") {
+  if (!(promptElement instanceof HTMLElement) || promptElement.dataset.onboardingBound === "true") {
+    return;
+  }
+
+  promptElement.dataset.onboardingBound = "true";
+  const removePrompt = () => {
+    promptElement.classList.add("is-dismissing");
+    window.setTimeout(() => promptElement.remove(), 170);
+  };
+
+  promptElement.querySelectorAll("[data-onboarding-tutorial-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const tutorialId = button.dataset.onboardingTutorialId || "";
+      saveContextualOnboardingPromptState(promptId, "completed", tutorialId);
+      openLearnTutorialModal(tutorialId);
+      removePrompt();
+    });
+  });
+
+  promptElement.querySelector("[data-onboarding-dismiss='true']")?.addEventListener("click", () => {
+    saveContextualOnboardingPromptState(promptId, "dismissed");
+    removePrompt();
+  });
+}
+
+function mountContextualOnboardingPrompt(anchor, promptId = "", options = {}) {
+  if (!(anchor instanceof HTMLElement) || !shouldShowContextualOnboardingPrompt(promptId)) {
+    return null;
+  }
+
+  anchor.parentElement?.querySelector(`[data-contextual-onboarding-prompt="${promptId}"]`)?.remove();
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = renderContextualOnboardingPromptMarkup(promptId, options).trim();
+  const promptElement = wrapper.firstElementChild;
+  if (!(promptElement instanceof HTMLElement)) {
+    return null;
+  }
+
+  const position = options.position || "afterend";
+  if (position === "afterbegin") {
+    anchor.prepend(promptElement);
+  } else if (position === "beforebegin") {
+    anchor.before(promptElement);
+  } else if (position === "beforeend") {
+    anchor.append(promptElement);
+  } else {
+    anchor.after(promptElement);
+  }
+  bindContextualOnboardingPrompt(promptElement, promptId);
+  return promptElement;
 }
 
 function scrollLearnCategoryIntoView(categoryId = "") {
@@ -43197,6 +43424,15 @@ function renderGallery(targetSnapshotId = "") {
   } else if (showCommunityGrowUnlockNotice) {
     leaderboardSection?.insertAdjacentHTML("beforebegin", renderCommunityGrowUnlockedNoticeMarkup());
   }
+  mountContextualOnboardingPrompt(
+    document.querySelector(".gallery-hero-section") || galleryFeedSection || app,
+    "community-grow",
+    {
+      position: "afterend",
+      eyebrow: "Community Grow",
+      className: "contextual-onboarding-card--community-grow",
+    },
+  );
 
   if (isAdminView && galleryFeedSection) {
     const pendingSnapshots = getAdminReviewPendingSnapshots();
@@ -44736,6 +44972,15 @@ function renderSessionForm(initialSystemType = "KAN") {
   appState.newSessionSystemType = normalizedSystemType;
   syncNewSessionNameState(form);
   bindNewSessionQuickStartHelp(app);
+  mountContextualOnboardingPrompt(
+    document.querySelector(".new-session-quick-start") || document.querySelector(".session-workspace-header"),
+    "new-session",
+    {
+      position: document.querySelector(".new-session-quick-start") ? "afterend" : "afterbegin",
+      eyebrow: "First Session",
+      className: "contextual-onboarding-card--session-start",
+    },
+  );
 
   primeNewSessionSeedAgeDefaults(form);
   primeUnitIdDefault(form);

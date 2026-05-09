@@ -28400,6 +28400,173 @@ body.modal-open {
   overflow: hidden;
 }
 
+.contextual-onboarding-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 18px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.17);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.012)),
+    rgba(9, 15, 11, 0.64);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 22px rgba(148, 209, 89, 0.08);
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 170ms ease,
+    transform 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+
+.contextual-onboarding-card--panel {
+  align-items: start;
+  padding: 18px;
+}
+
+.contextual-onboarding-card--snapshot,
+.contextual-onboarding-card--analytics {
+  margin: 12px 0 16px;
+}
+
+.contextual-onboarding-card--community-grow {
+  margin-top: 18px;
+}
+
+.contextual-onboarding-card.is-dismissing {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+}
+
+.contextual-onboarding-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.contextual-onboarding-copy .eyebrow,
+.contextual-onboarding-copy h3,
+.contextual-onboarding-copy p {
+  margin: 0;
+}
+
+.contextual-onboarding-copy .eyebrow {
+  color: #94d159;
+}
+
+.contextual-onboarding-copy h3 {
+  color: #f4faf0;
+  font-size: clamp(1rem, 1.4vw, 1.18rem);
+  line-height: 1.18;
+}
+
+.contextual-onboarding-copy p,
+.contextual-onboarding-list li {
+  color: rgba(213, 225, 210, 0.78);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.contextual-onboarding-list {
+  display: grid;
+  gap: 5px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contextual-onboarding-list li {
+  position: relative;
+  padding-left: 15px;
+}
+
+.contextual-onboarding-list li::before {
+  content: "";
+  position: absolute;
+  top: 0.66em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #94d159;
+  box-shadow: 0 0 10px rgba(148, 209, 89, 0.24);
+}
+
+.contextual-onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: min(100%, 260px);
+}
+
+.contextual-onboarding-action,
+.contextual-onboarding-dismiss {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 9px 12px;
+  border-radius: 13px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.contextual-onboarding-action {
+  border: 1px solid rgba(148, 209, 89, 0.25);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.18), rgba(148, 209, 89, 0.08)),
+    rgba(10, 16, 12, 0.56);
+  color: #ecf8e6;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 14px rgba(148, 209, 89, 0.09);
+}
+
+.contextual-onboarding-action.is-secondary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    rgba(10, 16, 12, 0.52);
+}
+
+.contextual-onboarding-dismiss {
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(218, 229, 215, 0.74);
+}
+
+.contextual-onboarding-action:hover,
+.contextual-onboarding-action:focus-visible,
+.contextual-onboarding-dismiss:hover,
+.contextual-onboarding-dismiss:focus-visible {
+  border-color: rgba(148, 209, 89, 0.42);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 0 18px rgba(148, 209, 89, 0.13);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .learn-tutorial-modal-overlay {
   position: fixed;
   inset: 0;
@@ -28933,6 +29100,23 @@ body.modal-open {
   .learn-category-jump-list {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contextual-onboarding-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .contextual-onboarding-actions {
+    justify-content: stretch;
+    min-width: 0;
+  }
+
+  .contextual-onboarding-action,
+  .contextual-onboarding-dismiss {
+    flex: 1 1 100%;
+    white-space: normal;
   }
 
   .learn-tutorial-grid {
