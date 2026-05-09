@@ -219,13 +219,16 @@ textarea {
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-1) var(--space-4);
 }
 
 .topbar-brand {
+  width: fit-content;
   min-width: 0;
+  max-width: max-content;
+  flex: 0 0 auto;
 }
 
 .topbar-controls {
@@ -233,6 +236,7 @@ textarea {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
+  margin-left: auto;
   position: relative;
 }
 
@@ -825,6 +829,8 @@ textarea {
 .app-logo-wrap {
   display: inline-flex;
   align-items: center;
+  width: fit-content;
+  max-width: max-content;
   min-height: 48px;
 }
 
@@ -1499,8 +1505,14 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
   }
 
   .topbar-brand {
+    width: auto;
     min-width: 0;
+    max-width: 100%;
     flex: 1 1 auto;
+  }
+
+  .app-logo-wrap {
+    max-width: 100%;
   }
 
   .topbar-nav {
@@ -34486,8 +34498,14 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
   }
 
   .topbar-brand {
+    width: auto;
     min-width: 0;
+    max-width: 100%;
     flex: 1 1 auto;
+  }
+
+  .app-logo-wrap {
+    max-width: 100%;
   }
 
   .card {
