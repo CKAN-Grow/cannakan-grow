@@ -34029,7 +34029,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         : (isExpired ? "is-expired" : "is-neutral"),
       usesBadge: Boolean(qualificationResult),
       isMuted: !qualificationResult,
-      hasReport: false,
+      hasReport: Boolean(qualificationResult),
       pills: qualificationResult
         ? [
           { label: getAdminCstpQualificationLabel(qualificationResult), toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver" },
@@ -35228,10 +35228,147 @@ function renderSourceProfilePage(sourceId = "") {
   });
 }
 
+function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
+  const cstp = sourceProfile?.cstp && typeof sourceProfile.cstp === "object" ? sourceProfile.cstp : {};
+  const normalizedStatus = String(cstp.status || "").trim().toLowerCase();
+  const qualificationResult = ["gold", "silver"].includes(normalizedStatus) ? normalizedStatus : "gold";
+  const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
+  const sourceName = String(sourceProfile?.name || SOURCE_PROFILE_DEMO_RECORD.name || "Green Horizons Seed Co.").trim();
+  const testedSeedCount = Math.max(24, Number(cstp.sampleSize) || 30);
+  const germinationPercent = Math.max(0, Math.min(100, Number(cstp.resultPercent) || 94));
+  const germinatedCount = Math.round((testedSeedCount * germinationPercent) / 100);
+  const certifiedDate = qualificationResult === "silver" ? "2026-02-14T16:20:00.000Z" : "2026-01-18T15:45:00.000Z";
+  const expiresAt = qualificationResult === "silver" ? "2027-02-14T16:20:00.000Z" : "2027-01-18T15:45:00.000Z";
+  const variety = qualificationResult === "silver" ? "Northern Lights Feminized" : "Emerald Reserve Auto";
+  const partitionRates = qualificationResult === "silver"
+    ? [90, 90, 85]
+    : [100, 90, 93];
+
+  return {
+    sourceName,
+    sourceTypeLabel: String(sourceProfile?.sourceTypeLabel || sourceProfile?.type || "Breeder / Seed Source").trim() || "Breeder / Seed Source",
+    qualificationResult,
+    qualificationLabel,
+    germinationPercent,
+    testedSeedCount,
+    germinatedCount,
+    certifiedDate,
+    expiresAt,
+    variety,
+    certificationId: qualificationResult === "silver" ? "CSTP-SIL-2026-0214-RQS" : "CSTP-GLD-2026-0118-GHSC",
+    batchLot: qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A",
+    testDuration: qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours",
+    averageGerminationTiming: qualificationResult === "silver" ? "46 hrs" : "42 hrs",
+    firstGermination: qualificationResult === "silver" ? "31 hrs" : "28 hrs",
+    completionRate: qualificationResult === "silver" ? 96 : 100,
+    environmentalConsistency: qualificationResult === "silver" ? 97 : 98,
+    kanSystemsUsed: 3,
+    partitionsTested: 3,
+    methodology: [
+      {
+        label: "KAN® Methodology",
+        value: "Standardized filter-paper germination inside calibrated KAN® systems.",
+        detail: "Each partition is prepared and observed under the same protocol so the tested batch can be compared consistently.",
+      },
+      {
+        label: "Controlled Environment",
+        value: "Temperature, moisture, and handling windows are kept consistent through the test.",
+        detail: "The report reflects the controlled CSTP run, not a guarantee of every future environment.",
+      },
+      {
+        label: "Simultaneous Multi-KAN Testing",
+        value: "Three KAN® systems ran in parallel with matched partition counts.",
+        detail: "Parallel observation helps separate batch performance from single-device anomalies.",
+      },
+      {
+        label: "Environmental Consistency",
+        value: "Conditions stayed within the CSTP tolerance band for the full run.",
+        detail: "Small variance is expected; the consistency score summarizes observed stability.",
+      },
+    ],
+    partitions: partitionRates.map((rate, index) => ({
+      label: `KAN ${String.fromCharCode(65 + index)}`,
+      rate,
+      seeds: Math.round(testedSeedCount / 3),
+      note: index === 0 ? "Fastest emergence" : (index === 1 ? "Stable midpoint" : "Completed within window"),
+    })),
+    indicators: [
+      { label: "Average Germination Timing", value: qualificationResult === "silver" ? 46 : 42, display: qualificationResult === "silver" ? "46 hrs" : "42 hrs", max: 72 },
+      { label: "First Germination Marker", value: qualificationResult === "silver" ? 31 : 28, display: qualificationResult === "silver" ? "31 hrs" : "28 hrs", max: 72 },
+      { label: "Completion Rate", value: qualificationResult === "silver" ? 96 : 100, display: qualificationResult === "silver" ? "96%" : "100%", max: 100 },
+      { label: "Environmental Consistency", value: qualificationResult === "silver" ? 97 : 98, display: qualificationResult === "silver" ? "97%" : "98%", max: 100 },
+    ],
+    media: [
+      {
+        variant: "science",
+        badge: "FIRST GERMINATED",
+        title: "First Germinated",
+        status: qualificationResult === "silver" ? "31 hr marker" : "28 hr marker",
+        description: "Earliest confirmed emergence captured during the controlled CSTP run.",
+        thumbnail: "/assets/images/cstp/placeholders/first-germinated.webp",
+      },
+      {
+        variant: "cstp",
+        badge: "FINAL RESULT",
+        title: "Final Result",
+        status: `${germinatedCount}/${testedSeedCount} seeds confirmed`,
+        description: "Final observation set used to calculate certification eligibility.",
+        thumbnail: "/assets/images/cstp/placeholders/final-result.webp",
+      },
+    ],
+  };
+}
+
+function renderCstpCertificationMetricMarkup(label = "", value = "", detail = "") {
+  return `
+    <article class="cstp-cert-hero-metric">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      ${detail ? `<p>${escapeHtml(detail)}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderCstpCertificationBarMarkup({
+  label = "",
+  value = 0,
+  display = "",
+  max = 100,
+  detail = "",
+  tone = "",
+} = {}) {
+  const safeMax = Math.max(1, Number(max) || 100);
+  const safeValue = Math.max(0, Math.min(safeMax, Number(value) || 0));
+  const percent = Math.round((safeValue / safeMax) * 100);
+  return `
+    <article class="cstp-cert-bar-row ${tone ? `is-${escapeHtml(tone)}` : ""}">
+      <div class="cstp-cert-bar-copy">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(display || `${safeValue}`)}</strong>
+      </div>
+      <div class="cstp-cert-bar-track" aria-hidden="true">
+        <span style="width: ${escapeHtml(String(percent))}%;"></span>
+      </div>
+      ${detail ? `<p>${escapeHtml(detail)}</p>` : ""}
+    </article>
+  `;
+}
+
+function renderCstpCertificationMediaCardMarkup(item = {}) {
+  return renderLearnMediaCardMarkup({
+    variant: item.variant || "cstp",
+    badge: item.badge || "CSTP MEDIA",
+    title: item.title || "",
+    status: item.status || "",
+    description: item.description || "",
+    thumbnail: item.thumbnail || "",
+    className: "cstp-cert-media-card",
+  });
+}
+
 function renderSourceCstpReportPage(sourceId = "") {
   const requestedId = String(sourceId || "").trim().toLowerCase();
   const sourceProfile = getSourceProfileRecord(requestedId);
-  const publishedCertification = sourceProfile ? getPublishedAdminCstpCertificationForSource(sourceProfile) : null;
   if (!sourceProfile) {
     app.innerHTML = `
       <section class="card source-profile-page">
@@ -35253,137 +35390,160 @@ function renderSourceCstpReportPage(sourceId = "") {
     return;
   }
 
-  if (!publishedCertification) {
-    app.innerHTML = `
-      <section class="source-profile-page">
-        <div class="section-heading app-section-header">
-          <div class="section-title-with-icon app-section-header-main">
-            ${renderAppSectionHeaderIcon("sources")}
+  const certification = getSourceCstpCertificationMockDetail(sourceProfile);
+  const certifiedDateLabel = formatAdminTimestamp(certification.certifiedDate);
+  const expirationLabel = formatAdminTimestamp(certification.expiresAt);
+  const badgeMarkup = renderPublishedCstpCertifiedSealMarkup(certification.qualificationResult, certification.certifiedDate, {
+    shellClassName: "cstp-cert-hero-seal cstp-certified-seal",
+    imageClassName: "cstp-cert-hero-seal-image cstp-certified-seal-image",
+    copyClassName: "cstp-cert-hero-seal-copy cstp-certified-seal-copy",
+    labelClassName: "cstp-certified-seal-label",
+    titleClassName: "cstp-certified-seal-title",
+    noteClassName: "cstp-certified-seal-note",
+    labelText: "CSTP Certified",
+    noteText: `${certification.qualificationLabel} proof page`,
+  });
+
+  app.innerHTML = `
+    <section class="cstp-cert-page">
+      <div class="cstp-cert-page-head">
+        <a class="source-profile-back-link" href="#sources/${escapeHtml(sourceProfile.id)}">&larr; Back to Source Profile</a>
+      </div>
+
+      <section class="card cstp-cert-hero cstp-cert-hero--${escapeHtml(certification.qualificationResult)}" aria-labelledby="cstp-cert-title">
+        <div class="cstp-cert-hero-copy">
+          <div class="cstp-cert-source-row">
+            ${renderSourceLogoMarkup(sourceProfile, {
+              className: "cstp-cert-source-logo",
+              imageClassName: "source-profile-logo-image",
+              placeholderClassName: "source-profile-logo-placeholder",
+              alt: `${sourceProfile.name} logo`,
+            })}
             <div>
-              <p class="eyebrow">CSTP Report</p>
-              <h2>Report unavailable</h2>
-              <p class="muted">A published CSTP certification is not available for this source.</p>
+              <p class="eyebrow">Cannakan Seed Testing Program</p>
+              <h1 id="cstp-cert-title">${escapeHtml(certification.sourceName)}</h1>
+              <p class="cstp-cert-source-type">${escapeHtml(certification.sourceTypeLabel)}</p>
             </div>
           </div>
-          <div class="inline-actions">
-            <a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}">&larr; Back to Source Profile</a>
+          <div class="cstp-cert-status-pill">
+            <span aria-hidden="true"></span>
+            Certified by Cannakan Seed Testing Program
+          </div>
+          <p class="cstp-cert-hero-summary">${escapeHtml(CSTP_RESULTS_CREDIBILITY)} This public proof page summarizes one completed certified source test using mock/static vertical-slice data.</p>
+          <div class="cstp-cert-hero-metrics" aria-label="Certification summary">
+            ${renderCstpCertificationMetricMarkup("Overall Germination", `${certification.germinationPercent}%`, `${certification.germinatedCount}/${certification.testedSeedCount} seeds`)}
+            ${renderCstpCertificationMetricMarkup("Certified Date", certifiedDateLabel, "Published certification record")}
+            ${renderCstpCertificationMetricMarkup("Tested Seed Count", `${certification.testedSeedCount}`, "Batch sample size")}
+            ${renderCstpCertificationMetricMarkup("Variety Tested", certification.variety, certification.batchLot)}
           </div>
         </div>
+        <div class="cstp-cert-hero-proof">
+          ${badgeMarkup}
+          <div class="cstp-cert-score-ring" style="--cstp-cert-score: ${escapeHtml(String(certification.germinationPercent))};" aria-label="${escapeHtml(`${certification.germinationPercent}% germination`)}">
+            <strong>${escapeHtml(`${certification.germinationPercent}%`)}</strong>
+            <span>Germination</span>
+          </div>
+          <div class="cstp-cert-proof-meta">
+            <span>Certification ID</span>
+            <strong>${escapeHtml(certification.certificationId)}</strong>
+          </div>
+        </div>
+      </section>
 
-        <article class="card source-profile-track-record-card">
-          <div class="source-profile-section-head">
-            <div>
-              <p class="eyebrow">Publication Required</p>
-              <h3>No public CSTP report yet</h3>
-              <p class="muted">${escapeHtml(CSTP_SHARING_EXPOSURE)}</p>
+      <section class="cstp-cert-section-grid">
+        <article class="card cstp-cert-panel cstp-cert-summary-panel">
+          <div class="cstp-cert-section-head">
+            <p class="eyebrow">Testing Summary</p>
+            <h2>Controlled KAN® methodology</h2>
+            <p>${escapeHtml(CSTP_NEUTRALITY)}</p>
+          </div>
+          <div class="cstp-cert-method-grid">
+            ${certification.methodology.map((item) => `
+              <article class="cstp-cert-method-card">
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${escapeHtml(item.value)}</strong>
+                <p>${escapeHtml(item.detail)}</p>
+              </article>
+            `).join("")}
+          </div>
+          <div class="cstp-cert-run-grid">
+            ${renderCstpCertificationMetricMarkup("Test Duration", certification.testDuration, "Start to final result")}
+            ${renderCstpCertificationMetricMarkup("KAN Systems Used", String(certification.kanSystemsUsed), "Simultaneous devices")}
+            ${renderCstpCertificationMetricMarkup("Partitions Tested", String(certification.partitionsTested), "Matched sample groups")}
+          </div>
+        </article>
+
+        <article class="card cstp-cert-panel cstp-cert-results-panel">
+          <div class="cstp-cert-section-head">
+            <p class="eyebrow">Results Visualization</p>
+            <h2>Performance at a glance</h2>
+            <p>Mock analytics reflect the reporting language intended for future published CSTP certifications.</p>
+          </div>
+          <div class="cstp-cert-results-layout">
+            <div class="cstp-cert-results-primary">
+              <div class="session-analytics-rate-ring cstp-cert-results-ring" style="--overall-ring-progress: ${escapeHtml(String(certification.germinationPercent))}%;">
+                <span class="overall-rate-value">${escapeHtml(`${certification.germinationPercent}%`)}</span>
+              </div>
+              <div class="cstp-cert-results-primary-copy">
+                <strong>Certified germination result</strong>
+                <p>${escapeHtml(`${certification.germinatedCount} of ${certification.testedSeedCount} seeds germinated within the CSTP observation window.`)}</p>
+              </div>
             </div>
+            <div class="cstp-cert-partition-list" aria-label="Partition performance">
+              ${certification.partitions.map((partition) => renderCstpCertificationBarMarkup({
+                label: partition.label,
+                value: partition.rate,
+                display: `${partition.rate}%`,
+                detail: `${partition.seeds} seeds - ${partition.note}`,
+                tone: partition.rate >= 94 ? "strong" : "stable",
+              })).join("")}
+            </div>
+          </div>
+          <div class="cstp-cert-indicator-grid">
+            ${certification.indicators.map((indicator) => renderCstpCertificationBarMarkup({
+              label: indicator.label,
+              value: indicator.value,
+              display: indicator.display,
+              max: indicator.max,
+              tone: indicator.max === 72 ? "time" : "strong",
+            })).join("")}
           </div>
         </article>
       </section>
-    `;
-    return;
-  }
 
-  app.innerHTML = `
-    <section class="source-profile-page">
-      <div class="section-heading app-section-header">
-        <div class="section-title-with-icon app-section-header-main">
-          ${renderAppSectionHeaderIcon("sources")}
-          <div>
-            <p class="eyebrow">CSTP Report</p>
-            <h2>CSTP Test Report</h2>
-            <p class="muted">${escapeHtml(CSTP_REPORT_LANGUAGE)}</p>
-          </div>
+      <section class="card cstp-cert-panel cstp-cert-media-section" aria-labelledby="cstp-cert-media-title">
+        <div class="cstp-cert-section-head">
+          <p class="eyebrow">Certification Media</p>
+          <h2 id="cstp-cert-media-title">Observed result media</h2>
+          <p>Cinematic placeholders reserve space for future CSTP observation images without adding upload or video functionality.</p>
         </div>
-        <div class="inline-actions">
-          <a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}">&larr; Back to Source Profile</a>
+        <div class="learn-media-card-layout cstp-cert-media-grid">
+          ${certification.media.map((item) => renderCstpCertificationMediaCardMarkup(item)).join("")}
         </div>
-      </div>
+      </section>
 
-      <article class="card source-cstp-report-card">
-        <div class="source-profile-section-head">
-          <div>
-            <p class="eyebrow">Published Report</p>
-            <h3>${escapeHtml(sourceProfile.name)}</h3>
-            <p class="muted">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
-          </div>
+      <section class="card cstp-cert-footer-panel" aria-label="Certification verification">
+        <div>
+          <p class="eyebrow">Certification Verification</p>
+          <h2>Verified by Cannakan Seed Testing Program</h2>
+          <p>${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
         </div>
-        ${renderPublishedCstpCertifiedSealMarkup(publishedCertification.qualificationResult, publishedCertification.publishedAt, {
-          shellClassName: "source-cstp-report-status cstp-certified-seal",
-          imageClassName: "source-cstp-report-badge cstp-certified-seal-image",
-          copyClassName: "source-cstp-report-status-copy cstp-certified-seal-copy",
-          labelClassName: "cstp-certified-seal-label",
-          titleClassName: "cstp-certified-seal-title",
-          noteClassName: "cstp-certified-seal-note",
-          labelText: "CSTP Certified",
-          noteText: `Published ${formatAdminTimestamp(publishedCertification.publishedAt)}`,
-        })}
-        <div class="admin-communications-detail-grid">
-          <div class="admin-communications-detail-item">
-            <span>Source name</span>
-            <strong>${escapeHtml(publishedCertification.sourceName || sourceProfile.name || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Variety</span>
-            <strong>${escapeHtml(publishedCertification.variety || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Batch / Lot</span>
-            <strong>${escapeHtml(getAdminCstpBatchLotDisplayValue(publishedCertification.batchLot || ""))}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Sample size</span>
-            <strong>${escapeHtml(publishedCertification.sampleSize || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Device ID</span>
-            <strong>${escapeHtml(publishedCertification.deviceId || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Test method</span>
-            <strong>${escapeHtml(publishedCertification.testMethod || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Temperature</span>
-            <strong>${escapeHtml(publishedCertification.temperature || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Started</span>
-            <strong>${escapeHtml(publishedCertification.startedAt ? formatAdminTimestamp(publishedCertification.startedAt) : "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Completed</span>
-            <strong>${escapeHtml(publishedCertification.completedAt ? formatAdminTimestamp(publishedCertification.completedAt) : "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Germinated count</span>
-            <strong>${escapeHtml(publishedCertification.germinatedCount || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Final germination %</span>
-            <strong>${escapeHtml(publishedCertification.finalGerminationPercent || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Total germination time</span>
-            <strong>${escapeHtml(publishedCertification.totalGerminationTime || "Not provided")}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Qualification Result</span>
-            <strong>${escapeHtml(getAdminCstpQualificationLabel(publishedCertification.qualificationResult || ""))}</strong>
-          </div>
-          <div class="admin-communications-detail-item">
-            <span>Published</span>
-            <strong>${escapeHtml(publishedCertification.publishedAt ? formatAdminTimestamp(publishedCertification.publishedAt) : "Not published")}</strong>
-          </div>
+        <div class="cstp-cert-footer-grid">
+          <article>
+            <span>Certification ID</span>
+            <strong>${escapeHtml(certification.certificationId)}</strong>
+          </article>
+          <article>
+            <span>Valid Until</span>
+            <strong>${escapeHtml(expirationLabel)}</strong>
+          </article>
+          <article>
+            <span>Renewal Readiness</span>
+            <strong>Future renewal supported</strong>
+          </article>
         </div>
-        <div class="admin-communications-message-shell">
-          <p class="eyebrow">Observations</p>
-          <div class="admin-communications-message-body">
-            <p>${escapeHtml(publishedCertification.observations || "No observations were published with this report.").replace(/\n/g, "<br>")}</p>
-          </div>
-        </div>
-        <p class="source-profile-cstp-trust-note">${escapeHtml(`${CSTP_NEUTRALITY} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
-      </article>
+        <p class="cstp-cert-footer-note">${escapeHtml(`${CSTP_REPORT_LANGUAGE} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
+      </section>
     </section>
   `;
 }
