@@ -23374,7 +23374,12 @@ function renderSessionImageGrid(state) {
   state.grid.innerHTML = "";
 
   if (!allImages.length) {
-    state.grid.innerHTML = `<p class="session-images-empty">No images added yet.</p>`;
+    state.grid.innerHTML = `
+      <div class="session-images-empty">
+        <p>No images added yet.</p>
+        ${renderLearnEmptyStateCtaMarkup("using-notes-and-images", "Using Notes & Images")}
+      </div>
+    `;
     renderSessionImageDots(state, 0);
     state.onRender?.(allImages);
     return;
@@ -27344,6 +27349,29 @@ function getLearnTutorialById(tutorialId = "") {
 
 function shouldShowTutorialOnPublicLearn(tutorial = {}) {
   return !tutorial.hiddenOnLearn && normalizeTutorialPublishStatus(tutorial.status) !== "draft";
+}
+
+function renderLearnEmptyStateCtaMarkup(tutorialId = "", label = "Watch Tutorial") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  return `
+    <div class="learn-empty-state-cta">
+      <span>Need help getting started?</span>
+      <button type="button" class="learn-empty-state-cta-button" data-learn-empty-tutorial="${escapeHtml(normalizedTutorialId)}">
+        ${escapeHtml(label)}
+      </button>
+    </div>
+  `;
+}
+
+function openLearnTutorialFromHelper(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  const tutorialEntry = getLearnTutorialById(normalizedTutorialId);
+  if (tutorialEntry) {
+    openLearnTutorialModal(normalizedTutorialId);
+    return;
+  }
+
+  window.location.hash = normalizedTutorialId ? "#learn/grow-app" : "#learn";
 }
 
 function getContextualOnboardingPrompt(promptId = "") {
@@ -45091,6 +45119,7 @@ function renderGallery(targetSnapshotId = "") {
           <p>${appState.galleryCertificationFilter === "cstp-tested"
             ? "No published Gold or Silver CSTP-certified Community Grow snapshots are available yet."
             : "No Community Grow snapshots yet. Publish one from your Share Snapshot section."}</p>
+          ${renderLearnEmptyStateCtaMarkup("community-grow-basics", "Community Grow Basics")}
         </div>
       `;
       return;
@@ -45333,6 +45362,7 @@ function renderRecentSessions(container, recentSessions, allSessions, options = 
     container.innerHTML = `
       <div class="empty-state recent-sessions-empty">
         <p>${escapeHtml(options.emptyMessage || "No sessions yet. Start your first grow session.")}</p>
+        ${renderLearnEmptyStateCtaMarkup("creating-your-first-session", "Creating Your First Session")}
       </div>
     `;
     return;
@@ -45630,6 +45660,7 @@ function renderMySessionsRecentCompletedPanelMarkup(completedSessions = []) {
           <div class="sessions-panel-empty">
             <p>No completed sessions yet.</p>
             <a class="button button-primary" href="#new" data-session-entry="true">Start New Session</a>
+            ${renderLearnEmptyStateCtaMarkup("understanding-the-timeline", "Understanding the Timeline")}
           </div>
         `}
       </div>
@@ -45765,6 +45796,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
               <div class="sessions-panel-empty sessions-panel-empty--history">
                 <p>${escapeHtml(hasAnySessions ? "No sessions match this filter yet." : "No grow sessions yet.")}</p>
                 <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasAnySessions ? "Start New Session" : "Create Your First Session")}</a>
+                ${renderLearnEmptyStateCtaMarkup(hasAnySessions ? "understanding-the-timeline" : "creating-your-first-session", hasAnySessions ? "Understanding the Timeline" : "Creating Your First Session")}
               </div>
             `}
           </div>
@@ -45787,6 +45819,7 @@ function renderSessionAnalyticsProgressRows(rows = [], options = {}) {
     return `
       <div class="sessions-panel-empty sessions-panel-empty--analytics">
         <p>${escapeHtml(emptyMessage)}</p>
+        ${renderLearnEmptyStateCtaMarkup("understanding-grow-analytics", "Understanding Your Grow Data")}
       </div>
     `;
   }
@@ -45887,7 +45920,12 @@ function renderSessionAnalyticsBreakdownSectionMarkup(title = "", rows = [], opt
       </div>
       ${rows.length
         ? renderSessionAnalyticsProgressRows(rows, { emptyMessage })
-        : `<p class="session-analytics-breakdown-empty">${escapeHtml(emptyMessage)}</p>`}
+        : `
+          <div class="session-analytics-breakdown-empty">
+            <p>${escapeHtml(emptyMessage)}</p>
+            ${renderLearnEmptyStateCtaMarkup("understanding-grow-analytics", "Understanding Your Grow Data")}
+          </div>
+        `}
     </section>
   `;
 }
@@ -46015,6 +46053,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
           ` : `
             <div class="sessions-panel-empty sessions-panel-empty--analytics">
               <p>Not enough data yet</p>
+              ${renderLearnEmptyStateCtaMarkup("understanding-grow-analytics", "Understanding Your Grow Data")}
             </div>
           `}
         </article>
@@ -50265,6 +50304,7 @@ function renderSessionCollection(container, sessions, options) {
     empty.innerHTML = `
       <p>${options.emptyMessage}</p>
       <a class="button button-primary" href="#new" data-session-entry="true">${options.emptyActionLabel}</a>
+      ${renderLearnEmptyStateCtaMarkup(options.learnTutorialId || "creating-your-first-session", options.learnTutorialLabel || "Creating Your First Session")}
     `;
     container.appendChild(empty);
     applySupplyStatusToSessionEntryButtons(empty);
@@ -53042,6 +53082,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
       <div class="session-command-empty">
         <p>${escapeHtml(hasSessionHistory ? "No active sessions right now. Start a new grow session when you're ready." : "No sessions yet. Start your first grow session to open the command center.")}</p>
         <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasSessionHistory ? "Start New Session" : "Create Your First Session")}</a>
+        ${renderLearnEmptyStateCtaMarkup("creating-your-first-session", "Creating Your First Session")}
       </div>
       <a class="session-command-start-link" href="#new" data-session-entry="true">+ Start New Session</a>
     `;
@@ -54363,6 +54404,16 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  const learnEmptyTutorialButton = event.target instanceof Element
+    ? event.target.closest("[data-learn-empty-tutorial]")
+    : null;
+  if (learnEmptyTutorialButton instanceof HTMLElement) {
+    event.preventDefault();
+    event.stopPropagation();
+    openLearnTutorialFromHelper(learnEmptyTutorialButton.dataset.learnEmptyTutorial || "");
+    return;
+  }
+
   const internalLink = event.target instanceof Element
     ? event.target.closest('a[href^="#"]')
     : null;
