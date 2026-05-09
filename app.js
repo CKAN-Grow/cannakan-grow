@@ -516,11 +516,10 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
 });
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Sources" }),
-  Object.freeze({ key: "cstp-certified", label: "CSTP Certified" }),
-  Object.freeze({ key: "gold", label: "Gold" }),
-  Object.freeze({ key: "silver", label: "Silver" }),
-  Object.freeze({ key: "recently-logged", label: "Recently Logged" }),
-  Object.freeze({ key: "most-logged", label: "Most Logged" }),
+  Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
+  Object.freeze({ key: "gold-certified", label: "Gold Certified" }),
+  Object.freeze({ key: "silver-certified", label: "Silver Certified" }),
+  Object.freeze({ key: "report-available", label: "Report Available" }),
 ]);
 const GALLERY_CERTIFICATION_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Community Grow" }),
@@ -548,6 +547,9 @@ const SOURCE_DIRECTORY_LIST_ORDER_OPTIONS = Object.freeze([
 const SOURCE_DIRECTORY_LIST_FILTER_OPTIONS = Object.freeze([
   Object.freeze({ key: "all-sources", label: "All Sources" }),
   Object.freeze({ key: "cstp-tested", label: "CSTP Tested" }),
+  Object.freeze({ key: "gold-certified", label: "Gold Certified" }),
+  Object.freeze({ key: "silver-certified", label: "Silver Certified" }),
+  Object.freeze({ key: "report-available", label: "Report Available" }),
   Object.freeze({ key: "community-reported", label: "Community Reported" }),
   Object.freeze({ key: "has-germination-data", label: "Has Germination Data" }),
   Object.freeze({ key: "no-germination-data", label: "No Germination Data" }),
@@ -34413,6 +34415,23 @@ function getSourceDirectoryMockRecords() {
     baseSourcesByKey.delete(sourceKey);
   });
 
+  baseSourcesByKey.forEach((baseSource, sourceKey) => {
+    const communitySessions = parseSourceDirectoryMetricNumber(baseSource?.community?.sessions);
+    const fallbackLastActivity = String(baseSource?.trackRecord?.lastTest || "").trim().toLowerCase() === "not tested"
+      ? ""
+      : String(baseSource?.trackRecord?.lastTest || baseSource?.cstp?.testedDate || "").trim();
+    mergedRecords.push(normalizeTestedSourceMockRecord({
+      ...baseSource,
+      id: String(baseSource?.id || sourceKey).trim(),
+      directoryStats: {
+        ...(baseSource?.directoryStats || {}),
+        sessionsLogged: parseSourceDirectoryMetricNumber(baseSource?.directoryStats?.sessionsLogged) || communitySessions,
+        varietiesLogged: parseSourceDirectoryMetricNumber(baseSource?.directoryStats?.varietiesLogged),
+        lastLoggedAt: String(baseSource?.directoryStats?.lastLoggedAt || fallbackLastActivity || "").trim(),
+      },
+    }));
+  });
+
   const rankedRecords = mergedRecords
     .filter(Boolean)
     .sort((left, right) => {
@@ -34518,7 +34537,7 @@ function getSourceDirectoryCstpCardState(source = {}) {
       qualificationResult: publishedPreview.filterKey,
       qualificationLabel: getAdminCstpQualificationLabel(publishedPreview.filterKey),
       labelText: "CSTP Certified",
-      noteText: "Published proof",
+      noteText: "Report Available",
       testedAt: publishedPreview.publishedAt || "",
       hasReport: true,
       href: getSourceDirectoryCstpReportHash(source),
@@ -34540,7 +34559,7 @@ function getSourceDirectoryCstpCardState(source = {}) {
       qualificationResult,
       qualificationLabel: getAdminCstpQualificationLabel(qualificationResult),
       labelText: "CSTP Certified",
-      noteText: "Report available",
+      noteText: "Report Available",
       testedAt: String(cstp.testedDate || cstp.validUntil || "").trim(),
       hasReport: true,
       href: getSourceDirectoryCstpReportHash(source),
@@ -34552,8 +34571,8 @@ function getSourceDirectoryCstpCardState(source = {}) {
     kind: isExpired ? "expired" : "tested",
     qualificationResult: "",
     qualificationLabel: "",
-    labelText: isExpired ? "CSTP Previously Tested" : "CSTP Tested",
-    noteText: isExpired ? "No active public proof" : "No public certification",
+    labelText: isExpired ? "Previously Tested" : "CSTP Tested",
+    noteText: "Report Unavailable",
     testedAt: String(cstp.testedDate || "").trim(),
     hasReport: false,
     href: "",
@@ -34819,7 +34838,7 @@ function renderSourceDirectoryMetricsMarkup(records = getSourceDirectoryMockReco
       ${renderAdminOverviewCardMarkup({ label: "Total Sources Logged", value: metrics.totalSourcesLogged.toLocaleString(), subtext: "sources logged by members", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Total Breeders Germinated", value: metrics.totalBreedersGerminated.toLocaleString(), subtext: "breeders represented in sessions", className: "source-directory-metric-card" })}
       ${renderAdminOverviewCardMarkup({ label: "Total Varieties Logged", value: metrics.totalVarietiesLogged.toLocaleString(), subtext: "varieties recorded by members", className: "source-directory-metric-card" })}
-      ${renderAdminOverviewCardMarkup({ label: "CSTP Certified Sources", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active published Gold or Silver", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
+      ${renderAdminOverviewCardMarkup({ label: "Report Available", value: metrics.cstpCertifiedSources.toLocaleString(), subtext: "active Gold or Silver reports", className: "source-directory-metric-card source-directory-metric-card--cstp" })}
     </div>
   `;
 }
@@ -34855,6 +34874,58 @@ function hasSourceDirectoryCstpTesting(source = {}) {
 
   const cstpStatus = String(source?.cstp?.status || "").trim().toLowerCase();
   return Boolean(cstpStatus && cstpStatus !== "not-tested");
+}
+
+function getSourceDirectoryCstpPriority(source = {}) {
+  const cstpState = getSourceDirectoryCstpCardState(source);
+  if (!cstpState) {
+    return 5;
+  }
+  if (cstpState.hasReport && cstpState.qualificationResult === "gold") {
+    return 1;
+  }
+  if (cstpState.hasReport && cstpState.qualificationResult === "silver") {
+    return 2;
+  }
+  if (cstpState.kind === "tested") {
+    return 3;
+  }
+  if (cstpState.kind === "expired") {
+    return 4;
+  }
+  return 5;
+}
+
+function isSourceDirectoryCstpFilterKey(filterKey = "") {
+  return [
+    "cstp-tested",
+    "cstp-certified",
+    "gold",
+    "gold-certified",
+    "silver",
+    "silver-certified",
+    "report-available",
+  ].includes(String(filterKey || "").trim().toLowerCase());
+}
+
+function matchesSourceDirectoryCstpFilter(source = {}, filterKey = "") {
+  const normalizedFilterKey = String(filterKey || "").trim().toLowerCase();
+  const cstpState = getSourceDirectoryCstpCardState(source);
+  switch (normalizedFilterKey) {
+    case "cstp-tested":
+      return Boolean(cstpState);
+    case "cstp-certified":
+    case "report-available":
+      return Boolean(cstpState?.hasReport);
+    case "gold":
+    case "gold-certified":
+      return Boolean(cstpState?.hasReport && cstpState.qualificationResult === "gold");
+    case "silver":
+    case "silver-certified":
+      return Boolean(cstpState?.hasReport && cstpState.qualificationResult === "silver");
+    default:
+      return true;
+  }
 }
 
 function hasSourceDirectoryCommunityReporting(source = {}) {
@@ -34909,7 +34980,7 @@ function getFilteredAndSortedSourceDirectoryListRecords({
 
   return getSourceDirectoryMockRecords()
     .filter((source) => {
-      if (normalizedFilterKey === "cstp-tested" && !hasSourceDirectoryCstpTesting(source)) {
+      if (isSourceDirectoryCstpFilterKey(normalizedFilterKey) && !matchesSourceDirectoryCstpFilter(source, normalizedFilterKey)) {
         return false;
       }
       if (normalizedFilterKey === "community-reported" && !hasSourceDirectoryCommunityReporting(source)) {
@@ -34931,6 +35002,13 @@ function getFilteredAndSortedSourceDirectoryListRecords({
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
+      if (isSourceDirectoryCstpFilterKey(normalizedFilterKey)) {
+        const priorityDelta = getSourceDirectoryCstpPriority(left) - getSourceDirectoryCstpPriority(right);
+        if (priorityDelta !== 0) {
+          return priorityDelta;
+        }
+      }
+
       switch (normalizedSortKey) {
         case "source-name": {
           const comparison = String(left?.name || "").localeCompare(String(right?.name || ""));
@@ -35037,25 +35115,31 @@ function getFilteredAndSortedSourceDirectoryRecords({
     : normalizedSortKey;
   return getSourceDirectoryMockRecords()
     .filter((source) => {
-      const cstpPreview = getSourceDirectoryCstpPreview(source);
-      if (normalizedFilterKey === "cstp-certified" && !cstpPreview) {
-        return false;
-      }
-      if (["gold", "silver"].includes(normalizedFilterKey) && cstpPreview?.filterKey !== normalizedFilterKey) {
+      if (isSourceDirectoryCstpFilterKey(normalizedFilterKey) && !matchesSourceDirectoryCstpFilter(source, normalizedFilterKey)) {
         return false;
       }
       if (!normalizedQuery) {
         return true;
       }
+      const cstpState = getSourceDirectoryCstpCardState(source);
       return [
         source.name,
         source.sourceTypeLabel,
         source.establishedLabel,
         source?.directoryStats?.lastLoggedAt || "",
-        cstpPreview?.label || "",
+        cstpState?.labelText || "",
+        cstpState?.qualificationLabel || "",
+        cstpState?.noteText || "",
       ].some((value) => String(value || "").toLowerCase().includes(normalizedQuery));
     })
     .sort((left, right) => {
+      if (isSourceDirectoryCstpFilterKey(normalizedFilterKey)) {
+        const priorityDelta = getSourceDirectoryCstpPriority(left) - getSourceDirectoryCstpPriority(right);
+        if (priorityDelta !== 0) {
+          return priorityDelta;
+        }
+      }
+
       const valueDelta = getSourceDirectorySortValue(right, effectiveSortKey) - getSourceDirectorySortValue(left, effectiveSortKey);
       if (valueDelta !== 0) {
         return valueDelta;
