@@ -25861,6 +25861,17 @@ function render() {
     return;
   }
 
+  if (route === "learn") {
+    renderLearnPage(id || "");
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "learn",
+      pageKey: id ? `learn-${id}` : "learn",
+      pageLabel: "Learn",
+      pagePath: rawRoute ? `#${rawRoute}` : "#learn",
+    }));
+    return;
+  }
+
   if (!isSupabaseConfigured() && !isLocalDevQaBypassActive()) {
     renderSetupScreen();
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -25874,17 +25885,6 @@ function render() {
 
   syncSessionProgressionReminderNotifications(getSessions());
   renderAppNotificationCenter();
-
-  if (route === "learn") {
-    renderLearnPage(id || "");
-    finalizeRender(buildSiteAnalyticsPageContext({
-      pageGroup: "learn",
-      pageKey: id ? `learn-${id}` : "learn",
-      pageLabel: "Learn",
-      pagePath: rawRoute ? `#${rawRoute}` : "#learn",
-    }));
-    return;
-  }
 
   if (route === "gallery") {
     renderGallery(id || "");
