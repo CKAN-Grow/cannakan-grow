@@ -26748,6 +26748,34 @@ function getLearnTutorialById(tutorialId = "") {
   return null;
 }
 
+function getLearnTutorialDurationLabel(tutorial = {}) {
+  const [duration] = String(tutorial.duration || "2 min • Beginner").split("•").map((part) => part.trim());
+  return duration || "2 min";
+}
+
+function getLearnTutorialDifficultyLabel(tutorial = {}) {
+  const [, difficulty] = String(tutorial.duration || "2 min • Beginner").split("•").map((part) => part.trim());
+  return difficulty || "Beginner";
+}
+
+function getLearnTutorialLearningPoints(tutorial = {}, category = {}) {
+  if (Array.isArray(tutorial.whatYoullLearn) && tutorial.whatYoullLearn.length) {
+    return tutorial.whatYoullLearn;
+  }
+
+  return [
+    `How ${tutorial.title || "this tutorial"} fits into the ${category.eyebrow || "Cannakan® Grow"} workflow.`,
+    "The key setup decisions to make before continuing.",
+    "What to look for when you apply this step in a real grow session.",
+  ];
+}
+
+function getRelatedLearnTutorials(category = {}, tutorial = {}) {
+  return Array.isArray(category.tutorials)
+    ? category.tutorials.filter((item) => item.id !== tutorial.id).slice(0, 3)
+    : [];
+}
+
 function renderLearnTutorialCardMarkup(tutorial, category) {
   return `
     <button
@@ -26769,6 +26797,85 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
         <span class="learn-tutorial-coming-soon">Coming Soon</span>
       </span>
     </button>
+  `;
+}
+
+function renderLearnTutorialPlayerSlotsMarkup(tutorial = {}) {
+  const video = tutorial.video || {};
+  return `
+    <div
+      class="learn-video-player-slots"
+      data-video-provider="${escapeHtml(video.provider || "placeholder")}"
+      data-video-mp4-url="${escapeHtml(video.mp4Url || "")}"
+      data-video-cloudflare-stream-id="${escapeHtml(video.cloudflareStreamId || "")}"
+      data-video-adaptive-url="${escapeHtml(video.adaptiveUrl || "")}"
+      data-video-poster="${escapeHtml(video.poster || "")}"
+      data-video-captions-url="${escapeHtml(video.captionsUrl || "")}"
+      data-video-transcript-url="${escapeHtml(video.transcriptUrl || "")}"
+      data-video-chapters-ready="${video.chaptersReady ? "true" : "false"}"
+      hidden
+    ></div>
+  `;
+}
+
+function renderLearnTutorialModalContentMarkup(tutorial, category) {
+  const durationLabel = getLearnTutorialDurationLabel(tutorial);
+  const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
+  const learningPoints = getLearnTutorialLearningPoints(tutorial, category);
+  const relatedTutorials = getRelatedLearnTutorials(category, tutorial);
+  const relatedMarkup = relatedTutorials.length
+    ? relatedTutorials.map((relatedTutorial) => `
+        <button type="button" class="learn-related-tutorial" data-learn-related-tutorial="${escapeHtml(relatedTutorial.id)}">
+          <span>${escapeHtml(relatedTutorial.title)}</span>
+          <small>${escapeHtml(relatedTutorial.duration || "2 min • Beginner")}</small>
+        </button>
+      `).join("")
+    : `<p class="learn-tutorial-section-copy">More tutorials will appear here as the Learn library expands.</p>`;
+
+  return `
+    <div class="learn-tutorial-player-shell">
+      <div
+        class="learn-tutorial-player"
+        role="img"
+        aria-label="${escapeHtml(`${tutorial.title} video placeholder`)}"
+        data-learn-video-player-shell="true"
+      >
+        ${renderLearnTutorialPlayerSlotsMarkup(tutorial)}
+        <span class="learn-tutorial-player-sheen" aria-hidden="true"></span>
+        <span class="learn-tutorial-player-play" aria-hidden="true">▶</span>
+        <span class="learn-tutorial-player-status">Video Coming Soon</span>
+      </div>
+    </div>
+    <div class="learn-tutorial-modal-copy">
+      <div class="learn-tutorial-modal-kicker-row">
+        <span class="learn-tutorial-category-badge">${escapeHtml(category.title)}</span>
+        <span class="learn-tutorial-coming-soon">Coming Soon</span>
+      </div>
+      <h2 id="learn-tutorial-modal-title">${escapeHtml(tutorial.title)}</h2>
+      <div class="learn-tutorial-modal-meta" aria-label="Tutorial details">
+        <span>${escapeHtml(durationLabel)}</span>
+        <span>${escapeHtml(difficultyLabel)}</span>
+      </div>
+      <p id="learn-tutorial-modal-description">${escapeHtml(tutorial.description)}</p>
+    </div>
+    <div class="learn-tutorial-support-grid">
+      <section class="learn-tutorial-support-panel">
+        <h3>What You’ll Learn</h3>
+        <ul>
+          ${learningPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+        </ul>
+      </section>
+      <section class="learn-tutorial-support-panel">
+        <h3>Tutorial Notes</h3>
+        <p class="learn-tutorial-section-copy">Placeholder notes area prepared for captions, transcripts, chapter markers, and supporting links when the full tutorial system is connected.</p>
+      </section>
+      <section class="learn-tutorial-support-panel learn-tutorial-support-panel--related">
+        <h3>Related Tutorials</h3>
+        <div class="learn-related-tutorials">
+          ${relatedMarkup}
+        </div>
+      </section>
+    </div>
   `;
 }
 
@@ -26872,18 +26979,7 @@ function ensureLearnTutorialModal() {
   overlay.innerHTML = `
     <div class="learn-tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="learn-tutorial-modal-title" aria-describedby="learn-tutorial-modal-description">
       <button type="button" class="modal-close" data-learn-tutorial-close aria-label="Close">×</button>
-      <div class="learn-tutorial-modal-copy">
-        <p class="eyebrow" data-learn-tutorial-eyebrow></p>
-        <h2 id="learn-tutorial-modal-title" data-learn-tutorial-title></h2>
-        <p id="learn-tutorial-modal-description" data-learn-tutorial-description></p>
-      </div>
-      <div class="learn-tutorial-placeholder" aria-hidden="true">
-        <span class="learn-tutorial-placeholder-play">▶</span>
-      </div>
-      <p class="learn-tutorial-provider-note" data-learn-tutorial-provider-note></p>
-      <div class="learn-tutorial-modal-actions">
-        <button type="button" class="button button-primary" data-learn-tutorial-close>Got it</button>
-      </div>
+      <div class="learn-tutorial-modal-scroll" data-learn-tutorial-modal-content></div>
     </div>
   `;
 
@@ -26925,10 +27021,16 @@ function openLearnTutorialModal(tutorialId = "") {
   const { category, tutorial } = tutorialEntry;
   const overlay = ensureLearnTutorialModal();
   const modal = overlay.querySelector(".learn-tutorial-modal");
-  overlay.querySelector("[data-learn-tutorial-eyebrow]").textContent = category.title;
-  overlay.querySelector("[data-learn-tutorial-title]").textContent = tutorial.title;
-  overlay.querySelector("[data-learn-tutorial-description]").textContent = tutorial.description;
-  overlay.querySelector("[data-learn-tutorial-provider-note]").textContent = "Video player placeholder prepared for future modal playback, hosted MP4, and Cloudflare Stream integration.";
+  const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
+  if (content) {
+    content.innerHTML = renderLearnTutorialModalContentMarkup(tutorial, category);
+    content.querySelectorAll("[data-learn-related-tutorial]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openLearnTutorialModal(button.dataset.learnRelatedTutorial || "");
+      });
+    });
+    content.scrollTop = 0;
+  }
   overlay.dataset.closing = "false";
   overlay.classList.remove("closing");
   modal?.classList.remove("closing");
