@@ -28652,6 +28652,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-lifecycle-status-column .session-status-panel {
+  --stage-color-soaking: #7fb8ff;
+  --stage-color-germinating: #f39a53;
+  --stage-color-first-germinated: #94d159;
+  --stage-color-completed: #b58a61;
   --session-status-accent: #94d159;
   --session-status-accent-soft: rgba(148, 209, 89, 0.18);
   --session-status-accent-strong: rgba(148, 209, 89, 0.32);
@@ -28663,7 +28667,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-lifecycle-status-column .session-status-panel[data-session-status="soaking"],
 .session-lifecycle-status-column .session-status-panel[data-session-progress="soaking"] {
-  --session-status-accent: #7fb8ff;
+  --session-status-accent: var(--stage-color-soaking);
   --session-status-accent-soft: rgba(127, 184, 255, 0.18);
   --session-status-accent-strong: rgba(127, 184, 255, 0.32);
   --session-status-accent-glow: rgba(127, 184, 255, 0.22);
@@ -28672,15 +28676,15 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-lifecycle-status-column .session-status-panel[data-session-status="germinating"],
 .session-lifecycle-status-column .session-status-panel[data-session-progress="germination"] {
-  --session-status-accent: #dd8045;
-  --session-status-accent-soft: rgba(221, 128, 69, 0.18);
-  --session-status-accent-strong: rgba(221, 128, 69, 0.34);
-  --session-status-accent-glow: rgba(221, 128, 69, 0.24);
+  --session-status-accent: var(--stage-color-germinating);
+  --session-status-accent-soft: rgba(243, 154, 83, 0.18);
+  --session-status-accent-strong: rgba(243, 154, 83, 0.34);
+  --session-status-accent-glow: rgba(243, 154, 83, 0.24);
   --session-status-accent-ink: #ffd4b8;
 }
 
 .session-lifecycle-status-column .session-status-panel[data-session-progress="first-germinated"] {
-  --session-status-accent: #94d159;
+  --session-status-accent: var(--stage-color-first-germinated);
   --session-status-accent-soft: rgba(148, 209, 89, 0.18);
   --session-status-accent-strong: rgba(148, 209, 89, 0.34);
   --session-status-accent-glow: rgba(148, 209, 89, 0.24);
@@ -28689,7 +28693,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .session-lifecycle-status-column .session-status-panel[data-session-status="completed"],
 .session-lifecycle-status-column .session-status-panel[data-session-progress="completed"] {
-  --session-status-accent: #b58a61;
+  --session-status-accent: var(--stage-color-completed);
   --session-status-accent-soft: rgba(181, 138, 97, 0.18);
   --session-status-accent-strong: rgba(181, 138, 97, 0.34);
   --session-status-accent-glow: rgba(181, 138, 97, 0.24);
@@ -29149,8 +29153,12 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-card {
-  --current-stage-accent: #7fb8ff;
-  --next-stage-accent: #f39a53;
+  --stage-color-soaking: #7fb8ff;
+  --stage-color-germinating: #f39a53;
+  --stage-color-first-germinated: #94d159;
+  --stage-color-completed: #b58a61;
+  --current-stage-accent: var(--stage-color-soaking);
+  --next-stage-accent: var(--stage-color-germinating);
   position: relative;
   display: grid;
   grid-template-columns: minmax(120px, 1fr) auto minmax(140px, 1fr) auto;
@@ -29176,56 +29184,65 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
+.detail-session-action-bar {
+  --stage-color-soaking: #7fb8ff;
+  --stage-color-germinating: #f39a53;
+  --stage-color-first-germinated: #94d159;
+  --stage-color-completed: #b58a61;
+}
+
 .detail-session-action-bar[data-current-stage-tone="not-started"] {
   --current-stage-accent: #b7dca4;
 }
 
 .detail-session-action-bar[data-current-stage-tone="soaking"] {
-  --current-stage-accent: #7fb8ff;
+  --current-stage-accent: var(--stage-color-soaking);
 }
 
 .detail-session-action-bar[data-current-stage-tone="germinating"] {
-  --current-stage-accent: #f39a53;
+  --current-stage-accent: var(--stage-color-germinating);
 }
 
 .detail-session-action-bar[data-current-stage-tone="first-germinated"] {
-  --current-stage-accent: #94d159;
+  --current-stage-accent: var(--stage-color-first-germinated);
 }
 
 .detail-session-action-bar[data-current-stage-tone="completed"] {
-  --current-stage-accent: #b58a61;
+  --current-stage-accent: var(--stage-color-completed);
 }
 
 .detail-session-action-bar[data-next-stage-tone="soaking"] {
-  --next-stage-accent: #7fb8ff;
+  --next-stage-accent: var(--stage-color-soaking);
 }
 
 .detail-session-action-bar[data-next-stage-tone="germinating"] {
-  --next-stage-accent: #f39a53;
+  --next-stage-accent: var(--stage-color-germinating);
 }
 
 .detail-session-action-bar[data-next-stage-tone="first-germinated"] {
-  --next-stage-accent: #94d159;
+  --next-stage-accent: var(--stage-color-first-germinated);
 }
 
 .detail-session-action-bar[data-next-stage-tone="completed"] {
-  --next-stage-accent: #b58a61;
+  --next-stage-accent: var(--stage-color-completed);
 }
 
 .detail-session-action-bar[data-next-stage-tone="session-complete"] {
-  --next-stage-accent: #b58a61;
+  --next-stage-accent: var(--stage-color-completed);
 }
 
 .detail-stage-progress-card:focus-within {
-  border-color: rgba(181, 232, 111, 0.28);
+  border-color: color-mix(in srgb, var(--next-stage-accent) 34%, rgba(255, 255, 255, 0.08));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.08),
+    inset 0 0 0 1px color-mix(in srgb, var(--next-stage-accent) 10%, transparent),
     0 16px 30px rgba(0, 0, 0, 0.22),
-    0 0 22px rgba(148, 209, 89, 0.1);
+    0 0 22px color-mix(in srgb, var(--next-stage-accent) 12%, transparent);
 }
 
 .detail-stage-progress-card.is-session-complete {
+  --current-stage-accent: var(--stage-color-completed);
+  --next-stage-accent: var(--stage-color-completed);
   opacity: 0.88;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "current";
@@ -29234,6 +29251,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     radial-gradient(circle at 18% 52%, color-mix(in srgb, var(--current-stage-accent) 16%, transparent), transparent 38%),
     linear-gradient(180deg, rgba(20, 27, 22, 0.92) 0%, rgba(12, 17, 14, 0.96) 100%);
   border-color: color-mix(in srgb, var(--current-stage-accent) 34%, rgba(255, 255, 255, 0.08));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px color-mix(in srgb, var(--current-stage-accent) 8%, transparent),
+    0 14px 28px rgba(0, 0, 0, 0.18),
+    0 0 22px color-mix(in srgb, var(--current-stage-accent) 12%, transparent);
 }
 
 .detail-stage-progress-card.is-session-complete .detail-stage-progress-arrow,
@@ -29281,9 +29303,23 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-copy {
+  position: relative;
   display: grid;
   gap: 4px;
   min-width: 0;
+}
+
+.detail-stage-progress-copy::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: min(54px, 100%);
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--stage-progress-accent), transparent);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--stage-progress-accent) 24%, transparent);
+  opacity: 0.78;
 }
 
 .detail-stage-progress-icon-slot {
@@ -29326,17 +29362,19 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-label {
-  color: #9cad9d;
+  color: color-mix(in srgb, var(--stage-progress-accent) 76%, #eef5ec);
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--stage-progress-accent) 16%, transparent);
 }
 
 .detail-stage-progress-step strong {
   color: var(--stage-progress-accent);
   font-size: 1rem;
   line-height: 1.2;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--stage-progress-accent) 18%, transparent);
 }
 
 .detail-stage-progress-step[data-stage-role="next"] strong {
@@ -29402,7 +29440,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .detail-stage-progress-action:not(:disabled):focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(148, 209, 89, 0.16),
+    0 0 0 3px color-mix(in srgb, var(--next-stage-accent) 18%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 0 18px color-mix(in srgb, var(--next-stage-accent) 24%, transparent);
 }
