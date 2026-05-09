@@ -857,6 +857,12 @@ const PARTITION_HEADER_ICON_ASSETS = {
   KAN: "/src/assets/kan-partition-icon-v2.png",
   TRA: "/src/assets/tra-partition-icon.png",
 };
+const TIMELINE_STAGE_ICON_ASSETS = Object.freeze({
+  "stage-soaking": "/src/assets/icons/timeline-icons-soaking.png",
+  "stage-germination": "/src/assets/icons/timeline-icons-germination.png",
+  "stage-first-germinated": "/src/assets/icons/timeline-icons-germination-started.png",
+  "stage-completed": "/src/assets/icons/timeline-icons-complete.png",
+});
 const GROW_GALLERY_DEBUG = true;
 const SESSION_STAGE_OPTIONS = [
   { value: "soaking", progressKey: "soaking", label: "Soaking", modalLabel: "Soaking", tone: "is-soaking" },
@@ -49988,7 +49994,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
           nextEvent
           && (event.isComplete || nextEvent.isComplete || nextEvent.isCurrent)
         );
-        const iconStageKey = event.key === "germination-started" ? "germination" : event.key;
+        const iconStageKey = event.key === "germination-started" ? "first-germinated" : event.key;
         const cardMeta = getSessionLifecycleTimelineCardMeta(state, event);
 
         return `
@@ -50171,6 +50177,15 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
     className,
   ].filter(Boolean).join(" ");
   const svgClass = "command-icon-svg";
+  const stageIconAssetPath = TIMELINE_STAGE_ICON_ASSETS[iconName];
+
+  if (stageIconAssetPath) {
+    return `
+      <span class="${classes}" aria-hidden="true">
+        <img class="command-icon-image command-icon-image--stage" src="${escapeHtml(stageIconAssetPath)}" alt="" loading="lazy" decoding="async" draggable="false">
+      </span>
+    `;
+  }
 
   switch (iconName) {
     case "header":
@@ -50191,47 +50206,6 @@ function renderCommandCenterIconMarkup(iconName, className = "") {
             <path d="M12 13.7c0-3.1 2.4-5.2 5.8-5.2 0 3.2-2.3 5.2-5.8 5.2Z" stroke-linejoin="round"></path>
             <path d="M12 15.6c0-2.7-2.1-4.5-5.2-4.5 0 2.8 2 4.5 5.2 4.5Z" stroke-linejoin="round"></path>
             <path d="M8.8 19.5h6.4" stroke-linecap="round"></path>
-          </svg>
-        </span>
-      `;
-    case "stage-soaking":
-      return `
-        <span class="${classes}" aria-hidden="true">
-          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 3.8c-3 3.6-5.4 6.8-5.4 9.8a5.4 5.4 0 1 0 10.8 0c0-3-2.4-6.2-5.4-9.8Z" stroke-linejoin="round"></path>
-            <path d="M9.8 14.2a2.6 2.6 0 0 0 4.4 1.8" stroke-linecap="round"></path>
-          </svg>
-        </span>
-      `;
-    case "stage-germination":
-      return `
-        <span class="${classes}" aria-hidden="true">
-          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 5.2c-3.4 0-5.9 2.6-5.9 5.8 0 3.3 2.5 5.8 5.7 5.8 3.2 0 6-2.4 6-5.8S15.4 5.2 12 5.2Z" stroke-linejoin="round"></path>
-            <path d="m10.9 8.2 1.6 1.8-1.7 1.9 1.8 2.1" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-        </span>
-      `;
-    case "stage-first-germinated":
-      return `
-        <span class="${classes}" aria-hidden="true">
-          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 18.8v-5.6" stroke-linecap="round"></path>
-            <path d="M12 13.5c0-3 2.3-5 5.6-5 0 3.1-2.2 5-5.6 5Z" stroke-linejoin="round"></path>
-            <path d="M12 15.2c0-2.6-2-4.3-4.9-4.3 0 2.6 1.9 4.3 4.9 4.3Z" stroke-linejoin="round"></path>
-            <path d="M12 18.8c0 1.2-.4 2.1-1.1 2.9" stroke-linecap="round" style="stroke:#f5f8f1"></path>
-            <path d="M11.9 19.2c.7.2 1.2.6 1.6 1.2" stroke-linecap="round" style="stroke:#94d159"></path>
-          </svg>
-        </span>
-      `;
-    case "stage-completed":
-      return `
-        <span class="${classes}" aria-hidden="true">
-          <svg class="${svgClass}" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M12 17.8v-5.2" stroke-linecap="round"></path>
-            <path d="M12 12.9c-2.6 0-4.6-1.9-4.6-4.8 2.9 0 4.6 1.8 4.6 4.8Z" stroke-linejoin="round"></path>
-            <path d="M12 14.6c0-2.5 1.8-4.1 4.7-4.1 0 2.7-1.9 4.1-4.7 4.1Z" stroke-linejoin="round"></path>
-            <path d="m16.2 7.7 1.4 1.4 2.2-2.6" stroke-linecap="round" stroke-linejoin="round"></path>
           </svg>
         </span>
       `;
@@ -50305,7 +50279,7 @@ function renderSessionCommandCenterProgressMarkup(session = null, options = {}) 
 
     return `
       <article class="session-command-stage stage-item session-command-stage--${escapeHtml(event.tone)} ${event.isComplete ? "is-complete" : ""} ${event.isCurrent ? "is-current" : ""} ${!event.isActive ? "is-future" : ""}">
-        ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "germination" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "germination" : event.key}`)}
+        ${renderCommandCenterIconMarkup(`stage-${event.key === "germination-started" ? "first-germinated" : event.key}`, `command-icon--stage command-icon--stage-${event.key === "germination-started" ? "first-germinated" : event.key}`)}
         <strong>${escapeHtml(event.displayLabel)}</strong>
         <p>${escapeHtml(session ? event.subtext : (requiresSignIn ? "Sign in to begin" : event.subtext))}</p>
       </article>

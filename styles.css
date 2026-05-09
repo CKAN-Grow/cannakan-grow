@@ -2606,6 +2606,19 @@ body.theme-dark .spotlight-stat strong {
   height: 100%;
 }
 
+#session-command-center .command-icon-image,
+.session-lifecycle-progress-shell .command-icon-image,
+.session-lifecycle-status-column .session-status-stage-icon .command-icon-image,
+.detail-stage-progress-icon .command-icon-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+  pointer-events: none;
+  user-select: none;
+}
+
 #session-command-center .command-icon-svg {
   width: 26px;
   height: 26px;
@@ -2718,11 +2731,11 @@ body.theme-dark .spotlight-stat strong {
 }
 
 #session-command-center .command-icon--stage-first-germinated {
-  color: #f5f8f1;
+  color: #94d159;
 }
 
 #session-command-center .command-icon--stage-completed {
-  color: #94d159;
+  color: #b58a61;
 }
 
 .session-lifecycle-progress-shell .command-icon {
