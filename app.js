@@ -26857,7 +26857,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 2,
         title: "Loading Seeds Into the KAN®",
         duration: "3 min • Beginner",
-        description: "Placeholder guide for organizing seeds by partition before a session begins.",
+        description: "See how to organize seeds by KAN® partition before starting a tracked grow session.",
         visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
@@ -26879,7 +26879,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 3,
         title: "Understanding Soaking vs Germinating",
         duration: "2 min • Beginner",
-        description: "Placeholder walkthrough for the stage shift from soaking to visible germination.",
+        description: "Learn what changes between soaking, germinating, and visible germination progress.",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26893,7 +26893,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 4,
         title: "Filter Paper Setup",
         duration: "2 min • Beginner",
-        description: "Placeholder guide for preparing the filter paper workflow cleanly and consistently.",
+        description: "Prepare filter paper consistently so each KAN® partition starts clean and readable.",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26907,7 +26907,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 5,
         title: "Reading Germination Results",
         duration: "3 min • Beginner",
-        description: "Placeholder guide for interpreting results across partitions and final outcomes.",
+        description: "Review partition outcomes, final counts, and what to record when germination completes.",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26931,7 +26931,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 1,
         title: "Creating Your First Session",
         duration: "2 min • Beginner",
-        description: "Placeholder tutorial for starting a session and setting up the first partition rows.",
+        description: "Create a grow session, name it clearly, and set up the first partition rows.",
         featured: true,
         featuredOrder: 2,
         featuredLabel: "First Session",
@@ -26956,7 +26956,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 2,
         title: "Understanding the Timeline",
         duration: "2 min • Beginner",
-        description: "Placeholder walkthrough for the session stage timeline and progress state.",
+        description: "Follow each stage from soaking through completion and understand what updates next.",
         visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
@@ -26978,7 +26978,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 3,
         title: "Using Notes & Images",
         duration: "2 min • Beginner",
-        description: "Placeholder tutorial for documenting observations with notes and session images.",
+        description: "Capture private notes and images that keep soak time, conditions, and observations clear.",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26992,7 +26992,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 4,
         title: "Generating Grow Snapshots",
         duration: "3 min • Beginner",
-        description: "Placeholder walkthrough for creating share-ready grow snapshots.",
+        description: "Turn session progress into a polished snapshot for sharing or Community Grow.",
         featured: true,
         featuredOrder: 3,
         featuredLabel: "Share Ready",
@@ -27017,7 +27017,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 5,
         title: "Community Grow Basics",
         duration: "2 min • Beginner",
-        description: "Placeholder guide for sharing into Community Grow and browsing the public feed.",
+        description: "Learn how public grow snapshots, browsing, and community sharing fit together.",
         visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
@@ -27039,7 +27039,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         order: 6,
         title: "Understanding Your Grow Data",
         duration: "3 min • Beginner",
-        description: "Placeholder walkthrough for reading grow analytics, confidence indicators, and community performance trends.",
+        description: "Read germination trends, confidence indicators, and community performance context.",
         hiddenOnLearn: true,
         visibilityStatus: "coming-soon",
         scheduled: false,
@@ -28666,7 +28666,7 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
 function renderLearningPathsSectionMarkup() {
   const collections = getLearnTutorialCollections().filter((collection) => (
     shouldShowLearningPathOnPublicLearn(collection)
-    && normalizeLearnTutorialTextList(collection.tutorialIds).length
+    && getLearnCollectionTutorialEntries(collection).length
   ));
   if (!collections.length) {
     return "";
@@ -28727,7 +28727,7 @@ function renderLearningPathCardMarkup(collection = {}) {
           <span>${escapeHtml(progressLabel)}</span>
         </span>
       </button>
-      ${isLearnItemPublicShareAvailable(tutorial) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
+      ${isLearnItemPublicShareAvailable(collection) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
     </article>
   `;
 }
@@ -29047,7 +29047,7 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
           </span>
         </span>
       </button>
-      ${isLearnItemPublicShareAvailable(collection) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
+      ${isLearnItemPublicShareAvailable(tutorial) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
     </article>
   `;
 }
@@ -29271,7 +29271,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
       </section>
       <section class="learn-tutorial-support-panel">
         <h3>Tutorial Notes</h3>
-        <p class="learn-tutorial-section-copy">Placeholder notes area prepared for captions, transcripts, chapter markers, and supporting links when the full tutorial system is connected.</p>
+        <p class="learn-tutorial-section-copy">Supporting notes, chapter markers, captions, and links will appear here as each tutorial is published.</p>
       </section>
       ${renderLearnTutorialTranscriptMarkup(tutorial)}
       ${renderLearnTutorialQuickStepsMarkup(tutorial)}
