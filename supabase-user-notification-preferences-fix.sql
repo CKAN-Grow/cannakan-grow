@@ -57,6 +57,33 @@ alter table public.user_notification_preferences
   add column if not exists push_notifications_enabled boolean not null default false;
 
 alter table public.user_notification_preferences
+  add column if not exists grow_reminders_enabled boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists soaking_reminders boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists germination_reminders boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists snapshot_reminders boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists supply_reminders boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists community_activity_notifications boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists email_notifications_enabled boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists reminder_notifications_enabled boolean not null default true;
+
+alter table public.user_notification_preferences
+  add column if not exists marketing_notifications_enabled boolean not null default false;
+
+alter table public.user_notification_preferences
   add column if not exists created_at timestamptz not null default now();
 
 alter table public.user_notification_preferences
