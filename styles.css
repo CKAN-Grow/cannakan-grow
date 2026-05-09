@@ -30006,27 +30006,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   color: #c7dcc6;
 }
 
-.session-name-required-badge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 209, 89, 0.34);
-  background: rgba(148, 209, 89, 0.12);
-  color: #d7f6bf;
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: 0 0 12px rgba(148, 209, 89, 0.12);
-}
-
-.session-workspace-shell .session-chart-header > label .session-name-required-badge {
-  color: #d7f6bf;
-  font-size: 0.66rem;
-}
-
 .session-name-helper {
   color: #9fb29f;
   font-size: 0.78rem;
@@ -30067,36 +30046,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
-.session-workspace-form.session-name-empty .session-name-field {
-  animation: session-name-required-pulse 2.4s ease-in-out infinite;
-}
-
-.session-workspace-form.session-name-warning .session-name-field {
-  border-color: rgba(183, 242, 123, 0.72);
-}
-
-.session-workspace-form.session-name-warning .session-name-required-badge {
-  background: rgba(148, 209, 89, 0.2);
-  color: #efffdf;
-}
-
-.session-workspace-form.session-name-empty :is(
-  .system-layout-block,
-  .session-lifecycle-section,
-  .partition-work-header,
-  .chart-shell,
-  .session-timing-section,
-  .progress-chart-section,
-  .run-progress-section,
-  .timeline-save-shortcut,
-  .session-notes-section,
-  .session-images-section,
-  .share-snapshot-section
-) {
-  opacity: 0.68;
-  filter: saturate(0.86);
-}
-
 .session-workspace-form :is(
   .system-layout-block,
   .session-lifecycle-section,
@@ -30111,29 +30060,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .share-snapshot-section
 ) {
   transition: opacity 0.2s ease, filter 0.2s ease;
-}
-
-@keyframes session-name-required-pulse {
-  0%,
-  100% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.055),
-      0 12px 24px rgba(0, 0, 0, 0.18),
-      0 0 16px rgba(148, 209, 89, 0.12);
-  }
-  50% {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 14px 28px rgba(0, 0, 0, 0.22),
-      0 0 0 1px rgba(148, 209, 89, 0.1),
-      0 0 30px rgba(148, 209, 89, 0.26);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .session-workspace-form.session-name-empty .session-name-field {
-    animation: none;
-  }
 }
 
 .session-workspace-shell .session-chart-header > label.system-type-field {

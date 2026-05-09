@@ -25059,7 +25059,11 @@ function getFormSnapshotData(form) {
   const firstPartition = partitions[0] || {};
   const date = form.elements.date?.value || "";
   return buildSnapshotData({
-    sessionName: buildFinalSessionName(form.elements.sessionName?.value, firstPartition, date),
+    sessionName: buildFinalSessionName(form.elements.sessionName?.value, firstPartition, date, {
+      partitions,
+      systemType: form.elements.systemType?.value || "",
+      unitId: form.elements.unitId?.value || "",
+    }),
     date,
     systemType: form.elements.systemType?.value || "",
     seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
@@ -26390,7 +26394,7 @@ function getNewSessionNameField(form) {
   return sessionNameField instanceof HTMLInputElement ? sessionNameField : null;
 }
 
-function syncNewSessionNameState(form, { showWarning = false } = {}) {
+function syncNewSessionNameState(form) {
   const sessionNameField = getNewSessionNameField(form);
   if (!form || !sessionNameField) {
     return false;
@@ -26398,16 +26402,15 @@ function syncNewSessionNameState(form, { showWarning = false } = {}) {
 
   const isEmpty = !String(sessionNameField.value || "").trim();
   const nameShell = sessionNameField.closest("[data-session-name-field]");
-  const shouldWarn = isEmpty && (showWarning || sessionNameField.dataset.namePromptDismissed === "true");
 
   form.classList.toggle("session-name-empty", isEmpty);
-  form.classList.toggle("session-name-warning", shouldWarn);
+  form.classList.remove("session-name-warning");
   nameShell?.classList.toggle("is-empty", isEmpty);
-  nameShell?.classList.toggle("is-warning", shouldWarn);
-  sessionNameField.setAttribute("aria-invalid", shouldWarn ? "true" : "false");
+  nameShell?.classList.remove("is-warning");
+  sessionNameField.setAttribute("aria-invalid", "false");
+  sessionNameField.setCustomValidity("");
   if (!isEmpty) {
     sessionNameField.dataset.namePromptDismissed = "false";
-    sessionNameField.setCustomValidity("");
   }
 
   return !isEmpty;
@@ -26484,8 +26487,9 @@ function ensureNewSessionNamePrompt(form) {
       sessionNameField.dataset.namePromptDismissed = String(!sessionNameField.value.trim());
     }
 
-    const hasName = syncNewSessionNameState(form, { showWarning: true });
-    closeNewSessionNamePrompt({ focusField: !hasName });
+    syncNewSessionNameState(form);
+    updateNewSessionNameDefaultSuggestion(form);
+    closeNewSessionNamePrompt({ focusField: false });
   };
 
   modalForm?.addEventListener("submit", (event) => {
@@ -26524,8 +26528,9 @@ function ensureNewSessionNamePrompt(form) {
           activeSessionNameField.dispatchEvent(new Event("change", { bubbles: true }));
           activeSessionNameField.dataset.namePromptDismissed = String(!activeSessionNameField.value.trim());
         }
-        const hasName = syncNewSessionNameState(activeForm, { showWarning: true });
-        closeNewSessionNamePrompt({ focusField: !hasName });
+        syncNewSessionNameState(activeForm);
+        updateNewSessionNameDefaultSuggestion(activeForm);
+        closeNewSessionNamePrompt({ focusField: false });
       }
     });
     ensureNewSessionNamePrompt.escapeBound = true;
@@ -26565,19 +26570,13 @@ function validateNewSessionName(form, { formMessage = null } = {}) {
     return true;
   }
 
-  const hasName = syncNewSessionNameState(form, { showWarning: true });
-  if (hasName) {
-    sessionNameField.setCustomValidity("");
-    return true;
-  }
-
-  sessionNameField.dataset.namePromptDismissed = "true";
-  sessionNameField.setCustomValidity("Please enter a session name.");
+  syncNewSessionNameState(form);
+  updateNewSessionNameDefaultSuggestion(form);
+  sessionNameField.setCustomValidity("");
   if (formMessage) {
-    formMessage.textContent = "Please enter a session name before saving.";
+    formMessage.textContent = "";
   }
-  sessionNameField.focus();
-  return false;
+  return true;
 }
 
 function renderAuthScreen(options = {}) {
@@ -44316,6 +44315,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   ensureSourceCatalogDatalist();
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+  updateNewSessionNameDefaultSuggestion(form);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
   applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
   applyStageEditingMode(form, sessionStatusField.value);
@@ -44397,6 +44397,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const rerenderSeedAgePartitions = () => {
     syncSeedAgeSetupUi(form);
     renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+    updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
     applyStageEditingMode(form, sessionStatusField.value);
@@ -44422,16 +44423,15 @@ function renderSessionForm(initialSystemType = "KAN") {
     }
   };
   form.addEventListener("input", () => {
+    updateNewSessionNameDefaultSuggestion(form);
     refreshUnsavedChangesState();
   });
   sessionNameField?.addEventListener("input", () => {
     sessionNameField.setCustomValidity("");
     syncNewSessionNameState(form);
-    if (formMessage?.textContent === "Please enter a session name before saving.") {
-      formMessage.textContent = "";
-    }
   });
   form.addEventListener("change", () => {
+    updateNewSessionNameDefaultSuggestion(form);
     refreshUnsavedChangesState();
   });
   const persistNewSessionNoteDraft = () => {
@@ -44602,6 +44602,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
       }
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+      updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
     applyStageEditingMode(form, sessionStatusField.value);
@@ -44775,16 +44776,23 @@ function renderSessionForm(initialSystemType = "KAN") {
       };
     });
     const createdAt = new Date().toISOString();
+    const rawUnitId = String(formData.get("unitId") || "").trim();
+    const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
     const session = {
       id: crypto.randomUUID(),
       date: formData.get("date"),
       time: formData.get("time"),
       systemType: formData.get("systemType"),
-      unitId: normalizeUnitIdValue(formData.get("unitId")),
+      unitId: normalizedUnitId,
       sessionName: buildFinalSessionName(
         formData.get("sessionName"),
         partitionEntries[0],
         formData.get("date"),
+        {
+          partitions: partitionEntries,
+          systemType: formData.get("systemType"),
+          unitId: rawUnitId,
+        },
       ),
       customSessionName: String(formData.get("sessionName") || "").trim(),
       sessionNotes: String(formData.get("sessionNotes") || "").trim(),
@@ -49581,6 +49589,59 @@ function normalizeUnitIdValue(value, fallback = "A") {
   return normalized || fallback;
 }
 
+function getFirstNamedPartition(partitions = []) {
+  return (Array.isArray(partitions) ? partitions : [])
+    .find((partition) => formatPartitionSeedVariety(partition).trim());
+}
+
+function buildGeneratedSessionNameBase({
+  partitions = [],
+  firstPartition = null,
+  systemType = "",
+  unitId = "",
+} = {}) {
+  const partitionList = Array.isArray(partitions) && partitions.length
+    ? partitions
+    : (firstPartition ? [firstPartition] : []);
+  const namedPartition = getFirstNamedPartition(partitionList);
+  const varietyName = formatPartitionSeedVariety(namedPartition || {}).trim();
+  if (!varietyName) {
+    return "Untitled Grow Session";
+  }
+
+  const normalizedSystemType = String(systemType || "").trim().toUpperCase();
+  const normalizedUnitId = String(unitId || "").trim();
+  const systemLabel = [normalizedSystemType, normalizedUnitId].filter(Boolean).join(" ");
+  const varietySessionName = `${varietyName} Session`;
+  return systemLabel ? `${systemLabel} - ${varietySessionName}` : varietySessionName;
+}
+
+function getNewSessionNameSuggestionFromForm(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return "Untitled Grow Session";
+  }
+
+  const partitions = [...form.querySelectorAll(".partition-row")].map((row, index) => ({
+    id: row.dataset.partitionId || index + 1,
+    source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
+    seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
+  }));
+  return buildGeneratedSessionNameBase({
+    partitions,
+    systemType: form.elements.systemType?.value || "",
+    unitId: form.elements.unitId?.value || "",
+  });
+}
+
+function updateNewSessionNameDefaultSuggestion(form) {
+  const sessionNameField = getNewSessionNameField(form);
+  if (!sessionNameField || String(sessionNameField.value || "").trim()) {
+    return;
+  }
+
+  sessionNameField.placeholder = getNewSessionNameSuggestionFromForm(form);
+}
+
 function primeUnitIdDefault(form) {
   const unitIdField = form?.elements?.unitId;
   if (!(unitIdField instanceof HTMLInputElement)) {
@@ -49592,10 +49653,14 @@ function primeUnitIdDefault(form) {
   }
 }
 
-function buildFinalSessionName(inputName, firstPartition, sessionDate) {
+function buildFinalSessionName(inputName, firstPartition, sessionDate, options = {}) {
   const manualName = String(inputName || "").trim();
-  const partitionName = formatPartitionSeedVariety(firstPartition || {});
-  const baseName = manualName || partitionName || "Session";
+  const baseName = manualName || buildGeneratedSessionNameBase({
+    firstPartition,
+    partitions: options.partitions,
+    systemType: options.systemType,
+    unitId: options.unitId,
+  });
   return `${baseName} - ${formatSessionNameDate(sessionDate)}`;
 }
 
