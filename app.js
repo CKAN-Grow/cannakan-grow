@@ -66,7 +66,9 @@ const ADMIN_USER_REPORTS_OPEN_STORAGE_KEY = "cannakanAdminUserReportsOpen";
 const ADMIN_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminAnalyticsOpen";
 const ADMIN_SEED_AGE_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminSeedAgeAnalyticsOpen";
 const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsOpen";
+const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagementOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
+const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -75,6 +77,7 @@ const ADMIN_DASHBOARD_SECTION_DEFAULT_ORDER = Object.freeze([
   "admin-overview",
   "site-visitor-analytics",
   "community-grow-moderation",
+  "tutorial-management",
   "members",
   "communications",
   "dev-access",
@@ -3120,6 +3123,18 @@ function getAdminDashboardSectionRouteConfig(routeId = "") {
         storageKey: ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
         contentId: "admin-site-visitor-analytics-content",
       };
+    case "tutorials":
+    case "tutorial-management":
+      return {
+        key: "tutorial-management",
+        label: "Tutorial Management",
+        href: "#admin/tutorials",
+        pageKey: "admin-tutorial-management",
+        pageLabel: "Admin Tutorial Management",
+        pagePath: "#admin/tutorials",
+        storageKey: ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY,
+        contentId: "admin-tutorial-management-section-content",
+      };
     default:
       return null;
   }
@@ -3131,6 +3146,7 @@ function getAdminSubnavItems() {
     getAdminDashboardSectionRouteConfig("members"),
     getAdminDashboardSectionRouteConfig("sources"),
     getAdminDashboardSectionRouteConfig("message-board"),
+    getAdminDashboardSectionRouteConfig("tutorials"),
     getAdminDashboardSectionRouteConfig("analytics"),
     {
       key: "community-grow-moderation",
@@ -26804,8 +26820,154 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
   }),
 });
 
+function normalizeTutorialPublishStatus(status = "coming-soon") {
+  const normalizedStatus = String(status || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
+  return ["coming-soon", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
+}
+
+function getTutorialStatusLabel(status = "coming-soon") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status);
+  if (normalizedStatus === "published") {
+    return "Published";
+  }
+  if (normalizedStatus === "draft") {
+    return "Draft";
+  }
+  return "Coming Soon";
+}
+
+function getTutorialVideoStateLabel(tutorial = {}) {
+  const video = tutorial.video || {};
+  if (video.cloudflareStreamId) {
+    return "Cloudflare Stream ready";
+  }
+  if (video.mp4Url) {
+    return "Hosted MP4 linked";
+  }
+  if (video.adaptiveUrl) {
+    return "Adaptive stream linked";
+  }
+  if (video.transcriptUrl || video.captionsUrl) {
+    return "Transcript/captions staged";
+  }
+  return "Placeholder only";
+}
+
+function getLearnTutorialCategoryOptions() {
+  return LEARN_TUTORIAL_CATEGORIES.map((category) => ({
+    id: category.id,
+    title: category.title,
+    eyebrow: category.eyebrow,
+  }));
+}
+
+function normalizeTutorialCategoryId(categoryId = "") {
+  const normalizedCategoryId = String(categoryId || "").trim();
+  return getLearnTutorialCategoryOptions().some((category) => category.id === normalizedCategoryId)
+    ? normalizedCategoryId
+    : getLearnTutorialCategoryOptions()[0]?.id || "grow-app";
+}
+
+function loadAdminTutorialDraftsFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY) || "{}");
+    return storedValue && typeof storedValue === "object" && !Array.isArray(storedValue) ? storedValue : {};
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to read tutorial drafts.", error);
+    return {};
+  }
+}
+
+function saveAdminTutorialDraftsToStorage(drafts = {}) {
+  try {
+    localStorage.setItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY, JSON.stringify(drafts || {}));
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to save tutorial drafts.", error);
+  }
+}
+
+function getAdminTutorialDraft(tutorialId = "") {
+  const drafts = loadAdminTutorialDraftsFromStorage();
+  return drafts[String(tutorialId || "").trim()] || null;
+}
+
+function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  const drafts = loadAdminTutorialDraftsFromStorage();
+  drafts[normalizedTutorialId] = {
+    ...(drafts[normalizedTutorialId] || {}),
+    ...updates,
+    id: normalizedTutorialId,
+    updatedAt: new Date().toISOString(),
+    persistence: "local",
+  };
+  saveAdminTutorialDraftsToStorage(drafts);
+}
+
+function resetAdminTutorialDraft(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  const drafts = loadAdminTutorialDraftsFromStorage();
+  delete drafts[normalizedTutorialId];
+  saveAdminTutorialDraftsToStorage(drafts);
+}
+
 function getLearnTutorialCategories() {
-  return LEARN_TUTORIAL_CATEGORIES;
+  const draftMap = loadAdminTutorialDraftsFromStorage();
+  const categoryShells = LEARN_TUTORIAL_CATEGORIES.map((category) => ({
+    ...category,
+    tutorials: [],
+  }));
+  const categoryMap = new Map(categoryShells.map((category) => [category.id, category]));
+
+  LEARN_TUTORIAL_CATEGORIES.forEach((category) => {
+    category.tutorials.forEach((tutorial, index) => {
+      const draft = draftMap[tutorial.id] || {};
+      const videoDraft = draft.video || {};
+      const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
+      const mergedTutorial = {
+        ...tutorial,
+        ...draft,
+        id: tutorial.id,
+        baseCategoryId: category.id,
+        categoryId,
+        duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
+        difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
+        status: normalizeTutorialPublishStatus(draft.status || tutorial.status || "coming-soon"),
+        thumbnailUrl: String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
+        order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
+        featured: Boolean(draft.featured ?? tutorial.featured),
+        onboardingPriority: Boolean(draft.onboardingPriority ?? tutorial.onboardingPriority),
+        video: {
+          ...(tutorial.video || {}),
+          ...videoDraft,
+          provider: String(videoDraft.provider || tutorial.video?.provider || "placeholder").trim() || "placeholder",
+          mp4Url: String(videoDraft.mp4Url || tutorial.video?.mp4Url || "").trim(),
+          cloudflareStreamId: String(videoDraft.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim(),
+          adaptiveUrl: String(videoDraft.adaptiveUrl || tutorial.video?.adaptiveUrl || "").trim(),
+          captionsUrl: String(videoDraft.captionsUrl || tutorial.video?.captionsUrl || "").trim(),
+          transcriptUrl: String(videoDraft.transcriptUrl || tutorial.video?.transcriptUrl || "").trim(),
+          poster: String(videoDraft.poster || draft.thumbnailUrl || tutorial.video?.poster || "").trim(),
+        },
+        _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
+      };
+      categoryMap.get(categoryId)?.tutorials.push(mergedTutorial);
+    });
+  });
+
+  return categoryShells.map((category) => ({
+    ...category,
+    tutorials: category.tutorials.sort((left, right) => (
+      (Number(left._sortOrder) || 0) - (Number(right._sortOrder) || 0)
+    )).map(({ _sortOrder, ...tutorial }) => tutorial),
+  }));
 }
 
 function getLearnCategory(categoryId = "") {
@@ -26885,6 +27047,9 @@ function getLearnTutorialDurationLabel(tutorial = {}) {
 }
 
 function getLearnTutorialDifficultyLabel(tutorial = {}) {
+  if (tutorial.difficulty) {
+    return String(tutorial.difficulty || "").trim() || "Beginner";
+  }
   const [, difficulty] = String(tutorial.duration || "2 min • Beginner").split("•").map((part) => part.trim());
   return difficulty || "Beginner";
 }
@@ -26910,6 +27075,8 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
 }
 
 function renderLearnTutorialCardMarkup(tutorial, category) {
+  const durationLabel = getLearnTutorialDurationLabel(tutorial);
+  const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   return `
     <button
       type="button"
@@ -26926,8 +27093,8 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
       <span class="learn-tutorial-card-body">
         <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
         <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
-        <span class="learn-tutorial-card-meta">${escapeHtml(tutorial.duration || "2 min • Beginner")}</span>
-        <span class="learn-tutorial-coming-soon">Coming Soon</span>
+        <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
+        <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
       </span>
     </button>
   `;
@@ -35309,6 +35476,7 @@ function getAdminCollapsibleSectionStorageKeys() {
     ADMIN_USER_REPORTS_OPEN_STORAGE_KEY,
     ADMIN_ANALYTICS_OPEN_STORAGE_KEY,
     ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY,
+    ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY,
     ADMIN_COMMUNICATIONS_OPEN_STORAGE_KEY,
     ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
     ADMIN_DEV_ACCESS_OPEN_STORAGE_KEY,
@@ -41555,6 +41723,280 @@ function renderAdminDevAccessSectionMarkup() {
   });
 }
 
+function getAdminTutorialsForManagement() {
+  return getLearnTutorialCategories().flatMap((category) => (
+    category.tutorials.map((tutorial) => ({
+      ...tutorial,
+      categoryId: tutorial.categoryId || category.id,
+      categoryTitle: category.title,
+      categoryEyebrow: category.eyebrow,
+      hasLocalDraft: Boolean(getAdminTutorialDraft(tutorial.id)),
+    }))
+  ));
+}
+
+function getAdminTutorialForEditing() {
+  const tutorials = getAdminTutorialsForManagement();
+  const selectedId = String(appState.adminTutorialEditingId || "").trim();
+  return tutorials.find((tutorial) => tutorial.id === selectedId) || tutorials[0] || null;
+}
+
+function renderAdminTutorialStatusOptions(selectedStatus = "coming-soon") {
+  const normalizedStatus = normalizeTutorialPublishStatus(selectedStatus);
+  return ["coming-soon", "draft", "published"].map((status) => (
+    `<option value="${escapeHtml(status)}"${status === normalizedStatus ? " selected" : ""}>${escapeHtml(getTutorialStatusLabel(status))}</option>`
+  )).join("");
+}
+
+function renderAdminTutorialCategoryOptions(selectedCategoryId = "") {
+  const normalizedCategoryId = normalizeTutorialCategoryId(selectedCategoryId);
+  return getLearnTutorialCategoryOptions().map((category) => (
+    `<option value="${escapeHtml(category.id)}"${category.id === normalizedCategoryId ? " selected" : ""}>${escapeHtml(category.title)}</option>`
+  )).join("");
+}
+
+function renderAdminTutorialDifficultyOptions(selectedDifficulty = "Beginner") {
+  const normalizedDifficulty = String(selectedDifficulty || "Beginner").trim();
+  return ["Beginner", "Intermediate", "Advanced"].map((difficulty) => (
+    `<option value="${escapeHtml(difficulty)}"${difficulty === normalizedDifficulty ? " selected" : ""}>${escapeHtml(difficulty)}</option>`
+  )).join("");
+}
+
+function renderAdminTutorialCardMarkup(tutorial = {}) {
+  const status = normalizeTutorialPublishStatus(tutorial.status);
+  const durationLabel = getLearnTutorialDurationLabel(tutorial);
+  const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
+  const thumbnailUrl = String(tutorial.thumbnailUrl || tutorial.video?.poster || "").trim();
+  return `
+    <article class="admin-tutorial-card${appState.adminTutorialEditingId === tutorial.id ? " is-selected" : ""}" data-admin-tutorial-card="${escapeHtml(tutorial.id)}">
+      <div class="admin-tutorial-thumb${thumbnailUrl ? " has-image" : ""}">
+        ${thumbnailUrl ? `<img src="${escapeHtml(thumbnailUrl)}" alt="">` : '<span aria-hidden="true">▶</span>'}
+      </div>
+      <div class="admin-tutorial-card-copy">
+        <div class="admin-tutorial-card-head">
+          <strong>${escapeHtml(tutorial.title || "Untitled Tutorial")}</strong>
+          <span class="admin-tutorial-status is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(status))}</span>
+        </div>
+        <p>${escapeHtml(tutorial.categoryTitle || "Uncategorized")}</p>
+        <div class="admin-tutorial-card-meta">
+          <span>${escapeHtml(durationLabel)}</span>
+          <span>${escapeHtml(difficultyLabel)}</span>
+          <span>${escapeHtml(getTutorialVideoStateLabel(tutorial))}</span>
+          ${tutorial.hasLocalDraft ? "<span>Local draft</span>" : ""}
+        </div>
+      </div>
+      <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-tutorial-edit="${escapeHtml(tutorial.id)}">Edit</button>
+    </article>
+  `;
+}
+
+function renderAdminTutorialEditorMarkup(tutorial = null) {
+  if (!tutorial) {
+    return `
+      <section class="meta-card admin-tutorial-editor">
+        <p class="muted">No tutorials are available yet.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="meta-card admin-tutorial-editor" data-admin-tutorial-editor="${escapeHtml(tutorial.id)}">
+      <div class="admin-tutorial-editor-head">
+        <div>
+          <p class="eyebrow">Edit Tutorial</p>
+          <h4>${escapeHtml(tutorial.title || "Untitled Tutorial")}</h4>
+          <p class="muted">Local admin draft only. Later this shape can map to backend tutorial records.</p>
+        </div>
+        <span class="admin-tutorial-status is-${escapeHtml(normalizeTutorialPublishStatus(tutorial.status))}">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+      </div>
+      <form class="admin-source-form admin-tutorial-form" data-admin-tutorial-form="${escapeHtml(tutorial.id)}">
+        <div class="admin-source-form-grid">
+          <label>
+            <span>Title</span>
+            <input name="title" value="${escapeHtml(tutorial.title || "")}" required>
+          </label>
+          <label>
+            <span>Category</span>
+            <select name="categoryId">${renderAdminTutorialCategoryOptions(tutorial.categoryId || tutorial.baseCategoryId)}</select>
+          </label>
+          <label>
+            <span>Duration</span>
+            <input name="duration" value="${escapeHtml(getLearnTutorialDurationLabel(tutorial))}" placeholder="2 min">
+          </label>
+          <label>
+            <span>Difficulty</span>
+            <select name="difficulty">${renderAdminTutorialDifficultyOptions(getLearnTutorialDifficultyLabel(tutorial))}</select>
+          </label>
+          <label>
+            <span>Publish Status</span>
+            <select name="status">${renderAdminTutorialStatusOptions(tutorial.status)}</select>
+          </label>
+          <label>
+            <span>Display Order</span>
+            <input name="order" type="number" min="1" step="1" value="${escapeHtml(tutorial.order || 1)}">
+          </label>
+          <label class="admin-source-form-full">
+            <span>Subtitle / Description</span>
+            <textarea name="description" rows="3">${escapeHtml(tutorial.description || "")}</textarea>
+          </label>
+          <label class="admin-source-form-full">
+            <span>Thumbnail URL</span>
+            <input name="thumbnailUrl" value="${escapeHtml(tutorial.thumbnailUrl || "")}" placeholder="/assets/tutorial-thumbnail.png">
+          </label>
+          <label>
+            <span>Future Video URL / MP4</span>
+            <input name="mp4Url" value="${escapeHtml(tutorial.video?.mp4Url || "")}" placeholder="https://.../tutorial.mp4">
+          </label>
+          <label>
+            <span>Cloudflare Stream ID</span>
+            <input name="cloudflareStreamId" value="${escapeHtml(tutorial.video?.cloudflareStreamId || "")}">
+          </label>
+          <label>
+            <span>Adaptive Stream URL</span>
+            <input name="adaptiveUrl" value="${escapeHtml(tutorial.video?.adaptiveUrl || "")}" placeholder="HLS/DASH placeholder">
+          </label>
+          <label>
+            <span>Transcript URL</span>
+            <input name="transcriptUrl" value="${escapeHtml(tutorial.video?.transcriptUrl || "")}">
+          </label>
+          <label>
+            <span>Captions URL</span>
+            <input name="captionsUrl" value="${escapeHtml(tutorial.video?.captionsUrl || "")}">
+          </label>
+          <label class="admin-announcement-toggle-row admin-source-form-full">
+            <input name="featured" type="checkbox" ${tutorial.featured ? "checked" : ""}>
+            <span>Feature this tutorial in future Learn/onboarding surfaces</span>
+          </label>
+          <label class="admin-announcement-toggle-row admin-source-form-full">
+            <input name="onboardingPriority" type="checkbox" ${tutorial.onboardingPriority ? "checked" : ""}>
+            <span>Prioritize for contextual onboarding prompts</span>
+          </label>
+        </div>
+        <div class="admin-source-form-actions admin-tutorial-editor-actions">
+          <button type="submit" class="button button-primary">Save Local Draft</button>
+          <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview Player</button>
+          <button type="button" class="button button-secondary" data-admin-tutorial-reset="${escapeHtml(tutorial.id)}">Reset Local Draft</button>
+        </div>
+        <p class="muted admin-source-form-helper">Prepared fields: Stream ID, hosted video URL, adaptive stream URL, captions, transcript, ordering, featured state, and onboarding priority.</p>
+      </form>
+    </section>
+  `;
+}
+
+function renderAdminTutorialManagementBodyMarkup() {
+  const tutorials = getAdminTutorialsForManagement();
+  if (!appState.adminTutorialEditingId && tutorials[0]) {
+    appState.adminTutorialEditingId = tutorials[0].id;
+  }
+  const editingTutorial = getAdminTutorialForEditing();
+  const publishedCount = tutorials.filter((tutorial) => normalizeTutorialPublishStatus(tutorial.status) === "published").length;
+  const draftCount = tutorials.filter((tutorial) => normalizeTutorialPublishStatus(tutorial.status) === "draft").length;
+  const linkedVideoCount = tutorials.filter((tutorial) => getTutorialVideoStateLabel(tutorial) !== "Placeholder only").length;
+
+  return `
+    <div class="admin-tutorial-management">
+      <div class="summary-grid admin-overview-grid admin-tutorial-summary-grid">
+        ${[
+          renderAdminOverviewCardMarkup({ label: "Tutorials", value: tutorials.length.toLocaleString(), subtext: "centralized Learn records" }),
+          renderAdminOverviewCardMarkup({ label: "Published", value: publishedCount.toLocaleString(), subtext: "ready for public tutorial surfaces" }),
+          renderAdminOverviewCardMarkup({ label: "Drafts", value: draftCount.toLocaleString(), subtext: "locally staged edits" }),
+          renderAdminOverviewCardMarkup({ label: "Video Linked", value: linkedVideoCount.toLocaleString(), subtext: "future media fields populated" }),
+        ].join("")}
+      </div>
+      <div class="admin-tutorial-layout">
+        <div class="admin-tutorial-list-shell">
+          <div class="admin-sources-list-head">
+            <strong>Tutorial Library</strong>
+            <span class="muted">${escapeHtml(`${tutorials.length} total`)}</span>
+          </div>
+          <div class="admin-tutorial-list">
+            ${tutorials.map(renderAdminTutorialCardMarkup).join("")}
+          </div>
+        </div>
+        <div id="admin-tutorial-editor-anchor">
+          ${renderAdminTutorialEditorMarkup(editingTutorial)}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminTutorialManagementSectionMarkup() {
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Learn CMS Foundation",
+    title: "Tutorial Management",
+    description: "Manage tutorial metadata, placeholders, and future video fields without changing hardcoded Learn page markup.",
+    iconType: "message-board",
+    storageKey: ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY,
+    contentId: "admin-tutorial-management-section-content",
+    defaultOpen: false,
+    bodyMarkup: renderAdminTutorialManagementBodyMarkup(),
+  });
+}
+
+function refreshAdminTutorialManagementSection() {
+  const content = app.querySelector("#admin-tutorial-management-section-content");
+  if (!content) {
+    return;
+  }
+  content.innerHTML = renderAdminTutorialManagementBodyMarkup();
+  bindAdminTutorialManagementSection(content);
+  normalizeSectionHeaderLayouts(content);
+}
+
+function bindAdminTutorialManagementSection(scope = app) {
+  scope.querySelectorAll("[data-admin-tutorial-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.adminTutorialEditingId = button.dataset.adminTutorialEdit || "";
+      refreshAdminTutorialManagementSection();
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-tutorial-preview]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openLearnTutorialModal(button.dataset.adminTutorialPreview || "");
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-tutorial-reset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      resetAdminTutorialDraft(button.dataset.adminTutorialReset || "");
+      refreshAdminTutorialManagementSection();
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-tutorial-form]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const tutorialId = form.dataset.adminTutorialForm || "";
+      const formData = new FormData(form);
+      saveAdminTutorialDraft(tutorialId, {
+        title: String(formData.get("title") || "").trim(),
+        description: String(formData.get("description") || "").trim(),
+        categoryId: normalizeTutorialCategoryId(formData.get("categoryId")),
+        duration: String(formData.get("duration") || "").trim(),
+        difficulty: String(formData.get("difficulty") || "Beginner").trim(),
+        status: normalizeTutorialPublishStatus(formData.get("status")),
+        thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
+        order: Math.max(1, Number(formData.get("order")) || 1),
+        featured: formData.get("featured") === "on",
+        onboardingPriority: formData.get("onboardingPriority") === "on",
+        video: {
+          provider: "placeholder",
+          mp4Url: String(formData.get("mp4Url") || "").trim(),
+          cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
+          adaptiveUrl: String(formData.get("adaptiveUrl") || "").trim(),
+          transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
+          captionsUrl: String(formData.get("captionsUrl") || "").trim(),
+          poster: String(formData.get("thumbnailUrl") || "").trim(),
+        },
+      });
+      appState.adminTutorialEditingId = tutorialId;
+      refreshAdminTutorialManagementSection();
+    });
+  });
+}
+
 function renderAdminPage() {
   const adminPanels = getOrderedAdminDashboardPanels([
     {
@@ -41603,6 +42045,10 @@ function renderAdminPage() {
           </div>
         </section>
       `,
+    },
+    {
+      key: "tutorial-management",
+      markup: renderAdminTutorialManagementSectionMarkup(),
     },
     {
       key: "members",
@@ -41923,6 +42369,7 @@ function renderAdminPage() {
   bindAdminMessagesSection();
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
+  bindAdminTutorialManagementSection();
   bindSiteVisitorAnalyticsSection();
   bindMessageBoardImageFallbacks(app);
   app.querySelector('[data-open-community-grow-moderation="true"]')?.addEventListener("click", () => {
