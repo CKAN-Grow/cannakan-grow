@@ -26564,6 +26564,124 @@ function openNewSessionNamePrompt(form) {
   return true;
 }
 
+const NEW_SESSION_TUTORIAL_CONTENT = Object.freeze({
+  "kan-system": Object.freeze({
+    eyebrow: "KAN® System Tutorial",
+    title: "How to Use the KAN® System",
+    description: "A guided KAN® System walkthrough will live here soon. This action is reserved for the in-app tutorial experience.",
+  }),
+  "grow-app": Object.freeze({
+    eyebrow: "Grow App Tutorial",
+    title: "How to Use the Grow App",
+    description: "A quick Cannakan® Grow app walkthrough will live here soon. This action is reserved for the in-app tutorial experience.",
+  }),
+});
+
+function getNewSessionTutorialContent(topic = "") {
+  return NEW_SESSION_TUTORIAL_CONTENT[topic] || NEW_SESSION_TUTORIAL_CONTENT["grow-app"];
+}
+
+function closeNewSessionTutorialModal() {
+  const overlay = document.querySelector("#new-session-tutorial-modal-overlay");
+  if (!overlay || overlay.dataset.closing === "true") {
+    return;
+  }
+
+  overlay.dataset.closing = "true";
+  overlay.classList.add("closing");
+  overlay.querySelector(".new-session-tutorial-modal")?.classList.add("closing");
+  document.body.classList.remove("modal-open");
+
+  window.setTimeout(() => {
+    overlay.remove();
+  }, 180);
+}
+
+function ensureNewSessionTutorialModal() {
+  let overlay = document.querySelector("#new-session-tutorial-modal-overlay");
+  if (overlay) {
+    return overlay;
+  }
+
+  overlay = document.createElement("div");
+  overlay.id = "new-session-tutorial-modal-overlay";
+  overlay.className = "new-session-tutorial-modal-overlay";
+  overlay.dataset.closing = "false";
+  overlay.innerHTML = `
+    <div class="new-session-tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="new-session-tutorial-modal-title" aria-describedby="new-session-tutorial-modal-description">
+      <button type="button" class="modal-close" data-new-session-tutorial-close aria-label="Close">×</button>
+      <div class="new-session-tutorial-modal-copy">
+        <p class="eyebrow" data-new-session-tutorial-eyebrow></p>
+        <h2 id="new-session-tutorial-modal-title" data-new-session-tutorial-title></h2>
+        <p id="new-session-tutorial-modal-description" data-new-session-tutorial-description></p>
+      </div>
+      <div class="new-session-tutorial-placeholder" aria-hidden="true">
+        <span class="new-session-tutorial-placeholder-play">▶</span>
+      </div>
+      <div class="new-session-tutorial-modal-actions">
+        <button type="button" class="button button-primary" data-new-session-tutorial-close>Got it</button>
+      </div>
+    </div>
+  `;
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      event.preventDefault();
+      closeNewSessionTutorialModal();
+    }
+  });
+
+  overlay.querySelectorAll("[data-new-session-tutorial-close]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      closeNewSessionTutorialModal();
+    });
+  });
+
+  if (!ensureNewSessionTutorialModal.escapeBound) {
+    document.addEventListener("keydown", (event) => {
+      const activeOverlay = document.querySelector("#new-session-tutorial-modal-overlay");
+      if (event.key === "Escape" && activeOverlay && activeOverlay.dataset.closing !== "true") {
+        event.preventDefault();
+        closeNewSessionTutorialModal();
+      }
+    });
+    ensureNewSessionTutorialModal.escapeBound = true;
+  }
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function openNewSessionTutorialModal(topic = "") {
+  const content = getNewSessionTutorialContent(topic);
+  const overlay = ensureNewSessionTutorialModal();
+  const modal = overlay.querySelector(".new-session-tutorial-modal");
+  overlay.querySelector("[data-new-session-tutorial-eyebrow]").textContent = content.eyebrow;
+  overlay.querySelector("[data-new-session-tutorial-title]").textContent = content.title;
+  overlay.querySelector("[data-new-session-tutorial-description]").textContent = content.description;
+  overlay.dataset.closing = "false";
+  overlay.classList.remove("closing");
+  modal?.classList.remove("closing");
+  document.body.classList.add("modal-open");
+  window.setTimeout(() => {
+    overlay.querySelector("[data-new-session-tutorial-close]")?.focus();
+  }, 0);
+}
+
+function bindNewSessionQuickStartHelp(scope = document) {
+  scope.querySelectorAll("[data-new-session-tutorial]").forEach((button) => {
+    if (button.dataset.tutorialBound === "true") {
+      return;
+    }
+
+    button.dataset.tutorialBound = "true";
+    button.addEventListener("click", () => {
+      openNewSessionTutorialModal(button.dataset.newSessionTutorial || "");
+    });
+  });
+}
+
 function validateNewSessionName(form, { formMessage = null } = {}) {
   const sessionNameField = getNewSessionNameField(form);
   if (!sessionNameField) {
@@ -44228,6 +44346,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const notesDraft = loadNewSessionNotesDraft();
   appState.newSessionSystemType = normalizedSystemType;
   syncNewSessionNameState(form);
+  bindNewSessionQuickStartHelp(app);
 
   primeNewSessionSeedAgeDefaults(form);
   primeUnitIdDefault(form);
