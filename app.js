@@ -35525,6 +35525,11 @@ function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
     partitionsTested: 3,
     methodology: [
       {
+        label: "Sample Tested",
+        value: `${variety} - ${testedSeedCount} seeds from lot ${qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A"}.`,
+        detail: "The certification applies to this submitted sample and lot record only.",
+      },
+      {
         label: "KAN® Methodology",
         value: "Standardized filter-paper germination inside calibrated KAN® systems.",
         detail: "Each partition is prepared and observed under the same protocol so the tested batch can be compared consistently.",
@@ -35560,18 +35565,18 @@ function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
     media: [
       {
         variant: "science",
-        badge: "FIRST GERMINATED",
-        title: "First Germinated",
+        badge: "OBSERVATION MARKER",
+        title: "First confirmed emergence",
         status: qualificationResult === "silver" ? "31 hr marker" : "28 hr marker",
-        description: "Earliest confirmed emergence captured during the controlled CSTP run.",
+        description: "Static CSTP observation placeholder for the first confirmed emergence marker.",
         thumbnail: "/assets/images/cstp/placeholders/first-germinated.webp",
       },
       {
         variant: "cstp",
-        badge: "FINAL RESULT",
-        title: "Final Result",
+        badge: "FINAL OBSERVATION",
+        title: "Final observation set",
         status: `${germinatedCount}/${testedSeedCount} seeds confirmed`,
-        description: "Final observation set used to calculate certification eligibility.",
+        description: "Static CSTP observation placeholder for the final counted result.",
         thumbnail: "/assets/images/cstp/placeholders/final-result.webp",
       },
     ],
@@ -35614,15 +35619,26 @@ function renderCstpCertificationBarMarkup({
 }
 
 function renderCstpCertificationMediaCardMarkup(item = {}) {
-  return renderLearnMediaCardMarkup({
-    variant: item.variant || "cstp",
-    badge: item.badge || "CSTP MEDIA",
-    title: item.title || "",
-    status: item.status || "",
-    description: item.description || "",
-    thumbnail: item.thumbnail || "",
-    className: "cstp-cert-media-card",
-  });
+  const badgeText = String(item.badge || "CSTP OBSERVATION").trim();
+  const titleText = String(item.title || "").trim();
+  const statusText = String(item.status || "").trim();
+  const descriptionText = String(item.description || "").trim();
+  const thumbnailPath = String(item.thumbnail || "").trim();
+  return `
+    <article class="cstp-cert-observation-card">
+      <div class="cstp-cert-observation-image" aria-hidden="true">
+        ${thumbnailPath
+          ? `<img src="${escapeHtml(thumbnailPath)}" alt="" loading="eager" decoding="async">`
+          : '<span>CSTP</span>'}
+      </div>
+      <div class="cstp-cert-observation-copy">
+        <span>${escapeHtml(badgeText)}</span>
+        <h3>${escapeHtml(titleText)}</h3>
+        ${statusText ? `<strong>${escapeHtml(statusText)}</strong>` : ""}
+        ${descriptionText ? `<p>${escapeHtml(descriptionText)}</p>` : ""}
+      </div>
+    </article>
+  `;
 }
 
 function renderSourceCstpReportPage(sourceId = "") {
@@ -35660,7 +35676,7 @@ function renderSourceCstpReportPage(sourceId = "") {
     titleClassName: "cstp-certified-seal-title",
     noteClassName: "cstp-certified-seal-note",
     labelText: "CSTP Certified",
-    noteText: `${certification.qualificationLabel} proof page`,
+    noteText: "Observed sample record",
   });
 
   app.innerHTML = `
@@ -35688,11 +35704,11 @@ function renderSourceCstpReportPage(sourceId = "") {
             <span aria-hidden="true"></span>
             Certified by Cannakan Seed Testing Program
           </div>
-          <p class="cstp-cert-hero-summary">${escapeHtml(CSTP_RESULTS_CREDIBILITY)} This public proof page summarizes one completed certified source test using mock/static vertical-slice data.</p>
+          <p class="cstp-cert-hero-summary">${escapeHtml(CSTP_RESULTS_CREDIBILITY)} This proof page summarizes one controlled seed-lot test and should be read as an observed sample result, not a universal performance guarantee.</p>
           <div class="cstp-cert-hero-metrics" aria-label="Certification summary">
             ${renderCstpCertificationMetricMarkup("Overall Germination", `${certification.germinationPercent}%`, `${certification.germinatedCount}/${certification.testedSeedCount} seeds`)}
-            ${renderCstpCertificationMetricMarkup("Certified Date", certifiedDateLabel, "Published certification record")}
-            ${renderCstpCertificationMetricMarkup("Tested Seed Count", `${certification.testedSeedCount}`, "Batch sample size")}
+            ${renderCstpCertificationMetricMarkup("Record Issued", certifiedDateLabel, "CSTP proof record")}
+            ${renderCstpCertificationMetricMarkup("Sample Size", `${certification.testedSeedCount}`, "3 partitions x 10 seeds")}
             ${renderCstpCertificationMetricMarkup("Variety Tested", certification.variety, certification.batchLot)}
           </div>
         </div>
@@ -35714,7 +35730,7 @@ function renderSourceCstpReportPage(sourceId = "") {
           <div class="cstp-cert-section-head">
             <p class="eyebrow">Testing Summary</p>
             <h2>Controlled KAN® methodology</h2>
-            <p>${escapeHtml(CSTP_NEUTRALITY)}</p>
+            <p>${escapeHtml(CSTP_NEUTRALITY)} The summary below explains what was tested and how the result was observed.</p>
           </div>
           <div class="cstp-cert-method-grid">
             ${certification.methodology.map((item) => `
@@ -35736,16 +35752,21 @@ function renderSourceCstpReportPage(sourceId = "") {
           <div class="cstp-cert-section-head">
             <p class="eyebrow">Results Visualization</p>
             <h2>Performance at a glance</h2>
-            <p>Mock analytics reflect the reporting language intended for future published CSTP certifications.</p>
+            <p>Observed values are shown as a concise certification summary for the tested sample.</p>
           </div>
           <div class="cstp-cert-results-layout">
             <div class="cstp-cert-results-primary">
-              <div class="session-analytics-rate-ring cstp-cert-results-ring" style="--overall-ring-progress: ${escapeHtml(String(certification.germinationPercent))}%;">
-                <span class="overall-rate-value">${escapeHtml(`${certification.germinationPercent}%`)}</span>
+              <div class="cstp-cert-score-ring cstp-cert-results-ring" style="--cstp-cert-score: ${escapeHtml(String(certification.germinationPercent))};" aria-label="${escapeHtml(`${certification.germinationPercent}% observed germination`)}">
+                <strong>${escapeHtml(`${certification.germinationPercent}%`)}</strong>
+                <span>Observed</span>
               </div>
               <div class="cstp-cert-results-primary-copy">
                 <strong>Certified germination result</strong>
                 <p>${escapeHtml(`${certification.germinatedCount} of ${certification.testedSeedCount} seeds germinated within the CSTP observation window.`)}</p>
+              </div>
+              <div class="cstp-cert-result-meaning">
+                <span>What this means</span>
+                <p>This percentage is the observed germination result for the tested lot under CSTP conditions. It is not a guarantee of future grow outcomes.</p>
               </div>
             </div>
             <div class="cstp-cert-partition-list" aria-label="Partition performance">
@@ -35774,9 +35795,9 @@ function renderSourceCstpReportPage(sourceId = "") {
         <div class="cstp-cert-section-head">
           <p class="eyebrow">Certification Media</p>
           <h2 id="cstp-cert-media-title">Observed result media</h2>
-          <p>Cinematic placeholders reserve space for future CSTP observation images without adding upload or video functionality.</p>
+          <p>Branded placeholders reserve space for future CSTP observation images without adding upload, auth, or live certification functionality.</p>
         </div>
-        <div class="learn-media-card-layout cstp-cert-media-grid">
+        <div class="cstp-cert-media-grid">
           ${certification.media.map((item) => renderCstpCertificationMediaCardMarkup(item)).join("")}
         </div>
       </section>
@@ -35797,8 +35818,8 @@ function renderSourceCstpReportPage(sourceId = "") {
             <strong>${escapeHtml(expirationLabel)}</strong>
           </article>
           <article>
-            <span>Renewal Readiness</span>
-            <strong>Future renewal supported</strong>
+            <span>Re-test Window</span>
+            <strong>Annual review recommended</strong>
           </article>
         </div>
         <p class="cstp-cert-footer-note">${escapeHtml(`${CSTP_REPORT_LANGUAGE} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
