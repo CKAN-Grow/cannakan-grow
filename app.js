@@ -6801,6 +6801,7 @@ function renderAuthModalLoginContent(modal, options = {}) {
     },
     initialMessage: options.initialMessage || "",
     initialMessageTone: options.initialMessageTone || "",
+    initialMode: options.initialMode || "",
   });
 
   if (!modal.open) {
@@ -6853,6 +6854,7 @@ function bindAuthForm(form, options = {}) {
     onLoginSuccess = redirectToHomeAfterLogin,
     initialMessage = "",
     initialMessageTone = "",
+    initialMode = "login",
   } = options;
   const confirmField = form.querySelector("#confirm-password-field");
   const confirmInput = form.elements.confirmPassword;
@@ -6956,7 +6958,7 @@ function bindAuthForm(form, options = {}) {
       resetForgotPasswordState();
     }
   });
-  setAuthMode("login");
+  setAuthMode(initialMode === "signup" ? "signup" : "login");
   syncForgotPasswordCooldown();
   const authNotice = initialMessage || consumeAuthNotice();
   if (authNotice) {
@@ -7181,7 +7183,10 @@ function openAuthModal(options = {}) {
 
   appState.authModalDismissHash = dismissHash ? normalizeNavigationHash(dismissHash) : "";
   const modal = ensureAuthModal();
-  return Boolean(renderAuthModalLoginContent(modal, { focusField: "email" }));
+  return Boolean(renderAuthModalLoginContent(modal, {
+    focusField: "email",
+    initialMode: options.initialMode || "",
+  }));
 }
 
 function getCurrentAppRawRoute() {
@@ -29299,18 +29304,61 @@ function scrollLearnCategoryIntoView(categoryId = "") {
   });
 }
 
+function scrollLearnSectionIntoView(selector = "") {
+  const target = selector ? app.querySelector(selector) : null;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  target.scrollIntoView({
+    block: "start",
+    behavior: prefersReducedMotion ? "auto" : "smooth",
+  });
+}
+
 function renderLearnPage(targetCategoryId = "") {
   const categories = getLearnTutorialCategories();
   app.innerHTML = `
     <section class="learn-page">
       <section class="card learn-hero">
-        <div class="app-section-header learn-hero-header">
-          <div class="section-title-with-icon app-section-header-main">
-            <span class="section-title-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
-            <div>
-              <p class="eyebrow">Learn</p>
-              <h1>Learn Cannakan® Grow</h1>
-              <p class="muted">Tutorials, walkthroughs, and onboarding guides for the KAN® System and Grow App.</p>
+        <div class="learn-hero-shell">
+          <div class="learn-hero-copy">
+            <p class="eyebrow">Learn</p>
+            <h1>Learn Cannakan® Grow</h1>
+            <p class="learn-hero-subtitle">Master the KAN® System, track sessions, generate snapshots, and explore the Grow ecosystem with guided tutorials and walkthroughs.</p>
+            <div class="learn-hero-actions">
+              <button type="button" class="button button-primary learn-hero-primary" data-learn-start-learning="true">Start Learning</button>
+              <button type="button" class="button button-secondary learn-hero-secondary" data-learn-watch-featured="true">Watch Featured Tutorials</button>
+            </div>
+            ${!appState.user ? `
+              <button type="button" class="learn-hero-account-link" data-learn-create-account="true">Create a free Cannakan Grow account</button>
+            ` : ""}
+          </div>
+          <div class="learn-hero-visual" aria-hidden="true">
+            <div class="learn-hero-orbit"></div>
+            <div class="learn-hero-kan-mark">
+              <span>KAN®</span>
+            </div>
+            <div class="learn-hero-floating-card learn-hero-floating-card--primary">
+              <span class="learn-hero-card-play">▶</span>
+              <span>
+                <strong>KAN® System Overview</strong>
+                <small>2 min • Beginner</small>
+              </span>
+            </div>
+            <div class="learn-hero-floating-card learn-hero-floating-card--secondary">
+              <span class="learn-hero-card-line"></span>
+              <span>
+                <strong>Timeline Walkthrough</strong>
+                <small>Session flow</small>
+              </span>
+            </div>
+            <div class="learn-hero-timeline">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
           </div>
         </div>
@@ -29322,8 +29370,8 @@ function renderLearnPage(targetCategoryId = "") {
           `).join("")}
         </div>
       </section>
-      ${renderLearnGettingStartedChecklistMarkup()}
       ${renderFeaturedLearnTutorialsMarkup(categories)}
+      ${renderLearnGettingStartedChecklistMarkup()}
       ${renderLearningPathsSectionMarkup()}
       ${renderContinueWatchingSlotMarkup(categories)}
       ${renderRecommendedTutorialsSlotMarkup(categories)}
@@ -29943,6 +29991,18 @@ function bindLearnPageInteractions(scope = document) {
   bindLearningPathInteractions(scope);
   bindLearnContinueWatchingInteractions(scope);
   bindLearnRecommendedTutorialInteractions(scope);
+
+  scope.querySelector("[data-learn-start-learning='true']")?.addEventListener("click", () => {
+    scrollLearnSectionIntoView(".learn-getting-started");
+  });
+
+  scope.querySelector("[data-learn-watch-featured='true']")?.addEventListener("click", () => {
+    scrollLearnSectionIntoView(".learn-featured-tutorials, .learn-tutorial-controls");
+  });
+
+  scope.querySelector("[data-learn-create-account='true']")?.addEventListener("click", () => {
+    openAuthModal({ dismissHash: "#learn", initialMode: "signup" });
+  });
 
   scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
     if (button.dataset.learnTutorialBound === "true") {
