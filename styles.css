@@ -15896,6 +15896,27 @@ body.theme-dark .contact-reason-card.is-active {
   justify-items: stretch;
 }
 
+.admin-tutorial-order-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.admin-tutorial-order-button {
+  min-height: 32px;
+  padding: 6px 8px;
+  border-color: rgba(148, 209, 89, 0.16);
+  font-size: 0.72rem;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.admin-tutorial-order-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  box-shadow: none;
+}
+
 .admin-tutorial-edit-button,
 .admin-tutorial-preview-button {
   white-space: nowrap;
@@ -16061,6 +16082,10 @@ body.theme-dark .contact-reason-card.is-active {
     grid-column: 1 / -1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .admin-tutorial-order-controls {
+    grid-column: 1 / -1;
   }
 
   .admin-tutorial-edit-button,

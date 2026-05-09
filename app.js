@@ -26643,6 +26643,7 @@ function openNewSessionNamePrompt(form) {
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
     id: "kan-system",
+    categoryOrder: 1,
     eyebrow: "KAN® System",
     title: "KAN® System Tutorials",
     description: "Step-by-step guides for loading, soaking, germinating, and reading results in the KAN® System.",
@@ -26650,6 +26651,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
     tutorials: Object.freeze([
       Object.freeze({
         id: "kan-system-overview",
+        order: 1,
         title: "KAN® System Overview",
         duration: "2 min • Beginner",
         description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
@@ -26666,6 +26668,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "loading-seeds-into-kan",
+        order: 2,
         title: "Loading Seeds Into the KAN®",
         duration: "3 min • Beginner",
         description: "Placeholder guide for organizing seeds by partition before a session begins.",
@@ -26679,6 +26682,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "soaking-vs-germinating",
+        order: 3,
         title: "Understanding Soaking vs Germinating",
         duration: "2 min • Beginner",
         description: "Placeholder walkthrough for the stage shift from soaking to visible germination.",
@@ -26692,6 +26696,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "filter-paper-setup",
+        order: 4,
         title: "Filter Paper Setup",
         duration: "2 min • Beginner",
         description: "Placeholder guide for preparing the filter paper workflow cleanly and consistently.",
@@ -26705,6 +26710,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "reading-germination-results",
+        order: 5,
         title: "Reading Germination Results",
         duration: "3 min • Beginner",
         description: "Placeholder guide for interpreting results across partitions and final outcomes.",
@@ -26720,6 +26726,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     id: "grow-app",
+    categoryOrder: 2,
     eyebrow: "Grow App",
     title: "Grow App Tutorials",
     description: "Quick onboarding for creating sessions, tracking progress, adding notes, and sharing snapshots.",
@@ -26727,6 +26734,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
     tutorials: Object.freeze([
       Object.freeze({
         id: "creating-your-first-session",
+        order: 1,
         title: "Creating Your First Session",
         duration: "2 min • Beginner",
         description: "Placeholder tutorial for starting a session and setting up the first partition rows.",
@@ -26743,6 +26751,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "understanding-the-timeline",
+        order: 2,
         title: "Understanding the Timeline",
         duration: "2 min • Beginner",
         description: "Placeholder walkthrough for the session stage timeline and progress state.",
@@ -26756,6 +26765,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "using-notes-and-images",
+        order: 3,
         title: "Using Notes & Images",
         duration: "2 min • Beginner",
         description: "Placeholder tutorial for documenting observations with notes and session images.",
@@ -26769,6 +26779,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "generating-grow-snapshots",
+        order: 4,
         title: "Generating Grow Snapshots",
         duration: "3 min • Beginner",
         description: "Placeholder walkthrough for creating share-ready grow snapshots.",
@@ -26785,6 +26796,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "community-grow-basics",
+        order: 5,
         title: "Community Grow Basics",
         duration: "2 min • Beginner",
         description: "Placeholder guide for sharing into Community Grow and browsing the public feed.",
@@ -26798,6 +26810,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "understanding-grow-analytics",
+        order: 6,
         title: "Understanding Grow Analytics",
         duration: "3 min • Beginner",
         description: "Placeholder walkthrough for reading grow analytics, confidence indicators, and community performance trends.",
@@ -26993,11 +27006,20 @@ function normalizeLearnTutorialTextList(value = []) {
 }
 
 function getLearnTutorialCategoryOptions() {
-  return LEARN_TUTORIAL_CATEGORIES.map((category) => ({
-    id: category.id,
-    title: category.title,
-    eyebrow: category.eyebrow,
-  }));
+  return LEARN_TUTORIAL_CATEGORIES
+    .slice()
+    .sort((left, right) => {
+      const orderDelta = (Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+      return String(left.title || "").localeCompare(String(right.title || ""));
+    })
+    .map((category) => ({
+      id: category.id,
+      title: category.title,
+      eyebrow: category.eyebrow,
+    }));
 }
 
 function normalizeTutorialCategoryId(categoryId = "") {
@@ -27492,6 +27514,7 @@ function getLearnTutorialCategories() {
   const draftMap = loadAdminTutorialDraftsFromStorage();
   const categoryShells = LEARN_TUTORIAL_CATEGORIES.map((category) => ({
     ...category,
+    categoryOrder: Number.isFinite(Number(category.categoryOrder)) ? Number(category.categoryOrder) : 999,
     tutorials: [],
   }));
   const categoryMap = new Map(categoryShells.map((category) => [category.id, category]));
@@ -27501,6 +27524,9 @@ function getLearnTutorialCategories() {
       const draft = draftMap[tutorial.id] || {};
       const videoDraft = draft.video || {};
       const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
+      const categoryOrder = Number.isFinite(Number(draft.categoryOrder))
+        ? Number(draft.categoryOrder)
+        : (Number.isFinite(Number(categoryMap.get(categoryId)?.categoryOrder)) ? Number(categoryMap.get(categoryId)?.categoryOrder) : 999);
       const videoProvider = normalizeTutorialVideoProvider(draft.videoProvider || videoDraft.videoProvider || videoDraft.provider || tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
       const cloudflareStreamId = String(draft.cloudflareStreamId || videoDraft.cloudflareStreamId || tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
       const mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
@@ -27521,11 +27547,12 @@ function getLearnTutorialCategories() {
         id: tutorial.id,
         baseCategoryId: category.id,
         categoryId,
+        categoryOrder,
         duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
         difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
         status: normalizeTutorialPublishStatus(draft.status || tutorial.status || "coming-soon"),
         thumbnailUrl: String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
-        order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
+        order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
         featuredLabel,
@@ -27553,18 +27580,28 @@ function getLearnTutorialCategories() {
           transcriptUrl,
           transcriptText,
         },
-        _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
+        _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
       };
       categoryMap.get(categoryId)?.tutorials.push(mergedTutorial);
     });
   });
 
-  return categoryShells.map((category) => ({
-    ...category,
-    tutorials: category.tutorials.sort((left, right) => (
-      (Number(left._sortOrder) || 0) - (Number(right._sortOrder) || 0)
-    )).map(({ _sortOrder, ...tutorial }) => tutorial),
-  }));
+  return categoryShells
+    .sort((left, right) => {
+      const orderDelta = (Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+      return String(left.title || "").localeCompare(String(right.title || ""));
+    })
+    .map((category) => ({
+      ...category,
+      tutorials: category.tutorials.sort((left, right) => (
+        ((Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999))
+        || ((Number(left._sortOrder) || 999) - (Number(right._sortOrder) || 999))
+        || String(left.title || "").localeCompare(String(right.title || ""))
+      )).map(({ _sortOrder, ...tutorial }) => tutorial),
+    }));
 }
 
 function getLearnCategory(categoryId = "") {
@@ -43101,11 +43138,14 @@ function renderAdminDevAccessSectionMarkup() {
 
 function getAdminTutorialsForManagement() {
   return getLearnTutorialCategories().flatMap((category) => (
-    category.tutorials.map((tutorial) => ({
+    category.tutorials.map((tutorial, index) => ({
       ...tutorial,
       categoryId: tutorial.categoryId || category.id,
+      categoryOrder: category.categoryOrder,
       categoryTitle: category.title,
       categoryEyebrow: category.eyebrow,
+      canMoveUp: index > 0,
+      canMoveDown: index < category.tutorials.length - 1,
       hasLocalDraft: Boolean(getAdminTutorialDraft(tutorial.id)),
     }))
   ));
@@ -43115,6 +43155,34 @@ function getAdminTutorialForEditing() {
   const tutorials = getAdminTutorialsForManagement();
   const selectedId = String(appState.adminTutorialEditingId || "").trim();
   return tutorials.find((tutorial) => tutorial.id === selectedId) || tutorials[0] || null;
+}
+
+function moveAdminTutorialOrder(tutorialId = "", direction = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  const normalizedDirection = String(direction || "").trim();
+  if (!normalizedTutorialId || !["up", "down"].includes(normalizedDirection)) {
+    return false;
+  }
+
+  const categories = getLearnTutorialCategories();
+  const category = categories.find((item) => item.tutorials.some((tutorial) => tutorial.id === normalizedTutorialId));
+  if (!category) {
+    return false;
+  }
+
+  const orderedTutorials = category.tutorials.slice();
+  const currentIndex = orderedTutorials.findIndex((tutorial) => tutorial.id === normalizedTutorialId);
+  const nextIndex = normalizedDirection === "up" ? currentIndex - 1 : currentIndex + 1;
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= orderedTutorials.length) {
+    return false;
+  }
+
+  [orderedTutorials[currentIndex], orderedTutorials[nextIndex]] = [orderedTutorials[nextIndex], orderedTutorials[currentIndex]];
+  orderedTutorials.forEach((tutorial, index) => {
+    saveAdminTutorialDraft(tutorial.id, { order: index + 1 });
+  });
+  appState.adminTutorialEditingId = normalizedTutorialId;
+  return true;
 }
 
 function renderAdminTutorialStatusOptions(selectedStatus = "coming-soon") {
@@ -43170,6 +43238,22 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
         </div>
       </div>
       <div class="admin-tutorial-card-actions">
+        <div class="admin-tutorial-order-controls" aria-label="${escapeHtml(`Ordering controls for ${tutorial.title || "tutorial"}`)}">
+          <button
+            type="button"
+            class="button button-secondary admin-tutorial-order-button"
+            data-admin-tutorial-move="up"
+            data-admin-tutorial-id="${escapeHtml(tutorial.id)}"
+            ${tutorial.canMoveUp ? "" : "disabled"}
+          >Move up</button>
+          <button
+            type="button"
+            class="button button-secondary admin-tutorial-order-button"
+            data-admin-tutorial-move="down"
+            data-admin-tutorial-id="${escapeHtml(tutorial.id)}"
+            ${tutorial.canMoveDown ? "" : "disabled"}
+          >Move down</button>
+        </div>
         <button type="button" class="button button-secondary admin-tutorial-preview-button" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview</button>
         <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-tutorial-edit="${escapeHtml(tutorial.id)}">Edit</button>
       </div>
@@ -43224,7 +43308,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
             <select name="status">${renderAdminTutorialStatusOptions(tutorial.status)}</select>
           </label>
           <label>
-            <span>Display Order</span>
+            <span>Order Number</span>
             <input name="order" type="number" min="1" step="1" value="${escapeHtml(tutorial.order || 1)}">
           </label>
           <label class="admin-source-form-full">
@@ -43472,6 +43556,18 @@ function bindAdminTutorialManagementSection(scope = app) {
     button.addEventListener("click", () => {
       appState.adminTutorialEditingId = button.dataset.adminTutorialEdit || "";
       refreshAdminTutorialManagementSection();
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-tutorial-move]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    button.addEventListener("click", () => {
+      const moved = moveAdminTutorialOrder(button.dataset.adminTutorialId || "", button.dataset.adminTutorialMove || "");
+      if (moved) {
+        refreshAdminTutorialManagementSection();
+      }
     });
   });
 
