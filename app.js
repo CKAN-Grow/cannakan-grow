@@ -27061,6 +27061,42 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   }),
 ]);
 
+const LEARN_TUTORIAL_FUTURE_CATEGORIES = Object.freeze([
+  Object.freeze({
+    id: "seed-sessions",
+    categoryOrder: 3,
+    eyebrow: "Seed Sessions",
+    title: "Seed Sessions",
+    description: "Future guided seed-session education, setup recaps, and grow workflow walkthroughs.",
+    icon: "mySessionsSprout",
+    futureReady: true,
+    tutorials: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: "live-replays",
+    categoryOrder: 4,
+    eyebrow: "Live Replays",
+    title: "Live Replays",
+    description: "Future replay-ready tutorial sessions, grow walkthroughs, and hosted education events.",
+    icon: "activeSessionWaveform",
+    futureReady: true,
+    tutorials: Object.freeze([]),
+  }),
+  Object.freeze({
+    id: "featured-replays",
+    categoryOrder: 5,
+    eyebrow: "Featured Replays",
+    title: "Featured Replays",
+    description: "Future featured replays and curated grow education highlights.",
+    icon: "certificationShield",
+    futureReady: true,
+    tutorials: Object.freeze([]),
+  }),
+]);
+
+const LEARN_TUTORIAL_ASSET_BASE_PATH = "/assets/images/tutorials/";
+const LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH = "/assets/images/tutorials/placeholders/";
+
 const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
   Object.freeze({
     id: "getting-started-grower",
@@ -27385,7 +27421,7 @@ function normalizeLearnTutorialTextList(value = []) {
 }
 
 function getLearnTutorialCategoryOptions() {
-  return LEARN_TUTORIAL_CATEGORIES
+  return [...LEARN_TUTORIAL_CATEGORIES, ...LEARN_TUTORIAL_FUTURE_CATEGORIES]
     .slice()
     .sort((left, right) => {
       const orderDelta = (Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999);
@@ -28041,7 +28077,8 @@ function createAdminTutorialCollectionDraft() {
 
 function getLearnTutorialCategories() {
   const draftMap = loadAdminTutorialDraftsFromStorage();
-  const categoryShells = LEARN_TUTORIAL_CATEGORIES.map((category) => ({
+  const categoryDefinitions = [...LEARN_TUTORIAL_CATEGORIES, ...LEARN_TUTORIAL_FUTURE_CATEGORIES];
+  const categoryShells = categoryDefinitions.map((category) => ({
     ...category,
     categoryOrder: Number.isFinite(Number(category.categoryOrder)) ? Number(category.categoryOrder) : 999,
     tutorials: [],
@@ -29902,6 +29939,7 @@ function scrollLearnSectionIntoView(selector = "") {
 
 function renderLearnPage(targetCategoryId = "") {
   const categories = getLearnTutorialCategories();
+  const visibleCategories = categories.filter((category) => category.tutorials.some((tutorial) => shouldShowTutorialOnPublicLearn(tutorial)));
   app.innerHTML = `
     <section class="learn-page">
       <section class="card learn-hero">
@@ -29946,7 +29984,7 @@ function renderLearnPage(targetCategoryId = "") {
           </div>
         </div>
         <div class="learn-category-jump-list" aria-label="Tutorial categories">
-          ${categories.map((category) => `
+          ${visibleCategories.map((category) => `
             <a href="#learn/${escapeHtml(category.id)}" class="learn-category-jump" data-learn-category-jump="${escapeHtml(category.id)}">
               <span>${escapeHtml(category.title)}</span>
             </a>
@@ -45006,6 +45044,39 @@ function renderAdminTutorialVideoProviderOptions(selectedProvider = "none") {
   )).join("");
 }
 
+function renderAdminTutorialRelatedOptions(selectedTutorialIds = [], currentTutorialId = "") {
+  const selectedSet = new Set(normalizeLearnTutorialTextList(selectedTutorialIds));
+  const normalizedCurrentTutorialId = String(currentTutorialId || "").trim();
+  return getAdminTutorialsForManagement()
+    .filter((tutorial) => tutorial.id !== normalizedCurrentTutorialId)
+    .map((tutorial) => `
+      <label class="admin-tutorial-collection-tutorial-option">
+        <input name="relatedTutorialIds" type="checkbox" value="${escapeHtml(tutorial.id)}" ${selectedSet.has(tutorial.id) ? "checked" : ""}>
+        <span>
+          <strong>${escapeHtml(tutorial.title || "Untitled Tutorial")}</strong>
+          <small>${escapeHtml(tutorial.categoryTitle || "Tutorial")}</small>
+        </span>
+      </label>
+    `).join("");
+}
+
+function renderAdminTutorialCollectionAssignmentOptions(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  return getAdminTutorialCollectionsForManagement().map((collection) => {
+    const tutorialIds = normalizeLearnTutorialTextList(collection.tutorialIds);
+    const isAssigned = tutorialIds.includes(normalizedTutorialId);
+    return `
+      <label class="admin-tutorial-collection-tutorial-option">
+        <input name="collectionIds" type="checkbox" value="${escapeHtml(collection.id)}" ${isAssigned ? "checked" : ""}>
+        <span>
+          <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
+          <small>${escapeHtml(`${getTutorialStatusLabel(collection)} • ${getLearnAudienceLabel(collection.audience)}`)}</small>
+        </span>
+      </label>
+    `;
+  }).join("");
+}
+
 function renderAdminTutorialCardMarkup(tutorial = {}) {
   const status = getTutorialVisibilityStatus(tutorial);
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
@@ -45072,7 +45143,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
         <div>
           <p class="eyebrow">Edit Tutorial</p>
           <h4>${escapeHtml(tutorial.title || "Untitled Tutorial")}</h4>
-          <p class="muted">Local admin draft only. Later this shape can map to backend tutorial records.</p>
+          <p class="muted">Local/static preview only - backend persistence coming later.</p>
         </div>
         <div class="admin-tutorial-editor-badges">
           ${renderAdminLearnVisibilityBadgeMarkup(tutorial)}
@@ -45151,7 +45222,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail URL</span>
-            <input name="thumbnailUrl" value="${escapeHtml(tutorial.thumbnailUrl || "")}" placeholder="/assets/tutorial-thumbnail.png">
+            <input name="thumbnailUrl" value="${escapeHtml(tutorial.thumbnailUrl || "")}" placeholder="${escapeHtml(`${LEARN_TUTORIAL_ASSET_BASE_PATH}kan-system-overview.png`)}">
           </label>
           <label>
             <span>Video Provider</span>
@@ -45171,7 +45242,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           </label>
           <label>
             <span>Poster Image URL</span>
-            <input name="posterUrl" value="${escapeHtml(video.posterUrl)}" placeholder="/assets/tutorial-poster.png">
+            <input name="posterUrl" value="${escapeHtml(video.posterUrl)}" placeholder="${escapeHtml(`${LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH}kan-system-overview-poster.png`)}">
           </label>
           <label>
             <span>Transcript URL</span>
@@ -45201,6 +45272,18 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
             <input name="onboardingPriority" type="checkbox" ${tutorial.onboardingPriority ? "checked" : ""}>
             <span>Prioritize for contextual onboarding prompts</span>
           </label>
+          <div class="admin-source-form-full admin-tutorial-collection-tutorials">
+            <span>Related Tutorials</span>
+            <div class="admin-tutorial-collection-tutorial-grid">
+              ${renderAdminTutorialRelatedOptions(tutorial.relatedTutorialIds, tutorial.id)}
+            </div>
+          </div>
+          <div class="admin-source-form-full admin-tutorial-collection-tutorials">
+            <span>Learning Path Assignment</span>
+            <div class="admin-tutorial-collection-tutorial-grid">
+              ${renderAdminTutorialCollectionAssignmentOptions(tutorial.id)}
+            </div>
+          </div>
         </div>
         <div class="admin-source-form-actions admin-tutorial-editor-actions">
           <button type="submit" class="button button-secondary" data-admin-tutorial-save-status="draft">Save Draft</button>
@@ -45209,7 +45292,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}" data-admin-tutorial-preview-form="true">Preview</button>
           <button type="button" class="button button-secondary" data-admin-tutorial-reset="${escapeHtml(tutorial.id)}">Reset Local Draft</button>
         </div>
-        <p class="muted admin-source-form-helper">Preview uses the shared Learn modal and keeps unpublished tutorials out of the public Learn page until they are marked Coming Soon or Published.</p>
+        <p class="muted admin-source-form-helper">Local/static preview only - backend persistence coming later. Preview uses the shared Learn modal and keeps drafts out of the public Learn page.</p>
       </form>
     </section>
   `;
@@ -45319,6 +45402,7 @@ function renderAdminTutorialCollectionCardMarkup(collection = {}) {
         ${renderAdminLearnPublicLinkMarkup(collection, "path")}
       </div>
       <div class="admin-tutorial-card-actions">
+        <button type="button" class="button button-secondary admin-tutorial-preview-button" data-admin-collection-preview="${escapeHtml(collection.id)}">Preview Path</button>
         <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-collection-edit="${escapeHtml(collection.id)}">Edit Path</button>
       </div>
     </article>
@@ -45353,7 +45437,7 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
         <div>
           <p class="eyebrow">Edit Learning Path</p>
           <h4>${escapeHtml(collection.title || "Untitled Learning Path")}</h4>
-          <p class="muted">Local collection draft only. Later this can map to playlist, replay, CSTP, or certification records.</p>
+          <p class="muted">Local/static preview only - backend persistence coming later.</p>
         </div>
       </div>
       <form class="admin-source-form admin-tutorial-collection-form" data-admin-collection-form="${escapeHtml(collection.id)}">
@@ -45432,7 +45516,7 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail / Poster URL</span>
-            <input name="posterUrl" value="${escapeHtml(collection.posterUrl || "")}" placeholder="/assets/learning-path-poster.png">
+            <input name="posterUrl" value="${escapeHtml(collection.posterUrl || "")}" placeholder="${escapeHtml(`${LEARN_TUTORIAL_ASSET_BASE_PATH}learning-paths/getting-started-grower.png`)}">
           </label>
           <div class="admin-source-form-full admin-tutorial-collection-tutorials">
             <span>Assigned Tutorials</span>
@@ -45445,6 +45529,7 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
           <button type="submit" class="button button-primary">Save Learning Path</button>
           <button type="button" class="button button-secondary" data-admin-collection-preview="${escapeHtml(collection.id)}">Preview Path</button>
         </div>
+        <p class="muted admin-source-form-helper">Local/static preview only - backend persistence coming later. Learning paths can later map to Seed Sessions, Live Replays, Featured Replays, CSTP education, and certification playlists.</p>
       </form>
     </section>
   `;
@@ -45539,6 +45624,32 @@ function refreshAdminTutorialManagementSection() {
   normalizeSectionHeaderLayouts(content);
 }
 
+function saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId = "", selectedCollectionIds = []) {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  const selectedSet = new Set(normalizeLearnTutorialTextList(selectedCollectionIds));
+  getLearnTutorialCollections().forEach((collection) => {
+    const currentTutorialIds = normalizeLearnTutorialTextList(collection.tutorialIds);
+    const currentSet = new Set(currentTutorialIds);
+    const shouldBeAssigned = selectedSet.has(collection.id);
+    const isAssigned = currentSet.has(normalizedTutorialId);
+    if (shouldBeAssigned === isAssigned) {
+      return;
+    }
+
+    const nextTutorialIds = shouldBeAssigned
+      ? [...currentTutorialIds, normalizedTutorialId]
+      : currentTutorialIds.filter((collectionTutorialId) => collectionTutorialId !== normalizedTutorialId);
+    saveAdminTutorialCollectionDraft(collection.id, {
+      tutorialIds: nextTutorialIds,
+      custom: Boolean(collection.custom),
+    });
+  });
+}
+
 function saveAdminTutorialFormDraft(form, statusOverride = "") {
   if (!(form instanceof HTMLFormElement)) {
     return "";
@@ -45546,6 +45657,8 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
 
   const tutorialId = form.dataset.adminTutorialForm || "";
   const formData = new FormData(form);
+  const relatedTutorialIds = formData.getAll("relatedTutorialIds").map((value) => String(value || "").trim()).filter(Boolean);
+  const collectionIds = formData.getAll("collectionIds").map((value) => String(value || "").trim()).filter(Boolean);
   const videoProvider = normalizeTutorialVideoProvider(formData.get("videoProvider"));
   const featuredOrderValue = Number(formData.get("featuredOrder"));
   const visibilityStatus = getTutorialVisibilityStatus({
@@ -45576,6 +45689,7 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
     featuredOrder: Number.isFinite(featuredOrderValue) && featuredOrderValue > 0 ? featuredOrderValue : "",
     featuredLabel: String(formData.get("featuredLabel") || "").trim(),
     onboardingPriority: formData.get("onboardingPriority") === "on",
+    relatedTutorialIds,
     videoProvider,
     cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
     mp4Url: String(formData.get("mp4Url") || "").trim(),
@@ -45595,6 +45709,7 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
       poster: String(formData.get("posterUrl") || "").trim(),
     },
   });
+  saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId, collectionIds);
   return tutorialId;
 }
 
