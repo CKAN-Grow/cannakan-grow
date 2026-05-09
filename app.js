@@ -3295,6 +3295,7 @@ function syncMobileNavigationMenu() {
     <nav class="mobile-nav-links" aria-label="Mobile primary navigation">
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">My Sessions</a>
+      <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
       <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Source Directory</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
@@ -7749,17 +7750,20 @@ function updateNavState() {
 
   const rawRoute = getCurrentAppRawRoute();
   const [route] = rawRoute.split("/");
-  const activeNav = route === "home" || !route
-    ? "home"
-    : (route === "disclaimer" || route === "terms" || route === "privacy" || route === "contact"
-      ? "home"
-    : (route === "admin" || route === "community-grow-moderation"
-      ? "admin"
-      : (route === "gallery" || route === "seed-age-analytics"
-        ? "gallery"
-        : (route === "network"
-          ? "network"
-          : (route === "sources" ? "sources" : "sessions")))));
+  let activeNav = "sessions";
+  if (route === "home" || !route || route === "disclaimer" || route === "terms" || route === "privacy" || route === "contact") {
+    activeNav = "home";
+  } else if (route === "admin" || route === "community-grow-moderation") {
+    activeNav = "admin";
+  } else if (route === "gallery" || route === "seed-age-analytics") {
+    activeNav = "gallery";
+  } else if (route === "network") {
+    activeNav = "network";
+  } else if (route === "learn") {
+    activeNav = "learn";
+  } else if (route === "sources") {
+    activeNav = "sources";
+  }
 
   navLinks.forEach((link) => {
     const href = link.getAttribute("href") || "";
@@ -25806,6 +25810,17 @@ function render() {
   syncSessionProgressionReminderNotifications(getSessions());
   renderAppNotificationCenter();
 
+  if (route === "learn") {
+    renderLearnPage(id || "");
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "learn",
+      pageKey: id ? `learn-${id}` : "learn",
+      pageLabel: "Learn",
+      pagePath: rawRoute ? `#${rawRoute}` : "#learn",
+    }));
+    return;
+  }
+
   if (route === "gallery") {
     renderGallery(id || "");
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -26564,32 +26579,279 @@ function openNewSessionNamePrompt(form) {
   return true;
 }
 
-const NEW_SESSION_TUTORIAL_CONTENT = Object.freeze({
-  "kan-system": Object.freeze({
-    eyebrow: "KAN® System Tutorial",
-    title: "How to Use the KAN® System",
-    description: "A guided KAN® System walkthrough will live here soon. This action is reserved for the in-app tutorial experience.",
+const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
+  Object.freeze({
+    id: "kan-system",
+    eyebrow: "KAN® System",
+    title: "KAN® System Tutorials",
+    description: "Step-by-step guides for loading, soaking, germinating, and reading results in the KAN® System.",
+    icon: "certificationShield",
+    tutorials: Object.freeze([
+      Object.freeze({
+        id: "kan-system-overview",
+        title: "KAN® System Overview",
+        duration: "2 min • Beginner",
+        description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "loading-seeds-into-kan",
+        title: "Loading Seeds Into the KAN®",
+        duration: "3 min • Beginner",
+        description: "Placeholder guide for organizing seeds by partition before a session begins.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "soaking-vs-germinating",
+        title: "Understanding Soaking vs Germinating",
+        duration: "2 min • Beginner",
+        description: "Placeholder walkthrough for the stage shift from soaking to visible germination.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "filter-paper-setup",
+        title: "Filter Paper Setup",
+        duration: "2 min • Beginner",
+        description: "Placeholder guide for preparing the filter paper workflow cleanly and consistently.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "reading-germination-results",
+        title: "Reading Germination Results",
+        duration: "3 min • Beginner",
+        description: "Placeholder guide for interpreting results across partitions and final outcomes.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+    ]),
   }),
-  "grow-app": Object.freeze({
-    eyebrow: "Grow App Tutorial",
-    title: "How to Use the Grow App",
-    description: "A quick Cannakan® Grow app walkthrough will live here soon. This action is reserved for the in-app tutorial experience.",
+  Object.freeze({
+    id: "grow-app",
+    eyebrow: "Grow App",
+    title: "Grow App Tutorials",
+    description: "Quick onboarding for creating sessions, tracking progress, adding notes, and sharing snapshots.",
+    icon: "mySessionsSprout",
+    tutorials: Object.freeze([
+      Object.freeze({
+        id: "creating-your-first-session",
+        title: "Creating Your First Session",
+        duration: "2 min • Beginner",
+        description: "Placeholder tutorial for starting a session and setting up the first partition rows.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "understanding-the-timeline",
+        title: "Understanding the Timeline",
+        duration: "2 min • Beginner",
+        description: "Placeholder walkthrough for the session stage timeline and progress state.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "using-notes-and-images",
+        title: "Using Notes & Images",
+        duration: "2 min • Beginner",
+        description: "Placeholder tutorial for documenting observations with notes and session images.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "generating-grow-snapshots",
+        title: "Generating Grow Snapshots",
+        duration: "3 min • Beginner",
+        description: "Placeholder walkthrough for creating share-ready grow snapshots.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "community-grow-basics",
+        title: "Community Grow Basics",
+        duration: "2 min • Beginner",
+        description: "Placeholder guide for sharing into Community Grow and browsing the public feed.",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+    ]),
   }),
-});
+]);
 
-function getNewSessionTutorialContent(topic = "") {
-  return NEW_SESSION_TUTORIAL_CONTENT[topic] || NEW_SESSION_TUTORIAL_CONTENT["grow-app"];
+function getLearnTutorialCategories() {
+  return LEARN_TUTORIAL_CATEGORIES;
 }
 
-function closeNewSessionTutorialModal() {
-  const overlay = document.querySelector("#new-session-tutorial-modal-overlay");
+function getLearnCategory(categoryId = "") {
+  return getLearnTutorialCategories().find((category) => category.id === categoryId) || null;
+}
+
+function getLearnTutorialById(tutorialId = "") {
+  for (const category of getLearnTutorialCategories()) {
+    const tutorial = category.tutorials.find((item) => item.id === tutorialId);
+    if (tutorial) {
+      return { category, tutorial };
+    }
+  }
+  return null;
+}
+
+function renderLearnTutorialCardMarkup(tutorial, category) {
+  return `
+    <button
+      type="button"
+      class="learn-tutorial-card"
+      data-learn-tutorial-open="${escapeHtml(tutorial.id)}"
+      data-video-provider="${escapeHtml(tutorial.video?.provider || "placeholder")}"
+      data-video-mp4-url="${escapeHtml(tutorial.video?.mp4Url || "")}"
+      data-video-cloudflare-stream-id="${escapeHtml(tutorial.video?.cloudflareStreamId || "")}"
+    >
+      <span class="learn-tutorial-thumbnail" aria-hidden="true">
+        <span class="learn-tutorial-thumbnail-sheen"></span>
+        <span class="learn-tutorial-play">▶</span>
+      </span>
+      <span class="learn-tutorial-card-body">
+        <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
+        <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
+        <span class="learn-tutorial-card-meta">${escapeHtml(tutorial.duration || "2 min • Beginner")}</span>
+        <span class="learn-tutorial-coming-soon">Coming Soon</span>
+      </span>
+    </button>
+  `;
+}
+
+function renderLearnTutorialCategoryMarkup(category) {
+  return `
+    <section class="learn-category" id="learn-${escapeHtml(category.id)}" data-learn-category="${escapeHtml(category.id)}">
+      <div class="section-heading app-section-header learn-category-header">
+        <div class="section-title-with-icon app-section-header-main">
+          <span class="section-title-icon" data-app-icon="${escapeHtml(category.icon)}" data-icon-variant="plate" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">${escapeHtml(category.eyebrow)}</p>
+            <h2>${escapeHtml(category.title)}</h2>
+            <p class="muted">${escapeHtml(category.description)}</p>
+          </div>
+        </div>
+      </div>
+      <div class="learn-tutorial-grid">
+        ${category.tutorials.map((tutorial) => renderLearnTutorialCardMarkup(tutorial, category)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function scrollLearnCategoryIntoView(categoryId = "") {
+  if (!categoryId) {
+    return;
+  }
+
+  const target = Array.from(document.querySelectorAll("[data-learn-category]"))
+    .find((element) => element instanceof HTMLElement && element.dataset.learnCategory === categoryId);
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  requestAnimationFrame(() => {
+    target.scrollIntoView({
+      block: "start",
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  });
+}
+
+function renderLearnPage(targetCategoryId = "") {
+  const categories = getLearnTutorialCategories();
+  app.innerHTML = `
+    <section class="learn-page">
+      <section class="card learn-hero">
+        <div class="app-section-header learn-hero-header">
+          <div class="section-title-with-icon app-section-header-main">
+            <span class="section-title-icon" data-app-icon="reportDocument" data-icon-variant="plate" aria-hidden="true"></span>
+            <div>
+              <p class="eyebrow">Learn</p>
+              <h1>Learn Cannakan® Grow</h1>
+              <p class="muted">Tutorials, walkthroughs, and onboarding guides for the KAN® System and Grow App.</p>
+            </div>
+          </div>
+        </div>
+        <div class="learn-category-jump-list" aria-label="Tutorial categories">
+          ${categories.map((category) => `
+            <a href="#learn/${escapeHtml(category.id)}" class="learn-category-jump" data-learn-category-jump="${escapeHtml(category.id)}">
+              <span>${escapeHtml(category.title)}</span>
+            </a>
+          `).join("")}
+        </div>
+      </section>
+      ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
+    </section>
+  `;
+
+  bindLearnPageInteractions(app);
+  scrollLearnCategoryIntoView(targetCategoryId);
+}
+
+function closeLearnTutorialModal() {
+  const overlay = document.querySelector("#learn-tutorial-modal-overlay");
   if (!overlay || overlay.dataset.closing === "true") {
     return;
   }
 
   overlay.dataset.closing = "true";
   overlay.classList.add("closing");
-  overlay.querySelector(".new-session-tutorial-modal")?.classList.add("closing");
+  overlay.querySelector(".learn-tutorial-modal")?.classList.add("closing");
   document.body.classList.remove("modal-open");
 
   window.setTimeout(() => {
@@ -26597,29 +26859,30 @@ function closeNewSessionTutorialModal() {
   }, 180);
 }
 
-function ensureNewSessionTutorialModal() {
-  let overlay = document.querySelector("#new-session-tutorial-modal-overlay");
+function ensureLearnTutorialModal() {
+  let overlay = document.querySelector("#learn-tutorial-modal-overlay");
   if (overlay) {
     return overlay;
   }
 
   overlay = document.createElement("div");
-  overlay.id = "new-session-tutorial-modal-overlay";
-  overlay.className = "new-session-tutorial-modal-overlay";
+  overlay.id = "learn-tutorial-modal-overlay";
+  overlay.className = "learn-tutorial-modal-overlay";
   overlay.dataset.closing = "false";
   overlay.innerHTML = `
-    <div class="new-session-tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="new-session-tutorial-modal-title" aria-describedby="new-session-tutorial-modal-description">
-      <button type="button" class="modal-close" data-new-session-tutorial-close aria-label="Close">×</button>
-      <div class="new-session-tutorial-modal-copy">
-        <p class="eyebrow" data-new-session-tutorial-eyebrow></p>
-        <h2 id="new-session-tutorial-modal-title" data-new-session-tutorial-title></h2>
-        <p id="new-session-tutorial-modal-description" data-new-session-tutorial-description></p>
+    <div class="learn-tutorial-modal" role="dialog" aria-modal="true" aria-labelledby="learn-tutorial-modal-title" aria-describedby="learn-tutorial-modal-description">
+      <button type="button" class="modal-close" data-learn-tutorial-close aria-label="Close">×</button>
+      <div class="learn-tutorial-modal-copy">
+        <p class="eyebrow" data-learn-tutorial-eyebrow></p>
+        <h2 id="learn-tutorial-modal-title" data-learn-tutorial-title></h2>
+        <p id="learn-tutorial-modal-description" data-learn-tutorial-description></p>
       </div>
-      <div class="new-session-tutorial-placeholder" aria-hidden="true">
-        <span class="new-session-tutorial-placeholder-play">▶</span>
+      <div class="learn-tutorial-placeholder" aria-hidden="true">
+        <span class="learn-tutorial-placeholder-play">▶</span>
       </div>
-      <div class="new-session-tutorial-modal-actions">
-        <button type="button" class="button button-primary" data-new-session-tutorial-close>Got it</button>
+      <p class="learn-tutorial-provider-note" data-learn-tutorial-provider-note></p>
+      <div class="learn-tutorial-modal-actions">
+        <button type="button" class="button button-primary" data-learn-tutorial-close>Got it</button>
       </div>
     </div>
   `;
@@ -26627,57 +26890,81 @@ function ensureNewSessionTutorialModal() {
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) {
       event.preventDefault();
-      closeNewSessionTutorialModal();
+      closeLearnTutorialModal();
     }
   });
 
-  overlay.querySelectorAll("[data-new-session-tutorial-close]").forEach((button) => {
+  overlay.querySelectorAll("[data-learn-tutorial-close]").forEach((button) => {
     button.addEventListener("click", (event) => {
       event.preventDefault();
-      closeNewSessionTutorialModal();
+      closeLearnTutorialModal();
     });
   });
 
-  if (!ensureNewSessionTutorialModal.escapeBound) {
+  if (!ensureLearnTutorialModal.escapeBound) {
     document.addEventListener("keydown", (event) => {
-      const activeOverlay = document.querySelector("#new-session-tutorial-modal-overlay");
+      const activeOverlay = document.querySelector("#learn-tutorial-modal-overlay");
       if (event.key === "Escape" && activeOverlay && activeOverlay.dataset.closing !== "true") {
         event.preventDefault();
-        closeNewSessionTutorialModal();
+        closeLearnTutorialModal();
       }
     });
-    ensureNewSessionTutorialModal.escapeBound = true;
+    ensureLearnTutorialModal.escapeBound = true;
   }
 
   document.body.appendChild(overlay);
   return overlay;
 }
 
-function openNewSessionTutorialModal(topic = "") {
-  const content = getNewSessionTutorialContent(topic);
-  const overlay = ensureNewSessionTutorialModal();
-  const modal = overlay.querySelector(".new-session-tutorial-modal");
-  overlay.querySelector("[data-new-session-tutorial-eyebrow]").textContent = content.eyebrow;
-  overlay.querySelector("[data-new-session-tutorial-title]").textContent = content.title;
-  overlay.querySelector("[data-new-session-tutorial-description]").textContent = content.description;
+function openLearnTutorialModal(tutorialId = "") {
+  const tutorialEntry = getLearnTutorialById(tutorialId);
+  if (!tutorialEntry) {
+    return;
+  }
+
+  const { category, tutorial } = tutorialEntry;
+  const overlay = ensureLearnTutorialModal();
+  const modal = overlay.querySelector(".learn-tutorial-modal");
+  overlay.querySelector("[data-learn-tutorial-eyebrow]").textContent = category.title;
+  overlay.querySelector("[data-learn-tutorial-title]").textContent = tutorial.title;
+  overlay.querySelector("[data-learn-tutorial-description]").textContent = tutorial.description;
+  overlay.querySelector("[data-learn-tutorial-provider-note]").textContent = "Video player placeholder prepared for future modal playback, hosted MP4, and Cloudflare Stream integration.";
   overlay.dataset.closing = "false";
   overlay.classList.remove("closing");
   modal?.classList.remove("closing");
   document.body.classList.add("modal-open");
   window.setTimeout(() => {
-    overlay.querySelector("[data-new-session-tutorial-close]")?.focus();
+    overlay.querySelector("[data-learn-tutorial-close]")?.focus();
   }, 0);
 }
 
+function bindLearnPageInteractions(scope = document) {
+  scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
+    if (button.dataset.learnTutorialBound === "true") {
+      return;
+    }
+
+    button.dataset.learnTutorialBound = "true";
+    button.addEventListener("click", () => {
+      openLearnTutorialModal(button.dataset.learnTutorialOpen || "");
+    });
+  });
+}
+
+function navigateToLearnCategory(categoryId = "") {
+  const normalizedCategoryId = getLearnCategory(categoryId) ? categoryId : "";
+  window.location.hash = normalizedCategoryId ? `#learn/${normalizedCategoryId}` : "#learn";
+}
+
 function bindNewSessionQuickStartHelp(scope = document) {
-  scope.querySelectorAll("[data-new-session-tutorial]").forEach((button) => {
+  scope.querySelectorAll("[data-learn-category-target], [data-new-session-tutorial]").forEach((button) => {
     if (button.dataset.tutorialBound === "true") {
       return;
     }
 
     button.dataset.tutorialBound = "true";
     button.addEventListener("click", () => {
-      openNewSessionTutorialModal(button.dataset.newSessionTutorial || "");
+      navigateToLearnCategory(button.dataset.learnCategoryTarget || button.dataset.newSessionTutorial || "");
     });
   });
 }
