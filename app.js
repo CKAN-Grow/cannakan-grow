@@ -29067,7 +29067,7 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
     >
       <button
         type="button"
-        class="learn-tutorial-card${isFeatured ? " learn-tutorial-card--featured" : ""}"
+        class="learn-media-card learn-media-card--tutorial learn-tutorial-card${isFeatured ? " learn-media-card--spotlight learn-tutorial-card--featured" : ""}"
       >
         ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, { className: "learn-tutorial-thumbnail" })}
         <span class="learn-tutorial-card-body">
@@ -29937,6 +29937,66 @@ function scrollLearnSectionIntoView(selector = "") {
   });
 }
 
+function renderLearnMediaCardMarkup({
+  variant = "tutorial",
+  title = "",
+  badge = "",
+  status = "",
+  description = "",
+  duration = "",
+  thumbnail = "",
+  spotlight = false,
+  className = "",
+  ctaMarkup = "",
+} = {}) {
+  const normalizedVariant = ["live", "seed", "replay", "tutorial", "beginner", "spotlight", "science", "cstp"].includes(variant)
+    ? variant
+    : "tutorial";
+  const variantClass = normalizedVariant === "seed" ? "live" : normalizedVariant;
+  const badgeText = String(badge || (
+    normalizedVariant === "replay"
+      ? "FEATURED REPLAY"
+      : normalizedVariant === "beginner"
+        ? "BEGINNER GUIDE"
+        : normalizedVariant === "live" || normalizedVariant === "seed"
+          ? "Seed Sessions"
+          : "TUTORIAL"
+  )).trim();
+  const titleText = String(title || "").trim();
+  const statusText = String(status || "").trim();
+  const descriptionText = String(description || "").trim();
+  const durationText = String(duration || "").trim();
+  const thumbPath = String(thumbnail || "").trim();
+  const classes = [
+    "learn-media-card",
+    `learn-media-card--${variantClass}`,
+    spotlight ? "learn-media-card--spotlight" : "",
+    className,
+  ].filter(Boolean).join(" ");
+  const styleAttribute = thumbPath ? ` style="--learn-media-thumb: url('${escapeHtml(thumbPath)}');"` : "";
+  const liveDotMarkup = variantClass === "live" ? '<span class="learn-media-card-live-dot" aria-hidden="true"></span>' : "";
+
+  return `
+    <article class="${escapeHtml(classes)}"${styleAttribute}>
+      <div class="learn-media-card-thumb" aria-hidden="true">
+        <span class="learn-media-card-grid"></span>
+        <span class="learn-media-card-play">▶</span>
+        ${durationText ? `<span class="learn-media-card-duration">${escapeHtml(durationText)}</span>` : ""}
+      </div>
+      <div class="learn-media-card-copy">
+        <span class="learn-media-card-badge">
+          ${liveDotMarkup}
+          ${escapeHtml(badgeText)}
+        </span>
+        <h3>${escapeHtml(titleText)}</h3>
+        ${statusText ? `<p class="learn-media-card-status">${escapeHtml(statusText)}</p>` : ""}
+        ${descriptionText ? `<p class="learn-media-card-description">${escapeHtml(descriptionText)}</p>` : ""}
+        ${ctaMarkup ? `<div class="learn-media-card-cta">${ctaMarkup}</div>` : ""}
+      </div>
+    </article>
+  `;
+}
+
 function renderSeedSessionsSectionMarkup() {
   return `
     <section class="card seed-sessions-panel" aria-labelledby="seed-sessions-title">
@@ -29956,38 +30016,27 @@ function renderSeedSessionsSectionMarkup() {
           <button type="button" class="button button-secondary seed-sessions-action" data-learn-featured-replays="true">Featured Replays</button>
         </div>
       </div>
-      <div class="seed-sessions-media" aria-label="Seed Sessions previews">
-        <article class="seed-session-preview-card seed-session-preview-card--live" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/kan-system-walkthrough.webp');">
-          <div class="seed-session-thumbnail" aria-hidden="true">
-            <span class="seed-session-thumbnail-grid"></span>
-            <span class="seed-session-play-mark">▶</span>
-          </div>
-          <div class="seed-session-card-copy">
-            <span class="seed-session-status seed-session-status--live">LIVE NOW</span>
-            <h3>KAN® System Walkthrough</h3>
-            <p>Launching Soon</p>
-          </div>
-        </article>
-        <article class="seed-session-preview-card seed-session-preview-card--replay" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/germination-stages.webp');">
-          <div class="seed-session-thumbnail" aria-hidden="true">
-            <span class="seed-session-thumbnail-grid"></span>
-            <span class="seed-session-play-mark">▶</span>
-          </div>
-          <div class="seed-session-card-copy">
-            <span class="seed-session-status">FEATURED REPLAY</span>
-            <h3>Understanding Germination Stages</h3>
-          </div>
-        </article>
-        <article class="seed-session-preview-card seed-session-preview-card--beginner" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/getting-started-grow.webp');">
-          <div class="seed-session-thumbnail" aria-hidden="true">
-            <span class="seed-session-thumbnail-grid"></span>
-            <span class="seed-session-play-mark">▶</span>
-          </div>
-          <div class="seed-session-card-copy">
-            <span class="seed-session-status">BEGINNER SESSION</span>
-            <h3>Getting Started With Cannakan Grow</h3>
-          </div>
-        </article>
+      <div class="learn-media-card-layout seed-sessions-media" aria-label="Seed Sessions previews">
+        ${renderLearnMediaCardMarkup({
+          variant: "live",
+          spotlight: true,
+          badge: "LIVE NOW",
+          title: "KAN® System Walkthrough",
+          status: "Launching Soon",
+          thumbnail: "/assets/images/tutorials/placeholders/kan-system-walkthrough.webp",
+        })}
+        ${renderLearnMediaCardMarkup({
+          variant: "replay",
+          badge: "FEATURED REPLAY",
+          title: "Understanding Germination Stages",
+          thumbnail: "/assets/images/tutorials/placeholders/germination-stages.webp",
+        })}
+        ${renderLearnMediaCardMarkup({
+          variant: "beginner",
+          badge: "BEGINNER SESSION",
+          title: "Getting Started With Cannakan Grow",
+          thumbnail: "/assets/images/tutorials/placeholders/getting-started-grow.webp",
+        })}
       </div>
     </section>
   `;
@@ -33315,41 +33364,27 @@ function renderHomeLearnSectionMarkup() {
           <a class="button button-secondary home-learn-action" href="#learn/kan-system" data-public-learn-link="true">Featured Tutorials</a>
         </div>
       </div>
-      <div class="home-learn-media" aria-label="Featured Learn previews">
-        <article class="home-learn-feature-card home-learn-feature-card--spotlight" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/kan-system-walkthrough.webp');">
-          <div class="home-learn-feature-thumb" aria-hidden="true">
-            <span class="home-learn-feature-grid"></span>
-            <span class="home-learn-feature-play">▶</span>
-          </div>
-          <div class="home-learn-feature-copy">
-            <span class="home-learn-feature-label home-learn-feature-label--seed">
-              <span class="home-learn-feature-live-dot" aria-hidden="true"></span>
-              Seed Sessions
-            </span>
-            <h3>KAN® System Walkthrough</h3>
-            <p>Launching Soon</p>
-          </div>
-        </article>
-        <article class="home-learn-feature-card home-learn-feature-card--replay" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/germination-stages.webp');">
-          <div class="home-learn-feature-thumb" aria-hidden="true">
-            <span class="home-learn-feature-grid"></span>
-            <span class="home-learn-feature-play">▶</span>
-          </div>
-          <div class="home-learn-feature-copy">
-            <span class="home-learn-feature-label">FEATURED REPLAY</span>
-            <h3>Understanding Germination Stages</h3>
-          </div>
-        </article>
-        <article class="home-learn-feature-card home-learn-feature-card--guide" style="--home-learn-thumb: url('/assets/images/tutorials/placeholders/getting-started-grow.webp');">
-          <div class="home-learn-feature-thumb" aria-hidden="true">
-            <span class="home-learn-feature-grid"></span>
-            <span class="home-learn-feature-play">▶</span>
-          </div>
-          <div class="home-learn-feature-copy">
-            <span class="home-learn-feature-label">BEGINNER GUIDE</span>
-            <h3>Getting Started With Cannakan Grow</h3>
-          </div>
-        </article>
+      <div class="learn-media-card-layout home-learn-media" aria-label="Featured Learn previews">
+        ${renderLearnMediaCardMarkup({
+          variant: "seed",
+          spotlight: true,
+          badge: "Seed Sessions",
+          title: "KAN® System Walkthrough",
+          status: "Launching Soon",
+          thumbnail: "/assets/images/tutorials/placeholders/kan-system-walkthrough.webp",
+        })}
+        ${renderLearnMediaCardMarkup({
+          variant: "replay",
+          badge: "FEATURED REPLAY",
+          title: "Understanding Germination Stages",
+          thumbnail: "/assets/images/tutorials/placeholders/germination-stages.webp",
+        })}
+        ${renderLearnMediaCardMarkup({
+          variant: "beginner",
+          badge: "BEGINNER GUIDE",
+          title: "Getting Started With Cannakan Grow",
+          thumbnail: "/assets/images/tutorials/placeholders/getting-started-grow.webp",
+        })}
       </div>
     </section>
   `;
