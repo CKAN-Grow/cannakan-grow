@@ -117,6 +117,8 @@ const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotifica
 const USER_PUSH_SUBSCRIPTIONS_STORAGE_KEY = "cannakanGrowUserPushSubscriptions";
 const PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowPushDeliveredNotificationEvents";
 const APP_NOTIFICATION_REMINDER_ENGINE_INTERVAL_MS = 60 * 1000;
+const SESSION_SETUP_GRACE_MINUTES = 30;
+const SESSION_SETUP_GRACE_MS = SESSION_SETUP_GRACE_MINUTES * 60 * 1000;
 const DEV_QA_BYPASS_STORAGE_KEY = "cannakanGrowDevQaBypass";
 const DEV_QA_BYPASS_USER_ID = "local-dev-qa-user";
 const DEV_QA_BYPASS_USER_EMAIL = "dev-qa@localhost";
@@ -4106,6 +4108,7 @@ function normalizeStoredSession(session) {
     partitions: normalizeSessionPartitions(session.partitions),
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
     createdAt: String(session.createdAt || "").trim(),
+    timerStartAt: String(session.timerStartAt || session.timer_start_at || "").trim(),
     updatedAt: String(
       session.updatedAt
       || session.lastUpdatedAt
@@ -9408,7 +9411,13 @@ function buildStageProgressReminderEntries(session = null) {
     return [];
   }
 
-  const stageStart = getStageStartDateTime(session?.date || "", session?.time || "", normalizedStatus, session?.germinationStartedAt || "");
+  const stageStart = getStageStartDateTime(
+    session?.date || "",
+    session?.time || "",
+    normalizedStatus,
+    session?.germinationStartedAt || "",
+    session?.timerStartAt || "",
+  );
   if (!stageStart) {
     return [];
   }
@@ -15448,6 +15457,8 @@ async function createCloudSession(session) {
       ...session,
       id: String(session?.id || "").trim() || crypto.randomUUID(),
       createdAt: String(session?.createdAt || timestamp).trim(),
+      timerStartAt: String(session?.timerStartAt || "").trim()
+        || getTimerStartAtFromCreatedAt(String(session?.createdAt || timestamp).trim()),
       updatedAt: timestamp,
     });
     savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
@@ -19701,7 +19712,7 @@ async function handleAppNotificationAction(notification = null, action = null) {
     const savedSession = await updateSessionFromNotification(targetSessionId, (session) => {
       const timestamp = new Date().toISOString();
       session.sessionStatus = "germinating";
-      session.germinationStartedAt = session.germinationStartedAt || parseSessionStartDateTime(session.date, session.time)?.toISOString() || timestamp;
+      session.germinationStartedAt = session.germinationStartedAt || getSessionStatusStartedAtValue(session) || timestamp;
       captureFirstPlantedEventForSession(session);
       session.firstPlantedAt = session.firstPlantedAt || timestamp;
       session.completedAt = "";
@@ -19724,7 +19735,7 @@ async function handleAppNotificationAction(notification = null, action = null) {
     const savedSession = await updateSessionFromNotification(targetSessionId, (session) => {
       captureFirstPlantedEventForSession(session);
       session.sessionStatus = "completed";
-      session.germinationStartedAt = session.germinationStartedAt || parseSessionStartDateTime(session.date, session.time)?.toISOString() || new Date().toISOString();
+      session.germinationStartedAt = session.germinationStartedAt || getSessionStatusStartedAtValue(session) || new Date().toISOString();
       session.completedAt = session.completedAt || new Date().toISOString();
       return { shouldDeductFilterPaper: true };
     });
@@ -22518,7 +22529,7 @@ function getSessionCompletedDurationMs(session) {
     return null;
   }
 
-  const startedAt = parseSessionStartDateTime(session.date, session.time);
+  const startedAt = getEffectiveSessionTimerStartAt(session);
   const completedAt = parseCompletedAtValue(session.completedAt || "");
   return getElapsedDurationMs(startedAt, completedAt);
 }
@@ -22900,6 +22911,7 @@ function mapSessionToRecord(session, userId) {
     session_seed_age_years: sessionSeedAgeYears,
     partitions: serializeSessionPartitions(session.partitions),
     created_at: session.createdAt,
+    timer_start_at: session.timerStartAt || null,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
 
@@ -22937,6 +22949,7 @@ function mapRowToSession(row) {
     filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
     partitions: normalizeSessionPartitions(row.partitions),
     createdAt: row.created_at,
+    timerStartAt: row.timer_start_at || "",
     updatedAt: row.updated_at || row.last_updated_at || "",
   };
 }
@@ -44371,6 +44384,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
       };
     });
+    const createdAt = new Date().toISOString();
     const session = {
       id: crypto.randomUUID(),
       date: formData.get("date"),
@@ -44401,7 +44415,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       sessionSeedAgeYears: seedAgeState.sessionSeedAgeYears,
       filterPaperDeducted: false,
       partitions: partitionEntries,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      timerStartAt: getTimerStartAtFromCreatedAt(createdAt),
     };
   const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
   const existingSessionsBeforeSave = getSessions();
@@ -45015,15 +45030,22 @@ function getSessionStatusVisualState(control) {
 
   switch (effectiveStage) {
     case "soaking":
-      return {
-        normalizedStatus,
-        progressKey,
-        tone: "soaking",
-        label: "Soaking",
-        helperText: "Currently soaking",
-        iconKey: iconKeyByStage.soaking,
-        timestampLabel: formatSessionStatusTimestampLabel(control?.dataset?.[timestampKeyByStage.soaking] || ""),
-      };
+      {
+        const startedAtValue = control?.dataset?.[timestampKeyByStage.soaking] || "";
+        const startedAtDate = parseCompletedAtValue(startedAtValue);
+        const setupGraceActive = isSetupGracePeriodActive(startedAtDate);
+        return {
+          normalizedStatus,
+          progressKey,
+          tone: "soaking",
+          label: "Soaking",
+          helperText: setupGraceActive ? "Setup grace period" : "Currently soaking",
+          iconKey: iconKeyByStage.soaking,
+          timestampLabel: setupGraceActive
+            ? formatSetupGraceStartsIn(startedAtDate)
+            : formatSessionStatusTimestampLabel(startedAtValue),
+        };
+      }
     case "germination":
     case "germinating":
       return {
@@ -47016,7 +47038,7 @@ function renderSessionDetail(sessionId) {
   }
   detail.statusField.value = session.sessionStatus || "soaking";
   syncSessionStatusControlDatasets(detail.statusField, {
-    startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+    startedAt: getSessionStatusStartedAtValue(session),
     germinationStartedAt: session.germinationStartedAt || "",
     firstPlantedAt: session.firstPlantedAt || "",
     completedAt: session.completedAt || "",
@@ -47099,6 +47121,7 @@ function renderSessionDetail(sessionId) {
     session.time,
     detail.statusField.value,
     session.germinationStartedAt || "",
+    session.timerStartAt || "",
   );
 
   const partitions = detail.partitions;
@@ -47158,7 +47181,7 @@ function renderSessionDetail(sessionId) {
           syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
           captureFirstPlantedEventForSession(session);
           syncSessionStatusControlDatasets(detail.statusField, {
-            startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+            startedAt: getSessionStatusStartedAtValue(session),
             germinationStartedAt: session.germinationStartedAt || "",
             firstPlantedAt: session.firstPlantedAt || "",
             completedAt: session.completedAt || "",
@@ -47175,7 +47198,7 @@ function renderSessionDetail(sessionId) {
           syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
           captureFirstPlantedEventForSession(session);
           syncSessionStatusControlDatasets(detail.statusField, {
-            startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+            startedAt: getSessionStatusStartedAtValue(session),
             germinationStartedAt: session.germinationStartedAt || "",
             firstPlantedAt: session.firstPlantedAt || "",
             completedAt: session.completedAt || "",
@@ -47226,6 +47249,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.completedAt,
+      session.timerStartAt || "",
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -47290,7 +47314,7 @@ function renderSessionDetail(sessionId) {
     applyDebugEventToSession(session, detail.statusField, action);
     syncSessionDetailHeaderMeta(detail, session);
     syncSessionStatusControlDatasets(detail.statusField, {
-      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+      startedAt: getSessionStatusStartedAtValue(session),
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
@@ -47309,6 +47333,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.germinationStartedAt || "",
+      session.timerStartAt || "",
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -47339,6 +47364,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.germinationStartedAt || "",
+      session.timerStartAt || "",
     );
     updateSessionTimingSummary(
       detail.timingSummary,
@@ -47347,6 +47373,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.completedAt,
+      session.timerStartAt || "",
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -47396,7 +47423,7 @@ function renderSessionDetail(sessionId) {
       session.completedAt = "";
     }
     syncSessionStatusControlDatasets(detail.statusField, {
-      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+      startedAt: getSessionStatusStartedAtValue(session),
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
@@ -47408,6 +47435,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.germinationStartedAt || "",
+      session.timerStartAt || "",
     );
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
@@ -47457,7 +47485,7 @@ function renderSessionDetail(sessionId) {
       updatePartitionWorkHeading(detail.partitionWorkTitle, session.systemType);
     }
     syncSessionStatusControlDatasets(detail.statusField, {
-      startedAt: parseSessionStartDateTime(session.date, session.time)?.toISOString() || session.createdAt || "",
+      startedAt: getSessionStatusStartedAtValue(session),
       germinationStartedAt: session.germinationStartedAt || "",
       firstPlantedAt: session.firstPlantedAt || "",
       completedAt: session.completedAt || "",
@@ -47468,6 +47496,7 @@ function renderSessionDetail(sessionId) {
       session.time,
       detail.statusField.value,
       session.germinationStartedAt || "",
+      session.timerStartAt || "",
     );
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
@@ -48999,7 +49028,7 @@ function renderSessionStatusAlertsMarkup(alerts = []) {
   }).join("");
 }
 
-function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
+function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
   if (!element) {
     return;
   }
@@ -49011,7 +49040,7 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
     return;
   }
 
-  const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt);
+  const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt, timerStartAt);
   if (!reminder) {
     element.innerHTML = "";
     element.hidden = true;
@@ -49050,13 +49079,13 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
     }
   }
 
-function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
+function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
   const schedule = STAGE_REMINDER_SCHEDULES[sessionStatus];
   if (!schedule?.length) {
     return null;
   }
 
-  const stageStart = getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt);
+  const stageStart = getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt, timerStartAt);
   if (!stageStart) {
     return null;
   }
@@ -49077,12 +49106,14 @@ function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germina
     .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0] || null;
 }
 
-function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "") {
+function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
   if (sessionStatus === "germinating") {
-    return parseCompletedAtValue(germinationStartedAt) || parseSessionStartDateTime(sessionDate, sessionTime);
+    return parseCompletedAtValue(germinationStartedAt)
+      || parseCompletedAtValue(timerStartAt)
+      || parseSessionStartDateTime(sessionDate, sessionTime);
   }
 
-  return parseSessionStartDateTime(sessionDate, sessionTime);
+  return parseCompletedAtValue(timerStartAt) || parseSessionStartDateTime(sessionDate, sessionTime);
 }
 
 function parseSessionStartDateTime(sessionDate, sessionTime) {
@@ -49097,6 +49128,42 @@ function parseSessionStartDateTime(sessionDate, sessionTime) {
   }
 
   return parsedDate;
+}
+
+function getTimerStartAtFromCreatedAt(createdAt = "") {
+  const createdDate = parseCompletedAtValue(createdAt) || new Date();
+  return new Date(createdDate.getTime() + SESSION_SETUP_GRACE_MS).toISOString();
+}
+
+function getEffectiveSessionTimerStartAt(session = null) {
+  if (!session) {
+    return null;
+  }
+
+  return parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "")
+    || parseSessionStartDateTime(session.date, session.time);
+}
+
+function getSessionStatusStartedAtValue(session = null) {
+  return getEffectiveSessionTimerStartAt(session)?.toISOString()
+    || String(session?.createdAt || session?.created_at || "").trim();
+}
+
+function isSetupGracePeriodActive(timerStartAt, now = new Date()) {
+  return timerStartAt instanceof Date
+    && !Number.isNaN(timerStartAt.getTime())
+    && now instanceof Date
+    && !Number.isNaN(now.getTime())
+    && now.getTime() < timerStartAt.getTime();
+}
+
+function formatSetupGraceStartsIn(timerStartAt, now = new Date()) {
+  if (!isSetupGracePeriodActive(timerStartAt, now)) {
+    return "";
+  }
+
+  const minutes = Math.max(1, Math.ceil((timerStartAt.getTime() - now.getTime()) / 60000));
+  return `Starts in ${minutes} min`;
 }
 
 function formatPartitionSeedVariety(partition) {
@@ -49597,27 +49664,32 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
   }).join("");
 }
 
-function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "") {
+function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "", timerStartAt = "") {
   if (!summaryElement || !sectionElement) {
     return;
   }
 
-  const startedAt = parseSessionStartDateTime(sessionDate, sessionTime);
+  const startedAt = parseCompletedAtValue(timerStartAt) || parseSessionStartDateTime(sessionDate, sessionTime);
   if (!startedAt) {
     summaryElement.innerHTML = "";
     sectionElement.hidden = true;
     return;
   }
 
+  const now = new Date();
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
   const completedDate = normalizedStatus === "completed"
     ? parseCompletedAtValue(completedAt) || new Date()
     : null;
-  const durationTarget = completedDate || new Date();
+  const durationTarget = completedDate || now;
+  const setupGraceActive = !completedDate && isSetupGracePeriodActive(startedAt, now);
+  const elapsedLabel = setupGraceActive
+    ? formatSetupGraceStartsIn(startedAt, now)
+    : formatDurationBetween(startedAt, durationTarget);
 
   summaryElement.innerHTML = `
-    <article class="timing-card timing-card-started">
-      <strong>Started</strong>
+    <article class="timing-card timing-card-started${setupGraceActive ? " timing-card-setup" : ""}">
+      <strong>${setupGraceActive ? "Timer Starts" : "Started"}</strong>
       <p>${formatTimingDateTime(startedAt)}</p>
     </article>
     ${completedDate ? `
@@ -49630,9 +49702,9 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
         <p>${formatDurationBetween(startedAt, completedDate)}</p>
       </article>
     ` : `
-      <article class="timing-card timing-card-elapsed">
-        <strong>Elapsed Time</strong>
-        <p>${formatDurationBetween(startedAt, durationTarget)}</p>
+      <article class="timing-card timing-card-elapsed${setupGraceActive ? " timing-card-setup" : ""}">
+        <strong>${setupGraceActive ? "Setup Grace Period" : "Elapsed Time"}</strong>
+        <p>${elapsedLabel || "0m"}</p>
       </article>
     `}
   `;
@@ -49692,14 +49764,18 @@ function updateSessionLifecycleTimeline(summaryElement, sectionElement, state) {
 }
 
 function getSessionLifecycleTimelineEvents(state = {}) {
+  const setupGraceActive = Boolean(state.setupGraceActive);
   const events = [
     {
       key: "soaking",
       label: "Soaking",
       timestamp: state.startedAt,
-      displayLabel: state.startedDisplayLabel || "",
+      displayLabel: setupGraceActive
+        ? formatSetupGraceStartsIn(state.startedAt)
+        : (state.startedDisplayLabel || ""),
       tone: "soaking",
       complete: state.startedComplete !== undefined ? state.startedComplete : Boolean(state.startedAt),
+      setupGraceActive,
     },
     {
       key: "germination",
@@ -49789,7 +49865,9 @@ function getSessionLifecycleTimelineCardMeta(state = {}, event = {}) {
 
   let lengthText = "Pending";
 
-  if (hasValidStart && hasValidFinish) {
+  if (event.setupGraceActive && hasValidStart) {
+    lengthText = formatSetupGraceStartsIn(startAt) || "0m";
+  } else if (hasValidStart && hasValidFinish) {
     const durationLabel = formatDurationBetween(startAt, finishAt);
     lengthText = durationLabel || "Pending";
   } else if (hasValidStart && event.isCurrent) {
@@ -49806,7 +49884,7 @@ function getSessionLifecycleTimelineStatusText(event) {
   if (event.isCurrent) {
     switch (event.key) {
       case "soaking":
-        return "Currently soaking";
+        return event.setupGraceActive ? "Timer starts soon" : "Currently soaking";
       case "germination":
         return "Germination active";
       case "first-germinated":
@@ -50200,6 +50278,7 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
       session.time,
       normalizedStage,
       session.germinationStartedAt || "",
+      session.timerStartAt || "",
     )
     : null;
   const rateValue = session && totalsForSession.totalSeeds > 0
@@ -50261,9 +50340,13 @@ function renderSessionCommandCenterFilterPaperSupplyMarkup() {
 }
 
 function formatSessionCommandCenterDayLabel(session = null) {
-  const startedAt = parseSessionStartDateTime(session?.date, session?.time);
+  const startedAt = getEffectiveSessionTimerStartAt(session);
   if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
     return "";
+  }
+
+  if (isSetupGracePeriodActive(startedAt)) {
+    return "Setup";
   }
 
   const totalDays = Math.max(1, Math.floor((Date.now() - startedAt.getTime()) / (24 * 60 * 60 * 1000)) + 1);
@@ -50683,16 +50766,20 @@ function buildFormLifecycleState(form) {
     germinationStartedAt: parseCompletedAtValue(form.dataset.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(form.dataset.firstPlantedAt || ""),
     completedAt: parseCompletedAtValue(form.dataset.completedAt || ""),
+    setupGraceActive: false,
   };
 }
 
 function buildSessionLifecycleState(session) {
+  const startedAt = getEffectiveSessionTimerStartAt(session);
+  const completedAt = parseCompletedAtValue(session.completedAt || "");
   return {
     showEmptyTimeline: false,
-    startedAt: parseSessionStartDateTime(session.date, session.time),
+    startedAt,
     germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || ""),
-    completedAt: parseCompletedAtValue(session.completedAt || ""),
+    completedAt,
+    setupGraceActive: !completedAt && isSetupGracePeriodActive(startedAt),
   };
 }
 
@@ -51018,7 +51105,12 @@ function formatSpotlightElapsed(startedAt) {
     return "--";
   }
 
-  const totalMinutes = Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 60000));
+  const now = new Date();
+  if (isSetupGracePeriodActive(startedAt, now)) {
+    return formatSetupGraceStartsIn(startedAt, now);
+  }
+
+  const totalMinutes = Math.max(0, Math.floor((now.getTime() - startedAt.getTime()) / 60000));
   return formatElapsedMinutesShorthand(totalMinutes);
 }
 

@@ -16,6 +16,7 @@ create table if not exists public.grow_sessions (
   germination_started_at timestamptz,
   first_planted_at timestamptz,
   completed_at timestamptz,
+  timer_start_at timestamptz,
   seed_age_tracking_enabled boolean not null default false,
   seed_age_mode text,
   session_seed_age_years numeric,
@@ -534,6 +535,9 @@ alter table public.grow_sessions
 
 alter table public.grow_sessions
   add column if not exists session_seed_age_years numeric;
+
+alter table public.grow_sessions
+  add column if not exists timer_start_at timestamptz;
 
 alter table public.grow_session_reminder_events
   add column if not exists reminder_type text not null default '';

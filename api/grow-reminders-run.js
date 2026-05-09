@@ -284,9 +284,11 @@ function parseSessionStartDateTime(sessionDate = "", sessionTime = "") {
 function getStageStartDateTime(session = {}, stage = "") {
   if (stage === "germinating") {
     return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "")
+      || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
       || parseSessionStartDateTime(session?.date || "", session?.time || "");
   }
-  return parseSessionStartDateTime(session?.date || "", session?.time || "");
+  return parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
+    || parseSessionStartDateTime(session?.date || "", session?.time || "");
 }
 
 function buildAbsoluteUrl(appOrigin = "", route = "#home") {
@@ -514,7 +516,7 @@ async function fetchAllCandidateSessions(config) {
 
   while (true) {
     const rows = await supabaseRest(
-      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,session_name,custom_session_name,session_status,germination_started_at,completed_at,is_deleted&is_deleted=is.false&session_status=in.(soaking,germinating,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
+      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,timer_start_at,session_name,custom_session_name,session_status,germination_started_at,completed_at,is_deleted&is_deleted=is.false&session_status=in.(soaking,germinating,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
       config,
     );
     const normalizedRows = Array.isArray(rows) ? rows : [];
@@ -530,6 +532,7 @@ async function fetchAllCandidateSessions(config) {
     userId: String(row?.user_id || "").trim(),
     date: String(row?.date || "").trim(),
     time: String(row?.time || "").trim(),
+    timerStartAt: String(row?.timer_start_at || "").trim(),
     sessionName: String(row?.session_name || row?.custom_session_name || "").trim(),
     sessionStatus: normalizeSessionStatus(row?.session_status || ""),
     germinationStartedAt: String(row?.germination_started_at || "").trim(),
