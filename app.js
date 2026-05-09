@@ -70,6 +70,7 @@ const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagem
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
 const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
+const TUTORIAL_ANALYTICS_STORAGE_KEY = "cannakanTutorialAnalyticsEvents";
 const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
@@ -27093,11 +27094,25 @@ function markTutorialViewed(tutorialId = "") {
 }
 
 function markTutorialStarted(tutorialId = "") {
-  return saveTutorialProgress(tutorialId, { started: true });
+  const progress = saveTutorialProgress(tutorialId, { started: true });
+  const overlay = document.querySelector("#learn-tutorial-modal-overlay");
+  trackTutorialAnalyticsEvent("tutorial_started", {
+    tutorialId,
+    category: overlay?.dataset.activeTutorialCategory || "",
+    source: overlay?.dataset.activeTutorialSource || "Tutorial modal",
+  });
+  return progress;
 }
 
 function markTutorialCompleted(tutorialId = "") {
-  return saveTutorialProgress(tutorialId, { completed: true });
+  const progress = saveTutorialProgress(tutorialId, { completed: true });
+  const overlay = document.querySelector("#learn-tutorial-modal-overlay");
+  trackTutorialAnalyticsEvent("tutorial_completed", {
+    tutorialId,
+    category: overlay?.dataset.activeTutorialCategory || "",
+    source: overlay?.dataset.activeTutorialSource || "Tutorial modal",
+  });
+  return progress;
 }
 
 function getTutorialProgressStatus(tutorialId = "") {
@@ -27124,6 +27139,106 @@ function getTutorialProgressStatusLabel(tutorialId = "") {
 
 function isTutorialCompleted(tutorialId = "") {
   return getTutorialProgress(tutorialId).completed;
+}
+
+function loadTutorialAnalyticsEventsFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(TUTORIAL_ANALYTICS_STORAGE_KEY) || "[]");
+    return Array.isArray(storedValue) ? storedValue.filter((event) => event && typeof event === "object") : [];
+  } catch (error) {
+    console.warn("[Tutorial Analytics] Failed to read tutorial events.", error);
+    return [];
+  }
+}
+
+function saveTutorialAnalyticsEventsToStorage(events = []) {
+  try {
+    localStorage.setItem(TUTORIAL_ANALYTICS_STORAGE_KEY, JSON.stringify((events || []).slice(-500)));
+  } catch (error) {
+    console.warn("[Tutorial Analytics] Failed to save tutorial events.", error);
+  }
+}
+
+function getTutorialAnalyticsSourceLabel(source = "") {
+  const normalizedSource = String(source || "").trim();
+  if (normalizedSource) {
+    return normalizedSource;
+  }
+  const hash = normalizeNavigationHash(window.location.hash || "#home");
+  if (hash.startsWith("#learn")) {
+    return "Learn page";
+  }
+  if (hash.startsWith("#new")) {
+    return "New Session";
+  }
+  if (hash.startsWith("#gallery")) {
+    return "Community Grow";
+  }
+  if (hash.startsWith("#admin")) {
+    return "Tutorial Management";
+  }
+  if (hash.startsWith("#sessions")) {
+    return "Session Detail";
+  }
+  return "App";
+}
+
+function trackTutorialAnalyticsEvent(eventName = "", options = {}) {
+  const normalizedEventName = String(eventName || "").trim();
+  if (!normalizedEventName) {
+    return null;
+  }
+
+  const tutorialId = String(options.tutorialId || "").trim();
+  const tutorialEntry = tutorialId ? getLearnTutorialById(tutorialId) : null;
+  const category = String(options.category || tutorialEntry?.category?.title || tutorialEntry?.category?.id || "").trim();
+  const eventRecord = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    eventName: normalizedEventName,
+    tutorialId,
+    tutorialTitle: String(options.tutorialTitle || tutorialEntry?.tutorial?.title || "").trim(),
+    category,
+    categoryId: String(options.categoryId || tutorialEntry?.category?.id || "").trim(),
+    source: getTutorialAnalyticsSourceLabel(options.source),
+    timestamp: new Date().toISOString(),
+    metadata: options.metadata && typeof options.metadata === "object" ? options.metadata : {},
+    persistence: "local",
+    userId: appState.user?.id || "",
+  };
+  const events = loadTutorialAnalyticsEventsFromStorage();
+  events.push(eventRecord);
+  saveTutorialAnalyticsEventsToStorage(events);
+  return eventRecord;
+}
+
+function getTutorialAnalyticsSummary() {
+  const events = loadTutorialAnalyticsEventsFromStorage();
+  const openEvents = events.filter((event) => event.eventName === "tutorial_modal_opened");
+  const completedTutorialIds = new Set(events
+    .filter((event) => event.eventName === "tutorial_completed" && event.tutorialId)
+    .map((event) => event.tutorialId));
+  const openCounts = openEvents.reduce((counts, event) => {
+    const tutorialId = String(event.tutorialId || "").trim();
+    if (!tutorialId) {
+      return counts;
+    }
+    const existing = counts.get(tutorialId) || {
+      tutorialId,
+      tutorialTitle: event.tutorialTitle || tutorialId,
+      count: 0,
+    };
+    existing.count += 1;
+    counts.set(tutorialId, existing);
+    return counts;
+  }, new Map());
+  const mostOpened = [...openCounts.values()].sort((left, right) => right.count - left.count)[0] || null;
+
+  return {
+    totalOpens: openEvents.length,
+    completedCount: completedTutorialIds.size,
+    mostOpened,
+    eventCount: events.length,
+  };
 }
 
 function normalizeLearnGettingStartedRecord(record = {}) {
@@ -27363,11 +27478,11 @@ function renderLearnEmptyStateCtaMarkup(tutorialId = "", label = "Watch Tutorial
   `;
 }
 
-function openLearnTutorialFromHelper(tutorialId = "") {
+function openLearnTutorialFromHelper(tutorialId = "", source = "Empty state") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   const tutorialEntry = getLearnTutorialById(normalizedTutorialId);
   if (tutorialEntry) {
-    openLearnTutorialModal(normalizedTutorialId);
+    openLearnTutorialModal(normalizedTutorialId, { source });
     return;
   }
 
@@ -27947,7 +28062,10 @@ function bindContextualOnboardingPrompt(promptElement, promptId = "") {
     button.addEventListener("click", () => {
       const tutorialId = button.dataset.onboardingTutorialId || "";
       saveContextualOnboardingPromptState(promptId, "dismissed", tutorialId);
-      openLearnTutorialModal(tutorialId);
+      const source = promptId === "new-session"
+        ? "New Session prompt"
+        : (promptId === "snapshot" ? "Snapshot prompt" : `${promptId} prompt`);
+      openLearnTutorialModal(tutorialId, { source });
       removePrompt();
     });
   });
@@ -28044,6 +28162,11 @@ function closeLearnTutorialModal() {
     return;
   }
 
+  trackTutorialAnalyticsEvent("tutorial_dismissed", {
+    tutorialId: overlay.dataset.activeTutorialId || "",
+    category: overlay.dataset.activeTutorialCategory || "",
+    source: overlay.dataset.activeTutorialSource || "Tutorial modal",
+  });
   overlay.dataset.closing = "true";
   overlay.classList.add("closing");
   overlay.querySelector(".learn-tutorial-modal")?.classList.add("closing");
@@ -28324,6 +28447,10 @@ function clearLearnTutorialFilters(scope = document) {
       chip.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
   }
+  trackTutorialAnalyticsEvent("tutorial_filter_used", {
+    source: "Learn page",
+    metadata: { filter: "clear" },
+  });
   applyLearnTutorialFilters(root);
 }
 
@@ -28331,7 +28458,17 @@ function bindLearnTutorialFilters(scope = document) {
   const searchInput = scope.querySelector("[data-learn-search]");
   if (searchInput instanceof HTMLInputElement && searchInput.dataset.learnSearchBound !== "true") {
     searchInput.dataset.learnSearchBound = "true";
-    searchInput.addEventListener("input", () => applyLearnTutorialFilters(document));
+    searchInput.addEventListener("input", () => {
+      applyLearnTutorialFilters(document);
+      const query = searchInput.value.trim();
+      if (query && searchInput.dataset.lastTrackedTutorialSearch !== query) {
+        searchInput.dataset.lastTrackedTutorialSearch = query;
+        trackTutorialAnalyticsEvent("tutorial_search_used", {
+          source: "Learn page",
+          metadata: { query },
+        });
+      }
+    });
   }
 
   scope.querySelectorAll("[data-learn-filter]").forEach((chip) => {
@@ -28349,6 +28486,10 @@ function bindLearnTutorialFilters(scope = document) {
           button.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
       }
+      trackTutorialAnalyticsEvent("tutorial_filter_used", {
+        source: "Learn page",
+        metadata: { filter: chip.dataset.learnFilter || "all" },
+      });
       applyLearnTutorialFilters(document);
     });
   });
@@ -28364,7 +28505,7 @@ function bindLearnTutorialFilters(scope = document) {
   applyLearnTutorialFilters(document);
 }
 
-function openLearnTutorialModal(tutorialId = "") {
+function openLearnTutorialModal(tutorialId = "", options = {}) {
   const tutorialEntry = getLearnTutorialById(tutorialId);
   if (!tutorialEntry) {
     return;
@@ -28373,13 +28514,22 @@ function openLearnTutorialModal(tutorialId = "") {
   const { category, tutorial } = tutorialEntry;
   markTutorialViewed(tutorial.id);
   const overlay = ensureLearnTutorialModal();
+  overlay.dataset.activeTutorialId = tutorial.id;
+  overlay.dataset.activeTutorialCategory = category.title || category.id || "";
+  overlay.dataset.activeTutorialSource = getTutorialAnalyticsSourceLabel(options.source);
+  trackTutorialAnalyticsEvent("tutorial_modal_opened", {
+    tutorialId: tutorial.id,
+    category: category.title || category.id || "",
+    categoryId: category.id || "",
+    source: options.source,
+  });
   const modal = overlay.querySelector(".learn-tutorial-modal");
   const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
   if (content) {
     content.innerHTML = renderLearnTutorialModalContentMarkup(tutorial, category);
     content.querySelectorAll("[data-learn-related-tutorial]").forEach((button) => {
       button.addEventListener("click", () => {
-        openLearnTutorialModal(button.dataset.learnRelatedTutorial || "");
+        openLearnTutorialModal(button.dataset.learnRelatedTutorial || "", { source: "Tutorial modal related" });
       });
     });
     bindLearnTutorialProgressActions(content, tutorial.id);
@@ -28406,7 +28556,14 @@ function bindLearnPageInteractions(scope = document) {
 
     button.dataset.learnTutorialBound = "true";
     button.addEventListener("click", () => {
-      openLearnTutorialModal(button.dataset.learnTutorialOpen || "");
+      const tutorialId = button.dataset.learnTutorialOpen || "";
+      trackTutorialAnalyticsEvent("tutorial_card_clicked", {
+        tutorialId,
+        category: button.dataset.learnTutorialCategory || "",
+        categoryId: button.dataset.learnTutorialCategoryId || "",
+        source: "Learn page",
+      });
+      openLearnTutorialModal(tutorialId, { source: "Learn page" });
     });
   });
 }
@@ -42873,6 +43030,39 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
   `;
 }
 
+function renderAdminTutorialEngagementPanelMarkup() {
+  const summary = getTutorialAnalyticsSummary();
+  const mostOpenedLabel = summary.mostOpened
+    ? `${summary.mostOpened.tutorialTitle} (${summary.mostOpened.count})`
+    : "No opens yet";
+  return `
+    <section class="meta-card admin-tutorial-engagement-panel">
+      <div class="admin-tutorial-engagement-head">
+        <div>
+          <p class="eyebrow">Tutorial Analytics</p>
+          <h4>Tutorial Engagement</h4>
+        </div>
+        <span>Local preview</span>
+      </div>
+      <div class="admin-tutorial-engagement-grid">
+        <div>
+          <strong>${escapeHtml(summary.totalOpens.toLocaleString())}</strong>
+          <span>Total tutorial opens</span>
+        </div>
+        <div>
+          <strong>${escapeHtml(summary.completedCount.toLocaleString())}</strong>
+          <span>Completed tutorials</span>
+        </div>
+        <div class="admin-tutorial-engagement-wide">
+          <strong>${escapeHtml(mostOpenedLabel)}</strong>
+          <span>Most opened tutorial</span>
+        </div>
+      </div>
+      <p class="muted">Local preview only - Supabase analytics coming later.</p>
+    </section>
+  `;
+}
+
 function renderAdminTutorialManagementBodyMarkup() {
   const tutorials = getAdminTutorialsForManagement();
   if (!appState.adminTutorialEditingId && tutorials[0]) {
@@ -42904,6 +43094,7 @@ function renderAdminTutorialManagementBodyMarkup() {
           </div>
         </div>
         <div id="admin-tutorial-editor-anchor">
+          ${renderAdminTutorialEngagementPanelMarkup()}
           ${renderAdminTutorialEditorMarkup(editingTutorial)}
         </div>
       </div>
@@ -42995,10 +43186,10 @@ function bindAdminTutorialManagementSection(scope = app) {
         const tutorialId = saveAdminTutorialFormDraft(form, previewStatus);
         appState.adminTutorialEditingId = tutorialId;
         refreshAdminTutorialManagementSection();
-        openLearnTutorialModal(tutorialId);
+        openLearnTutorialModal(tutorialId, { source: "Tutorial Management preview" });
         return;
       }
-      openLearnTutorialModal(button.dataset.adminTutorialPreview || "");
+      openLearnTutorialModal(button.dataset.adminTutorialPreview || "", { source: "Tutorial Management preview" });
     });
   });
 
@@ -54410,7 +54601,7 @@ document.addEventListener("click", (event) => {
   if (learnEmptyTutorialButton instanceof HTMLElement) {
     event.preventDefault();
     event.stopPropagation();
-    openLearnTutorialFromHelper(learnEmptyTutorialButton.dataset.learnEmptyTutorial || "");
+    openLearnTutorialFromHelper(learnEmptyTutorialButton.dataset.learnEmptyTutorial || "", "Empty state");
     return;
   }
 

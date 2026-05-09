@@ -15895,6 +15895,88 @@ body.theme-dark .contact-reason-card.is-active {
     rgba(9, 15, 11, 0.56);
 }
 
+.admin-tutorial-engagement-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border-color: rgba(148, 209, 89, 0.16);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.1), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 10, 0.52);
+}
+
+.admin-tutorial-engagement-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-tutorial-engagement-head h4,
+.admin-tutorial-engagement-head p,
+.admin-tutorial-engagement-panel p {
+  margin: 0;
+}
+
+.admin-tutorial-engagement-head h4 {
+  color: #f4faf0;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.admin-tutorial-engagement-head > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.22);
+  background: rgba(148, 209, 89, 0.08);
+  color: #94d159;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-tutorial-engagement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-tutorial-engagement-grid > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.026);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.admin-tutorial-engagement-grid strong {
+  min-width: 0;
+  color: #f4faf0;
+  font-size: 1.05rem;
+  line-height: 1.18;
+}
+
+.admin-tutorial-engagement-grid span {
+  color: rgba(213, 225, 210, 0.72);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.admin-tutorial-engagement-wide {
+  grid-column: 1 / -1;
+}
+
 .admin-tutorial-editor-head {
   align-items: center;
 }
