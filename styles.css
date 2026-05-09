@@ -28934,7 +28934,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-workspace-shell .detail-session-action-bar {
   display: grid;
-  grid-template-columns: minmax(190px, 0.9fr) minmax(360px, 1.45fr) auto;
+  grid-template-columns: minmax(360px, 1.45fr) minmax(190px, 0.9fr) auto;
   align-items: center;
   gap: 18px;
   padding: 18px 20px;
@@ -28948,6 +28948,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   margin: 0;
   max-width: 34ch;
   line-height: 1.5;
+  justify-self: center;
 }
 
 .detail-stage-progress-card {
@@ -29359,6 +29360,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
   .detail-session-action-copy {
     max-width: none;
+    justify-self: stretch;
   }
 
   .detail-save-shortcut-button {
