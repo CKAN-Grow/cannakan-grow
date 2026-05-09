@@ -313,6 +313,14 @@ const USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS = Object.freeze([
   "community_activity_notifications",
   "push_notifications_enabled",
 ]);
+const USER_NOTIFICATION_PREFERENCES_COMPATIBILITY_COLUMNS = Object.freeze([
+  ...USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS,
+  ...USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS,
+  "push_notifications",
+  "email_notifications_enabled",
+  "reminder_notifications_enabled",
+  "marketing_notifications_enabled",
+]);
 const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   {
@@ -1148,6 +1156,7 @@ const appState = {
   notificationPreferencesTableUnavailable: false,
   notificationPreferencesSchemaMode: "",
   notificationPreferencesAvailableColumns: [],
+  notificationPreferencesUnavailableColumns: [],
   pushSubscriptions: [],
   currentPushSubscriptionRecord: null,
   pushSubscriptionsError: "",
@@ -1638,6 +1647,7 @@ function resetSessionScopedAppState() {
   // auth resets do not re-trigger repeated 404 requests to Supabase.
   appState.notificationPreferencesSchemaMode = "";
   appState.notificationPreferencesAvailableColumns = [];
+  appState.notificationPreferencesUnavailableColumns = [];
   appState.pushSubscriptions = [];
   appState.currentPushSubscriptionRecord = null;
   appState.pushSubscriptionsError = "";
@@ -4357,6 +4367,7 @@ function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
   appState.notificationPreferencesAvailableColumns = [];
+  appState.notificationPreferencesUnavailableColumns = [];
   appState.notificationPreferences = syncUserNotificationPreferencesCache(
     user.id,
     loadStoredUserNotificationPreferences(user.id),
@@ -8391,9 +8402,20 @@ function isUserNotificationPreferencesSchemaModeError(error) {
     || isSupabaseColumnMissingError(
       error,
       USER_NOTIFICATION_PREFERENCES_TABLE,
-      USER_NOTIFICATION_PREFERENCES_MODERN_COLUMNS,
+      USER_NOTIFICATION_PREFERENCES_COMPATIBILITY_COLUMNS,
     )
   );
+}
+
+function getMissingUserNotificationPreferenceColumns(error) {
+  const searchText = getSupabaseErrorSearchText(error);
+  if (!searchText || !searchText.includes(USER_NOTIFICATION_PREFERENCES_TABLE)) {
+    return [];
+  }
+
+  return USER_NOTIFICATION_PREFERENCES_COMPATIBILITY_COLUMNS.filter((columnName) => (
+    searchText.includes(String(columnName || "").trim().toLowerCase())
+  ));
 }
 
 function getDefaultNotificationPreferences() {
@@ -9904,6 +9926,7 @@ function markUserNotificationPreferencesTableUnavailable() {
   appState.notificationPreferencesError = "";
   appState.notificationPreferencesSchemaMode = "";
   appState.notificationPreferencesAvailableColumns = [];
+  appState.notificationPreferencesUnavailableColumns = [];
   logRuntimeIssueOnce(
     "warn",
     "notification-preferences-backend-fallback",
@@ -9947,6 +9970,33 @@ function setUserNotificationPreferencesAvailableColumns(columnsOrRow = []) {
   appState.notificationPreferencesAvailableColumns = nextColumns
     .map((columnName) => String(columnName || "").trim())
     .filter(Boolean);
+}
+
+function markUserNotificationPreferencesColumnsUnavailable(columnNames = []) {
+  const normalizedColumnNames = (Array.isArray(columnNames) ? columnNames : [columnNames])
+    .map((columnName) => String(columnName || "").trim())
+    .filter(Boolean);
+  if (!normalizedColumnNames.length) {
+    return [];
+  }
+
+  const unavailableColumns = new Set(Array.isArray(appState.notificationPreferencesUnavailableColumns)
+    ? appState.notificationPreferencesUnavailableColumns
+    : []);
+  normalizedColumnNames.forEach((columnName) => unavailableColumns.add(columnName));
+  appState.notificationPreferencesUnavailableColumns = Array.from(unavailableColumns);
+  if (Array.isArray(appState.notificationPreferencesAvailableColumns) && appState.notificationPreferencesAvailableColumns.length) {
+    appState.notificationPreferencesAvailableColumns = appState.notificationPreferencesAvailableColumns
+      .filter((columnName) => !unavailableColumns.has(columnName));
+  }
+  return normalizedColumnNames;
+}
+
+function isUserNotificationPreferencesColumnUnavailable(columnName = "") {
+  const normalizedColumnName = String(columnName || "").trim();
+  return Boolean(normalizedColumnName)
+    && Array.isArray(appState.notificationPreferencesUnavailableColumns)
+    && appState.notificationPreferencesUnavailableColumns.includes(normalizedColumnName);
 }
 
 function hasAvailableUserNotificationPreferencesColumn(columnName = "") {
@@ -10008,6 +10058,9 @@ function getSafeNotificationPreferencePayload(
       allowWhenUnknown = false,
       requireConfirmation = false,
     } = options || {};
+    if (isUserNotificationPreferencesColumnUnavailable(columnName)) {
+      return false;
+    }
     if (hasKnownColumns) {
       return hasAvailableUserNotificationPreferencesColumn(columnName);
     }
@@ -11513,6 +11566,9 @@ async function ensureUserNotificationPreferences(user) {
 
     if (upsertError) {
       if (isUserNotificationPreferencesSchemaModeError(upsertError)) {
+        markUserNotificationPreferencesColumnsUnavailable(
+          getMissingUserNotificationPreferenceColumns(upsertError),
+        );
         lastSeedError = upsertError;
         continue;
       }
@@ -16965,6 +17021,9 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
     }
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
+      markUserNotificationPreferencesColumnsUnavailable(
+        getMissingUserNotificationPreferenceColumns(error),
+      );
       lastError = error;
       continue;
     }
@@ -16992,7 +17051,6 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       userId: normalizedUserId,
     });
     syncFallbackPreferences();
-    throwNotificationPreferencesSaveError("Notification preferences could not be saved right now.", lastError);
     return fallbackPreferences;
   }
 
@@ -27096,6 +27154,28 @@ const LEARN_TUTORIAL_FUTURE_CATEGORIES = Object.freeze([
 
 const LEARN_TUTORIAL_ASSET_BASE_PATH = "/assets/images/tutorials/";
 const LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH = "/assets/images/tutorials/placeholders/";
+const LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH = "/assets/images/learn-share-preview.png";
+const LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS = Object.freeze({
+  kanSystemWalkthrough: `${LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH}kan-system-walkthrough.webp`,
+  germinationStages: `${LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH}germination-stages.webp`,
+  gettingStartedGrow: `${LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH}getting-started-grow.webp`,
+});
+const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
+  LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH,
+  ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
+]);
+
+function resolveLearnTutorialThumbnailAssetPath(thumbnailPath = "") {
+  const normalizedPath = String(thumbnailPath || "").trim();
+  if (!normalizedPath) {
+    return "";
+  }
+  const isLocalTutorialAsset = normalizedPath.startsWith(LEARN_TUTORIAL_ASSET_BASE_PATH);
+  if (isLocalTutorialAsset && !LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS.includes(normalizedPath)) {
+    return LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH;
+  }
+  return normalizedPath;
+}
 
 const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
   Object.freeze({
@@ -28546,7 +28626,7 @@ function getLearnTutorialVisualTheme(tutorial = {}, category = {}) {
 
 function getLearnTutorialThumbnailUrl(tutorial = {}) {
   const video = getTutorialVideoConfig(tutorial);
-  return String(tutorial.thumbnailUrl || tutorial.posterUrl || video.posterUrl || "").trim();
+  return resolveLearnTutorialThumbnailAssetPath(tutorial.thumbnailUrl || tutorial.posterUrl || video.posterUrl || "");
 }
 
 function isLearnTutorialGettingStarted(tutorial = {}) {
@@ -29971,7 +30051,7 @@ function renderLearnMediaCardMarkup({
   const statusText = String(status || "").trim();
   const descriptionText = String(description || "").trim();
   const durationText = String(duration || "").trim();
-  const thumbPath = String(thumbnail || "").trim();
+  const thumbPath = resolveLearnTutorialThumbnailAssetPath(thumbnail);
   const classes = [
     "learn-media-card",
     `learn-media-card--${variantClass}`,
@@ -30033,19 +30113,19 @@ function renderSeedSessionsSectionMarkup() {
           badge: "LIVE NOW",
           title: "KAN® System Walkthrough",
           status: "Launching Soon",
-          thumbnail: "/assets/images/tutorials/placeholders/kan-system-walkthrough.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.kanSystemWalkthrough,
         })}
         ${renderLearnMediaCardMarkup({
           variant: "replay",
           badge: "FEATURED REPLAY",
           title: "Understanding Germination Stages",
-          thumbnail: "/assets/images/tutorials/placeholders/germination-stages.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.germinationStages,
         })}
         ${renderLearnMediaCardMarkup({
           variant: "beginner",
           badge: "BEGINNER SESSION",
           title: "Getting Started With Cannakan Grow",
-          thumbnail: "/assets/images/tutorials/placeholders/getting-started-grow.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.gettingStartedGrow,
         })}
       </div>
     </section>
@@ -33381,19 +33461,19 @@ function renderHomeLearnSectionMarkup() {
           badge: "Seed Sessions",
           title: "KAN® System Walkthrough",
           status: "Launching Soon",
-          thumbnail: "/assets/images/tutorials/placeholders/kan-system-walkthrough.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.kanSystemWalkthrough,
         })}
         ${renderLearnMediaCardMarkup({
           variant: "replay",
           badge: "FEATURED REPLAY",
           title: "Understanding Germination Stages",
-          thumbnail: "/assets/images/tutorials/placeholders/germination-stages.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.germinationStages,
         })}
         ${renderLearnMediaCardMarkup({
           variant: "beginner",
           badge: "BEGINNER GUIDE",
           title: "Getting Started With Cannakan Grow",
-          thumbnail: "/assets/images/tutorials/placeholders/getting-started-grow.webp",
+          thumbnail: LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS.gettingStartedGrow,
         })}
       </div>
     </section>
