@@ -26825,6 +26825,14 @@ function normalizeTutorialPublishStatus(status = "coming-soon") {
   return ["coming-soon", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
 }
 
+function normalizeTutorialVideoProvider(provider = "none") {
+  const normalizedProvider = String(provider || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
+  if (normalizedProvider === "placeholder") {
+    return "none";
+  }
+  return ["none", "cloudflare", "mp4", "embed"].includes(normalizedProvider) ? normalizedProvider : "none";
+}
+
 function getTutorialStatusLabel(status = "coming-soon") {
   const normalizedStatus = normalizeTutorialPublishStatus(status);
   if (normalizedStatus === "published") {
@@ -26836,16 +26844,45 @@ function getTutorialStatusLabel(status = "coming-soon") {
   return "Coming Soon";
 }
 
-function getTutorialVideoStateLabel(tutorial = {}) {
+function getTutorialVideoProviderLabel(provider = "none") {
+  const normalizedProvider = normalizeTutorialVideoProvider(provider);
+  if (normalizedProvider === "cloudflare") {
+    return "Cloudflare Stream";
+  }
+  if (normalizedProvider === "mp4") {
+    return "Direct MP4";
+  }
+  if (normalizedProvider === "embed") {
+    return "Embed";
+  }
+  return "None";
+}
+
+function getTutorialVideoConfig(tutorial = {}) {
   const video = tutorial.video || {};
-  if (video.cloudflareStreamId) {
+  const videoProvider = normalizeTutorialVideoProvider(tutorial.videoProvider || video.videoProvider || video.provider || "none");
+  const posterUrl = String(tutorial.posterUrl || video.posterUrl || video.poster || tutorial.thumbnailUrl || "").trim();
+  return {
+    videoProvider,
+    cloudflareStreamId: String(tutorial.cloudflareStreamId || video.cloudflareStreamId || "").trim(),
+    mp4Url: String(tutorial.mp4Url || video.mp4Url || "").trim(),
+    embedUrl: String(tutorial.embedUrl || video.embedUrl || "").trim(),
+    posterUrl,
+    captionsUrl: String(tutorial.captionsUrl || video.captionsUrl || "").trim(),
+    transcriptUrl: String(tutorial.transcriptUrl || video.transcriptUrl || "").trim(),
+  };
+}
+
+function getTutorialVideoStateLabel(tutorial = {}) {
+  const video = getTutorialVideoConfig(tutorial);
+  if (video.videoProvider === "cloudflare" || video.cloudflareStreamId) {
     return "Cloudflare Stream ready";
   }
-  if (video.mp4Url) {
+  if (video.videoProvider === "mp4" || video.mp4Url) {
     return "Hosted MP4 linked";
   }
-  if (video.adaptiveUrl) {
-    return "Adaptive stream linked";
+  if (video.videoProvider === "embed" || video.embedUrl) {
+    return "Embed URL linked";
   }
   if (video.transcriptUrl || video.captionsUrl) {
     return "Transcript/captions staged";
@@ -26932,6 +26969,13 @@ function getLearnTutorialCategories() {
       const draft = draftMap[tutorial.id] || {};
       const videoDraft = draft.video || {};
       const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
+      const videoProvider = normalizeTutorialVideoProvider(draft.videoProvider || videoDraft.videoProvider || videoDraft.provider || tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
+      const cloudflareStreamId = String(draft.cloudflareStreamId || videoDraft.cloudflareStreamId || tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
+      const mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
+      const embedUrl = String(draft.embedUrl || videoDraft.embedUrl || tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
+      const posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
+      const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
+      const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const mergedTutorial = {
         ...tutorial,
         ...draft,
@@ -26945,16 +26989,23 @@ function getLearnTutorialCategories() {
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
         featured: Boolean(draft.featured ?? tutorial.featured),
         onboardingPriority: Boolean(draft.onboardingPriority ?? tutorial.onboardingPriority),
+        videoProvider,
+        cloudflareStreamId,
+        mp4Url,
+        embedUrl,
+        posterUrl,
+        captionsUrl,
+        transcriptUrl,
         video: {
-          ...(tutorial.video || {}),
-          ...videoDraft,
-          provider: String(videoDraft.provider || tutorial.video?.provider || "placeholder").trim() || "placeholder",
-          mp4Url: String(videoDraft.mp4Url || tutorial.video?.mp4Url || "").trim(),
-          cloudflareStreamId: String(videoDraft.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim(),
-          adaptiveUrl: String(videoDraft.adaptiveUrl || tutorial.video?.adaptiveUrl || "").trim(),
-          captionsUrl: String(videoDraft.captionsUrl || tutorial.video?.captionsUrl || "").trim(),
-          transcriptUrl: String(videoDraft.transcriptUrl || tutorial.video?.transcriptUrl || "").trim(),
-          poster: String(videoDraft.poster || draft.thumbnailUrl || tutorial.video?.poster || "").trim(),
+          videoProvider,
+          provider: videoProvider,
+          cloudflareStreamId,
+          mp4Url,
+          embedUrl,
+          posterUrl,
+          poster: posterUrl,
+          captionsUrl,
+          transcriptUrl,
         },
         _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
       };
@@ -27082,9 +27133,9 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
       type="button"
       class="learn-tutorial-card"
       data-learn-tutorial-open="${escapeHtml(tutorial.id)}"
-      data-video-provider="${escapeHtml(tutorial.video?.provider || "placeholder")}"
-      data-video-mp4-url="${escapeHtml(tutorial.video?.mp4Url || "")}"
-      data-video-cloudflare-stream-id="${escapeHtml(tutorial.video?.cloudflareStreamId || "")}"
+      data-video-provider="${escapeHtml(getTutorialVideoConfig(tutorial).videoProvider)}"
+      data-video-mp4-url="${escapeHtml(getTutorialVideoConfig(tutorial).mp4Url)}"
+      data-video-cloudflare-stream-id="${escapeHtml(getTutorialVideoConfig(tutorial).cloudflareStreamId)}"
     >
       <span class="learn-tutorial-thumbnail" aria-hidden="true">
         <span class="learn-tutorial-thumbnail-sheen"></span>
@@ -27100,22 +27151,84 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
   `;
 }
 
-function renderLearnTutorialPlayerSlotsMarkup(tutorial = {}) {
-  const video = tutorial.video || {};
+function renderTutorialVideoPlayerMetadataMarkup(video = {}) {
   return `
     <div
       class="learn-video-player-slots"
-      data-video-provider="${escapeHtml(video.provider || "placeholder")}"
+      data-video-provider="${escapeHtml(video.videoProvider || "none")}"
       data-video-mp4-url="${escapeHtml(video.mp4Url || "")}"
       data-video-cloudflare-stream-id="${escapeHtml(video.cloudflareStreamId || "")}"
-      data-video-adaptive-url="${escapeHtml(video.adaptiveUrl || "")}"
-      data-video-poster="${escapeHtml(video.poster || "")}"
+      data-video-embed-url="${escapeHtml(video.embedUrl || "")}"
+      data-video-poster-url="${escapeHtml(video.posterUrl || "")}"
       data-video-captions-url="${escapeHtml(video.captionsUrl || "")}"
       data-video-transcript-url="${escapeHtml(video.transcriptUrl || "")}"
-      data-video-chapters-ready="${video.chaptersReady ? "true" : "false"}"
       hidden
     ></div>
   `;
+}
+
+function renderTutorialVideoPlaceholderMarkup(video = {}, label = "Video Coming Soon") {
+  const posterStyle = video.posterUrl ? ` style="--learn-video-poster:url('${escapeHtml(video.posterUrl)}');"` : "";
+  return `
+    <div
+      class="learn-tutorial-player is-placeholder"
+      role="img"
+      aria-label="${escapeHtml(label)}"
+      data-learn-video-player-shell="true"
+      data-video-provider="${escapeHtml(video.videoProvider || "none")}"
+      ${posterStyle}
+    >
+      ${renderTutorialVideoPlayerMetadataMarkup(video)}
+      <span class="learn-tutorial-player-sheen" aria-hidden="true"></span>
+      <span class="learn-tutorial-player-play" aria-hidden="true">▶</span>
+      <span class="learn-tutorial-player-status">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function renderCloudflareTutorialPlayerPlaceholder(tutorial = {}, video = getTutorialVideoConfig(tutorial)) {
+  return renderTutorialVideoPlaceholderMarkup(
+    video,
+    video.cloudflareStreamId ? "Cloudflare Stream Embed Ready" : "Cloudflare Stream ID Needed",
+  );
+}
+
+function renderTutorialVideoPlayerMarkup(tutorial = {}) {
+  const video = getTutorialVideoConfig(tutorial);
+  if (video.videoProvider === "cloudflare") {
+    return renderCloudflareTutorialPlayerPlaceholder(tutorial, video);
+  }
+
+  if (video.videoProvider === "mp4") {
+    if (!video.mp4Url) {
+      return renderTutorialVideoPlaceholderMarkup(video, "MP4 URL Needed");
+    }
+
+    return `
+      <div class="learn-tutorial-player has-video" data-learn-video-player-shell="true" data-video-provider="mp4">
+        ${renderTutorialVideoPlayerMetadataMarkup(video)}
+        <video class="learn-tutorial-player-media" controls preload="metadata" ${video.posterUrl ? `poster="${escapeHtml(video.posterUrl)}"` : ""}>
+          <source src="${escapeHtml(video.mp4Url)}" type="video/mp4">
+          ${video.captionsUrl ? `<track kind="captions" src="${escapeHtml(video.captionsUrl)}" srclang="en" label="English">` : ""}
+        </video>
+      </div>
+    `;
+  }
+
+  if (video.videoProvider === "embed") {
+    if (!video.embedUrl) {
+      return renderTutorialVideoPlaceholderMarkup(video, "Embed URL Needed");
+    }
+
+    return `
+      <div class="learn-tutorial-player has-video" data-learn-video-player-shell="true" data-video-provider="embed">
+        ${renderTutorialVideoPlayerMetadataMarkup(video)}
+        <iframe class="learn-tutorial-player-media" src="${escapeHtml(video.embedUrl)}" title="${escapeHtml(tutorial.title || "Tutorial video")}" loading="lazy" allow="fullscreen; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    `;
+  }
+
+  return renderTutorialVideoPlaceholderMarkup(video, "Video Coming Soon");
 }
 
 function renderLearnTutorialModalContentMarkup(tutorial, category) {
@@ -27134,17 +27247,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
 
   return `
     <div class="learn-tutorial-player-shell">
-      <div
-        class="learn-tutorial-player"
-        role="img"
-        aria-label="${escapeHtml(`${tutorial.title} video placeholder`)}"
-        data-learn-video-player-shell="true"
-      >
-        ${renderLearnTutorialPlayerSlotsMarkup(tutorial)}
-        <span class="learn-tutorial-player-sheen" aria-hidden="true"></span>
-        <span class="learn-tutorial-player-play" aria-hidden="true">▶</span>
-        <span class="learn-tutorial-player-status">Video Coming Soon</span>
-      </div>
+      ${renderTutorialVideoPlayerMarkup(tutorial)}
     </div>
     <div class="learn-tutorial-modal-copy">
       <div class="learn-tutorial-modal-kicker-row">
@@ -41762,11 +41865,19 @@ function renderAdminTutorialDifficultyOptions(selectedDifficulty = "Beginner") {
   )).join("");
 }
 
+function renderAdminTutorialVideoProviderOptions(selectedProvider = "none") {
+  const normalizedProvider = normalizeTutorialVideoProvider(selectedProvider);
+  return ["none", "cloudflare", "mp4", "embed"].map((provider) => (
+    `<option value="${escapeHtml(provider)}"${provider === normalizedProvider ? " selected" : ""}>${escapeHtml(getTutorialVideoProviderLabel(provider))}</option>`
+  )).join("");
+}
+
 function renderAdminTutorialCardMarkup(tutorial = {}) {
   const status = normalizeTutorialPublishStatus(tutorial.status);
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
-  const thumbnailUrl = String(tutorial.thumbnailUrl || tutorial.video?.poster || "").trim();
+  const video = getTutorialVideoConfig(tutorial);
+  const thumbnailUrl = String(tutorial.thumbnailUrl || video.posterUrl || "").trim();
   return `
     <article class="admin-tutorial-card${appState.adminTutorialEditingId === tutorial.id ? " is-selected" : ""}" data-admin-tutorial-card="${escapeHtml(tutorial.id)}">
       <div class="admin-tutorial-thumb${thumbnailUrl ? " has-image" : ""}">
@@ -41798,6 +41909,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
       </section>
     `;
   }
+  const video = getTutorialVideoConfig(tutorial);
 
   return `
     <section class="meta-card admin-tutorial-editor" data-admin-tutorial-editor="${escapeHtml(tutorial.id)}">
@@ -41844,24 +41956,32 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
             <input name="thumbnailUrl" value="${escapeHtml(tutorial.thumbnailUrl || "")}" placeholder="/assets/tutorial-thumbnail.png">
           </label>
           <label>
-            <span>Future Video URL / MP4</span>
-            <input name="mp4Url" value="${escapeHtml(tutorial.video?.mp4Url || "")}" placeholder="https://.../tutorial.mp4">
+            <span>Video Provider</span>
+            <select name="videoProvider">${renderAdminTutorialVideoProviderOptions(video.videoProvider)}</select>
           </label>
           <label>
             <span>Cloudflare Stream ID</span>
-            <input name="cloudflareStreamId" value="${escapeHtml(tutorial.video?.cloudflareStreamId || "")}">
+            <input name="cloudflareStreamId" value="${escapeHtml(video.cloudflareStreamId)}">
           </label>
           <label>
-            <span>Adaptive Stream URL</span>
-            <input name="adaptiveUrl" value="${escapeHtml(tutorial.video?.adaptiveUrl || "")}" placeholder="HLS/DASH placeholder">
+            <span>MP4 URL</span>
+            <input name="mp4Url" value="${escapeHtml(video.mp4Url)}" placeholder="https://.../tutorial.mp4">
+          </label>
+          <label>
+            <span>Embed URL</span>
+            <input name="embedUrl" value="${escapeHtml(video.embedUrl)}" placeholder="https://.../embed">
+          </label>
+          <label>
+            <span>Poster Image URL</span>
+            <input name="posterUrl" value="${escapeHtml(video.posterUrl)}" placeholder="/assets/tutorial-poster.png">
           </label>
           <label>
             <span>Transcript URL</span>
-            <input name="transcriptUrl" value="${escapeHtml(tutorial.video?.transcriptUrl || "")}">
+            <input name="transcriptUrl" value="${escapeHtml(video.transcriptUrl)}">
           </label>
           <label>
             <span>Captions URL</span>
-            <input name="captionsUrl" value="${escapeHtml(tutorial.video?.captionsUrl || "")}">
+            <input name="captionsUrl" value="${escapeHtml(video.captionsUrl)}">
           </label>
           <label class="admin-announcement-toggle-row admin-source-form-full">
             <input name="featured" type="checkbox" ${tutorial.featured ? "checked" : ""}>
@@ -41877,7 +41997,7 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview Player</button>
           <button type="button" class="button button-secondary" data-admin-tutorial-reset="${escapeHtml(tutorial.id)}">Reset Local Draft</button>
         </div>
-        <p class="muted admin-source-form-helper">Prepared fields: Stream ID, hosted video URL, adaptive stream URL, captions, transcript, ordering, featured state, and onboarding priority.</p>
+        <p class="muted admin-source-form-helper">Prepared fields: video provider, Stream ID, hosted MP4, embed URL, poster image, captions, transcript, ordering, featured state, and onboarding priority.</p>
       </form>
     </section>
   `;
@@ -41981,14 +42101,23 @@ function bindAdminTutorialManagementSection(scope = app) {
         order: Math.max(1, Number(formData.get("order")) || 1),
         featured: formData.get("featured") === "on",
         onboardingPriority: formData.get("onboardingPriority") === "on",
+        videoProvider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
+        cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
+        mp4Url: String(formData.get("mp4Url") || "").trim(),
+        embedUrl: String(formData.get("embedUrl") || "").trim(),
+        posterUrl: String(formData.get("posterUrl") || "").trim(),
+        transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
+        captionsUrl: String(formData.get("captionsUrl") || "").trim(),
         video: {
-          provider: "placeholder",
+          videoProvider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
+          provider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
           mp4Url: String(formData.get("mp4Url") || "").trim(),
           cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
-          adaptiveUrl: String(formData.get("adaptiveUrl") || "").trim(),
+          embedUrl: String(formData.get("embedUrl") || "").trim(),
           transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
           captionsUrl: String(formData.get("captionsUrl") || "").trim(),
-          poster: String(formData.get("thumbnailUrl") || "").trim(),
+          posterUrl: String(formData.get("posterUrl") || "").trim(),
+          poster: String(formData.get("posterUrl") || "").trim(),
         },
       });
       appState.adminTutorialEditingId = tutorialId;

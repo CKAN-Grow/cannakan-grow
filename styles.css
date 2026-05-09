@@ -28888,6 +28888,29 @@ body.modal-open {
     0 0 28px rgba(148, 209, 89, 0.09);
 }
 
+.learn-tutorial-player.is-placeholder[style*="--learn-video-poster"] {
+  background:
+    linear-gradient(180deg, rgba(4, 8, 6, 0.18), rgba(4, 8, 6, 0.5)),
+    var(--learn-video-poster) center / cover no-repeat,
+    radial-gradient(circle at 30% 20%, rgba(148, 209, 89, 0.2), transparent 32%),
+    linear-gradient(135deg, rgba(21, 42, 28, 0.92), rgba(6, 10, 8, 0.96) 66%);
+}
+
+.learn-tutorial-player.has-video {
+  background: rgba(4, 8, 6, 0.78);
+}
+
+.learn-tutorial-player-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  object-fit: cover;
+  background: rgba(4, 8, 6, 0.88);
+}
+
 .learn-video-player-slots {
   display: none;
 }
