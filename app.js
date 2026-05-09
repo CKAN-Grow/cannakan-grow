@@ -26531,7 +26531,7 @@ function render() {
       finalizeRender(buildSiteAnalyticsPageContext({
         pageGroup: "sources",
         pageKey: "source-cstp-report",
-        pageLabel: "CSTP Test Report",
+        pageLabel: "CSTP Report",
         pagePath: `#sources/${encodeURIComponent(sourceProfileId)}/cstp-report`,
       }));
       return;
@@ -34477,6 +34477,39 @@ function getSourceDirectoryCstpReportHash(source = {}) {
   return sourceId ? `#sources/${encodeURIComponent(sourceId)}/cstp-report` : "";
 }
 
+function hasKnownSourceDirectoryRouteSource(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  if (!normalizedId) {
+    return false;
+  }
+  if (normalizedId === String(SOURCE_PROFILE_DEFAULT_MOCK_ID || "").trim().toLowerCase()) {
+    return true;
+  }
+  if (getSourceDirectoryPreviewMockRecord(normalizedId)) {
+    return true;
+  }
+  if (findSourceById(normalizedId)) {
+    return true;
+  }
+  if (getSourceDirectoryMockRecords().some((source) => String(source?.id || "").trim().toLowerCase() === normalizedId)) {
+    return true;
+  }
+  return Boolean(getSampleSourceProfileRecord(normalizedId));
+}
+
+function getSourceCstpReportSourceProfile(sourceId = "") {
+  const normalizedId = String(sourceId || "").trim().toLowerCase();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const directoryRecord = getSourceDirectoryMockRecords()
+    .find((source) => String(source?.id || "").trim().toLowerCase() === normalizedId) || null;
+  return directoryRecord
+    || getSourceDirectoryPreviewMockRecord(normalizedId)
+    || (hasKnownSourceDirectoryRouteSource(normalizedId) ? getSourceProfileRecord(normalizedId) : null);
+}
+
 function getSourceDirectoryCstpCardState(source = {}) {
   const publishedPreview = getSourceDirectoryCstpPreview(source);
   if (publishedPreview) {
@@ -34507,7 +34540,7 @@ function getSourceDirectoryCstpCardState(source = {}) {
       qualificationResult,
       qualificationLabel: getAdminCstpQualificationLabel(qualificationResult),
       labelText: "CSTP Certified",
-      noteText: "Observed sample",
+      noteText: "Report available",
       testedAt: String(cstp.testedDate || cstp.validUntil || "").trim(),
       hasReport: true,
       href: getSourceDirectoryCstpReportHash(source),
@@ -35088,7 +35121,7 @@ function renderSourceDirectoryCardMarkup(source = {}) {
       <div class="inline-actions source-directory-card-actions">
         <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
         ${cstpState?.hasReport && cstpState.href ? `
-          <a class="button button-secondary source-directory-certification-link" href="${escapeHtml(cstpState.href)}">View Certification</a>
+          <a class="button button-secondary source-directory-report-link" href="${escapeHtml(cstpState.href)}">View Report</a>
         ` : ""}
       </div>
     </article>
@@ -35513,8 +35546,8 @@ function renderSourceProfilePage(sourceId = "") {
             </div>
             <div class="source-profile-verification-actions">
               ${cstpState.hasReport
-                ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Full Report</a>`
-                : `<button type="button" class="button button-secondary" disabled>View Full Report</button>`}
+                ? `<a class="button button-secondary" href="#sources/${escapeHtml(sourceProfile.id)}/cstp-report">View Report</a>`
+                : `<button type="button" class="button button-secondary" disabled>Report Unavailable</button>`}
             </div>
           </div>
         </div>
@@ -35566,18 +35599,30 @@ function renderSourceProfilePage(sourceId = "") {
   });
 }
 
-function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
+function getSourceCstpReportDetail(sourceProfile = {}) {
+  const publishedCertification = getPublishedAdminCstpCertificationForSource(sourceProfile);
   const cstp = sourceProfile?.cstp && typeof sourceProfile.cstp === "object" ? sourceProfile.cstp : {};
   const normalizedStatus = String(cstp.status || "").trim().toLowerCase();
-  const qualificationResult = ["gold", "silver"].includes(normalizedStatus) ? normalizedStatus : "gold";
+  const qualificationResult = publishedCertification
+    ? normalizeAdminCstpQualificationResult(publishedCertification.qualificationResult)
+    : (["gold", "silver"].includes(normalizedStatus) ? normalizedStatus : "");
+  if (!isAdminCstpCertificationEligible(qualificationResult)) {
+    return null;
+  }
+
   const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
   const sourceName = String(sourceProfile?.name || SOURCE_PROFILE_DEMO_RECORD.name || "Green Horizons Seed Co.").trim();
-  const testedSeedCount = Math.max(24, Number(cstp.sampleSize) || 30);
-  const germinationPercent = Math.max(0, Math.min(100, Number(cstp.resultPercent) || 94));
+  const testedSeedCount = Math.max(1, parseSourceDirectoryMetricNumber(publishedCertification?.sampleSize || cstp.sampleSize || "") || 30);
+  const germinationPercent = Math.max(0, Math.min(100, parseSourceDirectoryMetricNumber(publishedCertification?.finalGerminationPercent || cstp.resultPercent || "") || (qualificationResult === "silver" ? 88 : 94)));
   const germinatedCount = Math.round((testedSeedCount * germinationPercent) / 100);
-  const certifiedDate = qualificationResult === "silver" ? "2026-02-14T16:20:00.000Z" : "2026-01-18T15:45:00.000Z";
-  const expiresAt = qualificationResult === "silver" ? "2027-02-14T16:20:00.000Z" : "2027-01-18T15:45:00.000Z";
-  const variety = qualificationResult === "silver" ? "Northern Lights Feminized" : "Emerald Reserve Auto";
+  const certifiedDate = publishedCertification?.publishedAt || (qualificationResult === "silver" ? "2026-02-14T16:20:00.000Z" : "2026-01-18T15:45:00.000Z");
+  const lifecycleState = getAdminCstpCertificationLifecycleState({
+    qualificationResult,
+    publishedAt: certifiedDate,
+  });
+  const expiresAt = lifecycleState.expiresAt || (qualificationResult === "silver" ? "2027-02-14T16:20:00.000Z" : "2027-01-18T15:45:00.000Z");
+  const variety = String(publishedCertification?.variety || "").trim() || (qualificationResult === "silver" ? "Northern Lights Feminized" : "Emerald Reserve Auto");
+  const batchLot = String(publishedCertification?.batchLot || "").trim() || (qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A");
   const partitionRates = qualificationResult === "silver"
     ? [90, 90, 85]
     : [100, 90, 93];
@@ -35593,10 +35638,10 @@ function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
     certifiedDate,
     expiresAt,
     variety,
-    certificationId: qualificationResult === "silver" ? "CSTP-SIL-2026-0214-RQS" : "CSTP-GLD-2026-0118-GHSC",
-    batchLot: qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A",
-    testDuration: qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours",
-    averageGerminationTiming: qualificationResult === "silver" ? "46 hrs" : "42 hrs",
+    certificationId: String(publishedCertification?.id || "").trim() || (qualificationResult === "silver" ? "CSTP-SIL-2026-0214-RQS" : "CSTP-GLD-2026-0118-GHSC"),
+    batchLot,
+    testDuration: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours"),
+    averageGerminationTiming: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "46 hrs" : "42 hrs"),
     firstGermination: qualificationResult === "silver" ? "31 hrs" : "28 hrs",
     completionRate: qualificationResult === "silver" ? 96 : 100,
     environmentalConsistency: qualificationResult === "silver" ? 97 : 98,
@@ -35605,7 +35650,7 @@ function getSourceCstpCertificationMockDetail(sourceProfile = {}) {
     methodology: [
       {
         label: "Sample Tested",
-        value: `${variety} - ${testedSeedCount} seeds from lot ${qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A"}.`,
+        value: `${variety} - ${testedSeedCount} seeds from lot ${batchLot}.`,
         detail: "The certification applies to this submitted sample and lot record only.",
       },
       {
@@ -35720,31 +35765,47 @@ function renderCstpCertificationMediaCardMarkup(item = {}) {
   `;
 }
 
-function renderSourceCstpReportPage(sourceId = "") {
-  const requestedId = String(sourceId || "").trim().toLowerCase();
-  const sourceProfile = getSourceProfileRecord(requestedId);
-  if (!sourceProfile) {
-    app.innerHTML = `
-      <section class="card source-profile-page">
-        <div class="section-heading app-section-header">
-          <div class="section-title-with-icon app-section-header-main">
-            ${renderAppSectionHeaderIcon("sources")}
-            <div>
-              <p class="eyebrow">CSTP Report</p>
-              <h2>Report unavailable</h2>
-              <p class="muted">This CSTP report could not be loaded.</p>
-            </div>
-          </div>
-          <div class="inline-actions">
-            <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
+function renderSourceCstpReportUnavailablePage(sourceProfile = null) {
+  const sourceName = String(sourceProfile?.name || "").trim();
+  const sourceProfileLink = sourceProfile?.id
+    ? `#sources/${encodeURIComponent(sourceProfile.id)}`
+    : "";
+  app.innerHTML = `
+    <section class="card source-profile-page">
+      <div class="section-heading app-section-header">
+        <div class="section-title-with-icon app-section-header-main">
+          ${renderAppSectionHeaderIcon("sources")}
+          <div>
+            <p class="eyebrow">CSTP Report</p>
+            <h2>Report unavailable</h2>
+            <p class="muted">${escapeHtml(sourceName
+              ? `The CSTP report for ${sourceName} is not currently public or available. The source may be tested without an active public Gold or Silver report, the report may have expired, or the route may no longer match a published report.`
+              : "This CSTP report is not currently public or available. The source may be tested without an active public Gold or Silver report, the report may have expired, or the route may no longer match a published report.")}</p>
           </div>
         </div>
-      </section>
-    `;
+        <div class="inline-actions">
+          <a class="button button-secondary" href="#sources">&larr; Back to Source Directory</a>
+          ${sourceProfileLink ? `<a class="button button-secondary" href="${escapeHtml(sourceProfileLink)}">View Source Profile</a>` : ""}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderSourceCstpReportPage(sourceId = "") {
+  const requestedId = String(sourceId || "").trim().toLowerCase();
+  const sourceProfile = getSourceCstpReportSourceProfile(requestedId);
+  if (!sourceProfile) {
+    renderSourceCstpReportUnavailablePage(null);
     return;
   }
 
-  const certification = getSourceCstpCertificationMockDetail(sourceProfile);
+  const certification = getSourceCstpReportDetail(sourceProfile);
+  if (!certification) {
+    renderSourceCstpReportUnavailablePage(sourceProfile);
+    return;
+  }
+
   const certifiedDateLabel = formatAdminTimestamp(certification.certifiedDate);
   const expirationLabel = formatAdminTimestamp(certification.expiresAt);
   const badgeMarkup = renderPublishedCstpCertifiedSealMarkup(certification.qualificationResult, certification.certifiedDate, {
