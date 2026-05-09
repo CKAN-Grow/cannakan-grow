@@ -6375,18 +6375,21 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   justify-content: center;
 }
 
-.snapshot-generate-button {
+.button.snapshot-generate-button {
   min-height: 46px;
   padding: 11px 18px;
   border-radius: 16px;
   font-size: 0.98rem;
-  border-color: #94d159;
-  color: #1f3a2a;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(242, 248, 237, 0.98) 100%);
+  font-weight: 850;
+  letter-spacing: 0.01em;
+  border-color: rgba(18, 24, 19, 0.42);
+  color: #111612;
+  background: linear-gradient(180deg, #9ee76a 0%, #94d159 58%, #78b546 100%);
   box-shadow:
-    0 8px 14px rgba(24, 34, 24, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.2);
+    0 0 4px rgba(148, 209, 89, 0.25),
+    0 0 8px rgba(148, 209, 89, 0.15),
+    0 12px 22px rgba(39, 69, 30, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.26);
 }
 
 .snapshot-share-row {
@@ -6414,22 +6417,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   font-size: 0.98rem;
 }
 
-.snapshot-generate-button:hover,
-.snapshot-generate-button:focus-visible {
-  border-color: #94d159;
+.button.snapshot-generate-button:hover,
+.button.snapshot-generate-button:focus-visible {
+  border-color: rgba(18, 24, 19, 0.42);
+  color: #101510;
+  background: linear-gradient(180deg, #b2f57f 0%, #9cde63 56%, #82c14e 100%);
   box-shadow:
-    0 10px 18px rgba(24, 34, 24, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.28);
+    0 0 6px rgba(148, 209, 89, 0.35),
+    0 0 12px rgba(148, 209, 89, 0.2),
+    0 14px 26px rgba(39, 69, 30, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.snapshot-generate-button:active {
-  background: linear-gradient(180deg, rgba(239, 247, 231, 0.98) 0%, rgba(220, 237, 204, 0.98) 100%);
+.button.snapshot-generate-button:active {
+  border-color: rgba(18, 24, 19, 0.42);
+  color: #0f140f;
+  background: linear-gradient(180deg, #84c64c 0%, #74b043 100%);
   box-shadow:
-    0 0 10px rgba(148, 209, 89, 0.54),
-    0 8px 16px rgba(24, 34, 24, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.24);
+    0 0 6px rgba(148, 209, 89, 0.42),
+    0 0 12px rgba(148, 209, 89, 0.28),
+    0 8px 18px rgba(39, 69, 30, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .snapshot-share-button {
@@ -32011,24 +32019,40 @@ body.theme-dark .snapshot-explore-button:focus-visible {
   color: #f6f8f5;
 }
 
-body.theme-dark .snapshot-generate-button {
-  border-color: #94d159;
-  color: #eef8e7;
-  background: linear-gradient(180deg, rgba(34, 43, 35, 0.98) 0%, rgba(25, 32, 26, 0.98) 100%);
+body.theme-dark .button.snapshot-generate-button {
+  border-color: rgba(13, 18, 14, 0.68);
+  color: #101510;
+  background: linear-gradient(180deg, #a8ef73 0%, #94d159 56%, #6da83f 100%);
   box-shadow:
-    0 12px 20px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.16);
+    0 0 4px rgba(148, 209, 89, 0.25),
+    0 0 8px rgba(148, 209, 89, 0.15),
+    0 14px 26px rgba(0, 0, 0, 0.2),
+    0 0 18px rgba(148, 209, 89, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-body.theme-dark .snapshot-generate-button:hover,
-body.theme-dark .snapshot-generate-button:focus-visible {
-  border-color: #a7df72;
-  color: #f6f8f5;
+body.theme-dark .button.snapshot-generate-button:hover,
+body.theme-dark .button.snapshot-generate-button:focus-visible {
+  border-color: rgba(13, 18, 14, 0.68);
+  color: #0f140f;
+  background: linear-gradient(180deg, #b9fa88 0%, #a1e267 56%, #79bc47 100%);
   box-shadow:
-    0 14px 24px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.22);
+    0 0 6px rgba(148, 209, 89, 0.35),
+    0 0 12px rgba(148, 209, 89, 0.2),
+    0 16px 30px rgba(0, 0, 0, 0.22),
+    0 0 24px rgba(148, 209, 89, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+body.theme-dark .button.snapshot-generate-button:active {
+  border-color: rgba(13, 18, 14, 0.68);
+  color: #0f140f;
+  background: linear-gradient(180deg, #81c34e 0%, #6ea941 100%);
+  box-shadow:
+    0 0 6px rgba(148, 209, 89, 0.42),
+    0 0 12px rgba(148, 209, 89, 0.28),
+    0 10px 22px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 body.theme-dark .snapshot-confirmation-card {
