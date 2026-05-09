@@ -3402,6 +3402,13 @@ function getMenuIconMarkup(icon) {
         <path d="M10 18a2 2 0 0 0 4 0"></path>
       </svg>
     `,
+    learn: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M5 5.5h8a4 4 0 0 1 4 4v9H9a4 4 0 0 0-4 4Z"></path>
+        <path d="M17 7.5h2a2 2 0 0 1 2 2v10h-8"></path>
+        <path d="M8.5 9h5M8.5 12h5"></path>
+      </svg>
+    `,
     chevronDown: `
       <svg viewBox="0 0 24 24" focusable="false">
         <path d="m7 10 5 5 5-5"></path>
@@ -23146,6 +23153,10 @@ function updateAuthStatus() {
           ${getMenuIconMarkup("profile")}
           <span>Profile Preferences</span>
         </button>
+        <button id="account-learn-link" class="account-menu-item account-menu-item--learn" type="button" role="menuitem">
+          ${getMenuIconMarkup("learn")}
+          <span>Learn / Tutorials</span>
+        </button>
         ${shouldRenderAdminDropdownItem ? `
           <button id="account-admin-link" class="account-menu-item" type="button" role="menuitem">
             ${getMenuIconMarkup("admin")}
@@ -23182,6 +23193,13 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     navigateToProfileRoute();
+  });
+
+  dropdown?.querySelector("#account-learn-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    navigateToHashRoute("#learn");
   });
 
   dropdown?.querySelector("#account-admin-link")?.addEventListener("click", (event) => {

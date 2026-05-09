@@ -725,6 +725,11 @@ textarea {
   outline: none;
 }
 
+.app-footer-learn-link {
+  color: #94d159 !important;
+  font-weight: 800;
+}
+
 .app-footer-actions {
   display: flex;
   align-items: center;
@@ -1080,6 +1085,16 @@ body.theme-dark .app-footer-link-button:focus-visible {
   background: rgba(148, 209, 89, 0.09);
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12);
   transform: translateY(-1px);
+}
+
+.account-menu-item--learn {
+  color: #dff2cf;
+}
+
+.account-menu-item--learn .account-menu-icon {
+  border-color: rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.1);
+  color: #94d159;
 }
 
 .mobile-nav-toggle {
