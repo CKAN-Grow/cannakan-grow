@@ -26303,6 +26303,201 @@ function openNewSessionSystemModal() {
   overlay.querySelector(".modal-close")?.focus();
 }
 
+function getNewSessionNameField(form) {
+  const sessionNameField = form?.elements?.sessionName;
+  return sessionNameField instanceof HTMLInputElement ? sessionNameField : null;
+}
+
+function syncNewSessionNameState(form, { showWarning = false } = {}) {
+  const sessionNameField = getNewSessionNameField(form);
+  if (!form || !sessionNameField) {
+    return false;
+  }
+
+  const isEmpty = !String(sessionNameField.value || "").trim();
+  const nameShell = sessionNameField.closest("[data-session-name-field]");
+  const shouldWarn = isEmpty && (showWarning || sessionNameField.dataset.namePromptDismissed === "true");
+
+  form.classList.toggle("session-name-empty", isEmpty);
+  form.classList.toggle("session-name-warning", shouldWarn);
+  nameShell?.classList.toggle("is-empty", isEmpty);
+  nameShell?.classList.toggle("is-warning", shouldWarn);
+  sessionNameField.setAttribute("aria-invalid", shouldWarn ? "true" : "false");
+  if (!isEmpty) {
+    sessionNameField.dataset.namePromptDismissed = "false";
+    sessionNameField.setCustomValidity("");
+  }
+
+  return !isEmpty;
+}
+
+function closeNewSessionNamePrompt({ focusField = false } = {}) {
+  const overlay = document.querySelector("#new-session-name-modal-overlay");
+  if (!overlay || overlay.dataset.closing === "true") {
+    return;
+  }
+
+  const sessionNameField = document.querySelector('#session-form input[name="sessionName"]');
+  overlay.dataset.closing = "true";
+  overlay.classList.add("closing");
+  overlay.querySelector(".new-session-name-modal")?.classList.add("closing");
+  document.body.classList.remove("modal-open");
+
+  window.setTimeout(() => {
+    overlay.remove();
+    if (focusField && sessionNameField instanceof HTMLInputElement) {
+      sessionNameField.focus({ preventScroll: true });
+    }
+  }, 180);
+}
+
+function ensureNewSessionNamePrompt(form) {
+  let overlay = document.querySelector("#new-session-name-modal-overlay");
+  if (overlay) {
+    return overlay;
+  }
+
+  overlay = document.createElement("div");
+  overlay.id = "new-session-name-modal-overlay";
+  overlay.className = "new-session-name-modal-overlay";
+  overlay.dataset.closing = "false";
+  overlay.innerHTML = `
+    <div class="new-session-name-modal" role="dialog" aria-modal="true" aria-labelledby="new-session-name-modal-title" aria-describedby="new-session-name-modal-subtitle">
+      <button type="button" class="modal-close" data-new-session-name-close aria-label="Close">×</button>
+      <div class="new-session-name-modal-copy">
+        <p class="eyebrow">First action</p>
+        <h2 id="new-session-name-modal-title">Name Your Grow Session</h2>
+        <p id="new-session-name-modal-subtitle">Give this session a clear name before continuing.</p>
+      </div>
+      <form class="new-session-name-modal-form" data-new-session-name-modal-form>
+        <label class="new-session-name-modal-field">
+          <span>Session Name</span>
+          <input id="new-session-name-modal-input" type="text" maxlength="80" placeholder="Blue Dream Test - Seedsman" autocomplete="off">
+        </label>
+        <div class="new-session-name-examples" aria-label="Session name examples">
+          <span>Examples:</span>
+          <ul>
+            <li>Blue Dream Test - Seedsman</li>
+            <li>KAN A - RQS Autos</li>
+            <li>2026 Pheno Hunt</li>
+          </ul>
+        </div>
+        <div class="new-session-name-modal-actions">
+          <button type="submit" class="button button-primary">Continue</button>
+          <button type="button" class="button button-secondary" data-new-session-name-skip>Skip for now</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  const modalForm = overlay.querySelector("[data-new-session-name-modal-form]");
+  const modalInput = overlay.querySelector("#new-session-name-modal-input");
+
+  const finishPrompt = () => {
+    const sessionNameField = getNewSessionNameField(form);
+    if (sessionNameField && modalInput instanceof HTMLInputElement) {
+      sessionNameField.value = modalInput.value.trim();
+      sessionNameField.dispatchEvent(new Event("input", { bubbles: true }));
+      sessionNameField.dispatchEvent(new Event("change", { bubbles: true }));
+      sessionNameField.dataset.namePromptDismissed = String(!sessionNameField.value.trim());
+    }
+
+    const hasName = syncNewSessionNameState(form, { showWarning: true });
+    closeNewSessionNamePrompt({ focusField: !hasName });
+  };
+
+  modalForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    finishPrompt();
+  });
+
+  overlay.querySelector("[data-new-session-name-skip]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    finishPrompt();
+  });
+
+  overlay.querySelector("[data-new-session-name-close]")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    finishPrompt();
+  });
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      event.preventDefault();
+      finishPrompt();
+    }
+  });
+
+  if (!ensureNewSessionNamePrompt.escapeBound) {
+    document.addEventListener("keydown", (event) => {
+      const activeOverlay = document.querySelector("#new-session-name-modal-overlay");
+      if (event.key === "Escape" && activeOverlay && activeOverlay.dataset.closing !== "true") {
+        event.preventDefault();
+        const activeForm = document.querySelector("#session-form");
+        const activeModalInput = activeOverlay.querySelector("#new-session-name-modal-input");
+        const activeSessionNameField = getNewSessionNameField(activeForm);
+        if (activeSessionNameField && activeModalInput instanceof HTMLInputElement) {
+          activeSessionNameField.value = activeModalInput.value.trim();
+          activeSessionNameField.dispatchEvent(new Event("input", { bubbles: true }));
+          activeSessionNameField.dispatchEvent(new Event("change", { bubbles: true }));
+          activeSessionNameField.dataset.namePromptDismissed = String(!activeSessionNameField.value.trim());
+        }
+        const hasName = syncNewSessionNameState(activeForm, { showWarning: true });
+        closeNewSessionNamePrompt({ focusField: !hasName });
+      }
+    });
+    ensureNewSessionNamePrompt.escapeBound = true;
+  }
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function openNewSessionNamePrompt(form) {
+  const sessionNameField = getNewSessionNameField(form);
+  if (!form || !sessionNameField) {
+    return false;
+  }
+
+  const overlay = ensureNewSessionNamePrompt(form);
+  const modalInput = overlay.querySelector("#new-session-name-modal-input");
+  if (modalInput instanceof HTMLInputElement) {
+    modalInput.value = sessionNameField.value || "";
+  }
+  overlay.dataset.closing = "false";
+  overlay.classList.remove("closing");
+  overlay.querySelector(".new-session-name-modal")?.classList.remove("closing");
+  document.body.classList.add("modal-open");
+  window.setTimeout(() => {
+    if (modalInput instanceof HTMLInputElement) {
+      modalInput.focus();
+      modalInput.select();
+    }
+  }, 0);
+  return true;
+}
+
+function validateNewSessionName(form, { formMessage = null } = {}) {
+  const sessionNameField = getNewSessionNameField(form);
+  if (!sessionNameField) {
+    return true;
+  }
+
+  const hasName = syncNewSessionNameState(form, { showWarning: true });
+  if (hasName) {
+    sessionNameField.setCustomValidity("");
+    return true;
+  }
+
+  sessionNameField.dataset.namePromptDismissed = "true";
+  sessionNameField.setCustomValidity("Please enter a session name.");
+  if (formMessage) {
+    formMessage.textContent = "Please enter a session name before saving.";
+  }
+  sessionNameField.focus();
+  return false;
+}
+
 function renderAuthScreen(options = {}) {
   const { autoOpenModal = false } = options;
   app.replaceChildren(cloneTemplate(templates.auth));
@@ -43892,6 +44087,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const form = document.querySelector("#session-form");
   const partitionFields = document.querySelector("#partition-fields");
   const formMessage = document.querySelector("#form-message");
+  const sessionNameField = getNewSessionNameField(form);
   const systemTypeField = form.elements.systemType;
   const sessionStatusField = form.elements.sessionStatus;
   const sessionStatusTrigger = document.querySelector("#session-status-trigger");
@@ -43949,6 +44145,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
   const notesDraft = loadNewSessionNotesDraft();
   appState.newSessionSystemType = normalizedSystemType;
+  syncNewSessionNameState(form);
 
   primeNewSessionSeedAgeDefaults(form);
   primeUnitIdDefault(form);
@@ -44135,6 +44332,13 @@ function renderSessionForm(initialSystemType = "KAN") {
   };
   form.addEventListener("input", () => {
     refreshUnsavedChangesState();
+  });
+  sessionNameField?.addEventListener("input", () => {
+    sessionNameField.setCustomValidity("");
+    syncNewSessionNameState(form);
+    if (formMessage?.textContent === "Please enter a session name before saving.") {
+      formMessage.textContent = "";
+    }
   });
   form.addEventListener("change", () => {
     refreshUnsavedChangesState();
@@ -44403,6 +44607,9 @@ function renderSessionForm(initialSystemType = "KAN") {
 
   const persistNewSession = async ({ navigateOnSuccess = true } = {}) => {
     const wasGrowNetworkUnlocked = isGrowNetworkUnlocked(getSessions());
+    if (!validateNewSessionName(form, { formMessage })) {
+      return null;
+    }
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
       form.elements.timeDisplay?.focus();
       return null;
@@ -44531,6 +44738,10 @@ function renderSessionForm(initialSystemType = "KAN") {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     await persistNewSession();
+  });
+
+  queueMicrotask(() => {
+    openNewSessionNamePrompt(form);
   });
 }
 

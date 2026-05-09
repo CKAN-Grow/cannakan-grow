@@ -469,13 +469,17 @@
         </div>
       </div>
 
-      <form id="session-form" class="session-form session-workspace-form">
+      <form id="session-form" class="session-form session-workspace-form" novalidate>
         <section class="session-overview-panel session-workspace-overview">
           <section class="session-top-grid">
             <div class="session-chart-header">
-              <label>
-                <span>Session Name</span>
-                <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80">
+              <label class="session-name-field" data-session-name-field>
+                <span class="session-name-label-row">
+                  <span>Session Name</span>
+                  <span class="session-name-required-badge">Required</span>
+                </span>
+                <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80" required autocomplete="off" aria-describedby="session-name-helper">
+                <small id="session-name-helper" class="session-name-helper">Name this first so the session is easy to find later.</small>
               </label>
               <label>
                 <span>Date</span>
