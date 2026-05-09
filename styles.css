@@ -29890,6 +29890,74 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   }
 }
 
+.session-workspace-shell .session-chart-header > label.system-type-field {
+  position: relative;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.session-workspace-shell .system-type-field select {
+  position: relative;
+  z-index: 1;
+  padding-right: 44px;
+  cursor: pointer;
+  background-image: none;
+}
+
+.session-workspace-shell .system-type-field .system-type-chevron {
+  position: absolute;
+  right: 30px;
+  bottom: 28px;
+  z-index: 2;
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: #b5d7a7;
+  opacity: 0.84;
+  pointer-events: none;
+  transform: rotate(45deg) translateY(-2px);
+  transform-origin: 58% 58%;
+  filter: drop-shadow(0 0 6px rgba(148, 209, 89, 0.16));
+  transition:
+    transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.2s ease,
+    color 0.2s ease,
+    filter 0.2s ease;
+}
+
+.session-workspace-shell .system-type-field:hover,
+.session-workspace-shell .system-type-field:focus-within {
+  border-color: rgba(148, 209, 89, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.01) 30%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 12px 22px rgba(0, 0, 0, 0.16),
+    0 0 18px rgba(148, 209, 89, 0.11);
+}
+
+.session-workspace-shell .system-type-field:hover select {
+  border-color: rgba(148, 209, 89, 0.34);
+  background: rgba(17, 24, 19, 0.86);
+}
+
+.session-workspace-shell .system-type-field:hover .system-type-chevron,
+.session-workspace-shell .system-type-field:focus-within .system-type-chevron {
+  color: #d3f5bc;
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.26));
+}
+
+.session-workspace-shell .system-type-field:focus-within .system-type-chevron {
+  transform: rotate(225deg) translate(-1px, -1px);
+}
+
 .field-label-row {
   display: flex;
   align-items: center;
@@ -34614,6 +34682,15 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     width: 100%;
   }
 
+  .session-workspace-shell .system-type-field select {
+    padding-right: 40px;
+  }
+
+  .session-workspace-shell .system-type-field .system-type-chevron {
+    right: 26px;
+    bottom: 26px;
+  }
+
   .system-layout-image {
     width: 100%;
     max-width: 100%;
@@ -34827,6 +34904,24 @@ body.theme-dark .session-workspace-shell textarea:focus {
     0 0 0 3px rgba(148, 209, 89, 0.14),
     0 14px 24px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+body.theme-dark .session-workspace-shell .system-type-field:hover,
+body.theme-dark .session-workspace-shell .system-type-field:focus-within {
+  border-color: rgba(148, 209, 89, 0.34);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.01) 30%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 12px 22px rgba(0, 0, 0, 0.16),
+    0 0 18px rgba(148, 209, 89, 0.11);
+}
+
+body.theme-dark .session-workspace-shell .system-type-field:hover select,
+body.theme-dark .session-workspace-shell .system-type-field:focus-within select {
+  border-color: rgba(148, 209, 89, 0.44);
+  background: rgba(18, 24, 19, 0.92);
 }
 
 body.theme-dark .session-workspace-shell .custom-select-menu {
