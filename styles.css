@@ -831,14 +831,14 @@ textarea {
   align-items: center;
   width: fit-content;
   max-width: max-content;
-  min-height: 48px;
+  min-height: 42px;
 }
 
 .app-logo {
   display: block;
-  height: 52px;
+  height: 40px;
   width: auto;
-  max-width: min(100%, 338px);
+  max-width: min(100%, 260px);
   object-fit: contain;
 }
 
@@ -879,8 +879,11 @@ body.theme-dark .app-footer-link-button:focus-visible {
 
 .topbar-nav {
   display: flex;
+  align-items: center;
+  flex: 1 1 auto;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .auth-status {
@@ -1564,8 +1567,10 @@ body.theme-dark .mobile-nav-toggle:focus-visible {
 
 .topbar-nav a {
   position: relative;
+  flex: 0 0 auto;
   color: var(--muted);
   font-weight: 600;
+  white-space: nowrap;
   transition:
     transform 180ms ease,
     background-color 180ms ease,
