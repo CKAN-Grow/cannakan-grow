@@ -16024,6 +16024,31 @@ body.theme-dark .contact-reason-card.is-active {
   color: rgba(218, 229, 215, 0.8);
 }
 
+.admin-tutorial-editor-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.admin-tutorial-visibility {
+  border-color: rgba(148, 209, 89, 0.24) !important;
+  background: rgba(148, 209, 89, 0.09) !important;
+  color: #dff2cf !important;
+}
+
+.admin-tutorial-visibility.is-signed_in {
+  border-color: rgba(104, 168, 255, 0.24) !important;
+  background: rgba(104, 168, 255, 0.09) !important;
+  color: #cfe0ff !important;
+}
+
+.admin-tutorial-visibility.is-admin {
+  border-color: rgba(230, 180, 90, 0.28) !important;
+  background: rgba(230, 180, 90, 0.1) !important;
+  color: #f4d391 !important;
+}
+
 .admin-tutorial-card-actions {
   display: grid;
   gap: 8px;

@@ -27056,6 +27056,70 @@ function getTutorialVisibilityStatus(itemOrStatus = "coming-soon") {
   return normalizeTutorialPublishStatus(itemOrStatus);
 }
 
+function normalizeLearnAudience(audience = "public") {
+  const normalizedAudience = String(audience || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
+  if (["signed-in", "signedin", "member", "members"].includes(normalizedAudience)) {
+    return "signed_in";
+  }
+  if (normalizedAudience === "admin") {
+    return "admin";
+  }
+  return "public";
+}
+
+function getLearnAudienceLabel(audience = "public") {
+  const normalizedAudience = normalizeLearnAudience(audience);
+  if (normalizedAudience === "admin") {
+    return "Admin only";
+  }
+  if (normalizedAudience === "signed_in") {
+    return "Signed-in only";
+  }
+  return "Public";
+}
+
+function getLearnItemAudience(item = {}) {
+  return normalizeLearnAudience(item.audience || (!normalizeLearnPublicFlag(item.isPublic, true) ? "signed_in" : "public"));
+}
+
+function normalizeLearnPublicFlag(value, fallback = true) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (value === null || value === undefined || value === "") {
+    return Boolean(fallback);
+  }
+  const normalizedValue = String(value).trim().toLowerCase();
+  if (["false", "no", "0", "off", "private"].includes(normalizedValue)) {
+    return false;
+  }
+  if (["true", "yes", "1", "on", "public"].includes(normalizedValue)) {
+    return true;
+  }
+  return Boolean(fallback);
+}
+
+function isLearnItemPubliclyVisible(item = {}) {
+  return getLearnItemAudience(item) === "public" && normalizeLearnPublicFlag(item.isPublic, true);
+}
+
+function canCurrentUserViewLearnItem(item = {}) {
+  const status = getTutorialVisibilityStatus(item);
+  const isAdmin = hasResolvedAdminAccess();
+  if (status === "draft") {
+    return isAdmin;
+  }
+
+  const audience = getLearnItemAudience(item);
+  if (audience === "admin") {
+    return isAdmin;
+  }
+  if (audience === "signed_in") {
+    return Boolean(appState.user?.id) || isAdmin;
+  }
+  return isLearnItemPubliclyVisible(item) || isAdmin;
+}
+
 function getTutorialReleaseDateLabel(releaseDate = "") {
   const normalizedDate = String(releaseDate || "").trim();
   if (!normalizedDate) {
@@ -27785,6 +27849,9 @@ function createAdminTutorialCollectionDraft() {
     featured: false,
     visibilityStatus: "draft",
     status: "draft",
+    audience: "admin",
+    isPublic: false,
+    visibilityNote: "Local admin draft learning path.",
     scheduled: false,
     releaseDate: "",
     comingSoonLabel: "Coming Soon",
@@ -27828,6 +27895,8 @@ function getLearnTutorialCategories() {
         ? draftFeaturedOrder
         : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : index + 1);
       const featuredLabel = String(draft.featuredLabel ?? tutorial.featuredLabel ?? "").trim();
+      const audience = normalizeLearnAudience(draft.audience ?? tutorial.audience ?? "public");
+      const isPublic = draft.isPublic ?? tutorial.isPublic ?? audience === "public";
       const mergedTutorial = {
         ...tutorial,
         ...draft,
@@ -27835,6 +27904,9 @@ function getLearnTutorialCategories() {
         baseCategoryId: category.id,
         categoryId,
         categoryOrder,
+        audience,
+        isPublic: normalizeLearnPublicFlag(isPublic, audience === "public"),
+        visibilityNote: String(draft.visibilityNote ?? tutorial.visibilityNote ?? "").trim(),
         duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
         difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
         status: getTutorialVisibilityStatus({
@@ -27923,6 +27995,8 @@ function getLearnTutorialCollections() {
   const draftMap = loadAdminTutorialCollectionDraftsFromStorage();
   const staticCollections = LEARN_TUTORIAL_COLLECTIONS.map((collection, index) => {
     const draft = draftMap[collection.id] || {};
+    const audience = normalizeLearnAudience(draft.audience ?? collection.audience ?? "public");
+    const isPublic = draft.isPublic ?? collection.isPublic ?? audience === "public";
     return {
       ...collection,
       ...draft,
@@ -27937,6 +28011,9 @@ function getLearnTutorialCollections() {
         status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: draft.scheduled ?? collection.scheduled,
       }),
+      audience,
+      isPublic: normalizeLearnPublicFlag(isPublic, audience === "public"),
+      visibilityNote: String(draft.visibilityNote ?? collection.visibilityNote ?? "").trim(),
       status: getTutorialVisibilityStatus({
         status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: draft.scheduled ?? collection.scheduled,
@@ -27966,6 +28043,9 @@ function getLearnTutorialCollections() {
         status: collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: collection.scheduled,
       }),
+      audience: normalizeLearnAudience(collection.audience || "admin"),
+      isPublic: normalizeLearnPublicFlag(collection.isPublic, false),
+      visibilityNote: String(collection.visibilityNote || "").trim(),
       status: getTutorialVisibilityStatus({
         status: collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: collection.scheduled,
@@ -27991,10 +28071,13 @@ function getLearnTutorialCollectionById(collectionId = "") {
   return getLearnTutorialCollections().find((collection) => collection.id === normalizedCollectionId) || null;
 }
 
-function getLearnCollectionTutorialEntries(collection = {}) {
+function getLearnCollectionTutorialEntries(collection = {}, options = {}) {
   return normalizeLearnTutorialTextList(collection.tutorialIds)
     .map((tutorialId) => getLearnTutorialById(tutorialId))
-    .filter(Boolean);
+    .filter((entry) => (
+      entry
+      && (options.includeRestricted || canCurrentUserViewLearnItem(entry.tutorial))
+    ));
 }
 
 function getLearnCollectionDurationLabel(collection = {}) {
@@ -28033,11 +28116,11 @@ function getLearnCollectionProgress(collection = {}) {
 }
 
 function shouldShowTutorialOnPublicLearn(tutorial = {}) {
-  return !tutorial.hiddenOnLearn && getTutorialVisibilityStatus(tutorial) !== "draft";
+  return !tutorial.hiddenOnLearn && canCurrentUserViewLearnItem(tutorial);
 }
 
 function shouldShowLearningPathOnPublicLearn(collection = {}) {
-  return getTutorialVisibilityStatus(collection) !== "draft";
+  return canCurrentUserViewLearnItem(collection);
 }
 
 function renderLearnEmptyStateCtaMarkup(tutorialId = "", label = "Watch Tutorial") {
@@ -28055,7 +28138,7 @@ function renderLearnEmptyStateCtaMarkup(tutorialId = "", label = "Watch Tutorial
 function openLearnTutorialFromHelper(tutorialId = "", source = "Empty state") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   const tutorialEntry = getLearnTutorialById(normalizedTutorialId);
-  if (tutorialEntry) {
+  if (tutorialEntry && canCurrentUserViewLearnItem(tutorialEntry.tutorial)) {
     openLearnTutorialModal(normalizedTutorialId, { source });
     return;
   }
@@ -28121,7 +28204,11 @@ function shouldShowContextualOnboardingPrompt(promptId = "") {
   if (!prompt || getContextualOnboardingPromptState(promptId)) {
     return false;
   }
-  return !(prompt.actions || []).some((action) => isTutorialCompleted(action.tutorialId));
+  const visibleActions = (prompt.actions || []).filter((action) => {
+    const tutorialEntry = getLearnTutorialById(action.tutorialId);
+    return tutorialEntry && canCurrentUserViewLearnItem(tutorialEntry.tutorial);
+  });
+  return visibleActions.length > 0 && !visibleActions.some((action) => isTutorialCompleted(action.tutorialId));
 }
 
 function isTutorialRecommendedForContexts(tutorialId = "", contexts = []) {
@@ -28621,7 +28708,7 @@ function getRecommendedLearnTutorials(categories = getLearnTutorialCategories(),
     }))
     .filter(({ tutorial, matchedContexts }) => (
       matchedContexts.length
-      && getTutorialVisibilityStatus(tutorial) !== "draft"
+      && canCurrentUserViewLearnItem(tutorial)
       && (options.includeCompleted || !isTutorialCompleted(tutorial.id))
     ))
     .sort((left, right) => {
@@ -29758,6 +29845,11 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
   }
 
   const { category, tutorial } = tutorialEntry;
+  if (!canCurrentUserViewLearnItem(tutorial)) {
+    window.location.hash = "#learn";
+    return;
+  }
+
   markTutorialViewed(tutorial.id);
   const overlay = ensureLearnTutorialModal();
   overlay.dataset.activeTutorialId = tutorial.id;
@@ -29800,6 +29892,10 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
 function openLearnCollectionModal(collectionId = "") {
   const collection = getLearnTutorialCollectionById(collectionId);
   if (!collection) {
+    return;
+  }
+  if (!canCurrentUserViewLearnItem(collection)) {
+    window.location.hash = "#learn";
     return;
   }
 
@@ -44200,6 +44296,25 @@ function renderAdminTutorialStatusOptions(selectedStatus = "coming-soon") {
   )).join("");
 }
 
+function renderAdminTutorialAudienceOptions(selectedAudience = "public") {
+  const normalizedAudience = normalizeLearnAudience(selectedAudience);
+  return [
+    { id: "public", label: "Public" },
+    { id: "signed_in", label: "Signed-in only" },
+    { id: "admin", label: "Admin only" },
+  ].map((audience) => (
+    `<option value="${escapeHtml(audience.id)}"${audience.id === normalizedAudience ? " selected" : ""}>${escapeHtml(audience.label)}</option>`
+  )).join("");
+}
+
+function renderAdminLearnVisibilityBadgeMarkup(item = {}) {
+  const audience = getLearnItemAudience(item);
+  const publicLabel = audience === "public" && !isLearnItemPubliclyVisible(item)
+    ? "Public off"
+    : (isLearnItemPubliclyVisible(item) ? "Public visible" : getLearnAudienceLabel(audience));
+  return `<span class="admin-tutorial-visibility is-${escapeHtml(audience)}">${escapeHtml(publicLabel)}</span>`;
+}
+
 function renderAdminTutorialCategoryOptions(selectedCategoryId = "") {
   const normalizedCategoryId = normalizeTutorialCategoryId(selectedCategoryId);
   return getLearnTutorialCategoryOptions().map((category) => (
@@ -44242,6 +44357,7 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
           <span>${escapeHtml(durationLabel)}</span>
           <span>${escapeHtml(difficultyLabel)}</span>
           <span>${escapeHtml(getTutorialVideoStateLabel(tutorial))}</span>
+          ${renderAdminLearnVisibilityBadgeMarkup(tutorial)}
           ${tutorial.hasLocalDraft ? "<span>Local draft</span>" : ""}
         </div>
       </div>
@@ -44287,7 +44403,10 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <h4>${escapeHtml(tutorial.title || "Untitled Tutorial")}</h4>
           <p class="muted">Local admin draft only. Later this shape can map to backend tutorial records.</p>
         </div>
-        <span class="admin-tutorial-status is-${escapeHtml(getTutorialVisibilityStatus(tutorial))}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
+        <div class="admin-tutorial-editor-badges">
+          ${renderAdminLearnVisibilityBadgeMarkup(tutorial)}
+          <span class="admin-tutorial-status is-${escapeHtml(getTutorialVisibilityStatus(tutorial))}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
+        </div>
       </div>
       <form
         class="admin-source-form admin-tutorial-form"
@@ -44316,6 +44435,14 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
             <select name="visibilityStatus">${renderAdminTutorialStatusOptions(getTutorialVisibilityStatus(tutorial))}</select>
           </label>
           <label>
+            <span>Audience</span>
+            <select name="audience">${renderAdminTutorialAudienceOptions(tutorial.audience)}</select>
+          </label>
+          <label class="admin-announcement-toggle-row">
+            <input name="isPublic" type="checkbox" ${normalizeLearnPublicFlag(tutorial.isPublic, getLearnItemAudience(tutorial) === "public") ? "checked" : ""}>
+            <span>Public visibility enabled</span>
+          </label>
+          <label>
             <span>Release Date</span>
             <input name="releaseDate" type="date" value="${escapeHtml(tutorial.releaseDate || "")}">
           </label>
@@ -44330,6 +44457,10 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <label class="admin-source-form-full">
             <span>Subtitle / Description</span>
             <textarea name="description" rows="3">${escapeHtml(tutorial.description || "")}</textarea>
+          </label>
+          <label class="admin-source-form-full">
+            <span>Visibility Note</span>
+            <input name="visibilityNote" value="${escapeHtml(tutorial.visibilityNote || "")}" placeholder="Public setup guide, member-only workflow, or admin staging note">
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail URL</span>
@@ -44495,6 +44626,7 @@ function renderAdminTutorialCollectionCardMarkup(collection = {}) {
           <span>${escapeHtml(`${progress.totalCount} tutorials`)}</span>
           <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
           <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+          ${renderAdminLearnVisibilityBadgeMarkup(collection)}
           ${collection.hasLocalDraft ? "<span>Local draft</span>" : ""}
         </div>
       </div>
@@ -44559,6 +44691,14 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
             <select name="visibilityStatus">${renderAdminTutorialStatusOptions(getTutorialVisibilityStatus(collection))}</select>
           </label>
           <label>
+            <span>Audience</span>
+            <select name="audience">${renderAdminTutorialAudienceOptions(collection.audience)}</select>
+          </label>
+          <label class="admin-announcement-toggle-row">
+            <input name="isPublic" type="checkbox" ${normalizeLearnPublicFlag(collection.isPublic, getLearnItemAudience(collection) === "public") ? "checked" : ""}>
+            <span>Public visibility enabled</span>
+          </label>
+          <label>
             <span>Release Date</span>
             <input name="releaseDate" type="date" value="${escapeHtml(collection.releaseDate || "")}">
           </label>
@@ -44581,6 +44721,10 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
           <label class="admin-source-form-full">
             <span>Description</span>
             <textarea name="description" rows="3">${escapeHtml(collection.description || "")}</textarea>
+          </label>
+          <label class="admin-source-form-full">
+            <span>Visibility Note</span>
+            <input name="visibilityNote" value="${escapeHtml(collection.visibilityNote || "")}" placeholder="Public onboarding path or member-only series">
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail / Poster URL</span>
@@ -44712,6 +44856,9 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
     difficulty: String(formData.get("difficulty") || "Beginner").trim(),
     status: visibilityStatus,
     visibilityStatus,
+    audience: normalizeLearnAudience(formData.get("audience")),
+    isPublic: formData.get("isPublic") === "on",
+    visibilityNote: String(formData.get("visibilityNote") || "").trim(),
     scheduled: formData.get("scheduled") === "on",
     releaseDate: String(formData.get("releaseDate") || "").trim(),
     comingSoonLabel: String(formData.get("comingSoonLabel") || "").trim(),
@@ -44762,6 +44909,9 @@ function saveAdminTutorialCollectionFormDraft(form) {
       status: formData.get("visibilityStatus"),
       scheduled: formData.get("scheduled") === "on",
     }),
+    audience: normalizeLearnAudience(formData.get("audience")),
+    isPublic: formData.get("isPublic") === "on",
+    visibilityNote: String(formData.get("visibilityNote") || "").trim(),
     status: getTutorialVisibilityStatus({
       status: formData.get("visibilityStatus"),
       scheduled: formData.get("scheduled") === "on",
