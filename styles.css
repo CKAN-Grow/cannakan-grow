@@ -22375,27 +22375,23 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-status-column .session-status-stage-pill {
-    grid-template-columns: 54px minmax(0, 1fr) 42px;
+    grid-template-columns: 50px minmax(0, 1fr);
     min-height: 84px;
-    gap: 12px;
+    gap: 13px;
     padding: 12px;
   }
 
-  .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-tile {
-    width: 52px;
-    height: 52px;
+  .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-tile,
+  .session-lifecycle-status-column .session-status-stage-icon--pill .session-status-stage-icon-symbol:not(.command-icon-tile) {
+    width: 48px;
+    height: 48px;
     padding: 5px;
-    border-radius: 15px;
+    border-radius: 14px;
   }
 
   .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-svg {
     width: 25px;
     height: 25px;
-  }
-
-  .session-lifecycle-status-column .session-status-pill-trailing-icon {
-    width: 42px;
-    height: 42px;
   }
 
   .session-lifecycle-status-column .session-status-current-value {
@@ -28545,7 +28541,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .session-lifecycle-status-column .session-status-card-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 0;
 }
 
 .session-lifecycle-status-column .session-status-label {
@@ -28556,9 +28553,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   letter-spacing: 0.14em;
 }
 
-.session-lifecycle-status-column .session-status-overline-icon,
-.session-lifecycle-status-column .session-status-pill-icon,
-.session-lifecycle-status-column .session-status-pill-trailing-icon {
+.session-lifecycle-status-column .session-status-pill-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -28592,27 +28587,15 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   stroke: currentColor;
 }
 
-.session-lifecycle-status-column .session-status-stage-icon--header .command-icon-tile {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-}
-
-.session-lifecycle-status-column .session-status-stage-icon--header .command-icon-svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 1.7;
-}
-
 .session-lifecycle-status-column .session-status-current {
   justify-items: stretch;
 }
 
 .session-lifecycle-status-column .session-status-stage-pill {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 50px;
+  grid-template-columns: 56px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
   min-height: 92px;
   padding: 13px 18px;
@@ -28627,23 +28610,32 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-tile {
-  width: 58px;
-  height: 58px;
-  padding: 6px;
-  border-radius: 16px;
-  border-color: color-mix(in srgb, var(--session-status-accent) 30%, rgba(255, 255, 255, 0.08));
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
-    rgba(10, 15, 12, 0.78);
+  width: 52px;
+  height: 52px;
+  padding: 5px;
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--session-status-accent) 34%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 4px 12px rgba(0, 0, 0, 0.28),
-    0 0 10px color-mix(in srgb, var(--session-status-accent-glow) 46%, transparent);
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 4px 12px rgba(0,0,0,0.35);
+}
+
+.session-lifecycle-status-column .session-status-stage-icon--pill .session-status-stage-icon-symbol:not(.command-icon-tile) {
+  width: 52px;
+  height: 52px;
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--session-status-accent) 34%, rgba(255, 255, 255, 0.08));
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 4px 12px rgba(0,0,0,0.35);
 }
 
 .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-image {
-  border-radius: 12px;
-  transform: scale(0.92);
+  border-radius: 11px;
+  transform: scale(0.9);
 }
 
 .session-lifecycle-status-column .session-status-stage-icon--pill .command-icon-svg {
@@ -28675,26 +28667,6 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   overflow-wrap: normal;
   word-break: keep-all;
   hyphens: none;
-}
-
-.session-lifecycle-status-column .session-status-pill-trailing-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
-  border: 1px solid var(--session-status-accent-strong);
-  background: rgba(12, 18, 14, 0.74);
-  color: var(--session-status-accent);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.session-lifecycle-status-column .session-status-pill-trailing-icon svg {
-  width: 22px;
-  height: 22px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .session-lifecycle-status-column .session-status-help {

@@ -45186,28 +45186,6 @@ function renderSessionStatusStageIconMarkup(stageIconKey = "", variant = "pill")
   `;
 }
 
-function renderSessionStatusTrailingIconMarkup(progressKey = "") {
-  if (progressKey === "completed") {
-    return `
-      <span class="session-status-trailing-mark session-status-trailing-mark--completed" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-          <circle cx="12" cy="12" r="9"></circle>
-          <path d="m8.2 12.4 2.5 2.5 5.1-5.7"></path>
-        </svg>
-      </span>
-    `;
-  }
-
-  return `
-    <span class="session-status-trailing-mark session-status-trailing-mark--active" aria-hidden="true">
-      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-        <circle cx="12" cy="12" r="9"></circle>
-        <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"></circle>
-      </svg>
-    </span>
-  `;
-}
-
 function getPartitionChartTitle(systemType) {
   return systemType === "TRA" ? "TRā™ Partition Chart" : "KAN® Partition Chart";
 }
@@ -48927,9 +48905,7 @@ function updateSessionStatusAppearance(control, trigger) {
   const currentValueElement = panel?.querySelector(".session-status-current-value");
   const helperTextElement = panel?.querySelector(".session-status-help");
   const metaValueElement = panel?.querySelector(".session-status-meta-value");
-  const overlineIconElement = panel?.querySelector("[data-session-status-overline-icon]");
   const pillIconElement = panel?.querySelector("[data-session-status-pill-icon]");
-  const trailingIconElement = panel?.querySelector("[data-session-status-pill-trailing-icon]");
   const triggerLabelElement = trigger?.querySelector("[data-session-status-trigger-label]") || panel?.querySelector("[data-session-status-trigger-label]");
 
   if (control) {
@@ -48949,14 +48925,8 @@ function updateSessionStatusAppearance(control, trigger) {
   if (metaValueElement) {
     metaValueElement.textContent = visualState.timestampLabel || "Not recorded yet";
   }
-  if (overlineIconElement) {
-    overlineIconElement.innerHTML = renderSessionStatusStageIconMarkup(visualState.iconKey, "header");
-  }
   if (pillIconElement) {
     pillIconElement.innerHTML = renderSessionStatusStageIconMarkup(visualState.iconKey, "pill");
-  }
-  if (trailingIconElement) {
-    trailingIconElement.innerHTML = renderSessionStatusTrailingIconMarkup(visualState.progressKey);
   }
 
   panel?.querySelectorAll("[data-stage-step]").forEach((stepElement) => {
