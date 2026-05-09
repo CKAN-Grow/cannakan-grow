@@ -28575,8 +28575,13 @@ function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category =
       ${thumbnailStyle}
       aria-hidden="true"
     >
+      <span class="learn-tutorial-visual-grid"></span>
       <span class="learn-tutorial-visual-sheen"></span>
       <span class="learn-tutorial-visual-line-art learn-tutorial-visual-line-art--${escapeHtml(theme.icon)}"></span>
+      <span class="learn-tutorial-visual-brand">
+        <span>Cannakan®</span>
+        <strong>Learn</strong>
+      </span>
       <span class="learn-tutorial-visual-category">${escapeHtml(theme.label)}</span>
       <span class="learn-tutorial-visual-status">${escapeHtml(label)}</span>
       <span class="learn-tutorial-visual-play" aria-hidden="true">▶</span>
@@ -29979,7 +29984,12 @@ function renderLearnMediaCardMarkup({
   return `
     <article class="${escapeHtml(classes)}"${styleAttribute}>
       <div class="learn-media-card-thumb" aria-hidden="true">
+        <span class="learn-media-card-orbit"></span>
         <span class="learn-media-card-grid"></span>
+        <span class="learn-media-card-brand">
+          <span>Cannakan®</span>
+          <strong>Learn</strong>
+        </span>
         <span class="learn-media-card-play">▶</span>
         ${durationText ? `<span class="learn-media-card-duration">${escapeHtml(durationText)}</span>` : ""}
       </div>
