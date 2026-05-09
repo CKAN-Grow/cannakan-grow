@@ -34472,6 +34472,90 @@ function getSourceDirectoryCstpPreview(source = {}) {
   };
 }
 
+function getSourceDirectoryCstpReportHash(source = {}) {
+  const sourceId = String(source?.id || "").trim();
+  return sourceId ? `#sources/${encodeURIComponent(sourceId)}/cstp-report` : "";
+}
+
+function getSourceDirectoryCstpCardState(source = {}) {
+  const publishedPreview = getSourceDirectoryCstpPreview(source);
+  if (publishedPreview) {
+    return {
+      kind: "certified",
+      qualificationResult: publishedPreview.filterKey,
+      qualificationLabel: getAdminCstpQualificationLabel(publishedPreview.filterKey),
+      labelText: "CSTP Certified",
+      noteText: "Published proof",
+      testedAt: publishedPreview.publishedAt || "",
+      hasReport: true,
+      href: getSourceDirectoryCstpReportHash(source),
+    };
+  }
+
+  const cstp = source?.cstp && typeof source.cstp === "object" ? source.cstp : {};
+  const normalizedStatus = String(cstp.status || "").trim().toLowerCase();
+  if (!normalizedStatus || normalizedStatus === "not-tested") {
+    return null;
+  }
+
+  const qualificationResult = ["gold", "silver"].includes(normalizedStatus)
+    ? normalizedStatus
+    : "";
+  if (qualificationResult) {
+    return {
+      kind: "certified",
+      qualificationResult,
+      qualificationLabel: getAdminCstpQualificationLabel(qualificationResult),
+      labelText: "CSTP Certified",
+      noteText: "Observed sample",
+      testedAt: String(cstp.testedDate || cstp.validUntil || "").trim(),
+      hasReport: true,
+      href: getSourceDirectoryCstpReportHash(source),
+    };
+  }
+
+  const isExpired = normalizedStatus === "expired";
+  return {
+    kind: isExpired ? "expired" : "tested",
+    qualificationResult: "",
+    qualificationLabel: "",
+    labelText: isExpired ? "CSTP Previously Tested" : "CSTP Tested",
+    noteText: isExpired ? "No active public proof" : "No public certification",
+    testedAt: String(cstp.testedDate || "").trim(),
+    hasReport: false,
+    href: "",
+  };
+}
+
+function renderSourceDirectoryCstpCardBadgeMarkup(cstpState = {}) {
+  if (!cstpState) {
+    return "";
+  }
+
+  if (cstpState.qualificationResult && cstpState.testedAt) {
+    return renderPublishedCstpCertifiedSealMarkup(cstpState.qualificationResult, cstpState.testedAt, {
+      shellClassName: "source-directory-cstp-status cstp-certified-seal cstp-certified-seal--compact",
+      imageClassName: "source-directory-cstp-badge cstp-certified-seal-image",
+      copyClassName: "cstp-certified-seal-copy",
+      labelClassName: "cstp-certified-seal-label",
+      titleClassName: "cstp-certified-seal-title",
+      noteClassName: "cstp-certified-seal-note",
+      labelText: cstpState.labelText || "CSTP Certified",
+      noteText: cstpState.noteText || cstpState.qualificationLabel || "",
+    });
+  }
+
+  return `
+    <div class="source-directory-cstp-tested-chip is-${escapeHtml(cstpState.kind || "tested")}">
+      <span class="source-directory-cstp-tested-mark" aria-hidden="true">C</span>
+      <span class="source-directory-cstp-tested-copy">
+        <strong>${escapeHtml(cstpState.labelText || "CSTP Tested")}</strong>
+        <span>${escapeHtml(cstpState.noteText || "No public certification")}</span>
+      </span>
+    </div>
+  `;
+}
+
 function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
   const cstpPreview = getSourceDirectoryCstpPreview(source);
   const statusMarkup = cstpPreview
@@ -34961,22 +35045,14 @@ function renderSourceDirectoryFilterPills(activeFilterKey = SOURCE_DIRECTORY_DEF
 }
 
 function renderSourceDirectoryCardMarkup(source = {}) {
-  const cstpPreview = getSourceDirectoryCstpPreview(source);
+  const cstpState = getSourceDirectoryCstpCardState(source);
+  const cstpBadgeMarkup = renderSourceDirectoryCstpCardBadgeMarkup(cstpState);
   const reportedRateLabel = getSourceDirectoryReportedRateLabel(source);
   return `
     <article class="card source-directory-card">
-      ${cstpPreview ? `
+      ${cstpBadgeMarkup ? `
         <div class="source-directory-card-seal">
-          ${renderPublishedCstpCertifiedSealMarkup(cstpPreview.filterKey, cstpPreview.publishedAt, {
-            shellClassName: "source-directory-cstp-status cstp-certified-seal cstp-certified-seal--compact",
-            imageClassName: "source-directory-cstp-badge cstp-certified-seal-image",
-            copyClassName: "cstp-certified-seal-copy",
-            labelClassName: "cstp-certified-seal-label",
-            titleClassName: "cstp-certified-seal-title",
-            noteClassName: "cstp-certified-seal-note",
-            labelText: "CSTP Certified",
-            noteText: getAdminCstpQualificationLabel(cstpPreview.filterKey),
-          })}
+          ${cstpBadgeMarkup}
         </div>
       ` : ""}
       <div class="source-directory-card-hero">
@@ -35009,8 +35085,11 @@ function renderSourceDirectoryCardMarkup(source = {}) {
           <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
         </article>
       </div>
-      <div class="inline-actions">
+      <div class="inline-actions source-directory-card-actions">
         <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
+        ${cstpState?.hasReport && cstpState.href ? `
+          <a class="button button-secondary source-directory-certification-link" href="${escapeHtml(cstpState.href)}">View Certification</a>
+        ` : ""}
       </div>
     </article>
   `;

@@ -26045,6 +26045,66 @@ textarea::placeholder {
   gap: 2px;
 }
 
+.source-directory-cstp-tested-chip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  max-width: 156px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 143, 102, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(245, 248, 241, 0.68));
+  box-shadow: 0 10px 24px rgba(37, 54, 33, 0.06);
+}
+
+.source-directory-cstp-tested-chip.is-expired {
+  border-color: rgba(148, 135, 112, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 245, 239, 0.68));
+}
+
+.source-directory-cstp-tested-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(139, 164, 101, 0.3);
+  background: rgba(148, 209, 89, 0.12);
+  color: #4f742c;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.source-directory-cstp-tested-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.source-directory-cstp-tested-copy strong,
+.source-directory-cstp-tested-copy span {
+  overflow-wrap: anywhere;
+}
+
+.source-directory-cstp-tested-copy strong {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.source-directory-cstp-tested-copy span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .source-directory-card-hero {
   display: grid;
   justify-items: start;
@@ -26099,6 +26159,33 @@ textarea::placeholder {
 
 .source-directory-card .inline-actions {
   margin-top: auto;
+}
+
+.source-directory-card-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.source-directory-card-actions .button {
+  min-width: 0;
+}
+
+.source-directory-certification-link {
+  border-color: rgba(168, 134, 63, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(249, 246, 235, 0.54)),
+    rgba(170, 133, 58, 0.08);
+  color: #4d5a35;
+}
+
+.source-directory-certification-link:hover,
+.source-directory-certification-link:focus-visible {
+  border-color: rgba(168, 134, 63, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(250, 247, 236, 0.66)),
+    rgba(170, 133, 58, 0.12);
 }
 
 .source-directory-list-section {
@@ -29025,6 +29112,19 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   .source-directory-card-seal {
     position: static;
     max-width: none;
+  }
+
+  .source-directory-cstp-tested-chip {
+    max-width: none;
+  }
+
+  .source-directory-card-actions {
+    align-items: stretch;
+  }
+
+  .source-directory-card-actions .button {
+    width: 100%;
+    justify-content: center;
   }
 
   .source-directory-logo {
