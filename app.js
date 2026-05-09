@@ -2318,11 +2318,13 @@ function syncInstallPromptBanner() {
     ? `
       <div class="install-app-banner-actions">
         <button type="button" class="button button-primary install-app-button" data-install-grow-app="true">Install Now</button>
+        <a class="install-app-learn-link" href="#learn" data-public-learn-link="true">New here? Visit Learn</a>
       </div>
     `
     : `
       <div class="install-app-banner-actions">
         <p class="install-app-banner-ios-tip">To install: tap Share, then Add to Home Screen</p>
+        <a class="install-app-learn-link" href="#learn" data-public-learn-link="true">New here? Visit Learn</a>
       </div>
     `;
 
@@ -32276,6 +32278,7 @@ function renderHomeInstallInfoCardMarkup() {
                 ${buttonEnabled ? "" : "disabled"}
                 aria-disabled="${buttonEnabled ? "false" : "true"}"
               >${escapeHtml(buttonLabel)}</button>
+              <a class="home-install-card-learn-link" href="#learn" data-public-learn-link="true">New here? Visit Learn</a>
             </div>
             <p class="home-install-card-tip ${statusToneClass}" aria-live="polite">${escapeHtml(helperText)}</p>
           </div>
@@ -56264,6 +56267,11 @@ document.addEventListener("click", (event) => {
     ? event.target.closest('a[href^="#"]')
     : null;
   if (internalLink instanceof HTMLAnchorElement) {
+    const targetHash = normalizeNavigationHash(internalLink.getAttribute("href") || "#home");
+    if (internalLink.dataset.publicLearnLink === "true" && targetHash === "#learn") {
+      closeAuthModal();
+    }
+
     const navLockState = getNavigationLockStateForHash(internalLink.getAttribute("href") || "#home");
     if (navLockState.locked) {
       event.preventDefault();
@@ -56280,7 +56288,6 @@ document.addEventListener("click", (event) => {
       return;
     }
 
-    const targetHash = normalizeNavigationHash(internalLink.getAttribute("href") || "#home");
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
       event.stopPropagation();

@@ -805,6 +805,8 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .install-app-button {
@@ -822,6 +824,22 @@ textarea {
   font-size: 0.92rem;
   font-weight: 600;
   text-align: right;
+}
+
+.install-app-learn-link {
+  color: #588a37;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.install-app-learn-link:hover,
+.install-app-learn-link:focus-visible {
+  color: #2f6f41;
+  text-decoration: underline;
+  outline: none;
 }
 
 .topbar h1,
@@ -11325,6 +11343,8 @@ body.theme-dark .contact-reason-card.is-active {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
   width: 100%;
 }
 
@@ -11344,6 +11364,22 @@ body.theme-dark .contact-reason-card.is-active {
   max-width: 100%;
   min-width: 168px;
   min-height: 42px;
+}
+
+.home-install-card-learn-link {
+  color: #94d159;
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.home-install-card-learn-link:hover,
+.home-install-card-learn-link:focus-visible {
+  color: #c9eda6;
+  text-decoration: underline;
+  outline: none;
 }
 
 .home-install-card-directions {
@@ -20720,6 +20756,81 @@ body.theme-dark .contact-reason-card.is-active {
   border: 0;
   box-shadow: none;
   background: transparent;
+}
+
+.auth-public-learn-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 10, 0.5);
+  color: #edf7e8;
+  text-decoration: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 22px rgba(0, 0, 0, 0.14);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.auth-public-learn-card:hover,
+.auth-public-learn-card:focus-visible {
+  border-color: rgba(148, 209, 89, 0.38);
+  background:
+    radial-gradient(circle at top left, rgba(148, 209, 89, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(10, 16, 12, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.052),
+    0 0 20px rgba(148, 209, 89, 0.11);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.auth-public-learn-card span:first-child {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.auth-public-learn-card strong {
+  color: #f4faf0;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.auth-public-learn-card small {
+  color: rgba(210, 222, 207, 0.72);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth-public-learn-card span:last-child {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.24);
+  background: rgba(148, 209, 89, 0.1);
+  color: #94d159;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .admin-message-modal-card {
