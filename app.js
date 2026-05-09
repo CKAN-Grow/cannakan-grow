@@ -27409,6 +27409,57 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
     : [];
 }
 
+function getLearnTutorialVisualTheme(tutorial = {}, category = {}) {
+  const categoryId = String(category.id || tutorial.categoryId || tutorial.baseCategoryId || "").trim();
+  if (categoryId === "kan-system") {
+    return {
+      theme: "kan",
+      label: "KAN® System",
+      icon: "kan-device",
+    };
+  }
+  return {
+    theme: "app",
+    label: "Grow App",
+    icon: "app-dashboard",
+  };
+}
+
+function getLearnTutorialThumbnailUrl(tutorial = {}) {
+  const video = getTutorialVideoConfig(tutorial);
+  return String(tutorial.thumbnailUrl || tutorial.posterUrl || video.posterUrl || "").trim();
+}
+
+function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category = {}, options = {}) {
+  const tagName = options.tagName === "div" ? "div" : "span";
+  const theme = getLearnTutorialVisualTheme(tutorial, category);
+  const thumbnailUrl = getLearnTutorialThumbnailUrl(tutorial);
+  const label = options.label || getTutorialStatusLabel(tutorial.status);
+  const title = String(tutorial.title || "Tutorial").trim();
+  const className = [
+    "learn-tutorial-visual",
+    `learn-tutorial-visual--${theme.theme}`,
+    thumbnailUrl ? "has-thumbnail-asset" : "",
+    options.className || "",
+  ].filter(Boolean).join(" ");
+  const thumbnailStyle = thumbnailUrl ? ` style="--learn-thumbnail-image:url('${escapeHtml(thumbnailUrl)}');"` : "";
+
+  return `
+    <${tagName}
+      class="${escapeHtml(className)}"
+      data-learn-tutorial-visual-theme="${escapeHtml(theme.theme)}"
+      ${thumbnailStyle}
+      aria-hidden="true"
+    >
+      <span class="learn-tutorial-visual-sheen"></span>
+      <span class="learn-tutorial-visual-line-art learn-tutorial-visual-line-art--${escapeHtml(theme.icon)}"></span>
+      <span class="learn-tutorial-visual-category">${escapeHtml(theme.label)}</span>
+      <span class="learn-tutorial-visual-status">${escapeHtml(label)}</span>
+      <span class="learn-tutorial-visual-play" aria-label="${escapeHtml(`Play ${title}`)}">▶</span>
+    </${tagName}>
+  `;
+}
+
 function renderLearnGettingStartedChecklistMarkup() {
   const checklistState = getLearnGettingStartedChecklistState();
   const completedCount = checklistState.filter((item) => item.completed).length;
@@ -27460,10 +27511,7 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
       data-video-mp4-url="${escapeHtml(getTutorialVideoConfig(tutorial).mp4Url)}"
       data-video-cloudflare-stream-id="${escapeHtml(getTutorialVideoConfig(tutorial).cloudflareStreamId)}"
     >
-      <span class="learn-tutorial-thumbnail" aria-hidden="true">
-        <span class="learn-tutorial-thumbnail-sheen"></span>
-        <span class="learn-tutorial-play">▶</span>
-      </span>
+      ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, { className: "learn-tutorial-thumbnail" })}
       <span class="learn-tutorial-card-body">
         <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
         <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
@@ -27496,11 +27544,11 @@ function renderTutorialVideoPlayerMetadataMarkup(video = {}) {
   `;
 }
 
-function renderTutorialVideoPlaceholderMarkup(video = {}, label = "Video Coming Soon") {
+function renderTutorialVideoPlaceholderMarkup(video = {}, label = "Video Coming Soon", tutorial = {}, category = {}) {
   const posterStyle = video.posterUrl ? ` style="--learn-video-poster:url('${escapeHtml(video.posterUrl)}');"` : "";
   return `
     <div
-      class="learn-tutorial-player is-placeholder"
+      class="learn-tutorial-player is-placeholder learn-tutorial-player--${escapeHtml(getLearnTutorialVisualTheme(tutorial, category).theme)}"
       role="img"
       aria-label="${escapeHtml(label)}"
       data-learn-video-player-shell="true"
@@ -27508,29 +27556,34 @@ function renderTutorialVideoPlaceholderMarkup(video = {}, label = "Video Coming 
       ${posterStyle}
     >
       ${renderTutorialVideoPlayerMetadataMarkup(video)}
-      <span class="learn-tutorial-player-sheen" aria-hidden="true"></span>
-      <span class="learn-tutorial-player-play" aria-hidden="true">▶</span>
+      ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, {
+        tagName: "div",
+        className: "learn-tutorial-player-visual",
+        label,
+      })}
       <span class="learn-tutorial-player-status">${escapeHtml(label)}</span>
     </div>
   `;
 }
 
-function renderCloudflareTutorialPlayerPlaceholder(tutorial = {}, video = getTutorialVideoConfig(tutorial)) {
+function renderCloudflareTutorialPlayerPlaceholder(tutorial = {}, video = getTutorialVideoConfig(tutorial), category = {}) {
   return renderTutorialVideoPlaceholderMarkup(
     video,
     video.cloudflareStreamId ? "Cloudflare Stream Embed Ready" : "Cloudflare Stream ID Needed",
+    tutorial,
+    category,
   );
 }
 
-function renderTutorialVideoPlayerMarkup(tutorial = {}) {
+function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
   const video = getTutorialVideoConfig(tutorial);
   if (video.videoProvider === "cloudflare") {
-    return renderCloudflareTutorialPlayerPlaceholder(tutorial, video);
+    return renderCloudflareTutorialPlayerPlaceholder(tutorial, video, category);
   }
 
   if (video.videoProvider === "mp4") {
     if (!video.mp4Url) {
-      return renderTutorialVideoPlaceholderMarkup(video, "MP4 URL Needed");
+      return renderTutorialVideoPlaceholderMarkup(video, "MP4 URL Needed", tutorial, category);
     }
 
     return `
@@ -27546,7 +27599,7 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}) {
 
   if (video.videoProvider === "embed") {
     if (!video.embedUrl) {
-      return renderTutorialVideoPlaceholderMarkup(video, "Embed URL Needed");
+      return renderTutorialVideoPlaceholderMarkup(video, "Embed URL Needed", tutorial, category);
     }
 
     return `
@@ -27557,7 +27610,7 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}) {
     `;
   }
 
-  return renderTutorialVideoPlaceholderMarkup(video, "Video Coming Soon");
+  return renderTutorialVideoPlaceholderMarkup(video, "Video Coming Soon", tutorial, category);
 }
 
 function renderLearnTutorialModalContentMarkup(tutorial, category) {
@@ -27578,7 +27631,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
 
   return `
     <div class="learn-tutorial-player-shell">
-      ${renderTutorialVideoPlayerMarkup(tutorial)}
+      ${renderTutorialVideoPlayerMarkup(tutorial, category)}
     </div>
     <div class="learn-tutorial-modal-copy">
       <div class="learn-tutorial-modal-kicker-row">
