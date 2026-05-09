@@ -69,11 +69,13 @@ const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsO
 const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagementOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
+const ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialCollectionDrafts";
 const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
 const TUTORIAL_ANALYTICS_STORAGE_KEY = "cannakanTutorialAnalyticsEvents";
 const TUTORIAL_FEEDBACK_STORAGE_KEY = "cannakanTutorialFeedback";
 const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY = "cannakanLearnRecommendationActivity";
+const LEARN_COLLECTION_PROGRESS_STORAGE_KEY = "cannakanLearnCollectionProgress";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -1319,6 +1321,7 @@ const appState = {
   sessionDetailPendingFocusSessionId: "",
   sessionDetailPendingNotificationAction: null,
   adminSeedAgeAnalyticsFilter: ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
+  adminTutorialCollectionEditingId: "",
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
@@ -26857,6 +26860,45 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   }),
 ]);
 
+const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
+  Object.freeze({
+    id: "getting-started-grower",
+    title: "Getting Started With Cannakan® Grow",
+    subtitle: "First grow workflow",
+    description: "A guided path through the KAN® System, first session setup, timeline basics, and your first share-ready snapshot.",
+    posterUrl: "",
+    tutorialIds: Object.freeze(["kan-system-overview", "creating-your-first-session", "understanding-the-timeline", "generating-grow-snapshots"]),
+    featured: true,
+    order: 1,
+    difficulty: "Beginner",
+    estimatedDuration: "9 min",
+  }),
+  Object.freeze({
+    id: "kan-system-basics",
+    title: "KAN® System Basics",
+    subtitle: "Device setup and reading results",
+    description: "Learn the practical KAN® workflow from seed loading through filter paper setup and final germination results.",
+    posterUrl: "",
+    tutorialIds: Object.freeze(["loading-seeds-into-kan", "soaking-vs-germinating", "filter-paper-setup", "reading-germination-results"]),
+    featured: true,
+    order: 2,
+    difficulty: "Beginner",
+    estimatedDuration: "10 min",
+  }),
+  Object.freeze({
+    id: "share-and-community-grow",
+    title: "Sharing Into Community Grow",
+    subtitle: "Snapshots, community, and grow data",
+    description: "Prepare polished snapshots, understand Community Grow basics, and learn how grow data becomes useful over time.",
+    posterUrl: "",
+    tutorialIds: Object.freeze(["generating-grow-snapshots", "community-grow-basics", "understanding-grow-analytics"]),
+    featured: false,
+    order: 3,
+    difficulty: "Beginner",
+    estimatedDuration: "8 min",
+  }),
+]);
+
 const CONTEXTUAL_ONBOARDING_STORAGE_PREFIX = "cannakan:onboarding-prompt:v1:";
 const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
   "new-session": Object.freeze({
@@ -27081,6 +27123,24 @@ function saveAdminTutorialDraftsToStorage(drafts = {}) {
   }
 }
 
+function loadAdminTutorialCollectionDraftsFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY) || "{}");
+    return storedValue && typeof storedValue === "object" && !Array.isArray(storedValue) ? storedValue : {};
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to read collection drafts.", error);
+    return {};
+  }
+}
+
+function saveAdminTutorialCollectionDraftsToStorage(drafts = {}) {
+  try {
+    localStorage.setItem(ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY, JSON.stringify(drafts || {}));
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to save collection drafts.", error);
+  }
+}
+
 function normalizeTutorialProgressRecord(record = {}) {
   const completed = Boolean(record?.completed);
   const started = completed || Boolean(record?.started);
@@ -27122,6 +27182,78 @@ function saveTutorialProgressMapToStorage(progressMap = {}) {
   } catch (error) {
     console.warn("[Tutorial Progress] Failed to save tutorial progress.", error);
   }
+}
+
+function normalizeLearnCollectionProgressRecord(record = {}) {
+  const completed = Boolean(record?.completed);
+  const started = completed || Boolean(record?.started);
+  return {
+    started,
+    completed,
+    lastOpenedAt: String(record?.lastOpenedAt || "").trim(),
+    startedAt: String(record?.startedAt || "").trim(),
+    completedAt: String(record?.completedAt || "").trim(),
+    persistence: "local",
+    userId: String(record?.userId || appState.user?.id || "").trim(),
+  };
+}
+
+function loadLearnCollectionProgressMapFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(LEARN_COLLECTION_PROGRESS_STORAGE_KEY) || "{}");
+    if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+      return {};
+    }
+    return Object.entries(storedValue).reduce((progressMap, [collectionId, record]) => {
+      const normalizedCollectionId = String(collectionId || "").trim();
+      if (normalizedCollectionId) {
+        progressMap[normalizedCollectionId] = normalizeLearnCollectionProgressRecord(record);
+      }
+      return progressMap;
+    }, {});
+  } catch (error) {
+    console.warn("[Learning Paths] Failed to read collection progress.", error);
+    return {};
+  }
+}
+
+function saveLearnCollectionProgressMapToStorage(progressMap = {}) {
+  try {
+    localStorage.setItem(LEARN_COLLECTION_PROGRESS_STORAGE_KEY, JSON.stringify(progressMap || {}));
+  } catch (error) {
+    console.warn("[Learning Paths] Failed to save collection progress.", error);
+  }
+}
+
+function saveLearnCollectionProgress(collectionId = "", updates = {}) {
+  const normalizedCollectionId = String(collectionId || "").trim();
+  if (!normalizedCollectionId) {
+    return normalizeLearnCollectionProgressRecord();
+  }
+
+  const progressMap = loadLearnCollectionProgressMapFromStorage();
+  const timestamp = new Date().toISOString();
+  const nextRecord = normalizeLearnCollectionProgressRecord({
+    ...(progressMap[normalizedCollectionId] || {}),
+    ...updates,
+    userId: appState.user?.id || progressMap[normalizedCollectionId]?.userId || "",
+  });
+  if (updates.started) {
+    nextRecord.started = true;
+    nextRecord.startedAt = String(updates.startedAt || nextRecord.startedAt || timestamp);
+  }
+  if (updates.completed) {
+    nextRecord.completed = true;
+    nextRecord.started = true;
+    nextRecord.completedAt = String(updates.completedAt || nextRecord.completedAt || timestamp);
+    nextRecord.startedAt = nextRecord.startedAt || timestamp;
+  }
+  if (updates.lastOpenedAt) {
+    nextRecord.lastOpenedAt = String(updates.lastOpenedAt || "").trim();
+  }
+  progressMap[normalizedCollectionId] = nextRecord;
+  saveLearnCollectionProgressMapToStorage(progressMap);
+  return nextRecord;
 }
 
 function getTutorialProgress(tutorialId = "") {
@@ -27551,6 +27683,47 @@ function resetAdminTutorialDraft(tutorialId = "") {
   saveAdminTutorialDraftsToStorage(drafts);
 }
 
+function getAdminTutorialCollectionDraft(collectionId = "") {
+  const drafts = loadAdminTutorialCollectionDraftsFromStorage();
+  return drafts[String(collectionId || "").trim()] || null;
+}
+
+function saveAdminTutorialCollectionDraft(collectionId = "", updates = {}) {
+  const normalizedCollectionId = String(collectionId || "").trim();
+  if (!normalizedCollectionId) {
+    return;
+  }
+
+  const drafts = loadAdminTutorialCollectionDraftsFromStorage();
+  drafts[normalizedCollectionId] = {
+    ...(drafts[normalizedCollectionId] || {}),
+    ...updates,
+    id: normalizedCollectionId,
+    updatedAt: new Date().toISOString(),
+    persistence: "local",
+  };
+  saveAdminTutorialCollectionDraftsToStorage(drafts);
+}
+
+function createAdminTutorialCollectionDraft() {
+  const timestamp = Date.now();
+  const collectionId = `custom-learning-path-${timestamp}`;
+  saveAdminTutorialCollectionDraft(collectionId, {
+    title: "New Learning Path",
+    subtitle: "Custom tutorial series",
+    description: "Describe the guided learning path and the skills it helps growers build.",
+    posterUrl: "",
+    tutorialIds: ["kan-system-overview", "creating-your-first-session"],
+    featured: false,
+    order: getLearnTutorialCollections().length + 1,
+    difficulty: "Beginner",
+    estimatedDuration: "4 min",
+    custom: true,
+  });
+  appState.adminTutorialCollectionEditingId = collectionId;
+  return collectionId;
+}
+
 function getLearnTutorialCategories() {
   const draftMap = loadAdminTutorialDraftsFromStorage();
   const categoryShells = LEARN_TUTORIAL_CATEGORIES.map((category) => ({
@@ -27661,6 +27834,97 @@ function getLearnTutorialById(tutorialId = "") {
     }
   }
   return null;
+}
+
+function getLearnTutorialCollections() {
+  const draftMap = loadAdminTutorialCollectionDraftsFromStorage();
+  const staticCollections = LEARN_TUTORIAL_COLLECTIONS.map((collection, index) => {
+    const draft = draftMap[collection.id] || {};
+    return {
+      ...collection,
+      ...draft,
+      id: collection.id,
+      title: String(draft.title ?? collection.title ?? "").trim(),
+      subtitle: String(draft.subtitle ?? collection.subtitle ?? "").trim(),
+      description: String(draft.description ?? collection.description ?? "").trim(),
+      posterUrl: String(draft.posterUrl ?? collection.posterUrl ?? "").trim(),
+      tutorialIds: normalizeLearnTutorialTextList(draft.tutorialIds || collection.tutorialIds),
+      featured: Boolean(draft.featured ?? collection.featured),
+      order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(collection.order)) ? Number(collection.order) : index + 1),
+      difficulty: String(draft.difficulty ?? collection.difficulty ?? "Beginner").trim() || "Beginner",
+      estimatedDuration: String(draft.estimatedDuration ?? collection.estimatedDuration ?? "").trim(),
+      custom: Boolean(draft.custom || collection.custom),
+      hasLocalDraft: Boolean(draftMap[collection.id]),
+    };
+  });
+  const staticIds = new Set(staticCollections.map((collection) => collection.id));
+  const customCollections = Object.values(draftMap)
+    .filter((collection) => collection?.id && !staticIds.has(collection.id))
+    .map((collection, index) => ({
+      id: String(collection.id || "").trim(),
+      title: String(collection.title || "Untitled Learning Path").trim(),
+      subtitle: String(collection.subtitle || "").trim(),
+      description: String(collection.description || "").trim(),
+      posterUrl: String(collection.posterUrl || "").trim(),
+      tutorialIds: normalizeLearnTutorialTextList(collection.tutorialIds),
+      featured: Boolean(collection.featured),
+      order: Number.isFinite(Number(collection.order)) ? Number(collection.order) : staticCollections.length + index + 1,
+      difficulty: String(collection.difficulty || "Beginner").trim() || "Beginner",
+      estimatedDuration: String(collection.estimatedDuration || "").trim(),
+      custom: true,
+      hasLocalDraft: true,
+    }));
+
+  return [...staticCollections, ...customCollections].sort((left, right) => (
+    ((Number(left.order) || 999) - (Number(right.order) || 999))
+    || String(left.title || "").localeCompare(String(right.title || ""))
+  ));
+}
+
+function getLearnTutorialCollectionById(collectionId = "") {
+  const normalizedCollectionId = String(collectionId || "").trim();
+  return getLearnTutorialCollections().find((collection) => collection.id === normalizedCollectionId) || null;
+}
+
+function getLearnCollectionTutorialEntries(collection = {}) {
+  return normalizeLearnTutorialTextList(collection.tutorialIds)
+    .map((tutorialId) => getLearnTutorialById(tutorialId))
+    .filter(Boolean);
+}
+
+function getLearnCollectionDurationLabel(collection = {}) {
+  const explicitDuration = String(collection.estimatedDuration || "").trim();
+  if (explicitDuration) {
+    return explicitDuration;
+  }
+
+  const totalMinutes = getLearnCollectionTutorialEntries(collection).reduce((sum, { tutorial }) => {
+    const minutes = Number.parseInt(getLearnTutorialDurationLabel(tutorial), 10);
+    return sum + (Number.isFinite(minutes) ? minutes : 0);
+  }, 0);
+  return totalMinutes > 0 ? `${totalMinutes} min` : "Duration TBD";
+}
+
+function getLearnCollectionProgress(collection = {}) {
+  const tutorialEntries = getLearnCollectionTutorialEntries(collection);
+  const progressRecord = loadLearnCollectionProgressMapFromStorage()[collection.id] || normalizeLearnCollectionProgressRecord();
+  const completedCount = tutorialEntries.filter(({ tutorial }) => isTutorialCompleted(tutorial.id)).length;
+  const startedCount = tutorialEntries.filter(({ tutorial }) => {
+    const progress = getTutorialProgress(tutorial.id);
+    return progress.viewed || progress.started || progress.completed;
+  }).length;
+  const totalCount = tutorialEntries.length;
+  const percent = totalCount ? Math.round((completedCount / totalCount) * 100) : 0;
+  const completed = totalCount > 0 && completedCount === totalCount;
+  return {
+    ...progressRecord,
+    started: progressRecord.started || startedCount > 0,
+    completed: progressRecord.completed || completed,
+    completedCount,
+    startedCount,
+    totalCount,
+    percent,
+  };
 }
 
 function shouldShowTutorialOnPublicLearn(tutorial = {}) {
@@ -27985,6 +28249,65 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
         ${featuredTutorials.map(({ tutorial, category }) => renderLearnTutorialCardMarkup(tutorial, category, { featured: true })).join("")}
       </div>
     </section>
+  `;
+}
+
+function renderLearningPathsSectionMarkup() {
+  const collections = getLearnTutorialCollections().filter((collection) => normalizeLearnTutorialTextList(collection.tutorialIds).length);
+  if (!collections.length) {
+    return "";
+  }
+
+  return `
+    <section class="card learn-learning-paths" aria-labelledby="learn-learning-paths-title">
+      <div class="learn-learning-paths-header">
+        <div>
+          <p class="eyebrow">Guided Paths</p>
+          <h2 id="learn-learning-paths-title">Learning Paths</h2>
+          <p class="muted">Follow curated tutorial sequences for onboarding, skill progression, and future training systems.</p>
+        </div>
+      </div>
+      <div class="learn-learning-path-grid">
+        ${collections.map((collection) => renderLearningPathCardMarkup(collection)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderLearningPathCardMarkup(collection = {}) {
+  const progress = getLearnCollectionProgress(collection);
+  const tutorialCountLabel = `${progress.totalCount} tutorial${progress.totalCount === 1 ? "" : "s"}`;
+  const progressLabel = progress.completed
+    ? "Completed"
+    : (progress.started ? `${progress.percent}% complete` : "Not started");
+  return `
+    <button
+      type="button"
+      class="learn-learning-path-card ${collection.featured ? "is-featured" : ""}"
+      data-learn-collection-open="${escapeHtml(collection.id)}"
+    >
+      <span class="learn-learning-path-visual ${collection.posterUrl ? "has-poster" : ""}"${collection.posterUrl ? ` style="--learn-path-poster:url('${escapeHtml(collection.posterUrl)}');"` : ""}>
+        <span class="learn-learning-path-sheen"></span>
+        <span class="learn-learning-path-play" aria-hidden="true">▶</span>
+        ${collection.featured ? '<span class="learn-learning-path-featured">Featured</span>' : ""}
+      </span>
+      <span class="learn-learning-path-copy">
+        <span class="learn-learning-path-kicker">${escapeHtml(collection.subtitle || "Learning Path")}</span>
+        <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
+        <span>${escapeHtml(collection.description || "A guided tutorial collection for Cannakan® Grow.")}</span>
+      </span>
+      <span class="learn-learning-path-meta">
+        <span>${escapeHtml(tutorialCountLabel)}</span>
+        <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
+        <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+      </span>
+      <span class="learn-learning-path-progress" aria-label="${escapeHtml(progressLabel)}">
+        <span class="learn-learning-path-progress-track" aria-hidden="true">
+          <span class="learn-learning-path-progress-fill" style="width:${escapeHtml(`${progress.percent}%`)};"></span>
+        </span>
+        <span>${escapeHtml(progressLabel)}</span>
+      </span>
+    </button>
   `;
 }
 
@@ -28535,6 +28858,67 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
   `;
 }
 
+function renderLearnCollectionModalContentMarkup(collection = {}) {
+  const tutorialEntries = getLearnCollectionTutorialEntries(collection);
+  const progress = getLearnCollectionProgress(collection);
+  const progressLabel = progress.completed
+    ? "Completed"
+    : (progress.started ? `${progress.percent}% complete` : "Not started");
+  const firstIncompleteEntry = tutorialEntries.find(({ tutorial }) => !isTutorialCompleted(tutorial.id)) || tutorialEntries[0] || null;
+
+  return `
+    <div class="learn-collection-modal-hero">
+      <div class="learn-collection-modal-visual ${collection.posterUrl ? "has-poster" : ""}"${collection.posterUrl ? ` style="--learn-path-poster:url('${escapeHtml(collection.posterUrl)}');"` : ""}>
+        <span class="learn-learning-path-sheen"></span>
+        <span class="learn-learning-path-play" aria-hidden="true">▶</span>
+      </div>
+      <div class="learn-collection-modal-copy">
+        <div class="learn-tutorial-modal-kicker-row">
+          <span class="learn-tutorial-category-badge">Learning Path</span>
+          <span class="learn-tutorial-progress-badge ${progress.completed ? "is-completed" : (progress.started ? "is-started" : "is-not-started")}">${escapeHtml(progressLabel)}</span>
+        </div>
+        <h2 id="learn-tutorial-modal-title">${escapeHtml(collection.title || "Learning Path")}</h2>
+        <div class="learn-tutorial-modal-meta" aria-label="Learning path details">
+          <span>${escapeHtml(`${progress.totalCount} tutorial${progress.totalCount === 1 ? "" : "s"}`)}</span>
+          <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
+          <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+        </div>
+        <p id="learn-tutorial-modal-description">${escapeHtml(collection.description || "A guided tutorial collection for Cannakan® Grow.")}</p>
+        <button
+          type="button"
+          class="button button-primary learn-collection-start-button"
+          data-learn-collection-start="${escapeHtml(collection.id)}"
+          data-learn-collection-first-tutorial="${escapeHtml(firstIncompleteEntry?.tutorial?.id || "")}"
+          ${firstIncompleteEntry ? "" : "disabled"}
+        >${progress.started ? "Continue Learning Path" : "Start Learning Path"}</button>
+      </div>
+    </div>
+    <section class="learn-tutorial-support-panel learn-collection-tutorial-list-panel">
+      <h3>Path Tutorials</h3>
+      <div class="learn-collection-tutorial-list">
+        ${tutorialEntries.map(({ tutorial, category }, index) => {
+          const status = getTutorialProgressStatus(tutorial.id);
+          const statusLabel = getTutorialProgressStatusLabel(tutorial.id);
+          return `
+            <button type="button" class="learn-collection-tutorial-row" data-learn-collection-tutorial="${escapeHtml(tutorial.id)}">
+              <span class="learn-collection-tutorial-number">${escapeHtml(String(index + 1))}</span>
+              <span class="learn-collection-tutorial-copy">
+                <strong>${escapeHtml(tutorial.title)}</strong>
+                <small>${escapeHtml(`${category.title} • ${getLearnTutorialDurationLabel(tutorial)}`)}</small>
+              </span>
+              <span class="learn-tutorial-progress-badge is-${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+    <section class="learn-tutorial-support-panel">
+      <h3>Future-Ready Path Notes</h3>
+      <p class="learn-tutorial-section-copy">This learning path is structured for future live replay playlists, advanced grow series, CSTP education, and certification or training systems.</p>
+    </section>
+  `;
+}
+
 function renderLearnTutorialCategoryMarkup(category) {
   const visibleTutorials = category.tutorials.filter((tutorial) => shouldShowTutorialOnPublicLearn(tutorial));
   if (!visibleTutorials.length) {
@@ -28707,6 +29091,7 @@ function renderLearnPage(targetCategoryId = "") {
       </section>
       ${renderLearnGettingStartedChecklistMarkup()}
       ${renderFeaturedLearnTutorialsMarkup(categories)}
+      ${renderLearningPathsSectionMarkup()}
       ${renderContinueWatchingSlotMarkup(categories)}
       ${renderRecommendedTutorialsSlotMarkup(categories)}
       ${renderLearnTutorialSearchControlsMarkup()}
@@ -28827,6 +29212,20 @@ function refreshLearnRecommendedTutorialsSection() {
   bindLearnRecommendedTutorialInteractions(slot);
 }
 
+function refreshLearningPathsSection() {
+  const section = document.querySelector(".learn-learning-paths");
+  if (!(section instanceof HTMLElement)) {
+    return;
+  }
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = renderLearningPathsSectionMarkup().trim();
+  const nextSection = wrapper.firstElementChild;
+  if (nextSection instanceof HTMLElement) {
+    section.replaceWith(nextSection);
+    bindLearningPathInteractions(nextSection);
+  }
+}
+
 function refreshTutorialProgressUi(tutorialId = "") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
@@ -28869,7 +29268,17 @@ function refreshTutorialProgressUi(tutorialId = "") {
   if (progressStatus === "completed") {
     removeCompletedTutorialPrompts(normalizedTutorialId);
     refreshLearnGettingStartedChecklistUi(document);
+    getLearnTutorialCollections().forEach((collection) => {
+      if (!normalizeLearnTutorialTextList(collection.tutorialIds).includes(normalizedTutorialId)) {
+        return;
+      }
+      const collectionProgress = getLearnCollectionProgress(collection);
+      if (collectionProgress.completed) {
+        saveLearnCollectionProgress(collection.id, { completed: true });
+      }
+    });
   }
+  refreshLearningPathsSection();
   refreshLearnContinueWatchingSection();
   refreshLearnRecommendedTutorialsSection();
   applyLearnTutorialFilters(document);
@@ -28936,6 +29345,16 @@ function bindLearnRecommendedTutorialInteractions(scope = document) {
       });
       openLearnTutorialModal(tutorialId, { source: "Recommended For You" });
     });
+  });
+}
+
+function bindLearningPathInteractions(scope = document) {
+  scope.querySelectorAll("[data-learn-collection-open]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnCollectionBound === "true") {
+      return;
+    }
+    button.dataset.learnCollectionBound = "true";
+    button.addEventListener("click", () => openLearnCollectionModal(button.dataset.learnCollectionOpen || ""));
   });
 }
 
@@ -29228,9 +29647,50 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
   }, 0);
 }
 
+function openLearnCollectionModal(collectionId = "") {
+  const collection = getLearnTutorialCollectionById(collectionId);
+  if (!collection) {
+    return;
+  }
+
+  saveLearnCollectionProgress(collection.id, { lastOpenedAt: new Date().toISOString() });
+  const overlay = ensureLearnTutorialModal();
+  overlay.dataset.activeTutorialId = "";
+  overlay.dataset.activeTutorialCategory = "Learning Path";
+  overlay.dataset.activeTutorialSource = "Learning Path";
+  const modal = overlay.querySelector(".learn-tutorial-modal");
+  const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
+  if (content) {
+    content.innerHTML = renderLearnCollectionModalContentMarkup(collection);
+    content.querySelectorAll("[data-learn-collection-tutorial]").forEach((button) => {
+      button.addEventListener("click", () => {
+        saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
+        openLearnTutorialModal(button.dataset.learnCollectionTutorial || "", { source: `Learning Path: ${collection.title}` });
+      });
+    });
+    content.querySelector("[data-learn-collection-start]")?.addEventListener("click", (event) => {
+      const button = event.currentTarget;
+      if (!(button instanceof HTMLElement)) {
+        return;
+      }
+      saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
+      openLearnTutorialModal(button.dataset.learnCollectionFirstTutorial || "", { source: `Learning Path: ${collection.title}` });
+    });
+    content.scrollTop = 0;
+  }
+  overlay.dataset.closing = "false";
+  overlay.classList.remove("closing");
+  modal?.classList.remove("closing");
+  document.body.classList.add("modal-open");
+  window.setTimeout(() => {
+    overlay.querySelector("[data-learn-tutorial-close]")?.focus();
+  }, 0);
+}
+
 function bindLearnPageInteractions(scope = document) {
   bindLearnGettingStartedChecklist(scope);
   bindLearnTutorialFilters(scope);
+  bindLearningPathInteractions(scope);
   bindLearnContinueWatchingInteractions(scope);
   bindLearnRecommendedTutorialInteractions(scope);
 
@@ -43837,6 +44297,153 @@ function renderAdminTutorialFeedbackPanelMarkup() {
   `;
 }
 
+function getAdminTutorialCollectionsForManagement() {
+  return getLearnTutorialCollections().map((collection) => ({
+    ...collection,
+    progress: getLearnCollectionProgress(collection),
+    hasLocalDraft: Boolean(getAdminTutorialCollectionDraft(collection.id)),
+  }));
+}
+
+function getAdminTutorialCollectionForEditing() {
+  const collections = getAdminTutorialCollectionsForManagement();
+  const selectedId = String(appState.adminTutorialCollectionEditingId || "").trim();
+  return collections.find((collection) => collection.id === selectedId) || collections[0] || null;
+}
+
+function renderAdminTutorialCollectionCardMarkup(collection = {}) {
+  const progress = collection.progress || getLearnCollectionProgress(collection);
+  return `
+    <article class="admin-tutorial-collection-card${appState.adminTutorialCollectionEditingId === collection.id ? " is-selected" : ""}">
+      <div class="admin-tutorial-thumb">
+        <span aria-hidden="true">▶</span>
+      </div>
+      <div class="admin-tutorial-card-copy">
+        <div class="admin-tutorial-card-head">
+          <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
+          ${collection.featured ? '<span class="admin-tutorial-status is-published">Featured</span>' : ""}
+        </div>
+        <p>${escapeHtml(collection.subtitle || "Learning path")}</p>
+        <div class="admin-tutorial-card-meta">
+          <span>${escapeHtml(`${progress.totalCount} tutorials`)}</span>
+          <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
+          <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+          ${collection.hasLocalDraft ? "<span>Local draft</span>" : ""}
+        </div>
+      </div>
+      <div class="admin-tutorial-card-actions">
+        <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-collection-edit="${escapeHtml(collection.id)}">Edit Path</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminTutorialCollectionTutorialOptions(selectedTutorialIds = []) {
+  const selectedSet = new Set(normalizeLearnTutorialTextList(selectedTutorialIds));
+  return getAdminTutorialsForManagement().map((tutorial) => `
+    <label class="admin-tutorial-collection-tutorial-option">
+      <input name="tutorialIds" type="checkbox" value="${escapeHtml(tutorial.id)}" ${selectedSet.has(tutorial.id) ? "checked" : ""}>
+      <span>
+        <strong>${escapeHtml(tutorial.title || "Untitled Tutorial")}</strong>
+        <small>${escapeHtml(tutorial.categoryTitle || "Tutorial")}</small>
+      </span>
+    </label>
+  `).join("");
+}
+
+function renderAdminTutorialCollectionEditorMarkup(collection = null) {
+  if (!collection) {
+    return `
+      <section class="meta-card admin-tutorial-editor admin-tutorial-collection-editor">
+        <p class="muted">Create a learning path to group tutorials into a guided sequence.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="meta-card admin-tutorial-editor admin-tutorial-collection-editor">
+      <div class="admin-tutorial-editor-head">
+        <div>
+          <p class="eyebrow">Edit Learning Path</p>
+          <h4>${escapeHtml(collection.title || "Untitled Learning Path")}</h4>
+          <p class="muted">Local collection draft only. Later this can map to playlist, replay, CSTP, or certification records.</p>
+        </div>
+      </div>
+      <form class="admin-source-form admin-tutorial-collection-form" data-admin-collection-form="${escapeHtml(collection.id)}">
+        <div class="admin-source-form-grid">
+          <label>
+            <span>Title</span>
+            <input name="title" value="${escapeHtml(collection.title || "")}" required>
+          </label>
+          <label>
+            <span>Subtitle</span>
+            <input name="subtitle" value="${escapeHtml(collection.subtitle || "")}" placeholder="First grow workflow">
+          </label>
+          <label>
+            <span>Order</span>
+            <input name="order" type="number" min="1" step="1" value="${escapeHtml(collection.order || 1)}">
+          </label>
+          <label>
+            <span>Difficulty</span>
+            <select name="difficulty">${renderAdminTutorialDifficultyOptions(collection.difficulty || "Beginner")}</select>
+          </label>
+          <label>
+            <span>Estimated Duration</span>
+            <input name="estimatedDuration" value="${escapeHtml(collection.estimatedDuration || getLearnCollectionDurationLabel(collection))}" placeholder="9 min">
+          </label>
+          <label class="admin-announcement-toggle-row">
+            <input name="featured" type="checkbox" ${collection.featured ? "checked" : ""}>
+            <span>Feature this learning path</span>
+          </label>
+          <label class="admin-source-form-full">
+            <span>Description</span>
+            <textarea name="description" rows="3">${escapeHtml(collection.description || "")}</textarea>
+          </label>
+          <label class="admin-source-form-full">
+            <span>Thumbnail / Poster URL</span>
+            <input name="posterUrl" value="${escapeHtml(collection.posterUrl || "")}" placeholder="/assets/learning-path-poster.png">
+          </label>
+          <div class="admin-source-form-full admin-tutorial-collection-tutorials">
+            <span>Assigned Tutorials</span>
+            <div class="admin-tutorial-collection-tutorial-grid">
+              ${renderAdminTutorialCollectionTutorialOptions(collection.tutorialIds)}
+            </div>
+          </div>
+        </div>
+        <div class="admin-source-form-actions admin-tutorial-editor-actions">
+          <button type="submit" class="button button-primary">Save Learning Path</button>
+          <button type="button" class="button button-secondary" data-admin-collection-preview="${escapeHtml(collection.id)}">Preview Path</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderAdminTutorialCollectionsPanelMarkup() {
+  const collections = getAdminTutorialCollectionsForManagement();
+  if (!appState.adminTutorialCollectionEditingId && collections[0]) {
+    appState.adminTutorialCollectionEditingId = collections[0].id;
+  }
+  const editingCollection = getAdminTutorialCollectionForEditing();
+  return `
+    <section class="admin-tutorial-collections-panel">
+      <div class="admin-sources-list-head">
+        <div>
+          <strong>Learning Paths</strong>
+          <p class="muted">Create playlists for onboarding, skill progression, CSTP education, and future training.</p>
+        </div>
+        <button type="button" class="button button-secondary" data-admin-collection-create="true">New Path</button>
+      </div>
+      <div class="admin-tutorial-collections-layout">
+        <div class="admin-tutorial-list">
+          ${collections.map(renderAdminTutorialCollectionCardMarkup).join("")}
+        </div>
+        ${renderAdminTutorialCollectionEditorMarkup(editingCollection)}
+      </div>
+    </section>
+  `;
+}
+
 function renderAdminTutorialManagementBodyMarkup() {
   const tutorials = getAdminTutorialsForManagement();
   if (!appState.adminTutorialEditingId && tutorials[0]) {
@@ -43857,6 +44464,7 @@ function renderAdminTutorialManagementBodyMarkup() {
           renderAdminOverviewCardMarkup({ label: "Video Linked", value: linkedVideoCount.toLocaleString(), subtext: "future media fields populated" }),
         ].join("")}
       </div>
+      ${renderAdminTutorialCollectionsPanelMarkup()}
       <div class="admin-tutorial-layout">
         <div class="admin-tutorial-list-shell">
           <div class="admin-sources-list-head">
@@ -43944,7 +44552,65 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
   return tutorialId;
 }
 
+function saveAdminTutorialCollectionFormDraft(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return "";
+  }
+
+  const collectionId = String(form.dataset.adminCollectionForm || "").trim();
+  const formData = new FormData(form);
+  const tutorialIds = formData.getAll("tutorialIds").map((value) => String(value || "").trim()).filter(Boolean);
+  saveAdminTutorialCollectionDraft(collectionId, {
+    title: String(formData.get("title") || "").trim(),
+    subtitle: String(formData.get("subtitle") || "").trim(),
+    description: String(formData.get("description") || "").trim(),
+    posterUrl: String(formData.get("posterUrl") || "").trim(),
+    tutorialIds,
+    featured: formData.get("featured") === "on",
+    order: Math.max(1, Number(formData.get("order")) || 1),
+    difficulty: String(formData.get("difficulty") || "Beginner").trim(),
+    estimatedDuration: String(formData.get("estimatedDuration") || "").trim(),
+    custom: collectionId.startsWith("custom-learning-path-"),
+  });
+  return collectionId;
+}
+
 function bindAdminTutorialManagementSection(scope = app) {
+  scope.querySelector("[data-admin-collection-create='true']")?.addEventListener("click", () => {
+    createAdminTutorialCollectionDraft();
+    refreshAdminTutorialManagementSection();
+  });
+
+  scope.querySelectorAll("[data-admin-collection-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.adminTutorialCollectionEditingId = button.dataset.adminCollectionEdit || "";
+      refreshAdminTutorialManagementSection();
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-collection-preview]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const form = button.closest(".admin-tutorial-collection-editor")?.querySelector("[data-admin-collection-form]");
+      if (form instanceof HTMLFormElement) {
+        const collectionId = saveAdminTutorialCollectionFormDraft(form);
+        appState.adminTutorialCollectionEditingId = collectionId;
+        refreshAdminTutorialManagementSection();
+        openLearnCollectionModal(collectionId);
+        return;
+      }
+      openLearnCollectionModal(button.dataset.adminCollectionPreview || "");
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-collection-form]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const collectionId = saveAdminTutorialCollectionFormDraft(form);
+      appState.adminTutorialCollectionEditingId = collectionId;
+      refreshAdminTutorialManagementSection();
+    });
+  });
+
   scope.querySelectorAll("[data-admin-tutorial-edit]").forEach((button) => {
     button.addEventListener("click", () => {
       appState.adminTutorialEditingId = button.dataset.adminTutorialEdit || "";
