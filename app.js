@@ -3062,6 +3062,15 @@ function navigateToHashRoute(nextHash = "#home") {
   safeRender();
 }
 
+function navigateToLearnTutorialDetailRoute(tutorialId = "") {
+  const route = getLearnTutorialDetailRoute(tutorialId);
+  closeAccountMenu();
+  closeMobileNavigation();
+  window.history.pushState(null, "", route);
+  appState.currentRouteHash = "#learn";
+  safeRender();
+}
+
 function getCommunityGrowModerationRoute() {
   return "#community-grow-moderation";
 }
@@ -6713,6 +6722,9 @@ function getLocationRouteHash() {
 
 function getCurrentAppPathRoute() {
   const pathRoute = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  if (pathRoute === "learn/tutorial" || pathRoute.startsWith("learn/tutorial/")) {
+    return pathRoute;
+  }
   return ({
     "": "",
     learn: "learn",
@@ -25784,14 +25796,21 @@ function buildLearnPageMetadata(options = {}) {
       title: `${tutorial.title || "Tutorial"} | Cannakan® Grow Learn`,
       description: tutorial.description || LEARN_PAGE_METADATA.description,
       imagePath: tutorial.posterUrl || tutorial.thumbnailUrl || LEARN_PAGE_METADATA.imagePath,
-      path: `/learn/tutorials/${encodeURIComponent(tutorial.id || "")}`,
+      path: getLearnTutorialDetailRoute(tutorial.id || ""),
     };
   }
   return { ...LEARN_PAGE_METADATA };
 }
 
 function getRoutePageMetadata(rawRoute = "") {
-  const [route] = String(rawRoute || "home").replace(/^#/, "").split("/");
+  const [route, id, subroute] = String(rawRoute || "home").replace(/^#/, "").split("/");
+  if (route === "learn" && id === "tutorial" && subroute) {
+    const tutorialEntry = getLearnTutorialById(decodeURIComponent(subroute));
+    if (tutorialEntry && canCurrentUserViewLearnItem(tutorialEntry.tutorial)) {
+      return buildLearnPageMetadata({ tutorial: tutorialEntry.tutorial });
+    }
+    return buildLearnPageMetadata();
+  }
   if (route === "learn") {
     return buildLearnPageMetadata();
   }
@@ -25961,6 +25980,17 @@ function render() {
     ensureBackToTopButton();
     requestBackToTopButtonVisibilitySync();
     void refreshSiteVisitorPresence("loading");
+    return;
+  }
+
+  if (route === "learn" && id === "tutorial") {
+    renderLearnTutorialDetailPage(subroute || "");
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "learn",
+      pageKey: subroute ? `learn-tutorial-${subroute}` : "learn-tutorial",
+      pageLabel: "Learn Tutorial",
+      pagePath: pathRoute ? `/${rawRoute}` : (rawRoute ? `#${rawRoute}` : "#learn/tutorial"),
+    }));
     return;
   }
 
@@ -28092,6 +28122,11 @@ function getLearnTutorialById(tutorialId = "") {
   return null;
 }
 
+function getLearnTutorialDetailRoute(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  return normalizedTutorialId ? `/learn/tutorial/${encodeURIComponent(normalizedTutorialId)}` : "/learn";
+}
+
 function getLearnTutorialCollections() {
   const draftMap = loadAdminTutorialCollectionDraftsFromStorage();
   const staticCollections = LEARN_TUTORIAL_COLLECTIONS.map((collection, index) => {
@@ -28889,11 +28924,12 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
     category.title,
     category.eyebrow,
   ].join(" ");
+  const detailRoute = getLearnTutorialDetailRoute(tutorial.id);
   return `
-    <button
-      type="button"
-      class="learn-tutorial-card${isFeatured ? " learn-tutorial-card--featured" : ""}"
+    <article
+      class="learn-tutorial-card-shell"
       data-learn-tutorial-open="${escapeHtml(tutorial.id)}"
+      data-learn-tutorial-detail-href="${escapeHtml(detailRoute)}"
       data-learn-featured-card="${isFeatured ? "true" : "false"}"
       data-learn-tutorial-title="${escapeHtml(tutorial.title)}"
       data-learn-tutorial-description="${escapeHtml(tutorial.description)}"
@@ -28907,21 +28943,27 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
       data-video-mp4-url="${escapeHtml(getTutorialVideoConfig(tutorial).mp4Url)}"
       data-video-cloudflare-stream-id="${escapeHtml(getTutorialVideoConfig(tutorial).cloudflareStreamId)}"
     >
-      ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, { className: "learn-tutorial-thumbnail" })}
-      <span class="learn-tutorial-card-body">
-        ${isFeatured ? `<span class="learn-tutorial-featured-label">${escapeHtml(featuredLabel || "Featured")}</span>` : ""}
-        <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
-        <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
-        <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
-        <span class="learn-tutorial-card-badges">
-          <span class="learn-tutorial-coming-soon is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
-          <span
-            class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
-            data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
-          >${escapeHtml(progressLabel)}</span>
+      <button
+        type="button"
+        class="learn-tutorial-card${isFeatured ? " learn-tutorial-card--featured" : ""}"
+      >
+        ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, { className: "learn-tutorial-thumbnail" })}
+        <span class="learn-tutorial-card-body">
+          ${isFeatured ? `<span class="learn-tutorial-featured-label">${escapeHtml(featuredLabel || "Featured")}</span>` : ""}
+          <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
+          <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
+          <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
+          <span class="learn-tutorial-card-badges">
+            <span class="learn-tutorial-coming-soon is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
+            <span
+              class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
+              data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
+            >${escapeHtml(progressLabel)}</span>
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+      <a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>
+    </article>
   `;
 }
 
@@ -29133,6 +29175,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
           ${progressStatus === "completed" ? "disabled" : ""}
         >${progressStatus === "completed" ? "Completed" : "Mark as Complete"}</button>
       </div>
+      <a class="learn-tutorial-detail-modal-link" href="${escapeHtml(getLearnTutorialDetailRoute(tutorial.id))}">Open shareable tutorial page</a>
     </div>
     <div class="learn-tutorial-support-grid">
       <section class="learn-tutorial-support-panel">
@@ -29157,6 +29200,153 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
       </section>
     </div>
   `;
+}
+
+function getLearnTutorialDetailAccessState(tutorial = null) {
+  if (!tutorial) {
+    return "not-found";
+  }
+  const isAdmin = hasResolvedAdminAccess();
+  const status = getTutorialVisibilityStatus(tutorial);
+  const audience = getLearnItemAudience(tutorial);
+  if (status === "draft" && !isAdmin) {
+    return "hidden";
+  }
+  if (audience === "admin" && !isAdmin) {
+    return "hidden";
+  }
+  if (audience === "signed_in" && !appState.user?.id && !isAdmin) {
+    return "locked";
+  }
+  return canCurrentUserViewLearnItem(tutorial) ? "viewable" : "hidden";
+}
+
+function renderLearnTutorialDetailRelatedMarkup(category = {}, tutorial = {}) {
+  const relatedTutorials = getRelatedLearnTutorials(category, tutorial).filter((relatedTutorial) => (
+    canCurrentUserViewLearnItem(relatedTutorial)
+  ));
+  if (!relatedTutorials.length) {
+    return `<p class="learn-tutorial-section-copy">More tutorials will appear here as the Learn library expands.</p>`;
+  }
+
+  return relatedTutorials.map((relatedTutorial) => `
+    <a class="learn-related-tutorial" href="${escapeHtml(getLearnTutorialDetailRoute(relatedTutorial.id))}">
+      <span>${escapeHtml(relatedTutorial.title)}</span>
+      <small>${escapeHtml(relatedTutorial.duration || "2 min • Beginner")}</small>
+    </a>
+  `).join("");
+}
+
+function renderLearnTutorialDetailUnavailableMarkup({ title = "Tutorial unavailable", message = "This tutorial is not publicly available.", showSignIn = false } = {}) {
+  return `
+    <section class="learn-page learn-tutorial-detail-page">
+      <section class="card learn-tutorial-detail-locked">
+        <div class="learn-tutorial-detail-locked-copy">
+          <p class="eyebrow">Learn</p>
+          <h1>${escapeHtml(title)}</h1>
+          <p class="muted">${escapeHtml(message)}</p>
+        </div>
+        <div class="learn-tutorial-detail-actions">
+          <a class="button button-secondary" href="#learn">Back to Learn</a>
+          ${showSignIn ? `<button type="button" class="button button-primary" data-learn-detail-sign-in="true">Sign in to view</button>` : ""}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderLearnTutorialDetailPage(tutorialId = "") {
+  const normalizedTutorialId = decodeURIComponent(String(tutorialId || "").trim());
+  const tutorialEntry = getLearnTutorialById(normalizedTutorialId);
+  const accessState = getLearnTutorialDetailAccessState(tutorialEntry?.tutorial || null);
+
+  if (!tutorialEntry || accessState === "not-found" || accessState === "hidden") {
+    app.innerHTML = renderLearnTutorialDetailUnavailableMarkup({
+      title: "Tutorial not available",
+      message: "This tutorial is not available publicly yet. Visit Learn to browse current guides.",
+    });
+    bindLearnTutorialDetailPage(app);
+    return;
+  }
+
+  if (accessState === "locked") {
+    app.innerHTML = renderLearnTutorialDetailUnavailableMarkup({
+      title: "Sign in to view this tutorial",
+      message: "This guide is available for Cannakan Grow members. Public tutorials remain available in Learn.",
+      showSignIn: true,
+    });
+    bindLearnTutorialDetailPage(app);
+    return;
+  }
+
+  const { category, tutorial } = tutorialEntry;
+  const durationLabel = getLearnTutorialDurationLabel(tutorial);
+  const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
+  const learningPoints = getLearnTutorialLearningPoints(tutorial, category);
+  markTutorialViewed(tutorial.id);
+  trackTutorialAnalyticsEvent("tutorial_modal_opened", {
+    tutorialId: tutorial.id,
+    category: category.title || category.id || "",
+    categoryId: category.id || "",
+    source: "Tutorial detail page",
+  });
+
+  app.innerHTML = `
+    <section class="learn-page learn-tutorial-detail-page">
+      <section class="card learn-tutorial-detail-hero">
+        <div class="learn-tutorial-detail-copy">
+          <div class="learn-tutorial-modal-kicker-row">
+            <span class="learn-tutorial-category-badge">${escapeHtml(category.title)}</span>
+            <span class="learn-tutorial-coming-soon is-${escapeHtml(getTutorialVisibilityStatus(tutorial))}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
+          </div>
+          <h1>${escapeHtml(tutorial.title)}</h1>
+          <div class="learn-tutorial-modal-meta" aria-label="Tutorial details">
+            <span>${escapeHtml(durationLabel)}</span>
+            <span>${escapeHtml(difficultyLabel)}</span>
+          </div>
+          <p>${escapeHtml(tutorial.description || "A Cannakan Grow tutorial guide.")}</p>
+          <div class="learn-tutorial-detail-actions">
+            <a class="button button-secondary" href="#learn">Back to Learn</a>
+            <button type="button" class="button button-primary" data-learn-detail-open-modal="${escapeHtml(tutorial.id)}">Open quick view</button>
+          </div>
+        </div>
+      </section>
+      <section class="card learn-tutorial-detail-player-card">
+        <div class="learn-tutorial-player-shell">
+          ${renderTutorialVideoPlayerMarkup(tutorial, category)}
+        </div>
+      </section>
+      <div class="learn-tutorial-support-grid learn-tutorial-detail-support-grid">
+        <section class="learn-tutorial-support-panel">
+          <h3>What You’ll Learn</h3>
+          <ul>
+            ${learningPoints.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+          </ul>
+        </section>
+        ${renderLearnTutorialQuickStepsMarkup(tutorial)}
+        ${renderLearnTutorialTipsMarkup(tutorial)}
+        <section class="learn-tutorial-support-panel learn-tutorial-support-panel--related">
+          <h3>Related Tutorials</h3>
+          <div class="learn-related-tutorials">
+            ${renderLearnTutorialDetailRelatedMarkup(category, tutorial)}
+          </div>
+        </section>
+      </div>
+    </section>
+  `;
+  bindLearnTutorialDetailPage(app, tutorial);
+}
+
+function bindLearnTutorialDetailPage(scope = document, tutorial = null) {
+  scope.querySelector("[data-learn-detail-sign-in='true']")?.addEventListener("click", () => {
+    openAuthModal({ dismissHash: "#learn", initialMode: "login" });
+  });
+  scope.querySelector("[data-learn-detail-open-modal]")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    if (button instanceof HTMLElement) {
+      openLearnTutorialModal(button.dataset.learnDetailOpenModal || tutorial?.id || "", { source: "Tutorial detail page" });
+    }
+  });
 }
 
 function renderLearnAvailabilityPreviewMarkup(item = {}, options = {}) {
@@ -30106,7 +30296,10 @@ function bindLearnPageInteractions(scope = document) {
     }
 
     button.dataset.learnTutorialBound = "true";
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a")) {
+        return;
+      }
       const tutorialId = button.dataset.learnTutorialOpen || "";
       trackTutorialAnalyticsEvent("tutorial_card_clicked", {
         tutorialId,
@@ -56567,6 +56760,19 @@ document.addEventListener("click", (event) => {
     event.stopPropagation();
     openLearnTutorialFromHelper(learnEmptyTutorialButton.dataset.learnEmptyTutorial || "", "Empty state");
     return;
+  }
+
+  const learnTutorialPathLink = event.target instanceof Element
+    ? event.target.closest('a[href^="/learn/tutorial/"]')
+    : null;
+  if (learnTutorialPathLink instanceof HTMLAnchorElement) {
+    const tutorialId = decodeURIComponent(String(learnTutorialPathLink.getAttribute("href") || "").replace(/^\/learn\/tutorial\/?/, ""));
+    if (tutorialId) {
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToLearnTutorialDetailRoute(tutorialId);
+      return;
+    }
   }
 
   const internalLink = event.target instanceof Element
