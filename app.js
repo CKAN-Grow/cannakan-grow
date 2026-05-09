@@ -27342,6 +27342,10 @@ function getLearnTutorialById(tutorialId = "") {
   return null;
 }
 
+function shouldShowTutorialOnPublicLearn(tutorial = {}) {
+  return !tutorial.hiddenOnLearn && normalizeTutorialPublishStatus(tutorial.status) !== "draft";
+}
+
 function getContextualOnboardingPrompt(promptId = "") {
   return CONTEXTUAL_ONBOARDING_PROMPTS[String(promptId || "").trim()] || null;
 }
@@ -27445,12 +27449,13 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
     return relatedTutorialIds
       .map((relatedTutorialId) => tutorialEntries.find((entry) => entry.tutorial.id === relatedTutorialId)?.tutorial)
       .filter((relatedTutorial) => relatedTutorial && relatedTutorial.id !== tutorial.id)
+      .filter((relatedTutorial) => shouldShowTutorialOnPublicLearn(relatedTutorial) || normalizeTutorialPublishStatus(tutorial.status) === "draft")
       .slice(0, 3);
   }
 
   return Array.isArray(category.tutorials)
     ? category.tutorials
-      .filter((item) => item.id !== tutorial.id && (!item.hiddenOnLearn || tutorial.hiddenOnLearn))
+      .filter((item) => item.id !== tutorial.id && (shouldShowTutorialOnPublicLearn(item) || normalizeTutorialPublishStatus(tutorial.status) === "draft"))
       .slice(0, 3)
     : [];
 }
@@ -27487,7 +27492,6 @@ function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category =
   const theme = getLearnTutorialVisualTheme(tutorial, category);
   const thumbnailUrl = getLearnTutorialThumbnailUrl(tutorial);
   const label = options.label || getTutorialStatusLabel(tutorial.status);
-  const title = String(tutorial.title || "Tutorial").trim();
   const className = [
     "learn-tutorial-visual",
     `learn-tutorial-visual--${theme.theme}`,
@@ -27507,7 +27511,7 @@ function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category =
       <span class="learn-tutorial-visual-line-art learn-tutorial-visual-line-art--${escapeHtml(theme.icon)}"></span>
       <span class="learn-tutorial-visual-category">${escapeHtml(theme.label)}</span>
       <span class="learn-tutorial-visual-status">${escapeHtml(label)}</span>
-      <span class="learn-tutorial-visual-play" aria-label="${escapeHtml(`Play ${title}`)}">▶</span>
+      <span class="learn-tutorial-visual-play" aria-hidden="true">▶</span>
     </${tagName}>
   `;
 }
@@ -27785,7 +27789,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
     <div class="learn-tutorial-modal-copy">
       <div class="learn-tutorial-modal-kicker-row">
         <span class="learn-tutorial-category-badge">${escapeHtml(category.title)}</span>
-        <span class="learn-tutorial-coming-soon">Coming Soon</span>
+        <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
         <span
           class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
           data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
@@ -27837,7 +27841,10 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
 }
 
 function renderLearnTutorialCategoryMarkup(category) {
-  const visibleTutorials = category.tutorials.filter((tutorial) => !tutorial.hiddenOnLearn);
+  const visibleTutorials = category.tutorials.filter((tutorial) => shouldShowTutorialOnPublicLearn(tutorial));
+  if (!visibleTutorials.length) {
+    return "";
+  }
   return `
     <section class="learn-category" id="learn-${escapeHtml(category.id)}" data-learn-category="${escapeHtml(category.id)}">
       <div class="section-heading app-section-header learn-category-header">
@@ -42722,7 +42729,10 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
           ${tutorial.hasLocalDraft ? "<span>Local draft</span>" : ""}
         </div>
       </div>
-      <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-tutorial-edit="${escapeHtml(tutorial.id)}">Edit</button>
+      <div class="admin-tutorial-card-actions">
+        <button type="button" class="button button-secondary admin-tutorial-preview-button" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview</button>
+        <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-tutorial-edit="${escapeHtml(tutorial.id)}">Edit</button>
+      </div>
     </article>
   `;
 }
@@ -42747,7 +42757,11 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
         </div>
         <span class="admin-tutorial-status is-${escapeHtml(normalizeTutorialPublishStatus(tutorial.status))}">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
       </div>
-      <form class="admin-source-form admin-tutorial-form" data-admin-tutorial-form="${escapeHtml(tutorial.id)}">
+      <form
+        class="admin-source-form admin-tutorial-form"
+        data-admin-tutorial-form="${escapeHtml(tutorial.id)}"
+        data-admin-tutorial-current-status="${escapeHtml(normalizeTutorialPublishStatus(tutorial.status))}"
+      >
         <div class="admin-source-form-grid">
           <label>
             <span>Title</span>
@@ -42819,11 +42833,13 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           </label>
         </div>
         <div class="admin-source-form-actions admin-tutorial-editor-actions">
-          <button type="submit" class="button button-primary">Save Local Draft</button>
-          <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview Player</button>
+          <button type="submit" class="button button-secondary" data-admin-tutorial-save-status="draft">Save Draft</button>
+          <button type="submit" class="button button-secondary" data-admin-tutorial-save-status="coming-soon">Mark Coming Soon</button>
+          <button type="submit" class="button button-primary" data-admin-tutorial-save-status="published">Publish</button>
+          <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}" data-admin-tutorial-preview-form="true">Preview</button>
           <button type="button" class="button button-secondary" data-admin-tutorial-reset="${escapeHtml(tutorial.id)}">Reset Local Draft</button>
         </div>
-        <p class="muted admin-source-form-helper">Prepared fields: video provider, Stream ID, hosted MP4, embed URL, poster image, captions, transcript, ordering, featured state, and onboarding priority.</p>
+        <p class="muted admin-source-form-helper">Preview uses the shared Learn modal and keeps unpublished tutorials out of the public Learn page until they are marked Coming Soon or Published.</p>
       </form>
     </section>
   `;
@@ -42890,6 +42906,47 @@ function refreshAdminTutorialManagementSection() {
   normalizeSectionHeaderLayouts(content);
 }
 
+function saveAdminTutorialFormDraft(form, statusOverride = "") {
+  if (!(form instanceof HTMLFormElement)) {
+    return "";
+  }
+
+  const tutorialId = form.dataset.adminTutorialForm || "";
+  const formData = new FormData(form);
+  const videoProvider = normalizeTutorialVideoProvider(formData.get("videoProvider"));
+  saveAdminTutorialDraft(tutorialId, {
+    title: String(formData.get("title") || "").trim(),
+    description: String(formData.get("description") || "").trim(),
+    categoryId: normalizeTutorialCategoryId(formData.get("categoryId")),
+    duration: String(formData.get("duration") || "").trim(),
+    difficulty: String(formData.get("difficulty") || "Beginner").trim(),
+    status: normalizeTutorialPublishStatus(statusOverride || formData.get("status")),
+    thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
+    order: Math.max(1, Number(formData.get("order")) || 1),
+    featured: formData.get("featured") === "on",
+    onboardingPriority: formData.get("onboardingPriority") === "on",
+    videoProvider,
+    cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
+    mp4Url: String(formData.get("mp4Url") || "").trim(),
+    embedUrl: String(formData.get("embedUrl") || "").trim(),
+    posterUrl: String(formData.get("posterUrl") || "").trim(),
+    transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
+    captionsUrl: String(formData.get("captionsUrl") || "").trim(),
+    video: {
+      videoProvider,
+      provider: videoProvider,
+      mp4Url: String(formData.get("mp4Url") || "").trim(),
+      cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
+      embedUrl: String(formData.get("embedUrl") || "").trim(),
+      transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
+      captionsUrl: String(formData.get("captionsUrl") || "").trim(),
+      posterUrl: String(formData.get("posterUrl") || "").trim(),
+      poster: String(formData.get("posterUrl") || "").trim(),
+    },
+  });
+  return tutorialId;
+}
+
 function bindAdminTutorialManagementSection(scope = app) {
   scope.querySelectorAll("[data-admin-tutorial-edit]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -42900,6 +42957,19 @@ function bindAdminTutorialManagementSection(scope = app) {
 
   scope.querySelectorAll("[data-admin-tutorial-preview]").forEach((button) => {
     button.addEventListener("click", () => {
+      const form = button.closest("[data-admin-tutorial-editor]")?.querySelector("[data-admin-tutorial-form]");
+      if (button.dataset.adminTutorialPreviewForm === "true" && form instanceof HTMLFormElement) {
+        const selectedStatus = normalizeTutorialPublishStatus(form.elements.status?.value || "coming-soon");
+        const currentStatus = normalizeTutorialPublishStatus(form.dataset.adminTutorialCurrentStatus || "coming-soon");
+        const previewStatus = selectedStatus === "published" && currentStatus !== "published"
+          ? "draft"
+          : selectedStatus;
+        const tutorialId = saveAdminTutorialFormDraft(form, previewStatus);
+        appState.adminTutorialEditingId = tutorialId;
+        refreshAdminTutorialManagementSection();
+        openLearnTutorialModal(tutorialId);
+        return;
+      }
       openLearnTutorialModal(button.dataset.adminTutorialPreview || "");
     });
   });
@@ -42914,38 +42984,10 @@ function bindAdminTutorialManagementSection(scope = app) {
   scope.querySelectorAll("[data-admin-tutorial-form]").forEach((form) => {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      const tutorialId = form.dataset.adminTutorialForm || "";
-      const formData = new FormData(form);
-      saveAdminTutorialDraft(tutorialId, {
-        title: String(formData.get("title") || "").trim(),
-        description: String(formData.get("description") || "").trim(),
-        categoryId: normalizeTutorialCategoryId(formData.get("categoryId")),
-        duration: String(formData.get("duration") || "").trim(),
-        difficulty: String(formData.get("difficulty") || "Beginner").trim(),
-        status: normalizeTutorialPublishStatus(formData.get("status")),
-        thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
-        order: Math.max(1, Number(formData.get("order")) || 1),
-        featured: formData.get("featured") === "on",
-        onboardingPriority: formData.get("onboardingPriority") === "on",
-        videoProvider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
-        cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
-        mp4Url: String(formData.get("mp4Url") || "").trim(),
-        embedUrl: String(formData.get("embedUrl") || "").trim(),
-        posterUrl: String(formData.get("posterUrl") || "").trim(),
-        transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
-        captionsUrl: String(formData.get("captionsUrl") || "").trim(),
-        video: {
-          videoProvider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
-          provider: normalizeTutorialVideoProvider(formData.get("videoProvider")),
-          mp4Url: String(formData.get("mp4Url") || "").trim(),
-          cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
-          embedUrl: String(formData.get("embedUrl") || "").trim(),
-          transcriptUrl: String(formData.get("transcriptUrl") || "").trim(),
-          captionsUrl: String(formData.get("captionsUrl") || "").trim(),
-          posterUrl: String(formData.get("posterUrl") || "").trim(),
-          poster: String(formData.get("posterUrl") || "").trim(),
-        },
-      });
+      const statusOverride = event.submitter instanceof HTMLElement
+        ? event.submitter.dataset.adminTutorialSaveStatus || ""
+        : "";
+      const tutorialId = saveAdminTutorialFormDraft(form, statusOverride);
       appState.adminTutorialEditingId = tutorialId;
       refreshAdminTutorialManagementSection();
     });

@@ -15867,7 +15867,14 @@ body.theme-dark .contact-reason-card.is-active {
   color: rgba(218, 229, 215, 0.8);
 }
 
-.admin-tutorial-edit-button {
+.admin-tutorial-card-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: stretch;
+}
+
+.admin-tutorial-edit-button,
+.admin-tutorial-preview-button {
   white-space: nowrap;
 }
 
@@ -15945,9 +15952,14 @@ body.theme-dark .contact-reason-card.is-active {
     grid-template-columns: 74px minmax(0, 1fr);
   }
 
-  .admin-tutorial-edit-button {
+  .admin-tutorial-card-actions {
     grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+  }
+
+  .admin-tutorial-edit-button,
+  .admin-tutorial-preview-button {
     justify-content: center;
   }
 
