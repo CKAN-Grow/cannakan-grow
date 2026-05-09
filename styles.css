@@ -31226,7 +31226,7 @@ body.theme-dark .home-announcement-card-mode-label {
 }
 
 body.theme-dark .home-announcement-card-static-section h4 {
-  color: #72dc3a;
+  color: #94d159;
 }
 
 body.theme-dark .home-announcement-card-static-section p {
@@ -31242,6 +31242,10 @@ body.theme-dark .home-announcement-feed-title-accent {
 }
 
 body.theme-dark .home-announcement-info-list {
+  color: #94d159;
+}
+
+body.theme-dark .home-announcement-info-list li::marker {
   color: #94d159;
 }
 
