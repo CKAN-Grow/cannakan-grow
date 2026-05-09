@@ -15976,6 +15976,12 @@ body.theme-dark .contact-reason-card.is-active {
   color: #ffd58a;
 }
 
+.admin-tutorial-status.is-scheduled {
+  border-color: rgba(148, 209, 89, 0.28);
+  background: rgba(148, 209, 89, 0.12);
+  color: #94d159;
+}
+
 .admin-tutorial-status.is-coming-soon {
   border-color: rgba(148, 209, 89, 0.16);
   background: rgba(255, 255, 255, 0.035);
@@ -29945,6 +29951,25 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   text-transform: uppercase;
 }
 
+.learn-tutorial-coming-soon.is-scheduled {
+  border-color: rgba(148, 209, 89, 0.32);
+  background: rgba(148, 209, 89, 0.12);
+  color: #94d159;
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.12);
+}
+
+.learn-tutorial-coming-soon.is-published {
+  border-color: rgba(148, 209, 89, 0.3);
+  background: rgba(148, 209, 89, 0.11);
+  color: #c9eda6;
+}
+
+.learn-tutorial-coming-soon.is-draft {
+  border-color: rgba(230, 180, 90, 0.28);
+  background: rgba(230, 180, 90, 0.11);
+  color: #ffd58a;
+}
+
 .learn-tutorial-progress-badge {
   display: inline-flex;
   align-items: center;
@@ -30563,6 +30588,80 @@ body.modal-open {
   color: rgba(210, 222, 207, 0.72);
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.learn-availability-preview {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.18fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.learn-availability-preview-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  background:
+    radial-gradient(circle at 28% 20%, rgba(148, 209, 89, 0.24), transparent 34%),
+    radial-gradient(circle at 82% 78%, rgba(214, 242, 196, 0.08), transparent 30%),
+    linear-gradient(135deg, rgba(18, 38, 27, 0.94), rgba(5, 9, 7, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 24px rgba(148, 209, 89, 0.08);
+}
+
+.learn-availability-preview-copy {
+  display: grid;
+  align-content: center;
+  gap: 13px;
+  min-width: 0;
+  padding-right: 52px;
+}
+
+.learn-availability-preview-copy h2,
+.learn-availability-preview-copy p {
+  margin: 0;
+}
+
+.learn-availability-preview-copy h2 {
+  color: #f6fbf3;
+  font-size: clamp(1.65rem, 4vw, 2.45rem);
+  line-height: 1.05;
+}
+
+.learn-availability-preview-copy p {
+  color: #c7d3c5;
+  line-height: 1.5;
+}
+
+.learn-availability-preview-note {
+  display: grid;
+  gap: 4px;
+  width: min(100%, 420px);
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.09), rgba(148, 209, 89, 0.035)),
+    rgba(255, 255, 255, 0.026);
+}
+
+.learn-availability-preview-note strong {
+  color: #94d159;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.learn-availability-preview-note span {
+  color: rgba(215, 228, 211, 0.78);
+  font-size: 0.88rem;
+  line-height: 1.35;
 }
 
 .learn-tutorial-support-grid {
@@ -31262,6 +31361,18 @@ body.modal-open {
 
   .learn-collection-modal-hero {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .learn-availability-preview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .learn-availability-preview-copy {
+    padding-right: 0;
+  }
+
+  .learn-availability-preview-visual {
+    min-height: 190px;
   }
 
   .learn-collection-modal-visual {

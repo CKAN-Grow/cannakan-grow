@@ -26663,6 +26663,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 1,
         featuredLabel: "Start Here",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["new_user"]),
         priority: 1,
         relatedFeature: "kan-system",
@@ -26681,6 +26685,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Loading Seeds Into the KAN®",
         duration: "3 min • Beginner",
         description: "Placeholder guide for organizing seeds by partition before a session begins.",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["new_user"]),
         priority: 2,
         relatedFeature: "kan-system",
@@ -26754,6 +26762,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 2,
         featuredLabel: "First Session",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["new_user", "no_sessions"]),
         priority: 1,
         relatedFeature: "sessions",
@@ -26772,6 +26784,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Understanding the Timeline",
         duration: "2 min • Beginner",
         description: "Placeholder walkthrough for the session stage timeline and progress state.",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["active_session"]),
         priority: 2,
         relatedFeature: "timeline",
@@ -26807,6 +26823,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 3,
         featuredLabel: "Share Ready",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["first_snapshot"]),
         priority: 1,
         relatedFeature: "snapshots",
@@ -26825,6 +26845,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Community Grow Basics",
         duration: "2 min • Beginner",
         description: "Placeholder guide for sharing into Community Grow and browsing the public feed.",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["community_grow"]),
         priority: 2,
         relatedFeature: "community-grow",
@@ -26844,6 +26868,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         duration: "3 min • Beginner",
         description: "Placeholder walkthrough for reading grow analytics, confidence indicators, and community performance trends.",
         hiddenOnLearn: true,
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
         recommendedFor: Object.freeze(["analytics"]),
         priority: 1,
         relatedFeature: "analytics",
@@ -26869,6 +26897,10 @@ const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
     posterUrl: "",
     tutorialIds: Object.freeze(["kan-system-overview", "creating-your-first-session", "understanding-the-timeline", "generating-grow-snapshots"]),
     featured: true,
+    visibilityStatus: "coming-soon",
+    scheduled: false,
+    releaseDate: "",
+    comingSoonLabel: "Coming Soon",
     order: 1,
     difficulty: "Beginner",
     estimatedDuration: "9 min",
@@ -26881,6 +26913,10 @@ const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
     posterUrl: "",
     tutorialIds: Object.freeze(["loading-seeds-into-kan", "soaking-vs-germinating", "filter-paper-setup", "reading-germination-results"]),
     featured: true,
+    visibilityStatus: "coming-soon",
+    scheduled: false,
+    releaseDate: "",
+    comingSoonLabel: "Coming Soon",
     order: 2,
     difficulty: "Beginner",
     estimatedDuration: "10 min",
@@ -26893,6 +26929,10 @@ const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
     posterUrl: "",
     tutorialIds: Object.freeze(["generating-grow-snapshots", "community-grow-basics", "understanding-grow-analytics"]),
     featured: false,
+    visibilityStatus: "coming-soon",
+    scheduled: false,
+    releaseDate: "",
+    comingSoonLabel: "Coming Soon",
     order: 3,
     difficulty: "Beginner",
     estimatedDuration: "8 min",
@@ -27002,7 +27042,28 @@ const LEARN_TUTORIAL_FILTERS = Object.freeze([
 
 function normalizeTutorialPublishStatus(status = "coming-soon") {
   const normalizedStatus = String(status || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
-  return ["coming-soon", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
+  return ["coming-soon", "scheduled", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
+}
+
+function getTutorialVisibilityStatus(itemOrStatus = "coming-soon") {
+  if (itemOrStatus && typeof itemOrStatus === "object") {
+    const rawStatus = itemOrStatus.visibilityStatus || itemOrStatus.status || (itemOrStatus.scheduled ? "scheduled" : "coming-soon");
+    const normalizedStatus = normalizeTutorialPublishStatus(rawStatus);
+    return itemOrStatus.scheduled && normalizedStatus === "coming-soon" ? "scheduled" : normalizedStatus;
+  }
+  return normalizeTutorialPublishStatus(itemOrStatus);
+}
+
+function getTutorialReleaseDateLabel(releaseDate = "") {
+  const normalizedDate = String(releaseDate || "").trim();
+  if (!normalizedDate) {
+    return "";
+  }
+  const parsedDate = new Date(`${normalizedDate}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return normalizedDate;
+  }
+  return parsedDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function normalizeTutorialVideoProvider(provider = "none") {
@@ -27014,14 +27075,19 @@ function normalizeTutorialVideoProvider(provider = "none") {
 }
 
 function getTutorialStatusLabel(status = "coming-soon") {
-  const normalizedStatus = normalizeTutorialPublishStatus(status);
+  const item = status && typeof status === "object" ? status : null;
+  const normalizedStatus = getTutorialVisibilityStatus(status);
   if (normalizedStatus === "published") {
     return "Published";
+  }
+  if (normalizedStatus === "scheduled") {
+    const releaseLabel = getTutorialReleaseDateLabel(item?.releaseDate || "");
+    return releaseLabel ? `Coming ${releaseLabel}` : "Scheduled";
   }
   if (normalizedStatus === "draft") {
     return "Draft";
   }
-  return "Coming Soon";
+  return item?.comingSoonLabel || "Coming Soon";
 }
 
 function getTutorialVideoProviderLabel(provider = "none") {
@@ -27715,6 +27781,11 @@ function createAdminTutorialCollectionDraft() {
     posterUrl: "",
     tutorialIds: ["kan-system-overview", "creating-your-first-session"],
     featured: false,
+    visibilityStatus: "draft",
+    status: "draft",
+    scheduled: false,
+    releaseDate: "",
+    comingSoonLabel: "Coming Soon",
     order: getLearnTutorialCollections().length + 1,
     difficulty: "Beginner",
     estimatedDuration: "4 min",
@@ -27764,7 +27835,17 @@ function getLearnTutorialCategories() {
         categoryOrder,
         duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
         difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
-        status: normalizeTutorialPublishStatus(draft.status || tutorial.status || "coming-soon"),
+        status: getTutorialVisibilityStatus({
+          status: draft.status || draft.visibilityStatus || tutorial.status || tutorial.visibilityStatus || "coming-soon",
+          scheduled: draft.scheduled ?? tutorial.scheduled,
+        }),
+        visibilityStatus: getTutorialVisibilityStatus({
+          status: draft.visibilityStatus || draft.status || tutorial.visibilityStatus || tutorial.status || "coming-soon",
+          scheduled: draft.scheduled ?? tutorial.scheduled,
+        }),
+        scheduled: Boolean(draft.scheduled ?? tutorial.scheduled),
+        releaseDate: String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
+        comingSoonLabel: String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
         thumbnailUrl: String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
         featured: Boolean(draft.featured ?? tutorial.featured),
@@ -27850,6 +27931,17 @@ function getLearnTutorialCollections() {
       posterUrl: String(draft.posterUrl ?? collection.posterUrl ?? "").trim(),
       tutorialIds: normalizeLearnTutorialTextList(draft.tutorialIds || collection.tutorialIds),
       featured: Boolean(draft.featured ?? collection.featured),
+      visibilityStatus: getTutorialVisibilityStatus({
+        status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
+        scheduled: draft.scheduled ?? collection.scheduled,
+      }),
+      status: getTutorialVisibilityStatus({
+        status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
+        scheduled: draft.scheduled ?? collection.scheduled,
+      }),
+      scheduled: Boolean(draft.scheduled ?? collection.scheduled),
+      releaseDate: String(draft.releaseDate ?? collection.releaseDate ?? "").trim(),
+      comingSoonLabel: String(draft.comingSoonLabel ?? collection.comingSoonLabel ?? "").trim(),
       order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(collection.order)) ? Number(collection.order) : index + 1),
       difficulty: String(draft.difficulty ?? collection.difficulty ?? "Beginner").trim() || "Beginner",
       estimatedDuration: String(draft.estimatedDuration ?? collection.estimatedDuration ?? "").trim(),
@@ -27868,6 +27960,17 @@ function getLearnTutorialCollections() {
       posterUrl: String(collection.posterUrl || "").trim(),
       tutorialIds: normalizeLearnTutorialTextList(collection.tutorialIds),
       featured: Boolean(collection.featured),
+      visibilityStatus: getTutorialVisibilityStatus({
+        status: collection.visibilityStatus || collection.status || "coming-soon",
+        scheduled: collection.scheduled,
+      }),
+      status: getTutorialVisibilityStatus({
+        status: collection.visibilityStatus || collection.status || "coming-soon",
+        scheduled: collection.scheduled,
+      }),
+      scheduled: Boolean(collection.scheduled),
+      releaseDate: String(collection.releaseDate || "").trim(),
+      comingSoonLabel: String(collection.comingSoonLabel || "").trim(),
       order: Number.isFinite(Number(collection.order)) ? Number(collection.order) : staticCollections.length + index + 1,
       difficulty: String(collection.difficulty || "Beginner").trim() || "Beginner",
       estimatedDuration: String(collection.estimatedDuration || "").trim(),
@@ -27928,7 +28031,11 @@ function getLearnCollectionProgress(collection = {}) {
 }
 
 function shouldShowTutorialOnPublicLearn(tutorial = {}) {
-  return !tutorial.hiddenOnLearn && normalizeTutorialPublishStatus(tutorial.status) !== "draft";
+  return !tutorial.hiddenOnLearn && getTutorialVisibilityStatus(tutorial) !== "draft";
+}
+
+function shouldShowLearningPathOnPublicLearn(collection = {}) {
+  return getTutorialVisibilityStatus(collection) !== "draft";
 }
 
 function renderLearnEmptyStateCtaMarkup(tutorialId = "", label = "Watch Tutorial") {
@@ -28069,13 +28176,13 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
     return relatedTutorialIds
       .map((relatedTutorialId) => tutorialEntries.find((entry) => entry.tutorial.id === relatedTutorialId)?.tutorial)
       .filter((relatedTutorial) => relatedTutorial && relatedTutorial.id !== tutorial.id)
-      .filter((relatedTutorial) => shouldShowTutorialOnPublicLearn(relatedTutorial) || normalizeTutorialPublishStatus(tutorial.status) === "draft")
+      .filter((relatedTutorial) => shouldShowTutorialOnPublicLearn(relatedTutorial) || getTutorialVisibilityStatus(tutorial) === "draft")
       .slice(0, 3);
   }
 
   return Array.isArray(category.tutorials)
     ? category.tutorials
-      .filter((item) => item.id !== tutorial.id && (shouldShowTutorialOnPublicLearn(item) || normalizeTutorialPublishStatus(tutorial.status) === "draft"))
+      .filter((item) => item.id !== tutorial.id && (shouldShowTutorialOnPublicLearn(item) || getTutorialVisibilityStatus(tutorial) === "draft"))
       .slice(0, 3)
     : [];
 }
@@ -28111,7 +28218,7 @@ function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category =
   const tagName = options.tagName === "div" ? "div" : "span";
   const theme = getLearnTutorialVisualTheme(tutorial, category);
   const thumbnailUrl = getLearnTutorialThumbnailUrl(tutorial);
-  const label = options.label || getTutorialStatusLabel(tutorial.status);
+  const label = options.label || getTutorialStatusLabel(tutorial);
   const className = [
     "learn-tutorial-visual",
     `learn-tutorial-visual--${theme.theme}`,
@@ -28253,7 +28360,10 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
 }
 
 function renderLearningPathsSectionMarkup() {
-  const collections = getLearnTutorialCollections().filter((collection) => normalizeLearnTutorialTextList(collection.tutorialIds).length);
+  const collections = getLearnTutorialCollections().filter((collection) => (
+    shouldShowLearningPathOnPublicLearn(collection)
+    && normalizeLearnTutorialTextList(collection.tutorialIds).length
+  ));
   if (!collections.length) {
     return "";
   }
@@ -28276,6 +28386,7 @@ function renderLearningPathsSectionMarkup() {
 
 function renderLearningPathCardMarkup(collection = {}) {
   const progress = getLearnCollectionProgress(collection);
+  const visibilityStatus = getTutorialVisibilityStatus(collection);
   const tutorialCountLabel = `${progress.totalCount} tutorial${progress.totalCount === 1 ? "" : "s"}`;
   const progressLabel = progress.completed
     ? "Completed"
@@ -28289,7 +28400,7 @@ function renderLearningPathCardMarkup(collection = {}) {
       <span class="learn-learning-path-visual ${collection.posterUrl ? "has-poster" : ""}"${collection.posterUrl ? ` style="--learn-path-poster:url('${escapeHtml(collection.posterUrl)}');"` : ""}>
         <span class="learn-learning-path-sheen"></span>
         <span class="learn-learning-path-play" aria-hidden="true">▶</span>
-        ${collection.featured ? '<span class="learn-learning-path-featured">Featured</span>' : ""}
+        <span class="learn-learning-path-featured is-${escapeHtml(visibilityStatus)}">${escapeHtml(getTutorialStatusLabel(collection))}</span>
       </span>
       <span class="learn-learning-path-copy">
         <span class="learn-learning-path-kicker">${escapeHtml(collection.subtitle || "Learning Path")}</span>
@@ -28508,7 +28619,7 @@ function getRecommendedLearnTutorials(categories = getLearnTutorialCategories(),
     }))
     .filter(({ tutorial, matchedContexts }) => (
       matchedContexts.length
-      && normalizeTutorialPublishStatus(tutorial.status) !== "draft"
+      && getTutorialVisibilityStatus(tutorial) !== "draft"
       && (options.includeCompleted || !isTutorialCompleted(tutorial.id))
     ))
     .sort((left, right) => {
@@ -28579,7 +28690,7 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   const progressStatus = getTutorialProgressStatus(tutorial.id);
   const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
-  const status = normalizeTutorialPublishStatus(tutorial.status);
+  const status = getTutorialVisibilityStatus(tutorial);
   const isFeatured = Boolean(options.featured);
   const featuredLabel = String(tutorial.featuredLabel || "Featured").trim();
   const searchText = [
@@ -28613,7 +28724,7 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
         <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
         <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
         <span class="learn-tutorial-card-badges">
-          <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+          <span class="learn-tutorial-coming-soon is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
           <span
             class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
             data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
@@ -28806,7 +28917,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
     <div class="learn-tutorial-modal-copy">
       <div class="learn-tutorial-modal-kicker-row">
         <span class="learn-tutorial-category-badge">${escapeHtml(category.title)}</span>
-        <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+        <span class="learn-tutorial-coming-soon is-${escapeHtml(getTutorialVisibilityStatus(tutorial))}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
         <span
           class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
           data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
@@ -28854,6 +28965,39 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
           ${relatedMarkup}
         </div>
       </section>
+    </div>
+  `;
+}
+
+function renderLearnAvailabilityPreviewMarkup(item = {}, options = {}) {
+  const status = getTutorialVisibilityStatus(item);
+  const releaseLabel = getTutorialReleaseDateLabel(item.releaseDate || "");
+  const statusLabel = getTutorialStatusLabel(item);
+  const eyebrow = options.eyebrow || (status === "scheduled" ? "Scheduled Release" : "Coming Soon");
+  const title = item.title || options.title || "Tutorial Coming Soon";
+  const description = item.description || options.description || "This tutorial is being prepared and will be available soon.";
+  const releaseCopy = status === "scheduled" && releaseLabel
+    ? `Expected release: ${releaseLabel}`
+    : (releaseLabel ? `Expected release: ${releaseLabel}` : "Release timing will appear here once it is scheduled.");
+
+  return `
+    <div class="learn-availability-preview">
+      <div class="learn-availability-preview-visual">
+        <span class="learn-learning-path-sheen"></span>
+        <span class="learn-learning-path-play" aria-hidden="true">▶</span>
+      </div>
+      <div class="learn-availability-preview-copy">
+        <div class="learn-tutorial-modal-kicker-row">
+          <span class="learn-tutorial-category-badge">${escapeHtml(eyebrow)}</span>
+          <span class="learn-tutorial-coming-soon is-${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>
+        </div>
+        <h2 id="learn-tutorial-modal-title">${escapeHtml(title)}</h2>
+        <p id="learn-tutorial-modal-description">${escapeHtml(description)}</p>
+        <div class="learn-availability-preview-note">
+          <strong>${escapeHtml(status === "scheduled" ? "Coming Soon" : statusLabel)}</strong>
+          <span>${escapeHtml(releaseCopy)}</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -29470,7 +29614,7 @@ function doesLearnTutorialMatchFilter(card, activeFilter = "all") {
     return card.dataset.learnGettingStarted === "true";
   }
   if (activeFilter === "coming-soon") {
-    return card.dataset.learnTutorialStatus === "coming-soon";
+    return ["coming-soon", "scheduled"].includes(card.dataset.learnTutorialStatus || "");
   }
   if (activeFilter === "completed") {
     return card.dataset.learnProgressStatus === "completed";
@@ -29626,16 +29770,20 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
   const modal = overlay.querySelector(".learn-tutorial-modal");
   const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
   if (content) {
-    content.innerHTML = renderLearnTutorialModalContentMarkup(tutorial, category);
-    content.querySelectorAll("[data-learn-related-tutorial]").forEach((button) => {
-      button.addEventListener("click", () => {
-        openLearnTutorialModal(button.dataset.learnRelatedTutorial || "", { source: "Tutorial modal related" });
+    if (getTutorialVisibilityStatus(tutorial) !== "published") {
+      content.innerHTML = renderLearnAvailabilityPreviewMarkup(tutorial, { eyebrow: category.title || "Tutorial" });
+    } else {
+      content.innerHTML = renderLearnTutorialModalContentMarkup(tutorial, category);
+      content.querySelectorAll("[data-learn-related-tutorial]").forEach((button) => {
+        button.addEventListener("click", () => {
+          openLearnTutorialModal(button.dataset.learnRelatedTutorial || "", { source: "Tutorial modal related" });
+        });
       });
-    });
-    bindLearnTutorialProgressActions(content, tutorial.id);
-    bindLearnTutorialFeedbackActions(content, tutorial.id);
-    refreshTutorialProgressUi(tutorial.id);
-    refreshLearnTutorialFeedbackUi(tutorial.id);
+      bindLearnTutorialProgressActions(content, tutorial.id);
+      bindLearnTutorialFeedbackActions(content, tutorial.id);
+      refreshTutorialProgressUi(tutorial.id);
+      refreshLearnTutorialFeedbackUi(tutorial.id);
+    }
     content.scrollTop = 0;
   }
   overlay.dataset.closing = "false";
@@ -29661,21 +29809,25 @@ function openLearnCollectionModal(collectionId = "") {
   const modal = overlay.querySelector(".learn-tutorial-modal");
   const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
   if (content) {
-    content.innerHTML = renderLearnCollectionModalContentMarkup(collection);
-    content.querySelectorAll("[data-learn-collection-tutorial]").forEach((button) => {
-      button.addEventListener("click", () => {
-        saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
-        openLearnTutorialModal(button.dataset.learnCollectionTutorial || "", { source: `Learning Path: ${collection.title}` });
+    if (getTutorialVisibilityStatus(collection) !== "published") {
+      content.innerHTML = renderLearnAvailabilityPreviewMarkup(collection, { eyebrow: "Learning Path" });
+    } else {
+      content.innerHTML = renderLearnCollectionModalContentMarkup(collection);
+      content.querySelectorAll("[data-learn-collection-tutorial]").forEach((button) => {
+        button.addEventListener("click", () => {
+          saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
+          openLearnTutorialModal(button.dataset.learnCollectionTutorial || "", { source: `Learning Path: ${collection.title}` });
+        });
       });
-    });
-    content.querySelector("[data-learn-collection-start]")?.addEventListener("click", (event) => {
-      const button = event.currentTarget;
-      if (!(button instanceof HTMLElement)) {
-        return;
-      }
-      saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
-      openLearnTutorialModal(button.dataset.learnCollectionFirstTutorial || "", { source: `Learning Path: ${collection.title}` });
-    });
+      content.querySelector("[data-learn-collection-start]")?.addEventListener("click", (event) => {
+        const button = event.currentTarget;
+        if (!(button instanceof HTMLElement)) {
+          return;
+        }
+        saveLearnCollectionProgress(collection.id, { started: true, lastOpenedAt: new Date().toISOString() });
+        openLearnTutorialModal(button.dataset.learnCollectionFirstTutorial || "", { source: `Learning Path: ${collection.title}` });
+      });
+    }
     content.scrollTop = 0;
   }
   overlay.dataset.closing = "false";
@@ -44040,7 +44192,7 @@ function moveAdminTutorialOrder(tutorialId = "", direction = "") {
 
 function renderAdminTutorialStatusOptions(selectedStatus = "coming-soon") {
   const normalizedStatus = normalizeTutorialPublishStatus(selectedStatus);
-  return ["coming-soon", "draft", "published"].map((status) => (
+  return ["coming-soon", "scheduled", "draft", "published"].map((status) => (
     `<option value="${escapeHtml(status)}"${status === normalizedStatus ? " selected" : ""}>${escapeHtml(getTutorialStatusLabel(status))}</option>`
   )).join("");
 }
@@ -44067,7 +44219,7 @@ function renderAdminTutorialVideoProviderOptions(selectedProvider = "none") {
 }
 
 function renderAdminTutorialCardMarkup(tutorial = {}) {
-  const status = normalizeTutorialPublishStatus(tutorial.status);
+  const status = getTutorialVisibilityStatus(tutorial);
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   const video = getTutorialVideoConfig(tutorial);
@@ -44080,7 +44232,7 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
       <div class="admin-tutorial-card-copy">
         <div class="admin-tutorial-card-head">
           <strong>${escapeHtml(tutorial.title || "Untitled Tutorial")}</strong>
-          <span class="admin-tutorial-status is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(status))}</span>
+          <span class="admin-tutorial-status is-${escapeHtml(status)}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
         </div>
         <p>${escapeHtml(tutorial.categoryTitle || "Uncategorized")}</p>
         <div class="admin-tutorial-card-meta">
@@ -44132,12 +44284,12 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <h4>${escapeHtml(tutorial.title || "Untitled Tutorial")}</h4>
           <p class="muted">Local admin draft only. Later this shape can map to backend tutorial records.</p>
         </div>
-        <span class="admin-tutorial-status is-${escapeHtml(normalizeTutorialPublishStatus(tutorial.status))}">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+        <span class="admin-tutorial-status is-${escapeHtml(getTutorialVisibilityStatus(tutorial))}">${escapeHtml(getTutorialStatusLabel(tutorial))}</span>
       </div>
       <form
         class="admin-source-form admin-tutorial-form"
         data-admin-tutorial-form="${escapeHtml(tutorial.id)}"
-        data-admin-tutorial-current-status="${escapeHtml(normalizeTutorialPublishStatus(tutorial.status))}"
+        data-admin-tutorial-current-status="${escapeHtml(getTutorialVisibilityStatus(tutorial))}"
       >
         <div class="admin-source-form-grid">
           <label>
@@ -44157,8 +44309,16 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
             <select name="difficulty">${renderAdminTutorialDifficultyOptions(getLearnTutorialDifficultyLabel(tutorial))}</select>
           </label>
           <label>
-            <span>Publish Status</span>
-            <select name="status">${renderAdminTutorialStatusOptions(tutorial.status)}</select>
+            <span>Visibility Status</span>
+            <select name="visibilityStatus">${renderAdminTutorialStatusOptions(getTutorialVisibilityStatus(tutorial))}</select>
+          </label>
+          <label>
+            <span>Release Date</span>
+            <input name="releaseDate" type="date" value="${escapeHtml(tutorial.releaseDate || "")}">
+          </label>
+          <label>
+            <span>Coming Soon Label</span>
+            <input name="comingSoonLabel" value="${escapeHtml(tutorial.comingSoonLabel || "")}" placeholder="Coming Soon">
           </label>
           <label>
             <span>Order Number</span>
@@ -44199,6 +44359,10 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <label>
             <span>Captions URL</span>
             <input name="captionsUrl" value="${escapeHtml(video.captionsUrl)}">
+          </label>
+          <label class="admin-announcement-toggle-row admin-source-form-full">
+            <input name="scheduled" type="checkbox" ${tutorial.scheduled ? "checked" : ""}>
+            <span>Scheduled release</span>
           </label>
           <label class="admin-announcement-toggle-row admin-source-form-full">
             <input name="featured" type="checkbox" ${tutorial.featured ? "checked" : ""}>
@@ -44321,7 +44485,7 @@ function renderAdminTutorialCollectionCardMarkup(collection = {}) {
       <div class="admin-tutorial-card-copy">
         <div class="admin-tutorial-card-head">
           <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
-          ${collection.featured ? '<span class="admin-tutorial-status is-published">Featured</span>' : ""}
+          <span class="admin-tutorial-status is-${escapeHtml(getTutorialVisibilityStatus(collection))}">${escapeHtml(getTutorialStatusLabel(collection))}</span>
         </div>
         <p>${escapeHtml(collection.subtitle || "Learning path")}</p>
         <div class="admin-tutorial-card-meta">
@@ -44388,8 +44552,24 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
             <select name="difficulty">${renderAdminTutorialDifficultyOptions(collection.difficulty || "Beginner")}</select>
           </label>
           <label>
+            <span>Visibility Status</span>
+            <select name="visibilityStatus">${renderAdminTutorialStatusOptions(getTutorialVisibilityStatus(collection))}</select>
+          </label>
+          <label>
+            <span>Release Date</span>
+            <input name="releaseDate" type="date" value="${escapeHtml(collection.releaseDate || "")}">
+          </label>
+          <label>
             <span>Estimated Duration</span>
             <input name="estimatedDuration" value="${escapeHtml(collection.estimatedDuration || getLearnCollectionDurationLabel(collection))}" placeholder="9 min">
+          </label>
+          <label>
+            <span>Coming Soon Label</span>
+            <input name="comingSoonLabel" value="${escapeHtml(collection.comingSoonLabel || "")}" placeholder="Coming Soon">
+          </label>
+          <label class="admin-announcement-toggle-row">
+            <input name="scheduled" type="checkbox" ${collection.scheduled ? "checked" : ""}>
+            <span>Scheduled release</span>
           </label>
           <label class="admin-announcement-toggle-row">
             <input name="featured" type="checkbox" ${collection.featured ? "checked" : ""}>
@@ -44450,8 +44630,8 @@ function renderAdminTutorialManagementBodyMarkup() {
     appState.adminTutorialEditingId = tutorials[0].id;
   }
   const editingTutorial = getAdminTutorialForEditing();
-  const publishedCount = tutorials.filter((tutorial) => normalizeTutorialPublishStatus(tutorial.status) === "published").length;
-  const draftCount = tutorials.filter((tutorial) => normalizeTutorialPublishStatus(tutorial.status) === "draft").length;
+  const publishedCount = tutorials.filter((tutorial) => getTutorialVisibilityStatus(tutorial) === "published").length;
+  const draftCount = tutorials.filter((tutorial) => getTutorialVisibilityStatus(tutorial) === "draft").length;
   const linkedVideoCount = tutorials.filter((tutorial) => getTutorialVideoStateLabel(tutorial) !== "Placeholder only").length;
 
   return `
@@ -44517,13 +44697,21 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
   const formData = new FormData(form);
   const videoProvider = normalizeTutorialVideoProvider(formData.get("videoProvider"));
   const featuredOrderValue = Number(formData.get("featuredOrder"));
+  const visibilityStatus = getTutorialVisibilityStatus({
+    status: statusOverride || formData.get("visibilityStatus"),
+    scheduled: formData.get("scheduled") === "on",
+  });
   saveAdminTutorialDraft(tutorialId, {
     title: String(formData.get("title") || "").trim(),
     description: String(formData.get("description") || "").trim(),
     categoryId: normalizeTutorialCategoryId(formData.get("categoryId")),
     duration: String(formData.get("duration") || "").trim(),
     difficulty: String(formData.get("difficulty") || "Beginner").trim(),
-    status: normalizeTutorialPublishStatus(statusOverride || formData.get("status")),
+    status: visibilityStatus,
+    visibilityStatus,
+    scheduled: formData.get("scheduled") === "on",
+    releaseDate: String(formData.get("releaseDate") || "").trim(),
+    comingSoonLabel: String(formData.get("comingSoonLabel") || "").trim(),
     thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
     order: Math.max(1, Number(formData.get("order")) || 1),
     featured: formData.get("featured") === "on",
@@ -44567,6 +44755,17 @@ function saveAdminTutorialCollectionFormDraft(form) {
     posterUrl: String(formData.get("posterUrl") || "").trim(),
     tutorialIds,
     featured: formData.get("featured") === "on",
+    visibilityStatus: getTutorialVisibilityStatus({
+      status: formData.get("visibilityStatus"),
+      scheduled: formData.get("scheduled") === "on",
+    }),
+    status: getTutorialVisibilityStatus({
+      status: formData.get("visibilityStatus"),
+      scheduled: formData.get("scheduled") === "on",
+    }),
+    scheduled: formData.get("scheduled") === "on",
+    releaseDate: String(formData.get("releaseDate") || "").trim(),
+    comingSoonLabel: String(formData.get("comingSoonLabel") || "").trim(),
     order: Math.max(1, Number(formData.get("order")) || 1),
     difficulty: String(formData.get("difficulty") || "Beginner").trim(),
     estimatedDuration: String(formData.get("estimatedDuration") || "").trim(),
@@ -44634,7 +44833,7 @@ function bindAdminTutorialManagementSection(scope = app) {
     button.addEventListener("click", () => {
       const form = button.closest("[data-admin-tutorial-editor]")?.querySelector("[data-admin-tutorial-form]");
       if (button.dataset.adminTutorialPreviewForm === "true" && form instanceof HTMLFormElement) {
-        const selectedStatus = normalizeTutorialPublishStatus(form.elements.status?.value || "coming-soon");
+        const selectedStatus = normalizeTutorialPublishStatus(form.elements.visibilityStatus?.value || "coming-soon");
         const currentStatus = normalizeTutorialPublishStatus(form.dataset.adminTutorialCurrentStatus || "coming-soon");
         const previewStatus = selectedStatus === "published" && currentStatus !== "published"
           ? "draft"
