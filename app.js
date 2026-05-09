@@ -45009,6 +45009,8 @@ function syncDetailSessionActionBar(control) {
   const state = getSessionStageProgressionState(control);
   const currentStageElement = actionBar.querySelector("[data-detail-action-current-stage]");
   const nextStageElement = actionBar.querySelector("[data-detail-action-next-stage]");
+  const currentLabelElement = actionBar.querySelector("[data-detail-action-current-label]");
+  const nextLabelElement = actionBar.querySelector("[data-detail-action-next-label]");
   const currentIconElement = actionBar.querySelector("[data-detail-action-current-icon]");
   const nextIconElement = actionBar.querySelector("[data-detail-action-next-icon]");
   const stageTrigger = actionBar.querySelector("[data-detail-stage-progress-trigger]");
@@ -45017,10 +45019,16 @@ function syncDetailSessionActionBar(control) {
   const stageCard = actionBar.querySelector("[data-detail-stage-progress-card]");
 
   if (currentStageElement) {
-    currentStageElement.textContent = state.currentLabel;
+    currentStageElement.textContent = state.isComplete ? "Session Completed" : state.currentLabel;
   }
   if (nextStageElement) {
     nextStageElement.textContent = state.nextLabel;
+  }
+  if (currentLabelElement) {
+    currentLabelElement.textContent = state.isComplete ? "Final Stage" : "Current Stage";
+  }
+  if (nextLabelElement) {
+    nextLabelElement.textContent = "Next Stage";
   }
   if (currentIconElement) {
     currentIconElement.innerHTML = renderCommandCenterIconMarkup(state.currentIconKey, state.currentIconClass);
@@ -45043,6 +45051,12 @@ function syncDetailSessionActionBar(control) {
 
   if (stageCard) {
     stageCard.classList.toggle("is-session-complete", state.isComplete);
+    stageCard.setAttribute(
+      "aria-label",
+      state.isComplete
+        ? "Session completed"
+        : `Current stage ${state.currentLabel}. Next stage ${state.nextLabel}.`,
+    );
   }
 
   if (stageTrigger) {

@@ -29064,6 +29064,35 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .detail-stage-progress-card.is-session-complete {
   opacity: 0.88;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "current";
+  justify-items: start;
+  background:
+    radial-gradient(circle at 18% 52%, color-mix(in srgb, var(--current-stage-accent) 16%, transparent), transparent 38%),
+    linear-gradient(180deg, rgba(20, 27, 22, 0.92) 0%, rgba(12, 17, 14, 0.96) 100%);
+  border-color: color-mix(in srgb, var(--current-stage-accent) 34%, rgba(255, 255, 255, 0.08));
+}
+
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-arrow,
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-step[data-stage-role="next"],
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-action {
+  display: none;
+}
+
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-step[data-stage-role="current"] {
+  justify-self: start;
+}
+
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-label {
+  display: none;
+}
+
+.detail-stage-progress-card.is-session-complete .detail-stage-progress-step strong {
+  font-size: 1.08rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: 0 0 16px color-mix(in srgb, var(--stage-progress-accent) 24%, transparent);
 }
 
 .detail-stage-progress-step {
@@ -29096,8 +29125,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .detail-stage-progress-icon-slot {
   display: inline-flex;
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   align-items: center;
   justify-content: center;
   color: var(--stage-progress-accent);
@@ -29105,9 +29134,10 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .detail-stage-progress-icon.command-icon,
 .detail-stage-progress-icon.command-icon-tile {
-  width: 46px;
-  height: 46px;
-  border-radius: 999px;
+  width: 56px;
+  height: 56px;
+  padding: 4px;
+  border-radius: 14px;
   color: var(--stage-progress-accent);
   border-color: color-mix(in srgb, var(--stage-progress-accent) 38%, rgba(255, 255, 255, 0.08));
   background:
@@ -29120,16 +29150,16 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .detail-stage-progress-icon .command-icon-svg {
-  width: 25px;
-  height: 25px;
+  width: 30px;
+  height: 30px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.7;
 }
 
 .detail-stage-progress-icon--not-started .command-icon-svg {
-  width: 23px;
-  height: 23px;
+  width: 28px;
+  height: 28px;
 }
 
 .detail-stage-progress-label {
