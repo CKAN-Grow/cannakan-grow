@@ -26947,6 +26947,17 @@ function getTutorialVideoStateLabel(tutorial = {}) {
   return "Placeholder only";
 }
 
+function normalizeLearnTutorialTextList(value = []) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  const stringValue = String(value || "").trim();
+  if (!stringValue) {
+    return [];
+  }
+  return stringValue.split(/\r?\n|;/).map((item) => item.trim()).filter(Boolean);
+}
+
 function getLearnTutorialCategoryOptions() {
   return LEARN_TUTORIAL_CATEGORIES.map((category) => ({
     id: category.id,
@@ -27266,6 +27277,7 @@ function getLearnTutorialCategories() {
       const posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
       const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
+      const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
       const mergedTutorial = {
         ...tutorial,
         ...draft,
@@ -27286,6 +27298,10 @@ function getLearnTutorialCategories() {
         posterUrl,
         captionsUrl,
         transcriptUrl,
+        transcriptText,
+        quickSteps: normalizeLearnTutorialTextList(draft.quickSteps || tutorial.quickSteps),
+        tips: normalizeLearnTutorialTextList(draft.tips || tutorial.tips),
+        relatedTutorialIds: normalizeLearnTutorialTextList(draft.relatedTutorialIds || tutorial.relatedTutorialIds),
         video: {
           videoProvider,
           provider: videoProvider,
@@ -27296,6 +27312,7 @@ function getLearnTutorialCategories() {
           poster: posterUrl,
           captionsUrl,
           transcriptUrl,
+          transcriptText,
         },
         _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
       };
@@ -27411,7 +27428,26 @@ function getLearnTutorialLearningPoints(tutorial = {}, category = {}) {
   ];
 }
 
+function getLearnTutorialQuickSteps(tutorial = {}) {
+  return normalizeLearnTutorialTextList(tutorial.quickSteps);
+}
+
+function getLearnTutorialTips(tutorial = {}) {
+  return normalizeLearnTutorialTextList(tutorial.tips);
+}
+
 function getRelatedLearnTutorials(category = {}, tutorial = {}) {
+  const relatedTutorialIds = normalizeLearnTutorialTextList(tutorial.relatedTutorialIds);
+  if (relatedTutorialIds.length) {
+    const tutorialEntries = getLearnTutorialCategories().flatMap((learnCategory) => (
+      learnCategory.tutorials.map((learnTutorial) => ({ category: learnCategory, tutorial: learnTutorial }))
+    ));
+    return relatedTutorialIds
+      .map((relatedTutorialId) => tutorialEntries.find((entry) => entry.tutorial.id === relatedTutorialId)?.tutorial)
+      .filter((relatedTutorial) => relatedTutorial && relatedTutorial.id !== tutorial.id)
+      .slice(0, 3);
+  }
+
   return Array.isArray(category.tutorials)
     ? category.tutorials
       .filter((item) => item.id !== tutorial.id && (!item.hiddenOnLearn || tutorial.hiddenOnLearn))
@@ -27682,6 +27718,50 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
   return renderTutorialVideoPlaceholderMarkup(video, "Video Coming Soon", tutorial, category);
 }
 
+function renderLearnTutorialTranscriptMarkup(tutorial = {}) {
+  const transcriptText = String(tutorial.transcriptText || "").trim();
+  const transcriptUrl = String(tutorial.transcriptUrl || getTutorialVideoConfig(tutorial).transcriptUrl || "").trim();
+  return `
+    <details class="learn-tutorial-support-panel learn-tutorial-reference-panel learn-tutorial-reference-panel--transcript">
+      <summary>
+        <span>Transcript</span>
+      </summary>
+      <div class="learn-tutorial-reference-body">
+        <p class="learn-tutorial-section-copy">${escapeHtml(transcriptText || "Transcript coming soon")}</p>
+        ${transcriptUrl ? `<a class="learn-tutorial-reference-link" href="${escapeHtml(transcriptUrl)}" target="_blank" rel="noreferrer">Transcript source ready</a>` : ""}
+      </div>
+    </details>
+  `;
+}
+
+function renderLearnTutorialQuickStepsMarkup(tutorial = {}) {
+  const quickSteps = getLearnTutorialQuickSteps(tutorial);
+  return `
+    <section class="learn-tutorial-support-panel learn-tutorial-reference-panel learn-tutorial-reference-panel--quick-steps">
+      <h3>Quick Steps</h3>
+      ${quickSteps.length
+        ? `<ol class="learn-tutorial-quick-steps">${quickSteps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`
+        : `<p class="learn-tutorial-section-copy">Quick steps coming soon.</p>`}
+    </section>
+  `;
+}
+
+function renderLearnTutorialTipsMarkup(tutorial = {}) {
+  const tips = getLearnTutorialTips(tutorial);
+  return `
+    <details class="learn-tutorial-support-panel learn-tutorial-reference-panel learn-tutorial-reference-panel--tips">
+      <summary>
+        <span>Helpful Tips</span>
+      </summary>
+      <div class="learn-tutorial-reference-body">
+        ${tips.length
+          ? `<ul>${tips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>`
+          : `<p class="learn-tutorial-section-copy">Tips coming soon</p>`}
+      </div>
+    </details>
+  `;
+}
+
 function renderLearnTutorialModalContentMarkup(tutorial, category) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
@@ -27743,6 +27823,9 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
         <h3>Tutorial Notes</h3>
         <p class="learn-tutorial-section-copy">Placeholder notes area prepared for captions, transcripts, chapter markers, and supporting links when the full tutorial system is connected.</p>
       </section>
+      ${renderLearnTutorialTranscriptMarkup(tutorial)}
+      ${renderLearnTutorialQuickStepsMarkup(tutorial)}
+      ${renderLearnTutorialTipsMarkup(tutorial)}
       <section class="learn-tutorial-support-panel learn-tutorial-support-panel--related">
         <h3>Related Tutorials</h3>
         <div class="learn-related-tutorials">
