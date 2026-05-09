@@ -6715,6 +6715,7 @@ function getCurrentAppPathRoute() {
   const pathRoute = window.location.pathname.replace(/^\/+|\/+$/g, "");
   return ({
     "": "",
+    learn: "learn",
     profile: "profile",
     sources: "sources",
     sessions: "sessions",
@@ -25725,6 +25726,100 @@ function loadImageElement(source) {
   });
 }
 
+const DEFAULT_SHARE_IMAGE_PATH = "/icon-512.png";
+const LEARN_SHARE_IMAGE_PATH = "/assets/images/learn-share-preview.png";
+const DEFAULT_PAGE_METADATA = Object.freeze({
+  title: "Cannakan® Grow",
+  description: "Track grow sessions, capture germination progress, create snapshots, and explore the Cannakan Grow ecosystem.",
+  imagePath: DEFAULT_SHARE_IMAGE_PATH,
+  path: "/",
+});
+const LEARN_PAGE_METADATA = Object.freeze({
+  title: "Learn Cannakan® Grow | KAN® System Tutorials & App Guides",
+  description: "Watch Cannakan® Grow tutorials, KAN® System setup guides, app walkthroughs, snapshot help, and Community Grow onboarding.",
+  imagePath: LEARN_SHARE_IMAGE_PATH,
+  path: "/learn",
+  type: "website",
+});
+
+function toAbsolutePublicUrl(path = "/") {
+  try {
+    return new URL(String(path || "/"), window.location.origin).href;
+  } catch (error) {
+    return String(path || "/");
+  }
+}
+
+function setDocumentMetaAttribute(attributeName = "name", key = "", content = "") {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) {
+    return;
+  }
+
+  let element = [...document.head.querySelectorAll("meta")]
+    .find((meta) => meta.getAttribute(attributeName) === normalizedKey);
+  if (!element) {
+    element = document.createElement("meta");
+    element.setAttribute(attributeName, normalizedKey);
+    document.head.appendChild(element);
+  }
+  element.setAttribute("content", String(content || ""));
+}
+
+function setCanonicalUrl(path = "/") {
+  let canonical = document.head.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.setAttribute("rel", "canonical");
+    document.head.appendChild(canonical);
+  }
+  canonical.setAttribute("href", toAbsolutePublicUrl(path));
+}
+
+function buildLearnPageMetadata(options = {}) {
+  const tutorial = options.tutorial || null;
+  if (tutorial) {
+    return {
+      ...LEARN_PAGE_METADATA,
+      title: `${tutorial.title || "Tutorial"} | Cannakan® Grow Learn`,
+      description: tutorial.description || LEARN_PAGE_METADATA.description,
+      imagePath: tutorial.posterUrl || tutorial.thumbnailUrl || LEARN_PAGE_METADATA.imagePath,
+      path: `/learn/tutorials/${encodeURIComponent(tutorial.id || "")}`,
+    };
+  }
+  return { ...LEARN_PAGE_METADATA };
+}
+
+function getRoutePageMetadata(rawRoute = "") {
+  const [route] = String(rawRoute || "home").replace(/^#/, "").split("/");
+  if (route === "learn") {
+    return buildLearnPageMetadata();
+  }
+  return { ...DEFAULT_PAGE_METADATA };
+}
+
+function applyPageMetadata(metadata = DEFAULT_PAGE_METADATA) {
+  const title = metadata.title || DEFAULT_PAGE_METADATA.title;
+  const description = metadata.description || DEFAULT_PAGE_METADATA.description;
+  const imageUrl = toAbsolutePublicUrl(metadata.imagePath || DEFAULT_PAGE_METADATA.imagePath);
+  const pageUrl = toAbsolutePublicUrl(metadata.path || DEFAULT_PAGE_METADATA.path);
+  const type = metadata.type || "website";
+
+  document.title = title;
+  setDocumentMetaAttribute("name", "description", description);
+  setDocumentMetaAttribute("property", "og:type", type);
+  setDocumentMetaAttribute("property", "og:site_name", "Cannakan® Grow");
+  setDocumentMetaAttribute("property", "og:title", title);
+  setDocumentMetaAttribute("property", "og:description", description);
+  setDocumentMetaAttribute("property", "og:image", imageUrl);
+  setDocumentMetaAttribute("property", "og:url", pageUrl);
+  setDocumentMetaAttribute("name", "twitter:card", "summary_large_image");
+  setDocumentMetaAttribute("name", "twitter:title", title);
+  setDocumentMetaAttribute("name", "twitter:description", description);
+  setDocumentMetaAttribute("name", "twitter:image", imageUrl);
+  setCanonicalUrl(metadata.path || DEFAULT_PAGE_METADATA.path);
+}
+
 function buildSnapshotFileName(data) {
   const baseName = String(data?.sessionName || "session-snapshot")
     .toLowerCase()
@@ -25797,6 +25892,7 @@ function render() {
     clearUnsavedChangesContext();
   }
   const finalizeRender = (pageContext = getCurrentSiteAnalyticsPageContext()) => {
+    applyPageMetadata(getRoutePageMetadata(rawRoute));
     hydrateAppIconSlots(app);
     hydrateAppIconSlots(authStatus);
     hydrateAppIconSlots(appFooter);
