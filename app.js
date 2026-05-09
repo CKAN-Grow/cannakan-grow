@@ -26867,6 +26867,16 @@ const LEARN_GETTING_STARTED_CHECKLIST = Object.freeze([
   }),
 ]);
 
+const LEARN_TUTORIAL_FILTERS = Object.freeze([
+  Object.freeze({ id: "all", label: "All" }),
+  Object.freeze({ id: "kan-system", label: "KAN® System" }),
+  Object.freeze({ id: "grow-app", label: "Grow App" }),
+  Object.freeze({ id: "getting-started", label: "Getting Started" }),
+  Object.freeze({ id: "coming-soon", label: "Coming Soon" }),
+  Object.freeze({ id: "completed", label: "Completed" }),
+  Object.freeze({ id: "not-started", label: "Not Started" }),
+]);
+
 function normalizeTutorialPublishStatus(status = "coming-soon") {
   const normalizedStatus = String(status || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
   return ["coming-soon", "draft", "published"].includes(normalizedStatus) ? normalizedStatus : "coming-soon";
@@ -27430,6 +27440,12 @@ function getLearnTutorialThumbnailUrl(tutorial = {}) {
   return String(tutorial.thumbnailUrl || tutorial.posterUrl || video.posterUrl || "").trim();
 }
 
+function isLearnTutorialGettingStarted(tutorial = {}) {
+  return LEARN_GETTING_STARTED_CHECKLIST.some((item) => (
+    item.type === "tutorial" && item.tutorialId === tutorial.id
+  ));
+}
+
 function renderLearnTutorialThumbnailPlaceholderMarkup(tutorial = {}, category = {}, options = {}) {
   const tagName = options.tagName === "div" ? "div" : "span";
   const theme = getLearnTutorialVisualTheme(tutorial, category);
@@ -27497,16 +27513,69 @@ function renderLearnGettingStartedChecklistMarkup() {
   `;
 }
 
+function renderLearnTutorialSearchControlsMarkup() {
+  return `
+    <section class="card learn-tutorial-controls" aria-labelledby="learn-tutorial-controls-title">
+      <div class="learn-tutorial-controls-header">
+        <div>
+          <p class="eyebrow">Tutorial Library</p>
+          <h2 id="learn-tutorial-controls-title">Find a Guide</h2>
+        </div>
+        <button type="button" class="learn-tutorial-clear-filters" data-learn-clear-filters>Clear filters</button>
+      </div>
+      <label class="learn-tutorial-search-field">
+        <span class="learn-tutorial-search-icon" aria-hidden="true">⌕</span>
+        <input
+          type="search"
+          placeholder="Search tutorials, descriptions, or categories..."
+          autocomplete="off"
+          data-learn-search
+        >
+      </label>
+      <div class="learn-tutorial-filter-chips" role="group" aria-label="Tutorial filters" data-learn-filter-group data-active-filter="all">
+        ${LEARN_TUTORIAL_FILTERS.map((filter, index) => `
+          <button
+            type="button"
+            class="learn-tutorial-filter-chip ${index === 0 ? "is-active" : ""}"
+            data-learn-filter="${escapeHtml(filter.id)}"
+            aria-pressed="${index === 0 ? "true" : "false"}"
+          >${escapeHtml(filter.label)}</button>
+        `).join("")}
+      </div>
+      <div class="learn-tutorial-empty-state" data-learn-empty-state hidden>
+        <strong>No tutorials found</strong>
+        <p>Try a different search or clear filters to see the full Learn library.</p>
+        <button type="button" class="learn-tutorial-clear-filters" data-learn-clear-filters>Clear filters</button>
+      </div>
+    </section>
+  `;
+}
+
 function renderLearnTutorialCardMarkup(tutorial, category) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   const progressStatus = getTutorialProgressStatus(tutorial.id);
   const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
+  const status = normalizeTutorialPublishStatus(tutorial.status);
+  const searchText = [
+    tutorial.title,
+    tutorial.description,
+    category.title,
+    category.eyebrow,
+  ].join(" ");
   return `
     <button
       type="button"
       class="learn-tutorial-card"
       data-learn-tutorial-open="${escapeHtml(tutorial.id)}"
+      data-learn-tutorial-title="${escapeHtml(tutorial.title)}"
+      data-learn-tutorial-description="${escapeHtml(tutorial.description)}"
+      data-learn-tutorial-category="${escapeHtml(category.title)}"
+      data-learn-tutorial-category-id="${escapeHtml(category.id)}"
+      data-learn-tutorial-status="${escapeHtml(status)}"
+      data-learn-progress-status="${escapeHtml(progressStatus)}"
+      data-learn-getting-started="${isLearnTutorialGettingStarted(tutorial) ? "true" : "false"}"
+      data-learn-search-text="${escapeHtml(searchText)}"
       data-video-provider="${escapeHtml(getTutorialVideoConfig(tutorial).videoProvider)}"
       data-video-mp4-url="${escapeHtml(getTutorialVideoConfig(tutorial).mp4Url)}"
       data-video-cloudflare-stream-id="${escapeHtml(getTutorialVideoConfig(tutorial).cloudflareStreamId)}"
@@ -27842,6 +27911,7 @@ function renderLearnPage(targetCategoryId = "") {
         </div>
       </section>
       ${renderLearnGettingStartedChecklistMarkup()}
+      ${renderLearnTutorialSearchControlsMarkup()}
       ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
     </section>
   `;
@@ -27942,6 +28012,12 @@ function refreshTutorialProgressUi(tutorialId = "") {
 
   const progressStatus = getTutorialProgressStatus(normalizedTutorialId);
   const progressLabel = getTutorialProgressStatusLabel(normalizedTutorialId);
+  document.querySelectorAll("[data-learn-tutorial-open]").forEach((card) => {
+    if (card instanceof HTMLElement && card.dataset.learnTutorialOpen === normalizedTutorialId) {
+      card.dataset.learnProgressStatus = progressStatus;
+    }
+  });
+
   document.querySelectorAll("[data-learn-progress-badge-for]").forEach((badge) => {
     if (!(badge instanceof HTMLElement) || badge.dataset.learnProgressBadgeFor !== normalizedTutorialId) {
       return;
@@ -27971,6 +28047,7 @@ function refreshTutorialProgressUi(tutorialId = "") {
     removeCompletedTutorialPrompts(normalizedTutorialId);
     refreshLearnGettingStartedChecklistUi(document);
   }
+  applyLearnTutorialFilters(document);
 }
 
 function bindLearnTutorialProgressActions(scope = document, tutorialId = "") {
@@ -28041,6 +28118,134 @@ function bindLearnGettingStartedChecklist(scope = document) {
   refreshLearnGettingStartedChecklistUi(document);
 }
 
+function getActiveLearnTutorialFilter(scope = document) {
+  const filterGroup = scope.querySelector?.("[data-learn-filter-group]") || document.querySelector("[data-learn-filter-group]");
+  return String(filterGroup?.dataset.activeFilter || "all").trim() || "all";
+}
+
+function doesLearnTutorialMatchFilter(card, activeFilter = "all") {
+  if (!(card instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (activeFilter === "all") {
+    return true;
+  }
+  if (activeFilter === "kan-system" || activeFilter === "grow-app") {
+    return card.dataset.learnTutorialCategoryId === activeFilter;
+  }
+  if (activeFilter === "getting-started") {
+    return card.dataset.learnGettingStarted === "true";
+  }
+  if (activeFilter === "coming-soon") {
+    return card.dataset.learnTutorialStatus === "coming-soon";
+  }
+  if (activeFilter === "completed") {
+    return card.dataset.learnProgressStatus === "completed";
+  }
+  if (activeFilter === "not-started") {
+    return card.dataset.learnProgressStatus === "not-started";
+  }
+  return true;
+}
+
+function applyLearnTutorialFilters(scope = document) {
+  const root = scope instanceof Document ? scope : document;
+  const searchInput = root.querySelector("[data-learn-search]") || document.querySelector("[data-learn-search]");
+  const filterGroup = root.querySelector("[data-learn-filter-group]") || document.querySelector("[data-learn-filter-group]");
+  if (!(searchInput instanceof HTMLInputElement) || !(filterGroup instanceof HTMLElement)) {
+    return;
+  }
+
+  const query = searchInput.value.trim().toLowerCase();
+  const activeFilter = getActiveLearnTutorialFilter(root);
+  let visibleCount = 0;
+
+  document.querySelectorAll("[data-learn-tutorial-open]").forEach((card) => {
+    if (!(card instanceof HTMLElement)) {
+      return;
+    }
+    const searchableText = String(card.dataset.learnSearchText || "").toLowerCase();
+    const matchesSearch = !query || searchableText.includes(query);
+    const matchesFilter = doesLearnTutorialMatchFilter(card, activeFilter);
+    const isVisible = matchesSearch && matchesFilter;
+    card.hidden = !isVisible;
+    if (isVisible) {
+      visibleCount += 1;
+    }
+  });
+
+  document.querySelectorAll("[data-learn-category]").forEach((categorySection) => {
+    if (!(categorySection instanceof HTMLElement)) {
+      return;
+    }
+    const hasVisibleTutorials = Array.from(categorySection.querySelectorAll("[data-learn-tutorial-open]"))
+      .some((card) => card instanceof HTMLElement && !card.hidden);
+    categorySection.hidden = !hasVisibleTutorials;
+  });
+
+  document.querySelectorAll("[data-learn-empty-state]").forEach((emptyState) => {
+    if (emptyState instanceof HTMLElement) {
+      emptyState.hidden = visibleCount > 0;
+    }
+  });
+}
+
+function clearLearnTutorialFilters(scope = document) {
+  const root = scope instanceof Document ? scope : document;
+  const searchInput = root.querySelector("[data-learn-search]") || document.querySelector("[data-learn-search]");
+  const filterGroup = root.querySelector("[data-learn-filter-group]") || document.querySelector("[data-learn-filter-group]");
+  if (searchInput instanceof HTMLInputElement) {
+    searchInput.value = "";
+  }
+  if (filterGroup instanceof HTMLElement) {
+    filterGroup.dataset.activeFilter = "all";
+    filterGroup.querySelectorAll("[data-learn-filter]").forEach((chip) => {
+      const isActive = chip instanceof HTMLElement && chip.dataset.learnFilter === "all";
+      chip.classList.toggle("is-active", isActive);
+      chip.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+  }
+  applyLearnTutorialFilters(root);
+}
+
+function bindLearnTutorialFilters(scope = document) {
+  const searchInput = scope.querySelector("[data-learn-search]");
+  if (searchInput instanceof HTMLInputElement && searchInput.dataset.learnSearchBound !== "true") {
+    searchInput.dataset.learnSearchBound = "true";
+    searchInput.addEventListener("input", () => applyLearnTutorialFilters(document));
+  }
+
+  scope.querySelectorAll("[data-learn-filter]").forEach((chip) => {
+    if (!(chip instanceof HTMLButtonElement) || chip.dataset.learnFilterBound === "true") {
+      return;
+    }
+    chip.dataset.learnFilterBound = "true";
+    chip.addEventListener("click", () => {
+      const filterGroup = chip.closest("[data-learn-filter-group]");
+      if (filterGroup instanceof HTMLElement) {
+        filterGroup.dataset.activeFilter = chip.dataset.learnFilter || "all";
+        filterGroup.querySelectorAll("[data-learn-filter]").forEach((button) => {
+          const isActive = button === chip;
+          button.classList.toggle("is-active", isActive);
+          button.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
+      }
+      applyLearnTutorialFilters(document);
+    });
+  });
+
+  scope.querySelectorAll("[data-learn-clear-filters]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnClearBound === "true") {
+      return;
+    }
+    button.dataset.learnClearBound = "true";
+    button.addEventListener("click", () => clearLearnTutorialFilters(document));
+  });
+
+  applyLearnTutorialFilters(document);
+}
+
 function openLearnTutorialModal(tutorialId = "") {
   const tutorialEntry = getLearnTutorialById(tutorialId);
   if (!tutorialEntry) {
@@ -28074,6 +28279,7 @@ function openLearnTutorialModal(tutorialId = "") {
 
 function bindLearnPageInteractions(scope = document) {
   bindLearnGettingStartedChecklist(scope);
+  bindLearnTutorialFilters(scope);
 
   scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
     if (button.dataset.learnTutorialBound === "true") {
