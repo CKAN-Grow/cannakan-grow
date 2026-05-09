@@ -69,6 +69,7 @@ const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsO
 const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagementOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
+const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -26923,6 +26924,136 @@ function saveAdminTutorialDraftsToStorage(drafts = {}) {
   }
 }
 
+function normalizeTutorialProgressRecord(record = {}) {
+  const completed = Boolean(record?.completed);
+  const started = completed || Boolean(record?.started);
+  const viewed = started || Boolean(record?.viewed);
+  return {
+    viewed,
+    started,
+    completed,
+    lastOpenedAt: String(record?.lastOpenedAt || "").trim(),
+    completedAt: String(record?.completedAt || "").trim(),
+    persistence: "local",
+    userId: String(record?.userId || appState.user?.id || "").trim(),
+  };
+}
+
+function loadTutorialProgressMapFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(TUTORIAL_PROGRESS_STORAGE_KEY) || "{}");
+    if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+      return {};
+    }
+    return Object.entries(storedValue).reduce((progressMap, [tutorialId, record]) => {
+      const normalizedTutorialId = String(tutorialId || "").trim();
+      if (normalizedTutorialId) {
+        progressMap[normalizedTutorialId] = normalizeTutorialProgressRecord(record);
+      }
+      return progressMap;
+    }, {});
+  } catch (error) {
+    console.warn("[Tutorial Progress] Failed to read tutorial progress.", error);
+    return {};
+  }
+}
+
+function saveTutorialProgressMapToStorage(progressMap = {}) {
+  try {
+    localStorage.setItem(TUTORIAL_PROGRESS_STORAGE_KEY, JSON.stringify(progressMap || {}));
+  } catch (error) {
+    console.warn("[Tutorial Progress] Failed to save tutorial progress.", error);
+  }
+}
+
+function getTutorialProgress(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return normalizeTutorialProgressRecord();
+  }
+  return loadTutorialProgressMapFromStorage()[normalizedTutorialId] || normalizeTutorialProgressRecord();
+}
+
+function saveTutorialProgress(tutorialId = "", updates = {}) {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return normalizeTutorialProgressRecord();
+  }
+
+  const progressMap = loadTutorialProgressMapFromStorage();
+  const timestamp = new Date().toISOString();
+  const nextRecord = normalizeTutorialProgressRecord({
+    ...(progressMap[normalizedTutorialId] || {}),
+    ...updates,
+    userId: appState.user?.id || progressMap[normalizedTutorialId]?.userId || "",
+  });
+
+  if (updates.completed) {
+    nextRecord.completed = true;
+    nextRecord.started = true;
+    nextRecord.viewed = true;
+    nextRecord.completedAt = String(updates.completedAt || nextRecord.completedAt || timestamp);
+  }
+
+  if (updates.started) {
+    nextRecord.started = true;
+    nextRecord.viewed = true;
+  }
+
+  if (updates.viewed) {
+    nextRecord.viewed = true;
+  }
+
+  if (updates.lastOpenedAt) {
+    nextRecord.lastOpenedAt = String(updates.lastOpenedAt || "").trim();
+  }
+
+  progressMap[normalizedTutorialId] = nextRecord;
+  saveTutorialProgressMapToStorage(progressMap);
+  return nextRecord;
+}
+
+function markTutorialViewed(tutorialId = "") {
+  return saveTutorialProgress(tutorialId, {
+    viewed: true,
+    lastOpenedAt: new Date().toISOString(),
+  });
+}
+
+function markTutorialStarted(tutorialId = "") {
+  return saveTutorialProgress(tutorialId, { started: true });
+}
+
+function markTutorialCompleted(tutorialId = "") {
+  return saveTutorialProgress(tutorialId, { completed: true });
+}
+
+function getTutorialProgressStatus(tutorialId = "") {
+  const progress = getTutorialProgress(tutorialId);
+  if (progress.completed) {
+    return "completed";
+  }
+  if (progress.started) {
+    return "started";
+  }
+  return "not-started";
+}
+
+function getTutorialProgressStatusLabel(tutorialId = "") {
+  const status = getTutorialProgressStatus(tutorialId);
+  if (status === "completed") {
+    return "Completed";
+  }
+  if (status === "started") {
+    return "Started";
+  }
+  return "Not started";
+}
+
+function isTutorialCompleted(tutorialId = "") {
+  return getTutorialProgress(tutorialId).completed;
+}
+
 function getAdminTutorialDraft(tutorialId = "") {
   const drafts = loadAdminTutorialDraftsFromStorage();
   return drafts[String(tutorialId || "").trim()] || null;
@@ -27089,7 +27220,11 @@ function saveContextualOnboardingPromptState(promptId = "", status = "dismissed"
 }
 
 function shouldShowContextualOnboardingPrompt(promptId = "") {
-  return Boolean(getContextualOnboardingPrompt(promptId) && !getContextualOnboardingPromptState(promptId));
+  const prompt = getContextualOnboardingPrompt(promptId);
+  if (!prompt || getContextualOnboardingPromptState(promptId)) {
+    return false;
+  }
+  return !(prompt.actions || []).some((action) => isTutorialCompleted(action.tutorialId));
 }
 
 function getLearnTutorialDurationLabel(tutorial = {}) {
@@ -27128,6 +27263,8 @@ function getRelatedLearnTutorials(category = {}, tutorial = {}) {
 function renderLearnTutorialCardMarkup(tutorial, category) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
+  const progressStatus = getTutorialProgressStatus(tutorial.id);
+  const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
   return `
     <button
       type="button"
@@ -27145,7 +27282,13 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
         <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
         <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
         <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
-        <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+        <span class="learn-tutorial-card-badges">
+          <span class="learn-tutorial-coming-soon">${escapeHtml(getTutorialStatusLabel(tutorial.status))}</span>
+          <span
+            class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
+            data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
+          >${escapeHtml(progressLabel)}</span>
+        </span>
       </span>
     </button>
   `;
@@ -27234,6 +27377,8 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}) {
 function renderLearnTutorialModalContentMarkup(tutorial, category) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
+  const progressStatus = getTutorialProgressStatus(tutorial.id);
+  const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
   const learningPoints = getLearnTutorialLearningPoints(tutorial, category);
   const relatedTutorials = getRelatedLearnTutorials(category, tutorial);
   const relatedMarkup = relatedTutorials.length
@@ -27253,6 +27398,10 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
       <div class="learn-tutorial-modal-kicker-row">
         <span class="learn-tutorial-category-badge">${escapeHtml(category.title)}</span>
         <span class="learn-tutorial-coming-soon">Coming Soon</span>
+        <span
+          class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
+          data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
+        >${escapeHtml(progressLabel)}</span>
       </div>
       <h2 id="learn-tutorial-modal-title">${escapeHtml(tutorial.title)}</h2>
       <div class="learn-tutorial-modal-meta" aria-label="Tutorial details">
@@ -27260,6 +27409,20 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
         <span>${escapeHtml(difficultyLabel)}</span>
       </div>
       <p id="learn-tutorial-modal-description">${escapeHtml(tutorial.description)}</p>
+      <div class="learn-tutorial-progress-actions" data-learn-progress-actions="${escapeHtml(tutorial.id)}">
+        <button
+          type="button"
+          class="button button-secondary"
+          data-learn-progress-start="${escapeHtml(tutorial.id)}"
+          ${progressStatus !== "not-started" ? "disabled" : ""}
+        >${progressStatus === "not-started" ? "Mark as Started" : "Started"}</button>
+        <button
+          type="button"
+          class="button button-primary"
+          data-learn-progress-complete="${escapeHtml(tutorial.id)}"
+          ${progressStatus === "completed" ? "disabled" : ""}
+        >${progressStatus === "completed" ? "Completed" : "Mark as Complete"}</button>
+      </div>
     </div>
     <div class="learn-tutorial-support-grid">
       <section class="learn-tutorial-support-panel">
@@ -27357,7 +27520,7 @@ function bindContextualOnboardingPrompt(promptElement, promptId = "") {
   promptElement.querySelectorAll("[data-onboarding-tutorial-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const tutorialId = button.dataset.onboardingTutorialId || "";
-      saveContextualOnboardingPromptState(promptId, "completed", tutorialId);
+      saveContextualOnboardingPromptState(promptId, "dismissed", tutorialId);
       openLearnTutorialModal(tutorialId);
       removePrompt();
     });
@@ -27509,6 +27672,90 @@ function ensureLearnTutorialModal() {
   return overlay;
 }
 
+function removeCompletedTutorialPrompts(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  document.querySelectorAll("[data-contextual-onboarding-prompt]").forEach((promptElement) => {
+    if (!(promptElement instanceof HTMLElement)) {
+      return;
+    }
+    const promptId = promptElement.dataset.contextualOnboardingPrompt || "";
+    const prompt = getContextualOnboardingPrompt(promptId);
+    const isRelatedPrompt = (prompt?.actions || []).some((action) => action.tutorialId === normalizedTutorialId);
+    if (!isRelatedPrompt) {
+      return;
+    }
+    saveContextualOnboardingPromptState(promptId, "completed", normalizedTutorialId);
+    promptElement.classList.add("is-dismissing");
+    window.setTimeout(() => promptElement.remove(), 170);
+  });
+}
+
+function refreshTutorialProgressUi(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  const progressStatus = getTutorialProgressStatus(normalizedTutorialId);
+  const progressLabel = getTutorialProgressStatusLabel(normalizedTutorialId);
+  document.querySelectorAll("[data-learn-progress-badge-for]").forEach((badge) => {
+    if (!(badge instanceof HTMLElement) || badge.dataset.learnProgressBadgeFor !== normalizedTutorialId) {
+      return;
+    }
+    badge.textContent = progressLabel;
+    badge.classList.remove("is-not-started", "is-started", "is-completed");
+    badge.classList.add(`is-${progressStatus}`);
+  });
+
+  document.querySelectorAll("[data-learn-progress-actions]").forEach((actionGroup) => {
+    if (!(actionGroup instanceof HTMLElement) || actionGroup.dataset.learnProgressActions !== normalizedTutorialId) {
+      return;
+    }
+    const startButton = actionGroup.querySelector("[data-learn-progress-start]");
+    const completeButton = actionGroup.querySelector("[data-learn-progress-complete]");
+    if (startButton instanceof HTMLButtonElement) {
+      startButton.disabled = progressStatus !== "not-started";
+      startButton.textContent = progressStatus === "not-started" ? "Mark as Started" : "Started";
+    }
+    if (completeButton instanceof HTMLButtonElement) {
+      completeButton.disabled = progressStatus === "completed";
+      completeButton.textContent = progressStatus === "completed" ? "Completed" : "Mark as Complete";
+    }
+  });
+
+  if (progressStatus === "completed") {
+    removeCompletedTutorialPrompts(normalizedTutorialId);
+  }
+}
+
+function bindLearnTutorialProgressActions(scope = document, tutorialId = "") {
+  scope.querySelectorAll("[data-learn-progress-start]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.progressActionBound === "true") {
+      return;
+    }
+    button.dataset.progressActionBound = "true";
+    button.addEventListener("click", () => {
+      markTutorialStarted(button.dataset.learnProgressStart || tutorialId);
+      refreshTutorialProgressUi(button.dataset.learnProgressStart || tutorialId);
+    });
+  });
+
+  scope.querySelectorAll("[data-learn-progress-complete]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.progressActionBound === "true") {
+      return;
+    }
+    button.dataset.progressActionBound = "true";
+    button.addEventListener("click", () => {
+      markTutorialCompleted(button.dataset.learnProgressComplete || tutorialId);
+      refreshTutorialProgressUi(button.dataset.learnProgressComplete || tutorialId);
+    });
+  });
+}
+
 function openLearnTutorialModal(tutorialId = "") {
   const tutorialEntry = getLearnTutorialById(tutorialId);
   if (!tutorialEntry) {
@@ -27516,6 +27763,7 @@ function openLearnTutorialModal(tutorialId = "") {
   }
 
   const { category, tutorial } = tutorialEntry;
+  markTutorialViewed(tutorial.id);
   const overlay = ensureLearnTutorialModal();
   const modal = overlay.querySelector(".learn-tutorial-modal");
   const content = overlay.querySelector("[data-learn-tutorial-modal-content]");
@@ -27526,6 +27774,8 @@ function openLearnTutorialModal(tutorialId = "") {
         openLearnTutorialModal(button.dataset.learnRelatedTutorial || "");
       });
     });
+    bindLearnTutorialProgressActions(content, tutorial.id);
+    refreshTutorialProgressUi(tutorial.id);
     content.scrollTop = 0;
   }
   overlay.dataset.closing = "false";
