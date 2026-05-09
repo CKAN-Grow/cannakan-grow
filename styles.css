@@ -22842,14 +22842,20 @@ body.theme-dark .theme-toggle-button:hover {
 
 .new-session-name-examples ul {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   margin: 0;
-  padding-left: 18px;
-  color: #d8e4d5;
+  padding-left: 16px;
+  color: rgba(216, 228, 213, 0.86);
 }
 
 .new-session-name-examples li {
   line-height: 1.35;
+  padding-left: 2px;
+}
+
+.new-session-name-examples li::marker {
+  color: rgba(148, 209, 89, 0.46);
+  font-size: 0.72em;
 }
 
 .new-session-name-modal-actions {

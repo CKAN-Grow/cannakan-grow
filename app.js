@@ -26372,14 +26372,14 @@ function ensureNewSessionNamePrompt(form) {
       <form class="new-session-name-modal-form" data-new-session-name-modal-form>
         <label class="new-session-name-modal-field">
           <span>Session Name</span>
-          <input id="new-session-name-modal-input" type="text" maxlength="80" placeholder="Blue Dream Test - Seedsman" autocomplete="off">
+          <input id="new-session-name-modal-input" type="text" maxlength="80" placeholder="Blue Dream Test" autocomplete="off">
         </label>
         <div class="new-session-name-examples" aria-label="Session name examples">
           <span>Examples:</span>
           <ul>
-            <li>Blue Dream Test - Seedsman</li>
-            <li>KAN A - RQS Autos</li>
-            <li>2026 Pheno Hunt</li>
+            <li>Blue Dream Test</li>
+            <li>This Season Outdoor Grow</li>
+            <li>KAN A - 2026 Pheno Hunt</li>
           </ul>
         </div>
         <div class="new-session-name-modal-actions">
