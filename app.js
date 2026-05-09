@@ -71,6 +71,7 @@ const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdmin
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
 const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
 const TUTORIAL_ANALYTICS_STORAGE_KEY = "cannakanTutorialAnalyticsEvents";
+const TUTORIAL_FEEDBACK_STORAGE_KEY = "cannakanTutorialFeedback";
 const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
@@ -27259,6 +27260,89 @@ function getTutorialAnalyticsSummary() {
   };
 }
 
+function normalizeTutorialFeedbackValue(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
+  return ["yes", "not-yet"].includes(normalizedValue) ? normalizedValue : "";
+}
+
+function loadTutorialFeedbackMapFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(TUTORIAL_FEEDBACK_STORAGE_KEY) || "{}");
+    if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+      return {};
+    }
+    return Object.entries(storedValue).reduce((feedbackMap, [tutorialId, record]) => {
+      const normalizedTutorialId = String(tutorialId || "").trim();
+      const response = normalizeTutorialFeedbackValue(record?.response || record);
+      if (normalizedTutorialId && response) {
+        feedbackMap[normalizedTutorialId] = {
+          response,
+          updatedAt: String(record?.updatedAt || "").trim(),
+          persistence: "local",
+          userId: String(record?.userId || "").trim(),
+        };
+      }
+      return feedbackMap;
+    }, {});
+  } catch (error) {
+    console.warn("[Tutorial Feedback] Failed to read tutorial feedback.", error);
+    return {};
+  }
+}
+
+function saveTutorialFeedbackMapToStorage(feedbackMap = {}) {
+  try {
+    localStorage.setItem(TUTORIAL_FEEDBACK_STORAGE_KEY, JSON.stringify(feedbackMap || {}));
+  } catch (error) {
+    console.warn("[Tutorial Feedback] Failed to save tutorial feedback.", error);
+  }
+}
+
+function getTutorialFeedback(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  return normalizedTutorialId ? loadTutorialFeedbackMapFromStorage()[normalizedTutorialId] || null : null;
+}
+
+function saveTutorialFeedback(tutorialId = "", response = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  const normalizedResponse = normalizeTutorialFeedbackValue(response);
+  if (!normalizedTutorialId || !normalizedResponse) {
+    return null;
+  }
+
+  const feedbackMap = loadTutorialFeedbackMapFromStorage();
+  feedbackMap[normalizedTutorialId] = {
+    response: normalizedResponse,
+    updatedAt: new Date().toISOString(),
+    persistence: "local",
+    userId: appState.user?.id || "",
+  };
+  saveTutorialFeedbackMapToStorage(feedbackMap);
+  trackTutorialAnalyticsEvent(
+    normalizedResponse === "yes" ? "tutorial_feedback_yes" : "tutorial_feedback_not_yet",
+    {
+      tutorialId: normalizedTutorialId,
+      source: document.querySelector("#learn-tutorial-modal-overlay")?.dataset.activeTutorialSource || "Tutorial modal",
+      metadata: { response: normalizedResponse },
+    },
+  );
+  return feedbackMap[normalizedTutorialId];
+}
+
+function getTutorialFeedbackSummary() {
+  const feedbackMap = loadTutorialFeedbackMapFromStorage();
+  const feedbackEntries = Object.entries(feedbackMap);
+  const yesEntries = feedbackEntries.filter(([, record]) => record.response === "yes");
+  const notYetEntries = feedbackEntries.filter(([, record]) => record.response === "not-yet");
+  const buildTutorialLabel = ([tutorialId]) => getLearnTutorialById(tutorialId)?.tutorial?.title || tutorialId;
+  return {
+    helpfulVotes: yesEntries.length,
+    notYetVotes: notYetEntries.length,
+    mostHelpfulTutorial: yesEntries.length ? buildTutorialLabel(yesEntries[0]) : "No helpful votes yet",
+    needsImprovementTutorial: notYetEntries.length ? buildTutorialLabel(notYetEntries[0]) : "No improvement votes yet",
+  };
+}
+
 function normalizeLearnGettingStartedRecord(record = {}) {
   return {
     completed: Boolean(record?.completed),
@@ -27927,6 +28011,36 @@ function renderLearnTutorialTipsMarkup(tutorial = {}) {
   `;
 }
 
+function renderLearnTutorialFeedbackMarkup(tutorial = {}) {
+  const feedback = getTutorialFeedback(tutorial.id);
+  const response = normalizeTutorialFeedbackValue(feedback?.response || "");
+  return `
+    <section class="learn-tutorial-support-panel learn-tutorial-feedback-panel" data-learn-feedback-panel="${escapeHtml(tutorial.id)}">
+      <div class="learn-tutorial-feedback-copy">
+        <h3>Was this tutorial helpful?</h3>
+        <p class="learn-tutorial-section-copy">Your quick response helps improve future tutorials.</p>
+      </div>
+      <div class="learn-tutorial-feedback-actions">
+        <button
+          type="button"
+          class="learn-tutorial-feedback-button ${response === "yes" ? "is-selected" : ""}"
+          data-learn-feedback-response="yes"
+          data-learn-feedback-tutorial="${escapeHtml(tutorial.id)}"
+          aria-pressed="${response === "yes" ? "true" : "false"}"
+        >Yes</button>
+        <button
+          type="button"
+          class="learn-tutorial-feedback-button ${response === "not-yet" ? "is-selected" : ""}"
+          data-learn-feedback-response="not-yet"
+          data-learn-feedback-tutorial="${escapeHtml(tutorial.id)}"
+          aria-pressed="${response === "not-yet" ? "true" : "false"}"
+        >Not yet</button>
+        <button type="button" class="learn-tutorial-feedback-link" data-learn-feedback-open="${escapeHtml(tutorial.id)}">Send feedback</button>
+      </div>
+    </section>
+  `;
+}
+
 function renderLearnTutorialModalContentMarkup(tutorial, category) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
@@ -27991,6 +28105,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
       ${renderLearnTutorialTranscriptMarkup(tutorial)}
       ${renderLearnTutorialQuickStepsMarkup(tutorial)}
       ${renderLearnTutorialTipsMarkup(tutorial)}
+      ${renderLearnTutorialFeedbackMarkup(tutorial)}
       <section class="learn-tutorial-support-panel learn-tutorial-support-panel--related">
         <h3>Related Tutorials</h3>
         <div class="learn-related-tutorials">
@@ -28333,6 +28448,54 @@ function bindLearnTutorialProgressActions(scope = document, tutorialId = "") {
   });
 }
 
+function refreshLearnTutorialFeedbackUi(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return;
+  }
+
+  const response = normalizeTutorialFeedbackValue(getTutorialFeedback(normalizedTutorialId)?.response || "");
+  document.querySelectorAll(`[data-learn-feedback-panel="${CSS.escape(normalizedTutorialId)}"]`).forEach((panel) => {
+    panel.querySelectorAll("[data-learn-feedback-response]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const isSelected = button.dataset.learnFeedbackResponse === response;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  });
+}
+
+function bindLearnTutorialFeedbackActions(scope = document, tutorialId = "") {
+  scope.querySelectorAll("[data-learn-feedback-response]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.feedbackBound === "true") {
+      return;
+    }
+    button.dataset.feedbackBound = "true";
+    button.addEventListener("click", () => {
+      const selectedTutorialId = button.dataset.learnFeedbackTutorial || tutorialId;
+      saveTutorialFeedback(selectedTutorialId, button.dataset.learnFeedbackResponse || "");
+      refreshLearnTutorialFeedbackUi(selectedTutorialId);
+    });
+  });
+
+  scope.querySelectorAll("[data-learn-feedback-open]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.feedbackOpenBound === "true") {
+      return;
+    }
+    button.dataset.feedbackOpenBound = "true";
+    button.addEventListener("click", () => {
+      const selectedTutorialId = button.dataset.learnFeedbackOpen || tutorialId;
+      trackTutorialAnalyticsEvent("tutorial_feedback_opened", {
+        tutorialId: selectedTutorialId,
+        source: document.querySelector("#learn-tutorial-modal-overlay")?.dataset.activeTutorialSource || "Tutorial modal",
+      });
+      window.location.hash = "#contact";
+    });
+  });
+}
+
 function refreshLearnGettingStartedChecklistUi(scope = document) {
   const root = scope instanceof Document ? scope : document;
   const checklistState = getLearnGettingStartedChecklistState();
@@ -28551,7 +28714,9 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
       });
     });
     bindLearnTutorialProgressActions(content, tutorial.id);
+    bindLearnTutorialFeedbackActions(content, tutorial.id);
     refreshTutorialProgressUi(tutorial.id);
+    refreshLearnTutorialFeedbackUi(tutorial.id);
     content.scrollTop = 0;
   }
   overlay.dataset.closing = "false";
@@ -43081,6 +43246,40 @@ function renderAdminTutorialEngagementPanelMarkup() {
   `;
 }
 
+function renderAdminTutorialFeedbackPanelMarkup() {
+  const summary = getTutorialFeedbackSummary();
+  return `
+    <section class="meta-card admin-tutorial-engagement-panel admin-tutorial-feedback-summary-panel">
+      <div class="admin-tutorial-engagement-head">
+        <div>
+          <p class="eyebrow">Tutorial Feedback</p>
+          <h4>Feedback Summary</h4>
+        </div>
+        <span>Local preview</span>
+      </div>
+      <div class="admin-tutorial-engagement-grid">
+        <div>
+          <strong>${escapeHtml(summary.helpfulVotes.toLocaleString())}</strong>
+          <span>Helpful votes</span>
+        </div>
+        <div>
+          <strong>${escapeHtml(summary.notYetVotes.toLocaleString())}</strong>
+          <span>Not yet votes</span>
+        </div>
+        <div class="admin-tutorial-engagement-wide">
+          <strong>${escapeHtml(summary.mostHelpfulTutorial)}</strong>
+          <span>Most helpful tutorial</span>
+        </div>
+        <div class="admin-tutorial-engagement-wide">
+          <strong>${escapeHtml(summary.needsImprovementTutorial)}</strong>
+          <span>Needs improvement tutorial</span>
+        </div>
+      </div>
+      <p class="muted">Local preview only - Supabase feedback coming later.</p>
+    </section>
+  `;
+}
+
 function renderAdminTutorialManagementBodyMarkup() {
   const tutorials = getAdminTutorialsForManagement();
   if (!appState.adminTutorialEditingId && tutorials[0]) {
@@ -43113,6 +43312,7 @@ function renderAdminTutorialManagementBodyMarkup() {
         </div>
         <div id="admin-tutorial-editor-anchor">
           ${renderAdminTutorialEngagementPanelMarkup()}
+          ${renderAdminTutorialFeedbackPanelMarkup()}
           ${renderAdminTutorialEditorMarkup(editingTutorial)}
         </div>
       </div>
