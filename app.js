@@ -26653,6 +26653,9 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "KAN® System Overview",
         duration: "2 min • Beginner",
         description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
+        featured: true,
+        featuredOrder: 1,
+        featuredLabel: "Start Here",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26727,6 +26730,9 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Creating Your First Session",
         duration: "2 min • Beginner",
         description: "Placeholder tutorial for starting a session and setting up the first partition rows.",
+        featured: true,
+        featuredOrder: 2,
+        featuredLabel: "First Session",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26766,6 +26772,9 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Generating Grow Snapshots",
         duration: "3 min • Beginner",
         description: "Placeholder walkthrough for creating share-ready grow snapshots.",
+        featured: true,
+        featuredOrder: 3,
+        featuredLabel: "Share Ready",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -27500,6 +27509,12 @@ function getLearnTutorialCategories() {
       const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
+      const draftFeaturedOrder = Number(draft.featuredOrder);
+      const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
+      const featuredOrder = Number.isFinite(draftFeaturedOrder) && draftFeaturedOrder > 0
+        ? draftFeaturedOrder
+        : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : index + 1);
+      const featuredLabel = String(draft.featuredLabel ?? tutorial.featuredLabel ?? "").trim();
       const mergedTutorial = {
         ...tutorial,
         ...draft,
@@ -27512,6 +27527,8 @@ function getLearnTutorialCategories() {
         thumbnailUrl: String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : index + 1,
         featured: Boolean(draft.featured ?? tutorial.featured),
+        featuredOrder,
+        featuredLabel,
         onboardingPriority: Boolean(draft.onboardingPriority ?? tutorial.onboardingPriority),
         videoProvider,
         cloudflareStreamId,
@@ -27836,12 +27853,55 @@ function renderLearnTutorialSearchControlsMarkup() {
   `;
 }
 
-function renderLearnTutorialCardMarkup(tutorial, category) {
+function getFeaturedLearnTutorials(categories = getLearnTutorialCategories()) {
+  return categories
+    .flatMap((category) => category.tutorials
+      .filter((tutorial) => tutorial.featured && shouldShowTutorialOnPublicLearn(tutorial))
+      .map((tutorial) => ({ category, tutorial })))
+    .sort((left, right) => {
+      const orderDelta = (Number(left.tutorial.featuredOrder) || 999) - (Number(right.tutorial.featuredOrder) || 999);
+      if (orderDelta !== 0) {
+        return orderDelta;
+      }
+      const displayOrderDelta = (Number(left.tutorial.order) || 999) - (Number(right.tutorial.order) || 999);
+      if (displayOrderDelta !== 0) {
+        return displayOrderDelta;
+      }
+      return String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
+    });
+}
+
+function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategories()) {
+  const featuredTutorials = getFeaturedLearnTutorials(categories);
+  if (!featuredTutorials.length) {
+    return "";
+  }
+
+  return `
+    <section class="card learn-featured-tutorials" data-learn-featured-section aria-labelledby="learn-featured-tutorials-title">
+      <div class="learn-featured-tutorials-header">
+        <div>
+          <p class="eyebrow">Featured</p>
+          <h2 id="learn-featured-tutorials-title">Featured Tutorials</h2>
+          <p class="muted">Start with the core KAN® System and Grow App workflows.</p>
+        </div>
+        <span class="learn-featured-tutorials-count">${escapeHtml(featuredTutorials.length.toLocaleString())} featured</span>
+      </div>
+      <div class="learn-featured-tutorial-grid">
+        ${featuredTutorials.map(({ tutorial, category }) => renderLearnTutorialCardMarkup(tutorial, category, { featured: true })).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   const progressStatus = getTutorialProgressStatus(tutorial.id);
   const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
   const status = normalizeTutorialPublishStatus(tutorial.status);
+  const isFeatured = Boolean(options.featured);
+  const featuredLabel = String(tutorial.featuredLabel || "Featured").trim();
   const searchText = [
     tutorial.title,
     tutorial.description,
@@ -27851,8 +27911,9 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
   return `
     <button
       type="button"
-      class="learn-tutorial-card"
+      class="learn-tutorial-card${isFeatured ? " learn-tutorial-card--featured" : ""}"
       data-learn-tutorial-open="${escapeHtml(tutorial.id)}"
+      data-learn-featured-card="${isFeatured ? "true" : "false"}"
       data-learn-tutorial-title="${escapeHtml(tutorial.title)}"
       data-learn-tutorial-description="${escapeHtml(tutorial.description)}"
       data-learn-tutorial-category="${escapeHtml(category.title)}"
@@ -27867,6 +27928,7 @@ function renderLearnTutorialCardMarkup(tutorial, category) {
     >
       ${renderLearnTutorialThumbnailPlaceholderMarkup(tutorial, category, { className: "learn-tutorial-thumbnail" })}
       <span class="learn-tutorial-card-body">
+        ${isFeatured ? `<span class="learn-tutorial-featured-label">${escapeHtml(featuredLabel || "Featured")}</span>` : ""}
         <span class="learn-tutorial-card-kicker">${escapeHtml(category.eyebrow)}</span>
         <span class="learn-tutorial-card-title">${escapeHtml(tutorial.title)}</span>
         <span class="learn-tutorial-card-meta">${escapeHtml(`${durationLabel} • ${difficultyLabel}`)}</span>
@@ -28280,6 +28342,7 @@ function renderLearnPage(targetCategoryId = "") {
         </div>
       </section>
       ${renderLearnGettingStartedChecklistMarkup()}
+      ${renderFeaturedLearnTutorialsMarkup(categories)}
       ${renderLearnTutorialSearchControlsMarkup()}
       ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
     </section>
@@ -28604,6 +28667,15 @@ function applyLearnTutorialFilters(scope = document) {
     const hasVisibleTutorials = Array.from(categorySection.querySelectorAll("[data-learn-tutorial-open]"))
       .some((card) => card instanceof HTMLElement && !card.hidden);
     categorySection.hidden = !hasVisibleTutorials;
+  });
+
+  document.querySelectorAll("[data-learn-featured-section]").forEach((featuredSection) => {
+    if (!(featuredSection instanceof HTMLElement)) {
+      return;
+    }
+    const hasVisibleFeaturedTutorials = Array.from(featuredSection.querySelectorAll("[data-learn-featured-card='true']"))
+      .some((card) => card instanceof HTMLElement && !card.hidden);
+    featuredSection.hidden = !hasVisibleFeaturedTutorials;
   });
 
   document.querySelectorAll("[data-learn-empty-state]").forEach((emptyState) => {
@@ -43193,7 +43265,15 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           </label>
           <label class="admin-announcement-toggle-row admin-source-form-full">
             <input name="featured" type="checkbox" ${tutorial.featured ? "checked" : ""}>
-            <span>Feature this tutorial in future Learn/onboarding surfaces</span>
+            <span>Mark as featured on the Learn page</span>
+          </label>
+          <label>
+            <span>Featured Order</span>
+            <input name="featuredOrder" type="number" min="1" step="1" value="${escapeHtml(tutorial.featuredOrder || "")}" placeholder="1">
+          </label>
+          <label>
+            <span>Featured Label</span>
+            <input name="featuredLabel" value="${escapeHtml(tutorial.featuredLabel || "")}" placeholder="Start Here">
           </label>
           <label class="admin-announcement-toggle-row admin-source-form-full">
             <input name="onboardingPriority" type="checkbox" ${tutorial.onboardingPriority ? "checked" : ""}>
@@ -43351,6 +43431,7 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
   const tutorialId = form.dataset.adminTutorialForm || "";
   const formData = new FormData(form);
   const videoProvider = normalizeTutorialVideoProvider(formData.get("videoProvider"));
+  const featuredOrderValue = Number(formData.get("featuredOrder"));
   saveAdminTutorialDraft(tutorialId, {
     title: String(formData.get("title") || "").trim(),
     description: String(formData.get("description") || "").trim(),
@@ -43361,6 +43442,8 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
     thumbnailUrl: String(formData.get("thumbnailUrl") || "").trim(),
     order: Math.max(1, Number(formData.get("order")) || 1),
     featured: formData.get("featured") === "on",
+    featuredOrder: Number.isFinite(featuredOrderValue) && featuredOrderValue > 0 ? featuredOrderValue : "",
+    featuredLabel: String(formData.get("featuredLabel") || "").trim(),
     onboardingPriority: formData.get("onboardingPriority") === "on",
     videoProvider,
     cloudflareStreamId: String(formData.get("cloudflareStreamId") || "").trim(),
