@@ -191,6 +191,9 @@ create table if not exists public.user_notification_preferences (
 );
 
 alter table public.user_notification_preferences
+  add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+alter table public.user_notification_preferences
   add column if not exists notify_snapshot boolean not null default true;
 
 alter table public.user_notification_preferences
@@ -210,6 +213,26 @@ alter table public.user_notification_preferences
 
 alter table public.user_notification_preferences
   add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+delete from public.user_notification_preferences existing_preferences
+using (
+  select duplicate_ctid
+  from (
+    select
+      ctid as duplicate_ctid,
+      row_number() over (
+        partition by user_id
+        order by updated_at desc nulls last, created_at desc nulls last, ctid::text desc
+      ) as duplicate_rank
+    from public.user_notification_preferences
+    where user_id is not null
+  ) ranked_preferences
+  where duplicate_rank > 1
+) duplicate_preferences
+where existing_preferences.ctid = duplicate_preferences.duplicate_ctid;
+
+create unique index if not exists user_notification_preferences_user_id_key
+  on public.user_notification_preferences (user_id);
 
 create or replace function public.set_user_notification_preferences_updated_at()
 returns trigger

@@ -8418,6 +8418,12 @@ function getMissingUserNotificationPreferenceColumns(error) {
   ));
 }
 
+function isUserNotificationPreferencesConflictTargetError(error) {
+  const searchText = getSupabaseErrorSearchText(error);
+  return searchText.includes("no unique or exclusion constraint matching the on conflict specification")
+    || (searchText.includes("on conflict") && searchText.includes("no unique"));
+}
+
 function getDefaultNotificationPreferences() {
   return { ...DEFAULT_NOTIFICATION_PREFERENCES };
 }
@@ -10797,6 +10803,74 @@ function buildUserNotificationPreferencesUpsertPayload(
   );
 }
 
+function getNewestUserNotificationPreferencesRow(rowsOrRow = null) {
+  const rows = Array.isArray(rowsOrRow)
+    ? rowsOrRow.filter((row) => row && typeof row === "object")
+    : (rowsOrRow && typeof rowsOrRow === "object" ? [rowsOrRow] : []);
+  if (!rows.length) {
+    return null;
+  }
+
+  return [...rows].sort((left, right) => {
+    const leftUpdatedAt = Date.parse(left.updated_at || left.created_at || "") || 0;
+    const rightUpdatedAt = Date.parse(right.updated_at || right.created_at || "") || 0;
+    return rightUpdatedAt - leftUpdatedAt;
+  })[0] || null;
+}
+
+async function selectUserNotificationPreferencesRow(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!appState.supabase || !normalizedUserId) {
+    return { data: null, error: null };
+  }
+
+  const response = await appState.supabase
+    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+    .select("*")
+    .eq("user_id", normalizedUserId)
+    .limit(1);
+  return {
+    data: getNewestUserNotificationPreferencesRow(response?.data || []),
+    error: response?.error || null,
+  };
+}
+
+async function writeUserNotificationPreferencesPayload(payload = {}) {
+  const normalizedUserId = String(payload?.user_id || "").trim();
+  if (!appState.supabase || !normalizedUserId) {
+    return { data: null, error: new Error("Notification preferences cannot be saved without a user.") };
+  }
+
+  const updatePayload = { ...(payload || {}) };
+  delete updatePayload.user_id;
+  if (Object.keys(updatePayload).length) {
+    const updateResponse = await appState.supabase
+      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+      .update(updatePayload)
+      .eq("user_id", normalizedUserId)
+      .select("*");
+    if (updateResponse?.error) {
+      return { data: null, error: updateResponse.error, operation: "update" };
+    }
+
+    const updatedRow = getNewestUserNotificationPreferencesRow(updateResponse?.data || []);
+    if (updatedRow) {
+      return { data: updatedRow, error: null, operation: "update" };
+    }
+  }
+
+  const insertResponse = await appState.supabase
+    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+    .insert(payload)
+    .select("*")
+    .single();
+  return {
+    data: insertResponse?.data || null,
+    error: insertResponse?.error || null,
+    operation: "insert",
+  };
+}
+
 function getUserNotificationPreferencesWriteModes(preferredMode = "") {
   const normalizedMode = String(preferredMode || "").trim().toLowerCase();
   if (normalizedMode === "modern") {
@@ -11526,11 +11600,7 @@ async function ensureUserNotificationPreferences(user) {
 
   appState.notificationPreferencesError = "";
 
-  const { data: existingPreferences, error: selectError } = await appState.supabase
-    .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-    .select("*")
-    .eq("user_id", normalizedUserId)
-    .maybeSingle();
+  const { data: existingPreferences, error: selectError } = await selectUserNotificationPreferencesRow(normalizedUserId);
 
   if (selectError) {
     if (isUserNotificationPreferencesTableMissingError(selectError)) {
@@ -11558,11 +11628,7 @@ async function ensureUserNotificationPreferences(user) {
 
   for (const writeMode of writeModes) {
     const preferencePayload = buildUserNotificationPreferencesSeedPayload(normalizedUserId, storedPreferences, writeMode);
-    const { data: savedPreferences, error: upsertError } = await appState.supabase
-      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-      .upsert(preferencePayload, { onConflict: "user_id" })
-      .select()
-      .single();
+    const { data: savedPreferences, error: upsertError } = await writeUserNotificationPreferencesPayload(preferencePayload);
 
     if (upsertError) {
       if (isUserNotificationPreferencesSchemaModeError(upsertError)) {
@@ -11571,6 +11637,10 @@ async function ensureUserNotificationPreferences(user) {
         );
         lastSeedError = upsertError;
         continue;
+      }
+      if (isUserNotificationPreferencesConflictTargetError(upsertError)) {
+        markUserNotificationPreferencesTableUnavailable();
+        return syncUserNotificationPreferencesCache(normalizedUserId, storedPreferences, { persistLocal: false });
       }
       if (isUserNotificationPreferencesTableMissingError(upsertError)) {
         markUserNotificationPreferencesTableUnavailable();
@@ -16924,16 +16994,13 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         payloadPushNotificationsEnabled: payload.push_notifications_enabled,
         inputPushNotificationsEnabled: preferencesInput?.pushNotificationsEnabled,
       });
-      const response = await appState.supabase
-        .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-        .upsert(payload, { onConflict: "user_id" })
-        .select()
-        .single();
+      const response = await writeUserNotificationPreferencesPayload(payload);
       data = response?.data || null;
       error = response?.error || null;
       console.info("[Push Preferences] save response", {
         userId: normalizedUserId,
         writeMode,
+        operation: response?.operation || "",
         rowPushNotificationsEnabled: data?.push_notifications_enabled,
         error: error?.message || "",
       });
@@ -16965,11 +17032,7 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         let readbackData = null;
         let readbackError = null;
         try {
-          const readbackResponse = await appState.supabase
-            .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-            .select("*")
-            .eq("user_id", normalizedUserId)
-            .maybeSingle();
+          const readbackResponse = await selectUserNotificationPreferencesRow(normalizedUserId);
           readbackData = readbackResponse?.data || null;
           readbackError = readbackResponse?.error || null;
           if (debugContext === "profile-settings") {
@@ -17026,6 +17089,13 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
       );
       lastError = error;
       continue;
+    }
+
+    if (isUserNotificationPreferencesConflictTargetError(error)) {
+      markUserNotificationPreferencesTableUnavailable();
+      syncFallbackPreferences();
+      throwNotificationPreferencesSaveError("Notification preferences are temporarily unavailable.", error);
+      return fallbackPreferences;
     }
 
     if (isUserNotificationPreferencesTableMissingError(error)) {
