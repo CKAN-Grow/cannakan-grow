@@ -29937,6 +29937,62 @@ function scrollLearnSectionIntoView(selector = "") {
   });
 }
 
+function renderSeedSessionsSectionMarkup() {
+  return `
+    <section class="card seed-sessions-panel" aria-labelledby="seed-sessions-title">
+      <div class="seed-sessions-copy">
+        <span class="seed-sessions-live-badge">
+          <span class="seed-sessions-live-dot" aria-hidden="true"></span>
+          LIVE
+        </span>
+        <div class="seed-sessions-heading">
+          <p class="eyebrow">Education Media Hub</p>
+          <h2 id="seed-sessions-title">Seed Sessions</h2>
+        </div>
+        <p class="seed-sessions-subtitle">Live education, grow science, breeder discussions, and guided germination sessions for the Cannakan® ecosystem.</p>
+        <p class="seed-sessions-support">Upcoming livestreams, featured replays, and educational sessions will appear here.</p>
+        <div class="seed-sessions-actions">
+          <button type="button" class="button button-primary seed-sessions-action" data-learn-explore-tutorials="true">Explore Tutorials</button>
+          <button type="button" class="button button-secondary seed-sessions-action" data-learn-featured-replays="true">Featured Replays</button>
+        </div>
+      </div>
+      <div class="seed-sessions-media" aria-label="Seed Sessions previews">
+        <article class="seed-session-preview-card seed-session-preview-card--live" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/kan-system-walkthrough.webp');">
+          <div class="seed-session-thumbnail" aria-hidden="true">
+            <span class="seed-session-thumbnail-grid"></span>
+            <span class="seed-session-play-mark">▶</span>
+          </div>
+          <div class="seed-session-card-copy">
+            <span class="seed-session-status seed-session-status--live">LIVE NOW</span>
+            <h3>KAN® System Walkthrough</h3>
+            <p>Launching Soon</p>
+          </div>
+        </article>
+        <article class="seed-session-preview-card seed-session-preview-card--replay" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/germination-stages.webp');">
+          <div class="seed-session-thumbnail" aria-hidden="true">
+            <span class="seed-session-thumbnail-grid"></span>
+            <span class="seed-session-play-mark">▶</span>
+          </div>
+          <div class="seed-session-card-copy">
+            <span class="seed-session-status">FEATURED REPLAY</span>
+            <h3>Understanding Germination Stages</h3>
+          </div>
+        </article>
+        <article class="seed-session-preview-card seed-session-preview-card--beginner" style="--seed-session-thumb: url('/assets/images/tutorials/placeholders/getting-started-grow.webp');">
+          <div class="seed-session-thumbnail" aria-hidden="true">
+            <span class="seed-session-thumbnail-grid"></span>
+            <span class="seed-session-play-mark">▶</span>
+          </div>
+          <div class="seed-session-card-copy">
+            <span class="seed-session-status">BEGINNER SESSION</span>
+            <h3>Getting Started With Cannakan Grow</h3>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderLearnPage(targetCategoryId = "") {
   const categories = getLearnTutorialCategories();
   const visibleCategories = categories.filter((category) => category.tutorials.some((tutorial) => shouldShowTutorialOnPublicLearn(tutorial)));
@@ -29991,6 +30047,7 @@ function renderLearnPage(targetCategoryId = "") {
           `).join("")}
         </div>
       </section>
+      ${renderSeedSessionsSectionMarkup()}
       ${renderFeaturedLearnTutorialsMarkup(categories)}
       ${renderLearnGettingStartedChecklistMarkup()}
       ${renderLearningPathsSectionMarkup()}
@@ -30623,6 +30680,14 @@ function bindLearnPageInteractions(scope = document) {
   });
 
   scope.querySelector("[data-learn-watch-featured='true']")?.addEventListener("click", () => {
+    scrollLearnSectionIntoView(".learn-featured-tutorials, .learn-tutorial-controls");
+  });
+
+  scope.querySelector("[data-learn-explore-tutorials='true']")?.addEventListener("click", () => {
+    scrollLearnSectionIntoView(".learn-tutorial-controls");
+  });
+
+  scope.querySelector("[data-learn-featured-replays='true']")?.addEventListener("click", () => {
     scrollLearnSectionIntoView(".learn-featured-tutorials, .learn-tutorial-controls");
   });
 
