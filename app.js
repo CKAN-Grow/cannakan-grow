@@ -73,6 +73,7 @@ const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
 const TUTORIAL_ANALYTICS_STORAGE_KEY = "cannakanTutorialAnalyticsEvents";
 const TUTORIAL_FEEDBACK_STORAGE_KEY = "cannakanTutorialFeedback";
 const LEARN_GETTING_STARTED_STORAGE_KEY = "cannakanLearnGettingStartedProgress";
+const LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY = "cannakanLearnRecommendationActivity";
 const SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY = "cannakanSeedAgeAnalyticsMockData";
 const SEED_AGE_ANALYTICS_MOCK_DATA_VERSION = "year-buckets-v2";
 const ADMIN_SECTION_ORDER_STORAGE_KEY = "cannakanAdminSectionOrder";
@@ -26659,6 +26660,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 1,
         featuredLabel: "Start Here",
+        recommendedFor: Object.freeze(["new_user"]),
+        priority: 1,
+        relatedFeature: "kan-system",
+        userStage: "new_user",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26673,6 +26678,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Loading Seeds Into the KAN®",
         duration: "3 min • Beginner",
         description: "Placeholder guide for organizing seeds by partition before a session begins.",
+        recommendedFor: Object.freeze(["new_user"]),
+        priority: 2,
+        relatedFeature: "kan-system",
+        userStage: "new_user",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26742,6 +26751,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 2,
         featuredLabel: "First Session",
+        recommendedFor: Object.freeze(["new_user", "no_sessions"]),
+        priority: 1,
+        relatedFeature: "sessions",
+        userStage: "new_user",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26756,6 +26769,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Understanding the Timeline",
         duration: "2 min • Beginner",
         description: "Placeholder walkthrough for the session stage timeline and progress state.",
+        recommendedFor: Object.freeze(["active_session"]),
+        priority: 2,
+        relatedFeature: "timeline",
+        userStage: "active_session",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26787,6 +26804,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         featured: true,
         featuredOrder: 3,
         featuredLabel: "Share Ready",
+        recommendedFor: Object.freeze(["first_snapshot"]),
+        priority: 1,
+        relatedFeature: "snapshots",
+        userStage: "first_snapshot",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26801,6 +26822,10 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Community Grow Basics",
         duration: "2 min • Beginner",
         description: "Placeholder guide for sharing into Community Grow and browsing the public feed.",
+        recommendedFor: Object.freeze(["community_grow"]),
+        priority: 2,
+        relatedFeature: "community-grow",
+        userStage: "community_grow",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26812,10 +26837,14 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       Object.freeze({
         id: "understanding-grow-analytics",
         order: 6,
-        title: "Understanding Grow Analytics",
+        title: "Understanding Your Grow Data",
         duration: "3 min • Beginner",
         description: "Placeholder walkthrough for reading grow analytics, confidence indicators, and community performance trends.",
         hiddenOnLearn: true,
+        recommendedFor: Object.freeze(["analytics"]),
+        priority: 1,
+        relatedFeature: "analytics",
+        userStage: "analytics",
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -26834,6 +26863,7 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
     title: "Need help getting started?",
     body: "A quick setup guide can walk you through the KAN® System and the Grow App workflow.",
     variant: "new-session",
+    recommendationContexts: Object.freeze(["new_user", "no_sessions"]),
     actions: Object.freeze([
       Object.freeze({ label: "▶ Watch KAN® Setup", tutorialId: "loading-seeds-into-kan" }),
       Object.freeze({ label: "▶ Grow App Walkthrough", tutorialId: "creating-your-first-session" }),
@@ -26843,6 +26873,7 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
     title: "New to Grow Snapshots?",
     body: "Learn how snapshot generation turns your session into a share-ready grow summary.",
     variant: "compact",
+    recommendationContexts: Object.freeze(["first_snapshot"]),
     actions: Object.freeze([
       Object.freeze({ label: "Watch Snapshot Tutorial", tutorialId: "generating-grow-snapshots" }),
     ]),
@@ -26856,6 +26887,7 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
       "Keep public notes short, helpful, and clear.",
       "Community Grow submissions may be reviewed before publishing.",
     ]),
+    recommendationContexts: Object.freeze(["community_grow"]),
     actions: Object.freeze([
       Object.freeze({ label: "Learn More", tutorialId: "community-grow-basics" }),
     ]),
@@ -26864,6 +26896,7 @@ const CONTEXTUAL_ONBOARDING_PROMPTS = Object.freeze({
     title: "Understand your grow data",
     body: "Learn how to read rates, confidence, and trends before comparing community results.",
     variant: "compact",
+    recommendationContexts: Object.freeze(["analytics"]),
     actions: Object.freeze([
       Object.freeze({ label: "Watch Analytics Tutorial", tutorialId: "understanding-grow-analytics" }),
     ]),
@@ -27564,6 +27597,10 @@ function getLearnTutorialCategories() {
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
         featuredLabel,
+        recommendedFor: normalizeLearnTutorialTextList(draft.recommendedFor || tutorial.recommendedFor),
+        priority: Number.isFinite(Number(draft.priority)) ? Number(draft.priority) : (Number.isFinite(Number(tutorial.priority)) ? Number(tutorial.priority) : 999),
+        relatedFeature: String(draft.relatedFeature ?? tutorial.relatedFeature ?? "").trim(),
+        userStage: String(draft.userStage ?? tutorial.userStage ?? "").trim(),
         onboardingPriority: Boolean(draft.onboardingPriority ?? tutorial.onboardingPriority),
         videoProvider,
         cloudflareStreamId,
@@ -27712,6 +27749,18 @@ function shouldShowContextualOnboardingPrompt(promptId = "") {
     return false;
   }
   return !(prompt.actions || []).some((action) => isTutorialCompleted(action.tutorialId));
+}
+
+function isTutorialRecommendedForContexts(tutorialId = "", contexts = []) {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  const normalizedContexts = normalizeLearnTutorialTextList(contexts);
+  if (!normalizedTutorialId || !normalizedContexts.length) {
+    return false;
+  }
+
+  const tutorialEntry = getLearnTutorialById(normalizedTutorialId);
+  const recommendedFor = normalizeLearnTutorialTextList(tutorialEntry?.tutorial?.recommendedFor);
+  return recommendedFor.some((context) => normalizedContexts.includes(context));
 }
 
 function getLearnTutorialDurationLabel(tutorial = {}) {
@@ -28011,6 +28060,195 @@ function renderContinueWatchingSectionMarkup(categories = getLearnTutorialCatego
 
 function renderContinueWatchingSlotMarkup(categories = getLearnTutorialCategories()) {
   return `<div data-learn-continue-slot>${renderContinueWatchingSectionMarkup(categories)}</div>`;
+}
+
+function loadLearnRecommendationActivityFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY) || "{}");
+    return storedValue && typeof storedValue === "object" && !Array.isArray(storedValue) ? storedValue : {};
+  } catch (error) {
+    console.warn("[Learn Recommendations] Failed to read local activity.", error);
+    return {};
+  }
+}
+
+function saveLearnRecommendationActivityToStorage(activity = {}) {
+  try {
+    localStorage.setItem(LEARN_RECOMMENDATION_ACTIVITY_STORAGE_KEY, JSON.stringify(activity || {}));
+  } catch (error) {
+    console.warn("[Learn Recommendations] Failed to save local activity.", error);
+  }
+}
+
+function recordLearnRecommendationActivity(contexts = [], source = "") {
+  const normalizedContexts = normalizeLearnTutorialTextList(contexts);
+  if (!normalizedContexts.length) {
+    return;
+  }
+
+  const activity = loadLearnRecommendationActivityFromStorage();
+  const timestamp = new Date().toISOString();
+  normalizedContexts.forEach((context) => {
+    activity[context] = {
+      context,
+      source: String(source || "").trim(),
+      updatedAt: timestamp,
+      persistence: "local",
+      userId: appState.user?.id || "",
+    };
+  });
+  saveLearnRecommendationActivityToStorage(activity);
+}
+
+function getLearnRecommendationReasonLabel(context = "") {
+  switch (String(context || "").trim()) {
+    case "new_user":
+      return "New here";
+    case "no_sessions":
+      return "Start a session";
+    case "active_session":
+      return "Active session";
+    case "first_snapshot":
+      return "Snapshot ready";
+    case "community_grow":
+      return "Community Grow";
+    case "analytics":
+      return "Grow data";
+    case "cstp_future":
+      return "CSTP future";
+    default:
+      return "Recommended";
+  }
+}
+
+function getLearnRecommendationSignals(options = {}) {
+  const explicitContexts = normalizeLearnTutorialTextList(options.contexts || []);
+  if (explicitContexts.length) {
+    return new Set(explicitContexts);
+  }
+
+  const signals = new Set();
+  const sessions = (Array.isArray(options.sessions) ? options.sessions : getSessions())
+    .filter((session) => !isSessionSoftDeleted(session));
+  const routeHash = String(options.routeHash || appState.currentRouteHash || window.location.hash || "").toLowerCase();
+  const activity = loadLearnRecommendationActivityFromStorage();
+
+  if (!sessions.length) {
+    signals.add("new_user");
+    signals.add("no_sessions");
+  }
+
+  if (sessions.some((session) => {
+    const status = normalizeSessionStatus(session?.sessionStatus || "");
+    return status && !["unselected", "completed"].includes(status);
+  })) {
+    signals.add("active_session");
+  }
+
+  if (!sessions.some((session) => hasCreatedMeaningfulSnapshotState(session?.snapshotState))) {
+    signals.add("first_snapshot");
+  }
+
+  if (hasCommunityGrowUnlockFlag()
+    || (Array.isArray(appState.gallerySnapshots) && appState.gallerySnapshots.length > 0)
+    || routeHash.includes("gallery")
+    || routeHash.includes("community")) {
+    signals.add("community_grow");
+  }
+
+  if (routeHash.includes("analytics")
+    || activity.analytics) {
+    signals.add("analytics");
+  }
+
+  Object.keys(activity).forEach((context) => {
+    if (["community_grow", "analytics", "cstp_future"].includes(context)) {
+      signals.add(context);
+    }
+  });
+
+  return signals;
+}
+
+function getRecommendedLearnTutorials(categories = getLearnTutorialCategories(), options = {}) {
+  const signals = getLearnRecommendationSignals(options);
+  if (!signals.size) {
+    return [];
+  }
+
+  const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 4;
+  return categories
+    .flatMap((category) => category.tutorials.map((tutorial) => {
+      const recommendedFor = normalizeLearnTutorialTextList(tutorial.recommendedFor);
+      const matchedContexts = recommendedFor.filter((context) => signals.has(context));
+      return { category, tutorial, matchedContexts };
+    }))
+    .filter(({ tutorial, matchedContexts }) => (
+      matchedContexts.length
+      && normalizeTutorialPublishStatus(tutorial.status) !== "draft"
+      && (options.includeCompleted || !isTutorialCompleted(tutorial.id))
+    ))
+    .sort((left, right) => {
+      const priorityDelta = (Number(left.tutorial.priority) || 999) - (Number(right.tutorial.priority) || 999);
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+      const matchDelta = right.matchedContexts.length - left.matchedContexts.length;
+      if (matchDelta !== 0) {
+        return matchDelta;
+      }
+      return String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
+    })
+    .slice(0, limit);
+}
+
+function renderRecommendedTutorialsSectionMarkup(categories = getLearnTutorialCategories()) {
+  const recommendedTutorials = getRecommendedLearnTutorials(categories);
+  if (!recommendedTutorials.length) {
+    return "";
+  }
+
+  return `
+    <section class="card learn-recommended-tutorials" aria-labelledby="learn-recommended-title">
+      <div class="learn-recommended-tutorials-header">
+        <div>
+          <p class="eyebrow">Personalized</p>
+          <h2 id="learn-recommended-title">Recommended For You</h2>
+          <p class="muted">Helpful next tutorials based on your current grow activity.</p>
+        </div>
+      </div>
+      <div class="learn-recommended-tutorial-row">
+        ${recommendedTutorials.map(({ tutorial, category, matchedContexts }) => {
+          const progressStatus = getTutorialProgressStatus(tutorial.id);
+          const progressLabel = getTutorialProgressStatusLabel(tutorial.id);
+          const reasonLabel = getLearnRecommendationReasonLabel(matchedContexts[0]);
+          return `
+            <button
+              type="button"
+              class="learn-recommended-card"
+              data-learn-recommended-tutorial="${escapeHtml(tutorial.id)}"
+              data-learn-progress-status="${escapeHtml(progressStatus)}"
+            >
+              <span class="learn-recommended-card-badge">${escapeHtml(reasonLabel)}</span>
+              <span class="learn-recommended-card-copy">
+                <strong>${escapeHtml(tutorial.title)}</strong>
+                <small>${escapeHtml(`${category.title} • ${getLearnTutorialDurationLabel(tutorial)}`)}</small>
+                <span
+                  class="learn-tutorial-progress-badge is-${escapeHtml(progressStatus)}"
+                  data-learn-progress-badge-for="${escapeHtml(tutorial.id)}"
+                >${escapeHtml(progressLabel)}</span>
+              </span>
+              <span class="learn-recommended-card-action">Open Tutorial</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderRecommendedTutorialsSlotMarkup(categories = getLearnTutorialCategories()) {
+  return `<div data-learn-recommended-slot>${renderRecommendedTutorialsSectionMarkup(categories)}</div>`;
 }
 
 function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
@@ -28328,15 +28566,20 @@ function renderContextualOnboardingPromptMarkup(promptId = "", options = {}) {
   }
 
   const variant = options.variant || prompt.variant || "compact";
-  const actionsMarkup = (prompt.actions || []).map((action, index) => `
-    <button
-      type="button"
-      class="contextual-onboarding-action ${index === 0 ? "is-primary" : "is-secondary"}"
-      data-onboarding-tutorial-id="${escapeHtml(action.tutorialId || "")}"
-    >
-      ${escapeHtml(action.label || "Watch Tutorial")}
-    </button>
-  `).join("");
+  const recommendationContexts = normalizeLearnTutorialTextList(prompt.recommendationContexts || options.recommendationContexts);
+  const actionsMarkup = (prompt.actions || []).map((action, index) => {
+    const isRecommended = isTutorialRecommendedForContexts(action.tutorialId, recommendationContexts);
+    return `
+      <button
+        type="button"
+        class="contextual-onboarding-action ${index === 0 ? "is-primary" : "is-secondary"} ${isRecommended ? "is-recommended" : ""}"
+        data-onboarding-tutorial-id="${escapeHtml(action.tutorialId || "")}"
+        data-onboarding-recommended="${isRecommended ? "true" : "false"}"
+      >
+        ${escapeHtml(action.label || "Watch Tutorial")}
+      </button>
+    `;
+  }).join("");
   const bulletsMarkup = Array.isArray(prompt.bullets) && prompt.bullets.length
     ? `
       <ul class="contextual-onboarding-list">
@@ -28395,6 +28638,8 @@ function mountContextualOnboardingPrompt(anchor, promptId = "", options = {}) {
     return null;
   }
 
+  const prompt = getContextualOnboardingPrompt(promptId);
+  recordLearnRecommendationActivity(prompt?.recommendationContexts || options.recommendationContexts || [], `${promptId} prompt`);
   anchor.parentElement?.querySelector(`[data-contextual-onboarding-prompt="${promptId}"]`)?.remove();
   const wrapper = document.createElement("div");
   wrapper.innerHTML = renderContextualOnboardingPromptMarkup(promptId, options).trim();
@@ -28463,6 +28708,7 @@ function renderLearnPage(targetCategoryId = "") {
       ${renderLearnGettingStartedChecklistMarkup()}
       ${renderFeaturedLearnTutorialsMarkup(categories)}
       ${renderContinueWatchingSlotMarkup(categories)}
+      ${renderRecommendedTutorialsSlotMarkup(categories)}
       ${renderLearnTutorialSearchControlsMarkup()}
       ${categories.map(renderLearnTutorialCategoryMarkup).join("")}
     </section>
@@ -28571,6 +28817,16 @@ function refreshLearnContinueWatchingSection() {
   bindLearnContinueWatchingInteractions(slot);
 }
 
+function refreshLearnRecommendedTutorialsSection() {
+  const slot = document.querySelector("[data-learn-recommended-slot]");
+  if (!(slot instanceof HTMLElement)) {
+    return;
+  }
+
+  slot.innerHTML = renderRecommendedTutorialsSectionMarkup(getLearnTutorialCategories());
+  bindLearnRecommendedTutorialInteractions(slot);
+}
+
 function refreshTutorialProgressUi(tutorialId = "") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
@@ -28615,6 +28871,7 @@ function refreshTutorialProgressUi(tutorialId = "") {
     refreshLearnGettingStartedChecklistUi(document);
   }
   refreshLearnContinueWatchingSection();
+  refreshLearnRecommendedTutorialsSection();
   applyLearnTutorialFilters(document);
 }
 
@@ -28658,6 +28915,26 @@ function bindLearnContinueWatchingInteractions(scope = document) {
         source: "Continue Watching",
       });
       openLearnTutorialModal(tutorialId, { source: "Continue Watching" });
+    });
+  });
+}
+
+function bindLearnRecommendedTutorialInteractions(scope = document) {
+  scope.querySelectorAll("[data-learn-recommended-tutorial]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnRecommendedBound === "true") {
+      return;
+    }
+    button.dataset.learnRecommendedBound = "true";
+    button.addEventListener("click", () => {
+      const tutorialId = button.dataset.learnRecommendedTutorial || "";
+      const tutorialEntry = getLearnTutorialById(tutorialId);
+      trackTutorialAnalyticsEvent("tutorial_card_clicked", {
+        tutorialId,
+        category: tutorialEntry?.category?.title || "",
+        categoryId: tutorialEntry?.category?.id || "",
+        source: "Recommended For You",
+      });
+      openLearnTutorialModal(tutorialId, { source: "Recommended For You" });
     });
   });
 }
@@ -28955,6 +29232,7 @@ function bindLearnPageInteractions(scope = document) {
   bindLearnGettingStartedChecklist(scope);
   bindLearnTutorialFilters(scope);
   bindLearnContinueWatchingInteractions(scope);
+  bindLearnRecommendedTutorialInteractions(scope);
 
   scope.querySelectorAll("[data-learn-tutorial-open]").forEach((button) => {
     if (button.dataset.learnTutorialBound === "true") {
