@@ -3071,6 +3071,15 @@ function navigateToLearnTutorialDetailRoute(tutorialId = "") {
   safeRender();
 }
 
+function navigateToLearnCollectionDetailRoute(collectionId = "") {
+  const route = getLearnCollectionDetailRoute(collectionId);
+  closeAccountMenu();
+  closeMobileNavigation();
+  window.history.pushState(null, "", route);
+  appState.currentRouteHash = "#learn";
+  safeRender();
+}
+
 function getCommunityGrowModerationRoute() {
   return "#community-grow-moderation";
 }
@@ -6723,6 +6732,9 @@ function getLocationRouteHash() {
 function getCurrentAppPathRoute() {
   const pathRoute = window.location.pathname.replace(/^\/+|\/+$/g, "");
   if (pathRoute === "learn/tutorial" || pathRoute.startsWith("learn/tutorial/")) {
+    return pathRoute;
+  }
+  if (pathRoute === "learn/path" || pathRoute.startsWith("learn/path/")) {
     return pathRoute;
   }
   return ({
@@ -25790,6 +25802,7 @@ function setCanonicalUrl(path = "/") {
 
 function buildLearnPageMetadata(options = {}) {
   const tutorial = options.tutorial || null;
+  const collection = options.collection || null;
   if (tutorial) {
     return {
       ...LEARN_PAGE_METADATA,
@@ -25797,6 +25810,15 @@ function buildLearnPageMetadata(options = {}) {
       description: tutorial.description || LEARN_PAGE_METADATA.description,
       imagePath: tutorial.posterUrl || tutorial.thumbnailUrl || LEARN_PAGE_METADATA.imagePath,
       path: getLearnTutorialDetailRoute(tutorial.id || ""),
+    };
+  }
+  if (collection) {
+    return {
+      ...LEARN_PAGE_METADATA,
+      title: `${collection.title || "Learning Path"} | Cannakan® Grow Learn`,
+      description: collection.description || LEARN_PAGE_METADATA.description,
+      imagePath: collection.posterUrl || LEARN_PAGE_METADATA.imagePath,
+      path: getLearnCollectionDetailRoute(collection.id || ""),
     };
   }
   return { ...LEARN_PAGE_METADATA };
@@ -25808,6 +25830,13 @@ function getRoutePageMetadata(rawRoute = "") {
     const tutorialEntry = getLearnTutorialById(decodeURIComponent(subroute));
     if (tutorialEntry && canCurrentUserViewLearnItem(tutorialEntry.tutorial)) {
       return buildLearnPageMetadata({ tutorial: tutorialEntry.tutorial });
+    }
+    return buildLearnPageMetadata();
+  }
+  if (route === "learn" && id === "path" && subroute) {
+    const collection = getLearnTutorialCollectionById(decodeURIComponent(subroute));
+    if (collection && canCurrentUserViewLearnItem(collection)) {
+      return buildLearnPageMetadata({ collection });
     }
     return buildLearnPageMetadata();
   }
@@ -25990,6 +26019,17 @@ function render() {
       pageKey: subroute ? `learn-tutorial-${subroute}` : "learn-tutorial",
       pageLabel: "Learn Tutorial",
       pagePath: pathRoute ? `/${rawRoute}` : (rawRoute ? `#${rawRoute}` : "#learn/tutorial"),
+    }));
+    return;
+  }
+
+  if (route === "learn" && id === "path") {
+    renderLearnCollectionDetailPage(subroute || "");
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "learn",
+      pageKey: subroute ? `learn-path-${subroute}` : "learn-path",
+      pageLabel: "Learning Path",
+      pagePath: pathRoute ? `/${rawRoute}` : (rawRoute ? `#${rawRoute}` : "#learn/path"),
     }));
     return;
   }
@@ -27983,6 +28023,10 @@ function createAdminTutorialCollectionDraft() {
     audience: "admin",
     isPublic: false,
     visibilityNote: "Local admin draft learning path.",
+    qrLabel: "Custom learning path",
+    qrDescription: "QR-ready link for this learning path.",
+    qrCampaignTag: "",
+    qrDestinationUrl: "",
     scheduled: false,
     releaseDate: "",
     comingSoonLabel: "Coming Soon",
@@ -28056,6 +28100,10 @@ function getLearnTutorialCategories() {
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
         featuredLabel,
+        qrLabel: String(draft.qrLabel ?? tutorial.qrLabel ?? "").trim(),
+        qrDescription: String(draft.qrDescription ?? tutorial.qrDescription ?? "").trim(),
+        qrCampaignTag: String(draft.qrCampaignTag ?? tutorial.qrCampaignTag ?? "").trim(),
+        qrDestinationUrl: String(draft.qrDestinationUrl ?? tutorial.qrDestinationUrl ?? "").trim(),
         recommendedFor: normalizeLearnTutorialTextList(draft.recommendedFor || tutorial.recommendedFor),
         priority: Number.isFinite(Number(draft.priority)) ? Number(draft.priority) : (Number.isFinite(Number(tutorial.priority)) ? Number(tutorial.priority) : 999),
         relatedFeature: String(draft.relatedFeature ?? tutorial.relatedFeature ?? "").trim(),
@@ -28127,6 +28175,29 @@ function getLearnTutorialDetailRoute(tutorialId = "") {
   return normalizedTutorialId ? `/learn/tutorial/${encodeURIComponent(normalizedTutorialId)}` : "/learn";
 }
 
+function getLearnCollectionDetailRoute(collectionId = "") {
+  const normalizedCollectionId = String(collectionId || "").trim();
+  return normalizedCollectionId ? `/learn/path/${encodeURIComponent(normalizedCollectionId)}` : "/learn";
+}
+
+function getLearnPublicShareUrl(path = "/learn") {
+  return toAbsolutePublicUrl(path || "/learn");
+}
+
+function getLearnTutorialPublicShareUrl(tutorial = {}) {
+  const destinationUrl = String(tutorial.qrDestinationUrl || "").trim();
+  return destinationUrl || getLearnPublicShareUrl(getLearnTutorialDetailRoute(tutorial.id || ""));
+}
+
+function getLearnCollectionPublicShareUrl(collection = {}) {
+  const destinationUrl = String(collection.qrDestinationUrl || "").trim();
+  return destinationUrl || getLearnPublicShareUrl(getLearnCollectionDetailRoute(collection.id || ""));
+}
+
+function isLearnItemPublicShareAvailable(item = {}) {
+  return getTutorialVisibilityStatus(item) !== "draft" && isLearnItemPubliclyVisible(item);
+}
+
 function getLearnTutorialCollections() {
   const draftMap = loadAdminTutorialCollectionDraftsFromStorage();
   const staticCollections = LEARN_TUTORIAL_COLLECTIONS.map((collection, index) => {
@@ -28150,6 +28221,10 @@ function getLearnTutorialCollections() {
       audience,
       isPublic: normalizeLearnPublicFlag(isPublic, audience === "public"),
       visibilityNote: String(draft.visibilityNote ?? collection.visibilityNote ?? "").trim(),
+      qrLabel: String(draft.qrLabel ?? collection.qrLabel ?? "").trim(),
+      qrDescription: String(draft.qrDescription ?? collection.qrDescription ?? "").trim(),
+      qrCampaignTag: String(draft.qrCampaignTag ?? collection.qrCampaignTag ?? "").trim(),
+      qrDestinationUrl: String(draft.qrDestinationUrl ?? collection.qrDestinationUrl ?? "").trim(),
       status: getTutorialVisibilityStatus({
         status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: draft.scheduled ?? collection.scheduled,
@@ -28182,6 +28257,10 @@ function getLearnTutorialCollections() {
       audience: normalizeLearnAudience(collection.audience || "admin"),
       isPublic: normalizeLearnPublicFlag(collection.isPublic, false),
       visibilityNote: String(collection.visibilityNote || "").trim(),
+      qrLabel: String(collection.qrLabel || "").trim(),
+      qrDescription: String(collection.qrDescription || "").trim(),
+      qrCampaignTag: String(collection.qrCampaignTag || "").trim(),
+      qrDestinationUrl: String(collection.qrDestinationUrl || "").trim(),
       status: getTutorialVisibilityStatus({
         status: collection.visibilityStatus || collection.status || "coming-soon",
         scheduled: collection.scheduled,
@@ -28616,34 +28695,40 @@ function renderLearningPathCardMarkup(collection = {}) {
   const progressLabel = progress.completed
     ? "Completed"
     : (progress.started ? `${progress.percent}% complete` : "Not started");
+  const detailRoute = getLearnCollectionDetailRoute(collection.id);
   return `
-    <button
-      type="button"
-      class="learn-learning-path-card ${collection.featured ? "is-featured" : ""}"
+    <article
+      class="learn-learning-path-card-shell"
       data-learn-collection-open="${escapeHtml(collection.id)}"
     >
-      <span class="learn-learning-path-visual ${collection.posterUrl ? "has-poster" : ""}"${collection.posterUrl ? ` style="--learn-path-poster:url('${escapeHtml(collection.posterUrl)}');"` : ""}>
-        <span class="learn-learning-path-sheen"></span>
-        <span class="learn-learning-path-play" aria-hidden="true">▶</span>
-        <span class="learn-learning-path-featured is-${escapeHtml(visibilityStatus)}">${escapeHtml(getTutorialStatusLabel(collection))}</span>
-      </span>
-      <span class="learn-learning-path-copy">
-        <span class="learn-learning-path-kicker">${escapeHtml(collection.subtitle || "Learning Path")}</span>
-        <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
-        <span>${escapeHtml(collection.description || "A guided tutorial collection for Cannakan® Grow.")}</span>
-      </span>
-      <span class="learn-learning-path-meta">
-        <span>${escapeHtml(tutorialCountLabel)}</span>
-        <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
-        <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
-      </span>
-      <span class="learn-learning-path-progress" aria-label="${escapeHtml(progressLabel)}">
-        <span class="learn-learning-path-progress-track" aria-hidden="true">
-          <span class="learn-learning-path-progress-fill" style="width:${escapeHtml(`${progress.percent}%`)};"></span>
+      <button
+        type="button"
+        class="learn-learning-path-card ${collection.featured ? "is-featured" : ""}"
+      >
+        <span class="learn-learning-path-visual ${collection.posterUrl ? "has-poster" : ""}"${collection.posterUrl ? ` style="--learn-path-poster:url('${escapeHtml(collection.posterUrl)}');"` : ""}>
+          <span class="learn-learning-path-sheen"></span>
+          <span class="learn-learning-path-play" aria-hidden="true">▶</span>
+          <span class="learn-learning-path-featured is-${escapeHtml(visibilityStatus)}">${escapeHtml(getTutorialStatusLabel(collection))}</span>
         </span>
-        <span>${escapeHtml(progressLabel)}</span>
-      </span>
-    </button>
+        <span class="learn-learning-path-copy">
+          <span class="learn-learning-path-kicker">${escapeHtml(collection.subtitle || "Learning Path")}</span>
+          <strong>${escapeHtml(collection.title || "Untitled Learning Path")}</strong>
+          <span>${escapeHtml(collection.description || "A guided tutorial collection for Cannakan® Grow.")}</span>
+        </span>
+        <span class="learn-learning-path-meta">
+          <span>${escapeHtml(tutorialCountLabel)}</span>
+          <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
+          <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+        </span>
+        <span class="learn-learning-path-progress" aria-label="${escapeHtml(progressLabel)}">
+          <span class="learn-learning-path-progress-track" aria-hidden="true">
+            <span class="learn-learning-path-progress-fill" style="width:${escapeHtml(`${progress.percent}%`)};"></span>
+          </span>
+          <span>${escapeHtml(progressLabel)}</span>
+        </span>
+      </button>
+      ${isLearnItemPublicShareAvailable(tutorial) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
+    </article>
   `;
 }
 
@@ -28962,7 +29047,7 @@ function renderLearnTutorialCardMarkup(tutorial, category, options = {}) {
           </span>
         </span>
       </button>
-      <a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>
+      ${isLearnItemPublicShareAvailable(collection) ? `<a class="learn-tutorial-detail-link" href="${escapeHtml(detailRoute)}">Share page</a>` : ""}
     </article>
   `;
 }
@@ -29175,7 +29260,7 @@ function renderLearnTutorialModalContentMarkup(tutorial, category) {
           ${progressStatus === "completed" ? "disabled" : ""}
         >${progressStatus === "completed" ? "Completed" : "Mark as Complete"}</button>
       </div>
-      <a class="learn-tutorial-detail-modal-link" href="${escapeHtml(getLearnTutorialDetailRoute(tutorial.id))}">Open shareable tutorial page</a>
+      ${isLearnItemPublicShareAvailable(tutorial) ? `<a class="learn-tutorial-detail-modal-link" href="${escapeHtml(getLearnTutorialDetailRoute(tutorial.id))}">Open shareable tutorial page</a>` : ""}
     </div>
     <div class="learn-tutorial-support-grid">
       <section class="learn-tutorial-support-panel">
@@ -29237,6 +29322,22 @@ function renderLearnTutorialDetailRelatedMarkup(category = {}, tutorial = {}) {
   `).join("");
 }
 
+function renderLearnShareControlsMarkup({
+  title = "Learn item",
+  url = "",
+  typeLabel = "Tutorial",
+  backHref = "#learn",
+} = {}) {
+  const shareUrl = String(url || "").trim();
+  return `
+    <div class="learn-share-controls" data-learn-share-controls data-learn-share-url="${escapeHtml(shareUrl)}" data-learn-share-title="${escapeHtml(title)}">
+      <a class="button button-secondary" href="${escapeHtml(backHref)}">Back to Learn</a>
+      <button type="button" class="button button-secondary learn-share-copy-button" data-learn-copy-link="${escapeHtml(shareUrl)}">Copy Link</button>
+      <button type="button" class="button button-primary learn-share-native-button" data-learn-share-link="${escapeHtml(shareUrl)}" data-learn-share-title="${escapeHtml(title)}">Share ${escapeHtml(typeLabel)}</button>
+    </div>
+  `;
+}
+
 function renderLearnTutorialDetailUnavailableMarkup({ title = "Tutorial unavailable", message = "This tutorial is not publicly available.", showSignIn = false } = {}) {
   return `
     <section class="learn-page learn-tutorial-detail-page">
@@ -29283,6 +29384,7 @@ function renderLearnTutorialDetailPage(tutorialId = "") {
   const durationLabel = getLearnTutorialDurationLabel(tutorial);
   const difficultyLabel = getLearnTutorialDifficultyLabel(tutorial);
   const learningPoints = getLearnTutorialLearningPoints(tutorial, category);
+  const shareUrl = getLearnTutorialPublicShareUrl(tutorial);
   markTutorialViewed(tutorial.id);
   trackTutorialAnalyticsEvent("tutorial_modal_opened", {
     tutorialId: tutorial.id,
@@ -29305,9 +29407,13 @@ function renderLearnTutorialDetailPage(tutorialId = "") {
             <span>${escapeHtml(difficultyLabel)}</span>
           </div>
           <p>${escapeHtml(tutorial.description || "A Cannakan Grow tutorial guide.")}</p>
+          ${isLearnItemPublicShareAvailable(tutorial) ? renderLearnShareControlsMarkup({
+            title: tutorial.title || "Cannakan Grow tutorial",
+            url: shareUrl,
+            typeLabel: "Tutorial",
+          }) : `<div class="learn-share-controls is-disabled"><a class="button button-secondary" href="#learn">Back to Learn</a><span>Public sharing is unavailable for this tutorial.</span></div>`}
           <div class="learn-tutorial-detail-actions">
-            <a class="button button-secondary" href="#learn">Back to Learn</a>
-            <button type="button" class="button button-primary" data-learn-detail-open-modal="${escapeHtml(tutorial.id)}">Open quick view</button>
+            <button type="button" class="button button-secondary" data-learn-detail-open-modal="${escapeHtml(tutorial.id)}">Open quick view</button>
           </div>
         </div>
       </section>
@@ -29338,6 +29444,7 @@ function renderLearnTutorialDetailPage(tutorialId = "") {
 }
 
 function bindLearnTutorialDetailPage(scope = document, tutorial = null) {
+  bindLearnShareControls(scope);
   scope.querySelector("[data-learn-detail-sign-in='true']")?.addEventListener("click", () => {
     openAuthModal({ dismissHash: "#learn", initialMode: "login" });
   });
@@ -29346,6 +29453,196 @@ function bindLearnTutorialDetailPage(scope = document, tutorial = null) {
     if (button instanceof HTMLElement) {
       openLearnTutorialModal(button.dataset.learnDetailOpenModal || tutorial?.id || "", { source: "Tutorial detail page" });
     }
+  });
+}
+
+function getLearnCollectionDetailAccessState(collection = null) {
+  if (!collection) {
+    return "not-found";
+  }
+  const isAdmin = hasResolvedAdminAccess();
+  const status = getTutorialVisibilityStatus(collection);
+  const audience = getLearnItemAudience(collection);
+  if (status === "draft" && !isAdmin) {
+    return "hidden";
+  }
+  if (audience === "admin" && !isAdmin) {
+    return "hidden";
+  }
+  if (audience === "signed_in" && !appState.user?.id && !isAdmin) {
+    return "locked";
+  }
+  return canCurrentUserViewLearnItem(collection) ? "viewable" : "hidden";
+}
+
+function renderLearnCollectionDetailPage(collectionId = "") {
+  const normalizedCollectionId = decodeURIComponent(String(collectionId || "").trim());
+  const collection = getLearnTutorialCollectionById(normalizedCollectionId);
+  const accessState = getLearnCollectionDetailAccessState(collection);
+
+  if (!collection || accessState === "not-found" || accessState === "hidden") {
+    app.innerHTML = renderLearnTutorialDetailUnavailableMarkup({
+      title: "Learning path not available",
+      message: "This learning path is not available publicly yet. Visit Learn to browse current guides.",
+    });
+    bindLearnCollectionDetailPage(app);
+    return;
+  }
+
+  if (accessState === "locked") {
+    app.innerHTML = renderLearnTutorialDetailUnavailableMarkup({
+      title: "Sign in to view this learning path",
+      message: "This learning path is available for Cannakan Grow members. Public tutorials remain available in Learn.",
+      showSignIn: true,
+    });
+    bindLearnCollectionDetailPage(app);
+    return;
+  }
+
+  const tutorialEntries = getLearnCollectionTutorialEntries(collection);
+  const progress = getLearnCollectionProgress(collection);
+  const shareUrl = getLearnCollectionPublicShareUrl(collection);
+  saveLearnCollectionProgress(collection.id, { lastOpenedAt: new Date().toISOString() });
+
+  app.innerHTML = `
+    <section class="learn-page learn-tutorial-detail-page learn-collection-detail-page">
+      <section class="card learn-tutorial-detail-hero">
+        <div class="learn-tutorial-detail-copy">
+          <div class="learn-tutorial-modal-kicker-row">
+            <span class="learn-tutorial-category-badge">Learning Path</span>
+            <span class="learn-tutorial-coming-soon is-${escapeHtml(getTutorialVisibilityStatus(collection))}">${escapeHtml(getTutorialStatusLabel(collection))}</span>
+          </div>
+          <h1>${escapeHtml(collection.title || "Learning Path")}</h1>
+          <div class="learn-tutorial-modal-meta" aria-label="Learning path details">
+            <span>${escapeHtml(`${progress.totalCount} tutorial${progress.totalCount === 1 ? "" : "s"}`)}</span>
+            <span>${escapeHtml(getLearnCollectionDurationLabel(collection))}</span>
+            <span>${escapeHtml(collection.difficulty || "Beginner")}</span>
+          </div>
+          <p>${escapeHtml(collection.description || "A guided tutorial collection for Cannakan® Grow.")}</p>
+          ${isLearnItemPublicShareAvailable(collection) ? renderLearnShareControlsMarkup({
+            title: collection.title || "Cannakan Grow learning path",
+            url: shareUrl,
+            typeLabel: "Path",
+          }) : `<div class="learn-share-controls is-disabled"><a class="button button-secondary" href="#learn">Back to Learn</a><span>Public sharing is unavailable for this learning path.</span></div>`}
+          <div class="learn-tutorial-detail-actions">
+            <button type="button" class="button button-secondary" data-learn-detail-open-path="${escapeHtml(collection.id)}">Open quick view</button>
+          </div>
+        </div>
+      </section>
+      <section class="card learn-tutorial-detail-player-card">
+        <div class="learn-collection-tutorial-list">
+          ${tutorialEntries.map(({ tutorial, category }, index) => {
+            const status = getTutorialProgressStatus(tutorial.id);
+            const statusLabel = getTutorialProgressStatusLabel(tutorial.id);
+            return `
+              <a class="learn-collection-tutorial-row" href="${escapeHtml(getLearnTutorialDetailRoute(tutorial.id))}">
+                <span class="learn-collection-tutorial-number">${escapeHtml(String(index + 1))}</span>
+                <span class="learn-collection-tutorial-copy">
+                  <strong>${escapeHtml(tutorial.title)}</strong>
+                  <small>${escapeHtml(`${category.title} • ${getLearnTutorialDurationLabel(tutorial)}`)}</small>
+                </span>
+                <span class="learn-tutorial-progress-badge is-${escapeHtml(status)}">${escapeHtml(statusLabel)}</span>
+              </a>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    </section>
+  `;
+  bindLearnCollectionDetailPage(app, collection);
+}
+
+function bindLearnCollectionDetailPage(scope = document, collection = null) {
+  bindLearnShareControls(scope);
+  scope.querySelector("[data-learn-detail-sign-in='true']")?.addEventListener("click", () => {
+    openAuthModal({ dismissHash: "#learn", initialMode: "login" });
+  });
+  scope.querySelector("[data-learn-detail-open-path]")?.addEventListener("click", (event) => {
+    const button = event.currentTarget;
+    if (button instanceof HTMLElement) {
+      openLearnCollectionModal(button.dataset.learnDetailOpenPath || collection?.id || "");
+    }
+  });
+}
+
+async function copyTextToClipboard(text = "") {
+  const normalizedText = String(text || "").trim();
+  if (!normalizedText) {
+    return false;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(normalizedText);
+      return true;
+    }
+  } catch (error) {
+    console.warn("[Learn Share] Clipboard API failed.", error);
+  }
+
+  const input = document.createElement("textarea");
+  input.value = normalizedText;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
+  document.body.appendChild(input);
+  input.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (error) {
+    console.warn("[Learn Share] Clipboard fallback failed.", error);
+  } finally {
+    input.remove();
+  }
+  return copied;
+}
+
+function flashLearnShareButton(button, label = "Copied") {
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+  const previousLabel = button.textContent || "";
+  button.textContent = label;
+  button.disabled = true;
+  window.setTimeout(() => {
+    button.textContent = previousLabel;
+    button.disabled = false;
+  }, 1400);
+}
+
+function bindLearnShareControls(scope = document) {
+  scope.querySelectorAll("[data-learn-copy-link]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnCopyBound === "true") {
+      return;
+    }
+    button.dataset.learnCopyBound = "true";
+    button.addEventListener("click", async () => {
+      const copied = await copyTextToClipboard(button.dataset.learnCopyLink || "");
+      flashLearnShareButton(button, copied ? "Copied" : "Copy failed");
+    });
+  });
+
+  scope.querySelectorAll("[data-learn-share-link]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.learnShareBound === "true") {
+      return;
+    }
+    button.dataset.learnShareBound = "true";
+    button.addEventListener("click", async () => {
+      const url = String(button.dataset.learnShareLink || "").trim();
+      const title = String(button.dataset.learnShareTitle || "Cannakan Grow Learn").trim();
+      if (navigator.share) {
+        try {
+          await navigator.share({ title, url });
+          return;
+        } catch (error) {
+          if (error?.name === "AbortError") {
+            return;
+          }
+        }
+      }
+      const copied = await copyTextToClipboard(url);
+      flashLearnShareButton(button, copied ? "Link copied" : "Share failed");
+    });
   });
 }
 
@@ -29917,11 +30214,16 @@ function bindLearnRecommendedTutorialInteractions(scope = document) {
 
 function bindLearningPathInteractions(scope = document) {
   scope.querySelectorAll("[data-learn-collection-open]").forEach((button) => {
-    if (!(button instanceof HTMLButtonElement) || button.dataset.learnCollectionBound === "true") {
+    if (!(button instanceof HTMLElement) || button.dataset.learnCollectionBound === "true") {
       return;
     }
     button.dataset.learnCollectionBound = "true";
-    button.addEventListener("click", () => openLearnCollectionModal(button.dataset.learnCollectionOpen || ""));
+    button.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("a")) {
+        return;
+      }
+      openLearnCollectionModal(button.dataset.learnCollectionOpen || "");
+    });
   });
 }
 
@@ -44664,6 +44966,25 @@ function renderAdminLearnVisibilityBadgeMarkup(item = {}) {
   return `<span class="admin-tutorial-visibility is-${escapeHtml(audience)}">${escapeHtml(publicLabel)}</span>`;
 }
 
+function renderAdminLearnPublicLinkMarkup(item = {}, type = "tutorial") {
+  if (!isLearnItemPublicShareAvailable(item)) {
+    return `
+      <div class="admin-tutorial-public-link is-disabled">
+        <span>Public link hidden until this ${escapeHtml(type)} is public and not draft.</span>
+      </div>
+    `;
+  }
+  const url = type === "path" ? getLearnCollectionPublicShareUrl(item) : getLearnTutorialPublicShareUrl(item);
+  const qrLabel = String(item.qrLabel || "").trim() || (type === "path" ? "Learning path QR link" : "Tutorial QR link");
+  return `
+    <div class="admin-tutorial-public-link">
+      <span>${escapeHtml(qrLabel)}</span>
+      <code>${escapeHtml(url)}</code>
+      <button type="button" class="button button-secondary admin-tutorial-copy-link-button" data-learn-copy-link="${escapeHtml(url)}">Copy public link</button>
+    </div>
+  `;
+}
+
 function renderAdminTutorialCategoryOptions(selectedCategoryId = "") {
   const normalizedCategoryId = normalizeTutorialCategoryId(selectedCategoryId);
   return getLearnTutorialCategoryOptions().map((category) => (
@@ -44709,6 +45030,7 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
           ${renderAdminLearnVisibilityBadgeMarkup(tutorial)}
           ${tutorial.hasLocalDraft ? "<span>Local draft</span>" : ""}
         </div>
+        ${renderAdminLearnPublicLinkMarkup(tutorial, "tutorial")}
       </div>
       <div class="admin-tutorial-card-actions">
         <div class="admin-tutorial-order-controls" aria-label="${escapeHtml(`Ordering controls for ${tutorial.title || "tutorial"}`)}">
@@ -44810,6 +45132,22 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           <label class="admin-source-form-full">
             <span>Visibility Note</span>
             <input name="visibilityNote" value="${escapeHtml(tutorial.visibilityNote || "")}" placeholder="Public setup guide, member-only workflow, or admin staging note">
+          </label>
+          <label>
+            <span>QR-ready Link Label</span>
+            <input name="qrLabel" value="${escapeHtml(tutorial.qrLabel || "")}" placeholder="KAN Overview QR">
+          </label>
+          <label>
+            <span>QR Campaign Tag</span>
+            <input name="qrCampaignTag" value="${escapeHtml(tutorial.qrCampaignTag || "")}" placeholder="packaging-insert">
+          </label>
+          <label class="admin-source-form-full">
+            <span>QR Description</span>
+            <input name="qrDescription" value="${escapeHtml(tutorial.qrDescription || "")}" placeholder="Printed guide or product support context">
+          </label>
+          <label class="admin-source-form-full">
+            <span>QR Destination URL</span>
+            <input name="qrDestinationUrl" value="${escapeHtml(tutorial.qrDestinationUrl || "")}" placeholder="${escapeHtml(isLearnItemPublicShareAvailable(tutorial) ? getLearnTutorialPublicShareUrl(tutorial) : "Available when public")}">
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail URL</span>
@@ -44978,6 +45316,7 @@ function renderAdminTutorialCollectionCardMarkup(collection = {}) {
           ${renderAdminLearnVisibilityBadgeMarkup(collection)}
           ${collection.hasLocalDraft ? "<span>Local draft</span>" : ""}
         </div>
+        ${renderAdminLearnPublicLinkMarkup(collection, "path")}
       </div>
       <div class="admin-tutorial-card-actions">
         <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-collection-edit="${escapeHtml(collection.id)}">Edit Path</button>
@@ -45074,6 +45413,22 @@ function renderAdminTutorialCollectionEditorMarkup(collection = null) {
           <label class="admin-source-form-full">
             <span>Visibility Note</span>
             <input name="visibilityNote" value="${escapeHtml(collection.visibilityNote || "")}" placeholder="Public onboarding path or member-only series">
+          </label>
+          <label>
+            <span>QR-ready Link Label</span>
+            <input name="qrLabel" value="${escapeHtml(collection.qrLabel || "")}" placeholder="Starter path QR">
+          </label>
+          <label>
+            <span>QR Campaign Tag</span>
+            <input name="qrCampaignTag" value="${escapeHtml(collection.qrCampaignTag || "")}" placeholder="product-insert">
+          </label>
+          <label class="admin-source-form-full">
+            <span>QR Description</span>
+            <input name="qrDescription" value="${escapeHtml(collection.qrDescription || "")}" placeholder="Packaging, insert, support email, or printed guide context">
+          </label>
+          <label class="admin-source-form-full">
+            <span>QR Destination URL</span>
+            <input name="qrDestinationUrl" value="${escapeHtml(collection.qrDestinationUrl || "")}" placeholder="${escapeHtml(isLearnItemPublicShareAvailable(collection) ? getLearnCollectionPublicShareUrl(collection) : "Available when public")}">
           </label>
           <label class="admin-source-form-full">
             <span>Thumbnail / Poster URL</span>
@@ -45208,6 +45563,10 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
     audience: normalizeLearnAudience(formData.get("audience")),
     isPublic: formData.get("isPublic") === "on",
     visibilityNote: String(formData.get("visibilityNote") || "").trim(),
+    qrLabel: String(formData.get("qrLabel") || "").trim(),
+    qrDescription: String(formData.get("qrDescription") || "").trim(),
+    qrCampaignTag: String(formData.get("qrCampaignTag") || "").trim(),
+    qrDestinationUrl: String(formData.get("qrDestinationUrl") || "").trim(),
     scheduled: formData.get("scheduled") === "on",
     releaseDate: String(formData.get("releaseDate") || "").trim(),
     comingSoonLabel: String(formData.get("comingSoonLabel") || "").trim(),
@@ -45261,6 +45620,10 @@ function saveAdminTutorialCollectionFormDraft(form) {
     audience: normalizeLearnAudience(formData.get("audience")),
     isPublic: formData.get("isPublic") === "on",
     visibilityNote: String(formData.get("visibilityNote") || "").trim(),
+    qrLabel: String(formData.get("qrLabel") || "").trim(),
+    qrDescription: String(formData.get("qrDescription") || "").trim(),
+    qrCampaignTag: String(formData.get("qrCampaignTag") || "").trim(),
+    qrDestinationUrl: String(formData.get("qrDestinationUrl") || "").trim(),
     status: getTutorialVisibilityStatus({
       status: formData.get("visibilityStatus"),
       scheduled: formData.get("scheduled") === "on",
@@ -45277,6 +45640,8 @@ function saveAdminTutorialCollectionFormDraft(form) {
 }
 
 function bindAdminTutorialManagementSection(scope = app) {
+  bindLearnShareControls(scope);
+
   scope.querySelector("[data-admin-collection-create='true']")?.addEventListener("click", () => {
     createAdminTutorialCollectionDraft();
     refreshAdminTutorialManagementSection();
@@ -56771,6 +57136,19 @@ document.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       navigateToLearnTutorialDetailRoute(tutorialId);
+      return;
+    }
+  }
+
+  const learnPathLink = event.target instanceof Element
+    ? event.target.closest('a[href^="/learn/path/"]')
+    : null;
+  if (learnPathLink instanceof HTMLAnchorElement) {
+    const collectionId = decodeURIComponent(String(learnPathLink.getAttribute("href") || "").replace(/^\/learn\/path\/?/, ""));
+    if (collectionId) {
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToLearnCollectionDetailRoute(collectionId);
       return;
     }
   }
