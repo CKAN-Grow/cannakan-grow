@@ -49944,7 +49944,7 @@ function getSessionLifecycleTimelineStatusText(event) {
       case "soaking":
         return event.setupGraceActive ? "Timer starts soon" : "Currently soaking";
       case "germination":
-        return "Germination active";
+        return "Germination underway";
       case "first-germinated":
         return "First sprout recorded";
       case "completed":
@@ -49983,6 +49983,48 @@ function getSessionLifecycleTimelineStatusText(event) {
   }
 }
 
+function getSessionLifecycleTimelineStatusLines(statusText = "") {
+  const normalizedStatusText = String(statusText || "").trim();
+  const statusLineMap = {
+    "Timer starts soon": ["Timer starts", "soon"],
+    "Currently soaking": ["Currently", "soaking"],
+    "Germination underway": ["Germination", "underway"],
+    "First sprout recorded": ["First sprout", "recorded"],
+    "Session completed": ["Session", "completed"],
+    "Ready to complete": ["Ready to", "complete"],
+    "Soaking completed": ["Soaking", "completed"],
+    "Waiting to begin": ["Waiting", "to begin"],
+    "Awaiting germination": ["Awaiting", "germination"],
+    "Awaiting first sprout": ["Awaiting", "first sprout"],
+    "Awaiting completion": ["Awaiting", "completion"],
+    "In progress": ["In", "progress"],
+    Completed: ["Completed", ""],
+    "Up next": ["Up", "next"],
+  };
+
+  if (statusLineMap[normalizedStatusText]) {
+    return statusLineMap[normalizedStatusText];
+  }
+
+  const words = normalizedStatusText.split(/\s+/).filter(Boolean);
+  if (words.length <= 1) {
+    return [normalizedStatusText, ""];
+  }
+
+  const splitIndex = Math.ceil(words.length / 2);
+  return [
+    words.slice(0, splitIndex).join(" "),
+    words.slice(splitIndex).join(" "),
+  ];
+}
+
+function renderSessionLifecycleTimelineStatusMarkup(statusText = "") {
+  const lines = getSessionLifecycleTimelineStatusLines(statusText);
+  return lines.map((line, index) => (
+    `<span class="session-command-stage-helper-line session-command-stage-helper-line--${index + 1}">${line ? escapeHtml(line) : "&nbsp;"}</span>`
+  )).join("");
+}
+
 function renderSessionLifecycleTimelineMarkup(state) {
   const events = getSessionLifecycleTimelineEvents(state);
 
@@ -50004,7 +50046,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
         >
           ${renderCommandCenterIconMarkup(`stage-${iconStageKey}`, `command-icon--stage command-icon--stage-${iconStageKey}`)}
           <strong>${escapeHtml(event.label)}</strong>
-          <p class="session-command-stage-helper">${escapeHtml(event.statusText)}</p>
+          <p class="session-command-stage-helper">${renderSessionLifecycleTimelineStatusMarkup(event.statusText)}</p>
           <div class="session-lifecycle-stage-card" aria-label="${escapeHtml(`${event.label} timing details`)}">
             <dl class="session-lifecycle-stage-card-grid">
               <dt>Length</dt>

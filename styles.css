@@ -3680,12 +3680,20 @@ body.theme-dark .spotlight-stat strong {
 
 .session-lifecycle-stage .session-command-stage-helper {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   width: 100%;
   min-height: 2.9em;
   font-size: 0.81rem;
   line-height: 1.34;
+  text-align: center;
+}
+
+.session-command-stage-helper-line {
+  display: block;
+  width: 100%;
+  min-height: 1.34em;
 }
 
 #detail-lifecycle-section .session-lifecycle-stage {
@@ -22316,11 +22324,16 @@ body.theme-dark .theme-toggle-button:hover {
   }
 
   .session-lifecycle-stage .session-command-stage-icon-wrap,
-  .session-lifecycle-stage strong,
-  .session-lifecycle-stage .session-command-stage-helper {
+  .session-lifecycle-stage strong {
     justify-content: flex-start;
     min-height: 0;
     text-align: left;
+  }
+
+  .session-lifecycle-stage .session-command-stage-helper {
+    justify-content: center;
+    min-height: 0;
+    text-align: center;
   }
 
   .session-lifecycle-stage-card,
