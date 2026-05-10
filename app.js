@@ -211,19 +211,19 @@ function formatBrandName(value = "") {
 
 const CSTP_DEFINITION = `CSTP (${BRAND_NAME} Standardized Testing Protocol) is a controlled, repeatable testing framework designed to evaluate seed germination performance under consistent conditions.`;
 const CSTP_CERTIFICATION_PHILOSOPHY = "CSTP certification is earned, not purchased.";
-const CSTP_RESULTS_CREDIBILITY = "All CSTP results are generated under controlled testing conditions using the KAN® System.";
+const CSTP_RESULTS_CREDIBILITY = "All CSTP results are observed under controlled CSTP conditions using the KAN® System.";
 const CSTP_BADGE_DISCLAIMER = "CSTP badges reflect performance from a specific tested batch and are time-limited.";
 const CSTP_SHARING_EXPOSURE = `CSTP-qualified results may be featured within the app and shared across ${BRAND_APP_NAME} channels.`;
-const CSTP_REPORT_LANGUAGE = "This report summarizes results from a controlled CSTP session. All data reflects observed outcomes under standardized conditions.";
+const CSTP_REPORT_LANGUAGE = "This CSTP report summarizes observed outcomes under standardized CSTP conditions for the tested sample.";
 const CSTP_REPORT_NO_GUARANTEE = "No guarantees are implied beyond the tested sample.";
-const CSTP_NEUTRALITY = "CSTP evaluations are conducted independently using standardized procedures to ensure consistency and reliability.";
+const CSTP_NEUTRALITY = "CSTP evaluations use standardized procedures so observation, calculation, and reporting stay consistent.";
 const SOURCE_DIRECTORY_DESCRIPTION = `A growing directory of sources recorded by ${BRAND_APP_NAME} members through shared germination sessions.`;
 const SOURCE_DIRECTORY_COMMUNITY_NOTE = "All germination rates are community-reported and aggregated from member sessions across the platform.";
 const CSTP_TOOLTIP_COPY = Object.freeze({
   cstp: "Standardized germination testing protocol",
-  gold: "Top-tier performance under CSTP testing",
-  silver: "Strong performance under CSTP testing",
-  "active certification": "Currently within valid certification window",
+  gold: "Gold threshold observed under CSTP conditions",
+  silver: "Silver threshold observed under CSTP conditions",
+  "active certification": "Current report available within the active badge window",
   "expiring soon": "Certification nearing expiration",
 });
 const CANNAKAN_FACTS = Object.freeze([
@@ -34238,8 +34238,8 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       publishedAt: publishedCertification.publishedAt || "",
     });
     const stateLabel = lifecycleState.isExpired
-      ? "Expired"
-      : (lifecycleState.isExpiringSoon ? "Expiring Soon" : "Active Certification");
+      ? "Expired Certification"
+      : (lifecycleState.isExpiringSoon ? "Expiring Soon" : "Report Available");
     const stateToneClass = lifecycleState.isExpired
       ? "is-expired"
       : (lifecycleState.isExpiringSoon ? "is-expiring" : "is-active");
@@ -34250,7 +34250,7 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       expiresAt: lifecycleState.expiresAt || "",
       heading: "2. CSTP Verification",
       helperText: CSTP_DEFINITION,
-      statusLabel: `CSTP ${qualificationLabel} Certified`,
+      statusLabel: `${qualificationLabel} Certified`,
       toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver",
       usesBadge: true,
       isMuted: lifecycleState.isExpired,
@@ -34260,10 +34260,10 @@ function getSourceProfileCstpState(sourceProfile = {}) {
         { label: stateLabel, toneClass: stateToneClass },
       ],
       rows: [
-        { label: "Tested Date", value: formatSourceProfileMonthYear(publishedCertification.completedAt || publishedCertification.publishedAt || "") },
+        { label: "Test Date", value: formatSourceProfileMonthYear(publishedCertification.completedAt || publishedCertification.publishedAt || "") },
         { label: "Valid Until", value: formatSourceProfileMonthYear(lifecycleState.expiresAt || "") },
-        { label: "Sample Size", value: formatSourceProfileSampleSize(publishedCertification.sampleSize || "") },
-        { label: "Avg Germ Time", value: String(publishedCertification.totalGerminationTime || "").trim() || "Not available" },
+        { label: "Total Seeds Tested", value: formatSourceProfileSampleSize(publishedCertification.sampleSize || "") },
+        { label: "Observation Window", value: String(publishedCertification.totalGerminationTime || "").trim() || "Not available" },
       ],
     };
   }
@@ -34275,6 +34275,9 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       : "";
     const isExpired = mockStatus === "expired";
     const isExpiringSoon = mockCstp.expiringSoon === true;
+    const mockObservationWindow = qualificationResult === "silver"
+      ? "6 days, 8 hours"
+      : (qualificationResult === "gold" ? "6 days, 4 hours" : "Not available");
     return {
       status: qualificationResult || (isExpired ? "expired" : (mockStatus || "not-tested")),
       publishedAt: "",
@@ -34283,8 +34286,8 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       heading: "2. CSTP Verification",
       helperText: CSTP_DEFINITION,
       statusLabel: qualificationResult
-        ? `CSTP ${getAdminCstpQualificationLabel(qualificationResult)} Certified`
-        : (isExpired ? "CSTP Certification Expired" : "No public CSTP certification"),
+        ? `${getAdminCstpQualificationLabel(qualificationResult)} Certified`
+        : (isExpired ? "Expired Certification" : (mockStatus === "tested" ? "CSTP Tested" : "Report Unavailable")),
       toneClass: qualificationResult
         ? (qualificationResult === "gold" ? "is-gold" : "is-silver")
         : (isExpired ? "is-expired" : "is-neutral"),
@@ -34294,16 +34297,16 @@ function getSourceProfileCstpState(sourceProfile = {}) {
       pills: qualificationResult
         ? [
           { label: getAdminCstpQualificationLabel(qualificationResult), toneClass: qualificationResult === "gold" ? "is-gold" : "is-silver" },
-          { label: isExpired ? "Expired" : (isExpiringSoon ? "Expiring Soon" : "Active Certification"), toneClass: isExpired ? "is-expired" : (isExpiringSoon ? "is-expiring" : "is-active") },
+          { label: isExpired ? "Expired Certification" : (isExpiringSoon ? "Expiring Soon" : "Report Available"), toneClass: isExpired ? "is-expired" : (isExpiringSoon ? "is-expiring" : "is-active") },
         ]
         : [
-          { label: isExpired ? "Expired" : "No certification", toneClass: isExpired ? "is-expired" : "is-neutral" },
+          { label: isExpired ? "Previously Tested" : (mockStatus === "tested" ? "CSTP Tested" : "Report Unavailable"), toneClass: isExpired ? "is-expired" : "is-neutral" },
         ],
       rows: [
-        { label: "Tested Date", value: String(mockCstp.testedDate || "").trim() || "Not available" },
+        { label: "Test Date", value: String(mockCstp.testedDate || "").trim() || "Not available" },
         { label: "Valid Until", value: String(mockCstp.validUntil || "").trim() || "Not available" },
-        { label: "Sample Size", value: formatSourceProfileSampleSize(mockCstp.sampleSize || "") },
-        { label: "Avg Germ Time", value: String(mockCstp.avgTime || "").trim() || "Not available" },
+        { label: "Total Seeds Tested", value: formatSourceProfileSampleSize(mockCstp.sampleSize || "") },
+        { label: "Observation Window", value: mockObservationWindow },
       ],
     };
   }
@@ -34315,19 +34318,19 @@ function getSourceProfileCstpState(sourceProfile = {}) {
     expiresAt: "",
     heading: "2. CSTP Verification",
     helperText: CSTP_DEFINITION,
-    statusLabel: "No public CSTP certification",
+    statusLabel: "Report Unavailable",
     toneClass: "is-neutral",
     usesBadge: false,
     isMuted: true,
     hasReport: false,
     pills: [
-      { label: "No certification", toneClass: "is-neutral" },
+      { label: "Report Unavailable", toneClass: "is-neutral" },
     ],
     rows: [
-      { label: "Tested Date", value: "Not available" },
+      { label: "Test Date", value: "Not available" },
       { label: "Valid Until", value: "Not available" },
-      { label: "Sample Size", value: "Not available" },
-      { label: "Avg Germ Time", value: "Not available" },
+      { label: "Total Seeds Tested", value: "Not available" },
+      { label: "Observation Window", value: "Not available" },
     ],
   };
 }
@@ -34356,12 +34359,12 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
 
   const textLabel = cstpState.visualTitle
     || (cstpState.status === "tested"
-      ? "Tested"
-      : (cstpState.status === "not-tested" ? "Not Tested" : "Expired"));
+      ? "CSTP Tested"
+      : (cstpState.status === "not-tested" ? "Report Unavailable" : "Previously Tested"));
   const textCaption = cstpState.visualNote
     || (cstpState.status === "tested"
-      ? "No certification earned for the tested batch"
-      : (cstpState.status === "not-tested" ? "No public CSTP certification on record" : "Certification window has ended"));
+      ? "Tested-only record with no public Gold or Silver report"
+      : (cstpState.status === "not-tested" ? "No public CSTP report on record" : "No active public report available"));
   return `
     <div class="source-profile-cstp-visual source-profile-cstp-visual--text ${toneClass}">
       <span class="source-profile-cstp-visual-label" title="${escapeHtml(getCstpTooltipCopy(cstpState.visualLabel || "CSTP"))}">${escapeHtml(cstpState.visualLabel || "CSTP")}</span>
@@ -34749,14 +34752,14 @@ function renderHomeCstpOverviewSectionMarkup() {
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
       badgeAlt: "CSTP Gold Certified badge",
       title: "CSTP Gold Certified",
-      description: "Top-tier CSTP qualification for a tested batch under standardized conditions.",
+      description: "Gold certification for a tested batch observed under standardized CSTP conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
       badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
       badgeAlt: "CSTP Silver Certified badge",
       title: "CSTP Silver Certified",
-      description: "Strong CSTP qualification for a tested batch under standardized conditions.",
+      description: "Silver certification for a tested batch observed under standardized CSTP conditions.",
       isBadge: true,
     }),
     renderHomeCstpOverviewFeatureMarkup({
@@ -35699,6 +35702,7 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
   const testedSeedCount = Math.max(1, parseSourceDirectoryMetricNumber(publishedCertification?.sampleSize || cstp.sampleSize || "") || 30);
   const germinationPercent = Math.max(0, Math.min(100, parseSourceDirectoryMetricNumber(publishedCertification?.finalGerminationPercent || cstp.resultPercent || "") || (qualificationResult === "silver" ? 88 : 94)));
   const germinatedCount = Math.round((testedSeedCount * germinationPercent) / 100);
+  const nonGerminatedCount = Math.max(0, testedSeedCount - germinatedCount);
   const certifiedDate = publishedCertification?.publishedAt || (qualificationResult === "silver" ? "2026-02-14T16:20:00.000Z" : "2026-01-18T15:45:00.000Z");
   const lifecycleState = getAdminCstpCertificationLifecycleState({
     qualificationResult,
@@ -35716,17 +35720,21 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
     sourceTypeLabel: String(sourceProfile?.sourceTypeLabel || sourceProfile?.type || "Breeder / Seed Source").trim() || "Breeder / Seed Source",
     qualificationResult,
     qualificationLabel,
+    certificationStatusLabel: `${qualificationLabel} Certified`,
     germinationPercent,
     testedSeedCount,
     germinatedCount,
+    nonGerminatedCount,
     certifiedDate,
     expiresAt,
     variety,
     certificationId: String(publishedCertification?.id || "").trim() || (qualificationResult === "silver" ? "CSTP-SIL-2026-0214-RQS" : "CSTP-GLD-2026-0118-GHSC"),
     batchLot,
     testDuration: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours"),
+    observationWindow: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "6 days, 8 hours" : "6 days, 4 hours"),
     averageGerminationTiming: String(publishedCertification?.totalGerminationTime || "").trim() || (qualificationResult === "silver" ? "46 hrs" : "42 hrs"),
     firstGermination: qualificationResult === "silver" ? "31 hrs" : "28 hrs",
+    methodologyReference: "CSTP v1 / Standard Report Framework v1",
     completionRate: qualificationResult === "silver" ? 96 : 100,
     environmentalConsistency: qualificationResult === "silver" ? 97 : 98,
     kanSystemsUsed: 3,
@@ -35766,25 +35774,25 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
     })),
     indicators: [
       { label: "Average Germination Timing", value: qualificationResult === "silver" ? 46 : 42, display: qualificationResult === "silver" ? "46 hrs" : "42 hrs", max: 72 },
-      { label: "First Germination Marker", value: qualificationResult === "silver" ? 31 : 28, display: qualificationResult === "silver" ? "31 hrs" : "28 hrs", max: 72 },
-      { label: "Completion Rate", value: qualificationResult === "silver" ? 96 : 100, display: qualificationResult === "silver" ? "96%" : "100%", max: 100 },
+      { label: "First Germination Observation", value: qualificationResult === "silver" ? 31 : 28, display: qualificationResult === "silver" ? "31 hrs" : "28 hrs", max: 72 },
+      { label: "Observation Window Completion", value: qualificationResult === "silver" ? 96 : 100, display: qualificationResult === "silver" ? "96%" : "100%", max: 100 },
       { label: "Environmental Consistency", value: qualificationResult === "silver" ? 97 : 98, display: qualificationResult === "silver" ? "97%" : "98%", max: 100 },
     ],
     media: [
       {
         variant: "science",
-        badge: "OBSERVATION MARKER",
-        title: "First confirmed emergence",
-        status: qualificationResult === "silver" ? "31 hr marker" : "28 hr marker",
-        description: "Static CSTP observation placeholder for the first confirmed emergence marker.",
+        badge: "FIRST GERMINATION OBSERVATION",
+        title: "First germination observation",
+        status: qualificationResult === "silver" ? "31 hr observation" : "28 hr observation",
+        description: "Media slot reserved for the first germination observation tied to the CSTP report record.",
         thumbnail: "/assets/images/cstp/placeholders/first-germinated.webp",
       },
       {
         variant: "cstp",
         badge: "FINAL OBSERVATION",
         title: "Final observation set",
-        status: `${germinatedCount}/${testedSeedCount} seeds confirmed`,
-        description: "Static CSTP observation placeholder for the final counted result.",
+        status: `${germinatedCount}/${testedSeedCount} successfully germinated`,
+        description: "Media slot reserved for final observation documentation under CSTP conditions.",
         thumbnail: "/assets/images/cstp/placeholders/final-result.webp",
       },
     ],
@@ -35861,7 +35869,7 @@ function renderSourceCstpReportUnavailablePage(sourceProfile = null) {
           ${renderAppSectionHeaderIcon("sources")}
           <div>
             <p class="eyebrow">CSTP Report</p>
-            <h2>Report unavailable</h2>
+            <h2>Report Unavailable</h2>
             <p class="muted">${escapeHtml(sourceName
               ? `The CSTP report for ${sourceName} is not currently public or available. The source may be tested without an active public Gold or Silver report, the report may have expired, or the route may no longer match a published report.`
               : "This CSTP report is not currently public or available. The source may be tested without an active public Gold or Silver report, the report may have expired, or the route may no longer match a published report.")}</p>
@@ -35900,7 +35908,7 @@ function renderSourceCstpReportPage(sourceId = "") {
     titleClassName: "cstp-certified-seal-title",
     noteClassName: "cstp-certified-seal-note",
     labelText: "CSTP Certified",
-    noteText: "Observed sample record",
+    noteText: "Report Available",
   });
 
   app.innerHTML = `
@@ -35928,22 +35936,22 @@ function renderSourceCstpReportPage(sourceId = "") {
             <span aria-hidden="true"></span>
             Certified by Cannakan Seed Testing Program
           </div>
-          <p class="cstp-cert-hero-summary">${escapeHtml(CSTP_RESULTS_CREDIBILITY)} This proof page summarizes one controlled seed-lot test and should be read as an observed sample result, not a universal performance guarantee.</p>
+          <p class="cstp-cert-hero-summary">${escapeHtml(CSTP_RESULTS_CREDIBILITY)} This report summarizes one controlled seed-lot observation and should be read as informational CSTP evidence, not a universal performance guarantee.</p>
           <div class="cstp-cert-hero-metrics" aria-label="Certification summary">
-            ${renderCstpCertificationMetricMarkup("Overall Germination", `${certification.germinationPercent}%`, `${certification.germinatedCount}/${certification.testedSeedCount} seeds`)}
-            ${renderCstpCertificationMetricMarkup("Record Issued", certifiedDateLabel, "CSTP proof record")}
-            ${renderCstpCertificationMetricMarkup("Sample Size", `${certification.testedSeedCount}`, "3 partitions x 10 seeds")}
-            ${renderCstpCertificationMetricMarkup("Variety Tested", certification.variety, certification.batchLot)}
+            ${renderCstpCertificationMetricMarkup("Observed Germination Rate", `${certification.germinationPercent}%`, `${certification.germinatedCount}/${certification.testedSeedCount} successfully germinated`)}
+            ${renderCstpCertificationMetricMarkup("Total Seeds Tested", String(certification.testedSeedCount), certification.batchLot)}
+            ${renderCstpCertificationMetricMarkup("Successfully Germinated", String(certification.germinatedCount), "Within observation window")}
+            ${renderCstpCertificationMetricMarkup("Non-Germinated During Observation Window", String(certification.nonGerminatedCount), "Not counted as germinated in this report")}
           </div>
         </div>
         <div class="cstp-cert-hero-proof">
           ${badgeMarkup}
           <div class="cstp-cert-score-ring" style="--cstp-cert-score: ${escapeHtml(String(certification.germinationPercent))};" aria-label="${escapeHtml(`${certification.germinationPercent}% germination`)}">
             <strong>${escapeHtml(`${certification.germinationPercent}%`)}</strong>
-            <span>Germination</span>
+            <span>Observed Rate</span>
           </div>
           <div class="cstp-cert-proof-meta">
-            <span>Certification ID</span>
+            <span>Report ID</span>
             <strong>${escapeHtml(certification.certificationId)}</strong>
           </div>
         </div>
@@ -35966,17 +35974,20 @@ function renderSourceCstpReportPage(sourceId = "") {
             `).join("")}
           </div>
           <div class="cstp-cert-run-grid">
-            ${renderCstpCertificationMetricMarkup("Test Duration", certification.testDuration, "Start to final result")}
+            ${renderCstpCertificationMetricMarkup("Test Date", certifiedDateLabel, "Report issue date")}
+            ${renderCstpCertificationMetricMarkup("Observation Window", certification.observationWindow, "Start to final observation")}
+            ${renderCstpCertificationMetricMarkup("First Germination Observation", certification.firstGermination, "First observed germination marker")}
+            ${renderCstpCertificationMetricMarkup("Certification Status", certification.certificationStatusLabel, "Report Available")}
             ${renderCstpCertificationMetricMarkup("KAN Systems Used", String(certification.kanSystemsUsed), "Simultaneous devices")}
-            ${renderCstpCertificationMetricMarkup("Partitions Tested", String(certification.partitionsTested), "Matched sample groups")}
+            ${renderCstpCertificationMetricMarkup("CSTP Version / Methodology Reference", certification.methodologyReference, "Standardized reporting reference")}
           </div>
         </article>
 
         <article class="card cstp-cert-panel cstp-cert-results-panel">
           <div class="cstp-cert-section-head">
-            <p class="eyebrow">Results Visualization</p>
-            <h2>Performance at a glance</h2>
-            <p>Observed values are shown as a concise certification summary for the tested sample.</p>
+            <p class="eyebrow">Germination Results</p>
+            <h2>Observed germination summary</h2>
+            <p>Observed values are shown as a concise CSTP report summary for the tested sample.</p>
           </div>
           <div class="cstp-cert-results-layout">
             <div class="cstp-cert-results-primary">
@@ -35985,12 +35996,12 @@ function renderSourceCstpReportPage(sourceId = "") {
                 <span>Observed</span>
               </div>
               <div class="cstp-cert-results-primary-copy">
-                <strong>Certified germination result</strong>
-                <p>${escapeHtml(`${certification.germinatedCount} of ${certification.testedSeedCount} seeds germinated within the CSTP observation window.`)}</p>
+                <strong>Observed Germination Rate</strong>
+                <p>${escapeHtml(`${certification.germinatedCount} of ${certification.testedSeedCount} seeds successfully germinated within the CSTP observation window.`)}</p>
               </div>
               <div class="cstp-cert-result-meaning">
                 <span>What this means</span>
-                <p>This percentage is the observed germination result for the tested lot under CSTP conditions. It is not a guarantee of future grow outcomes.</p>
+                <p>This percentage is the observed germination rate for the tested lot under CSTP conditions. It is informational and does not guarantee future grow outcomes.</p>
               </div>
             </div>
             <div class="cstp-cert-partition-list" aria-label="Partition performance">
@@ -36017,24 +36028,24 @@ function renderSourceCstpReportPage(sourceId = "") {
 
       <section class="card cstp-cert-panel cstp-cert-media-section" aria-labelledby="cstp-cert-media-title">
         <div class="cstp-cert-section-head">
-          <p class="eyebrow">Certification Media</p>
-          <h2 id="cstp-cert-media-title">Observed result media</h2>
-          <p>Branded placeholders reserve space for future CSTP observation images without adding upload, auth, or live certification functionality.</p>
+          <p class="eyebrow">Media Documentation</p>
+          <h2 id="cstp-cert-media-title">Observation media</h2>
+          <p>Media slots identify the report stages reserved for first germination and final observation documentation.</p>
         </div>
         <div class="cstp-cert-media-grid">
           ${certification.media.map((item) => renderCstpCertificationMediaCardMarkup(item)).join("")}
         </div>
       </section>
 
-      <section class="card cstp-cert-footer-panel" aria-label="Certification verification">
+      <section class="card cstp-cert-footer-panel" aria-label="Report verification">
         <div>
-          <p class="eyebrow">Certification Verification</p>
-          <h2>Verified by Cannakan Seed Testing Program</h2>
+          <p class="eyebrow">Report Verification</p>
+          <h2>Observed Under CSTP Conditions</h2>
           <p>${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
         </div>
         <div class="cstp-cert-footer-grid">
           <article>
-            <span>Certification ID</span>
+            <span>Report ID</span>
             <strong>${escapeHtml(certification.certificationId)}</strong>
           </article>
           <article>
@@ -36042,8 +36053,8 @@ function renderSourceCstpReportPage(sourceId = "") {
             <strong>${escapeHtml(expirationLabel)}</strong>
           </article>
           <article>
-            <span>Re-test Window</span>
-            <strong>Annual review recommended</strong>
+            <span>CSTP Version / Methodology Reference</span>
+            <strong>${escapeHtml(certification.methodologyReference)}</strong>
           </article>
         </div>
         <p class="cstp-cert-footer-note">${escapeHtml(`${CSTP_REPORT_LANGUAGE} ${CSTP_REPORT_NO_GUARANTEE}`)}</p>
