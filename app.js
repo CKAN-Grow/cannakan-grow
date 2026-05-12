@@ -44991,7 +44991,7 @@ function renderAdminCstpRequestQueueRowsMarkup() {
   if (appState.adminCstpRequestQueueLoading || (!appState.adminCstpRequestQueueLoaded && !appState.adminCstpRequestQueueError)) {
     return `
       <div class="admin-messages-empty">
-        <p>Loading internal CSTP requests...</p>
+        <p>Loading internal CSTP requests from the admin API...</p>
       </div>
     `;
   }
@@ -45010,6 +45010,7 @@ function renderAdminCstpRequestQueueRowsMarkup() {
     return `
       <div class="admin-messages-empty">
         <p>No internal CSTP requests match this filter.</p>
+        <p class="muted">Try another status filter, refresh the queue, or use Archived to review closed operational records.</p>
       </div>
     `;
   }
@@ -45130,7 +45131,7 @@ function renderAdminCstpTestCreateMarkup(record = null) {
         <div>
           <p class="eyebrow">CSTP Test Setup</p>
           <h4>Create internal test record</h4>
-          <p class="muted">Creates an internal CSTP test linked to this request. Grow sessions, session links, reports, and certifications remain separate future steps.</p>
+          <p class="muted">Creates an internal CSTP test linked to this request. Grow session links are managed from Test Management; reports and certifications remain deferred.</p>
         </div>
       </div>
       <div class="admin-communications-quick-actions admin-cstp-lab-actions">
@@ -45198,7 +45199,7 @@ function renderAdminCstpRequestDetailMarkup() {
         <div>
           <p class="eyebrow">Internal Request Detail</p>
           <h4 id="admin-cstp-request-detail-title">${escapeHtml(record.varietyName || record.breederName || "CSTP Request")}</h4>
-          <p class="muted">Admin-only request inspection. Public CSTP reports, certifications, and test/session workflows remain outside this view.</p>
+          <p class="muted">Admin-only request inspection. Create the test here, then use Test Management for status updates and session links. Public reports and certifications remain deferred.</p>
         </div>
         <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-detail-back="true">Back to Queue</button>
       </div>
@@ -45265,7 +45266,7 @@ function renderAdminCstpRequestQueueShellMarkup() {
         <div>
           <p class="eyebrow">Internal CSTP Operations</p>
           <h4 id="admin-cstp-request-queue-title">Request Queue</h4>
-          <p class="muted">Admin-only queue backed by CSTP request APIs. Public CSTP reports, certifications, and source badges remain deferred.</p>
+          <p class="muted">Admin-only queue backed by CSTP request APIs. Use this queue for intake review and test creation; public reports, certifications, and source badges remain deferred.</p>
         </div>
         <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-queue-refresh="true">Refresh Queue</button>
       </div>
@@ -45301,7 +45302,7 @@ function renderAdminCstpTestManagementRowsMarkup() {
   if (appState.adminCstpTestManagementLoading || (!appState.adminCstpTestManagementLoaded && !appState.adminCstpTestManagementError)) {
     return `
       <div class="admin-messages-empty">
-        <p>Loading internal CSTP tests...</p>
+        <p>Loading internal CSTP tests from the admin API...</p>
       </div>
     `;
   }
@@ -45320,6 +45321,7 @@ function renderAdminCstpTestManagementRowsMarkup() {
     return `
       <div class="admin-messages-empty">
         <p>No internal CSTP tests match this filter.</p>
+        <p class="muted">Create a test from an eligible request, refresh this list, or use Archived to review closed tests.</p>
       </div>
     `;
   }
@@ -45442,6 +45444,7 @@ function renderAdminCstpSessionLinksRowsMarkup(testId = "") {
     return `
       <div class="admin-messages-empty">
         <p>No Grow sessions are linked to this CSTP test yet.</p>
+        <p class="muted">Paste an existing grow_sessions.id below to create a CSTP relationship overlay. The Grow session itself will not be edited.</p>
       </div>
     `;
   }
@@ -45480,7 +45483,7 @@ function renderAdminCstpSessionLinksRowsMarkup(testId = "") {
               data-admin-cstp-session-link-archive="${escapeHtml(row.id)}"
               ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}
             >
-              Archive Link
+              Archive Relationship
             </button>
           </div>
         </article>
@@ -45514,7 +45517,7 @@ function renderAdminCstpSessionLinkManagementMarkup(record = null) {
         <div class="admin-communications-editor-grid">
           <label class="admin-message-field">
             <span>Grow Session ID</span>
-            <input name="sessionId" type="text" autocomplete="off" placeholder="Paste grow_sessions.id" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>
+            <input name="sessionId" type="text" autocomplete="off" placeholder="Paste existing grow_sessions.id" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>
             <p class="admin-message-help-text">Relationship only. CSTP will not mutate the Grow session record.</p>
           </label>
           <label class="admin-message-field">
@@ -45527,7 +45530,7 @@ function renderAdminCstpSessionLinkManagementMarkup(record = null) {
           </label>
         </div>
         <div class="inline-actions admin-cstp-lab-actions">
-          <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--primary" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>${escapeHtml(appState.adminCstpSessionLinkSaving ? "Saving..." : "Attach Session Link")}</button>
+          <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--primary" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>${escapeHtml(appState.adminCstpSessionLinkSaving ? "Saving..." : "Attach Existing Session")}</button>
         </div>
         ${feedbackMarkup}
       </form>
@@ -45581,10 +45584,10 @@ function renderAdminCstpTestDetailMarkup() {
   return `
     <section class="card admin-cstp-assigned-session" aria-labelledby="admin-cstp-test-detail-title">
       <div class="admin-communications-editor-head">
-        <div>
-          <p class="eyebrow">Internal Test Detail</p>
-          <h4 id="admin-cstp-test-detail-title">${escapeHtml(record.id)}</h4>
-          <p class="muted">Internal CSTP test orchestration record. Session links, reports, certifications, and public workflows remain deferred.</p>
+          <div>
+            <p class="eyebrow">Internal Test Detail</p>
+            <h4 id="admin-cstp-test-detail-title">${escapeHtml(record.id)}</h4>
+          <p class="muted">Internal CSTP test orchestration record. Manage status and external Grow session links here; reports, certifications, and public workflows remain deferred.</p>
         </div>
         <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-detail-back="true">Back to Test List</button>
       </div>
@@ -45640,7 +45643,7 @@ function renderAdminCstpTestManagementShellMarkup() {
         <div>
           <p class="eyebrow">Internal CSTP Operations</p>
           <h4 id="admin-cstp-test-management-title">Test Management</h4>
-          <p class="muted">Admin-only CSTP test orchestration. Session linking, reports, certifications, and public publishing remain deferred.</p>
+          <p class="muted">Admin-only CSTP test orchestration for status updates and external Grow session links. Reports, certifications, and public publishing remain deferred.</p>
         </div>
         <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-management-refresh="true">Refresh Tests</button>
       </div>
@@ -46341,6 +46344,9 @@ function bindAdminCstpRequestQueue(scope = app) {
       const requestId = String(button.dataset.adminCstpRequestId || "").trim();
       const currentStatus = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestCurrentStatus || "");
       const nextStatus = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestStatusAction || "");
+      if (nextStatus === "archived" && !window.confirm("Archive this CSTP request? It will leave the internal workflow queue but remain available through the Archived filter.")) {
+        return;
+      }
       updateAdminCstpRequestStatusAndRender(app, requestId, currentStatus, nextStatus);
     });
   });
@@ -46439,6 +46445,9 @@ function bindAdminCstpTestManagement(scope = app) {
       const testId = String(button.dataset.adminCstpTestId || "").trim();
       const currentStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestCurrentStatus || "");
       const nextStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestStatusAction || "");
+      if (nextStatus === "archived" && !window.confirm("Archive this CSTP test? Linked Grow sessions will not be changed, and the CSTP record remains available through the Archived filter.")) {
+        return;
+      }
       updateAdminCstpTestStatusAndRender(app, testId, currentStatus, nextStatus);
     });
   });
@@ -46462,6 +46471,9 @@ function bindAdminCstpTestManagement(scope = app) {
     button.dataset.adminCstpTestManagementBound = "true";
     button.addEventListener("click", () => {
       const linkId = String(button.dataset.adminCstpSessionLinkArchive || "").trim();
+      if (!window.confirm("Archive this CSTP session link? This only archives the relationship row and does not change the Grow session.")) {
+        return;
+      }
       archiveAdminCstpSessionLinkAndRender(app, linkId);
     });
   });
