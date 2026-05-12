@@ -1060,6 +1060,7 @@ const ADMIN_CSTP_REPORT_PREPARE_API_PATH = "/api/cstp-admin-report-prepare";
 const ADMIN_CSTP_REPORT_GENERATE_API_PATH = "/api/cstp-admin-report-generate";
 const ADMIN_CSTP_REPORT_REGENERATE_API_PATH = "/api/cstp-admin-report-regenerate";
 const ADMIN_CSTP_REPORT_SUPERSEDE_API_PATH = "/api/cstp-admin-report-supersede";
+const ADMIN_CSTP_REPORT_LINEAGE_API_PATH = "/api/cstp-admin-report-lineage";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
@@ -1342,6 +1343,10 @@ const appState = {
   adminCstpReportSupersedeResult: null,
   adminCstpReportSupersedeError: "",
   adminCstpReportSupersedeLastRunAt: "",
+  adminCstpReportLineageLoading: false,
+  adminCstpReportLineageResult: null,
+  adminCstpReportLineageError: "",
+  adminCstpReportLineageLastRunAt: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -46171,12 +46176,14 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
   const isGenerateAction = config.action === "generate";
   const isRegenerateAction = config.action === "regenerate";
   const isSupersedeAction = config.action === "supersede";
-  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction || isSupersedeAction) && config.enabled === true;
+  const isLineageAction = config.action === "inspect-lineage";
+  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction || isSupersedeAction || isLineageAction) && config.enabled === true;
   const loading = enabled && (
     (isPrepareAction && appState.adminCstpReportPrepareLoading)
     || (isGenerateAction && appState.adminCstpReportGenerateLoading)
     || (isRegenerateAction && appState.adminCstpReportRegenerateLoading)
     || (isSupersedeAction && appState.adminCstpReportSupersedeLoading)
+    || (isLineageAction && appState.adminCstpReportLineageLoading)
   );
   const disabled = !enabled || loading;
   const actionAttribute = isGenerateAction
@@ -46185,19 +46192,23 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
       ? `data-admin-cstp-report-regenerate="true"`
       : (isSupersedeAction
         ? `data-admin-cstp-report-supersede="true"`
-        : `data-admin-cstp-report-prepare="true"`));
+        : (isLineageAction
+          ? `data-admin-cstp-report-lineage="true"`
+          : `data-admin-cstp-report-prepare="true"`)));
   const disabledAttributes = disabled
     ? `disabled aria-disabled="true"`
     : actionAttribute;
-  const title = isSupersedeAction && enabled
-    ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with persistence deferred."
-    : (isRegenerateAction && enabled
+  const title = isLineageAction && enabled
+    ? "Run the internal Inspect Lineage workflow through the protected CSTP admin route stack with mock lineage data."
+    : (isSupersedeAction && enabled
+      ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with persistence deferred."
+      : (isRegenerateAction && enabled
       ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
       : (isGenerateAction && enabled
         ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
         : (enabled
           ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
-          : "Internal placeholder only; protected workflow wiring is deferred.")));
+          : "Internal placeholder only; protected workflow wiring is deferred."))));
   const toneClass = enabled && (isGenerateAction || isRegenerateAction || isSupersedeAction)
     ? "admin-cstp-button--success"
     : (enabled
@@ -46206,8 +46217,10 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
   const loadingLabel = isSupersedeAction
     ? "Superseding..."
     : (isRegenerateAction
-    ? "Regenerating..."
-    : (isGenerateAction ? "Generating..." : "Preparing..."));
+      ? "Regenerating..."
+      : (isLineageAction
+        ? "Inspecting..."
+        : (isGenerateAction ? "Generating..." : "Preparing...")));
 
   return `
     <button
@@ -46348,6 +46361,9 @@ function getAdminCstpReportWorkflowLoadingLabel(mode = "") {
       return "Regenerating";
     case "supersede":
       return "Superseding";
+    case "inspect_lineage":
+    case "inspect-lineage":
+      return "Inspecting";
     default:
       return "Preparing";
   }
@@ -46414,6 +46430,87 @@ function renderAdminCstpImmutableReportSupersedeResultMarkup() {
     defaultMode: "supersede",
     includeLineage: true,
   });
+}
+
+function renderAdminCstpImmutableReportLineageResultMarkup() {
+  const result = appState.adminCstpReportLineageResult;
+  const error = appState.adminCstpReportLineageError;
+  const loading = appState.adminCstpReportLineageLoading;
+  const lineageSummary = result?.lineageSummary
+    || result?.serviceResult?.lineageSummary
+    || {};
+  const validationSummary = result?.validationSummary
+    || result?.validation?.summary
+    || result?.serviceResult?.validationSummary
+    || {};
+  const activeSnapshotId = lineageSummary.currentSnapshotId || lineageSummary.latestSnapshotId || "";
+  const activeSnapshotVersion = getAdminCstpLineageMockSnapshotVersion(activeSnapshotId);
+  const supersededCount = getAdminCstpLineageMockSupersededCount();
+  const activeCount = Array.isArray(lineageSummary.activeSnapshotIds)
+    ? lineageSummary.activeSnapshotIds.length
+    : 0;
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const errors = Array.isArray(result?.blockingErrors)
+    ? result.blockingErrors
+    : (Array.isArray(result?.errors) ? result.errors : []);
+  const statusLabel = loading
+    ? "Inspecting"
+    : (error ? "Route error" : (result?.status || "Not run"));
+  const statusTone = loading
+    ? "preparing"
+    : (error ? "failed" : (result?.ok ? "prepared" : "neutral"));
+
+  return `
+    <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-lineage-result-title">
+      <div class="admin-cstp-report-management-panel-head">
+        <div>
+          <p class="eyebrow">Inspect Lineage Result</p>
+          <h5 id="admin-cstp-report-lineage-result-title">Internal lineage inspection status</h5>
+          <p class="muted">Inspect Lineage calls the protected route/action stack and immutable lineage orchestrator with mock report/snapshot lineage.</p>
+        </div>
+        ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
+      </div>
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Workflow</span><strong>${escapeHtml(result?.workflowMode || "inspect_lineage")}</strong></p>
+        <p><span>Validation</span><strong>${escapeHtml(`${Number(validationSummary.blocking || 0)} blocking / ${Number(validationSummary.warnings || 0)} warnings`)}</strong></p>
+        <p><span>Active snapshot</span><strong>${escapeHtml(activeSnapshotId || "Awaiting run")}</strong></p>
+        <p><span>Active version</span><strong>${escapeHtml(activeSnapshotVersion ? `v${activeSnapshotVersion}` : "Awaiting run")}</strong></p>
+      </div>
+      ${appState.adminCstpReportLineageLastRunAt
+        ? `<p class="muted admin-cstp-report-management-note">Last internal inspect lineage attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportLineageLastRunAt))}</p>`
+        : `<p class="muted admin-cstp-report-management-note">No Inspect Lineage workflow has been run from this dashboard yet.</p>`}
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Chain summary</span><strong>${escapeHtml(`${Number(lineageSummary.snapshotCount || 0)} snapshots / ${activeCount} active`)}</strong></p>
+        <p><span>Superseded</span><strong>${escapeHtml(supersededCount)}</strong></p>
+        <p><span>Duplicate active</span><strong>${escapeHtml(lineageSummary.duplicateActiveLineage ? "Detected" : "None")}</strong></p>
+        <p><span>Cycle check</span><strong>${escapeHtml(lineageSummary.cycleValidationStatus || "Not run")}</strong></p>
+      </div>
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Continuity</span><strong>${escapeHtml(lineageSummary.currentSnapshotId ? "Continuity checked" : "Awaiting run")}</strong></p>
+        <p><span>Latest snapshot</span><strong>${escapeHtml(lineageSummary.latestSnapshotId || "Awaiting run")}</strong></p>
+        <p><span>Duplicate check</span><strong>${escapeHtml(lineageSummary.duplicateActiveValidationStatus || "Not run")}</strong></p>
+        <p><span>Public</span><strong>${escapeHtml(lineageSummary.publicVisibility === false ? "No" : "Deferred")}</strong></p>
+      </div>
+      ${error
+        ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
+        : ""}
+      ${result?.message
+        ? `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result.message)}</p>`
+        : ""}
+      ${errors.length
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Blocking errors</strong>
+            ${errors.slice(0, 4).map((issue) => `<p>${escapeHtml(issue?.message || String(issue || ""))}</p>`).join("")}
+          </div>`
+        : ""}
+      ${warnings.length
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Warnings</strong>
+            ${warnings.slice(0, 4).map((warning) => `<p>${escapeHtml(warning?.message || String(warning || ""))}</p>`).join("")}
+          </div>`
+        : ""}
+    </section>
+  `;
 }
 
 function renderAdminCstpImmutableReportItemMarkup(item = {}) {
@@ -46656,6 +46753,103 @@ function buildAdminCstpSupersedeReportMockPayload(workflowTimestamp = "") {
   };
 }
 
+function getAdminCstpLineageMockData() {
+  const reportId = "11111111-1111-4111-8111-111111111111";
+  const requestId = "44444444-4444-4444-8444-444444444444";
+  const testId = "55555555-5555-4555-8555-555555555555";
+  const sourceId = "66666666-6666-4666-8666-666666666666";
+  const supersededSnapshotId = "22222222-2222-4222-8222-222222222222";
+  const activeSnapshotId = "33333333-3333-4333-8333-333333333333";
+  const existingReport = {
+    id: reportId,
+    cstp_test_id: testId,
+    cstp_request_id: requestId,
+    source_id: sourceId,
+    current_snapshot_id: activeSnapshotId,
+    status: "published",
+  };
+  const existingSnapshots = [
+    {
+      id: supersededSnapshotId,
+      report_id: reportId,
+      cstp_test_id: testId,
+      cstp_request_id: requestId,
+      source_id: sourceId,
+      snapshot_version: 1,
+      status: "superseded",
+      locked: true,
+      superseded_by_snapshot_id: activeSnapshotId,
+      frozen_report_payload: {
+        internalOnly: true,
+        source: "admin_dashboard_mock_lineage",
+      },
+      generated_at: "2026-05-11T14:00:00.000Z",
+      prepared_at: "2026-05-11T14:30:00.000Z",
+      published_at: "2026-05-11T15:00:00.000Z",
+    },
+    {
+      id: activeSnapshotId,
+      report_id: reportId,
+      cstp_test_id: testId,
+      cstp_request_id: requestId,
+      source_id: sourceId,
+      snapshot_version: 2,
+      status: "published",
+      locked: true,
+      supersedes_snapshot_id: supersededSnapshotId,
+      frozen_report_payload: {
+        internalOnly: true,
+        source: "admin_dashboard_mock_lineage",
+      },
+      generated_at: "2026-05-12T14:00:00.000Z",
+      prepared_at: "2026-05-12T14:30:00.000Z",
+      published_at: "2026-05-12T15:00:00.000Z",
+    },
+  ];
+
+  return {
+    reportId,
+    requestId,
+    testId,
+    existingReport,
+    existingSnapshots,
+  };
+}
+
+function getAdminCstpLineageMockSnapshotVersion(snapshotId = "") {
+  const normalizedSnapshotId = String(snapshotId || "").trim();
+  if (!normalizedSnapshotId) {
+    return "";
+  }
+  const snapshot = getAdminCstpLineageMockData().existingSnapshots
+    .find((entry) => entry.id === normalizedSnapshotId);
+  return snapshot?.snapshot_version || "";
+}
+
+function getAdminCstpLineageMockSupersededCount() {
+  return getAdminCstpLineageMockData().existingSnapshots
+    .filter((entry) => String(entry.status || "").trim().toLowerCase() === "superseded")
+    .length;
+}
+
+function buildAdminCstpInspectLineageMockPayload(workflowTimestamp = "") {
+  const timestamp = workflowTimestamp || new Date().toISOString();
+  const lineage = getAdminCstpLineageMockData();
+
+  return {
+    reportId: lineage.reportId,
+    cstpRequestId: lineage.requestId,
+    cstpTestId: lineage.testId,
+    workflowTimestamp: timestamp,
+    existingReport: lineage.existingReport,
+    existingSnapshots: lineage.existingSnapshots,
+    loadedInput: {
+      existingReport: lineage.existingReport,
+      existingSnapshots: lineage.existingSnapshots,
+    },
+  };
+}
+
 async function prepareAdminCstpImmutableReportWorkflow() {
   if (!isAdminUser()) {
     throw new Error("Sign in as an admin to prepare internal CSTP reports.");
@@ -46780,6 +46974,37 @@ async function supersedeAdminCstpImmutableReportWorkflow() {
   return payload;
 }
 
+async function inspectAdminCstpImmutableReportLineageWorkflow() {
+  if (!isAdminUser()) {
+    throw new Error("Sign in as an admin to inspect internal CSTP report lineage.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin with a valid session before running Inspect Lineage.");
+  }
+
+  const workflowTimestamp = new Date().toISOString();
+  const response = await fetch(ADMIN_CSTP_REPORT_LINEAGE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(buildAdminCstpInspectLineageMockPayload(workflowTimestamp)),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Inspect Lineage returned ${response.status}.`;
+    const error = new Error(detail);
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
 function renderAdminCstpImmutableReportManagementInto(scope = app) {
   const anchor = scope?.querySelector?.("#admin-cstp-report-management-anchor");
   if (!anchor) {
@@ -46865,6 +47090,26 @@ async function supersedeAdminCstpImmutableReportWorkflowAndRender(scope = app) {
     appState.adminCstpReportSupersedeError = error?.message || "Could not supersede the internal CSTP report.";
   } finally {
     appState.adminCstpReportSupersedeLoading = false;
+    renderAdminCstpImmutableReportManagementInto(scope);
+  }
+}
+
+async function inspectAdminCstpImmutableReportLineageWorkflowAndRender(scope = app) {
+  appState.adminCstpReportLineageLoading = true;
+  appState.adminCstpReportLineageError = "";
+  appState.adminCstpReportLineageResult = null;
+  appState.adminCstpReportLineageLastRunAt = new Date().toISOString();
+  renderAdminCstpImmutableReportManagementInto(scope);
+
+  try {
+    const result = await inspectAdminCstpImmutableReportLineageWorkflow();
+    appState.adminCstpReportLineageResult = result;
+    appState.adminCstpReportLineageError = "";
+  } catch (error) {
+    appState.adminCstpReportLineageResult = error?.payload || null;
+    appState.adminCstpReportLineageError = error?.message || "Could not inspect the internal CSTP report lineage.";
+  } finally {
+    appState.adminCstpReportLineageLoading = false;
     renderAdminCstpImmutableReportManagementInto(scope);
   }
 }
@@ -46990,9 +47235,15 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       eyebrow: "History",
       title: "Lineage and history",
       description: "Shows the intended immutable chain once protected report data is safely loaded.",
-      badge: "Read-only",
-      badgeTone: "neutral",
-      actions: ["Inspect lineage"],
+      badge: "Inspect wired",
+      badgeTone: "prepared",
+      actions: [
+        {
+          label: "Inspect lineage",
+          action: "inspect-lineage",
+          enabled: true,
+        },
+      ],
       items: [
         {
           title: "CSTP-RPT-2988 -> CSTP-RPT-3004",
@@ -47022,7 +47273,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, and Supersede Report are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, and Inspect Lineage are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
@@ -47030,6 +47281,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
           ${renderAdminCstpImmutableReportStatusPillMarkup("Generate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Regenerate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Supersede wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Lineage inspect wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
@@ -47038,6 +47290,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       ${renderAdminCstpImmutableReportGenerateResultMarkup()}
       ${renderAdminCstpImmutableReportRegenerateResultMarkup()}
       ${renderAdminCstpImmutableReportSupersedeResultMarkup()}
+      ${renderAdminCstpImmutableReportLineageResultMarkup()}
       <div class="admin-cstp-metrics-grid admin-cstp-report-management-metrics">
         ${metricCards.map(([label, value, description]) => `
           <div class="admin-cstp-metric-card">
@@ -47675,6 +47928,16 @@ function bindAdminCstpReportManagement(scope = app) {
     button.dataset.adminCstpReportSupersedeBound = "true";
     button.addEventListener("click", () => {
       supersedeAdminCstpImmutableReportWorkflowAndRender(app);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-report-lineage='true']").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportLineageBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpReportLineageBound = "true";
+    button.addEventListener("click", () => {
+      inspectAdminCstpImmutableReportLineageWorkflowAndRender(app);
     });
   });
 }
