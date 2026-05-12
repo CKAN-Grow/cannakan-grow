@@ -1,12 +1,10 @@
-const { executeCstpRequestCreation } = require("../src/services/cstp/internal");
+const {
+  authorizeCstpAdminRequest,
+  executeCstpRequestCreation,
+} = require("../src/services/cstp/internal");
 
 function json(response, status, payload) {
   return response.status(status).json(payload);
-}
-
-function getAuthorizationHeader(request) {
-  const headers = request?.headers || {};
-  return String(headers.authorization || headers.Authorization || "").trim();
 }
 
 function parseRequestBody(body) {
@@ -28,33 +26,26 @@ function parseRequestBody(body) {
   throw new Error("Unsupported request body.");
 }
 
-function getAdminAuthorizationReadiness() {
-  /*
-   * CSTP admin APIs must stay closed until an approved admin authorization
-   * pattern exists. Existing routes show bearer-token auth and cron-secret
-   * patterns, but no reusable admin role check. Do not call the execution
-   * boundary from an API route until that admin check is defined.
-   */
-  return {
-    configured: false,
-    reason:
-      "CSTP admin authorization is not configured. Define an approved admin role/allowlist/claims check before enabling this route.",
-  };
-}
-
-async function runAuthorizedCstpRequestCreation(payload, actor = {}) {
+async function runAuthorizedCstpRequestCreation(
+  payload,
+  actor = {},
+  executionOptions = {},
+) {
   /*
    * Thin execution handoff only. Business rules, lifecycle validation, audit
    * event preparation, and Supabase writes live in the internal CSTP execution
    * boundary. CSTP public exposure remains deferred.
    */
-  return executeCstpRequestCreation({
-    ...payload,
-    adminUserId: actor.userId,
-  });
+  return executeCstpRequestCreation(
+    {
+      ...payload,
+      adminUserId: actor.userId,
+    },
+    executionOptions,
+  );
 }
 
-module.exports = async function handler(request, response) {
+async function handleCstpRequestCreation(request, response, options = {}) {
   if (request.method === "OPTIONS") {
     response.setHeader("Allow", "POST, OPTIONS");
     return response.status(204).end();
@@ -65,23 +56,12 @@ module.exports = async function handler(request, response) {
     return json(response, 405, { ok: false, error: "Method not allowed." });
   }
 
-  const authorizationReadiness = getAdminAuthorizationReadiness();
-  if (!authorizationReadiness.configured) {
-    return json(response, 501, {
-      ok: false,
-      status: "cstp_admin_authorization_deferred",
-      adminAuthorizationDeferred: true,
-      error: authorizationReadiness.reason,
-    });
-  }
-
-  const authorizationHeader = getAuthorizationHeader(request);
-  const accessToken = authorizationHeader.startsWith("Bearer ")
-    ? authorizationHeader.slice("Bearer ".length).trim()
-    : "";
-
-  if (!accessToken) {
-    return json(response, 401, { ok: false, error: "Missing bearer token." });
+  const authorization = await authorizeCstpAdminRequest(
+    request,
+    options.authorizationOptions || {},
+  );
+  if (!authorization.ok) {
+    return json(response, authorization.httpStatus || 403, authorization);
   }
 
   let payload = {};
@@ -95,22 +75,31 @@ module.exports = async function handler(request, response) {
   }
 
   try {
-    const result = await runAuthorizedCstpRequestCreation(payload, {
-      userId: "",
-    });
+    const result = await runAuthorizedCstpRequestCreation(
+      payload,
+      authorization.actor,
+      options.executionOptions || {},
+    );
     return json(response, result.ok ? 200 : 500, result);
   } catch (error) {
-    return json(response, 500, {
+    const isValidationError = String(error?.name || "").includes("Validation");
+    return json(response, isValidationError ? 400 : 500, {
       ok: false,
-      status: "cstp_request_create_unhandled_error",
-      error: "Could not create CSTP request.",
+      status: isValidationError
+        ? "cstp_request_create_validation_error"
+        : "cstp_request_create_unhandled_error",
+      error: isValidationError
+        ? error.message
+        : "Could not create CSTP request.",
+      code: error?.code || "CSTP_REQUEST_CREATE_ERROR",
     });
   }
-};
+}
+
+module.exports = handleCstpRequestCreation;
 
 module.exports._private = {
-  getAdminAuthorizationReadiness,
-  getAuthorizationHeader,
+  handleCstpRequestCreation,
   parseRequestBody,
   runAuthorizedCstpRequestCreation,
 };
