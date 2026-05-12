@@ -85,7 +85,7 @@ async function handleCstpSessionLinkCreation(request, response, options = {}) {
       authorization.actor,
       options.executionOptions || {},
     );
-    return json(response, result.ok ? 200 : 500, result);
+    return json(response, result.ok ? 200 : result.httpStatus || 500, result);
   } catch (error) {
     const isValidationError = String(error?.name || "").includes("Validation");
     return json(response, isValidationError ? 400 : 500, {

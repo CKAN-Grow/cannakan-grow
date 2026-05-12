@@ -141,10 +141,17 @@ async function executeCstpSessionLinkCreation(input = {}, options = {}) {
       existingLinks,
     });
   } catch (error) {
+    /*
+     * Duplicate-link protection remains backend-owned. Treat an attempted
+     * duplicate CSTP test/session relationship as an operational conflict, not
+     * as an unexpected execution failure, so admin tooling can present it
+     * clearly without weakening the centralized safeguard.
+     */
     return buildSessionLinkExecutionFailure({
       status: "session_link_duplicate_rejected",
       operation: "execute_cstp_session_link_create",
       error,
+      httpStatus: 409,
       primaryMutationCommitted: false,
       auditMutationCommitted: false,
     });
@@ -1035,6 +1042,7 @@ function buildSessionLinkExecutionFailure({
   linkRecord = null,
   adminEvent = null,
   error,
+  httpStatus = null,
   primaryMutationCommitted,
   auditMutationCommitted,
 }) {
@@ -1051,6 +1059,7 @@ function buildSessionLinkExecutionFailure({
       payload: adminEvent,
     },
     error: normalizeExecutionError(error),
+    httpStatus,
     transaction: {
       atomic: false,
       primaryMutationCommitted,

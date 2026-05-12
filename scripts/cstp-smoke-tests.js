@@ -261,9 +261,10 @@ async function run() {
     },
     options,
   );
-  assert.equal(duplicateLinkResponse.statusCode, 500);
+  assert.equal(duplicateLinkResponse.statusCode, 409);
   assert.equal(duplicateLinkResponse.body.ok, false);
   assert.equal(duplicateLinkResponse.body.status, "session_link_duplicate_rejected");
+  assert.equal(duplicateLinkResponse.body.httpStatus, 409);
   assert.equal(db.cstp_test_sessions.length, 1);
 
   const archiveLinkResponse = await invokeRoute(
