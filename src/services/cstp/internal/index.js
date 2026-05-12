@@ -10,6 +10,7 @@
 const constants = require("./constants");
 const errors = require("./errors");
 const lifecycle = require("./lifecycle");
+const auth = require("./auth");
 const adminEvents = require("./admin-events");
 const requests = require("./requests");
 const tests = require("./tests");
@@ -20,6 +21,7 @@ module.exports = {
   constants,
   errors,
   lifecycle,
+  auth,
   adminEvents,
   requests,
   tests,
@@ -28,6 +30,7 @@ module.exports = {
   ...constants,
   ...errors,
   ...lifecycle,
+  ...auth,
   ...adminEvents,
   ...requests,
   ...tests,

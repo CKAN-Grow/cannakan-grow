@@ -54,6 +54,15 @@ class CstpExecutionError extends Error {
   }
 }
 
+class CstpAuthorizationError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "CstpAuthorizationError";
+    this.code = "CSTP_AUTHORIZATION_ERROR";
+    this.details = details;
+  }
+}
+
 function createCstpNotImplementedError(helperName) {
   return new Error(
     `CSTP internal helper "${helperName}" is scaffolded only and has not been implemented.`
@@ -62,6 +71,7 @@ function createCstpNotImplementedError(helperName) {
 
 module.exports = {
   CstpAdminEventValidationError,
+  CstpAuthorizationError,
   CstpExecutionError,
   CstpLifecycleValidationError,
   CstpRequestValidationError,
