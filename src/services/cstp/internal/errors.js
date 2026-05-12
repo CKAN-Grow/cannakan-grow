@@ -36,6 +36,15 @@ class CstpTestValidationError extends Error {
   }
 }
 
+class CstpSessionLinkValidationError extends Error {
+  constructor(message, details = {}) {
+    super(message);
+    this.name = "CstpSessionLinkValidationError";
+    this.code = "CSTP_SESSION_LINK_VALIDATION_ERROR";
+    this.details = details;
+  }
+}
+
 function createCstpNotImplementedError(helperName) {
   return new Error(
     `CSTP internal helper "${helperName}" is scaffolded only and has not been implemented.`
@@ -46,6 +55,7 @@ module.exports = {
   CstpAdminEventValidationError,
   CstpLifecycleValidationError,
   CstpRequestValidationError,
+  CstpSessionLinkValidationError,
   CstpTestValidationError,
   createCstpNotImplementedError,
 };
