@@ -46546,6 +46546,10 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
   const auditTraceSummary = lineageSummary.auditTraceSummary || {};
   const timelineSummary = lineageSummary.timelineSummary || {};
   const reconciliationSummary = lineageSummary.reconciliationSummary || {};
+  const evidenceExplorerSummary = lineageSummary.evidenceExplorerSummary
+    || result?.evidenceExplorerSummary
+    || result?.serviceResult?.evidenceExplorerSummary
+    || null;
   const timelineEntries = Array.isArray(timelineSummary.entries)
     ? timelineSummary.entries
     : [];
@@ -46601,6 +46605,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         <p><span>Inspection</span><strong>${escapeHtml(Array.isArray(lineageSummary.labels) ? lineageSummary.labels[0] : "Internal-only")}</strong></p>
       </div>
       ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
+      ${renderAdminCstpEvidenceExplorerSummaryMarkup(evidenceExplorerSummary)}
       ${lineageChain.length
         ? `<div class="admin-cstp-report-management-feedback">
             <strong>Immutable lineage chain</strong>
@@ -46696,6 +46701,9 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
   const reconciliationSummary = result?.reconciliationSummary
     || result?.serviceResult?.reconciliationSummary
     || null;
+  const evidenceExplorerSummary = result?.evidenceExplorerSummary
+    || result?.serviceResult?.evidenceExplorerSummary
+    || null;
   const issues = Array.isArray(validation.issues)
     ? validation.issues
     : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
@@ -46725,6 +46733,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
       ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
       ${renderAdminCstpValidationEvidenceSummaryMarkup(validationEvidenceSummary)}
       ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
+      ${renderAdminCstpEvidenceExplorerSummaryMarkup(evidenceExplorerSummary)}
       ${appState.adminCstpReportValidationLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
@@ -46812,6 +46821,80 @@ function renderAdminCstpReconciliationSummaryMarkup(summary = null) {
     <div class="admin-cstp-report-management-feedback">
       <strong>Immutable reconciliation diagnostics</strong>
       <p>${escapeHtml(Array.isArray(summary.labels) ? summary.labels.join(" - ") : "Internal-only read-only reconciliation diagnostics.")}</p>
+    </div>
+  `;
+}
+
+function renderAdminCstpEvidenceExplorerSummaryMarkup(summary = null) {
+  if (!summary) {
+    return "";
+  }
+
+  const counts = summary.counts || {};
+  const snapshotEvidence = summary.snapshotEvidence || {};
+  const metricEvidence = summary.metricEvidence || {};
+  const sessionEvidence = summary.sessionEvidence || {};
+  const auditEvidence = summary.auditEvidence || {};
+  const validationTrace = summary.validationTrace || {};
+  const anomalyTrace = summary.anomalyTrace || {};
+  const payloadKeys = Array.isArray(snapshotEvidence.frozenPayloadTopLevelKeys)
+    ? snapshotEvidence.frozenPayloadTopLevelKeys
+    : [];
+  const metricRows = Array.isArray(metricEvidence.rows) ? metricEvidence.rows : [];
+  const sessionRows = Array.isArray(sessionEvidence.rows) ? sessionEvidence.rows : [];
+  const auditRows = Array.isArray(auditEvidence.rows) ? auditEvidence.rows : [];
+  const issueRows = Array.isArray(validationTrace.issues) ? validationTrace.issues : [];
+
+  return `
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>Evidence snapshots</span><strong>${escapeHtml(Number(counts.snapshots || 0))}</strong></p>
+      <p><span>Evidence metrics</span><strong>${escapeHtml(Number(counts.metrics || 0))}</strong></p>
+      <p><span>Evidence sessions</span><strong>${escapeHtml(Number(counts.sessions || 0))}</strong></p>
+      <p><span>Evidence audit links</span><strong>${escapeHtml(Number(counts.auditLinks || 0))}</strong></p>
+      <p><span>Validation trace</span><strong>${escapeHtml(`${Number(validationTrace.blockingIssueCount || 0)} blocking / ${Number(validationTrace.warningCount || 0)} warnings`)}</strong></p>
+      <p><span>Anomaly trace</span><strong>${escapeHtml(Number(anomalyTrace.issueCount || 0))}</strong></p>
+    </div>
+    <div class="admin-cstp-report-management-feedback">
+      <strong>Immutable evidence explorer</strong>
+      <p>${escapeHtml(Array.isArray(summary.labels) ? summary.labels.join(" - ") : "Internal-only immutable evidence explorer.")}</p>
+      <p>${escapeHtml([
+        `report ${summary.reportId || "not persisted"}`,
+        `snapshot ${summary.snapshotId || "not selected"}`,
+        snapshotEvidence.hasFrozenPayload ? `payload keys ${Number(snapshotEvidence.payloadKeyCount || 0)}` : "payload unavailable",
+        summary.immutableWritesEnabled === false ? "writes disabled" : "writes deferred",
+      ].join(" - "))}</p>
+      ${payloadKeys.length
+        ? `<p>${escapeHtml(`Frozen payload keys: ${payloadKeys.slice(0, 10).join(", ")}`)}</p>`
+        : ""}
+      ${metricRows.length
+        ? `<p>${escapeHtml(`Metric drilldown: ${metricRows.slice(0, 4).map((row) => [
+          row.metricType || "metric",
+          row.metricKey || row.metricId || "record",
+          row.snapshotId || "snapshot",
+        ].join(" / ")).join(" | ")}`)}</p>`
+        : ""}
+      ${sessionRows.length
+        ? `<p>${escapeHtml(`Session drilldown: ${sessionRows.slice(0, 4).map((row) => [
+          row.growSessionId || row.cstpTestSessionId || row.sessionLinkId || "session",
+          row.includedInReport ? "included" : "not included",
+          row.snapshotId || "snapshot",
+        ].join(" / ")).join(" | ")}`)}</p>`
+        : ""}
+      ${auditRows.length
+        ? `<p>${escapeHtml(`Audit correlation: ${auditRows.slice(0, 4).map((row) => [
+          row.eventRole || "audit",
+          row.cstpAdminEventId || row.auditLinkId || "event",
+          row.snapshotId || "unlinked",
+        ].join(" / ")).join(" | ")}`)}</p>`
+        : ""}
+      ${issueRows.length
+        ? `<p>${escapeHtml(`Validation codes: ${issueRows.slice(0, 6).map((issue) => [
+          issue.code || "CSTP_VALIDATION",
+          issue.severity || "validation",
+          issue.table || issue.entity || "evidence",
+          issue.field || "field",
+        ].join(" / ")).join(" | ")}`)}</p>`
+        : ""}
     </div>
   `;
 }

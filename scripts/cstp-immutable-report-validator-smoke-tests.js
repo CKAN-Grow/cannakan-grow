@@ -4,6 +4,7 @@ const assert = require("assert/strict");
 
 const {
   VALIDATION_STATUSES,
+  buildImmutableEvidenceExplorerSummary,
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
   buildImmutableReconciliationDiagnostics,
@@ -163,6 +164,31 @@ function run() {
   assert.equal(reconciliation.mode, "internal_immutable_reconciliation_diagnostics");
   assert.equal(reconciliation.integrityScoreSummary.score > 0, true);
   assert.equal(reconciliation.publicVisibility, false);
+
+  const evidenceExplorer = buildImmutableEvidenceExplorerSummary({
+    ...validContext,
+    metrics: [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        report_id: REPORT_ID,
+        snapshot_id: SNAPSHOT_ID,
+        cstp_test_id: TEST_ID,
+        metric_key: "session_count",
+        metric_type: "summary",
+      },
+    ],
+    validation: reconciliation.validation,
+    reconciliationSummary: reconciliation,
+  });
+  assert.equal(evidenceExplorer.mode, "internal_immutable_evidence_explorer");
+  assert.equal(evidenceExplorer.counts.snapshots, 1);
+  assert.equal(evidenceExplorer.counts.metrics, 1);
+  assert.equal(evidenceExplorer.counts.sessions, 1);
+  assert.equal(evidenceExplorer.counts.auditLinks, 1);
+  assert.equal(evidenceExplorer.snapshotEvidence.hasFrozenPayload, true);
+  assert.equal(evidenceExplorer.validationTrace.validator, "buildImmutableReconciliationDiagnostics");
+  assert.equal(evidenceExplorer.immutableWritesEnabled, false);
+  assert.equal(evidenceExplorer.publicVisibility, false);
 
   console.log("CSTP immutable report validator smoke checks passed.");
 }

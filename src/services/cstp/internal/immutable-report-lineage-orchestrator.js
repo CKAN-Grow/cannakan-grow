@@ -4,6 +4,7 @@ const {
   ACTIVE_SNAPSHOT_STATUSES,
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
+  buildImmutableEvidenceExplorerSummary,
   buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
@@ -566,6 +567,21 @@ function inspectImmutableLineageGraph({
       auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
     },
   );
+  const orphanSnapshotIds = validation.issues
+    .filter((issue) => issue.code && issue.code.includes("ORPHAN"))
+    .map((issue) => issue.metadata?.snapshotId)
+    .filter(hasValue);
+  const evidenceExplorerSummary = buildImmutableEvidenceExplorerSummary({
+    report,
+    snapshot: activeSnapshot,
+    snapshots: sortedSnapshots,
+    auditLinks,
+    metrics,
+    sessionLinks,
+    validation,
+    reconciliationSummary: reconciliationDiagnostics,
+    orphanSnapshotIds,
+  });
 
   return deepFreeze({
     mode: "internal_immutable_lineage_inspection",
@@ -579,13 +595,11 @@ function inspectImmutableLineageGraph({
     emptyState: sortedSnapshots.length === 0,
     ancestryBySnapshotId,
     descendantsBySnapshotId,
-    orphanSnapshotIds: validation.issues
-      .filter((issue) => issue.code && issue.code.includes("ORPHAN"))
-      .map((issue) => issue.metadata?.snapshotId)
-      .filter(hasValue),
+    orphanSnapshotIds,
     validation,
     conflictSummary: buildLineageConflictSummary({ validation }),
     reconciliationSummary: reconciliationDiagnostics,
+    evidenceExplorerSummary,
     auditTraceSummary: {
       auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
       linkedSnapshotIds: [...new Set((Array.isArray(auditLinks) ? auditLinks : [])

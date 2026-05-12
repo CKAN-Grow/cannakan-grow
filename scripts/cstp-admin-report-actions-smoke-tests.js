@@ -220,6 +220,8 @@ async function assertReadOnlyInspectionActions() {
   });
   assert.equal(persistedValidation.ok, true);
   assert.equal(persistedValidation.validationEvidenceSummary.auditLinkCount, 1);
+  assert.equal(persistedValidation.evidenceExplorerSummary.mode, "internal_immutable_evidence_explorer");
+  assert.equal(persistedValidation.evidenceExplorerSummary.counts.auditLinks, 1);
 }
 
 function assertListAction() {

@@ -3,6 +3,7 @@
 const {
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
+  buildImmutableEvidenceExplorerSummary,
   buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
@@ -174,6 +175,21 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
       inspectedTargetCount: validationTargetResults.length,
     },
   );
+  const evidenceExplorerSummary = input.validationContext
+    ? buildImmutableEvidenceExplorerSummary({
+      ...input.validationContext,
+      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
+      sessionLinks: input.validationContext.sessionLinks
+        || input.validationContext.sessions
+        || input.validationContext.persistedEvidence?.sessions
+        || [],
+      auditLinks: input.validationContext.auditLinks
+        || input.validationContext.persistedEvidence?.auditLinks
+        || [],
+      validation,
+      reconciliationSummary: reconciliationDiagnostics,
+    })
+    : null;
 
   return buildAdminResult({
     ok: validation.ok,
@@ -183,6 +199,7 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     validation,
     validationEvidenceSummary: normalizedInput.validationEvidenceSummary,
     reconciliationSummary: reconciliationDiagnostics,
+    evidenceExplorerSummary,
     message: validation.ok
       ? "Internal CSTP report validation inspection completed."
       : "Internal CSTP report validation inspection found blocking issues.",
@@ -646,6 +663,7 @@ function buildAdminResult({
   persistenceSummary = null,
   validationEvidenceSummary = null,
   reconciliationSummary = null,
+  evidenceExplorerSummary = null,
   message,
 }) {
   const blockingErrors = validation?.issues?.filter((issue) => issue.blocking) || [];
@@ -666,6 +684,7 @@ function buildAdminResult({
     persistenceSummary,
     validationEvidenceSummary,
     reconciliationSummary,
+    evidenceExplorerSummary,
     blockingErrors,
     warnings,
     message,
@@ -755,6 +774,7 @@ function summarizeActiveLineage(activeLineage, {
       : 0,
     auditTraceSummary: lineageInspection?.auditTraceSummary || null,
     timelineSummary: lineageInspection?.timelineSummary || null,
+    evidenceExplorerSummary: lineageInspection?.evidenceExplorerSummary || null,
     ancestryBySnapshotId: lineageInspection?.ancestryBySnapshotId || {},
     descendantsBySnapshotId: lineageInspection?.descendantsBySnapshotId || {},
     snapshotCount: activeLineage.snapshots?.length || 0,

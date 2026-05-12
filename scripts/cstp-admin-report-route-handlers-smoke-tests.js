@@ -470,6 +470,11 @@ async function assertReadOnlyRoutes() {
   });
   assert.equal(persistedValidation.statusCode, 200);
   assert.equal(persistedValidation.payload.validationEvidenceSummary.metricCount, 2);
+  assert.equal(
+    persistedValidation.payload.evidenceExplorerSummary.mode,
+    "internal_immutable_evidence_explorer",
+  );
+  assert.equal(persistedValidation.payload.evidenceExplorerSummary.counts.auditLinks, 1);
   assert.equal(persistedValidation.payload.routeSafety.publicAccess, false);
 
   const listed = await invokeRoute(handleCstpReportsListRoute, {

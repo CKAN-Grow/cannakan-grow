@@ -1250,6 +1250,142 @@ function buildImmutableReconciliationDiagnostics(context = {}) {
   });
 }
 
+function buildImmutableEvidenceExplorerSummary(context = {}) {
+  const report = isPlainObject(context.report) ? context.report : {};
+  const suppliedSnapshot = isPlainObject(context.snapshot) ? context.snapshot : {};
+  const snapshots = normalizeEvidenceArray(
+    context.snapshots || (hasIdentifier(suppliedSnapshot) ? [suppliedSnapshot] : []),
+  );
+  const activeSnapshot = hasIdentifier(suppliedSnapshot)
+    ? suppliedSnapshot
+    : resolveEvidenceSnapshot(report, snapshots);
+  const metrics = normalizeEvidenceArray(
+    context.metrics || context.persistedEvidence?.metrics || [],
+  );
+  const sessionLinks = normalizeEvidenceArray(
+    context.sessionLinks
+      || context.sessions
+      || context.persistedEvidence?.sessions
+      || [],
+  );
+  const auditLinks = normalizeEvidenceArray(
+    context.auditLinks || context.persistedEvidence?.auditLinks || [],
+  );
+  const validation = context.validation || context.reconciliationSummary?.validation || null;
+  const reconciliationSummary = context.reconciliationSummary
+    || context.reconciliationDiagnostics
+    || null;
+  const reportId = getIdValue(report, ["id", "reportId"]);
+  const snapshotId = getIdValue(activeSnapshot, ["id", "snapshotId"]);
+  const payload = getFrozenReportPayload(activeSnapshot);
+  const payloadKeys = isPlainObject(payload) ? Object.keys(payload).sort() : [];
+  const validationTrace = summarizeValidationTrace(validation);
+  const anomalyTrace = buildEvidenceAnomalyTrace({
+    validationTrace,
+    reconciliationSummary,
+    orphanSnapshotIds: context.orphanSnapshotIds,
+  });
+
+  return deepFreeze({
+    mode: "internal_immutable_evidence_explorer",
+    reportId: reportId || null,
+    snapshotId: snapshotId || null,
+    snapshotVersion: getFirstValue(activeSnapshot, ["snapshot_version", "snapshotVersion"]) || null,
+    snapshotStatus: getFirstValue(activeSnapshot, ["status", "snapshot_status", "snapshotStatus"]) || "",
+    counts: {
+      reports: hasIdentifier(report) ? 1 : 0,
+      snapshots: snapshots.length,
+      metrics: metrics.length,
+      sessions: sessionLinks.length,
+      auditLinks: auditLinks.length,
+      validationIssues: validationTrace.issueCount,
+      anomalies: anomalyTrace.issueCount,
+    },
+    snapshotEvidence: {
+      selectedSnapshotId: snapshotId || null,
+      selectedReportId: getIdValue(activeSnapshot, ["report_id", "reportId"]) || reportId || null,
+      cstpTestId: getIdValue(activeSnapshot, ["cstp_test_id", "cstpTestId"])
+        || getIdValue(report, ["cstp_test_id", "cstpTestId"])
+        || null,
+      cstpRequestId: getIdValue(activeSnapshot, ["cstp_request_id", "cstpRequestId"])
+        || getIdValue(report, ["cstp_request_id", "cstpRequestId"])
+        || null,
+      sourceId: getIdValue(activeSnapshot, ["source_id", "sourceId"])
+        || getIdValue(report, ["source_id", "sourceId"])
+        || null,
+      status: getFirstValue(activeSnapshot, ["status", "snapshot_status", "snapshotStatus"]) || "",
+      snapshotVersion: getFirstValue(activeSnapshot, ["snapshot_version", "snapshotVersion"]) || null,
+      locked: getBooleanValue(activeSnapshot, ["locked"], false),
+      hasFrozenPayload: isPlainObject(payload) && payloadKeys.length > 0,
+      payloadKeyCount: payloadKeys.length,
+      frozenPayloadTopLevelKeys: payloadKeys.slice(0, 24),
+      lifecycleTimestamps: pickTimestampEvidence(activeSnapshot),
+      lineageRefs: {
+        supersedesSnapshotId: getIdValue(activeSnapshot, [
+          "supersedes_snapshot_id",
+          "supersedesSnapshotId",
+        ]) || null,
+        regeneratedFromSnapshotId: getIdValue(activeSnapshot, [
+          "regenerated_from_snapshot_id",
+          "regeneratedFromSnapshotId",
+        ]) || null,
+      },
+      rows: snapshots.slice(0, 10).map(summarizeSnapshotEvidenceRow),
+    },
+    metricEvidence: {
+      count: metrics.length,
+      bySnapshotId: countEvidenceRowsByValue(metrics, ["snapshot_id", "snapshotId"]),
+      byMetricType: countEvidenceRowsByValue(metrics, ["metric_type", "metricType", "kind", "type"]),
+      fieldKeys: collectEvidenceFieldKeys(metrics),
+      rows: metrics.slice(0, 12).map(summarizeMetricEvidenceRow),
+    },
+    sessionEvidence: {
+      count: sessionLinks.length,
+      includedCount: sessionLinks.filter((session) => (
+        getFirstValue(session, ["included_in_report", "includedInReport"]) === true
+      )).length,
+      archivedRelationshipCount: sessionLinks.filter((session) => (
+        getFirstValue(session, ["archived", "archived_relationship", "archivedRelationship"]) === true
+      )).length,
+      bySnapshotId: countEvidenceRowsByValue(sessionLinks, ["snapshot_id", "snapshotId"]),
+      growSessionIds: uniqueEvidenceValues(sessionLinks, [
+        "grow_session_id",
+        "growSessionId",
+        "session_id",
+        "sessionId",
+      ]).slice(0, 12),
+      rows: sessionLinks.slice(0, 12).map(summarizeSessionEvidenceRow),
+    },
+    auditEvidence: {
+      count: auditLinks.length,
+      roles: countEvidenceRowsByValue(auditLinks, ["event_role", "eventRole", "role"]),
+      linkedSnapshotIds: uniqueEvidenceValues(auditLinks, ["snapshot_id", "snapshotId"]),
+      unlinkedCount: auditLinks.filter((auditLink) => (
+        !hasValue(getIdValue(auditLink, ["snapshot_id", "snapshotId"]))
+      )).length,
+      rows: auditLinks.slice(0, 12).map(summarizeAuditEvidenceRow),
+    },
+    validationTrace,
+    reconciliationEvidenceMap: summarizeReconciliationEvidenceMap(reconciliationSummary),
+    anomalyTrace,
+    emptyState: !hasIdentifier(report)
+      && snapshots.length === 0
+      && metrics.length === 0
+      && sessionLinks.length === 0
+      && auditLinks.length === 0,
+    labels: [
+      "Internal-only immutable evidence explorer",
+      "Snapshot evidence inspection is read-only and not publicly visible",
+      "Regenerate and supersede inspection remains deferred with immutable writes disabled",
+      "Certification, rendering, public CSTP, and integrations are deferred",
+    ],
+    persistence: false,
+    immutableWritesEnabled: false,
+    publicVisibility: false,
+    internalOnly: true,
+  });
+}
+
 function validatePublicationReadinessShape(context = {}, options = {}) {
   const report = context.report || {};
   const snapshot = context.snapshot || {};
@@ -1450,6 +1586,241 @@ function summarizeIssue(issue = {}) {
     table: issue.table || "",
     field: issue.field || "",
     message: issue.message || "",
+  };
+}
+
+function normalizeEvidenceArray(value) {
+  if (Array.isArray(value)) {
+    return value.filter(isPlainObject).map((record) => ({ ...record }));
+  }
+  if (isPlainObject(value)) {
+    return [{ ...value }];
+  }
+  return [];
+}
+
+function resolveEvidenceSnapshot(report = {}, snapshots = []) {
+  const currentSnapshotId = getIdValue(report, ["current_snapshot_id", "currentSnapshotId"]);
+  if (currentSnapshotId) {
+    const current = snapshots.find((snapshot) => (
+      getIdValue(snapshot, ["id", "snapshotId"]) === currentSnapshotId
+    ));
+    if (current) {
+      return current;
+    }
+  }
+
+  return snapshots.find((snapshot) => (
+    ACTIVE_SNAPSHOT_STATUSES.includes(
+      normalizeText(getFirstValue(snapshot, ["status", "snapshot_status", "snapshotStatus"])),
+    )
+  )) || snapshots[snapshots.length - 1] || {};
+}
+
+function getFrozenReportPayload(snapshot = {}) {
+  return getFirstValue(snapshot, [
+    "frozen_report_payload",
+    "frozenReportPayload",
+    "payload",
+  ]);
+}
+
+function pickTimestampEvidence(record = {}) {
+  return {
+    generatedAt: getFirstValue(record, ["generated_at", "generatedAt"]) || "",
+    preparedAt: getFirstValue(record, ["prepared_at", "preparedAt"]) || "",
+    publishedAt: getFirstValue(record, ["published_at", "publishedAt"]) || "",
+    supersededAt: getFirstValue(record, ["superseded_at", "supersededAt"]) || "",
+    archivedAt: getFirstValue(record, ["archived_at", "archivedAt"]) || "",
+    createdAt: getFirstValue(record, ["created_at", "createdAt"]) || "",
+    updatedAt: getFirstValue(record, ["updated_at", "updatedAt"]) || "",
+  };
+}
+
+function summarizeSnapshotEvidenceRow(snapshot = {}) {
+  const payload = getFrozenReportPayload(snapshot);
+  const payloadKeys = isPlainObject(payload) ? Object.keys(payload) : [];
+
+  return {
+    snapshotId: getIdValue(snapshot, ["id", "snapshotId"]) || null,
+    reportId: getIdValue(snapshot, ["report_id", "reportId"]) || null,
+    status: getFirstValue(snapshot, ["status", "snapshot_status", "snapshotStatus"]) || "",
+    snapshotVersion: getFirstValue(snapshot, ["snapshot_version", "snapshotVersion"]) || null,
+    supersedesSnapshotId: getIdValue(snapshot, [
+      "supersedes_snapshot_id",
+      "supersedesSnapshotId",
+    ]) || null,
+    regeneratedFromSnapshotId: getIdValue(snapshot, [
+      "regenerated_from_snapshot_id",
+      "regeneratedFromSnapshotId",
+    ]) || null,
+    hasFrozenPayload: isPlainObject(payload) && payloadKeys.length > 0,
+    payloadKeyCount: payloadKeys.length,
+    lifecycleTimestamps: pickTimestampEvidence(snapshot),
+  };
+}
+
+function summarizeMetricEvidenceRow(metric = {}, index = 0) {
+  return {
+    index,
+    metricId: getIdValue(metric, ["id", "metricId"]) || null,
+    reportId: getIdValue(metric, ["report_id", "reportId"]) || null,
+    snapshotId: getIdValue(metric, ["snapshot_id", "snapshotId"]) || null,
+    cstpTestId: getIdValue(metric, ["cstp_test_id", "cstpTestId"]) || null,
+    metricKey: getFirstValue(metric, ["metric_key", "metricKey", "key", "name"]) || "",
+    metricType: getFirstValue(metric, ["metric_type", "metricType", "kind", "type"]) || "",
+    fieldKeys: Object.keys(metric).sort().slice(0, 16),
+  };
+}
+
+function summarizeSessionEvidenceRow(session = {}, index = 0) {
+  return {
+    index,
+    sessionLinkId: getIdValue(session, ["id", "sessionLinkId"]) || null,
+    reportId: getIdValue(session, ["report_id", "reportId"]) || null,
+    snapshotId: getIdValue(session, ["snapshot_id", "snapshotId"]) || null,
+    cstpTestId: getIdValue(session, ["cstp_test_id", "cstpTestId"]) || null,
+    cstpTestSessionId: getIdValue(session, [
+      "cstp_test_session_id",
+      "cstpTestSessionId",
+    ]) || null,
+    growSessionId: getIdValue(session, [
+      "grow_session_id",
+      "growSessionId",
+      "session_id",
+      "sessionId",
+    ]) || null,
+    includedInReport: getFirstValue(session, [
+      "included_in_report",
+      "includedInReport",
+    ]) === true,
+    archived: getFirstValue(session, [
+      "archived",
+      "archived_relationship",
+      "archivedRelationship",
+    ]) === true,
+    fieldKeys: Object.keys(session).sort().slice(0, 16),
+  };
+}
+
+function summarizeAuditEvidenceRow(auditLink = {}, index = 0) {
+  return {
+    index,
+    auditLinkId: getIdValue(auditLink, ["id", "auditLinkId"]) || null,
+    reportId: getIdValue(auditLink, ["report_id", "reportId"]) || null,
+    snapshotId: getIdValue(auditLink, ["snapshot_id", "snapshotId"]) || null,
+    cstpAdminEventId: getIdValue(auditLink, [
+      "cstp_admin_event_id",
+      "cstpAdminEventId",
+      "admin_event_id",
+      "adminEventId",
+    ]) || null,
+    eventRole: getFirstValue(auditLink, ["event_role", "eventRole", "role"]) || "",
+    createdBy: getIdValue(auditLink, ["created_by", "createdBy", "adminUserId"]) || null,
+    createdAt: getFirstValue(auditLink, ["created_at", "createdAt"]) || "",
+    fieldKeys: Object.keys(auditLink).sort().slice(0, 16),
+  };
+}
+
+function collectEvidenceFieldKeys(records = []) {
+  return [...new Set(records.flatMap((record) => Object.keys(record || {})))].sort().slice(0, 24);
+}
+
+function countEvidenceRowsByValue(records = [], keys = []) {
+  return records.reduce((counts, record) => {
+    const value = getFirstValue(record, keys);
+    const key = hasValue(value) ? String(value) : "unassigned";
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function uniqueEvidenceValues(records = [], keys = []) {
+  return [...new Set(records
+    .map((record) => getFirstValue(record, keys))
+    .filter(hasValue)
+    .map(String))];
+}
+
+function summarizeValidationTrace(validation = null) {
+  const issues = Array.isArray(validation?.issues) ? validation.issues : [];
+
+  return {
+    status: validation?.status || "",
+    ok: validation?.ok === true,
+    validator: validation?.validator || "",
+    issueCount: issues.length,
+    blockingIssueCount: issues.filter((issue) => issue.blocking).length,
+    warningCount: issues.filter((issue) => (
+      issue.severity === VALIDATION_SEVERITIES.warning
+    )).length,
+    informationalCount: issues.filter((issue) => (
+      issue.severity === VALIDATION_SEVERITIES.info
+    )).length,
+    codes: [...new Set(issues.map((issue) => issue.code).filter(hasValue))],
+    severityLevels: [...new Set(issues.map((issue) => issue.severity).filter(hasValue))],
+    affectedTables: [...new Set(issues.map((issue) => issue.table).filter(hasValue))],
+    affectedFields: [...new Set(issues
+      .map((issue) => issue.field || issue.key)
+      .filter(hasValue))],
+    issues: issues.slice(0, 12).map(summarizeIssue),
+  };
+}
+
+function summarizeReconciliationEvidenceMap(summary = null) {
+  if (!summary) {
+    return {
+      available: false,
+      integrityScore: null,
+      referenceDriftCount: 0,
+      auditDriftCount: 0,
+      payloadPresent: false,
+      lineageAnomalies: {},
+    };
+  }
+
+  return {
+    available: true,
+    integrityScore: summary.integrityScoreSummary || null,
+    referenceDriftCount: Number(summary.operationalReferenceDiagnostics?.count || 0),
+    auditDriftCount: Array.isArray(summary.auditDriftIndicators)
+      ? summary.auditDriftIndicators.length
+      : 0,
+    payloadPresent: summary.frozenPayloadCompleteness?.payloadPresent === true,
+    snapshotConsistency: summary.snapshotConsistency || null,
+    lineageAnomalies: summary.lineageAnomalySummary || {},
+  };
+}
+
+function buildEvidenceAnomalyTrace({
+  validationTrace,
+  reconciliationSummary,
+  orphanSnapshotIds,
+} = {}) {
+  const issues = Array.isArray(validationTrace?.issues) ? validationTrace.issues : [];
+  const anomalyIssues = issues.filter((issue) => (
+    /ANOMALY|AUDIT|DUPLICATE|ORPHAN|ACTIVE_CHAIN|VERSION|PAYLOAD|RECONCILIATION/.test(
+      String(issue.code || ""),
+    )
+  ));
+  const reconciliationIssues = Array.isArray(reconciliationSummary?.validation?.issues)
+    ? reconciliationSummary.validation.issues.map(summarizeIssue)
+    : [];
+  const orphanIds = Array.isArray(orphanSnapshotIds) ? orphanSnapshotIds.filter(hasValue) : [];
+  const combinedIssues = anomalyIssues.concat(
+    reconciliationIssues.filter((issue) => (
+      !anomalyIssues.some((existing) => existing.code === issue.code && existing.field === issue.field)
+    )),
+  );
+
+  return {
+    issueCount: combinedIssues.length,
+    blockingIssueCount: combinedIssues.filter((issue) => issue.blocking).length,
+    warningCount: combinedIssues.filter((issue) => !issue.blocking).length,
+    codes: [...new Set(combinedIssues.map((issue) => issue.code).filter(hasValue))],
+    byTable: countEvidenceRowsByValue(combinedIssues, ["table"]),
+    orphanSnapshotIds: orphanIds,
+    issues: combinedIssues.slice(0, 12),
   };
 }
 
@@ -1784,6 +2155,7 @@ module.exports = {
   validateFrozenPayloadCompletenessDiagnostics,
   validateOperationalReferenceReconciliationShape,
   buildImmutableReconciliationDiagnostics,
+  buildImmutableEvidenceExplorerSummary,
   validatePublicationReadinessShape,
   validateImmutableReportSnapshotCandidate,
 };

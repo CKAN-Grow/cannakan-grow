@@ -278,6 +278,9 @@ function assertValidationInspection() {
   });
   assert.equal(persistedInspection.ok, true);
   assert.equal(persistedInspection.validationEvidenceSummary.metricCount, 1);
+  assert.equal(persistedInspection.evidenceExplorerSummary.mode, "internal_immutable_evidence_explorer");
+  assert.equal(persistedInspection.evidenceExplorerSummary.counts.auditLinks, 1);
+  assert.equal(persistedInspection.evidenceExplorerSummary.publicVisibility, false);
 
   const emptyPersistedInspection = inspectCstpReportValidationForAdmin({
     adminContext: createAdminContext(),
@@ -298,6 +301,8 @@ function assertValidationInspection() {
     },
   });
   assert.equal(emptyPersistedInspection.ok, true);
+  assert.equal(emptyPersistedInspection.evidenceExplorerSummary.emptyState, true);
+  assert.equal(emptyPersistedInspection.evidenceExplorerSummary.immutableWritesEnabled, false);
   assert.equal(
     emptyPersistedInspection.validation.issues.some((issue) => (
       issue.code === "CSTP_PERSISTED_REPORT_NOT_FOUND"

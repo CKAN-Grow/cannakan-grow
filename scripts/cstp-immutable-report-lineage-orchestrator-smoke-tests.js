@@ -228,6 +228,26 @@ function main() {
   const inspection = inspectImmutableLineageGraph({
     report,
     snapshots,
+    metrics: [
+      {
+        id: "12121212-1212-4121-8121-121212121212",
+        report_id: REPORT_ID,
+        snapshot_id: SNAPSHOT_TWO_ID,
+        cstp_test_id: TEST_ID,
+        metric_key: "published_session_count",
+        metric_type: "summary",
+      },
+    ],
+    sessionLinks: [
+      {
+        id: "23232323-2323-4232-8232-232323232323",
+        report_id: REPORT_ID,
+        snapshot_id: SNAPSHOT_TWO_ID,
+        cstp_test_id: TEST_ID,
+        grow_session_id: "34343434-3434-4343-8343-343434343434",
+        included_in_report: true,
+      },
+    ],
     auditLinks: [
       {
         id: "abababab-abab-4aba-8aba-abababababab",
@@ -248,6 +268,12 @@ function main() {
   assert.equal(inspection.timelineSummary.regenerateGroups[0].snapshotCount, 2);
   assert.equal(inspection.timelineSummary.auditTimeline[0].correlated, true);
   assert.equal(inspection.timelineSummary.immutableWritesEnabled, false);
+  assert.equal(inspection.evidenceExplorerSummary.mode, "internal_immutable_evidence_explorer");
+  assert.equal(inspection.evidenceExplorerSummary.counts.snapshots, 2);
+  assert.equal(inspection.evidenceExplorerSummary.counts.metrics, 1);
+  assert.equal(inspection.evidenceExplorerSummary.counts.sessions, 1);
+  assert.equal(inspection.evidenceExplorerSummary.counts.auditLinks, 1);
+  assert.equal(inspection.evidenceExplorerSummary.immutableWritesEnabled, false);
   assert.equal(inspection.ancestryBySnapshotId[SNAPSHOT_TWO_ID][0].snapshotId, SNAPSHOT_ONE_ID);
   assert.equal(inspection.descendantsBySnapshotId[SNAPSHOT_ONE_ID][0].snapshotId, SNAPSHOT_TWO_ID);
 
