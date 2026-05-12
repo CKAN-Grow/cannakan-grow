@@ -1,9 +1,11 @@
 "use strict";
 
-const { CSTP_TEST_STATUSES } = require("./constants");
+const { CSTP_TABLES, CSTP_TEST_STATUSES } = require("./constants");
 const {
   CSTP_ADMIN_EVENT_TYPES,
   buildCstpAdminEventPayload,
+  getCstpAdminEventTypes,
+  isKnownCstpAdminEventType,
 } = require("./admin-events");
 const {
   assertInternalCstpOperation,
@@ -70,7 +72,7 @@ function prepareCstpTestInsertPayload(input = {}) {
   validateCstpTestCreationPayload(normalizedInput);
 
   return deepFreeze({
-    table: "cstp_tests",
+    table: CSTP_TABLES.tests,
     record: pruneNullish({
       id: normalizedInput.testId,
       source_id: normalizedInput.sourceId,
@@ -186,7 +188,7 @@ function prepareCstpTestStatusUpdatePayload(input = {}) {
     operation: "prepare_cstp_test_status_update",
     testId: normalizedInput.testId,
     test: {
-      table: "cstp_tests",
+      table: CSTP_TABLES.tests,
       match: {
         id: normalizedInput.testId,
       },
@@ -229,11 +231,29 @@ function prepareTestAdminEvent(input = {}) {
     createdAt: input.createdAt,
   };
 
-  validateRequiredUuid("cstpTestId", normalizedInput.cstpTestId);
+  validateKnownAdminEventType(normalizedInput.eventType);
+  validateOptionalUuid("cstpTestId", normalizedInput.cstpTestId);
   validateOptionalUuid("adminUserId", normalizedInput.adminUserId);
   validateOptionalUuid("requestId", normalizedInput.requestId);
   validatePlainMetadata(normalizedInput.metadata);
   validateOptionalTimestamp("createdAt", normalizedInput.createdAt);
+
+  if (!normalizedInput.cstpTestId) {
+    return deepFreeze({
+      eventType: normalizedInput.eventType,
+      cstpTestId: normalizedInput.cstpTestId,
+      adminUserId: normalizedInput.adminUserId,
+      requestId: normalizedInput.requestId,
+      eventNotes: normalizedInput.eventNotes,
+      metadata: normalizedInput.metadata,
+      appendOnly: true,
+      internalOnly: true,
+      readyForPersistence: false,
+      deferred: true,
+      reason:
+        "cstp_admin_events requires cstpTestId before persistence. Future DB execution should prepare this event after test insert returns an id.",
+    });
+  }
 
   return buildCstpAdminEventPayload({
     eventType: normalizedInput.eventType,
@@ -244,6 +264,19 @@ function prepareTestAdminEvent(input = {}) {
     metadata: normalizedInput.metadata,
     createdAt: normalizedInput.createdAt,
   });
+}
+
+function validateKnownAdminEventType(eventType) {
+  if (!eventType || !isKnownCstpAdminEventType(eventType)) {
+    throw new CstpTestValidationError(
+      `Unknown CSTP test admin event type "${eventType}".`,
+      {
+        code: "CSTP_TEST_ADMIN_EVENT_TYPE_UNKNOWN",
+        eventType,
+        allowedEventTypes: getCstpAdminEventTypes(),
+      },
+    );
+  }
 }
 
 function getTestStatusEventType(currentStatus, nextStatus) {

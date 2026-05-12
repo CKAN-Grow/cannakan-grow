@@ -7,11 +7,27 @@
  * It exists only to centralize future internal CSTP backend helper work.
  */
 
+const constants = require("./constants");
+const errors = require("./errors");
+const lifecycle = require("./lifecycle");
+const adminEvents = require("./admin-events");
+const requests = require("./requests");
+const tests = require("./tests");
+const sessionLinks = require("./session-links");
+
 module.exports = {
-  ...require("./constants"),
-  ...require("./lifecycle"),
-  ...require("./admin-events"),
-  ...require("./requests"),
-  ...require("./tests"),
-  ...require("./session-links"),
+  constants,
+  errors,
+  lifecycle,
+  adminEvents,
+  requests,
+  tests,
+  sessionLinks,
+  ...constants,
+  ...errors,
+  ...lifecycle,
+  ...adminEvents,
+  ...requests,
+  ...tests,
+  ...sessionLinks,
 };

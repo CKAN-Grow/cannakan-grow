@@ -1,6 +1,6 @@
 "use strict";
 
-const { CSTP_REQUEST_STATUSES } = require("./constants");
+const { CSTP_REQUEST_STATUSES, CSTP_TABLES } = require("./constants");
 const {
   CSTP_ADMIN_EVENT_TYPES,
   buildCstpAdminEventPayload,
@@ -80,7 +80,7 @@ function prepareCstpRequestInsertPayload(input = {}) {
   validateCstpRequestCreationPayload(normalizedInput);
 
   return deepFreeze({
-    table: "cstp_requests",
+    table: CSTP_TABLES.requests,
     record: pruneNullish({
       id: normalizedInput.requestId,
       source_id: normalizedInput.sourceId,
@@ -195,7 +195,7 @@ function prepareCstpRequestStatusUpdatePayload(input = {}) {
     operation: "prepare_cstp_request_status_update",
     requestId: normalizedInput.requestId,
     request: {
-      table: "cstp_requests",
+      table: CSTP_TABLES.requests,
       match: {
         id: normalizedInput.requestId,
       },

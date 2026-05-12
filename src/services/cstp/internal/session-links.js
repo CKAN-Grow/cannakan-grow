@@ -4,6 +4,7 @@ const {
   CSTP_ADMIN_EVENT_TYPES,
   buildCstpAdminEventPayload,
 } = require("./admin-events");
+const { CSTP_TABLES } = require("./constants");
 const { assertInternalCstpOperation } = require("./lifecycle");
 const { CstpSessionLinkValidationError } = require("./errors");
 
@@ -77,7 +78,7 @@ function prepareCstpSessionLinkInsertPayload(input = {}) {
   validateCstpSessionLinkPayload(normalizedInput);
 
   return deepFreeze({
-    table: "cstp_test_sessions",
+    table: CSTP_TABLES.testSessions,
     record: pruneNullish({
       id: normalizedInput.linkId,
       cstp_test_id: normalizedInput.cstpTestId,
@@ -173,7 +174,7 @@ function prepareCstpSessionLinkArchivePayload(input = {}) {
   return deepFreeze({
     operation: "prepare_cstp_session_link_archive",
     link: {
-      table: "cstp_test_sessions",
+      table: CSTP_TABLES.testSessions,
       match: pruneNullish({
         id: normalizedInput.linkId,
         cstp_test_id: normalizedInput.cstpTestId,
