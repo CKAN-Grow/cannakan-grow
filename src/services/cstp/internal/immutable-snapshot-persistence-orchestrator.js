@@ -33,6 +33,87 @@ const PLAN_STEPS = Object.freeze({
   auditLinks: "auditLinks",
 });
 
+const TABLE_INSERT_COLUMNS = Object.freeze({
+  [CSTP_REPORT_TABLES.reports]: Object.freeze(new Set([
+    "id",
+    "cstp_test_id",
+    "cstp_request_id",
+    "source_id",
+    "current_snapshot_id",
+    "status",
+    "archived",
+    "prepared_at",
+    "published_at",
+    "created_by",
+    "prepared_by",
+    "published_by",
+    "created_at",
+    "updated_at",
+  ])),
+  [CSTP_REPORT_TABLES.snapshots]: Object.freeze(new Set([
+    "id",
+    "report_id",
+    "cstp_test_id",
+    "cstp_request_id",
+    "source_id",
+    "snapshot_version",
+    "status",
+    "locked",
+    "frozen_report_payload",
+    "report_schema_version",
+    "methodology_version",
+    "generated_at",
+    "prepared_at",
+    "published_at",
+    "supersedes_snapshot_id",
+    "superseded_by_snapshot_id",
+    "created_by",
+    "prepared_by",
+    "published_by",
+    "created_at",
+  ])),
+  [CSTP_REPORT_TABLES.metrics]: Object.freeze(new Set([
+    "id",
+    "report_id",
+    "snapshot_id",
+    "cstp_test_id",
+    "metric_key",
+    "metric_type",
+    "metric_unit",
+    "metric_value",
+    "frozen_metric_payload",
+    "numerator",
+    "denominator",
+    "calculated_at",
+    "observation_window_start",
+    "observation_window_end",
+    "calculation_version",
+    "created_at",
+  ])),
+  [CSTP_REPORT_TABLES.sessions]: Object.freeze(new Set([
+    "id",
+    "report_id",
+    "snapshot_id",
+    "cstp_test_id",
+    "cstp_test_session_id",
+    "grow_session_id",
+    "kan_label",
+    "included_in_report",
+    "relationship_archived_at_snapshot",
+    "frozen_session_summary",
+    "created_at",
+  ])),
+  [CSTP_REPORT_TABLES.auditLinks]: Object.freeze(new Set([
+    "id",
+    "report_id",
+    "snapshot_id",
+    "cstp_admin_event_id",
+    "event_role",
+    "created_by",
+    "created_at",
+  ])),
+});
+
 function validatePersistenceCandidateShape(candidate = {}, options = {}) {
   const issues = [];
   const safeCandidate = isPlainObject(candidate) ? candidate : {};
@@ -540,6 +621,8 @@ async function insertManyRecords(dbClient, table, records, options = {}) {
     return [];
   }
 
+  assertTableColumnMapping(table, records);
+
   if (typeof dbClient.insert === "function") {
     const inserted = await dbClient.insert(table, records, options);
     return normalizeInsertedRows(inserted);
@@ -558,6 +641,35 @@ async function insertManyRecords(dbClient, table, records, options = {}) {
   }
 
   throw new Error("Database client must provide insert(table, records) or from(table).insert(records).");
+}
+
+function assertTableColumnMapping(table, records = []) {
+  const allowedColumns = TABLE_INSERT_COLUMNS[table];
+  if (!allowedColumns) {
+    const error = new Error(`Immutable persistence table mapping is not registered for ${table}.`);
+    error.code = "CSTP_PERSISTENCE_TABLE_MAPPING_INVALID";
+    error.details = { table };
+    throw error;
+  }
+
+  const invalidColumns = [];
+  records.forEach((record) => {
+    Object.keys(record || {}).forEach((column) => {
+      if (!allowedColumns.has(column)) {
+        invalidColumns.push(column);
+      }
+    });
+  });
+
+  if (invalidColumns.length) {
+    const error = new Error(`Immutable persistence column mapping does not match migration for ${table}.`);
+    error.code = "CSTP_PERSISTENCE_COLUMN_MAPPING_INVALID";
+    error.details = {
+      table,
+      invalidColumns: [...new Set(invalidColumns)].sort(),
+    };
+    throw error;
+  }
 }
 
 function normalizeInsertedRows(result) {
@@ -760,6 +872,7 @@ function deepFreeze(value) {
 module.exports = {
   PERSISTENCE_OPERATION,
   PLAN_STEPS,
+  TABLE_INSERT_COLUMNS,
   persistImmutableSnapshotCandidate,
   persistReportRecord,
   persistReportSnapshotRecord,

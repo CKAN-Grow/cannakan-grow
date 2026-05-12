@@ -31,6 +31,8 @@ const {
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LIVE_GENERATE_PERSISTENCE_MODE = "live_guarded";
+const GENERATE_WORKFLOW_MODE = "generate";
 
 const REPORT_ROUTE_DEFINITIONS = Object.freeze({
   prepare: {
@@ -221,11 +223,7 @@ async function loadAdminReportActionInput({
       payload.workflowTimestamp || payload.timestamp,
     ),
     requestedPersist: normalizeBoolean(payload.persist, false),
-    /*
-     * Phase 1 real operational loading runs in shadow mode only. Immutable
-     * snapshot persistence remains explicitly deferred until a later guarded
-     * enablement slice.
-     */
+    persistenceMode: normalizePersistenceMode(payload),
     persist: false,
   };
 
@@ -236,16 +234,28 @@ async function loadAdminReportActionInput({
     options: options.loadOptions || options.readOptions || {},
   });
 
-  return {
+  const persistenceGate = validateRoutePersistenceGate({
+    definition,
+    input: baseInput,
+    loaded,
+  });
+  const effectiveInput = {
     ...baseInput,
     ...loaded,
+    persist: persistenceGate.persist,
+    routePersistenceGate: persistenceGate,
+  };
+
+  return {
+    ...effectiveInput,
     operationalLoadingSummary: buildOperationalLoadingSummary(loaded, {
       requestedPersist: baseInput.requestedPersist,
-      effectivePersist: false,
+      effectivePersist: persistenceGate.persist,
       loadMode: definition.loadMode,
+      persistenceMode: baseInput.persistenceMode,
     }),
     dbClient: resolveRouteDbClient({
-      payload: baseInput,
+      payload: effectiveInput,
       options,
       loaded,
     }),
@@ -297,10 +307,7 @@ async function loadCstpAdminReportData({ definition, payload, options = {} }) {
     context,
     config,
     fetchImpl,
-    includeLineage: [
-      "workflow_with_lineage",
-      "validation",
-    ].includes(definition.loadMode),
+    includeLineage: shouldLoadLineageForRoute(definition, payload),
   });
 }
 
@@ -767,6 +774,12 @@ async function loadMany(
 function createSupabaseInsertDbClient({ config, fetchImpl }) {
   return {
     async insert(table, records) {
+      /*
+       * This REST client keeps insert steps isolated. Supabase REST does not
+       * provide an explicit transaction wrapper here, so Generate Report live
+       * persistence still reports caller-level rollback limitations through the
+       * persistence orchestrator result.
+       */
       const rows = await supabaseRest(`${table}?select=*`, config, {
         method: "POST",
         body: records,
@@ -782,22 +795,36 @@ function buildActionOptions({ payload, options, loadedInput }) {
   return {
     ...(options.actionOptions || {}),
     workflowTimestamp: loadedInput.workflowTimestamp,
-    persist: false,
-    dbClient: null,
+    persist: loadedInput.persist,
+    dbClient: loadedInput.dbClient,
     routeActionName: payload.actionName,
   };
 }
 
 function resolveRouteDbClient({ payload, options, loaded }) {
-  void payload;
-  void options;
-  void loaded;
-  /*
-   * Shadow/deferred persistence mode intentionally never supplies a database
-   * insert client to immutable report orchestration. Real persistence wiring is
-   * deferred to a later guarded rollout phase.
-   */
-  return null;
+  if (!payload.persist) {
+    return null;
+  }
+
+  if (payload.dbClient || options.dbClient || loaded?.dbClient) {
+    return payload.dbClient || options.dbClient || loaded.dbClient;
+  }
+
+  const config = resolveRouteConfig(
+    options.executionOptions
+    || options.loadOptions
+    || options.readOptions
+    || {},
+  );
+  return createSupabaseInsertDbClient({
+    config,
+    fetchImpl:
+      options.executionOptions?.fetchImpl
+      || options.loadOptions?.fetchImpl
+      || options.readOptions?.fetchImpl
+      || options.fetchImpl
+      || globalThis.fetch,
+  });
 }
 
 function buildRoutePayload(request = {}, definition = {}) {
@@ -926,6 +953,178 @@ function pickPreloadedPayload(payload = {}) {
   };
 }
 
+function shouldLoadLineageForRoute(definition = {}, payload = {}) {
+  if (["workflow_with_lineage", "validation"].includes(definition.loadMode)) {
+    return true;
+  }
+
+  return Boolean(
+    definition.workflowMode === GENERATE_WORKFLOW_MODE
+    && normalizeBoolean(payload.requestedPersist || payload.persist, false)
+    && normalizePersistenceMode(payload) === LIVE_GENERATE_PERSISTENCE_MODE
+  );
+}
+
+function validateRoutePersistenceGate({
+  definition = {},
+  input = {},
+  loaded = {},
+} = {}) {
+  const requestedPersist = Boolean(input.requestedPersist);
+  const workflowMode = normalizeNullableText(definition.workflowMode);
+  const persistenceMode = normalizePersistenceMode(input);
+
+  if (!requestedPersist) {
+    return buildRoutePersistenceGateSummary({
+      persist: false,
+      status: "deferred",
+      workflowMode,
+      persistenceMode,
+    });
+  }
+
+  if (workflowMode !== GENERATE_WORKFLOW_MODE) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_WORKFLOW_REJECTED",
+      message: "Immutable persistence is only enabled for the internal Generate Report workflow.",
+      field: "workflowMode",
+      metadata: { workflowMode },
+    });
+  }
+
+  if (persistenceMode !== LIVE_GENERATE_PERSISTENCE_MODE) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_GENERATE_PERSISTENCE_NOT_ALLOWED",
+      message: "Generate Report persistence requires persistenceMode live_guarded.",
+      field: "persistenceMode",
+      metadata: { persistenceMode },
+    });
+  }
+
+  if (!normalizeTimestamp(input.workflowTimestamp)) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_TIMESTAMP_REQUIRED",
+      message: "Generate Report persistence requires an explicit workflow timestamp.",
+      field: "workflowTimestamp",
+    });
+  }
+
+  if (!getAdminUserId(input.adminContext)) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_ADMIN_REQUIRED",
+      message: "Generate Report persistence requires an authenticated admin actor.",
+      field: "adminContext.adminUserId",
+    });
+  }
+
+  const summary = buildOperationalLoadingSummary(loaded, {
+    requestedPersist: true,
+    effectivePersist: true,
+    loadMode: definition.loadMode,
+    persistenceMode,
+  });
+  const completeness = summary.operationalCompleteness || {};
+  if (!completeness.hasRequest || !completeness.hasTest) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_OPERATIONAL_IDS_REQUIRED",
+      message: "Generate Report persistence requires loaded CSTP request and test records.",
+      field: "cstpRequestId/cstpTestId",
+      metadata: { operationalLoadingSummary: summary },
+    });
+  }
+
+  if (!completeness.hasSessionLinkage || !completeness.hasGrowSessions) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_SESSIONS_REQUIRED",
+      message: "Generate Report persistence requires linked CSTP test sessions and real Grow session records.",
+      field: "cstpTestSessions/growSessions",
+      metadata: { operationalLoadingSummary: summary },
+    });
+  }
+
+  if (!completeness.hasSource) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_SOURCE_REQUIRED",
+      message: "Generate Report persistence requires loaded source context.",
+      field: "source",
+      metadata: { operationalLoadingSummary: summary },
+    });
+  }
+
+  if (!linkedGrowSessionsAreComplete(loaded)) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_PERSISTENCE_LINKED_GROW_SESSION_MISSING",
+      message: "Every CSTP test-session link must resolve to a loaded Grow session before persistence.",
+      field: "growSessions",
+    });
+  }
+
+  if (loaded.existingReport?.id || normalizeArray(loaded.existingSnapshots).length > 0) {
+    throwRoutePersistenceError({
+      code: "CSTP_ADMIN_REPORT_GENERATE_CONFLICT",
+      message: "Generate Report live persistence is blocked because an immutable report lineage already exists for this CSTP scope.",
+      field: "existingReport",
+      metadata: {
+        existingReportId: loaded.existingReport?.id || "",
+        existingSnapshotCount: normalizeArray(loaded.existingSnapshots).length,
+      },
+    });
+  }
+
+  return buildRoutePersistenceGateSummary({
+    persist: true,
+    status: "live_guarded_generate_persistence_enabled",
+    workflowMode,
+    persistenceMode,
+  });
+}
+
+function buildRoutePersistenceGateSummary({
+  persist,
+  status,
+  workflowMode,
+  persistenceMode,
+} = {}) {
+  return {
+    persist: Boolean(persist),
+    status,
+    workflowMode,
+    persistenceMode,
+    generateOnly: true,
+    guarded: Boolean(persist),
+    publicAccess: false,
+    rendering: false,
+    certification: false,
+    destructiveMutation: false,
+  };
+}
+
+function throwRoutePersistenceError({
+  code,
+  message,
+  field,
+  metadata = {},
+}) {
+  const error = new Error(message);
+  error.code = code;
+  error.details = {
+    field,
+    metadata,
+  };
+  throw error;
+}
+
+function linkedGrowSessionsAreComplete(loaded = {}) {
+  const sessionIds = uniqueNonEmpty(
+    normalizeArray(loaded.cstpTestSessions).map(getGrowSessionIdFromTestSession),
+  );
+  const loadedGrowSessionIds = new Set(
+    normalizeArray(loaded.growSessions).map((session) => normalizeNullableText(session.id)),
+  );
+
+  return sessionIds.length > 0 && sessionIds.every((id) => loadedGrowSessionIds.has(id));
+}
+
 function hasValidationTarget(payload = {}) {
   return Boolean(
     payload.validationContext
@@ -1002,7 +1201,9 @@ function buildRouteSuccess({
       userId: authorization.actor.userId,
       authorizationSource: authorization.actor.authorizationSource,
     },
-    routeSafety: buildRouteSafety(),
+    routeSafety: buildRouteSafety({
+      realImmutablePersistence: loadedInput.persist === true,
+    }),
     internalOnly: true,
   };
 }
@@ -1029,7 +1230,7 @@ function buildRouteFailure({
   };
 }
 
-function buildRouteSafety() {
+function buildRouteSafety({ realImmutablePersistence = false } = {}) {
   return {
     adminOnly: true,
     publicAccess: false,
@@ -1041,8 +1242,9 @@ function buildRouteSafety() {
     destructiveSnapshotMutation: false,
     mutatesGrowSessions: false,
     realOperationalLoading: true,
-    shadowMode: true,
-    immutablePersistenceDeferred: true,
+    shadowMode: !realImmutablePersistence,
+    guardedGeneratePersistence: realImmutablePersistence,
+    immutablePersistenceDeferred: !realImmutablePersistence,
   };
 }
 
@@ -1064,6 +1266,15 @@ function isClientRouteError(error) {
     "CSTP_ADMIN_REPORT_LIST_SCOPE_REQUIRED",
     "CSTP_ADMIN_REPORT_UUID_INVALID",
     "CSTP_ADMIN_REPORT_OPERATIONAL_SCOPE_INVALID",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_WORKFLOW_REJECTED",
+    "CSTP_ADMIN_REPORT_GENERATE_PERSISTENCE_NOT_ALLOWED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_TIMESTAMP_REQUIRED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_ADMIN_REQUIRED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_OPERATIONAL_IDS_REQUIRED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_SESSIONS_REQUIRED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_SOURCE_REQUIRED",
+    "CSTP_ADMIN_REPORT_PERSISTENCE_LINKED_GROW_SESSION_MISSING",
+    "CSTP_ADMIN_REPORT_GENERATE_CONFLICT",
   ].includes(error?.code);
 }
 
@@ -1097,6 +1308,17 @@ function normalizeBoolean(value, fallback = false) {
   return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
 }
 
+function normalizePersistenceMode(value = {}) {
+  if (typeof value === "string") {
+    return value.trim().toLowerCase();
+  }
+  return normalizeNullableText(
+    value.persistenceMode
+    || value.persistence_mode
+    || value.immutablePersistenceMode,
+  ).toLowerCase();
+}
+
 function normalizeArray(value) {
   if (Array.isArray(value)) {
     return value.slice();
@@ -1120,10 +1342,19 @@ function getGrowSessionIdFromTestSession(session = {}) {
   );
 }
 
+function getAdminUserId(adminContext = {}) {
+  return normalizeNullableText(
+    adminContext.adminUserId
+    || adminContext.userId
+    || adminContext.id,
+  );
+}
+
 function buildOperationalLoadingSummary(loaded = {}, {
   requestedPersist = false,
   effectivePersist = false,
   loadMode = "",
+  persistenceMode = "",
 } = {}) {
   const cstpRequest = loaded.cstpRequest || {};
   const cstpTest = loaded.cstpTest || {};
@@ -1141,13 +1372,18 @@ function buildOperationalLoadingSummary(loaded = {}, {
   const hasSessionLinkage = cstpTestSessions.length > 0;
   const hasGrowSessions = growSessions.length > 0;
 
+  const livePersistence = Boolean(effectivePersist);
+
   return {
-    mode: "shadow_deferred_persistence",
+    mode: livePersistence
+      ? "live_guarded_generate_persistence"
+      : "shadow_deferred_persistence",
     loadMode,
     realOperationalRecordsLoaded: true,
     persistenceRequested: Boolean(requestedPersist),
-    persistenceEffective: Boolean(effectivePersist),
-    persistenceDeferred: true,
+    persistenceEffective: livePersistence,
+    persistenceDeferred: !livePersistence,
+    persistenceMode,
     cstpRequestId: requestId,
     cstpTestId: testId,
     sourceId,
@@ -1171,7 +1407,7 @@ function buildOperationalLoadingSummary(loaded = {}, {
     safety: {
       adminOnly: true,
       publicAccess: false,
-      immutablePersistence: false,
+      immutablePersistence: livePersistence,
       mutatesGrowSessions: false,
       rendering: false,
       certification: false,

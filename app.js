@@ -46216,7 +46216,7 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
       : (isRegenerateAction && enabled
         ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
         : (isGenerateAction && enabled
-          ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
+          ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with real operational loading and guarded immutable persistence."
           : (enabled
             ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack with real operational loading."
             : "Internal placeholder only; protected workflow wiring is deferred.")))));
@@ -46261,6 +46261,10 @@ function getAdminCstpReportWorkflowSummary(result = null) {
     || result?.validation?.summary
     || result?.serviceResult?.validationSummary
     || {};
+  const persistenceSummary = result?.persistenceSummary
+    || result?.serviceResult?.persistenceSummary
+    || workflowResult?.persistenceResultSummary
+    || null;
   const operationalLoadingSummary = result?.operationalLoadingSummary
     || result?.serviceResult?.operationalLoadingSummary
     || null;
@@ -46270,6 +46274,7 @@ function getAdminCstpReportWorkflowSummary(result = null) {
     assemblySummary,
     lineageSummary,
     validationSummary,
+    persistenceSummary,
     operationalLoadingSummary,
   };
 }
@@ -46297,6 +46302,22 @@ function renderAdminCstpOperationalLoadingSummaryMarkup(summary = null) {
   `;
 }
 
+function formatAdminCstpInsertedRowCounts(counts = null) {
+  if (!counts || typeof counts !== "object") {
+    return "0";
+  }
+
+  return [
+    ["reports", "reports"],
+    ["snapshots", "snapshots"],
+    ["metrics", "metrics"],
+    ["sessions", "sessions"],
+    ["auditLinks", "audit"],
+  ]
+    .map(([key, label]) => `${Number(counts[key] || 0)} ${label}`)
+    .join(" / ");
+}
+
 function renderAdminCstpImmutableReportWorkflowResultMarkup({
   key = "",
   eyebrow = "",
@@ -46314,6 +46335,7 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
     assemblySummary,
     lineageSummary,
     operationalLoadingSummary,
+    persistenceSummary,
     validationSummary,
     workflowResult,
   } = getAdminCstpReportWorkflowSummary(result);
@@ -46327,8 +46349,10 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
   const statusTone = loading
     ? "preparing"
     : (error ? "failed" : (result?.ok ? "prepared" : "neutral"));
-  const persisted = workflowResult?.workflowPlanSummary?.persist === true;
-  const persistenceLabel = persisted ? "Enabled" : "Deferred shadow mode";
+  const persisted = workflowResult?.workflowPlanSummary?.persist === true
+    || operationalLoadingSummary?.persistenceEffective === true
+    || persistenceSummary?.ok === true;
+  const persistenceLabel = persisted ? "Live guarded" : "Deferred shadow mode";
 
   return `
     <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-${escapeHtml(key)}-result-title">
@@ -46356,6 +46380,14 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
             <p><span>Version</span><strong>${escapeHtml(assemblySummary.snapshotVersion || "1")}</strong></p>
             <p><span>Metrics</span><strong>${escapeHtml(assemblySummary.metricCount ?? 0)}</strong></p>
             <p><span>Sessions</span><strong>${escapeHtml(assemblySummary.sessionCount ?? 0)}</strong></p>
+          </div>`
+        : ""}
+      ${persistenceSummary
+        ? `<div class="admin-cstp-report-management-result-grid">
+            <p><span>Report ID</span><strong>${escapeHtml(persistenceSummary.reportId || "Pending")}</strong></p>
+            <p><span>Snapshot ID</span><strong>${escapeHtml(persistenceSummary.snapshotId || "Pending")}</strong></p>
+            <p><span>Rows</span><strong>${escapeHtml(formatAdminCstpInsertedRowCounts(persistenceSummary.insertedRowCounts))}</strong></p>
+            <p><span>Persistence status</span><strong>${escapeHtml(persistenceSummary.status || "Deferred")}</strong></p>
           </div>`
         : ""}
       ${includeLineage && (lineageSummary.validationStatus || lineageSummary.nextSnapshotVersion || lineageSummary.publicVisibility === false)
@@ -46420,7 +46452,7 @@ function renderAdminCstpImmutableReportGenerateResultMarkup() {
     key: "generate",
     eyebrow: "Generate Workflow Result",
     title: "Internal generated candidate status",
-    description: "Generate Report calls the protected route/action stack, real operational loader, assembler, and validator with immutable persistence deferred.",
+    description: "Generate Report calls the protected route/action stack, real operational loader, assembler, validator, and guarded immutable persistence.",
     emptyMessage: "No Generate Report workflow has been run from this dashboard yet.",
     loading: appState.adminCstpReportGenerateLoading,
     error: appState.adminCstpReportGenerateError,
@@ -47138,7 +47170,8 @@ function buildAdminCstpShadowOperationalReportPayload(workflowTimestamp = "", op
     workflowTimestamp: timestamp,
     generatedAt: timestamp,
     calculatedAt: timestamp,
-    persist: false,
+    persist: options.persist === true,
+    persistenceMode: options.persistenceMode || "",
     shadowMode: true,
     reason: options.reason || "Internal CSTP admin shadow workflow with real operational loading and deferred immutable persistence.",
     metadata: {
@@ -47206,6 +47239,9 @@ async function generateAdminCstpImmutableReportWorkflow() {
     },
     body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
       workflowMode: "generate",
+      persist: true,
+      persistenceMode: "live_guarded",
+      reason: "Internal CSTP admin Generate Report workflow with guarded real immutable persistence.",
     })),
   });
   const payload = await response.json().catch(() => ({}));
@@ -47673,18 +47709,18 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, Inspect Lineage, and Inspect Validation are wired through the protected internal stack with real operational CSTP loading in shadow/deferred persistence mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Generate uses guarded real immutable persistence after protected operational loading and validation. Prepare, Regenerate, Supersede, Inspect Lineage, and Inspect Validation remain shadow/deferred; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Prepare wired", "prepared")}
-          ${renderAdminCstpImmutableReportStatusPillMarkup("Generate wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Generate live guarded", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Regenerate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Supersede wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Lineage inspect wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Validation inspect wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Real operational loading", "prepared")}
-          ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Other workflows deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
       </div>

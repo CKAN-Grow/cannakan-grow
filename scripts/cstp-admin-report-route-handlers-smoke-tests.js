@@ -84,27 +84,80 @@ async function assertWorkflowRoutes() {
   assert.equal(generate.payload.routeSafety.renderingImplemented, false);
   assert.equal(generate.payload.routeSafety.certificationImplemented, false);
 
-  const dbClient = createMockDbClient();
-  const deferredPersistence = await invokeRoute(handleCstpReportGenerateRoute, {
+  const unsafePersistence = await invokeRoute(handleCstpReportGenerateRoute, {
     body: createRouteBody({
       persist: true,
       snapshotId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    }),
+  });
+  assert.equal(unsafePersistence.statusCode, 400);
+  assert.equal(
+    unsafePersistence.payload.code,
+    "CSTP_ADMIN_REPORT_GENERATE_PERSISTENCE_NOT_ALLOWED",
+  );
+
+  const dbClient = createMockDbClient();
+  const liveGenerate = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody({
+      persist: true,
+      persistenceMode: "live_guarded",
+      reportId: "",
+      snapshotId: "",
     }),
     routeOptions: {
       dbClient,
     },
   });
-  assert.equal(deferredPersistence.statusCode, 200);
-  assert.equal(deferredPersistence.payload.ok, true);
+  assert.equal(liveGenerate.statusCode, 200, JSON.stringify(liveGenerate.payload));
+  assert.equal(liveGenerate.payload.ok, true);
   assert.equal(
-    deferredPersistence.payload.serviceResult.workflowResult.workflowPlanSummary.persist,
-    false,
+    liveGenerate.payload.serviceResult.workflowResult.workflowPlanSummary.persist,
+    true,
   );
-  assert.equal(deferredPersistence.payload.operationalLoadingSummary.persistenceRequested, true);
-  assert.equal(deferredPersistence.payload.operationalLoadingSummary.persistenceEffective, false);
-  assert.equal(deferredPersistence.payload.routeSafety.immutablePersistenceDeferred, true);
-  assert.equal(dbClient.calls.length, 0);
+  assert.equal(liveGenerate.payload.operationalLoadingSummary.persistenceRequested, true);
+  assert.equal(liveGenerate.payload.operationalLoadingSummary.persistenceEffective, true);
+  assert.equal(liveGenerate.payload.routeSafety.guardedGeneratePersistence, true);
+  assert.equal(liveGenerate.payload.persistenceSummary.insertedRowCounts.reports, 1);
+  assert.deepEqual(dbClient.calls.map((call) => call.table), [
+    "cstp_reports",
+    "cstp_report_snapshots",
+    "cstp_report_metrics",
+    "cstp_report_sessions",
+    "cstp_report_audit_links",
+  ]);
   assert.equal(dbClient.realSupabaseCalls, 0);
+
+  const incompleteOperationalData = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody({
+      persist: true,
+      persistenceMode: "live_guarded",
+    }),
+    loadedData: createLoadedWorkflowData({
+      cstpTestSessions: [],
+      growSessions: [],
+    }),
+  });
+  assert.equal(incompleteOperationalData.statusCode, 400);
+  assert.equal(
+    incompleteOperationalData.payload.code,
+    "CSTP_ADMIN_REPORT_PERSISTENCE_SESSIONS_REQUIRED",
+  );
+
+  const existingLineageConflict = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody({
+      persist: true,
+      persistenceMode: "live_guarded",
+    }),
+    loadedData: createLoadedWorkflowData({
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    }),
+  });
+  assert.equal(existingLineageConflict.statusCode, 400);
+  assert.equal(
+    existingLineageConflict.payload.code,
+    "CSTP_ADMIN_REPORT_GENERATE_CONFLICT",
+  );
 
   const lineageInput = createRouteBody({
     existingReport: createExistingReport(),
@@ -122,6 +175,23 @@ async function assertWorkflowRoutes() {
   assert.equal(regenerated.payload.workflowMode, "regenerate");
   assert.equal(regenerated.payload.lineageSummary.nextSnapshotVersion, 2);
 
+  const regeneratePersistRejected = await invokeRoute(handleCstpReportRegenerateRoute, {
+    body: {
+      ...lineageInput,
+      persist: true,
+      persistenceMode: "live_guarded",
+    },
+    loadedData: createLoadedWorkflowData({
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    }),
+  });
+  assert.equal(regeneratePersistRejected.statusCode, 400);
+  assert.equal(
+    regeneratePersistRejected.payload.code,
+    "CSTP_ADMIN_REPORT_PERSISTENCE_WORKFLOW_REJECTED",
+  );
+
   const superseded = await invokeRoute(handleCstpReportSupersedeRoute, {
     body: {
       ...lineageInput,
@@ -136,6 +206,24 @@ async function assertWorkflowRoutes() {
   assert.equal(superseded.statusCode, 200);
   assert.equal(superseded.payload.workflowMode, "supersede");
   assert.equal(superseded.payload.lineageSummary.actionType, "supersede_snapshot");
+
+  const supersedePersistRejected = await invokeRoute(handleCstpReportSupersedeRoute, {
+    body: {
+      ...lineageInput,
+      persist: true,
+      persistenceMode: "live_guarded",
+      targetSnapshotId: SNAPSHOT_ONE_ID,
+    },
+    loadedData: createLoadedWorkflowData({
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    }),
+  });
+  assert.equal(supersedePersistRejected.statusCode, 400);
+  assert.equal(
+    supersedePersistRejected.payload.code,
+    "CSTP_ADMIN_REPORT_PERSISTENCE_WORKFLOW_REJECTED",
+  );
 }
 
 async function assertRealOperationalLoaderShadowMode() {
