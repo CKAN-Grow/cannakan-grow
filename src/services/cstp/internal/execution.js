@@ -6,6 +6,7 @@ const { CstpExecutionError } = require("./errors");
 const {
   createCstpRequest,
   prepareRequestAdminEvent,
+  updateCstpRequestStatus,
 } = require("./requests");
 const {
   archiveCstpSessionLink,
@@ -30,6 +31,7 @@ const {
  *
  * Current execution scope:
  * - CSTP request creation.
+ * - CSTP request status updates.
  * - CSTP test creation.
  * - CSTP test status updates and archival.
  * - CSTP session-link creation and archival.
@@ -581,11 +583,143 @@ async function executeCstpRequestCreation(input = {}, options = {}) {
   }
 }
 
+async function executeCstpRequestStatusUpdate(input = {}, options = {}) {
+  const preparedRequest = updateCstpRequestStatus(input);
+  const requestId = preparedRequest.requestId;
+  const config = resolveExecutionConfig(options);
+  const fetchImpl = resolveFetchImplementation(options);
+
+  if (!config.ok) {
+    return buildExecutionFailure({
+      status: "configuration_failed",
+      operation: "execute_cstp_request_status_update",
+      preparedRequest,
+      error: config.error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let updatedRequest;
+
+  try {
+    const requestRows = await supabaseRest(
+      `${preparedRequest.request.table}?id=eq.${encodeURIComponent(requestId)}&select=*`,
+      config.value,
+      {
+        method: "PATCH",
+        body: preparedRequest.request.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    updatedRequest = normalizeSingleRow(requestRows, CSTP_TABLES.requests);
+  } catch (error) {
+    return buildExecutionFailure({
+      status: "request_status_update_failed",
+      operation: "execute_cstp_request_status_update",
+      preparedRequest,
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  const finalizedAdminEvent = finalizeRequestAdminEvent({
+    preparedAdminEvent: preparedRequest.adminEvent,
+    requestRecord: updatedRequest,
+  });
+
+  if (finalizedAdminEvent.deferred) {
+    return deepFreeze({
+      ok: true,
+      status: "request_status_updated_audit_deferred",
+      operation: "execute_cstp_request_status_update",
+      request: {
+        record: updatedRequest,
+        prepared: preparedRequest.request,
+      },
+      transition: preparedRequest.transition,
+      adminEvent: {
+        status: "deferred",
+        payload: finalizedAdminEvent,
+        reason: finalizedAdminEvent.reason,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: false,
+        auditDeferred: true,
+      },
+      internalOnly: true,
+    });
+  }
+
+  try {
+    const adminEventRows = await supabaseRest(
+      `${CSTP_TABLES.adminEvents}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: finalizedAdminEvent.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    return deepFreeze({
+      ok: true,
+      status: "request_status_updated",
+      operation: "execute_cstp_request_status_update",
+      request: {
+        record: updatedRequest,
+        prepared: preparedRequest.request,
+      },
+      transition: preparedRequest.transition,
+      adminEvent: {
+        status: "inserted",
+        record: normalizeSingleRow(adminEventRows, CSTP_TABLES.adminEvents),
+        payload: finalizedAdminEvent,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: true,
+      },
+      internalOnly: true,
+    });
+  } catch (error) {
+    return buildExecutionFailure({
+      status: "request_status_updated_audit_insert_failed",
+      operation: "execute_cstp_request_status_update",
+      preparedRequest,
+      createdRequest: updatedRequest,
+      adminEvent: finalizedAdminEvent,
+      error,
+      primaryMutationCommitted: true,
+      auditMutationCommitted: false,
+    });
+  }
+}
+
 function finalizeRequestCreationAdminEvent({
   preparedAdminEvent,
   createdRequest,
 }) {
-  const requestId = createdRequest?.id || preparedAdminEvent?.requestId;
+  return finalizeRequestAdminEvent({
+    preparedAdminEvent,
+    requestRecord: createdRequest,
+    fallbackEventType: CSTP_ADMIN_EVENT_TYPES.requestCreated,
+  });
+}
+
+function finalizeRequestAdminEvent({
+  preparedAdminEvent,
+  requestRecord,
+  fallbackEventType = CSTP_ADMIN_EVENT_TYPES.requestStatusChanged,
+}) {
+  const requestId = requestRecord?.id || preparedAdminEvent?.requestId;
   const cstpTestId =
     preparedAdminEvent?.record?.cstp_test_id || preparedAdminEvent?.cstpTestId;
   const adminUserId =
@@ -601,7 +735,7 @@ function finalizeRequestCreationAdminEvent({
     eventType:
       preparedAdminEvent?.record?.event_type ||
       preparedAdminEvent?.eventType ||
-      CSTP_ADMIN_EVENT_TYPES.requestCreated,
+      fallbackEventType,
     requestId,
     cstpTestId,
     adminUserId,
@@ -956,12 +1090,14 @@ function deepFreeze(value) {
 
 module.exports = {
   executeCstpRequestCreation,
+  executeCstpRequestStatusUpdate,
   executeCstpSessionLinkArchive,
   executeCstpSessionLinkCreation,
   executeCstpTestArchive,
   executeCstpTestCreation,
   executeCstpTestStatusUpdate,
   finalizeSessionLinkAdminEvent,
+  finalizeRequestAdminEvent,
   finalizeRequestCreationAdminEvent,
   finalizeTestAdminEvent,
   getCstpSupabaseRuntimeConfig,
