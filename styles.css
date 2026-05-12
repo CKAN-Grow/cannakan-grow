@@ -17923,6 +17923,19 @@ body.theme-dark .contact-reason-card.is-active {
     0 14px 30px rgba(19, 33, 22, 0.08);
 }
 
+.admin-cstp-report-management-result {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(97, 182, 86, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(148, 209, 89, 0.1), rgba(255, 255, 255, 0.76));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 14px 30px rgba(19, 33, 22, 0.08);
+}
+
 .admin-cstp-report-management-panel-head {
   display: flex;
   align-items: flex-start;
@@ -17939,6 +17952,81 @@ body.theme-dark .contact-reason-card.is-active {
 .admin-cstp-report-management-list {
   display: grid;
   gap: 10px;
+}
+
+.admin-cstp-report-management-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-cstp-report-management-result-grid p {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(109, 124, 113, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.admin-cstp-report-management-result-grid span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.admin-cstp-report-management-result-grid strong {
+  overflow-wrap: anywhere;
+  font-size: 0.94rem;
+  line-height: 1.35;
+}
+
+.admin-cstp-report-management-note {
+  margin: 0;
+}
+
+.admin-cstp-report-management-message {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.admin-cstp-report-management-message.is-success {
+  border: 1px solid rgba(97, 182, 86, 0.24);
+  background: rgba(148, 209, 89, 0.12);
+  color: #294218;
+}
+
+.admin-cstp-report-management-message.is-error {
+  border: 1px solid rgba(186, 74, 65, 0.24);
+  background: rgba(186, 74, 65, 0.1);
+  color: #83372f;
+}
+
+.admin-cstp-report-management-feedback {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(109, 124, 113, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.admin-cstp-report-management-feedback strong,
+.admin-cstp-report-management-feedback p {
+  margin: 0;
+}
+
+.admin-cstp-report-management-feedback p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .admin-cstp-report-management-item {
@@ -22473,6 +22561,7 @@ body.theme-dark .admin-cstp-report-management-head {
 }
 
 body.theme-dark .admin-cstp-report-management-panel,
+body.theme-dark .admin-cstp-report-management-result,
 body.theme-dark .admin-cstp-report-management-item,
 body.theme-dark .admin-cstp-report-management-empty {
   border-color: rgba(148, 209, 89, 0.13);
@@ -22480,6 +22569,24 @@ body.theme-dark .admin-cstp-report-management-empty {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 14px 28px rgba(0, 0, 0, 0.18);
+}
+
+body.theme-dark .admin-cstp-report-management-result-grid p,
+body.theme-dark .admin-cstp-report-management-feedback {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(5, 10, 8, 0.34);
+}
+
+body.theme-dark .admin-cstp-report-management-message.is-success {
+  color: #c7f49a;
+  background: rgba(148, 209, 89, 0.14);
+  border-color: rgba(148, 209, 89, 0.24);
+}
+
+body.theme-dark .admin-cstp-report-management-message.is-error {
+  color: #f0aaa3;
+  background: rgba(145, 54, 47, 0.24);
+  border-color: rgba(222, 112, 102, 0.24);
 }
 
 body.theme-dark .admin-cstp-report-management-pill {
@@ -40323,6 +40430,10 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
   .admin-cstp-report-management-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-cstp-report-management-result-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .admin-cstp-session-workflow-header,
