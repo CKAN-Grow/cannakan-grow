@@ -196,6 +196,7 @@ async function executeDelegatedAdminAction({
     lineageSummary: serviceResult.lineageSummary,
     persistenceSummary: serviceResult.persistenceSummary,
     validationEvidenceSummary: serviceResult.validationEvidenceSummary,
+    reconciliationSummary: serviceResult.reconciliationSummary,
     serviceResult,
     message: serviceResult.message || buildDefaultActionMessage(actionName, serviceResult.ok),
   });
@@ -356,6 +357,7 @@ function buildActionResult({
   lineageSummary = null,
   persistenceSummary = null,
   validationEvidenceSummary = null,
+  reconciliationSummary = null,
   serviceResult = null,
   message,
 }) {
@@ -375,6 +377,7 @@ function buildActionResult({
     lineageSummary: lineageSummary || null,
     persistenceSummary: persistenceSummary || null,
     validationEvidenceSummary: validationEvidenceSummary || null,
+    reconciliationSummary: reconciliationSummary || null,
     message,
     errors: blockingErrors,
     blockingErrors,

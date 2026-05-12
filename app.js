@@ -46545,6 +46545,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
   const conflictSummary = lineageSummary.conflictSummary || {};
   const auditTraceSummary = lineageSummary.auditTraceSummary || {};
   const timelineSummary = lineageSummary.timelineSummary || {};
+  const reconciliationSummary = lineageSummary.reconciliationSummary || {};
   const timelineEntries = Array.isArray(timelineSummary.entries)
     ? timelineSummary.entries
     : [];
@@ -46599,6 +46600,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         <p><span>Audit links</span><strong>${escapeHtml(Number(auditTraceSummary.auditLinkCount || 0))}</strong></p>
         <p><span>Inspection</span><strong>${escapeHtml(Array.isArray(lineageSummary.labels) ? lineageSummary.labels[0] : "Internal-only")}</strong></p>
       </div>
+      ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
       ${lineageChain.length
         ? `<div class="admin-cstp-report-management-feedback">
             <strong>Immutable lineage chain</strong>
@@ -46691,6 +46693,9 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
   const validationEvidenceSummary = result?.validationEvidenceSummary
     || result?.serviceResult?.validationEvidenceSummary
     || null;
+  const reconciliationSummary = result?.reconciliationSummary
+    || result?.serviceResult?.reconciliationSummary
+    || null;
   const issues = Array.isArray(validation.issues)
     ? validation.issues
     : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
@@ -46719,6 +46724,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
       </div>
       ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
       ${renderAdminCstpValidationEvidenceSummaryMarkup(validationEvidenceSummary)}
+      ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
       ${appState.adminCstpReportValidationLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
@@ -46781,6 +46787,31 @@ function renderAdminCstpValidationEvidenceSummaryMarkup(summary = null) {
         summary.missingSessionEvidence ? "Missing session evidence" : "",
         summary.missingAuditLinks ? "Missing audit links" : "",
       ].filter(Boolean).join(" - ") || "Persisted evidence loaded for inspection.")}</p>
+    </div>
+  `;
+}
+
+function renderAdminCstpReconciliationSummaryMarkup(summary = null) {
+  if (!summary || !summary.integrityScoreSummary) {
+    return "";
+  }
+
+  const score = summary.integrityScoreSummary || {};
+  const lineage = summary.lineageAnomalySummary || {};
+  const payload = summary.frozenPayloadCompleteness || {};
+
+  return `
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>Integrity score</span><strong>${escapeHtml(`${Number(score.score || 0)} / 100`)}</strong></p>
+      <p><span>Rating</span><strong>${escapeHtml(score.rating || "diagnostic")}</strong></p>
+      <p><span>Reference drift</span><strong>${escapeHtml(Number(summary.operationalReferenceDiagnostics?.count || 0))}</strong></p>
+      <p><span>Audit drift</span><strong>${escapeHtml(Number((summary.auditDriftIndicators || []).length || 0))}</strong></p>
+      <p><span>Payload</span><strong>${escapeHtml(payload.payloadPresent ? "Present" : "Incomplete")}</strong></p>
+      <p><span>Lineage anomalies</span><strong>${escapeHtml(`${Number(lineage.versionIssueCount || 0)} version / ${Number(lineage.activeChainIssueCount || 0)} active`)}</strong></p>
+    </div>
+    <div class="admin-cstp-report-management-feedback">
+      <strong>Immutable reconciliation diagnostics</strong>
+      <p>${escapeHtml(Array.isArray(summary.labels) ? summary.labels.join(" - ") : "Internal-only read-only reconciliation diagnostics.")}</p>
     </div>
   `;
 }

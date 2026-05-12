@@ -4,6 +4,7 @@ const {
   ACTIVE_SNAPSHOT_STATUSES,
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
+  buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
   mergeValidationResults,
@@ -509,6 +510,8 @@ function inspectImmutableLineageGraph({
   report = {},
   snapshots = [],
   auditLinks = [],
+  metrics = [],
+  sessionLinks = [],
 } = {}) {
   const sortedSnapshots = sortLineageSnapshotsStable(snapshots);
   const activeLineage = resolveActiveSnapshotLineage({ report, snapshots: sortedSnapshots });
@@ -537,6 +540,15 @@ function inspectImmutableLineageGraph({
   const versionOrderingValidation = validateImmutableVersionOrderingShape({
     snapshots: sortedSnapshots,
   });
+  const activeSnapshot = activeLineage.currentSnapshot || activeLineage.latestSnapshot || {};
+  const reconciliationDiagnostics = buildImmutableReconciliationDiagnostics({
+    report,
+    snapshot: activeSnapshot,
+    snapshots: sortedSnapshots,
+    auditLinks,
+    metrics,
+    sessionLinks,
+  });
   const validation = mergeValidationResults(
     "inspectImmutableLineageGraph",
     [
@@ -546,6 +558,7 @@ function inspectImmutableLineageGraph({
       validateActiveSnapshotChainShape({ report, snapshots: sortedSnapshots }),
       auditLinkValidation,
       versionOrderingValidation,
+      reconciliationDiagnostics.validation,
     ],
     {
       reportId: getReportId(report),
@@ -572,6 +585,7 @@ function inspectImmutableLineageGraph({
       .filter(hasValue),
     validation,
     conflictSummary: buildLineageConflictSummary({ validation }),
+    reconciliationSummary: reconciliationDiagnostics,
     auditTraceSummary: {
       auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
       linkedSnapshotIds: [...new Set((Array.isArray(auditLinks) ? auditLinks : [])

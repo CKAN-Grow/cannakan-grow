@@ -6,6 +6,7 @@ const {
   VALIDATION_STATUSES,
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
+  buildImmutableReconciliationDiagnostics,
   validateDuplicateActiveLineageShape,
   validateFrozenPayloadPresence,
   validateImmutableReportSnapshotCandidate,
@@ -148,6 +149,20 @@ function run() {
     )),
     true
   );
+
+  const reconciliation = buildImmutableReconciliationDiagnostics({
+    ...validContext,
+    metrics: [
+      {
+        report_id: REPORT_ID,
+        snapshot_id: SNAPSHOT_ID,
+        cstp_test_id: TEST_ID,
+      },
+    ],
+  });
+  assert.equal(reconciliation.mode, "internal_immutable_reconciliation_diagnostics");
+  assert.equal(reconciliation.integrityScoreSummary.score > 0, true);
+  assert.equal(reconciliation.publicVisibility, false);
 
   console.log("CSTP immutable report validator smoke checks passed.");
 }

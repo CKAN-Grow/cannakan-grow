@@ -3,6 +3,7 @@
 const {
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
+  buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
   mergeValidationResults,
@@ -106,6 +107,8 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
     report: normalizedInput.existingReport,
     snapshots: normalizedInput.existingSnapshots,
     auditLinks: normalizedInput.auditLinks,
+    metrics: normalizedInput.immutableMetrics,
+    sessionLinks: normalizedInput.immutableReportSessions,
   });
   const validation = mergeValidationResults(
     "inspectCstpReportLineageForAdmin",
@@ -151,11 +154,20 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     input,
     normalizedInput,
   );
+  const reconciliationDiagnostics = input.validationContext
+    ? buildImmutableReconciliationDiagnostics({
+      ...input.validationContext,
+      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
+      sessionLinks: input.validationContext.sessionLinks || [],
+      auditLinks: input.validationContext.auditLinks || [],
+    })
+    : null;
   const validation = mergeValidationResults(
     "inspectCstpReportValidationForAdmin",
     [
       adminValidation,
       ...validationTargetResults,
+      reconciliationDiagnostics?.validation,
     ],
     {
       action: ADMIN_REPORT_ACTIONS.inspectValidation,
@@ -170,6 +182,7 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     workflowMode: "inspect_validation",
     validation,
     validationEvidenceSummary: normalizedInput.validationEvidenceSummary,
+    reconciliationSummary: reconciliationDiagnostics,
     message: validation.ok
       ? "Internal CSTP report validation inspection completed."
       : "Internal CSTP report validation inspection found blocking issues.",
@@ -632,6 +645,7 @@ function buildAdminResult({
   lineageSummary = null,
   persistenceSummary = null,
   validationEvidenceSummary = null,
+  reconciliationSummary = null,
   message,
 }) {
   const blockingErrors = validation?.issues?.filter((issue) => issue.blocking) || [];
@@ -651,6 +665,7 @@ function buildAdminResult({
     lineageSummary,
     persistenceSummary,
     validationEvidenceSummary,
+    reconciliationSummary,
     blockingErrors,
     warnings,
     message,
@@ -734,6 +749,7 @@ function summarizeActiveLineage(activeLineage, {
     duplicateActiveValidationStatus: duplicateActiveValidation?.status,
     cycleValidationStatus: cycleValidation?.status,
     conflictSummary: lineageInspection?.conflictSummary || null,
+    reconciliationSummary: lineageInspection?.reconciliationSummary || null,
     orphanSnapshotCount: Array.isArray(lineageInspection?.orphanSnapshotIds)
       ? lineageInspection.orphanSnapshotIds.length
       : 0,
@@ -782,6 +798,10 @@ function normalizeAdminInput(input = {}, options = {}) {
     source: input.source || {},
     auditEvents: Array.isArray(input.auditEvents) ? input.auditEvents.slice() : [],
     auditLinks: Array.isArray(input.auditLinks) ? input.auditLinks.slice() : [],
+    immutableMetrics: Array.isArray(input.immutableMetrics) ? input.immutableMetrics.slice() : [],
+    immutableReportSessions: Array.isArray(input.immutableReportSessions)
+      ? input.immutableReportSessions.slice()
+      : [],
     existingReport: input.existingReport || input.report || {},
     existingSnapshots: Array.isArray(input.existingSnapshots)
       ? input.existingSnapshots.slice()

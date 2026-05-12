@@ -656,6 +656,8 @@ async function loadImmutableReportLineage({ context, config, fetchImpl }) {
     existingSnapshots,
     auditLinks: immutableEvidence.auditLinks || [],
     immutableAuditLinks: immutableEvidence.auditLinks || [],
+    immutableMetrics: immutableEvidence.metrics || [],
+    immutableReportSessions: immutableEvidence.sessions || [],
     immutableLineageSummary,
   };
 }
@@ -1371,6 +1373,8 @@ function pickPreloadedPayload(payload = {}) {
     source: payload.source,
     auditEvents: normalizeArray(payload.auditEvents),
     auditLinks: normalizeArray(payload.auditLinks || payload.immutableAuditLinks),
+    immutableMetrics: normalizeArray(payload.immutableMetrics),
+    immutableReportSessions: normalizeArray(payload.immutableReportSessions),
     existingReport: payload.existingReport || payload.report,
     existingSnapshots: normalizeArray(payload.existingSnapshots),
     reports: normalizeArray(payload.reports),
@@ -1664,6 +1668,10 @@ function buildRouteSuccess({
     validationEvidenceSummary:
       result.validationEvidenceSummary
       || loadedInput.validationEvidenceSummary
+      || null,
+    reconciliationSummary:
+      result.reconciliationSummary
+      || result.serviceResult?.reconciliationSummary
       || null,
     actor: {
       userId: authorization.actor.userId,

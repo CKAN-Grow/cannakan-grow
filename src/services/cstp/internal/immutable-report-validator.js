@@ -933,6 +933,323 @@ function validateImmutableVersionOrderingShape(context = {}) {
   });
 }
 
+function validateSnapshotPayloadConsistencyShape(context = {}) {
+  const report = context.report || {};
+  const snapshot = context.snapshot || {};
+  const payload = getFirstValue(snapshot, [
+    "frozen_report_payload",
+    "frozenReportPayload",
+    "payload",
+  ]);
+  const issues = [];
+
+  if (!isPlainObject(payload)) {
+    issues.push(createValidationIssue({
+      code: "CSTP_RECONCILIATION_FROZEN_PAYLOAD_UNAVAILABLE",
+      message: "Frozen payload must be a structured object for payload consistency diagnostics.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "snapshot",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "frozen_report_payload",
+      metadata: { payloadType: getValueType(payload) },
+    }));
+    return createValidationResult({
+      validator: "validateSnapshotPayloadConsistencyShape",
+      issues,
+      metadata: { checkedPayloadKeys: [] },
+    });
+  }
+
+  const payloadSummary = isPlainObject(payload.summary) ? payload.summary : {};
+  const checks = [
+    {
+      code: "CSTP_RECONCILIATION_PAYLOAD_REPORT_MISMATCH",
+      field: "reportId",
+      expected: getIdValue(report, ["id", "reportId"]) || getIdValue(snapshot, ["report_id", "reportId"]),
+      actual: getFirstValue(payload, ["reportId", "report_id"]),
+      table: CSTP_REPORT_TABLES.reports,
+    },
+    {
+      code: "CSTP_RECONCILIATION_PAYLOAD_TEST_MISMATCH",
+      field: "cstpTestId",
+      expected: getIdValue(snapshot, ["cstp_test_id", "cstpTestId"]) || getIdValue(report, ["cstp_test_id", "cstpTestId"]),
+      actual: getFirstValue(payload, ["cstpTestId", "cstp_test_id"]) || getFirstValue(payloadSummary, ["cstpTestId", "cstp_test_id"]),
+      table: CSTP_REPORT_TABLES.tests,
+    },
+    {
+      code: "CSTP_RECONCILIATION_PAYLOAD_REQUEST_MISMATCH",
+      field: "cstpRequestId",
+      expected: getIdValue(snapshot, ["cstp_request_id", "cstpRequestId"]) || getIdValue(report, ["cstp_request_id", "cstpRequestId"]),
+      actual: getFirstValue(payload, ["cstpRequestId", "cstp_request_id"]) || getFirstValue(payloadSummary, ["cstpRequestId", "cstp_request_id"]),
+      table: CSTP_REPORT_TABLES.requests,
+    },
+    {
+      code: "CSTP_RECONCILIATION_PAYLOAD_SOURCE_MISMATCH",
+      field: "sourceId",
+      expected: getIdValue(snapshot, ["source_id", "sourceId"]) || getIdValue(report, ["source_id", "sourceId"]),
+      actual: getFirstValue(payload, ["sourceId", "source_id"]) || getFirstValue(payloadSummary, ["sourceId", "source_id"]),
+      table: CSTP_REPORT_TABLES.sources,
+    },
+  ];
+
+  checks.forEach((check) => {
+    if (!hasValue(check.expected) || !hasValue(check.actual)) {
+      return;
+    }
+    if (String(check.expected) !== String(check.actual)) {
+      issues.push(createValidationIssue({
+        code: check.code,
+        message: `Frozen payload ${check.field} does not match immutable report evidence.`,
+        entity: "snapshot_payload",
+        table: check.table,
+        field: `frozen_report_payload.${check.field}`,
+        metadata: {
+          expected: check.expected,
+          actual: check.actual,
+        },
+      }));
+    }
+  });
+
+  return createValidationResult({
+    validator: "validateSnapshotPayloadConsistencyShape",
+    issues,
+    metadata: {
+      checkedPayloadKeys: checks.map((check) => check.field),
+      payloadKeyCount: Object.keys(payload).length,
+    },
+  });
+}
+
+function validateFrozenPayloadCompletenessDiagnostics(context = {}) {
+  const snapshot = context.snapshot || {};
+  const sessionLinks = Array.isArray(context.sessionLinks) ? context.sessionLinks : [];
+  const metrics = Array.isArray(context.metrics) ? context.metrics : [];
+  const payload = getFirstValue(snapshot, [
+    "frozen_report_payload",
+    "frozenReportPayload",
+    "payload",
+  ]);
+  const issues = [];
+
+  if (!isPlainObject(payload) || Object.keys(payload).length === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_RECONCILIATION_FROZEN_PAYLOAD_INCOMPLETE",
+      message: "Frozen payload is absent or empty for reconciliation diagnostics.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "snapshot",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "frozen_report_payload",
+      metadata: { payloadType: getValueType(payload) },
+    }));
+  }
+
+  if (isPlainObject(payload) && !hasValue(getFirstValue(payload, ["reportSchemaVersion", "report_schema_version"]))) {
+    issues.push(createValidationIssue({
+      code: "CSTP_RECONCILIATION_PAYLOAD_SCHEMA_VERSION_MISSING",
+      message: "Frozen payload is missing report schema version context.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "snapshot_payload",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "frozen_report_payload.reportSchemaVersion",
+    }));
+  }
+
+  if (sessionLinks.length === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_RECONCILIATION_SESSION_EVIDENCE_EMPTY",
+      message: "No frozen session relationship evidence was supplied for reconciliation.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "session",
+      table: CSTP_REPORT_TABLES.sessions,
+      field: "snapshot_id",
+    }));
+  }
+
+  if (metrics.length === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_RECONCILIATION_METRIC_EVIDENCE_EMPTY",
+      message: "No frozen metric evidence was supplied for reconciliation.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "metric",
+      table: CSTP_REPORT_TABLES.metrics,
+      field: "snapshot_id",
+    }));
+  }
+
+  return createValidationResult({
+    validator: "validateFrozenPayloadCompletenessDiagnostics",
+    issues,
+    metadata: {
+      payloadPresent: isPlainObject(payload) && Object.keys(payload).length > 0,
+      metricCount: metrics.length,
+      sessionEvidenceCount: sessionLinks.length,
+    },
+  });
+}
+
+function validateOperationalReferenceReconciliationShape(context = {}) {
+  const report = context.report || {};
+  const snapshot = context.snapshot || {};
+  const metrics = Array.isArray(context.metrics) ? context.metrics : [];
+  const sessionLinks = Array.isArray(context.sessionLinks) ? context.sessionLinks : [];
+  const issues = [];
+  const expectedReportId = getIdValue(report, ["id", "reportId"]) || getIdValue(snapshot, ["report_id", "reportId"]);
+  const expectedSnapshotId = getIdValue(snapshot, ["id", "snapshotId"]);
+  const expectedTestId = getIdValue(snapshot, ["cstp_test_id", "cstpTestId"]) || getIdValue(report, ["cstp_test_id", "cstpTestId"]);
+
+  metrics.forEach((metric, index) => {
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_METRIC_REPORT_DRIFT",
+      record: metric,
+      index,
+      expected: expectedReportId,
+      fieldKeys: ["report_id", "reportId"],
+      entity: "metric",
+      table: CSTP_REPORT_TABLES.metrics,
+      field: "report_id",
+    });
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_METRIC_SNAPSHOT_DRIFT",
+      record: metric,
+      index,
+      expected: expectedSnapshotId,
+      fieldKeys: ["snapshot_id", "snapshotId"],
+      entity: "metric",
+      table: CSTP_REPORT_TABLES.metrics,
+      field: "snapshot_id",
+    });
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_METRIC_TEST_DRIFT",
+      record: metric,
+      index,
+      expected: expectedTestId,
+      fieldKeys: ["cstp_test_id", "cstpTestId"],
+      entity: "metric",
+      table: CSTP_REPORT_TABLES.metrics,
+      field: "cstp_test_id",
+    });
+  });
+
+  sessionLinks.forEach((session, index) => {
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_SESSION_REPORT_DRIFT",
+      record: session,
+      index,
+      expected: expectedReportId,
+      fieldKeys: ["report_id", "reportId"],
+      entity: "session",
+      table: CSTP_REPORT_TABLES.sessions,
+      field: "report_id",
+    });
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_SESSION_SNAPSHOT_DRIFT",
+      record: session,
+      index,
+      expected: expectedSnapshotId,
+      fieldKeys: ["snapshot_id", "snapshotId"],
+      entity: "session",
+      table: CSTP_REPORT_TABLES.sessions,
+      field: "snapshot_id",
+    });
+    pushReferenceDriftIssue({
+      issues,
+      code: "CSTP_RECONCILIATION_SESSION_TEST_DRIFT",
+      record: session,
+      index,
+      expected: expectedTestId,
+      fieldKeys: ["cstp_test_id", "cstpTestId"],
+      entity: "session",
+      table: CSTP_REPORT_TABLES.sessions,
+      field: "cstp_test_id",
+    });
+  });
+
+  return createValidationResult({
+    validator: "validateOperationalReferenceReconciliationShape",
+    issues,
+    metadata: {
+      metricCount: metrics.length,
+      sessionEvidenceCount: sessionLinks.length,
+      expectedReportId,
+      expectedSnapshotId,
+      expectedTestId,
+    },
+  });
+}
+
+function buildImmutableReconciliationDiagnostics(context = {}) {
+  const results = [
+    validateSnapshotPayloadConsistencyShape(context),
+    validateFrozenPayloadCompletenessDiagnostics(context),
+    validateOperationalReferenceReconciliationShape(context),
+    validateAuditLinkConsistencyShape(context),
+    validateImmutableVersionOrderingShape(context),
+    validateActiveSnapshotChainShape(context),
+  ];
+  const validation = mergeValidationResults(
+    "buildImmutableReconciliationDiagnostics",
+    results,
+    {
+      mode: "internal_immutable_reconciliation_diagnostics",
+    },
+  );
+  const blockingCount = validation.summary.blocking;
+  const warningCount = validation.summary.warnings;
+  const totalPenalty = (blockingCount * 20) + (warningCount * 7);
+  const score = Math.max(0, Math.min(100, 100 - totalPenalty));
+
+  return deepFreeze({
+    mode: "internal_immutable_reconciliation_diagnostics",
+    validation,
+    integrityScoreSummary: {
+      score,
+      rating: score >= 90 ? "strong" : (score >= 70 ? "review" : "attention_required"),
+      blockingIssueCount: blockingCount,
+      warningIssueCount: warningCount,
+      totalIssueCount: validation.summary.total,
+    },
+    operationalReferenceDiagnostics: summarizeIssuesByPrefix(validation.issues, "CSTP_RECONCILIATION_"),
+    auditDriftIndicators: validation.issues.filter((issue) => (
+      String(issue.code || "").includes("AUDIT")
+      || String(issue.table || "") === CSTP_REPORT_TABLES.auditLinks
+    )).map(summarizeIssue),
+    frozenPayloadCompleteness: results[1].metadata,
+    snapshotConsistency: results[0].metadata,
+    lineageAnomalySummary: {
+      duplicateActive: validation.issues.some((issue) => (
+        issue.code === "CSTP_DUPLICATE_ACTIVE_SNAPSHOT_LINEAGE"
+        || issue.code === "CSTP_ACTIVE_CHAIN_MULTIPLE_ACTIVE_SNAPSHOTS"
+      )),
+      versionIssueCount: validation.issues.filter((issue) => (
+        String(issue.code || "").includes("VERSION")
+      )).length,
+      activeChainIssueCount: validation.issues.filter((issue) => (
+        String(issue.code || "").includes("ACTIVE_CHAIN")
+      )).length,
+    },
+    emptyState: !hasIdentifier(context.report) && !hasIdentifier(context.snapshot),
+    labels: [
+      "Internal-only immutable reconciliation diagnostics",
+      "Diagnostics are read-only and do not enable immutable writes",
+      "Public CSTP, certification, rendering, and integrations are deferred",
+    ],
+    persistence: false,
+    publicVisibility: false,
+    internalOnly: true,
+  });
+}
+
 function validatePublicationReadinessShape(context = {}, options = {}) {
   const report = context.report || {};
   const snapshot = context.snapshot || {};
@@ -1080,6 +1397,60 @@ function validateImmutableReportSnapshotCandidate(context = {}, options = {}) {
       mode: options.mode || "candidate",
     },
   );
+}
+
+function pushReferenceDriftIssue({
+  issues,
+  code,
+  record,
+  index,
+  expected,
+  fieldKeys,
+  entity,
+  table,
+  field,
+}) {
+  const actual = getIdValue(record, fieldKeys);
+  if (!hasValue(expected) || !hasValue(actual) || expected === actual) {
+    return;
+  }
+
+  issues.push(createValidationIssue({
+    code,
+    message: `${table}.${field} does not match the inspected immutable snapshot context.`,
+    entity,
+    table,
+    field,
+    metadata: {
+      index,
+      expected,
+      actual,
+    },
+  }));
+}
+
+function summarizeIssuesByPrefix(issues = [], prefix = "") {
+  const filtered = issues.filter((issue) => String(issue.code || "").startsWith(prefix));
+  return {
+    count: filtered.length,
+    blockingCount: filtered.filter((issue) => issue.blocking).length,
+    warningCount: filtered.filter((issue) => !issue.blocking).length,
+    codes: [...new Set(filtered.map((issue) => issue.code).filter(hasValue))],
+    affectedTables: [...new Set(filtered.map((issue) => issue.table).filter(hasValue))],
+    issues: filtered.map(summarizeIssue),
+  };
+}
+
+function summarizeIssue(issue = {}) {
+  return {
+    code: issue.code || "",
+    severity: issue.severity || "",
+    blocking: issue.blocking === true,
+    entity: issue.entity || "",
+    table: issue.table || "",
+    field: issue.field || "",
+    message: issue.message || "",
+  };
 }
 
 function createInvalidTimestampIssue({ entity, table, field, value }) {
@@ -1409,6 +1780,10 @@ module.exports = {
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
   validateImmutableVersionOrderingShape,
+  validateSnapshotPayloadConsistencyShape,
+  validateFrozenPayloadCompletenessDiagnostics,
+  validateOperationalReferenceReconciliationShape,
+  buildImmutableReconciliationDiagnostics,
   validatePublicationReadinessShape,
   validateImmutableReportSnapshotCandidate,
 };

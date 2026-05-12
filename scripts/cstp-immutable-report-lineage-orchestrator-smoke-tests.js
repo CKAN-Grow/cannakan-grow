@@ -160,7 +160,7 @@ function main() {
   assert.equal(plan.immutableSafety.deletesHistoricalSnapshots, false);
   assert.equal(plan.immutableSafety.immutableWritesEnabled, false);
   assert.equal(plan.previewSafetyAnalysis.persistenceDeferred, true);
-  assert.equal(plan.conflictSummary.status, "clear");
+  assert.equal(plan.conflictSummary.status, "warnings");
   assert.equal(plan.immutableSafety.publicVisibility, false);
 
   const directValidation = validateSupersessionPlan({
@@ -238,7 +238,8 @@ function main() {
     ],
   });
   assert.equal(inspection.mode, "internal_immutable_lineage_inspection");
-  assert.equal(inspection.conflictSummary.status, "clear");
+  assert.equal(inspection.conflictSummary.status, "warnings");
+  assert.equal(inspection.reconciliationSummary.integrityScoreSummary.rating, "review");
   assert.equal(inspection.auditTraceSummary.auditLinkCount, 1);
   assert.equal(inspection.timelineSummary.mode, "internal_immutable_report_history_timeline");
   assert.equal(inspection.timelineSummary.entryCount, 2);
