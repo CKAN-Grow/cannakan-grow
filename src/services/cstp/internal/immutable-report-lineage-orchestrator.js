@@ -568,6 +568,7 @@ function inspectImmutableLineageGraph({
       auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
     },
   );
+  const conflictSummary = buildLineageConflictSummary({ validation });
   const orphanSnapshotIds = validation.issues
     .filter((issue) => issue.code && issue.code.includes("ORPHAN"))
     .map((issue) => issue.metadata?.snapshotId)
@@ -598,7 +599,7 @@ function inspectImmutableLineageGraph({
       activeSnapshotCount: activeLineage.activeSnapshotIds.length,
       duplicateActiveLineage: activeLineage.duplicateActiveLineage,
       orphanSnapshotIds,
-      conflictSummary: buildLineageConflictSummary({ validation }),
+      conflictSummary,
       auditTraceSummary: {
         auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
       },
@@ -619,7 +620,7 @@ function inspectImmutableLineageGraph({
     descendantsBySnapshotId,
     orphanSnapshotIds,
     validation,
-    conflictSummary: buildLineageConflictSummary({ validation }),
+    conflictSummary,
     reconciliationSummary: reconciliationDiagnostics,
     evidenceExplorerSummary,
     qaReviewSummary,

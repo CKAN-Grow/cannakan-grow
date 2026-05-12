@@ -1439,6 +1439,7 @@ function buildImmutableQaReviewSummary(context = {}) {
       reviewStatus: readinessStatus,
       publicCertificationReady: false,
       publicRenderingReady: false,
+      publicVisibility: false,
       publicationEnabled: false,
       message: "Publication readiness diagnostics are internal-only and deferred until future certification systems exist.",
     },
@@ -2103,6 +2104,12 @@ function resolveQaReadinessStatus({
 } = {}) {
   if (emptyState || evidenceCompleteness?.state === "empty_state") {
     return "empty_state";
+  }
+  if (
+    validationCheckpoints?.state === "not_evaluated"
+    || reconciliationReview?.state === "not_evaluated"
+  ) {
+    return "qa_review_needed";
   }
   if (
     validationCheckpoints?.state === "blocked"

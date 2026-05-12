@@ -169,12 +169,10 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     input,
     normalizedInput,
   );
+  const validationContext = buildValidationContextWithEvidence(input.validationContext);
   const reconciliationDiagnostics = input.validationContext
     ? buildImmutableReconciliationDiagnostics({
-      ...input.validationContext,
-      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
-      sessionLinks: input.validationContext.sessionLinks || [],
-      auditLinks: input.validationContext.auditLinks || [],
+      ...validationContext,
     })
     : null;
   const validation = mergeValidationResults(
@@ -191,30 +189,14 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
   );
   const evidenceExplorerSummary = input.validationContext
     ? buildImmutableEvidenceExplorerSummary({
-      ...input.validationContext,
-      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
-      sessionLinks: input.validationContext.sessionLinks
-        || input.validationContext.sessions
-        || input.validationContext.persistedEvidence?.sessions
-        || [],
-      auditLinks: input.validationContext.auditLinks
-        || input.validationContext.persistedEvidence?.auditLinks
-        || [],
+      ...validationContext,
       validation,
       reconciliationSummary: reconciliationDiagnostics,
     })
     : null;
   const qaReviewSummary = input.validationContext
     ? buildImmutableQaReviewSummary({
-      ...input.validationContext,
-      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
-      sessionLinks: input.validationContext.sessionLinks
-        || input.validationContext.sessions
-        || input.validationContext.persistedEvidence?.sessions
-        || [],
-      auditLinks: input.validationContext.auditLinks
-        || input.validationContext.persistedEvidence?.auditLinks
-        || [],
+      ...validationContext,
       validation,
       reconciliationSummary: reconciliationDiagnostics,
       evidenceExplorerSummary,
@@ -533,6 +515,26 @@ function buildValidationInspectionResults(rawInput = {}, normalizedInput = {}) {
   }
 
   return results;
+}
+
+function buildValidationContextWithEvidence(validationContext = null) {
+  if (!validationContext || typeof validationContext !== "object") {
+    return {};
+  }
+
+  return {
+    ...validationContext,
+    metrics: validationContext.metrics
+      || validationContext.persistedEvidence?.metrics
+      || [],
+    sessionLinks: validationContext.sessionLinks
+      || validationContext.sessions
+      || validationContext.persistedEvidence?.sessions
+      || [],
+    auditLinks: validationContext.auditLinks
+      || validationContext.persistedEvidence?.auditLinks
+      || [],
+  };
 }
 
 function validatePersistedImmutableEvidenceShape({

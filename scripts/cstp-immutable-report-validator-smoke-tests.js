@@ -203,6 +203,13 @@ function run() {
   assert.equal(qaReview.certificationImplemented, false);
   assert.equal(qaReview.evidenceCompletenessReview.score > 0, true);
   assert.equal(qaReview.deferredPublicationReadiness.publicCertificationReady, false);
+  assert.equal(qaReview.deferredPublicationReadiness.publicVisibility, false);
+
+  const notEvaluatedQaReview = buildImmutableQaReviewSummary({
+    ...validContext,
+    evidenceExplorerSummary: evidenceExplorer,
+  });
+  assert.equal(notEvaluatedQaReview.readinessStatus, "qa_review_needed");
 
   console.log("CSTP immutable report validator smoke checks passed.");
 }
