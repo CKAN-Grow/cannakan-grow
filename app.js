@@ -1049,6 +1049,7 @@ const ADMIN_CSTP_LAB_STATUS_OPTIONS = Object.freeze([
 const ADMIN_CSTP_REQUEST_QUEUE_API_PATH = "/api/cstp-admin-requests-list";
 const ADMIN_CSTP_REQUEST_DETAIL_API_PATH = "/api/cstp-admin-request-detail";
 const ADMIN_CSTP_REQUEST_STATUS_UPDATE_API_PATH = "/api/cstp-admin-request-status-update";
+const ADMIN_CSTP_TEST_CREATE_API_PATH = "/api/cstp-admin-test-create";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Active" }),
@@ -1279,6 +1280,9 @@ const appState = {
   adminCstpRequestStatusSaving: false,
   adminCstpRequestStatusMessage: "",
   adminCstpRequestStatusError: "",
+  adminCstpTestCreateSaving: false,
+  adminCstpTestCreateMessage: "",
+  adminCstpTestCreateError: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -44287,6 +44291,8 @@ async function updateAdminCstpRequestStatusAndRender(scope = app, requestId = ""
   appState.adminCstpRequestStatusSaving = true;
   appState.adminCstpRequestStatusMessage = "";
   appState.adminCstpRequestStatusError = "";
+  appState.adminCstpTestCreateMessage = "";
+  appState.adminCstpTestCreateError = "";
   renderAdminCstpRequestQueueInto(scope);
 
   try {
@@ -44303,6 +44309,86 @@ async function updateAdminCstpRequestStatusAndRender(scope = app, requestId = ""
     appState.adminCstpRequestStatusError = error?.message || "Could not update CSTP request status.";
   } finally {
     appState.adminCstpRequestStatusSaving = false;
+    renderAdminCstpRequestQueueInto(scope);
+  }
+}
+
+function canCreateAdminCstpTestFromRequest(record = null) {
+  const status = normalizeAdminCstpRequestQueueStatus(record?.status || "");
+  return Boolean(
+    record
+    && !record.archived
+    && (status === "accepted" || status === "awaiting_seeds")
+  );
+}
+
+async function createAdminCstpTestFromRequest(record = null) {
+  if (!canCreateAdminCstpTestFromRequest(record)) {
+    throw new Error("This CSTP request is not in an eligible state for test creation.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to create CSTP tests.");
+  }
+
+  const response = await fetch(ADMIN_CSTP_TEST_CREATE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      requestId: record.id,
+      sourceId: record.sourceId || undefined,
+      status: "pending",
+      internalState: "created_from_request_detail",
+      eventNotes: "CSTP test created from the internal request detail workflow.",
+      metadata: {
+        uiSurface: "admin_cstp_request_detail",
+        requestStatus: record.status,
+        varietyName: record.varietyName,
+        breederName: record.breederName,
+        batchLot: record.batchLot,
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP test creation returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return payload;
+}
+
+async function createAdminCstpTestFromRequestAndRender(scope = app, requestId = "") {
+  const record = appState.adminCstpRequestDetailRecord;
+  if (!record || record.id !== requestId) {
+    appState.adminCstpTestCreateError = "Reload the CSTP request before creating a test.";
+    renderAdminCstpRequestQueueInto(scope);
+    return;
+  }
+
+  appState.adminCstpTestCreateSaving = true;
+  appState.adminCstpTestCreateMessage = "";
+  appState.adminCstpTestCreateError = "";
+  renderAdminCstpRequestQueueInto(scope);
+
+  try {
+    const result = await createAdminCstpTestFromRequest(record);
+    const testId = String(result?.test?.record?.id || "").trim();
+    const auditCommitted = result?.transaction?.auditMutationCommitted === true;
+    appState.adminCstpTestCreateMessage = [
+      testId ? `CSTP test created: ${testId}.` : "CSTP test created.",
+      auditCommitted ? "" : "Audit event requires admin review.",
+    ].filter(Boolean).join(" ");
+    await refreshAdminCstpRequestDetail(requestId);
+  } catch (error) {
+    appState.adminCstpTestCreateError = error?.message || "Could not create CSTP test.";
+  } finally {
+    appState.adminCstpTestCreateSaving = false;
     renderAdminCstpRequestQueueInto(scope);
   }
 }
@@ -44449,6 +44535,42 @@ function renderAdminCstpRequestStatusActionsMarkup(record = null) {
   `;
 }
 
+function renderAdminCstpTestCreateMarkup(record = null) {
+  const isEligible = canCreateAdminCstpTestFromRequest(record);
+  const isSaving = appState.adminCstpTestCreateSaving;
+  const feedbackMarkup = appState.adminCstpTestCreateError
+    ? `<p class="muted">${escapeHtml(appState.adminCstpTestCreateError)}</p>`
+    : (appState.adminCstpTestCreateMessage
+      ? `<p class="muted">${escapeHtml(appState.adminCstpTestCreateMessage)}</p>`
+      : "");
+
+  return `
+    <section class="admin-cstp-assigned-session">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">CSTP Test Setup</p>
+          <h4>Create internal test record</h4>
+          <p class="muted">Creates an internal CSTP test linked to this request. Grow sessions, session links, reports, and certifications remain separate future steps.</p>
+        </div>
+      </div>
+      <div class="admin-communications-quick-actions admin-cstp-lab-actions">
+        <button
+          type="button"
+          class="button button-secondary admin-cstp-button admin-cstp-button--primary"
+          data-admin-cstp-test-create-from-request="${escapeHtml(record?.id || "")}"
+          ${isEligible && !isSaving ? "" : "disabled"}
+        >
+          ${escapeHtml(isSaving ? "Creating Test..." : "Create CSTP Test")}
+        </button>
+      </div>
+      <p class="muted">${escapeHtml(isEligible
+        ? "Available for accepted or awaiting-seeds requests. Backend validation remains canonical."
+        : "Move the request into an eligible operational state before creating a test.")}</p>
+      ${feedbackMarkup}
+    </section>
+  `;
+}
+
 function renderAdminCstpRequestDetailMarkup() {
   const selectedId = String(appState.adminCstpRequestDetailSelectedId || "").trim();
   if (!selectedId) {
@@ -44524,6 +44646,7 @@ function renderAdminCstpRequestDetailMarkup() {
           </div>
         </div>
       ` : ""}
+      ${renderAdminCstpTestCreateMarkup(record)}
       <section class="admin-cstp-assigned-session">
         <div class="admin-communications-editor-head">
           <div>
@@ -44603,6 +44726,8 @@ function refreshAdminCstpRequestDetailAndRender(scope = app, requestId = "") {
   appState.adminCstpRequestDetailError = "";
   appState.adminCstpRequestStatusMessage = "";
   appState.adminCstpRequestStatusError = "";
+  appState.adminCstpTestCreateMessage = "";
+  appState.adminCstpTestCreateError = "";
   renderAdminCstpRequestQueueInto(scope);
   void refreshAdminCstpRequestDetail(requestId).then(() => {
     renderAdminCstpRequestQueueInto(scope);
@@ -44617,6 +44742,9 @@ function clearAdminCstpRequestDetail(scope = app) {
   appState.adminCstpRequestStatusSaving = false;
   appState.adminCstpRequestStatusMessage = "";
   appState.adminCstpRequestStatusError = "";
+  appState.adminCstpTestCreateSaving = false;
+  appState.adminCstpTestCreateMessage = "";
+  appState.adminCstpTestCreateError = "";
   renderAdminCstpRequestQueueInto(scope);
 }
 
@@ -45231,6 +45359,17 @@ function bindAdminCstpRequestQueue(scope = app) {
       const currentStatus = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestCurrentStatus || "");
       const nextStatus = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestStatusAction || "");
       updateAdminCstpRequestStatusAndRender(app, requestId, currentStatus, nextStatus);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-test-create-from-request]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpRequestQueueBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpRequestQueueBound = "true";
+    button.addEventListener("click", () => {
+      const requestId = String(button.dataset.adminCstpTestCreateFromRequest || "").trim();
+      createAdminCstpTestFromRequestAndRender(app, requestId);
     });
   });
 }
