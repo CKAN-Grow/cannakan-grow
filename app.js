@@ -16,6 +16,7 @@ const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
 const SESSION_IMAGE_BUCKET = "session-images";
 const PROFILE_AVATAR_BUCKET = "profile-avatars";
 const DEFAULT_AVATAR_IMAGE_URL = "/assets/images/default-avatar.png";
+const SUPABASE_CLIENT_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 const SOURCE_LOGO_BUCKET = "source-logos";
 const LEADERBOARD_AUDIT_DEFAULT_FILTERS = Object.freeze({
   startDate: "",
@@ -7977,7 +7978,7 @@ async function bootstrapApp() {
   setDeferredInstallPrompt(window.deferredPrompt || null);
   appState.installPromptMode = getInstallPromptMode();
   applyTheme(getPreferredTheme(), { persist: false });
-  initializeSupabaseClient();
+  await initializeSupabaseClient();
   initializeSiteVisitorTracking();
   bindBackToTopVisibilityObservers();
   initializeTopbarControls();
@@ -8062,9 +8063,24 @@ function withTimeout(promise, timeoutMs, timeoutMessage) {
   ]);
 }
 
-function initializeSupabaseClient() {
+async function initializeSupabaseClient() {
   const config = window.CANNAKAN_SUPABASE_CONFIG || {};
-  if (!config.url || !config.anonKey || !window.supabase?.createClient) {
+  if (!config.url || !config.anonKey) {
+    appState.supabase = null;
+    return;
+  }
+
+  try {
+    await loadSupabaseBrowserClient();
+  } catch (error) {
+    console.warn("[Supabase] Client library unavailable under current browser policy.", {
+      message: error?.message || String(error || ""),
+    });
+    appState.supabase = null;
+    return;
+  }
+
+  if (!window.supabase?.createClient) {
     appState.supabase = null;
     return;
   }
@@ -8077,6 +8093,50 @@ function initializeSupabaseClient() {
       storageKey: "cannakan-grow-auth",
     },
   });
+}
+
+function loadSupabaseBrowserClient() {
+  if (window.supabase?.createClient) {
+    return Promise.resolve(window.supabase);
+  }
+
+  if (window.__cannakanSupabaseClientLoadPromise) {
+    return window.__cannakanSupabaseClientLoadPromise;
+  }
+
+  window.__cannakanSupabaseClientLoadPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[src="${SUPABASE_CLIENT_SCRIPT_URL}"]`);
+
+    const handleLoaded = () => {
+      if (window.supabase?.createClient) {
+        resolve(window.supabase);
+        return;
+      }
+      reject(new Error("Supabase client script loaded without createClient."));
+    };
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoaded, { once: true });
+      existingScript.addEventListener("error", () => {
+        reject(new Error("Supabase client script failed to load."));
+      }, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = SUPABASE_CLIENT_SCRIPT_URL;
+    script.async = true;
+    script.onload = handleLoaded;
+    script.onerror = () => {
+      reject(new Error("Supabase client script failed to load."));
+    };
+    document.head.appendChild(script);
+  }).catch((error) => {
+    window.__cannakanSupabaseClientLoadPromise = null;
+    throw error;
+  });
+
+  return window.__cannakanSupabaseClientLoadPromise;
 }
 
 function isSupabaseConfigured() {
