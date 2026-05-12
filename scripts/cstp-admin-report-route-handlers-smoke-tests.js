@@ -12,6 +12,7 @@ const {
   handleCstpReportValidationRoute,
   handleCstpReportsListRoute,
   loadCstpAdminReportData,
+  loadImmutableReportLineage,
 } = require("../src/services/cstp/internal/admin-report-route-handlers");
 const {
   assembleImmutableReportSnapshotCandidate,
@@ -32,6 +33,7 @@ async function main() {
   await assertAuthorizationGate();
   await assertWorkflowRoutes();
   await assertRealOperationalLoaderShadowMode();
+  await assertRealImmutableLineageLoader();
   await assertReadOnlyRoutes();
   await assertPublicContextRejection();
   await assertApiWrappersLoad();
@@ -252,6 +254,29 @@ async function assertRealOperationalLoaderShadowMode() {
   assert.equal(loaded.source.id, SOURCE_ID);
 }
 
+async function assertRealImmutableLineageLoader() {
+  const loaded = await loadImmutableReportLineage({
+    context: {
+      reportId: REPORT_ID,
+    },
+    config: {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseServiceRoleKey: "service-role-key",
+    },
+    fetchImpl: createOperationalLoaderFetch(),
+  });
+
+  assert.equal(loaded.existingReport.id, REPORT_ID);
+  assert.equal(loaded.existingSnapshots.length, 2);
+  assert.equal(loaded.immutableLineageSummary.snapshotCount, 2);
+  assert.equal(loaded.immutableLineageSummary.activeSnapshotId, SNAPSHOT_TWO_ID);
+  assert.equal(loaded.immutableLineageSummary.activeSnapshotVersion, 2);
+  assert.equal(loaded.immutableLineageSummary.supersededSnapshotCount, 1);
+  assert.equal(loaded.immutableLineageSummary.metricCount, 2);
+  assert.equal(loaded.immutableLineageSummary.sessionCount, 2);
+  assert.equal(loaded.immutableLineageSummary.publicVisibility, false);
+}
+
 async function assertReadOnlyRoutes() {
   const lineage = await invokeRoute(handleCstpReportLineageRoute, {
     method: "GET",
@@ -267,6 +292,48 @@ async function assertReadOnlyRoutes() {
   assert.equal(lineage.statusCode, 200);
   assert.equal(lineage.payload.workflowMode, "inspect_lineage");
   assert.equal(lineage.payload.lineageSummary.publicVisibility, false);
+
+  const emptyLineage = await invokeRoute(handleCstpReportLineageRoute, {
+    method: "GET",
+    query: {
+      cstpTestId: TEST_ID,
+      workflowTimestamp: WORKFLOW_TIMESTAMP,
+    },
+    loadedData: {
+      existingReport: null,
+      existingSnapshots: [],
+      immutableLineageSummary: {
+        mode: "real_persisted_immutable_lineage",
+        snapshotCount: 0,
+        chain: [],
+        internalOnly: true,
+        publicVisibility: false,
+      },
+    },
+  });
+  assert.equal(emptyLineage.statusCode, 200);
+  assert.equal(emptyLineage.payload.lineageSummary.snapshotCount, 0);
+
+  const duplicateActive = await invokeRoute(handleCstpReportLineageRoute, {
+    method: "GET",
+    query: {
+      reportId: REPORT_ID,
+      workflowTimestamp: WORKFLOW_TIMESTAMP,
+    },
+    loadedData: {
+      existingReport: createExistingReport(),
+      existingSnapshots: [
+        createExistingSnapshots()[0],
+        {
+          ...createExistingSnapshots()[0],
+          id: SNAPSHOT_TWO_ID,
+          snapshot_version: 2,
+        },
+      ],
+    },
+  });
+  assert.equal(duplicateActive.statusCode, 400);
+  assert.equal(duplicateActive.payload.lineageSummary.duplicateActiveLineage, true);
 
   const candidate = assembleImmutableReportSnapshotCandidate(
     createOperationalInput(),
@@ -473,6 +540,40 @@ function createExistingSnapshots() {
   ];
 }
 
+function createPersistedLineageSnapshots() {
+  return [
+    {
+      ...createExistingSnapshots()[0],
+      status: "superseded",
+      superseded_by_snapshot_id: SNAPSHOT_TWO_ID,
+    },
+    {
+      id: SNAPSHOT_TWO_ID,
+      report_id: REPORT_ID,
+      cstp_test_id: TEST_ID,
+      cstp_request_id: REQUEST_ID,
+      source_id: SOURCE_ID,
+      snapshot_version: 2,
+      status: "published",
+      locked: true,
+      supersedes_snapshot_id: SNAPSHOT_ONE_ID,
+      frozen_report_payload: {
+        internalOnly: true,
+      },
+      generated_at: "2026-05-12T14:00:00.000Z",
+      prepared_at: "2026-05-12T14:30:00.000Z",
+      published_at: "2026-05-12T15:00:00.000Z",
+    },
+  ];
+}
+
+function createPersistedLineageReport() {
+  return {
+    ...createExistingReport(),
+    current_snapshot_id: SNAPSHOT_TWO_ID,
+  };
+}
+
 function createMockRequest({
   method = "POST",
   headers = {
@@ -592,7 +693,25 @@ function createOperationalLoaderFetch() {
       ]);
     }
     if (textUrl.includes("/rest/v1/cstp_reports?")) {
+      if (textUrl.includes(`id=eq.${REPORT_ID}`) || textUrl.includes(`cstp_test_id=eq.${TEST_ID}`)) {
+        return createFetchResponse(200, [createPersistedLineageReport()]);
+      }
       return createFetchResponse(200, []);
+    }
+    if (textUrl.includes("/rest/v1/cstp_report_snapshots?")) {
+      return createFetchResponse(200, createPersistedLineageSnapshots());
+    }
+    if (textUrl.includes("/rest/v1/cstp_report_metrics?")) {
+      return createFetchResponse(200, [
+        { id: "10101010-1010-4010-8010-101010101010", snapshot_id: SNAPSHOT_ONE_ID },
+        { id: "20202020-2020-4020-8020-202020202020", snapshot_id: SNAPSHOT_TWO_ID },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/cstp_report_sessions?")) {
+      return createFetchResponse(200, [
+        { id: "30303030-3030-4030-8030-303030303030", snapshot_id: SNAPSHOT_ONE_ID },
+        { id: "40404040-4040-4040-8040-404040404040", snapshot_id: SNAPSHOT_TWO_ID },
+      ]);
     }
     if (textUrl.includes("/rest/v1/cstp_admin_events?")) {
       return createFetchResponse(200, []);

@@ -402,8 +402,16 @@ async function loadCstpOperationalContext({
     fetchImpl,
   });
   const existingSnapshots = includeLineage && reportForLineage?.id
-    ? await loadSnapshotsForReport(reportForLineage.id, { config, fetchImpl })
+    ? await loadImmutableSnapshotChain(reportForLineage.id, { config, fetchImpl })
     : [];
+  const immutableLineageSummary = includeLineage
+    ? await summarizeImmutableLineage({
+      report: reportForLineage,
+      snapshots: existingSnapshots,
+      config,
+      fetchImpl,
+    })
+    : null;
   const auditEvents = await loadAuditEvents({
     cstpRequestId,
     cstpTestId: testId,
@@ -420,6 +428,7 @@ async function loadCstpOperationalContext({
     auditEvents,
     existingReport: reportForLineage || undefined,
     existingSnapshots,
+    immutableLineageSummary,
   });
 }
 
@@ -572,6 +581,10 @@ function normalizeCstpTestSessionRows(rows = []) {
 }
 
 async function loadLineageData({ context, config, fetchImpl }) {
+  return loadImmutableReportLineage({ context, config, fetchImpl });
+}
+
+async function loadImmutableReportLineage({ context, config, fetchImpl }) {
   const existingReport = context.reportId
     ? await loadSingleById(CSTP_REPORT_TABLES.reports, context.reportId, {
       config,
@@ -584,12 +597,121 @@ async function loadLineageData({ context, config, fetchImpl }) {
       fetchImpl,
     });
   const existingSnapshots = existingReport?.id
-    ? await loadSnapshotsForReport(existingReport.id, { config, fetchImpl })
+    ? await loadImmutableSnapshotChain(existingReport.id, { config, fetchImpl })
     : [];
+  const immutableLineageSummary = await summarizeImmutableLineage({
+    report: existingReport,
+    snapshots: existingSnapshots,
+    config,
+    fetchImpl,
+  });
 
   return {
     existingReport,
     existingSnapshots,
+    immutableLineageSummary,
+  };
+}
+
+async function loadImmutableSnapshotChain(reportId, { config, fetchImpl }) {
+  return loadSnapshotsForReport(reportId, { config, fetchImpl });
+}
+
+function loadActiveImmutableSnapshot(snapshots = [], report = {}) {
+  const currentSnapshotId = normalizeNullableText(report.current_snapshot_id);
+  const ordered = sortSnapshotsForSummary(snapshots);
+  if (currentSnapshotId) {
+    return ordered.find((snapshot) => snapshot.id === currentSnapshotId) || null;
+  }
+  return ordered.find((snapshot) => isActiveLineageStatus(snapshot.status))
+    || ordered[ordered.length - 1]
+    || null;
+}
+
+function loadSupersededSnapshots(snapshots = []) {
+  return sortSnapshotsForSummary(snapshots)
+    .filter((snapshot) => String(snapshot.status || "").trim().toLowerCase() === "superseded");
+}
+
+async function summarizeImmutableLineage({
+  report = null,
+  snapshots = [],
+  config,
+  fetchImpl,
+} = {}) {
+  const orderedSnapshots = sortSnapshotsForSummary(snapshots);
+  const activeSnapshot = loadActiveImmutableSnapshot(orderedSnapshots, report || {});
+  const supersededSnapshots = loadSupersededSnapshots(orderedSnapshots);
+  const evidenceCounts = await loadImmutableLineageEvidenceCounts(
+    orderedSnapshots,
+    { config, fetchImpl },
+  );
+
+  return {
+    mode: "real_persisted_immutable_lineage",
+    internalOnly: true,
+    publicVisibility: false,
+    certificationRendering: false,
+    reportId: report?.id || "",
+    cstpRequestId: report?.cstp_request_id || "",
+    cstpTestId: report?.cstp_test_id || "",
+    activeSnapshotId: activeSnapshot?.id || "",
+    activeSnapshotVersion: activeSnapshot?.snapshot_version || "",
+    activeSnapshotStatus: activeSnapshot?.status || "",
+    latestSnapshotId: orderedSnapshots[orderedSnapshots.length - 1]?.id || "",
+    latestSnapshotVersion: orderedSnapshots[orderedSnapshots.length - 1]?.snapshot_version || "",
+    snapshotCount: orderedSnapshots.length,
+    supersededSnapshotCount: supersededSnapshots.length,
+    metricCount: evidenceCounts.metricCount,
+    sessionCount: evidenceCounts.sessionCount,
+    metricCountsBySnapshotId: evidenceCounts.metricCountsBySnapshotId,
+    sessionCountsBySnapshotId: evidenceCounts.sessionCountsBySnapshotId,
+    chain: orderedSnapshots.map((snapshot) => ({
+      id: snapshot.id || "",
+      snapshotVersion: snapshot.snapshot_version || "",
+      status: snapshot.status || "",
+      generatedAt: snapshot.generated_at || "",
+      preparedAt: snapshot.prepared_at || "",
+      publishedAt: snapshot.published_at || "",
+      supersedesSnapshotId: snapshot.supersedes_snapshot_id || "",
+      supersededBySnapshotId: snapshot.superseded_by_snapshot_id || "",
+      metricCount: evidenceCounts.metricCountsBySnapshotId[snapshot.id] || 0,
+      sessionCount: evidenceCounts.sessionCountsBySnapshotId[snapshot.id] || 0,
+    })),
+  };
+}
+
+async function loadImmutableLineageEvidenceCounts(snapshots = [], { config, fetchImpl } = {}) {
+  const snapshotIds = uniqueNonEmpty(snapshots.map((snapshot) => snapshot.id));
+  if (!snapshotIds.length) {
+    return {
+      metricCount: 0,
+      sessionCount: 0,
+      metricCountsBySnapshotId: {},
+      sessionCountsBySnapshotId: {},
+    };
+  }
+
+  const [metricRows, sessionRows] = await Promise.all([
+    loadManyByFieldIn(CSTP_REPORT_TABLES.metrics, "snapshot_id", snapshotIds, {
+      config,
+      fetchImpl,
+      selectPrefix: "select=id,snapshot_id",
+      order: "",
+    }),
+    loadManyByFieldIn(CSTP_REPORT_TABLES.sessions, "snapshot_id", snapshotIds, {
+      config,
+      fetchImpl,
+      selectPrefix: "select=id,snapshot_id",
+      order: "",
+    }),
+  ]);
+
+  return {
+    metricCount: metricRows.length,
+    sessionCount: sessionRows.length,
+    metricCountsBySnapshotId: countRowsBySnapshotId(metricRows),
+    sessionCountsBySnapshotId: countRowsBySnapshotId(sessionRows),
   };
 }
 
@@ -734,6 +856,7 @@ async function loadManyByFieldIn(
     config,
     fetchImpl,
     order = "created_at.asc",
+    selectPrefix = "select=*",
   },
 ) {
   const values = uniqueNonEmpty(ids);
@@ -744,6 +867,7 @@ async function loadManyByFieldIn(
   return loadMany(table, {
     filter: `${field}=in.(${values.map(encodeURIComponent).join(",")})`,
     order,
+    selectPrefix,
     config,
     fetchImpl,
   });
@@ -1125,6 +1249,37 @@ function linkedGrowSessionsAreComplete(loaded = {}) {
   return sessionIds.length > 0 && sessionIds.every((id) => loadedGrowSessionIds.has(id));
 }
 
+function sortSnapshotsForSummary(snapshots = []) {
+  return normalizeArray(snapshots).sort((left, right) => {
+    const leftVersion = Number(left.snapshot_version || left.snapshotVersion || 0);
+    const rightVersion = Number(right.snapshot_version || right.snapshotVersion || 0);
+    if (leftVersion !== rightVersion) {
+      return leftVersion - rightVersion;
+    }
+    return normalizeNullableText(left.created_at || left.generated_at)
+      .localeCompare(normalizeNullableText(right.created_at || right.generated_at));
+  });
+}
+
+function isActiveLineageStatus(status = "") {
+  return [
+    "generated",
+    "prepared",
+    "published",
+    "published_internal",
+  ].includes(String(status || "").trim().toLowerCase());
+}
+
+function countRowsBySnapshotId(rows = []) {
+  return normalizeArray(rows).reduce((counts, row) => {
+    const snapshotId = normalizeNullableText(row.snapshot_id || row.snapshotId);
+    if (snapshotId) {
+      counts[snapshotId] = (counts[snapshotId] || 0) + 1;
+    }
+    return counts;
+  }, {});
+}
+
 function hasValidationTarget(payload = {}) {
   return Boolean(
     payload.validationContext
@@ -1197,6 +1352,7 @@ function buildRouteSuccess({
     actionName: definition.actionName,
     workflowMode: result.workflowMode || definition.workflowMode,
     operationalLoadingSummary: loadedInput.operationalLoadingSummary || null,
+    immutableLineageSummary: loadedInput.immutableLineageSummary || null,
     actor: {
       userId: authorization.actor.userId,
       authorizationSource: authorization.actor.authorizationSource,
@@ -1433,8 +1589,13 @@ module.exports = {
   handleCstpReportSupersedeRoute,
   handleCstpReportValidationRoute,
   handleCstpReportsListRoute,
+  loadActiveImmutableSnapshot,
   loadCstpOperationalContext,
+  loadImmutableReportLineage,
+  loadImmutableSnapshotChain,
+  loadSupersededSnapshots,
   loadAdminReportActionInput,
   loadCstpAdminReportData,
   parseRequestBody,
+  summarizeImmutableLineage,
 };

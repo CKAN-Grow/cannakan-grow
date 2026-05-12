@@ -88,7 +88,7 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
   const adminValidation = validateAdminManagementInputs(normalizedInput, {
     action: ADMIN_REPORT_ACTIONS.inspectLineage,
     requireOperationalData: false,
-    requireExistingLineage: true,
+    requireExistingLineage: false,
     requireDbClientForPersistence: false,
   });
   const activeLineage = resolveActiveSnapshotLineage({
@@ -121,6 +121,7 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
     lineageSummary: summarizeActiveLineage(activeLineage, {
       duplicateActiveValidation,
       cycleValidation,
+      immutableLineageSummary: normalizedInput.immutableLineageSummary,
     }),
     message: validation.ok
       ? "Internal CSTP report lineage inspection completed."
@@ -540,16 +541,40 @@ function buildAdminSafetySummary() {
 function summarizeActiveLineage(activeLineage, {
   duplicateActiveValidation,
   cycleValidation,
+  immutableLineageSummary = null,
 } = {}) {
+  const currentSnapshot = activeLineage.currentSnapshot || {};
+  const latestSnapshot = activeLineage.latestSnapshot || {};
+  const supersededSnapshotCount = activeLineage.snapshots
+    ?.filter((snapshot) => String(snapshot.status || "").trim().toLowerCase() === "superseded")
+    .length || 0;
+
   return {
     targetReportId: activeLineage.targetReportId,
     currentSnapshotId: activeLineage.currentSnapshotId,
+    currentSnapshotVersion: currentSnapshot.snapshot_version || currentSnapshot.snapshotVersion || null,
+    currentSnapshotStatus: currentSnapshot.status || "",
+    currentSnapshotGeneratedAt: currentSnapshot.generated_at || currentSnapshot.generatedAt || "",
+    currentSnapshotPreparedAt: currentSnapshot.prepared_at || currentSnapshot.preparedAt || "",
+    currentSnapshotPublishedAt: currentSnapshot.published_at || currentSnapshot.publishedAt || "",
     latestSnapshotId: activeLineage.latestSnapshotId,
+    latestSnapshotVersion: latestSnapshot.snapshot_version || latestSnapshot.snapshotVersion || null,
+    latestSnapshotStatus: latestSnapshot.status || "",
     activeSnapshotIds: activeLineage.activeSnapshotIds,
     duplicateActiveLineage: activeLineage.duplicateActiveLineage,
     duplicateActiveValidationStatus: duplicateActiveValidation?.status,
     cycleValidationStatus: cycleValidation?.status,
     snapshotCount: activeLineage.snapshots?.length || 0,
+    supersededSnapshotCount,
+    metricCount: immutableLineageSummary?.metricCount || 0,
+    sessionCount: immutableLineageSummary?.sessionCount || 0,
+    chain: Array.isArray(immutableLineageSummary?.chain)
+      ? immutableLineageSummary.chain
+      : [],
+    continuityStatus: activeLineage.duplicateActiveLineage
+      ? "duplicate_active_lineage"
+      : (cycleValidation?.ok === false ? "lineage_cycle_detected" : "continuity_checked"),
+    source: immutableLineageSummary?.mode || "supplied_lineage_records",
     publicVisibility: false,
     internalOnly: true,
   };
@@ -578,6 +603,7 @@ function normalizeAdminInput(input = {}, options = {}) {
     existingSnapshots: Array.isArray(input.existingSnapshots)
       ? input.existingSnapshots.slice()
       : [],
+    immutableLineageSummary: input.immutableLineageSummary || null,
     persist: Boolean(input.persist || options.persist),
   };
 }

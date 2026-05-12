@@ -46517,6 +46517,12 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
   const lineageSummary = result?.lineageSummary
     || result?.serviceResult?.lineageSummary
     || {};
+  const immutableLineageSummary = result?.immutableLineageSummary
+    || result?.serviceResult?.immutableLineageSummary
+    || {};
+  const operationalLoadingSummary = result?.operationalLoadingSummary
+    || result?.serviceResult?.operationalLoadingSummary
+    || null;
   const validationSummary = result?.validationSummary
     || result?.validation?.summary
     || result?.serviceResult?.validationSummary
@@ -46524,8 +46530,15 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
   const activeSnapshotId = lineageSummary.currentSnapshotId || lineageSummary.latestSnapshotId || "";
   const activeSnapshotVersion = lineageSummary.currentSnapshotVersion
     || lineageSummary.latestSnapshotVersion
+    || immutableLineageSummary.activeSnapshotVersion
+    || immutableLineageSummary.latestSnapshotVersion
     || "";
-  const supersededCount = lineageSummary.supersededSnapshotCount ?? "Deferred";
+  const supersededCount = lineageSummary.supersededSnapshotCount
+    ?? immutableLineageSummary.supersededSnapshotCount
+    ?? "Deferred";
+  const lineageChain = Array.isArray(lineageSummary.chain)
+    ? lineageSummary.chain
+    : (Array.isArray(immutableLineageSummary.chain) ? immutableLineageSummary.chain : []);
   const activeCount = Array.isArray(lineageSummary.activeSnapshotIds)
     ? lineageSummary.activeSnapshotIds.length
     : 0;
@@ -46561,17 +46574,34 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect lineage attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportLineageLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Lineage workflow has been run from this dashboard yet.</p>`}
       <div class="admin-cstp-report-management-result-grid">
-        <p><span>Chain summary</span><strong>${escapeHtml(`${Number(lineageSummary.snapshotCount || 0)} snapshots / ${activeCount} active`)}</strong></p>
+        <p><span>Chain summary</span><strong>${escapeHtml(`${Number(lineageSummary.snapshotCount || immutableLineageSummary.snapshotCount || 0)} snapshots / ${activeCount} active`)}</strong></p>
         <p><span>Superseded</span><strong>${escapeHtml(supersededCount)}</strong></p>
-        <p><span>Duplicate active</span><strong>${escapeHtml(lineageSummary.duplicateActiveLineage ? "Detected" : "None")}</strong></p>
-        <p><span>Cycle check</span><strong>${escapeHtml(lineageSummary.cycleValidationStatus || "Not run")}</strong></p>
+        <p><span>Metrics</span><strong>${escapeHtml(Number(lineageSummary.metricCount || immutableLineageSummary.metricCount || 0))}</strong></p>
+        <p><span>Sessions</span><strong>${escapeHtml(Number(lineageSummary.sessionCount || immutableLineageSummary.sessionCount || 0))}</strong></p>
       </div>
       <div class="admin-cstp-report-management-result-grid">
-        <p><span>Continuity</span><strong>${escapeHtml(lineageSummary.currentSnapshotId ? "Continuity checked" : "Awaiting run")}</strong></p>
+        <p><span>Duplicate active</span><strong>${escapeHtml(lineageSummary.duplicateActiveLineage ? "Detected" : "None")}</strong></p>
+        <p><span>Cycle check</span><strong>${escapeHtml(lineageSummary.cycleValidationStatus || "Not run")}</strong></p>
+        <p><span>Continuity</span><strong>${escapeHtml(lineageSummary.continuityStatus || (lineageSummary.currentSnapshotId ? "Continuity checked" : "Awaiting run"))}</strong></p>
         <p><span>Latest snapshot</span><strong>${escapeHtml(lineageSummary.latestSnapshotId || "Awaiting run")}</strong></p>
         <p><span>Duplicate check</span><strong>${escapeHtml(lineageSummary.duplicateActiveValidationStatus || "Not run")}</strong></p>
         <p><span>Public</span><strong>${escapeHtml(lineageSummary.publicVisibility === false ? "No" : "Deferred")}</strong></p>
       </div>
+      ${lineageChain.length
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Immutable lineage chain</strong>
+            ${lineageChain.slice(0, 5).map((snapshot) => `
+              <p>${escapeHtml([
+                `v${snapshot.snapshotVersion || "?"}`,
+                snapshot.id || "snapshot",
+                snapshot.status || "internal",
+                snapshot.generatedAt ? `generated ${formatAdminTimestamp(snapshot.generatedAt)}` : "",
+                `${Number(snapshot.metricCount || 0)} metrics`,
+                `${Number(snapshot.sessionCount || 0)} sessions`,
+              ].filter(Boolean).join(" - "))}</p>
+            `).join("")}
+          </div>`
+        : ""}
       ${error
         ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
         : ""}
