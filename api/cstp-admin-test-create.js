@@ -1,0 +1,109 @@
+const {
+  authorizeCstpAdminRequest,
+  executeCstpTestCreation,
+} = require("../src/services/cstp/internal");
+
+function json(response, status, payload) {
+  return response.status(status).json(payload);
+}
+
+function parseRequestBody(body) {
+  if (body === undefined || body === null || body === "") {
+    return {};
+  }
+  if (typeof body === "string") {
+    return JSON.parse(body || "{}");
+  }
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer?.(body)) {
+    return JSON.parse(body.toString("utf8") || "{}");
+  }
+  if (body instanceof Uint8Array) {
+    return JSON.parse(Buffer.from(body).toString("utf8") || "{}");
+  }
+  if (typeof body === "object") {
+    return body;
+  }
+  throw new Error("Unsupported request body.");
+}
+
+async function runAuthorizedCstpTestCreation(
+  payload,
+  actor = {},
+  executionOptions = {},
+) {
+  /*
+   * Admin-only CSTP API handoff. Test validation, lifecycle defaults, audit
+   * event preparation, and Supabase writes stay in the internal execution
+   * boundary. CSTP remains internal-only and public exposure stays deferred.
+   */
+  return executeCstpTestCreation(
+    {
+      ...payload,
+      adminUserId: actor.userId,
+    },
+    executionOptions,
+  );
+}
+
+async function handleCstpTestCreation(request, response, options = {}) {
+  if (request.method === "OPTIONS") {
+    response.setHeader("Allow", "POST, OPTIONS");
+    return response.status(204).end();
+  }
+
+  if (request.method !== "POST") {
+    response.setHeader("Allow", "POST, OPTIONS");
+    return json(response, 405, { ok: false, error: "Method not allowed." });
+  }
+
+  /*
+   * Authorization is the first CSTP boundary. Non-admin callers must not reach
+   * mutation helpers, receive CSTP records, or cause audit/event side effects.
+   */
+  const authorization = await authorizeCstpAdminRequest(
+    request,
+    options.authorizationOptions || {},
+  );
+  if (!authorization.ok) {
+    return json(response, authorization.httpStatus || 403, authorization);
+  }
+
+  let payload = {};
+  try {
+    payload = parseRequestBody(request.body);
+  } catch (error) {
+    return json(response, 400, {
+      ok: false,
+      error: "Request body must be valid JSON.",
+    });
+  }
+
+  try {
+    const result = await runAuthorizedCstpTestCreation(
+      payload,
+      authorization.actor,
+      options.executionOptions || {},
+    );
+    return json(response, result.ok ? 200 : 500, result);
+  } catch (error) {
+    const isValidationError = String(error?.name || "").includes("Validation");
+    return json(response, isValidationError ? 400 : 500, {
+      ok: false,
+      status: isValidationError
+        ? "cstp_test_create_validation_error"
+        : "cstp_test_create_unhandled_error",
+      error: isValidationError
+        ? error.message
+        : "Could not create CSTP test.",
+      code: error?.code || "CSTP_TEST_CREATE_ERROR",
+    });
+  }
+}
+
+module.exports = handleCstpTestCreation;
+
+module.exports._private = {
+  handleCstpTestCreation,
+  parseRequestBody,
+  runAuthorizedCstpTestCreation,
+};
