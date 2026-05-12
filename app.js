@@ -1047,6 +1047,7 @@ const ADMIN_CSTP_LAB_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "declined", label: "Declined" }),
 ]);
 const ADMIN_CSTP_REQUEST_QUEUE_API_PATH = "/api/cstp-admin-requests-list";
+const ADMIN_CSTP_REQUEST_DETAIL_API_PATH = "/api/cstp-admin-request-detail";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Active" }),
@@ -1270,6 +1271,10 @@ const appState = {
     page: 1,
     pageSize: 10,
   },
+  adminCstpRequestDetailSelectedId: "",
+  adminCstpRequestDetailRecord: null,
+  adminCstpRequestDetailLoading: false,
+  adminCstpRequestDetailError: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -44062,6 +44067,10 @@ function buildAdminCstpRequestQueueUrl(options = {}) {
   return `${ADMIN_CSTP_REQUEST_QUEUE_API_PATH}?${params.toString()}`;
 }
 
+function buildAdminCstpRequestDetailUrl(requestId = "") {
+  return `${ADMIN_CSTP_REQUEST_DETAIL_API_PATH}?requestId=${encodeURIComponent(String(requestId || "").trim())}`;
+}
+
 async function loadAdminCstpRequestQueue(options = {}) {
   if (!isAdminUser()) {
     return [];
@@ -44096,6 +44105,41 @@ async function loadAdminCstpRequestQueue(options = {}) {
   return (Array.isArray(payload.requests) ? payload.requests : [])
     .map((row) => normalizeAdminCstpRequestQueueRecord(row))
     .filter(Boolean);
+}
+
+async function loadAdminCstpRequestDetail(requestId = "") {
+  const normalizedRequestId = String(requestId || "").trim();
+  if (!isAdminUser()) {
+    return null;
+  }
+  if (!normalizedRequestId) {
+    throw new Error("Choose a CSTP request before loading details.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to load CSTP request details.");
+  }
+
+  const response = await fetch(buildAdminCstpRequestDetailUrl(normalizedRequestId), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 404) {
+    const error = new Error(payload?.error || "CSTP request was not found.");
+    error.code = "CSTP_REQUEST_DETAIL_NOT_FOUND";
+    throw error;
+  }
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `Request detail returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return normalizeAdminCstpRequestQueueRecord(payload.request);
 }
 
 async function refreshAdminCstpRequestQueue(options = {}) {
@@ -44141,6 +44185,34 @@ async function refreshAdminCstpRequestQueue(options = {}) {
     return await refreshPromise;
   } finally {
     appState.adminCstpRequestQueueRefreshPromise = null;
+  }
+}
+
+async function refreshAdminCstpRequestDetail(requestId = appState.adminCstpRequestDetailSelectedId) {
+  const normalizedRequestId = String(requestId || "").trim();
+  if (!normalizedRequestId) {
+    appState.adminCstpRequestDetailSelectedId = "";
+    appState.adminCstpRequestDetailRecord = null;
+    appState.adminCstpRequestDetailLoading = false;
+    appState.adminCstpRequestDetailError = "";
+    return null;
+  }
+
+  appState.adminCstpRequestDetailSelectedId = normalizedRequestId;
+  appState.adminCstpRequestDetailLoading = true;
+  appState.adminCstpRequestDetailError = "";
+
+  try {
+    const record = await loadAdminCstpRequestDetail(normalizedRequestId);
+    appState.adminCstpRequestDetailRecord = record;
+    appState.adminCstpRequestDetailError = "";
+    return record;
+  } catch (error) {
+    appState.adminCstpRequestDetailRecord = null;
+    appState.adminCstpRequestDetailError = error?.message || "Could not load CSTP request details.";
+    return null;
+  } finally {
+    appState.adminCstpRequestDetailLoading = false;
   }
 }
 
@@ -44192,8 +44264,9 @@ function renderAdminCstpRequestQueueRowsMarkup() {
         const contactLabel = row.contactName || row.contactEmail || "Contact not provided";
         const submittedLabel = row.createdAt ? formatAdminTimestamp(row.createdAt) : "Date unavailable";
         const seedCountLabel = Number.isFinite(row.requestedSeedCount) ? row.requestedSeedCount.toLocaleString() : "Not provided";
+        const isSelected = row.id === appState.adminCstpRequestDetailSelectedId;
         return `
-          <article class="admin-communications-list-item admin-cstp-lab-list-item">
+          <article class="admin-communications-list-item admin-cstp-lab-list-item ${isSelected ? "is-active" : ""}">
             <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
               <div class="admin-cstp-lab-list-item-copy">
                 <span class="admin-message-issue-pill">Internal CSTP Request</span>
@@ -44222,10 +44295,103 @@ function renderAdminCstpRequestQueueRowsMarkup() {
                 <strong>${escapeHtml(submittedLabel)}</strong>
               </p>
             </div>
+            <div class="inline-actions admin-cstp-lab-actions">
+              <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-detail-open="${escapeHtml(row.id)}">
+                ${isSelected ? "Refresh Detail" : "View Details"}
+              </button>
+            </div>
           </article>
         `;
       }).join("")}
     </div>
+  `;
+}
+
+function renderAdminCstpRequestDetailFieldMarkup(label = "", value = "") {
+  return `
+    <div class="admin-communications-detail-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value || "").trim() || "Not provided")}</strong>
+    </div>
+  `;
+}
+
+function renderAdminCstpRequestDetailMarkup() {
+  const selectedId = String(appState.adminCstpRequestDetailSelectedId || "").trim();
+  if (!selectedId) {
+    return "";
+  }
+
+  if (appState.adminCstpRequestDetailLoading) {
+    return `
+      <section class="card admin-cstp-assigned-session" aria-live="polite">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Internal Request Detail</p>
+            <h4>Loading request details</h4>
+            <p class="muted">Reading from the protected CSTP admin request detail API.</p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (appState.adminCstpRequestDetailError) {
+    return `
+      <section class="card admin-cstp-assigned-session" aria-live="polite">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Internal Request Detail</p>
+            <h4>Request detail unavailable</h4>
+            <p class="muted">${escapeHtml(appState.adminCstpRequestDetailError)}</p>
+          </div>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-detail-back="true">Back to Queue</button>
+        </div>
+      </section>
+    `;
+  }
+
+  const record = appState.adminCstpRequestDetailRecord;
+  if (!record) {
+    return "";
+  }
+
+  const seedCountLabel = Number.isFinite(record.requestedSeedCount) ? record.requestedSeedCount.toLocaleString() : "Not provided";
+  return `
+    <section class="card admin-cstp-assigned-session" aria-labelledby="admin-cstp-request-detail-title">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">Internal Request Detail</p>
+          <h4 id="admin-cstp-request-detail-title">${escapeHtml(record.varietyName || record.breederName || "CSTP Request")}</h4>
+          <p class="muted">Admin-only request inspection. Public CSTP reports, certifications, and test/session workflows remain outside this view.</p>
+        </div>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-detail-back="true">Back to Queue</button>
+      </div>
+      <div class="admin-communications-detail-grid">
+        ${renderAdminCstpRequestDetailFieldMarkup("Request ID", record.id)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Status", getAdminCstpRequestQueueStatusLabel(record.status))}
+        ${renderAdminCstpRequestDetailFieldMarkup("Archived", record.archived ? "Yes" : "No")}
+        ${renderAdminCstpRequestDetailFieldMarkup("Contact Name", record.contactName)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Contact Email", record.contactEmail)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Website", record.website)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Source ID", record.sourceId)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Breeder Name", record.breederName)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Variety Name", record.varietyName)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Seed Type", record.seedType)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Batch / Lot", record.batchLot)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Requested Seed Count", seedCountLabel)}
+        ${renderAdminCstpRequestDetailFieldMarkup("Created", record.createdAt ? formatAdminTimestamp(record.createdAt) : "")}
+        ${renderAdminCstpRequestDetailFieldMarkup("Updated", record.updatedAt ? formatAdminTimestamp(record.updatedAt) : "")}
+      </div>
+      ${record.requestMessage ? `
+        <div class="admin-communications-editor-grid admin-communications-editor-grid-single">
+          <div class="admin-message-field admin-cstp-lab-field-full">
+            <span>Request Message</span>
+            <p class="muted">${escapeHtml(record.requestMessage)}</p>
+          </div>
+        </div>
+      ` : ""}
+    </section>
   `;
 }
 
@@ -44264,6 +44430,9 @@ function renderAdminCstpRequestQueueShellMarkup() {
         ${renderAdminCstpRequestQueueRowsMarkup()}
       </div>
       ${renderAdminCstpRequestQueuePaginationMarkup()}
+      <div id="admin-cstp-request-detail-anchor">
+        ${renderAdminCstpRequestDetailMarkup()}
+      </div>
     </section>
   `;
 }
@@ -44283,6 +44452,24 @@ function refreshAdminCstpRequestQueueAndRender(scope = app, options = {}) {
   void refreshAdminCstpRequestQueue({ force: true, ...options }).then(() => {
     renderAdminCstpRequestQueueInto(scope);
   });
+}
+
+function refreshAdminCstpRequestDetailAndRender(scope = app, requestId = "") {
+  appState.adminCstpRequestDetailSelectedId = String(requestId || "").trim();
+  appState.adminCstpRequestDetailLoading = true;
+  appState.adminCstpRequestDetailError = "";
+  renderAdminCstpRequestQueueInto(scope);
+  void refreshAdminCstpRequestDetail(requestId).then(() => {
+    renderAdminCstpRequestQueueInto(scope);
+  });
+}
+
+function clearAdminCstpRequestDetail(scope = app) {
+  appState.adminCstpRequestDetailSelectedId = "";
+  appState.adminCstpRequestDetailRecord = null;
+  appState.adminCstpRequestDetailLoading = false;
+  appState.adminCstpRequestDetailError = "";
+  renderAdminCstpRequestQueueInto(scope);
 }
 
 function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
@@ -44831,6 +45018,7 @@ function bindAdminCstpRequestQueue(scope = app) {
     button.addEventListener("click", () => {
       appState.adminCstpRequestQueueFilter.status = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestQueueStatus || "all");
       appState.adminCstpRequestQueueFilter.page = 1;
+      clearAdminCstpRequestDetail(app);
       refreshAdminCstpRequestQueueAndRender(app, {
         status: appState.adminCstpRequestQueueFilter.status,
         page: 1,
@@ -44846,6 +45034,7 @@ function bindAdminCstpRequestQueue(scope = app) {
     button.addEventListener("click", () => {
       const nextPage = Math.max(1, Number(button.dataset.adminCstpRequestQueuePage) || 1);
       appState.adminCstpRequestQueueFilter.page = nextPage;
+      clearAdminCstpRequestDetail(app);
       refreshAdminCstpRequestQueueAndRender(app, {
         page: nextPage,
         status: appState.adminCstpRequestQueueFilter.status,
@@ -44862,6 +45051,27 @@ function bindAdminCstpRequestQueue(scope = app) {
       });
     });
   }
+
+  scope.querySelectorAll("[data-admin-cstp-request-detail-open]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpRequestQueueBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpRequestQueueBound = "true";
+    button.addEventListener("click", () => {
+      const requestId = String(button.dataset.adminCstpRequestDetailOpen || "").trim();
+      refreshAdminCstpRequestDetailAndRender(app, requestId);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-request-detail-back]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpRequestQueueBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpRequestQueueBound = "true";
+    button.addEventListener("click", () => {
+      clearAdminCstpRequestDetail(app);
+    });
+  });
 }
 
 function bindAdminCstpLabSection(scope = app) {
