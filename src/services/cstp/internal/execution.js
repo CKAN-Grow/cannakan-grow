@@ -7,6 +7,12 @@ const {
   createCstpRequest,
   prepareRequestAdminEvent,
 } = require("./requests");
+const {
+  archiveCstpTest,
+  createCstpTest,
+  prepareTestAdminEvent,
+  updateCstpTestStatus,
+} = require("./tests");
 
 /*
  * Internal CSTP Supabase execution boundary.
@@ -16,13 +22,14 @@ const {
  * lifecycle rules, audit sequencing, and partial-failure behavior cannot drift
  * across route handlers or future admin screens.
  *
- * Scope in this first execution slice:
- * - CSTP request creation only.
+ * Current execution scope:
+ * - CSTP request creation.
+ * - CSTP test creation.
+ * - CSTP test status updates and archival.
  * - Optional cstp_admin_events insert only when the event can be finalized.
  *
  * Explicitly out of scope:
  * - public reads
- * - test execution
  * - session-link execution
  * - grow_session mutation
  * - report/certification logic
@@ -31,6 +38,173 @@ const {
 
 function getEnv(name, fallback = "", env = process.env) {
   return String(env?.[name] || fallback).trim();
+}
+
+async function executeCstpTestCreation(input = {}, options = {}) {
+  const preparedTest = createCstpTest(input);
+  return executePreparedCstpTestMutation({
+    preparedTest,
+    options,
+    operation: "execute_cstp_test_create",
+    method: "POST",
+    path: `${preparedTest.test.table}?select=*`,
+    successStatus: "test_created",
+    primaryFailureStatus: "test_insert_failed",
+    auditFailureStatus: "test_created_audit_insert_failed",
+  });
+}
+
+async function executeCstpTestStatusUpdate(input = {}, options = {}) {
+  const preparedTest = updateCstpTestStatus(input);
+  const testId = preparedTest.testId;
+
+  return executePreparedCstpTestMutation({
+    preparedTest,
+    options,
+    operation: "execute_cstp_test_status_update",
+    method: "PATCH",
+    path: `${preparedTest.test.table}?id=eq.${encodeURIComponent(testId)}&select=*`,
+    successStatus: "test_status_updated",
+    primaryFailureStatus: "test_status_update_failed",
+    auditFailureStatus: "test_status_updated_audit_insert_failed",
+  });
+}
+
+async function executeCstpTestArchive(input = {}, options = {}) {
+  const preparedTest = archiveCstpTest(input);
+  const testId = preparedTest.testId;
+
+  return executePreparedCstpTestMutation({
+    preparedTest,
+    options,
+    operation: "execute_cstp_test_archive",
+    method: "PATCH",
+    path: `${preparedTest.test.table}?id=eq.${encodeURIComponent(testId)}&select=*`,
+    successStatus: "test_archived",
+    primaryFailureStatus: "test_archive_failed",
+    auditFailureStatus: "test_archived_audit_insert_failed",
+  });
+}
+
+async function executePreparedCstpTestMutation({
+  preparedTest,
+  options,
+  operation,
+  method,
+  path,
+  successStatus,
+  primaryFailureStatus,
+  auditFailureStatus,
+}) {
+  const config = resolveExecutionConfig(options);
+  const fetchImpl = resolveFetchImplementation(options);
+
+  if (!config.ok) {
+    return buildTestExecutionFailure({
+      status: "configuration_failed",
+      operation,
+      preparedTest,
+      error: config.error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let testRecord;
+
+  try {
+    const testRows = await supabaseRest(path, config.value, {
+      method,
+      body: preparedTest.test.record,
+      prefer: "return=representation",
+      fetchImpl,
+    });
+
+    testRecord = normalizeSingleRow(testRows, CSTP_TABLES.tests);
+  } catch (error) {
+    return buildTestExecutionFailure({
+      status: primaryFailureStatus,
+      operation,
+      preparedTest,
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  const finalizedAdminEvent = finalizeTestAdminEvent({
+    preparedAdminEvent: preparedTest.adminEvent,
+    testRecord,
+  });
+
+  if (finalizedAdminEvent.deferred) {
+    return deepFreeze({
+      ok: true,
+      status: `${successStatus}_audit_deferred`,
+      operation,
+      test: {
+        record: testRecord,
+        prepared: preparedTest.test,
+      },
+      adminEvent: {
+        status: "deferred",
+        payload: finalizedAdminEvent,
+        reason: finalizedAdminEvent.reason,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: false,
+        auditDeferred: true,
+      },
+      internalOnly: true,
+    });
+  }
+
+  try {
+    const adminEventRows = await supabaseRest(
+      `${CSTP_TABLES.adminEvents}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: finalizedAdminEvent.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    return deepFreeze({
+      ok: true,
+      status: successStatus,
+      operation,
+      test: {
+        record: testRecord,
+        prepared: preparedTest.test,
+      },
+      adminEvent: {
+        status: "inserted",
+        record: normalizeSingleRow(adminEventRows, CSTP_TABLES.adminEvents),
+        payload: finalizedAdminEvent,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: true,
+      },
+      internalOnly: true,
+    });
+  } catch (error) {
+    return buildTestExecutionFailure({
+      status: auditFailureStatus,
+      operation,
+      preparedTest,
+      testRecord,
+      adminEvent: finalizedAdminEvent,
+      error,
+      primaryMutationCommitted: true,
+      auditMutationCommitted: false,
+    });
+  }
 }
 
 function getCstpSupabaseRuntimeConfig(env = process.env) {
@@ -199,6 +373,41 @@ function finalizeRequestCreationAdminEvent({
   });
 }
 
+function finalizeTestAdminEvent({ preparedAdminEvent, testRecord }) {
+  const cstpTestId =
+    testRecord?.id ||
+    preparedAdminEvent?.record?.cstp_test_id ||
+    preparedAdminEvent?.cstpTestId;
+  const adminUserId =
+    preparedAdminEvent?.record?.admin_user_id || preparedAdminEvent?.adminUserId;
+  const requestId =
+    testRecord?.request_id ||
+    preparedAdminEvent?.requestId ||
+    extractPreparedAdminEventMetadata(preparedAdminEvent).requestId;
+  const eventNotes =
+    preparedAdminEvent?.record?.event_notes || preparedAdminEvent?.eventNotes;
+  const metadata = {
+    ...extractPreparedAdminEventMetadata(preparedAdminEvent),
+    cstpTestId,
+    requestId,
+    sourceId: testRecord?.source_id,
+    status: testRecord?.status,
+  };
+
+  return prepareTestAdminEvent({
+    eventType:
+      preparedAdminEvent?.record?.event_type ||
+      preparedAdminEvent?.eventType ||
+      CSTP_ADMIN_EVENT_TYPES.testStatusChanged,
+    cstpTestId,
+    adminUserId,
+    requestId,
+    eventNotes,
+    metadata,
+    createdAt: preparedAdminEvent?.record?.created_at,
+  });
+}
+
 async function supabaseRest(path, config, options = {}) {
   const {
     method = "GET",
@@ -329,6 +538,38 @@ function buildExecutionFailure({
   });
 }
 
+function buildTestExecutionFailure({
+  status,
+  operation,
+  preparedTest,
+  testRecord = null,
+  adminEvent = null,
+  error,
+  primaryMutationCommitted,
+  auditMutationCommitted,
+}) {
+  return deepFreeze({
+    ok: false,
+    status,
+    operation,
+    test: {
+      record: testRecord,
+      prepared: preparedTest?.test || null,
+    },
+    adminEvent: {
+      status: auditMutationCommitted ? "inserted" : "failed",
+      payload: adminEvent,
+    },
+    error: normalizeExecutionError(error),
+    transaction: {
+      atomic: false,
+      primaryMutationCommitted,
+      auditMutationCommitted,
+    },
+    internalOnly: true,
+  });
+}
+
 function normalizeExecutionError(error) {
   return {
     name: error?.name || "Error",
@@ -358,7 +599,11 @@ function deepFreeze(value) {
 
 module.exports = {
   executeCstpRequestCreation,
+  executeCstpTestArchive,
+  executeCstpTestCreation,
+  executeCstpTestStatusUpdate,
   finalizeRequestCreationAdminEvent,
+  finalizeTestAdminEvent,
   getCstpSupabaseRuntimeConfig,
   supabaseRest,
 };
