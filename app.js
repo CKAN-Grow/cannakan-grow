@@ -26849,6 +26849,7 @@ function renderSetupScreen() {
           <p class="eyebrow">Local QA</p>
           <h3>Run the app shell without Supabase</h3>
           <p class="muted">Enable a localhost-only mock user so you can test sessions, reminders, and notifications while the real setup screen stays intact for production.</p>
+          <p class="muted">CSTP admin workflows require real local Supabase auth, <code>admin_users</code> membership, and an API-capable local runtime. The mock user does not validate protected CSTP admin APIs.</p>
           <p class="local-dev-qa-setup-helper-note">Storage key: <code>${escapeHtml(DEV_QA_BYPASS_STORAGE_KEY)}</code></p>
         </div>
         <div class="local-dev-qa-setup-helper-actions">

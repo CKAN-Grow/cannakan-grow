@@ -40,6 +40,8 @@ Before manual CSTP validation:
 
 The app runtime must have Supabase configuration available through the project’s existing runtime config pattern. If runtime config values are missing, the app may show setup/config messaging instead of enabling operational admin flows.
 
+For browser-based CSTP admin validation, the local app runtime must also serve the protected `/api/cstp-admin-*` routes. The `local-server.ps1` helper is useful for static shell checks, but it does not execute API route modules and is not sufficient for full CSTP admin workflow QA.
+
 ## 4. Admin Account Setup Expectations
 
 CSTP admin APIs require an authenticated admin actor.
@@ -144,12 +146,14 @@ Symptoms:
 - app shows setup/config messaging
 - CSTP admin API calls fail configuration checks
 - build reports missing Supabase runtime config values
+- the local setup helper offers Dev QA Bypass, but protected CSTP admin APIs remain unavailable
 
 Checks:
 
 - confirm local Supabase URL is configured
 - confirm anon/service role keys are available where the project expects them
 - rerun the project build/config generation step if needed
+- confirm the app is running through an API-capable local runtime before browser-testing CSTP admin workflows
 
 ### Failed Admin Auth
 
@@ -202,6 +206,14 @@ Supabase runtime config was generated without values. The app will show the setu
 ```
 
 This means the build ran, but local Supabase values were not available to the runtime config generator. Provide local values before browser-based operational validation.
+
+Known static-server limitation:
+
+```text
+This local-server.ps1 helper serves static files only. CSTP admin browser QA requires an API-capable local runtime so protected /api/cstp-admin-* routes can authorize against local Supabase.
+```
+
+This means the app shell may load, but API-backed CSTP admin screens cannot complete real operational browser QA through the static helper alone.
 
 ### Smoke-Test Failures
 

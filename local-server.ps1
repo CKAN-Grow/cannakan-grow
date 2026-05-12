@@ -39,6 +39,16 @@ try {
         $path = "/index.html"
       }
 
+      if ($path.StartsWith("/api/")) {
+        $bodyText = "This local-server.ps1 helper serves static files only. CSTP admin browser QA requires an API-capable local runtime so protected /api/cstp-admin-* routes can authorize against local Supabase."
+        $body = [System.Text.Encoding]::UTF8.GetBytes($bodyText)
+        $headers = "HTTP/1.1 501 Not Implemented`r`nContent-Type: text/plain; charset=utf-8`r`nContent-Length: $($body.Length)`r`nConnection: close`r`n`r`n"
+        $headerBytes = [System.Text.Encoding]::ASCII.GetBytes($headers)
+        $stream.Write($headerBytes, 0, $headerBytes.Length)
+        $stream.Write($body, 0, $body.Length)
+        continue
+      }
+
       $relativePath = [System.Uri]::UnescapeDataString($path.TrimStart("/")).Replace("/", "\")
       $filePath = Join-Path $root $relativePath
       $publicFilePath = Join-Path (Join-Path $root "public") $relativePath
