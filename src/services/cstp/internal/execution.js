@@ -1,0 +1,364 @@
+"use strict";
+
+const { CSTP_ADMIN_EVENT_TYPES } = require("./admin-events");
+const { CSTP_TABLES } = require("./constants");
+const { CstpExecutionError } = require("./errors");
+const {
+  createCstpRequest,
+  prepareRequestAdminEvent,
+} = require("./requests");
+
+/*
+ * Internal CSTP Supabase execution boundary.
+ *
+ * This module is intentionally not an API route and is not wired into UI/app
+ * flows. Database writes for CSTP should stay centralized here so validation,
+ * lifecycle rules, audit sequencing, and partial-failure behavior cannot drift
+ * across route handlers or future admin screens.
+ *
+ * Scope in this first execution slice:
+ * - CSTP request creation only.
+ * - Optional cstp_admin_events insert only when the event can be finalized.
+ *
+ * Explicitly out of scope:
+ * - public reads
+ * - test execution
+ * - session-link execution
+ * - grow_session mutation
+ * - report/certification logic
+ * - API/UI/RLS integration
+ */
+
+function getEnv(name, fallback = "", env = process.env) {
+  return String(env?.[name] || fallback).trim();
+}
+
+function getCstpSupabaseRuntimeConfig(env = process.env) {
+  return {
+    supabaseUrl: getEnv(
+      "CANNAKAN_SUPABASE_URL",
+      getEnv("SUPABASE_URL", getEnv("NEXT_PUBLIC_SUPABASE_URL", "", env), env),
+      env,
+    ),
+    supabaseServiceRoleKey: getEnv(
+      "CANNAKAN_SUPABASE_SERVICE_ROLE_KEY",
+      getEnv(
+        "SUPABASE_SERVICE_ROLE_KEY",
+        getEnv("SUPABASE_SERVICE_KEY", getEnv("SUPABASE_SECRET_KEY", "", env), env),
+        env,
+      ),
+      env,
+    ),
+  };
+}
+
+async function executeCstpRequestCreation(input = {}, options = {}) {
+  const preparedRequest = createCstpRequest(input);
+  const config = resolveExecutionConfig(options);
+  const fetchImpl = resolveFetchImplementation(options);
+
+  if (!config.ok) {
+    return buildExecutionFailure({
+      status: "configuration_failed",
+      operation: "execute_cstp_request_create",
+      preparedRequest,
+      error: config.error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let createdRequest;
+
+  try {
+    const requestRows = await supabaseRest(
+      `${preparedRequest.request.table}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: preparedRequest.request.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    createdRequest = normalizeSingleRow(requestRows, CSTP_TABLES.requests);
+  } catch (error) {
+    return buildExecutionFailure({
+      status: "request_insert_failed",
+      operation: "execute_cstp_request_create",
+      preparedRequest,
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  const finalizedAdminEvent = finalizeRequestCreationAdminEvent({
+    preparedAdminEvent: preparedRequest.adminEvent,
+    createdRequest,
+  });
+
+  if (finalizedAdminEvent.deferred) {
+    return deepFreeze({
+      ok: true,
+      status: "request_created_audit_deferred",
+      operation: "execute_cstp_request_create",
+      request: {
+        record: createdRequest,
+        prepared: preparedRequest.request,
+      },
+      adminEvent: {
+        status: "deferred",
+        payload: finalizedAdminEvent,
+        reason: finalizedAdminEvent.reason,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: false,
+        auditDeferred: true,
+      },
+      internalOnly: true,
+    });
+  }
+
+  try {
+    const adminEventRows = await supabaseRest(
+      `${CSTP_TABLES.adminEvents}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: finalizedAdminEvent.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    return deepFreeze({
+      ok: true,
+      status: "request_created",
+      operation: "execute_cstp_request_create",
+      request: {
+        record: createdRequest,
+        prepared: preparedRequest.request,
+      },
+      adminEvent: {
+        status: "inserted",
+        record: normalizeSingleRow(adminEventRows, CSTP_TABLES.adminEvents),
+        payload: finalizedAdminEvent,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: true,
+      },
+      internalOnly: true,
+    });
+  } catch (error) {
+    return buildExecutionFailure({
+      status: "request_created_audit_insert_failed",
+      operation: "execute_cstp_request_create",
+      preparedRequest,
+      createdRequest,
+      adminEvent: finalizedAdminEvent,
+      error,
+      primaryMutationCommitted: true,
+      auditMutationCommitted: false,
+    });
+  }
+}
+
+function finalizeRequestCreationAdminEvent({
+  preparedAdminEvent,
+  createdRequest,
+}) {
+  const requestId = createdRequest?.id || preparedAdminEvent?.requestId;
+  const cstpTestId =
+    preparedAdminEvent?.record?.cstp_test_id || preparedAdminEvent?.cstpTestId;
+  const adminUserId =
+    preparedAdminEvent?.record?.admin_user_id || preparedAdminEvent?.adminUserId;
+  const eventNotes =
+    preparedAdminEvent?.record?.event_notes || preparedAdminEvent?.eventNotes;
+  const metadata = {
+    ...extractPreparedAdminEventMetadata(preparedAdminEvent),
+    requestId,
+  };
+
+  return prepareRequestAdminEvent({
+    eventType:
+      preparedAdminEvent?.record?.event_type ||
+      preparedAdminEvent?.eventType ||
+      CSTP_ADMIN_EVENT_TYPES.requestCreated,
+    requestId,
+    cstpTestId,
+    adminUserId,
+    eventNotes,
+    metadata,
+    createdAt: preparedAdminEvent?.record?.created_at,
+  });
+}
+
+async function supabaseRest(path, config, options = {}) {
+  const {
+    method = "GET",
+    body = undefined,
+    prefer = "",
+    fetchImpl = globalThis.fetch,
+  } = options;
+
+  if (typeof fetchImpl !== "function") {
+    throw new CstpExecutionError("A fetch implementation is required.", {
+      code: "CSTP_EXECUTION_FETCH_UNAVAILABLE",
+    });
+  }
+
+  const response = await fetchImpl(`${config.supabaseUrl}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: config.supabaseServiceRoleKey,
+      Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+      "Content-Type": "application/json",
+      ...(prefer ? { Prefer: prefer } : {}),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new CstpExecutionError(
+      `Supabase REST ${method} ${path} failed with ${response.status}.`,
+      {
+        code: "CSTP_SUPABASE_REST_FAILED",
+        method,
+        path,
+        status: response.status,
+        responseText: text,
+      },
+    );
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function resolveExecutionConfig(options = {}) {
+  const config = options.config || getCstpSupabaseRuntimeConfig(options.env);
+
+  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
+    return {
+      ok: false,
+      error: new CstpExecutionError(
+        "CSTP Supabase execution is not configured.",
+        {
+          code: "CSTP_EXECUTION_NOT_CONFIGURED",
+          supabaseUrlAvailable: Boolean(config.supabaseUrl),
+          supabaseServiceRoleKeyAvailable: Boolean(
+            config.supabaseServiceRoleKey,
+          ),
+        },
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    value: config,
+  };
+}
+
+function resolveFetchImplementation(options = {}) {
+  return options.fetchImpl || globalThis.fetch;
+}
+
+function normalizeSingleRow(rows, tableName) {
+  if (Array.isArray(rows) && rows.length === 1) {
+    return rows[0];
+  }
+
+  if (Array.isArray(rows) && rows.length > 1) {
+    throw new CstpExecutionError(
+      `Expected one row from ${tableName}, received ${rows.length}.`,
+      {
+        code: "CSTP_EXECUTION_UNEXPECTED_ROW_COUNT",
+        tableName,
+        rowCount: rows.length,
+      },
+    );
+  }
+
+  if (rows && !Array.isArray(rows)) {
+    return rows;
+  }
+
+  throw new CstpExecutionError(`No row returned from ${tableName}.`, {
+    code: "CSTP_EXECUTION_NO_ROW_RETURNED",
+    tableName,
+  });
+}
+
+function buildExecutionFailure({
+  status,
+  operation,
+  preparedRequest,
+  createdRequest = null,
+  adminEvent = null,
+  error,
+  primaryMutationCommitted,
+  auditMutationCommitted,
+}) {
+  return deepFreeze({
+    ok: false,
+    status,
+    operation,
+    request: {
+      record: createdRequest,
+      prepared: preparedRequest?.request || null,
+    },
+    adminEvent: {
+      status: auditMutationCommitted ? "inserted" : "failed",
+      payload: adminEvent,
+    },
+    error: normalizeExecutionError(error),
+    transaction: {
+      atomic: false,
+      primaryMutationCommitted,
+      auditMutationCommitted,
+    },
+    internalOnly: true,
+  });
+}
+
+function normalizeExecutionError(error) {
+  return {
+    name: error?.name || "Error",
+    code: error?.code || "CSTP_EXECUTION_UNKNOWN_ERROR",
+    message: error?.message || String(error),
+    details: error?.details || {},
+  };
+}
+
+function extractPreparedAdminEventMetadata(preparedAdminEvent) {
+  if (preparedAdminEvent?.metadata?.details) {
+    return preparedAdminEvent.metadata.details;
+  }
+
+  return preparedAdminEvent?.metadata || {};
+}
+
+function deepFreeze(value) {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+
+  Object.freeze(value);
+  Object.values(value).forEach(deepFreeze);
+  return value;
+}
+
+module.exports = {
+  executeCstpRequestCreation,
+  finalizeRequestCreationAdminEvent,
+  getCstpSupabaseRuntimeConfig,
+  supabaseRest,
+};

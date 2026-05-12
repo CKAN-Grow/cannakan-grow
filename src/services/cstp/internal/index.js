@@ -14,6 +14,7 @@ const adminEvents = require("./admin-events");
 const requests = require("./requests");
 const tests = require("./tests");
 const sessionLinks = require("./session-links");
+const execution = require("./execution");
 
 module.exports = {
   constants,
@@ -23,6 +24,7 @@ module.exports = {
   requests,
   tests,
   sessionLinks,
+  execution,
   ...constants,
   ...errors,
   ...lifecycle,
@@ -30,4 +32,5 @@ module.exports = {
   ...requests,
   ...tests,
   ...sessionLinks,
+  ...execution,
 };
