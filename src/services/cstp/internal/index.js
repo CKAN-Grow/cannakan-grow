@@ -17,6 +17,7 @@ const tests = require("./tests");
 const sessionLinks = require("./session-links");
 const execution = require("./execution");
 const immutableReportValidator = require("./immutable-report-validator");
+const immutableSnapshotAssembler = require("./immutable-snapshot-assembler");
 
 module.exports = {
   constants,
@@ -29,6 +30,7 @@ module.exports = {
   sessionLinks,
   execution,
   immutableReportValidator,
+  immutableSnapshotAssembler,
   ...constants,
   ...errors,
   ...lifecycle,
@@ -39,4 +41,5 @@ module.exports = {
   ...sessionLinks,
   ...execution,
   ...immutableReportValidator,
+  ...immutableSnapshotAssembler,
 };
