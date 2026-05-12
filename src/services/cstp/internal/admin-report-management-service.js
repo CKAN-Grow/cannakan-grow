@@ -2,10 +2,12 @@
 
 const {
   CSTP_REPORT_TABLES,
+  VALIDATION_SEVERITIES,
   createValidationIssue,
   createValidationResult,
   mergeValidationResults,
   validateImmutableReportSnapshotCandidate,
+  validatePublicationReadinessShape,
 } = require("./immutable-report-validator");
 const {
   prepareImmutableReportSnapshot,
@@ -159,6 +161,7 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     action: ADMIN_REPORT_ACTIONS.inspectValidation,
     workflowMode: "inspect_validation",
     validation,
+    validationEvidenceSummary: normalizedInput.validationEvidenceSummary,
     message: validation.ok
       ? "Internal CSTP report validation inspection completed."
       : "Internal CSTP report validation inspection found blocking issues.",
@@ -383,6 +386,7 @@ function validateOperationalInputs({ issues, input }) {
 
 function buildValidationInspectionResults(rawInput = {}, normalizedInput = {}) {
   const results = [];
+  const persistedEvidenceSummary = normalizedInput.validationEvidenceSummary || {};
 
   if (rawInput.workflowInput) {
     results.push(validateImmutableReportWorkflowInputs(rawInput.workflowInput, {
@@ -391,10 +395,24 @@ function buildValidationInspectionResults(rawInput = {}, normalizedInput = {}) {
   }
 
   if (rawInput.validationContext) {
-    results.push(validateImmutableReportSnapshotCandidate(
-      rawInput.validationContext,
-      rawInput.validationOptions || {},
-    ));
+    results.push(validatePersistedImmutableEvidenceShape({
+      evidenceSummary: persistedEvidenceSummary,
+      validationContext: rawInput.validationContext,
+    }));
+
+    if (!persistedEvidenceSummary.emptyState) {
+      results.push(validateImmutableReportSnapshotCandidate(
+        rawInput.validationContext,
+        rawInput.validationOptions || {},
+      ));
+
+      if (shouldValidatePublicationReadiness(rawInput)) {
+        results.push(validatePublicationReadinessShape(
+          rawInput.validationContext,
+          rawInput.validationOptions || {},
+        ));
+      }
+    }
   }
 
   if (rawInput.candidate) {
@@ -427,6 +445,127 @@ function buildValidationInspectionResults(rawInput = {}, normalizedInput = {}) {
   }
 
   return results;
+}
+
+function validatePersistedImmutableEvidenceShape({
+  evidenceSummary = {},
+  validationContext = {},
+} = {}) {
+  const issues = [];
+  const persistedReportCount = Number(evidenceSummary.persistedReportCount || 0);
+  const persistedSnapshotCount = Number(evidenceSummary.persistedSnapshotCount || 0);
+  const metricCount = Number(evidenceSummary.metricCount || 0);
+  const sessionEvidenceCount = Number(evidenceSummary.sessionEvidenceCount || 0);
+  const auditLinkCount = Number(evidenceSummary.auditLinkCount || 0);
+
+  if (evidenceSummary.mode !== "real_persisted_immutable_validation") {
+    return createValidationResult({
+      validator: "validatePersistedImmutableEvidenceShape",
+      issues,
+      metadata: {
+        mode: evidenceSummary.mode || "caller_supplied_validation_context",
+      },
+    });
+  }
+
+  if (persistedReportCount === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_PERSISTED_REPORT_NOT_FOUND",
+      message: "No persisted immutable CSTP report was found for the requested internal validation scope.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "report",
+      table: CSTP_REPORT_TABLES.reports,
+      field: "id",
+      metadata: {
+        cstpRequestId: evidenceSummary.cstpRequestId || null,
+        cstpTestId: evidenceSummary.cstpTestId || null,
+      },
+    }));
+  }
+
+  if (persistedReportCount > 0 && persistedSnapshotCount === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_PERSISTED_SNAPSHOT_NOT_FOUND",
+      message: "Persisted immutable CSTP report exists but no snapshot records were found.",
+      entity: "snapshot",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "report_id",
+      metadata: {
+        reportId: evidenceSummary.reportId || null,
+      },
+    }));
+  }
+
+  if (persistedReportCount > 0 && metricCount === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_PERSISTED_METRIC_EVIDENCE_MISSING",
+      message: "No persisted immutable metric evidence was found for the inspected snapshot context.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "metric",
+      table: CSTP_REPORT_TABLES.metrics,
+      field: "snapshot_id",
+      metadata: {
+        snapshotId: evidenceSummary.snapshotId || null,
+      },
+    }));
+  }
+
+  if (persistedReportCount > 0 && sessionEvidenceCount === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_PERSISTED_SESSION_EVIDENCE_MISSING",
+      message: "No persisted immutable session evidence was found for the inspected snapshot context.",
+      entity: "session",
+      table: CSTP_REPORT_TABLES.sessions,
+      field: "snapshot_id",
+      metadata: {
+        snapshotId: evidenceSummary.snapshotId || null,
+      },
+    }));
+  }
+
+  if (persistedReportCount > 0 && auditLinkCount === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_PERSISTED_AUDIT_LINK_EVIDENCE_MISSING",
+      message: "No persisted immutable audit-link evidence was found for the inspected report context.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "audit_link",
+      table: CSTP_REPORT_TABLES.auditLinks,
+      field: "report_id",
+      metadata: {
+        reportId: evidenceSummary.reportId || null,
+      },
+    }));
+  }
+
+  return createValidationResult({
+    validator: "validatePersistedImmutableEvidenceShape",
+    issues,
+    metadata: {
+      mode: evidenceSummary.mode,
+      reportId: evidenceSummary.reportId || null,
+      snapshotId: evidenceSummary.snapshotId || null,
+      persistedReportCount,
+      persistedSnapshotCount,
+      metricCount,
+      sessionEvidenceCount,
+      auditLinkCount,
+      validationContextLoaded: Boolean(validationContext),
+      internalOnly: true,
+      publicVisibility: false,
+    },
+  });
+}
+
+function shouldValidatePublicationReadiness(rawInput = {}) {
+  if (rawInput.validationOptions?.requirePublicationReadiness === true) {
+    return true;
+  }
+
+  const status = normalizeNullableText(rawInput.validationContext?.snapshot?.status).toLowerCase();
+  return ["prepared", "published", "published_internal"].includes(status);
 }
 
 function buildCandidateValidationContext(candidate = {}, input = {}) {
@@ -465,6 +604,7 @@ function buildAdminResult({
   workflowResult = null,
   lineageSummary = null,
   persistenceSummary = null,
+  validationEvidenceSummary = null,
   message,
 }) {
   const blockingErrors = validation?.issues?.filter((issue) => issue.blocking) || [];
@@ -483,6 +623,7 @@ function buildAdminResult({
     validationSummary: validation?.summary || null,
     lineageSummary,
     persistenceSummary,
+    validationEvidenceSummary,
     blockingErrors,
     warnings,
     message,
@@ -604,6 +745,10 @@ function normalizeAdminInput(input = {}, options = {}) {
       ? input.existingSnapshots.slice()
       : [],
     immutableLineageSummary: input.immutableLineageSummary || null,
+    validationEvidenceSummary:
+      input.validationEvidenceSummary
+      || input.persistedImmutableValidation?.evidenceSummary
+      || null,
     persist: Boolean(input.persist || options.persist),
   };
 }

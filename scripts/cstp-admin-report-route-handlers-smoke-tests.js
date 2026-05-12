@@ -13,6 +13,7 @@ const {
   handleCstpReportsListRoute,
   loadCstpAdminReportData,
   loadImmutableReportLineage,
+  loadImmutableValidationContext,
 } = require("../src/services/cstp/internal/admin-report-route-handlers");
 const {
   assembleImmutableReportSnapshotCandidate,
@@ -34,6 +35,7 @@ async function main() {
   await assertWorkflowRoutes();
   await assertRealOperationalLoaderShadowMode();
   await assertRealImmutableLineageLoader();
+  await assertRealImmutableValidationLoader();
   await assertReadOnlyRoutes();
   await assertPublicContextRejection();
   await assertApiWrappersLoad();
@@ -277,6 +279,66 @@ async function assertRealImmutableLineageLoader() {
   assert.equal(loaded.immutableLineageSummary.publicVisibility, false);
 }
 
+async function assertRealImmutableValidationLoader() {
+  const loaded = await loadCstpAdminReportData({
+    definition: REPORT_ROUTE_DEFINITIONS.inspectValidation,
+    payload: createRouteBody({
+      cstpRequestId: REQUEST_ID,
+      cstpTestId: TEST_ID,
+    }),
+    options: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseServiceRoleKey: "service-role-key",
+      },
+      fetchImpl: createOperationalLoaderFetch(),
+    },
+  });
+
+  assert.equal(loaded.validationContext.report.id, REPORT_ID);
+  assert.equal(loaded.validationContext.snapshot.id, SNAPSHOT_TWO_ID);
+  assert.equal(loaded.validationEvidenceSummary.mode, "real_persisted_immutable_validation");
+  assert.equal(loaded.validationEvidenceSummary.persistedReportCount, 1);
+  assert.equal(loaded.validationEvidenceSummary.persistedSnapshotCount, 2);
+  assert.equal(loaded.validationEvidenceSummary.metricCount, 2);
+  assert.equal(loaded.validationEvidenceSummary.sessionEvidenceCount, 2);
+  assert.equal(loaded.validationEvidenceSummary.auditLinkCount, 1);
+  assert.equal(loaded.validationEvidenceSummary.publicVisibility, false);
+
+  const direct = await loadImmutableValidationContext({
+    context: {
+      cstpTestId: TEST_ID,
+    },
+    operationalContext: loaded,
+    adminContext: createAdminContext(),
+    config: {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseServiceRoleKey: "service-role-key",
+    },
+    fetchImpl: createOperationalLoaderFetch(),
+  });
+  assert.equal(direct.validationOptions.requirePublicationReadiness, true);
+  assert.equal(direct.evidenceSummary.immutableSnapshotsPubliclyVisible, false);
+
+  const empty = await loadCstpAdminReportData({
+    definition: REPORT_ROUTE_DEFINITIONS.inspectValidation,
+    payload: createRouteBody({
+      reportId: "",
+      cstpRequestId: "",
+      cstpTestId: "aaaaaaaa-1111-4111-8111-111111111111",
+    }),
+    options: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseServiceRoleKey: "service-role-key",
+      },
+      fetchImpl: createOperationalLoaderFetch(),
+    },
+  });
+  assert.equal(empty.validationEvidenceSummary.emptyState, true);
+  assert.equal(empty.validationEvidenceSummary.persistedReportCount, 0);
+}
+
 async function assertReadOnlyRoutes() {
   const lineage = await invokeRoute(handleCstpReportLineageRoute, {
     method: "GET",
@@ -347,6 +409,63 @@ async function assertReadOnlyRoutes() {
   });
   assert.equal(validation.statusCode, 200);
   assert.equal(validation.payload.workflowMode, "inspect_validation");
+
+  const persistedValidation = await invokeRoute(handleCstpReportValidationRoute, {
+    body: createRouteBody({
+      cstpRequestId: REQUEST_ID,
+      cstpTestId: TEST_ID,
+    }),
+    loadedData: {
+      ...createLoadedWorkflowData({
+        existingReport: createPersistedLineageReport(),
+        existingSnapshots: createPersistedLineageSnapshots(),
+      }),
+      validationContext: {
+        report: createPersistedLineageReport(),
+        snapshot: createPersistedLineageSnapshots()[1],
+        snapshots: createPersistedLineageSnapshots(),
+        cstpRequest: createLoadedWorkflowData().cstpRequest,
+        cstpTest: createLoadedWorkflowData().cstpTest,
+        source: createLoadedWorkflowData().source,
+        sessionLinks: createLoadedWorkflowData().cstpTestSessions,
+        growSessions: createLoadedWorkflowData().growSessions,
+        auditLinks: [
+          {
+            id: "50505050-5050-4050-8050-505050505050",
+            report_id: REPORT_ID,
+            snapshot_id: SNAPSHOT_TWO_ID,
+            created_by: ADMIN_ID,
+            event_role: "snapshot_published",
+          },
+        ],
+        actor: createAdminContext(),
+      },
+      validationOptions: {
+        mode: "persisted_immutable_validation_inspection",
+        requireReport: true,
+        requireSnapshot: true,
+        requireSessions: true,
+        requireAdminContext: true,
+        requireNonEmptyPayload: true,
+        requirePublicationReadiness: true,
+        requireAuditLink: true,
+      },
+      validationEvidenceSummary: {
+        mode: "real_persisted_immutable_validation",
+        persistedReportCount: 1,
+        persistedSnapshotCount: 2,
+        metricCount: 2,
+        sessionEvidenceCount: 1,
+        auditLinkCount: 1,
+        reportId: REPORT_ID,
+        snapshotId: SNAPSHOT_TWO_ID,
+        publicVisibility: false,
+      },
+    },
+  });
+  assert.equal(persistedValidation.statusCode, 200);
+  assert.equal(persistedValidation.payload.validationEvidenceSummary.metricCount, 2);
+  assert.equal(persistedValidation.payload.routeSafety.publicAccess, false);
 
   const listed = await invokeRoute(handleCstpReportsListRoute, {
     method: "GET",
@@ -508,6 +627,13 @@ function createOperationalInput(overrides = {}) {
   };
 }
 
+function createAdminContext() {
+  return {
+    adminUserId: ADMIN_ID,
+    cstpAdminEventId: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  };
+}
+
 function createExistingReport() {
   return {
     id: REPORT_ID,
@@ -646,6 +772,9 @@ function createOperationalLoaderFetch() {
   return async (url) => {
     const textUrl = String(url);
     if (textUrl.includes("/rest/v1/cstp_tests?")) {
+      if (textUrl.includes("aaaaaaaa-1111-4111-8111-111111111111")) {
+        return createFetchResponse(200, []);
+      }
       return createFetchResponse(200, [
         {
           id: TEST_ID,
@@ -656,6 +785,9 @@ function createOperationalLoaderFetch() {
       ]);
     }
     if (textUrl.includes("/rest/v1/cstp_requests?")) {
+      if (textUrl.includes("aaaaaaaa-1111-4111-8111-111111111111")) {
+        return createFetchResponse(200, []);
+      }
       return createFetchResponse(200, [
         {
           id: REQUEST_ID,
@@ -703,14 +835,64 @@ function createOperationalLoaderFetch() {
     }
     if (textUrl.includes("/rest/v1/cstp_report_metrics?")) {
       return createFetchResponse(200, [
-        { id: "10101010-1010-4010-8010-101010101010", snapshot_id: SNAPSHOT_ONE_ID },
-        { id: "20202020-2020-4020-8020-202020202020", snapshot_id: SNAPSHOT_TWO_ID },
+        {
+          id: "10101010-1010-4010-8010-101010101010",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_ONE_ID,
+          cstp_test_id: TEST_ID,
+          metric_key: "reviewed_session_count",
+          metric_type: "count",
+          metric_value: 1,
+          frozen_metric_payload: { internalOnly: true },
+          calculated_at: "2026-05-11T14:30:00.000Z",
+        },
+        {
+          id: "20202020-2020-4020-8020-202020202020",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_TWO_ID,
+          cstp_test_id: TEST_ID,
+          metric_key: "reviewed_session_count",
+          metric_type: "count",
+          metric_value: 1,
+          frozen_metric_payload: { internalOnly: true },
+          calculated_at: "2026-05-12T14:30:00.000Z",
+        },
       ]);
     }
     if (textUrl.includes("/rest/v1/cstp_report_sessions?")) {
       return createFetchResponse(200, [
-        { id: "30303030-3030-4030-8030-303030303030", snapshot_id: SNAPSHOT_ONE_ID },
-        { id: "40404040-4040-4040-8040-404040404040", snapshot_id: SNAPSHOT_TWO_ID },
+        {
+          id: "30303030-3030-4030-8030-303030303030",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_ONE_ID,
+          cstp_test_id: TEST_ID,
+          cstp_test_session_id: TEST_SESSION_ID,
+          grow_session_id: GROW_SESSION_ID,
+          included_in_report: true,
+          frozen_session_summary: { internalOnly: true },
+        },
+        {
+          id: "40404040-4040-4040-8040-404040404040",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_TWO_ID,
+          cstp_test_id: TEST_ID,
+          cstp_test_session_id: TEST_SESSION_ID,
+          grow_session_id: GROW_SESSION_ID,
+          included_in_report: true,
+          frozen_session_summary: { internalOnly: true },
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/cstp_report_audit_links?")) {
+      return createFetchResponse(200, [
+        {
+          id: "50505050-5050-4050-8050-505050505050",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_TWO_ID,
+          cstp_admin_event_id: "60606060-6060-4060-8060-606060606060",
+          event_role: "snapshot_published",
+          created_by: ADMIN_ID,
+        },
       ]);
     }
     if (textUrl.includes("/rest/v1/cstp_admin_events?")) {

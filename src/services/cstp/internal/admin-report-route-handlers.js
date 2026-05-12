@@ -301,6 +301,12 @@ async function loadCstpAdminReportData({ definition, payload, options = {} }) {
         includeLineage: true,
       });
     }
+    return loadValidationData({
+      context,
+      payload,
+      config,
+      fetchImpl,
+    });
   }
 
   return loadWorkflowData({
@@ -584,6 +590,37 @@ async function loadLineageData({ context, config, fetchImpl }) {
   return loadImmutableReportLineage({ context, config, fetchImpl });
 }
 
+async function loadValidationData({
+  context,
+  payload,
+  config,
+  fetchImpl,
+}) {
+  assertValidationScope(context);
+  const operationalContext = await loadCstpOperationalContext({
+    context,
+    config,
+    fetchImpl,
+    includeLineage: true,
+  });
+  const persistedValidation = await loadImmutableValidationContext({
+    context,
+    operationalContext,
+    adminContext: payload.adminContext,
+    config,
+    fetchImpl,
+  });
+
+  return {
+    ...operationalContext,
+    validationContext: persistedValidation.validationContext,
+    validationOptions: persistedValidation.validationOptions,
+    persistedImmutableValidation: persistedValidation,
+    persistedImmutableValidationEvidence: persistedValidation.evidence,
+    validationEvidenceSummary: persistedValidation.evidenceSummary,
+  };
+}
+
 async function loadImmutableReportLineage({ context, config, fetchImpl }) {
   const existingReport = context.reportId
     ? await loadSingleById(CSTP_REPORT_TABLES.reports, context.reportId, {
@@ -611,6 +648,236 @@ async function loadImmutableReportLineage({ context, config, fetchImpl }) {
     existingSnapshots,
     immutableLineageSummary,
   };
+}
+
+async function loadImmutableValidationContext({
+  context,
+  operationalContext = {},
+  adminContext = {},
+  config,
+  fetchImpl,
+} = {}) {
+  const report = operationalContext.existingReport || null;
+  const snapshots = normalizeArray(operationalContext.existingSnapshots);
+  const snapshot = resolveImmutableValidationSnapshot({
+    report,
+    snapshots,
+    snapshotId: context.snapshotId || context.targetSnapshotId,
+  });
+  const evidence = await loadImmutableReportEvidence({
+    report,
+    snapshot,
+    snapshots,
+    config,
+    fetchImpl,
+  });
+  const evidenceSummary = summarizeImmutableValidationEvidence({
+    report,
+    snapshot,
+    snapshots,
+    evidence,
+    scope: context,
+  });
+  const validationContext = buildPersistedImmutableValidationCandidate({
+    report,
+    snapshot,
+    snapshots,
+    operationalContext,
+    evidence,
+    adminContext,
+  });
+
+  return {
+    mode: "real_persisted_immutable_validation",
+    internalOnly: true,
+    publicVisibility: false,
+    immutableSnapshotsPubliclyVisible: false,
+    certificationRendering: false,
+    persistence: false,
+    destructiveMutation: false,
+    validationContext,
+    validationOptions: buildPersistedValidationOptions({ report, snapshot }),
+    evidence,
+    evidenceSummary,
+  };
+}
+
+async function loadImmutableReportEvidence({
+  report = null,
+  snapshot = null,
+  snapshots = [],
+  config,
+  fetchImpl,
+} = {}) {
+  const reportId = normalizeNullableText(report?.id);
+  const snapshotIds = uniqueNonEmpty(
+    (snapshot?.id ? [snapshot.id] : snapshots.map((entry) => entry.id)),
+  );
+  const [metrics, sessions, auditLinks] = await Promise.all([
+    snapshotIds.length
+      ? loadManyByFieldIn(CSTP_REPORT_TABLES.metrics, "snapshot_id", snapshotIds, {
+        config,
+        fetchImpl,
+        order: "created_at.asc",
+      })
+      : [],
+    snapshotIds.length
+      ? loadManyByFieldIn(CSTP_REPORT_TABLES.sessions, "snapshot_id", snapshotIds, {
+        config,
+        fetchImpl,
+        order: "created_at.asc",
+      })
+      : [],
+    reportId
+      ? loadMany(CSTP_REPORT_TABLES.auditLinks, {
+        filter: `report_id=eq.${encodeURIComponent(reportId)}`,
+        order: "created_at.asc",
+        config,
+        fetchImpl,
+      })
+      : [],
+  ]);
+
+  return {
+    report,
+    snapshot,
+    snapshots,
+    metrics,
+    sessions,
+    auditLinks,
+  };
+}
+
+function summarizeImmutableValidationEvidence({
+  report = null,
+  snapshot = null,
+  snapshots = [],
+  evidence = {},
+  scope = {},
+} = {}) {
+  const metrics = normalizeArray(evidence.metrics);
+  const sessions = normalizeArray(evidence.sessions);
+  const auditLinks = normalizeArray(evidence.auditLinks);
+
+  return {
+    mode: "real_persisted_immutable_validation",
+    internalOnly: true,
+    publicVisibility: false,
+    immutableSnapshotsPubliclyVisible: false,
+    certificationRendering: false,
+    persistence: false,
+    reportId: report?.id || "",
+    snapshotId: snapshot?.id || "",
+    snapshotVersion: snapshot?.snapshot_version || "",
+    snapshotStatus: snapshot?.status || "",
+    cstpRequestId:
+      report?.cstp_request_id
+      || snapshot?.cstp_request_id
+      || scope.cstpRequestId
+      || "",
+    cstpTestId:
+      report?.cstp_test_id
+      || snapshot?.cstp_test_id
+      || scope.cstpTestId
+      || "",
+    persistedReportCount: report?.id ? 1 : 0,
+    persistedSnapshotCount: snapshots.length,
+    metricCount: metrics.length,
+    sessionEvidenceCount: sessions.length,
+    auditLinkCount: auditLinks.length,
+    metricCountsBySnapshotId: countRowsBySnapshotId(metrics),
+    sessionCountsBySnapshotId: countRowsBySnapshotId(sessions),
+    auditLinkCountsBySnapshotId: countRowsBySnapshotId(auditLinks),
+    emptyState: !report?.id,
+    missingSnapshot: Boolean(report?.id && !snapshot?.id),
+    missingMetrics: metrics.length === 0,
+    missingSessionEvidence: sessions.length === 0,
+    missingAuditLinks: auditLinks.length === 0,
+    labels: [
+      "Internal-only validation inspection",
+      "Immutable snapshots are not publicly visible",
+      "Certification and public rendering are deferred",
+    ],
+  };
+}
+
+function buildPersistedImmutableValidationCandidate({
+  report = null,
+  snapshot = null,
+  snapshots = [],
+  operationalContext = {},
+  evidence = {},
+  adminContext = {},
+} = {}) {
+  const reportSessions = normalizeArray(evidence.sessions);
+  const sessionLinks = reportSessions.map((session) => ({
+    id: session.cstp_test_session_id,
+    cstp_test_id: session.cstp_test_id,
+    session_id: session.grow_session_id,
+    grow_session_id: session.grow_session_id,
+    kan_label: session.kan_label,
+    included_in_report: session.included_in_report !== false,
+    relationship_archived_at_snapshot: session.relationship_archived_at_snapshot === true,
+    frozen_session_summary: session.frozen_session_summary,
+  }));
+  const growSessions = normalizeArray(operationalContext.growSessions).length
+    ? normalizeArray(operationalContext.growSessions)
+    : reportSessions.map((session) => ({
+      id: session.grow_session_id,
+      status: "persisted_reference_only",
+    }));
+
+  return {
+    report: report || {},
+    snapshot: snapshot || {},
+    snapshots: snapshots.length ? snapshots : (snapshot ? [snapshot] : []),
+    cstpRequest: operationalContext.cstpRequest || {},
+    cstpTest: operationalContext.cstpTest || {},
+    source: operationalContext.source || {},
+    sessionLinks,
+    growSessions,
+    metrics: normalizeArray(evidence.metrics),
+    auditLinks: normalizeArray(evidence.auditLinks),
+    adminEvent: normalizeArray(evidence.auditLinks)[0] || adminContext,
+    actor: adminContext,
+    persistedEvidence: {
+      metrics: normalizeArray(evidence.metrics),
+      sessions: reportSessions,
+      auditLinks: normalizeArray(evidence.auditLinks),
+    },
+  };
+}
+
+function buildPersistedValidationOptions({ report = null, snapshot = null } = {}) {
+  const snapshotStatus = normalizeNullableText(snapshot?.status).toLowerCase();
+
+  return {
+    mode: "persisted_immutable_validation_inspection",
+    requireReport: true,
+    requireSnapshot: Boolean(report?.id),
+    requireSessions: true,
+    requireAdminContext: true,
+    requireNonEmptyPayload: true,
+    requirePublicationReadiness: [
+      "prepared",
+      "published",
+      "published_internal",
+    ].includes(snapshotStatus),
+    requireAuditLink: ["published", "published_internal"].includes(snapshotStatus),
+  };
+}
+
+function resolveImmutableValidationSnapshot({
+  report = null,
+  snapshots = [],
+  snapshotId = "",
+} = {}) {
+  const requestedSnapshotId = normalizeNullableText(snapshotId);
+  const ordered = sortSnapshotsForSummary(snapshots);
+  if (requestedSnapshotId) {
+    return ordered.find((entry) => entry.id === requestedSnapshotId) || null;
+  }
+  return loadActiveImmutableSnapshot(ordered, report || {});
 }
 
 async function loadImmutableSnapshotChain(reportId, { config, fetchImpl }) {
@@ -1040,6 +1307,19 @@ function createLoadContext(payload = {}) {
   };
 }
 
+function assertValidationScope(context = {}) {
+  if (!context.reportId && !context.cstpRequestId && !context.cstpTestId) {
+    const error = new Error(
+      "Internal CSTP validation inspection requires a report id, CSTP request id, or CSTP test id.",
+    );
+    error.code = "CSTP_ADMIN_REPORT_VALIDATION_SCOPE_REQUIRED";
+    error.details = {
+      field: "reportId/cstpRequestId/cstpTestId",
+    };
+    throw error;
+  }
+}
+
 function hasPreloadedPayload(payload = {}, loadMode = "") {
   if (loadMode === "list") {
     return Array.isArray(payload.reports);
@@ -1072,6 +1352,10 @@ function pickPreloadedPayload(payload = {}) {
     reports: normalizeArray(payload.reports),
     snapshots: normalizeArray(payload.snapshots || payload.existingSnapshots),
     validationContext: payload.validationContext,
+    validationOptions: payload.validationOptions,
+    validationEvidenceSummary: payload.validationEvidenceSummary,
+    persistedImmutableValidation: payload.persistedImmutableValidation,
+    persistedImmutableValidationEvidence: payload.persistedImmutableValidationEvidence,
     candidate: payload.candidate,
     workflowInput: payload.workflowInput,
   };
@@ -1353,6 +1637,10 @@ function buildRouteSuccess({
     workflowMode: result.workflowMode || definition.workflowMode,
     operationalLoadingSummary: loadedInput.operationalLoadingSummary || null,
     immutableLineageSummary: loadedInput.immutableLineageSummary || null,
+    validationEvidenceSummary:
+      result.validationEvidenceSummary
+      || loadedInput.validationEvidenceSummary
+      || null,
     actor: {
       userId: authorization.actor.userId,
       authorizationSource: authorization.actor.authorizationSource,
@@ -1431,6 +1719,7 @@ function isClientRouteError(error) {
     "CSTP_ADMIN_REPORT_PERSISTENCE_SOURCE_REQUIRED",
     "CSTP_ADMIN_REPORT_PERSISTENCE_LINKED_GROW_SESSION_MISSING",
     "CSTP_ADMIN_REPORT_GENERATE_CONFLICT",
+    "CSTP_ADMIN_REPORT_VALIDATION_SCOPE_REQUIRED",
   ].includes(error?.code);
 }
 
@@ -1591,11 +1880,14 @@ module.exports = {
   handleCstpReportsListRoute,
   loadActiveImmutableSnapshot,
   loadCstpOperationalContext,
+  loadImmutableReportEvidence,
   loadImmutableReportLineage,
   loadImmutableSnapshotChain,
+  loadImmutableValidationContext,
   loadSupersededSnapshots,
   loadAdminReportActionInput,
   loadCstpAdminReportData,
   parseRequestBody,
+  summarizeImmutableValidationEvidence,
   summarizeImmutableLineage,
 };

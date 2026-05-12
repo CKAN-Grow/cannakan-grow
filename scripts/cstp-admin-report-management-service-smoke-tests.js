@@ -229,6 +229,79 @@ function assertValidationInspection() {
   });
   assert.equal(invalidInspection.ok, false);
   assert.equal(invalidInspection.validationSummary.blocking > 0, true);
+
+  const persistedInspection = inspectCstpReportValidationForAdmin({
+    ...createOperationalInput(),
+    validationContext: {
+      report: createExistingReport(),
+      snapshot: createExistingSnapshots()[0],
+      snapshots: createExistingSnapshots(),
+      cstpRequest: createOperationalInput().cstpRequest,
+      cstpTest: createOperationalInput().cstpTest,
+      source: createOperationalInput().source,
+      sessionLinks: createOperationalInput().cstpTestSessions,
+      growSessions: createOperationalInput().growSessions,
+      auditLinks: [
+        {
+          id: "abababab-abab-4aba-8aba-abababababab",
+          report_id: REPORT_ID,
+          snapshot_id: SNAPSHOT_ONE_ID,
+          created_by: ADMIN_ID,
+          event_role: "snapshot_published",
+        },
+      ],
+      actor: createAdminContext(),
+    },
+    validationOptions: {
+      mode: "persisted_immutable_validation_inspection",
+      requireReport: true,
+      requireSnapshot: true,
+      requireSessions: true,
+      requireAdminContext: true,
+      requireNonEmptyPayload: true,
+      requirePublicationReadiness: true,
+      requireAuditLink: true,
+    },
+    validationEvidenceSummary: {
+      mode: "real_persisted_immutable_validation",
+      persistedReportCount: 1,
+      persistedSnapshotCount: 1,
+      metricCount: 1,
+      sessionEvidenceCount: 1,
+      auditLinkCount: 1,
+      reportId: REPORT_ID,
+      snapshotId: SNAPSHOT_ONE_ID,
+      publicVisibility: false,
+    },
+  });
+  assert.equal(persistedInspection.ok, true);
+  assert.equal(persistedInspection.validationEvidenceSummary.metricCount, 1);
+
+  const emptyPersistedInspection = inspectCstpReportValidationForAdmin({
+    adminContext: createAdminContext(),
+    workflowTimestamp: WORKFLOW_TIMESTAMP,
+    validationContext: {
+      report: {},
+      snapshot: {},
+    },
+    validationEvidenceSummary: {
+      mode: "real_persisted_immutable_validation",
+      persistedReportCount: 0,
+      persistedSnapshotCount: 0,
+      metricCount: 0,
+      sessionEvidenceCount: 0,
+      auditLinkCount: 0,
+      emptyState: true,
+      publicVisibility: false,
+    },
+  });
+  assert.equal(emptyPersistedInspection.ok, true);
+  assert.equal(
+    emptyPersistedInspection.validation.issues.some((issue) => (
+      issue.code === "CSTP_PERSISTED_REPORT_NOT_FOUND"
+    )),
+    true
+  );
 }
 
 function createOperationalInput(overrides = {}) {

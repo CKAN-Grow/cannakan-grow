@@ -46638,6 +46638,9 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
   const operationalLoadingSummary = result?.operationalLoadingSummary
     || result?.serviceResult?.operationalLoadingSummary
     || null;
+  const validationEvidenceSummary = result?.validationEvidenceSummary
+    || result?.serviceResult?.validationEvidenceSummary
+    || null;
   const issues = Array.isArray(validation.issues)
     ? validation.issues
     : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
@@ -46654,7 +46657,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         <div>
           <p class="eyebrow">Inspect Validation Result</p>
           <h5 id="admin-cstp-report-validation-result-title">Internal validator inspection status</h5>
-          <p class="muted">Inspect Validation calls the protected route/action stack and immutable report validator with real operational loading when available. Persistence remains deferred.</p>
+          <p class="muted">Inspect Validation calls the protected route/action stack and immutable report validator with persisted immutable evidence loading when available. Snapshots are internal-only and not publicly visible.</p>
         </div>
         ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
       </div>
@@ -46665,6 +46668,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         <p><span>Warnings</span><strong>${escapeHtml(Number(validationSummary.warnings || 0))}</strong></p>
       </div>
       ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
+      ${renderAdminCstpValidationEvidenceSummaryMarkup(validationEvidenceSummary)}
       ${appState.adminCstpReportValidationLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
@@ -46692,6 +46696,42 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         ? `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result.message)}</p>`
         : ""}
     </section>
+  `;
+}
+
+function renderAdminCstpValidationEvidenceSummaryMarkup(summary = null) {
+  if (!summary) {
+    return "";
+  }
+
+  const labels = Array.isArray(summary.labels)
+    ? summary.labels
+    : [
+      "Internal-only validation inspection",
+      "Immutable snapshots are not publicly visible",
+      "Certification and public rendering are deferred",
+    ];
+
+  return `
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>Report</span><strong>${escapeHtml(summary.reportId || "Not persisted")}</strong></p>
+      <p><span>Snapshot</span><strong>${escapeHtml(summary.snapshotId || "Not available")}</strong></p>
+      <p><span>Metrics</span><strong>${escapeHtml(Number(summary.metricCount || 0))}</strong></p>
+      <p><span>Session evidence</span><strong>${escapeHtml(Number(summary.sessionEvidenceCount || 0))}</strong></p>
+      <p><span>Audit links</span><strong>${escapeHtml(Number(summary.auditLinkCount || 0))}</strong></p>
+      <p><span>Public visibility</span><strong>${escapeHtml(summary.publicVisibility === false ? "No" : "Deferred")}</strong></p>
+    </div>
+    <div class="admin-cstp-report-management-feedback">
+      <strong>Persisted immutable evidence</strong>
+      <p>${escapeHtml(labels.join(" - "))}</p>
+      <p>${escapeHtml([
+        summary.emptyState ? "No persisted report found" : "",
+        summary.missingSnapshot ? "Missing snapshot" : "",
+        summary.missingMetrics ? "Missing metrics" : "",
+        summary.missingSessionEvidence ? "Missing session evidence" : "",
+        summary.missingAuditLinks ? "Missing audit links" : "",
+      ].filter(Boolean).join(" - ") || "Persisted evidence loaded for inspection.")}</p>
+    </div>
   `;
 }
 
