@@ -1,0 +1,307 @@
+-- ============================================================================
+-- CSTP MIGRATION V1 DRAFT ONLY
+-- ============================================================================
+--
+-- DRAFT ONLY: This file is for architecture and SQL review before implementation.
+-- DO NOT EXECUTE.
+-- DO NOT COPY INTO ACTIVE MIGRATIONS WITHOUT REVIEW.
+-- NOT PRODUCTION-READY.
+--
+-- Purpose:
+-- - Internal-only CSTP v1 foundation.
+-- - Additive-only planning draft.
+-- - No public CSTP exposure.
+-- - No RLS policies yet.
+-- - No reports, report snapshots, certifications, public badges, public report
+--   visibility, Source Directory public CSTP integration, Community Grow CSTP
+--   filters, automation, breeder/source portals, external APIs, or public
+--   trust systems.
+--
+-- Important:
+-- - All SQL statements in this draft are intentionally commented out so this
+--   file cannot be executed accidentally as a migration.
+-- - Uncommenting or converting this draft into an active migration requires
+--   review against:
+--   - docs/cstp-architecture-master-index.md
+--   - docs/cstp-entity-relationship-model-specification.md
+--   - docs/cstp-initial-sql-migration-scope-definition.md
+--   - docs/cstp-migration-v1-sql-design-draft.md
+--   - docs/cstp-migration-v1-sql-review-checklist.md
+--
+-- Existing schema names inspected before this draft:
+-- - Existing sessions table: public.grow_sessions
+-- - Existing sources table: public.sources
+-- - Existing auth user table: auth.users
+-- - Existing admin membership table: public.admin_users
+--
+-- RLS PLACEHOLDER:
+-- - RLS is intentionally not implemented in this draft.
+-- - Future RLS should restrict CSTP management to admins.
+-- - No public read policies should exist for CSTP v1 internal tables.
+--
+
+-- ============================================================================
+-- Conceptual status values only. Do not create enums in v1.
+-- ============================================================================
+--
+-- cstp_requests.status:
+-- - received
+-- - accepted
+-- - awaiting_seeds
+-- - declined
+-- - archived
+--
+-- cstp_tests.status:
+-- - pending
+-- - active
+-- - completed
+-- - archived
+--
+
+-- ============================================================================
+-- Table: public.cstp_requests
+-- ============================================================================
+--
+-- Purpose:
+-- - Internal CSTP request intake.
+-- - Captures early source/contact/sample context before a CSTP Test exists.
+-- - Internal-only; does not imply public testing, certification, report
+--   publication, or Source Directory CSTP display.
+--
+-- Notes:
+-- - source_id is nullable because early intake may happen before the source is
+--   matched to an existing Source Directory record.
+-- - ON DELETE SET NULL is preferred for source_id so source lifecycle changes
+--   do not destroy internal intake history.
+--
+-- DRAFT SQL:
+--
+-- create table if not exists public.cstp_requests (
+--   id uuid primary key default gen_random_uuid(),
+--   source_id uuid references public.sources(id) on delete set null,
+--   contact_name text,
+--   contact_email text,
+--   website text,
+--   variety_name text,
+--   seed_type text,
+--   breeder_name text,
+--   batch_lot text,
+--   requested_seed_count integer,
+--   request_message text,
+--   status text not null default 'received',
+--   internal_notes text,
+--   archived boolean not null default false,
+--   created_at timestamptz not null default now(),
+--   updated_at timestamptz not null default now()
+-- );
+--
+-- comment on table public.cstp_requests is
+--   'DRAFT CSTP v1 internal intake table. Review-only; not active migration SQL.';
+--
+-- comment on column public.cstp_requests.source_id is
+--   'Nullable during early intake; links to public.sources after source matching.';
+--
+-- comment on column public.cstp_requests.status is
+--   'Conceptual request intake status only; not a public certification/report state.';
+--
+
+-- ============================================================================
+-- Table: public.cstp_tests
+-- ============================================================================
+--
+-- Purpose:
+-- - Parent CSTP orchestration record.
+-- - Groups linked sessions through public.cstp_test_sessions.
+-- - Internal-only workflow entity for v1.
+--
+-- Notes:
+-- - request_id links a CSTP Test back to intake when applicable.
+-- - source_id is nullable for internal/admin-created tests or unresolved source
+--   matching.
+-- - created_by is intentionally left without a hard FK in this draft. Future
+--   review should decide whether to reference auth.users(id) directly or
+--   public.admin_users(user_id).
+-- - No certification or public report fields are included in v1.
+--
+-- Delete behavior:
+-- - request_id uses ON DELETE SET NULL so request cleanup does not destroy a
+--   CSTP Test.
+-- - source_id uses ON DELETE SET NULL so source lifecycle changes do not
+--   destroy internal CSTP orchestration history.
+--
+-- DRAFT SQL:
+--
+-- create table if not exists public.cstp_tests (
+--   id uuid primary key default gen_random_uuid(),
+--   source_id uuid references public.sources(id) on delete set null,
+--   request_id uuid references public.cstp_requests(id) on delete set null,
+--   status text not null default 'pending',
+--   internal_state text,
+--   created_by uuid,
+--   archived boolean not null default false,
+--   started_at timestamptz,
+--   completed_at timestamptz,
+--   created_at timestamptz not null default now(),
+--   updated_at timestamptz not null default now()
+-- );
+--
+-- comment on table public.cstp_tests is
+--   'DRAFT CSTP v1 parent orchestration table. Internal-only; not active migration SQL.';
+--
+-- comment on column public.cstp_tests.created_by is
+--   'Draft user/admin creator reference. FK target requires review: auth.users(id) or public.admin_users(user_id).';
+--
+-- comment on column public.cstp_tests.status is
+--   'Internal CSTP Test orchestration status; not a public certification/report state.';
+--
+
+-- ============================================================================
+-- Table: public.cstp_admin_events
+-- ============================================================================
+--
+-- Purpose:
+-- - Append-only internal workflow log for CSTP Tests.
+-- - Tracks admin-only lifecycle events, notes, and decisions.
+--
+-- Notes:
+-- - Internal/admin visibility only.
+-- - Raw admin events should not become public report content.
+-- - admin_user_id is intentionally left without a hard FK in this draft.
+--   Future review should decide whether to reference auth.users(id) directly or
+--   public.admin_users(user_id).
+--
+-- Delete behavior:
+-- - cstp_test_id uses ON DELETE RESTRICT in the draft to avoid silently
+--   destroying audit history through parent deletion. Archive CSTP Tests
+--   instead of deleting them.
+--
+-- DRAFT SQL:
+--
+-- create table if not exists public.cstp_admin_events (
+--   id uuid primary key default gen_random_uuid(),
+--   cstp_test_id uuid not null references public.cstp_tests(id) on delete restrict,
+--   admin_user_id uuid,
+--   event_type text not null,
+--   event_notes text,
+--   created_at timestamptz not null default now()
+-- );
+--
+-- comment on table public.cstp_admin_events is
+--   'DRAFT CSTP v1 internal append-only admin event log. Review-only; not active migration SQL.';
+--
+-- comment on column public.cstp_admin_events.admin_user_id is
+--   'Draft admin actor reference. FK target requires review: auth.users(id) or public.admin_users(user_id).';
+--
+-- comment on column public.cstp_admin_events.event_type is
+--   'Internal audit event type; not a public lifecycle or certification status.';
+--
+
+-- ============================================================================
+-- Table: public.cstp_test_sessions
+-- ============================================================================
+--
+-- Purpose:
+-- - Join layer between parent CSTP Tests and existing Grow sessions.
+-- - Enables multi-KAN grouping and future report aggregation.
+--
+-- Notes:
+-- - sessions remain source-of-truth for observations, images, partition data,
+--   timeline/stage behavior, notes, and session metrics.
+-- - Linking a session to CSTP must not mutate session behavior.
+-- - included_in_report is a future-planning internal flag only. Reports are
+--   intentionally excluded from migration v1.
+--
+-- Delete behavior:
+-- - cstp_test_id uses ON DELETE RESTRICT to avoid deleting linkage history
+--   through parent deletion. Archive CSTP Tests instead.
+-- - session_id references public.grow_sessions(id) and uses ON DELETE RESTRICT
+--   in this draft so linked session evidence cannot be silently removed through
+--   CSTP relationship cleanup. Review before production migration.
+--
+-- Safeguard:
+-- - unique(cstp_test_id, session_id) prevents duplicate active linkage of the
+--   same session to the same CSTP Test.
+--
+-- DRAFT SQL:
+--
+-- create table if not exists public.cstp_test_sessions (
+--   id uuid primary key default gen_random_uuid(),
+--   cstp_test_id uuid not null references public.cstp_tests(id) on delete restrict,
+--   session_id uuid not null references public.grow_sessions(id) on delete restrict,
+--   kan_label text,
+--   included_in_report boolean not null default true,
+--   archived boolean not null default false,
+--   created_at timestamptz not null default now(),
+--   constraint cstp_test_sessions_test_session_key unique (cstp_test_id, session_id)
+-- );
+--
+-- comment on table public.cstp_test_sessions is
+--   'DRAFT CSTP v1 join table linking CSTP Tests to existing Grow sessions. Review-only; not active migration SQL.';
+--
+-- comment on column public.cstp_test_sessions.session_id is
+--   'References existing public.grow_sessions. Sessions remain source-of-truth and are not CSTP-owned.';
+--
+-- comment on constraint cstp_test_sessions_test_session_key on public.cstp_test_sessions is
+--   'Prevents duplicate linking of the same session to the same CSTP Test.';
+--
+
+-- ============================================================================
+-- Index draft
+-- ============================================================================
+--
+-- DRAFT SQL:
+--
+-- create index if not exists cstp_requests_source_id_idx
+--   on public.cstp_requests (source_id);
+--
+-- create index if not exists cstp_requests_status_idx
+--   on public.cstp_requests (status);
+--
+-- create index if not exists cstp_requests_archived_idx
+--   on public.cstp_requests (archived);
+--
+-- create index if not exists cstp_tests_source_id_idx
+--   on public.cstp_tests (source_id);
+--
+-- create index if not exists cstp_tests_request_id_idx
+--   on public.cstp_tests (request_id);
+--
+-- create index if not exists cstp_tests_status_idx
+--   on public.cstp_tests (status);
+--
+-- create index if not exists cstp_tests_archived_idx
+--   on public.cstp_tests (archived);
+--
+-- create index if not exists cstp_admin_events_cstp_test_id_idx
+--   on public.cstp_admin_events (cstp_test_id);
+--
+-- create index if not exists cstp_test_sessions_cstp_test_id_idx
+--   on public.cstp_test_sessions (cstp_test_id);
+--
+-- create index if not exists cstp_test_sessions_session_id_idx
+--   on public.cstp_test_sessions (session_id);
+--
+-- create index if not exists cstp_test_sessions_archived_idx
+--   on public.cstp_test_sessions (archived);
+--
+
+-- ============================================================================
+-- Final review notes
+-- ============================================================================
+--
+-- This draft must be reviewed before becoming an active migration.
+-- No public CSTP data should depend on this draft yet.
+-- Reports, report snapshots, certifications, public badges, public report
+-- visibility, Source Directory public CSTP integration, Community Grow CSTP
+-- filters, automation, breeder/source portals, external APIs, and RLS policies
+-- are intentionally deferred.
+--
+-- Before activation, review:
+-- - Whether created_by and admin_user_id should reference auth.users(id) or
+--   public.admin_users(user_id).
+-- - Whether ON DELETE RESTRICT remains the right behavior for v1 linkage tables.
+-- - Whether status text fields should remain free text for v1 or gain CHECK
+--   constraints in the first active migration.
+-- - Whether updated_at triggers should follow the existing Supabase schema
+--   trigger pattern in the active migration.
+--
