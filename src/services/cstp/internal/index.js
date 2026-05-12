@@ -23,6 +23,7 @@ const immutableReportLineageOrchestrator = require("./immutable-report-lineage-o
 const immutableReportOrchestrator = require("./immutable-report-orchestrator");
 const adminReportManagementService = require("./admin-report-management-service");
 const adminReportActions = require("./admin-report-actions");
+const adminReportRouteHandlers = require("./admin-report-route-handlers");
 
 module.exports = {
   constants,
@@ -41,6 +42,7 @@ module.exports = {
   immutableReportOrchestrator,
   adminReportManagementService,
   adminReportActions,
+  adminReportRouteHandlers,
   ...constants,
   ...errors,
   ...lifecycle,
@@ -57,4 +59,5 @@ module.exports = {
   ...immutableReportOrchestrator,
   ...adminReportManagementService,
   ...adminReportActions,
+  ...adminReportRouteHandlers,
 };

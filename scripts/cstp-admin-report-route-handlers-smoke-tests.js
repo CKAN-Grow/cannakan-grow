@@ -1,0 +1,481 @@
+"use strict";
+
+const assert = require("assert/strict");
+
+const {
+  handleCstpReportGenerateRoute,
+  handleCstpReportLineageRoute,
+  handleCstpReportPrepareRoute,
+  handleCstpReportRegenerateRoute,
+  handleCstpReportSupersedeRoute,
+  handleCstpReportValidationRoute,
+  handleCstpReportsListRoute,
+} = require("../src/services/cstp/internal/admin-report-route-handlers");
+const {
+  assembleImmutableReportSnapshotCandidate,
+} = require("../src/services/cstp/internal/immutable-snapshot-assembler");
+
+const REPORT_ID = "11111111-1111-4111-8111-111111111111";
+const SNAPSHOT_ONE_ID = "22222222-2222-4222-8222-222222222222";
+const SNAPSHOT_TWO_ID = "33333333-3333-4333-8333-333333333333";
+const REQUEST_ID = "44444444-4444-4444-8444-444444444444";
+const TEST_ID = "55555555-5555-4555-8555-555555555555";
+const SOURCE_ID = "66666666-6666-4666-8666-666666666666";
+const ADMIN_ID = "77777777-7777-4777-8777-777777777777";
+const TEST_SESSION_ID = "88888888-8888-4888-8888-888888888888";
+const GROW_SESSION_ID = "99999999-9999-4999-8999-999999999999";
+const WORKFLOW_TIMESTAMP = "2026-05-12T21:00:00.000Z";
+
+async function main() {
+  await assertAuthorizationGate();
+  await assertWorkflowRoutes();
+  await assertReadOnlyRoutes();
+  await assertPublicContextRejection();
+  await assertApiWrappersLoad();
+
+  console.log("CSTP admin report route/action smoke checks passed.");
+}
+
+async function assertAuthorizationGate() {
+  let dataLoaderCalled = false;
+  const response = createMockResponse();
+
+  await handleCstpReportGenerateRoute(
+    createMockRequest({
+      method: "POST",
+      headers: {},
+      body: createRouteBody(),
+    }),
+    response,
+    {
+      dataLoader: async () => {
+        dataLoaderCalled = true;
+        return createLoadedWorkflowData();
+      },
+    },
+  );
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.payload.ok, false);
+  assert.equal(response.payload.status, "cstp_admin_auth_missing");
+  assert.equal(dataLoaderCalled, false);
+}
+
+async function assertWorkflowRoutes() {
+  const prepare = await invokeRoute(handleCstpReportPrepareRoute, {
+    body: createRouteBody({
+      snapshotId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    }),
+  });
+  assert.equal(prepare.statusCode, 200);
+  assert.equal(prepare.payload.ok, true);
+  assert.equal(prepare.payload.workflowMode, "prepare");
+  assert.equal(prepare.payload.routeSafety.publicAccess, false);
+
+  const generate = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody(),
+  });
+  assert.equal(generate.statusCode, 200);
+  assert.equal(generate.payload.ok, true);
+  assert.equal(generate.payload.actionName, "generate_cstp_report_for_admin");
+  assert.equal(generate.payload.routeSafety.renderingImplemented, false);
+  assert.equal(generate.payload.routeSafety.certificationImplemented, false);
+
+  const dbClient = createMockDbClient();
+  const persisted = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody({
+      persist: true,
+      snapshotId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    }),
+    routeOptions: {
+      dbClient,
+    },
+  });
+  assert.equal(persisted.statusCode, 200);
+  assert.equal(persisted.payload.ok, true);
+  assert.equal(persisted.payload.persistenceSummary.insertedRowCounts.reports, 1);
+  assert.equal(dbClient.calls.length, 5);
+  assert.equal(dbClient.realSupabaseCalls, 0);
+
+  const lineageInput = createRouteBody({
+    existingReport: createExistingReport(),
+    existingSnapshots: createExistingSnapshots(),
+    snapshotId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  });
+  const regenerated = await invokeRoute(handleCstpReportRegenerateRoute, {
+    body: lineageInput,
+    loadedData: createLoadedWorkflowData({
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    }),
+  });
+  assert.equal(regenerated.statusCode, 200);
+  assert.equal(regenerated.payload.workflowMode, "regenerate");
+  assert.equal(regenerated.payload.lineageSummary.nextSnapshotVersion, 2);
+
+  const superseded = await invokeRoute(handleCstpReportSupersedeRoute, {
+    body: {
+      ...lineageInput,
+      targetSnapshotId: SNAPSHOT_ONE_ID,
+      snapshotId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    },
+    loadedData: createLoadedWorkflowData({
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    }),
+  });
+  assert.equal(superseded.statusCode, 200);
+  assert.equal(superseded.payload.workflowMode, "supersede");
+  assert.equal(superseded.payload.lineageSummary.actionType, "supersede_snapshot");
+}
+
+async function assertReadOnlyRoutes() {
+  const lineage = await invokeRoute(handleCstpReportLineageRoute, {
+    method: "GET",
+    query: {
+      reportId: REPORT_ID,
+      workflowTimestamp: WORKFLOW_TIMESTAMP,
+    },
+    loadedData: {
+      existingReport: createExistingReport(),
+      existingSnapshots: createExistingSnapshots(),
+    },
+  });
+  assert.equal(lineage.statusCode, 200);
+  assert.equal(lineage.payload.workflowMode, "inspect_lineage");
+  assert.equal(lineage.payload.lineageSummary.publicVisibility, false);
+
+  const candidate = assembleImmutableReportSnapshotCandidate(
+    createOperationalInput(),
+    { requireAdminContext: true },
+  );
+  const validation = await invokeRoute(handleCstpReportValidationRoute, {
+    body: createRouteBody({
+      candidate,
+    }),
+    loadedData: createLoadedWorkflowData(),
+  });
+  assert.equal(validation.statusCode, 200);
+  assert.equal(validation.payload.workflowMode, "inspect_validation");
+
+  const listed = await invokeRoute(handleCstpReportsListRoute, {
+    method: "GET",
+    query: {
+      cstpRequestId: REQUEST_ID,
+      workflowTimestamp: WORKFLOW_TIMESTAMP,
+    },
+    loadedData: {
+      reports: [createExistingReport()],
+      snapshots: createExistingSnapshots(),
+    },
+  });
+  assert.equal(listed.statusCode, 200);
+  assert.equal(listed.payload.workflowMode, "list_internal_reports");
+  assert.equal(listed.payload.serviceResult.resultCount, 1);
+
+  const missingScope = await invokeRoute(handleCstpReportsListRoute, {
+    method: "GET",
+    query: {
+      workflowTimestamp: WORKFLOW_TIMESTAMP,
+    },
+    loadedData: {
+      reports: [createExistingReport()],
+      snapshots: createExistingSnapshots(),
+    },
+  });
+  assert.equal(missingScope.statusCode, 400);
+  assert.equal(missingScope.payload.status, "admin_action_list_rejected");
+}
+
+async function assertPublicContextRejection() {
+  const rejected = await invokeRoute(handleCstpReportGenerateRoute, {
+    body: createRouteBody({
+      adminContext: {
+        public: true,
+      },
+    }),
+  });
+  assert.equal(rejected.statusCode, 400);
+  assert.equal(rejected.payload.code, "CSTP_ADMIN_REPORT_PUBLIC_CONTEXT_REJECTED");
+}
+
+async function assertApiWrappersLoad() {
+  const modules = [
+    "../api/cstp-admin-report-prepare",
+    "../api/cstp-admin-report-generate",
+    "../api/cstp-admin-report-regenerate",
+    "../api/cstp-admin-report-supersede",
+    "../api/cstp-admin-report-lineage",
+    "../api/cstp-admin-report-validation",
+    "../api/cstp-admin-reports-list",
+  ];
+
+  modules.forEach((modulePath) => {
+    const handler = require(modulePath);
+    assert.equal(typeof handler, "function");
+    assert.equal(typeof handler._private, "object");
+  });
+}
+
+async function invokeRoute(handler, {
+  method = "POST",
+  query = {},
+  body = createRouteBody(),
+  loadedData = createLoadedWorkflowData(),
+  routeOptions = {},
+} = {}) {
+  const response = createMockResponse();
+  await handler(
+    createMockRequest({
+      method,
+      query,
+      body,
+    }),
+    response,
+    {
+      authorizationOptions: createAuthorizationOptions(),
+      dataLoader: async () => loadedData,
+      ...routeOptions,
+    },
+  );
+  return response;
+}
+
+function createRouteBody(overrides = {}) {
+  return {
+    cstpRequestId: REQUEST_ID,
+    cstpTestId: TEST_ID,
+    reportId: REPORT_ID,
+    snapshotId: SNAPSHOT_TWO_ID,
+    workflowTimestamp: WORKFLOW_TIMESTAMP,
+    generatedAt: WORKFLOW_TIMESTAMP,
+    calculatedAt: WORKFLOW_TIMESTAMP,
+    ...overrides,
+  };
+}
+
+function createLoadedWorkflowData(overrides = {}) {
+  return {
+    cstpRequest: {
+      id: REQUEST_ID,
+      source_id: SOURCE_ID,
+      status: "approved",
+    },
+    cstpTest: {
+      id: TEST_ID,
+      request_id: REQUEST_ID,
+      source_id: SOURCE_ID,
+      status: "completed",
+    },
+    cstpTestSessions: [
+      {
+        id: TEST_SESSION_ID,
+        cstp_test_id: TEST_ID,
+        grow_session_id: GROW_SESSION_ID,
+        kan_label: "KAN-A",
+        included_in_report: true,
+        created_at: "2026-05-10T14:00:00.000Z",
+      },
+    ],
+    growSessions: [
+      {
+        id: GROW_SESSION_ID,
+        status: "completed",
+        started_at: "2026-05-10T14:00:00.000Z",
+      },
+    ],
+    source: {
+      id: SOURCE_ID,
+      name: "Internal Source",
+    },
+    auditEvents: [
+      {
+        id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        event_type: "snapshot_generated",
+        created_at: "2026-05-12T20:50:00.000Z",
+      },
+    ],
+    metrics: {
+      reviewed_session_count: {
+        metric_value: 1,
+        metric_type: "count",
+        metric_unit: "sessions",
+        calculated_at: WORKFLOW_TIMESTAMP,
+      },
+    },
+    ...overrides,
+  };
+}
+
+function createOperationalInput(overrides = {}) {
+  return {
+    ...createRouteBody(),
+    ...createLoadedWorkflowData(),
+    adminContext: {
+      adminUserId: ADMIN_ID,
+    },
+    ...overrides,
+  };
+}
+
+function createExistingReport() {
+  return {
+    id: REPORT_ID,
+    cstp_test_id: TEST_ID,
+    cstp_request_id: REQUEST_ID,
+    source_id: SOURCE_ID,
+    current_snapshot_id: SNAPSHOT_ONE_ID,
+    status: "published",
+  };
+}
+
+function createExistingSnapshots() {
+  return [
+    {
+      id: SNAPSHOT_ONE_ID,
+      report_id: REPORT_ID,
+      cstp_test_id: TEST_ID,
+      cstp_request_id: REQUEST_ID,
+      source_id: SOURCE_ID,
+      snapshot_version: 1,
+      status: "published",
+      locked: true,
+      frozen_report_payload: {
+        internalOnly: true,
+      },
+      generated_at: "2026-05-11T14:00:00.000Z",
+      prepared_at: "2026-05-11T14:30:00.000Z",
+      published_at: "2026-05-11T15:00:00.000Z",
+    },
+  ];
+}
+
+function createMockRequest({
+  method = "POST",
+  headers = {
+    authorization: "Bearer smoke-token",
+  },
+  query = {},
+  body = {},
+} = {}) {
+  return {
+    method,
+    headers,
+    query,
+    body,
+    url: buildUrlFromQuery(query),
+  };
+}
+
+function createMockResponse() {
+  return {
+    statusCode: 200,
+    headers: {},
+    payload: null,
+    setHeader(name, value) {
+      this.headers[name] = value;
+    },
+    status(statusCode) {
+      this.statusCode = statusCode;
+      return this;
+    },
+    json(payload) {
+      this.payload = payload;
+      return this;
+    },
+    end() {
+      this.ended = true;
+      return this;
+    },
+  };
+}
+
+function createAuthorizationOptions() {
+  return {
+    config: {
+      supabaseUrl: "https://example.supabase.co",
+      supabaseServiceRoleKey: "service-role-key",
+    },
+    fetchImpl: async (url) => {
+      const textUrl = String(url);
+      if (textUrl.includes("/auth/v1/user")) {
+        return createFetchResponse(200, {
+          id: ADMIN_ID,
+          email: "admin@example.com",
+        });
+      }
+      if (textUrl.includes("/rest/v1/admin_users")) {
+        return createFetchResponse(200, [
+          {
+            id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            user_id: ADMIN_ID,
+            email: "admin@example.com",
+          },
+        ]);
+      }
+      throw new Error(`Unexpected smoke auth fetch: ${textUrl}`);
+    },
+  };
+}
+
+function createFetchResponse(status, payload) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    async json() {
+      return payload;
+    },
+    async text() {
+      return JSON.stringify(payload);
+    },
+  };
+}
+
+function createMockDbClient() {
+  const calls = [];
+  const rows = {
+    cstp_reports: [],
+    cstp_report_snapshots: [],
+    cstp_report_metrics: [],
+    cstp_report_sessions: [],
+    cstp_report_audit_links: [],
+  };
+
+  return {
+    calls,
+    rows,
+    realSupabaseCalls: 0,
+    async insert(table, records) {
+      assert.equal(Object.prototype.hasOwnProperty.call(rows, table), true);
+      const normalizedRecords = (Array.isArray(records) ? records : [records])
+        .map((record, index) => ({
+          ...record,
+          id: record.id || `${table}-${calls.length + 1}-${index}`,
+        }));
+
+      calls.push({
+        table,
+        records: normalizedRecords.map((record) => ({ ...record })),
+      });
+      rows[table].push(...normalizedRecords);
+      return normalizedRecords;
+    },
+  };
+}
+
+function buildUrlFromQuery(query = {}) {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      params.set(key, String(value));
+    }
+  });
+  const suffix = params.toString();
+  return suffix ? `/api/cstp-admin-report-smoke?${suffix}` : "/api/cstp-admin-report-smoke";
+}
+
+main().catch((error) => {
+  console.error("CSTP admin report route/action smoke checks failed.");
+  console.error(error);
+  process.exitCode = 1;
+});
