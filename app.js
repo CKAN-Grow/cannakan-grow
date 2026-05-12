@@ -1057,6 +1057,7 @@ const ADMIN_CSTP_SESSION_LINKS_LIST_API_PATH = "/api/cstp-admin-session-links-li
 const ADMIN_CSTP_SESSION_LINK_CREATE_API_PATH = "/api/cstp-admin-session-link-create";
 const ADMIN_CSTP_SESSION_LINK_ARCHIVE_API_PATH = "/api/cstp-admin-session-link-archive";
 const ADMIN_CSTP_REPORT_PREPARE_API_PATH = "/api/cstp-admin-report-prepare";
+const ADMIN_CSTP_REPORT_GENERATE_API_PATH = "/api/cstp-admin-report-generate";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
@@ -1327,6 +1328,10 @@ const appState = {
   adminCstpReportPrepareResult: null,
   adminCstpReportPrepareError: "",
   adminCstpReportPrepareLastRunAt: "",
+  adminCstpReportGenerateLoading: false,
+  adminCstpReportGenerateResult: null,
+  adminCstpReportGenerateError: "",
+  adminCstpReportGenerateLastRunAt: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -46153,18 +46158,30 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
   const config = typeof action === "string" ? { label: action } : action || {};
   const label = String(config.label || "").trim();
   const isPrepareAction = config.action === "prepare";
-  const enabled = isPrepareAction && config.enabled === true;
-  const loading = enabled && appState.adminCstpReportPrepareLoading;
+  const isGenerateAction = config.action === "generate";
+  const enabled = (isPrepareAction || isGenerateAction) && config.enabled === true;
+  const loading = enabled && (
+    (isPrepareAction && appState.adminCstpReportPrepareLoading)
+    || (isGenerateAction && appState.adminCstpReportGenerateLoading)
+  );
   const disabled = !enabled || loading;
+  const actionAttribute = isGenerateAction
+    ? `data-admin-cstp-report-generate="true"`
+    : `data-admin-cstp-report-prepare="true"`;
   const disabledAttributes = disabled
     ? `disabled aria-disabled="true"`
-    : `data-admin-cstp-report-prepare="true"`;
-  const title = enabled
-    ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
-    : "Internal placeholder only; protected workflow wiring is deferred.";
-  const toneClass = enabled
-    ? "admin-cstp-button--primary"
-    : "admin-cstp-button--utility admin-cstp-report-action-placeholder";
+    : actionAttribute;
+  const title = isGenerateAction && enabled
+    ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
+    : (enabled
+      ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
+      : "Internal placeholder only; protected workflow wiring is deferred.");
+  const toneClass = enabled && isGenerateAction
+    ? "admin-cstp-button--success"
+    : (enabled
+      ? "admin-cstp-button--primary"
+      : "admin-cstp-button--utility admin-cstp-report-action-placeholder");
+  const loadingLabel = isGenerateAction ? "Generating..." : "Preparing...";
 
   return `
     <button
@@ -46172,8 +46189,152 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
       class="button button-secondary admin-cstp-button ${toneClass}"
       ${disabledAttributes}
       title="${escapeHtml(title)}"
-    >${escapeHtml(loading ? "Preparing..." : label)}</button>
+    >${escapeHtml(loading ? loadingLabel : label)}</button>
   `;
+}
+
+function getAdminCstpReportWorkflowSummary(result = null) {
+  const workflowResult = result?.serviceResult?.workflowResult
+    || result?.workflowResult
+    || result;
+  const assemblySummary = workflowResult?.assemblyResultSummary
+    || result?.assemblyResultSummary
+    || {};
+  const lineageSummary = result?.lineageSummary
+    || result?.serviceResult?.lineageSummary
+    || workflowResult?.lineagePlanSummary
+    || result?.lineagePlanSummary
+    || {};
+  const validationSummary = result?.validationSummary
+    || result?.validation?.summary
+    || result?.serviceResult?.validationSummary
+    || {};
+
+  return {
+    workflowResult,
+    assemblySummary,
+    lineageSummary,
+    validationSummary,
+  };
+}
+
+function renderAdminCstpImmutableReportWorkflowResultMarkup({
+  key = "",
+  eyebrow = "",
+  title = "",
+  description = "",
+  emptyMessage = "",
+  loading = false,
+  error = "",
+  result = null,
+  lastRunAt = "",
+  defaultMode = "",
+  includeLineage = false,
+} = {}) {
+  const {
+    assemblySummary,
+    lineageSummary,
+    validationSummary,
+    workflowResult,
+  } = getAdminCstpReportWorkflowSummary(result);
+  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
+  const errors = Array.isArray(result?.blockingErrors)
+    ? result.blockingErrors
+    : (Array.isArray(result?.errors) ? result.errors : []);
+  const statusLabel = loading
+    ? (defaultMode === "generate" ? "Generating" : "Preparing")
+    : (error ? "Route error" : (result?.status || "Not run"));
+  const statusTone = loading
+    ? "preparing"
+    : (error ? "failed" : (result?.ok ? "prepared" : "neutral"));
+  const persisted = workflowResult?.workflowPlanSummary?.persist === true;
+
+  return `
+    <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-${escapeHtml(key)}-result-title">
+      <div class="admin-cstp-report-management-panel-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(eyebrow)}</p>
+          <h5 id="admin-cstp-report-${escapeHtml(key)}-result-title">${escapeHtml(title)}</h5>
+          <p class="muted">${escapeHtml(description)}</p>
+        </div>
+        ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
+      </div>
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Workflow</span><strong>${escapeHtml(result?.workflowMode || defaultMode)}</strong></p>
+        <p><span>Persistence</span><strong>${escapeHtml(persisted ? "Enabled" : "Deferred mock mode")}</strong></p>
+        <p><span>Validation</span><strong>${escapeHtml(`${Number(validationSummary.blocking || 0)} blocking / ${Number(validationSummary.warnings || 0)} warnings`)}</strong></p>
+        <p><span>Snapshot</span><strong>${escapeHtml(assemblySummary.snapshotStatus || "Awaiting run")}</strong></p>
+      </div>
+      ${lastRunAt
+        ? `<p class="muted admin-cstp-report-management-note">Last internal ${escapeHtml(defaultMode)} attempt: ${escapeHtml(formatAdminTimestamp(lastRunAt))}</p>`
+        : `<p class="muted admin-cstp-report-management-note">${escapeHtml(emptyMessage)}</p>`}
+      ${assemblySummary.snapshotId || assemblySummary.snapshotVersion
+        ? `<div class="admin-cstp-report-management-result-grid">
+            <p><span>Snapshot ID</span><strong>${escapeHtml(assemblySummary.snapshotId || "Deferred")}</strong></p>
+            <p><span>Version</span><strong>${escapeHtml(assemblySummary.snapshotVersion || "1")}</strong></p>
+            <p><span>Metrics</span><strong>${escapeHtml(assemblySummary.metricCount ?? 0)}</strong></p>
+            <p><span>Sessions</span><strong>${escapeHtml(assemblySummary.sessionCount ?? 0)}</strong></p>
+          </div>`
+        : ""}
+      ${includeLineage && (lineageSummary.validationStatus || lineageSummary.nextSnapshotVersion || lineageSummary.publicVisibility === false)
+        ? `<div class="admin-cstp-report-management-result-grid">
+            <p><span>Lineage</span><strong>${escapeHtml(lineageSummary.validationStatus || "Internal only")}</strong></p>
+            <p><span>Next version</span><strong>${escapeHtml(lineageSummary.nextSnapshotVersion || assemblySummary.snapshotVersion || "1")}</strong></p>
+            <p><span>Public</span><strong>${escapeHtml(lineageSummary.publicVisibility === false ? "No" : "Deferred")}</strong></p>
+            <p><span>Action</span><strong>${escapeHtml(lineageSummary.actionType || "Generate")}</strong></p>
+          </div>`
+        : ""}
+      ${error
+        ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
+        : ""}
+      ${result?.message
+        ? `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result.message)}</p>`
+        : ""}
+      ${errors.length
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Blocking errors</strong>
+            ${errors.slice(0, 4).map((issue) => `<p>${escapeHtml(issue?.message || String(issue || ""))}</p>`).join("")}
+          </div>`
+        : ""}
+      ${warnings.length
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Warnings</strong>
+            ${warnings.slice(0, 4).map((warning) => `<p>${escapeHtml(warning?.message || String(warning || ""))}</p>`).join("")}
+          </div>`
+        : ""}
+    </section>
+  `;
+}
+
+function renderAdminCstpImmutableReportGenerateResultMarkup() {
+  return renderAdminCstpImmutableReportWorkflowResultMarkup({
+    key: "generate",
+    eyebrow: "Generate Workflow Result",
+    title: "Internal generated candidate status",
+    description: "Generate Report calls the protected route/action stack, assembler, and validator with persistence deferred for this slice.",
+    emptyMessage: "No Generate Report workflow has been run from this dashboard yet.",
+    loading: appState.adminCstpReportGenerateLoading,
+    error: appState.adminCstpReportGenerateError,
+    result: appState.adminCstpReportGenerateResult,
+    lastRunAt: appState.adminCstpReportGenerateLastRunAt,
+    defaultMode: "generate",
+    includeLineage: true,
+  });
+}
+
+function renderAdminCstpImmutableReportPrepareResultMarkup() {
+  return renderAdminCstpImmutableReportWorkflowResultMarkup({
+    key: "prepare",
+    eyebrow: "Prepare Workflow Result",
+    title: "Internal route stack status",
+    description: "Prepare Report calls the protected internal route/action layer with mock operational data and persistence deferred.",
+    emptyMessage: "No Prepare Report workflow has been run from this dashboard yet.",
+    loading: appState.adminCstpReportPrepareLoading,
+    error: appState.adminCstpReportPrepareError,
+    result: appState.adminCstpReportPrepareResult,
+    lastRunAt: appState.adminCstpReportPrepareLastRunAt,
+    defaultMode: "prepare",
+  });
 }
 
 function renderAdminCstpImmutableReportItemMarkup(item = {}) {
@@ -46212,75 +46373,6 @@ function renderAdminCstpImmutableReportPanelMarkup(panel = {}) {
       <div class="inline-actions admin-cstp-lab-actions admin-cstp-report-management-actions">
         ${actionLabels.map((action) => renderAdminCstpImmutableReportActionMarkup(action)).join("")}
       </div>
-    </section>
-  `;
-}
-
-function renderAdminCstpImmutableReportPrepareResultMarkup() {
-  const result = appState.adminCstpReportPrepareResult;
-  const error = appState.adminCstpReportPrepareError;
-  const loading = appState.adminCstpReportPrepareLoading;
-  const summary = result?.validationSummary || result?.validation?.summary || {};
-  const assemblySummary = result?.serviceResult?.workflowResult?.assemblyResultSummary
-    || result?.workflowResult?.assemblyResultSummary
-    || result?.assemblyResultSummary
-    || {};
-  const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
-  const errors = Array.isArray(result?.blockingErrors)
-    ? result.blockingErrors
-    : (Array.isArray(result?.errors) ? result.errors : []);
-  const statusLabel = loading
-    ? "Preparing"
-    : (error ? "Route error" : (result?.status || "Not run"));
-  const statusTone = loading
-    ? "preparing"
-    : (error ? "failed" : (result?.ok ? "prepared" : "neutral"));
-
-  return `
-    <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-prepare-result-title">
-      <div class="admin-cstp-report-management-panel-head">
-        <div>
-          <p class="eyebrow">Prepare Workflow Result</p>
-          <h5 id="admin-cstp-report-prepare-result-title">Internal route stack status</h5>
-          <p class="muted">Prepare Report calls the protected internal route/action layer with mock operational data and persistence deferred.</p>
-        </div>
-        ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
-      </div>
-      <div class="admin-cstp-report-management-result-grid">
-        <p><span>Workflow</span><strong>${escapeHtml(result?.workflowMode || "prepare")}</strong></p>
-        <p><span>Persistence</span><strong>${escapeHtml(result?.serviceResult?.workflowResult?.workflowPlanSummary?.persist ? "Enabled" : "Deferred mock mode")}</strong></p>
-        <p><span>Validation</span><strong>${escapeHtml(`${Number(summary.blocking || 0)} blocking / ${Number(summary.warnings || 0)} warnings`)}</strong></p>
-        <p><span>Snapshot</span><strong>${escapeHtml(assemblySummary.snapshotStatus || "Awaiting run")}</strong></p>
-      </div>
-      ${appState.adminCstpReportPrepareLastRunAt
-        ? `<p class="muted admin-cstp-report-management-note">Last internal prepare attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportPrepareLastRunAt))}</p>`
-        : `<p class="muted admin-cstp-report-management-note">No Prepare Report workflow has been run from this dashboard yet.</p>`}
-      ${assemblySummary.snapshotId || assemblySummary.snapshotVersion
-        ? `<div class="admin-cstp-report-management-result-grid">
-            <p><span>Snapshot ID</span><strong>${escapeHtml(assemblySummary.snapshotId || "Deferred")}</strong></p>
-            <p><span>Version</span><strong>${escapeHtml(assemblySummary.snapshotVersion || "1")}</strong></p>
-            <p><span>Metrics</span><strong>${escapeHtml(assemblySummary.metricCount ?? 0)}</strong></p>
-            <p><span>Sessions</span><strong>${escapeHtml(assemblySummary.sessionCount ?? 0)}</strong></p>
-          </div>`
-        : ""}
-      ${error
-        ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
-        : ""}
-      ${result?.message
-        ? `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result.message)}</p>`
-        : ""}
-      ${errors.length
-        ? `<div class="admin-cstp-report-management-feedback">
-            <strong>Blocking errors</strong>
-            ${errors.slice(0, 4).map((issue) => `<p>${escapeHtml(issue?.message || String(issue || ""))}</p>`).join("")}
-          </div>`
-        : ""}
-      ${warnings.length
-        ? `<div class="admin-cstp-report-management-feedback">
-            <strong>Warnings</strong>
-            ${warnings.slice(0, 4).map((warning) => `<p>${escapeHtml(warning?.message || String(warning || ""))}</p>`).join("")}
-          </div>`
-        : ""}
     </section>
   `;
 }
@@ -46365,6 +46457,33 @@ function buildAdminCstpPrepareReportMockPayload(workflowTimestamp = "") {
   };
 }
 
+function buildAdminCstpGenerateReportMockPayload(workflowTimestamp = "") {
+  const timestamp = workflowTimestamp || new Date().toISOString();
+  const payload = buildAdminCstpPrepareReportMockPayload(timestamp);
+  return {
+    ...payload,
+    snapshotId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    workflowTimestamp: timestamp,
+    generatedAt: timestamp,
+    calculatedAt: timestamp,
+    persist: false,
+    loadedInput: {
+      ...payload.loadedInput,
+      cstpTest: {
+        ...payload.loadedInput.cstpTest,
+        internal_state: "ready_for_internal_generate_mock",
+      },
+      auditEvents: [
+        {
+          id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+          event_type: "snapshot_generated",
+          created_at: timestamp,
+        },
+      ],
+    },
+  };
+}
+
 async function prepareAdminCstpImmutableReportWorkflow() {
   if (!isAdminUser()) {
     throw new Error("Sign in as an admin to prepare internal CSTP reports.");
@@ -46388,6 +46507,37 @@ async function prepareAdminCstpImmutableReportWorkflow() {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
     const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Prepare Report returned ${response.status}.`;
+    const error = new Error(detail);
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
+async function generateAdminCstpImmutableReportWorkflow() {
+  if (!isAdminUser()) {
+    throw new Error("Sign in as an admin to generate internal CSTP reports.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin with a valid session before running Generate Report.");
+  }
+
+  const workflowTimestamp = new Date().toISOString();
+  const response = await fetch(ADMIN_CSTP_REPORT_GENERATE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(buildAdminCstpGenerateReportMockPayload(workflowTimestamp)),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Generate Report returned ${response.status}.`;
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -46425,6 +46575,26 @@ async function prepareAdminCstpImmutableReportWorkflowAndRender(scope = app) {
   }
 }
 
+async function generateAdminCstpImmutableReportWorkflowAndRender(scope = app) {
+  appState.adminCstpReportGenerateLoading = true;
+  appState.adminCstpReportGenerateError = "";
+  appState.adminCstpReportGenerateResult = null;
+  appState.adminCstpReportGenerateLastRunAt = new Date().toISOString();
+  renderAdminCstpImmutableReportManagementInto(scope);
+
+  try {
+    const result = await generateAdminCstpImmutableReportWorkflow();
+    appState.adminCstpReportGenerateResult = result;
+    appState.adminCstpReportGenerateError = "";
+  } catch (error) {
+    appState.adminCstpReportGenerateResult = error?.payload || null;
+    appState.adminCstpReportGenerateError = error?.message || "Could not generate the internal CSTP report.";
+  } finally {
+    appState.adminCstpReportGenerateLoading = false;
+    renderAdminCstpImmutableReportManagementInto(scope);
+  }
+}
+
 function renderAdminCstpImmutableReportManagementMarkup() {
   const metricCards = [
     ["Report queue", "3", "Mock candidates awaiting admin review"],
@@ -46438,7 +46608,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       eyebrow: "Queue",
       title: "Report queue",
       description: "Internal candidates that future protected handlers may prepare or generate.",
-      badge: "Prepare wired",
+      badge: "Prepare + generate wired",
       badgeTone: "prepared",
       actions: [
         {
@@ -46446,7 +46616,11 @@ function renderAdminCstpImmutableReportManagementMarkup() {
           action: "prepare",
           enabled: true,
         },
-        "Generate snapshot",
+        {
+          label: "Generate report",
+          action: "generate",
+          enabled: true,
+        },
       ],
       items: [
         {
@@ -46563,16 +46737,18 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare Report is wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare and Generate Report are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Prepare wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Generate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
       </div>
       ${renderAdminCstpImmutableReportPrepareResultMarkup()}
+      ${renderAdminCstpImmutableReportGenerateResultMarkup()}
       <div class="admin-cstp-metrics-grid admin-cstp-report-management-metrics">
         ${metricCards.map(([label, value, description]) => `
           <div class="admin-cstp-metric-card">
@@ -47167,10 +47343,11 @@ function bindAdminCstpReportManagement(scope = app) {
 
   /*
    * Internal admin-only CSTP immutable report UI boundary.
-   * Prepare Report is the only wired action in this first slice. It calls the
-   * protected internal route stack with persistence deferred and mock
+   * Prepare and Generate Report are the only wired actions in this slice. They
+   * call the protected internal route stack with persistence deferred and mock
    * operational data; no public report, rendering, export, or certification
-   * behavior is exposed here.
+   * behavior is exposed here. Regeneration, supersession, and inspection stay
+   * disabled until explicitly wired.
    */
   scope.querySelectorAll("[data-admin-cstp-report-prepare='true']").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportPrepareBound === "true") {
@@ -47179,6 +47356,16 @@ function bindAdminCstpReportManagement(scope = app) {
     button.dataset.adminCstpReportPrepareBound = "true";
     button.addEventListener("click", () => {
       prepareAdminCstpImmutableReportWorkflowAndRender(app);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-report-generate='true']").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportGenerateBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpReportGenerateBound = "true";
+    button.addEventListener("click", () => {
+      generateAdminCstpImmutableReportWorkflowAndRender(app);
     });
   });
 }
