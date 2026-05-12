@@ -179,6 +179,7 @@ function createCstpAdminReportRouteHandler(actionKey) {
         definition,
         result,
         authorization,
+        loadedInput,
       }));
     } catch (error) {
       const clientError = isClientRouteError(error);
@@ -219,7 +220,13 @@ async function loadAdminReportActionInput({
     workflowTimestamp: normalizeTimestamp(
       payload.workflowTimestamp || payload.timestamp,
     ),
-    persist: normalizeBoolean(payload.persist, false),
+    requestedPersist: normalizeBoolean(payload.persist, false),
+    /*
+     * Phase 1 real operational loading runs in shadow mode only. Immutable
+     * snapshot persistence remains explicitly deferred until a later guarded
+     * enablement slice.
+     */
+    persist: false,
   };
 
   const loader = options.dataLoader || loadCstpAdminReportData;
@@ -232,6 +239,11 @@ async function loadAdminReportActionInput({
   return {
     ...baseInput,
     ...loaded,
+    operationalLoadingSummary: buildOperationalLoadingSummary(loaded, {
+      requestedPersist: baseInput.requestedPersist,
+      effectivePersist: false,
+      loadMode: definition.loadMode,
+    }),
     dbClient: resolveRouteDbClient({
       payload: baseInput,
       options,
@@ -241,11 +253,17 @@ async function loadAdminReportActionInput({
 }
 
 async function loadCstpAdminReportData({ definition, payload, options = {} }) {
-  if (payload.loadedInput && typeof payload.loadedInput === "object") {
+  const allowPreloadedData = options.allowPreloadedData === true;
+
+  if (
+    allowPreloadedData
+    && payload.loadedInput
+    && typeof payload.loadedInput === "object"
+  ) {
     return payload.loadedInput;
   }
 
-  if (hasPreloadedPayload(payload, definition.loadMode)) {
+  if (allowPreloadedData && hasPreloadedPayload(payload, definition.loadMode)) {
     return pickPreloadedPayload(payload);
   }
 
@@ -292,7 +310,20 @@ async function loadWorkflowData({
   fetchImpl,
   includeLineage = false,
 }) {
-  let cstpTest = null;
+  return loadCstpOperationalContext({
+    context,
+    config,
+    fetchImpl,
+    includeLineage,
+  });
+}
+
+async function loadCstpOperationalContext({
+  context,
+  config,
+  fetchImpl,
+  includeLineage = false,
+}) {
   let existingReport = null;
 
   if (context.reportId) {
@@ -303,59 +334,60 @@ async function loadWorkflowData({
     );
   }
 
-  if (context.cstpTestId) {
-    cstpTest = await loadSingleById(
-      CSTP_REPORT_TABLES.tests,
-      context.cstpTestId,
-      { config, fetchImpl },
-    );
-  } else if (existingReport?.cstp_test_id) {
-    cstpTest = await loadSingleById(
-      CSTP_REPORT_TABLES.tests,
-      existingReport.cstp_test_id,
-      { config, fetchImpl },
-    );
+  let cstpRequest = await loadCstpRequestContext({
+    context,
+    existingReport,
+    config,
+    fetchImpl,
+  });
+  const cstpTest = await loadCstpTestContext({
+    context,
+    existingReport,
+    cstpRequest,
+    config,
+    fetchImpl,
+  });
+  if (!cstpRequest && cstpTest?.request_id) {
+    cstpRequest = await loadSingleById(CSTP_REPORT_TABLES.requests, cstpTest.request_id, {
+      config,
+      fetchImpl,
+    });
   }
+  const source = await loadSourceContext({
+    context,
+    existingReport,
+    cstpRequest,
+    cstpTest,
+    config,
+    fetchImpl,
+  });
+  assertOperationalScopeConsistency({
+    context,
+    existingReport,
+    cstpRequest,
+    cstpTest,
+    source,
+  });
 
   const cstpRequestId =
-    context.cstpRequestId
+    cstpRequest?.id
+    || context.cstpRequestId
     || cstpTest?.request_id
     || existingReport?.cstp_request_id;
-  const cstpRequest = cstpRequestId
-    ? await loadSingleById(CSTP_REPORT_TABLES.requests, cstpRequestId, {
-      config,
-      fetchImpl,
-    })
-    : null;
-  const sourceId =
-    context.sourceId
-    || cstpRequest?.source_id
-    || cstpTest?.source_id
-    || existingReport?.source_id;
-  const source = sourceId
-    ? await loadSingleById(CSTP_REPORT_TABLES.sources, sourceId, {
-      config,
-      fetchImpl,
-    })
-    : null;
   const testId = cstpTest?.id || context.cstpTestId || existingReport?.cstp_test_id;
   const cstpTestSessions = testId
-    ? await loadMany(CSTP_REPORT_TABLES.testSessions, {
+    ? normalizeCstpTestSessionRows(await loadMany(CSTP_REPORT_TABLES.testSessions, {
       filter: `cstp_test_id=eq.${encodeURIComponent(testId)}`,
       order: "created_at.asc",
       config,
       fetchImpl,
-    })
+    }))
     : [];
-  const growSessionIds = uniqueNonEmpty(
-    cstpTestSessions.map((session) => session.grow_session_id),
-  );
-  const growSessions = growSessionIds.length
-    ? await loadManyByIds(CSTP_REPORT_TABLES.growSessions, growSessionIds, {
-      config,
-      fetchImpl,
-    })
-    : [];
+  const growSessions = await loadGrowSessionContext({
+    cstpTestSessions,
+    config,
+    fetchImpl,
+  });
   const reportForLineage = existingReport || await loadReportByScope({
     cstpRequestId,
     cstpTestId: testId,
@@ -382,6 +414,154 @@ async function loadWorkflowData({
     existingReport: reportForLineage || undefined,
     existingSnapshots,
   });
+}
+
+async function loadCstpRequestContext({
+  context,
+  existingReport,
+  config,
+  fetchImpl,
+}) {
+  const cstpRequestId = context.cstpRequestId || existingReport?.cstp_request_id;
+  return cstpRequestId
+    ? loadSingleById(CSTP_REPORT_TABLES.requests, cstpRequestId, {
+      config,
+      fetchImpl,
+    })
+    : null;
+}
+
+async function loadCstpTestContext({
+  context,
+  existingReport,
+  cstpRequest,
+  config,
+  fetchImpl,
+}) {
+  const cstpTestId = context.cstpTestId || existingReport?.cstp_test_id;
+  if (cstpTestId) {
+    return loadSingleById(CSTP_REPORT_TABLES.tests, cstpTestId, {
+      config,
+      fetchImpl,
+    });
+  }
+
+  const cstpRequestId = cstpRequest?.id || context.cstpRequestId;
+  if (!cstpRequestId) {
+    return null;
+  }
+
+  const tests = await loadMany(CSTP_REPORT_TABLES.tests, {
+    filter: `request_id=eq.${encodeURIComponent(cstpRequestId)}&limit=1`,
+    order: "created_at.desc",
+    config,
+    fetchImpl,
+  });
+  return tests[0] || null;
+}
+
+async function loadGrowSessionContext({
+  cstpTestSessions,
+  config,
+  fetchImpl,
+}) {
+  const growSessionIds = uniqueNonEmpty(
+    cstpTestSessions.map(getGrowSessionIdFromTestSession),
+  );
+
+  return growSessionIds.length
+    ? loadManyByIds(CSTP_REPORT_TABLES.growSessions, growSessionIds, {
+      config,
+      fetchImpl,
+    })
+    : [];
+}
+
+async function loadSourceContext({
+  context,
+  existingReport,
+  cstpRequest,
+  cstpTest,
+  config,
+  fetchImpl,
+}) {
+  const sourceId =
+    context.sourceId
+    || cstpRequest?.source_id
+    || cstpTest?.source_id
+    || existingReport?.source_id;
+
+  return sourceId
+    ? loadSingleById(CSTP_REPORT_TABLES.sources, sourceId, {
+      config,
+      fetchImpl,
+    })
+    : null;
+}
+
+function assertOperationalScopeConsistency({
+  context,
+  existingReport,
+  cstpRequest,
+  cstpTest,
+  source,
+}) {
+  if (context.cstpRequestId && cstpRequest && cstpRequest.id !== context.cstpRequestId) {
+    throwOperationalScopeError(
+      "CSTP request scope did not match the loaded request.",
+      "cstpRequestId",
+    );
+  }
+  if (context.cstpTestId && cstpTest && cstpTest.id !== context.cstpTestId) {
+    throwOperationalScopeError(
+      "CSTP test scope did not match the loaded test.",
+      "cstpTestId",
+    );
+  }
+  if (
+    cstpRequest?.id
+    && cstpTest?.request_id
+    && cstpTest.request_id !== cstpRequest.id
+  ) {
+    throwOperationalScopeError(
+      "Loaded CSTP test does not belong to the loaded CSTP request.",
+      "cstpTest.request_id",
+    );
+  }
+  if (
+    existingReport?.cstp_test_id
+    && cstpTest?.id
+    && existingReport.cstp_test_id !== cstpTest.id
+  ) {
+    throwOperationalScopeError(
+      "Loaded report does not belong to the loaded CSTP test.",
+      "existingReport.cstp_test_id",
+    );
+  }
+  if (
+    source?.id
+    && cstpTest?.source_id
+    && cstpTest.source_id !== source.id
+  ) {
+    throwOperationalScopeError(
+      "Loaded source does not match the CSTP test source.",
+      "cstpTest.source_id",
+    );
+  }
+}
+
+function throwOperationalScopeError(message, field) {
+  const error = new Error(message);
+  error.code = "CSTP_ADMIN_REPORT_OPERATIONAL_SCOPE_INVALID";
+  error.details = { field };
+  throw error;
+}
+
+function normalizeCstpTestSessionRows(rows = []) {
+  return (Array.isArray(rows) ? rows : []).map((row) => ({
+    ...row,
+    grow_session_id: getGrowSessionIdFromTestSession(row),
+  }));
 }
 
 async function loadLineageData({ context, config, fetchImpl }) {
@@ -511,24 +691,18 @@ async function loadSnapshotsForReport(reportId, { config, fetchImpl }) {
 }
 
 async function loadAuditEvents({
-  cstpRequestId,
   cstpTestId,
   config,
   fetchImpl,
 }) {
-  const filters = ["select=*"];
-  if (cstpRequestId) {
-    filters.push(`cstp_request_id=eq.${encodeURIComponent(cstpRequestId)}`);
-  }
-  if (cstpTestId) {
-    filters.push(`cstp_test_id=eq.${encodeURIComponent(cstpTestId)}`);
-  }
-  filters.push("order=created_at.desc");
-  filters.push("limit=50");
-
-  if (filters.length <= 3) {
+  if (!cstpTestId) {
     return [];
   }
+  validateUuid("cstpTestId", cstpTestId);
+  const filters = ["select=*"];
+  filters.push(`cstp_test_id=eq.${encodeURIComponent(cstpTestId)}`);
+  filters.push("order=created_at.desc");
+  filters.push("limit=50");
 
   const rows = await supabaseRest(
     `${CSTP_REPORT_TABLES.adminEvents}?${filters.join("&")}`,
@@ -608,28 +782,22 @@ function buildActionOptions({ payload, options, loadedInput }) {
   return {
     ...(options.actionOptions || {}),
     workflowTimestamp: loadedInput.workflowTimestamp,
-    persist: loadedInput.persist,
-    dbClient: loadedInput.dbClient,
+    persist: false,
+    dbClient: null,
     routeActionName: payload.actionName,
   };
 }
 
 function resolveRouteDbClient({ payload, options, loaded }) {
-  if (!payload.persist) {
-    return payload.dbClient || options.dbClient || loaded?.dbClient;
-  }
-  if (payload.dbClient || options.dbClient || loaded?.dbClient) {
-    return payload.dbClient || options.dbClient || loaded.dbClient;
-  }
-  const config = resolveRouteConfig(options.executionOptions || options.loadOptions || {});
-  return createSupabaseInsertDbClient({
-    config,
-    fetchImpl:
-      options.executionOptions?.fetchImpl
-      || options.loadOptions?.fetchImpl
-      || options.fetchImpl
-      || globalThis.fetch,
-  });
+  void payload;
+  void options;
+  void loaded;
+  /*
+   * Shadow/deferred persistence mode intentionally never supplies a database
+   * insert client to immutable report orchestration. Real persistence wiring is
+   * deferred to a later guarded rollout phase.
+   */
+  return null;
 }
 
 function buildRoutePayload(request = {}, definition = {}) {
@@ -818,12 +986,18 @@ function resolveRouteConfig(options = {}) {
   return config;
 }
 
-function buildRouteSuccess({ definition, result, authorization }) {
+function buildRouteSuccess({
+  definition,
+  result,
+  authorization,
+  loadedInput = {},
+}) {
   return {
     ...result,
     operation: definition.operation,
     actionName: definition.actionName,
     workflowMode: result.workflowMode || definition.workflowMode,
+    operationalLoadingSummary: loadedInput.operationalLoadingSummary || null,
     actor: {
       userId: authorization.actor.userId,
       authorizationSource: authorization.actor.authorizationSource,
@@ -866,6 +1040,9 @@ function buildRouteSafety() {
     communityGrowIntegration: false,
     destructiveSnapshotMutation: false,
     mutatesGrowSessions: false,
+    realOperationalLoading: true,
+    shadowMode: true,
+    immutablePersistenceDeferred: true,
   };
 }
 
@@ -886,6 +1063,7 @@ function isClientRouteError(error) {
   return [
     "CSTP_ADMIN_REPORT_LIST_SCOPE_REQUIRED",
     "CSTP_ADMIN_REPORT_UUID_INVALID",
+    "CSTP_ADMIN_REPORT_OPERATIONAL_SCOPE_INVALID",
   ].includes(error?.code);
 }
 
@@ -933,6 +1111,74 @@ function uniqueNonEmpty(values = []) {
   return [...new Set(values.map(normalizeNullableText).filter(Boolean))];
 }
 
+function getGrowSessionIdFromTestSession(session = {}) {
+  return normalizeNullableText(
+    session.grow_session_id
+    || session.session_id
+    || session.growSessionId
+    || session.sessionId,
+  );
+}
+
+function buildOperationalLoadingSummary(loaded = {}, {
+  requestedPersist = false,
+  effectivePersist = false,
+  loadMode = "",
+} = {}) {
+  const cstpRequest = loaded.cstpRequest || {};
+  const cstpTest = loaded.cstpTest || {};
+  const source = loaded.source || {};
+  const existingReport = loaded.existingReport || {};
+  const cstpTestSessions = normalizeArray(loaded.cstpTestSessions);
+  const growSessions = normalizeArray(loaded.growSessions);
+  const existingSnapshots = normalizeArray(loaded.existingSnapshots);
+  const requestId = normalizeNullableText(cstpRequest.id || existingReport.cstp_request_id);
+  const testId = normalizeNullableText(cstpTest.id || existingReport.cstp_test_id);
+  const sourceId = normalizeNullableText(source.id || existingReport.source_id);
+  const hasRequest = Boolean(requestId);
+  const hasTest = Boolean(testId);
+  const hasSource = Boolean(sourceId);
+  const hasSessionLinkage = cstpTestSessions.length > 0;
+  const hasGrowSessions = growSessions.length > 0;
+
+  return {
+    mode: "shadow_deferred_persistence",
+    loadMode,
+    realOperationalRecordsLoaded: true,
+    persistenceRequested: Boolean(requestedPersist),
+    persistenceEffective: Boolean(effectivePersist),
+    persistenceDeferred: true,
+    cstpRequestId: requestId,
+    cstpTestId: testId,
+    sourceId,
+    sourceName: normalizeNullableText(
+      source.name
+      || source.source_name
+      || source.display_name
+      || source.company_name,
+    ),
+    sessionLinkCount: cstpTestSessions.length,
+    growSessionCount: growSessions.length,
+    existingSnapshotCount: existingSnapshots.length,
+    operationalCompleteness: {
+      hasRequest,
+      hasTest,
+      hasSource,
+      hasSessionLinkage,
+      hasGrowSessions,
+      validationReady: hasRequest && hasTest && hasSource && hasSessionLinkage && hasGrowSessions,
+    },
+    safety: {
+      adminOnly: true,
+      publicAccess: false,
+      immutablePersistence: false,
+      mutatesGrowSessions: false,
+      rendering: false,
+      certification: false,
+    },
+  };
+}
+
 function pruneUndefined(record = {}) {
   return Object.fromEntries(
     Object.entries(record).filter(([, value]) => value !== undefined),
@@ -951,6 +1197,7 @@ module.exports = {
   handleCstpReportSupersedeRoute,
   handleCstpReportValidationRoute,
   handleCstpReportsListRoute,
+  loadCstpOperationalContext,
   loadAdminReportActionInput,
   loadCstpAdminReportData,
   parseRequestBody,

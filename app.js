@@ -46208,17 +46208,17 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
     ? `disabled aria-disabled="true"`
     : actionAttribute;
   const title = isValidationAction && enabled
-    ? "Run the internal Inspect Validation workflow through the protected CSTP admin route stack with mock validation data."
+    ? "Run the internal Inspect Validation workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
     : (isLineageAction && enabled
-      ? "Run the internal Inspect Lineage workflow through the protected CSTP admin route stack with mock lineage data."
+      ? "Run the internal Inspect Lineage workflow through the protected CSTP admin route stack with real operational identifiers and persistence deferred."
       : (isSupersedeAction && enabled
-      ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with persistence deferred."
+      ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
       : (isRegenerateAction && enabled
-        ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
+        ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
         : (isGenerateAction && enabled
-          ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
+          ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with real operational loading and persistence deferred."
           : (enabled
-            ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
+            ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack with real operational loading."
             : "Internal placeholder only; protected workflow wiring is deferred.")))));
   const toneClass = enabled && (isGenerateAction || isRegenerateAction || isSupersedeAction)
     ? "admin-cstp-button--success"
@@ -46261,13 +46261,40 @@ function getAdminCstpReportWorkflowSummary(result = null) {
     || result?.validation?.summary
     || result?.serviceResult?.validationSummary
     || {};
+  const operationalLoadingSummary = result?.operationalLoadingSummary
+    || result?.serviceResult?.operationalLoadingSummary
+    || null;
 
   return {
     workflowResult,
     assemblySummary,
     lineageSummary,
     validationSummary,
+    operationalLoadingSummary,
   };
+}
+
+function renderAdminCstpOperationalLoadingSummaryMarkup(summary = null) {
+  if (!summary || typeof summary !== "object") {
+    return "";
+  }
+
+  const completeness = summary.operationalCompleteness || {};
+  const sourceLabel = summary.sourceName || summary.sourceId || "Not loaded";
+  const readiness = completeness.validationReady
+    ? "Ready for validation"
+    : "Needs operational data";
+
+  return `
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>CSTP request</span><strong>${escapeHtml(summary.cstpRequestId || "Not loaded")}</strong></p>
+      <p><span>CSTP test</span><strong>${escapeHtml(summary.cstpTestId || "Not loaded")}</strong></p>
+      <p><span>Source</span><strong>${escapeHtml(sourceLabel)}</strong></p>
+      <p><span>Sessions</span><strong>${escapeHtml(`${Number(summary.sessionLinkCount || 0)} links / ${Number(summary.growSessionCount || 0)} grow`)}</strong></p>
+      <p><span>Operational</span><strong>${escapeHtml(readiness)}</strong></p>
+      <p><span>Loading mode</span><strong>${escapeHtml(summary.mode || "shadow_deferred_persistence")}</strong></p>
+    </div>
+  `;
 }
 
 function renderAdminCstpImmutableReportWorkflowResultMarkup({
@@ -46286,6 +46313,7 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
   const {
     assemblySummary,
     lineageSummary,
+    operationalLoadingSummary,
     validationSummary,
     workflowResult,
   } = getAdminCstpReportWorkflowSummary(result);
@@ -46300,6 +46328,7 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
     ? "preparing"
     : (error ? "failed" : (result?.ok ? "prepared" : "neutral"));
   const persisted = workflowResult?.workflowPlanSummary?.persist === true;
+  const persistenceLabel = persisted ? "Enabled" : "Deferred shadow mode";
 
   return `
     <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-${escapeHtml(key)}-result-title">
@@ -46313,10 +46342,11 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
       </div>
       <div class="admin-cstp-report-management-result-grid">
         <p><span>Workflow</span><strong>${escapeHtml(result?.workflowMode || defaultMode)}</strong></p>
-        <p><span>Persistence</span><strong>${escapeHtml(persisted ? "Enabled" : "Deferred mock mode")}</strong></p>
+        <p><span>Persistence</span><strong>${escapeHtml(persistenceLabel)}</strong></p>
         <p><span>Validation</span><strong>${escapeHtml(`${Number(validationSummary.blocking || 0)} blocking / ${Number(validationSummary.warnings || 0)} warnings`)}</strong></p>
         <p><span>Snapshot</span><strong>${escapeHtml(assemblySummary.snapshotStatus || "Awaiting run")}</strong></p>
       </div>
+      ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
       ${lastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal ${escapeHtml(defaultMode)} attempt: ${escapeHtml(formatAdminTimestamp(lastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">${escapeHtml(emptyMessage)}</p>`}
@@ -46390,7 +46420,7 @@ function renderAdminCstpImmutableReportGenerateResultMarkup() {
     key: "generate",
     eyebrow: "Generate Workflow Result",
     title: "Internal generated candidate status",
-    description: "Generate Report calls the protected route/action stack, assembler, and validator with persistence deferred for this slice.",
+    description: "Generate Report calls the protected route/action stack, real operational loader, assembler, and validator with immutable persistence deferred.",
     emptyMessage: "No Generate Report workflow has been run from this dashboard yet.",
     loading: appState.adminCstpReportGenerateLoading,
     error: appState.adminCstpReportGenerateError,
@@ -46406,7 +46436,7 @@ function renderAdminCstpImmutableReportPrepareResultMarkup() {
     key: "prepare",
     eyebrow: "Prepare Workflow Result",
     title: "Internal route stack status",
-    description: "Prepare Report calls the protected internal route/action layer with mock operational data and persistence deferred.",
+    description: "Prepare Report calls the protected internal route/action layer with real operational CSTP loading and persistence deferred.",
     emptyMessage: "No Prepare Report workflow has been run from this dashboard yet.",
     loading: appState.adminCstpReportPrepareLoading,
     error: appState.adminCstpReportPrepareError,
@@ -46421,7 +46451,7 @@ function renderAdminCstpImmutableReportRegenerateResultMarkup() {
     key: "regenerate",
     eyebrow: "Regenerate Workflow Result",
     title: "Internal regeneration plan status",
-    description: "Regenerate Report calls the protected route/action stack, lineage planner, assembler, and validator with persistence deferred.",
+    description: "Regenerate Report calls the protected route/action stack, real operational loader, lineage planner, assembler, and validator with persistence deferred.",
     emptyMessage: "No Regenerate Report workflow has been run from this dashboard yet.",
     loading: appState.adminCstpReportRegenerateLoading,
     error: appState.adminCstpReportRegenerateError,
@@ -46437,7 +46467,7 @@ function renderAdminCstpImmutableReportSupersedeResultMarkup() {
     key: "supersede",
     eyebrow: "Supersede Workflow Result",
     title: "Internal supersession plan status",
-    description: "Supersede Report calls the protected route/action stack, supersession planner, lineage validator, and immutable orchestrator with persistence deferred.",
+    description: "Supersede Report calls the protected route/action stack, real operational loader, supersession planner, lineage validator, and immutable orchestrator with persistence deferred.",
     emptyMessage: "No Supersede Report workflow has been run from this dashboard yet.",
     loading: appState.adminCstpReportSupersedeLoading,
     error: appState.adminCstpReportSupersedeError,
@@ -46460,8 +46490,10 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
     || result?.serviceResult?.validationSummary
     || {};
   const activeSnapshotId = lineageSummary.currentSnapshotId || lineageSummary.latestSnapshotId || "";
-  const activeSnapshotVersion = getAdminCstpLineageMockSnapshotVersion(activeSnapshotId);
-  const supersededCount = getAdminCstpLineageMockSupersededCount();
+  const activeSnapshotVersion = lineageSummary.currentSnapshotVersion
+    || lineageSummary.latestSnapshotVersion
+    || "";
+  const supersededCount = lineageSummary.supersededSnapshotCount ?? "Deferred";
   const activeCount = Array.isArray(lineageSummary.activeSnapshotIds)
     ? lineageSummary.activeSnapshotIds.length
     : 0;
@@ -46482,7 +46514,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         <div>
           <p class="eyebrow">Inspect Lineage Result</p>
           <h5 id="admin-cstp-report-lineage-result-title">Internal lineage inspection status</h5>
-          <p class="muted">Inspect Lineage calls the protected route/action stack and immutable lineage orchestrator with mock report/snapshot lineage.</p>
+          <p class="muted">Inspect Lineage calls the protected route/action stack and immutable lineage orchestrator with real internal lineage reads when available. Persistence remains deferred.</p>
         </div>
         ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
       </div>
@@ -46492,6 +46524,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         <p><span>Active snapshot</span><strong>${escapeHtml(activeSnapshotId || "Awaiting run")}</strong></p>
         <p><span>Active version</span><strong>${escapeHtml(activeSnapshotVersion ? `v${activeSnapshotVersion}` : "Awaiting run")}</strong></p>
       </div>
+      ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
       ${appState.adminCstpReportLineageLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect lineage attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportLineageLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Lineage workflow has been run from this dashboard yet.</p>`}
@@ -46540,6 +46573,9 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
     || validation.summary
     || result?.serviceResult?.validationSummary
     || {};
+  const operationalLoadingSummary = result?.operationalLoadingSummary
+    || result?.serviceResult?.operationalLoadingSummary
+    || null;
   const issues = Array.isArray(validation.issues)
     ? validation.issues
     : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
@@ -46556,7 +46592,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         <div>
           <p class="eyebrow">Inspect Validation Result</p>
           <h5 id="admin-cstp-report-validation-result-title">Internal validator inspection status</h5>
-          <p class="muted">Inspect Validation calls the protected route/action stack and immutable report validator with mock candidate context.</p>
+          <p class="muted">Inspect Validation calls the protected route/action stack and immutable report validator with real operational loading when available. Persistence remains deferred.</p>
         </div>
         ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
       </div>
@@ -46566,6 +46602,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         <p><span>Blocking</span><strong>${escapeHtml(Number(validationSummary.blocking || 0))}</strong></p>
         <p><span>Warnings</span><strong>${escapeHtml(Number(validationSummary.warnings || 0))}</strong></p>
       </div>
+      ${renderAdminCstpOperationalLoadingSummaryMarkup(operationalLoadingSummary)}
       ${appState.adminCstpReportValidationLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
@@ -46573,13 +46610,13 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
         <p><span>Issue total</span><strong>${escapeHtml(Number(validationSummary.total || issues.length || 0))}</strong></p>
         <p><span>Informational</span><strong>${escapeHtml(Number(validationSummary.informational || 0))}</strong></p>
         <p><span>Validator</span><strong>${escapeHtml(validation.validator || "Awaiting run")}</strong></p>
-        <p><span>Mode</span><strong>${escapeHtml(validation.metadata?.mode || "mock inspection")}</strong></p>
+        <p><span>Mode</span><strong>${escapeHtml(validation.metadata?.mode || "shadow inspection")}</strong></p>
       </div>
       ${issues.length
         ? `<div class="admin-cstp-report-validation-issues">
             ${issues.slice(0, 6).map((issue) => renderAdminCstpValidationIssueMarkup(issue)).join("")}
           </div>`
-        : `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result ? "No validation issues returned by the mock inspection context." : "Run Inspect Validation to view validator issue details.")}</p>`}
+        : `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result ? "No validation issues returned by the shadow inspection context." : "Run Inspect Validation to view validator issue details.")}</p>`}
       ${validation.metadata
         ? `<div class="admin-cstp-report-management-feedback">
             <strong>Validation metadata</strong>
@@ -47036,6 +47073,86 @@ function buildAdminCstpInspectValidationMockPayload(workflowTimestamp = "") {
   };
 }
 
+function getAdminCstpSelectedRealOperationalReportContext() {
+  const selectedTestId = String(appState.adminCstpTestDetailSelectedId || "").trim();
+  const tests = Array.isArray(appState.adminCstpTestManagementRows)
+    ? appState.adminCstpTestManagementRows
+    : [];
+  const selectedTest = (
+    appState.adminCstpTestDetailRecord
+    && (!selectedTestId || appState.adminCstpTestDetailRecord.id === selectedTestId)
+  )
+    ? appState.adminCstpTestDetailRecord
+    : (
+      tests.find((test) => test.id === selectedTestId)
+      || tests.find((test) => test.status === "completed" && !test.archived)
+      || tests.find((test) => !test.archived)
+      || tests[0]
+      || null
+    );
+  const selectedRequestId = String(
+    selectedTest?.requestId
+    || appState.adminCstpRequestDetailSelectedId
+    || "",
+  ).trim();
+  const requests = Array.isArray(appState.adminCstpRequestQueueRows)
+    ? appState.adminCstpRequestQueueRows
+    : [];
+  const selectedRequest = (
+    appState.adminCstpRequestDetailRecord
+    && (!selectedRequestId || appState.adminCstpRequestDetailRecord.id === selectedRequestId)
+  )
+    ? appState.adminCstpRequestDetailRecord
+    : (
+      requests.find((request) => request.id === selectedRequestId)
+      || requests.find((request) => selectedTest?.requestId && request.id === selectedTest.requestId)
+      || null
+    );
+  const sessionRows = appState.adminCstpSessionLinksLoadedTestId === selectedTest?.id
+    ? normalizeArray(appState.adminCstpSessionLinkRows)
+    : [];
+
+  return {
+    cstpRequestId: String(selectedRequest?.id || selectedTest?.requestId || "").trim(),
+    cstpTestId: String(selectedTest?.id || "").trim(),
+    sourceId: String(selectedTest?.sourceId || selectedRequest?.sourceId || "").trim(),
+    sessionLinkCount: sessionRows.length,
+  };
+}
+
+function buildAdminCstpShadowOperationalReportPayload(workflowTimestamp = "", options = {}) {
+  const timestamp = workflowTimestamp || new Date().toISOString();
+  const context = getAdminCstpSelectedRealOperationalReportContext();
+
+  if (!context.cstpRequestId && !context.cstpTestId) {
+    throw new Error("Load or select an internal CSTP request/test before running immutable report shadow workflows.");
+  }
+
+  return {
+    cstpRequestId: context.cstpRequestId || undefined,
+    cstpTestId: context.cstpTestId || undefined,
+    sourceId: context.sourceId || undefined,
+    reportId: options.reportId || undefined,
+    snapshotId: options.snapshotId || undefined,
+    targetSnapshotId: options.targetSnapshotId || undefined,
+    workflowTimestamp: timestamp,
+    generatedAt: timestamp,
+    calculatedAt: timestamp,
+    persist: false,
+    shadowMode: true,
+    reason: options.reason || "Internal CSTP admin shadow workflow with real operational loading and deferred immutable persistence.",
+    metadata: {
+      uiSurface: "admin_cstp_immutable_report_management",
+      workflowMode: options.workflowMode || "",
+      realOperationalLoading: true,
+      persistenceDeferred: true,
+      selectedRequestId: context.cstpRequestId,
+      selectedTestId: context.cstpTestId,
+      knownSessionLinkCount: context.sessionLinkCount,
+    },
+  };
+}
+
 async function prepareAdminCstpImmutableReportWorkflow() {
   if (!isAdminUser()) {
     throw new Error("Sign in as an admin to prepare internal CSTP reports.");
@@ -47054,7 +47171,9 @@ async function prepareAdminCstpImmutableReportWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpPrepareReportMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "prepare",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47085,7 +47204,9 @@ async function generateAdminCstpImmutableReportWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpGenerateReportMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "generate",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47116,7 +47237,10 @@ async function regenerateAdminCstpImmutableReportWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpRegenerateReportMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "regenerate",
+      reason: "Internal CSTP admin shadow regeneration plan with real operational loading and deferred immutable persistence.",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47147,7 +47271,10 @@ async function supersedeAdminCstpImmutableReportWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpSupersedeReportMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "supersede",
+      reason: "Internal CSTP admin shadow supersession plan with real operational loading and deferred immutable persistence.",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47178,7 +47305,9 @@ async function inspectAdminCstpImmutableReportLineageWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpInspectLineageMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "inspect_lineage",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47209,7 +47338,9 @@ async function inspectAdminCstpImmutableReportValidationWorkflow() {
       Accept: "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify(buildAdminCstpInspectValidationMockPayload(workflowTimestamp)),
+    body: JSON.stringify(buildAdminCstpShadowOperationalReportPayload(workflowTimestamp, {
+      workflowMode: "inspect_validation",
+    })),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
@@ -47352,19 +47483,28 @@ async function inspectAdminCstpImmutableReportValidationWorkflowAndRender(scope 
 }
 
 function renderAdminCstpImmutableReportManagementMarkup() {
+  const operationalContext = getAdminCstpSelectedRealOperationalReportContext();
+  const loadedTestCount = Array.isArray(appState.adminCstpTestManagementRows)
+    ? appState.adminCstpTestManagementRows.length
+    : 0;
+  const selectedScopeLabel = operationalContext.cstpTestId
+    ? `Test ${operationalContext.cstpTestId}`
+    : (operationalContext.cstpRequestId
+      ? `Request ${operationalContext.cstpRequestId}`
+      : "No request/test selected");
   const metricCards = [
-    ["Report queue", "3", "Mock candidates awaiting admin review"],
-    ["Prepared reports", "2", "Internal immutable candidates only"],
-    ["Validation failures", "1", "Blocked before persistence/public use"],
-    ["Lineage reviews", "2", "Supersession history placeholders"],
+    ["Operational tests", String(loadedTestCount), "Real internal CSTP tests loaded into admin state"],
+    ["Selected scope", operationalContext.cstpTestId ? "Test" : (operationalContext.cstpRequestId ? "Request" : "None"), selectedScopeLabel],
+    ["Session links", String(operationalContext.sessionLinkCount), "Known loaded CSTP session links for selected test"],
+    ["Persistence", "Deferred", "Shadow mode only; immutable tables are not written"],
   ];
   const panels = [
     {
       id: "admin-cstp-report-queue-title",
       eyebrow: "Queue",
       title: "Report queue",
-      description: "Internal candidates that future protected handlers may prepare or generate.",
-      badge: "Prepare + generate wired",
+      description: "Internal candidates use protected route handlers to load real CSTP operational records before validation.",
+      badge: "Real loading",
       badgeTone: "prepared",
       actions: [
         {
@@ -47381,14 +47521,14 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       items: [
         {
           title: "CSTP-TST-2042 / Blue Dream lot BD-042",
-          meta: "Request CSTP-REQ-1042; operational data remains canonical.",
+          meta: "Real CSTP request/test identifiers are loaded by the protected backend route.",
           status: "Draft",
           tone: "draft",
           detail: "Awaiting internal preparation",
         },
         {
           title: "CSTP-TST-2048 / Northern Lights NL-17",
-          meta: "Request CSTP-REQ-1048; session links pending validation.",
+          meta: "Missing operational records are surfaced as internal validation failures.",
           status: "Preparing",
           tone: "preparing",
           detail: "Read-only placeholder",
@@ -47399,7 +47539,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       id: "admin-cstp-prepared-reports-title",
       eyebrow: "Prepared",
       title: "Prepared reports",
-      description: "Prepared internal snapshots stay private and are not report rendering/export output.",
+      description: "Prepared internal candidates stay private and are not persisted, rendered, or exported in shadow mode.",
       badge: "Validation wired",
       badgeTone: "prepared",
       actions: [
@@ -47430,7 +47570,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       id: "admin-cstp-validation-failures-title",
       eyebrow: "Integrity",
       title: "Validation failures",
-      description: "Blocking issues must be resolved in operational workflows before immutable persistence.",
+      description: "Blocking issues from real operational loading must be resolved before any future immutable persistence phase.",
       badge: "Inspect wired",
       badgeTone: "prepared",
       actions: [
@@ -47483,7 +47623,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       id: "admin-cstp-lineage-history-title",
       eyebrow: "History",
       title: "Lineage and history",
-      description: "Shows the intended immutable chain once protected report data is safely loaded.",
+      description: "Shows the intended immutable chain from protected internal lineage reads when available.",
       badge: "Inspect wired",
       badgeTone: "prepared",
       actions: [
@@ -47507,7 +47647,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       id: "admin-cstp-report-detail-title",
       eyebrow: "Inspector",
       title: "Report detail inspector",
-      description: "Future internal detail view for immutable snapshot metadata, operational references, validation results, and audit activity.",
+      description: "Internal detail placeholder for immutable snapshot metadata, real operational references, validation results, and audit activity.",
       badge: "Placeholder",
       badgeTone: "neutral",
       actions: [
@@ -47523,7 +47663,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         },
       ],
       items: [],
-      emptyMessage: "Select an internal immutable report after live admin data wiring is added. No public report preview is rendered here.",
+      emptyMessage: "Load or select an internal CSTP request/test to run shadow workflows. No public report preview is rendered here.",
     },
   ];
 
@@ -47533,7 +47673,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, Inspect Lineage, and Inspect Validation are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, Inspect Lineage, and Inspect Validation are wired through the protected internal stack with real operational CSTP loading in shadow/deferred persistence mode; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
@@ -47543,6 +47683,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
           ${renderAdminCstpImmutableReportStatusPillMarkup("Supersede wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Lineage inspect wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Validation inspect wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Real operational loading", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
@@ -48147,11 +48288,9 @@ function bindAdminCstpReportManagement(scope = app) {
 
   /*
    * Internal admin-only CSTP immutable report UI boundary.
-   * Prepare and Generate Report are the only wired actions in this slice. They
-   * call the protected internal route stack with persistence deferred and mock
-   * operational data; no public report, rendering, export, or certification
-   * behavior is exposed here. Regeneration, supersession, and inspection stay
-   * disabled until explicitly wired.
+   * Wired report actions call the protected internal route stack with real
+   * operational CSTP record loading in shadow/deferred persistence mode. No
+   * public report, rendering, export, or certification behavior is exposed.
    */
   scope.querySelectorAll("[data-admin-cstp-report-prepare='true']").forEach((button) => {
     if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportPrepareBound === "true") {

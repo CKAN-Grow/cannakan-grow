@@ -3,6 +3,7 @@
 const assert = require("assert/strict");
 
 const {
+  REPORT_ROUTE_DEFINITIONS,
   handleCstpReportGenerateRoute,
   handleCstpReportLineageRoute,
   handleCstpReportPrepareRoute,
@@ -10,6 +11,7 @@ const {
   handleCstpReportSupersedeRoute,
   handleCstpReportValidationRoute,
   handleCstpReportsListRoute,
+  loadCstpAdminReportData,
 } = require("../src/services/cstp/internal/admin-report-route-handlers");
 const {
   assembleImmutableReportSnapshotCandidate,
@@ -29,6 +31,7 @@ const WORKFLOW_TIMESTAMP = "2026-05-12T21:00:00.000Z";
 async function main() {
   await assertAuthorizationGate();
   await assertWorkflowRoutes();
+  await assertRealOperationalLoaderShadowMode();
   await assertReadOnlyRoutes();
   await assertPublicContextRejection();
   await assertApiWrappersLoad();
@@ -82,7 +85,7 @@ async function assertWorkflowRoutes() {
   assert.equal(generate.payload.routeSafety.certificationImplemented, false);
 
   const dbClient = createMockDbClient();
-  const persisted = await invokeRoute(handleCstpReportGenerateRoute, {
+  const deferredPersistence = await invokeRoute(handleCstpReportGenerateRoute, {
     body: createRouteBody({
       persist: true,
       snapshotId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -91,10 +94,16 @@ async function assertWorkflowRoutes() {
       dbClient,
     },
   });
-  assert.equal(persisted.statusCode, 200);
-  assert.equal(persisted.payload.ok, true);
-  assert.equal(persisted.payload.persistenceSummary.insertedRowCounts.reports, 1);
-  assert.equal(dbClient.calls.length, 5);
+  assert.equal(deferredPersistence.statusCode, 200);
+  assert.equal(deferredPersistence.payload.ok, true);
+  assert.equal(
+    deferredPersistence.payload.serviceResult.workflowResult.workflowPlanSummary.persist,
+    false,
+  );
+  assert.equal(deferredPersistence.payload.operationalLoadingSummary.persistenceRequested, true);
+  assert.equal(deferredPersistence.payload.operationalLoadingSummary.persistenceEffective, false);
+  assert.equal(deferredPersistence.payload.routeSafety.immutablePersistenceDeferred, true);
+  assert.equal(dbClient.calls.length, 0);
   assert.equal(dbClient.realSupabaseCalls, 0);
 
   const lineageInput = createRouteBody({
@@ -127,6 +136,32 @@ async function assertWorkflowRoutes() {
   assert.equal(superseded.statusCode, 200);
   assert.equal(superseded.payload.workflowMode, "supersede");
   assert.equal(superseded.payload.lineageSummary.actionType, "supersede_snapshot");
+}
+
+async function assertRealOperationalLoaderShadowMode() {
+  const loaded = await loadCstpAdminReportData({
+    definition: REPORT_ROUTE_DEFINITIONS.generate,
+    payload: createRouteBody({
+      cstpRequestId: REQUEST_ID,
+      cstpTestId: TEST_ID,
+      persist: true,
+    }),
+    options: {
+      config: {
+        supabaseUrl: "https://example.supabase.co",
+        supabaseServiceRoleKey: "service-role-key",
+      },
+      fetchImpl: createOperationalLoaderFetch(),
+    },
+  });
+
+  assert.equal(loaded.cstpRequest.id, REQUEST_ID);
+  assert.equal(loaded.cstpTest.id, TEST_ID);
+  assert.equal(loaded.cstpTestSessions.length, 1);
+  assert.equal(loaded.cstpTestSessions[0].session_id, GROW_SESSION_ID);
+  assert.equal(loaded.cstpTestSessions[0].grow_session_id, GROW_SESSION_ID);
+  assert.equal(loaded.growSessions.length, 1);
+  assert.equal(loaded.source.id, SOURCE_ID);
 }
 
 async function assertReadOnlyRoutes() {
@@ -415,6 +450,66 @@ function createAuthorizationOptions() {
       }
       throw new Error(`Unexpected smoke auth fetch: ${textUrl}`);
     },
+  };
+}
+
+function createOperationalLoaderFetch() {
+  return async (url) => {
+    const textUrl = String(url);
+    if (textUrl.includes("/rest/v1/cstp_tests?")) {
+      return createFetchResponse(200, [
+        {
+          id: TEST_ID,
+          request_id: REQUEST_ID,
+          source_id: SOURCE_ID,
+          status: "completed",
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/cstp_requests?")) {
+      return createFetchResponse(200, [
+        {
+          id: REQUEST_ID,
+          source_id: SOURCE_ID,
+          status: "accepted",
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/sources?")) {
+      return createFetchResponse(200, [
+        {
+          id: SOURCE_ID,
+          name: "Internal Source",
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/cstp_test_sessions?")) {
+      return createFetchResponse(200, [
+        {
+          id: TEST_SESSION_ID,
+          cstp_test_id: TEST_ID,
+          session_id: GROW_SESSION_ID,
+          kan_label: "KAN-A",
+          included_in_report: true,
+          created_at: "2026-05-10T14:00:00.000Z",
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/grow_sessions?")) {
+      return createFetchResponse(200, [
+        {
+          id: GROW_SESSION_ID,
+          status: "completed",
+        },
+      ]);
+    }
+    if (textUrl.includes("/rest/v1/cstp_reports?")) {
+      return createFetchResponse(200, []);
+    }
+    if (textUrl.includes("/rest/v1/cstp_admin_events?")) {
+      return createFetchResponse(200, []);
+    }
+    throw new Error(`Unexpected smoke operational fetch: ${textUrl}`);
   };
 }
 
