@@ -162,6 +162,8 @@ async function assertReadOnlyInspectionActions() {
   assert.equal(lineage.adminAction, "inspect_cstp_report_lineage_for_admin");
   assert.equal(lineage.workflowMode, "inspect_lineage");
   assert.equal(lineage.lineageSummary.publicVisibility, false);
+  assert.equal(lineage.qaReviewSummary.mode, "internal_immutable_qa_review_instrumentation");
+  assert.equal(lineage.qaReviewSummary.immutableWritesEnabled, false);
 
   const candidate = assembleImmutableReportSnapshotCandidate(createOperationalInput(), {
     requireAdminContext: true,
@@ -222,6 +224,8 @@ async function assertReadOnlyInspectionActions() {
   assert.equal(persistedValidation.validationEvidenceSummary.auditLinkCount, 1);
   assert.equal(persistedValidation.evidenceExplorerSummary.mode, "internal_immutable_evidence_explorer");
   assert.equal(persistedValidation.evidenceExplorerSummary.counts.auditLinks, 1);
+  assert.equal(persistedValidation.qaReviewSummary.mode, "internal_immutable_qa_review_instrumentation");
+  assert.equal(persistedValidation.qaReviewSummary.publicReviewSystem, false);
 }
 
 function assertListAction() {

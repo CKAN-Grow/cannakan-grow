@@ -274,6 +274,9 @@ function main() {
   assert.equal(inspection.evidenceExplorerSummary.counts.sessions, 1);
   assert.equal(inspection.evidenceExplorerSummary.counts.auditLinks, 1);
   assert.equal(inspection.evidenceExplorerSummary.immutableWritesEnabled, false);
+  assert.equal(inspection.qaReviewSummary.mode, "internal_immutable_qa_review_instrumentation");
+  assert.equal(inspection.qaReviewSummary.publicVisibility, false);
+  assert.equal(inspection.qaReviewSummary.deferredPublicationReadiness.publicCertificationReady, false);
   assert.equal(inspection.ancestryBySnapshotId[SNAPSHOT_TWO_ID][0].snapshotId, SNAPSHOT_ONE_ID);
   assert.equal(inspection.descendantsBySnapshotId[SNAPSHOT_ONE_ID][0].snapshotId, SNAPSHOT_TWO_ID);
 

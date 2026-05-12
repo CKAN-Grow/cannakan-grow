@@ -5,6 +5,7 @@ const assert = require("assert/strict");
 const {
   VALIDATION_STATUSES,
   buildImmutableEvidenceExplorerSummary,
+  buildImmutableQaReviewSummary,
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
   buildImmutableReconciliationDiagnostics,
@@ -189,6 +190,19 @@ function run() {
   assert.equal(evidenceExplorer.validationTrace.validator, "buildImmutableReconciliationDiagnostics");
   assert.equal(evidenceExplorer.immutableWritesEnabled, false);
   assert.equal(evidenceExplorer.publicVisibility, false);
+
+  const qaReview = buildImmutableQaReviewSummary({
+    ...validContext,
+    validation: reconciliation.validation,
+    reconciliationSummary: reconciliation,
+    evidenceExplorerSummary: evidenceExplorer,
+  });
+  assert.equal(qaReview.mode, "internal_immutable_qa_review_instrumentation");
+  assert.equal(qaReview.publicVisibility, false);
+  assert.equal(qaReview.immutableWritesEnabled, false);
+  assert.equal(qaReview.certificationImplemented, false);
+  assert.equal(qaReview.evidenceCompletenessReview.score > 0, true);
+  assert.equal(qaReview.deferredPublicationReadiness.publicCertificationReady, false);
 
   console.log("CSTP immutable report validator smoke checks passed.");
 }

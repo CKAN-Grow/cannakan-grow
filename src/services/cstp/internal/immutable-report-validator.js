@@ -1386,6 +1386,77 @@ function buildImmutableEvidenceExplorerSummary(context = {}) {
   });
 }
 
+function buildImmutableQaReviewSummary(context = {}) {
+  const validation = context.validation || null;
+  const reconciliationSummary = context.reconciliationSummary
+    || context.reconciliationDiagnostics
+    || null;
+  const evidenceExplorerSummary = context.evidenceExplorerSummary
+    || buildImmutableEvidenceExplorerSummary(context);
+  const lineageInspection = context.lineageInspection || {};
+  const validationCheckpoints = summarizeQaValidationCheckpoints(validation);
+  const reconciliationReview = summarizeQaReconciliationReview(reconciliationSummary);
+  const evidenceCompleteness = summarizeQaEvidenceCompleteness(evidenceExplorerSummary);
+  const lineageReview = summarizeQaLineageReview({
+    lineageInspection,
+    evidenceExplorerSummary,
+  });
+  const anomalyEscalation = summarizeQaAnomalyEscalation({
+    validationCheckpoints,
+    reconciliationReview,
+    evidenceCompleteness,
+    lineageReview,
+    anomalyTrace: evidenceExplorerSummary.anomalyTrace,
+  });
+  const readinessStatus = resolveQaReadinessStatus({
+    validationCheckpoints,
+    reconciliationReview,
+    evidenceCompleteness,
+    lineageReview,
+    anomalyEscalation,
+    emptyState: evidenceExplorerSummary.emptyState,
+  });
+
+  return deepFreeze({
+    mode: "internal_immutable_qa_review_instrumentation",
+    readinessStatus,
+    readyForInternalReview: readinessStatus === "ready_for_internal_review",
+    internalReviewStatusAggregation: {
+      status: readinessStatus,
+      checkpointsPassed: validationCheckpoints.passed,
+      reconciliationState: reconciliationReview.state,
+      evidenceState: evidenceCompleteness.state,
+      lineageState: lineageReview.state,
+      anomalyEscalationState: anomalyEscalation.state,
+    },
+    validationCheckpoints,
+    reconciliationReviewIndicators: reconciliationReview,
+    evidenceCompletenessReview: evidenceCompleteness,
+    lineageReviewSummary: lineageReview,
+    anomalyEscalationIndicators: anomalyEscalation,
+    deferredPublicationReadiness: {
+      state: "deferred_internal_diagnostics_only",
+      reviewStatus: readinessStatus,
+      publicCertificationReady: false,
+      publicRenderingReady: false,
+      publicationEnabled: false,
+      message: "Publication readiness diagnostics are internal-only and deferred until future certification systems exist.",
+    },
+    labels: [
+      "Internal-only immutable CSTP QA review instrumentation",
+      "QA readiness supports operational review only",
+      "Certification, public publishing, public moderation, rendering, and integrations are deferred",
+      "Regenerate and supersede remain read-only with immutable writes disabled",
+    ],
+    persistence: false,
+    immutableWritesEnabled: false,
+    publicVisibility: false,
+    certificationImplemented: false,
+    publicReviewSystem: false,
+    internalOnly: true,
+  });
+}
+
 function validatePublicationReadinessShape(context = {}, options = {}) {
   const report = context.report || {};
   const snapshot = context.snapshot || {};
@@ -1824,6 +1895,235 @@ function buildEvidenceAnomalyTrace({
   };
 }
 
+function summarizeQaValidationCheckpoints(validation = null) {
+  const issues = Array.isArray(validation?.issues) ? validation.issues : [];
+  const blockingIssues = issues.filter((issue) => issue.blocking);
+  const warningIssues = issues.filter((issue) => !issue.blocking);
+
+  return {
+    state: !validation
+      ? "not_evaluated"
+      : (blockingIssues.length ? "blocked" : (warningIssues.length ? "review_warnings" : "passed")),
+    passed: Boolean(validation?.ok) && blockingIssues.length === 0,
+    validator: validation?.validator || "",
+    status: validation?.status || "",
+    totalIssueCount: issues.length,
+    blockingIssueCount: blockingIssues.length,
+    warningIssueCount: warningIssues.length,
+    informationalIssueCount: issues.filter((issue) => (
+      issue.severity === VALIDATION_SEVERITIES.info
+    )).length,
+    checkpoints: [
+      buildQaCheckpoint("report_lifecycle_state", issues, "REPORT_STATUS"),
+      buildQaCheckpoint("snapshot_status", issues, "SNAPSHOT_STATUS"),
+      buildQaCheckpoint("timestamp_ordering", issues, "TIMESTAMP"),
+      buildQaCheckpoint("frozen_payload", issues, "PAYLOAD"),
+      buildQaCheckpoint("operational_references", issues, "REFERENCE"),
+      buildQaCheckpoint("lineage_shape", issues, "LINEAGE"),
+      buildQaCheckpoint("audit_links", issues, "AUDIT"),
+      buildQaCheckpoint("publication_readiness_shape", issues, "PUBLICATION"),
+    ],
+    codes: [...new Set(issues.map((issue) => issue.code).filter(hasValue))],
+    issues: issues.slice(0, 12).map(summarizeIssue),
+  };
+}
+
+function buildQaCheckpoint(name, issues = [], codeFragment = "") {
+  const checkpointIssues = issues.filter((issue) => (
+    String(issue.code || "").includes(codeFragment)
+  ));
+
+  return {
+    name,
+    state: checkpointIssues.some((issue) => issue.blocking)
+      ? "blocked"
+      : (checkpointIssues.length ? "review" : "passed"),
+    issueCount: checkpointIssues.length,
+    blockingIssueCount: checkpointIssues.filter((issue) => issue.blocking).length,
+    warningIssueCount: checkpointIssues.filter((issue) => !issue.blocking).length,
+    codes: [...new Set(checkpointIssues.map((issue) => issue.code).filter(hasValue))],
+  };
+}
+
+function summarizeQaReconciliationReview(summary = null) {
+  if (!summary) {
+    return {
+      state: "not_evaluated",
+      score: null,
+      rating: "",
+      referenceDriftCount: 0,
+      auditDriftCount: 0,
+      payloadPresent: false,
+      lineageAnomalyCount: 0,
+    };
+  }
+
+  const score = Number(summary.integrityScoreSummary?.score || 0);
+  const referenceDriftCount = Number(summary.operationalReferenceDiagnostics?.count || 0);
+  const auditDriftCount = Array.isArray(summary.auditDriftIndicators)
+    ? summary.auditDriftIndicators.length
+    : 0;
+  const lineageAnomalies = summary.lineageAnomalySummary || {};
+  const lineageAnomalyCount = Number(lineageAnomalies.versionIssueCount || 0)
+    + Number(lineageAnomalies.activeChainIssueCount || 0)
+    + (lineageAnomalies.duplicateActive ? 1 : 0);
+
+  return {
+    state: score >= 90 && referenceDriftCount === 0 && auditDriftCount === 0
+      ? "ready"
+      : (score >= 70 ? "review" : "attention_required"),
+    score,
+    rating: summary.integrityScoreSummary?.rating || "",
+    referenceDriftCount,
+    auditDriftCount,
+    payloadPresent: summary.frozenPayloadCompleteness?.payloadPresent === true,
+    lineageAnomalyCount,
+    emptyState: summary.emptyState === true,
+  };
+}
+
+function summarizeQaEvidenceCompleteness(summary = {}) {
+  const counts = summary.counts || {};
+  const snapshotEvidence = summary.snapshotEvidence || {};
+  const missing = [];
+
+  if (!counts.reports) {
+    missing.push("persisted_report");
+  }
+  if (!counts.snapshots) {
+    missing.push("persisted_snapshot");
+  }
+  if (snapshotEvidence.hasFrozenPayload !== true) {
+    missing.push("frozen_payload");
+  }
+  if (!counts.metrics) {
+    missing.push("metrics");
+  }
+  if (!counts.sessions) {
+    missing.push("session_evidence");
+  }
+  if (!counts.auditLinks) {
+    missing.push("audit_links");
+  }
+
+  const score = Math.max(0, 100 - (missing.length * 15));
+
+  return {
+    state: missing.length === 0
+      ? "complete"
+      : (summary.emptyState ? "empty_state" : "incomplete"),
+    score,
+    missing,
+    reportEvidencePresent: Number(counts.reports || 0) > 0,
+    snapshotEvidencePresent: Number(counts.snapshots || 0) > 0,
+    frozenPayloadPresent: snapshotEvidence.hasFrozenPayload === true,
+    metricEvidenceCount: Number(counts.metrics || 0),
+    sessionEvidenceCount: Number(counts.sessions || 0),
+    auditEvidenceCount: Number(counts.auditLinks || 0),
+  };
+}
+
+function summarizeQaLineageReview({
+  lineageInspection = {},
+  evidenceExplorerSummary = {},
+} = {}) {
+  const anomalyTrace = evidenceExplorerSummary.anomalyTrace || {};
+  const orphanSnapshotIds = Array.isArray(lineageInspection.orphanSnapshotIds)
+    ? lineageInspection.orphanSnapshotIds
+    : (Array.isArray(anomalyTrace.orphanSnapshotIds) ? anomalyTrace.orphanSnapshotIds : []);
+  const duplicateActive = lineageInspection.duplicateActiveLineage === true
+    || lineageInspection.activeSnapshotCount > 1;
+  const conflictSummary = lineageInspection.conflictSummary || {};
+
+  return {
+    state: duplicateActive || orphanSnapshotIds.length || Number(conflictSummary.blockingConflictCount || 0)
+      ? "attention_required"
+      : (Number(conflictSummary.warningConflictCount || 0) ? "review" : "ready"),
+    snapshotCount: Number(lineageInspection.snapshotCount || evidenceExplorerSummary.counts?.snapshots || 0),
+    activeSnapshotCount: Number(lineageInspection.activeSnapshotCount || 0),
+    duplicateActive,
+    orphanSnapshotCount: orphanSnapshotIds.length,
+    blockingConflictCount: Number(conflictSummary.blockingConflictCount || 0),
+    warningConflictCount: Number(conflictSummary.warningConflictCount || 0),
+    auditLinkCount: Number(lineageInspection.auditTraceSummary?.auditLinkCount || evidenceExplorerSummary.counts?.auditLinks || 0),
+    timelineEntryCount: Number(lineageInspection.timelineSummary?.entryCount || 0),
+  };
+}
+
+function summarizeQaAnomalyEscalation({
+  validationCheckpoints,
+  reconciliationReview,
+  evidenceCompleteness,
+  lineageReview,
+  anomalyTrace = {},
+} = {}) {
+  const blockingCount = Number(validationCheckpoints?.blockingIssueCount || 0)
+    + Number(lineageReview?.blockingConflictCount || 0);
+  const warningCount = Number(validationCheckpoints?.warningIssueCount || 0)
+    + Number(lineageReview?.warningConflictCount || 0)
+    + Number(anomalyTrace.warningCount || 0);
+  const escalationReasons = [];
+
+  if (blockingCount > 0) {
+    escalationReasons.push("blocking_validation_or_lineage_conflict");
+  }
+  if (Number(reconciliationReview?.score || 0) > 0 && Number(reconciliationReview.score) < 70) {
+    escalationReasons.push("low_reconciliation_integrity_score");
+  }
+  if (evidenceCompleteness?.state === "incomplete") {
+    escalationReasons.push("incomplete_immutable_evidence");
+  }
+  if (lineageReview?.duplicateActive) {
+    escalationReasons.push("duplicate_active_lineage");
+  }
+  if (Number(lineageReview?.orphanSnapshotCount || 0) > 0) {
+    escalationReasons.push("orphan_lineage_reference");
+  }
+
+  return {
+    state: escalationReasons.length
+      ? "escalation_recommended"
+      : (warningCount > 0 ? "review_attention" : "no_escalation"),
+    escalationRecommended: escalationReasons.length > 0,
+    escalationReasons,
+    blockingSignalCount: blockingCount,
+    warningSignalCount: warningCount,
+    anomalyCodeCount: Array.isArray(anomalyTrace.codes) ? anomalyTrace.codes.length : 0,
+    anomalyCodes: Array.isArray(anomalyTrace.codes) ? anomalyTrace.codes.slice(0, 12) : [],
+  };
+}
+
+function resolveQaReadinessStatus({
+  validationCheckpoints,
+  reconciliationReview,
+  evidenceCompleteness,
+  lineageReview,
+  anomalyEscalation,
+  emptyState,
+} = {}) {
+  if (emptyState || evidenceCompleteness?.state === "empty_state") {
+    return "empty_state";
+  }
+  if (
+    validationCheckpoints?.state === "blocked"
+    || reconciliationReview?.state === "attention_required"
+    || lineageReview?.state === "attention_required"
+    || anomalyEscalation?.escalationRecommended
+  ) {
+    return "qa_blocked";
+  }
+  if (
+    validationCheckpoints?.state === "review_warnings"
+    || reconciliationReview?.state === "review"
+    || evidenceCompleteness?.state === "incomplete"
+    || lineageReview?.state === "review"
+    || anomalyEscalation?.state === "review_attention"
+  ) {
+    return "qa_review_needed";
+  }
+  return "ready_for_internal_review";
+}
+
 function createInvalidTimestampIssue({ entity, table, field, value }) {
   return createValidationIssue({
     code: "CSTP_TIMESTAMP_INVALID",
@@ -2156,6 +2456,7 @@ module.exports = {
   validateOperationalReferenceReconciliationShape,
   buildImmutableReconciliationDiagnostics,
   buildImmutableEvidenceExplorerSummary,
+  buildImmutableQaReviewSummary,
   validatePublicationReadinessShape,
   validateImmutableReportSnapshotCandidate,
 };

@@ -1383,6 +1383,7 @@ function pickPreloadedPayload(payload = {}) {
     validationOptions: payload.validationOptions,
     validationEvidenceSummary: payload.validationEvidenceSummary,
     evidenceExplorerSummary: payload.evidenceExplorerSummary,
+    qaReviewSummary: payload.qaReviewSummary,
     persistedImmutableValidation: payload.persistedImmutableValidation,
     persistedImmutableValidationEvidence: payload.persistedImmutableValidationEvidence,
     candidate: payload.candidate,
@@ -1678,6 +1679,11 @@ function buildRouteSuccess({
       result.evidenceExplorerSummary
       || result.serviceResult?.evidenceExplorerSummary
       || result.lineageSummary?.evidenceExplorerSummary
+      || null,
+    qaReviewSummary:
+      result.qaReviewSummary
+      || result.serviceResult?.qaReviewSummary
+      || result.lineageSummary?.qaReviewSummary
       || null,
     actor: {
       userId: authorization.actor.userId,

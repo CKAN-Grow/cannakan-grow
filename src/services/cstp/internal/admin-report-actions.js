@@ -198,6 +198,7 @@ async function executeDelegatedAdminAction({
     validationEvidenceSummary: serviceResult.validationEvidenceSummary,
     reconciliationSummary: serviceResult.reconciliationSummary,
     evidenceExplorerSummary: serviceResult.evidenceExplorerSummary,
+    qaReviewSummary: serviceResult.qaReviewSummary,
     serviceResult,
     message: serviceResult.message || buildDefaultActionMessage(actionName, serviceResult.ok),
   });
@@ -360,6 +361,7 @@ function buildActionResult({
   validationEvidenceSummary = null,
   reconciliationSummary = null,
   evidenceExplorerSummary = null,
+  qaReviewSummary = null,
   serviceResult = null,
   message,
 }) {
@@ -381,6 +383,7 @@ function buildActionResult({
     validationEvidenceSummary: validationEvidenceSummary || null,
     reconciliationSummary: reconciliationSummary || null,
     evidenceExplorerSummary: evidenceExplorerSummary || null,
+    qaReviewSummary: qaReviewSummary || null,
     message,
     errors: blockingErrors,
     blockingErrors,

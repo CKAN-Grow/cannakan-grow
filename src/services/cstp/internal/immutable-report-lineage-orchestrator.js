@@ -5,6 +5,7 @@ const {
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
   buildImmutableEvidenceExplorerSummary,
+  buildImmutableQaReviewSummary,
   buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
@@ -582,6 +583,27 @@ function inspectImmutableLineageGraph({
     reconciliationSummary: reconciliationDiagnostics,
     orphanSnapshotIds,
   });
+  const qaReviewSummary = buildImmutableQaReviewSummary({
+    report,
+    snapshot: activeSnapshot,
+    snapshots: sortedSnapshots,
+    auditLinks,
+    metrics,
+    sessionLinks,
+    validation,
+    reconciliationSummary: reconciliationDiagnostics,
+    evidenceExplorerSummary,
+    lineageInspection: {
+      snapshotCount: sortedSnapshots.length,
+      activeSnapshotCount: activeLineage.activeSnapshotIds.length,
+      duplicateActiveLineage: activeLineage.duplicateActiveLineage,
+      orphanSnapshotIds,
+      conflictSummary: buildLineageConflictSummary({ validation }),
+      auditTraceSummary: {
+        auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
+      },
+    },
+  });
 
   return deepFreeze({
     mode: "internal_immutable_lineage_inspection",
@@ -600,6 +622,7 @@ function inspectImmutableLineageGraph({
     conflictSummary: buildLineageConflictSummary({ validation }),
     reconciliationSummary: reconciliationDiagnostics,
     evidenceExplorerSummary,
+    qaReviewSummary,
     auditTraceSummary: {
       auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
       linkedSnapshotIds: [...new Set((Array.isArray(auditLinks) ? auditLinks : [])

@@ -46550,6 +46550,10 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
     || result?.evidenceExplorerSummary
     || result?.serviceResult?.evidenceExplorerSummary
     || null;
+  const qaReviewSummary = result?.qaReviewSummary
+    || result?.serviceResult?.qaReviewSummary
+    || lineageSummary.qaReviewSummary
+    || null;
   const timelineEntries = Array.isArray(timelineSummary.entries)
     ? timelineSummary.entries
     : [];
@@ -46606,6 +46610,7 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
       </div>
       ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
       ${renderAdminCstpEvidenceExplorerSummaryMarkup(evidenceExplorerSummary)}
+      ${renderAdminCstpQaReviewSummaryMarkup(qaReviewSummary)}
       ${lineageChain.length
         ? `<div class="admin-cstp-report-management-feedback">
             <strong>Immutable lineage chain</strong>
@@ -46704,6 +46709,9 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
   const evidenceExplorerSummary = result?.evidenceExplorerSummary
     || result?.serviceResult?.evidenceExplorerSummary
     || null;
+  const qaReviewSummary = result?.qaReviewSummary
+    || result?.serviceResult?.qaReviewSummary
+    || null;
   const issues = Array.isArray(validation.issues)
     ? validation.issues
     : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
@@ -46734,6 +46742,7 @@ function renderAdminCstpImmutableReportValidationResultMarkup() {
       ${renderAdminCstpValidationEvidenceSummaryMarkup(validationEvidenceSummary)}
       ${renderAdminCstpReconciliationSummaryMarkup(reconciliationSummary)}
       ${renderAdminCstpEvidenceExplorerSummaryMarkup(evidenceExplorerSummary)}
+      ${renderAdminCstpQaReviewSummaryMarkup(qaReviewSummary)}
       ${appState.adminCstpReportValidationLastRunAt
         ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
         : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
@@ -46895,6 +46904,50 @@ function renderAdminCstpEvidenceExplorerSummaryMarkup(summary = null) {
           issue.field || "field",
         ].join(" / ")).join(" | ")}`)}</p>`
         : ""}
+    </div>
+  `;
+}
+
+function renderAdminCstpQaReviewSummaryMarkup(summary = null) {
+  if (!summary) {
+    return "";
+  }
+
+  const validation = summary.validationCheckpoints || {};
+  const reconciliation = summary.reconciliationReviewIndicators || {};
+  const evidence = summary.evidenceCompletenessReview || {};
+  const lineage = summary.lineageReviewSummary || {};
+  const anomaly = summary.anomalyEscalationIndicators || {};
+  const deferred = summary.deferredPublicationReadiness || {};
+  const checkpoints = Array.isArray(validation.checkpoints) ? validation.checkpoints : [];
+
+  return `
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>QA readiness</span><strong>${escapeHtml(summary.readinessStatus || "not evaluated")}</strong></p>
+      <p><span>Validation review</span><strong>${escapeHtml(validation.state || "not evaluated")}</strong></p>
+      <p><span>Evidence score</span><strong>${escapeHtml(`${Number(evidence.score || 0)} / 100`)}</strong></p>
+      <p><span>Reconciliation</span><strong>${escapeHtml(reconciliation.state || "not evaluated")}</strong></p>
+      <p><span>Lineage review</span><strong>${escapeHtml(lineage.state || "not evaluated")}</strong></p>
+      <p><span>Anomaly escalation</span><strong>${escapeHtml(anomaly.state || "not evaluated")}</strong></p>
+    </div>
+    <div class="admin-cstp-report-management-feedback">
+      <strong>Internal QA review instrumentation</strong>
+      <p>${escapeHtml(Array.isArray(summary.labels) ? summary.labels.join(" - ") : "Internal-only QA review instrumentation.")}</p>
+      <p>${escapeHtml([
+        `blocking ${Number(validation.blockingIssueCount || 0)}`,
+        `warnings ${Number(validation.warningIssueCount || 0)}`,
+        `missing ${Array.isArray(evidence.missing) ? evidence.missing.length : 0}`,
+        `orphan lineage ${Number(lineage.orphanSnapshotCount || 0)}`,
+        anomaly.escalationRecommended ? "escalation recommended" : "no escalation",
+      ].join(" - "))}</p>
+      ${checkpoints.length
+        ? `<p>${escapeHtml(`Checkpoints: ${checkpoints.slice(0, 8).map((checkpoint) => [
+          checkpoint.name || "checkpoint",
+          checkpoint.state || "state",
+          `${Number(checkpoint.issueCount || 0)} issues`,
+        ].join(" / ")).join(" | ")}`)}</p>`
+        : ""}
+      <p>${escapeHtml(deferred.message || "Publication readiness remains deferred and internal-only.")}</p>
     </div>
   `;
 }

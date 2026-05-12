@@ -4,6 +4,7 @@ const {
   CSTP_REPORT_TABLES,
   VALIDATION_SEVERITIES,
   buildImmutableEvidenceExplorerSummary,
+  buildImmutableQaReviewSummary,
   buildImmutableReconciliationDiagnostics,
   createValidationIssue,
   createValidationResult,
@@ -124,6 +125,18 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
       workflowTimestamp: normalizedInput.workflowTimestamp,
     },
   );
+  const qaReviewSummary = buildImmutableQaReviewSummary({
+    report: normalizedInput.existingReport,
+    snapshot: activeLineage.currentSnapshot || activeLineage.latestSnapshot || {},
+    snapshots: normalizedInput.existingSnapshots,
+    metrics: normalizedInput.immutableMetrics,
+    sessionLinks: normalizedInput.immutableReportSessions,
+    auditLinks: normalizedInput.auditLinks,
+    validation,
+    reconciliationSummary: lineageInspection.reconciliationSummary,
+    evidenceExplorerSummary: lineageInspection.evidenceExplorerSummary,
+    lineageInspection,
+  });
 
   return buildAdminResult({
     ok: validation.ok,
@@ -137,6 +150,7 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
       lineageInspection,
       immutableLineageSummary: normalizedInput.immutableLineageSummary,
     }),
+    qaReviewSummary,
     message: validation.ok
       ? "Internal CSTP report lineage inspection completed."
       : "Internal CSTP report lineage inspection found blocking issues.",
@@ -190,6 +204,22 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
       reconciliationSummary: reconciliationDiagnostics,
     })
     : null;
+  const qaReviewSummary = input.validationContext
+    ? buildImmutableQaReviewSummary({
+      ...input.validationContext,
+      metrics: input.validationContext.metrics || input.validationContext.persistedEvidence?.metrics || [],
+      sessionLinks: input.validationContext.sessionLinks
+        || input.validationContext.sessions
+        || input.validationContext.persistedEvidence?.sessions
+        || [],
+      auditLinks: input.validationContext.auditLinks
+        || input.validationContext.persistedEvidence?.auditLinks
+        || [],
+      validation,
+      reconciliationSummary: reconciliationDiagnostics,
+      evidenceExplorerSummary,
+    })
+    : null;
 
   return buildAdminResult({
     ok: validation.ok,
@@ -200,6 +230,7 @@ function inspectCstpReportValidationForAdmin(input = {}, options = {}) {
     validationEvidenceSummary: normalizedInput.validationEvidenceSummary,
     reconciliationSummary: reconciliationDiagnostics,
     evidenceExplorerSummary,
+    qaReviewSummary,
     message: validation.ok
       ? "Internal CSTP report validation inspection completed."
       : "Internal CSTP report validation inspection found blocking issues.",
@@ -664,6 +695,7 @@ function buildAdminResult({
   validationEvidenceSummary = null,
   reconciliationSummary = null,
   evidenceExplorerSummary = null,
+  qaReviewSummary = null,
   message,
 }) {
   const blockingErrors = validation?.issues?.filter((issue) => issue.blocking) || [];
@@ -685,6 +717,7 @@ function buildAdminResult({
     validationEvidenceSummary,
     reconciliationSummary,
     evidenceExplorerSummary,
+    qaReviewSummary,
     blockingErrors,
     warnings,
     message,
@@ -775,6 +808,7 @@ function summarizeActiveLineage(activeLineage, {
     auditTraceSummary: lineageInspection?.auditTraceSummary || null,
     timelineSummary: lineageInspection?.timelineSummary || null,
     evidenceExplorerSummary: lineageInspection?.evidenceExplorerSummary || null,
+    qaReviewSummary: lineageInspection?.qaReviewSummary || null,
     ancestryBySnapshotId: lineageInspection?.ancestryBySnapshotId || {},
     descendantsBySnapshotId: lineageInspection?.descendantsBySnapshotId || {},
     snapshotCount: activeLineage.snapshots?.length || 0,

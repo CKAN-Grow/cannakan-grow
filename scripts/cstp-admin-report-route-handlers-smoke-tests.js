@@ -359,6 +359,11 @@ async function assertReadOnlyRoutes() {
     lineage.payload.lineageSummary.timelineSummary.labels[0],
     "Internal-only immutable report history",
   );
+  assert.equal(
+    lineage.payload.qaReviewSummary.mode,
+    "internal_immutable_qa_review_instrumentation",
+  );
+  assert.equal(lineage.payload.qaReviewSummary.immutableWritesEnabled, false);
 
   const emptyLineage = await invokeRoute(handleCstpReportLineageRoute, {
     method: "GET",
@@ -380,6 +385,7 @@ async function assertReadOnlyRoutes() {
   });
   assert.equal(emptyLineage.statusCode, 200);
   assert.equal(emptyLineage.payload.lineageSummary.snapshotCount, 0);
+  assert.equal(emptyLineage.payload.qaReviewSummary.readinessStatus, "empty_state");
 
   const duplicateActive = await invokeRoute(handleCstpReportLineageRoute, {
     method: "GET",
@@ -475,6 +481,11 @@ async function assertReadOnlyRoutes() {
     "internal_immutable_evidence_explorer",
   );
   assert.equal(persistedValidation.payload.evidenceExplorerSummary.counts.auditLinks, 1);
+  assert.equal(
+    persistedValidation.payload.qaReviewSummary.mode,
+    "internal_immutable_qa_review_instrumentation",
+  );
+  assert.equal(persistedValidation.payload.qaReviewSummary.publicReviewSystem, false);
   assert.equal(persistedValidation.payload.routeSafety.publicAccess, false);
 
   const listed = await invokeRoute(handleCstpReportsListRoute, {
