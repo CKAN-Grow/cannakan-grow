@@ -1050,13 +1050,24 @@ const ADMIN_CSTP_REQUEST_QUEUE_API_PATH = "/api/cstp-admin-requests-list";
 const ADMIN_CSTP_REQUEST_DETAIL_API_PATH = "/api/cstp-admin-request-detail";
 const ADMIN_CSTP_REQUEST_STATUS_UPDATE_API_PATH = "/api/cstp-admin-request-status-update";
 const ADMIN_CSTP_TEST_CREATE_API_PATH = "/api/cstp-admin-test-create";
+const ADMIN_CSTP_TESTS_LIST_API_PATH = "/api/cstp-admin-tests-list";
+const ADMIN_CSTP_TEST_DETAIL_API_PATH = "/api/cstp-admin-test-detail";
+const ADMIN_CSTP_TEST_STATUS_UPDATE_API_PATH = "/api/cstp-admin-test-status-update";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
+const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "all", label: "All Active" }),
   Object.freeze({ key: "received", label: "Received" }),
   Object.freeze({ key: "accepted", label: "Accepted" }),
   Object.freeze({ key: "awaiting_seeds", label: "Awaiting Seeds" }),
   Object.freeze({ key: "declined", label: "Declined" }),
+  Object.freeze({ key: "archived", label: "Archived" }),
+]);
+const ADMIN_CSTP_TEST_MANAGEMENT_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Active" }),
+  Object.freeze({ key: "pending", label: "Pending" }),
+  Object.freeze({ key: "active", label: "Active" }),
+  Object.freeze({ key: "completed", label: "Completed" }),
   Object.freeze({ key: "archived", label: "Archived" }),
 ]);
 const ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS = Object.freeze([
@@ -1283,6 +1294,24 @@ const appState = {
   adminCstpTestCreateSaving: false,
   adminCstpTestCreateMessage: "",
   adminCstpTestCreateError: "",
+  adminCstpTestManagementRows: [],
+  adminCstpTestManagementLoaded: false,
+  adminCstpTestManagementLoading: false,
+  adminCstpTestManagementError: "",
+  adminCstpTestManagementRefreshPromise: null,
+  adminCstpTestManagementFilter: {
+    status: "all",
+    includeArchived: false,
+    page: 1,
+    pageSize: 10,
+  },
+  adminCstpTestDetailSelectedId: "",
+  adminCstpTestDetailRecord: null,
+  adminCstpTestDetailLoading: false,
+  adminCstpTestDetailError: "",
+  adminCstpTestStatusSaving: false,
+  adminCstpTestStatusMessage: "",
+  adminCstpTestStatusError: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -44384,12 +44413,314 @@ async function createAdminCstpTestFromRequestAndRender(scope = app, requestId = 
       testId ? `CSTP test created: ${testId}.` : "CSTP test created.",
       auditCommitted ? "" : "Audit event requires admin review.",
     ].filter(Boolean).join(" ");
-    await refreshAdminCstpRequestDetail(requestId);
+    await Promise.all([
+      refreshAdminCstpRequestDetail(requestId),
+      refreshAdminCstpTestsList({ force: true, ...appState.adminCstpTestManagementFilter }),
+    ]);
   } catch (error) {
     appState.adminCstpTestCreateError = error?.message || "Could not create CSTP test.";
   } finally {
     appState.adminCstpTestCreateSaving = false;
     renderAdminCstpRequestQueueInto(scope);
+    renderAdminCstpTestManagementInto(scope);
+  }
+}
+
+function normalizeAdminCstpTestManagementStatus(status = "") {
+  const normalizedStatus = String(status || "all").trim().toLowerCase();
+  return ADMIN_CSTP_TEST_MANAGEMENT_STATUS_OPTIONS.some((option) => option.key === normalizedStatus)
+    ? normalizedStatus
+    : "all";
+}
+
+function getAdminCstpTestManagementStatusLabel(status = "") {
+  const normalizedStatus = normalizeAdminCstpTestManagementStatus(status);
+  return ADMIN_CSTP_TEST_MANAGEMENT_STATUS_OPTIONS.find((option) => option.key === normalizedStatus)?.label || "All Active";
+}
+
+function normalizeAdminCstpTestManagementRecord(row = null) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    return null;
+  }
+
+  const id = String(row.id || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    sourceId: String(row.source_id || row.sourceId || "").trim(),
+    requestId: String(row.request_id || row.requestId || "").trim(),
+    status: normalizeAdminCstpTestManagementStatus(row.status || "pending"),
+    internalState: String(row.internal_state || row.internalState || "").trim(),
+    createdBy: String(row.created_by || row.createdBy || "").trim(),
+    archived: row.archived === true,
+    startedAt: String(row.started_at || row.startedAt || "").trim(),
+    completedAt: String(row.completed_at || row.completedAt || "").trim(),
+    reportPreparedAt: String(row.report_prepared_at || row.reportPreparedAt || "").trim(),
+    publishedAt: String(row.published_at || row.publishedAt || "").trim(),
+    createdAt: String(row.created_at || row.createdAt || "").trim(),
+    updatedAt: String(row.updated_at || row.updatedAt || "").trim(),
+  };
+}
+
+function buildAdminCstpTestsListUrl(options = {}) {
+  const filter = {
+    ...appState.adminCstpTestManagementFilter,
+    ...(options || {}),
+  };
+  const status = normalizeAdminCstpTestManagementStatus(filter.status);
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(1, Math.min(ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE, Number(filter.pageSize) || ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE));
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    sortBy: "created_at",
+    sortDirection: "desc",
+  });
+
+  if (status === "archived") {
+    params.set("archived", "true");
+  } else {
+    params.set("includeArchived", filter.includeArchived === true ? "true" : "false");
+    if (status !== "all") {
+      params.set("status", status);
+    }
+  }
+
+  return `${ADMIN_CSTP_TESTS_LIST_API_PATH}?${params.toString()}`;
+}
+
+function buildAdminCstpTestDetailUrl(testId = "") {
+  return `${ADMIN_CSTP_TEST_DETAIL_API_PATH}?testId=${encodeURIComponent(String(testId || "").trim())}`;
+}
+
+async function loadAdminCstpTestsList(options = {}) {
+  if (!isAdminUser()) {
+    return [];
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to load CSTP tests.");
+  }
+
+  const response = await fetch(buildAdminCstpTestsListUrl(options), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP tests list returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  appState.adminCstpTestManagementFilter = {
+    ...appState.adminCstpTestManagementFilter,
+    ...(payload.filters || {}),
+    page: Number(payload.pagination?.page || options.page || appState.adminCstpTestManagementFilter.page) || 1,
+    pageSize: Number(payload.pagination?.pageSize || options.pageSize || appState.adminCstpTestManagementFilter.pageSize) || ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE,
+    status: normalizeAdminCstpTestManagementStatus(options.status || appState.adminCstpTestManagementFilter.status),
+  };
+
+  return (Array.isArray(payload.tests) ? payload.tests : [])
+    .map((row) => normalizeAdminCstpTestManagementRecord(row))
+    .filter(Boolean);
+}
+
+async function refreshAdminCstpTestsList(options = {}) {
+  const { force = false } = options || {};
+  if (!isAdminUser()) {
+    appState.adminCstpTestManagementRows = [];
+    appState.adminCstpTestManagementLoaded = true;
+    appState.adminCstpTestManagementLoading = false;
+    appState.adminCstpTestManagementError = "";
+    return [];
+  }
+
+  if (!force && appState.adminCstpTestManagementLoaded && !appState.adminCstpTestManagementRefreshPromise) {
+    return appState.adminCstpTestManagementRows;
+  }
+
+  if (!force && appState.adminCstpTestManagementRefreshPromise) {
+    return appState.adminCstpTestManagementRefreshPromise;
+  }
+
+  appState.adminCstpTestManagementLoading = true;
+  appState.adminCstpTestManagementError = "";
+  const refreshPromise = (async () => {
+    try {
+      const rows = await loadAdminCstpTestsList(options);
+      appState.adminCstpTestManagementRows = rows;
+      appState.adminCstpTestManagementLoaded = true;
+      appState.adminCstpTestManagementError = "";
+      return rows;
+    } catch (error) {
+      appState.adminCstpTestManagementRows = [];
+      appState.adminCstpTestManagementLoaded = true;
+      appState.adminCstpTestManagementError = error?.message || "Could not load CSTP tests.";
+      return [];
+    } finally {
+      appState.adminCstpTestManagementLoading = false;
+    }
+  })();
+
+  appState.adminCstpTestManagementRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.adminCstpTestManagementRefreshPromise = null;
+  }
+}
+
+async function loadAdminCstpTestDetail(testId = "") {
+  const normalizedTestId = String(testId || "").trim();
+  if (!isAdminUser()) {
+    return null;
+  }
+  if (!normalizedTestId) {
+    throw new Error("Choose a CSTP test before loading details.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to load CSTP test details.");
+  }
+
+  const response = await fetch(buildAdminCstpTestDetailUrl(normalizedTestId), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (response.status === 404) {
+    const error = new Error(payload?.error || "CSTP test was not found.");
+    error.code = "CSTP_TEST_DETAIL_NOT_FOUND";
+    throw error;
+  }
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP test detail returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return normalizeAdminCstpTestManagementRecord(payload.test);
+}
+
+async function refreshAdminCstpTestDetail(testId = appState.adminCstpTestDetailSelectedId) {
+  const normalizedTestId = String(testId || "").trim();
+  if (!normalizedTestId) {
+    appState.adminCstpTestDetailSelectedId = "";
+    appState.adminCstpTestDetailRecord = null;
+    appState.adminCstpTestDetailLoading = false;
+    appState.adminCstpTestDetailError = "";
+    return null;
+  }
+
+  appState.adminCstpTestDetailSelectedId = normalizedTestId;
+  appState.adminCstpTestDetailLoading = true;
+  appState.adminCstpTestDetailError = "";
+
+  try {
+    const record = await loadAdminCstpTestDetail(normalizedTestId);
+    appState.adminCstpTestDetailRecord = record;
+    appState.adminCstpTestDetailError = "";
+    return record;
+  } catch (error) {
+    appState.adminCstpTestDetailRecord = null;
+    appState.adminCstpTestDetailError = error?.message || "Could not load CSTP test details.";
+    return null;
+  } finally {
+    appState.adminCstpTestDetailLoading = false;
+  }
+}
+
+function getAdminCstpTestStatusActionConfigs(record = null) {
+  const status = normalizeAdminCstpTestManagementStatus(record?.status || "");
+  if (!record || record.archived || status === "archived") {
+    return [];
+  }
+
+  const actions = [];
+  if (status === "pending") {
+    actions.push({ nextStatus: "active", label: "Start Test", tone: "secondary" });
+  }
+  if (status === "active") {
+    actions.push({ nextStatus: "completed", label: "Mark Completed", tone: "secondary" });
+  }
+  if (["pending", "active", "completed"].includes(status)) {
+    actions.push({ nextStatus: "archived", label: "Archive Test", tone: "warning" });
+  }
+  return actions;
+}
+
+async function updateAdminCstpTestStatus(testId = "", currentStatus = "", nextStatus = "") {
+  const normalizedTestId = String(testId || "").trim();
+  const normalizedCurrentStatus = normalizeAdminCstpTestManagementStatus(currentStatus);
+  const normalizedNextStatus = normalizeAdminCstpTestManagementStatus(nextStatus);
+  if (!normalizedTestId || normalizedCurrentStatus === "all" || normalizedNextStatus === "all") {
+    throw new Error("Choose a valid CSTP test status action.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to update CSTP test status.");
+  }
+
+  const response = await fetch(ADMIN_CSTP_TEST_STATUS_UPDATE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      testId: normalizedTestId,
+      currentStatus: normalizedCurrentStatus,
+      nextStatus: normalizedNextStatus,
+      internalState: `admin_ui_${normalizedNextStatus}`,
+      eventNotes: `Test status changed from ${normalizedCurrentStatus} to ${normalizedNextStatus} in the internal admin UI.`,
+      metadata: {
+        uiSurface: "admin_cstp_test_management",
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP test status update returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return payload;
+}
+
+async function updateAdminCstpTestStatusAndRender(scope = app, testId = "", currentStatus = "", nextStatus = "") {
+  appState.adminCstpTestStatusSaving = true;
+  appState.adminCstpTestStatusMessage = "";
+  appState.adminCstpTestStatusError = "";
+  renderAdminCstpTestManagementInto(scope);
+
+  try {
+    const result = await updateAdminCstpTestStatus(testId, currentStatus, nextStatus);
+    const auditCommitted = result?.transaction?.auditMutationCommitted === true;
+    appState.adminCstpTestStatusMessage = auditCommitted
+      ? "CSTP test status updated."
+      : "CSTP test status updated. Audit event requires admin review.";
+    await Promise.all([
+      refreshAdminCstpTestsList({ force: true, ...appState.adminCstpTestManagementFilter }),
+      refreshAdminCstpTestDetail(testId),
+    ]);
+  } catch (error) {
+    appState.adminCstpTestStatusError = error?.message || "Could not update CSTP test status.";
+  } finally {
+    appState.adminCstpTestStatusSaving = false;
+    renderAdminCstpTestManagementInto(scope);
   }
 }
 
@@ -44701,6 +45032,300 @@ function renderAdminCstpRequestQueueShellMarkup() {
       </div>
     </section>
   `;
+}
+
+function renderAdminCstpTestManagementStatusFiltersMarkup(activeStatus = appState.adminCstpTestManagementFilter.status) {
+  const normalizedStatus = normalizeAdminCstpTestManagementStatus(activeStatus);
+  return ADMIN_CSTP_TEST_MANAGEMENT_STATUS_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill ${option.key === normalizedStatus ? "is-active" : ""}"
+      data-admin-cstp-test-management-status="${escapeHtml(option.key)}"
+      aria-pressed="${option.key === normalizedStatus ? "true" : "false"}"
+    >
+      ${escapeHtml(option.label)}
+    </button>
+  `).join("");
+}
+
+function renderAdminCstpTestManagementRowsMarkup() {
+  if (appState.adminCstpTestManagementLoading || (!appState.adminCstpTestManagementLoaded && !appState.adminCstpTestManagementError)) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Loading internal CSTP tests...</p>
+      </div>
+    `;
+  }
+
+  if (appState.adminCstpTestManagementError) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Could not load the internal CSTP test list.</p>
+        <p class="muted">${escapeHtml(appState.adminCstpTestManagementError)}</p>
+      </div>
+    `;
+  }
+
+  const rows = appState.adminCstpTestManagementRows || [];
+  if (!rows.length) {
+    return `
+      <div class="admin-messages-empty">
+        <p>No internal CSTP tests match this filter.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="admin-communications-list">
+      ${rows.map((row) => {
+        const isSelected = row.id === appState.adminCstpTestDetailSelectedId;
+        const createdLabel = row.createdAt ? formatAdminTimestamp(row.createdAt) : "Date unavailable";
+        return `
+          <article class="admin-communications-list-item admin-cstp-lab-list-item ${isSelected ? "is-active" : ""}">
+            <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
+              <div class="admin-cstp-lab-list-item-copy">
+                <span class="admin-message-issue-pill">Internal CSTP Test</span>
+                <strong class="admin-cstp-lab-list-item-title">${escapeHtml(row.id)}</strong>
+              </div>
+              <div class="admin-cstp-lab-badge-row">
+                <span class="admin-cstp-certification-pill is-active">${escapeHtml(getAdminCstpTestManagementStatusLabel(row.status))}</span>
+                ${row.archived ? '<span class="admin-cstp-certification-pill is-expired">Archived</span>' : ""}
+              </div>
+            </div>
+            <div class="admin-communications-list-item-body admin-cstp-lab-list-item-body">
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Request ID</span>
+                <strong>${escapeHtml(row.requestId || "Not linked")}</strong>
+              </p>
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Source ID</span>
+                <strong>${escapeHtml(row.sourceId || "Not provided")}</strong>
+              </p>
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Created</span>
+                <strong>${escapeHtml(createdLabel)}</strong>
+              </p>
+            </div>
+            <div class="inline-actions admin-cstp-lab-actions">
+              <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-detail-open="${escapeHtml(row.id)}">
+                ${isSelected ? "Refresh Detail" : "View Test"}
+              </button>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderAdminCstpTestDetailFieldMarkup(label = "", value = "") {
+  return `
+    <div class="admin-communications-detail-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(String(value || "").trim() || "Not provided")}</strong>
+    </div>
+  `;
+}
+
+function renderAdminCstpTestStatusActionsMarkup(record = null) {
+  const actions = getAdminCstpTestStatusActionConfigs(record);
+  const isSaving = appState.adminCstpTestStatusSaving;
+  const feedbackMarkup = appState.adminCstpTestStatusError
+    ? `<p class="muted">${escapeHtml(appState.adminCstpTestStatusError)}</p>`
+    : (appState.adminCstpTestStatusMessage
+      ? `<p class="muted">${escapeHtml(appState.adminCstpTestStatusMessage)}</p>`
+      : "");
+
+  if (!actions.length) {
+    return `
+      <div class="admin-cstp-workflow-empty">
+        <p class="muted">No test status actions are available for this record.</p>
+        ${feedbackMarkup}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="admin-communications-quick-actions admin-cstp-lab-actions">
+      ${actions.map((action) => {
+        const toneClass = action.tone === "warning"
+          ? "admin-cstp-button--warning"
+          : "admin-cstp-button--secondary";
+        return `
+          <button
+            type="button"
+            class="button button-secondary admin-cstp-button ${toneClass}"
+            data-admin-cstp-test-status-action="${escapeHtml(action.nextStatus)}"
+            data-admin-cstp-test-id="${escapeHtml(record?.id || "")}"
+            data-admin-cstp-test-current-status="${escapeHtml(record?.status || "")}"
+            ${isSaving ? "disabled" : ""}
+          >
+            ${escapeHtml(isSaving ? "Saving..." : action.label)}
+          </button>
+        `;
+      }).join("")}
+    </div>
+    ${feedbackMarkup}
+  `;
+}
+
+function renderAdminCstpTestDetailMarkup() {
+  const selectedId = String(appState.adminCstpTestDetailSelectedId || "").trim();
+  if (!selectedId) {
+    return "";
+  }
+
+  if (appState.adminCstpTestDetailLoading) {
+    return `
+      <section class="card admin-cstp-assigned-session" aria-live="polite">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Internal Test Detail</p>
+            <h4>Loading test details</h4>
+            <p class="muted">Reading from the protected CSTP admin test detail API.</p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (appState.adminCstpTestDetailError) {
+    return `
+      <section class="card admin-cstp-assigned-session" aria-live="polite">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Internal Test Detail</p>
+            <h4>Test detail unavailable</h4>
+            <p class="muted">${escapeHtml(appState.adminCstpTestDetailError)}</p>
+          </div>
+          <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-detail-back="true">Back to Test List</button>
+        </div>
+      </section>
+    `;
+  }
+
+  const record = appState.adminCstpTestDetailRecord;
+  if (!record) {
+    return "";
+  }
+
+  return `
+    <section class="card admin-cstp-assigned-session" aria-labelledby="admin-cstp-test-detail-title">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">Internal Test Detail</p>
+          <h4 id="admin-cstp-test-detail-title">${escapeHtml(record.id)}</h4>
+          <p class="muted">Internal CSTP test orchestration record. Session links, reports, certifications, and public workflows remain deferred.</p>
+        </div>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-detail-back="true">Back to Test List</button>
+      </div>
+      <div class="admin-communications-detail-grid">
+        ${renderAdminCstpTestDetailFieldMarkup("Test ID", record.id)}
+        ${renderAdminCstpTestDetailFieldMarkup("Request ID", record.requestId)}
+        ${renderAdminCstpTestDetailFieldMarkup("Source ID", record.sourceId)}
+        ${renderAdminCstpTestDetailFieldMarkup("Status", getAdminCstpTestManagementStatusLabel(record.status))}
+        ${renderAdminCstpTestDetailFieldMarkup("Archived", record.archived ? "Yes" : "No")}
+        ${renderAdminCstpTestDetailFieldMarkup("Internal State", record.internalState)}
+        ${renderAdminCstpTestDetailFieldMarkup("Created By", record.createdBy)}
+        ${renderAdminCstpTestDetailFieldMarkup("Started", record.startedAt ? formatAdminTimestamp(record.startedAt) : "")}
+        ${renderAdminCstpTestDetailFieldMarkup("Completed", record.completedAt ? formatAdminTimestamp(record.completedAt) : "")}
+        ${renderAdminCstpTestDetailFieldMarkup("Created", record.createdAt ? formatAdminTimestamp(record.createdAt) : "")}
+        ${renderAdminCstpTestDetailFieldMarkup("Updated", record.updatedAt ? formatAdminTimestamp(record.updatedAt) : "")}
+      </div>
+      <section class="admin-cstp-assigned-session">
+        <div class="admin-communications-editor-head">
+          <div>
+            <p class="eyebrow">Test Status Management</p>
+            <h4>Internal lifecycle actions</h4>
+            <p class="muted">Actions are submitted to the CSTP admin API. Server-side lifecycle validation and audit logging remain canonical.</p>
+          </div>
+        </div>
+        ${renderAdminCstpTestStatusActionsMarkup(record)}
+      </section>
+    </section>
+  `;
+}
+
+function renderAdminCstpTestManagementPaginationMarkup() {
+  const filter = appState.adminCstpTestManagementFilter;
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(1, Number(filter.pageSize) || ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE);
+  const rows = appState.adminCstpTestManagementRows || [];
+  const canGoPrevious = page > 1 && !appState.adminCstpTestManagementLoading;
+  const canGoNext = rows.length >= pageSize && !appState.adminCstpTestManagementLoading;
+  return `
+    <div class="inline-actions admin-cstp-lab-actions">
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-management-page="${page - 1}" ${canGoPrevious ? "" : "disabled"}>Previous</button>
+      <span class="muted">Page ${escapeHtml(String(page))}</span>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-management-page="${page + 1}" ${canGoNext ? "" : "disabled"}>Next</button>
+    </div>
+  `;
+}
+
+function renderAdminCstpTestManagementShellMarkup() {
+  const activeStatus = normalizeAdminCstpTestManagementStatus(appState.adminCstpTestManagementFilter.status);
+  return `
+    <section class="card admin-cstp-lab-queue-shell" aria-labelledby="admin-cstp-test-management-title">
+      <div class="admin-cstp-lab-queue-head">
+        <div>
+          <p class="eyebrow">Internal CSTP Operations</p>
+          <h4 id="admin-cstp-test-management-title">Test Management</h4>
+          <p class="muted">Admin-only CSTP test orchestration. Session linking, reports, certifications, and public publishing remain deferred.</p>
+        </div>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-test-management-refresh="true">Refresh Tests</button>
+      </div>
+      <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="Internal CSTP test filters">
+        ${renderAdminCstpTestManagementStatusFiltersMarkup(activeStatus)}
+      </div>
+      <div id="admin-cstp-test-management-list">
+        ${renderAdminCstpTestManagementRowsMarkup()}
+      </div>
+      ${renderAdminCstpTestManagementPaginationMarkup()}
+      <div id="admin-cstp-test-detail-anchor">
+        ${renderAdminCstpTestDetailMarkup()}
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminCstpTestManagementInto(scope = app) {
+  const anchor = scope?.querySelector?.("#admin-cstp-test-management-anchor");
+  if (!anchor) {
+    return;
+  }
+  anchor.innerHTML = renderAdminCstpTestManagementShellMarkup();
+  bindAdminCstpTestManagement(anchor);
+}
+
+function refreshAdminCstpTestManagementAndRender(scope = app, options = {}) {
+  appState.adminCstpTestManagementLoading = true;
+  renderAdminCstpTestManagementInto(scope);
+  void refreshAdminCstpTestsList({ force: true, ...options }).then(() => {
+    renderAdminCstpTestManagementInto(scope);
+  });
+}
+
+function refreshAdminCstpTestDetailAndRender(scope = app, testId = "") {
+  appState.adminCstpTestDetailSelectedId = String(testId || "").trim();
+  appState.adminCstpTestDetailLoading = true;
+  appState.adminCstpTestDetailError = "";
+  appState.adminCstpTestStatusMessage = "";
+  appState.adminCstpTestStatusError = "";
+  renderAdminCstpTestManagementInto(scope);
+  void refreshAdminCstpTestDetail(testId).then(() => {
+    renderAdminCstpTestManagementInto(scope);
+  });
+}
+
+function clearAdminCstpTestDetail(scope = app) {
+  appState.adminCstpTestDetailSelectedId = "";
+  appState.adminCstpTestDetailRecord = null;
+  appState.adminCstpTestDetailLoading = false;
+  appState.adminCstpTestDetailError = "";
+  appState.adminCstpTestStatusSaving = false;
+  appState.adminCstpTestStatusMessage = "";
+  appState.adminCstpTestStatusError = "";
+  renderAdminCstpTestManagementInto(scope);
 }
 
 function renderAdminCstpRequestQueueInto(scope = app) {
@@ -45165,6 +45790,9 @@ function renderAdminCstpLabSectionMarkup() {
           <div id="admin-cstp-request-queue-anchor">
             ${renderAdminCstpRequestQueueShellMarkup()}
           </div>
+          <div id="admin-cstp-test-management-anchor">
+            ${renderAdminCstpTestManagementShellMarkup()}
+          </div>
           <section class="card admin-cstp-lab-queue-shell">
             <div class="admin-cstp-lab-queue-head">
               <div>
@@ -45374,12 +46002,100 @@ function bindAdminCstpRequestQueue(scope = app) {
   });
 }
 
+function bindAdminCstpTestManagement(scope = app) {
+  if (!scope?.querySelectorAll || !isAdminUser()) {
+    return;
+  }
+
+  /*
+   * Internal admin-only CSTP test management boundary.
+   * This shell reads/writes only through admin CSTP APIs and does not mutate
+   * Grow sessions, construct audit events, or expose report/certification UI.
+   */
+  scope.querySelectorAll("[data-admin-cstp-test-management-status]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      appState.adminCstpTestManagementFilter.status = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestManagementStatus || "all");
+      appState.adminCstpTestManagementFilter.page = 1;
+      clearAdminCstpTestDetail(app);
+      refreshAdminCstpTestManagementAndRender(app, {
+        status: appState.adminCstpTestManagementFilter.status,
+        page: 1,
+      });
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-test-management-page]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      const nextPage = Math.max(1, Number(button.dataset.adminCstpTestManagementPage) || 1);
+      appState.adminCstpTestManagementFilter.page = nextPage;
+      clearAdminCstpTestDetail(app);
+      refreshAdminCstpTestManagementAndRender(app, {
+        page: nextPage,
+        status: appState.adminCstpTestManagementFilter.status,
+      });
+    });
+  });
+
+  const refreshButton = scope.querySelector("[data-admin-cstp-test-management-refresh='true']");
+  if (refreshButton instanceof HTMLButtonElement && refreshButton.dataset.adminCstpTestManagementBound !== "true") {
+    refreshButton.dataset.adminCstpTestManagementBound = "true";
+    refreshButton.addEventListener("click", () => {
+      refreshAdminCstpTestManagementAndRender(app, {
+        ...appState.adminCstpTestManagementFilter,
+      });
+    });
+  }
+
+  scope.querySelectorAll("[data-admin-cstp-test-detail-open]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      const testId = String(button.dataset.adminCstpTestDetailOpen || "").trim();
+      refreshAdminCstpTestDetailAndRender(app, testId);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-test-detail-back]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      clearAdminCstpTestDetail(app);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-test-status-action]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      const testId = String(button.dataset.adminCstpTestId || "").trim();
+      const currentStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestCurrentStatus || "");
+      const nextStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestStatusAction || "");
+      updateAdminCstpTestStatusAndRender(app, testId, currentStatus, nextStatus);
+    });
+  });
+}
+
 function bindAdminCstpLabSection(scope = app) {
   if (!scope?.querySelectorAll) {
     return;
   }
 
   bindAdminCstpRequestQueue(scope);
+  bindAdminCstpTestManagement(scope);
   if (
     isAdminUser()
     && !appState.adminCstpRequestQueueLoaded
@@ -45387,6 +46103,16 @@ function bindAdminCstpLabSection(scope = app) {
   ) {
     refreshAdminCstpRequestQueueAndRender(scope, {
       ...appState.adminCstpRequestQueueFilter,
+    });
+  }
+
+  if (
+    isAdminUser()
+    && !appState.adminCstpTestManagementLoaded
+    && !appState.adminCstpTestManagementRefreshPromise
+  ) {
+    refreshAdminCstpTestManagementAndRender(scope, {
+      ...appState.adminCstpTestManagementFilter,
     });
   }
 
