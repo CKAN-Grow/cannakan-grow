@@ -6,6 +6,8 @@ Database execution is the next major risk boundary for CSTP. The internal helper
 
 Future Supabase writes must be centralized and controlled. CSTP should not scatter direct database calls across request, test, session-link, API, or UI code. A single internal execution boundary is required to preserve lifecycle consistency, audit consistency, and Grow session compatibility.
 
+Current-state note: the internal execution boundary has now been implemented for v1 request creation/status updates, test creation/status updates, and session-link creation/archival. This document remains the planning record for why those writes are centralized. Reports, certifications, public reads, automation, and portal execution remain deferred.
+
 ## 2. Current State
 
 Current internal CSTP helper layers:
@@ -17,7 +19,7 @@ Current internal CSTP helper layers:
 - Session link payload helpers exist in `src/services/cstp/internal/session-links.js`.
 - Shared constants and errors exist in `src/services/cstp/internal/constants.js` and `src/services/cstp/internal/errors.js`.
 
-Database writes are intentionally deferred. The helpers return validated, schema-aligned payloads with `dbExecution: "deferred"` where future writes are expected.
+Database writes were intentionally deferred when the preparation helpers were first created. The current v1 implementation now performs controlled writes through `src/services/cstp/internal/execution.js`. Preparation helpers may still return `dbExecution: "deferred"` to indicate that they do not write directly; execution helpers are the only CSTP layer that should perform writes.
 
 ## 3. Execution Boundary Principles
 

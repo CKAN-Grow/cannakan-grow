@@ -14,6 +14,8 @@ This document defines the architecture and operational structure for that future
 
 This is a planning document only. It does not implement UI, modify routes, add pages, expose CSTP publicly, add reports, add certifications, add automation, or create breeder/source portal behavior.
 
+Current-state note: the internal CSTP admin UI has now been implemented for the API-backed request queue/detail/status actions, test creation/management, and session-link relationship management. The older static/admin-preview workflow has been reconciled back to the canonical API-backed path. This document remains the architecture plan for the UI boundaries; public reports, certifications, Source Directory integration, Community Grow integration, automation, and breeder/source portals remain deferred.
+
 ## 2. Current Backend Capabilities
 
 Completed backend capabilities now available for future internal admin UI planning:
@@ -48,8 +50,8 @@ Current app structure observations:
 - Existing admin tooling lives under the `#admin` dashboard route.
 - Admin dashboard sections are rendered through reusable panel/collapsible section patterns.
 - `renderAdminPage()` assembles ordered admin panels.
-- `renderAdminCstpLabSectionMarkup()` already exists as a CSTP admin/lab concept, but it currently follows older local/static operational patterns.
-- `bindAdminCstpLabSection()` handles CSTP lab UI interactions.
+- `renderAdminCstpLabSectionMarkup()` now renders the API-backed CSTP request/test/session-link workflow as the canonical internal path.
+- `bindAdminCstpLabSection()` binds the API-backed CSTP workflow and no longer exposes the older static/admin-preview lab path through active admin rendering.
 - Existing public Source Directory, Community Grow, and CSTP report surfaces must remain separate from this future internal admin UI.
 
 Recommended future placement:

@@ -13,6 +13,8 @@ Future CSTP admin APIs must preserve:
 
 Admin routes should be treated as thin orchestration boundaries. They should not become a second implementation of CSTP business rules.
 
+Current-state note: the v1 CSTP admin API surface is now implemented for internal request, test, and session-link operations. Completed routes are audited in `docs/cstp-admin-api-integration-audit.md`. This plan remains useful as the boundary rationale; future report, certification, public, automation, and portal APIs remain deferred.
+
 ## 2. Current Backend State
 
 Completed backend foundation:
@@ -77,7 +79,7 @@ Internal module usage boundary:
 - Routes should not import lower-level helper modules unless the execution boundary explicitly requires a separate read/preview behavior later.
 - Routes should not create report, certification, public badge, or Source Directory behavior.
 
-No routes are implemented by this plan.
+At the time of this plan, no routes were implemented. The v1 internal admin routes now exist and should continue to follow this plan's thin-route and internal-only boundaries.
 
 ## 5. Recommended Initial Admin Endpoints
 
@@ -91,7 +93,7 @@ Future internal-only endpoints may include:
 - Archive CSTP session link.
 - Query admin events later.
 
-All endpoints remain deferred.
+These initial endpoints are now implemented for the v1 internal admin workflow. Admin event query APIs and any report/certification/public APIs remain deferred.
 
 Suggested implementation sequence:
 
@@ -219,7 +221,7 @@ Recommended next implementation task:
 
 - Implement internal admin-only request APIs first.
 - Start with request creation only.
-- Keep UI deferred.
+- Keep public UI deferred.
 - Keep public exposure deferred.
 - Keep RLS planning separate until the admin auth model is selected.
 

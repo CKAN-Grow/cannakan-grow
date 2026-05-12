@@ -17,6 +17,8 @@ This master index exists to prevent:
 
 This is an architecture governance document only. It does not implement SQL, migrations, schema changes, row-level security, APIs, app code, routes, UI, automation, or public rollout behavior.
 
+Current-state note: since this index was first created, CSTP v1 internal implementation has progressed through the schema foundation, helper/service layers, execution boundary, admin authorization, admin mutation APIs, admin read APIs, internal admin UI, and admin workflow reconciliation. Reports, certifications, public CSTP exposure, Source Directory integration, Community Grow integration, automation, and breeder/source portals remain deferred.
+
 ## 2. High-Level CSTP Architecture Overview
 
 CSTP extends the existing Cannakan Grow session system. It should not fork, duplicate, or replace normal session behavior.
@@ -26,12 +28,43 @@ The canonical CSTP architecture is:
 - Sessions remain the source of truth for observed grow and test activity.
 - CSTP Tests orchestrate one or more linked sessions.
 - CSTP Test Sessions map CSTP Tests to normal session records.
-- Reports are generated from linked session data.
-- Published reports read from immutable report snapshots.
-- Certifications persist historically and are not overwritten by renewal, expiration, revocation, or replacement.
+- The v1 schema foundation is implemented for internal request intake, CSTP Tests, admin events, and CSTP Test Sessions.
+- Internal helper/service layers, the execution boundary, admin authorization, admin mutation APIs, admin read APIs, and the internal admin UI are implemented for v1 operational workflows.
+- Reports should be generated from linked session data in a future phase.
+- Published reports should read from immutable report snapshots when reporting is implemented.
+- Certifications should persist historically and must not be overwritten by renewal, expiration, revocation, or replacement when certification work begins.
 - Source Directory remains shared and global.
 - Tested-source badges and report links enhance existing source records rather than creating a separate source system.
 - Admin workflow, reporting, publishing, automation, and breeder/source access should be phased in after foundational data behavior is stable.
+
+## 2.1 Current Implementation State
+
+Implemented internal CSTP layers:
+
+- CSTP migration v1: `cstp_requests`, `cstp_tests`, `cstp_admin_events`, and `cstp_test_sessions`.
+- Internal helper/service modules under `src/services/cstp/internal/`.
+- Internal execution boundary for request, test, and session-link writes.
+- CSTP admin authorization helper.
+- Admin mutation APIs for request creation/status updates, test creation/status updates, and session-link creation/archival.
+- Admin read APIs for request list/detail, test list/detail, and session-link list.
+- Internal admin UI for request queue/detail, request status actions, test creation, test management, and session-link relationship management.
+- Admin workflow reconciliation: the API-backed workflow is the canonical internal operational path; older static/admin-preview session and report routes are isolated back to the canonical admin workflow.
+- Immutable reporting, report snapshot schema, publication workflow, and snapshot generation pipeline planning documents exist.
+
+Still deferred:
+
+- report schema migrations
+- report generation
+- report publication
+- certifications
+- public report APIs
+- public report UI
+- public CSTP badges
+- Source Directory CSTP integration
+- Community Grow CSTP integration
+- automation
+- breeder/source portals
+- CSTP-specific RLS policies
 
 ## 3. Canonical Object Definitions
 
@@ -246,27 +279,26 @@ These status categories are conceptual terminology guidance only. They do not im
 
 ### Requests
 
-Approved request status terminology:
+Implemented v1 request status terminology:
 
-- `draft`
-- `submitted`
-- `under_review`
+- `received`
 - `accepted`
-- `rejected`
+- `awaiting_seeds`
+- `declined`
 - `archived`
+
+Future intake states such as `draft`, `submitted`, or `under_review` may be revisited only if public/source-submitted intake workflows are implemented later.
 
 ### Tests
 
-Approved test status terminology:
+Implemented v1 test status terminology:
 
-- `planned`
-- `in_progress`
+- `pending`
+- `active`
 - `completed`
-- `under_review`
-- `report_prepared`
-- `published`
 - `archived`
-- `invalidated`
+
+Future report-review states such as `under_review`, `report_prepared`, `published`, or `invalidated` belong to later report/publication layers, not the v1 `cstp_tests.status` field.
 
 ### Reports
 
@@ -381,6 +413,16 @@ The CSTP documents govern the following areas:
 - `docs/cstp-supabase-schema-definition-draft.md`: implementation-oriented table definitions, expected fields, conceptual statuses, relationship definitions, archive/delete expectations, future RLS expectations, and query/performance considerations.
 - `docs/cstp-implementation-roadmap-specification.md`: phased rollout sequencing, implementation dependencies, risk areas, testing strategy, and public rollout guidance.
 - `docs/cstp-sql-migration-planning.md`: safe migration order, migration principles, dependency graph, session compatibility expectations, foreign key strategy, rollback considerations, staging/testing, and production deployment sequence.
+- `supabase/migrations/20260511222737_cstp_migration_v1.sql`: implemented internal-only CSTP v1 schema foundation.
+- `docs/cstp-admin-api-integration-audit.md`: completed admin API surface, authorization behavior, mutation/read API boundaries, and session compatibility checks.
+- `docs/cstp-admin-ui-architecture-plan.md`: admin UI architecture principles and initial UI structure.
+- `docs/cstp-admin-ui-integration-audit.md`: completed internal admin UI capabilities, API integrations, workflow coverage, and public exposure boundaries.
+- `docs/cstp-admin-workflow-reconciliation-audit.md`: reconciliation of older static/admin-preview flows with the canonical API-backed workflow.
+- `docs/cstp-loose-ends-stabilization-audit.md`: stabilization findings, loose ends, and recommended next implementation order.
+- `docs/cstp-immutable-reporting-architecture-plan.md`: immutable reporting principles, snapshot architecture concepts, audit requirements, certification relationship planning, and public exposure boundaries.
+- `docs/cstp-report-snapshot-schema-plan.md`: conceptual future report snapshot schema entities and frozen content planning.
+- `docs/cstp-report-publication-workflow-plan.md`: draft/prepared/published workflow planning, immutable audit linkage, and superseded/amended lineage.
+- `docs/cstp-snapshot-generation-pipeline-plan.md`: future snapshot extraction, metric freezing, media/evidence capture, failure handling, and implementation sequencing.
 
 When documents overlap, this master index should be used for canonical terminology and architecture vocabulary. The area-specific documents remain authoritative for their respective implementation planning domains.
 
@@ -388,34 +430,41 @@ When documents overlap, this master index should be used for canonical terminolo
 
 The following still do not exist as implemented CSTP production systems:
 
-- SQL migrations
-- Production CSTP schema
-- Supabase row-level security policies
-- CSTP APIs
+- Report/snapshot SQL migrations
+- Certification SQL migrations
+- Supabase row-level security policies for CSTP
 - Report renderer
 - Breeder/source portal
 - CSTP automation
 - Public CSTP rollout
 - Public submission workflow
-- Admin implementation
 - Live certification workflow
 - Live report publishing workflow
+- Public CSTP report APIs
+- Public CSTP report UI
+- Source Directory CSTP integration
+- Community Grow CSTP integration
 
-Current CSTP work remains in architecture, reporting framework, schema planning, migration planning, and roadmap planning form.
+Implemented internal systems currently remain admin-only and v1-scoped. The active implemented layer covers CSTP request/test/session-link operations only; public reporting, certifications, and integrations remain future phases.
 
 ## 10. Future Implementation Sequence Summary
 
 Recommended future sequence:
 
-1. Schema implementation
-2. Internal admin workflows
-3. Session linkage
-4. Report snapshots
-5. Certifications
-6. Source Directory integration
-7. Community Grow integration
-8. Automation
-9. Breeder/source portal
+1. Stabilize the implemented internal admin workflow.
+2. Update governance/current-state documentation as implementation phases complete.
+3. Add targeted CSTP helper/API/admin UI smoke tests.
+4. Plan and implement report snapshot schema.
+5. Build snapshot generation helpers and validation.
+6. Implement internal report preparation and immutable publication workflow.
+7. Add immutable audit linkage for report publication.
+8. Implement certification eligibility and certification history.
+9. Add public read APIs only after immutable report/certification records are stable.
+10. Add public report UI.
+11. Add Source Directory integration.
+12. Add Community Grow integration.
+13. Add automation.
+14. Add breeder/source portal.
 
 Implementation should begin with additive, internal-only CSTP structures. Public features should wait until session linkage, report snapshots, certification lifecycle, and visibility boundaries are stable.
 
@@ -426,4 +475,3 @@ Future CSTP implementation should preserve session-system alignment. Sessions ar
 Immutable reports and historical certifications are foundational trust systems for CSTP. They should be treated as durable public records, not mutable UI state.
 
 CSTP should remain additive to Cannakan Grow, not a parallel platform. Every future migration, API, admin workflow, report surface, Source Directory enhancement, Community Grow filter, automation, and breeder/source feature should be evaluated against that principle.
-

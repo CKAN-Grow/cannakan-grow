@@ -19,6 +19,20 @@ Implementation should remain phased, conservative, and internal-first. CSTP touc
 
 This is not implementation work. It does not create SQL, migrations, schema edits, APIs, RLS, backend code, frontend code, routes, UI, or admin pages.
 
+## Current Implementation Status
+
+Since this checklist was created, the first internal CSTP implementation slice has been completed:
+
+- CSTP migration v1 is active for `cstp_requests`, `cstp_tests`, `cstp_admin_events`, and `cstp_test_sessions`.
+- Internal helper/service layers exist under `src/services/cstp/internal/`.
+- Controlled internal execution helpers exist for request, test, and session-link operations.
+- CSTP admin authorization is implemented.
+- Admin mutation APIs and admin read APIs are implemented.
+- The internal admin UI is implemented inside the existing admin area.
+- The older static/admin-preview workflow has been reconciled so the API-backed workflow is canonical.
+
+The remaining checklist items should now be read as stabilization and future-phase guidance, especially for report snapshots, certifications, public visibility, Source Directory integration, Community Grow integration, automation, and breeder/source portals.
+
 ## 2. Backend Implementation Principles
 
 - Sessions remain the source of truth for observed grow and test activity.
@@ -307,4 +321,3 @@ This document does not include or implement:
 - Public rollout
 
 This is an engineering execution checklist only.
-
