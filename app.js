@@ -46139,6 +46139,218 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
   `;
 }
 
+function renderAdminCstpImmutableReportStatusPillMarkup(label = "", tone = "neutral") {
+  const safeTone = String(tone || "neutral").replace(/[^a-z0-9-]/gi, "").toLowerCase() || "neutral";
+  return `<span class="admin-cstp-report-management-pill is-${escapeHtml(safeTone)}">${escapeHtml(label || "Internal")}</span>`;
+}
+
+function renderAdminCstpImmutableReportActionPlaceholderMarkup(label = "") {
+  return `
+    <button
+      type="button"
+      class="button button-secondary admin-cstp-button admin-cstp-button--utility admin-cstp-report-action-placeholder"
+      disabled
+      aria-disabled="true"
+      title="Internal placeholder only; protected workflow wiring is deferred."
+    >${escapeHtml(label)}</button>
+  `;
+}
+
+function renderAdminCstpImmutableReportItemMarkup(item = {}) {
+  return `
+    <article class="admin-cstp-report-management-item">
+      <div>
+        <strong>${escapeHtml(item.title || "Internal report candidate")}</strong>
+        <p class="muted">${escapeHtml(item.meta || "CSTP operational linkage pending")}</p>
+      </div>
+      <div class="admin-cstp-report-management-item-aside">
+        ${renderAdminCstpImmutableReportStatusPillMarkup(item.status || "Internal", item.tone || "neutral")}
+        <span>${escapeHtml(item.detail || "Read-only planning slice")}</span>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminCstpImmutableReportPanelMarkup(panel = {}) {
+  const items = Array.isArray(panel.items) ? panel.items : [];
+  const actionLabels = Array.isArray(panel.actions) ? panel.actions : [];
+  return `
+    <section class="admin-cstp-report-management-panel" aria-labelledby="${escapeHtml(panel.id || "admin-cstp-report-panel")}">
+      <div class="admin-cstp-report-management-panel-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(panel.eyebrow || "Internal")}</p>
+          <h5 id="${escapeHtml(panel.id || "admin-cstp-report-panel")}">${escapeHtml(panel.title || "Immutable report area")}</h5>
+          <p class="muted">${escapeHtml(panel.description || "Read-only immutable CSTP report management placeholder.")}</p>
+        </div>
+        ${renderAdminCstpImmutableReportStatusPillMarkup(panel.badge || "Read-only", panel.badgeTone || "neutral")}
+      </div>
+      <div class="admin-cstp-report-management-list">
+        ${items.length
+          ? items.map((item) => renderAdminCstpImmutableReportItemMarkup(item)).join("")
+          : `<p class="muted admin-cstp-report-management-empty">${escapeHtml(panel.emptyMessage || "No internal report records are wired into this first UI slice.")}</p>`}
+      </div>
+      <div class="inline-actions admin-cstp-lab-actions admin-cstp-report-management-actions">
+        ${actionLabels.map((label) => renderAdminCstpImmutableReportActionPlaceholderMarkup(label)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminCstpImmutableReportManagementMarkup() {
+  const metricCards = [
+    ["Report queue", "3", "Mock candidates awaiting admin review"],
+    ["Prepared reports", "2", "Internal immutable candidates only"],
+    ["Validation failures", "1", "Blocked before persistence/public use"],
+    ["Lineage reviews", "2", "Supersession history placeholders"],
+  ];
+  const panels = [
+    {
+      id: "admin-cstp-report-queue-title",
+      eyebrow: "Queue",
+      title: "Report queue",
+      description: "Internal candidates that future protected handlers may prepare or generate.",
+      badge: "Mock data",
+      badgeTone: "draft",
+      actions: ["Prepare report", "Generate snapshot"],
+      items: [
+        {
+          title: "CSTP-TST-2042 / Blue Dream lot BD-042",
+          meta: "Request CSTP-REQ-1042; operational data remains canonical.",
+          status: "Draft",
+          tone: "draft",
+          detail: "Awaiting internal preparation",
+        },
+        {
+          title: "CSTP-TST-2048 / Northern Lights NL-17",
+          meta: "Request CSTP-REQ-1048; session links pending validation.",
+          status: "Preparing",
+          tone: "preparing",
+          detail: "Read-only placeholder",
+        },
+      ],
+    },
+    {
+      id: "admin-cstp-prepared-reports-title",
+      eyebrow: "Prepared",
+      title: "Prepared reports",
+      description: "Prepared internal snapshots stay private and are not report rendering/export output.",
+      badge: "Internal only",
+      badgeTone: "prepared",
+      actions: ["Inspect validation"],
+      items: [
+        {
+          title: "CSTP-RPT-3001 snapshot v1",
+          meta: "Frozen metrics candidate for CSTP-TST-2037.",
+          status: "Prepared",
+          tone: "prepared",
+          detail: "Publication not public",
+        },
+        {
+          title: "CSTP-RPT-3002 snapshot v1",
+          meta: "Session summaries frozen for internal review.",
+          status: "Prepared",
+          tone: "prepared",
+          detail: "Rendering deferred",
+        },
+      ],
+    },
+    {
+      id: "admin-cstp-validation-failures-title",
+      eyebrow: "Integrity",
+      title: "Validation failures",
+      description: "Blocking issues must be resolved in operational workflows before immutable persistence.",
+      badge: "Blocked",
+      badgeTone: "failed",
+      actions: ["Inspect validation"],
+      items: [
+        {
+          title: "CSTP-TST-2051 missing session summary",
+          meta: "Frozen payload completeness check would reject this candidate.",
+          status: "Integrity failed",
+          tone: "failed",
+          detail: "No persistence",
+        },
+      ],
+    },
+    {
+      id: "admin-cstp-regeneration-title",
+      eyebrow: "Lineage",
+      title: "Regeneration and supersession",
+      description: "Corrections are planned as lineage-preserving supersessions, never destructive edits.",
+      badge: "Planned",
+      badgeTone: "supersession",
+      actions: ["Regenerate", "Supersede"],
+      items: [
+        {
+          title: "CSTP-RPT-2994 supersession review",
+          meta: "Original snapshot remains historical evidence.",
+          status: "Supersession",
+          tone: "supersession",
+          detail: "Destructive replacement disabled",
+        },
+      ],
+    },
+    {
+      id: "admin-cstp-lineage-history-title",
+      eyebrow: "History",
+      title: "Lineage and history",
+      description: "Shows the intended immutable chain once protected report data is safely loaded.",
+      badge: "Read-only",
+      badgeTone: "neutral",
+      actions: ["Inspect lineage"],
+      items: [
+        {
+          title: "CSTP-RPT-2988 -> CSTP-RPT-3004",
+          meta: "Snapshot v1 superseded by snapshot v2; both retained.",
+          status: "Lineage",
+          tone: "lineage",
+          detail: "Historical chain preserved",
+        },
+      ],
+    },
+    {
+      id: "admin-cstp-report-detail-title",
+      eyebrow: "Inspector",
+      title: "Report detail inspector",
+      description: "Future internal detail view for immutable snapshot metadata, operational references, validation results, and audit activity.",
+      badge: "Placeholder",
+      badgeTone: "neutral",
+      actions: ["Inspect lineage", "Inspect validation"],
+      items: [],
+      emptyMessage: "Select an internal immutable report after live admin data wiring is added. No public report preview is rendered here.",
+    },
+  ];
+
+  return `
+    <section class="card admin-cstp-report-management" aria-labelledby="admin-cstp-report-management-title">
+      <div class="admin-cstp-report-management-head">
+        <div>
+          <p class="eyebrow">Internal Immutable Reports</p>
+          <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. This first UI slice is mock/read-only and does not publish, certify, render, export, or expose reports publicly.</p>
+        </div>
+        <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Read-only mock data", "draft")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
+        </div>
+      </div>
+      <div class="admin-cstp-metrics-grid admin-cstp-report-management-metrics">
+        ${metricCards.map(([label, value, description]) => `
+          <div class="admin-cstp-metric-card">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+            <small>${escapeHtml(description)}</small>
+          </div>
+        `).join("")}
+      </div>
+      <div class="admin-cstp-report-management-grid">
+        ${panels.map((panel) => renderAdminCstpImmutableReportPanelMarkup(panel)).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function renderAdminCstpLabSectionMarkup() {
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "CSTP",
@@ -46168,6 +46380,7 @@ function renderAdminCstpLabSectionMarkup() {
             ${renderAdminCstpTestManagementShellMarkup()}
           </div>
         </div>
+        ${renderAdminCstpImmutableReportManagementMarkup()}
       </div>
     `,
   });
