@@ -159,6 +159,8 @@ function assertLineageInspection() {
   assert.equal(cleanLineage.adminAction, "inspect_cstp_report_lineage_for_admin");
   assert.equal(cleanLineage.lineageSummary.currentSnapshotId, SNAPSHOT_ONE_ID);
   assert.equal(cleanLineage.lineageSummary.publicVisibility, false);
+  assert.equal(cleanLineage.lineageSummary.timelineSummary.entryCount, 1);
+  assert.equal(cleanLineage.lineageSummary.timelineSummary.persistenceDeferred, true);
 
   const duplicateLineage = inspectCstpReportLineageForAdmin({
     adminContext: createAdminContext(),

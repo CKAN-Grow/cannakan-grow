@@ -843,6 +843,96 @@ function validateAuditLinkConsistencyShape(context = {}) {
   });
 }
 
+function validateImmutableVersionOrderingShape(context = {}) {
+  const snapshots = Array.isArray(context.snapshots) ? context.snapshots : [];
+  const issues = [];
+  const versionsByReport = new Map();
+  const byId = new Map(
+    snapshots
+      .map((snapshot) => [getIdValue(snapshot, ["id", "snapshotId"]), snapshot])
+      .filter(([snapshotId]) => hasValue(snapshotId)),
+  );
+
+  snapshots.forEach((snapshot, index) => {
+    const snapshotId = getIdValue(snapshot, ["id", "snapshotId"]);
+    const reportId = getIdValue(snapshot, ["report_id", "reportId"]);
+    const version = getNumberValue(snapshot, ["snapshot_version", "snapshotVersion"]);
+    const supersedesSnapshotId = getIdValue(snapshot, [
+      "supersedes_snapshot_id",
+      "supersedesSnapshotId",
+    ]);
+
+    if (!Number.isInteger(version) || version < 1) {
+      issues.push(createValidationIssue({
+        code: "CSTP_SNAPSHOT_VERSION_INVALID",
+        message: "Immutable snapshot version must be a positive integer.",
+        entity: "snapshot",
+        table: CSTP_REPORT_TABLES.snapshots,
+        field: "snapshot_version",
+        metadata: { index, snapshotId, version },
+      }));
+    }
+
+    if (hasValue(reportId) && Number.isInteger(version)) {
+      const reportVersions = versionsByReport.get(reportId) || new Map();
+      const existing = reportVersions.get(version);
+      if (existing) {
+        issues.push(createValidationIssue({
+          code: "CSTP_SNAPSHOT_VERSION_DUPLICATE",
+          message: "Immutable snapshot versions must be unique within a report lineage.",
+          entity: "snapshot",
+          table: CSTP_REPORT_TABLES.snapshots,
+          field: "snapshot_version",
+          metadata: {
+            reportId,
+            version,
+            snapshotIds: [existing.snapshotId, snapshotId].filter(hasValue),
+          },
+        }));
+      } else {
+        reportVersions.set(version, { snapshotId, index });
+        versionsByReport.set(reportId, reportVersions);
+      }
+    }
+
+    if (hasValue(supersedesSnapshotId) && byId.has(supersedesSnapshotId)) {
+      const predecessor = byId.get(supersedesSnapshotId);
+      const predecessorVersion = getNumberValue(predecessor, [
+        "snapshot_version",
+        "snapshotVersion",
+      ]);
+      if (
+        Number.isFinite(version)
+        && Number.isFinite(predecessorVersion)
+        && version <= predecessorVersion
+      ) {
+        issues.push(createValidationIssue({
+          code: "CSTP_SNAPSHOT_VERSION_NOT_INCREMENTED",
+          message: "Snapshot version must be greater than the superseded predecessor version.",
+          entity: "snapshot",
+          table: CSTP_REPORT_TABLES.snapshots,
+          field: "snapshot_version",
+          metadata: {
+            snapshotId,
+            supersedesSnapshotId,
+            version,
+            predecessorVersion,
+          },
+        }));
+      }
+    }
+  });
+
+  return createValidationResult({
+    validator: "validateImmutableVersionOrderingShape",
+    issues,
+    metadata: {
+      snapshotCount: snapshots.length,
+      reportCount: versionsByReport.size,
+    },
+  });
+}
+
 function validatePublicationReadinessShape(context = {}, options = {}) {
   const report = context.report || {};
   const snapshot = context.snapshot || {};
@@ -870,6 +960,9 @@ function validatePublicationReadinessShape(context = {}, options = {}) {
       report,
       snapshots: context.snapshots || [snapshot],
       auditLinks: context.auditLinks || [],
+    }),
+    validateImmutableVersionOrderingShape({
+      snapshots: context.snapshots || [snapshot],
     }),
   ];
 
@@ -978,6 +1071,9 @@ function validateImmutableReportSnapshotCandidate(context = {}, options = {}) {
         report: context.report || {},
         snapshots: context.snapshots || (context.snapshot ? [context.snapshot] : []),
         auditLinks: context.auditLinks || [],
+      }),
+      validateImmutableVersionOrderingShape({
+        snapshots: context.snapshots || (context.snapshot ? [context.snapshot] : []),
       }),
     ],
     {
@@ -1312,6 +1408,7 @@ module.exports = {
   validateDuplicateActiveLineageShape,
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
+  validateImmutableVersionOrderingShape,
   validatePublicationReadinessShape,
   validateImmutableReportSnapshotCandidate,
 };

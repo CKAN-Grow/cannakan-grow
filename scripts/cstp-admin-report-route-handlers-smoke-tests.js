@@ -354,6 +354,11 @@ async function assertReadOnlyRoutes() {
   assert.equal(lineage.statusCode, 200);
   assert.equal(lineage.payload.workflowMode, "inspect_lineage");
   assert.equal(lineage.payload.lineageSummary.publicVisibility, false);
+  assert.equal(lineage.payload.lineageSummary.timelineSummary.entryCount, 1);
+  assert.equal(
+    lineage.payload.lineageSummary.timelineSummary.labels[0],
+    "Internal-only immutable report history",
+  );
 
   const emptyLineage = await invokeRoute(handleCstpReportLineageRoute, {
     method: "GET",

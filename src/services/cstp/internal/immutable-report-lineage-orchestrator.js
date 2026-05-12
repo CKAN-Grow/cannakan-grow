@@ -10,6 +10,7 @@ const {
   validateActiveSnapshotChainShape,
   validateAuditLinkConsistencyShape,
   validateDuplicateActiveLineageShape,
+  validateImmutableVersionOrderingShape,
   validateSnapshotLineageConsistencyShape,
   validateSupersessionSelfReference,
   validateTimestampOrdering,
@@ -533,6 +534,9 @@ function inspectImmutableLineageGraph({
     snapshots: sortedSnapshots,
     auditLinks,
   });
+  const versionOrderingValidation = validateImmutableVersionOrderingShape({
+    snapshots: sortedSnapshots,
+  });
   const validation = mergeValidationResults(
     "inspectImmutableLineageGraph",
     [
@@ -541,6 +545,7 @@ function inspectImmutableLineageGraph({
       detectOrphanLineageReferences({ report, snapshots: sortedSnapshots }),
       validateActiveSnapshotChainShape({ report, snapshots: sortedSnapshots }),
       auditLinkValidation,
+      versionOrderingValidation,
     ],
     {
       reportId: getReportId(report),
@@ -575,6 +580,15 @@ function inspectImmutableLineageGraph({
       consistencyStatus: auditLinkValidation.status,
       publicVisibility: false,
     },
+    timelineSummary: buildImmutableReportTimelineSummary({
+      report,
+      snapshots: sortedSnapshots,
+      auditLinks,
+      activeLineage,
+      ancestryBySnapshotId,
+      descendantsBySnapshotId,
+      validation,
+    }),
     labels: buildInternalLineageLabels(),
     publicVisibility: false,
     internalOnly: true,
@@ -1023,6 +1037,240 @@ function buildRegenerationComparisonSummary({
     publicVisibility: false,
     labels: buildInternalLineageLabels(),
   };
+}
+
+function buildImmutableReportTimelineSummary({
+  report = {},
+  snapshots = [],
+  auditLinks = [],
+  activeLineage = null,
+  ancestryBySnapshotId = {},
+  descendantsBySnapshotId = {},
+  validation = null,
+} = {}) {
+  const sortedSnapshots = sortLineageSnapshotsStable(snapshots);
+  const linksBySnapshotId = groupAuditLinksBySnapshotId(auditLinks);
+  const activeSnapshotIds = new Set(activeLineage?.activeSnapshotIds || []);
+  const currentSnapshotId = activeLineage?.currentSnapshotId || "";
+  const latestSnapshotId = activeLineage?.latestSnapshotId || "";
+  const entries = sortedSnapshots.map((snapshot, index) => {
+    const snapshotId = getSnapshotId(snapshot);
+    const snapshotAuditLinks = linksBySnapshotId[snapshotId] || [];
+    const supersedesSnapshotId = getFirstValue(snapshot, [
+      "supersedes_snapshot_id",
+      "supersedesSnapshotId",
+    ]);
+    const supersededBySnapshotId = getFirstValue(snapshot, [
+      "superseded_by_snapshot_id",
+      "supersededBySnapshotId",
+    ]);
+
+    return {
+      index,
+      snapshotId,
+      reportId: getSnapshotReportId(snapshot) || getReportId(report) || null,
+      snapshotVersion: getSnapshotVersion(snapshot),
+      status: getStatus(snapshot) || null,
+      generatedAt: getFirstValue(snapshot, ["generated_at", "generatedAt"]) || "",
+      preparedAt: getFirstValue(snapshot, ["prepared_at", "preparedAt"]) || "",
+      publishedAt: getFirstValue(snapshot, ["published_at", "publishedAt"]) || "",
+      lifecycleTimestamp: resolveSnapshotLifecycleTimestamp(snapshot),
+      lifecycleLabel: buildSnapshotLifecycleLabel(snapshot),
+      supersedesSnapshotId: supersedesSnapshotId || null,
+      supersededBySnapshotId: supersededBySnapshotId || null,
+      isActive: activeSnapshotIds.has(snapshotId),
+      isCurrent: snapshotId === currentSnapshotId,
+      isLatest: snapshotId === latestSnapshotId,
+      ancestryDepth: Array.isArray(ancestryBySnapshotId[snapshotId])
+        ? ancestryBySnapshotId[snapshotId].length
+        : 0,
+      descendantCount: Array.isArray(descendantsBySnapshotId[snapshotId])
+        ? descendantsBySnapshotId[snapshotId].length
+        : 0,
+      auditLinkCount: snapshotAuditLinks.length,
+      auditRoles: [...new Set(snapshotAuditLinks
+        .map((link) => getFirstValue(link, ["event_role", "eventRole"]))
+        .filter(hasValue))],
+      orphanIndicator: Boolean(
+        hasValue(supersedesSnapshotId)
+        && !sortedSnapshots.some((entry) => getSnapshotId(entry) === supersedesSnapshotId)
+      ),
+      publicVisibility: false,
+      internalOnly: true,
+    };
+  });
+
+  return {
+    mode: "internal_immutable_report_history_timeline",
+    reportId: getReportId(report) || entries[0]?.reportId || null,
+    entryCount: entries.length,
+    activeSnapshotId: currentSnapshotId || null,
+    latestSnapshotId: latestSnapshotId || null,
+    entries,
+    supersedeChains: buildSupersedeChainOrdering(entries),
+    regenerateGroups: buildRegenerateLineageGroups(entries),
+    auditTimeline: buildAuditLinkTimelineCorrelation(auditLinks, entries),
+    evolutionSummary: buildReportEvolutionSummary(entries, validation),
+    labels: [
+      "Internal-only immutable report history",
+      "Lineage timeline is inspection-only",
+      "Public report history, certification, and rendering are deferred",
+    ],
+    persistenceDeferred: true,
+    immutableWritesEnabled: false,
+    publicVisibility: false,
+    internalOnly: true,
+  };
+}
+
+function buildSupersedeChainOrdering(entries = []) {
+  const byId = new Map(entries.map((entry) => [entry.snapshotId, entry]));
+  const roots = entries.filter((entry) => (
+    !entry.supersedesSnapshotId || !byId.has(entry.supersedesSnapshotId)
+  ));
+
+  return roots.map((root) => {
+    const chain = [];
+    const visited = new Set();
+    let current = root;
+
+    while (current && !visited.has(current.snapshotId)) {
+      visited.add(current.snapshotId);
+      chain.push({
+        snapshotId: current.snapshotId,
+        snapshotVersion: current.snapshotVersion,
+        status: current.status,
+        isActive: current.isActive,
+        isCurrent: current.isCurrent,
+      });
+      current = entries.find((entry) => entry.supersedesSnapshotId === current.snapshotId) || null;
+    }
+
+    return {
+      rootSnapshotId: root.snapshotId,
+      terminalSnapshotId: chain[chain.length - 1]?.snapshotId || root.snapshotId,
+      length: chain.length,
+      activeSnapshotIds: chain.filter((entry) => entry.isActive).map((entry) => entry.snapshotId),
+      orderedSnapshotIds: chain.map((entry) => entry.snapshotId),
+      entries: chain,
+    };
+  });
+}
+
+function buildRegenerateLineageGroups(entries = []) {
+  const byId = new Map(entries.map((entry) => [entry.snapshotId, entry]));
+  const groups = new Map();
+
+  entries.forEach((entry) => {
+    let root = entry;
+    const visited = new Set();
+    while (
+      root?.supersedesSnapshotId
+      && byId.has(root.supersedesSnapshotId)
+      && !visited.has(root.supersedesSnapshotId)
+    ) {
+      visited.add(root.snapshotId);
+      root = byId.get(root.supersedesSnapshotId);
+    }
+    const rootId = root?.snapshotId || entry.snapshotId;
+    const group = groups.get(rootId) || [];
+    group.push(entry);
+    groups.set(rootId, group);
+  });
+
+  return Array.from(groups.entries()).map(([rootSnapshotId, groupEntries]) => ({
+    rootSnapshotId,
+    snapshotCount: groupEntries.length,
+    versions: groupEntries.map((entry) => entry.snapshotVersion).filter(Number.isFinite),
+    activeSnapshotIds: groupEntries.filter((entry) => entry.isActive).map((entry) => entry.snapshotId),
+    latestSnapshotId: groupEntries[groupEntries.length - 1]?.snapshotId || null,
+    relationship: groupEntries.length > 1
+      ? "regenerated_or_superseded_lineage"
+      : "single_snapshot_lineage",
+    entries: groupEntries.map((entry) => ({
+      snapshotId: entry.snapshotId,
+      snapshotVersion: entry.snapshotVersion,
+      status: entry.status,
+      supersedesSnapshotId: entry.supersedesSnapshotId,
+    })),
+  }));
+}
+
+function buildAuditLinkTimelineCorrelation(auditLinks = [], entries = []) {
+  const entryIds = new Set(entries.map((entry) => entry.snapshotId).filter(hasValue));
+  return (Array.isArray(auditLinks) ? auditLinks : [])
+    .map((auditLink, index) => {
+      const snapshotId = getFirstValue(auditLink, ["snapshot_id", "snapshotId"]);
+      return {
+        index,
+        auditLinkId: getFirstValue(auditLink, ["id", "auditLinkId"]) || null,
+        snapshotId: snapshotId || null,
+        reportId: getFirstValue(auditLink, ["report_id", "reportId"]) || null,
+        eventRole: getFirstValue(auditLink, ["event_role", "eventRole"]) || null,
+        cstpAdminEventId: getFirstValue(auditLink, [
+          "cstp_admin_event_id",
+          "cstpAdminEventId",
+          "adminEventId",
+        ]) || null,
+        createdBy: getFirstValue(auditLink, ["created_by", "createdBy"]) || null,
+        createdAt: normalizeTimestamp(getFirstValue(auditLink, ["created_at", "createdAt"])) || "",
+        correlated: hasValue(snapshotId) ? entryIds.has(snapshotId) : true,
+        publicVisibility: false,
+        internalOnly: true,
+      };
+    })
+    .sort((left, right) => compareNullableTimestamp(left.createdAt, right.createdAt));
+}
+
+function buildReportEvolutionSummary(entries = [], validation = null) {
+  const statuses = entries.reduce((counts, entry) => {
+    const status = entry.status || "unknown";
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    snapshotCount: entries.length,
+    firstSnapshotId: entries[0]?.snapshotId || null,
+    latestSnapshotId: entries[entries.length - 1]?.snapshotId || null,
+    activeSnapshotIds: entries.filter((entry) => entry.isActive).map((entry) => entry.snapshotId),
+    orphanSnapshotIds: entries.filter((entry) => entry.orphanIndicator).map((entry) => entry.snapshotId),
+    statusCounts: statuses,
+    versionRange: {
+      first: entries[0]?.snapshotVersion || null,
+      latest: entries[entries.length - 1]?.snapshotVersion || null,
+    },
+    validationStatus: validation?.status || "not_run",
+    blockingIssueCount: validation?.summary?.blocking || 0,
+    warningIssueCount: validation?.summary?.warnings || 0,
+    publicVisibility: false,
+  };
+}
+
+function groupAuditLinksBySnapshotId(auditLinks = []) {
+  return (Array.isArray(auditLinks) ? auditLinks : []).reduce((groups, auditLink) => {
+    const snapshotId = getFirstValue(auditLink, ["snapshot_id", "snapshotId"]);
+    if (snapshotId) {
+      groups[snapshotId] = groups[snapshotId] || [];
+      groups[snapshotId].push(auditLink);
+    }
+    return groups;
+  }, {});
+}
+
+function resolveSnapshotLifecycleTimestamp(snapshot = {}) {
+  return normalizeTimestamp(
+    getFirstValue(snapshot, ["published_at", "publishedAt"])
+    || getFirstValue(snapshot, ["prepared_at", "preparedAt"])
+    || getFirstValue(snapshot, ["generated_at", "generatedAt"])
+    || getFirstValue(snapshot, ["created_at", "createdAt"]),
+  );
+}
+
+function buildSnapshotLifecycleLabel(snapshot = {}) {
+  const status = getStatus(snapshot);
+  const timestamp = resolveSnapshotLifecycleTimestamp(snapshot);
+  return [status || "snapshot", timestamp].filter(Boolean).join(" at ");
 }
 
 function resolveSnapshotAncestry(snapshot = {}, byId = new Map()) {

@@ -46544,6 +46544,10 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
     : 0;
   const conflictSummary = lineageSummary.conflictSummary || {};
   const auditTraceSummary = lineageSummary.auditTraceSummary || {};
+  const timelineSummary = lineageSummary.timelineSummary || {};
+  const timelineEntries = Array.isArray(timelineSummary.entries)
+    ? timelineSummary.entries
+    : [];
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.blockingErrors)
     ? result.blockingErrors
@@ -46610,6 +46614,9 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
             `).join("")}
           </div>`
         : ""}
+      ${timelineEntries.length
+        ? renderAdminCstpImmutableReportTimelineMarkup(timelineSummary)
+        : ""}
       ${error
         ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
         : ""}
@@ -46629,6 +46636,41 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
           </div>`
         : ""}
     </section>
+  `;
+}
+
+function renderAdminCstpImmutableReportTimelineMarkup(timelineSummary = {}) {
+  const entries = Array.isArray(timelineSummary.entries) ? timelineSummary.entries : [];
+  const chains = Array.isArray(timelineSummary.supersedeChains)
+    ? timelineSummary.supersedeChains
+    : [];
+  const auditTimeline = Array.isArray(timelineSummary.auditTimeline)
+    ? timelineSummary.auditTimeline
+    : [];
+
+  return `
+    <div class="admin-cstp-report-management-feedback">
+      <strong>Immutable report history timeline</strong>
+      <p>${escapeHtml(Array.isArray(timelineSummary.labels) ? timelineSummary.labels.join(" - ") : "Internal-only timeline inspection.")}</p>
+      ${entries.slice(0, 6).map((entry) => `
+        <p>${escapeHtml([
+          entry.isCurrent ? "Current" : (entry.isActive ? "Active" : "Historical"),
+          `v${entry.snapshotVersion || "?"}`,
+          entry.snapshotId || "snapshot",
+          entry.status || "internal",
+          entry.lifecycleTimestamp ? formatAdminTimestamp(entry.lifecycleTimestamp) : "",
+          entry.supersedesSnapshotId ? `supersedes ${entry.supersedesSnapshotId}` : "",
+          `${Number(entry.auditLinkCount || 0)} audit links`,
+          entry.orphanIndicator ? "orphan indicator" : "",
+        ].filter(Boolean).join(" - "))}</p>
+      `).join("")}
+    </div>
+    <div class="admin-cstp-report-management-result-grid">
+      <p><span>Timeline entries</span><strong>${escapeHtml(Number(timelineSummary.entryCount || entries.length || 0))}</strong></p>
+      <p><span>Supersede chains</span><strong>${escapeHtml(Number(chains.length || 0))}</strong></p>
+      <p><span>Regenerate groups</span><strong>${escapeHtml(Number((timelineSummary.regenerateGroups || []).length || 0))}</strong></p>
+      <p><span>Audit events</span><strong>${escapeHtml(Number(auditTimeline.length || 0))}</strong></p>
+    </div>
   `;
 }
 

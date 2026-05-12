@@ -240,6 +240,13 @@ function main() {
   assert.equal(inspection.mode, "internal_immutable_lineage_inspection");
   assert.equal(inspection.conflictSummary.status, "clear");
   assert.equal(inspection.auditTraceSummary.auditLinkCount, 1);
+  assert.equal(inspection.timelineSummary.mode, "internal_immutable_report_history_timeline");
+  assert.equal(inspection.timelineSummary.entryCount, 2);
+  assert.equal(inspection.timelineSummary.supersedeChains[0].orderedSnapshotIds[0], SNAPSHOT_ONE_ID);
+  assert.equal(inspection.timelineSummary.supersedeChains[0].orderedSnapshotIds[1], SNAPSHOT_TWO_ID);
+  assert.equal(inspection.timelineSummary.regenerateGroups[0].snapshotCount, 2);
+  assert.equal(inspection.timelineSummary.auditTimeline[0].correlated, true);
+  assert.equal(inspection.timelineSummary.immutableWritesEnabled, false);
   assert.equal(inspection.ancestryBySnapshotId[SNAPSHOT_TWO_ID][0].snapshotId, SNAPSHOT_ONE_ID);
   assert.equal(inspection.descendantsBySnapshotId[SNAPSHOT_ONE_ID][0].snapshotId, SNAPSHOT_TWO_ID);
 

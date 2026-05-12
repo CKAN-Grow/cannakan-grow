@@ -9,6 +9,7 @@ const {
   validateDuplicateActiveLineageShape,
   validateFrozenPayloadPresence,
   validateImmutableReportSnapshotCandidate,
+  validateImmutableVersionOrderingShape,
   validatePublicationReadinessShape,
   validateSupersessionSelfReference,
   validateTimestampOrdering,
@@ -124,6 +125,29 @@ function run() {
   });
   assert.equal(auditLinkResult.ok, false);
   assert.equal(auditLinkResult.issues[0].code, "CSTP_AUDIT_LINK_SNAPSHOT_MISSING");
+
+  const versionOrderingResult = validateImmutableVersionOrderingShape({
+    snapshots: [
+      {
+        id: SNAPSHOT_ID,
+        report_id: REPORT_ID,
+        snapshot_version: 2,
+        supersedes_snapshot_id: "99999999-9999-4999-8999-999999999999",
+      },
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        report_id: REPORT_ID,
+        snapshot_version: 2,
+      },
+    ],
+  });
+  assert.equal(versionOrderingResult.ok, false);
+  assert.equal(
+    versionOrderingResult.issues.some((issue) => (
+      issue.code === "CSTP_SNAPSHOT_VERSION_DUPLICATE"
+    )),
+    true
+  );
 
   console.log("CSTP immutable report validator smoke checks passed.");
 }

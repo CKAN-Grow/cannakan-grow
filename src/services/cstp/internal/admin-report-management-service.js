@@ -738,6 +738,7 @@ function summarizeActiveLineage(activeLineage, {
       ? lineageInspection.orphanSnapshotIds.length
       : 0,
     auditTraceSummary: lineageInspection?.auditTraceSummary || null,
+    timelineSummary: lineageInspection?.timelineSummary || null,
     ancestryBySnapshotId: lineageInspection?.ancestryBySnapshotId || {},
     descendantsBySnapshotId: lineageInspection?.descendantsBySnapshotId || {},
     snapshotCount: activeLineage.snapshots?.length || 0,
