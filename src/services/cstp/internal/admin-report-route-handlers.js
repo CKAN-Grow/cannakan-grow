@@ -636,6 +636,14 @@ async function loadImmutableReportLineage({ context, config, fetchImpl }) {
   const existingSnapshots = existingReport?.id
     ? await loadImmutableSnapshotChain(existingReport.id, { config, fetchImpl })
     : [];
+  const immutableEvidence = existingReport?.id
+    ? await loadImmutableReportEvidence({
+      report: existingReport,
+      snapshots: existingSnapshots,
+      config,
+      fetchImpl,
+    })
+    : { auditLinks: [] };
   const immutableLineageSummary = await summarizeImmutableLineage({
     report: existingReport,
     snapshots: existingSnapshots,
@@ -646,6 +654,8 @@ async function loadImmutableReportLineage({ context, config, fetchImpl }) {
   return {
     existingReport,
     existingSnapshots,
+    auditLinks: immutableEvidence.auditLinks || [],
+    immutableAuditLinks: immutableEvidence.auditLinks || [],
     immutableLineageSummary,
   };
 }
@@ -931,8 +941,10 @@ async function summarizeImmutableLineage({
     supersededSnapshotCount: supersededSnapshots.length,
     metricCount: evidenceCounts.metricCount,
     sessionCount: evidenceCounts.sessionCount,
+    auditLinkCount: evidenceCounts.auditLinkCount,
     metricCountsBySnapshotId: evidenceCounts.metricCountsBySnapshotId,
     sessionCountsBySnapshotId: evidenceCounts.sessionCountsBySnapshotId,
+    auditLinkCountsBySnapshotId: evidenceCounts.auditLinkCountsBySnapshotId,
     chain: orderedSnapshots.map((snapshot) => ({
       id: snapshot.id || "",
       snapshotVersion: snapshot.snapshot_version || "",
@@ -944,6 +956,7 @@ async function summarizeImmutableLineage({
       supersededBySnapshotId: snapshot.superseded_by_snapshot_id || "",
       metricCount: evidenceCounts.metricCountsBySnapshotId[snapshot.id] || 0,
       sessionCount: evidenceCounts.sessionCountsBySnapshotId[snapshot.id] || 0,
+      auditLinkCount: evidenceCounts.auditLinkCountsBySnapshotId[snapshot.id] || 0,
     })),
   };
 }
@@ -954,12 +967,14 @@ async function loadImmutableLineageEvidenceCounts(snapshots = [], { config, fetc
     return {
       metricCount: 0,
       sessionCount: 0,
+      auditLinkCount: 0,
       metricCountsBySnapshotId: {},
       sessionCountsBySnapshotId: {},
+      auditLinkCountsBySnapshotId: {},
     };
   }
 
-  const [metricRows, sessionRows] = await Promise.all([
+  const [metricRows, sessionRows, auditLinkRows] = await Promise.all([
     loadManyByFieldIn(CSTP_REPORT_TABLES.metrics, "snapshot_id", snapshotIds, {
       config,
       fetchImpl,
@@ -972,13 +987,21 @@ async function loadImmutableLineageEvidenceCounts(snapshots = [], { config, fetc
       selectPrefix: "select=id,snapshot_id",
       order: "",
     }),
+    loadManyByFieldIn(CSTP_REPORT_TABLES.auditLinks, "snapshot_id", snapshotIds, {
+      config,
+      fetchImpl,
+      selectPrefix: "select=id,snapshot_id",
+      order: "",
+    }),
   ]);
 
   return {
     metricCount: metricRows.length,
     sessionCount: sessionRows.length,
+    auditLinkCount: auditLinkRows.length,
     metricCountsBySnapshotId: countRowsBySnapshotId(metricRows),
     sessionCountsBySnapshotId: countRowsBySnapshotId(sessionRows),
+    auditLinkCountsBySnapshotId: countRowsBySnapshotId(auditLinkRows),
   };
 }
 
@@ -1347,6 +1370,7 @@ function pickPreloadedPayload(payload = {}) {
     growSessions: normalizeArray(payload.growSessions),
     source: payload.source,
     auditEvents: normalizeArray(payload.auditEvents),
+    auditLinks: normalizeArray(payload.auditLinks || payload.immutableAuditLinks),
     existingReport: payload.existingReport || payload.report,
     existingSnapshots: normalizeArray(payload.existingSnapshots),
     reports: normalizeArray(payload.reports),

@@ -299,24 +299,16 @@ async function assertUnifiedWorkflowModes() {
     targetSnapshotId: SNAPSHOT_ONE_ID,
     snapshotId: "12345678-1234-4234-8234-123456789abc",
   });
-  assert.equal(superseded.ok, true);
+  assert.equal(superseded.ok, false);
   assert.equal(superseded.workflowMode, "supersede");
-  assert.equal(superseded.status, "persisted");
-  assert.equal(superseded.lineagePlanSummary.actionType, "supersede_snapshot");
-  assert.equal(superseded.lineagePlanSummary.snapshotsToMarkSuperseded, 1);
-  assert.deepEqual(superseded.insertedRowCounts, {
-    reports: 0,
-    snapshots: 1,
-    metrics: 6,
-    sessions: 2,
-    auditLinks: 1,
-  });
-  assert.deepEqual(supersedeDb.calls.map((call) => call.table), [
-    "cstp_report_snapshots",
-    "cstp_report_metrics",
-    "cstp_report_sessions",
-    "cstp_report_audit_links",
-  ]);
+  assert.equal(superseded.status, "workflow_validation_failed");
+  assert.equal(supersedeDb.calls.length, 0);
+  assert.equal(
+    superseded.blockingErrors.some((issue) => (
+      issue.code === "CSTP_WORKFLOW_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED"
+    )),
+    true
+  );
 }
 
 function createOperationalInput(overrides = {}) {

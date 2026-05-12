@@ -139,10 +139,16 @@ async function assertDelegatedActionHandlers() {
     targetSnapshotId: SNAPSHOT_ONE_ID,
     snapshotId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   });
-  assert.equal(superseded.ok, true);
+  assert.equal(superseded.ok, false);
   assert.equal(superseded.workflowMode, "supersede");
-  assert.equal(superseded.lineageSummary.actionType, "supersede_snapshot");
-  assert.equal(supersedeDb.calls.every((call) => call.table.startsWith("cstp_report")), true);
+  assert.equal(superseded.status, "admin_preflight_failed");
+  assert.equal(supersedeDb.calls.length, 0);
+  assert.equal(
+    superseded.blockingErrors.some((issue) => (
+      issue.code === "CSTP_ADMIN_REPORT_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED"
+    )),
+    true
+  );
 }
 
 async function assertReadOnlyInspectionActions() {

@@ -136,16 +136,16 @@ async function assertAdminWorkflowWrappers() {
     targetSnapshotId: SNAPSHOT_ONE_ID,
     snapshotId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   });
-  assert.equal(superseded.ok, true);
+  assert.equal(superseded.ok, false);
   assert.equal(superseded.workflowMode, "supersede");
-  assert.equal(superseded.lineageSummary.actionType, "supersede_snapshot");
-  assert.deepEqual(superseded.persistenceSummary.insertedRowCounts, {
-    reports: 0,
-    snapshots: 1,
-    metrics: 5,
-    sessions: 1,
-    auditLinks: 1,
-  });
+  assert.equal(superseded.status, "admin_preflight_failed");
+  assert.equal(supersedeDb.calls.length, 0);
+  assert.equal(
+    superseded.blockingErrors.some((issue) => (
+      issue.code === "CSTP_ADMIN_REPORT_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED"
+    )),
+    true
+  );
 }
 
 function assertLineageInspection() {

@@ -7,6 +7,8 @@ const {
   createValidationIssue,
   createValidationResult,
   mergeValidationResults,
+  validateActiveSnapshotChainShape,
+  validateAuditLinkConsistencyShape,
   validateDuplicateActiveLineageShape,
   validateSnapshotLineageConsistencyShape,
   validateSupersessionSelfReference,
@@ -46,6 +48,7 @@ function buildSupersessionPlan({
   targetSnapshotId,
   supersedingSnapshot,
   snapshotCandidate,
+  auditLinks = [],
   adminContext = {},
   supersessionTimestamp,
   options = {},
@@ -79,6 +82,11 @@ function buildSupersessionPlan({
     targetSnapshot: target,
     supersedingSnapshot: successorSnapshot,
   });
+  const lineageInspection = inspectImmutableLineageGraph({
+    report,
+    snapshots: lineageSnapshots,
+    auditLinks,
+  });
   const validation = validateSupersessionPlan({
     actionType: LINEAGE_ACTIONS.supersedeSnapshot,
     report,
@@ -86,9 +94,21 @@ function buildSupersessionPlan({
     supersedingSnapshot: successorSnapshot,
     snapshots: lineageSnapshots,
     plannedSnapshots,
+    auditLinks,
     adminContext,
     supersessionTimestamp: normalizedTimestamp,
     options,
+  });
+  const conflictSummary = buildLineageConflictSummary({
+    validation,
+    lineageInspection,
+  });
+  const previewSafetyAnalysis = buildDeferredSupersedePreviewSafetyAnalysis({
+    target,
+    successorSnapshot,
+    plannedSnapshots,
+    validation,
+    conflictSummary,
   });
 
   return deepFreeze({
@@ -116,6 +136,9 @@ function buildSupersessionPlan({
     }),
     auditContext,
     validation,
+    conflictSummary,
+    lineageInspection,
+    previewSafetyAnalysis,
     errors: validation.issues.filter((issue) => issue.blocking),
     warnings: buildLineageWarnings(validation),
     lineage: {
@@ -131,8 +154,11 @@ function buildSupersessionPlan({
       deletesHistoricalSnapshots: false,
       mutatesFrozenPayloads: false,
       requiresSeparatePersistence: true,
+      persistenceDeferred: true,
+      immutableWritesEnabled: false,
       publicVisibility: false,
     },
+    labels: buildInternalLineageLabels(),
     internalOnly: true,
   });
 }
@@ -142,6 +168,7 @@ function validateSupersessionPlan(plan = {}, options = {}) {
   const targetSnapshot = plan.targetSnapshot || {};
   const supersedingSnapshot = plan.supersedingSnapshot || {};
   const snapshots = Array.isArray(plan.snapshots) ? plan.snapshots : [];
+  const auditLinks = Array.isArray(plan.auditLinks) ? plan.auditLinks : [];
   const plannedSnapshots = Array.isArray(plan.plannedSnapshots)
     ? plan.plannedSnapshots
     : snapshots;
@@ -154,6 +181,10 @@ function validateSupersessionPlan(plan = {}, options = {}) {
   );
   const targetSnapshotId = getSnapshotId(targetSnapshot);
   const supersedingSnapshotId = getSnapshotId(supersedingSnapshot);
+  const plannedReport = {
+    ...(plan.report || {}),
+    current_snapshot_id: undefined,
+  };
   const adminUserId = getAdminUserId(plan.adminContext || options.adminContext || {});
 
   if (!hasValue(targetSnapshotId)) {
@@ -269,6 +300,19 @@ function validateSupersessionPlan(plan = {}, options = {}) {
       validateDuplicateActiveLineageShape({
         snapshots: plannedSnapshots,
       }),
+      validateActiveSnapshotChainShape({
+        report: plannedReport,
+        snapshots: plannedSnapshots,
+      }),
+      detectOrphanLineageReferences({
+        report: plannedReport,
+        snapshots: plannedSnapshots,
+      }),
+      validateAuditLinkConsistencyShape({
+        report: plannedReport,
+        snapshots: plannedSnapshots,
+        auditLinks,
+      }),
       validateTimestampOrdering(supersedingSnapshot, {
         entity: "snapshot",
         table: CSTP_REPORT_TABLES.snapshots,
@@ -313,6 +357,7 @@ function resolveActiveSnapshotLineage(input = {}, options = {}) {
     latestSnapshot,
     latestSnapshotId: latestSnapshot ? getSnapshotId(latestSnapshot) : null,
     duplicateActiveLineage: activeSnapshots.length > 1,
+    emptyState: filteredSnapshots.length === 0,
     internalOnly: true,
   });
 }
@@ -379,6 +424,163 @@ function detectLineageCycle(input = {}) {
   });
 }
 
+function detectOrphanLineageReferences(input = {}) {
+  const report = Array.isArray(input) ? {} : input.report || {};
+  const snapshots = sortLineageSnapshotsStable(Array.isArray(input)
+    ? input
+    : input.snapshots || []);
+  const issues = [];
+  const reportId = getReportId(report);
+  const byId = new Map(
+    snapshots
+      .map((snapshot) => [getSnapshotId(snapshot), snapshot])
+      .filter(([snapshotId]) => hasValue(snapshotId)),
+  );
+
+  snapshots.forEach((snapshot, index) => {
+    const snapshotId = getSnapshotId(snapshot);
+    const snapshotReportId = getSnapshotReportId(snapshot);
+    const supersedesSnapshotId = getFirstValue(snapshot, [
+      "supersedes_snapshot_id",
+      "supersedesSnapshotId",
+    ]);
+    const supersededBySnapshotId = getFirstValue(snapshot, [
+      "superseded_by_snapshot_id",
+      "supersededBySnapshotId",
+    ]);
+
+    if (!hasValue(snapshotReportId)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_LINEAGE_ORPHAN_SNAPSHOT_REPORT_REQUIRED",
+        message: "Immutable snapshot lineage rows must retain a report_id.",
+        entity: "snapshot",
+        table: CSTP_REPORT_TABLES.snapshots,
+        field: "report_id",
+        metadata: { index, snapshotId },
+      }));
+    }
+
+    if (hasValue(reportId) && hasValue(snapshotReportId) && snapshotReportId !== reportId) {
+      issues.push(createValidationIssue({
+        code: "CSTP_LINEAGE_ORPHAN_SNAPSHOT_REPORT_MISMATCH",
+        message: "Snapshot report_id does not match the inspected report lineage.",
+        entity: "snapshot",
+        table: CSTP_REPORT_TABLES.snapshots,
+        field: "report_id",
+        metadata: { index, snapshotId, expected: reportId, actual: snapshotReportId },
+      }));
+    }
+
+    if (hasValue(supersedesSnapshotId) && !byId.has(supersedesSnapshotId)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_LINEAGE_ORPHAN_SUPERSEDES_REFERENCE",
+        message: "Snapshot supersedes_snapshot_id references a missing immutable snapshot.",
+        entity: "snapshot",
+        table: CSTP_REPORT_TABLES.snapshots,
+        field: "supersedes_snapshot_id",
+        metadata: { index, snapshotId, supersedesSnapshotId },
+      }));
+    }
+
+    if (hasValue(supersededBySnapshotId) && !byId.has(supersededBySnapshotId)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_LINEAGE_ORPHAN_SUPERSEDED_BY_REFERENCE",
+        message: "Snapshot superseded_by_snapshot_id references a missing immutable snapshot.",
+        entity: "snapshot",
+        table: CSTP_REPORT_TABLES.snapshots,
+        field: "superseded_by_snapshot_id",
+        metadata: { index, snapshotId, supersededBySnapshotId },
+      }));
+    }
+  });
+
+  return createValidationResult({
+    validator: "detectOrphanLineageReferences",
+    issues,
+    metadata: {
+      reportId,
+      snapshotCount: snapshots.length,
+    },
+  });
+}
+
+function inspectImmutableLineageGraph({
+  report = {},
+  snapshots = [],
+  auditLinks = [],
+} = {}) {
+  const sortedSnapshots = sortLineageSnapshotsStable(snapshots);
+  const activeLineage = resolveActiveSnapshotLineage({ report, snapshots: sortedSnapshots });
+  const byId = new Map(
+    sortedSnapshots
+      .map((snapshot) => [getSnapshotId(snapshot), snapshot])
+      .filter(([snapshotId]) => hasValue(snapshotId)),
+  );
+  const ancestryBySnapshotId = {};
+  const descendantsBySnapshotId = {};
+
+  sortedSnapshots.forEach((snapshot) => {
+    const snapshotId = getSnapshotId(snapshot);
+    if (!snapshotId) {
+      return;
+    }
+    ancestryBySnapshotId[snapshotId] = resolveSnapshotAncestry(snapshot, byId);
+    descendantsBySnapshotId[snapshotId] = resolveSnapshotDescendants(snapshotId, sortedSnapshots);
+  });
+
+  const auditLinkValidation = validateAuditLinkConsistencyShape({
+    report,
+    snapshots: sortedSnapshots,
+    auditLinks,
+  });
+  const validation = mergeValidationResults(
+    "inspectImmutableLineageGraph",
+    [
+      detectDuplicateActiveLineage(sortedSnapshots),
+      detectLineageCycle(sortedSnapshots),
+      detectOrphanLineageReferences({ report, snapshots: sortedSnapshots }),
+      validateActiveSnapshotChainShape({ report, snapshots: sortedSnapshots }),
+      auditLinkValidation,
+    ],
+    {
+      reportId: getReportId(report),
+      snapshotCount: sortedSnapshots.length,
+      auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
+    },
+  );
+
+  return deepFreeze({
+    mode: "internal_immutable_lineage_inspection",
+    reportId: getReportId(report) || null,
+    currentSnapshotId: activeLineage.currentSnapshotId,
+    latestSnapshotId: activeLineage.latestSnapshotId,
+    activeSnapshotIds: activeLineage.activeSnapshotIds,
+    snapshotCount: sortedSnapshots.length,
+    activeSnapshotCount: activeLineage.activeSnapshotIds.length,
+    duplicateActiveLineage: activeLineage.duplicateActiveLineage,
+    emptyState: sortedSnapshots.length === 0,
+    ancestryBySnapshotId,
+    descendantsBySnapshotId,
+    orphanSnapshotIds: validation.issues
+      .filter((issue) => issue.code && issue.code.includes("ORPHAN"))
+      .map((issue) => issue.metadata?.snapshotId)
+      .filter(hasValue),
+    validation,
+    conflictSummary: buildLineageConflictSummary({ validation }),
+    auditTraceSummary: {
+      auditLinkCount: Array.isArray(auditLinks) ? auditLinks.length : 0,
+      linkedSnapshotIds: [...new Set((Array.isArray(auditLinks) ? auditLinks : [])
+        .map((auditLink) => getFirstValue(auditLink, ["snapshot_id", "snapshotId"]))
+        .filter(hasValue))],
+      consistencyStatus: auditLinkValidation.status,
+      publicVisibility: false,
+    },
+    labels: buildInternalLineageLabels(),
+    publicVisibility: false,
+    internalOnly: true,
+  });
+}
+
 function sortLineageSnapshotsStable(snapshots = []) {
   return cloneArray(snapshots).sort(compareLineageSnapshotsStable);
 }
@@ -386,6 +588,7 @@ function sortLineageSnapshotsStable(snapshots = []) {
 function buildRegenerationPlan({
   report = {},
   snapshots = [],
+  auditLinks = [],
   adminContext = {},
   regenerationTimestamp,
   reason = "",
@@ -398,13 +601,30 @@ function buildRegenerationPlan({
     return Number.isFinite(version) ? Math.max(maxVersion, version) : maxVersion;
   }, 0);
   const targetSnapshot = lineage.currentSnapshot || lineage.latestSnapshot;
+  const lineageInspection = inspectImmutableLineageGraph({
+    report,
+    snapshots: sortedSnapshots,
+    auditLinks,
+  });
   const validation = validateRegenerationEligibility({
     report,
     snapshots: sortedSnapshots,
     targetSnapshot,
+    auditLinks,
     adminContext,
     regenerationTimestamp,
     options,
+  });
+  const conflictSummary = buildLineageConflictSummary({
+    validation,
+    lineageInspection,
+  });
+  const comparisonSummary = buildRegenerationComparisonSummary({
+    report,
+    targetSnapshot,
+    snapshots: sortedSnapshots,
+    nextSnapshotVersion: latestVersion + 1,
+    validation,
   });
 
   return deepFreeze({
@@ -436,6 +656,9 @@ function buildRegenerationPlan({
       reason,
     }),
     validation,
+    conflictSummary,
+    lineageInspection,
+    comparisonSummary,
     errors: validation.issues.filter((issue) => issue.blocking),
     warnings: buildLineageWarnings(validation),
     lineage,
@@ -445,8 +668,11 @@ function buildRegenerationPlan({
       mutatesFrozenPayloads: false,
       requiresNewSnapshotVersion: true,
       requiresSeparatePersistence: true,
+      persistenceDeferred: true,
+      immutableWritesEnabled: false,
       publicVisibility: false,
     },
+    labels: buildInternalLineageLabels(),
     internalOnly: true,
   });
 }
@@ -455,6 +681,7 @@ function validateRegenerationEligibility({
   report = {},
   snapshots = [],
   targetSnapshot = null,
+  auditLinks = [],
   adminContext = {},
   regenerationTimestamp,
   options = {},
@@ -462,6 +689,9 @@ function validateRegenerationEligibility({
   const issues = [];
   const timestamp = normalizeTimestamp(regenerationTimestamp);
   const adminUserId = getAdminUserId(adminContext);
+  const lineageAuditLinks = Array.isArray(options.auditLinks)
+    ? options.auditLinks
+    : auditLinks;
   const reportStatus = getStatus(report);
   const hasPublishedSnapshot = snapshots.some((snapshot) => (
     ["published", "published_internal"].includes(getStatus(snapshot))
@@ -536,6 +766,9 @@ function validateRegenerationEligibility({
       }),
       detectDuplicateActiveLineage(snapshots),
       detectLineageCycle(snapshots),
+      detectOrphanLineageReferences({ report, snapshots }),
+      validateActiveSnapshotChainShape({ report, snapshots }),
+      validateAuditLinkConsistencyShape({ report, snapshots, auditLinks: lineageAuditLinks }),
     ],
     {
       targetSnapshotId: targetSnapshot ? getSnapshotId(targetSnapshot) : null,
@@ -689,6 +922,197 @@ function buildCandidateReference(snapshotCandidate) {
   });
 }
 
+function buildLineageConflictSummary({
+  validation = null,
+  lineageInspection = null,
+} = {}) {
+  const issues = [
+    ...(Array.isArray(validation?.issues) ? validation.issues : []),
+    ...(Array.isArray(lineageInspection?.validation?.issues)
+      ? lineageInspection.validation.issues
+      : []),
+  ];
+  const uniqueIssues = dedupeIssues(issues);
+  const blockingIssues = uniqueIssues.filter((issue) => issue.blocking);
+  const warningIssues = uniqueIssues.filter((issue) => !issue.blocking);
+
+  return {
+    status: blockingIssues.length
+      ? "blocking_conflicts"
+      : (warningIssues.length ? "warnings" : "clear"),
+    conflictCount: uniqueIssues.length,
+    blockingConflictCount: blockingIssues.length,
+    warningConflictCount: warningIssues.length,
+    codes: uniqueIssues.map((issue) => issue.code).filter(hasValue),
+    affectedTables: [...new Set(uniqueIssues.map((issue) => issue.table).filter(hasValue))],
+    orphanSnapshotCount: uniqueIssues.filter((issue) => (
+      String(issue.code || "").includes("ORPHAN")
+    )).length,
+    duplicateActiveLineage: uniqueIssues.some((issue) => (
+      issue.code === "CSTP_DUPLICATE_ACTIVE_SNAPSHOT_LINEAGE"
+      || issue.code === "CSTP_ACTIVE_CHAIN_MULTIPLE_ACTIVE_SNAPSHOTS"
+    )),
+    auditLinkConflictCount: uniqueIssues.filter((issue) => (
+      String(issue.code || "").includes("AUDIT_LINK")
+    )).length,
+    internalOnly: true,
+    publicVisibility: false,
+  };
+}
+
+function buildDeferredSupersedePreviewSafetyAnalysis({
+  target = {},
+  successorSnapshot = {},
+  plannedSnapshots = [],
+  validation = null,
+  conflictSummary = {},
+} = {}) {
+  return {
+    mode: "deferred_supersede_preview",
+    ok: validation?.ok === true,
+    targetSnapshotId: getSnapshotId(target) || null,
+    supersedingSnapshotId: getSnapshotId(successorSnapshot) || null,
+    targetStatus: getStatus(target) || null,
+    supersedingStatus: getStatus(successorSnapshot) || null,
+    plannedSnapshotCount: Array.isArray(plannedSnapshots) ? plannedSnapshots.length : 0,
+    plannedActiveSnapshotIds: (Array.isArray(plannedSnapshots) ? plannedSnapshots : [])
+      .filter(isActiveSnapshot)
+      .map(getSnapshotId)
+      .filter(hasValue),
+    persistenceDeferred: true,
+    immutableWritesEnabled: false,
+    destructiveReplacement: false,
+    deletesHistoricalSnapshots: false,
+    mutatesFrozenPayloads: false,
+    publicVisibility: false,
+    conflictSummary,
+    labels: buildInternalLineageLabels(),
+  };
+}
+
+function buildRegenerationComparisonSummary({
+  report = {},
+  targetSnapshot = null,
+  snapshots = [],
+  nextSnapshotVersion = null,
+  validation = null,
+} = {}) {
+  const latestSnapshot = sortLineageSnapshotsStable(snapshots).slice(-1)[0] || null;
+  const targetPayload = getFirstValue(targetSnapshot || {}, [
+    "frozen_report_payload",
+    "frozenReportPayload",
+    "payload",
+  ]);
+
+  return {
+    mode: "deferred_regeneration_comparison",
+    ok: validation?.ok === true,
+    reportId: getReportId(report) || getSnapshotReportId(targetSnapshot || {}) || null,
+    targetSnapshotId: targetSnapshot ? getSnapshotId(targetSnapshot) : null,
+    targetSnapshotVersion: targetSnapshot ? getSnapshotVersion(targetSnapshot) : null,
+    targetSnapshotStatus: targetSnapshot ? getStatus(targetSnapshot) : null,
+    latestSnapshotId: latestSnapshot ? getSnapshotId(latestSnapshot) : null,
+    latestSnapshotVersion: latestSnapshot ? getSnapshotVersion(latestSnapshot) : null,
+    nextSnapshotVersion,
+    requiresNewSnapshotVersion: true,
+    payloadKeyCount: isPlainObject(targetPayload) ? Object.keys(targetPayload).length : 0,
+    snapshotCount: Array.isArray(snapshots) ? snapshots.length : 0,
+    comparisonBasis: "persisted_snapshot_metadata_and_frozen_payload_shape",
+    persistenceDeferred: true,
+    immutableWritesEnabled: false,
+    publicVisibility: false,
+    labels: buildInternalLineageLabels(),
+  };
+}
+
+function resolveSnapshotAncestry(snapshot = {}, byId = new Map()) {
+  const ancestry = [];
+  const visited = new Set();
+  let currentId = getFirstValue(snapshot, [
+    "supersedes_snapshot_id",
+    "supersedesSnapshotId",
+  ]);
+
+  while (hasValue(currentId) && !visited.has(currentId)) {
+    visited.add(currentId);
+    const ancestor = byId.get(currentId);
+    ancestry.push({
+      snapshotId: currentId,
+      found: Boolean(ancestor),
+      snapshotVersion: ancestor ? getSnapshotVersion(ancestor) : null,
+      status: ancestor ? getStatus(ancestor) : null,
+    });
+
+    if (!ancestor) {
+      break;
+    }
+    currentId = getFirstValue(ancestor, [
+      "supersedes_snapshot_id",
+      "supersedesSnapshotId",
+    ]);
+  }
+
+  return ancestry;
+}
+
+function resolveSnapshotDescendants(snapshotId, snapshots = []) {
+  const descendants = [];
+  const queue = [snapshotId];
+  const visited = new Set();
+
+  while (queue.length) {
+    const currentId = queue.shift();
+    if (!hasValue(currentId) || visited.has(currentId)) {
+      continue;
+    }
+    visited.add(currentId);
+    snapshots.forEach((snapshot) => {
+      const parentId = getFirstValue(snapshot, [
+        "supersedes_snapshot_id",
+        "supersedesSnapshotId",
+      ]);
+      const childId = getSnapshotId(snapshot);
+      if (parentId === currentId && !visited.has(childId)) {
+        descendants.push({
+          snapshotId: childId,
+          snapshotVersion: getSnapshotVersion(snapshot),
+          status: getStatus(snapshot),
+        });
+        queue.push(childId);
+      }
+    });
+  }
+
+  return descendants;
+}
+
+function dedupeIssues(issues = []) {
+  const seen = new Set();
+  return issues.filter((issue) => {
+    const key = [
+      issue.code,
+      issue.table,
+      issue.field,
+      issue.metadata?.snapshotId,
+      issue.metadata?.reportId,
+      issue.metadata?.index,
+    ].join("|");
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildInternalLineageLabels() {
+  return [
+    "Internal-only CSTP lineage inspection",
+    "Deferred preview; immutable writes are not enabled here",
+    "Certification, public publishing, and rendering are deferred",
+  ];
+}
+
 function buildLineageWarnings(validation) {
   const warningIssues = validation.issues.filter((issue) => !issue.blocking);
   const defaultWarnings = [
@@ -840,7 +1264,10 @@ module.exports = {
   resolveActiveSnapshotLineage,
   detectDuplicateActiveLineage,
   detectLineageCycle,
+  detectOrphanLineageReferences,
+  inspectImmutableLineageGraph,
   sortLineageSnapshotsStable,
+  buildLineageConflictSummary,
   buildRegenerationPlan,
   validateRegenerationEligibility,
   buildLineageAuditContext,

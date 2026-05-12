@@ -46542,6 +46542,8 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
   const activeCount = Array.isArray(lineageSummary.activeSnapshotIds)
     ? lineageSummary.activeSnapshotIds.length
     : 0;
+  const conflictSummary = lineageSummary.conflictSummary || {};
+  const auditTraceSummary = lineageSummary.auditTraceSummary || {};
   const warnings = Array.isArray(result?.warnings) ? result.warnings : [];
   const errors = Array.isArray(result?.blockingErrors)
     ? result.blockingErrors
@@ -46586,6 +46588,12 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
         <p><span>Latest snapshot</span><strong>${escapeHtml(lineageSummary.latestSnapshotId || "Awaiting run")}</strong></p>
         <p><span>Duplicate check</span><strong>${escapeHtml(lineageSummary.duplicateActiveValidationStatus || "Not run")}</strong></p>
         <p><span>Public</span><strong>${escapeHtml(lineageSummary.publicVisibility === false ? "No" : "Deferred")}</strong></p>
+      </div>
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Conflicts</span><strong>${escapeHtml(`${Number(conflictSummary.blockingConflictCount || 0)} blocking / ${Number(conflictSummary.warningConflictCount || 0)} warnings`)}</strong></p>
+        <p><span>Orphans</span><strong>${escapeHtml(Number(lineageSummary.orphanSnapshotCount || 0))}</strong></p>
+        <p><span>Audit links</span><strong>${escapeHtml(Number(auditTraceSummary.auditLinkCount || 0))}</strong></p>
+        <p><span>Inspection</span><strong>${escapeHtml(Array.isArray(lineageSummary.labels) ? lineageSummary.labels[0] : "Internal-only")}</strong></p>
       </div>
       ${lineageChain.length
         ? `<div class="admin-cstp-report-management-feedback">

@@ -8,6 +8,8 @@ const {
   buildSupersessionPlan,
   detectDuplicateActiveLineage,
   detectLineageCycle,
+  detectOrphanLineageReferences,
+  inspectImmutableLineageGraph,
   resolveActiveSnapshotLineage,
   sortLineageSnapshotsStable,
   validateRegenerationEligibility,
@@ -156,6 +158,9 @@ function main() {
   assert.equal(plan.auditContext.eventRole, "snapshot_superseded");
   assert.equal(plan.immutableSafety.destructiveReplacement, false);
   assert.equal(plan.immutableSafety.deletesHistoricalSnapshots, false);
+  assert.equal(plan.immutableSafety.immutableWritesEnabled, false);
+  assert.equal(plan.previewSafetyAnalysis.persistenceDeferred, true);
+  assert.equal(plan.conflictSummary.status, "clear");
   assert.equal(plan.immutableSafety.publicVisibility, false);
 
   const directValidation = validateSupersessionPlan({
@@ -203,6 +208,41 @@ function main() {
     true
   );
 
+  const orphanValidation = detectOrphanLineageReferences({
+    report,
+    snapshots: [
+      {
+        ...snapshots[0],
+        supersedes_snapshot_id: "abababab-abab-4aba-8aba-abababababab",
+      },
+    ],
+  });
+  assert.equal(orphanValidation.ok, false);
+  assert.equal(
+    orphanValidation.issues.some((issue) => (
+      issue.code === "CSTP_LINEAGE_ORPHAN_SUPERSEDES_REFERENCE"
+    )),
+    true
+  );
+
+  const inspection = inspectImmutableLineageGraph({
+    report,
+    snapshots,
+    auditLinks: [
+      {
+        id: "abababab-abab-4aba-8aba-abababababab",
+        report_id: REPORT_ID,
+        snapshot_id: SNAPSHOT_TWO_ID,
+        created_by: ADMIN_ID,
+      },
+    ],
+  });
+  assert.equal(inspection.mode, "internal_immutable_lineage_inspection");
+  assert.equal(inspection.conflictSummary.status, "clear");
+  assert.equal(inspection.auditTraceSummary.auditLinkCount, 1);
+  assert.equal(inspection.ancestryBySnapshotId[SNAPSHOT_TWO_ID][0].snapshotId, SNAPSHOT_ONE_ID);
+  assert.equal(inspection.descendantsBySnapshotId[SNAPSHOT_ONE_ID][0].snapshotId, SNAPSHOT_TWO_ID);
+
   const regenerationPlan = buildRegenerationPlan({
     report,
     snapshots,
@@ -214,6 +254,8 @@ function main() {
   assert.equal(regenerationPlan.nextSnapshotVersion, 3);
   assert.equal(regenerationPlan.supersessionRequired, true);
   assert.equal(regenerationPlan.immutableSafety.requiresNewSnapshotVersion, true);
+  assert.equal(regenerationPlan.immutableSafety.immutableWritesEnabled, false);
+  assert.equal(regenerationPlan.comparisonSummary.nextSnapshotVersion, 3);
 
   const eligibility = validateRegenerationEligibility({
     report,

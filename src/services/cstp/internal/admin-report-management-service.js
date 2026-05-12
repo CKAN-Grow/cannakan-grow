@@ -19,6 +19,7 @@ const {
 const {
   detectDuplicateActiveLineage,
   detectLineageCycle,
+  inspectImmutableLineageGraph,
   resolveActiveSnapshotLineage,
 } = require("./immutable-report-lineage-orchestrator");
 
@@ -101,12 +102,18 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
     normalizedInput.existingSnapshots,
   );
   const cycleValidation = detectLineageCycle(normalizedInput.existingSnapshots);
+  const lineageInspection = inspectImmutableLineageGraph({
+    report: normalizedInput.existingReport,
+    snapshots: normalizedInput.existingSnapshots,
+    auditLinks: normalizedInput.auditLinks,
+  });
   const validation = mergeValidationResults(
     "inspectCstpReportLineageForAdmin",
     [
       adminValidation,
       duplicateActiveValidation,
       cycleValidation,
+      lineageInspection.validation,
     ],
     {
       action: ADMIN_REPORT_ACTIONS.inspectLineage,
@@ -123,6 +130,7 @@ function inspectCstpReportLineageForAdmin(input = {}, options = {}) {
     lineageSummary: summarizeActiveLineage(activeLineage, {
       duplicateActiveValidation,
       cycleValidation,
+      lineageInspection,
       immutableLineageSummary: normalizedInput.immutableLineageSummary,
     }),
     message: validation.ok
@@ -296,6 +304,25 @@ function validateAdminManagementInputs(input = {}, options = {}) {
       message: "Persistence-enabled admin report management requires a caller-supplied database client.",
       entity: "workflow",
       field: "dbClient",
+    }));
+  }
+
+  if (
+    input.persist
+    && [
+      ADMIN_REPORT_ACTIONS.regenerate,
+      ADMIN_REPORT_ACTIONS.supersede,
+    ].includes(action)
+  ) {
+    issues.push(createValidationIssue({
+      code: "CSTP_ADMIN_REPORT_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED",
+      message: "Regenerate and supersede admin report workflows are preview-only; immutable persistence remains deferred.",
+      entity: "workflow",
+      field: "persist",
+      metadata: {
+        action,
+        persistenceDeferred: true,
+      },
     }));
   }
 
@@ -682,6 +709,7 @@ function buildAdminSafetySummary() {
 function summarizeActiveLineage(activeLineage, {
   duplicateActiveValidation,
   cycleValidation,
+  lineageInspection = null,
   immutableLineageSummary = null,
 } = {}) {
   const currentSnapshot = activeLineage.currentSnapshot || {};
@@ -705,6 +733,13 @@ function summarizeActiveLineage(activeLineage, {
     duplicateActiveLineage: activeLineage.duplicateActiveLineage,
     duplicateActiveValidationStatus: duplicateActiveValidation?.status,
     cycleValidationStatus: cycleValidation?.status,
+    conflictSummary: lineageInspection?.conflictSummary || null,
+    orphanSnapshotCount: Array.isArray(lineageInspection?.orphanSnapshotIds)
+      ? lineageInspection.orphanSnapshotIds.length
+      : 0,
+    auditTraceSummary: lineageInspection?.auditTraceSummary || null,
+    ancestryBySnapshotId: lineageInspection?.ancestryBySnapshotId || {},
+    descendantsBySnapshotId: lineageInspection?.descendantsBySnapshotId || {},
     snapshotCount: activeLineage.snapshots?.length || 0,
     supersededSnapshotCount,
     metricCount: immutableLineageSummary?.metricCount || 0,
@@ -717,6 +752,11 @@ function summarizeActiveLineage(activeLineage, {
       : (cycleValidation?.ok === false ? "lineage_cycle_detected" : "continuity_checked"),
     source: immutableLineageSummary?.mode || "supplied_lineage_records",
     publicVisibility: false,
+    labels: lineageInspection?.labels || [
+      "Internal-only CSTP lineage inspection",
+      "Deferred preview; immutable writes are not enabled here",
+      "Certification, public publishing, and rendering are deferred",
+    ],
     internalOnly: true,
   };
 }
@@ -740,6 +780,7 @@ function normalizeAdminInput(input = {}, options = {}) {
     growSessions: Array.isArray(input.growSessions) ? input.growSessions.slice() : [],
     source: input.source || {},
     auditEvents: Array.isArray(input.auditEvents) ? input.auditEvents.slice() : [],
+    auditLinks: Array.isArray(input.auditLinks) ? input.auditLinks.slice() : [],
     existingReport: input.existingReport || input.report || {},
     existingSnapshots: Array.isArray(input.existingSnapshots)
       ? input.existingSnapshots.slice()

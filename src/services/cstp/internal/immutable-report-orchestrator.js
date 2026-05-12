@@ -17,6 +17,7 @@ const {
 const {
   buildRegenerationPlan,
   buildSupersessionPlan,
+  inspectImmutableLineageGraph,
   resolveActiveSnapshotLineage,
 } = require("./immutable-report-lineage-orchestrator");
 
@@ -79,11 +80,17 @@ function buildImmutableReportWorkflowPlan(input = {}, options = {}) {
     report: normalizedInput.existingReport,
     snapshots: normalizedInput.existingSnapshots,
   });
+  const lineageInspection = inspectImmutableLineageGraph({
+    report: normalizedInput.existingReport,
+    snapshots: normalizedInput.existingSnapshots,
+    auditLinks: normalizedInput.auditLinks,
+  });
   const regenerationPlan = normalizedInput.workflowMode === WORKFLOW_MODES.regenerate
     || normalizedInput.workflowMode === WORKFLOW_MODES.supersede
     ? buildRegenerationPlan({
       report: normalizedInput.existingReport,
       snapshots: normalizedInput.existingSnapshots,
+      auditLinks: normalizedInput.auditLinks,
       adminContext: normalizedInput.adminContext,
       regenerationTimestamp: normalizedInput.workflowTimestamp,
       reason: normalizedInput.reason,
@@ -110,6 +117,7 @@ function buildImmutableReportWorkflowPlan(input = {}, options = {}) {
       },
     ),
     activeLineage,
+    lineageInspection,
     lineagePlanSummary: summarizeLineagePlan(regenerationPlan),
     assemblyPlanSummary: {
       snapshotVersion: regenerationPlan?.nextSnapshotVersion
@@ -213,6 +221,24 @@ function validateImmutableReportWorkflowInputs(input = {}, options = {}) {
       message: "Persistence-enabled immutable CSTP workflow requires a caller-supplied database client.",
       entity: "workflow",
       field: "dbClient",
+    }));
+  }
+
+  if (
+    normalizedInput.persist
+    && [WORKFLOW_MODES.regenerate, WORKFLOW_MODES.supersede].includes(
+      normalizedInput.workflowMode,
+    )
+  ) {
+    issues.push(createValidationIssue({
+      code: "CSTP_WORKFLOW_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED",
+      message: "Regenerate and supersede immutable workflows are preview-only; persistence remains deferred.",
+      entity: "workflow",
+      field: "persist",
+      metadata: {
+        workflowMode: normalizedInput.workflowMode,
+        persistenceDeferred: true,
+      },
     }));
   }
 
@@ -434,6 +460,7 @@ function buildPostAssemblyLineagePlan({ normalizedInput, candidate }) {
       ? buildRegenerationPlan({
         report: normalizedInput.existingReport,
         snapshots: normalizedInput.existingSnapshots,
+        auditLinks: normalizedInput.auditLinks,
         adminContext: normalizedInput.adminContext,
         regenerationTimestamp: normalizedInput.workflowTimestamp,
         reason: normalizedInput.reason,
@@ -445,6 +472,7 @@ function buildPostAssemblyLineagePlan({ normalizedInput, candidate }) {
   return buildSupersessionPlan({
     report: normalizedInput.existingReport,
     snapshots: normalizedInput.existingSnapshots,
+    auditLinks: normalizedInput.auditLinks,
     targetSnapshotId: normalizedInput.targetSnapshotId,
     snapshotCandidate: candidate,
     adminContext: normalizedInput.adminContext,
@@ -598,6 +626,7 @@ function summarizeWorkflowPlan(plan = {}) {
     workflowTimestamp: plan.workflowTimestamp,
     activeSnapshotId: plan.activeLineage?.currentSnapshotId,
     activeSnapshotCount: plan.activeLineage?.activeSnapshotIds?.length,
+    lineageInspectionSummary: summarizeLineageInspection(plan.lineageInspection),
     assemblyPlanSummary: plan.assemblyPlanSummary,
     publicVisibility: false,
   });
@@ -645,8 +674,32 @@ function summarizeLineagePlan(lineagePlan) {
     snapshotsToMarkSuperseded: lineagePlan.snapshotsToMarkSuperseded?.length,
     reportStateChangesNeeded: lineagePlan.reportStateChangesNeeded,
     validationStatus: lineagePlan.validation?.status,
+    conflictSummary: lineagePlan.conflictSummary,
+    previewSafetyAnalysis: lineagePlan.previewSafetyAnalysis,
+    comparisonSummary: lineagePlan.comparisonSummary,
+    lineageInspectionSummary: summarizeLineageInspection(lineagePlan.lineageInspection),
     publicVisibility: false,
   });
+}
+
+function summarizeLineageInspection(lineageInspection = null) {
+  if (!lineageInspection) {
+    return null;
+  }
+
+  return {
+    mode: lineageInspection.mode,
+    snapshotCount: lineageInspection.snapshotCount,
+    activeSnapshotCount: lineageInspection.activeSnapshotCount,
+    duplicateActiveLineage: lineageInspection.duplicateActiveLineage,
+    orphanSnapshotCount: Array.isArray(lineageInspection.orphanSnapshotIds)
+      ? lineageInspection.orphanSnapshotIds.length
+      : 0,
+    auditLinkCount: lineageInspection.auditTraceSummary?.auditLinkCount || 0,
+    conflictSummary: lineageInspection.conflictSummary,
+    publicVisibility: false,
+    internalOnly: true,
+  };
 }
 
 function summarizePersistenceResult(persistenceResult) {
@@ -698,6 +751,9 @@ function buildWorkflowSafetySummary() {
     publicVisibility: false,
     renderingImplemented: false,
     certificationImplemented: false,
+    regeneratePersistenceDeferred: true,
+    supersedePersistenceDeferred: true,
+    immutableWritesFromRegenerateOrSupersede: false,
     requiresExplicitTimestamp: true,
     requiresCallerSuppliedDbClientForPersistence: true,
   };
@@ -741,6 +797,9 @@ function normalizeWorkflowInput(input = {}, options = {}) {
     source: input.source || {},
     adminContext: input.adminContext || {},
     auditEvents: Array.isArray(input.auditEvents) ? input.auditEvents.slice() : [],
+    auditLinks: Array.isArray(input.auditLinks)
+      ? input.auditLinks.slice()
+      : [],
     existingReport: input.existingReport || input.report || {},
     existingSnapshots: Array.isArray(input.existingSnapshots)
       ? input.existingSnapshots.slice()

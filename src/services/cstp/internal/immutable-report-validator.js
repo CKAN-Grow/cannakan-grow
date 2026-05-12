@@ -675,6 +675,174 @@ function validateDuplicateActiveLineageShape(context = {}) {
   });
 }
 
+function validateActiveSnapshotChainShape(context = {}) {
+  const report = context.report || {};
+  const snapshots = Array.isArray(context.snapshots) ? context.snapshots : [];
+  const issues = [];
+  const reportId = getIdValue(report, ["id", "reportId"]);
+  const currentSnapshotId = getIdValue(report, [
+    "current_snapshot_id",
+    "currentSnapshotId",
+  ]);
+  const reportSnapshots = reportId
+    ? snapshots.filter((snapshot) => getIdValue(snapshot, ["report_id", "reportId"]) === reportId)
+    : snapshots;
+  const byId = new Map(
+    reportSnapshots
+      .map((snapshot) => [getIdValue(snapshot, ["id", "snapshotId"]), snapshot])
+      .filter(([snapshotId]) => hasValue(snapshotId)),
+  );
+  const activeSnapshots = reportSnapshots.filter((snapshot) => {
+    const status = getFirstValue(snapshot, [
+      "lifecycleState",
+      "governanceState",
+      "status",
+      "snapshot_status",
+      "snapshotStatus",
+    ]);
+    const archived = getBooleanValue(snapshot, ["archived"], false);
+    return ACTIVE_SNAPSHOT_STATUSES.includes(status) && archived !== true;
+  });
+
+  if (hasValue(reportId) && reportSnapshots.length === 0) {
+    issues.push(createValidationIssue({
+      code: "CSTP_ACTIVE_CHAIN_SNAPSHOTS_REQUIRED",
+      message: "Persisted report lineage should include at least one snapshot for active-chain inspection.",
+      severity: VALIDATION_SEVERITIES.warning,
+      blocking: false,
+      entity: "snapshot",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "report_id",
+      metadata: { reportId },
+    }));
+  }
+
+  if (hasValue(currentSnapshotId) && !byId.has(currentSnapshotId)) {
+    issues.push(createValidationIssue({
+      code: "CSTP_ACTIVE_CHAIN_CURRENT_SNAPSHOT_MISSING",
+      message: "Report current_snapshot_id must reference a supplied immutable snapshot.",
+      entity: "report",
+      table: CSTP_REPORT_TABLES.reports,
+      field: "current_snapshot_id",
+      metadata: { reportId, currentSnapshotId },
+    }));
+  }
+
+  if (activeSnapshots.length > 1) {
+    issues.push(createValidationIssue({
+      code: "CSTP_ACTIVE_CHAIN_MULTIPLE_ACTIVE_SNAPSHOTS",
+      message: "Immutable lineage must not contain multiple active snapshots for one report.",
+      severity: VALIDATION_SEVERITIES.publicationBlocking,
+      entity: "snapshot",
+      table: CSTP_REPORT_TABLES.snapshots,
+      field: "status",
+      metadata: {
+        reportId,
+        activeSnapshotIds: activeSnapshots.map((snapshot) => (
+          getIdValue(snapshot, ["id", "snapshotId"])
+        )).filter(hasValue),
+      },
+    }));
+  }
+
+  if (hasValue(currentSnapshotId)) {
+    const currentSnapshot = byId.get(currentSnapshotId);
+    const currentStatus = getFirstValue(currentSnapshot || {}, [
+      "status",
+      "snapshot_status",
+      "snapshotStatus",
+    ]);
+    if (currentSnapshot && !ACTIVE_SNAPSHOT_STATUSES.includes(currentStatus)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_ACTIVE_CHAIN_CURRENT_SNAPSHOT_INACTIVE",
+        message: "Report current_snapshot_id points to an inactive immutable snapshot.",
+        entity: "report",
+        table: CSTP_REPORT_TABLES.reports,
+        field: "current_snapshot_id",
+        metadata: { reportId, currentSnapshotId, currentStatus },
+      }));
+    }
+  }
+
+  return createValidationResult({
+    validator: "validateActiveSnapshotChainShape",
+    issues,
+    metadata: {
+      reportId,
+      currentSnapshotId,
+      snapshotCount: reportSnapshots.length,
+      activeSnapshotCount: activeSnapshots.length,
+    },
+  });
+}
+
+function validateAuditLinkConsistencyShape(context = {}) {
+  const report = context.report || {};
+  const snapshots = Array.isArray(context.snapshots) ? context.snapshots : [];
+  const auditLinks = Array.isArray(context.auditLinks) ? context.auditLinks : [];
+  const issues = [];
+  const reportId = getIdValue(report, ["id", "reportId"]);
+  const snapshotIds = new Set(
+    snapshots
+      .map((snapshot) => getIdValue(snapshot, ["id", "snapshotId"]))
+      .filter(hasValue),
+  );
+
+  auditLinks.forEach((auditLink, index) => {
+    const auditReportId = getIdValue(auditLink, ["report_id", "reportId"]);
+    const auditSnapshotId = getIdValue(auditLink, ["snapshot_id", "snapshotId"]);
+    const adminEventId = getIdValue(auditLink, [
+      "cstp_admin_event_id",
+      "cstpAdminEventId",
+      "adminEventId",
+    ]);
+    const createdBy = getIdValue(auditLink, ["created_by", "createdBy", "adminUserId"]);
+
+    if (hasValue(reportId) && hasValue(auditReportId) && auditReportId !== reportId) {
+      issues.push(createValidationIssue({
+        code: "CSTP_AUDIT_LINK_REPORT_MISMATCH",
+        message: "Audit link report_id must match the inspected immutable report.",
+        entity: "audit_link",
+        table: CSTP_REPORT_TABLES.auditLinks,
+        field: "report_id",
+        metadata: { index, expected: reportId, actual: auditReportId },
+      }));
+    }
+
+    if (hasValue(auditSnapshotId) && snapshotIds.size > 0 && !snapshotIds.has(auditSnapshotId)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_AUDIT_LINK_SNAPSHOT_MISSING",
+        message: "Audit link snapshot_id must reference a supplied immutable snapshot.",
+        entity: "audit_link",
+        table: CSTP_REPORT_TABLES.auditLinks,
+        field: "snapshot_id",
+        metadata: { index, snapshotId: auditSnapshotId },
+      }));
+    }
+
+    if (!hasValue(adminEventId) && !hasValue(createdBy)) {
+      issues.push(createValidationIssue({
+        code: "CSTP_AUDIT_LINK_ACTOR_REQUIRED",
+        message: "Audit link requires either a CSTP admin event or actor id.",
+        entity: "audit_link",
+        table: CSTP_REPORT_TABLES.auditLinks,
+        field: "cstp_admin_event_id",
+        metadata: { index },
+      }));
+    }
+  });
+
+  return createValidationResult({
+    validator: "validateAuditLinkConsistencyShape",
+    issues,
+    metadata: {
+      reportId,
+      snapshotCount: snapshotIds.size,
+      auditLinkCount: auditLinks.length,
+    },
+  });
+}
+
 function validatePublicationReadinessShape(context = {}, options = {}) {
   const report = context.report || {};
   const snapshot = context.snapshot || {};
@@ -693,6 +861,15 @@ function validatePublicationReadinessShape(context = {}, options = {}) {
     validateSnapshotLineageConsistencyShape(context),
     validateDuplicateActiveLineageShape({
       snapshots: context.snapshots || [snapshot],
+    }),
+    validateActiveSnapshotChainShape({
+      report,
+      snapshots: context.snapshots || [snapshot],
+    }),
+    validateAuditLinkConsistencyShape({
+      report,
+      snapshots: context.snapshots || [snapshot],
+      auditLinks: context.auditLinks || [],
     }),
   ];
 
@@ -792,6 +969,15 @@ function validateImmutableReportSnapshotCandidate(context = {}, options = {}) {
       validateSnapshotLineageConsistencyShape(context),
       validateDuplicateActiveLineageShape({
         snapshots: context.snapshots || (context.snapshot ? [context.snapshot] : []),
+      }),
+      validateActiveSnapshotChainShape({
+        report: context.report || {},
+        snapshots: context.snapshots || (context.snapshot ? [context.snapshot] : []),
+      }),
+      validateAuditLinkConsistencyShape({
+        report: context.report || {},
+        snapshots: context.snapshots || (context.snapshot ? [context.snapshot] : []),
+        auditLinks: context.auditLinks || [],
       }),
     ],
     {
@@ -1124,6 +1310,8 @@ module.exports = {
   validateSupersessionSelfReference,
   validateSnapshotLineageConsistencyShape,
   validateDuplicateActiveLineageShape,
+  validateActiveSnapshotChainShape,
+  validateAuditLinkConsistencyShape,
   validatePublicationReadinessShape,
   validateImmutableReportSnapshotCandidate,
 };

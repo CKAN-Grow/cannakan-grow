@@ -184,6 +184,18 @@ async function main() {
   );
   assert.equal(regenerated.generatedCandidate.snapshotRecord.status, "generated");
 
+  const supersedePreview = await supersedeImmutableReportSnapshot({
+    ...regenerateInput,
+    targetSnapshotId: SNAPSHOT_ONE_ID,
+    snapshotId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  });
+  assert.equal(supersedePreview.ok, true);
+  assert.equal(supersedePreview.workflowMode, "supersede");
+  assert.equal(supersedePreview.status, "candidate_generated");
+  assert.equal(supersedePreview.lineagePlanSummary.actionType, "supersede_snapshot");
+  assert.equal(supersedePreview.lineagePlanSummary.snapshotsToMarkSuperseded, 1);
+  assert.equal(supersedePreview.lineagePlanSummary.previewSafetyAnalysis.immutableWritesEnabled, false);
+
   const dbClient = createMockDbClient();
   const superseded = await supersedeImmutableReportSnapshot({
     ...regenerateInput,
@@ -191,27 +203,15 @@ async function main() {
     dbClient,
     targetSnapshotId: SNAPSHOT_ONE_ID,
   });
-  assert.equal(superseded.ok, true);
+  assert.equal(superseded.ok, false);
   assert.equal(superseded.workflowMode, "supersede");
-  assert.equal(superseded.status, "persisted");
-  assert.equal(superseded.generatedCandidate, null);
-  assert.equal(superseded.lineagePlanSummary.actionType, "supersede_snapshot");
-  assert.equal(superseded.lineagePlanSummary.snapshotsToMarkSuperseded, 1);
-  assert.deepEqual(superseded.insertedRowCounts, {
-    reports: 0,
-    snapshots: 1,
-    metrics: 5,
-    sessions: 1,
-    auditLinks: 1,
-  });
-  assert.deepEqual(
-    dbClient.calls.map((call) => call.table),
-    [
-      "cstp_report_snapshots",
-      "cstp_report_metrics",
-      "cstp_report_sessions",
-      "cstp_report_audit_links",
-    ]
+  assert.equal(superseded.status, "workflow_validation_failed");
+  assert.equal(dbClient.calls.length, 0);
+  assert.equal(
+    superseded.blockingErrors.some((issue) => (
+      issue.code === "CSTP_WORKFLOW_REGENERATE_SUPERSEDE_PERSISTENCE_DEFERRED"
+    )),
+    true
   );
 
   const invalid = await generateImmutableReportSnapshot(createBaseInput({

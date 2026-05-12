@@ -4,6 +4,8 @@ const assert = require("assert/strict");
 
 const {
   VALIDATION_STATUSES,
+  validateActiveSnapshotChainShape,
+  validateAuditLinkConsistencyShape,
   validateDuplicateActiveLineageShape,
   validateFrozenPayloadPresence,
   validateImmutableReportSnapshotCandidate,
@@ -87,6 +89,42 @@ function run() {
     "CSTP_DUPLICATE_ACTIVE_SNAPSHOT_LINEAGE",
   );
 
+  const activeChainResult = validateActiveSnapshotChainShape({
+    report: {
+      id: REPORT_ID,
+      current_snapshot_id: SNAPSHOT_ID,
+    },
+    snapshots: [
+      {
+        id: SNAPSHOT_ID,
+        report_id: REPORT_ID,
+        status: "published",
+      },
+    ],
+  });
+  assert.equal(activeChainResult.ok, true);
+
+  const auditLinkResult = validateAuditLinkConsistencyShape({
+    report: {
+      id: REPORT_ID,
+    },
+    snapshots: [
+      {
+        id: SNAPSHOT_ID,
+        report_id: REPORT_ID,
+      },
+    ],
+    auditLinks: [
+      {
+        report_id: REPORT_ID,
+        snapshot_id: "99999999-9999-4999-8999-999999999999",
+        created_by: ADMIN_EVENT_ID,
+      },
+    ],
+  });
+  assert.equal(auditLinkResult.ok, false);
+  assert.equal(auditLinkResult.issues[0].code, "CSTP_AUDIT_LINK_SNAPSHOT_MISSING");
+
   console.log("CSTP immutable report validator smoke checks passed.");
 }
 
@@ -148,6 +186,13 @@ function buildValidPublicationContext() {
       id: ADMIN_EVENT_ID,
       cstp_test_id: TEST_ID,
     },
+    auditLinks: [
+      {
+        reportId: REPORT_ID,
+        snapshotId: SNAPSHOT_ID,
+        cstpAdminEventId: ADMIN_EVENT_ID,
+      },
+    ],
   };
 }
 
