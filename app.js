@@ -1046,6 +1046,16 @@ const ADMIN_CSTP_LAB_STATUS_OPTIONS = Object.freeze([
   Object.freeze({ key: "expired", label: "Expired" }),
   Object.freeze({ key: "declined", label: "Declined" }),
 ]);
+const ADMIN_CSTP_REQUEST_QUEUE_API_PATH = "/api/cstp-admin-requests-list";
+const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
+const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ key: "all", label: "All Active" }),
+  Object.freeze({ key: "received", label: "Received" }),
+  Object.freeze({ key: "accepted", label: "Accepted" }),
+  Object.freeze({ key: "awaiting_seeds", label: "Awaiting Seeds" }),
+  Object.freeze({ key: "declined", label: "Declined" }),
+  Object.freeze({ key: "archived", label: "Archived" }),
+]);
 const ADMIN_CSTP_LAB_QUALIFICATION_OPTIONS = Object.freeze([
   Object.freeze({ key: "gold", label: "Gold" }),
   Object.freeze({ key: "silver", label: "Silver" }),
@@ -1249,6 +1259,17 @@ const appState = {
   adminCommunicationRecordsError: "",
   adminCommunicationRecordsRefreshPromise: null,
   contactMessagesTableUnavailable: false,
+  adminCstpRequestQueueRows: [],
+  adminCstpRequestQueueLoaded: false,
+  adminCstpRequestQueueLoading: false,
+  adminCstpRequestQueueError: "",
+  adminCstpRequestQueueRefreshPromise: null,
+  adminCstpRequestQueueFilter: {
+    status: "all",
+    includeArchived: false,
+    page: 1,
+    pageSize: 10,
+  },
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -43971,6 +43992,299 @@ function renderAdminCstpCertificationStatePillMarkup(state = null) {
   return `<span class="admin-cstp-certification-pill ${toneClass} ${stateClass}"${tooltipCopy ? ` title="${escapeHtml(tooltipCopy)}"` : ""}>${escapeHtml(label)}</span>`;
 }
 
+function normalizeAdminCstpRequestQueueStatus(status = "") {
+  const normalizedStatus = String(status || "all").trim().toLowerCase();
+  return ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS.some((option) => option.key === normalizedStatus)
+    ? normalizedStatus
+    : "all";
+}
+
+function getAdminCstpRequestQueueStatusLabel(status = "") {
+  const normalizedStatus = normalizeAdminCstpRequestQueueStatus(status);
+  return ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS.find((option) => option.key === normalizedStatus)?.label || "All Active";
+}
+
+function normalizeAdminCstpRequestQueueRecord(row = null) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    return null;
+  }
+
+  const id = String(row.id || "").trim();
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    sourceId: String(row.source_id || row.sourceId || "").trim(),
+    contactName: String(row.contact_name || row.contactName || "").trim(),
+    contactEmail: String(row.contact_email || row.contactEmail || "").trim(),
+    website: String(row.website || "").trim(),
+    varietyName: String(row.variety_name || row.varietyName || "").trim(),
+    seedType: String(row.seed_type || row.seedType || "").trim(),
+    breederName: String(row.breeder_name || row.breederName || "").trim(),
+    batchLot: String(row.batch_lot || row.batchLot || "").trim(),
+    requestedSeedCount: Number.isFinite(Number(row.requested_seed_count || row.requestedSeedCount))
+      ? Number(row.requested_seed_count || row.requestedSeedCount)
+      : null,
+    requestMessage: String(row.request_message || row.requestMessage || "").trim(),
+    status: normalizeAdminCstpRequestQueueStatus(row.status || "received"),
+    archived: row.archived === true,
+    createdAt: String(row.created_at || row.createdAt || "").trim(),
+    updatedAt: String(row.updated_at || row.updatedAt || "").trim(),
+  };
+}
+
+function buildAdminCstpRequestQueueUrl(options = {}) {
+  const filter = {
+    ...appState.adminCstpRequestQueueFilter,
+    ...(options || {}),
+  };
+  const status = normalizeAdminCstpRequestQueueStatus(filter.status);
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(1, Math.min(ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE, Number(filter.pageSize) || ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE));
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    sortBy: "created_at",
+    sortDirection: "desc",
+  });
+
+  if (status === "archived") {
+    params.set("archived", "true");
+  } else {
+    params.set("includeArchived", filter.includeArchived === true ? "true" : "false");
+    if (status !== "all") {
+      params.set("status", status);
+    }
+  }
+
+  return `${ADMIN_CSTP_REQUEST_QUEUE_API_PATH}?${params.toString()}`;
+}
+
+async function loadAdminCstpRequestQueue(options = {}) {
+  if (!isAdminUser()) {
+    return [];
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to load the CSTP request queue.");
+  }
+
+  const response = await fetch(buildAdminCstpRequestQueueUrl(options), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `Request queue returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  appState.adminCstpRequestQueueFilter = {
+    ...appState.adminCstpRequestQueueFilter,
+    ...(payload.filters || {}),
+    page: Number(payload.pagination?.page || options.page || appState.adminCstpRequestQueueFilter.page) || 1,
+    pageSize: Number(payload.pagination?.pageSize || options.pageSize || appState.adminCstpRequestQueueFilter.pageSize) || ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE,
+    status: normalizeAdminCstpRequestQueueStatus(options.status || appState.adminCstpRequestQueueFilter.status),
+  };
+
+  return (Array.isArray(payload.requests) ? payload.requests : [])
+    .map((row) => normalizeAdminCstpRequestQueueRecord(row))
+    .filter(Boolean);
+}
+
+async function refreshAdminCstpRequestQueue(options = {}) {
+  const { force = false } = options || {};
+  if (!isAdminUser()) {
+    appState.adminCstpRequestQueueRows = [];
+    appState.adminCstpRequestQueueLoaded = true;
+    appState.adminCstpRequestQueueLoading = false;
+    appState.adminCstpRequestQueueError = "";
+    return [];
+  }
+
+  if (!force && appState.adminCstpRequestQueueLoaded && !appState.adminCstpRequestQueueRefreshPromise) {
+    return appState.adminCstpRequestQueueRows;
+  }
+
+  if (!force && appState.adminCstpRequestQueueRefreshPromise) {
+    return appState.adminCstpRequestQueueRefreshPromise;
+  }
+
+  appState.adminCstpRequestQueueLoading = true;
+  appState.adminCstpRequestQueueError = "";
+  const refreshPromise = (async () => {
+    try {
+      const rows = await loadAdminCstpRequestQueue(options);
+      appState.adminCstpRequestQueueRows = rows;
+      appState.adminCstpRequestQueueLoaded = true;
+      appState.adminCstpRequestQueueError = "";
+      return rows;
+    } catch (error) {
+      appState.adminCstpRequestQueueRows = [];
+      appState.adminCstpRequestQueueLoaded = true;
+      appState.adminCstpRequestQueueError = error?.message || "Could not load CSTP requests.";
+      return [];
+    } finally {
+      appState.adminCstpRequestQueueLoading = false;
+    }
+  })();
+
+  appState.adminCstpRequestQueueRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.adminCstpRequestQueueRefreshPromise = null;
+  }
+}
+
+function renderAdminCstpRequestQueueStatusFiltersMarkup(activeStatus = appState.adminCstpRequestQueueFilter.status) {
+  const normalizedStatus = normalizeAdminCstpRequestQueueStatus(activeStatus);
+  return ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS.map((option) => `
+    <button
+      type="button"
+      class="source-directory-filter-pill ${option.key === normalizedStatus ? "is-active" : ""}"
+      data-admin-cstp-request-queue-status="${escapeHtml(option.key)}"
+      aria-pressed="${option.key === normalizedStatus ? "true" : "false"}"
+    >
+      ${escapeHtml(option.label)}
+    </button>
+  `).join("");
+}
+
+function renderAdminCstpRequestQueueRowsMarkup() {
+  if (appState.adminCstpRequestQueueLoading || (!appState.adminCstpRequestQueueLoaded && !appState.adminCstpRequestQueueError)) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Loading internal CSTP requests...</p>
+      </div>
+    `;
+  }
+
+  if (appState.adminCstpRequestQueueError) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Could not load the internal CSTP request queue.</p>
+        <p class="muted">${escapeHtml(appState.adminCstpRequestQueueError)}</p>
+      </div>
+    `;
+  }
+
+  const rows = appState.adminCstpRequestQueueRows || [];
+  if (!rows.length) {
+    return `
+      <div class="admin-messages-empty">
+        <p>No internal CSTP requests match this filter.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="admin-communications-list">
+      ${rows.map((row) => {
+        const sourceLabel = row.breederName || row.website || row.sourceId || "Source pending";
+        const contactLabel = row.contactName || row.contactEmail || "Contact not provided";
+        const submittedLabel = row.createdAt ? formatAdminTimestamp(row.createdAt) : "Date unavailable";
+        const seedCountLabel = Number.isFinite(row.requestedSeedCount) ? row.requestedSeedCount.toLocaleString() : "Not provided";
+        return `
+          <article class="admin-communications-list-item admin-cstp-lab-list-item">
+            <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
+              <div class="admin-cstp-lab-list-item-copy">
+                <span class="admin-message-issue-pill">Internal CSTP Request</span>
+                <strong class="admin-cstp-lab-list-item-title">${escapeHtml(sourceLabel)}</strong>
+              </div>
+              <div class="admin-cstp-lab-badge-row">
+                <span class="admin-cstp-certification-pill is-active">${escapeHtml(getAdminCstpRequestQueueStatusLabel(row.status))}</span>
+                ${row.archived ? '<span class="admin-cstp-certification-pill is-expired">Archived</span>' : ""}
+              </div>
+            </div>
+            <div class="admin-communications-list-item-body admin-cstp-lab-list-item-body">
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Contact</span>
+                <strong>${escapeHtml(contactLabel)}</strong>
+              </p>
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Variety</span>
+                <strong>${escapeHtml(row.varietyName || "Not provided")}</strong>
+              </p>
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Seeds Requested</span>
+                <strong>${escapeHtml(seedCountLabel)}</strong>
+              </p>
+              <p class="admin-cstp-lab-list-item-meta">
+                <span class="admin-cstp-lab-list-item-label">Submitted</span>
+                <strong>${escapeHtml(submittedLabel)}</strong>
+              </p>
+            </div>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderAdminCstpRequestQueuePaginationMarkup() {
+  const filter = appState.adminCstpRequestQueueFilter;
+  const page = Math.max(1, Number(filter.page) || 1);
+  const pageSize = Math.max(1, Number(filter.pageSize) || ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE);
+  const rows = appState.adminCstpRequestQueueRows || [];
+  const canGoPrevious = page > 1 && !appState.adminCstpRequestQueueLoading;
+  const canGoNext = rows.length >= pageSize && !appState.adminCstpRequestQueueLoading;
+  return `
+    <div class="inline-actions admin-cstp-lab-actions">
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-queue-page="${page - 1}" ${canGoPrevious ? "" : "disabled"}>Previous</button>
+      <span class="muted">Page ${escapeHtml(String(page))}</span>
+      <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-queue-page="${page + 1}" ${canGoNext ? "" : "disabled"}>Next</button>
+    </div>
+  `;
+}
+
+function renderAdminCstpRequestQueueShellMarkup() {
+  const activeStatus = normalizeAdminCstpRequestQueueStatus(appState.adminCstpRequestQueueFilter.status);
+  return `
+    <section class="card admin-cstp-lab-queue-shell" aria-labelledby="admin-cstp-request-queue-title">
+      <div class="admin-cstp-lab-queue-head">
+        <div>
+          <p class="eyebrow">Internal CSTP Operations</p>
+          <h4 id="admin-cstp-request-queue-title">Request Queue</h4>
+          <p class="muted">Admin-only queue backed by CSTP request APIs. Public CSTP reports, certifications, and source badges remain deferred.</p>
+        </div>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-request-queue-refresh="true">Refresh Queue</button>
+      </div>
+      <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="Internal CSTP request filters">
+        ${renderAdminCstpRequestQueueStatusFiltersMarkup(activeStatus)}
+      </div>
+      <div id="admin-cstp-request-queue-list">
+        ${renderAdminCstpRequestQueueRowsMarkup()}
+      </div>
+      ${renderAdminCstpRequestQueuePaginationMarkup()}
+    </section>
+  `;
+}
+
+function renderAdminCstpRequestQueueInto(scope = app) {
+  const anchor = scope?.querySelector?.("#admin-cstp-request-queue-anchor");
+  if (!anchor) {
+    return;
+  }
+  anchor.innerHTML = renderAdminCstpRequestQueueShellMarkup();
+  bindAdminCstpRequestQueue(anchor);
+}
+
+function refreshAdminCstpRequestQueueAndRender(scope = app, options = {}) {
+  appState.adminCstpRequestQueueLoading = true;
+  renderAdminCstpRequestQueueInto(scope);
+  void refreshAdminCstpRequestQueue({ force: true, ...options }).then(() => {
+    renderAdminCstpRequestQueueInto(scope);
+  });
+}
+
 function renderAdminCstpLabListMarkup(activeStatus = "all", selectedId = "") {
   const rows = getFilteredAdminCstpLabRecords(activeStatus);
   if (!rows.length) {
@@ -44385,6 +44699,9 @@ function renderAdminCstpLabSectionMarkup() {
         <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
       </div>
         <div class="admin-communications-workspace admin-cstp-lab-workspace">
+          <div id="admin-cstp-request-queue-anchor">
+            ${renderAdminCstpRequestQueueShellMarkup()}
+          </div>
           <section class="card admin-cstp-lab-queue-shell">
             <div class="admin-cstp-lab-queue-head">
               <div>
@@ -44495,9 +44812,72 @@ function applyAdminCstpLabAction(record = null, actionKey = "") {
   return upsertAdminCstpLabRecord(nextRecord);
 }
 
+function bindAdminCstpRequestQueue(scope = app) {
+  if (!scope?.querySelectorAll || !isAdminUser()) {
+    return;
+  }
+
+  /*
+   * Internal admin-only CSTP UI boundary.
+   * This request queue is API-driven and intentionally avoids direct Supabase
+   * access, frontend lifecycle decisions, audit construction, and public CSTP
+   * report/certification exposure.
+   */
+  scope.querySelectorAll("[data-admin-cstp-request-queue-status]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpRequestQueueBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpRequestQueueBound = "true";
+    button.addEventListener("click", () => {
+      appState.adminCstpRequestQueueFilter.status = normalizeAdminCstpRequestQueueStatus(button.dataset.adminCstpRequestQueueStatus || "all");
+      appState.adminCstpRequestQueueFilter.page = 1;
+      refreshAdminCstpRequestQueueAndRender(app, {
+        status: appState.adminCstpRequestQueueFilter.status,
+        page: 1,
+      });
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-request-queue-page]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpRequestQueueBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpRequestQueueBound = "true";
+    button.addEventListener("click", () => {
+      const nextPage = Math.max(1, Number(button.dataset.adminCstpRequestQueuePage) || 1);
+      appState.adminCstpRequestQueueFilter.page = nextPage;
+      refreshAdminCstpRequestQueueAndRender(app, {
+        page: nextPage,
+        status: appState.adminCstpRequestQueueFilter.status,
+      });
+    });
+  });
+
+  const refreshButton = scope.querySelector("[data-admin-cstp-request-queue-refresh='true']");
+  if (refreshButton instanceof HTMLButtonElement && refreshButton.dataset.adminCstpRequestQueueBound !== "true") {
+    refreshButton.dataset.adminCstpRequestQueueBound = "true";
+    refreshButton.addEventListener("click", () => {
+      refreshAdminCstpRequestQueueAndRender(app, {
+        ...appState.adminCstpRequestQueueFilter,
+      });
+    });
+  }
+}
+
 function bindAdminCstpLabSection(scope = app) {
   if (!scope?.querySelectorAll) {
     return;
+  }
+
+  bindAdminCstpRequestQueue(scope);
+  if (
+    isAdminUser()
+    && !appState.adminCstpRequestQueueLoaded
+    && !appState.adminCstpRequestQueueRefreshPromise
+  ) {
+    refreshAdminCstpRequestQueueAndRender(scope, {
+      ...appState.adminCstpRequestQueueFilter,
+    });
   }
 
   const featuredOpenButton = scope.querySelector("[data-admin-cstp-featured-open='true']");
