@@ -1059,6 +1059,7 @@ const ADMIN_CSTP_SESSION_LINK_ARCHIVE_API_PATH = "/api/cstp-admin-session-link-a
 const ADMIN_CSTP_REPORT_PREPARE_API_PATH = "/api/cstp-admin-report-prepare";
 const ADMIN_CSTP_REPORT_GENERATE_API_PATH = "/api/cstp-admin-report-generate";
 const ADMIN_CSTP_REPORT_REGENERATE_API_PATH = "/api/cstp-admin-report-regenerate";
+const ADMIN_CSTP_REPORT_SUPERSEDE_API_PATH = "/api/cstp-admin-report-supersede";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
@@ -1337,6 +1338,10 @@ const appState = {
   adminCstpReportRegenerateResult: null,
   adminCstpReportRegenerateError: "",
   adminCstpReportRegenerateLastRunAt: "",
+  adminCstpReportSupersedeLoading: false,
+  adminCstpReportSupersedeResult: null,
+  adminCstpReportSupersedeError: "",
+  adminCstpReportSupersedeLastRunAt: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -46165,36 +46170,44 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
   const isPrepareAction = config.action === "prepare";
   const isGenerateAction = config.action === "generate";
   const isRegenerateAction = config.action === "regenerate";
-  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction) && config.enabled === true;
+  const isSupersedeAction = config.action === "supersede";
+  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction || isSupersedeAction) && config.enabled === true;
   const loading = enabled && (
     (isPrepareAction && appState.adminCstpReportPrepareLoading)
     || (isGenerateAction && appState.adminCstpReportGenerateLoading)
     || (isRegenerateAction && appState.adminCstpReportRegenerateLoading)
+    || (isSupersedeAction && appState.adminCstpReportSupersedeLoading)
   );
   const disabled = !enabled || loading;
   const actionAttribute = isGenerateAction
     ? `data-admin-cstp-report-generate="true"`
     : (isRegenerateAction
       ? `data-admin-cstp-report-regenerate="true"`
-      : `data-admin-cstp-report-prepare="true"`);
+      : (isSupersedeAction
+        ? `data-admin-cstp-report-supersede="true"`
+        : `data-admin-cstp-report-prepare="true"`));
   const disabledAttributes = disabled
     ? `disabled aria-disabled="true"`
     : actionAttribute;
-  const title = isRegenerateAction && enabled
-    ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
-    : (isGenerateAction && enabled
-      ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
-      : (enabled
-        ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
-        : "Internal placeholder only; protected workflow wiring is deferred."));
-  const toneClass = enabled && (isGenerateAction || isRegenerateAction)
+  const title = isSupersedeAction && enabled
+    ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with persistence deferred."
+    : (isRegenerateAction && enabled
+      ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
+      : (isGenerateAction && enabled
+        ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
+        : (enabled
+          ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
+          : "Internal placeholder only; protected workflow wiring is deferred.")));
+  const toneClass = enabled && (isGenerateAction || isRegenerateAction || isSupersedeAction)
     ? "admin-cstp-button--success"
     : (enabled
       ? "admin-cstp-button--primary"
       : "admin-cstp-button--utility admin-cstp-report-action-placeholder");
-  const loadingLabel = isRegenerateAction
+  const loadingLabel = isSupersedeAction
+    ? "Superseding..."
+    : (isRegenerateAction
     ? "Regenerating..."
-    : (isGenerateAction ? "Generating..." : "Preparing...");
+    : (isGenerateAction ? "Generating..." : "Preparing..."));
 
   return `
     <button
@@ -46255,7 +46268,7 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
     ? result.blockingErrors
     : (Array.isArray(result?.errors) ? result.errors : []);
   const statusLabel = loading
-    ? (defaultMode === "generate" ? "Generating" : "Preparing")
+    ? getAdminCstpReportWorkflowLoadingLabel(defaultMode)
     : (error ? "Route error" : (result?.status || "Not run"));
   const statusTone = loading
     ? "preparing"
@@ -46297,6 +46310,14 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
             <p><span>Action</span><strong>${escapeHtml(lineageSummary.actionType || "Generate")}</strong></p>
           </div>`
         : ""}
+      ${includeLineage && (lineageSummary.targetSnapshotId || lineageSummary.supersedingSnapshotId || lineageSummary.snapshotsToMarkSuperseded !== undefined)
+        ? `<div class="admin-cstp-report-management-result-grid">
+            <p><span>Target snapshot</span><strong>${escapeHtml(lineageSummary.targetSnapshotId || "Deferred")}</strong></p>
+            <p><span>Superseding</span><strong>${escapeHtml(lineageSummary.supersedingSnapshotId || assemblySummary.snapshotId || "Candidate")}</strong></p>
+            <p><span>Planned superseded</span><strong>${escapeHtml(lineageSummary.snapshotsToMarkSuperseded ?? 0)}</strong></p>
+            <p><span>Active lineage</span><strong>${escapeHtml(lineageSummary.supersessionRequired === true ? "Supersession planned" : "Continuity checked")}</strong></p>
+          </div>`
+        : ""}
       ${error
         ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
         : ""}
@@ -46317,6 +46338,19 @@ function renderAdminCstpImmutableReportWorkflowResultMarkup({
         : ""}
     </section>
   `;
+}
+
+function getAdminCstpReportWorkflowLoadingLabel(mode = "") {
+  switch (String(mode || "").trim().toLowerCase()) {
+    case "generate":
+      return "Generating";
+    case "regenerate":
+      return "Regenerating";
+    case "supersede":
+      return "Superseding";
+    default:
+      return "Preparing";
+  }
 }
 
 function renderAdminCstpImmutableReportGenerateResultMarkup() {
@@ -46362,6 +46396,22 @@ function renderAdminCstpImmutableReportRegenerateResultMarkup() {
     result: appState.adminCstpReportRegenerateResult,
     lastRunAt: appState.adminCstpReportRegenerateLastRunAt,
     defaultMode: "regenerate",
+    includeLineage: true,
+  });
+}
+
+function renderAdminCstpImmutableReportSupersedeResultMarkup() {
+  return renderAdminCstpImmutableReportWorkflowResultMarkup({
+    key: "supersede",
+    eyebrow: "Supersede Workflow Result",
+    title: "Internal supersession plan status",
+    description: "Supersede Report calls the protected route/action stack, supersession planner, lineage validator, and immutable orchestrator with persistence deferred.",
+    emptyMessage: "No Supersede Report workflow has been run from this dashboard yet.",
+    loading: appState.adminCstpReportSupersedeLoading,
+    error: appState.adminCstpReportSupersedeError,
+    result: appState.adminCstpReportSupersedeResult,
+    lastRunAt: appState.adminCstpReportSupersedeLastRunAt,
+    defaultMode: "supersede",
     includeLineage: true,
   });
 }
@@ -46574,6 +46624,38 @@ function buildAdminCstpRegenerateReportMockPayload(workflowTimestamp = "") {
   };
 }
 
+function buildAdminCstpSupersedeReportMockPayload(workflowTimestamp = "") {
+  const timestamp = workflowTimestamp || new Date().toISOString();
+  const payload = buildAdminCstpRegenerateReportMockPayload(timestamp);
+  const targetSnapshotId = payload.targetSnapshotId;
+  const supersedingSnapshotId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+
+  return {
+    ...payload,
+    snapshotId: supersedingSnapshotId,
+    targetSnapshotId,
+    workflowTimestamp: timestamp,
+    generatedAt: timestamp,
+    calculatedAt: timestamp,
+    persist: false,
+    reason: "Internal mock supersession from admin CSTP dashboard.",
+    loadedInput: {
+      ...payload.loadedInput,
+      cstpTest: {
+        ...payload.loadedInput.cstpTest,
+        internal_state: "ready_for_internal_supersede_mock",
+      },
+      auditEvents: [
+        {
+          id: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+          event_type: "snapshot_superseded",
+          created_at: timestamp,
+        },
+      ],
+    },
+  };
+}
+
 async function prepareAdminCstpImmutableReportWorkflow() {
   if (!isAdminUser()) {
     throw new Error("Sign in as an admin to prepare internal CSTP reports.");
@@ -46667,6 +46749,37 @@ async function regenerateAdminCstpImmutableReportWorkflow() {
   return payload;
 }
 
+async function supersedeAdminCstpImmutableReportWorkflow() {
+  if (!isAdminUser()) {
+    throw new Error("Sign in as an admin to supersede internal CSTP reports.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin with a valid session before running Supersede Report.");
+  }
+
+  const workflowTimestamp = new Date().toISOString();
+  const response = await fetch(ADMIN_CSTP_REPORT_SUPERSEDE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(buildAdminCstpSupersedeReportMockPayload(workflowTimestamp)),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Supersede Report returned ${response.status}.`;
+    const error = new Error(detail);
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
 function renderAdminCstpImmutableReportManagementInto(scope = app) {
   const anchor = scope?.querySelector?.("#admin-cstp-report-management-anchor");
   if (!anchor) {
@@ -46732,6 +46845,26 @@ async function regenerateAdminCstpImmutableReportWorkflowAndRender(scope = app) 
     appState.adminCstpReportRegenerateError = error?.message || "Could not regenerate the internal CSTP report.";
   } finally {
     appState.adminCstpReportRegenerateLoading = false;
+    renderAdminCstpImmutableReportManagementInto(scope);
+  }
+}
+
+async function supersedeAdminCstpImmutableReportWorkflowAndRender(scope = app) {
+  appState.adminCstpReportSupersedeLoading = true;
+  appState.adminCstpReportSupersedeError = "";
+  appState.adminCstpReportSupersedeResult = null;
+  appState.adminCstpReportSupersedeLastRunAt = new Date().toISOString();
+  renderAdminCstpImmutableReportManagementInto(scope);
+
+  try {
+    const result = await supersedeAdminCstpImmutableReportWorkflow();
+    appState.adminCstpReportSupersedeResult = result;
+    appState.adminCstpReportSupersedeError = "";
+  } catch (error) {
+    appState.adminCstpReportSupersedeResult = error?.payload || null;
+    appState.adminCstpReportSupersedeError = error?.message || "Could not supersede the internal CSTP report.";
+  } finally {
+    appState.adminCstpReportSupersedeLoading = false;
     renderAdminCstpImmutableReportManagementInto(scope);
   }
 }
@@ -46836,7 +46969,11 @@ function renderAdminCstpImmutableReportManagementMarkup() {
           action: "regenerate",
           enabled: true,
         },
-        "Supersede",
+        {
+          label: "Supersede report",
+          action: "supersede",
+          enabled: true,
+        },
       ],
       items: [
         {
@@ -46885,13 +47022,14 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, and Regenerate Report are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, and Supersede Report are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Prepare wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Generate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Regenerate wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Supersede wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
@@ -46899,6 +47037,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       ${renderAdminCstpImmutableReportPrepareResultMarkup()}
       ${renderAdminCstpImmutableReportGenerateResultMarkup()}
       ${renderAdminCstpImmutableReportRegenerateResultMarkup()}
+      ${renderAdminCstpImmutableReportSupersedeResultMarkup()}
       <div class="admin-cstp-metrics-grid admin-cstp-report-management-metrics">
         ${metricCards.map(([label, value, description]) => `
           <div class="admin-cstp-metric-card">
@@ -47526,6 +47665,16 @@ function bindAdminCstpReportManagement(scope = app) {
     button.dataset.adminCstpReportRegenerateBound = "true";
     button.addEventListener("click", () => {
       regenerateAdminCstpImmutableReportWorkflowAndRender(app);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-report-supersede='true']").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportSupersedeBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpReportSupersedeBound = "true";
+    button.addEventListener("click", () => {
+      supersedeAdminCstpImmutableReportWorkflowAndRender(app);
     });
   });
 }
