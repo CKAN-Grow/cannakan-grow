@@ -1061,6 +1061,7 @@ const ADMIN_CSTP_REPORT_GENERATE_API_PATH = "/api/cstp-admin-report-generate";
 const ADMIN_CSTP_REPORT_REGENERATE_API_PATH = "/api/cstp-admin-report-regenerate";
 const ADMIN_CSTP_REPORT_SUPERSEDE_API_PATH = "/api/cstp-admin-report-supersede";
 const ADMIN_CSTP_REPORT_LINEAGE_API_PATH = "/api/cstp-admin-report-lineage";
+const ADMIN_CSTP_REPORT_VALIDATION_API_PATH = "/api/cstp-admin-report-validation";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
@@ -1347,6 +1348,10 @@ const appState = {
   adminCstpReportLineageResult: null,
   adminCstpReportLineageError: "",
   adminCstpReportLineageLastRunAt: "",
+  adminCstpReportValidationLoading: false,
+  adminCstpReportValidationResult: null,
+  adminCstpReportValidationError: "",
+  adminCstpReportValidationLastRunAt: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -46177,13 +46182,15 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
   const isRegenerateAction = config.action === "regenerate";
   const isSupersedeAction = config.action === "supersede";
   const isLineageAction = config.action === "inspect-lineage";
-  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction || isSupersedeAction || isLineageAction) && config.enabled === true;
+  const isValidationAction = config.action === "inspect-validation";
+  const enabled = (isPrepareAction || isGenerateAction || isRegenerateAction || isSupersedeAction || isLineageAction || isValidationAction) && config.enabled === true;
   const loading = enabled && (
     (isPrepareAction && appState.adminCstpReportPrepareLoading)
     || (isGenerateAction && appState.adminCstpReportGenerateLoading)
     || (isRegenerateAction && appState.adminCstpReportRegenerateLoading)
     || (isSupersedeAction && appState.adminCstpReportSupersedeLoading)
     || (isLineageAction && appState.adminCstpReportLineageLoading)
+    || (isValidationAction && appState.adminCstpReportValidationLoading)
   );
   const disabled = !enabled || loading;
   const actionAttribute = isGenerateAction
@@ -46194,21 +46201,25 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
         ? `data-admin-cstp-report-supersede="true"`
         : (isLineageAction
           ? `data-admin-cstp-report-lineage="true"`
-          : `data-admin-cstp-report-prepare="true"`)));
+          : (isValidationAction
+            ? `data-admin-cstp-report-validation="true"`
+            : `data-admin-cstp-report-prepare="true"`))));
   const disabledAttributes = disabled
     ? `disabled aria-disabled="true"`
     : actionAttribute;
-  const title = isLineageAction && enabled
-    ? "Run the internal Inspect Lineage workflow through the protected CSTP admin route stack with mock lineage data."
-    : (isSupersedeAction && enabled
+  const title = isValidationAction && enabled
+    ? "Run the internal Inspect Validation workflow through the protected CSTP admin route stack with mock validation data."
+    : (isLineageAction && enabled
+      ? "Run the internal Inspect Lineage workflow through the protected CSTP admin route stack with mock lineage data."
+      : (isSupersedeAction && enabled
       ? "Run the internal Supersede Report workflow through the protected CSTP admin route stack with persistence deferred."
       : (isRegenerateAction && enabled
-      ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
-      : (isGenerateAction && enabled
-        ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
-        : (enabled
-          ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
-          : "Internal placeholder only; protected workflow wiring is deferred."))));
+        ? "Run the internal Regenerate Report workflow through the protected CSTP admin route stack with persistence deferred."
+        : (isGenerateAction && enabled
+          ? "Run the internal Generate Report workflow through the protected CSTP admin route stack with persistence deferred."
+          : (enabled
+            ? "Run the internal Prepare Report workflow through the protected CSTP admin route stack."
+            : "Internal placeholder only; protected workflow wiring is deferred.")))));
   const toneClass = enabled && (isGenerateAction || isRegenerateAction || isSupersedeAction)
     ? "admin-cstp-button--success"
     : (enabled
@@ -46220,7 +46231,9 @@ function renderAdminCstpImmutableReportActionMarkup(action = {}) {
       ? "Regenerating..."
       : (isLineageAction
         ? "Inspecting..."
-        : (isGenerateAction ? "Generating..." : "Preparing...")));
+        : (isValidationAction
+          ? "Validating..."
+          : (isGenerateAction ? "Generating..." : "Preparing..."))));
 
   return `
     <button
@@ -46364,6 +46377,9 @@ function getAdminCstpReportWorkflowLoadingLabel(mode = "") {
     case "inspect_lineage":
     case "inspect-lineage":
       return "Inspecting";
+    case "inspect_validation":
+    case "inspect-validation":
+      return "Validating";
     default:
       return "Preparing";
   }
@@ -46510,6 +46526,94 @@ function renderAdminCstpImmutableReportLineageResultMarkup() {
           </div>`
         : ""}
     </section>
+  `;
+}
+
+function renderAdminCstpImmutableReportValidationResultMarkup() {
+  const result = appState.adminCstpReportValidationResult;
+  const error = appState.adminCstpReportValidationError;
+  const loading = appState.adminCstpReportValidationLoading;
+  const validation = result?.validation
+    || result?.serviceResult?.validation
+    || {};
+  const validationSummary = result?.validationSummary
+    || validation.summary
+    || result?.serviceResult?.validationSummary
+    || {};
+  const issues = Array.isArray(validation.issues)
+    ? validation.issues
+    : (Array.isArray(result?.blockingErrors) ? result.blockingErrors : []);
+  const statusLabel = loading
+    ? "Validating"
+    : (error ? "Validation issues" : (result?.status || "Not run"));
+  const statusTone = loading
+    ? "preparing"
+    : (issues.length ? "failed" : (result?.ok ? "prepared" : "neutral"));
+
+  return `
+    <section class="admin-cstp-report-management-result" aria-labelledby="admin-cstp-report-validation-result-title">
+      <div class="admin-cstp-report-management-panel-head">
+        <div>
+          <p class="eyebrow">Inspect Validation Result</p>
+          <h5 id="admin-cstp-report-validation-result-title">Internal validator inspection status</h5>
+          <p class="muted">Inspect Validation calls the protected route/action stack and immutable report validator with mock candidate context.</p>
+        </div>
+        ${renderAdminCstpImmutableReportStatusPillMarkup(statusLabel, statusTone)}
+      </div>
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Workflow</span><strong>${escapeHtml(result?.workflowMode || "inspect_validation")}</strong></p>
+        <p><span>Status</span><strong>${escapeHtml(validation.status || result?.status || "Awaiting run")}</strong></p>
+        <p><span>Blocking</span><strong>${escapeHtml(Number(validationSummary.blocking || 0))}</strong></p>
+        <p><span>Warnings</span><strong>${escapeHtml(Number(validationSummary.warnings || 0))}</strong></p>
+      </div>
+      ${appState.adminCstpReportValidationLastRunAt
+        ? `<p class="muted admin-cstp-report-management-note">Last internal inspect validation attempt: ${escapeHtml(formatAdminTimestamp(appState.adminCstpReportValidationLastRunAt))}</p>`
+        : `<p class="muted admin-cstp-report-management-note">No Inspect Validation workflow has been run from this dashboard yet.</p>`}
+      <div class="admin-cstp-report-management-result-grid">
+        <p><span>Issue total</span><strong>${escapeHtml(Number(validationSummary.total || issues.length || 0))}</strong></p>
+        <p><span>Informational</span><strong>${escapeHtml(Number(validationSummary.informational || 0))}</strong></p>
+        <p><span>Validator</span><strong>${escapeHtml(validation.validator || "Awaiting run")}</strong></p>
+        <p><span>Mode</span><strong>${escapeHtml(validation.metadata?.mode || "mock inspection")}</strong></p>
+      </div>
+      ${issues.length
+        ? `<div class="admin-cstp-report-validation-issues">
+            ${issues.slice(0, 6).map((issue) => renderAdminCstpValidationIssueMarkup(issue)).join("")}
+          </div>`
+        : `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result ? "No validation issues returned by the mock inspection context." : "Run Inspect Validation to view validator issue details.")}</p>`}
+      ${validation.metadata
+        ? `<div class="admin-cstp-report-management-feedback">
+            <strong>Validation metadata</strong>
+            <p>${escapeHtml(JSON.stringify(validation.metadata))}</p>
+          </div>`
+        : ""}
+      ${error
+        ? `<p class="admin-cstp-report-management-message is-error">${escapeHtml(error)}</p>`
+        : ""}
+      ${result?.message
+        ? `<p class="admin-cstp-report-management-message is-success">${escapeHtml(result.message)}</p>`
+        : ""}
+    </section>
+  `;
+}
+
+function renderAdminCstpValidationIssueMarkup(issue = {}) {
+  return `
+    <article class="admin-cstp-report-validation-issue">
+      <div class="admin-cstp-report-validation-issue-head">
+        <strong>${escapeHtml(issue.code || "CSTP_VALIDATION_ISSUE")}</strong>
+        ${renderAdminCstpImmutableReportStatusPillMarkup(issue.severity || "validation", issue.blocking ? "failed" : "draft")}
+      </div>
+      <p>${escapeHtml(issue.message || "Validation issue returned without a message.")}</p>
+      <div class="admin-cstp-report-validation-issue-grid">
+        <span><strong>Entity</strong>${escapeHtml(issue.entity || "n/a")}</span>
+        <span><strong>Table</strong>${escapeHtml(issue.table || "n/a")}</span>
+        <span><strong>Field</strong>${escapeHtml(issue.field || issue.key || "n/a")}</span>
+        <span><strong>Status</strong>${escapeHtml(issue.status || "n/a")}</span>
+      </div>
+      ${issue.metadata
+        ? `<p class="muted">${escapeHtml(JSON.stringify(issue.metadata))}</p>`
+        : ""}
+    </article>
   `;
 }
 
@@ -46850,6 +46954,88 @@ function buildAdminCstpInspectLineageMockPayload(workflowTimestamp = "") {
   };
 }
 
+function buildAdminCstpInspectValidationMockPayload(workflowTimestamp = "") {
+  const timestamp = workflowTimestamp || new Date().toISOString();
+  const reportId = "11111111-1111-4111-8111-111111111111";
+  const snapshotId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  const requestId = "44444444-4444-4444-8444-444444444444";
+  const testId = "55555555-5555-4555-8555-555555555555";
+  const sourceId = "66666666-6666-4666-8666-666666666666";
+  const sessionLinkId = "88888888-8888-4888-8888-888888888888";
+  const growSessionId = "99999999-9999-4999-8999-999999999999";
+
+  return {
+    cstpRequestId: requestId,
+    cstpTestId: testId,
+    workflowTimestamp: timestamp,
+    validationOptions: {
+      requireReport: true,
+      requireSnapshot: true,
+      requireSessions: true,
+      requireNonEmptyPayload: true,
+      requireAdminContext: true,
+      mode: "admin_dashboard_mock_validation_inspection",
+    },
+    validationContext: {
+      report: {
+        id: reportId,
+        cstp_test_id: testId,
+        cstp_request_id: requestId,
+        source_id: sourceId,
+        status: "prepared",
+      },
+      snapshot: {
+        id: snapshotId,
+        report_id: reportId,
+        cstp_test_id: testId,
+        cstp_request_id: requestId,
+        source_id: sourceId,
+        snapshot_version: 1,
+        status: "prepared",
+        frozen_report_payload: {},
+        generated_at: timestamp,
+        prepared_at: "2026-05-11T14:00:00.000Z",
+      },
+      cstpTest: {
+        id: testId,
+        request_id: requestId,
+        source_id: sourceId,
+        status: "completed",
+      },
+      cstpRequest: {
+        id: requestId,
+        source_id: sourceId,
+        status: "approved",
+      },
+      source: {
+        id: sourceId,
+        name: "Internal CSTP Mock Source",
+      },
+      sessionLinks: [
+        {
+          id: sessionLinkId,
+          cstp_test_id: testId,
+          grow_session_id: growSessionId,
+          included_in_report: true,
+        },
+      ],
+      growSessions: [],
+      actor: {
+        adminUserId: appState.user?.id || "77777777-7777-4777-8777-777777777777",
+      },
+      auditLinks: [],
+      snapshots: [
+        {
+          id: snapshotId,
+          report_id: reportId,
+          status: "prepared",
+          snapshot_version: 1,
+        },
+      ],
+    },
+  };
+}
+
 async function prepareAdminCstpImmutableReportWorkflow() {
   if (!isAdminUser()) {
     throw new Error("Sign in as an admin to prepare internal CSTP reports.");
@@ -47005,6 +47191,37 @@ async function inspectAdminCstpImmutableReportLineageWorkflow() {
   return payload;
 }
 
+async function inspectAdminCstpImmutableReportValidationWorkflow() {
+  if (!isAdminUser()) {
+    throw new Error("Sign in as an admin to inspect internal CSTP report validation.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin with a valid session before running Inspect Validation.");
+  }
+
+  const workflowTimestamp = new Date().toISOString();
+  const response = await fetch(ADMIN_CSTP_REPORT_VALIDATION_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(buildAdminCstpInspectValidationMockPayload(workflowTimestamp)),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Inspect Validation returned ${response.status}.`;
+    const error = new Error(detail);
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
 function renderAdminCstpImmutableReportManagementInto(scope = app) {
   const anchor = scope?.querySelector?.("#admin-cstp-report-management-anchor");
   if (!anchor) {
@@ -47114,6 +47331,26 @@ async function inspectAdminCstpImmutableReportLineageWorkflowAndRender(scope = a
   }
 }
 
+async function inspectAdminCstpImmutableReportValidationWorkflowAndRender(scope = app) {
+  appState.adminCstpReportValidationLoading = true;
+  appState.adminCstpReportValidationError = "";
+  appState.adminCstpReportValidationResult = null;
+  appState.adminCstpReportValidationLastRunAt = new Date().toISOString();
+  renderAdminCstpImmutableReportManagementInto(scope);
+
+  try {
+    const result = await inspectAdminCstpImmutableReportValidationWorkflow();
+    appState.adminCstpReportValidationResult = result;
+    appState.adminCstpReportValidationError = "";
+  } catch (error) {
+    appState.adminCstpReportValidationResult = error?.payload || null;
+    appState.adminCstpReportValidationError = error?.message || "Could not inspect the internal CSTP report validation.";
+  } finally {
+    appState.adminCstpReportValidationLoading = false;
+    renderAdminCstpImmutableReportManagementInto(scope);
+  }
+}
+
 function renderAdminCstpImmutableReportManagementMarkup() {
   const metricCards = [
     ["Report queue", "3", "Mock candidates awaiting admin review"],
@@ -47163,9 +47400,15 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       eyebrow: "Prepared",
       title: "Prepared reports",
       description: "Prepared internal snapshots stay private and are not report rendering/export output.",
-      badge: "Internal only",
+      badge: "Validation wired",
       badgeTone: "prepared",
-      actions: ["Inspect validation"],
+      actions: [
+        {
+          label: "Inspect validation",
+          action: "inspect-validation",
+          enabled: true,
+        },
+      ],
       items: [
         {
           title: "CSTP-RPT-3001 snapshot v1",
@@ -47188,9 +47431,15 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       eyebrow: "Integrity",
       title: "Validation failures",
       description: "Blocking issues must be resolved in operational workflows before immutable persistence.",
-      badge: "Blocked",
-      badgeTone: "failed",
-      actions: ["Inspect validation"],
+      badge: "Inspect wired",
+      badgeTone: "prepared",
+      actions: [
+        {
+          label: "Inspect validation",
+          action: "inspect-validation",
+          enabled: true,
+        },
+      ],
       items: [
         {
           title: "CSTP-TST-2051 missing session summary",
@@ -47261,7 +47510,18 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       description: "Future internal detail view for immutable snapshot metadata, operational references, validation results, and audit activity.",
       badge: "Placeholder",
       badgeTone: "neutral",
-      actions: ["Inspect lineage", "Inspect validation"],
+      actions: [
+        {
+          label: "Inspect lineage",
+          action: "inspect-lineage",
+          enabled: true,
+        },
+        {
+          label: "Inspect validation",
+          action: "inspect-validation",
+          enabled: true,
+        },
+      ],
       items: [],
       emptyMessage: "Select an internal immutable report after live admin data wiring is added. No public report preview is rendered here.",
     },
@@ -47273,7 +47533,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
         <div>
           <p class="eyebrow">Internal Immutable Reports</p>
           <h4 id="admin-cstp-report-management-title">CSTP report management</h4>
-          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, and Inspect Lineage are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
+          <p class="muted">Admin-only operational tooling for immutable CSTP report snapshots. Prepare, Generate, Regenerate, Supersede, Inspect Lineage, and Inspect Validation are wired through the protected internal stack in deferred mock mode; this does not publish, certify, render, export, or expose reports publicly.</p>
         </div>
         <div class="admin-cstp-report-management-safety" aria-label="Internal CSTP report safety boundaries">
           ${renderAdminCstpImmutableReportStatusPillMarkup("Admin-only", "prepared")}
@@ -47282,6 +47542,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
           ${renderAdminCstpImmutableReportStatusPillMarkup("Regenerate wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Supersede wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Lineage inspect wired", "prepared")}
+          ${renderAdminCstpImmutableReportStatusPillMarkup("Validation inspect wired", "prepared")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("Persistence deferred", "draft")}
           ${renderAdminCstpImmutableReportStatusPillMarkup("No public output", "failed")}
         </div>
@@ -47291,6 +47552,7 @@ function renderAdminCstpImmutableReportManagementMarkup() {
       ${renderAdminCstpImmutableReportRegenerateResultMarkup()}
       ${renderAdminCstpImmutableReportSupersedeResultMarkup()}
       ${renderAdminCstpImmutableReportLineageResultMarkup()}
+      ${renderAdminCstpImmutableReportValidationResultMarkup()}
       <div class="admin-cstp-metrics-grid admin-cstp-report-management-metrics">
         ${metricCards.map(([label, value, description]) => `
           <div class="admin-cstp-metric-card">
@@ -47938,6 +48200,16 @@ function bindAdminCstpReportManagement(scope = app) {
     button.dataset.adminCstpReportLineageBound = "true";
     button.addEventListener("click", () => {
       inspectAdminCstpImmutableReportLineageWorkflowAndRender(app);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-report-validation='true']").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpReportValidationBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpReportValidationBound = "true";
+    button.addEventListener("click", () => {
+      inspectAdminCstpImmutableReportValidationWorkflowAndRender(app);
     });
   });
 }
