@@ -16,6 +16,7 @@ const requests = require("./requests");
 const tests = require("./tests");
 const sessionLinks = require("./session-links");
 const execution = require("./execution");
+const immutableReportValidator = require("./immutable-report-validator");
 
 module.exports = {
   constants,
@@ -27,6 +28,7 @@ module.exports = {
   tests,
   sessionLinks,
   execution,
+  immutableReportValidator,
   ...constants,
   ...errors,
   ...lifecycle,
@@ -36,4 +38,5 @@ module.exports = {
   ...tests,
   ...sessionLinks,
   ...execution,
+  ...immutableReportValidator,
 };
