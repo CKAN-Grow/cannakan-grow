@@ -8,6 +8,12 @@ const {
   prepareRequestAdminEvent,
 } = require("./requests");
 const {
+  archiveCstpSessionLink,
+  linkGrowSessionToCstpTest,
+  normalizeCstpSessionLinkPayload,
+  prepareSessionLinkAdminEvent,
+} = require("./session-links");
+const {
   archiveCstpTest,
   createCstpTest,
   prepareTestAdminEvent,
@@ -26,11 +32,11 @@ const {
  * - CSTP request creation.
  * - CSTP test creation.
  * - CSTP test status updates and archival.
+ * - CSTP session-link creation and archival.
  * - Optional cstp_admin_events insert only when the event can be finalized.
  *
  * Explicitly out of scope:
  * - public reads
- * - session-link execution
  * - grow_session mutation
  * - report/certification logic
  * - API/UI/RLS integration
@@ -84,6 +90,238 @@ async function executeCstpTestArchive(input = {}, options = {}) {
     primaryFailureStatus: "test_archive_failed",
     auditFailureStatus: "test_archived_audit_insert_failed",
   });
+}
+
+async function executeCstpSessionLinkCreation(input = {}, options = {}) {
+  const normalizedInput = normalizeCstpSessionLinkPayload(input);
+  linkGrowSessionToCstpTest({
+    ...normalizedInput,
+    existingLinks: Array.isArray(input.existingLinks) ? input.existingLinks : [],
+  });
+
+  const config = resolveExecutionConfig(options);
+  const fetchImpl = resolveFetchImplementation(options);
+
+  if (!config.ok) {
+    return buildSessionLinkExecutionFailure({
+      status: "configuration_failed",
+      operation: "execute_cstp_session_link_create",
+      error: config.error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let existingLinks;
+
+  try {
+    existingLinks = await resolveExistingCstpSessionLinks({
+      input,
+      normalizedInput,
+      config: config.value,
+      fetchImpl,
+    });
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_duplicate_lookup_failed",
+      operation: "execute_cstp_session_link_create",
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let preparedLink;
+
+  try {
+    preparedLink = linkGrowSessionToCstpTest({
+      ...normalizedInput,
+      existingLinks,
+    });
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_duplicate_rejected",
+      operation: "execute_cstp_session_link_create",
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let linkRecord;
+
+  try {
+    const linkRows = await supabaseRest(
+      `${preparedLink.link.table}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: preparedLink.link.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    linkRecord = normalizeSingleRow(linkRows, CSTP_TABLES.testSessions);
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_insert_failed",
+      operation: "execute_cstp_session_link_create",
+      preparedLink,
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  const finalizedAdminEvent = finalizeSessionLinkAdminEvent({
+    preparedAdminEvent: preparedLink.adminEvent,
+    linkRecord,
+  });
+
+  try {
+    const adminEventRows = await supabaseRest(
+      `${CSTP_TABLES.adminEvents}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: finalizedAdminEvent.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    return deepFreeze({
+      ok: true,
+      status: "session_link_created",
+      operation: "execute_cstp_session_link_create",
+      link: {
+        record: linkRecord,
+        prepared: preparedLink.link,
+        duplicateCheck: {
+          source: Array.isArray(input.existingLinks) ? "supplied" : "queried",
+          activeMatchesFound: existingLinks.length,
+        },
+      },
+      adminEvent: {
+        status: "inserted",
+        record: normalizeSingleRow(adminEventRows, CSTP_TABLES.adminEvents),
+        payload: finalizedAdminEvent,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: true,
+      },
+      internalOnly: true,
+      mutatesGrowSession: false,
+    });
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_created_audit_insert_failed",
+      operation: "execute_cstp_session_link_create",
+      preparedLink,
+      linkRecord,
+      adminEvent: finalizedAdminEvent,
+      error,
+      primaryMutationCommitted: true,
+      auditMutationCommitted: false,
+    });
+  }
+}
+
+async function executeCstpSessionLinkArchive(input = {}, options = {}) {
+  const preparedLink = archiveCstpSessionLink(input);
+  const config = resolveExecutionConfig(options);
+  const fetchImpl = resolveFetchImplementation(options);
+
+  if (!config.ok) {
+    return buildSessionLinkExecutionFailure({
+      status: "configuration_failed",
+      operation: "execute_cstp_session_link_archive",
+      preparedLink,
+      error: config.error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  let linkRecord;
+
+  try {
+    const linkRows = await supabaseRest(
+      `${preparedLink.link.table}?${buildEqQuery(preparedLink.link.match)}&select=*`,
+      config.value,
+      {
+        method: "PATCH",
+        body: preparedLink.link.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    linkRecord = normalizeSingleRow(linkRows, CSTP_TABLES.testSessions);
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_archive_failed",
+      operation: "execute_cstp_session_link_archive",
+      preparedLink,
+      error,
+      primaryMutationCommitted: false,
+      auditMutationCommitted: false,
+    });
+  }
+
+  const finalizedAdminEvent = finalizeSessionLinkAdminEvent({
+    preparedAdminEvent: preparedLink.adminEvent,
+    linkRecord,
+  });
+
+  try {
+    const adminEventRows = await supabaseRest(
+      `${CSTP_TABLES.adminEvents}?select=*`,
+      config.value,
+      {
+        method: "POST",
+        body: finalizedAdminEvent.record,
+        prefer: "return=representation",
+        fetchImpl,
+      },
+    );
+
+    return deepFreeze({
+      ok: true,
+      status: "session_link_archived",
+      operation: "execute_cstp_session_link_archive",
+      link: {
+        record: linkRecord,
+        prepared: preparedLink.link,
+      },
+      adminEvent: {
+        status: "inserted",
+        record: normalizeSingleRow(adminEventRows, CSTP_TABLES.adminEvents),
+        payload: finalizedAdminEvent,
+      },
+      transaction: {
+        atomic: false,
+        primaryMutationCommitted: true,
+        auditMutationCommitted: true,
+      },
+      internalOnly: true,
+      mutatesGrowSession: false,
+    });
+  } catch (error) {
+    return buildSessionLinkExecutionFailure({
+      status: "session_link_archived_audit_insert_failed",
+      operation: "execute_cstp_session_link_archive",
+      preparedLink,
+      linkRecord,
+      adminEvent: finalizedAdminEvent,
+      error,
+      primaryMutationCommitted: true,
+      auditMutationCommitted: false,
+    });
+  }
 }
 
 async function executePreparedCstpTestMutation({
@@ -408,6 +646,49 @@ function finalizeTestAdminEvent({ preparedAdminEvent, testRecord }) {
   });
 }
 
+function finalizeSessionLinkAdminEvent({ preparedAdminEvent, linkRecord }) {
+  const cstpTestId =
+    linkRecord?.cstp_test_id ||
+    preparedAdminEvent?.record?.cstp_test_id ||
+    preparedAdminEvent?.cstpTestId;
+  const sessionId =
+    linkRecord?.session_id ||
+    preparedAdminEvent?.metadata?.sessionId ||
+    preparedAdminEvent?.sessionId;
+  const cstpTestSessionId =
+    linkRecord?.id ||
+    preparedAdminEvent?.metadata?.cstpTestSessionId ||
+    preparedAdminEvent?.cstpTestSessionId;
+  const adminUserId =
+    preparedAdminEvent?.record?.admin_user_id || preparedAdminEvent?.adminUserId;
+  const eventNotes =
+    preparedAdminEvent?.record?.event_notes || preparedAdminEvent?.eventNotes;
+  const metadata = {
+    ...extractPreparedAdminEventMetadata(preparedAdminEvent),
+    cstpTestId,
+    sessionId,
+    cstpTestSessionId,
+    kanLabel: linkRecord?.kan_label,
+    includedInReport: linkRecord?.included_in_report,
+    archived: linkRecord?.archived,
+    mutatesGrowSession: false,
+  };
+
+  return prepareSessionLinkAdminEvent({
+    eventType:
+      preparedAdminEvent?.record?.event_type ||
+      preparedAdminEvent?.eventType ||
+      CSTP_ADMIN_EVENT_TYPES.sessionLinked,
+    cstpTestId,
+    sessionId,
+    cstpTestSessionId,
+    adminUserId,
+    eventNotes,
+    metadata,
+    createdAt: preparedAdminEvent?.record?.created_at,
+  });
+}
+
 async function supabaseRest(path, config, options = {}) {
   const {
     method = "GET",
@@ -506,6 +787,49 @@ function normalizeSingleRow(rows, tableName) {
   });
 }
 
+async function resolveExistingCstpSessionLinks({
+  input,
+  normalizedInput,
+  config,
+  fetchImpl,
+}) {
+  if (Array.isArray(input.existingLinks)) {
+    return input.existingLinks;
+  }
+
+  return loadActiveCstpSessionLinksForDuplicateCheck({
+    cstpTestId: normalizedInput.cstpTestId,
+    sessionId: normalizedInput.sessionId,
+    config,
+    fetchImpl,
+  });
+}
+
+async function loadActiveCstpSessionLinksForDuplicateCheck({
+  cstpTestId,
+  sessionId,
+  config,
+  fetchImpl,
+}) {
+  return supabaseRest(
+    `${CSTP_TABLES.testSessions}?cstp_test_id=eq.${encodeURIComponent(cstpTestId)}&session_id=eq.${encodeURIComponent(sessionId)}&archived=is.false&select=id,cstp_test_id,session_id,archived`,
+    config,
+    {
+      method: "GET",
+      fetchImpl,
+    },
+  );
+}
+
+function buildEqQuery(match = {}) {
+  return Object.entries(match)
+    .map(
+      ([fieldName, value]) =>
+        `${encodeURIComponent(fieldName)}=eq.${encodeURIComponent(value)}`,
+    )
+    .join("&");
+}
+
 function buildExecutionFailure({
   status,
   operation,
@@ -570,6 +894,39 @@ function buildTestExecutionFailure({
   });
 }
 
+function buildSessionLinkExecutionFailure({
+  status,
+  operation,
+  preparedLink = null,
+  linkRecord = null,
+  adminEvent = null,
+  error,
+  primaryMutationCommitted,
+  auditMutationCommitted,
+}) {
+  return deepFreeze({
+    ok: false,
+    status,
+    operation,
+    link: {
+      record: linkRecord,
+      prepared: preparedLink?.link || null,
+    },
+    adminEvent: {
+      status: auditMutationCommitted ? "inserted" : "failed",
+      payload: adminEvent,
+    },
+    error: normalizeExecutionError(error),
+    transaction: {
+      atomic: false,
+      primaryMutationCommitted,
+      auditMutationCommitted,
+    },
+    internalOnly: true,
+    mutatesGrowSession: false,
+  });
+}
+
 function normalizeExecutionError(error) {
   return {
     name: error?.name || "Error",
@@ -599,11 +956,15 @@ function deepFreeze(value) {
 
 module.exports = {
   executeCstpRequestCreation,
+  executeCstpSessionLinkArchive,
+  executeCstpSessionLinkCreation,
   executeCstpTestArchive,
   executeCstpTestCreation,
   executeCstpTestStatusUpdate,
+  finalizeSessionLinkAdminEvent,
   finalizeRequestCreationAdminEvent,
   finalizeTestAdminEvent,
   getCstpSupabaseRuntimeConfig,
+  loadActiveCstpSessionLinksForDuplicateCheck,
   supabaseRest,
 };
