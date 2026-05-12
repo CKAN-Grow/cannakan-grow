@@ -26464,13 +26464,19 @@ function render() {
       }));
       return;
     }
-    renderAdminCstpReportPage(subroute || "");
+    // Legacy static CSTP report previews now resolve to the API-backed admin workflow.
+    renderAdminPage();
+    focusAdminDashboardSection({
+      storageKey: ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
+      contentId: "admin-cstp-lab-section-content",
+    });
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
-      pageKey: "admin-cstp-report",
-      pageLabel: "CSTP Test Report",
+      pageKey: "admin-cstp-operational-workflow",
+      pageLabel: "CSTP Testing Lab",
       pagePath: `#admin/cstp-report/${subroute || ""}`,
     }));
+    void refreshGallerySnapshots("route:admin-dashboard");
     return;
   }
 
@@ -26499,13 +26505,19 @@ function render() {
       }));
       return;
     }
-    renderAdminCstpTestSessionPage(subroute || "");
+    // Legacy static CSTP session previews now resolve to the API-backed admin workflow.
+    renderAdminPage();
+    focusAdminDashboardSection({
+      storageKey: ADMIN_CSTP_LAB_OPEN_STORAGE_KEY,
+      contentId: "admin-cstp-lab-section-content",
+    });
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "admin",
-      pageKey: "admin-cstp-test-session",
-      pageLabel: "CSTP Test Session",
+      pageKey: "admin-cstp-operational-workflow",
+      pageLabel: "CSTP Testing Lab",
       pagePath: `#admin/cstp-session/${subroute || ""}`,
     }));
+    void refreshGallerySnapshots("route:admin-dashboard");
     return;
   }
 
@@ -46124,8 +46136,6 @@ function renderAdminCstpLabDetailMarkup(selectedId = "", activeStatus = "all") {
 }
 
 function renderAdminCstpLabSectionMarkup() {
-  const initialRows = getFilteredAdminCstpLabRecords("all");
-  const initialSelectedId = initialRows[0]?.id || "";
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "CSTP",
     title: "CSTP Testing Lab",
@@ -46140,40 +46150,18 @@ function renderAdminCstpLabSectionMarkup() {
         <div class="admin-communications-toolbar">
           <div class="admin-cstp-featured-toolbar">
             <div class="admin-cstp-featured-copy">
-              <strong>Primary Admin Workflow</strong>
-              <p class="muted">${escapeHtml(CSTP_NEUTRALITY)}</p>
+              <strong>Canonical Internal Workflow</strong>
+              <p class="muted">API-backed request, test, and session-link management. Reports, certifications, and public publishing remain deferred.</p>
             </div>
             <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--primary admin-cstp-featured-cta" data-admin-cstp-featured-open="true">Open CSTP Testing Lab</button>
           </div>
-          <div id="admin-cstp-lab-metrics">
-            ${renderAdminCstpCertificationMetricsMarkup()}
-          </div>
-        <div class="source-directory-filter-row admin-cstp-lab-filter-row" role="group" aria-label="CSTP testing lab workflow and certification filters">
-          ${renderAdminCstpLabFiltersMarkup("all")}
         </div>
-        <p class="muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_SHARING_EXPOSURE}`)}</p>
-      </div>
         <div class="admin-communications-workspace admin-cstp-lab-workspace">
           <div id="admin-cstp-request-queue-anchor">
             ${renderAdminCstpRequestQueueShellMarkup()}
           </div>
           <div id="admin-cstp-test-management-anchor">
             ${renderAdminCstpTestManagementShellMarkup()}
-          </div>
-          <section class="card admin-cstp-lab-queue-shell">
-            <div class="admin-cstp-lab-queue-head">
-              <div>
-                <p class="eyebrow">Testing Queue</p>
-                <h4>Filtered CSTP Requests</h4>
-                <p class="muted">${escapeHtml(CSTP_RESULTS_CREDIBILITY)}</p>
-              </div>
-            </div>
-            <div id="admin-cstp-lab-list">
-              ${renderAdminCstpLabListMarkup("all", initialSelectedId)}
-            </div>
-          </section>
-          <div id="admin-cstp-lab-detail">
-            ${renderAdminCstpLabDetailMarkup(initialSelectedId, "all")}
           </div>
         </div>
       </div>
@@ -46535,9 +46523,10 @@ function bindAdminCstpLabSection(scope = app) {
         setAdminSectionOpenState(ADMIN_CSTP_LAB_OPEN_STORAGE_KEY, true);
       }
 
-      const detailShell = scope.querySelector("#admin-cstp-lab-detail");
-      const firstInteractive = detailShell?.querySelector("button, a, input, select, textarea");
-      detailShell?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const workflowShell = scope.querySelector("#admin-cstp-request-queue-anchor")
+        || scope.querySelector("#admin-cstp-test-management-anchor");
+      const firstInteractive = workflowShell?.querySelector("button, a, input, select, textarea");
+      workflowShell?.scrollIntoView({ behavior: "smooth", block: "start" });
       if (firstInteractive instanceof HTMLElement) {
         window.setTimeout(() => {
           firstInteractive.focus({ preventScroll: true });
