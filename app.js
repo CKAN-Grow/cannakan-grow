@@ -1053,6 +1053,9 @@ const ADMIN_CSTP_TEST_CREATE_API_PATH = "/api/cstp-admin-test-create";
 const ADMIN_CSTP_TESTS_LIST_API_PATH = "/api/cstp-admin-tests-list";
 const ADMIN_CSTP_TEST_DETAIL_API_PATH = "/api/cstp-admin-test-detail";
 const ADMIN_CSTP_TEST_STATUS_UPDATE_API_PATH = "/api/cstp-admin-test-status-update";
+const ADMIN_CSTP_SESSION_LINKS_LIST_API_PATH = "/api/cstp-admin-session-links-list";
+const ADMIN_CSTP_SESSION_LINK_CREATE_API_PATH = "/api/cstp-admin-session-link-create";
+const ADMIN_CSTP_SESSION_LINK_ARCHIVE_API_PATH = "/api/cstp-admin-session-link-archive";
 const ADMIN_CSTP_REQUEST_QUEUE_PAGE_SIZE = 10;
 const ADMIN_CSTP_TEST_MANAGEMENT_PAGE_SIZE = 10;
 const ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS = Object.freeze([
@@ -1312,6 +1315,13 @@ const appState = {
   adminCstpTestStatusSaving: false,
   adminCstpTestStatusMessage: "",
   adminCstpTestStatusError: "",
+  adminCstpSessionLinkRows: [],
+  adminCstpSessionLinksLoading: false,
+  adminCstpSessionLinksLoadedTestId: "",
+  adminCstpSessionLinksError: "",
+  adminCstpSessionLinkSaving: false,
+  adminCstpSessionLinkMessage: "",
+  adminCstpSessionLinkError: "",
   adminCstpLabRecords: [],
   adminCstpLabRecordsLoaded: false,
   members: [],
@@ -44724,6 +44734,233 @@ async function updateAdminCstpTestStatusAndRender(scope = app, testId = "", curr
   }
 }
 
+function normalizeAdminCstpSessionLinkRecord(row = null) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    return null;
+  }
+
+  const id = String(row.id || "").trim();
+  const cstpTestId = String(row.cstp_test_id || row.cstpTestId || row.testId || "").trim();
+  const sessionId = String(row.session_id || row.sessionId || "").trim();
+  if (!id || !cstpTestId || !sessionId) {
+    return null;
+  }
+
+  return {
+    id,
+    cstpTestId,
+    sessionId,
+    kanLabel: String(row.kan_label || row.kanLabel || "").trim(),
+    includedInReport: row.included_in_report !== false && row.includedInReport !== false,
+    archived: row.archived === true,
+    createdAt: String(row.created_at || row.createdAt || "").trim(),
+  };
+}
+
+function buildAdminCstpSessionLinksListUrl(testId = "") {
+  const params = new URLSearchParams({
+    cstpTestId: String(testId || "").trim(),
+    page: "1",
+    pageSize: "50",
+    sortBy: "created_at",
+    sortDirection: "desc",
+  });
+  return `${ADMIN_CSTP_SESSION_LINKS_LIST_API_PATH}?${params.toString()}`;
+}
+
+async function loadAdminCstpSessionLinks(testId = "") {
+  const normalizedTestId = String(testId || "").trim();
+  if (!isAdminUser()) {
+    return [];
+  }
+  if (!normalizedTestId) {
+    throw new Error("Choose a CSTP test before loading session links.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to load CSTP session links.");
+  }
+
+  const response = await fetch(buildAdminCstpSessionLinksListUrl(normalizedTestId), {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link list returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return (Array.isArray(payload.sessionLinks) ? payload.sessionLinks : [])
+    .map((row) => normalizeAdminCstpSessionLinkRecord(row))
+    .filter(Boolean);
+}
+
+async function refreshAdminCstpSessionLinks(testId = appState.adminCstpTestDetailSelectedId) {
+  const normalizedTestId = String(testId || "").trim();
+  if (!normalizedTestId) {
+    appState.adminCstpSessionLinkRows = [];
+    appState.adminCstpSessionLinksLoadedTestId = "";
+    appState.adminCstpSessionLinksLoading = false;
+    appState.adminCstpSessionLinksError = "";
+    return [];
+  }
+
+  appState.adminCstpSessionLinksLoading = true;
+  appState.adminCstpSessionLinksError = "";
+  try {
+    const rows = await loadAdminCstpSessionLinks(normalizedTestId);
+    appState.adminCstpSessionLinkRows = rows;
+    appState.adminCstpSessionLinksLoadedTestId = normalizedTestId;
+    return rows;
+  } catch (error) {
+    appState.adminCstpSessionLinkRows = [];
+    appState.adminCstpSessionLinksLoadedTestId = normalizedTestId;
+    appState.adminCstpSessionLinksError = error?.message || "Could not load CSTP session links.";
+    return [];
+  } finally {
+    appState.adminCstpSessionLinksLoading = false;
+  }
+}
+
+async function createAdminCstpSessionLink(input = {}) {
+  const cstpTestId = String(input.cstpTestId || "").trim();
+  const sessionId = String(input.sessionId || "").trim();
+  if (!cstpTestId || !sessionId) {
+    throw new Error("CSTP test id and Grow session id are required.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to link CSTP sessions.");
+  }
+
+  const response = await fetch(ADMIN_CSTP_SESSION_LINK_CREATE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      cstpTestId,
+      sessionId,
+      kanLabel: String(input.kanLabel || "").trim() || undefined,
+      includedInReport: input.includedInReport !== false,
+      eventNotes: "Grow session linked to CSTP test from the internal admin UI.",
+      metadata: {
+        uiSurface: "admin_cstp_test_detail_session_links",
+        mutatesGrowSession: false,
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link creation returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return payload;
+}
+
+async function archiveAdminCstpSessionLink(link = null) {
+  if (!link?.cstpTestId || !link?.sessionId) {
+    throw new Error("CSTP session link identifiers are required.");
+  }
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (!accessToken) {
+    throw new Error("Sign in as an admin to archive CSTP session links.");
+  }
+
+  const response = await fetch(ADMIN_CSTP_SESSION_LINK_ARCHIVE_API_PATH, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      linkId: link.id,
+      cstpTestId: link.cstpTestId,
+      sessionId: link.sessionId,
+      eventNotes: "CSTP session-link relationship archived from the internal admin UI.",
+      metadata: {
+        uiSurface: "admin_cstp_test_detail_session_links",
+        mutatesGrowSession: false,
+      },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.ok !== true) {
+    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link archive returned ${response.status}.`;
+    throw new Error(detail);
+  }
+
+  return payload;
+}
+
+async function createAdminCstpSessionLinkAndRender(scope = app, testId = "", form = null) {
+  const sessionId = String(form?.elements?.sessionId?.value || "").trim();
+  const kanLabel = String(form?.elements?.kanLabel?.value || "").trim();
+  const includedInReport = form?.elements?.includedInReport?.checked !== false;
+  appState.adminCstpSessionLinkSaving = true;
+  appState.adminCstpSessionLinkMessage = "";
+  appState.adminCstpSessionLinkError = "";
+  renderAdminCstpTestManagementInto(scope);
+
+  try {
+    const result = await createAdminCstpSessionLink({
+      cstpTestId: testId,
+      sessionId,
+      kanLabel,
+      includedInReport,
+    });
+    const auditCommitted = result?.transaction?.auditMutationCommitted === true;
+    appState.adminCstpSessionLinkMessage = auditCommitted
+      ? "CSTP session link created."
+      : "CSTP session link created. Audit event requires admin review.";
+    await refreshAdminCstpSessionLinks(testId);
+  } catch (error) {
+    appState.adminCstpSessionLinkError = error?.message || "Could not create CSTP session link.";
+  } finally {
+    appState.adminCstpSessionLinkSaving = false;
+    renderAdminCstpTestManagementInto(scope);
+  }
+}
+
+async function archiveAdminCstpSessionLinkAndRender(scope = app, linkId = "") {
+  const link = (appState.adminCstpSessionLinkRows || []).find((row) => row.id === linkId) || null;
+  if (!link) {
+    appState.adminCstpSessionLinkError = "CSTP session link was not found in the current list.";
+    renderAdminCstpTestManagementInto(scope);
+    return;
+  }
+
+  appState.adminCstpSessionLinkSaving = true;
+  appState.adminCstpSessionLinkMessage = "";
+  appState.adminCstpSessionLinkError = "";
+  renderAdminCstpTestManagementInto(scope);
+
+  try {
+    const result = await archiveAdminCstpSessionLink(link);
+    const auditCommitted = result?.transaction?.auditMutationCommitted === true;
+    appState.adminCstpSessionLinkMessage = auditCommitted
+      ? "CSTP session-link relationship archived."
+      : "CSTP session-link relationship archived. Audit event requires admin review.";
+    await refreshAdminCstpSessionLinks(link.cstpTestId);
+  } catch (error) {
+    appState.adminCstpSessionLinkError = error?.message || "Could not archive CSTP session link.";
+  } finally {
+    appState.adminCstpSessionLinkSaving = false;
+    renderAdminCstpTestManagementInto(scope);
+  }
+}
+
 function renderAdminCstpRequestQueueStatusFiltersMarkup(activeStatus = appState.adminCstpRequestQueueFilter.status) {
   const normalizedStatus = normalizeAdminCstpRequestQueueStatus(activeStatus);
   return ADMIN_CSTP_REQUEST_QUEUE_STATUS_OPTIONS.map((option) => `
@@ -45169,6 +45406,126 @@ function renderAdminCstpTestStatusActionsMarkup(record = null) {
   `;
 }
 
+function renderAdminCstpSessionLinksRowsMarkup(testId = "") {
+  const loadedForCurrentTest = appState.adminCstpSessionLinksLoadedTestId === String(testId || "").trim();
+  if (appState.adminCstpSessionLinksLoading || !loadedForCurrentTest) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Loading CSTP session links...</p>
+      </div>
+    `;
+  }
+
+  if (appState.adminCstpSessionLinksError) {
+    return `
+      <div class="admin-messages-empty">
+        <p>Could not load CSTP session links.</p>
+        <p class="muted">${escapeHtml(appState.adminCstpSessionLinksError)}</p>
+      </div>
+    `;
+  }
+
+  const rows = appState.adminCstpSessionLinkRows || [];
+  if (!rows.length) {
+    return `
+      <div class="admin-messages-empty">
+        <p>No Grow sessions are linked to this CSTP test yet.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="admin-communications-list">
+      ${rows.map((row) => `
+        <article class="admin-communications-list-item admin-cstp-lab-list-item">
+          <div class="admin-communications-list-item-head admin-cstp-lab-list-item-head">
+            <div class="admin-cstp-lab-list-item-copy">
+              <span class="admin-message-issue-pill">External Session Link</span>
+              <strong class="admin-cstp-lab-list-item-title">${escapeHtml(row.sessionId)}</strong>
+            </div>
+            <div class="admin-cstp-lab-badge-row">
+              <span class="admin-cstp-certification-pill is-active">${escapeHtml(row.kanLabel || "KAN label not set")}</span>
+            </div>
+          </div>
+          <div class="admin-communications-list-item-body admin-cstp-lab-list-item-body">
+            <p class="admin-cstp-lab-list-item-meta">
+              <span class="admin-cstp-lab-list-item-label">Link ID</span>
+              <strong>${escapeHtml(row.id)}</strong>
+            </p>
+            <p class="admin-cstp-lab-list-item-meta">
+              <span class="admin-cstp-lab-list-item-label">Included</span>
+              <strong>${escapeHtml(row.includedInReport ? "Yes" : "No")}</strong>
+            </p>
+            <p class="admin-cstp-lab-list-item-meta">
+              <span class="admin-cstp-lab-list-item-label">Created</span>
+              <strong>${escapeHtml(row.createdAt ? formatAdminTimestamp(row.createdAt) : "Date unavailable")}</strong>
+            </p>
+          </div>
+          <div class="inline-actions admin-cstp-lab-actions">
+            <button
+              type="button"
+              class="button button-secondary admin-cstp-button admin-cstp-button--warning"
+              data-admin-cstp-session-link-archive="${escapeHtml(row.id)}"
+              ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}
+            >
+              Archive Link
+            </button>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAdminCstpSessionLinkManagementMarkup(record = null) {
+  if (!record?.id) {
+    return "";
+  }
+
+  const feedbackMarkup = appState.adminCstpSessionLinkError
+    ? `<p class="muted">${escapeHtml(appState.adminCstpSessionLinkError)}</p>`
+    : (appState.adminCstpSessionLinkMessage
+      ? `<p class="muted">${escapeHtml(appState.adminCstpSessionLinkMessage)}</p>`
+      : "");
+
+  return `
+    <section class="admin-cstp-assigned-session">
+      <div class="admin-communications-editor-head">
+        <div>
+          <p class="eyebrow">Session-Link Management</p>
+          <h4>External Grow session relationships</h4>
+          <p class="muted">CSTP links reference existing Grow sessions as external overlays. This view does not edit session timeline, media, analytics, reminders, partitions, notes, or ownership.</p>
+        </div>
+        <button type="button" class="button button-secondary admin-cstp-button admin-cstp-button--utility" data-admin-cstp-session-links-refresh="${escapeHtml(record.id)}">Refresh Links</button>
+      </div>
+      <form class="admin-communications-editor" data-admin-cstp-session-link-form="${escapeHtml(record.id)}">
+        <div class="admin-communications-editor-grid">
+          <label class="admin-message-field">
+            <span>Grow Session ID</span>
+            <input name="sessionId" type="text" autocomplete="off" placeholder="Paste grow_sessions.id" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>
+            <p class="admin-message-help-text">Relationship only. CSTP will not mutate the Grow session record.</p>
+          </label>
+          <label class="admin-message-field">
+            <span>KAN Label</span>
+            <input name="kanLabel" type="text" maxlength="80" autocomplete="off" placeholder="KAN A, KAN B, etc." ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>
+          </label>
+          <label class="admin-message-field">
+            <span>Include in internal report preparation</span>
+            <input name="includedInReport" type="checkbox" checked ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>
+          </label>
+        </div>
+        <div class="inline-actions admin-cstp-lab-actions">
+          <button type="submit" class="button button-secondary admin-cstp-button admin-cstp-button--primary" ${appState.adminCstpSessionLinkSaving ? "disabled" : ""}>${escapeHtml(appState.adminCstpSessionLinkSaving ? "Saving..." : "Attach Session Link")}</button>
+        </div>
+        ${feedbackMarkup}
+      </form>
+      <div id="admin-cstp-session-links-list">
+        ${renderAdminCstpSessionLinksRowsMarkup(record.id)}
+      </div>
+    </section>
+  `;
+}
+
 function renderAdminCstpTestDetailMarkup() {
   const selectedId = String(appState.adminCstpTestDetailSelectedId || "").trim();
   if (!selectedId) {
@@ -45242,6 +45599,7 @@ function renderAdminCstpTestDetailMarkup() {
         </div>
         ${renderAdminCstpTestStatusActionsMarkup(record)}
       </section>
+      ${renderAdminCstpSessionLinkManagementMarkup(record)}
     </section>
   `;
 }
@@ -45311,8 +45669,10 @@ function refreshAdminCstpTestDetailAndRender(scope = app, testId = "") {
   appState.adminCstpTestDetailError = "";
   appState.adminCstpTestStatusMessage = "";
   appState.adminCstpTestStatusError = "";
+  appState.adminCstpSessionLinkMessage = "";
+  appState.adminCstpSessionLinkError = "";
   renderAdminCstpTestManagementInto(scope);
-  void refreshAdminCstpTestDetail(testId).then(() => {
+  void refreshAdminCstpTestDetail(testId).then(() => refreshAdminCstpSessionLinks(testId)).then(() => {
     renderAdminCstpTestManagementInto(scope);
   });
 }
@@ -45325,6 +45685,13 @@ function clearAdminCstpTestDetail(scope = app) {
   appState.adminCstpTestStatusSaving = false;
   appState.adminCstpTestStatusMessage = "";
   appState.adminCstpTestStatusError = "";
+  appState.adminCstpSessionLinkRows = [];
+  appState.adminCstpSessionLinksLoading = false;
+  appState.adminCstpSessionLinksLoadedTestId = "";
+  appState.adminCstpSessionLinksError = "";
+  appState.adminCstpSessionLinkSaving = false;
+  appState.adminCstpSessionLinkMessage = "";
+  appState.adminCstpSessionLinkError = "";
   renderAdminCstpTestManagementInto(scope);
 }
 
@@ -46085,6 +46452,46 @@ function bindAdminCstpTestManagement(scope = app) {
       const currentStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestCurrentStatus || "");
       const nextStatus = normalizeAdminCstpTestManagementStatus(button.dataset.adminCstpTestStatusAction || "");
       updateAdminCstpTestStatusAndRender(app, testId, currentStatus, nextStatus);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-session-link-form]").forEach((form) => {
+    if (!(form instanceof HTMLFormElement) || form.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    form.dataset.adminCstpTestManagementBound = "true";
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const testId = String(form.dataset.adminCstpSessionLinkForm || "").trim();
+      createAdminCstpSessionLinkAndRender(app, testId, form);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-session-link-archive]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      const linkId = String(button.dataset.adminCstpSessionLinkArchive || "").trim();
+      archiveAdminCstpSessionLinkAndRender(app, linkId);
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-cstp-session-links-refresh]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.dataset.adminCstpTestManagementBound === "true") {
+      return;
+    }
+    button.dataset.adminCstpTestManagementBound = "true";
+    button.addEventListener("click", () => {
+      const testId = String(button.dataset.adminCstpSessionLinksRefresh || "").trim();
+      appState.adminCstpSessionLinksLoading = true;
+      appState.adminCstpSessionLinkMessage = "";
+      appState.adminCstpSessionLinkError = "";
+      renderAdminCstpTestManagementInto(app);
+      void refreshAdminCstpSessionLinks(testId).then(() => {
+        renderAdminCstpTestManagementInto(app);
+      });
     });
   });
 }
