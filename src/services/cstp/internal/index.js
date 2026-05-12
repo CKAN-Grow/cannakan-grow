@@ -22,6 +22,7 @@ const immutableSnapshotPersistenceOrchestrator = require("./immutable-snapshot-p
 const immutableReportLineageOrchestrator = require("./immutable-report-lineage-orchestrator");
 const immutableReportOrchestrator = require("./immutable-report-orchestrator");
 const adminReportManagementService = require("./admin-report-management-service");
+const adminReportActions = require("./admin-report-actions");
 
 module.exports = {
   constants,
@@ -39,6 +40,7 @@ module.exports = {
   immutableReportLineageOrchestrator,
   immutableReportOrchestrator,
   adminReportManagementService,
+  adminReportActions,
   ...constants,
   ...errors,
   ...lifecycle,
@@ -54,4 +56,5 @@ module.exports = {
   ...immutableReportLineageOrchestrator,
   ...immutableReportOrchestrator,
   ...adminReportManagementService,
+  ...adminReportActions,
 };
