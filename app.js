@@ -1400,6 +1400,10 @@ const appState = {
   memberCountLoaded: false,
   memberCountError: "",
   memberCountRefreshPromise: null,
+  founderSessionCleanupLoading: false,
+  founderSessionCleanupMessage: "",
+  founderSessionCleanupError: "",
+  founderSessionCleanupLastResult: null,
   siteVisitorAnalyticsRows: [],
   siteVisitorAnalyticsLoaded: false,
   siteVisitorAnalyticsLoadedFilter: "",
@@ -1489,6 +1493,8 @@ const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
 ]);
+const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE OLD FOUNDER TEST SESSIONS";
+const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-19T09:30:00.000Z";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
 
@@ -11836,6 +11842,101 @@ async function loadUserSessions() {
   }
 
   return data.map(mapRowToSession);
+}
+
+function getFounderSessionCleanupCandidateIds() {
+  return [...new Set(getSessions()
+    .filter((session) => isFounderTestCleanupCandidateSession(session))
+    .map((session) => String(session?.id || "").trim())
+    .filter((sessionId) => isUuidLike(sessionId)))];
+}
+
+function isFounderTestCleanupCandidateSession(session) {
+  if (Boolean(session?.isMock || session?.is_mock)) {
+    return true;
+  }
+
+  const createdAtMs = Date.parse(session?.createdAt || session?.created_at || "");
+  const cutoffMs = Date.parse(FOUNDER_TEST_SESSION_CLEANUP_CUTOFF);
+  return Number.isFinite(createdAtMs) && Number.isFinite(cutoffMs) && createdAtMs < cutoffMs;
+}
+
+function isUuidLike(value = "") {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+function getFounderSessionCleanupDeletedCount(resultRows = []) {
+  const sessionRow = (resultRows || []).find((row) => String(row?.table_name || "").trim() === "grow_sessions");
+  return Math.max(0, Number(sessionRow?.deleted_count) || 0);
+}
+
+function formatFounderSessionCleanupResultSummary(resultRows = []) {
+  const rows = (resultRows || [])
+    .map((row) => ({
+      tableName: String(row?.table_name || "").trim(),
+      deletedCount: Math.max(0, Number(row?.deleted_count) || 0),
+    }))
+    .filter((row) => row.tableName);
+  if (!rows.length) {
+    return "No related grow-session rows were reported.";
+  }
+
+  return rows
+    .map((row) => `${row.tableName}: ${row.deletedCount}`)
+    .join(" | ");
+}
+
+async function refreshGrowSessionDataAfterCleanup() {
+  if (!appState.supabase || !appState.user) {
+    saveSessions(getSessions().filter((session) => !session.isMock));
+    return;
+  }
+
+  const [sessions, gallerySnapshots] = await Promise.all([
+    loadUserSessions(),
+    loadGallerySnapshots("founder-session-cleanup"),
+  ]);
+  saveSessions(sessions);
+  appState.gallerySnapshots = gallerySnapshots;
+  appState.gallerySnapshotsLoaded = true;
+  appState.galleryRefreshPromise = null;
+
+  if (isAdminUser()) {
+    appState.membersLoaded = false;
+    appState.sourceReviewLoaded = false;
+    void refreshAdminMembers({ force: true, reason: "founder-session-cleanup" });
+    void refreshAdminSourceReviewSessionRows({ force: true, reason: "founder-session-cleanup" });
+  }
+}
+
+async function runFounderSessionCleanup(options = {}) {
+  if (!appState.supabase || !appState.user || !isAdminUser()) {
+    throw new Error("Founder session cleanup requires an authenticated admin session.");
+  }
+
+  const dryRun = options.dryRun !== false;
+  const candidateSessionIds = getFounderSessionCleanupCandidateIds();
+  if (!candidateSessionIds.length) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase.rpc("cleanup_founder_test_grow_sessions", {
+    target_user_id: appState.user.id,
+    candidate_session_ids: candidateSessionIds,
+    include_explicit_unmarked: true,
+    confirmation_phrase: dryRun ? "" : FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION,
+    dry_run: dryRun,
+    legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
+    reason: dryRun
+      ? "Admin UI preview for founder test grow-session cleanup"
+      : "Admin UI confirmed reset of old founder test grow sessions before production tracking",
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return Array.isArray(data) ? data : [];
 }
 
 async function loadUserProfile() {
@@ -51106,6 +51207,7 @@ function renderAdminPage() {
     systemToolsContainer.innerHTML = canAccessMockDataControls()
       ? `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`
       : "";
+    renderFounderSessionCleanupAdminSection(systemToolsContainer);
   }
 
   const sourceList = app.querySelector("#admin-sources-list");
@@ -51316,6 +51418,127 @@ function renderMockDataAdminSection(target = app, options = {}) {
 
   target.appendChild(section);
   return section;
+}
+
+function renderFounderSessionCleanupAdminSection(target = app) {
+  if (!target || !isAdminUser()) {
+    return null;
+  }
+
+  target.querySelector("#founder-session-cleanup-admin-section")?.remove();
+
+  const candidateCount = getFounderSessionCleanupCandidateIds().length;
+  const isLoading = Boolean(appState.founderSessionCleanupLoading);
+  const resultRows = appState.founderSessionCleanupLastResult || [];
+  const summary = formatFounderSessionCleanupResultSummary(resultRows);
+  const message = String(appState.founderSessionCleanupMessage || "").trim();
+  const error = String(appState.founderSessionCleanupError || "").trim();
+  const section = document.createElement("section");
+  section.id = "founder-session-cleanup-admin-section";
+  section.className = "card founder-session-cleanup-admin-section";
+  section.innerHTML = `
+    <div class="founder-session-cleanup-shell">
+      <div class="founder-session-cleanup-copy">
+        <p class="eyebrow">Founder Session Cleanup</p>
+        <h3>Reset old test grow sessions</h3>
+        <p class="muted">
+          Admin-only cleanup for the current signed-in account. It removes selected old test sessions and related mock grow-session rows, skips CSTP-linked records, and never touches account, role, settings, CSTP, or production config tables.
+        </p>
+        <p class="founder-session-cleanup-count">${candidateCount} old or mock loaded session${candidateCount === 1 ? "" : "s"} available for cleanup review.</p>
+        ${message ? `<p class="success-message">${escapeHtml(message)}</p>` : ""}
+        ${error ? `<p class="error-message">${escapeHtml(error)}</p>` : ""}
+        ${resultRows.length ? `<p class="muted founder-session-cleanup-summary">${escapeHtml(summary)}</p>` : ""}
+      </div>
+      <div class="founder-session-cleanup-actions">
+        <button
+          type="button"
+          class="button button-secondary"
+          data-founder-session-cleanup-preview
+          ${isLoading || !candidateCount ? "disabled" : ""}
+        >${isLoading ? "Working..." : "Preview Cleanup"}</button>
+        <button
+          type="button"
+          class="button button-danger"
+          data-founder-session-cleanup-run
+          ${isLoading || !candidateCount ? "disabled" : ""}
+        >Delete Old Test Sessions</button>
+      </div>
+    </div>
+  `;
+
+  section.querySelector("[data-founder-session-cleanup-preview]")?.addEventListener("click", () => {
+    void handleFounderSessionCleanupPreview();
+  });
+  section.querySelector("[data-founder-session-cleanup-run]")?.addEventListener("click", () => {
+    void handleFounderSessionCleanupRun();
+  });
+
+  target.appendChild(section);
+  return section;
+}
+
+async function handleFounderSessionCleanupPreview() {
+  appState.founderSessionCleanupLoading = true;
+  appState.founderSessionCleanupMessage = "Previewing eligible old test sessions...";
+  appState.founderSessionCleanupError = "";
+  appState.founderSessionCleanupLastResult = null;
+  safeRender();
+
+  try {
+    const resultRows = await runFounderSessionCleanup({ dryRun: true });
+    const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
+    appState.founderSessionCleanupLastResult = resultRows;
+    appState.founderSessionCleanupMessage = `Cleanup preview found ${deletedCount} session${deletedCount === 1 ? "" : "s"} eligible for deletion.`;
+  } catch (error) {
+    console.error("Founder session cleanup preview failed", error);
+    appState.founderSessionCleanupError = error?.message || "Cleanup preview failed.";
+    appState.founderSessionCleanupMessage = "";
+  } finally {
+    appState.founderSessionCleanupLoading = false;
+    safeRender();
+  }
+}
+
+async function handleFounderSessionCleanupRun() {
+  const candidateCount = getFounderSessionCleanupCandidateIds().length;
+  if (!candidateCount) {
+    appState.founderSessionCleanupMessage = "No loaded sessions are available for cleanup.";
+    appState.founderSessionCleanupError = "";
+    safeRender();
+    return;
+  }
+
+  const confirmation = window.prompt(
+    `This permanently deletes old founder test grow sessions for your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`,
+  );
+  if (confirmation !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION) {
+    appState.founderSessionCleanupMessage = "Cleanup canceled. No sessions were deleted.";
+    appState.founderSessionCleanupError = "";
+    safeRender();
+    return;
+  }
+
+  appState.founderSessionCleanupLoading = true;
+  appState.founderSessionCleanupMessage = "Deleting old test sessions...";
+  appState.founderSessionCleanupError = "";
+  appState.founderSessionCleanupLastResult = null;
+  safeRender();
+
+  try {
+    const resultRows = await runFounderSessionCleanup({ dryRun: false });
+    const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
+    appState.founderSessionCleanupLastResult = resultRows;
+    await refreshGrowSessionDataAfterCleanup();
+    appState.founderSessionCleanupMessage = `Deleted ${deletedCount} old test session${deletedCount === 1 ? "" : "s"}. My Sessions has been refreshed.`;
+    window.alert(appState.founderSessionCleanupMessage);
+  } catch (error) {
+    console.error("Founder session cleanup failed", error);
+    appState.founderSessionCleanupError = error?.message || "Cleanup failed.";
+    appState.founderSessionCleanupMessage = "";
+  } finally {
+    appState.founderSessionCleanupLoading = false;
+    safeRender();
+  }
 }
 
 function normalizeLeaderboardAuditFilters(filters = {}) {

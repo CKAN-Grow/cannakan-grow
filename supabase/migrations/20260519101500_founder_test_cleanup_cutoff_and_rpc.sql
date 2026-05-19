@@ -1,64 +1,15 @@
 -- ============================================================================
--- Founder Test Grow Session Cleanup
+-- Founder Test Cleanup Cutoff + RPC Refresh
 -- ============================================================================
 --
 -- Purpose:
--- - Admin-only cleanup for one account's old test/mock Grow sessions.
--- - Preview by default, require an exact confirmation phrase before deletion.
--- - Keep scope limited to Grow session data and directly related mock/session
---   child rows.
---
--- Boundary:
--- - Never deletes auth users, profiles, admin roles, settings, production config,
---   Source Directory records, or CSTP records.
--- - Excludes sessions linked to CSTP tables when those tables exist.
--- - Future real sessions remain untouched by the unmarked-test override because
---   explicit unmarked cleanup is capped to the legacy cutoff timestamp.
-
-create table if not exists public.grow_session_cleanup_audit (
-  id uuid primary key default gen_random_uuid(),
-  action_type text not null default 'founder_test_grow_session_cleanup',
-  actor_user_id uuid references auth.users(id) on delete set null,
-  actor_email text not null default '',
-  target_user_id uuid references auth.users(id) on delete set null,
-  dry_run boolean not null default true,
-  confirmation_matched boolean not null default false,
-  include_explicit_unmarked boolean not null default false,
-  legacy_created_before timestamptz,
-  requested_session_ids uuid[] not null default '{}'::uuid[],
-  candidate_session_ids uuid[] not null default '{}'::uuid[],
-  deleted_counts jsonb not null default '{}'::jsonb,
-  reason text not null default '',
-  created_at timestamptz not null default timezone('utc', now())
-);
-
-comment on table public.grow_session_cleanup_audit is
-  'Append-only audit log for admin grow-session cleanup previews and executions. This table records cleanup intent and counts without deleting account, admin, settings, config, or CSTP data.';
+-- - Apply the legacy cutoff guard to databases that already ran the first
+--   founder cleanup migration.
+-- - Remove the older six-argument function overload so PostgREST/Supabase RPC
+--   resolves the admin cleanup action unambiguously.
 
 alter table public.grow_session_cleanup_audit
   add column if not exists legacy_created_before timestamptz;
-
-create index if not exists grow_session_cleanup_audit_target_created_idx
-  on public.grow_session_cleanup_audit (target_user_id, created_at desc);
-
-create index if not exists grow_session_cleanup_audit_actor_created_idx
-  on public.grow_session_cleanup_audit (actor_user_id, created_at desc);
-
-alter table public.grow_session_cleanup_audit enable row level security;
-
-drop policy if exists "Admins can view grow session cleanup audit" on public.grow_session_cleanup_audit;
-create policy "Admins can view grow session cleanup audit"
-on public.grow_session_cleanup_audit
-for select
-to authenticated
-using (
-  lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
-  or exists (
-    select 1
-    from public.admin_users
-    where admin_users.user_id = auth.uid()
-  )
-);
 
 drop function if exists public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text);
 
@@ -314,9 +265,6 @@ begin
     union all select 'push_notification_deliveries'::text, push_deliveries_count;
 end;
 $$;
-
-revoke all on table public.grow_session_cleanup_audit from public;
-grant select on table public.grow_session_cleanup_audit to authenticated;
 
 revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) from public;
 grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) to authenticated;

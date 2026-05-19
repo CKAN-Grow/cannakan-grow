@@ -15238,6 +15238,69 @@ body.theme-dark .contact-reason-card.is-active {
   font-size: 0.78rem;
 }
 
+.founder-session-cleanup-admin-section {
+  margin-top: var(--space-stack);
+  border-color: rgba(166, 61, 64, 0.18);
+}
+
+.founder-session-cleanup-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-section);
+  align-items: center;
+}
+
+.founder-session-cleanup-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.founder-session-cleanup-copy h3,
+.founder-session-cleanup-copy p {
+  margin: 0;
+}
+
+.founder-session-cleanup-count,
+.founder-session-cleanup-summary {
+  font-size: 0.9rem;
+}
+
+.founder-session-cleanup-count {
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.founder-session-cleanup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.founder-session-cleanup-admin-section .success-message {
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+
+.founder-session-cleanup-admin-section .error-message {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .founder-session-cleanup-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .founder-session-cleanup-actions {
+    justify-content: stretch;
+  }
+
+  .founder-session-cleanup-actions .button {
+    width: 100%;
+  }
+}
+
 .admin-page-hero,
 .admin-section-card,
 .admin-access-card {

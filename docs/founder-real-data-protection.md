@@ -6,4 +6,4 @@ Seeded, demo, and dev-generated grow data must be marked `is_mock = true`. Demo 
 
 The cleanup path must not delete user accounts, non-mock grow sessions, non-mock Community Grow snapshots, non-mock Source Directory records, or any admin/CSTP records. Public CSTP scope remains unchanged.
 
-For founder account test-session resets, use `public.cleanup_founder_test_grow_sessions()` or `scripts/cleanup-founder-test-grow-sessions.sql`. It is admin-only, previews by default, requires the exact confirmation phrase `DELETE OLD FOUNDER TEST SESSIONS` before deletion, skips CSTP-linked sessions, and writes every preview/execution to `public.grow_session_cleanup_audit`.
+For founder account test-session resets, use the Admin System Tools cleanup action, `public.cleanup_founder_test_grow_sessions()`, or `scripts/cleanup-founder-test-grow-sessions.sql`. It is admin-only, previews by default, requires the exact confirmation phrase `DELETE OLD FOUNDER TEST SESSIONS` before deletion, skips CSTP-linked sessions, caps explicit unmarked cleanup to the legacy cutoff timestamp, and writes every preview/execution to `public.grow_session_cleanup_audit`.

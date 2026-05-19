@@ -145,6 +145,7 @@ create table if not exists public.grow_session_cleanup_audit (
   dry_run boolean not null default true,
   confirmation_matched boolean not null default false,
   include_explicit_unmarked boolean not null default false,
+  legacy_created_before timestamptz,
   requested_session_ids uuid[] not null default '{}'::uuid[],
   candidate_session_ids uuid[] not null default '{}'::uuid[],
   deleted_counts jsonb not null default '{}'::jsonb,
@@ -2207,7 +2208,8 @@ create or replace function public.cleanup_founder_test_grow_sessions(
   include_explicit_unmarked boolean default false,
   confirmation_phrase text default '',
   dry_run boolean default true,
-  reason text default ''
+  reason text default '',
+  legacy_created_before timestamptz default '2026-05-19 09:30:00+00'::timestamptz
 )
 returns table (
   table_name text,
@@ -2224,6 +2226,7 @@ declare
   normalized_target_user_id uuid := coalesce(target_user_id, auth.uid());
   requested_ids uuid[] := coalesce(candidate_session_ids, '{}'::uuid[]);
   confirmation_matches boolean := btrim(coalesce(confirmation_phrase, '')) = required_confirmation;
+  normalized_legacy_created_before timestamptz := coalesce(legacy_created_before, '2026-05-19 09:30:00+00'::timestamptz);
   is_authorized_admin boolean := false;
   has_requested_ids boolean := cardinality(coalesce(candidate_session_ids, '{}'::uuid[])) > 0;
   candidate_ids uuid[] := '{}'::uuid[];
@@ -2271,6 +2274,7 @@ begin
         coalesce(include_explicit_unmarked, false) = true
         and has_requested_ids
         and grow_sessions.id = any (requested_ids)
+        and coalesce(grow_sessions.created_at, 'infinity'::timestamptz) < normalized_legacy_created_before
       )
     )
     and (
@@ -2421,6 +2425,7 @@ begin
     dry_run,
     confirmation_matched,
     include_explicit_unmarked,
+    legacy_created_before,
     requested_session_ids,
     candidate_session_ids,
     deleted_counts,
@@ -2433,6 +2438,7 @@ begin
     coalesce(dry_run, true),
     confirmation_matches,
     coalesce(include_explicit_unmarked, false),
+    normalized_legacy_created_before,
     requested_ids,
     candidate_ids,
     audit_counts,
@@ -2468,11 +2474,11 @@ using (
 revoke all on table public.grow_session_cleanup_audit from public;
 grant select on table public.grow_session_cleanup_audit to authenticated;
 
-revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text) from public;
-grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text) to authenticated;
+revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) from public;
+grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) to authenticated;
 
-comment on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text) is
-  'Admin-only grow-session cleanup for founder test/mock data. Defaults to dry-run and requires exact confirmation before deletion. Excludes CSTP-linked sessions and never deletes auth, admin, settings, config, source, or CSTP records.';
+comment on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) is
+  'Admin-only grow-session cleanup for founder test/mock data. Defaults to dry-run and requires exact confirmation before deletion. Excludes CSTP-linked sessions, caps explicit unmarked cleanup to the legacy cutoff, and never deletes auth, admin, settings, config, source, or CSTP records.';
 
 -- Keep this email allowlist in sync with ADMIN_EMAILS in app.js before production.
 
