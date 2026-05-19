@@ -1,0 +1,31 @@
+-- Founder test grow-session cleanup helper.
+--
+-- Preview for the signed-in admin account by default:
+--   select * from public.cleanup_founder_test_grow_sessions();
+--
+-- Preview specific marked mock sessions:
+--   select * from public.cleanup_founder_test_grow_sessions(
+--     target_user_id => '<your-user-id>'::uuid,
+--     candidate_session_ids => array['<session-id>'::uuid],
+--     dry_run => true,
+--     reason => 'Preview old founder test session cleanup'
+--   );
+--
+-- Execute after reviewing the preview:
+--   select * from public.cleanup_founder_test_grow_sessions(
+--     target_user_id => '<your-user-id>'::uuid,
+--     candidate_session_ids => array['<session-id>'::uuid],
+--     include_explicit_unmarked => false,
+--     confirmation_phrase => 'DELETE OLD FOUNDER TEST SESSIONS',
+--     dry_run => false,
+--     reason => 'Reset old founder test grow sessions before real production tracking'
+--   );
+--
+-- For pre-flag abandoned test sessions that are not marked is_mock yet, pass
+-- explicit session ids and set include_explicit_unmarked => true. Do not use
+-- that override for future real production sessions.
+--
+-- Audit log:
+--   select * from public.grow_session_cleanup_audit order by created_at desc;
+
+select * from public.cleanup_founder_test_grow_sessions();
