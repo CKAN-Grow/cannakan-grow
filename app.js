@@ -1497,6 +1497,7 @@ const ADMIN_EMAILS = new Set([
 ]);
 const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE OLD FOUNDER TEST SESSIONS";
 const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-19T09:30:00.000Z";
+const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
 
@@ -1553,6 +1554,10 @@ function hasResolvedAdminAccess() {
   // Do not use localStorage as the source of truth for admin permissions.
   // Database access should be protected with Supabase RLS policies.
   return appState.userRole === "admin" || isLocalDevQaBypassActive();
+}
+
+function canManuallyEditGrowSessionTimestamps() {
+  return hasResolvedAdminAccess() || isAdminUser();
 }
 
 function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile) {
@@ -6145,7 +6150,7 @@ function getVisibleUserSessions(sessions = []) {
 function getAggregateStatsSessions(sessions = []) {
   return (sessions || []).filter((session) => (
     !isSessionSoftDeleted(session)
-    || normalizeSessionStatus(session?.sessionStatus || "") === "completed"
+    && isCompletedValidSessionForAnalytics(session)
   ));
 }
 
@@ -16111,6 +16116,86 @@ function isDeletionScheduled(profile = appState.profile) {
   return Boolean(scheduledFor && scheduledFor.getTime() > Date.now());
 }
 
+function formatDateInputValueFromDate(date = new Date()) {
+  const validDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  const year = validDate.getFullYear();
+  const month = String(validDate.getMonth() + 1).padStart(2, "0");
+  const day = String(validDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatTimeInputValueFromDate(date = new Date()) {
+  const validDate = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
+  return `${String(validDate.getHours()).padStart(2, "0")}:${String(validDate.getMinutes()).padStart(2, "0")}`;
+}
+
+function applyAutomaticGrowSessionCreationTimestamps(session = {}, referenceDate = new Date()) {
+  const validDate = referenceDate instanceof Date && !Number.isNaN(referenceDate.getTime()) ? referenceDate : new Date();
+  const actionAt = validDate.toISOString();
+  const normalizedStatus = normalizeSessionStatus(session.sessionStatus || "");
+  return {
+    ...session,
+    date: formatDateInputValueFromDate(validDate),
+    time: formatTimeInputValueFromDate(validDate),
+    createdAt: session.createdAt || actionAt,
+    updatedAt: session.updatedAt || actionAt,
+    sessionStartedAt: actionAt,
+    soakStartedAt: actionAt,
+    timerStartAt: actionAt,
+    germinationStartedAt: ["germinating", "completed"].includes(normalizedStatus) ? actionAt : "",
+    completedAt: normalizedStatus === "completed" ? actionAt : "",
+  };
+}
+
+function applyAutomaticNewSessionTimestampFields(form, referenceDate = new Date()) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const validDate = referenceDate instanceof Date && !Number.isNaN(referenceDate.getTime()) ? referenceDate : new Date();
+  const storedTimeField = form.elements.time;
+  const displayTimeField = form.elements.timeDisplay;
+  const dateField = form.elements.date;
+  if (dateField instanceof HTMLInputElement) {
+    dateField.value = formatDateInputValueFromDate(validDate);
+  }
+  if (storedTimeField instanceof HTMLInputElement) {
+    storedTimeField.value = formatTimeInputValueFromDate(validDate);
+  }
+  if (displayTimeField instanceof HTMLInputElement) {
+    displayTimeField.value = formatStoredTime(storedTimeField?.value || formatTimeInputValueFromDate(validDate), getPreferredTimeFormat());
+    displayTimeField.setCustomValidity("");
+  }
+}
+
+function applyNewSessionTimestampEditAccess(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const canEditTimestamps = canManuallyEditGrowSessionTimestamps();
+  const title = canEditTimestamps
+    ? ""
+    : "Timestamp editing is restricted to founder/admin accounts.";
+  [form.elements.date, form.elements.timeDisplay].forEach((field) => {
+    if (field instanceof HTMLInputElement) {
+      field.readOnly = !canEditTimestamps;
+      field.title = title;
+      field.classList.toggle("is-readonly", !canEditTimestamps);
+      const label = field.closest("label");
+      if (label instanceof HTMLElement) {
+        label.hidden = !canEditTimestamps;
+      }
+    }
+  });
+  form.querySelectorAll("[data-time-format]").forEach((button) => {
+    if (button instanceof HTMLButtonElement) {
+      button.disabled = !canEditTimestamps;
+      button.title = title;
+    }
+  });
+}
+
 async function createCloudSession(session) {
   if (isLocalDevQaBypassActive() || !appState.supabase) {
     const timestamp = new Date().toISOString();
@@ -16134,7 +16219,10 @@ async function createCloudSession(session) {
   }
 
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
-  const record = mapSessionToRecord(session, authUser.id, {
+  const sessionForSave = canManuallyEditGrowSessionTimestamps()
+    ? session
+    : applyAutomaticGrowSessionCreationTimestamps(session);
+  const record = mapSessionToRecord(sessionForSave, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
   });
   let { data, error } = await appState.supabase
@@ -16148,7 +16236,7 @@ async function createCloudSession(session) {
     console.warn("Session time columns are not available yet; retrying grow session insert with legacy timestamp payload.", error);
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(session, authUser.id, { includeOwnerTimeColumns: false }))
+      .insert(mapSessionToRecord(sessionForSave, authUser.id, { includeOwnerTimeColumns: false }))
       .select()
       .single());
   }
@@ -16163,13 +16251,80 @@ async function createCloudSession(session) {
   }
 
   const savedSession = mapRowToSession(data);
-  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
-  const intendedImages = normalizePersistedSessionImages(session.sessionImages);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(sessionForSave);
+  const intendedImages = normalizePersistedSessionImages(sessionForSave.sessionImages);
   if (intendedImages.length > 0 && savedSession.sessionImages.length !== intendedImages.length) {
     savedSession.sessionImages = await persistSessionImages(savedSession, intendedImages);
   }
   saveSessions([savedSession, ...getSessions().filter((item) => item.id !== savedSession.id)]);
   return savedSession;
+}
+
+function areGrowSessionTimestampValuesEqual(left, right) {
+  const leftValue = String(left || "").trim();
+  const rightValue = String(right || "").trim();
+  if (!leftValue && !rightValue) {
+    return true;
+  }
+
+  const leftDate = parseCompletedAtValue(leftValue);
+  const rightDate = parseCompletedAtValue(rightValue);
+  if (leftDate && rightDate) {
+    return leftDate.getTime() === rightDate.getTime();
+  }
+
+  return leftValue === rightValue;
+}
+
+function hasRegularUserProtectedTimestampChange(record = {}, previousRow = {}) {
+  const protectedFields = ["date", "time", "timer_start_at"];
+  if (Object.prototype.hasOwnProperty.call(previousRow, "session_started_at")) {
+    protectedFields.push("session_started_at");
+  }
+  if (Object.prototype.hasOwnProperty.call(previousRow, "soak_started_at")) {
+    protectedFields.push("soak_started_at");
+  }
+
+  return protectedFields.some((field) => (
+    Object.prototype.hasOwnProperty.call(record, field)
+    && !areGrowSessionTimestampValuesEqual(record[field], previousRow?.[field])
+  ));
+}
+
+function applyRegularUserGrowSessionUpdateTimestampPolicy(record = {}, previousRow = {}) {
+  if (hasRegularUserProtectedTimestampChange(record, previousRow)) {
+    throw new Error(GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE);
+  }
+
+  record.date = previousRow.date;
+  record.time = previousRow.time;
+  record.timer_start_at = previousRow.timer_start_at || null;
+  if (Object.prototype.hasOwnProperty.call(record, "session_started_at")) {
+    record.session_started_at = previousRow.session_started_at || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(record, "soak_started_at")) {
+    record.soak_started_at = previousRow.soak_started_at || null;
+  }
+
+  const actionAt = new Date().toISOString();
+  if (!areGrowSessionTimestampValuesEqual(record.germination_started_at, previousRow.germination_started_at)) {
+    if (previousRow.germination_started_at) {
+      throw new Error(GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE);
+    }
+    if (record.germination_started_at) {
+      record.germination_started_at = actionAt;
+    }
+  }
+  if (!areGrowSessionTimestampValuesEqual(record.completed_at, previousRow.completed_at)) {
+    if (previousRow.completed_at) {
+      throw new Error(GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE);
+    }
+    if (record.completed_at) {
+      record.completed_at = actionAt;
+    }
+  }
+
+  return record;
 }
 
 async function updateCloudSession(session) {
@@ -16196,14 +16351,29 @@ async function updateCloudSession(session) {
   const record = mapSessionToRecord(session, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
   });
-  const { data: previousRow, error: previousRowError } = await appState.supabase
+  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at";
+  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at";
+  let { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
-    .select("session_status,completed_at")
+    .select(appState.sessionTimeColumnsUnavailable ? legacyPreviousRowColumns : modernPreviousRowColumns)
     .eq("id", session.id)
     .maybeSingle();
 
+  if (previousRowError && isSessionTimeColumnSchemaError(previousRowError) && !appState.sessionTimeColumnsUnavailable) {
+    appState.sessionTimeColumnsUnavailable = true;
+    ({ data: previousRow, error: previousRowError } = await appState.supabase
+      .from("grow_sessions")
+      .select(legacyPreviousRowColumns)
+      .eq("id", session.id)
+      .maybeSingle());
+  }
+
   if (previousRowError) {
     throw previousRowError;
+  }
+
+  if (!canManuallyEditGrowSessionTimestamps()) {
+    applyRegularUserGrowSessionUpdateTimestampPolicy(record, previousRow || {});
   }
 
   let { data, error } = await appState.supabase
@@ -16216,15 +16386,24 @@ async function updateCloudSession(session) {
   if (error && isSessionTimeColumnSchemaError(error) && !appState.sessionTimeColumnsUnavailable) {
     appState.sessionTimeColumnsUnavailable = true;
     console.warn("Session time columns are not available yet; retrying grow session update with legacy timestamp payload.", error);
+    const legacyRecord = mapSessionToRecord(session, authUser.id, { includeOwnerTimeColumns: false });
+    if (!canManuallyEditGrowSessionTimestamps()) {
+      applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
+    }
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .update(mapSessionToRecord(session, authUser.id, { includeOwnerTimeColumns: false }))
+      .update(legacyRecord)
       .eq("id", session.id)
       .select()
       .single());
   }
 
   if (error) {
+    console.error("Grow session update failed", {
+      error,
+      request: "update grow_sessions",
+      retriedWithoutOwnerTimeColumns: appState.sessionTimeColumnsUnavailable,
+    });
     throw error;
   }
 
@@ -16268,8 +16447,11 @@ async function updateOwnerGrowSessionTimes(session, payload) {
   if (!session?.id) {
     throw new Error("Session not found.");
   }
+  if (!canManuallyEditGrowSessionTimestamps()) {
+    throw new Error(GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE);
+  }
   if (!canCurrentUserEditSessionTimes(session)) {
-    throw new Error("You can only edit times for your own grow sessions.");
+    throw new Error("You can only edit timestamps for your own grow sessions.");
   }
 
   if (isLocalDevQaBypassActive() || !appState.supabase) {
@@ -54048,6 +54230,9 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
   const visibleSessions = Array.isArray(sessions) ? sessions : [];
   const aggregateSourceSessions = Array.isArray(options.aggregateSessions) ? options.aggregateSessions : visibleSessions;
   const aggregateStatsSessions = getAggregateStatsSessions(aggregateSourceSessions);
+  const completedAnalyticsSessions = sortSessionsNewestFirst(
+    visibleSessions.filter(isCompletedValidSessionForAnalytics),
+  );
   const completedSessions = sortSessionsNewestFirst(
     visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed"),
   );
@@ -54072,7 +54257,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
     )
     : 0;
 
-  const bySessionRows = completedSessions.slice(0, 6).map((session) => {
+  const bySessionRows = completedAnalyticsSessions.slice(0, 6).map((session) => {
     const totals = getSessionSeedTotals(session);
     const rate = totals.totalSeeds > 0 ? getSessionSuccessRate(session) : 0;
     return {
@@ -54478,7 +54663,7 @@ function renderAdminSeedAgeAnalyticsSection(target = app) {
 
 function getBestCompletedSession(sessions) {
   const completedSessions = (sessions || [])
-    .filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed")
+    .filter(isCompletedValidSessionForAnalytics)
     .map((session) => {
       const totals = getSessionSeedTotals(session);
       const percentage = totals.totalSeeds > 0
@@ -54583,8 +54768,9 @@ function renderSessionForm(initialSystemType = "KAN") {
   primeNewSessionSeedAgeDefaults(form);
   primeUnitIdDefault(form);
 
-  form.elements.date.value = today.toISOString().slice(0, 10);
-  initializeTimeFormatField(form, today.toTimeString().slice(0, 5));
+  form.elements.date.value = formatDateInputValueFromDate(today);
+  initializeTimeFormatField(form, formatTimeInputValueFromDate(today));
+  applyNewSessionTimestampEditAccess(form);
   systemTypeField.value = normalizedSystemType;
   if (notesField && notesDraft && (notesDraft.systemType || "KAN") === normalizedSystemType) {
     notesField.value = notesDraft.sessionNotes || "";
@@ -55084,6 +55270,9 @@ function renderSessionForm(initialSystemType = "KAN") {
     if (!validateNewSessionName(form, { formMessage })) {
       setUnsavedChangesLastSaveError(new Error(formMessage?.textContent || "Please enter a session name before saving."), "Please enter a session name before saving.");
       return null;
+    }
+    if (!canManuallyEditGrowSessionTimestamps()) {
+      applyAutomaticNewSessionTimestampFields(form);
     }
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
       setUnsavedChangesLastSaveError(new Error("Please enter a valid session time before saving."), "Please enter a valid session time before saving.");
@@ -57623,6 +57812,9 @@ function canCurrentUserEditSessionTimes(session = null) {
   if (!session) {
     return false;
   }
+  if (!canManuallyEditGrowSessionTimestamps()) {
+    return false;
+  }
   if (isLocalDevQaBypassActive() || !appState.supabase) {
     return true;
   }
@@ -57700,6 +57892,21 @@ function validateGrowSessionTimelineOrder(timestamps = {}, options = {}) {
   }
 
   return { isValid: true, message: "" };
+}
+
+function isCompletedValidSessionForAnalytics(session = null) {
+  if (normalizeSessionStatus(session?.sessionStatus || "") !== "completed") {
+    return false;
+  }
+
+  return validateGrowSessionTimelineOrder({
+    sessionStartedAt: getSessionStartedAtIso(session),
+    soakStartedAt: getSessionSoakStartedAtIso(session),
+    germinationStartedAt: session?.germinationStartedAt || "",
+    completedAt: session?.completedAt || "",
+  }, {
+    requireCompleted: true,
+  }).isValid;
 }
 
 function populateSessionTimesForm(form, session = null) {

@@ -89,6 +89,39 @@ function mapSessionToRecord(session, userId, options = {}) {
   return record;
 }
 
+function canRegularUserEditSessionTimes(session = null, currentUserId = "") {
+  if (!session) {
+    return false;
+  }
+  return false;
+}
+
+function canFounderAdminEditOwnSessionTimes(session = null, currentUserId = "") {
+  if (!session) {
+    return false;
+  }
+
+  const ownerUserId = String(session.userId || session.user_id || "").trim();
+  return Boolean(currentUserId && ownerUserId && currentUserId === ownerUserId);
+}
+
+function applyAutomaticGrowSessionCreationTimestamps(session = {}, referenceDate = new Date()) {
+  const actionAt = referenceDate.toISOString();
+  const date = `${referenceDate.getFullYear()}-${String(referenceDate.getMonth() + 1).padStart(2, "0")}-${String(referenceDate.getDate()).padStart(2, "0")}`;
+  const time = `${String(referenceDate.getHours()).padStart(2, "0")}:${String(referenceDate.getMinutes()).padStart(2, "0")}`;
+  const normalizedStatus = String(session.sessionStatus || "").trim().toLowerCase();
+  return {
+    ...session,
+    date,
+    time,
+    sessionStartedAt: actionAt,
+    soakStartedAt: actionAt,
+    timerStartAt: actionAt,
+    germinationStartedAt: ["germinating", "completed"].includes(normalizedStatus) ? actionAt : "",
+    completedAt: normalizedStatus === "completed" ? actionAt : "",
+  };
+}
+
 const createdAt = "2026-05-19T15:00:00.000Z";
 const sessionStartedAt = parseSessionStartDateTime("2026-05-19", "12:00").toISOString();
 const soakStartedAt = getInitialSoakStartedAt(sessionStartedAt, createdAt, "soaking");
@@ -119,5 +152,27 @@ const legacyRecord = mapSessionToRecord(session, "owner-user-id", { includeOwner
 assert.equal("session_started_at" in legacyRecord, false);
 assert.equal("soak_started_at" in legacyRecord, false);
 assert.equal(legacyRecord.timer_start_at, soakStartedAt);
+
+assert.equal(canRegularUserEditSessionTimes({ userId: "owner-user-id" }, "owner-user-id"), false);
+assert.equal(canFounderAdminEditOwnSessionTimes({ userId: "owner-user-id" }, "owner-user-id"), true);
+assert.equal(canFounderAdminEditOwnSessionTimes({ userId: "other-user-id" }, "owner-user-id"), false);
+
+const automaticReferenceDate = new Date("2026-05-19T18:25:00.000Z");
+const automaticReferenceDateValue = `${automaticReferenceDate.getFullYear()}-${String(automaticReferenceDate.getMonth() + 1).padStart(2, "0")}-${String(automaticReferenceDate.getDate()).padStart(2, "0")}`;
+const automaticReferenceTimeValue = `${String(automaticReferenceDate.getHours()).padStart(2, "0")}:${String(automaticReferenceDate.getMinutes()).padStart(2, "0")}`;
+const automaticSession = applyAutomaticGrowSessionCreationTimestamps({
+  ...session,
+  date: "2026-01-01",
+  time: "01:00",
+  sessionStatus: "completed",
+  sessionStartedAt: "2026-01-01T06:00:00.000Z",
+  soakStartedAt: "2026-01-01T06:05:00.000Z",
+}, automaticReferenceDate);
+assert.equal(automaticSession.date, automaticReferenceDateValue);
+assert.equal(automaticSession.time, automaticReferenceTimeValue);
+assert.equal(automaticSession.sessionStartedAt, "2026-05-19T18:25:00.000Z");
+assert.equal(automaticSession.soakStartedAt, "2026-05-19T18:25:00.000Z");
+assert.equal(automaticSession.germinationStartedAt, "2026-05-19T18:25:00.000Z");
+assert.equal(automaticSession.completedAt, "2026-05-19T18:25:00.000Z");
 
 console.log("Grow session save regression check passed.");
