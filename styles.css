@@ -34296,7 +34296,8 @@ body.modal-open {
   margin-left: auto;
 }
 
-.session-workspace-shell .inline-actions #detail-edit-session-details.is-active {
+.session-workspace-shell .inline-actions #detail-edit-session-details.is-active,
+.session-workspace-shell .inline-actions #detail-edit-session-times.is-active {
   border-color: rgba(148, 209, 89, 0.38);
   background: rgba(148, 209, 89, 0.12);
   color: #f6f8f5;

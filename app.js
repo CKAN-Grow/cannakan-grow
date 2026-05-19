@@ -4338,6 +4338,9 @@ function normalizeStoredSession(session) {
     sessionNotes: String(session.sessionNotes || "").trim(),
     sessionImages: normalizePersistedSessionImages(session.sessionImages),
     sessionStatus: String(session.sessionStatus || "").trim(),
+    userId: String(session.userId || session.user_id || "").trim(),
+    sessionStartedAt: String(session.sessionStartedAt || session.session_started_at || "").trim(),
+    soakStartedAt: String(session.soakStartedAt || session.soak_started_at || session.timerStartAt || session.timer_start_at || "").trim(),
     germinationStartedAt: String(session.germinationStartedAt || "").trim(),
     firstPlantedAt: String(session.firstPlantedAt || "").trim(),
     completedAt: String(session.completedAt || "").trim(),
@@ -4352,7 +4355,7 @@ function normalizeStoredSession(session) {
     partitions: normalizeSessionPartitions(session.partitions),
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
     createdAt: String(session.createdAt || "").trim(),
-    timerStartAt: String(session.timerStartAt || session.timer_start_at || "").trim(),
+    timerStartAt: String(session.timerStartAt || session.timer_start_at || session.soakStartedAt || session.soak_started_at || "").trim(),
     updatedAt: String(
       session.updatedAt
       || session.lastUpdatedAt
@@ -11834,6 +11837,7 @@ async function loadUserSessions() {
   const { data, error } = await appState.supabase
     .from("grow_sessions")
     .select("*")
+    .eq("user_id", appState.user.id)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -16188,6 +16192,59 @@ async function updateCloudSession(session) {
     && normalizeSessionStatus(savedSession.sessionStatus || "") === "completed") {
     void syncCommunityActivityForCompletedSession(savedSession);
   }
+  return savedSession;
+}
+
+function applySessionTimePayload(session, payload) {
+  session.date = payload.sessionDate;
+  session.time = payload.sessionTime;
+  session.sessionStartedAt = payload.sessionStartedAt;
+  session.soakStartedAt = payload.soakStartedAt;
+  session.timerStartAt = payload.soakStartedAt;
+  session.germinationStartedAt = payload.germinationStartedAt || "";
+  session.completedAt = payload.completedAt || "";
+  session.updatedAt = new Date().toISOString();
+  return session;
+}
+
+async function updateOwnerGrowSessionTimes(session, payload) {
+  if (!session?.id) {
+    throw new Error("Session not found.");
+  }
+  if (!canCurrentUserEditSessionTimes(session)) {
+    throw new Error("You can only edit times for your own grow sessions.");
+  }
+
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    const existingSession = getSessions().find((item) => item.id === session.id) || session;
+    const savedSession = normalizeStoredSession(applySessionTimePayload({
+      ...existingSession,
+      ...session,
+    }, payload));
+    saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
+    return savedSession;
+  }
+
+  await getAuthenticatedSupabaseUser("Please sign in to edit session times.");
+  const { data, error } = await appState.supabase
+    .rpc("update_owner_grow_session_times", {
+      p_session_id: session.id,
+      p_session_started_at: payload.sessionStartedAt,
+      p_soak_started_at: payload.soakStartedAt,
+      p_germination_started_at: payload.germinationStartedAt || null,
+      p_completed_at: payload.completedAt || null,
+      p_session_date: payload.sessionDate,
+      p_session_time: payload.sessionTime,
+    })
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const savedSession = mapRowToSession(data);
+  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
+  saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
   return savedSession;
 }
 
@@ -23560,6 +23617,16 @@ function mapSessionToRecord(session, userId) {
   const sessionSeedAgeYears = seedAgeTrackingEnabled && seedAgeMode === "same"
     ? normalizeSeedAgeYears(session.sessionSeedAgeYears)
     : null;
+  const sessionStartedAt = session.sessionStartedAt || parseSessionStartDateTime(session.date, session.time)?.toISOString() || null;
+  let soakStartedAt = session.soakStartedAt || session.timerStartAt || sessionStartedAt;
+  const germinationStartedAt = session.germinationStartedAt || null;
+  if (soakStartedAt && germinationStartedAt) {
+    const soakStartedDate = parseCompletedAtValue(soakStartedAt);
+    const germinationStartedDate = parseCompletedAtValue(germinationStartedAt);
+    if (soakStartedDate && germinationStartedDate && soakStartedDate > germinationStartedDate) {
+      soakStartedAt = sessionStartedAt || germinationStartedAt;
+    }
+  }
   const record = {
     id: session.id,
     user_id: userId,
@@ -23573,7 +23640,9 @@ function mapSessionToRecord(session, userId) {
     session_images: getEffectiveSessionImages(session),
     snapshot_state: normalizePersistedSessionSnapshotState(session.snapshotState) || {},
     session_status: session.sessionStatus || "",
-    germination_started_at: session.germinationStartedAt || null,
+    session_started_at: sessionStartedAt,
+    soak_started_at: soakStartedAt,
+    germination_started_at: germinationStartedAt,
     first_planted_at: session.firstPlantedAt || null,
     completed_at: session.completedAt || null,
     seed_age_tracking_enabled: seedAgeTrackingEnabled,
@@ -23582,7 +23651,7 @@ function mapSessionToRecord(session, userId) {
     partitions: serializeSessionPartitions(session.partitions),
     is_mock: false,
     created_at: session.createdAt,
-    timer_start_at: session.timerStartAt || null,
+    timer_start_at: soakStartedAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
 
@@ -23598,6 +23667,7 @@ function mapSessionToRecord(session, userId) {
 function mapRowToSession(row) {
   return {
     id: row.id,
+    userId: row.user_id || "",
     date: row.date,
     time: row.time,
     systemType: row.system_type,
@@ -23608,6 +23678,8 @@ function mapRowToSession(row) {
     sessionImages: normalizePersistedSessionImages(row.session_images),
     snapshotState: normalizePersistedSessionSnapshotState(row.snapshot_state),
     sessionStatus: row.session_status || "",
+    sessionStartedAt: row.session_started_at || "",
+    soakStartedAt: row.soak_started_at || row.timer_start_at || "",
     germinationStartedAt: row.germination_started_at || "",
     firstPlantedAt: row.first_planted_at || "",
     completedAt: row.completed_at || "",
@@ -23621,7 +23693,7 @@ function mapRowToSession(row) {
     filterPaperDeducted: getSessionFilterPaperDeducted({ id: row.id }),
     partitions: normalizeSessionPartitions(row.partitions),
     createdAt: row.created_at,
-    timerStartAt: row.timer_start_at || "",
+    timerStartAt: row.timer_start_at || row.soak_started_at || "",
     updatedAt: row.updated_at || row.last_updated_at || "",
   };
 }
@@ -54993,6 +55065,11 @@ function renderSessionForm(initialSystemType = "KAN") {
       };
     });
     const createdAt = new Date().toISOString();
+    const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
+    const normalizedInitialStatus = normalizeSessionStatus(formData.get("sessionStatus"));
+    const soakStartedAt = ["germinating", "completed"].includes(normalizedInitialStatus)
+      ? sessionStartedAt
+      : getTimerStartAtFromCreatedAt(createdAt);
     const rawUnitId = String(formData.get("unitId") || "").trim();
     const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
     const session = {
@@ -55017,7 +55094,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       snapshotState: normalizePersistedSessionSnapshotState(snapshotSection?.__snapshotState?.pendingSnapshotState),
       sessionStatus: formData.get("sessionStatus") || "soaking",
       germinationStartedAt:
-        normalizeSessionStatus(formData.get("sessionStatus")) === "germinating"
+        normalizedInitialStatus === "germinating"
           ? form.dataset.germinationStartedAt || new Date().toISOString()
           : "",
       firstPlantedAt: form.dataset.firstPlantedAt || "",
@@ -55031,7 +55108,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       filterPaperDeducted: false,
       partitions: partitionEntries,
       createdAt,
-      timerStartAt: getTimerStartAtFromCreatedAt(createdAt),
+      sessionStartedAt,
+      soakStartedAt,
+      timerStartAt: soakStartedAt,
     };
   const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
   const existingSessionsBeforeSave = getSessions();
@@ -57276,6 +57355,12 @@ function getSessionDetailElements(scope = document) {
     detailsSaveButton: scope.querySelector("#detail-session-details-save"),
     detailsCancelButton: scope.querySelector("#detail-session-details-cancel"),
     detailsMessage: scope.querySelector("#detail-session-details-message"),
+    timesEditButton: scope.querySelector("#detail-edit-session-times"),
+    timesPanel: scope.querySelector("#detail-session-times-editor"),
+    timesForm: scope.querySelector("#detail-session-times-form"),
+    timesSaveButton: scope.querySelector("#detail-session-times-save"),
+    timesCancelButton: scope.querySelector("#detail-session-times-cancel"),
+    timesMessage: scope.querySelector("#detail-session-times-message"),
     seedAgeForm: scope.querySelector("#detail-seed-age-form"),
     layoutSection: scope.querySelector("#detail-layout-reference")?.closest(".system-layout-block") || null,
     layoutReference: scope.querySelector("#detail-layout-reference"),
@@ -57452,6 +57537,152 @@ function clearSessionDetailEditorMessage(detail) {
   detail.detailsMessage.classList.remove("is-error");
 }
 
+function canCurrentUserEditSessionTimes(session = null) {
+  if (!session) {
+    return false;
+  }
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    return true;
+  }
+
+  const currentUserId = String(appState.user?.id || "").trim();
+  const ownerUserId = String(session.userId || session.user_id || "").trim();
+  return Boolean(currentUserId && ownerUserId && currentUserId === ownerUserId);
+}
+
+function getSessionStartedAtIso(session = null) {
+  return parseCompletedAtValue(session?.sessionStartedAt || session?.session_started_at || "")?.toISOString()
+    || parseSessionStartDateTime(session?.date, session?.time)?.toISOString()
+    || "";
+}
+
+function getSessionSoakStartedAtIso(session = null) {
+  return parseCompletedAtValue(session?.soakStartedAt || session?.soak_started_at || session?.timerStartAt || session?.timer_start_at || "")?.toISOString()
+    || getSessionStartedAtIso(session);
+}
+
+function formatDateTimeLocalInputValue(value = "") {
+  const parsedDate = parseCompletedAtValue(value);
+  if (!parsedDate) {
+    return "";
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+  const day = String(parsedDate.getDate()).padStart(2, "0");
+  const hours = String(parsedDate.getHours()).padStart(2, "0");
+  const minutes = String(parsedDate.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function parseDateTimeLocalInputIso(value = "") {
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate.toISOString();
+}
+
+function populateSessionTimesForm(form, session = null) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  form.elements.sessionStartedAt.value = formatDateTimeLocalInputValue(getSessionStartedAtIso(session));
+  form.elements.soakStartedAt.value = formatDateTimeLocalInputValue(getSessionSoakStartedAtIso(session));
+  form.elements.germinationStartedAt.value = formatDateTimeLocalInputValue(session?.germinationStartedAt || "");
+  form.elements.completedAt.value = formatDateTimeLocalInputValue(session?.completedAt || "");
+}
+
+function setSessionTimesEditorOpen(detail, isOpen) {
+  if (!detail?.timesPanel) {
+    return;
+  }
+
+  detail.timesPanel.hidden = !isOpen;
+  if (detail.timesEditButton) {
+    detail.timesEditButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    detail.timesEditButton.classList.toggle("is-active", isOpen);
+  }
+}
+
+function clearSessionTimesEditorMessage(detail) {
+  if (!detail?.timesMessage) {
+    return;
+  }
+
+  detail.timesMessage.textContent = "";
+  detail.timesMessage.classList.remove("is-error");
+}
+
+function setSessionTimesEditorMessage(detail, message = "", isError = false) {
+  if (!detail?.timesMessage) {
+    return;
+  }
+
+  detail.timesMessage.textContent = message;
+  detail.timesMessage.classList.toggle("is-error", Boolean(isError));
+}
+
+function getSessionTimesFormPayload(form, session = null) {
+  if (!(form instanceof HTMLFormElement)) {
+    return { isValid: false, message: "Session time form is unavailable." };
+  }
+
+  const sessionStartedValue = String(form.elements.sessionStartedAt?.value || "").trim();
+  const soakStartedValue = String(form.elements.soakStartedAt?.value || "").trim();
+  const germinationStartedValue = String(form.elements.germinationStartedAt?.value || "").trim();
+  const completedValue = String(form.elements.completedAt?.value || "").trim();
+  const sessionStartedAt = parseDateTimeLocalInputIso(sessionStartedValue);
+  const soakStartedAt = parseDateTimeLocalInputIso(soakStartedValue);
+  const germinationStartedAt = parseDateTimeLocalInputIso(germinationStartedValue);
+  const completedAt = parseDateTimeLocalInputIso(completedValue);
+
+  if (!sessionStartedAt || !soakStartedAt) {
+    return { isValid: false, message: "Session start and soak start are required." };
+  }
+  if (sessionStartedAt === null || soakStartedAt === null || germinationStartedAt === null || completedAt === null) {
+    return { isValid: false, message: "Enter valid date and time values." };
+  }
+  if (normalizeSessionStatus(session?.sessionStatus || "") === "completed" && !completedAt) {
+    return { isValid: false, message: "Completed sessions need a completed time." };
+  }
+
+  const sessionStartedDate = parseCompletedAtValue(sessionStartedAt);
+  const soakStartedDate = parseCompletedAtValue(soakStartedAt);
+  const germinationStartedDate = parseCompletedAtValue(germinationStartedAt);
+  const completedDate = parseCompletedAtValue(completedAt);
+
+  if (soakStartedDate < sessionStartedDate) {
+    return { isValid: false, message: "Soak start cannot be before session start." };
+  }
+  if (germinationStartedDate && soakStartedDate > germinationStartedDate) {
+    return { isValid: false, message: "Soak start cannot be after germination start." };
+  }
+  if (completedDate && germinationStartedDate && germinationStartedDate > completedDate) {
+    return { isValid: false, message: "Germination start cannot be after completed time." };
+  }
+  if (completedDate && completedDate < sessionStartedDate) {
+    return { isValid: false, message: "Completed time cannot be before session start." };
+  }
+
+  return {
+    isValid: true,
+    sessionStartedAt,
+    soakStartedAt,
+    germinationStartedAt,
+    completedAt,
+    sessionDate: sessionStartedValue.slice(0, 10),
+    sessionTime: sessionStartedValue.slice(11, 16),
+  };
+}
+
 function syncSessionDetailHeaderMeta(detail, session) {
   applySessionDetailHeaderOptions(detail, {
     title: formatSessionLabel(session),
@@ -57606,9 +57837,16 @@ function renderSessionDetail(sessionId) {
 
   syncSessionDetailHeaderMeta(detail, session);
   populateSessionDetailEditorForm(detail.detailsForm, session);
+  populateSessionTimesForm(detail.timesForm, session);
   populateSessionSeedAgeForm(detail.seedAgeForm, session);
   setSessionDetailEditorOpen(detail, false);
+  setSessionTimesEditorOpen(detail, false);
   clearSessionDetailEditorMessage(detail);
+  clearSessionTimesEditorMessage(detail);
+  const canEditSessionTimes = canCurrentUserEditSessionTimes(session);
+  if (detail.timesEditButton) {
+    detail.timesEditButton.hidden = !canEditSessionTimes;
+  }
   applySessionDetailNotesOptions(detail, {
     value: session.sessionNotes || "",
   });
@@ -58145,6 +58383,43 @@ function renderSessionDetail(sessionId) {
     event.preventDefault();
     await persistDetailSession();
   });
+  detail.timesForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearSessionTimesEditorMessage(detail);
+    const payload = getSessionTimesFormPayload(detail.timesForm, session);
+    if (!payload.isValid) {
+      setSessionTimesEditorMessage(detail, payload.message, true);
+      return;
+    }
+
+    try {
+      const savedSession = await updateOwnerGrowSessionTimes(session, payload);
+      Object.assign(session, savedSession);
+      syncSessionDetailHeaderMeta(detail, session);
+      syncSessionStatusControlDatasets(detail.statusField, {
+        startedAt: getSessionStatusStartedAtValue(session),
+        germinationStartedAt: session.germinationStartedAt || "",
+        firstPlantedAt: session.firstPlantedAt || "",
+        completedAt: session.completedAt || "",
+      });
+      updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+      updateSessionStatusReminder(
+        detail.statusReminder,
+        session.date,
+        session.time,
+        detail.statusField.value,
+        session.germinationStartedAt || "",
+        session.timerStartAt || "",
+      );
+      refreshDetailDerivedViews();
+      populateSessionTimesForm(detail.timesForm, session);
+      setSessionTimesEditorMessage(detail, "Session times saved.");
+      queueDueGrowReminderEvaluation("session-times:updated");
+    } catch (error) {
+      console.error("Failed to update session times", error);
+      setSessionTimesEditorMessage(detail, error?.message || "Could not save session times.", true);
+    }
+  });
   detail.editButton?.addEventListener("click", () => {
     if (detail.detailsPanel && !detail.detailsPanel.hidden) {
       detail.detailsForm?.elements?.sessionName?.focus();
@@ -58157,11 +58432,30 @@ function renderSessionDetail(sessionId) {
     detail.detailsForm?.elements?.sessionName?.focus();
     refreshDetailUnsavedChanges();
   });
+  detail.timesEditButton?.addEventListener("click", () => {
+    if (!canEditSessionTimes) {
+      return;
+    }
+    if (detail.timesPanel && !detail.timesPanel.hidden) {
+      detail.timesForm?.elements?.sessionStartedAt?.focus();
+      return;
+    }
+
+    populateSessionTimesForm(detail.timesForm, session);
+    clearSessionTimesEditorMessage(detail);
+    setSessionTimesEditorOpen(detail, true);
+    detail.timesForm?.elements?.sessionStartedAt?.focus();
+  });
   detail.detailsCancelButton?.addEventListener("click", () => {
     populateSessionDetailEditorForm(detail.detailsForm, session);
     clearSessionDetailEditorMessage(detail);
     setSessionDetailEditorOpen(detail, false);
     refreshDetailUnsavedChanges();
+  });
+  detail.timesCancelButton?.addEventListener("click", () => {
+    populateSessionTimesForm(detail.timesForm, session);
+    clearSessionTimesEditorMessage(detail);
+    setSessionTimesEditorOpen(detail, false);
   });
   detail.detailsForm?.querySelectorAll("input, select").forEach((field) => {
     const eventName = field instanceof HTMLSelectElement ? "change" : "input";
@@ -58169,6 +58463,11 @@ function renderSessionDetail(sessionId) {
       clearSessionDetailEditorMessage(detail);
       detail.saveMessage.textContent = "";
       refreshDetailUnsavedChanges();
+    });
+  });
+  detail.timesForm?.querySelectorAll("input").forEach((field) => {
+    field.addEventListener("input", () => {
+      clearSessionTimesEditorMessage(detail);
     });
   });
 
@@ -59763,7 +60062,7 @@ function getEffectiveSessionTimerStartAt(session = null) {
     return null;
   }
 
-  return parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "")
+  return parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || session.timerStartAt || session.timer_start_at || "")
     || parseSessionStartDateTime(session.date, session.time);
 }
 
@@ -62078,6 +62377,8 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
     date: String(session?.date || "").trim(),
     time: String(session?.time || "").trim(),
     timeDisplay: String(formatStoredTime(session?.time || "", getPreferredTimeFormat())).trim(),
+    sessionStartedAt: String(session?.sessionStartedAt || "").trim(),
+    soakStartedAt: String(session?.soakStartedAt || session?.timerStartAt || "").trim(),
     systemType: String(session?.systemType || "").trim(),
     unitId: String(session?.unitId || "").trim(),
     seedAgeTrackingEnabled: Boolean(detailSeedAgeState?.trackingEnabled),

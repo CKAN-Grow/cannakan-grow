@@ -995,6 +995,7 @@
         </div>
         <div class="inline-actions">
           <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Name</button>
+          <button id="detail-edit-session-times" class="button button-secondary" type="button">Edit Times</button>
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>
       </div>
@@ -1023,6 +1024,42 @@
                   <div class="session-detail-edit-action-buttons">
                     <button id="detail-session-details-cancel" type="button" class="button button-secondary">Cancel</button>
                     <button id="detail-session-details-save" type="submit" class="button button-primary">Save Name</button>
+                  </div>
+                </div>
+              </form>
+            </section>
+            <section id="detail-session-times-editor" class="session-detail-edit-panel session-glass-panel" aria-labelledby="detail-session-times-editor-title" hidden>
+              <div class="session-detail-edit-panel-head">
+                <div class="session-detail-edit-panel-copy">
+                  <p class="eyebrow">Edit</p>
+                  <h3 id="detail-session-times-editor-title">Edit Session Times</h3>
+                  <p class="session-detail-edit-panel-description">Adjust saved timestamps for this grow session only.</p>
+                </div>
+              </div>
+              <form id="detail-session-times-form" class="session-detail-edit-form" novalidate>
+                <div class="session-detail-edit-grid session-detail-times-grid">
+                  <label>
+                    <span>Session Started</span>
+                    <input type="datetime-local" name="sessionStartedAt" required>
+                  </label>
+                  <label>
+                    <span>Soak Started</span>
+                    <input type="datetime-local" name="soakStartedAt" required>
+                  </label>
+                  <label>
+                    <span>Germination Started</span>
+                    <input type="datetime-local" name="germinationStartedAt">
+                  </label>
+                  <label>
+                    <span>Completed</span>
+                    <input type="datetime-local" name="completedAt">
+                  </label>
+                </div>
+                <div class="session-detail-edit-actions">
+                  <p id="detail-session-times-message" class="session-detail-edit-message" aria-live="polite"></p>
+                  <div class="session-detail-edit-action-buttons">
+                    <button id="detail-session-times-cancel" type="button" class="button button-secondary">Cancel</button>
+                    <button id="detail-session-times-save" type="submit" class="button button-primary">Save Times</button>
                   </div>
                 </div>
               </form>
