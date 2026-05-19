@@ -6143,6 +6143,56 @@ function isSessionSoftDeleted(session = null) {
   );
 }
 
+function isMockGrowSession(session = null) {
+  return Boolean(session?.isMock || session?.is_mock);
+}
+
+function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
+  const session = sessionOrStatus && typeof sessionOrStatus === "object" ? sessionOrStatus : null;
+  if (session && isSessionSoftDeleted(session)) {
+    return "deleted";
+  }
+
+  const normalizedStatus = normalizeSessionStatus(
+    session ? (session.sessionStatus || session.session_status || "") : sessionOrStatus,
+  );
+  if (["deleted", "archived"].includes(normalizedStatus)) {
+    return "deleted";
+  }
+  if (["abandoned", "failed", "canceled", "cancelled"].includes(normalizedStatus)) {
+    return "abandoned";
+  }
+  if (normalizedStatus === "completed") {
+    return "completed";
+  }
+  if (["soaking", "germinating", "active", "first-germinated"].includes(normalizedStatus)) {
+    return "active";
+  }
+  return "draft";
+}
+
+function isGrowSessionAnalyticsEligible(session = null, options = {}) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  if (!normalizedSession) {
+    return false;
+  }
+  if (!options.includeMock && isMockGrowSession(normalizedSession)) {
+    return false;
+  }
+  if (normalizeGrowSessionLifecycleState(normalizedSession) !== "completed") {
+    return false;
+  }
+
+  return validateGrowSessionTimelineOrder({
+    sessionStartedAt: getSessionStartedAtIso(normalizedSession),
+    soakStartedAt: getSessionSoakStartedAtIso(normalizedSession),
+    germinationStartedAt: normalizedSession?.germinationStartedAt || "",
+    completedAt: normalizedSession?.completedAt || "",
+  }, {
+    requireCompleted: true,
+  }).isValid;
+}
+
 function getVisibleUserSessions(sessions = []) {
   return (sessions || []).filter((session) => !isSessionSoftDeleted(session));
 }
@@ -11866,6 +11916,23 @@ async function refreshUserSessionsAfterSave(reason = "session-save") {
   return sessions;
 }
 
+async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason = "session-mutation") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  await Promise.allSettled([
+    normalizedSessionId ? clearCommunityActivityForSession(normalizedSessionId) : Promise.resolve(0),
+    refreshGallerySnapshots(`analytics-refresh:${reason}`),
+  ]);
+
+  if (isAdminUser()) {
+    appState.sourceReviewLoaded = false;
+    void refreshAdminSourceReviewSessionRows({ force: true, reason: `analytics-refresh:${reason}` });
+  }
+
+  if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+    void refreshGrowNetworkActivity({ force: true, reason: `analytics-refresh:${reason}` });
+  }
+}
+
 function getFounderSessionCleanupCandidateIds() {
   return [...new Set(getSessions()
     .filter((session) => isFounderTestCleanupCandidateSession(session))
@@ -12320,7 +12387,7 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
   const galleryCountByUserId = new Map();
 
   (sessionRows || []).forEach((row) => {
-    if (row?.is_mock === true) {
+    if (row?.is_mock === true || row?.is_deleted === true || normalizeSessionVisibilityStatus(row?.visibility_status || "") === "deleted") {
       return;
     }
     const userId = String(row?.user_id || "").trim();
@@ -12383,7 +12450,7 @@ async function loadAdminMembers(reason = "unspecified") {
       .order("created_at", { ascending: false }),
     appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,created_at,is_mock"),
+      .select("id,user_id,created_at,is_mock,is_deleted,visibility_status"),
     appState.supabase
       .from("grow_gallery_snapshots")
       .select("id,user_id,created_at,published_at,status,is_mock"),
@@ -12579,7 +12646,7 @@ function upsertAdminSourceReviewRecord(record = {}) {
 
 async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
   if (!appState.supabase || !isAdminUser()) {
-    const localSessions = getSessions();
+    const localSessions = getSessions().filter((session) => isGrowSessionAnalyticsEligible(session));
     return localSessions.map((session) => ({
       id: session.id,
       userId: appState.user?.id || "",
@@ -12591,7 +12658,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,user_id,date,created_at,partitions,is_mock");
+    .select("id,user_id,date,time,created_at,partitions,is_mock,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
 
   if (error) {
     console.error("Failed to load admin source review sessions", { reason, error });
@@ -12601,7 +12668,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
 
   appState.sourceReviewError = "";
   return (data || [])
-    .filter((row) => row?.is_mock !== true)
+    .filter((row) => isGrowSessionAnalyticsEligible(mapRowToSession(row)))
     .map((row) => ({
       id: row.id,
       userId: String(row.user_id || "").trim(),
@@ -13204,7 +13271,10 @@ function getApprovedPublicSnapshotsForMember(memberId = "", snapshots = getAppro
     return [];
   }
 
-  return (snapshots || []).filter((snapshot) => String(snapshot?.userId || "").trim() === normalizedId);
+  return (snapshots || []).filter((snapshot) => (
+    String(snapshot?.userId || "").trim() === normalizedId
+    && isGallerySnapshotAnalyticsEligible(snapshot)
+  ));
 }
 
 function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId)) {
@@ -14018,8 +14088,7 @@ function toggleMockGrowNetworkFollowState(memberId = "") {
 
 function buildFallbackGrowNetworkFollowingEntries(limit = 6) {
   const seenMemberIds = new Set();
-  const approvedSnapshots = getGallerySnapshotsForDisplay()
-    .filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const fallbackEntries = [];
 
   approvedSnapshots.forEach((snapshot) => {
@@ -14998,6 +15067,14 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       id: existingSession.id,
       sessionStatus: existingSession.sessionStatus || "",
       completedAt: existingSession.completedAt || "",
+      sessionStartedAt: existingSession.sessionStartedAt || "",
+      soakStartedAt: existingSession.soakStartedAt || existingSession.timerStartAt || "",
+      timerStartAt: existingSession.timerStartAt || existingSession.soakStartedAt || "",
+      germinationStartedAt: existingSession.germinationStartedAt || "",
+      isMock: Boolean(existingSession.isMock || existingSession.is_mock),
+      isDeleted: Boolean(existingSession.isDeleted || existingSession.is_deleted),
+      deletedAt: existingSession.deletedAt || "",
+      visibilityStatus: normalizeSessionVisibilityStatus(existingSession.visibilityStatus || ""),
       sessionName: existingSession.sessionName || "",
       date: existingSession.date || "",
       time: existingSession.time || "",
@@ -15013,7 +15090,7 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,session_status,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years")
+    .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock,is_deleted,deleted_at,visibility_status")
     .eq("id", normalizedSessionId)
     .maybeSingle();
 
@@ -15029,7 +15106,15 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
     ? {
       id: data.id,
       sessionStatus: data.session_status || "",
+      sessionStartedAt: data.session_started_at || "",
+      soakStartedAt: data.soak_started_at || data.timer_start_at || "",
+      timerStartAt: data.timer_start_at || data.soak_started_at || "",
+      germinationStartedAt: data.germination_started_at || "",
       completedAt: data.completed_at || "",
+      isMock: Boolean(data.is_mock),
+      isDeleted: Boolean(data.is_deleted),
+      deletedAt: data.deleted_at || "",
+      visibilityStatus: normalizeSessionVisibilityStatus(data.visibility_status || ""),
       sessionName: data.session_name || "",
       date: data.date || "",
       time: data.time || "",
@@ -15047,7 +15132,7 @@ async function loadApprovedGallerySnapshotForSession(sessionId = "") {
   }
 
   const existingSnapshot = getGallerySnapshotForSession(normalizedSessionId);
-  if (existingSnapshot && getGallerySnapshotDisplayStatus(existingSnapshot) === "approved") {
+  if (existingSnapshot && isGallerySnapshotAnalyticsEligible(existingSnapshot)) {
     return existingSnapshot;
   }
 
@@ -15078,6 +15163,9 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     ? snapshot
     : null;
   if (!normalizedSnapshot?.id || !normalizedSnapshot.userId) {
+    return [];
+  }
+  if (sessionContext && !isGrowSessionAnalyticsEligible(sessionContext)) {
     return [];
   }
 
@@ -15140,7 +15228,7 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     },
   ];
 
-  if (normalizeSessionStatus(sessionContext?.sessionStatus || "") === "completed") {
+  if (isGrowSessionAnalyticsEligible(sessionContext)) {
     payloads.push({
       userId: normalizedSnapshot.userId,
       activityType: "public_session_completed",
@@ -15168,11 +15256,18 @@ async function recordCommunityActivity(payload = {}) {
   if (!normalizedUserId || !normalizedType) {
     return null;
   }
+  const normalizedSessionId = String(payload.sessionId || "").trim();
+  const linkedSession = normalizedSessionId
+    ? getSessions().find((session) => String(session?.id || "").trim() === normalizedSessionId)
+    : null;
+  if (linkedSession && !isGrowSessionAnalyticsEligible(linkedSession)) {
+    return null;
+  }
 
   const { data, error } = await appState.supabase.rpc("record_community_activity", {
     activity_user_id: normalizedUserId,
     activity_type: normalizedType,
-    activity_session_id: String(payload.sessionId || "").trim(),
+    activity_session_id: normalizedSessionId,
     activity_snapshot_id: String(payload.snapshotId || "").trim(),
     activity_title: String(payload.title || "").trim(),
     activity_summary: String(payload.summary || "").trim(),
@@ -15235,11 +15330,44 @@ async function clearCommunityActivityForSnapshot(snapshotId = "") {
   return Math.max(0, Number(data) || 0);
 }
 
+async function clearCommunityActivityForSession(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId || !appState.supabase || appState.communityActivityTableUnavailable) {
+    return 0;
+  }
+
+  const { data, error } = await appState.supabase.rpc("clear_community_activity_for_session", {
+    activity_session_id: normalizedSessionId,
+  });
+
+  if (error) {
+    if (isCommunityActivityTableUnavailableError(error)) {
+      appState.communityActivityTableUnavailable = true;
+      console.warn("Community activity session cleanup function unavailable.", {
+        sessionId: normalizedSessionId,
+        error,
+      });
+      return 0;
+    }
+
+    console.error("Failed to clear community activity for session", {
+      sessionId: normalizedSessionId,
+      error,
+    });
+    return 0;
+  }
+
+  if (normalizeNavigationHash(window.location.hash || "#home") === "#network") {
+    void refreshGrowNetworkActivity({ force: true, reason: "community-activity:clear-session" });
+  }
+  return Math.max(0, Number(data) || 0);
+}
+
 async function syncCommunityActivityForApprovedSnapshot(snapshot, options = {}) {
   const normalizedSnapshot = snapshot && getGallerySnapshotDisplayStatus(snapshot) === "approved"
     ? snapshot
     : null;
-  if (!normalizedSnapshot?.id || !normalizedSnapshot.userId || appState.communityActivityTableUnavailable) {
+  if (!normalizedSnapshot?.id || !normalizedSnapshot.userId || appState.communityActivityTableUnavailable || !isGallerySnapshotAnalyticsEligible(normalizedSnapshot)) {
     return [];
   }
 
@@ -15258,13 +15386,12 @@ async function syncCommunityActivityForCompletedSession(session, options = {}) {
     return null;
   }
 
-  const sessionStatus = normalizeSessionStatus(session?.sessionStatus || "");
-  if (sessionStatus !== "completed") {
+  if (!isGrowSessionAnalyticsEligible(session)) {
     return null;
   }
 
   const approvedSnapshot = options.snapshot || await loadApprovedGallerySnapshotForSession(normalizedSessionId);
-  if (!approvedSnapshot?.id || getGallerySnapshotDisplayStatus(approvedSnapshot) !== "approved") {
+  if (!approvedSnapshot?.id || !isGallerySnapshotAnalyticsEligible(approvedSnapshot)) {
     return null;
   }
 
@@ -16351,8 +16478,8 @@ async function updateCloudSession(session) {
   const record = mapSessionToRecord(session, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
   });
-  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at";
-  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at";
+  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock,is_deleted,visibility_status";
+  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock,is_deleted,visibility_status";
   let { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
     .select(appState.sessionTimeColumnsUnavailable ? legacyPreviousRowColumns : modernPreviousRowColumns)
@@ -16410,9 +16537,26 @@ async function updateCloudSession(session) {
   const savedSession = mapRowToSession(data);
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
-  if (normalizeSessionStatus(previousRow?.session_status || "") !== "completed"
-    && normalizeSessionStatus(savedSession.sessionStatus || "") === "completed") {
+  const previousAnalyticsSession = {
+    ...session,
+    sessionStatus: previousRow?.session_status || "",
+    date: previousRow?.date || session.date || "",
+    time: previousRow?.time || session.time || "",
+    sessionStartedAt: previousRow?.session_started_at || "",
+    soakStartedAt: previousRow?.soak_started_at || previousRow?.timer_start_at || "",
+    timerStartAt: previousRow?.timer_start_at || previousRow?.soak_started_at || "",
+    germinationStartedAt: previousRow?.germination_started_at || "",
+    completedAt: previousRow?.completed_at || "",
+    isMock: Boolean(previousRow?.is_mock),
+    isDeleted: Boolean(previousRow?.is_deleted),
+    visibilityStatus: normalizeSessionVisibilityStatus(previousRow?.visibility_status || ""),
+  };
+  const wasAnalyticsEligible = isGrowSessionAnalyticsEligible(previousAnalyticsSession);
+  const isAnalyticsEligible = isGrowSessionAnalyticsEligible(savedSession);
+  if (!wasAnalyticsEligible && isAnalyticsEligible) {
     void syncCommunityActivityForCompletedSession(savedSession);
+  } else if (wasAnalyticsEligible && !isAnalyticsEligible) {
+    void refreshGrowAnalyticsAfterSessionMutation(savedSession.id, "session-status-change");
   }
   return savedSession;
 }
@@ -16607,6 +16751,7 @@ async function deleteCloudSession(sessionId) {
 
   if (!appState.supabase) {
     saveSessions(getSessions().map((item) => (item.id === sessionId ? archivedSession : item)));
+    void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-delete-local");
     return archivedSession;
   }
 
@@ -16633,6 +16778,7 @@ async function deleteCloudSession(sessionId) {
   const savedSession = mapRowToSession(data);
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(existingSession || { id: sessionId });
   saveSessions(getSessions().map((item) => (item.id === sessionId ? savedSession : item)));
+  void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-delete");
   return savedSession;
 }
 
@@ -18064,6 +18210,9 @@ function mapRowToGallerySnapshot(row) {
     likedByCurrentUser: Boolean(row.liked_by_current_user),
     isMock: Boolean(row.is_mock),
     is_mock: Boolean(row.is_mock),
+    analyticsExcluded: Boolean(row.analytics_excluded),
+    analyticsExcludedReason: String(row.analytics_excluded_reason || "").trim(),
+    analyticsExcludedAt: String(row.analytics_excluded_at || "").trim(),
   };
 }
 
@@ -19679,7 +19828,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
 }
 
 function getApprovedPublicGallerySnapshots() {
-  return getGallerySnapshotsForDisplay().filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  return getGallerySnapshotsForDisplay().filter(isGallerySnapshotAnalyticsEligible);
 }
 
 function getCurrentMonthApprovedGallerySnapshots() {
@@ -19693,7 +19842,7 @@ function getCurrentMonthApprovedGallerySnapshots() {
 function buildGallerySeedTypeHighlightEntry(snapshots) {
   const groups = new Map();
 
-  (snapshots || []).forEach((snapshot) => {
+  (snapshots || []).filter(isGallerySnapshotAnalyticsEligible).forEach((snapshot) => {
     const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
     const label = metadata.seedTypeName;
     const normalizedKey = normalizeLeaderboardKey(label);
@@ -19936,7 +20085,7 @@ function findMockGalleryTopMemberEntry(entry = {}) {
 function buildGalleryTopMemberEntries(snapshots = []) {
   const entriesByMemberKey = new Map();
 
-  (snapshots || []).forEach((snapshot) => {
+  (snapshots || []).filter(isGallerySnapshotAnalyticsEligible).forEach((snapshot) => {
     const memberKey = getGallerySnapshotMemberKey(snapshot);
     if (!memberKey) {
       return;
@@ -21418,6 +21567,12 @@ function getCommunitySeedAgeOverviewSessions() {
       partitions: Array.isArray(snapshot?.partitions) ? snapshot.partitions : [],
       date: snapshot?.date || "",
       time: snapshot?.time || "",
+      sessionStartedAt: parseSessionStartDateTime(snapshot?.sessionDate || snapshot?.date || "", snapshot?.time || "00:00")?.toISOString() || snapshot?.publishedAt || snapshot?.createdAt || "",
+      soakStartedAt: parseSessionStartDateTime(snapshot?.sessionDate || snapshot?.date || "", snapshot?.time || "00:00")?.toISOString() || snapshot?.publishedAt || snapshot?.createdAt || "",
+      germinationStartedAt: parseSessionStartDateTime(snapshot?.sessionDate || snapshot?.date || "", snapshot?.time || "00:00")?.toISOString() || snapshot?.publishedAt || snapshot?.createdAt || "",
+      completedAt: snapshot?.completedAt || snapshot?.publishedAt || snapshot?.createdAt || "",
+      isMock: Boolean(snapshot?.isMock || snapshot?.is_mock),
+      visibilityStatus: "active",
     };
     const normalizedSession = normalizeStoredSession(linkedSession || fallbackSession);
     const sessionId = String(normalizedSession?.id || fallbackSession.id || "").trim();
@@ -21686,7 +21841,7 @@ function getSeedAgeAnalyticsResolvedYears(partition = null, session = null) {
 }
 
 function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
-  return (sessions || []).flatMap((session) => {
+  return (sessions || []).filter((session) => isGrowSessionAnalyticsEligible(session)).flatMap((session) => {
     const normalizedSession = normalizeStoredSession(session) || session;
     const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
     return partitions.map((partition) => {
@@ -21706,6 +21861,7 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
       return {
         sessionId,
         sessionStatus: normalizeSessionStatus(normalizedSession?.sessionStatus || ""),
+        sessionState: normalizeGrowSessionLifecycleState(normalizedSession),
         totalSeeds,
         totalPlanted,
         seedAgeYears,
@@ -22132,8 +22288,7 @@ function buildPublicSeedAgeAnalyticsState(options = {}) {
     return allowDemoData ? buildSeedAgeAnalyticsDemoState() : buildSeedAgeAnalyticsNoDataState();
   }
 
-  const performanceEntries = trackedEntries.filter((entry) => entry.sessionStatus === "completed");
-  const rateEntries = performanceEntries.length ? performanceEntries : trackedEntries;
+  const rateEntries = trackedEntries.filter((entry) => entry.sessionState === "completed");
   const bucketDefinitions = getSeedAgeAnalyticsBucketDefinitions();
   const heatmapDefinitions = getSeedAgeAnalyticsHeatmapBucketDefinitions();
   const trackedSessionIds = new Set(trackedEntries.map((entry) => String(entry.sessionId || "").trim()).filter(Boolean));
@@ -23303,8 +23458,7 @@ function formatHomeGalleryRankingMetric(entry) {
 }
 
 function buildHomeGalleryRankingsTeaserState() {
-  const snapshots = getGallerySnapshotsForDisplay();
-  const approvedPublicSnapshots = snapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const approvedPublicSnapshots = getApprovedPublicGallerySnapshots();
   const currentMonthKey = getLeaderboardMonthKey(new Date());
   const monthlySnapshots = approvedPublicSnapshots.filter((snapshot) => (
     getLeaderboardMonthKey(parseLeaderboardSnapshotDate(snapshot)) === currentMonthKey
@@ -23530,6 +23684,18 @@ function getGallerySnapshotDisplayStatus(snapshot) {
   return normalizeGallerySnapshotRecordStatus(snapshot?.status, snapshot?.published);
 }
 
+function isGallerySnapshotAnalyticsEligible(snapshot = null) {
+  if (!snapshot || isMockGallerySnapshot(snapshot) || snapshot.analyticsExcluded === true) {
+    return false;
+  }
+  if (getGallerySnapshotDisplayStatus(snapshot) !== "approved") {
+    return false;
+  }
+
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  return linkedSession ? isGrowSessionAnalyticsEligible(linkedSession) : true;
+}
+
 function getGallerySnapshotDebugSignature(snapshots) {
   return JSON.stringify((snapshots || []).map((snapshot) => ({
     id: snapshot.id,
@@ -23607,7 +23773,7 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
 
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     snapshot?.id === normalizedId
-    && getGallerySnapshotDisplayStatus(snapshot) === "approved"
+    && isGallerySnapshotAnalyticsEligible(snapshot)
   )) || null;
 }
 
@@ -34503,7 +34669,8 @@ function buildSourceDirectorySessionAggregate() {
   const sourceMap = new Map();
   const breederKeys = new Set();
   const varietyKeys = new Set();
-  const sessions = Array.isArray(getSessions()) ? getSessions() : [];
+  const sessions = (Array.isArray(getSessions()) ? getSessions() : [])
+    .filter((session) => isGrowSessionAnalyticsEligible(session));
 
   sessions.forEach((session) => {
     const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
@@ -34631,7 +34798,9 @@ function getSampleSourceProfileRecord(sourceId = "") {
     return null;
   }
 
-  const sampleSessions = buildSampleSessions();
+  const sampleSessions = buildSampleSessions().filter((session) => (
+    isGrowSessionAnalyticsEligible(session, { includeMock: true })
+  ));
   const matchingSessions = sampleSessions.filter((session) => {
     const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
     return partitions.some((partition) => normalizeComparableSourceKey(formatPartitionSource(partition)) === normalizedId);
@@ -51446,7 +51615,7 @@ function renderAdminPage() {
   }
 
   const displaySnapshots = getGallerySnapshotsForDisplay();
-  const approvedSnapshots = displaySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) === "approved");
+  const approvedSnapshots = displaySnapshots.filter(isGallerySnapshotAnalyticsEligible);
   const pendingSnapshots = getAdminReviewPendingSnapshots();
   const sharedProfileSnapshots = approvedSnapshots.filter((snapshot) => snapshot.includeProfileInGallery);
   const overviewGrid = app.querySelector(".admin-overview-grid");
@@ -51605,7 +51774,7 @@ function renderHome() {
   const visibleSessions = getVisibleUserSessions(sessions);
   const hasSessionHistory = visibleSessions.length > 0;
   const activeSessions = sortActiveSessionsNewestFirst(
-    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
   const commandCenterHost = document.querySelector("#home-session-command-center-host");
   const homeAnnouncementAnchor = document.querySelector("#home-dashboard-message-board-anchor");
@@ -53345,6 +53514,9 @@ function renderGallery(targetSnapshotId = "") {
       if (getGallerySnapshotDisplayStatus(snapshot) !== "approved") {
         return false;
       }
+      if (!isGallerySnapshotAnalyticsEligible(snapshot)) {
+        return false;
+      }
       if (appState.galleryCertificationFilter !== "cstp-tested") {
         return true;
       }
@@ -54234,10 +54406,10 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
     visibleSessions.filter(isCompletedValidSessionForAnalytics),
   );
   const completedSessions = sortSessionsNewestFirst(
-    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed"),
+    visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "completed"),
   );
   const activeSessions = sortActiveSessionsNewestFirst(
-    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
 
   const overallTotals = aggregateStatsSessions.reduce((accumulator, session) => {
@@ -54418,11 +54590,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
 
 function buildAdminSeedAgeAnalyticsState(filter = appState.adminSeedAgeAnalyticsFilter) {
   const normalizedFilter = normalizeSeedAgeBucketFilter(filter);
-  const completedSessions = sortSessionsNewestFirst(
-    getAggregateStatsSessions(getSessions()).filter((session) => (
-      normalizeSessionStatus(session?.sessionStatus || "") === "completed"
-    )),
-  );
+  const completedSessions = sortSessionsNewestFirst(getAggregateStatsSessions(getSessions()));
   const entries = buildSeedAgeBucketSessionEntries(completedSessions);
   const bucketRows = buildSeedAgeBucketAnalytics(entries);
   const visibleRows = normalizedFilter === ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER
@@ -56475,9 +56643,9 @@ function renderSessionsList() {
   const analyticsSection = document.querySelector("#session-analytics-section");
 
   const activeSessions = sortActiveSessionsNewestFirst(
-    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
-  const completedSessions = visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) === "completed");
+  const completedSessions = visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "completed");
   mountSharedSessionCommandCenter(activeSessionsSection, {
     activeSessions,
     sessions: visibleSessions,
@@ -56631,7 +56799,7 @@ function renderActiveSessionsPage() {
   const sessions = sortSessionsNewestFirst(getSessions());
   const visibleSessions = getVisibleUserSessions(sessions);
   const activeSessions = sortActiveSessionsNewestFirst(
-    visibleSessions.filter((session) => normalizeSessionStatus(session.sessionStatus) !== "completed"),
+    visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
 
   app.innerHTML = `
@@ -57138,9 +57306,7 @@ function renderGrowNetworkPage() {
   const nowMs = Date.now();
   const currentUserId = String(appState.user?.id || "").trim();
   const currentUserFollowList = currentUserId ? getPublicMemberFollowList(currentUserId, "followers") : null;
-  const approvedPublicSnapshots = getGallerySnapshotsForDisplay().filter((snapshot) => (
-    getGallerySnapshotDisplayStatus(snapshot) === "approved"
-  ));
+  const approvedPublicSnapshots = getApprovedPublicGallerySnapshots();
   const currentUserPublicSnapshots = approvedPublicSnapshots.filter((snapshot) => (
     String(snapshot?.userId || "").trim() === currentUserId
   ));
@@ -57895,18 +58061,7 @@ function validateGrowSessionTimelineOrder(timestamps = {}, options = {}) {
 }
 
 function isCompletedValidSessionForAnalytics(session = null) {
-  if (normalizeSessionStatus(session?.sessionStatus || "") !== "completed") {
-    return false;
-  }
-
-  return validateGrowSessionTimelineOrder({
-    sessionStartedAt: getSessionStartedAtIso(session),
-    soakStartedAt: getSessionSoakStartedAtIso(session),
-    germinationStartedAt: session?.germinationStartedAt || "",
-    completedAt: session?.completedAt || "",
-  }, {
-    requireCompleted: true,
-  }).isValid;
+  return isGrowSessionAnalyticsEligible(session);
 }
 
 function populateSessionTimesForm(form, session = null) {
@@ -60030,7 +60185,8 @@ function applyPlantedColumnDebugStyles(chartHeader, partitionContainer, sessionS
 }
 
 function normalizeSessionStatus(sessionStatus) {
-  return sessionStatus || "unselected";
+  const normalizedStatus = String(sessionStatus || "").trim().toLowerCase();
+  return normalizedStatus || "unselected";
 }
 
 function getSessionStatusProgressKey(control) {

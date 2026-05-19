@@ -713,10 +713,18 @@ function buildValidatorContextFromCandidate(candidate = {}, { adminContext = {} 
       cstp_test_id: session.cstpTestId,
       session_id: session.growSessionId,
       included_in_report: session.includedInReport,
+      analyticsEligible: session.analyticsEligible,
+      analyticsExcludedReason: session.analyticsExcludedReason,
+      frozen_session_summary: session,
     })),
     growSessions: (candidate.frozenSessionSummaries || [])
       .filter((session) => session.growSessionId)
-      .map((session) => ({ id: session.growSessionId })),
+      .map((session) => ({
+        id: session.growSessionId,
+        ...(session.growSessionSummary || {}),
+        analyticsEligible: session.analyticsEligible,
+        analyticsExcludedReason: session.analyticsExcludedReason,
+      })),
     adminEvent: candidate.auditLinkCandidates?.[0]
       ? { id: candidate.auditLinkCandidates[0].cstpAdminEventId }
       : undefined,

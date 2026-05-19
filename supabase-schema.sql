@@ -266,6 +266,9 @@ create table if not exists public.grow_gallery_snapshots (
   is_published boolean not null default true,
   include_notes boolean not null default false,
   is_mock boolean not null default false,
+  analytics_excluded boolean not null default false,
+  analytics_excluded_reason text not null default '',
+  analytics_excluded_at timestamptz,
   published_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -790,6 +793,15 @@ alter table public.grow_gallery_snapshots
 alter table public.grow_gallery_snapshots
   add column if not exists image_hash text;
 
+alter table public.grow_gallery_snapshots
+  add column if not exists analytics_excluded boolean not null default false;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists analytics_excluded_reason text not null default '';
+
+alter table public.grow_gallery_snapshots
+  add column if not exists analytics_excluded_at timestamptz;
+
 update public.grow_gallery_snapshots
 set status = case
   when coalesce(is_published, false) then 'approved'
@@ -1005,6 +1017,203 @@ revoke all on function public.get_public_member_follow_members(uuid, text) from 
 grant execute on function public.get_public_member_follow_members(uuid, text) to anon;
 grant execute on function public.get_public_member_follow_members(uuid, text) to authenticated;
 
+create or replace function public.get_grow_session_analytics_exclusion_reason(p_session_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case
+    when grow_sessions.id is null then 'missing_session'
+    when coalesce(grow_sessions.is_mock, false) = true then 'mock_session'
+    when coalesce(grow_sessions.is_deleted, false) = true
+      or lower(coalesce(grow_sessions.visibility_status, '')) in ('deleted', 'archived') then 'deleted_session'
+    when lower(coalesce(grow_sessions.session_status, '')) in ('abandoned', 'failed', 'canceled', 'cancelled') then 'abandoned_session'
+    when lower(coalesce(grow_sessions.session_status, '')) <> 'completed' then 'incomplete_session'
+    when grow_sessions.completed_at is null then 'missing_completed_at'
+    when grow_sessions.session_started_at is not null
+      and grow_sessions.soak_started_at is not null
+      and grow_sessions.soak_started_at < grow_sessions.session_started_at then 'invalid_timeline'
+    when grow_sessions.soak_started_at is not null
+      and grow_sessions.germination_started_at is not null
+      and grow_sessions.soak_started_at > grow_sessions.germination_started_at then 'invalid_timeline'
+    when grow_sessions.germination_started_at is not null
+      and grow_sessions.completed_at is not null
+      and grow_sessions.germination_started_at > grow_sessions.completed_at then 'invalid_timeline'
+    when grow_sessions.session_started_at is not null
+      and grow_sessions.completed_at is not null
+      and grow_sessions.completed_at < grow_sessions.session_started_at then 'invalid_timeline'
+    else ''
+  end
+  from public.grow_sessions
+  where grow_sessions.id = p_session_id;
+$$;
+
+create or replace function public.is_grow_session_analytics_eligible(p_session_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(public.get_grow_session_analytics_exclusion_reason(p_session_id), 'missing_session') = '';
+$$;
+
+revoke all on function public.get_grow_session_analytics_exclusion_reason(uuid) from public;
+revoke all on function public.is_grow_session_analytics_eligible(uuid) from public;
+grant execute on function public.get_grow_session_analytics_exclusion_reason(uuid) to authenticated;
+grant execute on function public.is_grow_session_analytics_eligible(uuid) to authenticated;
+
+create or replace function public.sync_gallery_snapshot_analytics_exclusion_for_session(p_session_id uuid)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  exclusion_reason text := coalesce(public.get_grow_session_analytics_exclusion_reason(p_session_id), 'missing_session');
+  affected_count integer := 0;
+begin
+  if p_session_id is null then
+    return 0;
+  end if;
+
+  update public.grow_gallery_snapshots
+  set
+    analytics_excluded = exclusion_reason <> '',
+    analytics_excluded_reason = exclusion_reason,
+    analytics_excluded_at = case when exclusion_reason <> '' then timezone('utc', now()) else null end,
+    updated_at = timezone('utc', now())
+  where session_id = p_session_id
+    and coalesce(is_mock, false) = false;
+
+  get diagnostics affected_count = row_count;
+
+  if exclusion_reason <> '' then
+    delete from public.community_activity
+    where session_id = p_session_id::text;
+
+    if to_regclass('public.cstp_report_sessions') is not null then
+      execute
+        'update public.cstp_report_sessions
+         set
+           included_in_report = false,
+           frozen_session_summary = coalesce(frozen_session_summary, ''{}''::jsonb)
+             || jsonb_build_object(
+               ''analyticsEligible'', false,
+               ''analyticsExcludedReason'', $2,
+               ''includedInReportRequested'', true
+             )
+         where grow_session_id = $1
+           and included_in_report = true'
+      using p_session_id, exclusion_reason;
+    end if;
+  end if;
+
+  return coalesce(affected_count, 0);
+end;
+$$;
+
+revoke all on function public.sync_gallery_snapshot_analytics_exclusion_for_session(uuid) from public;
+grant execute on function public.sync_gallery_snapshot_analytics_exclusion_for_session(uuid) to authenticated;
+
+create or replace function public.enforce_cstp_report_session_analytics_eligibility()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  exclusion_reason text := '';
+begin
+  if new.grow_session_id is null then
+    return new;
+  end if;
+
+  exclusion_reason := coalesce(public.get_grow_session_analytics_exclusion_reason(new.grow_session_id), 'missing_session');
+  new.frozen_session_summary = coalesce(new.frozen_session_summary, '{}'::jsonb)
+    || jsonb_build_object(
+      'analyticsEligible', exclusion_reason = '',
+      'analyticsExcludedReason', exclusion_reason
+    );
+
+  if coalesce(new.included_in_report, false) = true
+    and exclusion_reason <> '' then
+    new.included_in_report := false;
+    new.frozen_session_summary = coalesce(new.frozen_session_summary, '{}'::jsonb)
+      || jsonb_build_object('includedInReportRequested', true);
+  end if;
+
+  return new;
+end;
+$$;
+
+do $$
+begin
+  if to_regclass('public.cstp_report_sessions') is not null then
+    execute 'drop trigger if exists cstp_report_sessions_analytics_eligibility on public.cstp_report_sessions';
+    execute 'create trigger cstp_report_sessions_analytics_eligibility
+      before insert or update of grow_session_id, included_in_report
+      on public.cstp_report_sessions
+      for each row
+      execute function public.enforce_cstp_report_session_analytics_eligibility()';
+  end if;
+end $$;
+
+create or replace function public.enforce_grow_session_analytics_eligibility()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.sync_gallery_snapshot_analytics_exclusion_for_session(new.id);
+  return new;
+end;
+$$;
+
+drop trigger if exists grow_sessions_analytics_eligibility_sync on public.grow_sessions;
+create trigger grow_sessions_analytics_eligibility_sync
+after insert or update of session_status, completed_at, session_started_at, soak_started_at, germination_started_at, is_mock, is_deleted, visibility_status, deleted_at
+on public.grow_sessions
+for each row
+execute function public.enforce_grow_session_analytics_eligibility();
+
+create or replace function public.enforce_gallery_snapshot_analytics_eligibility()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  exclusion_reason text := '';
+begin
+  if coalesce(new.is_mock, false) = true then
+    new.analytics_excluded := true;
+    new.analytics_excluded_reason := 'mock_snapshot';
+    new.analytics_excluded_at := coalesce(new.analytics_excluded_at, timezone('utc', now()));
+    return new;
+  end if;
+
+  if new.session_id is not null then
+    exclusion_reason := coalesce(public.get_grow_session_analytics_exclusion_reason(new.session_id), 'missing_session');
+    new.analytics_excluded := exclusion_reason <> '';
+    new.analytics_excluded_reason := exclusion_reason;
+    new.analytics_excluded_at := case when exclusion_reason <> '' then coalesce(new.analytics_excluded_at, timezone('utc', now())) else null end;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists grow_gallery_snapshots_analytics_eligibility on public.grow_gallery_snapshots;
+create trigger grow_gallery_snapshots_analytics_eligibility
+before insert or update of session_id, is_mock, status, is_published
+on public.grow_gallery_snapshots
+for each row
+execute function public.enforce_gallery_snapshot_analytics_eligibility();
+
 create or replace function public.record_community_activity(
   activity_user_id uuid,
   activity_type text,
@@ -1022,8 +1231,10 @@ set search_path = public
 as $$
 declare
   normalized_activity_type text := lower(coalesce(activity_type, ''));
-  normalized_session_id text := coalesce(activity_session_id, '');
-  normalized_snapshot_id text := coalesce(activity_snapshot_id, '');
+  normalized_session_id text := btrim(coalesce(activity_session_id, ''));
+  normalized_snapshot_id text := btrim(coalesce(activity_snapshot_id, ''));
+  normalized_session_uuid uuid;
+  normalized_snapshot_uuid uuid;
   normalized_visibility text := case
     when lower(coalesce(activity_visibility, 'public')) = 'public' then 'public'
     else 'private'
@@ -1031,6 +1242,29 @@ declare
   resulting_id uuid;
 begin
   if activity_user_id is null or normalized_activity_type = '' then
+    return null;
+  end if;
+
+  if normalized_session_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+    normalized_session_uuid := normalized_session_id::uuid;
+  end if;
+
+  if normalized_snapshot_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+    normalized_snapshot_uuid := normalized_snapshot_id::uuid;
+  end if;
+
+  if normalized_session_uuid is not null
+    and not public.is_grow_session_analytics_eligible(normalized_session_uuid) then
+    return null;
+  end if;
+
+  if normalized_snapshot_uuid is not null
+    and exists (
+      select 1
+      from public.grow_gallery_snapshots
+      where grow_gallery_snapshots.id = normalized_snapshot_uuid
+        and coalesce(grow_gallery_snapshots.analytics_excluded, false) = true
+    ) then
     return null;
   end if;
 
@@ -1092,6 +1326,54 @@ $$;
 
 revoke all on function public.clear_community_activity_for_snapshot(text) from public;
 grant execute on function public.clear_community_activity_for_snapshot(text) to authenticated;
+
+create or replace function public.clear_community_activity_for_session(activity_session_id text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_session_id text := btrim(coalesce(activity_session_id, ''));
+  normalized_session_uuid uuid;
+  deleted_count integer := 0;
+begin
+  if normalized_session_id = '' then
+    return 0;
+  end if;
+
+  if normalized_session_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' then
+    normalized_session_uuid := normalized_session_id::uuid;
+  end if;
+
+  if normalized_session_uuid is not null
+    and not (
+      exists (
+        select 1
+        from public.grow_sessions
+        where grow_sessions.id = normalized_session_uuid
+          and grow_sessions.user_id = auth.uid()
+      )
+      or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+      or exists (
+        select 1
+        from public.admin_users
+        where admin_users.user_id = auth.uid()
+      )
+    ) then
+    raise exception 'You can only clear activity for your own grow sessions.' using errcode = '42501';
+  end if;
+
+  delete from public.community_activity
+  where session_id = normalized_session_id;
+
+  get diagnostics deleted_count = row_count;
+  return coalesce(deleted_count, 0);
+end;
+$$;
+
+revoke all on function public.clear_community_activity_for_session(text) from public;
+grant execute on function public.clear_community_activity_for_session(text) to authenticated;
 
 create or replace function public.backfill_community_activity_snapshot_posts()
 returns integer
@@ -1843,7 +2125,7 @@ create policy "Anyone can view published gallery snapshots"
 on public.grow_gallery_snapshots
 for select
 using (
-  status = 'approved'
+  (status = 'approved' and coalesce(analytics_excluded, false) = false)
   or auth.uid() = user_id
   or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
   or exists (
@@ -1909,7 +2191,7 @@ using (
     from public.grow_gallery_snapshots
     where grow_gallery_snapshots.id = snapshot_id
       and (
-        grow_gallery_snapshots.status = 'approved'
+        (grow_gallery_snapshots.status = 'approved' and coalesce(grow_gallery_snapshots.analytics_excluded, false) = false)
         or auth.uid() = grow_gallery_snapshots.user_id
         or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
         or exists (
@@ -1933,7 +2215,7 @@ with check (
     from public.grow_gallery_snapshots
     where grow_gallery_snapshots.id = snapshot_id
       and (
-        grow_gallery_snapshots.status = 'approved'
+        (grow_gallery_snapshots.status = 'approved' and coalesce(grow_gallery_snapshots.analytics_excluded, false) = false)
         or auth.uid() = grow_gallery_snapshots.user_id
         or lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
         or exists (
@@ -2022,6 +2304,12 @@ comment on column public.grow_sessions.is_mock is
 comment on column public.grow_gallery_snapshots.is_mock is
   'True only for seeded/dev/demo Community Grow snapshots. Real user snapshots default to false and are preserved by demo resets.';
 
+comment on column public.grow_sessions.session_status is
+  'Grow session lifecycle input. Analytics state is normalized as draft, active, completed, abandoned, or deleted; only completed eligible sessions count in production metrics.';
+
+comment on column public.grow_gallery_snapshots.analytics_excluded is
+  'True when the linked grow session is mock, incomplete, abandoned, deleted, or has an invalid timeline. Excluded snapshots must not count in Community Grow analytics or leaderboards.';
+
 comment on column public.community_activity.is_mock is
   'True only for seeded/dev/demo Community Grow activity rows. Real user activity defaults to false and is preserved by demo resets.';
 
@@ -2034,11 +2322,55 @@ create index if not exists grow_sessions_is_mock_idx
 create index if not exists grow_gallery_snapshots_is_mock_idx
   on public.grow_gallery_snapshots (is_mock, created_at desc);
 
+create index if not exists grow_gallery_snapshots_analytics_idx
+  on public.grow_gallery_snapshots (analytics_excluded, status, is_published, published_at desc);
+
 create index if not exists community_activity_is_mock_idx
   on public.community_activity (is_mock, created_at desc);
 
 create index if not exists sources_is_mock_idx
   on public.sources (is_mock, created_at desc);
+
+update public.grow_gallery_snapshots
+set
+  analytics_excluded = true,
+  analytics_excluded_reason = 'mock_snapshot',
+  analytics_excluded_at = coalesce(analytics_excluded_at, timezone('utc', now()))
+where coalesce(is_mock, false) = true;
+
+update public.grow_gallery_snapshots
+set
+  analytics_excluded = coalesce(public.get_grow_session_analytics_exclusion_reason(session_id), 'missing_session') <> '',
+  analytics_excluded_reason = coalesce(public.get_grow_session_analytics_exclusion_reason(session_id), 'missing_session'),
+  analytics_excluded_at = case
+    when coalesce(public.get_grow_session_analytics_exclusion_reason(session_id), 'missing_session') <> ''
+      then coalesce(analytics_excluded_at, timezone('utc', now()))
+    else null
+  end
+where session_id is not null
+  and coalesce(is_mock, false) = false;
+
+delete from public.community_activity
+where session_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+  and not public.is_grow_session_analytics_eligible(session_id::uuid);
+
+do $$
+begin
+  if to_regclass('public.cstp_report_sessions') is not null then
+    execute
+      'update public.cstp_report_sessions
+       set
+         included_in_report = false,
+         frozen_session_summary = coalesce(frozen_session_summary, ''{}''::jsonb)
+           || jsonb_build_object(
+             ''analyticsEligible'', false,
+             ''analyticsExcludedReason'', coalesce(public.get_grow_session_analytics_exclusion_reason(grow_session_id), ''missing_session''),
+             ''includedInReportRequested'', true
+           )
+       where included_in_report = true
+         and not public.is_grow_session_analytics_eligible(grow_session_id)';
+  end if;
+end $$;
 
 create or replace function public.cleanup_mock_grow_data(dry_run boolean default true)
 returns table (

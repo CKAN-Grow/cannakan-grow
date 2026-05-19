@@ -179,6 +179,16 @@ function assembleFrozenSessionSummaries(input = {}) {
       "growSessionId",
     ]);
     const growSession = growSessionById.get(growSessionId) || {};
+    const relationshipArchivedAtSnapshot = getBooleanValue(link, [
+      "archived",
+      "relationship_archived_at_snapshot",
+      "relationshipArchivedAtSnapshot",
+    ], false);
+    const requestedInclusion = getBooleanValue(link, [
+      "included_in_report",
+      "includedInReport",
+    ], true);
+    const analyticsEligibility = getGrowSessionAnalyticsEligibility(growSession);
 
     return pruneUndefined({
       index,
@@ -186,19 +196,15 @@ function assembleFrozenSessionSummaries(input = {}) {
       cstpTestId: getIdValue(link, ["cstp_test_id", "cstpTestId", "testId"]),
       growSessionId,
       kanLabel: normalizeNullableText(getFirstValue(link, ["kan_label", "kanLabel"])),
-      includedInReport: getBooleanValue(link, [
-        "included_in_report",
-        "includedInReport",
-      ], true),
-      relationshipArchivedAtSnapshot: getBooleanValue(link, [
-        "archived",
-        "relationship_archived_at_snapshot",
-        "relationshipArchivedAtSnapshot",
-      ], false),
+      includedInReport: requestedInclusion && analyticsEligibility.eligible,
+      includedInReportRequested: requestedInclusion,
+      relationshipArchivedAtSnapshot,
+      analyticsEligible: analyticsEligibility.eligible,
+      analyticsExcludedReason: analyticsEligibility.reason,
       relationshipCreatedAt: normalizeSnapshotTimestamp(
         getFirstValue(link, ["created_at", "createdAt"]),
       ),
-      growSessionSummary: assembleGrowSessionSummary(growSession),
+      growSessionSummary: assembleGrowSessionSummary(growSession, analyticsEligibility),
       missingGrowSession: !hasIdentifier(growSession),
       internalOnly: true,
       mutatesGrowSession: false,
@@ -495,6 +501,9 @@ function buildDerivedSessionMetrics({
   const missingGrowSessions = sessionSummaries.filter((session) => (
     session.missingGrowSession
   )).length;
+  const analyticsExcludedSessions = sessionSummaries.filter((session) => (
+    session.includedInReportRequested && !session.analyticsEligible
+  )).length;
 
   return [
     buildCountMetric({
@@ -518,6 +527,12 @@ function buildDerivedSessionMetrics({
     buildCountMetric({
       key: "grow_sessions_missing",
       value: missingGrowSessions,
+      calculatedAt,
+      calculationVersion,
+    }),
+    buildCountMetric({
+      key: "grow_sessions_analytics_excluded",
+      value: analyticsExcludedSessions,
       calculatedAt,
       calculationVersion,
     }),
@@ -664,22 +679,127 @@ function assembleSourceSummary(source) {
   }));
 }
 
-function assembleGrowSessionSummary(growSession) {
+function assembleGrowSessionSummary(growSession, analyticsEligibility = getGrowSessionAnalyticsEligibility(growSession)) {
   return deepFreeze(pruneUndefined({
     id: getIdValue(growSession, ["id", "sessionId", "growSessionId"]),
     sourceId: getIdValue(growSession, ["source_id", "sourceId"]),
-    status: normalizeNullableText(getFirstValue(growSession, ["status"])),
+    status: normalizeNullableText(getFirstValue(growSession, ["session_status", "sessionStatus", "status"])),
     stage: normalizeNullableText(getFirstValue(growSession, ["stage", "currentStage"])),
     startedAt: normalizeSnapshotTimestamp(
-      getFirstValue(growSession, ["started_at", "startedAt", "created_at", "createdAt"]),
+      getFirstValue(growSession, ["session_started_at", "sessionStartedAt", "started_at", "startedAt", "created_at", "createdAt"]),
+    ),
+    soakStartedAt: normalizeSnapshotTimestamp(
+      getFirstValue(growSession, ["soak_started_at", "soakStartedAt", "timer_start_at", "timerStartAt"]),
+    ),
+    germinationStartedAt: normalizeSnapshotTimestamp(
+      getFirstValue(growSession, ["germination_started_at", "germinationStartedAt"]),
     ),
     completedAt: normalizeSnapshotTimestamp(
       getFirstValue(growSession, ["completed_at", "completedAt"]),
     ),
+    visibilityStatus: normalizeNullableText(getFirstValue(growSession, ["visibility_status", "visibilityStatus"])),
+    isMock: getBooleanValue(growSession, ["is_mock", "isMock"], false),
+    isDeleted: getBooleanValue(growSession, ["is_deleted", "isDeleted"], false),
+    analyticsEligible: analyticsEligibility.eligible,
+    analyticsExcludedReason: analyticsEligibility.reason,
     updatedAt: normalizeSnapshotTimestamp(
       getFirstValue(growSession, ["updated_at", "updatedAt"]),
     ),
   }));
+}
+
+function getGrowSessionAnalyticsEligibility(growSession = {}) {
+  if (!hasIdentifier(growSession)) {
+    return { eligible: false, reason: "missing_session" };
+  }
+  if (getBooleanValue(growSession, ["is_mock", "isMock"], false)) {
+    return { eligible: false, reason: "mock_session" };
+  }
+  if (
+    getBooleanValue(growSession, ["is_deleted", "isDeleted"], false)
+    || ["deleted", "archived"].includes(normalizeStatusText(
+      getFirstValue(growSession, ["visibility_status", "visibilityStatus"]),
+    ))
+  ) {
+    return { eligible: false, reason: "deleted_session" };
+  }
+
+  const status = normalizeStatusText(getFirstValue(growSession, [
+    "session_status",
+    "sessionStatus",
+    "status",
+  ]));
+  if (["abandoned", "failed", "canceled", "cancelled"].includes(status)) {
+    return { eligible: false, reason: "abandoned_session" };
+  }
+  if (!["completed", "complete"].includes(status)) {
+    return { eligible: false, reason: "incomplete_session" };
+  }
+
+  const completedAt = getFirstValue(growSession, ["completed_at", "completedAt"]);
+  if (!hasValue(completedAt)) {
+    return { eligible: false, reason: "missing_completed_at" };
+  }
+
+  const sessionStartedAt = getFirstValue(growSession, [
+    "session_started_at",
+    "sessionStartedAt",
+    "started_at",
+    "startedAt",
+    "created_at",
+    "createdAt",
+  ]);
+  const soakStartedAt = getFirstValue(growSession, [
+    "soak_started_at",
+    "soakStartedAt",
+    "timer_start_at",
+    "timerStartAt",
+  ]);
+  const germinationStartedAt = getFirstValue(growSession, [
+    "germination_started_at",
+    "germinationStartedAt",
+  ]);
+  if (!isTimelineOrderValid({
+    sessionStartedAt,
+    soakStartedAt,
+    germinationStartedAt,
+    completedAt,
+  })) {
+    return { eligible: false, reason: "invalid_timeline" };
+  }
+
+  return { eligible: true, reason: "" };
+}
+
+function isTimelineOrderValid({
+  sessionStartedAt,
+  soakStartedAt,
+  germinationStartedAt,
+  completedAt,
+}) {
+  const sessionStartedMs = parseOptionalTimestamp(sessionStartedAt);
+  const soakStartedMs = parseOptionalTimestamp(soakStartedAt);
+  const germinationStartedMs = parseOptionalTimestamp(germinationStartedAt);
+  const completedMs = parseOptionalTimestamp(completedAt);
+
+  return !(
+    sessionStartedMs !== null && soakStartedMs !== null && soakStartedMs < sessionStartedMs
+    || soakStartedMs !== null && germinationStartedMs !== null && soakStartedMs > germinationStartedMs
+    || germinationStartedMs !== null && completedMs !== null && germinationStartedMs > completedMs
+    || sessionStartedMs !== null && completedMs !== null && completedMs < sessionStartedMs
+  );
+}
+
+function parseOptionalTimestamp(value) {
+  if (!hasValue(value)) {
+    return null;
+  }
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(String(value));
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function normalizeStatusText(value) {
+  return normalizeNullableText(value).toLowerCase();
 }
 
 function getNextSnapshotVersion(existingSnapshots = []) {
@@ -846,6 +966,7 @@ module.exports = {
   assembleFrozenSessionSummaries,
   assembleAuditLinkCandidates,
   assembleOperationalReferenceMap,
+  getGrowSessionAnalyticsEligibility,
   normalizeSnapshotTimestamp,
   sortSnapshotSessionsStable,
 };

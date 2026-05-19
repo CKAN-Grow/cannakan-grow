@@ -415,6 +415,10 @@ function validateRequiredOperationalReferences(context = {}, options = {}) {
   const growSessionIds = new Set(growSessions.map((session) => (
     getIdValue(session, ["id", "sessionId", "growSessionId"])
   )).filter(hasValue));
+  const growSessionById = new Map(growSessions.map((session) => [
+    getIdValue(session, ["id", "sessionId", "growSessionId"]),
+    session,
+  ]).filter(([id]) => hasValue(id)));
 
   sessionLinks.forEach((link, index) => {
     const included = getBooleanValue(link, [
@@ -449,6 +453,29 @@ function validateRequiredOperationalReferences(context = {}, options = {}) {
         message: "Included CSTP test session link must have a supplied Grow session record.",
         metadata: { index, sessionId },
       }));
+      return;
+    }
+
+    if (included) {
+      const linkEligibility = getGrowSessionAnalyticsEligibility(link);
+      const growSessionEligibility = linkEligibility.eligible
+        ? linkEligibility
+        : getGrowSessionAnalyticsEligibility(growSessionById.get(sessionId));
+      if (!growSessionEligibility.eligible) {
+        issues.push(createValidationIssue({
+          code: "CSTP_INCLUDED_GROW_SESSION_ANALYTICS_INELIGIBLE",
+          message: "Included CSTP Grow session must be completed, real, not deleted, and timeline-valid before it can affect report calculations.",
+          severity: VALIDATION_SEVERITIES.publicationBlocking,
+          entity: "grow_session",
+          table: CSTP_REPORT_TABLES.growSessions,
+          field: "session_status",
+          metadata: {
+            index,
+            sessionId,
+            reason: growSessionEligibility.reason,
+          },
+        }));
+      }
     }
   });
 
@@ -2363,6 +2390,111 @@ function getNumberValue(record, keys) {
 function getBooleanValue(record, keys, fallback = false) {
   const value = getFirstValue(record, keys);
   return value === undefined ? fallback : value === true;
+}
+
+function getGrowSessionAnalyticsEligibility(growSession = {}) {
+  const frozenSummary = isPlainObject(growSession?.frozen_session_summary)
+    ? growSession.frozen_session_summary
+    : {};
+  const nestedSummary = isPlainObject(growSession?.growSessionSummary)
+    ? growSession.growSessionSummary
+    : {};
+  if (
+    getBooleanValue(growSession, ["analyticsEligible"], false)
+    || getBooleanValue(frozenSummary, ["analyticsEligible"], false)
+    || getBooleanValue(nestedSummary, ["analyticsEligible"], false)
+  ) {
+    return { eligible: true, reason: "" };
+  }
+
+  if (!hasIdentifier(growSession)) {
+    return { eligible: false, reason: "missing_session" };
+  }
+  if (getBooleanValue(growSession, ["is_mock", "isMock"], false)) {
+    return { eligible: false, reason: "mock_session" };
+  }
+  if (
+    getBooleanValue(growSession, ["is_deleted", "isDeleted"], false)
+    || ["deleted", "archived"].includes(normalizeStatusText(
+      getFirstValue(growSession, ["visibility_status", "visibilityStatus"]),
+    ))
+  ) {
+    return { eligible: false, reason: "deleted_session" };
+  }
+
+  const status = normalizeStatusText(getFirstValue(growSession, [
+    "session_status",
+    "sessionStatus",
+    "status",
+  ]));
+  if (["abandoned", "failed", "canceled", "cancelled"].includes(status)) {
+    return { eligible: false, reason: "abandoned_session" };
+  }
+  if (!["completed", "complete"].includes(status)) {
+    return { eligible: false, reason: "incomplete_session" };
+  }
+
+  const completedAt = getFirstValue(growSession, ["completed_at", "completedAt"]);
+  if (!hasValue(completedAt)) {
+    return { eligible: false, reason: "missing_completed_at" };
+  }
+
+  if (!isTimelineOrderValid({
+    sessionStartedAt: getFirstValue(growSession, [
+      "session_started_at",
+      "sessionStartedAt",
+      "started_at",
+      "startedAt",
+      "created_at",
+      "createdAt",
+    ]),
+    soakStartedAt: getFirstValue(growSession, [
+      "soak_started_at",
+      "soakStartedAt",
+      "timer_start_at",
+      "timerStartAt",
+    ]),
+    germinationStartedAt: getFirstValue(growSession, [
+      "germination_started_at",
+      "germinationStartedAt",
+    ]),
+    completedAt,
+  })) {
+    return { eligible: false, reason: "invalid_timeline" };
+  }
+
+  return { eligible: true, reason: "" };
+}
+
+function isTimelineOrderValid({
+  sessionStartedAt,
+  soakStartedAt,
+  germinationStartedAt,
+  completedAt,
+}) {
+  const sessionStartedMs = parseOptionalTimestamp(sessionStartedAt);
+  const soakStartedMs = parseOptionalTimestamp(soakStartedAt);
+  const germinationStartedMs = parseOptionalTimestamp(germinationStartedAt);
+  const completedMs = parseOptionalTimestamp(completedAt);
+
+  return !(
+    sessionStartedMs !== null && soakStartedMs !== null && soakStartedMs < sessionStartedMs
+    || soakStartedMs !== null && germinationStartedMs !== null && soakStartedMs > germinationStartedMs
+    || germinationStartedMs !== null && completedMs !== null && germinationStartedMs > completedMs
+    || sessionStartedMs !== null && completedMs !== null && completedMs < sessionStartedMs
+  );
+}
+
+function parseOptionalTimestamp(value) {
+  if (!hasValue(value)) {
+    return null;
+  }
+  const timestamp = value instanceof Date ? value.getTime() : Date.parse(String(value));
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function normalizeStatusText(value) {
+  return normalizeText(value).toLowerCase();
 }
 
 function getFirstValue(record, keys) {

@@ -171,7 +171,7 @@ async function main() {
   assert.equal(plan.summary.publicVisibility, false);
   assert.equal(plan.summary.recordCounts.reports, 1);
   assert.equal(plan.summary.recordCounts.snapshots, 1);
-  assert.equal(plan.summary.recordCounts.metrics, 5);
+  assert.equal(plan.summary.recordCounts.metrics, 6);
   assert.equal(plan.summary.recordCounts.sessions, 2);
   assert.equal(plan.summary.recordCounts.auditLinks, 1);
   assert.equal(plan.steps[0].table, "cstp_reports");
@@ -195,7 +195,7 @@ async function main() {
   assert.deepEqual(result.insertedRowCounts, {
     reports: 1,
     snapshots: 1,
-    metrics: 5,
+    metrics: 6,
     sessions: 2,
     auditLinks: 1,
   });

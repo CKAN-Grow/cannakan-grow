@@ -60,6 +60,43 @@ function validateGrowSessionTimelineOrder(timestamps = {}) {
   return true;
 }
 
+function normalizeSessionStatus(sessionStatus) {
+  const normalizedStatus = String(sessionStatus || "").trim().toLowerCase();
+  return normalizedStatus || "unselected";
+}
+
+function normalizeGrowSessionLifecycleState(session = null) {
+  if (session?.isDeleted || session?.is_deleted || session?.visibilityStatus === "deleted" || session?.visibility_status === "deleted") {
+    return "deleted";
+  }
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  if (["abandoned", "failed", "canceled", "cancelled"].includes(normalizedStatus)) {
+    return "abandoned";
+  }
+  if (normalizedStatus === "completed") {
+    return "completed";
+  }
+  if (["soaking", "germinating", "active"].includes(normalizedStatus)) {
+    return "active";
+  }
+  return "draft";
+}
+
+function isGrowSessionAnalyticsEligible(session = {}) {
+  if (session?.isMock || session?.is_mock) {
+    return false;
+  }
+  if (normalizeGrowSessionLifecycleState(session) !== "completed") {
+    return false;
+  }
+  return validateGrowSessionTimelineOrder({
+    sessionStartedAt: session.sessionStartedAt,
+    soakStartedAt: session.soakStartedAt,
+    germinationStartedAt: session.germinationStartedAt,
+    completedAt: session.completedAt,
+  });
+}
+
 function mapSessionToRecord(session, userId, options = {}) {
   const includeOwnerTimeColumns = options.includeOwnerTimeColumns !== false;
   const record = {
@@ -174,5 +211,21 @@ assert.equal(automaticSession.sessionStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.soakStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.germinationStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.completedAt, "2026-05-19T18:25:00.000Z");
+
+const completedAnalyticsSession = {
+  ...session,
+  sessionStatus: "completed",
+  germinationStartedAt: "2026-05-19T16:10:00.000Z",
+  completedAt: "2026-05-19T17:00:00.000Z",
+};
+assert.equal(isGrowSessionAnalyticsEligible(completedAnalyticsSession), true);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "germinating" }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "abandoned" }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isMock: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({
+  ...completedAnalyticsSession,
+  germinationStartedAt: "2026-05-19T18:00:00.000Z",
+}), false);
 
 console.log("Grow session save regression check passed.");

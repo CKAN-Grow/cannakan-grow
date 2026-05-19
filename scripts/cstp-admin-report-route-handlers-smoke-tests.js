@@ -610,8 +610,11 @@ function createLoadedWorkflowData(overrides = {}) {
     growSessions: [
       {
         id: GROW_SESSION_ID,
-        status: "completed",
-        started_at: "2026-05-10T14:00:00.000Z",
+        session_status: "completed",
+        session_started_at: "2026-05-10T14:00:00.000Z",
+        soak_started_at: "2026-05-10T14:00:00.000Z",
+        germination_started_at: "2026-05-11T14:00:00.000Z",
+        completed_at: "2026-05-12T14:00:00.000Z",
       },
     ],
     source: {
@@ -841,7 +844,11 @@ function createOperationalLoaderFetch() {
       return createFetchResponse(200, [
         {
           id: GROW_SESSION_ID,
-          status: "completed",
+          session_status: "completed",
+          session_started_at: "2026-05-10T14:00:00.000Z",
+          soak_started_at: "2026-05-10T14:00:00.000Z",
+          germination_started_at: "2026-05-11T14:00:00.000Z",
+          completed_at: "2026-05-12T14:00:00.000Z",
         },
       ]);
     }

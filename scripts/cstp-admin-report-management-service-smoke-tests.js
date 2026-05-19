@@ -101,7 +101,7 @@ async function assertAdminWorkflowWrappers() {
   assert.deepEqual(persisted.persistenceSummary.insertedRowCounts, {
     reports: 1,
     snapshots: 1,
-    metrics: 5,
+    metrics: 6,
     sessions: 1,
     auditLinks: 1,
   });
@@ -350,6 +350,7 @@ function createOperationalInput(overrides = {}) {
         id: GROW_SESSION_ID,
         status: "completed",
         started_at: "2026-05-10T14:00:00.000Z",
+        completed_at: "2026-05-12T14:00:00.000Z",
       },
     ],
     source: {

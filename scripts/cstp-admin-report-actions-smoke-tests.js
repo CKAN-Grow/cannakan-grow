@@ -297,6 +297,7 @@ function createOperationalInput(overrides = {}) {
         id: GROW_SESSION_ID,
         status: "completed",
         started_at: "2026-05-10T14:00:00.000Z",
+        completed_at: "2026-05-12T14:00:00.000Z",
       },
     ],
     source: {

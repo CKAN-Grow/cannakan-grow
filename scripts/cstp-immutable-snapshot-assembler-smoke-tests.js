@@ -52,6 +52,7 @@ function run() {
     metrics.map((metric) => metric.metricKey),
     [
       "custom_observed_rate",
+      "grow_sessions_analytics_excluded",
       "grow_sessions_missing",
       "session_links_archived",
       "session_links_included",
@@ -148,8 +149,12 @@ function buildAssemblyInput() {
     growSessions: [
       {
         id: GROW_SESSION_A_ID,
-        status: "complete",
+        session_status: "completed",
         stage: "complete",
+        session_started_at: "2026-05-03T12:00:00.000Z",
+        soak_started_at: "2026-05-03T12:00:00.000Z",
+        germination_started_at: "2026-05-04T12:00:00.000Z",
+        completed_at: "2026-05-10T12:00:00.000Z",
         started_at: "2026-05-03T12:00:00.000Z",
       },
       {
