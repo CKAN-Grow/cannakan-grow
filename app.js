@@ -1404,6 +1404,7 @@ const appState = {
   founderSessionCleanupMessage: "",
   founderSessionCleanupError: "",
   founderSessionCleanupLastResult: null,
+  sessionTimeColumnsUnavailable: false,
   siteVisitorAnalyticsRows: [],
   siteVisitorAnalyticsLoaded: false,
   siteVisitorAnalyticsLoadedFilter: "",
@@ -1467,6 +1468,7 @@ const appState = {
     saveFn: null,
     promptOpen: false,
     ignoreNextHashChange: false,
+    lastSaveError: null,
   },
 };
 let sessionTimerInterval = null;
@@ -11829,7 +11831,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
   }
 }
 
-async function loadUserSessions() {
+async function loadUserSessions(options = {}) {
   if (!appState.supabase || !appState.user) {
     return [];
   }
@@ -11842,10 +11844,21 @@ async function loadUserSessions() {
 
   if (error) {
     console.error("Failed to load sessions", error);
-    return [];
+    return options.fallbackToCurrent ? getSessions() : [];
   }
 
   return data.map(mapRowToSession);
+}
+
+async function refreshUserSessionsAfterSave(reason = "session-save") {
+  if (!appState.supabase || !appState.user) {
+    return getSessions();
+  }
+
+  const sessions = await loadUserSessions({ fallbackToCurrent: true });
+  saveSessions(sessions);
+  queueDueGrowReminderEvaluation(reason);
+  return sessions;
 }
 
 function getFounderSessionCleanupCandidateIds() {
@@ -16121,14 +16134,31 @@ async function createCloudSession(session) {
   }
 
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
-  const record = mapSessionToRecord(session, authUser.id);
-  const { data, error } = await appState.supabase
+  const record = mapSessionToRecord(session, authUser.id, {
+    includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+  });
+  let { data, error } = await appState.supabase
     .from("grow_sessions")
     .insert(record)
     .select()
     .single();
 
+  if (error && isSessionTimeColumnSchemaError(error) && !appState.sessionTimeColumnsUnavailable) {
+    appState.sessionTimeColumnsUnavailable = true;
+    console.warn("Session time columns are not available yet; retrying grow session insert with legacy timestamp payload.", error);
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .insert(mapSessionToRecord(session, authUser.id, { includeOwnerTimeColumns: false }))
+      .select()
+      .single());
+  }
+
   if (error) {
+    console.error("Grow session insert failed", {
+      error,
+      request: "insert grow_sessions",
+      retriedWithoutOwnerTimeColumns: appState.sessionTimeColumnsUnavailable,
+    });
     throw error;
   }
 
@@ -16163,7 +16193,9 @@ async function updateCloudSession(session) {
   }
 
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
-  const record = mapSessionToRecord(session, authUser.id);
+  const record = mapSessionToRecord(session, authUser.id, {
+    includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+  });
   const { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
     .select("session_status,completed_at")
@@ -16174,12 +16206,23 @@ async function updateCloudSession(session) {
     throw previousRowError;
   }
 
-  const { data, error } = await appState.supabase
+  let { data, error } = await appState.supabase
     .from("grow_sessions")
     .update(record)
     .eq("id", session.id)
     .select()
     .single();
+
+  if (error && isSessionTimeColumnSchemaError(error) && !appState.sessionTimeColumnsUnavailable) {
+    appState.sessionTimeColumnsUnavailable = true;
+    console.warn("Session time columns are not available yet; retrying grow session update with legacy timestamp payload.", error);
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .update(mapSessionToRecord(session, authUser.id, { includeOwnerTimeColumns: false }))
+      .eq("id", session.id)
+      .select()
+      .single());
+  }
 
   if (error) {
     throw error;
@@ -16193,6 +16236,20 @@ async function updateCloudSession(session) {
     void syncCommunityActivityForCompletedSession(savedSession);
   }
   return savedSession;
+}
+
+function isSessionTimeColumnSchemaError(error) {
+  const message = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].map((value) => String(value || "").toLowerCase()).join(" ");
+
+  return message.includes("session_started_at")
+    || message.includes("soak_started_at")
+    || message.includes("pgrst204")
+    || message.includes("schema cache");
 }
 
 function applySessionTimePayload(session, payload) {
@@ -23609,7 +23666,8 @@ function getPublicGrowNoteDetails(snapshot = null, session = null) {
   };
 }
 
-function mapSessionToRecord(session, userId) {
+function mapSessionToRecord(session, userId, options = {}) {
+  const includeOwnerTimeColumns = options.includeOwnerTimeColumns !== false;
   const seedAgeTrackingEnabled = Boolean(session.seedAgeTrackingEnabled);
   const seedAgeMode = seedAgeTrackingEnabled
     ? normalizeSeedAgeMode(session.seedAgeMode || "") || null
@@ -23640,8 +23698,6 @@ function mapSessionToRecord(session, userId) {
     session_images: getEffectiveSessionImages(session),
     snapshot_state: normalizePersistedSessionSnapshotState(session.snapshotState) || {},
     session_status: session.sessionStatus || "",
-    session_started_at: sessionStartedAt,
-    soak_started_at: soakStartedAt,
     germination_started_at: germinationStartedAt,
     first_planted_at: session.firstPlantedAt || null,
     completed_at: session.completedAt || null,
@@ -23654,6 +23710,11 @@ function mapSessionToRecord(session, userId) {
     timer_start_at: soakStartedAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
+
+  if (includeOwnerTimeColumns) {
+    record.session_started_at = sessionStartedAt;
+    record.soak_started_at = soakStartedAt;
+  }
 
   if (isSessionSoftDeleted(session) || normalizeSessionVisibilityStatus(session?.visibilityStatus || "") === "active") {
     record.is_deleted = Boolean(session.isDeleted);
@@ -31441,6 +31502,7 @@ function validateNewSessionName(form, { formMessage = null } = {}) {
   sessionNameField.setCustomValidity("");
   if (formMessage) {
     formMessage.textContent = "";
+    formMessage.classList.remove("is-error");
   }
   return true;
 }
@@ -55017,16 +55079,20 @@ function renderSessionForm(initialSystemType = "KAN") {
   bindPartitionRowHighlighting(form);
 
   const persistNewSession = async ({ navigateOnSuccess = true } = {}) => {
+    clearUnsavedChangesLastSaveError();
     const wasGrowNetworkUnlocked = isGrowNetworkUnlocked(getSessions());
     if (!validateNewSessionName(form, { formMessage })) {
+      setUnsavedChangesLastSaveError(new Error(formMessage?.textContent || "Please enter a session name before saving."), "Please enter a session name before saving.");
       return null;
     }
     if (!syncStoredTimeFromDisplay(form, { normalize: true, forceError: true })) {
+      setUnsavedChangesLastSaveError(new Error("Please enter a valid session time before saving."), "Please enter a valid session time before saving.");
       form.elements.timeDisplay?.focus();
       return null;
     }
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
       formMessage.textContent = "";
+      setUnsavedChangesLastSaveError(new Error(sessionStatusError?.textContent || "Please select a growth stage before saving."), "Please select a growth stage before saving.");
       sessionStatusTrigger?.focus();
       return null;
     }
@@ -55034,6 +55100,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const seedAgeValidation = validateSeedAgeSettings(form);
     if (!seedAgeValidation.isValid) {
       formMessage.textContent = seedAgeValidation.message;
+      setUnsavedChangesLastSaveError(new Error(seedAgeValidation.message), seedAgeValidation.message);
       seedAgeValidation.firstInvalidField?.focus();
       return null;
     }
@@ -55041,6 +55108,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const validation = validatePartitions(form, { showMessage: true });
     if (!validation.isValid) {
       formMessage.textContent = "Please complete all partition fields before saving";
+      setUnsavedChangesLastSaveError(new Error(formMessage.textContent), formMessage.textContent);
       validation.firstInvalidField?.focus();
       return null;
     }
@@ -55067,9 +55135,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     const createdAt = new Date().toISOString();
     const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
     const normalizedInitialStatus = normalizeSessionStatus(formData.get("sessionStatus"));
-    const soakStartedAt = ["germinating", "completed"].includes(normalizedInitialStatus)
-      ? sessionStartedAt
-      : getTimerStartAtFromCreatedAt(createdAt);
+    const soakStartedAt = getInitialSoakStartedAt(sessionStartedAt, createdAt, normalizedInitialStatus);
     const rawUnitId = String(formData.get("unitId") || "").trim();
     const normalizedUnitId = normalizeUnitIdValue(formData.get("unitId"));
     const session = {
@@ -55112,6 +55178,19 @@ function renderSessionForm(initialSystemType = "KAN") {
       soakStartedAt,
       timerStartAt: soakStartedAt,
     };
+    const timelineValidation = validateGrowSessionTimelineOrder({
+      sessionStartedAt: session.sessionStartedAt,
+      soakStartedAt: session.soakStartedAt,
+      germinationStartedAt: session.germinationStartedAt,
+      completedAt: session.completedAt,
+    }, {
+      requireCompleted: normalizedInitialStatus === "completed",
+    });
+    if (!timelineValidation.isValid) {
+      formMessage.textContent = timelineValidation.message;
+      setUnsavedChangesLastSaveError(new Error(timelineValidation.message), timelineValidation.message);
+      return null;
+    }
   const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
   const existingSessionsBeforeSave = getSessions();
 
@@ -55142,13 +55221,16 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (shouldDeductFilterPaper) {
         applyFilterPaperDeductionForCompletedSession(savedSession);
       }
+      await refreshUserSessionsAfterSave("new-session:save");
       markUnsavedChangesSaved();
       if (navigateOnSuccess) {
         navigateWithUnsavedChangesBypass(unlockedGrowNetworkNow ? "#home" : `#sessions/${savedSession.id}`);
       }
       return savedSession;
     } catch (error) {
-      formMessage.textContent = error.message || "Could not save session.";
+      const message = setUnsavedChangesLastSaveError(error, "Could not save session.");
+      formMessage.textContent = message || "Could not save session.";
+      formMessage.classList.add("is-error");
       return null;
     }
   };
@@ -57589,6 +57671,37 @@ function parseDateTimeLocalInputIso(value = "") {
   return parsedDate.toISOString();
 }
 
+function validateGrowSessionTimelineOrder(timestamps = {}, options = {}) {
+  const sessionStartedDate = parseCompletedAtValue(timestamps.sessionStartedAt || "");
+  const soakStartedDate = parseCompletedAtValue(timestamps.soakStartedAt || "");
+  const germinationStartedDate = parseCompletedAtValue(timestamps.germinationStartedAt || "");
+  const completedDate = parseCompletedAtValue(timestamps.completedAt || "");
+
+  if (options.requireSessionStarted !== false && !sessionStartedDate) {
+    return { isValid: false, message: "Session start time is required." };
+  }
+  if (options.requireSoakStarted !== false && !soakStartedDate) {
+    return { isValid: false, message: "Soak start time is required." };
+  }
+  if (options.requireCompleted && !completedDate) {
+    return { isValid: false, message: "Completed sessions need a completed time." };
+  }
+  if (sessionStartedDate && soakStartedDate && soakStartedDate < sessionStartedDate) {
+    return { isValid: false, message: "Soak start cannot be before session start." };
+  }
+  if (soakStartedDate && germinationStartedDate && soakStartedDate > germinationStartedDate) {
+    return { isValid: false, message: "Soak start cannot be after germination start." };
+  }
+  if (completedDate && germinationStartedDate && germinationStartedDate > completedDate) {
+    return { isValid: false, message: "Germination start cannot be after completed time." };
+  }
+  if (completedDate && sessionStartedDate && completedDate < sessionStartedDate) {
+    return { isValid: false, message: "Completed time cannot be before session start." };
+  }
+
+  return { isValid: true, message: "" };
+}
+
 function populateSessionTimesForm(form, session = null) {
   if (!(form instanceof HTMLFormElement)) {
     return;
@@ -57644,32 +57757,19 @@ function getSessionTimesFormPayload(form, session = null) {
   const germinationStartedAt = parseDateTimeLocalInputIso(germinationStartedValue);
   const completedAt = parseDateTimeLocalInputIso(completedValue);
 
-  if (!sessionStartedAt || !soakStartedAt) {
-    return { isValid: false, message: "Session start and soak start are required." };
-  }
   if (sessionStartedAt === null || soakStartedAt === null || germinationStartedAt === null || completedAt === null) {
     return { isValid: false, message: "Enter valid date and time values." };
   }
-  if (normalizeSessionStatus(session?.sessionStatus || "") === "completed" && !completedAt) {
-    return { isValid: false, message: "Completed sessions need a completed time." };
-  }
-
-  const sessionStartedDate = parseCompletedAtValue(sessionStartedAt);
-  const soakStartedDate = parseCompletedAtValue(soakStartedAt);
-  const germinationStartedDate = parseCompletedAtValue(germinationStartedAt);
-  const completedDate = parseCompletedAtValue(completedAt);
-
-  if (soakStartedDate < sessionStartedDate) {
-    return { isValid: false, message: "Soak start cannot be before session start." };
-  }
-  if (germinationStartedDate && soakStartedDate > germinationStartedDate) {
-    return { isValid: false, message: "Soak start cannot be after germination start." };
-  }
-  if (completedDate && germinationStartedDate && germinationStartedDate > completedDate) {
-    return { isValid: false, message: "Germination start cannot be after completed time." };
-  }
-  if (completedDate && completedDate < sessionStartedDate) {
-    return { isValid: false, message: "Completed time cannot be before session start." };
+  const timelineValidation = validateGrowSessionTimelineOrder({
+    sessionStartedAt,
+    soakStartedAt,
+    germinationStartedAt,
+    completedAt,
+  }, {
+    requireCompleted: normalizeSessionStatus(session?.sessionStatus || "") === "completed",
+  });
+  if (!timelineValidation.isValid) {
+    return timelineValidation;
   }
 
   return {
@@ -58348,8 +58448,12 @@ function renderSessionDetail(sessionId) {
     );
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
-    detail.saveMessage.textContent = savedSession ? "Session saved." : "Could not save session.";
+    detail.saveMessage.textContent = savedSession
+      ? "Session saved."
+      : (appState.unsavedChanges.lastSaveError?.message || "Could not save session.");
+    detail.saveMessage.classList.toggle("is-error", !savedSession);
     if (savedSession) {
+      await refreshUserSessionsAfterSave("session-detail:save");
       syncSessionDetailHeaderMeta(detail, session);
       populateSessionDetailEditorForm(detail.detailsForm, session);
       populateSessionSeedAgeForm(detail.seedAgeForm, session);
@@ -60055,6 +60159,22 @@ function parseSessionStartDateTime(sessionDate, sessionTime) {
 function getTimerStartAtFromCreatedAt(createdAt = "") {
   const createdDate = parseCompletedAtValue(createdAt) || new Date();
   return new Date(createdDate.getTime() + SESSION_SETUP_GRACE_MS).toISOString();
+}
+
+function getInitialSoakStartedAt(sessionStartedAt = "", createdAt = "", sessionStatus = "") {
+  const sessionStartedDate = parseCompletedAtValue(sessionStartedAt);
+  const graceDate = parseCompletedAtValue(getTimerStartAtFromCreatedAt(createdAt));
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  if (!sessionStartedDate) {
+    return graceDate?.toISOString() || new Date().toISOString();
+  }
+  if (["germinating", "completed"].includes(normalizedStatus)) {
+    return sessionStartedDate.toISOString();
+  }
+  if (!graceDate || graceDate < sessionStartedDate) {
+    return sessionStartedDate.toISOString();
+  }
+  return graceDate.toISOString();
 }
 
 function getEffectiveSessionTimerStartAt(session = null) {
@@ -62061,6 +62181,7 @@ async function saveSessionUpdate(session) {
     return savedSession;
   } catch (error) {
     console.error("Failed to save session update", error);
+    setUnsavedChangesLastSaveError(error, "Could not save session.");
     return null;
   }
 }
@@ -62443,6 +62564,46 @@ function getUnsavedChangesPromptCopy() {
   };
 }
 
+function isDevelopmentErrorDetailsEnabled() {
+  return isLocalDevelopmentHost() || isLocalDevQaBypassActive();
+}
+
+function getReadableErrorDetails(error) {
+  if (!error) {
+    return "";
+  }
+
+  return [...new Set([
+    error.message,
+    error.details,
+    error.hint,
+    error.code,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean))].join(" | ");
+}
+
+function formatSaveErrorForDisplay(error, fallback = "Could not save your changes.") {
+  const details = getReadableErrorDetails(error);
+  if (details && isDevelopmentErrorDetailsEnabled()) {
+    return details;
+  }
+  return String(error?.message || fallback || "Could not save your changes.").trim();
+}
+
+function setUnsavedChangesLastSaveError(error, fallback = "") {
+  const message = formatSaveErrorForDisplay(error, fallback);
+  appState.unsavedChanges.lastSaveError = {
+    message,
+    raw: error || null,
+  };
+  return message;
+}
+
+function clearUnsavedChangesLastSaveError() {
+  appState.unsavedChanges.lastSaveError = null;
+}
+
 function clearUnsavedChangesContext() {
   appState.unsavedChanges.active = false;
   appState.unsavedChanges.hasUnsavedChanges = false;
@@ -62452,6 +62613,7 @@ function clearUnsavedChangesContext() {
   appState.unsavedChanges.getSignature = null;
   appState.unsavedChanges.saveFn = null;
   appState.unsavedChanges.promptOpen = false;
+  appState.unsavedChanges.lastSaveError = null;
   syncUnsavedChangesDirtyFlags();
 }
 
@@ -62468,6 +62630,7 @@ function registerUnsavedChangesContext({ pageHash, getSignature, saveFn, context
   appState.unsavedChanges.saveFn = saveFn;
   appState.unsavedChanges.baselineSignature = getSignature();
   appState.unsavedChanges.hasUnsavedChanges = false;
+  appState.unsavedChanges.lastSaveError = null;
   syncUnsavedChangesDirtyFlags();
 }
 
@@ -62493,6 +62656,7 @@ function markUnsavedChangesSaved() {
 
   appState.unsavedChanges.baselineSignature = appState.unsavedChanges.getSignature();
   appState.unsavedChanges.hasUnsavedChanges = false;
+  appState.unsavedChanges.lastSaveError = null;
   syncUnsavedChangesDirtyFlags();
 }
 
@@ -62638,9 +62802,10 @@ function promptForUnsavedChangesNavigation(nextHash) {
     }
 
     try {
+      clearUnsavedChangesLastSaveError();
       const didSave = await appState.unsavedChanges.saveFn({ navigateOnSuccess: false, destinationHash: targetHash });
       if (!didSave) {
-        throw new Error(promptCopy.saveError);
+        throw new Error(appState.unsavedChanges.lastSaveError?.message || promptCopy.saveError);
       }
 
       markUnsavedChangesSaved();
@@ -62651,7 +62816,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
       navigateWithUnsavedChangesBypass(targetHash);
     } catch (error) {
       if (message) {
-        message.textContent = error.message || promptCopy.saveError;
+        message.textContent = formatSaveErrorForDisplay(error, promptCopy.saveError);
         message.classList.add("is-error");
       }
       saveButton.disabled = false;
