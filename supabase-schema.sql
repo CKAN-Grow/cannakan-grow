@@ -20,6 +20,7 @@ create table if not exists public.grow_sessions (
   seed_age_tracking_enabled boolean not null default false,
   seed_age_mode text,
   session_seed_age_years numeric,
+  is_mock boolean not null default false,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   visibility_status text not null default 'active',
@@ -180,6 +181,7 @@ create table if not exists public.sources (
   contact_email text default '',
   notes text default '',
   status text not null default 'active',
+  is_mock boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -222,6 +224,7 @@ create table if not exists public.grow_gallery_snapshots (
   status text not null default 'private',
   is_published boolean not null default true,
   include_notes boolean not null default false,
+  is_mock boolean not null default false,
   published_at timestamptz not null default timezone('utc', now()),
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
@@ -251,6 +254,7 @@ create table if not exists public.community_activity (
   summary text default '',
   metadata jsonb not null default '{}'::jsonb,
   visibility text not null default 'public',
+  is_mock boolean not null default false,
   created_at timestamptz not null default timezone('utc', now())
 );
 
@@ -294,6 +298,9 @@ alter table public.sources
   add column if not exists status text not null default 'active';
 
 alter table public.sources
+  add column if not exists is_mock boolean not null default false;
+
+alter table public.sources
   add column if not exists created_at timestamptz not null default timezone('utc', now());
 
 alter table public.sources
@@ -328,6 +335,9 @@ alter table public.grow_gallery_snapshots
 
 alter table public.grow_gallery_snapshots
   add column if not exists is_published boolean not null default true;
+
+alter table public.grow_gallery_snapshots
+  add column if not exists is_mock boolean not null default false;
 
 alter table public.grow_gallery_snapshots
   add column if not exists published_at timestamptz not null default timezone('utc', now());
@@ -377,6 +387,9 @@ create index if not exists community_activity_visibility_created_idx
 
 create index if not exists community_activity_user_visibility_created_idx
   on public.community_activity (user_id, visibility, created_at desc);
+
+alter table public.community_activity
+  add column if not exists is_mock boolean not null default false;
 
 create index if not exists site_analytics_events_created_at_idx
   on public.site_analytics_events (created_at desc);
@@ -597,6 +610,9 @@ alter table public.grow_sessions
 
 alter table public.grow_sessions
   add column if not exists session_seed_age_years numeric;
+
+alter table public.grow_sessions
+  add column if not exists is_mock boolean not null default false;
 
 alter table public.grow_sessions
   add column if not exists timer_start_at timestamptz;
@@ -1027,6 +1043,7 @@ begin
     summary,
     metadata,
     visibility,
+    is_mock,
     created_at
   )
   select
@@ -1075,6 +1092,7 @@ begin
       end
     ),
     'public',
+    coalesce(grow_gallery_snapshots.is_mock, false),
     coalesce(grow_gallery_snapshots.published_at, grow_gallery_snapshots.created_at, timezone('utc', now()))
   from public.grow_gallery_snapshots
   where grow_gallery_snapshots.status = 'approved'
@@ -1928,6 +1946,235 @@ using (
     where admin_users.user_id = auth.uid()
   )
 );
+
+comment on column public.grow_sessions.is_mock is
+  'True only for seeded/dev/demo Grow sessions. Real logged-in user sessions default to false and are preserved by demo resets.';
+
+comment on column public.grow_gallery_snapshots.is_mock is
+  'True only for seeded/dev/demo Community Grow snapshots. Real user snapshots default to false and are preserved by demo resets.';
+
+comment on column public.community_activity.is_mock is
+  'True only for seeded/dev/demo Community Grow activity rows. Real user activity defaults to false and is preserved by demo resets.';
+
+comment on column public.sources.is_mock is
+  'True only for seeded/dev/demo Source Directory records. Real/admin-managed sources default to false and are preserved by demo resets.';
+
+create index if not exists grow_sessions_is_mock_idx
+  on public.grow_sessions (is_mock, created_at desc);
+
+create index if not exists grow_gallery_snapshots_is_mock_idx
+  on public.grow_gallery_snapshots (is_mock, created_at desc);
+
+create index if not exists community_activity_is_mock_idx
+  on public.community_activity (is_mock, created_at desc);
+
+create index if not exists sources_is_mock_idx
+  on public.sources (is_mock, created_at desc);
+
+create or replace function public.cleanup_mock_grow_data(dry_run boolean default true)
+returns table (
+  table_name text,
+  deleted_count integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  affected_count integer := 0;
+  source_cleanup_sql text := '';
+begin
+  if not (
+    lower(coalesce(auth.jwt() ->> 'email', '')) = any (array['don@cannakan.com', 'mo@cannakan.com'])
+    or exists (
+      select 1
+      from public.admin_users
+      where admin_users.user_id = auth.uid()
+    )
+  ) then
+    raise exception 'Only admins can clean up mock grow data.' using errcode = '42501';
+  end if;
+
+  if coalesce(dry_run, true) then
+    return query
+      select 'grow_gallery_snapshot_likes'::text, count(*)::integer
+      from public.grow_gallery_snapshot_likes
+      where exists (
+        select 1
+        from public.grow_gallery_snapshots
+        where grow_gallery_snapshots.id = grow_gallery_snapshot_likes.snapshot_id
+          and coalesce(grow_gallery_snapshots.is_mock, false) = true
+      )
+      union all
+      select 'community_activity'::text, count(*)::integer
+      from public.community_activity
+      where coalesce(community_activity.is_mock, false) = true
+        or exists (
+          select 1
+          from public.grow_gallery_snapshots
+          where grow_gallery_snapshots.id::text = community_activity.snapshot_id
+            and coalesce(grow_gallery_snapshots.is_mock, false) = true
+        )
+        or exists (
+          select 1
+          from public.grow_sessions
+          where grow_sessions.id::text = community_activity.session_id
+            and coalesce(grow_sessions.is_mock, false) = true
+        )
+      union all
+      select 'grow_gallery_snapshots'::text, count(*)::integer
+      from public.grow_gallery_snapshots
+      where coalesce(grow_gallery_snapshots.is_mock, false) = true
+      union all
+      select 'grow_session_reminder_events'::text, count(*)::integer
+      from public.grow_session_reminder_events
+      where exists (
+        select 1
+        from public.grow_sessions
+        where grow_sessions.id = grow_session_reminder_events.session_id
+          and coalesce(grow_sessions.is_mock, false) = true
+      )
+      union all
+      select 'grow_sessions'::text, count(*)::integer
+      from public.grow_sessions
+      where coalesce(grow_sessions.is_mock, false) = true;
+
+    source_cleanup_sql := $source_sql$
+      select count(*)::integer
+      from public.sources
+      where coalesce(sources.is_mock, false) = true
+        and not exists (
+          select 1
+          from public.grow_gallery_snapshots
+          where grow_gallery_snapshots.source_id = sources.id
+            and coalesce(grow_gallery_snapshots.is_mock, false) = false
+        )
+    $source_sql$;
+
+    if to_regclass('public.cstp_requests') is not null then
+      source_cleanup_sql := source_cleanup_sql || '
+        and not exists (
+          select 1
+          from public.cstp_requests
+          where cstp_requests.source_id = sources.id
+        )';
+    end if;
+
+    if to_regclass('public.cstp_tests') is not null then
+      source_cleanup_sql := source_cleanup_sql || '
+        and not exists (
+          select 1
+          from public.cstp_tests
+          where cstp_tests.source_id = sources.id
+        )';
+    end if;
+
+    execute source_cleanup_sql into affected_count;
+    table_name := 'sources';
+    deleted_count := affected_count;
+    return next;
+    return;
+  end if;
+
+  delete from public.grow_gallery_snapshot_likes
+  where exists (
+    select 1
+    from public.grow_gallery_snapshots
+    where grow_gallery_snapshots.id = grow_gallery_snapshot_likes.snapshot_id
+      and coalesce(grow_gallery_snapshots.is_mock, false) = true
+  );
+  get diagnostics affected_count = row_count;
+  table_name := 'grow_gallery_snapshot_likes';
+  deleted_count := affected_count;
+  return next;
+
+  delete from public.community_activity
+  where coalesce(community_activity.is_mock, false) = true
+    or exists (
+      select 1
+      from public.grow_gallery_snapshots
+      where grow_gallery_snapshots.id::text = community_activity.snapshot_id
+        and coalesce(grow_gallery_snapshots.is_mock, false) = true
+    )
+    or exists (
+      select 1
+      from public.grow_sessions
+      where grow_sessions.id::text = community_activity.session_id
+        and coalesce(grow_sessions.is_mock, false) = true
+    );
+  get diagnostics affected_count = row_count;
+  table_name := 'community_activity';
+  deleted_count := affected_count;
+  return next;
+
+  delete from public.grow_gallery_snapshots
+  where coalesce(grow_gallery_snapshots.is_mock, false) = true;
+  get diagnostics affected_count = row_count;
+  table_name := 'grow_gallery_snapshots';
+  deleted_count := affected_count;
+  return next;
+
+  delete from public.grow_session_reminder_events
+  where exists (
+    select 1
+    from public.grow_sessions
+    where grow_sessions.id = grow_session_reminder_events.session_id
+      and coalesce(grow_sessions.is_mock, false) = true
+  );
+  get diagnostics affected_count = row_count;
+  table_name := 'grow_session_reminder_events';
+  deleted_count := affected_count;
+  return next;
+
+  delete from public.grow_sessions
+  where coalesce(grow_sessions.is_mock, false) = true;
+  get diagnostics affected_count = row_count;
+  table_name := 'grow_sessions';
+  deleted_count := affected_count;
+  return next;
+
+  source_cleanup_sql := $source_sql$
+    delete from public.sources
+    where coalesce(sources.is_mock, false) = true
+      and not exists (
+        select 1
+        from public.grow_gallery_snapshots
+        where grow_gallery_snapshots.source_id = sources.id
+          and coalesce(grow_gallery_snapshots.is_mock, false) = false
+      )
+  $source_sql$;
+
+  if to_regclass('public.cstp_requests') is not null then
+    source_cleanup_sql := source_cleanup_sql || '
+      and not exists (
+        select 1
+        from public.cstp_requests
+        where cstp_requests.source_id = sources.id
+      )';
+  end if;
+
+  if to_regclass('public.cstp_tests') is not null then
+    source_cleanup_sql := source_cleanup_sql || '
+      and not exists (
+        select 1
+        from public.cstp_tests
+        where cstp_tests.source_id = sources.id
+      )';
+  end if;
+
+  execute source_cleanup_sql;
+  get diagnostics affected_count = row_count;
+  table_name := 'sources';
+  deleted_count := affected_count;
+  return next;
+end;
+$$;
+
+revoke all on function public.cleanup_mock_grow_data(boolean) from public;
+grant execute on function public.cleanup_mock_grow_data(boolean) to authenticated;
+
+comment on function public.cleanup_mock_grow_data(boolean) is
+  'Admin-only cleanup for mock Grow data. Defaults to dry-run. Never deletes users, non-mock sessions/snapshots/sources, or CSTP/admin records.';
 
 -- Keep this email allowlist in sync with ADMIN_EMAILS in app.js before production.
 

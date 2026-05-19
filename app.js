@@ -4335,6 +4335,7 @@ function normalizeStoredSession(session) {
     germinationStartedAt: String(session.germinationStartedAt || "").trim(),
     firstPlantedAt: String(session.firstPlantedAt || "").trim(),
     completedAt: String(session.completedAt || "").trim(),
+    isMock: Boolean(session.isMock || session.is_mock),
     isDeleted: Boolean(session.isDeleted || session.is_deleted),
     deletedAt: String(session.deletedAt || session.deleted_at || "").trim(),
     visibilityStatus: normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
@@ -6272,6 +6273,8 @@ function createSampleSession(config) {
     createdAt: `${config.date}T${config.time}:00`,
     updatedAt: config.updatedAt || `${config.date}T${config.time}:00`,
     isSample: true,
+    isMock: true,
+    is_mock: true,
     partitions: config.partitionSeeds.map((partition, index) => ({
       id: index + 1,
       seedVariety: partition[0],
@@ -6632,6 +6635,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       likeCount: record.likes,
       likedByCurrentUser: false,
       isMock: true,
+      is_mock: true,
       mockDataVersion: GALLERY_MOCK_DATA_VERSION,
     };
   });
@@ -6691,6 +6695,7 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
       likeCount: 0,
       likedByCurrentUser: false,
       isMock: true,
+      is_mock: true,
       isMockReview: true,
       mockDataVersion: GALLERY_MOCK_DATA_VERSION,
     };
@@ -6704,7 +6709,7 @@ function getGallerySnapshotsForDisplay(snapshotRows = appState.gallerySnapshots)
     return sortGallerySnapshotsNewestFirst(MOCK_GALLERY_SNAPSHOTS);
   }
 
-  return sortGallerySnapshotsNewestFirst(snapshotRows);
+  return sortGallerySnapshotsNewestFirst((snapshotRows || []).filter((snapshot) => !isMockGallerySnapshot(snapshot)));
 }
 
 function isMockGallerySnapshot(snapshot) {
@@ -6759,6 +6764,7 @@ function getGalleryReviewSnapshotById(snapshotId) {
 function getAdminReviewPendingSnapshots() {
   const realPendingSnapshots = appState.gallerySnapshots.filter((entry) => (
     getGallerySnapshotDisplayStatus(entry) === "pending_review"
+    && !isMockGallerySnapshot(entry)
   ));
 
   if (!isMockDataEnabled()) {
@@ -12191,6 +12197,9 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
   const galleryCountByUserId = new Map();
 
   (sessionRows || []).forEach((row) => {
+    if (row?.is_mock === true) {
+      return;
+    }
     const userId = String(row?.user_id || "").trim();
     if (!userId) {
       return;
@@ -12199,6 +12208,9 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
   });
 
   (snapshotRows || []).forEach((row) => {
+    if (row?.is_mock === true) {
+      return;
+    }
     const userId = String(row?.user_id || "").trim();
     if (!userId) {
       return;
@@ -12248,10 +12260,10 @@ async function loadAdminMembers(reason = "unspecified") {
       .order("created_at", { ascending: false }),
     appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,created_at"),
+      .select("id,user_id,created_at,is_mock"),
     appState.supabase
       .from("grow_gallery_snapshots")
-      .select("id,user_id,created_at,published_at,status"),
+      .select("id,user_id,created_at,published_at,status,is_mock"),
   ]);
 
   if (profilesResponse.error) {
@@ -12456,7 +12468,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,user_id,date,created_at,partitions");
+    .select("id,user_id,date,created_at,partitions,is_mock");
 
   if (error) {
     console.error("Failed to load admin source review sessions", { reason, error });
@@ -12465,13 +12477,15 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
   }
 
   appState.sourceReviewError = "";
-  return (data || []).map((row) => ({
-    id: row.id,
-    userId: String(row.user_id || "").trim(),
-    sessionDate: String(row.date || "").trim(),
-    createdAt: String(row.created_at || "").trim(),
-    partitions: normalizeSessionPartitions(row.partitions),
-  }));
+  return (data || [])
+    .filter((row) => row?.is_mock !== true)
+    .map((row) => ({
+      id: row.id,
+      userId: String(row.user_id || "").trim(),
+      sessionDate: String(row.date || "").trim(),
+      createdAt: String(row.created_at || "").trim(),
+      partitions: normalizeSessionPartitions(row.partitions),
+    }));
 }
 
 async function refreshAdminSourceReviewSessionRows(options = {}) {
@@ -15988,6 +16002,8 @@ async function createCloudSession(session) {
       createdAt: String(session?.createdAt || timestamp).trim(),
       timerStartAt: String(session?.timerStartAt || "").trim()
         || getTimerStartAtFromCreatedAt(String(session?.createdAt || timestamp).trim()),
+      isMock: true,
+      is_mock: true,
       updatedAt: timestamp,
     });
     savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
@@ -16029,6 +16045,8 @@ async function updateCloudSession(session) {
       ...session,
       id: String(session?.id || existingSession?.id || "").trim(),
       createdAt: String(session?.createdAt || existingSession?.createdAt || new Date().toISOString()).trim(),
+      isMock: true,
+      is_mock: true,
       updatedAt: new Date().toISOString(),
     });
     savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
@@ -16346,6 +16364,8 @@ function mapRowToSource(row) {
     contactEmail: String(row.contact_email || "").trim(),
     notes: String(row.notes || "").trim(),
     status: normalizeSourceStatus(row.status),
+    isMock: Boolean(row.is_mock),
+    is_mock: Boolean(row.is_mock),
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
   };
@@ -16607,6 +16627,7 @@ async function saveSourceRecord(sourceInput, options = {}) {
     contact_email: String(sourceInput.contactEmail || "").trim(),
     notes: String(sourceInput.notes || "").trim(),
     status: normalizeSourceStatus(sourceInput.status),
+    is_mock: false,
   };
 
   const query = existingSource?.id
@@ -17644,6 +17665,8 @@ function mapRowToGallerySnapshot(row) {
     updatedAt: row.updated_at || "",
     likeCount: Math.max(0, Number(row.like_count) || 0),
     likedByCurrentUser: Boolean(row.liked_by_current_user),
+    isMock: Boolean(row.is_mock),
+    is_mock: Boolean(row.is_mock),
   };
 }
 
@@ -17818,6 +17841,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     usage_consent: Boolean(options.usageConsent),
     status: "pending_review",
     is_published: false,
+    is_mock: false,
     include_notes: Boolean(options.includeNotes),
     published_at: new Date().toISOString(),
   };
@@ -23455,6 +23479,7 @@ function mapSessionToRecord(session, userId) {
     seed_age_mode: seedAgeMode,
     session_seed_age_years: sessionSeedAgeYears,
     partitions: serializeSessionPartitions(session.partitions),
+    is_mock: false,
     created_at: session.createdAt,
     timer_start_at: session.timerStartAt || null,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
@@ -23488,6 +23513,7 @@ function mapRowToSession(row) {
     seedAgeTrackingEnabled: Boolean(row.seed_age_tracking_enabled),
     seedAgeMode: normalizeSeedAgeMode(row.seed_age_mode || ""),
     sessionSeedAgeYears: normalizeSeedAgeYears(row.session_seed_age_years),
+    isMock: Boolean(row.is_mock),
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at || "",
     visibilityStatus: normalizeSessionVisibilityStatus(row.visibility_status || ""),
@@ -33999,6 +34025,8 @@ function normalizeTestedSourceMockRecord(source = {}) {
   const directoryStats = source?.directoryStats || {};
   return {
     ...source,
+    isMock: true,
+    is_mock: true,
     sourceTypeLabel: String(source?.sourceTypeLabel || source?.type || "Source").trim() || "Source",
     logoUrl: String(source?.logoUrl || source?.logo || "").trim(),
     community: {
@@ -51503,6 +51531,8 @@ function buildLeaderboardAuditRows() {
       successPercent,
       status: effectiveStatus,
       statusLabel: getLeaderboardAuditStatusLabel(effectiveStatus),
+      isMock: isMockGallerySnapshot(snapshot),
+      is_mock: isMockGallerySnapshot(snapshot),
       isInActiveRankingSource: rankingSourceIds.has(String(snapshot.id || "").trim()),
       hasValidSubmittedAt: Boolean(submittedAt && !Number.isNaN(submittedAt.getTime())),
       hasValidPerformance: totalSeeds > 0 && Number.isFinite(successPercent),
@@ -52219,6 +52249,7 @@ function exportLeaderboardAuditCsv(rows, hasActiveFilters = false) {
     "seeds_germinated_planted",
     "germination_percentage",
     "gallery_status",
+    "is_mock",
     "included_in_leaderboard",
     "exclusion_reason",
   ];
@@ -52237,6 +52268,7 @@ function exportLeaderboardAuditCsv(rows, hasActiveFilters = false) {
       row.totalPlanted,
       `${row.successPercent}%`,
       row.statusLabel,
+      row.isMock ? "Yes" : "No",
       row.includedInLeaderboard ? "Yes" : "No",
       row.exclusionReason,
     ].map(escapeCsv).join(","))),
