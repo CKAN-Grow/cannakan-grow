@@ -1221,6 +1221,8 @@ const appState = {
   notificationSnoozeMenuOpenId: "",
   appNotificationsUserId: "",
   sessionHistoryFocusSessionId: "",
+  founderCleanupRpcUnavailable: false,
+  founderCleanupRpcWarning: "",
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -12128,6 +12130,15 @@ function formatFounderSessionCleanupError(error = null) {
   return formatSaveErrorForDisplay(error, "Founder cleanup failed.");
 }
 
+function markFounderCleanupRpcUnavailable(error = null) {
+  appState.founderCleanupRpcUnavailable = true;
+  appState.founderCleanupRpcWarning = formatFounderSessionCleanupError(error);
+  console.warn("[Founder Cleanup] RPC unavailable or missing from schema cache.", {
+    message: appState.founderCleanupRpcWarning,
+    details: getReadableErrorDetails(error),
+  });
+}
+
 async function refreshGrowSessionDataAfterCleanup() {
   appState.sessions = [];
   try {
@@ -12201,9 +12212,14 @@ async function runFounderSessionCleanup(options = {}) {
   });
 
   if (error) {
+    if (isMissingFounderCleanupRpcError(error)) {
+      markFounderCleanupRpcUnavailable(error);
+    }
     throw new Error(formatFounderSessionCleanupError(error));
   }
 
+  appState.founderCleanupRpcUnavailable = false;
+  appState.founderCleanupRpcWarning = "";
   return Array.isArray(data) ? data : [];
 }
 
@@ -16887,6 +16903,7 @@ function ensureSessionDeleteConfirmModal() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Founder Cleanup</p>
           <p class="muted">Dangerous admin-only cleanup for test or bad grow-session data. This excludes the session from analytics and removes related grow-session records without touching CSTP, auth, admin roles, settings, or production config.</p>
+          <p class="form-error" data-session-founder-cleanup-warning hidden></p>
           <label class="form-field">
             <span>Type DELETE TEST SESSION to confirm</span>
             <input type="text" autocomplete="off" data-session-founder-cleanup-confirmation>
@@ -16911,7 +16928,9 @@ function confirmSessionArchive(session) {
   const founderCleanupSection = modal.querySelector("[data-session-founder-cleanup-section]");
   const founderCleanupInput = modal.querySelector("[data-session-founder-cleanup-confirmation]");
   const founderCleanupButton = modal.querySelector("[data-session-founder-cleanup-confirm]");
+  const founderCleanupWarning = modal.querySelector("[data-session-founder-cleanup-warning]");
   const canFounderCleanup = Boolean(appState.supabase && appState.user && isAdminUser());
+  const founderCleanupUnavailable = Boolean(appState.founderCleanupRpcUnavailable);
 
   if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
     return Promise.resolve(window.confirm("Remove this session from My Sessions?") ? { action: "soft-delete" } : { action: "cancel" });
@@ -16929,9 +16948,15 @@ function confirmSessionArchive(session) {
   }
   if (founderCleanupInput instanceof HTMLInputElement) {
     founderCleanupInput.value = "";
+    founderCleanupInput.disabled = founderCleanupUnavailable;
   }
   if (founderCleanupButton instanceof HTMLButtonElement) {
     founderCleanupButton.disabled = true;
+  }
+  if (founderCleanupWarning instanceof HTMLElement) {
+    const warningText = String(appState.founderCleanupRpcWarning || "").trim();
+    founderCleanupWarning.textContent = warningText;
+    founderCleanupWarning.hidden = !canFounderCleanup || !founderCleanupUnavailable || !warningText;
   }
 
   return new Promise((resolve) => {
@@ -16960,7 +16985,7 @@ function confirmSessionArchive(session) {
       if (!(founderCleanupInput instanceof HTMLInputElement) || !(founderCleanupButton instanceof HTMLButtonElement)) {
         return;
       }
-      founderCleanupButton.disabled = founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
+      founderCleanupButton.disabled = founderCleanupUnavailable || founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
     };
 
     const onFounderCleanup = () => {
@@ -16976,7 +17001,7 @@ function confirmSessionArchive(session) {
 
     cancelButton.addEventListener("click", onCancel, { once: true });
     confirmButton.addEventListener("click", onConfirm, { once: true });
-    if (canFounderCleanup && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
+    if (canFounderCleanup && !founderCleanupUnavailable && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
       founderCleanupInput.addEventListener("input", onFounderInput);
       founderCleanupButton.addEventListener("click", onFounderCleanup, { once: true });
     }
