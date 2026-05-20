@@ -12349,7 +12349,7 @@ function formatFounderSessionCleanupError(error = null) {
   if (isMissingFounderCleanupRpcError(error)) {
     return "Founder cleanup RPC is not available in Supabase yet. Apply the latest migrations, then reload the Supabase/PostgREST schema cache and try again.";
   }
-  return formatSaveErrorForDisplay(error, "Founder cleanup failed.");
+  return getReadableErrorDetails(error) || String(error?.message || "Founder cleanup failed.").trim();
 }
 
 function markFounderCleanupRpcUnavailable(error = null) {
@@ -12361,16 +12361,17 @@ function markFounderCleanupRpcUnavailable(error = null) {
   });
 }
 
-async function checkFounderCleanupRpcAvailability(reason = "admin-diagnostics") {
+async function checkFounderCleanupRpcAvailability(reason = "admin-diagnostics", options = {}) {
   if (!appState.supabase || !appState.user || !isAdminUser()) {
     return !appState.founderCleanupRpcUnavailable;
   }
 
+  const force = Boolean(options.force);
   if (appState.founderCleanupRpcDiagnosticsPromise) {
     return appState.founderCleanupRpcDiagnosticsPromise;
   }
 
-  if (appState.founderCleanupRpcDiagnosticsChecked) {
+  if (appState.founderCleanupRpcDiagnosticsChecked && !force) {
     return !appState.founderCleanupRpcUnavailable;
   }
 
@@ -17522,34 +17523,47 @@ function confirmSessionArchive(session) {
 
   return new Promise((resolve) => {
     let founderCleanupChecking = false;
+    let founderCleanupCompletedResult = null;
     const founderCleanupButtonLabel = founderCleanupButton instanceof HTMLButtonElement
       ? founderCleanupButton.textContent || "Founder Cleanup: Delete all test session data"
       : "Founder Cleanup: Delete all test session data";
+    const founderCleanupSessionId = String(session?.id || "").trim();
+
+    const setFounderCleanupInlineMessage = (messageText = "", tone = "error") => {
+      if (!(founderCleanupWarning instanceof HTMLElement)) {
+        return;
+      }
+      const normalizedMessage = String(messageText || "").trim();
+      founderCleanupWarning.textContent = normalizedMessage;
+      founderCleanupWarning.hidden = !canFounderCleanup || !normalizedMessage;
+      founderCleanupWarning.classList.toggle("is-success", tone === "success");
+      founderCleanupWarning.classList.toggle("is-warning", tone === "warning");
+      founderCleanupWarning.classList.toggle("is-error", tone !== "success" && tone !== "warning");
+    };
 
     const setFounderCleanupWarning = (warningText = "") => {
       appState.founderCleanupRpcUnavailable = true;
       appState.founderCleanupRpcWarning = String(warningText || "").trim()
         || "Founder cleanup RPC is not available in Supabase yet. Apply the latest migrations, then reload the Supabase/PostgREST schema cache and try again.";
-      if (founderCleanupWarning instanceof HTMLElement) {
-        founderCleanupWarning.textContent = appState.founderCleanupRpcWarning;
-        founderCleanupWarning.hidden = !canFounderCleanup;
-      }
+      setFounderCleanupInlineMessage(appState.founderCleanupRpcWarning, "error");
     };
 
     const syncFounderCleanupControls = () => {
       const isUnavailable = Boolean(appState.founderCleanupRpcUnavailable);
       if (founderCleanupWarning instanceof HTMLElement) {
         const warningText = String(appState.founderCleanupRpcWarning || "").trim();
-        founderCleanupWarning.textContent = warningText;
-        founderCleanupWarning.hidden = !canFounderCleanup || !isUnavailable || !warningText;
+        if (warningText || isUnavailable) {
+          setFounderCleanupInlineMessage(warningText, "error");
+        }
       }
       if (founderCleanupInput instanceof HTMLInputElement) {
-        founderCleanupInput.disabled = false;
+        founderCleanupInput.disabled = Boolean(founderCleanupCompletedResult);
         founderCleanupInput.readOnly = false;
       }
       if (founderCleanupButton instanceof HTMLButtonElement) {
         founderCleanupButton.textContent = founderCleanupChecking ? "Checking cleanup RPC..." : founderCleanupButtonLabel;
         founderCleanupButton.disabled = founderCleanupChecking
+          || Boolean(founderCleanupCompletedResult)
           || isUnavailable
           || !(founderCleanupInput instanceof HTMLInputElement)
           || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
@@ -17569,7 +17583,7 @@ function confirmSessionArchive(session) {
 
     const onCancel = () => {
       cleanup();
-      resolve(false);
+      resolve(founderCleanupCompletedResult || false);
     };
 
     const onConfirm = () => {
@@ -17597,9 +17611,10 @@ function confirmSessionArchive(session) {
       }
 
       founderCleanupChecking = true;
+      setFounderCleanupInlineMessage("Checking founder cleanup RPC...", "warning");
       syncFounderCleanupControls();
       try {
-        const rpcAvailable = await checkFounderCleanupRpcAvailability("session-delete-modal-click");
+        const rpcAvailable = await checkFounderCleanupRpcAvailability("session-delete-modal-click", { force: true });
         if (!rpcAvailable) {
           if (!String(appState.founderCleanupRpcWarning || "").trim()) {
             setFounderCleanupWarning("Founder cleanup RPC could not be verified. Apply the latest migrations, reload the Supabase/PostgREST schema cache, then try again.");
@@ -17607,20 +17622,44 @@ function confirmSessionArchive(session) {
           syncFounderCleanupControls();
           return;
         }
+        setFounderCleanupInlineMessage("Running founder cleanup dry-run...", "warning");
+        const previewRows = await runFounderSessionCleanup({
+          dryRun: true,
+          sessionIds: [founderCleanupSessionId],
+          reason: `Founder cleanup dry-run from session delete modal for ${founderCleanupSessionId}`,
+        });
+        const previewSessionCount = getFounderSessionCleanupDeletedCount(previewRows);
+        if (previewSessionCount <= 0) {
+          setFounderCleanupInlineMessage("Dry-run found no eligible test session data for founder cleanup. Nothing destructive was run.", "warning");
+          return;
+        }
+
+        setFounderCleanupInlineMessage("Executing founder cleanup...", "warning");
+        const resultRows = await runFounderSessionCleanup({
+          dryRun: false,
+          sessionIds: [founderCleanupSessionId],
+          confirmationPhrase: founderCleanupInput.value,
+          reason: `Founder cleanup from session delete modal for ${founderCleanupSessionId}`,
+        });
+        const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
+        const resultSummary = formatFounderSessionCleanupResultSummary(resultRows);
+        await refreshGrowSessionDataAfterCleanup();
+        founderCleanupCompletedResult = {
+          action: "founder-cleanup-complete",
+          resultRows,
+          deletedCount,
+        };
+        setFounderCleanupInlineMessage(`Founder cleanup complete. Removed ${deletedCount} session${deletedCount === 1 ? "" : "s"}. ${resultSummary}`, "success");
+        cancelButton.textContent = "Done";
+        confirmButton.disabled = true;
       } catch (error) {
-        setFounderCleanupWarning(formatFounderSessionCleanupError(error));
+        setFounderCleanupInlineMessage(formatFounderSessionCleanupError(error), "error");
         syncFounderCleanupControls();
         return;
       } finally {
         founderCleanupChecking = false;
         syncFounderCleanupControls();
       }
-
-      cleanup();
-      resolve({
-        action: "founder-cleanup",
-        confirmationPhrase: founderCleanupInput.value,
-      });
     };
 
     cancelButton.addEventListener("click", onCancel, { once: true });
@@ -17632,8 +17671,10 @@ function confirmSessionArchive(session) {
     modal.addEventListener("cancel", onCancel, { once: true });
     modal.showModal();
     syncFounderCleanupControls();
-    if (canFounderCleanup && !appState.founderCleanupRpcDiagnosticsChecked) {
-      void checkFounderCleanupRpcAvailability("session-delete-modal").finally(syncFounderCleanupControls);
+    if (canFounderCleanup && (!appState.founderCleanupRpcDiagnosticsChecked || appState.founderCleanupRpcUnavailable)) {
+      void checkFounderCleanupRpcAvailability("session-delete-modal", {
+        force: appState.founderCleanupRpcUnavailable,
+      }).finally(syncFounderCleanupControls);
     }
     cancelButton.focus();
   });
@@ -17711,6 +17752,15 @@ async function performSessionDeleteAction(session, deleteAction = null) {
   const action = typeof deleteAction === "string" ? deleteAction : String(deleteAction?.action || "").trim();
   if (!sessionId || action === "cancel") {
     return null;
+  }
+
+  if (action === "founder-cleanup-complete") {
+    return {
+      sessionId,
+      action,
+      resultRows: Array.isArray(deleteAction?.resultRows) ? deleteAction.resultRows : [],
+      deletedCount: Math.max(0, Number(deleteAction?.deletedCount) || 0),
+    };
   }
 
   if (action === "founder-cleanup") {

@@ -21070,8 +21070,24 @@ body.theme-dark .contact-reason-card.is-active {
   pointer-events: none;
 }
 
+.session-delete-founder-cleanup [data-session-founder-cleanup-warning].is-success {
+  color: #2b6f41;
+}
+
+.session-delete-founder-cleanup [data-session-founder-cleanup-warning].is-warning {
+  color: #8a5f1d;
+}
+
 .session-delete-founder-cleanup [data-session-founder-cleanup-confirmation] {
   pointer-events: auto;
+}
+
+body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-warning].is-success {
+  color: #94d159;
+}
+
+body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-warning].is-warning {
+  color: #f0c56a;
 }
 
 .session-notes-field {
