@@ -21066,6 +21066,14 @@ body.theme-dark .contact-reason-card.is-active {
   margin-top: 18px;
 }
 
+.session-delete-founder-cleanup [data-session-founder-cleanup-warning] {
+  pointer-events: none;
+}
+
+.session-delete-founder-cleanup [data-session-founder-cleanup-confirmation] {
+  pointer-events: auto;
+}
+
 .session-notes-field {
   display: grid;
   gap: 10px;

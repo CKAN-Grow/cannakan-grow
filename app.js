@@ -17476,19 +17476,44 @@ function confirmSessionArchive(session) {
     founderCleanupSection.hidden = !canFounderCleanup;
   }
   if (founderCleanupInput instanceof HTMLInputElement) {
-    founderCleanupInput.value = "";
-    founderCleanupInput.disabled = founderCleanupUnavailable;
+    founderCleanupInput.value = modal.open ? founderCleanupInput.value : "";
+    founderCleanupInput.disabled = false;
+    founderCleanupInput.readOnly = false;
+    founderCleanupInput.spellcheck = false;
+    founderCleanupInput.setAttribute("aria-describedby", "session-founder-cleanup-warning");
   }
   if (founderCleanupButton instanceof HTMLButtonElement) {
-    founderCleanupButton.disabled = true;
+    founderCleanupButton.disabled = founderCleanupUnavailable
+      || !(founderCleanupInput instanceof HTMLInputElement)
+      || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
   }
   if (founderCleanupWarning instanceof HTMLElement) {
+    founderCleanupWarning.id = "session-founder-cleanup-warning";
+    founderCleanupWarning.setAttribute("aria-live", "polite");
     const warningText = String(appState.founderCleanupRpcWarning || "").trim();
     founderCleanupWarning.textContent = warningText;
     founderCleanupWarning.hidden = !canFounderCleanup || !founderCleanupUnavailable || !warningText;
   }
 
   return new Promise((resolve) => {
+    const syncFounderCleanupControls = () => {
+      const isUnavailable = Boolean(appState.founderCleanupRpcUnavailable);
+      if (founderCleanupWarning instanceof HTMLElement) {
+        const warningText = String(appState.founderCleanupRpcWarning || "").trim();
+        founderCleanupWarning.textContent = warningText;
+        founderCleanupWarning.hidden = !canFounderCleanup || !isUnavailable || !warningText;
+      }
+      if (founderCleanupInput instanceof HTMLInputElement) {
+        founderCleanupInput.disabled = false;
+        founderCleanupInput.readOnly = false;
+      }
+      if (founderCleanupButton instanceof HTMLButtonElement) {
+        founderCleanupButton.disabled = isUnavailable
+          || !(founderCleanupInput instanceof HTMLInputElement)
+          || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
+      }
+    };
+
     const cleanup = () => {
       cancelButton.removeEventListener("click", onCancel);
       confirmButton.removeEventListener("click", onConfirm);
@@ -17514,28 +17539,36 @@ function confirmSessionArchive(session) {
       if (!(founderCleanupInput instanceof HTMLInputElement) || !(founderCleanupButton instanceof HTMLButtonElement)) {
         return;
       }
-      founderCleanupButton.disabled = founderCleanupUnavailable || founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
+      syncFounderCleanupControls();
     };
 
     const onFounderCleanup = () => {
-      if (!(founderCleanupInput instanceof HTMLInputElement) || founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION) {
+      if (
+        appState.founderCleanupRpcUnavailable
+        || !(founderCleanupInput instanceof HTMLInputElement)
+        || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION
+      ) {
         return;
       }
       cleanup();
       resolve({
         action: "founder-cleanup",
-        confirmationPhrase: FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION,
+        confirmationPhrase: founderCleanupInput.value,
       });
     };
 
     cancelButton.addEventListener("click", onCancel, { once: true });
     confirmButton.addEventListener("click", onConfirm, { once: true });
-    if (canFounderCleanup && !founderCleanupUnavailable && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
+    if (canFounderCleanup && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
       founderCleanupInput.addEventListener("input", onFounderInput);
       founderCleanupButton.addEventListener("click", onFounderCleanup, { once: true });
     }
     modal.addEventListener("cancel", onCancel, { once: true });
     modal.showModal();
+    syncFounderCleanupControls();
+    if (canFounderCleanup && !appState.founderCleanupRpcDiagnosticsChecked) {
+      void checkFounderCleanupRpcAvailability("session-delete-modal").finally(syncFounderCleanupControls);
+    }
     cancelButton.focus();
   });
 }
