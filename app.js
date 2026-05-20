@@ -1496,7 +1496,7 @@ const ADMIN_EMAILS = new Set([
   "mo@cannakan.com",
 ]);
 const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE OLD FOUNDER TEST SESSIONS";
-const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-19T09:30:00.000Z";
+const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-19T23:58:00.000Z";
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
@@ -4352,6 +4352,8 @@ function normalizeStoredSession(session) {
     firstPlantedAt: String(session.firstPlantedAt || "").trim(),
     completedAt: String(session.completedAt || "").trim(),
     isMock: Boolean(session.isMock || session.is_mock),
+    isTest: Boolean(session.isTest || session.is_test),
+    excludedFromAnalytics: Boolean(session.excludedFromAnalytics || session.excluded_from_analytics),
     isDeleted: Boolean(session.isDeleted || session.is_deleted),
     deletedAt: String(session.deletedAt || session.deleted_at || "").trim(),
     visibilityStatus: normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
@@ -6122,7 +6124,7 @@ function syncNavigationAvailabilityState() {
 
 function normalizeSessionVisibilityStatus(status = "") {
   const normalizedStatus = String(status || "").trim().toLowerCase();
-  if (["deleted", "archived", "hidden"].includes(normalizedStatus)) {
+  if (["deleted", "archived", "archived_test", "hidden"].includes(normalizedStatus)) {
     return normalizedStatus;
   }
   return normalizedStatus === "active" ? "active" : "";
@@ -6137,7 +6139,7 @@ function isSessionSoftDeleted(session = null) {
     session.isDeleted
     || session.is_deleted
     || String(session.deletedAt || session.deleted_at || "").trim()
-    || ["deleted", "archived", "hidden"].includes(
+    || ["deleted", "archived", "archived_test", "hidden"].includes(
       normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
     )
   );
@@ -6145,6 +6147,14 @@ function isSessionSoftDeleted(session = null) {
 
 function isMockGrowSession(session = null) {
   return Boolean(session?.isMock || session?.is_mock);
+}
+
+function isTestGrowSession(session = null) {
+  return Boolean(session?.isTest || session?.is_test);
+}
+
+function isGrowSessionAnalyticsExcluded(session = null) {
+  return Boolean(session?.excludedFromAnalytics || session?.excluded_from_analytics);
 }
 
 function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
@@ -6156,7 +6166,7 @@ function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
   const normalizedStatus = normalizeSessionStatus(
     session ? (session.sessionStatus || session.session_status || "") : sessionOrStatus,
   );
-  if (["deleted", "archived"].includes(normalizedStatus)) {
+  if (["deleted", "archived", "archived_test"].includes(normalizedStatus)) {
     return "deleted";
   }
   if (["abandoned", "failed", "canceled", "cancelled"].includes(normalizedStatus)) {
@@ -6174,6 +6184,9 @@ function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
 function isGrowSessionAnalyticsEligible(session = null, options = {}) {
   const normalizedSession = normalizeStoredSession(session) || session;
   if (!normalizedSession) {
+    return false;
+  }
+  if (isTestGrowSession(normalizedSession) || isGrowSessionAnalyticsExcluded(normalizedSession)) {
     return false;
   }
   if (!options.includeMock && isMockGrowSession(normalizedSession)) {
@@ -11941,7 +11954,12 @@ function getFounderSessionCleanupCandidateIds() {
 }
 
 function isFounderTestCleanupCandidateSession(session) {
-  if (Boolean(session?.isMock || session?.is_mock)) {
+  if (
+    Boolean(session?.isMock || session?.is_mock)
+    || Boolean(session?.isTest || session?.is_test)
+    || Boolean(session?.excludedFromAnalytics || session?.excluded_from_analytics)
+    || isSessionSoftDeleted(session)
+  ) {
     return true;
   }
 
@@ -11976,6 +11994,13 @@ function formatFounderSessionCleanupResultSummary(resultRows = []) {
 }
 
 async function refreshGrowSessionDataAfterCleanup() {
+  appState.sessions = [];
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.warn("Could not clear local grow session cache after cleanup.", error);
+  }
+
   if (!appState.supabase || !appState.user) {
     saveSessions(getSessions().filter((session) => !session.isMock));
     return;
@@ -12004,6 +12029,10 @@ async function runFounderSessionCleanup(options = {}) {
   }
 
   const dryRun = options.dryRun !== false;
+  const latestSessions = await loadUserSessions({ fallbackToCurrent: true });
+  if (latestSessions.length) {
+    saveSessions(latestSessions);
+  }
   const candidateSessionIds = getFounderSessionCleanupCandidateIds();
   if (!candidateSessionIds.length) {
     return [];
@@ -12387,7 +12416,13 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
   const galleryCountByUserId = new Map();
 
   (sessionRows || []).forEach((row) => {
-    if (row?.is_mock === true || row?.is_deleted === true || normalizeSessionVisibilityStatus(row?.visibility_status || "") === "deleted") {
+    if (
+      row?.is_mock === true
+      || row?.is_test === true
+      || row?.excluded_from_analytics === true
+      || row?.is_deleted === true
+      || normalizeSessionVisibilityStatus(row?.visibility_status || "") === "deleted"
+    ) {
       return;
     }
     const userId = String(row?.user_id || "").trim();
@@ -12450,7 +12485,7 @@ async function loadAdminMembers(reason = "unspecified") {
       .order("created_at", { ascending: false }),
     appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,created_at,is_mock,is_deleted,visibility_status"),
+      .select("id,user_id,created_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status"),
     appState.supabase
       .from("grow_gallery_snapshots")
       .select("id,user_id,created_at,published_at,status,is_mock"),
@@ -12658,7 +12693,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,user_id,date,time,created_at,partitions,is_mock,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
+    .select("id,user_id,date,time,created_at,partitions,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
 
   if (error) {
     console.error("Failed to load admin source review sessions", { reason, error });
@@ -15072,6 +15107,8 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       timerStartAt: existingSession.timerStartAt || existingSession.soakStartedAt || "",
       germinationStartedAt: existingSession.germinationStartedAt || "",
       isMock: Boolean(existingSession.isMock || existingSession.is_mock),
+      isTest: Boolean(existingSession.isTest || existingSession.is_test),
+      excludedFromAnalytics: Boolean(existingSession.excludedFromAnalytics || existingSession.excluded_from_analytics),
       isDeleted: Boolean(existingSession.isDeleted || existingSession.is_deleted),
       deletedAt: existingSession.deletedAt || "",
       visibilityStatus: normalizeSessionVisibilityStatus(existingSession.visibilityStatus || ""),
@@ -15090,7 +15127,7 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock,is_deleted,deleted_at,visibility_status")
+    .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock,is_test,excluded_from_analytics,is_deleted,deleted_at,visibility_status")
     .eq("id", normalizedSessionId)
     .maybeSingle();
 
@@ -15112,6 +15149,8 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       germinationStartedAt: data.germination_started_at || "",
       completedAt: data.completed_at || "",
       isMock: Boolean(data.is_mock),
+      isTest: Boolean(data.is_test),
+      excludedFromAnalytics: Boolean(data.excluded_from_analytics),
       isDeleted: Boolean(data.is_deleted),
       deletedAt: data.deleted_at || "",
       visibilityStatus: normalizeSessionVisibilityStatus(data.visibility_status || ""),
@@ -16478,8 +16517,8 @@ async function updateCloudSession(session) {
   const record = mapSessionToRecord(session, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
   });
-  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock,is_deleted,visibility_status";
-  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock,is_deleted,visibility_status";
+  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status";
+  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status";
   let { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
     .select(appState.sessionTimeColumnsUnavailable ? legacyPreviousRowColumns : modernPreviousRowColumns)
@@ -16548,6 +16587,8 @@ async function updateCloudSession(session) {
     germinationStartedAt: previousRow?.germination_started_at || "",
     completedAt: previousRow?.completed_at || "",
     isMock: Boolean(previousRow?.is_mock),
+    isTest: Boolean(previousRow?.is_test),
+    excludedFromAnalytics: Boolean(previousRow?.excluded_from_analytics),
     isDeleted: Boolean(previousRow?.is_deleted),
     visibilityStatus: normalizeSessionVisibilityStatus(previousRow?.visibility_status || ""),
   };
@@ -16744,6 +16785,7 @@ async function deleteCloudSession(sessionId) {
     ...existingSession,
     id: sessionId,
     isDeleted: true,
+    excludedFromAnalytics: true,
     deletedAt,
     visibilityStatus: "deleted",
     updatedAt: deletedAt,
@@ -16759,6 +16801,7 @@ async function deleteCloudSession(sessionId) {
     .from("grow_sessions")
     .update({
       is_deleted: true,
+      excluded_from_analytics: true,
       deleted_at: deletedAt,
       visibility_status: "deleted",
       updated_at: deletedAt,
@@ -16769,7 +16812,7 @@ async function deleteCloudSession(sessionId) {
 
   if (error) {
     const message = String(error.message || "").toLowerCase();
-    if (message.includes("is_deleted") || message.includes("deleted_at") || message.includes("visibility_status")) {
+    if (message.includes("is_deleted") || message.includes("deleted_at") || message.includes("visibility_status") || message.includes("excluded_from_analytics")) {
       throw new Error("Could not archive this session because the soft-delete columns are missing. Apply the grow sessions soft-delete migration and try again.");
     }
     throw error;
@@ -24054,6 +24097,8 @@ function mapSessionToRecord(session, userId, options = {}) {
     session_seed_age_years: sessionSeedAgeYears,
     partitions: serializeSessionPartitions(session.partitions),
     is_mock: false,
+    is_test: Boolean(session.isTest),
+    excluded_from_analytics: Boolean(session.excludedFromAnalytics),
     created_at: session.createdAt,
     timer_start_at: soakStartedAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
@@ -24096,6 +24141,8 @@ function mapRowToSession(row) {
     seedAgeMode: normalizeSeedAgeMode(row.seed_age_mode || ""),
     sessionSeedAgeYears: normalizeSeedAgeYears(row.session_seed_age_years),
     isMock: Boolean(row.is_mock),
+    isTest: Boolean(row.is_test),
+    excludedFromAnalytics: Boolean(row.excluded_from_analytics),
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at || "",
     visibilityStatus: normalizeSessionVisibilityStatus(row.visibility_status || ""),
@@ -51927,7 +51974,7 @@ function renderFounderSessionCleanupAdminSection(target = app) {
         <p class="eyebrow">Founder Session Cleanup</p>
         <h3>Reset old test grow sessions</h3>
         <p class="muted">
-          Admin-only cleanup for the current signed-in account. It removes selected old test sessions and related mock grow-session rows, skips CSTP-linked records, and never touches account, role, settings, CSTP, or production config tables.
+          Admin-only cleanup for the current signed-in account. It marks selected old personal test sessions as test/excluded, removes related grow-session rows, skips CSTP-linked records, and never touches account, role, settings, CSTP, or production config tables.
         </p>
         <p class="founder-session-cleanup-count">${candidateCount} old or mock loaded session${candidateCount === 1 ? "" : "s"} available for cleanup review.</p>
         ${message ? `<p class="success-message">${escapeHtml(message)}</p>` : ""}
@@ -51946,7 +51993,7 @@ function renderFounderSessionCleanupAdminSection(target = app) {
           class="button button-danger"
           data-founder-session-cleanup-run
           ${isLoading || !candidateCount ? "disabled" : ""}
-        >Delete Old Test Sessions</button>
+        >Reset Old Test Sessions</button>
       </div>
     </div>
   `;
@@ -51973,7 +52020,7 @@ async function handleFounderSessionCleanupPreview() {
     const resultRows = await runFounderSessionCleanup({ dryRun: true });
     const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
     appState.founderSessionCleanupLastResult = resultRows;
-    appState.founderSessionCleanupMessage = `Cleanup preview found ${deletedCount} session${deletedCount === 1 ? "" : "s"} eligible for deletion.`;
+    appState.founderSessionCleanupMessage = `Cleanup preview found ${deletedCount} session${deletedCount === 1 ? "" : "s"} eligible for removal/exclusion.`;
   } catch (error) {
     console.error("Founder session cleanup preview failed", error);
     appState.founderSessionCleanupError = error?.message || "Cleanup preview failed.";
@@ -51994,7 +52041,7 @@ async function handleFounderSessionCleanupRun() {
   }
 
   const confirmation = window.prompt(
-    `This permanently deletes old founder test grow sessions for your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`,
+    `This marks old personal test sessions as analytics-excluded, then removes them from your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`,
   );
   if (confirmation !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION) {
     appState.founderSessionCleanupMessage = "Cleanup canceled. No sessions were deleted.";
@@ -52004,7 +52051,7 @@ async function handleFounderSessionCleanupRun() {
   }
 
   appState.founderSessionCleanupLoading = true;
-  appState.founderSessionCleanupMessage = "Deleting old test sessions...";
+  appState.founderSessionCleanupMessage = "Removing old test sessions and clearing analytics...";
   appState.founderSessionCleanupError = "";
   appState.founderSessionCleanupLastResult = null;
   safeRender();
@@ -52014,7 +52061,7 @@ async function handleFounderSessionCleanupRun() {
     const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
     appState.founderSessionCleanupLastResult = resultRows;
     await refreshGrowSessionDataAfterCleanup();
-    appState.founderSessionCleanupMessage = `Deleted ${deletedCount} old test session${deletedCount === 1 ? "" : "s"}. My Sessions has been refreshed.`;
+    appState.founderSessionCleanupMessage = `Removed/excluded ${deletedCount} old test session${deletedCount === 1 ? "" : "s"}. My Sessions has been refreshed.`;
     window.alert(appState.founderSessionCleanupMessage);
   } catch (error) {
     console.error("Founder session cleanup failed", error);

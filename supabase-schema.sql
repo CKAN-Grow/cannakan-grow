@@ -23,6 +23,10 @@ create table if not exists public.grow_sessions (
   seed_age_mode text,
   session_seed_age_years numeric,
   is_mock boolean not null default false,
+  is_test boolean not null default false,
+  excluded_from_analytics boolean not null default false,
+  analytics_excluded_reason text not null default '',
+  analytics_excluded_at timestamptz,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
   visibility_status text not null default 'active',
@@ -659,6 +663,18 @@ alter table public.grow_sessions
   add column if not exists is_mock boolean not null default false;
 
 alter table public.grow_sessions
+  add column if not exists is_test boolean not null default false;
+
+alter table public.grow_sessions
+  add column if not exists excluded_from_analytics boolean not null default false;
+
+alter table public.grow_sessions
+  add column if not exists analytics_excluded_reason text not null default '';
+
+alter table public.grow_sessions
+  add column if not exists analytics_excluded_at timestamptz;
+
+alter table public.grow_sessions
   add column if not exists session_started_at timestamptz;
 
 alter table public.grow_sessions
@@ -1027,8 +1043,10 @@ as $$
   select case
     when grow_sessions.id is null then 'missing_session'
     when coalesce(grow_sessions.is_mock, false) = true then 'mock_session'
+    when coalesce(grow_sessions.is_test, false) = true then 'test_session'
+    when coalesce(grow_sessions.excluded_from_analytics, false) = true then coalesce(nullif(grow_sessions.analytics_excluded_reason, ''), 'analytics_excluded')
     when coalesce(grow_sessions.is_deleted, false) = true
-      or lower(coalesce(grow_sessions.visibility_status, '')) in ('deleted', 'archived') then 'deleted_session'
+      or lower(coalesce(grow_sessions.visibility_status, '')) in ('deleted', 'archived', 'archived_test') then 'deleted_session'
     when lower(coalesce(grow_sessions.session_status, '')) in ('abandoned', 'failed', 'canceled', 'cancelled') then 'abandoned_session'
     when lower(coalesce(grow_sessions.session_status, '')) <> 'completed' then 'incomplete_session'
     when grow_sessions.completed_at is null then 'missing_completed_at'
@@ -1175,7 +1193,7 @@ $$;
 
 drop trigger if exists grow_sessions_analytics_eligibility_sync on public.grow_sessions;
 create trigger grow_sessions_analytics_eligibility_sync
-after insert or update of session_status, completed_at, session_started_at, soak_started_at, germination_started_at, is_mock, is_deleted, visibility_status, deleted_at
+after insert or update of session_status, completed_at, session_started_at, soak_started_at, germination_started_at, is_mock, is_test, excluded_from_analytics, is_deleted, visibility_status, deleted_at
 on public.grow_sessions
 for each row
 execute function public.enforce_grow_session_analytics_eligibility();
@@ -2301,6 +2319,12 @@ using (
 comment on column public.grow_sessions.is_mock is
   'True only for seeded/dev/demo Grow sessions. Real logged-in user sessions default to false and are preserved by demo resets.';
 
+comment on column public.grow_sessions.is_test is
+  'True for founder/admin personal test grow sessions. Test sessions must not count in production analytics.';
+
+comment on column public.grow_sessions.excluded_from_analytics is
+  'Internal analytics guardrail. True sessions are hidden from production germination rates, rankings, leaderboards, Community Grow analytics, and CSTP calculations.';
+
 comment on column public.grow_gallery_snapshots.is_mock is
   'True only for seeded/dev/demo Community Grow snapshots. Real user snapshots default to false and are preserved by demo resets.';
 
@@ -2318,6 +2342,9 @@ comment on column public.sources.is_mock is
 
 create index if not exists grow_sessions_is_mock_idx
   on public.grow_sessions (is_mock, created_at desc);
+
+create index if not exists grow_sessions_analytics_exclusion_idx
+  on public.grow_sessions (excluded_from_analytics, is_test, is_deleted, session_status, created_at desc);
 
 create index if not exists grow_gallery_snapshots_is_mock_idx
   on public.grow_gallery_snapshots (is_mock, created_at desc);
@@ -2648,6 +2675,10 @@ begin
   where grow_sessions.user_id = normalized_target_user_id
     and (
       coalesce(grow_sessions.is_mock, false) = true
+      or coalesce(grow_sessions.is_test, false) = true
+      or coalesce(grow_sessions.excluded_from_analytics, false) = true
+      or coalesce(grow_sessions.is_deleted, false) = true
+      or lower(coalesce(grow_sessions.visibility_status, '')) in ('deleted', 'archived', 'archived_test')
       or (
         coalesce(include_explicit_unmarked, false) = true
         and has_requested_ids
@@ -2739,6 +2770,29 @@ begin
   where push_notification_deliveries.session_id = any (candidate_ids);
 
   if coalesce(dry_run, true) = false then
+    update public.grow_sessions
+    set
+      session_status = 'archived_test',
+      visibility_status = 'archived_test',
+      is_mock = true,
+      is_test = true,
+      excluded_from_analytics = true,
+      analytics_excluded_reason = 'founder_personal_test_cleanup',
+      analytics_excluded_at = timezone('utc', now()),
+      is_deleted = true,
+      deleted_at = coalesce(deleted_at, timezone('utc', now())),
+      updated_at = timezone('utc', now())
+    where grow_sessions.id = any (candidate_ids);
+
+    update public.grow_gallery_snapshots
+    set
+      is_mock = true,
+      analytics_excluded = true,
+      analytics_excluded_reason = 'founder_personal_test_cleanup',
+      analytics_excluded_at = coalesce(analytics_excluded_at, timezone('utc', now())),
+      updated_at = timezone('utc', now())
+    where grow_gallery_snapshots.session_id = any (candidate_ids);
+
     delete from public.grow_gallery_snapshot_likes
     where exists (
       select 1
@@ -2856,7 +2910,7 @@ revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], b
 grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) to authenticated;
 
 comment on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) is
-  'Admin-only grow-session cleanup for founder test/mock data. Defaults to dry-run and requires exact confirmation before deletion. Excludes CSTP-linked sessions, caps explicit unmarked cleanup to the legacy cutoff, and never deletes auth, admin, settings, config, source, or CSTP records.';
+  'Admin-only grow-session cleanup for founder personal test/mock data. Defaults to dry-run and requires exact confirmation before deletion. Marks candidates as archived_test, is_test, is_mock, and excluded_from_analytics before removal, excludes CSTP-linked sessions, caps explicit unmarked cleanup to the legacy cutoff, and never deletes auth, admin, settings, config, source, or CSTP records.';
 
 comment on table public.grow_session_time_edit_audit is
   'Private audit log for founder/admin grow session timestamp edits. Not exposed to public app surfaces.';

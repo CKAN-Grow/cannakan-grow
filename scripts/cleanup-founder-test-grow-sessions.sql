@@ -18,14 +18,15 @@
 --     include_explicit_unmarked => false,
 --     confirmation_phrase => 'DELETE OLD FOUNDER TEST SESSIONS',
 --     dry_run => false,
---     legacy_created_before => '2026-05-19 09:30:00+00'::timestamptz,
+--     legacy_created_before => '2026-05-19 23:58:00+00'::timestamptz,
 --     reason => 'Reset old founder test grow sessions before real production tracking'
 --   );
 --
 -- For pre-flag abandoned test sessions that are not marked is_mock yet, pass
 -- explicit session ids and set include_explicit_unmarked => true. The function
 -- still caps unmarked cleanup to legacy_created_before so future real
--- production sessions remain untouched.
+-- production sessions remain untouched. Before removal, candidates are marked
+-- archived_test, is_test, is_mock, and excluded_from_analytics.
 --
 -- Audit log:
 --   select * from public.grow_session_cleanup_audit order by created_at desc;

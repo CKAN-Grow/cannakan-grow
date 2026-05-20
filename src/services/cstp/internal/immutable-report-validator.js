@@ -2413,9 +2413,21 @@ function getGrowSessionAnalyticsEligibility(growSession = {}) {
   if (getBooleanValue(growSession, ["is_mock", "isMock"], false)) {
     return { eligible: false, reason: "mock_session" };
   }
+  if (getBooleanValue(growSession, ["is_test", "isTest"], false)) {
+    return { eligible: false, reason: "test_session" };
+  }
+  if (getBooleanValue(growSession, ["excluded_from_analytics", "excludedFromAnalytics"], false)) {
+    return {
+      eligible: false,
+      reason: normalizeText(getFirstValue(growSession, [
+        "analytics_excluded_reason",
+        "analyticsExcludedReason",
+      ])) || "analytics_excluded",
+    };
+  }
   if (
     getBooleanValue(growSession, ["is_deleted", "isDeleted"], false)
-    || ["deleted", "archived"].includes(normalizeStatusText(
+    || ["deleted", "archived", "archived_test"].includes(normalizeStatusText(
       getFirstValue(growSession, ["visibility_status", "visibilityStatus"]),
     ))
   ) {
@@ -2427,7 +2439,7 @@ function getGrowSessionAnalyticsEligibility(growSession = {}) {
     "sessionStatus",
     "status",
   ]));
-  if (["abandoned", "failed", "canceled", "cancelled"].includes(status)) {
+  if (["abandoned", "failed", "canceled", "cancelled", "archived_test"].includes(status)) {
     return { eligible: false, reason: "abandoned_session" };
   }
   if (!["completed", "complete"].includes(status)) {

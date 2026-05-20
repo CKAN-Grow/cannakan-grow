@@ -83,6 +83,9 @@ function normalizeGrowSessionLifecycleState(session = null) {
 }
 
 function isGrowSessionAnalyticsEligible(session = {}) {
+  if (session?.isTest || session?.is_test || session?.excludedFromAnalytics || session?.excluded_from_analytics) {
+    return false;
+  }
   if (session?.isMock || session?.is_mock) {
     return false;
   }
@@ -223,6 +226,8 @@ assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sess
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "abandoned" }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isMock: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isTest: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, excludedFromAnalytics: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({
   ...completedAnalyticsSession,
   germinationStartedAt: "2026-05-19T18:00:00.000Z",
