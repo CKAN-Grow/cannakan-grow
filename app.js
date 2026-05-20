@@ -23501,6 +23501,7 @@ function formatHomeGalleryRankingMetric(entry) {
 }
 
 function buildHomeGalleryRankingsTeaserState() {
+  const snapshots = Array.isArray(appState.gallerySnapshots) ? appState.gallerySnapshots : [];
   const approvedPublicSnapshots = getApprovedPublicGallerySnapshots();
   const currentMonthKey = getLeaderboardMonthKey(new Date());
   const monthlySnapshots = approvedPublicSnapshots.filter((snapshot) => (
