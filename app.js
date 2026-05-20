@@ -3920,6 +3920,24 @@ function normalizeSeedAgeYears(value) {
   return parsedValue;
 }
 
+function isSeedAgeHalfYearIncrement(value) {
+  const normalizedValue = normalizeSeedAgeYears(value);
+  if (normalizedValue === null) {
+    return false;
+  }
+
+  const halfYearUnits = normalizedValue / 0.5;
+  return Math.abs(halfYearUnits - Math.round(halfYearUnits)) < 0.000001;
+}
+
+function isValidSeedAgeYearsInput(value, options = {}) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) {
+    return Boolean(options.allowBlank);
+  }
+  return isSeedAgeHalfYearIncrement(rawValue);
+}
+
 function formatSeedAgeInputValue(value) {
   const normalizedValue = normalizeSeedAgeYears(value);
   return normalizedValue === null ? "" : String(normalizedValue);
@@ -27350,11 +27368,11 @@ function validateSeedAgeSettings(form) {
 
   if (state.mode === "same") {
     const rawValue = String(sameAgeInput?.value || "").trim();
-    if (rawValue === "" || normalizeSeedAgeYears(rawValue) === null) {
+    if (!isValidSeedAgeYearsInput(rawValue)) {
       sameAgeInput?.classList.add("is-missing");
       return {
         isValid: false,
-        message: "Enter a seed age in years or switch to mixed ages by partition.",
+        message: "Enter seed age in 0.5 year increments or switch to mixed ages by partition.",
         firstInvalidField: sameAgeInput,
       };
     }
@@ -45023,7 +45041,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
                 <label>
                   <span>Seed age</span>
                   <div class="session-seed-age-input-shell">
-                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.1" inputmode="decimal" placeholder="#" value="${escapeHtml(sessionSeedAgeYears)}">
+                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.5" inputmode="decimal" placeholder="#" value="${escapeHtml(sessionSeedAgeYears)}">
                     <span>years</span>
                   </div>
                 </label>
@@ -57043,10 +57061,10 @@ function buildPartitionFormCard(partition, index, options = {}) {
     <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
       <span class="partition-seed-age-input-wrap">
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.1" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.5" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
         <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
       </span>
-      <span class="field-warning" aria-live="polite">Enter a valid age in years or leave blank.</span>
+      <span class="field-warning" aria-live="polite">Use 0.5 year increments or leave blank.</span>
     </label>
     ` : ""}
     <label>
@@ -62872,10 +62890,9 @@ function validatePartitionRow(row) {
   const hasSeedAge = seedAgeValue !== "";
   const hasPlantedCount = plantedValue !== "";
   const seedNumber = Number(seedValue);
-  const seedAgeNumber = Number(seedAgeValue);
   const plantedNumber = Number(plantedValue);
   const seedCountValid = hasSeedCount && seedNumber > 0;
-  const seedAgeValid = !seedAgeInput || !hasSeedAge || (Number.isFinite(seedAgeNumber) && seedAgeNumber >= 0);
+  const seedAgeValid = !seedAgeInput || isValidSeedAgeYearsInput(seedAgeValue, { allowBlank: true });
   const plantedCountValid = !hasPlantedCount || (Number.isFinite(plantedNumber) && plantedNumber >= 0 && seedCountValid && plantedNumber <= seedNumber);
 
   const rowStarted = Boolean(sourceValue || varietyValue || typeValue || sexValue || hasSeedCount || hasSeedAge || hasPlantedCount);
