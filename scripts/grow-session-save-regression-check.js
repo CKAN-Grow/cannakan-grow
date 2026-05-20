@@ -65,6 +65,57 @@ function normalizeSessionStatus(sessionStatus) {
   return normalizedStatus || "unselected";
 }
 
+function normalizeIdentityPunctuation(value = "") {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/\s*&\s*/g, " and ")
+    .replace(/[./\\|_]+/g, " ")
+    .replace(/\s*-\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripSourceWebsitePrefixes(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/+$/, "");
+}
+
+function stripSafeSourceSuffixAliases(value = "") {
+  let normalizedValue = String(value || "").trim();
+  const suffixPattern = /\b(?:seed\s*co|seed\s*company|seeds|company|co)\.?$/i;
+  for (let index = 0; index < 3; index += 1) {
+    const nextValue = normalizedValue.replace(suffixPattern, "").trim();
+    if (nextValue === normalizedValue || !nextValue) {
+      break;
+    }
+    normalizedValue = nextValue;
+  }
+  return normalizedValue;
+}
+
+function normalizeCanonicalIdentityKey(value = "") {
+  return normalizeIdentityPunctuation(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeSourceNameForMatching(value = "") {
+  return normalizeCanonicalIdentityKey(stripSafeSourceSuffixAliases(stripSourceWebsitePrefixes(value)));
+}
+
+function normalizeSeedVarietyNameForMatching(value = "") {
+  return normalizeCanonicalIdentityKey(value);
+}
+
 function normalizeGrowSessionLifecycleState(session = null) {
   if (["deleted", "archived", "archived_test"].includes(normalizeSessionStatus(session?.sessionStatus || session?.session_status || ""))) {
     return "deleted";
@@ -251,6 +302,11 @@ assert.equal(automaticSession.sessionStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.soakStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.germinationStartedAt, "2026-05-19T18:25:00.000Z");
 assert.equal(automaticSession.completedAt, "2026-05-19T18:25:00.000Z");
+
+assert.equal(normalizeSourceNameForMatching(" https://www.Humboldt Seed Co. "), "humboldt");
+assert.equal(normalizeSourceNameForMatching("Humboldt Seeds"), "humboldt");
+assert.equal(normalizeSourceNameForMatching("Royal Queen Seeds"), "royal queen");
+assert.equal(normalizeSeedVarietyNameForMatching(" Blue  Dream\u2014Auto "), "blue dream auto");
 
 const completedAnalyticsSession = {
   ...session,

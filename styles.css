@@ -35193,6 +35193,11 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   overflow: hidden;
 }
 
+#partition-chart-shell,
+#partition-fields {
+  overflow: visible;
+}
+
 .session-workspace-shell .chart-header {
   padding: 14px 18px;
   background:
@@ -36518,6 +36523,72 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
   border-color: #94d159;
   background: rgba(148, 209, 89, 0.08);
   box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.18);
+}
+
+.partition-identity-field {
+  position: relative;
+}
+
+.partition-identity-suggestions {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(79, 94, 75, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 30px rgba(27, 36, 24, 0.16);
+}
+
+.partition-identity-suggestion {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.partition-identity-suggestion span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.partition-identity-suggestion small {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.partition-identity-suggestion:hover,
+.partition-identity-suggestion.is-active {
+  background: rgba(148, 209, 89, 0.12);
+}
+
+body.theme-dark .partition-identity-suggestions {
+  border-color: rgba(148, 209, 89, 0.14);
+  background: #202620;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+}
+
+body.theme-dark .partition-identity-suggestion {
+  color: #edf5ea;
+}
+
+body.theme-dark .partition-identity-suggestion:hover,
+body.theme-dark .partition-identity-suggestion.is-active {
+  background: rgba(148, 209, 89, 0.14);
 }
 
 .partition-row input[name^="seedCount-"],

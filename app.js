@@ -258,6 +258,7 @@ const ADMIN_ANNOUNCEMENT_PREVIEW_ROTATION_MAX_MS = 8000;
 const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 520;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
+const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const FILTER_PAPER_STORE_URLS = Object.freeze({
   US: "https://cannakan.com/products/filter-papers-90mm",
@@ -1223,6 +1224,7 @@ const appState = {
   sessionHistoryFocusSessionId: "",
   founderCleanupRpcUnavailable: false,
   founderCleanupRpcWarning: "",
+  founderCleanupRpcDiagnosticsChecked: false,
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -1838,6 +1840,9 @@ function resetSessionScopedAppState() {
   appState.membersLoaded = false;
   appState.membersError = "";
   appState.membersRefreshPromise = null;
+  appState.founderCleanupRpcUnavailable = false;
+  appState.founderCleanupRpcWarning = "";
+  appState.founderCleanupRpcDiagnosticsChecked = false;
   appState.memberAdminFilters = {
     query: "",
     role: "all",
@@ -3970,15 +3975,92 @@ function renderSeedTypeSelectOptions(selectedValue = "") {
   ].join("");
 }
 
+function normalizeIdentityPunctuation(value = "") {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2010-\u2015]/g, "-")
+    .replace(/\s*&\s*/g, " and ")
+    .replace(/[./\\|_]+/g, " ")
+    .replace(/\s*-\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripSourceWebsitePrefixes(value = "") {
+  return String(value || "")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/\/+$/, "");
+}
+
+function stripSafeSourceSuffixAliases(value = "") {
+  let normalizedValue = String(value || "").trim();
+  const suffixPattern = /\b(?:seed\s*co|seed\s*company|seeds|company|co)\.?$/i;
+  for (let index = 0; index < 3; index += 1) {
+    const nextValue = normalizedValue.replace(suffixPattern, "").trim();
+    if (nextValue === normalizedValue || !nextValue) {
+      break;
+    }
+    normalizedValue = nextValue;
+  }
+  return normalizedValue;
+}
+
+function normalizeCanonicalIdentityKey(value = "") {
+  return normalizeIdentityPunctuation(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeSourceNameForMatching(value = "") {
+  const withoutWebsitePrefix = stripSourceWebsitePrefixes(value);
+  const withoutSafeSuffix = stripSafeSourceSuffixAliases(withoutWebsitePrefix);
+  return normalizeCanonicalIdentityKey(withoutSafeSuffix);
+}
+
+function normalizeSeedVarietyNameForMatching(value = "") {
+  return normalizeCanonicalIdentityKey(value);
+}
+
+function getPartitionSourceAnalyticsKey(partition = null) {
+  return normalizeSourceNameForMatching(
+    formatPartitionSource(partition)
+    || partition?.sourceNormalizedName
+    || partition?.source_normalized_name
+  );
+}
+
+function getPartitionSeedVarietyAnalyticsKey(partition = null) {
+  return normalizeSeedVarietyNameForMatching(
+    formatPartitionSeedVariety(partition)
+    || partition?.seedVarietyNormalizedName
+    || partition?.seed_variety_normalized_name
+  );
+}
+
 function normalizeStoredPartition(partition, fallback = {}) {
   const sourcePartition = partition && typeof partition === "object" ? partition : {};
   const fallbackPartition = fallback && typeof fallback === "object" ? fallback : {};
+  const source = String(sourcePartition.source || "").trim();
+  const seedVariety = String(sourcePartition.seedVariety || sourcePartition.seed_variety || "").trim();
 
   return {
     ...sourcePartition,
     id: Number(sourcePartition.id) || Number(fallbackPartition.id) || 0,
-    source: String(sourcePartition.source || "").trim(),
-    seedVariety: String(sourcePartition.seedVariety || sourcePartition.seed_variety || "").trim(),
+    source,
+    seedVariety,
+    // Display labels stay exactly as submitted/selected. Canonical keys are
+    // additive matching fields for suggestions and analytics grouping.
+    sourceCanonicalName: String(sourcePartition.sourceCanonicalName || sourcePartition.source_canonical_name || source).trim(),
+    sourceNormalizedName: normalizeSourceNameForMatching(source),
+    seedVarietyCanonicalName: String(sourcePartition.seedVarietyCanonicalName || sourcePartition.seed_variety_canonical_name || seedVariety).trim(),
+    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(seedVariety),
     breeder: String(sourcePartition.breeder || fallbackPartition.breeder || "").trim(),
     seedType: normalizeSeedTypeId(sourcePartition.seedType || sourcePartition.seed_type || ""),
     feminized: String(sourcePartition.feminized || "").trim(),
@@ -4000,7 +4082,15 @@ function serializeSessionPartitions(partitions = []) {
   return normalizeSessionPartitions(partitions).map((partition) => ({
     id: partition.id,
     source: partition.source,
+    sourceCanonicalName: partition.sourceCanonicalName || partition.source,
+    source_canonical_name: partition.sourceCanonicalName || partition.source,
+    sourceNormalizedName: normalizeSourceNameForMatching(partition.source),
+    source_normalized_name: normalizeSourceNameForMatching(partition.source),
     seedVariety: partition.seedVariety,
+    seedVarietyCanonicalName: partition.seedVarietyCanonicalName || partition.seedVariety,
+    seed_variety_canonical_name: partition.seedVarietyCanonicalName || partition.seedVariety,
+    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(partition.seedVariety),
+    seed_variety_normalized_name: normalizeSeedVarietyNameForMatching(partition.seedVariety),
     breeder: partition.breeder,
     seedType: normalizeSeedTypeId(partition.seedType || ""),
     feminized: partition.feminized,
@@ -11904,6 +11994,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
             "membersError",
           );
           appState.membersLoaded = true;
+          void checkFounderCleanupRpcAvailability("auth:signed-in");
         }
         const sessions = await safelyLoadAppData(
           () => loadUserSessions(),
@@ -12137,6 +12228,43 @@ function markFounderCleanupRpcUnavailable(error = null) {
     message: appState.founderCleanupRpcWarning,
     details: getReadableErrorDetails(error),
   });
+}
+
+async function checkFounderCleanupRpcAvailability(reason = "admin-diagnostics") {
+  if (!appState.supabase || !appState.user || !isAdminUser() || appState.founderCleanupRpcDiagnosticsChecked) {
+    return !appState.founderCleanupRpcUnavailable;
+  }
+
+  appState.founderCleanupRpcDiagnosticsChecked = true;
+  const { error } = await appState.supabase.rpc("cleanup_founder_test_grow_sessions", {
+    candidate_session_ids: [],
+    confirmation_phrase: "",
+    dry_run: true,
+    include_explicit_unmarked: false,
+    legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
+    reason: `Admin diagnostics RPC availability check: ${reason}`,
+    target_user_id: appState.user.id,
+  });
+
+  if (error) {
+    if (isMissingFounderCleanupRpcError(error)) {
+      markFounderCleanupRpcUnavailable(error);
+    } else {
+      console.warn("[Founder Cleanup] RPC diagnostics returned an error.", {
+        reason,
+        details: getReadableErrorDetails(error),
+      });
+    }
+    return false;
+  }
+
+  appState.founderCleanupRpcUnavailable = false;
+  appState.founderCleanupRpcWarning = "";
+  console.info("[Founder Cleanup] RPC availability check passed.", {
+    reason,
+    rpc: "public.cleanup_founder_test_grow_sessions",
+  });
+  return true;
 }
 
 async function refreshGrowSessionDataAfterCleanup() {
@@ -17388,12 +17516,12 @@ function findSourceById(sourceId, options = {}) {
 }
 
 function findSourceByName(name, options = {}) {
-  const normalizedKey = normalizeLeaderboardKey(name);
+  const normalizedKey = normalizeSourceNameForMatching(name);
   if (!normalizedKey) {
     return null;
   }
 
-  return getSourceCatalogRecords(options).find((source) => normalizeLeaderboardKey(source.name) === normalizedKey) || null;
+  return getSourceCatalogRecords(options).find((source) => normalizeSourceNameForMatching(source.name) === normalizedKey) || null;
 }
 
 function getManagedSourceRecordForSnapshot(snapshot, options = {}) {
@@ -17461,10 +17589,12 @@ function getPrimaryPartitionSourceDetails(partitions = []) {
   return {
     sourceId: String(sourceRecord?.id || "").trim(),
     sourceName: sourceRecord?.name || sourceName,
+    sourceNormalizedName: normalizeSourceNameForMatching(sourceRecord?.name || sourceName),
     sourceLogoUrl: normalizeSourceStatus(sourceRecord?.status) === "active"
       ? String(sourceRecord?.logoUrl || "").trim()
       : "",
     seedVarietyName: normalizeLeaderboardLabel(formatPartitionSeedVariety(firstPartition)),
+    seedVarietyNormalizedName: getPartitionSeedVarietyAnalyticsKey(firstPartition),
   };
 }
 
@@ -20119,11 +20249,27 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
   const normalizedSeedType = normalizeSeedTypeId(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
   const sourceDisplay = getSourceDisplayMetadata(snapshot);
   const fallbackSourceName = normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity));
+  const sourceLabel = sourceDisplay.name || fallbackSourceName;
+  const seedVarietyLabel = normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity));
 
   return {
-    sourceName: sourceDisplay.name || fallbackSourceName,
+    sourceName: sourceLabel,
+    sourceNormalizedName: normalizeSourceNameForMatching(
+      snapshot?.sourceNormalizedName
+      || snapshot?.source_normalized_name
+      || firstPartitionWithIdentity?.sourceNormalizedName
+      || firstPartitionWithIdentity?.source_normalized_name
+      || sourceLabel,
+    ),
     sourceLogoUrl: String(sourceDisplay.logoUrl || "").trim(),
-    seedVarietyName: normalizeLeaderboardLabel(snapshot?.seedVarietyName || formatPartitionSeedVariety(firstPartitionWithIdentity)),
+    seedVarietyName: seedVarietyLabel,
+    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(
+      snapshot?.seedVarietyNormalizedName
+      || snapshot?.seed_variety_normalized_name
+      || firstPartitionWithIdentity?.seedVarietyNormalizedName
+      || firstPartitionWithIdentity?.seed_variety_normalized_name
+      || seedVarietyLabel,
+    ),
     seedTypeName: normalizedSeedType ? getSeedTypeLabel(normalizedSeedType) : "",
   };
 }
@@ -20136,7 +20282,9 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
   (snapshots || []).forEach((snapshot) => {
     const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
     const label = type === "source" ? metadata.sourceName : metadata.seedVarietyName;
-    const normalizedKey = normalizeLeaderboardKey(label);
+    const normalizedKey = type === "source"
+      ? metadata.sourceNormalizedName
+      : metadata.seedVarietyNormalizedName;
     if (!normalizedKey) {
       return;
     }
@@ -26586,8 +26734,10 @@ function buildSnapshotData(source) {
     systemLabel: formatSnapshotSystemLabel(source.systemType || "KAN"),
     sourceId: sourceDetails.sourceId,
     sourceName: sourceDetails.sourceName,
+    sourceNormalizedName: sourceDetails.sourceNormalizedName,
     sourceLogoUrl: sourceDetails.sourceLogoUrl,
     seedVarietyName: sourceDetails.seedVarietyName,
+    seedVarietyNormalizedName: sourceDetails.seedVarietyNormalizedName,
     totalSeeds: totals.totalSeeds,
     totalPlanted: totals.totalPlanted,
     percentage,
@@ -35057,13 +35207,13 @@ function buildSourceDirectorySessionAggregate() {
       const sourceName = formatPartitionSource(partition);
       const breederName = String(partition?.breeder || sourceName || "").trim();
       const varietyName = formatPartitionSeedVariety(partition);
-      const sourceKey = normalizeComparableSourceKey(sourceName);
+      const sourceKey = getPartitionSourceAnalyticsKey(partition);
 
       if (breederName) {
-        breederKeys.add(normalizeComparableSourceKey(breederName));
+        breederKeys.add(normalizeSourceNameForMatching(breederName));
       }
       if (varietyName) {
-        varietyKeys.add(normalizeComparableSourceKey(varietyName));
+        varietyKeys.add(getPartitionSeedVarietyAnalyticsKey(partition));
       }
       if (!sourceName || !sourceKey) {
         return;
@@ -35084,7 +35234,7 @@ function buildSourceDirectorySessionAggregate() {
       existingEntry.totalSeeds += Math.max(0, Number(partition?.seedCount) || 0);
       existingEntry.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
       if (varietyName) {
-        existingEntry.varieties.set(normalizeComparableSourceKey(varietyName), varietyName);
+        existingEntry.varieties.set(getPartitionSeedVarietyAnalyticsKey(partition), varietyName);
       }
       if (!seenSourcesInSession.has(sourceKey)) {
         existingEntry.sessionsLogged += 1;
@@ -35177,7 +35327,7 @@ function getSampleSourceProfileRecord(sourceId = "") {
   ));
   const matchingSessions = sampleSessions.filter((session) => {
     const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
-    return partitions.some((partition) => normalizeComparableSourceKey(formatPartitionSource(partition)) === normalizedId);
+    return partitions.some((partition) => getPartitionSourceAnalyticsKey(partition) === normalizedId);
   });
   if (!matchingSessions.length) {
     return null;
@@ -35202,7 +35352,7 @@ function getSampleSourceProfileRecord(sourceId = "") {
 
     partitions.forEach((partition) => {
       const sourceName = formatPartitionSource(partition);
-      if (normalizeComparableSourceKey(sourceName) !== normalizedId) {
+      if (getPartitionSourceAnalyticsKey(partition) !== normalizedId) {
         return;
       }
 
@@ -35211,7 +35361,7 @@ function getSampleSourceProfileRecord(sourceId = "") {
       aggregate.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
       const varietyName = formatPartitionSeedVariety(partition);
       if (varietyName) {
-        aggregate.varieties.set(normalizeComparableSourceKey(varietyName), varietyName);
+        aggregate.varieties.set(getPartitionSeedVarietyAnalyticsKey(partition), varietyName);
       }
       if (!countedSession) {
         aggregate.sessionsLogged += 1;
@@ -35266,7 +35416,7 @@ function buildRealSourceProfileRecord(sourceId = "") {
   const { sourceMap } = buildSourceDirectorySessionAggregate();
   const sourceRecord = findSourceById(normalizedId) || null;
   const sourceAggregateKey = sourceRecord
-    ? normalizeComparableSourceKey(sourceRecord.name || sourceRecord.id || "")
+    ? normalizeSourceNameForMatching(sourceRecord.name || sourceRecord.id || "")
     : normalizedId;
   const sessionAggregate = sourceMap.get(sourceAggregateKey) || null;
   if (!sourceRecord && !sessionAggregate) {
@@ -35284,7 +35434,7 @@ function buildRealSourceProfileRecord(sourceId = "") {
       }
       return String(left?.name || "").localeCompare(String(right?.name || ""));
     });
-  const rankIndex = rankedSources.findIndex((entry) => normalizeComparableSourceKey(entry?.name || "") === normalizeComparableSourceKey(sourceName));
+  const rankIndex = rankedSources.findIndex((entry) => normalizeSourceNameForMatching(entry?.name || "") === normalizeSourceNameForMatching(sourceName));
   const trackRecord = getSourceDirectoryTrackRecordForSource(sourceName, {});
 
   return normalizeTestedSourceMockRecord({
@@ -35544,7 +35694,7 @@ function getSourceDirectoryMockRecords() {
     testedSourcesMock
       .map((source) => normalizeTestedSourceMockRecord(source))
       .filter(Boolean)
-      .map((source) => [normalizeComparableSourceKey(source.name || source.id || ""), source]),
+      .map((source) => [normalizeSourceNameForMatching(source.name || source.id || ""), source]),
   );
 
   const mergedRecords = [];
@@ -56018,13 +56168,15 @@ function buildPartitionFormCard(partition, index, options = {}) {
   row.tabIndex = -1;
   row.innerHTML = `
     <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
-    <label>
+    <label class="partition-identity-field" data-identity-autocomplete="source">
       <span class="mobile-field-label">Source</span>
-        <input type="text" name="source-${index}" class="partition-input" list="${SOURCE_CATALOG_DATALIST_ID}" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source">
+        <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source" aria-autocomplete="list">
+        <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
     </label>
-    <label>
+    <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
       <span class="mobile-field-label">Seed Variety</span>
-        <input type="text" name="seedVariety-${index}" class="partition-input" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety">
+        <input type="text" name="seedVariety-${index}" class="partition-input" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety" aria-autocomplete="list">
+        <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
     <label>
@@ -56105,6 +56257,256 @@ function ensureSourceCatalogDatalist() {
   return datalist;
 }
 
+function getPartitionIdentityKindConfig(kind = "") {
+  if (kind === "source") {
+    return {
+      kind: "source",
+      label: "Source",
+      normalize: normalizeSourceNameForMatching,
+      getPartitionLabel: formatPartitionSource,
+      catalogRecords: () => getSourceCatalogRecords().map((source) => ({
+        label: source?.name || "",
+        priority: 3,
+        origin: "Source Directory",
+      })),
+    };
+  }
+
+  return {
+    kind: "seedVariety",
+    label: "Seed Variety",
+    normalize: normalizeSeedVarietyNameForMatching,
+    getPartitionLabel: formatPartitionSeedVariety,
+    catalogRecords: () => [],
+  };
+}
+
+function addPartitionIdentitySuggestionRecord(records, config, label = "", options = {}) {
+  const displayLabel = String(label || "").trim();
+  const normalizedKey = config.normalize(displayLabel);
+  if (!displayLabel || !normalizedKey) {
+    return;
+  }
+
+  const existingRecord = records.get(normalizedKey) || {
+    label: displayLabel,
+    normalizedKey,
+    usageCount: 0,
+    priority: 0,
+    origins: new Set(),
+  };
+  const priority = Number(options.priority) || 0;
+  const previousPriority = existingRecord.priority;
+  existingRecord.usageCount += Math.max(1, Number(options.usageCount) || 1);
+  existingRecord.priority = Math.max(existingRecord.priority, priority);
+  if (options.origin) {
+    existingRecord.origins.add(String(options.origin));
+  }
+  if (
+    priority > previousPriority
+    || (priority === previousPriority && displayLabel.length < existingRecord.label.length)
+  ) {
+    existingRecord.label = displayLabel;
+  }
+  records.set(normalizedKey, existingRecord);
+}
+
+function getPartitionIdentitySuggestionRecords(kind = "") {
+  const config = getPartitionIdentityKindConfig(kind);
+  const records = new Map();
+
+  config.catalogRecords().forEach((record) => {
+    addPartitionIdentitySuggestionRecord(records, config, record.label, {
+      priority: record.priority,
+      origin: record.origin,
+    });
+  });
+
+  (getSessions() || []).forEach((session) => {
+    if (
+      isSessionSoftDeleted(session)
+      || session?.isMock
+      || session?.is_mock
+      || session?.isTest
+      || session?.is_test
+      || session?.excludedFromAnalytics
+      || session?.excluded_from_analytics
+    ) {
+      return;
+    }
+
+    normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
+      addPartitionIdentitySuggestionRecord(records, config, config.getPartitionLabel(partition), {
+        priority: 2,
+        origin: "Previous sessions",
+      });
+    });
+  });
+
+  return [...records.values()].map((record) => ({
+    ...record,
+    origins: [...record.origins],
+  }));
+}
+
+function getPartitionIdentitySuggestions(kind = "", query = "") {
+  const config = getPartitionIdentityKindConfig(kind);
+  const normalizedQuery = config.normalize(query);
+  const displayQuery = String(query || "").trim();
+  const records = getPartitionIdentitySuggestionRecords(config.kind);
+  if (!normalizedQuery) {
+    return records
+      .sort((left, right) => right.priority - left.priority || right.usageCount - left.usageCount || left.label.localeCompare(right.label, "en", { sensitivity: "base" }))
+      .slice(0, PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT)
+      .map((record) => ({ ...record, reason: record.origins[0] || "Previously used" }));
+  }
+
+  return records
+    .map((record) => {
+      let rank = 99;
+      if (record.normalizedKey === normalizedQuery) {
+        rank = 0;
+      } else if (record.normalizedKey.startsWith(normalizedQuery)) {
+        rank = 1;
+      } else if (record.normalizedKey.includes(normalizedQuery)) {
+        rank = 2;
+      }
+
+      const isLikelyDuplicate = rank === 0 && normalizeIdentityPunctuation(record.label).toLowerCase() !== normalizeIdentityPunctuation(displayQuery).toLowerCase();
+      return {
+        ...record,
+        rank,
+        isLikelyDuplicate,
+        reason: isLikelyDuplicate ? "Use existing name" : (record.origins[0] || "Previously used"),
+      };
+    })
+    .filter((record) => record.rank < 99)
+    .sort((left, right) => left.rank - right.rank || Number(right.isLikelyDuplicate) - Number(left.isLikelyDuplicate) || right.priority - left.priority || right.usageCount - left.usageCount || left.label.localeCompare(right.label, "en", { sensitivity: "base" }))
+    .slice(0, PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT);
+}
+
+function closePartitionIdentitySuggestions(field) {
+  const suggestions = field?.querySelector?.("[data-identity-suggestions]");
+  if (suggestions instanceof HTMLElement) {
+    suggestions.hidden = true;
+    suggestions.innerHTML = "";
+  }
+  field?.removeAttribute?.("data-identity-active-index");
+}
+
+function applyPartitionIdentitySuggestion(input, suggestion) {
+  if (!(input instanceof HTMLInputElement) || !suggestion?.label) {
+    return;
+  }
+
+  input.value = suggestion.label;
+  input.dataset.canonicalLabel = suggestion.label;
+  input.dataset.normalizedKey = suggestion.normalizedKey || "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  closePartitionIdentitySuggestions(input.closest("[data-identity-autocomplete]"));
+}
+
+function renderPartitionIdentitySuggestions(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  const input = field.querySelector("[data-session-identity-input]");
+  const panel = field.querySelector("[data-identity-suggestions]");
+  const kind = field.dataset.identityAutocomplete || "";
+  if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement) || input.disabled || input.readOnly) {
+    closePartitionIdentitySuggestions(field);
+    return;
+  }
+
+  const suggestions = getPartitionIdentitySuggestions(kind, input.value);
+  if (!suggestions.length) {
+    closePartitionIdentitySuggestions(field);
+    return;
+  }
+
+  const activeIndex = Math.min(
+    Math.max(0, Number(field.dataset.identityActiveIndex) || 0),
+    suggestions.length - 1,
+  );
+  field.dataset.identityActiveIndex = String(activeIndex);
+  panel.innerHTML = suggestions.map((suggestion, index) => `
+    <button type="button" class="partition-identity-suggestion${index === activeIndex ? " is-active" : ""}" data-suggestion-index="${index}" data-suggestion-label="${escapeHtml(suggestion.label)}" data-suggestion-key="${escapeHtml(suggestion.normalizedKey)}">
+      <span>${escapeHtml(suggestion.label)}</span>
+      <small>${escapeHtml(suggestion.reason)}</small>
+    </button>
+  `).join("");
+  panel.hidden = false;
+}
+
+function initializePartitionIdentityAutocompletes(scope) {
+  if (!(scope instanceof Element)) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-identity-autocomplete]").forEach((field) => {
+    if (!(field instanceof HTMLElement) || field.dataset.identityAutocompleteBound === "true") {
+      return;
+    }
+
+    const input = field.querySelector("[data-session-identity-input]");
+    const panel = field.querySelector("[data-identity-suggestions]");
+    if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement)) {
+      return;
+    }
+
+    input.addEventListener("input", () => {
+      const config = getPartitionIdentityKindConfig(field.dataset.identityAutocomplete || "");
+      input.dataset.canonicalLabel = input.value.trim();
+      input.dataset.normalizedKey = config.normalize(input.value);
+      field.dataset.identityActiveIndex = "0";
+      renderPartitionIdentitySuggestions(field);
+    });
+    input.addEventListener("focus", () => renderPartitionIdentitySuggestions(field));
+    input.addEventListener("blur", () => {
+      window.setTimeout(() => closePartitionIdentitySuggestions(field), 120);
+    });
+    input.addEventListener("keydown", (event) => {
+      const suggestions = getPartitionIdentitySuggestions(field.dataset.identityAutocomplete || "", input.value);
+      if (!suggestions.length) {
+        return;
+      }
+
+      const currentIndex = Math.min(Math.max(0, Number(field.dataset.identityActiveIndex) || 0), suggestions.length - 1);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        field.dataset.identityActiveIndex = String(Math.min(currentIndex + 1, suggestions.length - 1));
+        renderPartitionIdentitySuggestions(field);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        field.dataset.identityActiveIndex = String(Math.max(currentIndex - 1, 0));
+        renderPartitionIdentitySuggestions(field);
+      } else if (event.key === "Enter" && !panel.hidden) {
+        event.preventDefault();
+        applyPartitionIdentitySuggestion(input, suggestions[currentIndex]);
+      } else if (event.key === "Escape") {
+        closePartitionIdentitySuggestions(field);
+      }
+    });
+    panel.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    panel.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-suggestion-index]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const suggestions = getPartitionIdentitySuggestions(field.dataset.identityAutocomplete || "", input.value);
+      const suggestion = suggestions[Number(button.dataset.suggestionIndex) || 0];
+      applyPartitionIdentitySuggestion(input, suggestion);
+    });
+    field.dataset.identityAutocompleteBound = "true";
+  });
+}
+
 function renderPartitionRows(form, systemType, sessionStatus) {
   const partitionFields = form.querySelector("#partition-fields");
   const formMessage = form.querySelector("#form-message");
@@ -56155,6 +56557,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   form.__partitionDraftValues = partitions.map((partition) => ({ ...partition }));
 
   initializeCustomSelects(partitionFields);
+  initializePartitionIdentityAutocompletes(partitionFields);
   bindPartitionRowVisualState(partitionFields);
   attachPartitionValidation(form, formMessage);
   applySessionStatusLayout(
@@ -56814,8 +57217,18 @@ function renderTraPartitionSections(container, partitions, options = {}) {
 }
 
 function hydratePartitionRow(row, partition) {
-  row.querySelector('input[name^="source-"]').value = formatPartitionSource(partition);
-  row.querySelector('input[name^="seedVariety-"]').value = formatPartitionSeedVariety(partition);
+  const sourceInput = row.querySelector('input[name^="source-"]');
+  const varietyInput = row.querySelector('input[name^="seedVariety-"]');
+  if (sourceInput instanceof HTMLInputElement) {
+    sourceInput.value = formatPartitionSource(partition);
+    sourceInput.dataset.canonicalLabel = partition?.sourceCanonicalName || partition?.source_canonical_name || sourceInput.value;
+    sourceInput.dataset.normalizedKey = getPartitionSourceAnalyticsKey(partition);
+  }
+  if (varietyInput instanceof HTMLInputElement) {
+    varietyInput.value = formatPartitionSeedVariety(partition);
+    varietyInput.dataset.canonicalLabel = partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || varietyInput.value;
+    varietyInput.dataset.normalizedKey = getPartitionSeedVarietyAnalyticsKey(partition);
+  }
   row.querySelector('select[name^="seedType-"]').value = normalizeSeedTypeId(partition.seedType || "");
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
   row.querySelector('input[name^="seedCount-"]').value = partition.seedCount > 0 ? partition.seedCount : "";
@@ -56837,7 +57250,11 @@ function getCurrentPartitionValues(form) {
   const previousValues = Array.isArray(form?.__partitionDraftValues) ? form.__partitionDraftValues : [];
   return [...form.querySelectorAll(".partition-row")].map((row, index) => ({
     source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
+    sourceCanonicalName: row.querySelector('input[name^="source-"]')?.dataset.canonicalLabel || row.querySelector('input[name^="source-"]')?.value.trim() || "",
+    sourceNormalizedName: normalizeSourceNameForMatching(row.querySelector('input[name^="source-"]')?.value || ""),
     seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
+    seedVarietyCanonicalName: row.querySelector('input[name^="seedVariety-"]')?.dataset.canonicalLabel || row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
+    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(row.querySelector('input[name^="seedVariety-"]')?.value || ""),
     breeder: "",
     seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
     feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
