@@ -28771,6 +28771,11 @@ function getNewSessionNameField(form) {
   return sessionNameField instanceof HTMLInputElement ? sessionNameField : null;
 }
 
+function getCurrentNewSessionForm() {
+  const form = document.querySelector("#session-form");
+  return form instanceof HTMLFormElement ? form : null;
+}
+
 function syncNewSessionNameState(form) {
   const sessionNameField = getNewSessionNameField(form);
   if (!form || !sessionNameField) {
@@ -28809,6 +28814,17 @@ function applyNewSessionNamePromptValue(form, value = "") {
   sessionNameField.dispatchEvent(new Event("input", { bubbles: true }));
   sessionNameField.dispatchEvent(new Event("change", { bubbles: true }));
   return Boolean(nextName);
+}
+
+function shouldApplyNewSessionPromptName(form, initialFieldValue = "") {
+  const sessionNameField = getNewSessionNameField(form);
+  if (!sessionNameField) {
+    return false;
+  }
+
+  const currentName = String(sessionNameField.value || "").trim();
+  const initialName = String(initialFieldValue || "").trim();
+  return !currentName || currentName === initialName;
 }
 
 function dismissNewSessionNamePrompt(form) {
@@ -28883,14 +28899,20 @@ function ensureNewSessionNamePrompt(form) {
   const modalInput = overlay.querySelector("#new-session-name-modal-input");
 
   const applyPrompt = () => {
+    const targetForm = getCurrentNewSessionForm() || form;
     if (modalInput instanceof HTMLInputElement) {
-      applyNewSessionNamePromptValue(form, modalInput.value);
+      if (shouldApplyNewSessionPromptName(targetForm, overlay.dataset.initialSessionName || "")) {
+        applyNewSessionNamePromptValue(targetForm, modalInput.value);
+      } else {
+        syncNewSessionNameState(targetForm);
+        updateNewSessionNameDefaultSuggestion(targetForm);
+      }
     }
     closeNewSessionNamePrompt({ focusField: false });
   };
 
   const skipPrompt = () => {
-    dismissNewSessionNamePrompt(form);
+    dismissNewSessionNamePrompt(getCurrentNewSessionForm() || form);
     closeNewSessionNamePrompt({ focusField: false });
   };
 
@@ -28944,6 +28966,7 @@ function openNewSessionNamePrompt(form) {
   if (modalInput instanceof HTMLInputElement) {
     modalInput.value = sessionNameField.value || "";
   }
+  overlay.dataset.initialSessionName = String(sessionNameField.value || "").trim();
   overlay.dataset.closing = "false";
   overlay.classList.remove("closing");
   overlay.querySelector(".new-session-name-modal")?.classList.remove("closing");
