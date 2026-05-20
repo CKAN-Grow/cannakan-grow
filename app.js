@@ -299,6 +299,7 @@ const DEFAULT_PROFILE_PAGE_SETTINGS = Object.freeze({
 });
 const USER_NOTIFICATION_PREFERENCES_STORAGE_KEY = "cannakanGrowNotificationPreferences";
 const PROFILE_PAGE_SETTINGS_STORAGE_KEY = "cannakanGrowProfilePageSettings";
+const FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN = "filter_paper_inventory";
 const USER_NOTIFICATION_PREFERENCES_LEGACY_COLUMNS = Object.freeze([
   "notify_snapshot",
   "notify_completion",
@@ -1240,6 +1241,8 @@ const appState = {
   customSelectOpenKey: "",
   sessions: [],
   filterPaperInventory: null,
+  filterPaperInventoryError: "",
+  filterPaperInventoryBackendUnavailable: false,
   filterPaperDeductionRegistry: null,
   sources: [],
   sourcesLoaded: false,
@@ -1778,6 +1781,7 @@ function resetSessionScopedAppState() {
   appState.profileError = "";
   appState.notificationPreferences = null;
   appState.notificationPreferencesError = "";
+  appState.filterPaperInventoryError = "";
   // Preserve the missing-table latch for the rest of this browser session so
   // auth resets do not re-trigger repeated 404 requests to Supabase.
   appState.notificationPreferencesRowExists = null;
@@ -3666,6 +3670,7 @@ function normalizeFilterPaperInventory(inventory) {
   const normalizedCount = Math.max(0, Math.floor(Number(inventory?.count) || 0));
   const hasSavedAutoSubtractPreference = Object.prototype.hasOwnProperty.call(inventory || {}, "autoSubtract");
   const hasSavedNotifyLowSupplyPreference = Object.prototype.hasOwnProperty.call(inventory || {}, "notifyLowSupply");
+  const updatedAt = String(inventory?.updatedAt || inventory?.updated_at || "").trim();
   return {
     count: normalizedCount,
     autoSubtract: hasSavedAutoSubtractPreference
@@ -3675,16 +3680,190 @@ function normalizeFilterPaperInventory(inventory) {
       ? Boolean(inventory?.notifyLowSupply)
       : DEFAULT_FILTER_PAPER_INVENTORY.notifyLowSupply,
     storeRegion: inventory?.storeRegion === "EU" ? "EU" : "US",
+    updatedAt,
   };
 }
 
-function loadFilterPaperInventory() {
+function getFilterPaperInventoryStorageKey(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${FILTER_PAPER_INVENTORY_STORAGE_KEY}:${normalizedUserId}`
+    : FILTER_PAPER_INVENTORY_STORAGE_KEY;
+}
+
+function getFilterPaperInventoryStorageKeys(userId = appState.user?.id || "") {
+  const keys = [
+    getFilterPaperInventoryStorageKey(userId),
+    FILTER_PAPER_INVENTORY_STORAGE_KEY,
+  ];
+  return Array.from(new Set(keys.filter(Boolean)));
+}
+
+function getStoredFilterPaperInventoryValue(storageKey = "") {
   try {
-    return normalizeFilterPaperInventory(JSON.parse(localStorage.getItem(FILTER_PAPER_INVENTORY_STORAGE_KEY) || "null"));
+    return localStorage.getItem(storageKey);
   } catch (error) {
     console.error("Failed to read filter paper inventory from localStorage", error);
-    return { ...DEFAULT_FILTER_PAPER_INVENTORY };
+    return null;
   }
+}
+
+function loadFilterPaperInventory(userId = appState.user?.id || "") {
+  for (const storageKey of getFilterPaperInventoryStorageKeys(userId)) {
+    const storedValue = getStoredFilterPaperInventoryValue(storageKey);
+    if (storedValue === null) {
+      continue;
+    }
+
+    try {
+      return normalizeFilterPaperInventory(JSON.parse(storedValue || "null"));
+    } catch (error) {
+      console.error("Failed to parse filter paper inventory from localStorage", error);
+    }
+  }
+
+  return { ...DEFAULT_FILTER_PAPER_INVENTORY };
+}
+
+function persistFilterPaperInventoryLocally(inventory, userId = appState.user?.id || "") {
+  const normalizedInventory = normalizeFilterPaperInventory(inventory);
+  const primaryKey = getFilterPaperInventoryStorageKey(userId);
+  try {
+    localStorage.setItem(primaryKey, JSON.stringify(normalizedInventory));
+    if (primaryKey !== FILTER_PAPER_INVENTORY_STORAGE_KEY) {
+      localStorage.setItem(FILTER_PAPER_INVENTORY_STORAGE_KEY, JSON.stringify(normalizedInventory));
+    }
+  } catch (error) {
+    appState.filterPaperInventoryError = "Filter paper count could not be saved in this browser.";
+    throw error;
+  }
+  return normalizedInventory;
+}
+
+function syncFilterPaperInventoryCache(userId = appState.user?.id || "", inventory = DEFAULT_FILTER_PAPER_INVENTORY, options = {}) {
+  const { persistLocal = true } = options || {};
+  const normalizedInventory = persistLocal
+    ? persistFilterPaperInventoryLocally(inventory, userId)
+    : normalizeFilterPaperInventory(inventory);
+  appState.filterPaperInventory = normalizedInventory;
+  appState.filterPaperInventoryError = "";
+  return normalizedInventory;
+}
+
+function isFilterPaperInventoryPreferenceSchemaError(error) {
+  return isUserNotificationPreferencesTableMissingError(error)
+    || isSupabaseColumnMissingError(
+      error,
+      USER_NOTIFICATION_PREFERENCES_TABLE,
+      [FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN],
+    );
+}
+
+function markFilterPaperInventoryBackendUnavailable(error = null) {
+  appState.filterPaperInventoryBackendUnavailable = true;
+  if (error) {
+    logRuntimeIssueOnce(
+      "warn",
+      "filter-paper-inventory-backend-fallback",
+      "Filter paper inventory backend preference is unavailable. Using local browser storage fallback.",
+      {
+        message: error?.message || String(error || ""),
+        code: error?.code || "",
+        status: Number(error?.status || error?.statusCode || 0) || 0,
+      },
+    );
+  }
+}
+
+async function loadFilterPaperInventoryPreferenceFromBackend(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!appState.supabase || !normalizedUserId || appState.filterPaperInventoryBackendUnavailable) {
+    return { inventory: null, found: false, error: null };
+  }
+
+  try {
+    const { data, error } = await appState.supabase
+      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
+      .select(FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN)
+      .eq("user_id", normalizedUserId)
+      .maybeSingle();
+    if (error) {
+      throw error;
+    }
+
+    const rawInventory = data?.[FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN] || null;
+    return {
+      inventory: rawInventory ? normalizeFilterPaperInventory(rawInventory) : null,
+      found: Boolean(rawInventory && typeof rawInventory === "object"),
+      error: null,
+    };
+  } catch (error) {
+    if (isFilterPaperInventoryPreferenceSchemaError(error)) {
+      markFilterPaperInventoryBackendUnavailable(error);
+      return { inventory: null, found: false, error: null };
+    }
+
+    return { inventory: null, found: false, error };
+  }
+}
+
+async function saveFilterPaperInventoryPreferenceToBackend(userId = appState.user?.id || "", inventory = DEFAULT_FILTER_PAPER_INVENTORY) {
+  const normalizedUserId = String(userId || "").trim();
+  if (!appState.supabase || !normalizedUserId || appState.filterPaperInventoryBackendUnavailable) {
+    return { saved: false, error: null };
+  }
+
+  const normalizedInventory = normalizeFilterPaperInventory(inventory);
+  try {
+    const { error } = await writeUserNotificationPreferencesPayload({
+      user_id: normalizedUserId,
+      [FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN]: normalizedInventory,
+    });
+    if (error) {
+      throw error;
+    }
+    return { saved: true, error: null };
+  } catch (error) {
+    if (isFilterPaperInventoryPreferenceSchemaError(error)) {
+      markFilterPaperInventoryBackendUnavailable(error);
+      return { saved: false, error: null };
+    }
+    return { saved: false, error };
+  }
+}
+
+async function ensureFilterPaperInventoryForUser(user = appState.user) {
+  const normalizedUserId = String(user?.id || "").trim();
+  const localInventory = loadFilterPaperInventory(normalizedUserId);
+  syncFilterPaperInventoryCache(normalizedUserId, localInventory, { persistLocal: false });
+  if (!appState.supabase || !normalizedUserId) {
+    return localInventory;
+  }
+
+  const backendResult = await loadFilterPaperInventoryPreferenceFromBackend(normalizedUserId);
+  if (backendResult.error) {
+    console.warn("[Filter Paper Supply] Failed to load saved account inventory. Using local fallback.", backendResult.error);
+    return localInventory;
+  }
+
+  if (backendResult.found) {
+    const backendInventory = normalizeFilterPaperInventory(backendResult.inventory);
+    const localWasSet = hasFilterPaperInventoryBeenSet(normalizedUserId);
+    const backendUpdatedAt = Date.parse(backendInventory.updatedAt || "") || 0;
+    const localUpdatedAt = Date.parse(localInventory.updatedAt || "") || 0;
+    if (!localWasSet || backendUpdatedAt >= localUpdatedAt) {
+      return syncFilterPaperInventoryCache(normalizedUserId, backendInventory);
+    }
+  }
+
+  if (hasFilterPaperInventoryBeenSet(normalizedUserId)) {
+    const saveResult = await saveFilterPaperInventoryPreferenceToBackend(normalizedUserId, localInventory);
+    if (saveResult.error) {
+      console.warn("[Filter Paper Supply] Failed to sync local inventory to account preferences.", saveResult.error);
+    }
+  }
+
+  return localInventory;
 }
 
 function getFilterPaperInventory() {
@@ -3694,27 +3873,34 @@ function getFilterPaperInventory() {
   return normalizeFilterPaperInventory(appState.filterPaperInventory);
 }
 
-function hasFilterPaperInventoryBeenSet() {
-  try {
-    return localStorage.getItem(FILTER_PAPER_INVENTORY_STORAGE_KEY) !== null;
-  } catch (error) {
-    console.error("Failed to check whether filter paper inventory has been set", error);
-    return false;
-  }
+function hasFilterPaperInventoryBeenSet(userId = appState.user?.id || "") {
+  return getFilterPaperInventoryStorageKeys(userId).some((storageKey) => (
+    getStoredFilterPaperInventoryValue(storageKey) !== null
+  ));
 }
 
 function saveFilterPaperInventory(inventory) {
   const previousInventory = getFilterPaperInventory();
   const previousWasSet = hasFilterPaperInventoryBeenSet();
-  const normalizedInventory = normalizeFilterPaperInventory(inventory);
-  appState.filterPaperInventory = normalizedInventory;
-  localStorage.setItem(FILTER_PAPER_INVENTORY_STORAGE_KEY, JSON.stringify(normalizedInventory));
+  const normalizedInventory = syncFilterPaperInventoryCache(appState.user?.id || "", {
+    ...inventory,
+    updatedAt: new Date().toISOString(),
+  });
   maybeAddSupplyStatusNotification(previousInventory, normalizedInventory, {
     previousWasSet,
     nextWasSet: true,
   });
   queueDueGrowReminderEvaluation("supply:inventory-saved");
   renderAppNotificationCenter();
+  return normalizedInventory;
+}
+
+async function saveFilterPaperInventoryForCurrentUser(inventory) {
+  const normalizedInventory = saveFilterPaperInventory(inventory);
+  const saveResult = await saveFilterPaperInventoryPreferenceToBackend(appState.user?.id || "", normalizedInventory);
+  if (saveResult.error) {
+    console.warn("[Filter Paper Supply] Saved locally, but account preference sync failed.", saveResult.error);
+  }
   return normalizedInventory;
 }
 
@@ -4750,6 +4936,7 @@ function applyLocalDevQaBypassState(reason = "local-dev-qa-bypass") {
     user.id,
     loadStoredUserNotificationPreferences(user.id),
   );
+  appState.filterPaperInventory = loadFilterPaperInventory(user.id);
   appState.pushSubscriptions = syncUserPushSubscriptionsCache(
     user.id,
     loadStoredUserPushSubscriptions(user.id),
@@ -12108,6 +12295,12 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           getDefaultNotificationPreferences(),
           "Failed to initialize notification preferences during auth hydration.",
           "notificationPreferencesError",
+        );
+        appState.filterPaperInventory = await safelyLoadAppData(
+          () => ensureFilterPaperInventoryForUser(appState.user),
+          loadFilterPaperInventory(appState.user.id),
+          "Failed to initialize filter paper supply during auth hydration.",
+          "filterPaperInventoryError",
         );
         appState.pushSubscriptions = await safelyLoadAppData(
           () => loadUserPushSubscriptions(appState.user),
@@ -35209,26 +35402,51 @@ function openFilterPaperInventoryModal(options = {}) {
     }
   };
 
-  saveButton.onclick = () => {
+  saveButton.onclick = async () => {
     const rawCount = Number(countInput.value);
-    const nextCount = Number.isFinite(rawCount) ? Math.max(0, Math.floor(rawCount)) : 0;
-    const savedInventory = saveFilterPaperInventory({
-      count: nextCount,
-      autoSubtract: autoSubtractInput.checked,
-      notifyLowSupply: notifyLowSupplyInput.checked,
-      storeRegion: regionSelect.value === "EU" ? "EU" : "US",
-    });
-    // TODO: Mirror this inventory to Supabase once supplies settings become user-scoped across devices.
-    applySupplyStatusToSessionEntryButtons(document);
-    didSave = true;
-    if (modal.open) {
-      modal.close();
-    }
-    if (typeof onSave === "function") {
-      onSave(savedInventory);
+    if (!Number.isFinite(rawCount) || rawCount < 0) {
+      if (message) {
+        message.textContent = "Enter a valid filter paper count of 0 or more.";
+        message.classList.add("is-error");
+      }
+      countInput.focus();
       return;
     }
-    safeRender();
+
+    saveButton.disabled = true;
+    if (message) {
+      message.textContent = "";
+      message.classList.remove("is-error");
+    }
+
+    try {
+      const nextCount = Math.max(0, Math.floor(rawCount));
+      const savedInventory = await saveFilterPaperInventoryForCurrentUser({
+        count: nextCount,
+        autoSubtract: autoSubtractInput.checked,
+        notifyLowSupply: notifyLowSupplyInput.checked,
+        storeRegion: regionSelect.value === "EU" ? "EU" : "US",
+      });
+      applySupplyStatusToSessionEntryButtons(document);
+      didSave = true;
+      if (modal.open) {
+        modal.close();
+      }
+      if (typeof onSave === "function") {
+        onSave(savedInventory);
+        return;
+      }
+      safeRender();
+    } catch (error) {
+      console.error("[Filter Paper Supply] Save failed.", error);
+      if (message) {
+        message.textContent = `Filter paper count could not be saved: ${error?.message || "Unknown error"}`;
+        message.classList.add("is-error");
+      }
+      countInput.focus();
+    } finally {
+      saveButton.disabled = false;
+    }
   };
 
   if (!modal.open) {
@@ -35287,15 +35505,21 @@ function promptFilterPaperSetupBeforeNewSession() {
       resolve(false);
     };
 
-    saveButton.onclick = () => {
+    saveButton.onclick = async () => {
       const rawCount = Number(countInput.value);
       const nextCount = Number.isFinite(rawCount) ? Math.max(0, Math.floor(rawCount)) : 0;
-      saveFilterPaperInventory({
-        ...getFilterPaperInventory(),
-        count: nextCount,
-      });
-      applySupplyStatusToSessionEntryButtons(document);
-      finish(true);
+      saveButton.disabled = true;
+      try {
+        await saveFilterPaperInventoryForCurrentUser({
+          ...getFilterPaperInventory(),
+          count: nextCount,
+        });
+        applySupplyStatusToSessionEntryButtons(document);
+        finish(true);
+      } catch (error) {
+        console.error("[Filter Paper Supply] Setup save failed.", error);
+        saveButton.disabled = false;
+      }
     };
 
     skipButton.onclick = () => {
