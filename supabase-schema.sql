@@ -2739,7 +2739,7 @@ security definer
 set search_path = public
 as $$
 declare
-  required_confirmation constant text := 'DELETE OLD FOUNDER TEST SESSIONS';
+  required_confirmation constant text := 'DELETE TEST SESSION';
   actor_id uuid := auth.uid();
   actor_email text := lower(coalesce(auth.jwt() ->> 'email', ''));
   normalized_target_user_id uuid := coalesce(target_user_id, auth.uid());
@@ -2775,7 +2775,7 @@ begin
   end if;
 
   if coalesce(dry_run, true) = false and not confirmation_matches then
-    raise exception 'Confirmation phrase mismatch. Use DELETE OLD FOUNDER TEST SESSIONS to execute cleanup.' using errcode = '22023';
+    raise exception 'Confirmation phrase mismatch. Use DELETE TEST SESSION to execute cleanup.' using errcode = '22023';
   end if;
 
   drop table if exists pg_temp.cleanup_founder_test_session_candidates;

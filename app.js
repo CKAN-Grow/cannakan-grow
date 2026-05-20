@@ -1495,7 +1495,7 @@ const ADMIN_EMAILS = new Set([
   "don@cannakan.com",
   "mo@cannakan.com",
 ]);
-const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE OLD FOUNDER TEST SESSIONS";
+const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE TEST SESSION";
 const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
 const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
@@ -9342,6 +9342,34 @@ function removeAppNotificationsByEventKeyPrefix(prefix = "") {
   renderAppNotificationCenter();
 }
 
+function removeAppNotificationsForSession(sessionId = "") {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedUserId || !normalizedSessionId) {
+    return 0;
+  }
+
+  const notifications = getAppNotifications(normalizedUserId);
+  const nextNotifications = notifications.filter((notification) => {
+    const notificationSessionId = String(notification?.sessionId || notification?.session_id || "").trim();
+    const eventKey = String(notification?.eventKey || "").trim();
+    return notificationSessionId !== normalizedSessionId && !eventKey.includes(normalizedSessionId);
+  });
+  const removedCount = notifications.length - nextNotifications.length;
+  if (removedCount <= 0) {
+    return 0;
+  }
+
+  persistAppNotifications(nextNotifications, normalizedUserId);
+  notifications
+    .filter((notification) => !nextNotifications.includes(notification))
+    .map((notification) => String(notification?.eventKey || "").trim())
+    .filter(Boolean)
+    .forEach((eventKey) => clearPushNotificationEventDelivered(eventKey, normalizedUserId));
+  renderAppNotificationCenter();
+  return removedCount;
+}
+
 function closeNotificationSnoozeMenu() {
   if (!appState.notificationSnoozeMenuOpenId) {
     return;
@@ -12117,13 +12145,18 @@ async function runFounderSessionCleanup(options = {}) {
   }
 
   const dryRun = options.dryRun !== false;
+  const requestedSessionIds = Array.isArray(options.sessionIds)
+    ? [...new Set(options.sessionIds.map((sessionId) => String(sessionId || "").trim()).filter((sessionId) => isUuidLike(sessionId)))]
+    : [];
   const latestSessions = await loadUserSessions({ fallbackToCurrent: true });
   if (latestSessions.length) {
     saveSessions(latestSessions);
   }
-  const candidateSessionIds = options.emergencyOnly
+  const candidateSessionIds = requestedSessionIds.length
+    ? requestedSessionIds
+    : (options.emergencyOnly
     ? getFounderEmergencyTestSessionCandidateIds(getSessions())
-    : getFounderSessionCleanupCandidateIds();
+    : getFounderSessionCleanupCandidateIds());
   if (!candidateSessionIds.length) {
     return [];
   }
@@ -12132,16 +12165,20 @@ async function runFounderSessionCleanup(options = {}) {
     target_user_id: appState.user.id,
     candidate_session_ids: candidateSessionIds,
     include_explicit_unmarked: true,
-    confirmation_phrase: dryRun ? "" : FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION,
+    confirmation_phrase: dryRun ? "" : String(options.confirmationPhrase || FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION).trim(),
     dry_run: dryRun,
     legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
-    reason: dryRun
+    reason: options.reason || (dryRun
       ? (options.emergencyOnly
         ? "Admin UI emergency preview for founder visible Session #1-#5 cleanup"
-        : "Admin UI preview for founder test grow-session cleanup")
+        : requestedSessionIds.length
+          ? "Admin UI preview for selected founder test grow-session cleanup"
+          : "Admin UI preview for founder test grow-session cleanup")
       : (options.emergencyOnly
         ? "Admin UI emergency reset of founder visible Session #1-#5 before production tracking"
-        : "Admin UI confirmed reset of old founder test grow sessions before production tracking"),
+        : requestedSessionIds.length
+          ? "Admin UI confirmed cleanup of selected founder test grow session"
+          : "Admin UI confirmed reset of old founder test grow sessions before production tracking")),
   });
 
   if (error) {
@@ -16825,7 +16862,20 @@ function ensureSessionDeleteConfirmModal() {
       </div>
       <div class="snapshot-modal-actions">
         <button type="button" class="button button-secondary" data-session-delete-cancel>Cancel</button>
-        <button type="button" class="button button-danger" data-session-delete-confirm>Delete Session</button>
+        <button type="button" class="button button-danger" data-session-delete-confirm>Remove from My Sessions</button>
+      </div>
+      <div class="session-delete-founder-cleanup" data-session-founder-cleanup-section hidden>
+        <div class="snapshot-modal-copy">
+          <p class="eyebrow">Founder Cleanup</p>
+          <p class="muted">Dangerous admin-only cleanup for test or bad grow-session data. This excludes the session from analytics and removes related grow-session records without touching CSTP, auth, admin roles, settings, or production config.</p>
+          <label class="form-field">
+            <span>Type DELETE TEST SESSION to confirm</span>
+            <input type="text" autocomplete="off" data-session-founder-cleanup-confirmation>
+          </label>
+        </div>
+        <div class="snapshot-modal-actions">
+          <button type="button" class="button button-danger" data-session-founder-cleanup-confirm disabled>Founder Cleanup: Delete all test session data</button>
+        </div>
       </div>
     </form>
   `;
@@ -16839,9 +16889,13 @@ function confirmSessionArchive(session) {
   const message = modal.querySelector("#session-delete-confirm-message");
   const cancelButton = modal.querySelector("[data-session-delete-cancel]");
   const confirmButton = modal.querySelector("[data-session-delete-confirm]");
+  const founderCleanupSection = modal.querySelector("[data-session-founder-cleanup-section]");
+  const founderCleanupInput = modal.querySelector("[data-session-founder-cleanup-confirmation]");
+  const founderCleanupButton = modal.querySelector("[data-session-founder-cleanup-confirm]");
+  const canFounderCleanup = Boolean(appState.supabase && appState.user && isAdminUser());
 
   if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
-    return Promise.resolve(window.confirm("Delete session? This will hide it from My Sessions and prevent reopening or editing. Completed real sessions still contribute anonymized analytics."));
+    return Promise.resolve(window.confirm("Remove this session from My Sessions?") ? { action: "soft-delete" } : { action: "cancel" });
   }
 
   if (title) {
@@ -16850,11 +16904,23 @@ function confirmSessionArchive(session) {
   if (message) {
     message.textContent = "This hides the session from normal history and prevents reopening or editing. Completed real sessions still contribute anonymized analytics unless founder/admin cleanup excludes them.";
   }
+  confirmButton.textContent = "Remove from My Sessions";
+  if (founderCleanupSection instanceof HTMLElement) {
+    founderCleanupSection.hidden = !canFounderCleanup;
+  }
+  if (founderCleanupInput instanceof HTMLInputElement) {
+    founderCleanupInput.value = "";
+  }
+  if (founderCleanupButton instanceof HTMLButtonElement) {
+    founderCleanupButton.disabled = true;
+  }
 
   return new Promise((resolve) => {
     const cleanup = () => {
       cancelButton.removeEventListener("click", onCancel);
       confirmButton.removeEventListener("click", onConfirm);
+      founderCleanupInput?.removeEventListener("input", onFounderInput);
+      founderCleanupButton?.removeEventListener("click", onFounderCleanup);
       modal.removeEventListener("cancel", onCancel);
       if (modal.open) {
         modal.close();
@@ -16868,11 +16934,33 @@ function confirmSessionArchive(session) {
 
     const onConfirm = () => {
       cleanup();
-      resolve(true);
+      resolve({ action: "soft-delete" });
+    };
+
+    const onFounderInput = () => {
+      if (!(founderCleanupInput instanceof HTMLInputElement) || !(founderCleanupButton instanceof HTMLButtonElement)) {
+        return;
+      }
+      founderCleanupButton.disabled = founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
+    };
+
+    const onFounderCleanup = () => {
+      if (!(founderCleanupInput instanceof HTMLInputElement) || founderCleanupInput.value.trim() !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION) {
+        return;
+      }
+      cleanup();
+      resolve({
+        action: "founder-cleanup",
+        confirmationPhrase: FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION,
+      });
     };
 
     cancelButton.addEventListener("click", onCancel, { once: true });
     confirmButton.addEventListener("click", onConfirm, { once: true });
+    if (canFounderCleanup && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
+      founderCleanupInput.addEventListener("input", onFounderInput);
+      founderCleanupButton.addEventListener("click", onFounderCleanup, { once: true });
+    }
     modal.addEventListener("cancel", onCancel, { once: true });
     modal.showModal();
     cancelButton.focus();
@@ -16901,6 +16989,7 @@ async function deleteCloudSession(sessionId) {
   };
 
   saveHiddenSession(archivedSession, "optimistic-hide");
+  removeAppNotificationsForSession(sessionId);
 
   if (!appState.supabase) {
     void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete-local", {
@@ -16943,6 +17032,59 @@ async function deleteCloudSession(sessionId) {
     sessionStatus: previousStatus,
   }, savedSession, "remote-delete-complete");
   return savedSession;
+}
+
+async function performSessionDeleteAction(session, deleteAction = null) {
+  const sessionId = String(session?.id || "").trim();
+  const action = typeof deleteAction === "string" ? deleteAction : String(deleteAction?.action || "").trim();
+  if (!sessionId || action === "cancel") {
+    return null;
+  }
+
+  if (action === "founder-cleanup") {
+    if (!isAdminUser()) {
+      throw new Error("Founder cleanup requires an authenticated admin session.");
+    }
+    const resultRows = await runFounderSessionCleanup({
+      dryRun: false,
+      sessionIds: [sessionId],
+      confirmationPhrase: String(deleteAction?.confirmationPhrase || FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION).trim(),
+      reason: `Founder cleanup from session delete modal for ${sessionId}`,
+    });
+    const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
+    removeAppNotificationsForSession(sessionId);
+    await refreshGrowSessionDataAfterCleanup();
+    await refreshGrowAnalyticsAfterSessionMutation(sessionId, "founder-session-delete-modal", {
+      clearCommunityActivity: true,
+    });
+    if (deletedCount <= 0) {
+      throw new Error("No eligible test session data was removed. Founder cleanup only removes sessions already marked test/mock/excluded/deleted or protected legacy test candidates.");
+    }
+    logSessionDeleteVisibilityChange(sessionId, session, {
+      ...session,
+      isDeleted: true,
+      isTest: true,
+      excludedFromAnalytics: true,
+      visibilityStatus: "archived_test",
+      sessionStatus: "archived_test",
+    }, "founder-cleanup-complete");
+    return {
+      action,
+      resultRows,
+      deletedCount,
+    };
+  }
+
+  if (action === "soft-delete") {
+    const savedSession = await deleteCloudSession(sessionId);
+    return {
+      action,
+      session: savedSession,
+      deletedCount: 0,
+    };
+  }
+
+  return null;
 }
 
 async function uploadSessionImageFile(sessionId, file) {
@@ -56958,13 +57100,13 @@ function renderSessionsList() {
         return;
       }
 
-      const confirmed = await confirmSessionArchive(session);
-      if (!confirmed) {
+      const deleteAction = await confirmSessionArchive(session);
+      if (!deleteAction || deleteAction.action === "cancel") {
         return;
       }
 
       try {
-        await deleteCloudSession(sessionId);
+        await performSessionDeleteAction(session, deleteAction);
         appState.sessionHistoryFocusSessionId = sessionId;
         appState.sessionHistoryFilter = "all";
         renderSessionsList();
@@ -59207,13 +59349,13 @@ function renderSessionDetail(sessionId) {
   });
 
   detail.deleteButton.addEventListener("click", async () => {
-    const confirmed = await confirmSessionArchive(session);
-    if (!confirmed) {
+    const deleteAction = await confirmSessionArchive(session);
+    if (!deleteAction || deleteAction.action === "cancel") {
       return;
     }
 
     try {
-      await deleteCloudSession(sessionId);
+      await performSessionDeleteAction(session, deleteAction);
       appState.sessionHistoryFocusSessionId = sessionId;
       appState.sessionHistoryFilter = "all";
       navigateWithUnsavedChangesBypass("#sessions");
@@ -59305,13 +59447,13 @@ function renderSessionCollection(container, sessions, options) {
       event.preventDefault();
       event.stopPropagation();
 
-      const confirmed = await confirmSessionArchive(session);
-      if (!confirmed) {
+      const deleteAction = await confirmSessionArchive(session);
+      if (!deleteAction || deleteAction.action === "cancel") {
         return;
       }
 
       try {
-        await deleteCloudSession(session.id);
+        await performSessionDeleteAction(session, deleteAction);
         appState.sessionHistoryFocusSessionId = session.id;
         appState.sessionHistoryFilter = "all";
         renderSessionsList();
