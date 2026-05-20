@@ -29,6 +29,12 @@ if (!appSource.includes('formData.get("unitId")')) {
   throw new Error("New Session save path must continue reading unitId from FormData.");
 }
 
+if (!appSource.includes("function primeUnitIdDefault(form)")
+  || !appSource.includes("unitIdField instanceof HTMLInputElement || unitIdField instanceof HTMLSelectElement")
+  || !appSource.includes('unitIdField.value = "A";')) {
+  throw new Error("New Session System ID select should default to A only when the field is empty.");
+}
+
 if (!appSource.includes('unit_id: normalizeUnitIdValue(session.unitId)')) {
   throw new Error("Supabase save payload must continue persisting session.unitId to unit_id.");
 }

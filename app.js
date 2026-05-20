@@ -259,6 +259,8 @@ const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 520;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
+const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;
+const PARTITION_IDENTITY_TYPO_SUGGESTION_MIN_CHARS = 4;
 const PARTITION_IDENTITY_MATCH_STATUSES = Object.freeze(["selected", "auto_matched", "needs_review", "new"]);
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const FILTER_PAPER_STORE_URLS = Object.freeze({
@@ -57093,7 +57095,7 @@ function getPartitionIdentityKindConfig(kind = "") {
         canonicalId: source?.id || "",
         canonicalName: source?.name || "",
         priority: 3,
-        origin: "Source Directory",
+        origin: "Known source",
       })),
     };
   }
@@ -57148,6 +57150,75 @@ function addPartitionIdentitySuggestionRecord(records, config, label = "", optio
   records.set(normalizedKey, existingRecord);
 }
 
+function shouldUseSessionForPartitionIdentitySuggestions(session = null) {
+  return !(
+    isSessionSoftDeleted(session)
+    || session?.isMock
+    || session?.is_mock
+    || session?.isTest
+    || session?.is_test
+    || session?.excludedFromAnalytics
+    || session?.excluded_from_analytics
+  );
+}
+
+function addSessionPartitionIdentitySuggestionRecords(records, config, session = null, options = {}) {
+  if (!shouldUseSessionForPartitionIdentitySuggestions(session)) {
+    return;
+  }
+
+  normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
+    addPartitionIdentitySuggestionRecord(records, config, config.getPartitionLabel(partition), {
+      canonicalId: config.getPartitionCanonicalId(partition),
+      canonicalName: config.getPartitionCanonicalName(partition),
+      priority: options.priority,
+      usageCount: options.usageCount,
+      origin: options.origin,
+    });
+  });
+}
+
+function addGallerySnapshotIdentitySuggestionRecords(records, config, snapshot = null) {
+  if (
+    !snapshot
+    || isMockGallerySnapshot(snapshot)
+    || snapshot?.isMock
+    || snapshot?.is_mock
+    || snapshot?.analyticsExcluded
+    || snapshot?.analytics_excluded
+  ) {
+    return;
+  }
+
+  if (config.kind === "source") {
+    addPartitionIdentitySuggestionRecord(records, config, snapshot.sourceName || snapshot.source_name || "", {
+      canonicalId: snapshot.sourceId || snapshot.source_id || "",
+      canonicalName: snapshot.sourceName || snapshot.source_name || "",
+      priority: 2.5,
+      origin: "Previous global sessions",
+    });
+    return;
+  }
+
+  addPartitionIdentitySuggestionRecord(records, config, snapshot.seedVarietyName || snapshot.seed_variety_name || "", {
+    canonicalId: snapshot.seedVarietyCanonicalId || snapshot.seed_variety_canonical_id || "",
+    canonicalName: snapshot.seedVarietyName || snapshot.seed_variety_name || "",
+    priority: 2.5,
+    origin: "Previous global sessions",
+  });
+}
+
+function getPartitionIdentitySuggestionReason(record = null) {
+  const origins = Array.isArray(record?.origins) ? record.origins : [];
+  if (origins.includes("Known source")) {
+    return "Known source";
+  }
+  if (origins.includes("Previous global sessions")) {
+    return "Previous global sessions";
+  }
+  return origins[0] || "Previous sessions";
+}
+
 function getPartitionIdentitySuggestionRecords(kind = "") {
   const config = getPartitionIdentityKindConfig(kind);
   const records = new Map();
@@ -57161,26 +57232,21 @@ function getPartitionIdentitySuggestionRecords(kind = "") {
     });
   });
 
-  (getSessions() || []).forEach((session) => {
-    if (
-      isSessionSoftDeleted(session)
-      || session?.isMock
-      || session?.is_mock
-      || session?.isTest
-      || session?.is_test
-      || session?.excludedFromAnalytics
-      || session?.excluded_from_analytics
-    ) {
-      return;
-    }
+  (appState.sourceReviewSessionRows || []).forEach((sessionRow) => {
+    addSessionPartitionIdentitySuggestionRecords(records, config, sessionRow, {
+      priority: 2.5,
+      origin: "Previous global sessions",
+    });
+  });
 
-    normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
-      addPartitionIdentitySuggestionRecord(records, config, config.getPartitionLabel(partition), {
-        canonicalId: config.getPartitionCanonicalId(partition),
-        canonicalName: config.getPartitionCanonicalName(partition),
-        priority: 2,
-        origin: "Previous sessions",
-      });
+  getGallerySnapshotsForDisplay(appState.gallerySnapshots || []).forEach((snapshot) => {
+    addGallerySnapshotIdentitySuggestionRecords(records, config, snapshot);
+  });
+
+  (getSessions() || []).forEach((session) => {
+    addSessionPartitionIdentitySuggestionRecords(records, config, session, {
+      priority: 2,
+      origin: "Previous sessions",
     });
   });
 
@@ -57302,13 +57368,12 @@ function getPartitionIdentitySuggestions(kind = "", query = "") {
   const config = getPartitionIdentityKindConfig(kind);
   const normalizedQuery = config.normalize(query);
   const displayQuery = String(query || "").trim();
-  const records = getPartitionIdentitySuggestionRecords(config.kind);
-  if (!normalizedQuery) {
-    return records
-      .sort((left, right) => right.priority - left.priority || right.usageCount - left.usageCount || left.label.localeCompare(right.label, "en", { sensitivity: "base" }))
-      .slice(0, PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT)
-      .map((record) => ({ ...record, reason: record.origins[0] || "Previously used" }));
+  if (normalizedQuery.length < PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS) {
+    return [];
   }
+
+  const records = getPartitionIdentitySuggestionRecords(config.kind);
+  const allowTypoSuggestions = normalizedQuery.length >= PARTITION_IDENTITY_TYPO_SUGGESTION_MIN_CHARS;
 
   return records
     .map((record) => {
@@ -57319,9 +57384,9 @@ function getPartitionIdentitySuggestions(kind = "", query = "") {
         rank = 1;
       } else if (record.normalizedKey.includes(normalizedQuery)) {
         rank = 2;
-      } else if (isHighConfidencePartitionIdentityTypoMatch(normalizedQuery, record.normalizedKey)) {
+      } else if (allowTypoSuggestions && isHighConfidencePartitionIdentityTypoMatch(normalizedQuery, record.normalizedKey)) {
         rank = 3;
-      } else if (isMediumConfidencePartitionIdentityMatch(normalizedQuery, record.normalizedKey)) {
+      } else if (allowTypoSuggestions && isMediumConfidencePartitionIdentityMatch(normalizedQuery, record.normalizedKey)) {
         rank = 4;
       }
 
@@ -57330,7 +57395,7 @@ function getPartitionIdentitySuggestions(kind = "", query = "") {
         ...record,
         rank,
         isLikelyDuplicate,
-        reason: isLikelyDuplicate ? "Use existing name" : (record.origins[0] || "Previously used"),
+        reason: isLikelyDuplicate ? "Use existing name" : getPartitionIdentitySuggestionReason(record),
       };
     })
     .filter((record) => record.rank < 99)
@@ -62495,7 +62560,7 @@ function updateNewSessionNameDefaultSuggestion(form) {
 
 function primeUnitIdDefault(form) {
   const unitIdField = form?.elements?.unitId;
-  if (!(unitIdField instanceof HTMLInputElement)) {
+  if (!(unitIdField instanceof HTMLInputElement || unitIdField instanceof HTMLSelectElement)) {
     return;
   }
 
