@@ -35264,6 +35264,16 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12) !important;
 }
 
+.session-workspace-shell .partition-row:focus-within {
+  background:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.042) 42%, rgba(255, 255, 255, 0.026)),
+    rgba(17, 25, 18, 0.82) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.34),
+    inset 4px 0 0 rgba(148, 209, 89, 0.44),
+    0 0 22px rgba(148, 209, 89, 0.11) !important;
+}
+
 .session-workspace-shell .partition-number {
   min-height: 44px;
   border: 1px solid rgba(148, 209, 89, 0.12);
@@ -36715,6 +36725,19 @@ body.theme-dark .partition-row.row-has-warning:hover {
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.10) !important;
 }
 
+body.theme-dark .partition-row:focus-within,
+body.theme-dark .partition-row.partition-row--filled:focus-within,
+body.theme-dark .partition-row.row--completed:focus-within,
+body.theme-dark .partition-row.row-has-warning:focus-within {
+  background:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.105), rgba(148, 209, 89, 0.038) 44%, rgba(255, 255, 255, 0.024)),
+    rgba(18, 26, 19, 0.92) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.32),
+    inset 4px 0 0 rgba(148, 209, 89, 0.42),
+    0 0 22px rgba(148, 209, 89, 0.1) !important;
+}
+
 body.theme-dark .partition-row:hover > .detail-cell,
 body.theme-dark .partition-row:hover > label {
   background: transparent !important;
@@ -36727,6 +36750,18 @@ body.theme-dark .partition-row:hover .custom-select-trigger {
   color: #d8e0db !important;
   -webkit-text-fill-color: #d8e0db;
   border-color: #343a35 !important;
+}
+
+body.theme-dark .partition-row:focus-within input,
+body.theme-dark .partition-row:focus-within select,
+body.theme-dark .partition-row:focus-within .custom-select-trigger {
+  background: #223126 !important;
+  color: #f4faf1 !important;
+  -webkit-text-fill-color: #f4faf1;
+  border-color: rgba(148, 209, 89, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(148, 209, 89, 0.11) !important;
 }
 
 body.theme-dark .partition-row.partition-row--filled:hover input,
@@ -41115,12 +41150,23 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
 
 body.theme-dark .partition-table .partition-row:hover,
 body.theme-dark .partition-table tr.partition-row:hover,
-body.theme-dark .partition-table [data-partition-row="true"]:hover,
-body.theme-dark .partition-table .partition-row:focus-within,
-body.theme-dark .partition-table [data-partition-row="true"]:focus-within {
+body.theme-dark .partition-table [data-partition-row="true"]:hover {
   background: rgba(148, 209, 89, 0.035) !important;
   background-image: none !important;
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.10) !important;
+}
+
+body.theme-dark .partition-table .partition-row:focus-within,
+body.theme-dark .partition-table [data-partition-row="true"]:focus-within {
+  background:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.105), rgba(148, 209, 89, 0.038) 44%, rgba(255, 255, 255, 0.024)),
+    rgba(18, 26, 19, 0.92) !important;
+  background-image:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.105), rgba(148, 209, 89, 0.038) 44%, rgba(255, 255, 255, 0.024)) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.32),
+    inset 4px 0 0 rgba(148, 209, 89, 0.42),
+    0 0 22px rgba(148, 209, 89, 0.1) !important;
 }
 
 body.theme-dark .partition-table .partition-row:hover > *,
@@ -41167,17 +41213,26 @@ body.theme-dark .partition-table .partition-row:hover select,
 body.theme-dark .partition-table .partition-row:hover .custom-select-trigger,
 body.theme-dark .partition-table [data-partition-row="true"]:hover input:not([name="plantedCount"]),
 body.theme-dark .partition-table [data-partition-row="true"]:hover select,
-body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger,
+body.theme-dark .partition-table [data-partition-row="true"]:hover .custom-select-trigger {
+  background: #1f2a22 !important;
+  color: #f6f8f5 !important;
+  -webkit-text-fill-color: #f6f8f5 !important;
+  border-color: rgba(148, 209, 89, 0.22) !important;
+}
+
 body.theme-dark .partition-table .partition-row:focus-within input:not([name="plantedCount"]),
 body.theme-dark .partition-table .partition-row:focus-within select,
 body.theme-dark .partition-table .partition-row:focus-within .custom-select-trigger,
 body.theme-dark .partition-table [data-partition-row="true"]:focus-within input:not([name="plantedCount"]),
 body.theme-dark .partition-table [data-partition-row="true"]:focus-within select,
 body.theme-dark .partition-table [data-partition-row="true"]:focus-within .custom-select-trigger {
-  background: #1f2a22 !important;
-  color: #f6f8f5 !important;
+  background: #223126 !important;
+  color: #f7fbf5 !important;
   -webkit-text-fill-color: #f6f8f5 !important;
-  border-color: rgba(148, 209, 89, 0.22) !important;
+  border-color: rgba(148, 209, 89, 0.42) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(148, 209, 89, 0.11) !important;
 }
 
 @media (max-width: 640px) {
@@ -41366,7 +41421,6 @@ body.theme-dark .session-workspace-shell .partition-row:nth-child(even) {
 }
 
 body.theme-dark .session-workspace-shell .partition-row:hover,
-body.theme-dark .session-workspace-shell .partition-row:focus-within,
 body.theme-dark .session-workspace-shell .partition-row.partition-row--filled:hover,
 body.theme-dark .session-workspace-shell .partition-row.row--completed:hover,
 body.theme-dark .session-workspace-shell .partition-row.row-has-warning:hover {
@@ -41374,16 +41428,38 @@ body.theme-dark .session-workspace-shell .partition-row.row-has-warning:hover {
   box-shadow: inset 0 0 0 1px rgba(148, 209, 89, 0.12) !important;
 }
 
+body.theme-dark .session-workspace-shell .partition-row:focus-within,
+body.theme-dark .session-workspace-shell .partition-row.partition-row--filled:focus-within,
+body.theme-dark .session-workspace-shell .partition-row.row--completed:focus-within,
+body.theme-dark .session-workspace-shell .partition-row.row-has-warning:focus-within {
+  background:
+    linear-gradient(90deg, rgba(148, 209, 89, 0.11), rgba(148, 209, 89, 0.04) 44%, rgba(255, 255, 255, 0.024)),
+    rgba(18, 26, 19, 0.94) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.34),
+    inset 4px 0 0 rgba(148, 209, 89, 0.44),
+    0 0 22px rgba(148, 209, 89, 0.11) !important;
+}
+
 body.theme-dark .session-workspace-shell .partition-row:hover input,
 body.theme-dark .session-workspace-shell .partition-row:hover select,
-body.theme-dark .session-workspace-shell .partition-row:hover .custom-select-trigger,
-body.theme-dark .session-workspace-shell .partition-row:focus-within input,
-body.theme-dark .session-workspace-shell .partition-row:focus-within select,
-body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-select-trigger {
+body.theme-dark .session-workspace-shell .partition-row:hover .custom-select-trigger {
   background: rgba(18, 24, 19, 0.92) !important;
   color: #edf4ee !important;
   -webkit-text-fill-color: #edf4ee !important;
   border-color: rgba(148, 209, 89, 0.24) !important;
+}
+
+body.theme-dark .session-workspace-shell .partition-row:focus-within input,
+body.theme-dark .session-workspace-shell .partition-row:focus-within select,
+body.theme-dark .session-workspace-shell .partition-row:focus-within .custom-select-trigger {
+  background: #223126 !important;
+  color: #f7fbf5 !important;
+  -webkit-text-fill-color: #f7fbf5 !important;
+  border-color: rgba(148, 209, 89, 0.44) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 2px rgba(148, 209, 89, 0.11) !important;
 }
 
 body.theme-dark .session-workspace-shell .partition-number {
