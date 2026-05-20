@@ -17524,13 +17524,13 @@ async function updateOwnerGrowSessionTimes(session, payload) {
   await getAuthenticatedSupabaseUser("Please sign in to edit session times.");
   const { data, error } = await appState.supabase
     .rpc("update_owner_grow_session_times", {
+      p_completed_at: payload.completedAt || null,
+      p_germination_started_at: payload.germinationStartedAt || null,
+      p_session_date: payload.sessionDate,
       p_session_id: session.id,
       p_session_started_at: payload.sessionStartedAt,
-      p_soak_started_at: payload.soakStartedAt,
-      p_germination_started_at: payload.germinationStartedAt || null,
-      p_completed_at: payload.completedAt || null,
-      p_session_date: payload.sessionDate,
       p_session_time: payload.sessionTime,
+      p_soak_started_at: payload.soakStartedAt,
     })
     .single();
 
