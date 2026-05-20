@@ -57539,14 +57539,13 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     'input[name="sessionName"]',
     'input[name="date"]',
     'input[name="timeDisplay"]',
-    'input[name="unitId"]',
   ].join(", "));
 
   textFields.forEach((field) => {
     field.disabled = !allowFullEditing;
   });
 
-  scope.querySelectorAll('select[name="systemType"]').forEach((field) => {
+  scope.querySelectorAll('select[name="systemType"], select[name="unitId"]').forEach((field) => {
     field.disabled = !allowFullEditing;
   });
 

@@ -36146,7 +36146,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   transition: opacity 0.2s ease, filter 0.2s ease;
 }
 
-.session-workspace-shell .session-chart-header > label.system-type-field {
+.session-workspace-shell .session-chart-header > label.system-type-field,
+.session-workspace-shell .session-chart-header > label.system-id-field {
   position: relative;
   cursor: pointer;
   transition:
@@ -36156,7 +36157,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     filter 0.2s ease;
 }
 
-.session-workspace-shell .system-type-field select {
+.session-workspace-shell .system-type-field select,
+.session-workspace-shell .system-id-field select {
   position: relative;
   z-index: 1;
   padding-right: 44px;
@@ -36164,7 +36166,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   background-image: none;
 }
 
-.session-workspace-shell .system-type-field .system-type-chevron {
+.session-workspace-shell .system-type-field .system-type-chevron,
+.session-workspace-shell .system-id-field .system-id-chevron {
   position: absolute;
   right: 30px;
   bottom: 28px;
@@ -36187,7 +36190,9 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .system-type-field:hover,
-.session-workspace-shell .system-type-field:focus-within {
+.session-workspace-shell .system-type-field:focus-within,
+.session-workspace-shell .system-id-field:hover,
+.session-workspace-shell .system-id-field:focus-within {
   border-color: rgba(148, 209, 89, 0.34);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.01) 30%),
@@ -36198,19 +36203,23 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     0 0 18px rgba(148, 209, 89, 0.11);
 }
 
-.session-workspace-shell .system-type-field:hover select {
+.session-workspace-shell .system-type-field:hover select,
+.session-workspace-shell .system-id-field:hover select {
   border-color: rgba(148, 209, 89, 0.34);
   background: rgba(17, 24, 19, 0.86);
 }
 
 .session-workspace-shell .system-type-field:hover .system-type-chevron,
-.session-workspace-shell .system-type-field:focus-within .system-type-chevron {
+.session-workspace-shell .system-type-field:focus-within .system-type-chevron,
+.session-workspace-shell .system-id-field:hover .system-id-chevron,
+.session-workspace-shell .system-id-field:focus-within .system-id-chevron {
   color: #d3f5bc;
   opacity: 1;
   filter: drop-shadow(0 0 8px rgba(148, 209, 89, 0.26));
 }
 
-.session-workspace-shell .system-type-field:focus-within .system-type-chevron {
+.session-workspace-shell .system-type-field:focus-within .system-type-chevron,
+.session-workspace-shell .system-id-field:focus-within .system-id-chevron {
   transform: rotate(225deg) translate(-1px, -1px);
 }
 
@@ -41042,11 +41051,13 @@ body.theme-dark .partition-row .custom-select-trigger.is-missing {
     width: 100%;
   }
 
-  .session-workspace-shell .system-type-field select {
+  .session-workspace-shell .system-type-field select,
+  .session-workspace-shell .system-id-field select {
     padding-right: 40px;
   }
 
-  .session-workspace-shell .system-type-field .system-type-chevron {
+  .session-workspace-shell .system-type-field .system-type-chevron,
+  .session-workspace-shell .system-id-field .system-id-chevron {
     right: 26px;
     bottom: 26px;
   }
@@ -41267,7 +41278,9 @@ body.theme-dark .session-workspace-shell textarea:focus {
 }
 
 body.theme-dark .session-workspace-shell .system-type-field:hover,
-body.theme-dark .session-workspace-shell .system-type-field:focus-within {
+body.theme-dark .session-workspace-shell .system-type-field:focus-within,
+body.theme-dark .session-workspace-shell .system-id-field:hover,
+body.theme-dark .session-workspace-shell .system-id-field:focus-within {
   border-color: rgba(148, 209, 89, 0.34);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.044), rgba(255, 255, 255, 0.01) 30%),
@@ -41279,7 +41292,9 @@ body.theme-dark .session-workspace-shell .system-type-field:focus-within {
 }
 
 body.theme-dark .session-workspace-shell .system-type-field:hover select,
-body.theme-dark .session-workspace-shell .system-type-field:focus-within select {
+body.theme-dark .session-workspace-shell .system-type-field:focus-within select,
+body.theme-dark .session-workspace-shell .system-id-field:hover select,
+body.theme-dark .session-workspace-shell .system-id-field:focus-within select {
   border-color: rgba(148, 209, 89, 0.44);
   background: rgba(18, 24, 19, 0.92);
 }
