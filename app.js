@@ -53104,6 +53104,31 @@ function renderAdminPage() {
   renderAdminSeedAgeAnalyticsSection(leaderboardAuditAnchor);
 }
 
+function renderHomeSessionDashboardHeroActions(hasSavedGrowSessions = true) {
+  if (!hasSavedGrowSessions) {
+    return `
+      <a class="button button-new-session" href="#new" data-session-entry="true">Start My First Session</a>
+    `;
+  }
+
+  return `
+    <a class="button button-new-session" href="#sessions">My Sessions</a>
+    <a class="button button-secondary" href="#active-sessions">Active Sessions <span aria-hidden="true">&rarr;</span></a>
+  `;
+}
+
+function hydrateHomeSessionDashboardHero({ hasSavedGrowSessions = true } = {}) {
+  const growSessionsHeading = app.querySelector(".app-hero--home .app-hero-title");
+  if (growSessionsHeading) {
+    growSessionsHeading.textContent = getGrowSessionsSectionTitle();
+  }
+
+  const actions = app.querySelector(".app-hero--home .app-hero-actions");
+  if (actions) {
+    actions.innerHTML = renderHomeSessionDashboardHeroActions(hasSavedGrowSessions);
+  }
+}
+
 function renderHome() {
   console.log("[Cannakan Home] render", {
     route: window.location.hash || "#home",
@@ -53115,12 +53140,7 @@ function renderHome() {
   appState.announcementsLoaded = true;
   app.replaceChildren(cloneTemplate(templates.home));
   hydrateAppIconSlots(app);
-  const growSessionsHeading = app.querySelector(".app-hero--home .app-hero-title");
-  if (growSessionsHeading) {
-    growSessionsHeading.textContent = getGrowSessionsSectionTitle();
-  }
   app.querySelectorAll('[data-filter-paper-sessions-card="true"], .filter-paper-card').forEach((card) => card.remove());
-  applySupplyStatusToSessionEntryButtons(app);
   if (!isMockDataEnabled() && appState.supabase && !appState.homeGalleryRankingsHydrationRequested && !appState.gallerySnapshotsLoaded) {
     appState.homeGalleryRankingsHydrationRequested = true;
     void refreshGallerySnapshots("home-rankings-teaser").then(() => {
@@ -53135,6 +53155,11 @@ function renderHome() {
   const showGrowNetworkUnlockNotice = growNetworkUnlocked && consumeGrowNetworkUnlockNotice();
   const visibleSessions = getVisibleUserSessions(sessions);
   const hasSessionHistory = visibleSessions.length > 0;
+  const shouldShowFirstSessionCta = Boolean(appState.user) && !hasSessionHistory;
+  hydrateHomeSessionDashboardHero({
+    hasSavedGrowSessions: !shouldShowFirstSessionCta,
+  });
+  applySupplyStatusToSessionEntryButtons(app);
   const activeSessions = sortActiveSessionsNewestFirst(
     visibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
   );
