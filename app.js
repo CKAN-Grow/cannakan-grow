@@ -1410,6 +1410,7 @@ const appState = {
   founderSessionCleanupError: "",
   founderSessionCleanupLastResult: null,
   sessionTimeColumnsUnavailable: false,
+  sessionMockColumnsUnavailable: false,
   sessionLifecycleColumnsUnavailable: false,
   siteVisitorAnalyticsRows: [],
   siteVisitorAnalyticsLoaded: false,
@@ -12920,11 +12921,25 @@ async function loadAdminMembers(reason = "unspecified") {
     return [];
   }
 
+  if (sessionsResponse.error && isGrowSessionMockColumnSchemaError(sessionsResponse.error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    sessionsResponse = await appState.supabase
+      .from("grow_sessions")
+      .select("id,user_id,created_at");
+  }
+
   if (sessionsResponse.error && isGrowSessionLifecycleColumnSchemaError(sessionsResponse.error) && !appState.sessionLifecycleColumnsUnavailable) {
     appState.sessionLifecycleColumnsUnavailable = true;
     sessionsResponse = await appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,created_at,is_mock");
+      .select(`id,user_id,created_at${appState.sessionMockColumnsUnavailable ? "" : ",is_mock"}`);
+  }
+
+  if (sessionsResponse.error && isGrowSessionMockColumnSchemaError(sessionsResponse.error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    sessionsResponse = await appState.supabase
+      .from("grow_sessions")
+      .select("id,user_id,created_at");
   }
 
   if (sessionsResponse.error) {
@@ -13125,11 +13140,25 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
     .from("grow_sessions")
     .select("id,user_id,date,time,created_at,partitions,is_mock,is_test,excluded_from_analytics,user_deleted,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
 
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .select("id,user_id,date,time,created_at,partitions,is_test,excluded_from_analytics,user_deleted,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at"));
+  }
+
   if (error && isGrowSessionLifecycleColumnSchemaError(error) && !appState.sessionLifecycleColumnsUnavailable) {
     appState.sessionLifecycleColumnsUnavailable = true;
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,date,time,created_at,partitions,is_mock,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at"));
+      .select(`id,user_id,date,time,created_at,partitions${appState.sessionMockColumnsUnavailable ? "" : ",is_mock"},session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at`));
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .select("id,user_id,date,time,created_at,partitions,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at"));
   }
 
   if (error) {
@@ -15590,11 +15619,29 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
     .eq("id", normalizedSessionId)
     .maybeSingle();
 
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,deleted_at,visibility_status")
+      .eq("id", normalizedSessionId)
+      .maybeSingle());
+  }
+
   if (error && isGrowSessionLifecycleColumnSchemaError(error) && !appState.sessionLifecycleColumnsUnavailable) {
     appState.sessionLifecycleColumnsUnavailable = true;
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock")
+      .select(`id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years${appState.sessionMockColumnsUnavailable ? "" : ",is_mock"}`)
+      .eq("id", normalizedSessionId)
+      .maybeSingle());
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years")
       .eq("id", normalizedSessionId)
       .maybeSingle());
   }
@@ -16866,6 +16913,7 @@ async function createCloudSession(session) {
     : applyAutomaticGrowSessionCreationTimestamps(session);
   const record = mapSessionToRecord(sessionForSave, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+    includeMockColumns: !appState.sessionMockColumnsUnavailable,
     includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
   });
   let { data, error } = await appState.supabase
@@ -16879,7 +16927,25 @@ async function createCloudSession(session) {
     console.warn("Session time columns are not available yet; retrying grow session insert with legacy timestamp payload.", error);
     ({ data, error } = await appState.supabase
       .from("grow_sessions")
-      .insert(mapSessionToRecord(sessionForSave, authUser.id, { includeOwnerTimeColumns: false }))
+      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
+        includeOwnerTimeColumns: false,
+        includeMockColumns: !appState.sessionMockColumnsUnavailable,
+        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+      }))
+      .select()
+      .single());
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    console.warn("Grow session mock columns are not available yet; retrying insert with legacy mock payload.", error);
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
+        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+        includeMockColumns: false,
+        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+      }))
       .select()
       .single());
   }
@@ -16891,7 +16957,22 @@ async function createCloudSession(session) {
       .from("grow_sessions")
       .insert(mapSessionToRecord(sessionForSave, authUser.id, {
         includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+        includeMockColumns: !appState.sessionMockColumnsUnavailable,
         includeLifecycleColumns: false,
+      }))
+      .select()
+      .single());
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    console.warn("Grow session mock columns are not available yet after lifecycle fallback; retrying insert with legacy mock payload.", error);
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .insert(mapSessionToRecord(sessionForSave, authUser.id, {
+        includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+        includeMockColumns: false,
+        includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
       }))
       .select()
       .single());
@@ -17006,11 +17087,13 @@ async function updateCloudSession(session) {
   const authUser = await getAuthenticatedSupabaseUser("Please sign in to save your session.");
   const record = mapSessionToRecord(session, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+    includeMockColumns: !appState.sessionMockColumnsUnavailable,
     includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
   });
-  const previousRowCoreColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock";
+  const previousRowCoreColumns = `session_status,completed_at,date,time,timer_start_at,germination_started_at${appState.sessionMockColumnsUnavailable ? "" : ",is_mock"}`;
   const previousRowLifecycleColumns = appState.sessionLifecycleColumnsUnavailable ? "" : ",is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,visibility_status";
-  const modernPreviousRowColumns = `session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock${previousRowLifecycleColumns}`;
+  const previousRowMockColumn = appState.sessionMockColumnsUnavailable ? "" : ",is_mock";
+  const modernPreviousRowColumns = `session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at${previousRowMockColumn}${previousRowLifecycleColumns}`;
   const legacyPreviousRowColumns = `${previousRowCoreColumns}${previousRowLifecycleColumns}`;
   let { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
@@ -17039,6 +17122,20 @@ async function updateCloudSession(session) {
       .maybeSingle());
   }
 
+  if (previousRowError && isGrowSessionMockColumnSchemaError(previousRowError) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    const fallbackCoreColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at";
+    const fallbackLifecycleColumns = appState.sessionLifecycleColumnsUnavailable ? "" : ",is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,visibility_status";
+    const fallbackColumns = appState.sessionTimeColumnsUnavailable
+      ? `${fallbackCoreColumns}${fallbackLifecycleColumns}`
+      : `${fallbackCoreColumns},session_started_at,soak_started_at${fallbackLifecycleColumns}`;
+    ({ data: previousRow, error: previousRowError } = await appState.supabase
+      .from("grow_sessions")
+      .select(fallbackColumns)
+      .eq("id", session.id)
+      .maybeSingle());
+  }
+
   if (previousRowError) {
     throw previousRowError;
   }
@@ -17059,6 +17156,26 @@ async function updateCloudSession(session) {
     console.warn("Session time columns are not available yet; retrying grow session update with legacy timestamp payload.", error);
     const legacyRecord = mapSessionToRecord(session, authUser.id, {
       includeOwnerTimeColumns: false,
+      includeMockColumns: !appState.sessionMockColumnsUnavailable,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
+    });
+    if (!canManuallyEditGrowSessionTimestamps()) {
+      applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
+    }
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .update(legacyRecord)
+      .eq("id", session.id)
+      .select()
+      .single());
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    console.warn("Grow session mock columns are not available yet; retrying update with legacy mock payload.", error);
+    const legacyRecord = mapSessionToRecord(session, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeMockColumns: false,
       includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
     if (!canManuallyEditGrowSessionTimestamps()) {
@@ -17077,7 +17194,27 @@ async function updateCloudSession(session) {
     console.warn("Grow session lifecycle columns are not available yet; retrying update with legacy lifecycle payload.", error);
     const legacyRecord = mapSessionToRecord(session, authUser.id, {
       includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeMockColumns: !appState.sessionMockColumnsUnavailable,
       includeLifecycleColumns: false,
+    });
+    if (!canManuallyEditGrowSessionTimestamps()) {
+      applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
+    }
+    ({ data, error } = await appState.supabase
+      .from("grow_sessions")
+      .update(legacyRecord)
+      .eq("id", session.id)
+      .select()
+      .single());
+  }
+
+  if (error && isGrowSessionMockColumnSchemaError(error) && !appState.sessionMockColumnsUnavailable) {
+    appState.sessionMockColumnsUnavailable = true;
+    console.warn("Grow session mock columns are not available yet after lifecycle fallback; retrying update with legacy mock payload.", error);
+    const legacyRecord = mapSessionToRecord(session, authUser.id, {
+      includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
+      includeMockColumns: false,
+      includeLifecycleColumns: !appState.sessionLifecycleColumnsUnavailable,
     });
     if (!canManuallyEditGrowSessionTimestamps()) {
       applyRegularUserGrowSessionUpdateTimestampPolicy(legacyRecord, previousRow || {});
@@ -17144,6 +17281,22 @@ function isSessionTimeColumnSchemaError(error) {
     || message.includes("schema cache");
 }
 
+function isGrowSessionMockColumnSchemaError(error) {
+  const message = [
+    error?.message,
+    error?.details,
+    error?.hint,
+    error?.code,
+  ].map((value) => String(value || "").toLowerCase()).join(" ");
+
+  return message.includes("is_mock")
+    && (
+      message.includes("grow_sessions")
+      || message.includes("schema cache")
+      || message.includes("pgrst204")
+    );
+}
+
 function isGrowSessionLifecycleColumnSchemaError(error) {
   const message = [
     error?.message,
@@ -17153,6 +17306,9 @@ function isGrowSessionLifecycleColumnSchemaError(error) {
   ].map((value) => String(value || "").toLowerCase()).join(" ");
 
   return message.includes("excluded_from_analytics")
+    || message.includes("analytics_excluded_reason")
+    || message.includes("analytics_excluded_at")
+    || message.includes("is_test")
     || message.includes("user_deleted")
     || message.includes("user_deleted_at")
     || message.includes("visibility_status")
@@ -24793,6 +24949,7 @@ function getPublicGrowNoteDetails(snapshot = null, session = null) {
 
 function mapSessionToRecord(session, userId, options = {}) {
   const includeOwnerTimeColumns = options.includeOwnerTimeColumns !== false;
+  const includeMockColumns = options.includeMockColumns !== false;
   const includeLifecycleColumns = options.includeLifecycleColumns !== false;
   const seedAgeTrackingEnabled = Boolean(session.seedAgeTrackingEnabled);
   const seedAgeMode = seedAgeTrackingEnabled
@@ -24831,11 +24988,14 @@ function mapSessionToRecord(session, userId, options = {}) {
     seed_age_mode: seedAgeMode,
     session_seed_age_years: sessionSeedAgeYears,
     partitions: serializeSessionPartitions(session.partitions),
-    is_mock: false,
     created_at: session.createdAt,
     timer_start_at: soakStartedAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
   };
+
+  if (includeMockColumns) {
+    record.is_mock = false;
+  }
 
   if (includeLifecycleColumns) {
     record.is_test = Boolean(session.isTest);

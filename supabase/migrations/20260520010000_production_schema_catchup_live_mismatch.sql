@@ -6,6 +6,8 @@
 -- auth users, admin roles, app settings, or production config tables.
 
 alter table public.grow_sessions
+  add column if not exists is_mock boolean not null default false,
+  add column if not exists is_test boolean not null default false,
   add column if not exists excluded_from_analytics boolean not null default false,
   add column if not exists analytics_excluded_reason text not null default '',
   add column if not exists analytics_excluded_at timestamptz,
