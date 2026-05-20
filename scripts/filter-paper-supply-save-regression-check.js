@@ -15,6 +15,11 @@ for (const needle of [
   "async function ensureFilterPaperInventoryForUser(user = appState.user)",
   "async function saveFilterPaperInventoryForCurrentUser(inventory)",
   "await saveFilterPaperInventoryForCurrentUser({",
+  "throw saveResult.error;",
+  "Filter paper count could not be saved to your account.",
+  "Filter paper count could not be loaded from your account. Showing the browser fallback for now.",
+  "renderFilterPaperInventoryErrorMarkup",
+  "const hasSavedInventory = Boolean(",
   "Filter paper count could not be saved:",
   "Enter a valid filter paper count of 0 or more.",
 ]) {

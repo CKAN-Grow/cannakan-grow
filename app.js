@@ -3742,9 +3742,14 @@ function persistFilterPaperInventoryLocally(inventory, userId = appState.user?.i
 
 function syncFilterPaperInventoryCache(userId = appState.user?.id || "", inventory = DEFAULT_FILTER_PAPER_INVENTORY, options = {}) {
   const { persistLocal = true } = options || {};
-  const normalizedInventory = persistLocal
-    ? persistFilterPaperInventoryLocally(inventory, userId)
-    : normalizeFilterPaperInventory(inventory);
+  let normalizedInventory = normalizeFilterPaperInventory(inventory);
+  if (persistLocal) {
+    try {
+      normalizedInventory = persistFilterPaperInventoryLocally(normalizedInventory, userId);
+    } catch (error) {
+      console.warn("[Filter Paper Supply] Account inventory loaded, but local cache could not be updated.", error);
+    }
+  }
   appState.filterPaperInventory = normalizedInventory;
   appState.filterPaperInventoryError = "";
   return normalizedInventory;
@@ -3775,10 +3780,24 @@ function markFilterPaperInventoryBackendUnavailable(error = null) {
   }
 }
 
+function createFilterPaperInventoryPersistenceError(message = "", cause = null) {
+  const error = new Error(message || "Filter paper count could not be saved to your account.");
+  if (cause) {
+    error.cause = cause;
+  }
+  return error;
+}
+
 async function loadFilterPaperInventoryPreferenceFromBackend(userId = appState.user?.id || "") {
   const normalizedUserId = String(userId || "").trim();
   if (!appState.supabase || !normalizedUserId || appState.filterPaperInventoryBackendUnavailable) {
-    return { inventory: null, found: false, error: null };
+    return {
+      inventory: null,
+      found: false,
+      error: appState.filterPaperInventoryBackendUnavailable
+        ? createFilterPaperInventoryPersistenceError("Filter paper supply account storage is temporarily unavailable.")
+        : null,
+    };
   }
 
   try {
@@ -3792,43 +3811,88 @@ async function loadFilterPaperInventoryPreferenceFromBackend(userId = appState.u
     }
 
     const rawInventory = data?.[FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN] || null;
+    const hasSavedInventory = Boolean(
+      rawInventory
+      && typeof rawInventory === "object"
+      && Object.keys(rawInventory).length
+    );
     return {
-      inventory: rawInventory ? normalizeFilterPaperInventory(rawInventory) : null,
-      found: Boolean(rawInventory && typeof rawInventory === "object"),
+      inventory: hasSavedInventory ? normalizeFilterPaperInventory(rawInventory) : null,
+      found: hasSavedInventory,
       error: null,
     };
   } catch (error) {
     if (isFilterPaperInventoryPreferenceSchemaError(error)) {
       markFilterPaperInventoryBackendUnavailable(error);
-      return { inventory: null, found: false, error: null };
+      return {
+        inventory: null,
+        found: false,
+        error: createFilterPaperInventoryPersistenceError(
+          "Filter paper supply account storage is not available yet. Apply the latest Supabase migration and try again.",
+          error,
+        ),
+      };
     }
 
-    return { inventory: null, found: false, error };
+    return {
+      inventory: null,
+      found: false,
+      error: createFilterPaperInventoryPersistenceError(
+        error?.message || "Filter paper count could not be loaded from Supabase.",
+        error,
+      ),
+    };
   }
 }
 
 async function saveFilterPaperInventoryPreferenceToBackend(userId = appState.user?.id || "", inventory = DEFAULT_FILTER_PAPER_INVENTORY) {
   const normalizedUserId = String(userId || "").trim();
-  if (!appState.supabase || !normalizedUserId || appState.filterPaperInventoryBackendUnavailable) {
-    return { saved: false, error: null };
+  if (!appState.supabase || !normalizedUserId) {
+    return {
+      saved: false,
+      error: createFilterPaperInventoryPersistenceError("You must be signed in to save filter paper supply to your account."),
+    };
+  }
+
+  if (appState.filterPaperInventoryBackendUnavailable) {
+    return {
+      saved: false,
+      error: createFilterPaperInventoryPersistenceError("Filter paper supply account storage is temporarily unavailable."),
+    };
   }
 
   const normalizedInventory = normalizeFilterPaperInventory(inventory);
   try {
-    const { error } = await writeUserNotificationPreferencesPayload({
+    const response = await writeUserNotificationPreferencesPayload({
       user_id: normalizedUserId,
       [FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN]: normalizedInventory,
     });
+    const error = response?.error || null;
     if (error) {
       throw error;
     }
-    return { saved: true, error: null };
+    if (response?.data) {
+      setUserNotificationPreferencesAvailableColumns(response.data);
+    }
+    return { saved: true, error: null, row: response?.data || null };
   } catch (error) {
     if (isFilterPaperInventoryPreferenceSchemaError(error)) {
       markFilterPaperInventoryBackendUnavailable(error);
-      return { saved: false, error: null };
+      return {
+        saved: false,
+        error: createFilterPaperInventoryPersistenceError(
+          "Filter paper supply account storage is not available yet. Apply the latest Supabase migration and try again.",
+          error,
+        ),
+      };
     }
-    return { saved: false, error };
+    return {
+      saved: false,
+      error: createFilterPaperInventoryPersistenceError(
+        error?.message || "Filter paper count could not be saved to Supabase.",
+        error,
+      ),
+    };
   }
 }
 
@@ -3843,6 +3907,7 @@ async function ensureFilterPaperInventoryForUser(user = appState.user) {
   const backendResult = await loadFilterPaperInventoryPreferenceFromBackend(normalizedUserId);
   if (backendResult.error) {
     console.warn("[Filter Paper Supply] Failed to load saved account inventory. Using local fallback.", backendResult.error);
+    appState.filterPaperInventoryError = "Filter paper count could not be loaded from your account. Showing the browser fallback for now.";
     return localInventory;
   }
 
@@ -3860,6 +3925,7 @@ async function ensureFilterPaperInventoryForUser(user = appState.user) {
     const saveResult = await saveFilterPaperInventoryPreferenceToBackend(normalizedUserId, localInventory);
     if (saveResult.error) {
       console.warn("[Filter Paper Supply] Failed to sync local inventory to account preferences.", saveResult.error);
+      appState.filterPaperInventoryError = "Filter paper count is only saved in this browser until Supabase account sync succeeds.";
     }
   }
 
@@ -3874,6 +3940,11 @@ function getFilterPaperInventory() {
 }
 
 function hasFilterPaperInventoryBeenSet(userId = appState.user?.id || "") {
+  const currentInventory = appState.filterPaperInventory;
+  if (currentInventory?.updatedAt || currentInventory?.updated_at) {
+    return true;
+  }
+
   return getFilterPaperInventoryStorageKeys(userId).some((storageKey) => (
     getStoredFilterPaperInventoryValue(storageKey) !== null
   ));
@@ -3896,12 +3967,25 @@ function saveFilterPaperInventory(inventory) {
 }
 
 async function saveFilterPaperInventoryForCurrentUser(inventory) {
-  const normalizedInventory = saveFilterPaperInventory(inventory);
+  const previousInventory = getFilterPaperInventory();
+  const previousWasSet = hasFilterPaperInventoryBeenSet();
+  const normalizedInventory = normalizeFilterPaperInventory({
+    ...inventory,
+    updatedAt: new Date().toISOString(),
+  });
   const saveResult = await saveFilterPaperInventoryPreferenceToBackend(appState.user?.id || "", normalizedInventory);
   if (saveResult.error) {
-    console.warn("[Filter Paper Supply] Saved locally, but account preference sync failed.", saveResult.error);
+    appState.filterPaperInventoryError = saveResult.error.message || "Filter paper count could not be saved to your account.";
+    throw saveResult.error;
   }
-  return normalizedInventory;
+  const savedInventory = syncFilterPaperInventoryCache(appState.user?.id || "", normalizedInventory);
+  maybeAddSupplyStatusNotification(previousInventory, savedInventory, {
+    previousWasSet,
+    nextWasSet: true,
+  });
+  queueDueGrowReminderEvaluation("supply:inventory-saved");
+  renderAppNotificationCenter();
+  return savedInventory;
 }
 
 function normalizeFilterPaperDeductionRegistry(registry) {
@@ -3993,6 +4077,13 @@ function applyFilterPaperDeductionForCompletedSession(session) {
   const nextInventory = saveFilterPaperInventory({
     ...inventory,
     count: Math.max(0, inventory.count - FILTER_PAPER_USAGE_PER_COMPLETED_SESSION),
+  });
+  void saveFilterPaperInventoryPreferenceToBackend(appState.user?.id || "", nextInventory).then((saveResult) => {
+    if (saveResult?.error) {
+      console.warn("[Filter Paper Supply] Auto-deducted locally, but account preference sync failed.", saveResult.error);
+      appState.filterPaperInventoryError = "Filter paper count changed locally, but could not sync to your account.";
+      safeRender();
+    }
   });
   setSessionFilterPaperDeducted(session, true);
   // TODO: Persist per-session deduction flags alongside the session record once Supabase sync is added for supplies metadata.
@@ -4579,6 +4670,13 @@ function renderFilterPaperSupplyActionButtonsMarkup(supply) {
     <button type="button" class="button button-primary filter-paper-supply-button filter-paper-supply-button--reorder filter-paper-supply-button--${escapeHtml(supply?.tone || "ok")}" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
     <button type="button" class="button button-secondary filter-paper-supply-button filter-paper-supply-button--update" data-filter-paper-edit="true">${escapeHtml(FILTER_PAPER_UPDATE_BUTTON_LABEL)}</button>
   `;
+}
+
+function renderFilterPaperInventoryErrorMarkup(className = "filter-paper-inline-error") {
+  const message = String(appState.filterPaperInventoryError || "").trim();
+  return message
+    ? `<p class="${escapeHtml(className)}" role="alert">${escapeHtml(message)}</p>`
+    : "";
 }
 
 function getGallerySnapshotSeedAgeMetadata(snapshot = null) {
@@ -35127,6 +35225,7 @@ function renderFilterPaperCardMarkup() {
         <p class="filter-paper-count">${escapeHtml(supply.countLabel)}</p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
         <p class="filter-paper-helper">${escapeHtml(supply.helperText)}</p>
+        ${renderFilterPaperInventoryErrorMarkup()}
         <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
         <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">
           ${inventory.autoSubtract ? "Auto subtract is on." : "Auto subtract is off."}
@@ -35167,6 +35266,7 @@ function renderSessionsFilterPaperCardMarkup() {
       <div class="filter-paper-card-body">
         <p class="filter-paper-count">Filter papers remaining: <strong>${escapeHtml(String(countLabel))}</strong></p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
+        ${renderFilterPaperInventoryErrorMarkup()}
         <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
         <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">Auto subtract: <strong>${escapeHtml(autoSubtractLabel)}</strong></p>
         ${reminder ? `<p class="filter-paper-reminder-copy filter-paper-reminder-copy--${escapeHtml(toneKey)}">${escapeHtml(reminder)}</p>` : ""}
@@ -35191,6 +35291,7 @@ function renderActiveSessionFilterPaperCardMarkup() {
             <h4 id="active-session-supplies-title">Global Filter Paper Supply</h4>
             <p class="active-session-supplies-count">${escapeHtml(supply.countLabel)}</p>
             <p class="active-session-supplies-reminder">${escapeHtml(supply.helperText)}</p>
+            ${renderFilterPaperInventoryErrorMarkup("active-session-supplies-error")}
           </div>
         </div>
         <div class="active-session-supplies-actions">
@@ -35348,6 +35449,7 @@ function ensureFilterPaperSetupModal() {
         <button type="button" class="button button-primary" data-filter-paper-setup-save="true">Save & Continue</button>
         <button type="button" class="button button-secondary" data-filter-paper-setup-skip="true">Skip for Now</button>
       </div>
+      <p id="filter-paper-setup-message" class="form-message" role="alert" aria-live="polite"></p>
     </div>
   `;
 
@@ -35466,12 +35568,17 @@ function promptFilterPaperSetupBeforeNewSession() {
   const countInput = modal.querySelector('input[name="filterPaperSetupCount"]');
   const saveButton = modal.querySelector('[data-filter-paper-setup-save="true"]');
   const skipButton = modal.querySelector('[data-filter-paper-setup-skip="true"]');
+  const message = modal.querySelector("#filter-paper-setup-message");
 
   if (!(countInput instanceof HTMLInputElement) || !(saveButton instanceof HTMLButtonElement) || !(skipButton instanceof HTMLButtonElement)) {
     return Promise.resolve(true);
   }
 
   countInput.value = String(inventory.count || 0);
+  if (message) {
+    message.textContent = "";
+    message.classList.remove("is-error");
+  }
 
   return new Promise((resolve) => {
     let settled = false;
@@ -35518,6 +35625,10 @@ function promptFilterPaperSetupBeforeNewSession() {
         finish(true);
       } catch (error) {
         console.error("[Filter Paper Supply] Setup save failed.", error);
+        if (message) {
+          message.textContent = `Filter paper count could not be saved: ${error?.message || "Unknown error"}`;
+          message.classList.add("is-error");
+        }
         saveButton.disabled = false;
       }
     };
@@ -64090,6 +64201,7 @@ function renderSessionCommandCenterFilterPaperSupplyMarkup() {
         </div>
         <p class="session-command-center-supply-count">${escapeHtml(supply.countLabel)}</p>
         <p class="session-command-center-supply-helper">${escapeHtml(supply.helperText)}</p>
+        ${renderFilterPaperInventoryErrorMarkup("session-command-center-supply-error")}
       </div>
       <div class="session-command-center-supply-actions">
         <span class="filter-paper-status-badge filter-paper-status-badge--${escapeHtml(supply.tone)}">${escapeHtml(supply.statusLabel)}</span>

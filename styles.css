@@ -12602,6 +12602,16 @@ body.theme-dark .contact-reason-card.is-active {
   line-height: 1.55;
 }
 
+.filter-paper-inline-error,
+.active-session-supplies-error,
+.session-command-center-supply-error {
+  margin: 0;
+  color: #f2aaa4;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .filter-paper-status-badge {
   display: inline-flex;
   align-items: center;
