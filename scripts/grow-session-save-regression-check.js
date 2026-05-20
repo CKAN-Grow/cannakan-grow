@@ -116,6 +116,61 @@ function normalizeSeedVarietyNameForMatching(value = "") {
   return normalizeCanonicalIdentityKey(value);
 }
 
+function getPartitionIdentityEditDistance(left = "", right = "") {
+  const leftValue = String(left || "");
+  const rightValue = String(right || "");
+  const rows = leftValue.length + 1;
+  const columns = rightValue.length + 1;
+  const distances = Array.from({ length: rows }, () => Array(columns).fill(0));
+
+  for (let row = 0; row < rows; row += 1) {
+    distances[row][0] = row;
+  }
+  for (let column = 0; column < columns; column += 1) {
+    distances[0][column] = column;
+  }
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let column = 1; column < columns; column += 1) {
+      const cost = leftValue[row - 1] === rightValue[column - 1] ? 0 : 1;
+      distances[row][column] = Math.min(
+        distances[row - 1][column] + 1,
+        distances[row][column - 1] + 1,
+        distances[row - 1][column - 1] + cost,
+      );
+    }
+  }
+
+  return distances[leftValue.length][rightValue.length];
+}
+
+function getPartitionIdentitySimilarity(left = "", right = "") {
+  const longestLength = Math.max(String(left || "").length, String(right || "").length);
+  if (!longestLength) {
+    return 0;
+  }
+  return Math.max(0, 1 - (getPartitionIdentityEditDistance(left, right) / longestLength));
+}
+
+function isHighConfidencePartitionIdentityTypoMatch(inputKey = "", candidateKey = "") {
+  const left = String(inputKey || "").trim();
+  const right = String(candidateKey || "").trim();
+  const shortestLength = Math.min(left.length, right.length);
+  if (shortestLength < 6 || left.charAt(0) !== right.charAt(0)) {
+    return false;
+  }
+  const distance = getPartitionIdentityEditDistance(left, right);
+  const similarity = getPartitionIdentitySimilarity(left, right);
+  return (
+    (distance <= 1 && similarity >= 0.85)
+    || (distance <= 2 && shortestLength >= 12 && similarity >= 0.9)
+  );
+}
+
+function getPartitionIdentityAnalyticsKey(identity = {}) {
+  return String(identity.canonicalId || "").trim() || String(identity.normalizedKey || "").trim();
+}
+
 function normalizeGrowSessionLifecycleState(session = null) {
   if (["deleted", "archived", "archived_test"].includes(normalizeSessionStatus(session?.sessionStatus || session?.session_status || ""))) {
     return "deleted";
@@ -307,6 +362,10 @@ assert.equal(normalizeSourceNameForMatching(" https://www.Humboldt Seed Co. "), 
 assert.equal(normalizeSourceNameForMatching("Humboldt Seeds"), "humboldt");
 assert.equal(normalizeSourceNameForMatching("Royal Queen Seeds"), "royal queen");
 assert.equal(normalizeSeedVarietyNameForMatching(" Blue  Dream\u2014Auto "), "blue dream auto");
+assert.equal(isHighConfidencePartitionIdentityTypoMatch("humbolt", "humboldt"), true);
+assert.equal(isHighConfidencePartitionIdentityTypoMatch("blue dream auto", "green dream auto"), false);
+assert.equal(getPartitionIdentityAnalyticsKey({ canonicalId: "source-id", normalizedKey: "humboldt" }), "source-id");
+assert.equal(getPartitionIdentityAnalyticsKey({ normalizedKey: "blue dream" }), "blue dream");
 
 const completedAnalyticsSession = {
   ...session,

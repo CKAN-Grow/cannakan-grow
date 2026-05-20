@@ -259,6 +259,7 @@ const HOME_ANNOUNCEMENT_ROTATION_FADE_MS = 520;
 const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
+const PARTITION_IDENTITY_MATCH_STATUSES = Object.freeze(["selected", "auto_matched", "needs_review", "new"]);
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
 const FILTER_PAPER_STORE_URLS = Object.freeze({
   US: "https://cannakan.com/products/filter-papers-90mm",
@@ -4028,19 +4029,107 @@ function normalizeSeedVarietyNameForMatching(value = "") {
   return normalizeCanonicalIdentityKey(value);
 }
 
+function normalizePartitionIdentityMatchStatus(value = "") {
+  const normalizedStatus = String(value || "").trim().toLowerCase().replace(/-/g, "_");
+  return PARTITION_IDENTITY_MATCH_STATUSES.includes(normalizedStatus) ? normalizedStatus : "new";
+}
+
+function getPartitionIdentityCanonicalId(kind = "", normalizedKey = "", candidateId = "") {
+  const explicitId = String(candidateId || "").trim();
+  if (explicitId) {
+    return explicitId;
+  }
+
+  const key = String(normalizedKey || "").trim();
+  if (!key) {
+    return "";
+  }
+
+  return `${kind === "source" ? "source" : "seed-variety"}:${key.replace(/\s+/g, "-")}`;
+}
+
+function getPartitionIdentityEditDistance(left = "", right = "") {
+  const leftValue = String(left || "");
+  const rightValue = String(right || "");
+  const rows = leftValue.length + 1;
+  const columns = rightValue.length + 1;
+  const distances = Array.from({ length: rows }, () => Array(columns).fill(0));
+
+  for (let row = 0; row < rows; row += 1) {
+    distances[row][0] = row;
+  }
+  for (let column = 0; column < columns; column += 1) {
+    distances[0][column] = column;
+  }
+
+  for (let row = 1; row < rows; row += 1) {
+    for (let column = 1; column < columns; column += 1) {
+      const cost = leftValue[row - 1] === rightValue[column - 1] ? 0 : 1;
+      distances[row][column] = Math.min(
+        distances[row - 1][column] + 1,
+        distances[row][column - 1] + 1,
+        distances[row - 1][column - 1] + cost,
+      );
+    }
+  }
+
+  return distances[leftValue.length][rightValue.length];
+}
+
+function getPartitionIdentitySimilarity(left = "", right = "") {
+  const leftValue = String(left || "").trim();
+  const rightValue = String(right || "").trim();
+  const longestLength = Math.max(leftValue.length, rightValue.length);
+  if (!longestLength) {
+    return 0;
+  }
+  const distance = getPartitionIdentityEditDistance(leftValue, rightValue);
+  return Math.max(0, 1 - (distance / longestLength));
+}
+
+function isHighConfidencePartitionIdentityTypoMatch(inputKey = "", candidateKey = "") {
+  const left = String(inputKey || "").trim();
+  const right = String(candidateKey || "").trim();
+  const shortestLength = Math.min(left.length, right.length);
+  if (shortestLength < 6 || left.charAt(0) !== right.charAt(0)) {
+    return false;
+  }
+
+  const distance = getPartitionIdentityEditDistance(left, right);
+  const similarity = getPartitionIdentitySimilarity(left, right);
+  return (
+    (distance <= 1 && similarity >= 0.85)
+    || (distance <= 2 && shortestLength >= 12 && similarity >= 0.9)
+  );
+}
+
+function isMediumConfidencePartitionIdentityMatch(inputKey = "", candidateKey = "") {
+  const left = String(inputKey || "").trim();
+  const right = String(candidateKey || "").trim();
+  if (!left || !right) {
+    return false;
+  }
+  if (left.length < 4 || right.length < 4) {
+    return false;
+  }
+  return getPartitionIdentitySimilarity(left, right) >= 0.78;
+}
+
 function getPartitionSourceAnalyticsKey(partition = null) {
-  return normalizeSourceNameForMatching(
+  const canonicalId = String(partition?.sourceCanonicalId || partition?.source_canonical_id || "").trim();
+  return canonicalId || normalizeSourceNameForMatching(
     formatPartitionSource(partition)
     || partition?.sourceNormalizedName
-    || partition?.source_normalized_name
+    || partition?.source_normalized_name,
   );
 }
 
 function getPartitionSeedVarietyAnalyticsKey(partition = null) {
-  return normalizeSeedVarietyNameForMatching(
+  const canonicalId = String(partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id || "").trim();
+  return canonicalId || normalizeSeedVarietyNameForMatching(
     formatPartitionSeedVariety(partition)
     || partition?.seedVarietyNormalizedName
-    || partition?.seed_variety_normalized_name
+    || partition?.seed_variety_normalized_name,
   );
 }
 
@@ -4049,18 +4138,32 @@ function normalizeStoredPartition(partition, fallback = {}) {
   const fallbackPartition = fallback && typeof fallback === "object" ? fallback : {};
   const source = String(sourcePartition.source || "").trim();
   const seedVariety = String(sourcePartition.seedVariety || sourcePartition.seed_variety || "").trim();
+  const sourceNormalizedName = normalizeSourceNameForMatching(source);
+  const seedVarietyNormalizedName = normalizeSeedVarietyNameForMatching(seedVariety);
 
   return {
     ...sourcePartition,
     id: Number(sourcePartition.id) || Number(fallbackPartition.id) || 0,
     source,
+    sourceDisplayName: String(sourcePartition.sourceDisplayName || sourcePartition.source_display_name || source).trim(),
     seedVariety,
-    // Display labels stay exactly as submitted/selected. Canonical keys are
-    // additive matching fields for suggestions and analytics grouping.
+    seedVarietyDisplayName: String(sourcePartition.seedVarietyDisplayName || sourcePartition.seed_variety_display_name || seedVariety).trim(),
+    // Display labels stay exactly as submitted/selected. Normalized keys are
+    // additive matching fields; canonical IDs are trusted grouping handles.
     sourceCanonicalName: String(sourcePartition.sourceCanonicalName || sourcePartition.source_canonical_name || source).trim(),
-    sourceNormalizedName: normalizeSourceNameForMatching(source),
+    sourceCanonicalId: String(sourcePartition.sourceCanonicalId || sourcePartition.source_canonical_id || "").trim(),
+    sourceNormalizedName,
+    sourceMatchStatus: normalizePartitionIdentityMatchStatus(sourcePartition.sourceMatchStatus || sourcePartition.source_match_status || (source ? "new" : "")),
+    sourceMatchConfidence: Number(sourcePartition.sourceMatchConfidence ?? sourcePartition.source_match_confidence) || 0,
+    sourceReviewCandidateId: String(sourcePartition.sourceReviewCandidateId || sourcePartition.source_review_candidate_id || "").trim(),
+    sourceReviewCandidateName: String(sourcePartition.sourceReviewCandidateName || sourcePartition.source_review_candidate_name || "").trim(),
     seedVarietyCanonicalName: String(sourcePartition.seedVarietyCanonicalName || sourcePartition.seed_variety_canonical_name || seedVariety).trim(),
-    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(seedVariety),
+    seedVarietyCanonicalId: String(sourcePartition.seedVarietyCanonicalId || sourcePartition.seed_variety_canonical_id || "").trim(),
+    seedVarietyNormalizedName,
+    seedVarietyMatchStatus: normalizePartitionIdentityMatchStatus(sourcePartition.seedVarietyMatchStatus || sourcePartition.seed_variety_match_status || (seedVariety ? "new" : "")),
+    seedVarietyMatchConfidence: Number(sourcePartition.seedVarietyMatchConfidence ?? sourcePartition.seed_variety_match_confidence) || 0,
+    seedVarietyReviewCandidateId: String(sourcePartition.seedVarietyReviewCandidateId || sourcePartition.seed_variety_review_candidate_id || "").trim(),
+    seedVarietyReviewCandidateName: String(sourcePartition.seedVarietyReviewCandidateName || sourcePartition.seed_variety_review_candidate_name || "").trim(),
     breeder: String(sourcePartition.breeder || fallbackPartition.breeder || "").trim(),
     seedType: normalizeSeedTypeId(sourcePartition.seedType || sourcePartition.seed_type || ""),
     feminized: String(sourcePartition.feminized || "").trim(),
@@ -4082,15 +4185,39 @@ function serializeSessionPartitions(partitions = []) {
   return normalizeSessionPartitions(partitions).map((partition) => ({
     id: partition.id,
     source: partition.source,
+    sourceDisplayName: partition.source,
+    source_display_name: partition.source,
     sourceCanonicalName: partition.sourceCanonicalName || partition.source,
     source_canonical_name: partition.sourceCanonicalName || partition.source,
-    sourceNormalizedName: normalizeSourceNameForMatching(partition.source),
-    source_normalized_name: normalizeSourceNameForMatching(partition.source),
+    sourceCanonicalId: partition.sourceCanonicalId || "",
+    source_canonical_id: partition.sourceCanonicalId || "",
+    sourceNormalizedName: partition.sourceNormalizedName || normalizeSourceNameForMatching(partition.source),
+    source_normalized_name: partition.sourceNormalizedName || normalizeSourceNameForMatching(partition.source),
+    sourceMatchStatus: normalizePartitionIdentityMatchStatus(partition.sourceMatchStatus),
+    source_match_status: normalizePartitionIdentityMatchStatus(partition.sourceMatchStatus),
+    sourceMatchConfidence: Number(partition.sourceMatchConfidence) || 0,
+    source_match_confidence: Number(partition.sourceMatchConfidence) || 0,
+    sourceReviewCandidateId: partition.sourceReviewCandidateId || "",
+    source_review_candidate_id: partition.sourceReviewCandidateId || "",
+    sourceReviewCandidateName: partition.sourceReviewCandidateName || "",
+    source_review_candidate_name: partition.sourceReviewCandidateName || "",
     seedVariety: partition.seedVariety,
+    seedVarietyDisplayName: partition.seedVariety,
+    seed_variety_display_name: partition.seedVariety,
     seedVarietyCanonicalName: partition.seedVarietyCanonicalName || partition.seedVariety,
     seed_variety_canonical_name: partition.seedVarietyCanonicalName || partition.seedVariety,
-    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(partition.seedVariety),
-    seed_variety_normalized_name: normalizeSeedVarietyNameForMatching(partition.seedVariety),
+    seedVarietyCanonicalId: partition.seedVarietyCanonicalId || "",
+    seed_variety_canonical_id: partition.seedVarietyCanonicalId || "",
+    seedVarietyNormalizedName: partition.seedVarietyNormalizedName || normalizeSeedVarietyNameForMatching(partition.seedVariety),
+    seed_variety_normalized_name: partition.seedVarietyNormalizedName || normalizeSeedVarietyNameForMatching(partition.seedVariety),
+    seedVarietyMatchStatus: normalizePartitionIdentityMatchStatus(partition.seedVarietyMatchStatus),
+    seed_variety_match_status: normalizePartitionIdentityMatchStatus(partition.seedVarietyMatchStatus),
+    seedVarietyMatchConfidence: Number(partition.seedVarietyMatchConfidence) || 0,
+    seed_variety_match_confidence: Number(partition.seedVarietyMatchConfidence) || 0,
+    seedVarietyReviewCandidateId: partition.seedVarietyReviewCandidateId || "",
+    seed_variety_review_candidate_id: partition.seedVarietyReviewCandidateId || "",
+    seedVarietyReviewCandidateName: partition.seedVarietyReviewCandidateName || "",
+    seed_variety_review_candidate_name: partition.seedVarietyReviewCandidateName || "",
     breeder: partition.breeder,
     seedType: normalizeSeedTypeId(partition.seedType || ""),
     feminized: partition.feminized,
@@ -17589,11 +17716,13 @@ function getPrimaryPartitionSourceDetails(partitions = []) {
   return {
     sourceId: String(sourceRecord?.id || "").trim(),
     sourceName: sourceRecord?.name || sourceName,
+    sourceCanonicalId: sourceRecord?.id || firstPartition?.sourceCanonicalId || firstPartition?.source_canonical_id || "",
     sourceNormalizedName: normalizeSourceNameForMatching(sourceRecord?.name || sourceName),
     sourceLogoUrl: normalizeSourceStatus(sourceRecord?.status) === "active"
       ? String(sourceRecord?.logoUrl || "").trim()
       : "",
     seedVarietyName: normalizeLeaderboardLabel(formatPartitionSeedVariety(firstPartition)),
+    seedVarietyCanonicalId: firstPartition?.seedVarietyCanonicalId || firstPartition?.seed_variety_canonical_id || "",
     seedVarietyNormalizedName: getPartitionSeedVarietyAnalyticsKey(firstPartition),
   };
 }
@@ -20254,6 +20383,15 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
 
   return {
     sourceName: sourceLabel,
+    sourceCanonicalId: String(
+      snapshot?.sourceCanonicalId
+      || snapshot?.source_canonical_id
+      || firstPartitionWithIdentity?.sourceCanonicalId
+      || firstPartitionWithIdentity?.source_canonical_id
+      || snapshot?.sourceId
+      || snapshot?.source_id
+      || "",
+    ).trim(),
     sourceNormalizedName: normalizeSourceNameForMatching(
       snapshot?.sourceNormalizedName
       || snapshot?.source_normalized_name
@@ -20263,6 +20401,13 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
     ),
     sourceLogoUrl: String(sourceDisplay.logoUrl || "").trim(),
     seedVarietyName: seedVarietyLabel,
+    seedVarietyCanonicalId: String(
+      snapshot?.seedVarietyCanonicalId
+      || snapshot?.seed_variety_canonical_id
+      || firstPartitionWithIdentity?.seedVarietyCanonicalId
+      || firstPartitionWithIdentity?.seed_variety_canonical_id
+      || "",
+    ).trim(),
     seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(
       snapshot?.seedVarietyNormalizedName
       || snapshot?.seed_variety_normalized_name
@@ -20283,8 +20428,8 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
     const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
     const label = type === "source" ? metadata.sourceName : metadata.seedVarietyName;
     const normalizedKey = type === "source"
-      ? metadata.sourceNormalizedName
-      : metadata.seedVarietyNormalizedName;
+      ? (metadata.sourceCanonicalId || metadata.sourceNormalizedName)
+      : (metadata.seedVarietyCanonicalId || metadata.seedVarietyNormalizedName);
     if (!normalizedKey) {
       return;
     }
@@ -26681,13 +26826,12 @@ function getFormSnapshotData(form) {
   }
 
   const seedAgeState = getSeedAgeSettingsFromForm(form);
-  const partitions = [...form.querySelectorAll(".partition-row")].map((row, index) => ({
-    id: Number(row.dataset.partitionId) || index + 1,
-    source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
-    seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
-    seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
-    plantedCount: Number(row.querySelector('input[name="plantedCount"]')?.value) || 0,
-    seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
+  const rows = [...form.querySelectorAll(".partition-row")];
+  const partitions = getCurrentPartitionValues(form).map((partition, index) => ({
+    ...partition,
+    seedCount: Number(partition.seedCount) || 0,
+    plantedCount: Number(partition.plantedCount) || 0,
+    seedAgeYears: getEffectivePartitionSeedAgeFromRow(rows[index], seedAgeState),
   }));
   const firstPartition = partitions[0] || {};
   const date = form.elements.date?.value || "";
@@ -26734,9 +26878,11 @@ function buildSnapshotData(source) {
     systemLabel: formatSnapshotSystemLabel(source.systemType || "KAN"),
     sourceId: sourceDetails.sourceId,
     sourceName: sourceDetails.sourceName,
+    sourceCanonicalId: sourceDetails.sourceCanonicalId,
     sourceNormalizedName: sourceDetails.sourceNormalizedName,
     sourceLogoUrl: sourceDetails.sourceLogoUrl,
     seedVarietyName: sourceDetails.seedVarietyName,
+    seedVarietyCanonicalId: sourceDetails.seedVarietyCanonicalId,
     seedVarietyNormalizedName: sourceDetails.seedVarietyNormalizedName,
     totalSeeds: totals.totalSeeds,
     totalPlanted: totals.totalPlanted,
@@ -35416,9 +35562,11 @@ function buildRealSourceProfileRecord(sourceId = "") {
   const { sourceMap } = buildSourceDirectorySessionAggregate();
   const sourceRecord = findSourceById(normalizedId) || null;
   const sourceAggregateKey = sourceRecord
-    ? normalizeSourceNameForMatching(sourceRecord.name || sourceRecord.id || "")
+    ? String(sourceRecord.id || "").trim()
     : normalizedId;
-  const sessionAggregate = sourceMap.get(sourceAggregateKey) || null;
+  const sessionAggregate = sourceMap.get(sourceAggregateKey)
+    || (sourceRecord ? sourceMap.get(normalizeSourceNameForMatching(sourceRecord.name || "")) : null)
+    || null;
   if (!sourceRecord && !sessionAggregate) {
     return null;
   }
@@ -35434,7 +35582,10 @@ function buildRealSourceProfileRecord(sourceId = "") {
       }
       return String(left?.name || "").localeCompare(String(right?.name || ""));
     });
-  const rankIndex = rankedSources.findIndex((entry) => normalizeSourceNameForMatching(entry?.name || "") === normalizeSourceNameForMatching(sourceName));
+  const rankIndex = rankedSources.findIndex((entry) => (
+    String(entry?.key || "").trim() === sourceAggregateKey
+    || normalizeSourceNameForMatching(entry?.name || "") === normalizeSourceNameForMatching(sourceName)
+  ));
   const trackRecord = getSourceDirectoryTrackRecordForSource(sourceName, {});
 
   return normalizeTestedSourceMockRecord({
@@ -56264,8 +56415,12 @@ function getPartitionIdentityKindConfig(kind = "") {
       label: "Source",
       normalize: normalizeSourceNameForMatching,
       getPartitionLabel: formatPartitionSource,
+      getPartitionCanonicalId: (partition) => partition?.sourceCanonicalId || partition?.source_canonical_id || "",
+      getPartitionCanonicalName: (partition) => partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
       catalogRecords: () => getSourceCatalogRecords().map((source) => ({
         label: source?.name || "",
+        canonicalId: source?.id || "",
+        canonicalName: source?.name || "",
         priority: 3,
         origin: "Source Directory",
       })),
@@ -56277,6 +56432,8 @@ function getPartitionIdentityKindConfig(kind = "") {
     label: "Seed Variety",
     normalize: normalizeSeedVarietyNameForMatching,
     getPartitionLabel: formatPartitionSeedVariety,
+    getPartitionCanonicalId: (partition) => partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id || "",
+    getPartitionCanonicalName: (partition) => partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || formatPartitionSeedVariety(partition),
     catalogRecords: () => [],
   };
 }
@@ -56291,6 +56448,8 @@ function addPartitionIdentitySuggestionRecord(records, config, label = "", optio
   const existingRecord = records.get(normalizedKey) || {
     label: displayLabel,
     normalizedKey,
+    canonicalId: getPartitionIdentityCanonicalId(config.kind, normalizedKey, options.canonicalId),
+    canonicalName: String(options.canonicalName || displayLabel).trim(),
     usageCount: 0,
     priority: 0,
     origins: new Set(),
@@ -56302,11 +56461,18 @@ function addPartitionIdentitySuggestionRecord(records, config, label = "", optio
   if (options.origin) {
     existingRecord.origins.add(String(options.origin));
   }
+  if (options.canonicalId && !existingRecord.canonicalId) {
+    existingRecord.canonicalId = String(options.canonicalId).trim();
+  }
+  if (options.canonicalName && !existingRecord.canonicalName) {
+    existingRecord.canonicalName = String(options.canonicalName).trim();
+  }
   if (
     priority > previousPriority
     || (priority === previousPriority && displayLabel.length < existingRecord.label.length)
   ) {
     existingRecord.label = displayLabel;
+    existingRecord.canonicalName = String(options.canonicalName || displayLabel).trim();
   }
   records.set(normalizedKey, existingRecord);
 }
@@ -56317,6 +56483,8 @@ function getPartitionIdentitySuggestionRecords(kind = "") {
 
   config.catalogRecords().forEach((record) => {
     addPartitionIdentitySuggestionRecord(records, config, record.label, {
+      canonicalId: record.canonicalId,
+      canonicalName: record.canonicalName,
       priority: record.priority,
       origin: record.origin,
     });
@@ -56337,6 +56505,8 @@ function getPartitionIdentitySuggestionRecords(kind = "") {
 
     normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
       addPartitionIdentitySuggestionRecord(records, config, config.getPartitionLabel(partition), {
+        canonicalId: config.getPartitionCanonicalId(partition),
+        canonicalName: config.getPartitionCanonicalName(partition),
         priority: 2,
         origin: "Previous sessions",
       });
@@ -56347,6 +56517,114 @@ function getPartitionIdentitySuggestionRecords(kind = "") {
     ...record,
     origins: [...record.origins],
   }));
+}
+
+function getBestPartitionIdentityCandidate(kind = "", normalizedKey = "") {
+  const key = String(normalizedKey || "").trim();
+  if (!key) {
+    return null;
+  }
+
+  const candidates = getPartitionIdentitySuggestionRecords(kind);
+  const exactMatch = candidates.find((candidate) => candidate.normalizedKey === key);
+  if (exactMatch) {
+    return {
+      ...exactMatch,
+      confidence: 1,
+      confidenceBand: "exact",
+    };
+  }
+
+  return candidates
+    .map((candidate) => ({
+      ...candidate,
+      confidence: getPartitionIdentitySimilarity(key, candidate.normalizedKey),
+      confidenceBand: isHighConfidencePartitionIdentityTypoMatch(key, candidate.normalizedKey)
+        ? "high"
+        : (isMediumConfidencePartitionIdentityMatch(key, candidate.normalizedKey) ? "medium" : "low"),
+    }))
+    .filter((candidate) => candidate.confidenceBand !== "low")
+    .sort((left, right) => {
+      const bandRank = { high: 0, medium: 1, low: 2 };
+      return bandRank[left.confidenceBand] - bandRank[right.confidenceBand]
+        || right.confidence - left.confidence
+        || right.priority - left.priority
+        || right.usageCount - left.usageCount
+        || left.label.localeCompare(right.label, "en", { sensitivity: "base" });
+    })[0] || null;
+}
+
+function buildPartitionIdentityMatch(kind = "", displayValue = "", options = {}) {
+  const config = getPartitionIdentityKindConfig(kind);
+  const displayName = String(displayValue || "").trim();
+  const normalizedKey = config.normalize(displayName);
+  const selectedCandidate = options.selectedCandidate && typeof options.selectedCandidate === "object"
+    ? options.selectedCandidate
+    : null;
+
+  if (!displayName || !normalizedKey) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: "",
+      canonicalName: displayName,
+      matchStatus: "new",
+      matchConfidence: 0,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  if (selectedCandidate?.canonicalId && selectedCandidate?.normalizedKey === normalizedKey) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: selectedCandidate.canonicalId,
+      canonicalName: selectedCandidate.canonicalName || selectedCandidate.label || displayName,
+      matchStatus: "selected",
+      matchConfidence: 1,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  const bestCandidate = getBestPartitionIdentityCandidate(config.kind, normalizedKey);
+  if (!bestCandidate) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: "",
+      canonicalName: displayName,
+      matchStatus: "new",
+      matchConfidence: 0,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  if (bestCandidate.confidenceBand === "exact" || bestCandidate.confidenceBand === "high") {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: bestCandidate.canonicalId,
+      canonicalName: bestCandidate.canonicalName || bestCandidate.label || displayName,
+      matchStatus: "auto_matched",
+      matchConfidence: bestCandidate.confidence,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  return {
+    displayName,
+    normalizedKey,
+    canonicalId: "",
+    canonicalName: displayName,
+    matchStatus: "needs_review",
+    matchConfidence: bestCandidate.confidence,
+    reviewCandidateId: bestCandidate.canonicalId,
+    reviewCandidateName: bestCandidate.canonicalName || bestCandidate.label || "",
+  };
 }
 
 function getPartitionIdentitySuggestions(kind = "", query = "") {
@@ -56370,6 +56648,10 @@ function getPartitionIdentitySuggestions(kind = "", query = "") {
         rank = 1;
       } else if (record.normalizedKey.includes(normalizedQuery)) {
         rank = 2;
+      } else if (isHighConfidencePartitionIdentityTypoMatch(normalizedQuery, record.normalizedKey)) {
+        rank = 3;
+      } else if (isMediumConfidencePartitionIdentityMatch(normalizedQuery, record.normalizedKey)) {
+        rank = 4;
       }
 
       const isLikelyDuplicate = rank === 0 && normalizeIdentityPunctuation(record.label).toLowerCase() !== normalizeIdentityPunctuation(displayQuery).toLowerCase();
@@ -56399,11 +56681,18 @@ function applyPartitionIdentitySuggestion(input, suggestion) {
     return;
   }
 
+  input.dataset.applyingIdentitySuggestion = "true";
   input.value = suggestion.label;
-  input.dataset.canonicalLabel = suggestion.label;
+  input.dataset.canonicalId = suggestion.canonicalId || "";
+  input.dataset.canonicalLabel = suggestion.canonicalName || suggestion.label;
   input.dataset.normalizedKey = suggestion.normalizedKey || "";
+  input.dataset.matchStatus = "selected";
+  input.dataset.matchConfidence = "1";
+  input.dataset.reviewCandidateId = "";
+  input.dataset.reviewCandidateName = "";
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+  delete input.dataset.applyingIdentitySuggestion;
   closePartitionIdentitySuggestions(input.closest("[data-identity-autocomplete]"));
 }
 
@@ -56458,8 +56747,16 @@ function initializePartitionIdentityAutocompletes(scope) {
 
     input.addEventListener("input", () => {
       const config = getPartitionIdentityKindConfig(field.dataset.identityAutocomplete || "");
-      input.dataset.canonicalLabel = input.value.trim();
-      input.dataset.normalizedKey = config.normalize(input.value);
+      if (input.dataset.applyingIdentitySuggestion !== "true") {
+        const match = buildPartitionIdentityMatch(config.kind, input.value);
+        input.dataset.canonicalId = match.canonicalId;
+        input.dataset.canonicalLabel = match.canonicalName;
+        input.dataset.normalizedKey = match.normalizedKey;
+        input.dataset.matchStatus = match.matchStatus;
+        input.dataset.matchConfidence = String(match.matchConfidence);
+        input.dataset.reviewCandidateId = match.reviewCandidateId;
+        input.dataset.reviewCandidateName = match.reviewCandidateName;
+      }
       field.dataset.identityActiveIndex = "0";
       renderPartitionIdentitySuggestions(field);
     });
@@ -57220,14 +57517,40 @@ function hydratePartitionRow(row, partition) {
   const sourceInput = row.querySelector('input[name^="source-"]');
   const varietyInput = row.querySelector('input[name^="seedVariety-"]');
   if (sourceInput instanceof HTMLInputElement) {
+    const match = buildPartitionIdentityMatch("source", formatPartitionSource(partition), {
+      selectedCandidate: partition?.sourceCanonicalId || partition?.source_canonical_id ? {
+        canonicalId: partition?.sourceCanonicalId || partition?.source_canonical_id,
+        canonicalName: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
+        normalizedKey: partition?.sourceNormalizedName || partition?.source_normalized_name || normalizeSourceNameForMatching(formatPartitionSource(partition)),
+        label: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
+      } : null,
+    });
     sourceInput.value = formatPartitionSource(partition);
-    sourceInput.dataset.canonicalLabel = partition?.sourceCanonicalName || partition?.source_canonical_name || sourceInput.value;
-    sourceInput.dataset.normalizedKey = getPartitionSourceAnalyticsKey(partition);
+    sourceInput.dataset.canonicalId = partition?.sourceCanonicalId || partition?.source_canonical_id || match.canonicalId;
+    sourceInput.dataset.canonicalLabel = partition?.sourceCanonicalName || partition?.source_canonical_name || match.canonicalName || sourceInput.value;
+    sourceInput.dataset.normalizedKey = partition?.sourceNormalizedName || partition?.source_normalized_name || match.normalizedKey;
+    sourceInput.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.sourceMatchStatus || partition?.source_match_status || match.matchStatus);
+    sourceInput.dataset.matchConfidence = String(Number(partition?.sourceMatchConfidence ?? partition?.source_match_confidence ?? match.matchConfidence) || 0);
+    sourceInput.dataset.reviewCandidateId = partition?.sourceReviewCandidateId || partition?.source_review_candidate_id || match.reviewCandidateId || "";
+    sourceInput.dataset.reviewCandidateName = partition?.sourceReviewCandidateName || partition?.source_review_candidate_name || match.reviewCandidateName || "";
   }
   if (varietyInput instanceof HTMLInputElement) {
+    const match = buildPartitionIdentityMatch("seedVariety", formatPartitionSeedVariety(partition), {
+      selectedCandidate: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id ? {
+        canonicalId: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id,
+        canonicalName: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || formatPartitionSeedVariety(partition),
+        normalizedKey: partition?.seedVarietyNormalizedName || partition?.seed_variety_normalized_name || normalizeSeedVarietyNameForMatching(formatPartitionSeedVariety(partition)),
+        label: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || formatPartitionSeedVariety(partition),
+      } : null,
+    });
     varietyInput.value = formatPartitionSeedVariety(partition);
-    varietyInput.dataset.canonicalLabel = partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || varietyInput.value;
-    varietyInput.dataset.normalizedKey = getPartitionSeedVarietyAnalyticsKey(partition);
+    varietyInput.dataset.canonicalId = partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id || match.canonicalId;
+    varietyInput.dataset.canonicalLabel = partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || match.canonicalName || varietyInput.value;
+    varietyInput.dataset.normalizedKey = partition?.seedVarietyNormalizedName || partition?.seed_variety_normalized_name || match.normalizedKey;
+    varietyInput.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.seedVarietyMatchStatus || partition?.seed_variety_match_status || match.matchStatus);
+    varietyInput.dataset.matchConfidence = String(Number(partition?.seedVarietyMatchConfidence ?? partition?.seed_variety_match_confidence ?? match.matchConfidence) || 0);
+    varietyInput.dataset.reviewCandidateId = partition?.seedVarietyReviewCandidateId || partition?.seed_variety_review_candidate_id || match.reviewCandidateId || "";
+    varietyInput.dataset.reviewCandidateName = partition?.seedVarietyReviewCandidateName || partition?.seed_variety_review_candidate_name || match.reviewCandidateName || "";
   }
   row.querySelector('select[name^="seedType-"]').value = normalizeSeedTypeId(partition.seedType || "");
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
@@ -57248,23 +57571,57 @@ function hydratePartitionRow(row, partition) {
 
 function getCurrentPartitionValues(form) {
   const previousValues = Array.isArray(form?.__partitionDraftValues) ? form.__partitionDraftValues : [];
-  return [...form.querySelectorAll(".partition-row")].map((row, index) => ({
-    source: row.querySelector('input[name^="source-"]')?.value.trim() || "",
-    sourceCanonicalName: row.querySelector('input[name^="source-"]')?.dataset.canonicalLabel || row.querySelector('input[name^="source-"]')?.value.trim() || "",
-    sourceNormalizedName: normalizeSourceNameForMatching(row.querySelector('input[name^="source-"]')?.value || ""),
-    seedVariety: row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
-    seedVarietyCanonicalName: row.querySelector('input[name^="seedVariety-"]')?.dataset.canonicalLabel || row.querySelector('input[name^="seedVariety-"]')?.value.trim() || "",
-    seedVarietyNormalizedName: normalizeSeedVarietyNameForMatching(row.querySelector('input[name^="seedVariety-"]')?.value || ""),
-    breeder: "",
-    seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
-    feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
-    seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
-    plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
-    seedAgeYears: normalizeSeedAgeYears(
-      row.querySelector('input[name^="seedAgeYears-"]')?.value
-      ?? previousValues[index]?.seedAgeYears,
-    ),
-  }));
+  return [...form.querySelectorAll(".partition-row")].map((row, index) => {
+    const sourceInput = row.querySelector('input[name^="source-"]');
+    const varietyInput = row.querySelector('input[name^="seedVariety-"]');
+    const sourceValue = sourceInput?.value.trim() || "";
+    const varietyValue = varietyInput?.value.trim() || "";
+    const sourceMatch = buildPartitionIdentityMatch("source", sourceValue, {
+      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
+        canonicalId: sourceInput.dataset.canonicalId || "",
+        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
+        normalizedKey: sourceInput.dataset.normalizedKey || normalizeSourceNameForMatching(sourceValue),
+        label: sourceInput.dataset.canonicalLabel || sourceValue,
+      } : null,
+    });
+    const varietyMatch = buildPartitionIdentityMatch("seedVariety", varietyValue, {
+      selectedCandidate: varietyInput?.dataset.matchStatus === "selected" ? {
+        canonicalId: varietyInput.dataset.canonicalId || "",
+        canonicalName: varietyInput.dataset.canonicalLabel || varietyValue,
+        normalizedKey: varietyInput.dataset.normalizedKey || normalizeSeedVarietyNameForMatching(varietyValue),
+        label: varietyInput.dataset.canonicalLabel || varietyValue,
+      } : null,
+    });
+
+    return {
+      id: Number(row.dataset.partitionId) || index + 1,
+      source: sourceValue,
+      sourceCanonicalName: sourceMatch.canonicalName,
+      sourceCanonicalId: sourceMatch.canonicalId,
+      sourceNormalizedName: sourceMatch.normalizedKey,
+      sourceMatchStatus: sourceMatch.matchStatus,
+      sourceMatchConfidence: sourceMatch.matchConfidence,
+      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
+      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+      seedVariety: varietyValue,
+      seedVarietyCanonicalName: varietyMatch.canonicalName,
+      seedVarietyCanonicalId: varietyMatch.canonicalId,
+      seedVarietyNormalizedName: varietyMatch.normalizedKey,
+      seedVarietyMatchStatus: varietyMatch.matchStatus,
+      seedVarietyMatchConfidence: varietyMatch.matchConfidence,
+      seedVarietyReviewCandidateId: varietyMatch.reviewCandidateId,
+      seedVarietyReviewCandidateName: varietyMatch.reviewCandidateName,
+      breeder: "",
+      seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
+      feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
+      seedCount: Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0,
+      plantedCount: row.querySelector('input[name="plantedCount"]')?.value.trim() || "",
+      seedAgeYears: normalizeSeedAgeYears(
+        row.querySelector('input[name^="seedAgeYears-"]')?.value
+        ?? previousValues[index]?.seedAgeYears,
+      ),
+    };
+  });
 }
 
 function getSeedAgeModeForForm(form) {
