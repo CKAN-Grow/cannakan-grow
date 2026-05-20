@@ -4355,6 +4355,8 @@ function normalizeStoredSession(session) {
     isMock: Boolean(session.isMock || session.is_mock),
     isTest: Boolean(session.isTest || session.is_test),
     excludedFromAnalytics: Boolean(session.excludedFromAnalytics || session.excluded_from_analytics),
+    userDeleted: Boolean(session.userDeleted || session.user_deleted),
+    userDeletedAt: String(session.userDeletedAt || session.user_deleted_at || "").trim(),
     isDeleted: Boolean(session.isDeleted || session.is_deleted),
     deletedAt: String(session.deletedAt || session.deleted_at || "").trim(),
     visibilityStatus: normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
@@ -6137,7 +6139,10 @@ function isSessionSoftDeleted(session = null) {
   }
 
   return Boolean(
-    session.isDeleted
+    session.userDeleted
+    || session.user_deleted
+    || String(session.userDeletedAt || session.user_deleted_at || "").trim()
+    || session.isDeleted
     || session.is_deleted
     || String(session.deletedAt || session.deleted_at || "").trim()
     || ["deleted", "archived", "archived_test", "hidden"].includes(
@@ -6193,7 +6198,10 @@ function isGrowSessionAnalyticsEligible(session = null, options = {}) {
   if (!options.includeMock && isMockGrowSession(normalizedSession)) {
     return false;
   }
-  if (normalizeGrowSessionLifecycleState(normalizedSession) !== "completed") {
+  const normalizedStatus = normalizeSessionStatus(
+    normalizedSession.sessionStatus || normalizedSession.session_status || "",
+  );
+  if (normalizedStatus !== "completed") {
     return false;
   }
 
@@ -6212,10 +6220,7 @@ function getVisibleUserSessions(sessions = []) {
 }
 
 function getAggregateStatsSessions(sessions = []) {
-  return (sessions || []).filter((session) => (
-    !isSessionSoftDeleted(session)
-    && isCompletedValidSessionForAnalytics(session)
-  ));
+  return (sessions || []).filter((session) => isCompletedValidSessionForAnalytics(session));
 }
 
 function loadNewSessionNotesDraft() {
@@ -11930,10 +11935,11 @@ async function refreshUserSessionsAfterSave(reason = "session-save") {
   return sessions;
 }
 
-async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason = "session-mutation") {
+async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason = "session-mutation", options = {}) {
   const normalizedSessionId = String(sessionId || "").trim();
+  const shouldClearCommunityActivity = options.clearCommunityActivity !== false;
   await Promise.allSettled([
-    normalizedSessionId ? clearCommunityActivityForSession(normalizedSessionId) : Promise.resolve(0),
+    normalizedSessionId && shouldClearCommunityActivity ? clearCommunityActivityForSession(normalizedSessionId) : Promise.resolve(0),
     refreshGallerySnapshots(`analytics-refresh:${reason}`),
   ]);
 
@@ -12450,8 +12456,9 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
       row?.is_mock === true
       || row?.is_test === true
       || row?.excluded_from_analytics === true
+      || row?.user_deleted === true
       || row?.is_deleted === true
-      || normalizeSessionVisibilityStatus(row?.visibility_status || "") === "deleted"
+      || ["deleted", "hidden", "archived"].includes(normalizeSessionVisibilityStatus(row?.visibility_status || ""))
     ) {
       return;
     }
@@ -12515,7 +12522,7 @@ async function loadAdminMembers(reason = "unspecified") {
       .order("created_at", { ascending: false }),
     appState.supabase
       .from("grow_sessions")
-      .select("id,user_id,created_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status"),
+      .select("id,user_id,created_at,is_mock,is_test,excluded_from_analytics,user_deleted,is_deleted,visibility_status"),
     appState.supabase
       .from("grow_gallery_snapshots")
       .select("id,user_id,created_at,published_at,status,is_mock"),
@@ -12723,7 +12730,7 @@ async function loadAdminSourceReviewSessionRows(reason = "unspecified") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,user_id,date,time,created_at,partitions,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
+    .select("id,user_id,date,time,created_at,partitions,is_mock,is_test,excluded_from_analytics,user_deleted,is_deleted,visibility_status,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at");
 
   if (error) {
     console.error("Failed to load admin source review sessions", { reason, error });
@@ -15139,6 +15146,8 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       isMock: Boolean(existingSession.isMock || existingSession.is_mock),
       isTest: Boolean(existingSession.isTest || existingSession.is_test),
       excludedFromAnalytics: Boolean(existingSession.excludedFromAnalytics || existingSession.excluded_from_analytics),
+      userDeleted: Boolean(existingSession.userDeleted || existingSession.user_deleted),
+      userDeletedAt: existingSession.userDeletedAt || existingSession.user_deleted_at || "",
       isDeleted: Boolean(existingSession.isDeleted || existingSession.is_deleted),
       deletedAt: existingSession.deletedAt || "",
       visibilityStatus: normalizeSessionVisibilityStatus(existingSession.visibilityStatus || ""),
@@ -15157,7 +15166,7 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
-    .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock,is_test,excluded_from_analytics,is_deleted,deleted_at,visibility_status")
+    .select("id,session_status,session_started_at,soak_started_at,timer_start_at,germination_started_at,completed_at,session_name,date,time,seed_age_tracking_enabled,seed_age_mode,session_seed_age_years,is_mock,is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,deleted_at,visibility_status")
     .eq("id", normalizedSessionId)
     .maybeSingle();
 
@@ -15181,6 +15190,8 @@ async function loadCommunityActivitySessionContext(sessionId = "") {
       isMock: Boolean(data.is_mock),
       isTest: Boolean(data.is_test),
       excludedFromAnalytics: Boolean(data.excluded_from_analytics),
+      userDeleted: Boolean(data.user_deleted),
+      userDeletedAt: data.user_deleted_at || "",
       isDeleted: Boolean(data.is_deleted),
       deletedAt: data.deleted_at || "",
       visibilityStatus: normalizeSessionVisibilityStatus(data.visibility_status || ""),
@@ -16547,8 +16558,8 @@ async function updateCloudSession(session) {
   const record = mapSessionToRecord(session, authUser.id, {
     includeOwnerTimeColumns: !appState.sessionTimeColumnsUnavailable,
   });
-  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status";
-  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock,is_test,excluded_from_analytics,is_deleted,visibility_status";
+  const modernPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,session_started_at,soak_started_at,is_mock,is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,visibility_status";
+  const legacyPreviousRowColumns = "session_status,completed_at,date,time,timer_start_at,germination_started_at,is_mock,is_test,excluded_from_analytics,user_deleted,user_deleted_at,is_deleted,visibility_status";
   let { data: previousRow, error: previousRowError } = await appState.supabase
     .from("grow_sessions")
     .select(appState.sessionTimeColumnsUnavailable ? legacyPreviousRowColumns : modernPreviousRowColumns)
@@ -16619,6 +16630,8 @@ async function updateCloudSession(session) {
     isMock: Boolean(previousRow?.is_mock),
     isTest: Boolean(previousRow?.is_test),
     excludedFromAnalytics: Boolean(previousRow?.excluded_from_analytics),
+    userDeleted: Boolean(previousRow?.user_deleted),
+    userDeletedAt: previousRow?.user_deleted_at || "",
     isDeleted: Boolean(previousRow?.is_deleted),
     visibilityStatus: normalizeSessionVisibilityStatus(previousRow?.visibility_status || ""),
   };
@@ -16770,14 +16783,14 @@ function confirmSessionArchive(session) {
   const confirmButton = modal.querySelector("[data-session-delete-confirm]");
 
   if (!(cancelButton instanceof HTMLButtonElement) || !(confirmButton instanceof HTMLButtonElement)) {
-    return Promise.resolve(window.confirm("Delete session? This will mark the session as deleted. It will remain in Session History as a permanent deleted record, but it can no longer be opened or edited."));
+    return Promise.resolve(window.confirm("Delete session? This will hide it from My Sessions and prevent reopening or editing. Completed real sessions still contribute anonymized analytics."));
   }
 
   if (title) {
-    title.textContent = "Delete session?";
+    title.textContent = "Remove session from My Sessions?";
   }
   if (message) {
-    message.textContent = "This will mark the session as deleted. It will remain in Session History as a permanent deleted record, but it can no longer be opened or edited.";
+    message.textContent = "This hides the session from normal history and prevents reopening or editing. Completed real sessions still contribute anonymized analytics unless founder/admin cleanup excludes them.";
   }
 
   return new Promise((resolve) => {
@@ -16814,26 +16827,26 @@ async function deleteCloudSession(sessionId) {
   const archivedSession = normalizeStoredSession({
     ...existingSession,
     id: sessionId,
-    isDeleted: true,
-    excludedFromAnalytics: true,
-    deletedAt,
-    visibilityStatus: "deleted",
+    userDeleted: true,
+    userDeletedAt: deletedAt,
+    visibilityStatus: "hidden",
     updatedAt: deletedAt,
   });
 
   if (!appState.supabase) {
     saveSessions(getSessions().map((item) => (item.id === sessionId ? archivedSession : item)));
-    void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-delete-local");
+    void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete-local", {
+      clearCommunityActivity: !isGrowSessionAnalyticsEligible(archivedSession),
+    });
     return archivedSession;
   }
 
   const { data, error } = await appState.supabase
     .from("grow_sessions")
     .update({
-      is_deleted: true,
-      excluded_from_analytics: true,
-      deleted_at: deletedAt,
-      visibility_status: "deleted",
+      user_deleted: true,
+      user_deleted_at: deletedAt,
+      visibility_status: "hidden",
       updated_at: deletedAt,
     })
     .eq("id", sessionId)
@@ -16842,8 +16855,8 @@ async function deleteCloudSession(sessionId) {
 
   if (error) {
     const message = String(error.message || "").toLowerCase();
-    if (message.includes("is_deleted") || message.includes("deleted_at") || message.includes("visibility_status") || message.includes("excluded_from_analytics")) {
-      throw new Error("Could not archive this session because the soft-delete columns are missing. Apply the grow sessions soft-delete migration and try again.");
+    if (message.includes("user_deleted") || message.includes("user_deleted_at") || message.includes("visibility_status")) {
+      throw new Error("Could not hide this session because the user-delete columns are missing. Apply the grow sessions user-delete migration and try again.");
     }
     throw error;
   }
@@ -16851,7 +16864,9 @@ async function deleteCloudSession(sessionId) {
   const savedSession = mapRowToSession(data);
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(existingSession || { id: sessionId });
   saveSessions(getSessions().map((item) => (item.id === sessionId ? savedSession : item)));
-  void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-delete");
+  void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete", {
+    clearCommunityActivity: !isGrowSessionAnalyticsEligible(savedSession),
+  });
   return savedSession;
 }
 
@@ -24130,6 +24145,8 @@ function mapSessionToRecord(session, userId, options = {}) {
     is_mock: false,
     is_test: Boolean(session.isTest),
     excluded_from_analytics: Boolean(session.excludedFromAnalytics),
+    user_deleted: Boolean(session.userDeleted),
+    user_deleted_at: session.userDeletedAt || null,
     created_at: session.createdAt,
     timer_start_at: soakStartedAt,
     updated_at: session.updatedAt || session.createdAt || new Date().toISOString(),
@@ -24174,6 +24191,8 @@ function mapRowToSession(row) {
     isMock: Boolean(row.is_mock),
     isTest: Boolean(row.is_test),
     excludedFromAnalytics: Boolean(row.excluded_from_analytics),
+    userDeleted: Boolean(row.user_deleted),
+    userDeletedAt: row.user_deleted_at || "",
     isDeleted: Boolean(row.is_deleted),
     deletedAt: row.deleted_at || "",
     visibilityStatus: normalizeSessionVisibilityStatus(row.visibility_status || ""),

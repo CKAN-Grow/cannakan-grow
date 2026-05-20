@@ -66,7 +66,7 @@ function normalizeSessionStatus(sessionStatus) {
 }
 
 function normalizeGrowSessionLifecycleState(session = null) {
-  if (session?.isDeleted || session?.is_deleted || session?.visibilityStatus === "deleted" || session?.visibility_status === "deleted") {
+  if (["deleted", "archived", "archived_test"].includes(normalizeSessionStatus(session?.sessionStatus || session?.session_status || ""))) {
     return "deleted";
   }
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
@@ -224,7 +224,9 @@ const completedAnalyticsSession = {
 assert.equal(isGrowSessionAnalyticsEligible(completedAnalyticsSession), true);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "germinating" }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "abandoned" }), false);
-assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), false);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, userDeleted: true }), true);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isDeleted: true }), true);
+assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, sessionStatus: "archived_test", isDeleted: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isMock: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, isTest: true }), false);
 assert.equal(isGrowSessionAnalyticsEligible({ ...completedAnalyticsSession, excludedFromAnalytics: true }), false);
