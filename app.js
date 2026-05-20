@@ -1508,6 +1508,9 @@ const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE TEST SESSION";
 const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
 const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
+const NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL = "Save Session";
+const NEW_SESSION_SAVE_BUTTON_SAVED_LABEL = "Saved";
+const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
 
@@ -28984,6 +28987,52 @@ function dismissNewSessionNamePrompt(form) {
   updateNewSessionNameDefaultSuggestion(form);
 }
 
+function getNewSessionSaveButtons(form) {
+  return [...(form?.querySelectorAll?.('[data-new-session-save-button="true"]') || [])]
+    .filter((button) => button instanceof HTMLButtonElement);
+}
+
+function clearNewSessionSaveButtonTimer(form) {
+  if (form?.__newSessionSaveButtonTimer) {
+    window.clearTimeout(form.__newSessionSaveButtonTimer);
+    form.__newSessionSaveButtonTimer = null;
+  }
+}
+
+function setNewSessionSaveButtonState(form, state = "default") {
+  const buttons = getNewSessionSaveButtons(form);
+  if (buttons.length === 0) {
+    return;
+  }
+
+  clearNewSessionSaveButtonTimer(form);
+  const isSaved = state === "saved";
+  buttons.forEach((button) => {
+    button.classList.toggle("is-saved", isSaved);
+    button.setAttribute("data-save-state", isSaved ? "saved" : "default");
+    button.disabled = isSaved;
+    button.textContent = isSaved ? NEW_SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
+  });
+
+  if (isSaved) {
+    form.__newSessionSaveButtonTimer = window.setTimeout(() => {
+      buttons.forEach((button) => {
+        button.disabled = false;
+      });
+    }, NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS);
+  }
+}
+
+function resetNewSessionSaveButtonState(form) {
+  setNewSessionSaveButtonState(form, "default");
+}
+
+function waitForNewSessionSavedStateVisibility() {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS);
+  });
+}
+
 function closeNewSessionNamePrompt({ focusField = false } = {}) {
   const overlay = document.querySelector("#new-session-name-modal-overlay");
   if (!overlay || overlay.dataset.closing === "true") {
@@ -56445,6 +56494,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     }
   };
   form.addEventListener("input", () => {
+    resetNewSessionSaveButtonState(form);
     updateNewSessionNameDefaultSuggestion(form);
     refreshUnsavedChangesState();
   });
@@ -56453,6 +56503,7 @@ function renderSessionForm(initialSystemType = "KAN") {
     syncNewSessionNameState(form);
   });
   form.addEventListener("change", () => {
+    resetNewSessionSaveButtonState(form);
     updateNewSessionNameDefaultSuggestion(form);
     refreshUnsavedChangesState();
   });
@@ -56897,7 +56948,9 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       await refreshUserSessionsAfterSave("new-session:save");
       markUnsavedChangesSaved();
+      setNewSessionSaveButtonState(form, "saved");
       if (navigateOnSuccess) {
+        await waitForNewSessionSavedStateVisibility();
         navigateWithUnsavedChangesBypass(unlockedGrowNetworkNow ? "#home" : `#sessions/${savedSession.id}`);
       }
       return savedSession;
