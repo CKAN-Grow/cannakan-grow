@@ -62170,19 +62170,19 @@ function normalizeSessionStatus(sessionStatus) {
   return normalizedStatus || "unselected";
 }
 
-function getSessionStatusProgressKey(control) {
-  if (!control) {
-    return "";
-  }
+function resolveGrowSessionCurrentProgressKey(source = {}) {
+  const normalizedStatus = normalizeSessionStatus(source.sessionStatus || source.status || source.value || "");
+  const completedAt = String(source.completedAt || source.completed_at || "").trim();
+  const firstPlantedAt = String(source.firstPlantedAt || source.first_planted_at || "").trim();
+  const germinationStartedAt = String(source.germinationStartedAt || source.germination_started_at || "").trim();
 
-  const normalizedStatus = normalizeSessionStatus(control.value || "");
-  if (normalizedStatus === "completed" || control.dataset.completedAt) {
+  if (normalizedStatus === "completed" || completedAt) {
     return "completed";
   }
-  if (control.dataset.firstPlantedAt) {
+  if (firstPlantedAt) {
     return "first-germinated";
   }
-  if (normalizedStatus === "germinating" || control.dataset.germinationStartedAt) {
+  if (normalizedStatus === "germinating" || germinationStartedAt) {
     return "germination";
   }
   if (normalizedStatus === "soaking") {
@@ -62191,21 +62191,26 @@ function getSessionStatusProgressKey(control) {
   return "";
 }
 
+function getSessionStatusProgressKey(control) {
+  if (!control) {
+    return "";
+  }
+
+  return resolveGrowSessionCurrentProgressKey({
+    sessionStatus: control.value || "",
+    germinationStartedAt: control.dataset.germinationStartedAt || "",
+    firstPlantedAt: control.dataset.firstPlantedAt || "",
+    completedAt: control.dataset.completedAt || "",
+  });
+}
+
 function getSessionProgressKeyFromSession(session = {}) {
-  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
-  if (normalizedStatus === "completed" || session?.completedAt) {
-    return "completed";
-  }
-  if (session?.firstPlantedAt) {
-    return "first-germinated";
-  }
-  if (normalizedStatus === "germinating" || session?.germinationStartedAt) {
-    return "germination";
-  }
-  if (normalizedStatus === "soaking") {
-    return "soaking";
-  }
-  return "";
+  return resolveGrowSessionCurrentProgressKey({
+    sessionStatus: session?.sessionStatus || session?.session_status || "",
+    germinationStartedAt: session?.germinationStartedAt || session?.germination_started_at || "",
+    firstPlantedAt: session?.firstPlantedAt || session?.first_planted_at || "",
+    completedAt: session?.completedAt || session?.completed_at || "",
+  });
 }
 
 function shouldShowDetailSeedAgeEditor({
@@ -63245,7 +63250,18 @@ function getSessionLifecycleTimelineEvents(state = {}) {
     },
   ];
 
-  const currentIndex = events.reduce((activeIndex, event, index) => (event.complete ? index : activeIndex), -1);
+  const currentProgressKey = String(state.currentProgressKey || "").trim();
+  const resolvedProgressKey = currentProgressKey
+    || resolveGrowSessionCurrentProgressKey({
+      sessionStatus: state.sessionStatus || "",
+      germinationStartedAt: state.germinationStartedAt ? state.germinationStartedAt.toISOString?.() || state.germinationStartedAt : "",
+      firstPlantedAt: state.firstPlantedAt ? state.firstPlantedAt.toISOString?.() || state.firstPlantedAt : "",
+      completedAt: state.completedAt ? state.completedAt.toISOString?.() || state.completedAt : "",
+    });
+  const progressKeyIndex = events.findIndex((event) => event.key === resolvedProgressKey);
+  const currentIndex = progressKeyIndex >= 0
+    ? progressKeyIndex
+    : events.reduce((activeIndex, event, index) => (event.complete ? index : activeIndex), -1);
   const resolvedCurrentIndex = currentIndex >= 0 ? currentIndex : (state.showEmptyTimeline ? -1 : 0);
   const iconNameByKey = {
     soaking: "stage-soaking",
@@ -63260,13 +63276,13 @@ function getSessionLifecycleTimelineEvents(state = {}) {
       ...event,
       isCurrent: resolvedCurrentIndex === index,
       isFuture: resolvedCurrentIndex < index,
-      isComplete: event.complete && resolvedCurrentIndex >= index,
+      isComplete: index < resolvedCurrentIndex || (event.complete && resolvedCurrentIndex >= index),
     }),
     timestampText: event.displayLabel || (event.timestamp ? formatTimingDateTime(event.timestamp) : "Not recorded yet"),
     iconName: iconNameByKey[event.key] || "stage-soaking",
     isCurrent: resolvedCurrentIndex === index,
     isFuture: resolvedCurrentIndex < index,
-    isComplete: event.complete && resolvedCurrentIndex >= index,
+    isComplete: index < resolvedCurrentIndex || (event.complete && resolvedCurrentIndex >= index),
   }));
 }
 
@@ -63446,17 +63462,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
 }
 
 function getSpotlightLifecycleEvents(session = null) {
-  const stageState = session ? buildSessionLifecycleState(session) : null;
-  const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
-  const currentProgressKey = stageState?.completedAt || normalizedStage === "completed"
-    ? "completed"
-    : stageState?.firstPlantedAt
-      ? "first-germinated"
-      : (normalizedStage === "germinating" || stageState?.germinationStartedAt)
-        ? "germination"
-        : normalizedStage === "soaking"
-          ? "soaking"
-          : "";
+  const currentProgressKey = session ? getSessionProgressKeyFromSession(session) : "";
 
   const stageConfig = [
     { key: "soaking", label: "Soaking", tone: "soaking", currentLabel: "Soaking" },
@@ -64219,6 +64225,13 @@ function buildFormLifecycleState(form) {
 
   return {
     showEmptyTimeline: false,
+    sessionStatus: normalizedStatus,
+    currentProgressKey: resolveGrowSessionCurrentProgressKey({
+      sessionStatus: normalizedStatus,
+      germinationStartedAt: form.dataset.germinationStartedAt || "",
+      firstPlantedAt: form.dataset.firstPlantedAt || "",
+      completedAt: form.dataset.completedAt || "",
+    }),
     startedAt: parseSessionStartDateTime(form.elements.date.value, form.elements.time.value),
     germinationStartedAt: parseCompletedAtValue(form.dataset.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(form.dataset.firstPlantedAt || ""),
@@ -64232,6 +64245,8 @@ function buildSessionLifecycleState(session) {
   const completedAt = parseCompletedAtValue(session.completedAt || "");
   return {
     showEmptyTimeline: false,
+    sessionStatus: normalizeSessionStatus(session?.sessionStatus || ""),
+    currentProgressKey: getSessionProgressKeyFromSession(session),
     startedAt,
     germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || ""),
