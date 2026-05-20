@@ -63552,14 +63552,13 @@ function getSessionLifecycleTimelineResolvedProgressKey(state = {}) {
 
 function getSessionLifecycleTimelineCurrentStageStartAt(state = {}) {
   const resolvedProgressKey = getSessionLifecycleTimelineResolvedProgressKey(state);
-  const lastUpdatedAt = parseCompletedAtValue(state.lastUpdatedAt || state.last_updated_at || "");
   switch (resolvedProgressKey) {
     case "completed":
-      return state.completedAt || lastUpdatedAt || state.firstPlantedAt || state.germinationStartedAt || state.startedAt || null;
+      return state.completedAt || null;
     case "first-germinated":
-      return state.firstPlantedAt || lastUpdatedAt || state.germinationStartedAt || state.startedAt || null;
+      return state.firstPlantedAt || null;
     case "germination":
-      return state.germinationStartedAt || lastUpdatedAt || state.startedAt || null;
+      return state.germinationStartedAt || null;
     case "soaking":
       return state.startedAt || null;
     default:
@@ -64549,13 +64548,6 @@ function buildFormLifecycleState(form) {
 function buildSessionLifecycleState(session) {
   const startedAt = getEffectiveSessionTimerStartAt(session);
   const completedAt = parseCompletedAtValue(session.completedAt || session.completed_at || "");
-  const lastUpdatedAt = parseCompletedAtValue(
-    session.lastUpdatedAt
-    || session.last_updated_at
-    || session.updatedAt
-    || session.updated_at
-    || "",
-  );
   return {
     showEmptyTimeline: false,
     sessionStatus: normalizeSessionStatus(session?.sessionStatus || ""),
@@ -64564,7 +64556,6 @@ function buildSessionLifecycleState(session) {
     germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || session.germination_started_at || ""),
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || session.first_planted_at || ""),
     completedAt,
-    lastUpdatedAt,
     setupGraceActive: !completedAt && isSetupGracePeriodActive(startedAt),
   };
 }

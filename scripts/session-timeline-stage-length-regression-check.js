@@ -13,11 +13,19 @@ for (const needle of [
   "if (event.isFuture) {",
   "} else if (event.isCurrent && hasValidStart) {",
   "} else if (event.isComplete && hasValidStart && hasValidFinish) {",
-  "const lastUpdatedAt = parseCompletedAtValue(",
+  "return state.germinationStartedAt || null;",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing timeline stage length behavior: ${needle}`);
   }
+}
+
+const currentStageStartMatch = appSource.match(/function getSessionLifecycleTimelineCurrentStageStartAt[\s\S]*?\n}\n\nfunction getSessionLifecycleTimelineStageStarts/);
+if (!currentStageStartMatch) {
+  throw new Error("Could not locate current timeline stage start resolver.");
+}
+if (currentStageStartMatch[0].includes("lastUpdatedAt") || currentStageStartMatch[0].includes("updatedAt")) {
+  throw new Error("Timeline stage starts must not use updatedAt/local save timestamps as duration fallbacks.");
 }
 
 const formatElapsedMinutesShorthand = (totalMinutes) => {
@@ -38,17 +46,17 @@ const durationBetween = (startedAt, endedAt) => {
 };
 
 const soakingStartedAt = new Date("2026-05-18T20:45:00-04:00");
-const germinatingStartedAt = new Date("2026-05-19T20:30:00-04:00");
+const germinatingStartedAt = new Date("2026-05-19T20:31:00-04:00");
 const now = new Date("2026-05-20T08:45:00-04:00");
 
 assert.equal(
   durationBetween(soakingStartedAt, germinatingStartedAt),
-  "23h 45m",
+  "23h 46m",
   "Completed Soaking length should use Soaking start through Germinating start.",
 );
 assert.equal(
   durationBetween(germinatingStartedAt, now),
-  "12h 15m",
+  "12h 14m",
   "Current Germinating length should use Germinating start through now.",
 );
 
