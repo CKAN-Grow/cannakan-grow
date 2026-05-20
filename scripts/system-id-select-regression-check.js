@@ -39,8 +39,13 @@ if (!appSource.includes('unit_id: normalizeUnitIdValue(session.unitId)')) {
   throw new Error("Supabase save payload must continue persisting session.unitId to unit_id.");
 }
 
-if (!appSource.includes('select[name="systemType"], select[name="unitId"]')) {
-  throw new Error("Stage edit mode must disable the System ID select with related system controls.");
+const stageEditingMatch = appSource.match(/function applyStageEditingMode[\s\S]*?function closeGrowthStageModal/);
+if (!stageEditingMatch || !stageEditingMatch[0].includes('select[name="systemType"]')) {
+  throw new Error("Stage edit mode must continue guarding System Type edits.");
+}
+
+if (stageEditingMatch[0].includes('select[name="systemType"], select[name="unitId"]')) {
+  throw new Error("Stage edit mode must not disable Unit ID; it remains editable after save and stage changes.");
 }
 
 if (!stylesSource.includes(".session-workspace-shell .system-id-field select")) {

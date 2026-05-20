@@ -57957,7 +57957,6 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
   });
 
   const textFields = scope.querySelectorAll([
-    'input[name="sessionName"]',
     'input[name="date"]',
     'input[name="timeDisplay"]',
   ].join(", "));
@@ -57966,7 +57965,7 @@ function applyStageEditingMode(scope, sessionStatus, options = {}) {
     field.disabled = !allowFullEditing;
   });
 
-  scope.querySelectorAll('select[name="systemType"], select[name="unitId"]').forEach((field) => {
+  scope.querySelectorAll('select[name="systemType"]').forEach((field) => {
     field.disabled = !allowFullEditing;
   });
 
@@ -60164,6 +60163,15 @@ function populateSessionDetailEditorForm(form, session = null) {
 
   sessionNameField.value = getSessionDetailEditableName(session);
   sessionNameField.setCustomValidity("");
+
+  const unitIdField = form.elements.unitId;
+  if (unitIdField instanceof HTMLSelectElement) {
+    const unitId = normalizeUnitIdValue(session?.unitId || "", "");
+    if (unitId && ![...unitIdField.options].some((option) => option.value === unitId)) {
+      unitIdField.add(new Option(unitId, unitId));
+    }
+    unitIdField.value = unitId;
+  }
 }
 
 function setSessionDetailEditorOpen(detail, isOpen) {
@@ -60374,8 +60382,13 @@ function applySessionDetailEditorValues(form, session) {
   if (!(sessionNameField instanceof HTMLInputElement)) {
     return false;
   }
+  const unitIdField = form.elements.unitId;
+  if (!(unitIdField instanceof HTMLSelectElement)) {
+    return false;
+  }
 
   const nextCustomSessionName = String(sessionNameField.value || "").trim();
+  const nextUnitId = normalizeUnitIdValue(unitIdField.value || session?.unitId || "");
   const maxSessionNameLength = Number(sessionNameField.maxLength) > 0
     ? Number(sessionNameField.maxLength)
     : 80;
@@ -60396,7 +60409,9 @@ function applySessionDetailEditorValues(form, session) {
 
   sessionNameField.value = safeCustomSessionName;
   sessionNameField.setCustomValidity("");
+  unitIdField.value = nextUnitId;
   session.customSessionName = safeCustomSessionName;
+  session.unitId = nextUnitId;
   session.sessionName = buildFinalSessionName(safeCustomSessionName, firstPartition, session?.date);
   return true;
 }
@@ -65162,7 +65177,7 @@ function buildSessionDetailDraftSignature(session, partitions, statusField, note
     sessionStartedAt: String(session?.sessionStartedAt || "").trim(),
     soakStartedAt: String(session?.soakStartedAt || session?.timerStartAt || "").trim(),
     systemType: String(session?.systemType || "").trim(),
-    unitId: String(session?.unitId || "").trim(),
+    unitId: String(detailsForm?.elements?.unitId?.value || session?.unitId || "").trim(),
     seedAgeTrackingEnabled: Boolean(detailSeedAgeState?.trackingEnabled),
     seedAgeMode: String(detailSeedAgeState?.mode || "").trim(),
     sessionSeedAgeYears: detailSeedAgeState?.sessionSeedAgeYears === null || detailSeedAgeState?.sessionSeedAgeYears === undefined

@@ -1007,7 +1007,7 @@
           </div>
         </div>
         <div class="inline-actions">
-          <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Name</button>
+          <button id="detail-edit-session-details" class="button button-secondary" type="button">Edit Session Details</button>
           <button id="detail-edit-session-times" class="button button-secondary" type="button">Edit Times</button>
           <a class="button button-secondary" href="#sessions">Back</a>
         </div>
@@ -1021,8 +1021,8 @@
               <div class="session-detail-edit-panel-head">
                 <div class="session-detail-edit-panel-copy">
                   <p class="eyebrow">Edit</p>
-                  <h3 id="detail-session-editor-title">Edit Session Name</h3>
-                  <p class="session-detail-edit-panel-description">Rename this session without affecting progress, analytics, reminders, or snapshots.</p>
+                  <h3 id="detail-session-editor-title">Edit Session Details</h3>
+                  <p class="session-detail-edit-panel-description">Rename this session or change its Unit ID without affecting progress, analytics, reminders, or snapshots.</p>
                 </div>
               </div>
               <form id="detail-session-details-form" class="session-detail-edit-form" novalidate>
@@ -1031,12 +1031,28 @@
                     <span>Session Name</span>
                     <input type="text" name="sessionName" placeholder="Ex: Blue Dream test - Seedsman" maxlength="80" required>
                   </label>
+                  <label>
+                    <span>Unit ID</span>
+                    <select name="unitId">
+                      <option value="">Not selected</option>
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="D">D</option>
+                      <option value="E">E</option>
+                      <option value="F">F</option>
+                      <option value="G">G</option>
+                      <option value="H">H</option>
+                      <option value="I">I</option>
+                      <option value="J">J</option>
+                    </select>
+                  </label>
                 </div>
                 <div class="session-detail-edit-actions">
                   <p id="detail-session-details-message" class="session-detail-edit-message" aria-live="polite"></p>
                   <div class="session-detail-edit-action-buttons">
                     <button id="detail-session-details-cancel" type="button" class="button button-secondary">Cancel</button>
-                    <button id="detail-session-details-save" type="submit" class="button button-primary">Save Name</button>
+                    <button id="detail-session-details-save" type="submit" class="button button-primary">Save Details</button>
                   </div>
                 </div>
               </form>
