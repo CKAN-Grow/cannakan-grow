@@ -61,7 +61,7 @@ create or replace function public.cleanup_founder_test_grow_sessions(
   confirmation_phrase text default '',
   dry_run boolean default true,
   reason text default '',
-  legacy_created_before timestamptz default '2026-05-19 23:58:00+00'::timestamptz
+  legacy_created_before timestamptz default '2026-05-20 04:00:00+00'::timestamptz
 )
 returns table (
   table_name text,
@@ -78,7 +78,7 @@ declare
   normalized_target_user_id uuid := coalesce(target_user_id, auth.uid());
   requested_ids uuid[] := coalesce(candidate_session_ids, '{}'::uuid[]);
   confirmation_matches boolean := btrim(coalesce(confirmation_phrase, '')) = required_confirmation;
-  normalized_legacy_created_before timestamptz := coalesce(legacy_created_before, '2026-05-19 23:58:00+00'::timestamptz);
+  normalized_legacy_created_before timestamptz := coalesce(legacy_created_before, '2026-05-20 04:00:00+00'::timestamptz);
   is_authorized_admin boolean := false;
   has_requested_ids boolean := cardinality(coalesce(candidate_session_ids, '{}'::uuid[])) > 0;
   candidate_ids uuid[] := '{}'::uuid[];

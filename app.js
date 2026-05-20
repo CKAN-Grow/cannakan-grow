@@ -1496,7 +1496,8 @@ const ADMIN_EMAILS = new Set([
   "mo@cannakan.com",
 ]);
 const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE OLD FOUNDER TEST SESSIONS";
-const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-19T23:58:00.000Z";
+const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
+const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
@@ -11947,8 +11948,33 @@ async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason =
 }
 
 function getFounderSessionCleanupCandidateIds() {
-  return [...new Set(getSessions()
+  const sessions = getSessions();
+  const markedCandidateIds = sessions
     .filter((session) => isFounderTestCleanupCandidateSession(session))
+    .map((session) => String(session?.id || "").trim())
+    .filter((sessionId) => isUuidLike(sessionId));
+  return [...new Set([
+    ...markedCandidateIds,
+    ...getFounderEmergencyTestSessionCandidateIds(sessions),
+  ])];
+}
+
+function getFounderEmergencyTestSessionCandidateIds(sessions = getSessions()) {
+  const sequenceNumberSet = new Set(FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS);
+  const allSessions = Array.isArray(sessions) ? sessions : [];
+  return [...new Set(allSessions
+    .filter((session) => {
+      if (!session || isSessionSoftDeleted(session)) {
+        return false;
+      }
+      const sequenceNumber = getSessionSequenceNumber(session, allSessions);
+      if (!sequenceNumberSet.has(sequenceNumber)) {
+        return false;
+      }
+      const createdAtMs = Date.parse(session.createdAt || session.created_at || "");
+      const cutoffMs = Date.parse(FOUNDER_TEST_SESSION_CLEANUP_CUTOFF);
+      return Number.isFinite(createdAtMs) && Number.isFinite(cutoffMs) && createdAtMs < cutoffMs;
+    })
     .map((session) => String(session?.id || "").trim())
     .filter((sessionId) => isUuidLike(sessionId)))];
 }
@@ -11963,9 +11989,7 @@ function isFounderTestCleanupCandidateSession(session) {
     return true;
   }
 
-  const createdAtMs = Date.parse(session?.createdAt || session?.created_at || "");
-  const cutoffMs = Date.parse(FOUNDER_TEST_SESSION_CLEANUP_CUTOFF);
-  return Number.isFinite(createdAtMs) && Number.isFinite(cutoffMs) && createdAtMs < cutoffMs;
+  return false;
 }
 
 function isUuidLike(value = "") {
@@ -12033,7 +12057,9 @@ async function runFounderSessionCleanup(options = {}) {
   if (latestSessions.length) {
     saveSessions(latestSessions);
   }
-  const candidateSessionIds = getFounderSessionCleanupCandidateIds();
+  const candidateSessionIds = options.emergencyOnly
+    ? getFounderEmergencyTestSessionCandidateIds(getSessions())
+    : getFounderSessionCleanupCandidateIds();
   if (!candidateSessionIds.length) {
     return [];
   }
@@ -12046,8 +12072,12 @@ async function runFounderSessionCleanup(options = {}) {
     dry_run: dryRun,
     legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
     reason: dryRun
-      ? "Admin UI preview for founder test grow-session cleanup"
-      : "Admin UI confirmed reset of old founder test grow sessions before production tracking",
+      ? (options.emergencyOnly
+        ? "Admin UI emergency preview for founder visible Session #1-#5 cleanup"
+        : "Admin UI preview for founder test grow-session cleanup")
+      : (options.emergencyOnly
+        ? "Admin UI emergency reset of founder visible Session #1-#5 before production tracking"
+        : "Admin UI confirmed reset of old founder test grow sessions before production tracking"),
   });
 
   if (error) {
@@ -51961,6 +51991,7 @@ function renderFounderSessionCleanupAdminSection(target = app) {
   target.querySelector("#founder-session-cleanup-admin-section")?.remove();
 
   const candidateCount = getFounderSessionCleanupCandidateIds().length;
+  const emergencyCandidateCount = getFounderEmergencyTestSessionCandidateIds().length;
   const isLoading = Boolean(appState.founderSessionCleanupLoading);
   const resultRows = appState.founderSessionCleanupLastResult || [];
   const summary = formatFounderSessionCleanupResultSummary(resultRows);
@@ -51976,6 +52007,9 @@ function renderFounderSessionCleanupAdminSection(target = app) {
         <h3>Reset old test grow sessions</h3>
         <p class="muted">
           Admin-only cleanup for the current signed-in account. It marks selected old personal test sessions as test/excluded, removes related grow-session rows, skips CSTP-linked records, and never touches account, role, settings, CSTP, or production config tables.
+        </p>
+        <p class="muted">
+          Emergency target: visible Session #1 through Session #5 only.
         </p>
         <p class="founder-session-cleanup-count">${candidateCount} old or mock loaded session${candidateCount === 1 ? "" : "s"} available for cleanup review.</p>
         ${message ? `<p class="success-message">${escapeHtml(message)}</p>` : ""}
@@ -51995,6 +52029,12 @@ function renderFounderSessionCleanupAdminSection(target = app) {
           data-founder-session-cleanup-run
           ${isLoading || !candidateCount ? "disabled" : ""}
         >Reset Old Test Sessions</button>
+        <button
+          type="button"
+          class="button button-danger"
+          data-founder-session-emergency-clear
+          ${isLoading || !emergencyCandidateCount ? "disabled" : ""}
+        >Clear My Old Test Sessions</button>
       </div>
     </div>
   `;
@@ -52004,6 +52044,9 @@ function renderFounderSessionCleanupAdminSection(target = app) {
   });
   section.querySelector("[data-founder-session-cleanup-run]")?.addEventListener("click", () => {
     void handleFounderSessionCleanupRun();
+  });
+  section.querySelector("[data-founder-session-emergency-clear]")?.addEventListener("click", () => {
+    void handleFounderSessionCleanupRun({ emergencyOnly: true });
   });
 
   target.appendChild(section);
@@ -52032,17 +52075,24 @@ async function handleFounderSessionCleanupPreview() {
   }
 }
 
-async function handleFounderSessionCleanupRun() {
-  const candidateCount = getFounderSessionCleanupCandidateIds().length;
+async function handleFounderSessionCleanupRun(options = {}) {
+  const emergencyOnly = Boolean(options.emergencyOnly);
+  const candidateCount = emergencyOnly
+    ? getFounderEmergencyTestSessionCandidateIds().length
+    : getFounderSessionCleanupCandidateIds().length;
   if (!candidateCount) {
-    appState.founderSessionCleanupMessage = "No loaded sessions are available for cleanup.";
+    appState.founderSessionCleanupMessage = emergencyOnly
+      ? "No visible Session #1-#5 rows are available for cleanup."
+      : "No loaded sessions are available for cleanup.";
     appState.founderSessionCleanupError = "";
     safeRender();
     return;
   }
 
   const confirmation = window.prompt(
-    `This marks old personal test sessions as analytics-excluded, then removes them from your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`,
+    emergencyOnly
+      ? `This marks visible Session #1 through Session #5 as analytics-excluded, then removes them from your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`
+      : `This marks old personal test sessions as analytics-excluded, then removes them from your signed-in account only. Type ${FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION} to continue.`,
   );
   if (confirmation !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION) {
     appState.founderSessionCleanupMessage = "Cleanup canceled. No sessions were deleted.";
@@ -52052,17 +52102,21 @@ async function handleFounderSessionCleanupRun() {
   }
 
   appState.founderSessionCleanupLoading = true;
-  appState.founderSessionCleanupMessage = "Removing old test sessions and clearing analytics...";
+  appState.founderSessionCleanupMessage = emergencyOnly
+    ? "Clearing visible Session #1-#5 and refreshing My Sessions..."
+    : "Removing old test sessions and clearing analytics...";
   appState.founderSessionCleanupError = "";
   appState.founderSessionCleanupLastResult = null;
   safeRender();
 
   try {
-    const resultRows = await runFounderSessionCleanup({ dryRun: false });
+    const resultRows = await runFounderSessionCleanup({ dryRun: false, emergencyOnly });
     const deletedCount = getFounderSessionCleanupDeletedCount(resultRows);
     appState.founderSessionCleanupLastResult = resultRows;
     await refreshGrowSessionDataAfterCleanup();
-    appState.founderSessionCleanupMessage = `Removed/excluded ${deletedCount} old test session${deletedCount === 1 ? "" : "s"}. My Sessions has been refreshed.`;
+    appState.founderSessionCleanupMessage = emergencyOnly
+      ? `Removed exactly ${deletedCount} visible old test session${deletedCount === 1 ? "" : "s"} from My Sessions.`
+      : `Removed/excluded ${deletedCount} old test session${deletedCount === 1 ? "" : "s"}. My Sessions has been refreshed.`;
     window.alert(appState.founderSessionCleanupMessage);
   } catch (error) {
     console.error("Founder session cleanup failed", error);

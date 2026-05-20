@@ -18,7 +18,7 @@
 --     include_explicit_unmarked => false,
 --     confirmation_phrase => 'DELETE OLD FOUNDER TEST SESSIONS',
 --     dry_run => false,
---     legacy_created_before => '2026-05-19 23:58:00+00'::timestamptz,
+--     legacy_created_before => '2026-05-20 04:00:00+00'::timestamptz,
 --     reason => 'Reset old founder test grow sessions before real production tracking'
 --   );
 --
