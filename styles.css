@@ -36403,7 +36403,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 
 .chart-shell[data-seed-age-mode="mixed"] .chart-row,
 .partition-table[data-seed-age-mode="mixed"] .chart-row {
-  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px 108px 90px;
+  grid-template-columns: 72px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px) 108px 90px;
 }
 
 .chart-shell[data-session-status="unselected"] .chart-row,
@@ -36417,7 +36417,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 .partition-table[data-seed-age-mode="mixed"][data-session-status="unselected"] .chart-row,
 .chart-shell[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row,
 .partition-table[data-seed-age-mode="mixed"][data-session-status="soaking"] .chart-row {
-  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 90px;
+  grid-template-columns: 72px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px);
 }
 
 .chart-header {
@@ -36679,14 +36679,16 @@ body.theme-dark .partition-identity-suggestion.is-active {
   align-items: center;
   gap: 6px;
   width: 100%;
-  min-width: 0;
+  min-width: 104px;
 }
 
 .partition-seed-age-input-wrap input[name^="seedAgeYears-"] {
-  width: 52px;
-  min-width: 0;
-  flex: 0 0 52px;
+  width: 70px;
+  min-width: 70px;
+  flex: 0 0 70px;
+  padding-inline: 8px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .partition-seed-age-input-unit {
