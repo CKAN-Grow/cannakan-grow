@@ -17523,6 +17523,40 @@ function applySessionTimePayload(session, payload) {
   return session;
 }
 
+function syncSessionTimeDependentDetailViews(detail, session, options = {}) {
+  if (!detail || !session) {
+    return;
+  }
+
+  if (detail.statusField) {
+    detail.statusField.value = session.sessionStatus || detail.statusField.value || "soaking";
+    syncSessionStatusControlDatasets(detail.statusField, {
+      startedAt: getSessionStatusStartedAtValue(session),
+      germinationStartedAt: session.germinationStartedAt || "",
+      firstPlantedAt: session.firstPlantedAt || "",
+      completedAt: session.completedAt || "",
+    });
+    updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+  }
+
+  syncSessionDetailHeaderMeta(detail, session);
+  updateSessionStatusReminder(
+    detail.statusReminder,
+    session.date,
+    session.time,
+    detail.statusField?.value || session.sessionStatus || "",
+    session.germinationStartedAt || "",
+    session.timerStartAt || "",
+  );
+
+  if (typeof options.refreshDerivedViews === "function") {
+    options.refreshDerivedViews();
+  }
+  if (detail.timesForm instanceof HTMLFormElement) {
+    populateSessionTimesForm(detail.timesForm, session);
+  }
+}
+
 async function updateOwnerGrowSessionTimes(session, payload) {
   if (!session?.id) {
     throw new Error("Session not found.");
@@ -17561,8 +17595,10 @@ async function updateOwnerGrowSessionTimes(session, payload) {
     throw error;
   }
 
-  const savedSession = mapRowToSession(data);
-  savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(session);
+  const savedSession = normalizeStoredSession(applySessionTimePayload({
+    ...mapRowToSession(data),
+    filterPaperDeducted: getSessionFilterPaperDeducted(session),
+  }, payload));
   saveSessions(getSessions().map((item) => (item.id === savedSession.id ? savedSession : item)));
   return savedSession;
 }
@@ -60814,25 +60850,11 @@ function renderSessionDetail(sessionId) {
     try {
       const savedSession = await updateOwnerGrowSessionTimes(session, payload);
       Object.assign(session, savedSession);
-      syncSessionDetailHeaderMeta(detail, session);
-      syncSessionStatusControlDatasets(detail.statusField, {
-        startedAt: getSessionStatusStartedAtValue(session),
-        germinationStartedAt: session.germinationStartedAt || "",
-        firstPlantedAt: session.firstPlantedAt || "",
-        completedAt: session.completedAt || "",
+      syncSessionTimeDependentDetailViews(detail, session, {
+        refreshDerivedViews: refreshDetailDerivedViews,
       });
-      updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
-      updateSessionStatusReminder(
-        detail.statusReminder,
-        session.date,
-        session.time,
-        detail.statusField.value,
-        session.germinationStartedAt || "",
-        session.timerStartAt || "",
-      );
-      refreshDetailDerivedViews();
-      populateSessionTimesForm(detail.timesForm, session);
       setSessionTimesEditorMessage(detail, "Session times saved.");
+      syncSessionProgressionReminderNotifications(getSessions());
       queueDueGrowReminderEvaluation("session-times:updated");
     } catch (error) {
       console.error("Failed to update session times", error);
