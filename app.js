@@ -1226,6 +1226,7 @@ const appState = {
   founderCleanupRpcUnavailable: false,
   founderCleanupRpcWarning: "",
   founderCleanupRpcDiagnosticsChecked: false,
+  founderCleanupRpcDiagnosticsPromise: null,
   authModalDismissHash: "",
   authNotice: "",
   deletionPromptShown: false,
@@ -1846,6 +1847,7 @@ function resetSessionScopedAppState() {
   appState.founderCleanupRpcUnavailable = false;
   appState.founderCleanupRpcWarning = "";
   appState.founderCleanupRpcDiagnosticsChecked = false;
+  appState.founderCleanupRpcDiagnosticsPromise = null;
   appState.memberAdminFilters = {
     query: "",
     role: "all",
@@ -12360,40 +12362,63 @@ function markFounderCleanupRpcUnavailable(error = null) {
 }
 
 async function checkFounderCleanupRpcAvailability(reason = "admin-diagnostics") {
-  if (!appState.supabase || !appState.user || !isAdminUser() || appState.founderCleanupRpcDiagnosticsChecked) {
+  if (!appState.supabase || !appState.user || !isAdminUser()) {
+    return !appState.founderCleanupRpcUnavailable;
+  }
+
+  if (appState.founderCleanupRpcDiagnosticsPromise) {
+    return appState.founderCleanupRpcDiagnosticsPromise;
+  }
+
+  if (appState.founderCleanupRpcDiagnosticsChecked) {
     return !appState.founderCleanupRpcUnavailable;
   }
 
   appState.founderCleanupRpcDiagnosticsChecked = true;
-  const { error } = await appState.supabase.rpc("cleanup_founder_test_grow_sessions", {
-    candidate_session_ids: [],
-    confirmation_phrase: "",
-    dry_run: true,
-    include_explicit_unmarked: false,
-    legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
-    reason: `Admin diagnostics RPC availability check: ${reason}`,
-    target_user_id: appState.user.id,
-  });
+  const diagnosticsPromise = (async () => {
+    const { error } = await appState.supabase.rpc("cleanup_founder_test_grow_sessions", {
+      candidate_session_ids: [],
+      confirmation_phrase: "",
+      dry_run: true,
+      include_explicit_unmarked: false,
+      legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
+      reason: `Admin diagnostics RPC availability check: ${reason}`,
+      target_user_id: appState.user.id,
+    });
 
-  if (error) {
-    if (isMissingFounderCleanupRpcError(error)) {
-      markFounderCleanupRpcUnavailable(error);
-    } else {
-      console.warn("[Founder Cleanup] RPC diagnostics returned an error.", {
-        reason,
-        details: getReadableErrorDetails(error),
-      });
+    if (error) {
+      if (isMissingFounderCleanupRpcError(error)) {
+        markFounderCleanupRpcUnavailable(error);
+      } else {
+        appState.founderCleanupRpcUnavailable = true;
+        appState.founderCleanupRpcWarning = formatFounderSessionCleanupError(error);
+        console.warn("[Founder Cleanup] RPC diagnostics returned an error.", {
+          reason,
+          message: appState.founderCleanupRpcWarning,
+          details: getReadableErrorDetails(error),
+        });
+      }
+      return false;
     }
-    return false;
-  }
 
-  appState.founderCleanupRpcUnavailable = false;
-  appState.founderCleanupRpcWarning = "";
-  console.info("[Founder Cleanup] RPC availability check passed.", {
-    reason,
-    rpc: "public.cleanup_founder_test_grow_sessions",
-  });
-  return true;
+    appState.founderCleanupRpcUnavailable = false;
+    appState.founderCleanupRpcWarning = "";
+    console.info("[Founder Cleanup] RPC availability check passed.", {
+      reason,
+      rpc: "public.cleanup_founder_test_grow_sessions",
+    });
+    return true;
+  })();
+
+  appState.founderCleanupRpcDiagnosticsPromise = diagnosticsPromise;
+
+  try {
+    return await diagnosticsPromise;
+  } finally {
+    if (appState.founderCleanupRpcDiagnosticsPromise === diagnosticsPromise) {
+      appState.founderCleanupRpcDiagnosticsPromise = null;
+    }
+  }
 }
 
 async function refreshGrowSessionDataAfterCleanup() {
@@ -17496,6 +17521,21 @@ function confirmSessionArchive(session) {
   }
 
   return new Promise((resolve) => {
+    let founderCleanupChecking = false;
+    const founderCleanupButtonLabel = founderCleanupButton instanceof HTMLButtonElement
+      ? founderCleanupButton.textContent || "Founder Cleanup: Delete all test session data"
+      : "Founder Cleanup: Delete all test session data";
+
+    const setFounderCleanupWarning = (warningText = "") => {
+      appState.founderCleanupRpcUnavailable = true;
+      appState.founderCleanupRpcWarning = String(warningText || "").trim()
+        || "Founder cleanup RPC is not available in Supabase yet. Apply the latest migrations, then reload the Supabase/PostgREST schema cache and try again.";
+      if (founderCleanupWarning instanceof HTMLElement) {
+        founderCleanupWarning.textContent = appState.founderCleanupRpcWarning;
+        founderCleanupWarning.hidden = !canFounderCleanup;
+      }
+    };
+
     const syncFounderCleanupControls = () => {
       const isUnavailable = Boolean(appState.founderCleanupRpcUnavailable);
       if (founderCleanupWarning instanceof HTMLElement) {
@@ -17508,7 +17548,9 @@ function confirmSessionArchive(session) {
         founderCleanupInput.readOnly = false;
       }
       if (founderCleanupButton instanceof HTMLButtonElement) {
-        founderCleanupButton.disabled = isUnavailable
+        founderCleanupButton.textContent = founderCleanupChecking ? "Checking cleanup RPC..." : founderCleanupButtonLabel;
+        founderCleanupButton.disabled = founderCleanupChecking
+          || isUnavailable
           || !(founderCleanupInput instanceof HTMLInputElement)
           || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION;
       }
@@ -17542,14 +17584,38 @@ function confirmSessionArchive(session) {
       syncFounderCleanupControls();
     };
 
-    const onFounderCleanup = () => {
+    const onFounderCleanup = async () => {
       if (
         appState.founderCleanupRpcUnavailable
         || !(founderCleanupInput instanceof HTMLInputElement)
         || founderCleanupInput.value !== FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION
       ) {
+        if (appState.founderCleanupRpcUnavailable) {
+          syncFounderCleanupControls();
+        }
         return;
       }
+
+      founderCleanupChecking = true;
+      syncFounderCleanupControls();
+      try {
+        const rpcAvailable = await checkFounderCleanupRpcAvailability("session-delete-modal-click");
+        if (!rpcAvailable) {
+          if (!String(appState.founderCleanupRpcWarning || "").trim()) {
+            setFounderCleanupWarning("Founder cleanup RPC could not be verified. Apply the latest migrations, reload the Supabase/PostgREST schema cache, then try again.");
+          }
+          syncFounderCleanupControls();
+          return;
+        }
+      } catch (error) {
+        setFounderCleanupWarning(formatFounderSessionCleanupError(error));
+        syncFounderCleanupControls();
+        return;
+      } finally {
+        founderCleanupChecking = false;
+        syncFounderCleanupControls();
+      }
+
       cleanup();
       resolve({
         action: "founder-cleanup",
@@ -17561,7 +17627,7 @@ function confirmSessionArchive(session) {
     confirmButton.addEventListener("click", onConfirm, { once: true });
     if (canFounderCleanup && founderCleanupInput instanceof HTMLInputElement && founderCleanupButton instanceof HTMLButtonElement) {
       founderCleanupInput.addEventListener("input", onFounderInput);
-      founderCleanupButton.addEventListener("click", onFounderCleanup, { once: true });
+      founderCleanupButton.addEventListener("click", onFounderCleanup);
     }
     modal.addEventListener("cancel", onCancel, { once: true });
     modal.showModal();
