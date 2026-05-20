@@ -6148,6 +6148,9 @@ function isSessionSoftDeleted(session = null) {
     || ["deleted", "archived", "archived_test", "hidden"].includes(
       normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
     )
+    || ["deleted", "archived", "archived_test"].includes(
+      normalizeSessionStatus(session.sessionStatus || session.session_status || ""),
+    )
   );
 }
 
@@ -6221,6 +6224,47 @@ function getVisibleUserSessions(sessions = []) {
 
 function getAggregateStatsSessions(sessions = []) {
   return (sessions || []).filter((session) => isCompletedValidSessionForAnalytics(session));
+}
+
+function getSessionUiHiddenReason(session = null) {
+  if (!session) {
+    return "";
+  }
+  if (session.userDeleted || session.user_deleted || String(session.userDeletedAt || session.user_deleted_at || "").trim()) {
+    return "user_deleted";
+  }
+  if (session.isDeleted || session.is_deleted || String(session.deletedAt || session.deleted_at || "").trim()) {
+    return "deleted";
+  }
+  const visibilityStatus = normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || "");
+  if (["deleted", "archived", "archived_test", "hidden"].includes(visibilityStatus)) {
+    return visibilityStatus;
+  }
+  const sessionStatus = normalizeSessionStatus(session.sessionStatus || session.session_status || "");
+  if (["deleted", "archived", "archived_test"].includes(sessionStatus)) {
+    return sessionStatus;
+  }
+  return "";
+}
+
+function logSessionDeleteVisibilityChange(sessionId = "", previousSession = null, nextSession = null, reason = "session-delete") {
+  if (!isDevelopmentErrorDetailsEnabled()) {
+    return;
+  }
+
+  const normalizedSessionId = String(sessionId || nextSession?.id || previousSession?.id || "").trim();
+  const oldStatus = normalizeSessionStatus(previousSession?.sessionStatus || previousSession?.session_status || "");
+  const newStatus = normalizeSessionStatus(nextSession?.sessionStatus || nextSession?.session_status || "");
+  const hiddenReason = getSessionUiHiddenReason(nextSession);
+  console.info("[Grow Session Delete]", {
+    reason,
+    sessionId: normalizedSessionId,
+    oldStatus,
+    newStatus,
+    hiddenFromUi: isSessionSoftDeleted(nextSession),
+    hiddenReason,
+    analyticsEligible: isGrowSessionAnalyticsEligible(nextSession),
+  });
 }
 
 function loadNewSessionNotesDraft() {
@@ -11935,6 +11979,20 @@ async function refreshUserSessionsAfterSave(reason = "session-save") {
   return sessions;
 }
 
+async function forceRefreshUserSessionsAfterDelete(reason = "session-delete") {
+  if (isSupabaseConfigured()) {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn("Could not clear stale local session cache after delete.", error);
+    }
+  }
+
+  const sessions = await refreshUserSessionsAfterSave(reason);
+  syncSessionProgressionReminderNotifications(sessions);
+  return sessions;
+}
+
 async function refreshGrowAnalyticsAfterSessionMutation(sessionId = "", reason = "session-mutation", options = {}) {
   const normalizedSessionId = String(sessionId || "").trim();
   const shouldClearCommunityActivity = options.clearCommunityActivity !== false;
@@ -16823,7 +16881,12 @@ function confirmSessionArchive(session) {
 
 async function deleteCloudSession(sessionId) {
   const existingSession = getSessions().find((item) => item.id === sessionId);
+  if (!existingSession) {
+    throw new Error("Session not found.");
+  }
+
   const deletedAt = new Date().toISOString();
+  const previousStatus = normalizeSessionStatus(existingSession.sessionStatus || "");
   const archivedSession = normalizeStoredSession({
     ...existingSession,
     id: sessionId,
@@ -16832,12 +16895,18 @@ async function deleteCloudSession(sessionId) {
     visibilityStatus: "hidden",
     updatedAt: deletedAt,
   });
+  const saveHiddenSession = (session, reason = "session-delete") => {
+    saveSessions(getSessions().map((item) => (item.id === sessionId ? session : item)));
+    logSessionDeleteVisibilityChange(sessionId, existingSession, session, reason);
+  };
+
+  saveHiddenSession(archivedSession, "optimistic-hide");
 
   if (!appState.supabase) {
-    saveSessions(getSessions().map((item) => (item.id === sessionId ? archivedSession : item)));
     void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete-local", {
       clearCommunityActivity: !isGrowSessionAnalyticsEligible(archivedSession),
     });
+    logSessionDeleteVisibilityChange(sessionId, existingSession, archivedSession, "local-delete-complete");
     return archivedSession;
   }
 
@@ -16854,6 +16923,7 @@ async function deleteCloudSession(sessionId) {
     .single();
 
   if (error) {
+    saveSessions(getSessions().map((item) => (item.id === sessionId ? existingSession : item)));
     const message = String(error.message || "").toLowerCase();
     if (message.includes("user_deleted") || message.includes("user_deleted_at") || message.includes("visibility_status")) {
       throw new Error("Could not hide this session because the user-delete columns are missing. Apply the grow sessions user-delete migration and try again.");
@@ -16863,10 +16933,15 @@ async function deleteCloudSession(sessionId) {
 
   const savedSession = mapRowToSession(data);
   savedSession.filterPaperDeducted = getSessionFilterPaperDeducted(existingSession || { id: sessionId });
-  saveSessions(getSessions().map((item) => (item.id === sessionId ? savedSession : item)));
-  void refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete", {
+  saveHiddenSession(savedSession, "remote-delete-saved");
+  await forceRefreshUserSessionsAfterDelete("session-user-delete");
+  await refreshGrowAnalyticsAfterSessionMutation(sessionId, "session-user-delete", {
     clearCommunityActivity: !isGrowSessionAnalyticsEligible(savedSession),
   });
+  logSessionDeleteVisibilityChange(sessionId, {
+    ...existingSession,
+    sessionStatus: previousStatus,
+  }, savedSession, "remote-delete-complete");
   return savedSession;
 }
 
@@ -56755,8 +56830,8 @@ function renderSessionsList() {
   }
   appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6);
   const sessions = sortSessionsNewestFirst(getSessions());
-  const historySessions = sessions;
   const visibleSessions = getVisibleUserSessions(sessions);
+  const historySessions = visibleSessions;
   const hasSessionHistory = historySessions.length > 0;
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
@@ -56789,7 +56864,7 @@ function renderSessionsList() {
       return;
     }
 
-    const historySource = appState.sessionHistoryFilter === "all" ? historySessions : visibleSessions;
+    const historySource = visibleSessions;
     const filteredSessions = filterMySessionsHistorySessions(historySource, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
@@ -62018,14 +62093,17 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
   const compactVariant = String(options.metricsVariant || "").trim().toLowerCase() === "compact";
   const compactCardClass = compactVariant ? " home-session-summary-card--compact" : "";
   const compactRateRingClass = compactVariant ? " overall-rate-ring--compact" : "";
-  const totalSessions = sessions.length;
-  const activeCount = activeSessions.length;
+  const visibleSessions = getVisibleUserSessions(Array.isArray(sessions) ? sessions : []);
+  const visibleActiveSessions = getVisibleUserSessions(Array.isArray(activeSessions) ? activeSessions : []);
+  const totalSessions = visibleSessions.length;
+  const activeCount = visibleActiveSessions.length;
   const activeSubtext = activeCount ? "in progress" : "No active sessions";
   const aggregateStatsSessions = getAggregateStatsSessions(
     Array.isArray(options.aggregateSessions) ? options.aggregateSessions : sessions,
   );
+  const visibleAnalyticsSessions = getAggregateStatsSessions(visibleSessions);
 
-  const bestSession = getBestCompletedSession(aggregateStatsSessions);
+  const bestSession = getBestCompletedSession(visibleAnalyticsSessions);
   const bestSessionName = bestSession ? formatSessionLabel(bestSession) : "No completed sessions yet";
   const bestSessionDate = bestSession ? formatSessionNameDate(bestSession.date) : "";
   const bestSessionTotals = bestSession ? getSessionSeedTotals(bestSession) : { totalSeeds: 0, totalPlanted: 0 };
@@ -62116,8 +62194,9 @@ function renderMySessionsCommandCenterMetricsMarkup(sessions = [], activeSession
 
 function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selectedSessionId = "", options = {}) {
   const requiresSignIn = Boolean(options.requiresSignIn);
-  const sessions = Array.isArray(options.sessions) ? options.sessions : [];
-  const selectedSession = activeSessions.find((session) => session.id === selectedSessionId) || activeSessions[0] || null;
+  const sessions = getVisibleUserSessions(Array.isArray(options.sessions) ? options.sessions : []);
+  const visibleActiveSessions = getVisibleUserSessions(Array.isArray(activeSessions) ? activeSessions : []);
+  const selectedSession = visibleActiveSessions.find((session) => session.id === selectedSessionId) || visibleActiveSessions[0] || null;
   const headerEyebrow = String(options.headerEyebrow || "ACTIVE SESSION").trim() || "ACTIVE SESSION";
   const headerTitle = String(options.headerTitle || "SESSION COMMAND CENTER").trim() || "SESSION COMMAND CENTER";
   const headerDescription = String(options.headerDescription || "").trim();
@@ -62130,11 +62209,11 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
   const headerActionLabel = String(options.headerActionLabel || "").trim();
   const countBadgeLabel = requiresSignIn
     ? "Sign in"
-    : `${activeSessions.length} ${activeSessions.length === 1 ? "in progress" : "in progress"}`;
+    : `${visibleActiveSessions.length} ${visibleActiveSessions.length === 1 ? "in progress" : "in progress"}`;
   const metricsMarkup = showMetrics
     ? `
       <div class="summary-grid session-command-center-metrics${metricsVariant === "compact" ? " home-session-summary-grid--compact" : ""}">
-        ${renderMySessionsCommandCenterMetricsMarkup(sessions, activeSessions, {
+        ${renderMySessionsCommandCenterMetricsMarkup(sessions, visibleActiveSessions, {
           aggregateSessions: options.aggregateSessions || sessions,
           metricsVariant,
         })}
@@ -62165,7 +62244,7 @@ function renderMySessionsCommandCenterSectionMarkup(activeSessions = [], selecte
             </div>
             ${showViewAllLink ? `<a class="session-command-panel-link" href="${escapeHtml(viewAllHref)}" aria-label="View all active sessions">View All Active <span aria-hidden="true">&rarr;</span></a>` : ""}
           </div>
-          <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(activeSessions, selectedSession?.id || "", options)}</div>
+          <div class="session-command-list">${renderMySessionsCommandCenterListMarkup(visibleActiveSessions, selectedSession?.id || "", options)}</div>
         </section>
         <section class="session-command-panel session-command-panel--progress stage-progress-panel" aria-labelledby="active-sessions-command-progress-title">
           <div class="session-command-panel-heading">
@@ -62192,8 +62271,8 @@ function mountSharedSessionCommandCenter(host, options = {}) {
     return null;
   }
 
-  const activeSessions = Array.isArray(options.activeSessions) ? options.activeSessions : [];
-  const sessions = Array.isArray(options.sessions) ? options.sessions : [];
+  const activeSessions = getVisibleUserSessions(Array.isArray(options.activeSessions) ? options.activeSessions : []);
+  const sessions = getVisibleUserSessions(Array.isArray(options.sessions) ? options.sessions : []);
   const aggregateSessions = Array.isArray(options.aggregateSessions) ? options.aggregateSessions : sessions;
   const hasSessionHistory = Boolean(options.hasSessionHistory);
   const requiresSignIn = Boolean(options.requiresSignIn);

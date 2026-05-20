@@ -82,6 +82,39 @@ function normalizeGrowSessionLifecycleState(session = null) {
   return "draft";
 }
 
+function normalizeSessionVisibilityStatus(status = "") {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (["deleted", "archived", "archived_test", "hidden"].includes(normalizedStatus)) {
+    return normalizedStatus;
+  }
+  return normalizedStatus === "active" ? "active" : "";
+}
+
+function isSessionSoftDeleted(session = null) {
+  if (!session) {
+    return false;
+  }
+
+  return Boolean(
+    session.userDeleted
+    || session.user_deleted
+    || String(session.userDeletedAt || session.user_deleted_at || "").trim()
+    || session.isDeleted
+    || session.is_deleted
+    || String(session.deletedAt || session.deleted_at || "").trim()
+    || ["deleted", "archived", "archived_test", "hidden"].includes(
+      normalizeSessionVisibilityStatus(session.visibilityStatus || session.visibility_status || ""),
+    )
+    || ["deleted", "archived", "archived_test"].includes(
+      normalizeSessionStatus(session.sessionStatus || session.session_status || ""),
+    )
+  );
+}
+
+function getVisibleUserSessions(sessions = []) {
+  return (sessions || []).filter((item) => !isSessionSoftDeleted(item));
+}
+
 function isGrowSessionAnalyticsEligible(session = {}) {
   if (session?.isTest || session?.is_test || session?.excludedFromAnalytics || session?.excluded_from_analytics) {
     return false;
@@ -98,6 +131,10 @@ function isGrowSessionAnalyticsEligible(session = {}) {
     germinationStartedAt: session.germinationStartedAt,
     completedAt: session.completedAt,
   });
+}
+
+function getAggregateStatsSessions(sessions = []) {
+  return (sessions || []).filter((item) => isGrowSessionAnalyticsEligible(item));
 }
 
 function mapSessionToRecord(session, userId, options = {}) {
@@ -234,5 +271,17 @@ assert.equal(isGrowSessionAnalyticsEligible({
   ...completedAnalyticsSession,
   germinationStartedAt: "2026-05-19T18:00:00.000Z",
 }), false);
+
+const visibleAndHiddenSessions = [
+  session,
+  completedAnalyticsSession,
+  { ...session, id: "22222222-2222-4222-8222-222222222222", userDeleted: true, visibilityStatus: "hidden" },
+  { ...completedAnalyticsSession, id: "33333333-3333-4333-8333-333333333333", userDeleted: true, visibilityStatus: "hidden" },
+  { ...completedAnalyticsSession, id: "44444444-4444-4444-8444-444444444444", sessionStatus: "archived_test", isTest: true, excludedFromAnalytics: true },
+];
+const visibleSessions = getVisibleUserSessions(visibleAndHiddenSessions);
+assert.equal(visibleSessions.some((item) => item.userDeleted), false, "user-deleted sessions should be hidden from UI lists");
+assert.equal(visibleSessions.length, 2, "visible session counts should exclude hidden/deleted sessions");
+assert.equal(getAggregateStatsSessions(visibleAndHiddenSessions).length, 2, "completed real user-deleted sessions should still count anonymously");
 
 console.log("Grow session save regression check passed.");
