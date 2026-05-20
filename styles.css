@@ -35375,43 +35375,53 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   --stage-color-completed: #b58a61;
 }
 
-.detail-session-action-bar[data-current-stage-tone="not-started"] {
+.detail-session-action-bar[data-current-stage-tone="not-started"],
+.detail-session-action-bar[data-current-stage-tone="not-started"] .detail-stage-progress-card {
   --current-stage-accent: #b7dca4;
 }
 
-.detail-session-action-bar[data-current-stage-tone="soaking"] {
+.detail-session-action-bar[data-current-stage-tone="soaking"],
+.detail-session-action-bar[data-current-stage-tone="soaking"] .detail-stage-progress-card {
   --current-stage-accent: var(--stage-color-soaking);
 }
 
-.detail-session-action-bar[data-current-stage-tone="germinating"] {
+.detail-session-action-bar[data-current-stage-tone="germinating"],
+.detail-session-action-bar[data-current-stage-tone="germinating"] .detail-stage-progress-card {
   --current-stage-accent: var(--stage-color-germinating);
 }
 
-.detail-session-action-bar[data-current-stage-tone="first-germinated"] {
+.detail-session-action-bar[data-current-stage-tone="first-germinated"],
+.detail-session-action-bar[data-current-stage-tone="first-germinated"] .detail-stage-progress-card {
   --current-stage-accent: var(--stage-color-first-germinated);
 }
 
-.detail-session-action-bar[data-current-stage-tone="completed"] {
+.detail-session-action-bar[data-current-stage-tone="completed"],
+.detail-session-action-bar[data-current-stage-tone="completed"] .detail-stage-progress-card {
   --current-stage-accent: var(--stage-color-completed);
 }
 
-.detail-session-action-bar[data-next-stage-tone="soaking"] {
+.detail-session-action-bar[data-next-stage-tone="soaking"],
+.detail-session-action-bar[data-next-stage-tone="soaking"] .detail-stage-progress-card {
   --next-stage-accent: var(--stage-color-soaking);
 }
 
-.detail-session-action-bar[data-next-stage-tone="germinating"] {
+.detail-session-action-bar[data-next-stage-tone="germinating"],
+.detail-session-action-bar[data-next-stage-tone="germinating"] .detail-stage-progress-card {
   --next-stage-accent: var(--stage-color-germinating);
 }
 
-.detail-session-action-bar[data-next-stage-tone="first-germinated"] {
+.detail-session-action-bar[data-next-stage-tone="first-germinated"],
+.detail-session-action-bar[data-next-stage-tone="first-germinated"] .detail-stage-progress-card {
   --next-stage-accent: var(--stage-color-first-germinated);
 }
 
-.detail-session-action-bar[data-next-stage-tone="completed"] {
+.detail-session-action-bar[data-next-stage-tone="completed"],
+.detail-session-action-bar[data-next-stage-tone="completed"] .detail-stage-progress-card {
   --next-stage-accent: var(--stage-color-completed);
 }
 
-.detail-session-action-bar[data-next-stage-tone="session-complete"] {
+.detail-session-action-bar[data-next-stage-tone="session-complete"],
+.detail-session-action-bar[data-next-stage-tone="session-complete"] .detail-stage-progress-card {
   --next-stage-accent: var(--stage-color-completed);
 }
 
