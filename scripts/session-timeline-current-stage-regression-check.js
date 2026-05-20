@@ -26,8 +26,8 @@ if (!timelineBoundsMatch) {
 }
 
 if (!timelineBoundsMatch[0].includes('case "soaking"')
-  || !timelineBoundsMatch[0].includes("startAt: state.startedAt || null")
-  || !timelineBoundsMatch[0].includes("finishAt: state.germinationStartedAt || null")) {
+  || !timelineBoundsMatch[0].includes("startAt: stageStarts.soaking || null")
+  || !timelineBoundsMatch[0].includes("finishAt: stageStarts.germination || null")) {
   throw new Error("Soaking stage length must use soak start through germination-start transition.");
 }
 

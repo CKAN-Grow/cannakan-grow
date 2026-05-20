@@ -4782,9 +4782,9 @@ function normalizeStoredSession(session) {
     userId: String(session.userId || session.user_id || "").trim(),
     sessionStartedAt: String(session.sessionStartedAt || session.session_started_at || "").trim(),
     soakStartedAt: String(session.soakStartedAt || session.soak_started_at || session.timerStartAt || session.timer_start_at || "").trim(),
-    germinationStartedAt: String(session.germinationStartedAt || "").trim(),
-    firstPlantedAt: String(session.firstPlantedAt || "").trim(),
-    completedAt: String(session.completedAt || "").trim(),
+    germinationStartedAt: String(session.germinationStartedAt || session.germination_started_at || "").trim(),
+    firstPlantedAt: String(session.firstPlantedAt || session.first_planted_at || "").trim(),
+    completedAt: String(session.completedAt || session.completed_at || "").trim(),
     isMock: Boolean(session.isMock || session.is_mock),
     isTest: Boolean(session.isTest || session.is_test),
     excludedFromAnalytics: Boolean(session.excludedFromAnalytics || session.excluded_from_analytics),
@@ -63524,27 +63524,74 @@ function getSessionLifecycleTimelineEvents(state = {}) {
   }));
 }
 
+function getSessionLifecycleTimelineResolvedProgressKey(state = {}) {
+  const currentProgressKey = String(state.currentProgressKey || "").trim();
+  return currentProgressKey
+    || resolveGrowSessionCurrentProgressKey({
+      sessionStatus: state.sessionStatus || "",
+      germinationStartedAt: state.germinationStartedAt ? state.germinationStartedAt.toISOString?.() || state.germinationStartedAt : "",
+      firstPlantedAt: state.firstPlantedAt ? state.firstPlantedAt.toISOString?.() || state.firstPlantedAt : "",
+      completedAt: state.completedAt ? state.completedAt.toISOString?.() || state.completedAt : "",
+    });
+}
+
+function getSessionLifecycleTimelineCurrentStageStartAt(state = {}) {
+  const resolvedProgressKey = getSessionLifecycleTimelineResolvedProgressKey(state);
+  const lastUpdatedAt = parseCompletedAtValue(state.lastUpdatedAt || state.last_updated_at || "");
+  switch (resolvedProgressKey) {
+    case "completed":
+      return state.completedAt || lastUpdatedAt || state.firstPlantedAt || state.germinationStartedAt || state.startedAt || null;
+    case "first-germinated":
+      return state.firstPlantedAt || lastUpdatedAt || state.germinationStartedAt || state.startedAt || null;
+    case "germination":
+      return state.germinationStartedAt || lastUpdatedAt || state.startedAt || null;
+    case "soaking":
+      return state.startedAt || null;
+    default:
+      return null;
+  }
+}
+
+function getSessionLifecycleTimelineStageStarts(state = {}) {
+  const resolvedProgressKey = getSessionLifecycleTimelineResolvedProgressKey(state);
+  const stageOrder = ["soaking", "germination", "first-germinated", "completed"];
+  const currentIndex = stageOrder.indexOf(resolvedProgressKey);
+  const currentStageStartAt = getSessionLifecycleTimelineCurrentStageStartAt(state);
+  const maybeCurrentStartAt = (stageKey) => {
+    const stageIndex = stageOrder.indexOf(stageKey);
+    return stageIndex >= 0 && stageIndex === currentIndex ? currentStageStartAt : null;
+  };
+
+  return {
+    soaking: state.startedAt || null,
+    germination: state.germinationStartedAt || maybeCurrentStartAt("germination"),
+    "first-germinated": state.firstPlantedAt || maybeCurrentStartAt("first-germinated"),
+    completed: state.completedAt || maybeCurrentStartAt("completed"),
+  };
+}
+
 function getSessionLifecycleTimelineStageBounds(state = {}, eventKey = "") {
+  const stageStarts = getSessionLifecycleTimelineStageStarts(state);
   switch (eventKey) {
     case "soaking":
       return {
-        startAt: state.startedAt || null,
-        finishAt: state.germinationStartedAt || null,
+        startAt: stageStarts.soaking || null,
+        finishAt: stageStarts.germination || null,
       };
     case "germination":
       return {
-        startAt: state.germinationStartedAt || null,
-        finishAt: state.firstPlantedAt || null,
+        startAt: stageStarts.germination || null,
+        finishAt: stageStarts["first-germinated"] || null,
       };
     case "first-germinated":
       return {
-        startAt: state.firstPlantedAt || null,
-        finishAt: state.completedAt || null,
+        startAt: stageStarts["first-germinated"] || null,
+        finishAt: stageStarts.completed || null,
       };
     case "completed":
       return {
-        startAt: state.startedAt || null,
-        finishAt: state.completedAt || null,
+        startAt: stageStarts.soaking || null,
+        finishAt: stageStarts.completed || null,
       };
     default:
       return {
@@ -63561,12 +63608,17 @@ function getSessionLifecycleTimelineCardMeta(state = {}, event = {}) {
 
   let lengthText = "Pending";
 
-  if (event.setupGraceActive && hasValidStart) {
+  if (event.isFuture) {
+    lengthText = "Pending";
+  } else if (event.setupGraceActive && hasValidStart) {
     lengthText = formatSetupGraceStartsIn(startAt) || "0m";
-  } else if (hasValidStart && hasValidFinish) {
+  } else if (event.isCurrent && hasValidStart) {
+    const durationLabel = formatDurationBetween(startAt, new Date());
+    lengthText = durationLabel || "In progress";
+  } else if (event.isComplete && hasValidStart && hasValidFinish) {
     const durationLabel = formatDurationBetween(startAt, finishAt);
     lengthText = durationLabel || "Pending";
-  } else if (hasValidStart && event.isCurrent) {
+  } else if (event.isComplete && hasValidStart) {
     const durationLabel = formatDurationBetween(startAt, new Date());
     lengthText = durationLabel || "In progress";
   }
@@ -64474,21 +64526,30 @@ function buildFormLifecycleState(form) {
     germinationStartedAt: parseCompletedAtValue(form.dataset.germinationStartedAt || ""),
     firstPlantedAt: parseCompletedAtValue(form.dataset.firstPlantedAt || ""),
     completedAt: parseCompletedAtValue(form.dataset.completedAt || ""),
+    lastUpdatedAt: null,
     setupGraceActive: false,
   };
 }
 
 function buildSessionLifecycleState(session) {
   const startedAt = getEffectiveSessionTimerStartAt(session);
-  const completedAt = parseCompletedAtValue(session.completedAt || "");
+  const completedAt = parseCompletedAtValue(session.completedAt || session.completed_at || "");
+  const lastUpdatedAt = parseCompletedAtValue(
+    session.lastUpdatedAt
+    || session.last_updated_at
+    || session.updatedAt
+    || session.updated_at
+    || "",
+  );
   return {
     showEmptyTimeline: false,
     sessionStatus: normalizeSessionStatus(session?.sessionStatus || ""),
     currentProgressKey: getSessionProgressKeyFromSession(session),
     startedAt,
-    germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || ""),
-    firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || ""),
+    germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || session.germination_started_at || ""),
+    firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || session.first_planted_at || ""),
     completedAt,
+    lastUpdatedAt,
     setupGraceActive: !completedAt && isSetupGracePeriodActive(startedAt),
   };
 }
