@@ -24934,7 +24934,7 @@ function getSessionCompletedDurationMs(session) {
     return null;
   }
 
-  const startedAt = getEffectiveSessionTimerStartAt(session);
+  const startedAt = getSessionDurationStartAt(session);
   const completedAt = parseCompletedAtValue(session.completedAt || "");
   return getElapsedDurationMs(startedAt, completedAt);
 }
@@ -60549,6 +60549,9 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.completedAt,
       session.timerStartAt || "",
+      {
+        sessionDurationStartAt: getSessionDurationStartAt(session)?.toISOString() || "",
+      },
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -60673,6 +60676,9 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.completedAt,
       session.timerStartAt || "",
+      {
+        sessionDurationStartAt: getSessionDurationStartAt(session)?.toISOString() || "",
+      },
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -62527,12 +62533,18 @@ function getInitialSoakStartedAt(sessionStartedAt = "", createdAt = "", sessionS
 }
 
 function getEffectiveSessionTimerStartAt(session = null) {
+  return getSessionDurationStartAt(session);
+}
+
+function getSessionDurationStartAt(session = null) {
   if (!session) {
     return null;
   }
 
-  return parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || session.timerStartAt || session.timer_start_at || "")
-    || parseSessionStartDateTime(session.date, session.time);
+  return parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || "")
+    || parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || "")
+    || parseSessionStartDateTime(session.date, session.time)
+    || parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "");
 }
 
 function getSessionStatusStartedAtValue(session = null) {
@@ -63111,12 +63123,14 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
   }).join("");
 }
 
-function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "", timerStartAt = "") {
+function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate, sessionTime, sessionStatus, completedAt = "", timerStartAt = "", options = {}) {
   if (!summaryElement || !sectionElement) {
     return;
   }
 
-  const startedAt = parseCompletedAtValue(timerStartAt) || parseSessionStartDateTime(sessionDate, sessionTime);
+  const startedAt = parseCompletedAtValue(options.sessionDurationStartAt || "")
+    || parseCompletedAtValue(timerStartAt)
+    || parseSessionStartDateTime(sessionDate, sessionTime);
   if (!startedAt) {
     summaryElement.innerHTML = "";
     sectionElement.hidden = true;
