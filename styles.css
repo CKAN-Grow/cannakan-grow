@@ -35223,7 +35223,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .chart-header {
-  padding: 14px 18px;
+  padding: 14px 28px 14px 18px;
   background:
     linear-gradient(180deg, rgba(148, 209, 89, 0.12), rgba(148, 209, 89, 0.04)),
     rgba(255, 255, 255, 0.02);
@@ -35248,7 +35248,7 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 }
 
 .session-workspace-shell .partition-row {
-  padding: 14px 18px;
+  padding: 14px 28px 14px 18px;
   border-bottom-color: rgba(255, 255, 255, 0.06);
   --partition-row-bg-odd: rgba(255, 255, 255, 0.018);
   --partition-row-bg-even: rgba(255, 255, 255, 0.032);
@@ -36406,14 +36406,14 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 
 .chart-row {
   display: grid;
-  grid-template-columns: 72px minmax(120px, 0.48fr) minmax(300px, 1.22fr) minmax(130px, 150px) minmax(130px, 150px) 90px 108px 90px;
+  grid-template-columns: 72px minmax(116px, 0.44fr) minmax(260px, 1.12fr) minmax(124px, 144px) minmax(124px, 144px) 88px minmax(122px, 132px) minmax(104px, 112px);
   gap: 10px;
   align-items: center;
 }
 
 .chart-shell[data-seed-age-mode="mixed"] .chart-row,
 .partition-table[data-seed-age-mode="mixed"] .chart-row {
-  grid-template-columns: 72px minmax(120px, 0.46fr) minmax(280px, 1.18fr) minmax(130px, 150px) minmax(130px, 150px) 90px minmax(118px, 128px) 108px 90px;
+  grid-template-columns: 72px minmax(112px, 0.42fr) minmax(250px, 1.06fr) minmax(124px, 142px) minmax(124px, 142px) 84px minmax(118px, 128px) minmax(122px, 132px) minmax(104px, 112px);
 }
 
 .chart-shell[data-session-status="unselected"] .chart-row,
@@ -36431,7 +36431,7 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 }
 
 .chart-header {
-  padding: 14px 16px;
+  padding: 14px 22px 14px 16px;
   background: #edf3ec;
   border-bottom: 1px solid var(--line);
   font-size: 0.78rem;
@@ -36449,6 +36449,12 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
 
 .chart-header [data-partition-header="germinated"] {
   white-space: nowrap;
+}
+
+.chart-header [data-partition-header="germinated"],
+.chart-header [data-partition-header="success"] {
+  justify-content: center;
+  text-align: center;
 }
 
 .chart-header span,
@@ -36512,7 +36518,7 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 }
 
 .partition-row {
-  padding: 14px 16px;
+  padding: 14px 22px 14px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--partition-row-bg-odd, rgba(252, 254, 251, 0.92));
   transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
@@ -36591,6 +36597,18 @@ body.theme-dark .partition-table[data-session-status="completed"] .partition-row
 .partition-row label,
 .detail-cell {
   gap: 6px;
+}
+
+.partition-row label:has(input[name="plantedCount"]),
+.partition-row .success-cell {
+  min-width: 0;
+  justify-items: center;
+  text-align: center;
+}
+
+.partition-row label:has(input[name="plantedCount"]) input[name="plantedCount"] {
+  width: 100%;
+  text-align: center;
 }
 
 .detail-row .detail-cell p:empty {
