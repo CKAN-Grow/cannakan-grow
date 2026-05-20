@@ -47,6 +47,7 @@ const LEGACY_GROW_GALLERY_LIKES_TABLE = "grow_gallery_snapshot_like";
 const GROW_FOLLOWS_TABLE = "grow_follows";
 const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
+const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
@@ -1243,6 +1244,7 @@ const appState = {
   filterPaperInventory: null,
   filterPaperInventoryError: "",
   filterPaperInventoryBackendUnavailable: false,
+  filterPaperSupplySettingsTableUnavailable: false,
   filterPaperDeductionRegistry: null,
   sources: [],
   sourcesLoaded: false,
@@ -3684,6 +3686,32 @@ function normalizeFilterPaperInventory(inventory) {
   };
 }
 
+function normalizeFilterPaperInventoryFromSupplySettingsRow(row = null) {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  return normalizeFilterPaperInventory({
+    count: row.filter_paper_count,
+    autoSubtract: row.auto_subtract_on_complete,
+    notifyLowSupply: row.low_supply_reminders_enabled,
+    storeRegion: row.store_region,
+    updatedAt: row.updated_at,
+  });
+}
+
+function buildFilterPaperSupplySettingsPayload(userId = "", inventory = DEFAULT_FILTER_PAPER_INVENTORY) {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedInventory = normalizeFilterPaperInventory(inventory);
+  return {
+    user_id: normalizedUserId,
+    filter_paper_count: normalizedInventory.count,
+    store_region: normalizedInventory.storeRegion === "EU" ? "EU" : "US",
+    auto_subtract_on_complete: Boolean(normalizedInventory.autoSubtract),
+    low_supply_reminders_enabled: normalizedInventory.notifyLowSupply !== false,
+  };
+}
+
 function getFilterPaperInventoryStorageKey(userId = appState.user?.id || "") {
   const normalizedUserId = String(userId || "").trim();
   return normalizedUserId
@@ -3764,6 +3792,10 @@ function isFilterPaperInventoryPreferenceSchemaError(error) {
     );
 }
 
+function isFilterPaperSupplySettingsTableMissingError(error) {
+  return isSupabaseTableMissingError(error, USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE);
+}
+
 function markFilterPaperInventoryBackendUnavailable(error = null) {
   appState.filterPaperInventoryBackendUnavailable = true;
   if (error) {
@@ -3771,6 +3803,22 @@ function markFilterPaperInventoryBackendUnavailable(error = null) {
       "warn",
       "filter-paper-inventory-backend-fallback",
       "Filter paper inventory backend preference is unavailable. Using local browser storage fallback.",
+      {
+        message: error?.message || String(error || ""),
+        code: error?.code || "",
+        status: Number(error?.status || error?.statusCode || 0) || 0,
+      },
+    );
+  }
+}
+
+function markFilterPaperSupplySettingsTableUnavailable(error = null) {
+  appState.filterPaperSupplySettingsTableUnavailable = true;
+  if (error) {
+    logRuntimeIssueOnce(
+      "warn",
+      "filter-paper-supply-settings-table-fallback",
+      "Filter paper supply settings table is unavailable. Using local browser storage fallback.",
       {
         message: error?.message || String(error || ""),
         code: error?.code || "",
@@ -3790,40 +3838,41 @@ function createFilterPaperInventoryPersistenceError(message = "", cause = null) 
 
 async function loadFilterPaperInventoryPreferenceFromBackend(userId = appState.user?.id || "") {
   const normalizedUserId = String(userId || "").trim();
-  if (!appState.supabase || !normalizedUserId || appState.filterPaperInventoryBackendUnavailable) {
+  if (!appState.supabase || !normalizedUserId) {
     return {
       inventory: null,
       found: false,
-      error: appState.filterPaperInventoryBackendUnavailable
-        ? createFilterPaperInventoryPersistenceError("Filter paper supply account storage is temporarily unavailable.")
-        : null,
+      error: null,
+    };
+  }
+
+  if (appState.filterPaperSupplySettingsTableUnavailable) {
+    return {
+      inventory: null,
+      found: false,
+      error: createFilterPaperInventoryPersistenceError("Filter paper supply account storage is temporarily unavailable."),
     };
   }
 
   try {
     const { data, error } = await appState.supabase
-      .from(USER_NOTIFICATION_PREFERENCES_TABLE)
-      .select(FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN)
+      .from(USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE)
+      .select("user_id, filter_paper_count, store_region, auto_subtract_on_complete, low_supply_reminders_enabled, updated_at")
       .eq("user_id", normalizedUserId)
       .maybeSingle();
     if (error) {
       throw error;
     }
 
-    const rawInventory = data?.[FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN] || null;
-    const hasSavedInventory = Boolean(
-      rawInventory
-      && typeof rawInventory === "object"
-      && Object.keys(rawInventory).length
-    );
+    const inventory = normalizeFilterPaperInventoryFromSupplySettingsRow(data);
     return {
-      inventory: hasSavedInventory ? normalizeFilterPaperInventory(rawInventory) : null,
-      found: hasSavedInventory,
+      inventory,
+      found: Boolean(inventory),
       error: null,
     };
   } catch (error) {
-    if (isFilterPaperInventoryPreferenceSchemaError(error)) {
-      markFilterPaperInventoryBackendUnavailable(error);
+    if (isFilterPaperSupplySettingsTableMissingError(error)) {
+      markFilterPaperSupplySettingsTableUnavailable(error);
       return {
         inventory: null,
         found: false,
@@ -3854,7 +3903,7 @@ async function saveFilterPaperInventoryPreferenceToBackend(userId = appState.use
     };
   }
 
-  if (appState.filterPaperInventoryBackendUnavailable) {
+  if (appState.filterPaperSupplySettingsTableUnavailable) {
     return {
       saved: false,
       error: createFilterPaperInventoryPersistenceError("Filter paper supply account storage is temporarily unavailable."),
@@ -3862,22 +3911,25 @@ async function saveFilterPaperInventoryPreferenceToBackend(userId = appState.use
   }
 
   const normalizedInventory = normalizeFilterPaperInventory(inventory);
+  const payload = buildFilterPaperSupplySettingsPayload(normalizedUserId, normalizedInventory);
   try {
-    const response = await writeUserNotificationPreferencesPayload({
-      user_id: normalizedUserId,
-      [FILTER_PAPER_INVENTORY_PREFERENCE_COLUMN]: normalizedInventory,
-    });
-    const error = response?.error || null;
+    const { data, error } = await appState.supabase
+      .from(USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE)
+      .upsert(payload, { onConflict: "user_id" })
+      .select("user_id, filter_paper_count, store_region, auto_subtract_on_complete, low_supply_reminders_enabled, updated_at")
+      .single();
     if (error) {
       throw error;
     }
-    if (response?.data) {
-      setUserNotificationPreferencesAvailableColumns(response.data);
-    }
-    return { saved: true, error: null, row: response?.data || null };
+    return {
+      saved: true,
+      error: null,
+      row: data || null,
+      inventory: normalizeFilterPaperInventoryFromSupplySettingsRow(data) || normalizedInventory,
+    };
   } catch (error) {
-    if (isFilterPaperInventoryPreferenceSchemaError(error)) {
-      markFilterPaperInventoryBackendUnavailable(error);
+    if (isFilterPaperSupplySettingsTableMissingError(error)) {
+      markFilterPaperSupplySettingsTableUnavailable(error);
       return {
         saved: false,
         error: createFilterPaperInventoryPersistenceError(
@@ -3978,7 +4030,10 @@ async function saveFilterPaperInventoryForCurrentUser(inventory) {
     appState.filterPaperInventoryError = saveResult.error.message || "Filter paper count could not be saved to your account.";
     throw saveResult.error;
   }
-  const savedInventory = syncFilterPaperInventoryCache(appState.user?.id || "", normalizedInventory);
+  const savedInventory = syncFilterPaperInventoryCache(
+    appState.user?.id || "",
+    saveResult.inventory || normalizedInventory,
+  );
   maybeAddSupplyStatusNotification(previousInventory, savedInventory, {
     previousWasSet,
     nextWasSet: true,
