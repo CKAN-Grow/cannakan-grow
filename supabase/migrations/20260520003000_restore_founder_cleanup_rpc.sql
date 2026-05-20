@@ -79,15 +79,16 @@ using (
 
 drop function if exists public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text);
 drop function if exists public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz);
+drop function if exists public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid);
 
 create or replace function public.cleanup_founder_test_grow_sessions(
-  target_user_id uuid default null,
   candidate_session_ids uuid[] default null,
-  include_explicit_unmarked boolean default false,
   confirmation_phrase text default '',
   dry_run boolean default true,
+  include_explicit_unmarked boolean default false,
+  legacy_created_before timestamptz default '2026-05-20 04:00:00+00'::timestamptz,
   reason text default '',
-  legacy_created_before timestamptz default '2026-05-20 04:00:00+00'::timestamptz
+  target_user_id uuid default null
 )
 returns table (
   table_name text,
@@ -444,8 +445,8 @@ begin
 end;
 $$;
 
-revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) from public;
-grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) to authenticated;
+revoke all on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) from public;
+grant execute on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) to authenticated;
 
 revoke all on table public.grow_session_cleanup_audit from public;
 grant select on table public.grow_session_cleanup_audit to authenticated;
@@ -453,7 +454,7 @@ grant select on table public.grow_session_cleanup_audit to authenticated;
 comment on table public.grow_session_cleanup_audit is
   'Append-only audit log for admin grow-session cleanup previews and executions. Internal-only via RLS; does not expose CSTP/auth/admin/settings/config data.';
 
-comment on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) is
+comment on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) is
   'Admin-only grow-session cleanup RPC for founder personal test/bad data. Defaults to dry-run, requires DELETE TEST SESSION for execution, excludes CSTP-linked sessions, marks candidates test/mock/excluded before deletion, deletes related grow-session artifacts, and never deletes auth, admin, settings, config, source, or CSTP records.';
 
 notify pgrst, 'reload schema';

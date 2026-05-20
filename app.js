@@ -12109,6 +12109,25 @@ function formatFounderSessionCleanupResultSummary(resultRows = []) {
     .join(" | ");
 }
 
+function isMissingFounderCleanupRpcError(error = null) {
+  const details = getReadableErrorDetails(error).toLowerCase();
+  return details.includes("cleanup_founder_test_grow_sessions")
+    && (
+      details.includes("schema cache")
+      || details.includes("could not find the function")
+      || details.includes("404")
+      || details.includes("not found")
+      || details.includes("pgrst202")
+    );
+}
+
+function formatFounderSessionCleanupError(error = null) {
+  if (isMissingFounderCleanupRpcError(error)) {
+    return "Founder cleanup RPC is not available in Supabase yet. Apply the latest migrations, then reload the Supabase/PostgREST schema cache and try again.";
+  }
+  return formatSaveErrorForDisplay(error, "Founder cleanup failed.");
+}
+
 async function refreshGrowSessionDataAfterCleanup() {
   appState.sessions = [];
   try {
@@ -12162,11 +12181,10 @@ async function runFounderSessionCleanup(options = {}) {
   }
 
   const { data, error } = await appState.supabase.rpc("cleanup_founder_test_grow_sessions", {
-    target_user_id: appState.user.id,
     candidate_session_ids: candidateSessionIds,
-    include_explicit_unmarked: true,
     confirmation_phrase: dryRun ? "" : String(options.confirmationPhrase || FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION).trim(),
     dry_run: dryRun,
+    include_explicit_unmarked: true,
     legacy_created_before: FOUNDER_TEST_SESSION_CLEANUP_CUTOFF,
     reason: options.reason || (dryRun
       ? (options.emergencyOnly
@@ -12179,10 +12197,11 @@ async function runFounderSessionCleanup(options = {}) {
         : requestedSessionIds.length
           ? "Admin UI confirmed cleanup of selected founder test grow session"
           : "Admin UI confirmed reset of old founder test grow sessions before production tracking")),
+    target_user_id: appState.user.id,
   });
 
   if (error) {
-    throw error;
+    throw new Error(formatFounderSessionCleanupError(error));
   }
 
   return Array.isArray(data) ? data : [];
@@ -17044,6 +17063,22 @@ async function performSessionDeleteAction(session, deleteAction = null) {
   if (action === "founder-cleanup") {
     if (!isAdminUser()) {
       throw new Error("Founder cleanup requires an authenticated admin session.");
+    }
+    const previewRows = await runFounderSessionCleanup({
+      dryRun: true,
+      sessionIds: [sessionId],
+      reason: `Founder cleanup dry-run from session delete modal for ${sessionId}`,
+    });
+    const previewSessionCount = getFounderSessionCleanupDeletedCount(previewRows);
+    const previewSummary = formatFounderSessionCleanupResultSummary(previewRows);
+    if (previewSessionCount <= 0) {
+      throw new Error("Dry-run found no eligible test session data for founder cleanup. Nothing destructive was run.");
+    }
+    const confirmedPreview = window.confirm(
+      `Founder cleanup dry-run found ${previewSessionCount} session${previewSessionCount === 1 ? "" : "s"} eligible for permanent cleanup.\n\n${previewSummary}\n\nContinue with DELETE TEST SESSION cleanup?`,
+    );
+    if (!confirmedPreview) {
+      return null;
     }
     const resultRows = await runFounderSessionCleanup({
       dryRun: false,
@@ -57106,7 +57141,10 @@ function renderSessionsList() {
       }
 
       try {
-        await performSessionDeleteAction(session, deleteAction);
+        const deleteResult = await performSessionDeleteAction(session, deleteAction);
+        if (!deleteResult) {
+          return;
+        }
         appState.sessionHistoryFocusSessionId = sessionId;
         appState.sessionHistoryFilter = "all";
         renderSessionsList();
@@ -59355,7 +59393,10 @@ function renderSessionDetail(sessionId) {
     }
 
     try {
-      await performSessionDeleteAction(session, deleteAction);
+      const deleteResult = await performSessionDeleteAction(session, deleteAction);
+      if (!deleteResult) {
+        return;
+      }
       appState.sessionHistoryFocusSessionId = sessionId;
       appState.sessionHistoryFilter = "all";
       navigateWithUnsavedChangesBypass("#sessions");
@@ -59453,7 +59494,10 @@ function renderSessionCollection(container, sessions, options) {
       }
 
       try {
-        await performSessionDeleteAction(session, deleteAction);
+        const deleteResult = await performSessionDeleteAction(session, deleteAction);
+        if (!deleteResult) {
+          return;
+        }
         appState.sessionHistoryFocusSessionId = session.id;
         appState.sessionHistoryFilter = "all";
         renderSessionsList();

@@ -2722,13 +2722,13 @@ comment on table public.grow_session_cleanup_audit is
   'Append-only audit log for admin grow-session cleanup previews and executions. This table records cleanup intent and counts without deleting account, admin, settings, config, or CSTP data.';
 
 create or replace function public.cleanup_founder_test_grow_sessions(
-  target_user_id uuid default null,
   candidate_session_ids uuid[] default null,
-  include_explicit_unmarked boolean default false,
   confirmation_phrase text default '',
   dry_run boolean default true,
+  include_explicit_unmarked boolean default false,
+  legacy_created_before timestamptz default '2026-05-20 04:00:00+00'::timestamptz,
   reason text default '',
-  legacy_created_before timestamptz default '2026-05-20 04:00:00+00'::timestamptz
+  target_user_id uuid default null
 )
 returns table (
   table_name text,
@@ -3020,10 +3020,10 @@ using (
 revoke all on table public.grow_session_cleanup_audit from public;
 grant select on table public.grow_session_cleanup_audit to authenticated;
 
-revoke all on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) from public;
-grant execute on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) to authenticated;
+revoke all on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) from public;
+grant execute on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) to authenticated;
 
-comment on function public.cleanup_founder_test_grow_sessions(uuid, uuid[], boolean, text, boolean, text, timestamptz) is
+comment on function public.cleanup_founder_test_grow_sessions(uuid[], text, boolean, boolean, timestamptz, text, uuid) is
   'Admin-only grow-session cleanup for founder personal test/mock data. Defaults to dry-run and requires exact confirmation before deletion. Marks candidates as archived_test, is_test, is_mock, and excluded_from_analytics before removal, excludes CSTP-linked sessions, caps explicit unmarked cleanup to the legacy cutoff, and never deletes auth, admin, settings, config, source, or CSTP records.';
 
 comment on table public.grow_session_time_edit_audit is
