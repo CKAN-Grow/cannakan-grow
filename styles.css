@@ -4626,7 +4626,8 @@ body.theme-dark #active-sessions-section {
   line-height: 1.18;
 }
 
-.session-workspace-shell .section-title-with-icon > svg.section-title-icon {
+.session-workspace-shell .section-title-with-icon > svg.section-title-icon,
+.session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
   width: 64px;
   height: 64px;
   flex: 0 0 64px;
@@ -4641,7 +4642,8 @@ body.theme-dark #active-sessions-section {
   color: #2b6f41;
 }
 
-.session-workspace-shell .section-title-with-icon > svg.section-title-icon :is(path, circle, rect, line, polyline, polygon, ellipse) {
+.session-workspace-shell .section-title-with-icon > svg.section-title-icon :is(path, circle, rect, line, polyline, polygon, ellipse),
+.session-workspace-shell .session-detail-lower-heading > svg.section-title-icon :is(path, circle, rect, line, polyline, polygon, ellipse) {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.9;
@@ -4650,7 +4652,8 @@ body.theme-dark #active-sessions-section {
   vector-effect: non-scaling-stroke;
 }
 
-.session-workspace-shell .section-title-with-icon > svg.section-title-icon circle[cx][cy][r="1.5"] {
+.session-workspace-shell .section-title-with-icon > svg.section-title-icon circle[cx][cy][r="1.5"],
+.session-workspace-shell .session-detail-lower-heading > svg.section-title-icon circle[cx][cy][r="1.5"] {
   fill: currentColor;
   stroke: currentColor;
 }
@@ -35755,6 +35758,66 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   align-self: center;
 }
 
+.session-workspace-shell .session-detail-lower-heading,
+.session-workspace-shell .session-images-heading > .session-detail-lower-heading {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-areas: "icon copy";
+  align-items: center;
+  justify-items: start;
+  column-gap: clamp(16px, 2vw, 20px);
+  row-gap: 0;
+  min-width: 0;
+}
+
+.session-workspace-shell .progress-chart-heading.session-detail-lower-heading {
+  grid-template-areas: "icon copy";
+}
+
+.session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
+  grid-area: icon;
+  align-self: center;
+  justify-self: start;
+}
+
+.session-workspace-shell .session-detail-lower-heading-copy {
+  grid-area: copy;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  justify-items: start;
+  min-width: 0;
+}
+
+.session-workspace-shell .session-detail-lower-heading-copy > .eyebrow {
+  margin: 0;
+  line-height: 1.08;
+  width: auto;
+}
+
+.session-workspace-shell .session-detail-lower-heading-copy > h4,
+.session-workspace-shell .session-detail-lower-heading-copy > .session-detail-lower-title {
+  margin: 0;
+  min-width: 0;
+  color: #f6f8f5;
+  font-size: 1.18rem;
+  font-weight: 600;
+  line-height: 1.18;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "header"
+    "textarea";
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field > .session-detail-lower-heading {
+  grid-area: header;
+}
+
 .session-workspace-shell .session-notes-section {
   gap: 18px;
   padding: clamp(18px, 2vw, 24px);
@@ -36049,6 +36112,30 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   .session-workspace-shell {
     padding: 20px 16px;
     border-radius: 24px;
+  }
+
+  .session-workspace-shell .session-detail-lower-heading,
+  .session-workspace-shell .session-images-heading > .session-detail-lower-heading {
+    grid-template-columns: 56px minmax(0, 1fr);
+    column-gap: 14px;
+  }
+
+  .session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
+    width: 56px;
+    height: 56px;
+    flex-basis: 56px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .session-workspace-shell .session-detail-lower-heading-copy > h4,
+  .session-workspace-shell .session-detail-lower-heading-copy > .session-detail-lower-title {
+    font-size: 1.08rem;
+  }
+
+  .session-workspace-shell .session-images-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .session-workspace-shell .session-chart-header > label,
@@ -38008,7 +38095,8 @@ body.theme-dark .section-title-icon {
     0 8px 18px rgba(0, 0, 0, 0.18);
 }
 
-body.theme-dark .session-workspace-shell .section-title-with-icon > svg.section-title-icon {
+body.theme-dark .session-workspace-shell .section-title-with-icon > svg.section-title-icon,
+body.theme-dark .session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
   border-color: rgba(148, 209, 89, 0.22);
   background:
     linear-gradient(180deg, rgba(20, 28, 22, 0.96) 0%, rgba(14, 19, 16, 0.98) 100%);
