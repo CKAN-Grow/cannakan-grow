@@ -19,7 +19,17 @@ for (const needle of [
   "data-seed-vault-sort=\"true\"",
   "data-seed-vault-year-acquired=\"true\"",
   "function renderSeedVaultYearAcquiredOptionsMarkup(selectedYear = \"\")",
+  "function renderSeedSexSelectOptions(selectedValue = \"\")",
   "const SEED_VAULT_YEAR_ACQUIRED_MIN = 1980;",
+  "data-identity-autocomplete=\"source\"",
+  "data-identity-autocomplete=\"seedVariety\"",
+  "name=\"seedVariety\"",
+  "name=\"seedSex\"",
+  "${renderSeedTypeSelectOptions()}",
+  "${renderSeedSexSelectOptions()}",
+  "initializePartitionIdentityAutocompletes(form);",
+  "seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName",
+  "seed_sex: normalizedEntry.seedSex || null",
   "data-seed-vault-toggle",
   "data-seed-vault-delete",
   "seed-vault-favorite-button",
@@ -61,6 +71,8 @@ for (const forbidden of [
   "Using browser storage for now",
   "seed-vault-sync-note",
   'name="yearAcquired" type="number"',
+  "Seed name / variety",
+  "Seed type/category",
 ]) {
   if (appSource.includes(forbidden) || stylesSource.includes(forbidden)) {
     throw new Error(`Seed Vault should not show developer storage details: ${forbidden}`);

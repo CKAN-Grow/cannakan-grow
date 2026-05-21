@@ -9,6 +9,13 @@ const migrationPath = path.join(
   "20260521103000_ensure_seed_vault_entries_api.sql",
 );
 const sql = fs.readFileSync(migrationPath, "utf8");
+const partitionFieldsMigrationPath = path.join(
+  repoRoot,
+  "supabase",
+  "migrations",
+  "20260521154500_add_seed_vault_partition_fields.sql",
+);
+const partitionFieldsSql = fs.readFileSync(partitionFieldsMigrationPath, "utf8");
 
 for (const needle of [
   "create table if not exists public.seed_vault_entries",
@@ -49,6 +56,22 @@ for (const needle of [
 
 if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(sql)) {
   throw new Error("Seed Vault migration must stay additive and non-destructive.");
+}
+
+for (const needle of [
+  "alter table public.seed_vault_entries",
+  "add column if not exists seed_variety text",
+  "add column if not exists seed_sex text",
+  "set seed_variety = seed_name",
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!partitionFieldsSql.includes(needle)) {
+    throw new Error(`Missing Seed Vault partition field migration contract: ${needle}`);
+  }
+}
+
+if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(partitionFieldsSql)) {
+  throw new Error("Seed Vault partition field migration must stay additive and non-destructive.");
 }
 
 console.log("Seed Vault migration regression check passed.");

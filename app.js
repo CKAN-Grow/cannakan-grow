@@ -4466,6 +4466,45 @@ function renderSeedTypeSelectOptions(selectedValue = "") {
   ].join("");
 }
 
+function normalizeSeedSexValue(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase().replace(/\s+/g, "-");
+  if (!normalizedValue) {
+    return "";
+  }
+  if (["feminized", "regular", "not-applicable"].includes(normalizedValue)) {
+    return normalizedValue;
+  }
+  if (["n/a", "na", "not-applicable", "not-applicable/n-a", "none"].includes(normalizedValue)) {
+    return "not-applicable";
+  }
+  return normalizedValue;
+}
+
+function getSeedSexLabel(value = "", fallback = "") {
+  const normalizedValue = normalizeSeedSexValue(value || fallback);
+  if (normalizedValue === "feminized") {
+    return "Feminized";
+  }
+  if (normalizedValue === "regular") {
+    return "Regular";
+  }
+  if (normalizedValue === "not-applicable") {
+    return "Not applicable";
+  }
+  const rawValue = String(value || fallback || "").trim();
+  return rawValue ? capitalize(rawValue.replace(/-/g, " ")) : "";
+}
+
+function renderSeedSexSelectOptions(selectedValue = "") {
+  const normalizedSelectedValue = normalizeSeedSexValue(selectedValue);
+  return `
+    <option value=""${normalizedSelectedValue ? "" : " selected"}>Select Sex</option>
+    <option value="feminized"${normalizedSelectedValue === "feminized" ? " selected" : ""}>Feminized</option>
+    <option value="regular"${normalizedSelectedValue === "regular" ? " selected" : ""}>Regular</option>
+    <option value="not-applicable"${normalizedSelectedValue === "not-applicable" ? " selected" : ""}>Not applicable</option>
+  `;
+}
+
 function normalizeIdentityPunctuation(value = "") {
   return String(value || "")
     .normalize("NFKC")
@@ -5123,7 +5162,9 @@ function normalizeSeedVaultEntry(entry = {}) {
       ? crypto.randomUUID()
       : `seed-vault-${Date.now()}`);
   const userId = String(entry.userId || entry.user_id || appState.user?.id || "").trim();
-  const seedName = String(entry.seedName || entry.seed_name || "").trim();
+  const seedVariety = String(entry.seedVariety || entry.seed_variety || entry.seedName || entry.seed_name || "").trim();
+  const seedType = normalizeSeedTypeId(entry.seedType || entry.seed_type || entry.type || "");
+  const seedSex = normalizeSeedSexValue(entry.seedSex || entry.seed_sex || entry.feminized || entry.sex || "");
   const quantityValue = Number(entry.quantity);
   const yearAcquiredValue = Number(entry.yearAcquired ?? entry.year_acquired);
   const seedAgeYearsValue = Number(entry.seedAgeYears ?? entry.seed_age_years);
@@ -5133,8 +5174,12 @@ function normalizeSeedVaultEntry(entry = {}) {
   return {
     id,
     userId,
-    seedName,
-    seedType: String(entry.seedType || entry.seed_type || "").trim(),
+    seedName: seedVariety,
+    seedVariety,
+    seedType,
+    type: seedType,
+    seedSex,
+    feminized: seedSex,
     source: String(entry.source || "").trim(),
     quantity: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     yearAcquired: Number.isFinite(yearAcquiredValue) ? Math.max(1900, Math.floor(yearAcquiredValue)) : null,
@@ -5164,7 +5209,9 @@ function mapSeedVaultEntryToRow(entry = {}) {
     id: normalizedEntry.id,
     user_id: normalizedEntry.userId,
     seed_name: normalizedEntry.seedName,
+    seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName,
     seed_type: normalizedEntry.seedType || null,
+    seed_sex: normalizedEntry.seedSex || null,
     source: normalizedEntry.source || null,
     quantity: normalizedEntry.quantity,
     year_acquired: normalizedEntry.yearAcquired,
@@ -5367,7 +5414,7 @@ async function persistSeedVaultEntry(entry = {}) {
     updatedAt: new Date().toISOString(),
   });
   if (!normalizedEntry || !normalizedEntry.seedName) {
-    throw new Error("Seed name / variety is required.");
+    throw new Error("Seed Variety is required.");
   }
 
   const currentEntries = sortSeedVaultEntries(appState.seedVaultEntries || []);
@@ -7501,8 +7548,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-seedsman-blue-dream-2026",
       userId: ownerId,
-      seedName: "Seedsman Blue Dream",
-      seedType: "Photoperiod",
+      seedVariety: "Seedsman Blue Dream",
+      seedType: "photoperiod",
+      seedSex: "feminized",
       source: "Seedsman",
       quantity: 24,
       yearAcquired: 2026,
@@ -7515,8 +7563,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-seedsman-gelato-41-2026",
       userId: ownerId,
-      seedName: "Seedsman Gelato 41",
-      seedType: "Photoperiod",
+      seedVariety: "Seedsman Gelato 41",
+      seedType: "photoperiod",
+      seedSex: "feminized",
       source: "Seedsman",
       quantity: 18,
       yearAcquired: 2026,
@@ -7529,8 +7578,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-seedsman-white-widow-2021",
       userId: ownerId,
-      seedName: "Seedsman White Widow archive",
-      seedType: "Photoperiod",
+      seedVariety: "Seedsman White Widow archive",
+      seedType: "photoperiod",
+      seedSex: "feminized",
       source: "Seedsman",
       quantity: 11,
       yearAcquired: 2021,
@@ -7543,8 +7593,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-lumen-lime-haze",
       userId: ownerId,
-      seedName: "Lumen Lime Haze",
-      seedType: "Fast",
+      seedVariety: "Lumen Lime Haze",
+      seedType: "fast",
+      seedSex: "feminized",
       source: "Lumen Leaf Genetics",
       quantity: 16,
       yearAcquired: 2025,
@@ -7557,8 +7608,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-verdant-mint-cake",
       userId: ownerId,
-      seedName: "Vault Mint Cake",
-      seedType: "Auto",
+      seedVariety: "Vault Mint Cake",
+      seedType: "auto",
+      seedSex: "feminized",
       source: "Verdant Vault Seeds",
       quantity: 9,
       yearAcquired: 2024,
@@ -7571,8 +7623,9 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     {
       id: "mock-vault-aurora-nightfall-archive",
       userId: ownerId,
-      seedName: "Aurora Nightfall archive",
-      seedType: "Regular",
+      seedVariety: "Aurora Nightfall archive",
+      seedType: "other",
+      seedSex: "regular",
       source: "Aurora Calyx Seedworks",
       quantity: 7,
       yearAcquired: 2019,
@@ -57752,8 +57805,13 @@ function getSeedVaultSearchText(entry = {}) {
   return [
     entry.seedName,
     entry.seed_name,
+    entry.seedVariety,
+    entry.seed_variety,
     entry.seedType,
     entry.seed_type,
+    entry.seedSex,
+    entry.seed_sex,
+    entry.feminized,
     entry.source,
     entry.notes,
   ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean).join(" ");
@@ -57875,6 +57933,9 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   const favoriteLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
   const statusLabel = normalizedEntry.isArchived ? "Archived" : "In vault";
   const compactStatusLabel = `${favoriteLabel}, ${statusLabel}`;
+  const seedTypeLabel = getSeedTypeLabel(normalizedEntry.seedType) || "Type not set";
+  const seedSexLabel = getSeedSexLabel(normalizedEntry.seedSex);
+  const seedMetaLabel = [seedTypeLabel, seedSexLabel].filter(Boolean).join(" · ");
 
   return `
     <article class="seed-vault-entry-card${normalizedEntry.isFavorite ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
@@ -57883,7 +57944,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-thumb seed-vault-entry-thumb")}
           <div>
             <h4>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</h4>
-            <p>${escapeHtml(normalizedEntry.seedType || "Seed type not set")}</p>
+            <p>${escapeHtml(seedMetaLabel || "Type not set")}</p>
           </div>
         </div>
         <div class="seed-vault-compact-cell">
@@ -58003,7 +58064,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         <div class="seed-vault-controls" aria-label="My Seed Vault controls">
           <label class="seed-vault-search-field">
             <span>Search My Seed Vault</span>
-            <input type="search" data-seed-vault-search="true" value="${escapeHtml(collectionState.searchQuery)}" placeholder="Search variety, source, type, or notes" autocomplete="off">
+            <input type="search" data-seed-vault-search="true" value="${escapeHtml(collectionState.searchQuery)}" placeholder="Search variety, source, type, sex, or notes" autocomplete="off">
           </label>
           <div class="seed-vault-filter-row">
             <label>
@@ -58078,8 +58139,9 @@ function getSeedVaultEntryFormSignature(form) {
 
   const formData = new FormData(form);
   return JSON.stringify({
-    seedName: String(formData.get("seedName") || "").trim(),
+    seedVariety: String(formData.get("seedVariety") || formData.get("seedName") || "").trim(),
     seedType: String(formData.get("seedType") || "").trim(),
+    seedSex: String(formData.get("seedSex") || "").trim(),
     source: String(formData.get("source") || "").trim(),
     quantity: String(formData.get("quantity") || "").trim(),
     yearAcquired: String(formData.get("yearAcquired") || "").trim(),
@@ -58295,8 +58357,9 @@ function getSeedVaultEntryFormPayload(form) {
   return normalizeSeedVaultEntry({
     id: String(form.dataset.seedVaultEntryId || "").trim(),
     userId: appState.user?.id || "",
-    seedName: String(formData.get("seedName") || "").trim(),
-    seedType: String(formData.get("seedType") || "").trim(),
+    seedVariety: String(formData.get("seedVariety") || formData.get("seedName") || "").trim(),
+    seedType: normalizeSeedTypeId(formData.get("seedType") || ""),
+    seedSex: normalizeSeedSexValue(formData.get("seedSex") || ""),
     source: String(formData.get("source") || "").trim(),
     quantity: quantityValue ? Number(quantityValue) : null,
     yearAcquired: yearAcquiredValue ? Number(yearAcquiredValue) : null,
@@ -58355,8 +58418,8 @@ async function saveSeedVaultEntryForm(form, options = {}) {
 
   const payload = getSeedVaultEntryFormPayload(form);
   if (!payload?.seedName) {
-    setFeedbackMessage(message, "Seed name / variety is required.", "error");
-    form.elements.seedName?.focus();
+    setFeedbackMessage(message, "Seed Variety is required.", "error");
+    form.elements.seedVariety?.focus();
     return false;
   }
 
@@ -58429,19 +58492,29 @@ function openSeedVaultEntryModal() {
         <p>Create a Vault Entry for seeds you own. Session linking will come in a later pass.</p>
       </div>
       <form class="seed-vault-entry-form" data-seed-vault-entry-form>
-        <label>
-          <span>Seed name / variety</span>
-          <input name="seedName" type="text" maxlength="120" autocomplete="off" placeholder="Blue Dream" required>
-        </label>
-        <label>
-          <span>Seed type/category</span>
-          <input name="seedType" type="text" maxlength="80" autocomplete="off" placeholder="Photoperiod, Auto, CBD">
-        </label>
-        <label>
+        <label class="partition-identity-field" data-identity-autocomplete="source">
           <span>Source</span>
-          <input name="source" type="text" maxlength="120" autocomplete="off" placeholder="Breeder, seed bank, or swap">
+          <input name="source" type="text" maxlength="120" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-autocomplete="list">
+          <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
+        </label>
+        <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
+          <span>Seed Variety</span>
+          <input name="seedVariety" type="text" maxlength="120" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-autocomplete="list" required>
+          <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
         </label>
         <div class="seed-vault-form-grid">
+          <label>
+            <span>Type</span>
+            <select name="seedType" autocomplete="off">
+              ${renderSeedTypeSelectOptions()}
+            </select>
+          </label>
+          <label>
+            <span>Sex</span>
+            <select name="seedSex" autocomplete="off">
+              ${renderSeedSexSelectOptions()}
+            </select>
+          </label>
           <label>
             <span>Quantity</span>
             <input name="quantity" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" placeholder="#">
@@ -58513,6 +58586,7 @@ function openSeedVaultEntryModal() {
   if (form instanceof HTMLFormElement) {
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     bindSeedVaultEntryModalGuards(overlay, form);
+    initializePartitionIdentityAutocompletes(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await saveSeedVaultEntryForm(form);
@@ -58521,7 +58595,7 @@ function openSeedVaultEntryModal() {
 
   document.body.appendChild(overlay);
   document.body.classList.add("modal-open");
-  overlay.querySelector('input[name="seedName"]')?.focus({ preventScroll: true });
+  overlay.querySelector('input[name="source"]')?.focus({ preventScroll: true });
 }
 
 async function updateSeedVaultEntryFlag(entryId = "", updates = {}) {

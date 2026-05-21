@@ -7,6 +7,8 @@ const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
 for (const needle of [
   "function mergeSeedVaultEntryCollections(primaryEntries = [], secondaryEntries = [])",
   "function syncSeedVaultEntriesToBackend(entries = [], userId = appState.user?.id || \"\")",
+  "seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName",
+  "seed_sex: normalizedEntry.seedSex || null",
   "return normalizedUserId ? `${SEED_VAULT_STORAGE_KEY}:${normalizedUserId}` : SEED_VAULT_STORAGE_KEY;",
   ".upsert(rows, { onConflict: \"id\" })",
   "const localEntries = loadStoredSeedVaultEntries(userId);",
