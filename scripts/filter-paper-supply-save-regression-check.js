@@ -22,6 +22,16 @@ for (const needle of [
   "async function ensureFilterPaperInventoryForUser(user = appState.user)",
   "async function saveFilterPaperInventoryForCurrentUser(inventory)",
   "await saveFilterPaperInventoryForCurrentUser({",
+  "function shouldAutoDeductFilterPaperForSessionStart(session)",
+  "function getFilterPaperUsageForSessionStart(session)",
+  "function applyFilterPaperDeductionForStartedSession(session)",
+  "FILTER_PAPER_USAGE_PER_STARTED_SESSION",
+  "systemType === \"KAN\" || systemType === \"TRA\"",
+  "count: Math.max(0, inventory.count - filterPaperUsage)",
+  "if (shouldAutoDeductFilterPaperForSessionStart(savedSession))",
+  "applyFilterPaperDeductionForStartedSession(savedSession);",
+  "Auto subtract when a session starts",
+  "each time a grow session is started.",
   ".from(USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE)",
   ".upsert(payload, { onConflict: \"user_id\" })",
   "throw saveResult.error;",
@@ -33,6 +43,18 @@ for (const needle of [
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing filter paper supply save behavior: ${needle}`);
+  }
+}
+
+for (const forbiddenNeedle of [
+  "shouldAutoDeductFilterPaperForSessionCompletion",
+  "applyFilterPaperDeductionForCompletedSession",
+  "FILTER_PAPER_USAGE_PER_COMPLETED_SESSION",
+  "Auto subtract when a session is completed",
+  "each time a grow session is marked completed.",
+]) {
+  if (appSource.includes(forbiddenNeedle)) {
+    throw new Error(`Filter paper deduction should be session-start based, but found: ${forbiddenNeedle}`);
   }
 }
 

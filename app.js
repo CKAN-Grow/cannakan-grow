@@ -929,9 +929,9 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
     },
   },
 ]);
-const FILTER_PAPER_USAGE_PER_COMPLETED_SESSION = 1;
+const FILTER_PAPER_USAGE_PER_STARTED_SESSION = 1;
 // Future: support multiple pack sizes and dynamic product selection.
-// TODO: Support per-session usage amounts instead of a fixed 1 paper per completed session.
+// TODO: Support per-session usage amounts instead of a fixed 1 paper per started session.
 const SYSTEM_LAYOUT_ASSETS = {
   KAN: "/public/assets/system-layout-kan.svg",
   TRA: "/public/assets/system-layout-tra.svg",
@@ -4225,25 +4225,33 @@ function setSessionFilterPaperDeducted(session, deducted = true) {
   }
 }
 
-function shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus = "") {
+function shouldAutoDeductFilterPaperForSessionStart(session) {
   const inventory = getFilterPaperInventory();
   return (
     inventory.autoSubtract
-    && normalizeSessionStatus(previousStatus) !== "completed"
-    && normalizeSessionStatus(session?.sessionStatus) === "completed"
+    && Boolean(String(session?.id || "").trim())
     && !getSessionFilterPaperDeducted(session)
   );
 }
 
-function applyFilterPaperDeductionForCompletedSession(session) {
+function getFilterPaperUsageForSessionStart(session) {
+  const systemType = String(session?.systemType || "").trim().toUpperCase();
+  if (systemType === "KAN" || systemType === "TRA") {
+    return FILTER_PAPER_USAGE_PER_STARTED_SESSION;
+  }
+  return FILTER_PAPER_USAGE_PER_STARTED_SESSION;
+}
+
+function applyFilterPaperDeductionForStartedSession(session) {
   if (!session?.id || getSessionFilterPaperDeducted(session)) {
     return null;
   }
 
   const inventory = getFilterPaperInventory();
+  const filterPaperUsage = getFilterPaperUsageForSessionStart(session);
   const nextInventory = saveFilterPaperInventory({
     ...inventory,
-    count: Math.max(0, inventory.count - FILTER_PAPER_USAGE_PER_COMPLETED_SESSION),
+    count: Math.max(0, inventory.count - filterPaperUsage),
   });
   void saveFilterPaperInventoryPreferenceToBackend(appState.user?.id || "", nextInventory).then((saveResult) => {
     if (saveResult?.error) {
@@ -23088,16 +23096,9 @@ async function updateSessionFromNotification(sessionId = "", updater = null, opt
     return null;
   }
 
-  const previousStatus = session.sessionStatus || "";
-  const updateResult = updater(session) || {};
-  const shouldDeductFilterPaper = Boolean(
-    Object.prototype.hasOwnProperty.call(updateResult, "shouldDeductFilterPaper")
-      ? updateResult.shouldDeductFilterPaper
-      : shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus)
-  );
+  updater(session);
   const savedSession = await saveSessionUpdate(session);
-  if (savedSession && shouldDeductFilterPaper) {
-    applyFilterPaperDeductionForCompletedSession(savedSession);
+  if (savedSession) {
     Object.assign(session, savedSession);
   }
   if (savedSession) {
@@ -23170,7 +23171,6 @@ async function handleAppNotificationAction(notification = null, action = null) {
       session.sessionStatus = "germinating";
       session.germinationStartedAt = session.germinationStartedAt || new Date().toISOString();
       session.completedAt = "";
-      return { shouldDeductFilterPaper: false };
     });
     if (savedSession) {
       safeRender();
@@ -23193,7 +23193,6 @@ async function handleAppNotificationAction(notification = null, action = null) {
       captureFirstPlantedEventForSession(session);
       session.firstPlantedAt = session.firstPlantedAt || timestamp;
       session.completedAt = "";
-      return { shouldDeductFilterPaper: false };
     });
     if (savedSession) {
       safeRender();
@@ -23214,7 +23213,6 @@ async function handleAppNotificationAction(notification = null, action = null) {
       session.sessionStatus = "completed";
       session.germinationStartedAt = session.germinationStartedAt || getSessionStatusStartedAtValue(session) || new Date().toISOString();
       session.completedAt = session.completedAt || new Date().toISOString();
-      return { shouldDeductFilterPaper: true };
     });
     if (savedSession) {
       safeRender();
@@ -36362,8 +36360,8 @@ function ensureFilterPaperInventoryModal() {
           <label class="filter-paper-setting-row">
             <input type="checkbox" name="autoSubtract">
             <span class="filter-paper-setting-copy">
-              <strong>Auto subtract when a session is completed</strong>
-              <small>Automatically remove 1 filter paper from your global inventory each time a grow session is marked completed.</small>
+              <strong>Auto subtract when a session starts</strong>
+              <small>Automatically remove 1 filter paper from your global inventory each time a grow session is started.</small>
             </span>
           </label>
           <label class="filter-paper-setting-row">
@@ -59027,7 +59025,6 @@ function renderSessionForm(initialSystemType = "KAN") {
       setUnsavedChangesLastSaveError(new Error(timelineValidation.message), timelineValidation.message);
       return null;
     }
-  const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session);
   const existingSessionsBeforeSave = getSessions();
 
     try {
@@ -59054,8 +59051,8 @@ function renderSessionForm(initialSystemType = "KAN") {
       if (savedSession.sessionImages.length !== (session.sessionImages || []).length && (session.sessionImages || []).length) {
         savedSession.sessionImages = await persistSessionImages(savedSession, session.sessionImages);
       }
-      if (shouldDeductFilterPaper) {
-        applyFilterPaperDeductionForCompletedSession(savedSession);
+      if (shouldAutoDeductFilterPaperForSessionStart(savedSession)) {
+        applyFilterPaperDeductionForStartedSession(savedSession);
       }
       await refreshUserSessionsAfterSave("new-session:save");
       markUnsavedChangesSaved();
@@ -62821,13 +62818,8 @@ function renderSessionDetail(sessionId) {
       detail.lifecycleSection,
       buildSessionLifecycleState(session),
     );
-    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
     void saveSessionUpdate(session).then((savedSession) => {
       if (savedSession) {
-        if (shouldDeductFilterPaper) {
-          applyFilterPaperDeductionForCompletedSession(savedSession);
-          Object.assign(session, savedSession);
-        }
         markUnsavedChangesSaved();
       }
     });
@@ -62933,13 +62925,8 @@ function renderSessionDetail(sessionId) {
     syncDetailSeedAgeVisibility();
     refreshDetailDerivedViews();
 
-    const shouldDeductFilterPaper = shouldAutoDeductFilterPaperForSessionCompletion(session, previousStatus);
     const savedSession = await saveSessionUpdate(session);
     if (savedSession) {
-      if (shouldDeductFilterPaper) {
-        applyFilterPaperDeductionForCompletedSession(savedSession);
-        Object.assign(session, savedSession);
-      }
       markUnsavedChangesSaved();
     }
   });
@@ -67091,9 +67078,6 @@ async function saveSessionUpdate(session) {
       existingSessions: getSessions(),
       isNewSession: false,
     });
-    if (shouldAutoDeductFilterPaperForSessionCompletion(savedSession, previousStatus)) {
-      applyFilterPaperDeductionForCompletedSession(savedSession);
-    }
     Object.assign(session, savedSession);
     return savedSession;
   } catch (error) {
