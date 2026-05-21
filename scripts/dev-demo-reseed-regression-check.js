@@ -39,8 +39,8 @@ function getFunctionBody(source, functionName) {
 }
 
 for (const needle of [
-  'const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v1";',
-  'const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/seedsman-logo.png";',
+  'const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v2";',
+  'const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/real/seedsman-logo.png";',
   "const DEV_DEMO_SOURCE_LOGOS = Object.freeze({",
   "function resetAndReseedDevModeMockData(options = {})",
   "function isDevModeOnlyMockRecord(record = {})",
@@ -56,6 +56,13 @@ for (const needle of [
   "persistAppNotifications([...buildDevModeAppNotifications(), ...existingNotifications]",
   "getSourceDirectoryMockRecords()",
   "isMockDataEnabled() ? testedSourcesMock : []",
+  "function buildMockGalleryPartitionRecords(partitionSpecs = [])",
+  "partitionResults: buildSnapshotPartitionResultMetadata(resultSummary, systemType === \"TRA\" ? 16 : 8)",
+  "resultSummary: buildSnapshotResultSummaryMetadata(resultSummary)",
+  "if (isMockGallerySnapshot(snapshot) && !isMockDataEnabled())",
+  "const feedDetails = getGallerySnapshotFeedDetails(snapshot);",
+  "const minimumSnapshotCount = isMockDataEnabled() ? 2 : 3;",
+  ".filter((entry) => entry.snapshotCount >= minimumSnapshotCount)",
   "renderMySeedVaultPanelMarkup(entries = [], options = {})",
   "return isMockDataEnabled()\n    ? GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({ ...entry }))\n    : [];",
   "normalizeSeedVaultEntry(entry = {})",
@@ -68,7 +75,7 @@ for (const needle of [
 }
 
 for (const logoPath of [
-  "public/assets/images/sources/seedsman-logo.png",
+  "public/assets/images/sources/real/seedsman-logo.png",
   "public/assets/images/sources/mock/lumen-leaf-genetics.svg",
   "public/assets/images/sources/mock/verdant-vault-seeds.svg",
   "public/assets/images/sources/mock/northstar-germplasm.svg",
@@ -106,6 +113,27 @@ for (const sourceName of [
   "Aurora Calyx Seedworks",
 ]) {
   requireNeedle(appSource, sourceName, `mock source ${sourceName}`);
+}
+
+const mockGallerySeedBody = getFunctionBody(appSource, "buildMockGallerySnapshotSeedRecords");
+const configuredSnapshotCount = (mockGallerySeedBody.match(/title:\s*"/g) || []).length;
+if (configuredSnapshotCount < 12 || configuredSnapshotCount > 25) {
+  throw new Error(`Expected 12-25 approved Dev Mode Community Grow snapshots, found ${configuredSnapshotCount}`);
+}
+if ((mockGallerySeedBody.match(/source:\s*"Seedsman"/g) || []).length < 8) {
+  throw new Error("Seedsman should have prominent Dev Mode Community Grow coverage.");
+}
+if ((mockGallerySeedBody.match(/monthOffset:\s*0/g) || []).length < 8) {
+  throw new Error("Community Insights needs enough current-month Dev Mode snapshots.");
+}
+for (const requiredNeedle of [
+  "Mixed KAN comparison with Seedsman control",
+  "repeat: 16",
+  "germinatedCount: 6",
+  "germinatedCount: 3",
+  "seedAgeYears: 7",
+]) {
+  requireNeedle(mockGallerySeedBody, requiredNeedle, `mock gallery coverage ${requiredNeedle}`);
 }
 
 console.log("Dev demo reseed regression check passed.");

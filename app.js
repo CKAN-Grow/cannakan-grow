@@ -1,6 +1,6 @@
 const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
-const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v1";
+const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v2";
 const SAMPLE_SEED_VERSION = DEV_DEMO_DATA_VERSION;
 const GALLERY_MOCK_DATA_VERSION = DEV_DEMO_DATA_VERSION;
 const GALLERY_SNAPSHOT_PAGE_SIZE = 12;
@@ -11,7 +11,7 @@ const FILTER_PAPER_INVENTORY_STORAGE_KEY = "cannakanGrowFilterPaperInventory";
 const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDeductionRegistry";
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
-const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/seedsman-logo.png";
+const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/real/seedsman-logo.png";
 const DEV_DEMO_SOURCE_LOGOS = Object.freeze({
   seedsman: SEEDSMAN_DEMO_LOGO_URL,
   "lumen-leaf-genetics": "/assets/images/sources/mock/lumen-leaf-genetics.svg",
@@ -7886,71 +7886,411 @@ function getMockGallerySharedProfile(index, record) {
   };
 }
 
-function buildMockGallerySnapshotSeedRecords(now = new Date()) {
-  const sources = [
-    "Seedsman",
-    "Lumen Leaf Genetics",
-    "Verdant Vault Seeds",
-    "Northstar Germplasm",
-    "Summit Sprout Collective",
-    "Aurora Calyx Seedworks",
-  ];
-  const seedVarieties = [
-    "Seedsman Blue Dream",
-    "Seedsman Gelato 41",
-    "Seedsman White Widow",
-    "Lumen Lime Haze",
-    "Vault Mint Cake",
-    "Aurora Nightfall",
-  ];
-  const varietyBaseRates = [98, 97, 96, 94, 92, 88];
-  const sourceAdjustments = [2, -1, -2, -3, -4, -6];
-  const rowAdjustments = [2, 1, 0, -1, -3, -5];
-  const seedTypePattern = ["photoperiod", "auto", "fast", "flower", "vegetable", "fruit", "other"];
-  const seedCountPattern = [18, 22, 24, 28, 32, 36];
-  const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
-  const hourPattern = [8, 10, 12, 15, 17, 19];
-
-  return sources.flatMap((source, sourceIndex) => (
-    seedVarieties.map((_, rowIndex) => {
-      const recordIndex = (sourceIndex * seedVarieties.length) + rowIndex;
-      const seedVariety = seedVarieties[(sourceIndex + rowIndex) % seedVarieties.length];
-      const varietyIndex = seedVarieties.indexOf(seedVariety);
-      const monthOffset = Math.floor(recordIndex / 9);
-      const monthReference = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1, 12, 0, 0, 0);
-      const seedCount = seedCountPattern[(sourceIndex + rowIndex) % seedCountPattern.length];
-      const targetRate = clampNumber(
-        varietyBaseRates[varietyIndex] + sourceAdjustments[sourceIndex] + rowAdjustments[rowIndex],
-        72,
-        100,
-      );
-      const germinatedCount = clampNumber(Math.round((seedCount * targetRate) / 100), 1, seedCount);
-      const germinationRate = Math.round((germinatedCount / seedCount) * 100);
-      const likeNoise = getMockGallerySeededNoise(recordIndex + 1);
-      const monthRecencyBoost = [10, 7, 4, 2][monthOffset] || 1;
-      const likes = clampNumber(
-        Math.round((germinationRate * 0.22) + (likeNoise * 18) + monthRecencyBoost),
-        3,
-        48,
-      );
-
+function buildMockGalleryPartitionRecords(partitionSpecs = []) {
+  let partitionIndex = 0;
+  return (partitionSpecs || []).flatMap((spec) => {
+    const repeat = Math.max(1, Number(spec.repeat) || 1);
+    return Array.from({ length: repeat }, () => {
+      partitionIndex += 1;
       return {
-        source,
-        seedVariety,
-        seedType: seedTypePattern[(sourceIndex + rowIndex) % seedTypePattern.length],
-        seedCount,
-        germinatedCount,
-        germinationRate,
-        submittedAt: createMockGalleryMonthDate(
-          monthReference,
-          dayPattern[recordIndex % dayPattern.length],
-          hourPattern[(sourceIndex + (rowIndex * 2)) % hourPattern.length],
-        ),
-        approved: true,
-        likes,
+        id: partitionIndex,
+        seedVariety: spec.seedVariety || "",
+        source: spec.source || "",
+        breeder: spec.source || "",
+        seedType: normalizeSeedTypeId(spec.seedType || "") || "photoperiod",
+        feminized: spec.feminized || "feminized",
+        seedCount: Math.max(0, Number(spec.seedCount) || 0),
+        plantedCount: String(Math.max(0, Number(spec.germinatedCount) || 0)),
+        seedAgeYears: normalizeSeedAgeYears(spec.seedAgeYears),
       };
-    })
-  ));
+    });
+  });
+}
+
+function buildMockGallerySnapshotSeedRecords(now = new Date()) {
+  const snapshotConfigs = [
+    {
+      title: "Seedsman Blue Dream uniform KAN run",
+      source: "Seedsman",
+      seedVariety: "Seedsman Blue Dream",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 0,
+      day: 19,
+      hour: 9,
+      note: "Fresh Seedsman Blue Dream showed even tails across all KAN partitions.",
+      partitionSpecs: [
+        { repeat: 8, seedVariety: "Seedsman Blue Dream", source: "Seedsman", seedType: "photoperiod", seedCount: 6, germinatedCount: 6, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Seedsman Gelato 41 fresh lot check",
+      source: "Seedsman",
+      seedVariety: "Seedsman Gelato 41",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 0,
+      day: 17,
+      hour: 15,
+      note: "Fresh pack stayed tightly grouped with one late seed in the final partition.",
+      partitionSpecs: [
+        { repeat: 7, seedVariety: "Seedsman Gelato 41", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+        { repeat: 1, seedVariety: "Seedsman Gelato 41", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Seedsman White Widow quick response",
+      source: "Seedsman",
+      seedVariety: "Seedsman White Widow",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 0,
+      day: 15,
+      hour: 11,
+      note: "Strong fresh White Widow result with one slower edge partition.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Seedsman White Widow", source: "Seedsman", seedType: "photoperiod", seedCount: 4, germinatedCount: 4, seedAgeYears: 1.5 },
+        { repeat: 2, seedVariety: "Seedsman White Widow", source: "Seedsman", seedType: "photoperiod", seedCount: 4, germinatedCount: 3, seedAgeYears: 1.5 },
+      ],
+    },
+    {
+      title: "Seedsman Northern Lights TRA tray",
+      source: "Seedsman",
+      seedVariety: "Seedsman Northern Lights Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "1",
+      monthOffset: 0,
+      day: 13,
+      hour: 10,
+      note: "TRA tray filled evenly; all sixteen groups accounted for cleanly.",
+      partitionSpecs: [
+        { repeat: 16, seedVariety: "Seedsman Northern Lights Auto", source: "Seedsman", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Mixed KAN comparison with Seedsman control",
+      source: "Seedsman",
+      seedVariety: "Mixed KAN comparison",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 0,
+      day: 11,
+      hour: 16,
+      note: "Seedsman control partitions stayed perfect while the older comparison source lagged.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Seedsman Blue Dream", source: "Seedsman", seedType: "photoperiod", seedCount: 6, germinatedCount: 6, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "Aurora Nightfall archive", source: "Aurora Calyx Seedworks", seedType: "other", seedCount: 6, germinatedCount: 3, seedAgeYears: 7 },
+      ],
+    },
+    {
+      title: "Seedsman Amnesia Auto TRA validation",
+      source: "Seedsman",
+      seedVariety: "Seedsman Amnesia Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "2",
+      monthOffset: 0,
+      day: 9,
+      hour: 8,
+      note: "Fresh auto run with consistent emergence and two slower cells.",
+      partitionSpecs: [
+        { repeat: 14, seedVariety: "Seedsman Amnesia Auto", source: "Seedsman", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "Seedsman Amnesia Auto", source: "Seedsman", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Lumen Lime Haze compact KAN",
+      source: "Lumen Leaf Genetics",
+      seedVariety: "Lumen Lime Haze",
+      seedType: "fast",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 0,
+      day: 8,
+      hour: 18,
+      note: "Fictional fast-cycle source with strong but not perfect consistency.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Lumen Lime Haze", source: "Lumen Leaf Genetics", seedType: "fast", seedCount: 5, germinatedCount: 5, seedAgeYears: 1.5 },
+        { repeat: 2, seedVariety: "Lumen Lime Haze", source: "Lumen Leaf Genetics", seedType: "fast", seedCount: 5, germinatedCount: 4, seedAgeYears: 1.5 },
+      ],
+    },
+    {
+      title: "Verdant Vault Mint Cake mixed-age run",
+      source: "Verdant Vault Seeds",
+      seedVariety: "Vault Mint Cake",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 0,
+      day: 7,
+      hour: 12,
+      note: "Believable mixed-age source example for Source Directory depth.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "Vault Mint Cake", source: "Verdant Vault Seeds", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 2 },
+        { repeat: 3, seedVariety: "Vault Mint Cake", source: "Verdant Vault Seeds", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 3 },
+      ],
+    },
+    {
+      title: "Northstar Pearl public check",
+      source: "Northstar Germplasm",
+      seedVariety: "Northstar Pearl",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 0,
+      day: 6,
+      hour: 14,
+      note: "Clean fictional-source entry with moderate partition spread.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Northstar Pearl", source: "Northstar Germplasm", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 2 },
+        { repeat: 4, seedVariety: "Northstar Pearl", source: "Northstar Germplasm", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 2.5 },
+      ],
+    },
+    {
+      title: "Summit Sprout Alpine Auto tray",
+      source: "Summit Sprout Collective",
+      seedVariety: "Alpine Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "3",
+      monthOffset: 0,
+      day: 5,
+      hour: 17,
+      note: "TRA example with a few average cells so the demo does not feel synthetic.",
+      partitionSpecs: [
+        { repeat: 11, seedVariety: "Alpine Auto", source: "Summit Sprout Collective", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 2 },
+        { repeat: 5, seedVariety: "Alpine Auto", source: "Summit Sprout Collective", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 3 },
+      ],
+    },
+    {
+      title: "Aurora Nightfall archive rescue",
+      source: "Aurora Calyx Seedworks",
+      seedVariety: "Aurora Nightfall archive",
+      seedType: "other",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 0,
+      day: 4,
+      hour: 10,
+      note: "Older fictional archive lot with a natural viability decline.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "Aurora Nightfall archive", source: "Aurora Calyx Seedworks", seedType: "other", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
+        { repeat: 3, seedVariety: "Aurora Nightfall archive", source: "Aurora Calyx Seedworks", seedType: "other", seedCount: 5, germinatedCount: 3, seedAgeYears: 8 },
+      ],
+    },
+    {
+      title: "Fictional source mixed KAN stack",
+      source: "Verdant Vault Seeds",
+      seedVariety: "Fictional source comparison",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 0,
+      day: 3,
+      hour: 19,
+      note: "Mixed-source mock session exercises fair partition-level analytics.",
+      partitionSpecs: [
+        { repeat: 3, seedVariety: "Vault Mint Cake", source: "Verdant Vault Seeds", seedType: "photoperiod", seedCount: 6, germinatedCount: 6, seedAgeYears: 2 },
+        { repeat: 3, seedVariety: "Lumen Lime Haze", source: "Lumen Leaf Genetics", seedType: "fast", seedCount: 6, germinatedCount: 5, seedAgeYears: 1.5 },
+        { repeat: 2, seedVariety: "Northstar Pearl", source: "Northstar Germplasm", seedType: "photoperiod", seedCount: 6, germinatedCount: 5, seedAgeYears: 3 },
+      ],
+    },
+    {
+      title: "Seedsman Blue Dream April benchmark",
+      source: "Seedsman",
+      seedVariety: "Seedsman Blue Dream",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 1,
+      day: 24,
+      hour: 9,
+      note: "Prior-month benchmark keeps Seedsman visible in consistency trends.",
+      partitionSpecs: [
+        { repeat: 8, seedVariety: "Seedsman Blue Dream", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Seedsman Gelato April follow-up",
+      source: "Seedsman",
+      seedVariety: "Seedsman Gelato 41",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 1,
+      day: 20,
+      hour: 15,
+      note: "Strong follow-up result with one non-germinated seed accounted for.",
+      partitionSpecs: [
+        { repeat: 7, seedVariety: "Seedsman Gelato 41", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1.5 },
+        { repeat: 1, seedVariety: "Seedsman Gelato 41", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 1.5 },
+      ],
+    },
+    {
+      title: "Seedsman White Widow archive comparison",
+      source: "Seedsman",
+      seedVariety: "Seedsman White Widow archive",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 1,
+      day: 16,
+      hour: 11,
+      note: "Older Seedsman lot shows modest decline without dragging down fresh-lot performance.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Seedsman White Widow archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 5 },
+        { repeat: 4, seedVariety: "Seedsman White Widow archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5.5 },
+      ],
+    },
+    {
+      title: "Lumen Leaf April comparison",
+      source: "Lumen Leaf Genetics",
+      seedVariety: "Lumen Lime Haze",
+      seedType: "fast",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 1,
+      day: 11,
+      hour: 16,
+      note: "Steady fictional source result for all-time rankings.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "Lumen Lime Haze", source: "Lumen Leaf Genetics", seedType: "fast", seedCount: 5, germinatedCount: 5, seedAgeYears: 2 },
+        { repeat: 3, seedVariety: "Lumen Lime Haze", source: "Lumen Leaf Genetics", seedType: "fast", seedCount: 5, germinatedCount: 4, seedAgeYears: 2 },
+      ],
+    },
+    {
+      title: "Northstar April viability check",
+      source: "Northstar Germplasm",
+      seedVariety: "Northstar Pearl",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 1,
+      day: 7,
+      hour: 10,
+      note: "Moderate, believable result from a fictional source.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "Northstar Pearl", source: "Northstar Germplasm", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 3 },
+        { repeat: 3, seedVariety: "Northstar Pearl", source: "Northstar Germplasm", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 4 },
+      ],
+    },
+    {
+      title: "Seedsman March Blue Dream replay",
+      source: "Seedsman",
+      seedVariety: "Seedsman Blue Dream",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 2,
+      day: 25,
+      hour: 13,
+      note: "Historic Seedsman benchmark for trend continuity.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Seedsman Blue Dream", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1.5 },
+        { repeat: 2, seedVariety: "Seedsman Blue Dream", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 1.5 },
+      ],
+    },
+    {
+      title: "Seedsman Northern Lights March tray",
+      source: "Seedsman",
+      seedVariety: "Seedsman Northern Lights Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "4",
+      monthOffset: 2,
+      day: 18,
+      hour: 8,
+      note: "TRA benchmark with complete germination across sixteen small groups.",
+      partitionSpecs: [
+        { repeat: 16, seedVariety: "Seedsman Northern Lights Auto", source: "Seedsman", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Verdant Vault March baseline",
+      source: "Verdant Vault Seeds",
+      seedVariety: "Vault Mint Cake",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 2,
+      day: 12,
+      hour: 17,
+      note: "Another fictional source baseline for all-time ecosystem depth.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Vault Mint Cake", source: "Verdant Vault Seeds", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 2 },
+        { repeat: 2, seedVariety: "Vault Mint Cake", source: "Verdant Vault Seeds", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 3.5 },
+      ],
+    },
+    {
+      title: "Summit March alpine check",
+      source: "Summit Sprout Collective",
+      seedVariety: "Alpine Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "2",
+      monthOffset: 2,
+      day: 8,
+      hour: 11,
+      note: "Average fictional-source outcome for realistic distribution.",
+      partitionSpecs: [
+        { repeat: 10, seedVariety: "Alpine Auto", source: "Summit Sprout Collective", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 3 },
+        { repeat: 6, seedVariety: "Alpine Auto", source: "Summit Sprout Collective", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 4 },
+      ],
+    },
+    {
+      title: "Aurora March archive recovery",
+      source: "Aurora Calyx Seedworks",
+      seedVariety: "Aurora Nightfall archive",
+      seedType: "other",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 2,
+      day: 3,
+      hour: 9,
+      note: "Older archive rescue keeps the seed-age story grounded.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Aurora Nightfall archive", source: "Aurora Calyx Seedworks", seedType: "other", seedCount: 5, germinatedCount: 4, seedAgeYears: 8 },
+        { repeat: 4, seedVariety: "Aurora Nightfall archive", source: "Aurora Calyx Seedworks", seedType: "other", seedCount: 5, germinatedCount: 3, seedAgeYears: 9 },
+      ],
+    },
+  ];
+
+  return snapshotConfigs.map((config, index) => {
+    const partitions = buildMockGalleryPartitionRecords(config.partitionSpecs);
+    const seedCount = partitions.reduce((total, partition) => total + (Number(partition.seedCount) || 0), 0);
+    const germinatedCount = partitions.reduce((total, partition) => total + (Number(partition.plantedCount) || 0), 0);
+    const germinationRate = seedCount > 0 ? Math.round((germinatedCount / seedCount) * 100) : 0;
+    const monthReference = new Date(now.getFullYear(), now.getMonth() - (Number(config.monthOffset) || 0), 1, 12, 0, 0, 0);
+    const likeNoise = getMockGallerySeededNoise(index + 3);
+    const monthRecencyBoost = [12, 7, 4, 2][Number(config.monthOffset) || 0] || 1;
+    const likes = clampNumber(
+      Math.round((germinationRate * 0.24) + (likeNoise * 20) + monthRecencyBoost),
+      8,
+      64,
+    );
+
+    return {
+      title: config.title,
+      source: config.source,
+      seedVariety: config.seedVariety,
+      seedType: config.seedType,
+      systemType: config.systemType,
+      unitId: config.unitId,
+      seedCount,
+      germinatedCount,
+      germinationRate,
+      submittedAt: createMockGalleryMonthDate(monthReference, config.day, config.hour),
+      approved: true,
+      likes,
+      note: config.note,
+      partitions,
+    };
+  });
 }
 
 function buildMockGalleryTimeline(record, index = 0) {
@@ -7974,19 +8314,26 @@ function buildMockGalleryTimeline(record, index = 0) {
 
 function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords()) {
   return records.map((record, index) => {
-    const systemType = index % 2 === 0 ? "KAN" : "TRA";
-    const unitId = systemType === "KAN"
+    const systemType = String(record.systemType || (index % 2 === 0 ? "KAN" : "TRA")).trim().toUpperCase() || "KAN";
+    const unitId = record.unitId || (systemType === "KAN"
       ? String.fromCharCode(65 + (index % 4))
-      : String((index % 4) + 1);
+      : String((index % 4) + 1));
     const usesDetailsOnlyCard = index % 9 === 0;
     const sharedProfile = getMockGallerySharedProfile(index, record);
     const timeline = buildMockGalleryTimeline(record, index);
+    const resultSummary = getSessionResultSummary({
+      id: `mock-gallery-session-${String(index + 1).padStart(2, "0")}`,
+      systemType,
+      seedAgeTrackingEnabled: true,
+      seedAgeMode: "mixed",
+      partitions: record.partitions || [],
+    });
 
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
       userId: GALLERY_MOCK_USER_ID,
       sessionId: "",
-      title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
+      title: record.title || `DEV MOCK - ${record.seedVariety} - ${record.source}`,
       imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
       imagePath: "",
       sessionDate: timeline.sessionDate,
@@ -8006,7 +8353,15 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       profileImageUrl: sharedProfile.profileImageUrl,
       status: "approved",
       published: record.approved,
-      includeNotes: false,
+      includeNotes: true,
+      publicGrowNote: record.note || "",
+      includePublicGrowNote: Boolean(record.note),
+      seedAgeTrackingEnabled: true,
+      seedAgeMode: "mixed",
+      sessionSeedAgeYears: null,
+      partitions: record.partitions || [],
+      partitionResults: buildSnapshotPartitionResultMetadata(resultSummary, systemType === "TRA" ? 16 : 8),
+      resultSummary: buildSnapshotResultSummaryMetadata(resultSummary),
       publishedAt: record.submittedAt,
       createdAt: record.submittedAt,
       updatedAt: record.submittedAt,
@@ -22065,13 +22420,24 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
   const linkedSession = snapshot?.sessionId
     ? getSessions().find((session) => session.id === snapshot.sessionId)
     : null;
-  const firstPartitionWithIdentity = (linkedSession?.partitions || []).find((partition) => (
+  const snapshotPartitions = Array.isArray(snapshot?.partitions) && snapshot.partitions.length
+    ? snapshot.partitions
+    : (Array.isArray(snapshot?.partitionResults)
+      ? snapshot.partitionResults.map((partition, index) => ({
+          id: partition.id || partition.partitionId || index + 1,
+          source: partition.source || partition.sourceLabel || "",
+          seedVariety: partition.seedVariety || partition.varietyLabel || partition.variety || "",
+          seedType: partition.seedType || "",
+        }))
+      : []);
+  const partitions = linkedSession?.partitions || snapshotPartitions;
+  const firstPartitionWithIdentity = (partitions || []).find((partition) => (
     normalizeLeaderboardLabel(formatPartitionSource(partition))
     || normalizeLeaderboardLabel(formatPartitionSeedVariety(partition))
-  )) || linkedSession?.partitions?.[0] || null;
-  const firstPartitionWithSeedType = (linkedSession?.partitions || []).find((partition) => (
+  )) || partitions?.[0] || null;
+  const firstPartitionWithSeedType = (partitions || []).find((partition) => (
     normalizeLeaderboardLabel(partition?.seedType)
-  )) || linkedSession?.partitions?.[0] || null;
+  )) || partitions?.[0] || null;
   const normalizedSeedType = normalizeSeedTypeId(snapshot?.seedTypeName || firstPartitionWithSeedType?.seedType || "");
   const sourceDisplay = getSourceDisplayMetadata(snapshot);
   const fallbackSourceName = normalizeLeaderboardLabel(snapshot?.sourceName || formatPartitionSource(firstPartitionWithIdentity));
@@ -22120,11 +22486,12 @@ function getGallerySnapshotLeaderboardMetadata(snapshot) {
 // Likes remain separate display/sort metadata for future non-performance views.
 function buildGalleryLeaderboardEntries(snapshots, type = "source") {
   const groups = new Map();
+  const minimumSnapshotCount = isMockDataEnabled() ? 2 : 3;
 
   (snapshots || []).forEach((snapshot) => {
     const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
-    const linkedSession = getGallerySnapshotSession(snapshot);
-    const resultSummary = linkedSession ? getSessionResultSummary(linkedSession) : null;
+    const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+    const resultSummary = feedDetails.resultSummary || null;
     const contributions = resultSummary
       ? (type === "source" ? resultSummary.sourceGroups : resultSummary.varietyGroups)
       : [];
@@ -22189,7 +22556,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
   });
 
   return [...groups.values()]
-    .filter((entry) => entry.snapshotCount >= 3)
+    .filter((entry) => entry.snapshotCount >= minimumSnapshotCount)
     .map((entry) => ({
       ...entry,
       averagePercent: entry.snapshotCount > 0
@@ -26056,7 +26423,10 @@ function getGallerySnapshotDisplayStatus(snapshot) {
 }
 
 function isGallerySnapshotAnalyticsEligible(snapshot = null) {
-  if (!snapshot || isMockGallerySnapshot(snapshot) || snapshot.analyticsExcluded === true) {
+  if (!snapshot || snapshot.analyticsExcluded === true) {
+    return false;
+  }
+  if (isMockGallerySnapshot(snapshot) && !isMockDataEnabled()) {
     return false;
   }
   if (getGallerySnapshotDisplayStatus(snapshot) !== "approved") {
