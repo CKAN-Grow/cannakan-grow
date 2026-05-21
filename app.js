@@ -57695,15 +57695,33 @@ function formatSeedVaultQuantity(entry = null) {
 }
 
 function formatSeedVaultAgeLabel(entry = null) {
-  const yearAcquired = Number(entry?.yearAcquired);
   const seedAgeYears = normalizeSeedAgeYears(entry?.seedAgeYears);
   if (seedAgeYears !== null) {
     return formatSeedAgeYearsLabel(seedAgeYears);
   }
-  if (Number.isFinite(yearAcquired)) {
-    return `Acquired ${yearAcquired}`;
+
+  const estimatedSeedAgeYears = getEstimatedSeedVaultAgeYears(entry?.yearAcquired);
+  if (estimatedSeedAgeYears !== null) {
+    return `${formatSeedAgeYearsLabel(estimatedSeedAgeYears)} estimated`;
   }
   return "Not set";
+}
+
+function getEstimatedSeedVaultAgeYears(yearAcquiredValue = "") {
+  const year = Number(yearAcquiredValue);
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(year) || year < SEED_VAULT_YEAR_ACQUIRED_MIN || year > currentYear) {
+    return null;
+  }
+
+  return Math.max(SEED_AGE_MIN_YEARS, currentYear - Math.floor(year));
+}
+
+function getSeedVaultEstimatedAgeHelperText(yearAcquiredValue = "") {
+  const estimatedSeedAgeYears = getEstimatedSeedVaultAgeYears(yearAcquiredValue);
+  return estimatedSeedAgeYears === null
+    ? ""
+    : `Estimated seed age: ${formatSeedAgeYearsLabel(estimatedSeedAgeYears)}`;
 }
 
 function normalizeSeedVaultFavoriteFilter(value = "") {
@@ -58126,13 +58144,7 @@ function renderSeedVaultYearAcquiredOptionsMarkup(selectedYear = "") {
 }
 
 function getSeedVaultYearAcquiredEstimateLabel(yearValue = "") {
-  const year = Number(yearValue);
-  const currentYear = new Date().getFullYear();
-  if (!Number.isFinite(year) || year < SEED_VAULT_YEAR_ACQUIRED_MIN || year > currentYear) {
-    return "";
-  }
-
-  return `Estimated seed age: ${formatSeedAgeYearsLabel(Math.max(SEED_AGE_MIN_YEARS, currentYear - year))}`;
+  return getSeedVaultEstimatedAgeHelperText(yearValue);
 }
 
 function openSeedVaultEntryModal() {
@@ -58176,6 +58188,7 @@ function openSeedVaultEntryModal() {
           <label>
             <span>Seed age</span>
             <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" autocomplete="off" placeholder="1, 1.5, 2">
+            <small class="seed-vault-seed-age-estimate" data-seed-vault-age-estimate aria-live="polite"></small>
           </label>
         </div>
         <label>
@@ -58209,13 +58222,23 @@ function openSeedVaultEntryModal() {
 
   const yearAcquiredSelect = overlay.querySelector("[data-seed-vault-year-acquired='true']");
   const yearAcquiredEstimate = overlay.querySelector("[data-seed-vault-year-estimate]");
-  const syncYearAcquiredEstimate = () => {
+  const seedAgeInput = overlay.querySelector("input[name='seedAgeYears']");
+  const seedAgeEstimate = overlay.querySelector("[data-seed-vault-age-estimate]");
+  const syncSeedVaultAgeEstimate = () => {
+    const helperText = String(seedAgeInput?.value || "").trim()
+      ? ""
+      : getSeedVaultEstimatedAgeHelperText(yearAcquiredSelect?.value || "");
     if (yearAcquiredEstimate) {
-      yearAcquiredEstimate.textContent = getSeedVaultYearAcquiredEstimateLabel(yearAcquiredSelect?.value || "");
+      yearAcquiredEstimate.textContent = helperText;
+    }
+    if (seedAgeEstimate) {
+      seedAgeEstimate.textContent = helperText;
+      seedAgeEstimate.hidden = !helperText;
     }
   };
-  yearAcquiredSelect?.addEventListener("change", syncYearAcquiredEstimate);
-  syncYearAcquiredEstimate();
+  yearAcquiredSelect?.addEventListener("change", syncSeedVaultAgeEstimate);
+  seedAgeInput?.addEventListener("input", syncSeedVaultAgeEstimate);
+  syncSeedVaultAgeEstimate();
 
   overlay.querySelector("[data-seed-vault-entry-form]")?.addEventListener("submit", async (event) => {
     event.preventDefault();

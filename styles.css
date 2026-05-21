@@ -40105,6 +40105,19 @@ body.theme-dark #session-analytics-section {
   line-height: 1.25;
 }
 
+.seed-vault-seed-age-estimate {
+  min-height: 1rem;
+  color: rgba(181, 232, 111, 0.88);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.seed-vault-seed-age-estimate:empty,
+.seed-vault-year-estimate:empty {
+  display: none;
+}
+
 .seed-vault-entry-form textarea {
   min-height: 110px;
   resize: vertical;
