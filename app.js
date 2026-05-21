@@ -4699,6 +4699,8 @@ function normalizeStoredPartition(partition, fallback = {}) {
     seedCount: Math.max(0, Number(sourcePartition.seedCount ?? sourcePartition.seed_count) || 0),
     plantedCount: String(sourcePartition.plantedCount ?? sourcePartition.planted_count ?? "").trim(),
     seedAgeYears: normalizeSeedAgeYears(sourcePartition.seedAgeYears ?? sourcePartition.seed_age_years),
+    seedVaultEntryId: String(sourcePartition.seedVaultEntryId || sourcePartition.seed_vault_entry_id || "").trim(),
+    seedVaultEntrySnapshot: sourcePartition.seedVaultEntrySnapshot || sourcePartition.seed_vault_entry_snapshot || null,
   };
 }
 
@@ -4753,6 +4755,10 @@ function serializeSessionPartitions(partitions = []) {
     seedCount: partition.seedCount,
     plantedCount: partition.plantedCount,
     seed_age_years: normalizeSeedAgeYears(partition.seedAgeYears),
+    seedVaultEntryId: partition.seedVaultEntryId || "",
+    seed_vault_entry_id: partition.seedVaultEntryId || "",
+    seedVaultEntrySnapshot: partition.seedVaultEntrySnapshot || null,
+    seed_vault_entry_snapshot: partition.seedVaultEntrySnapshot || null,
   }));
 }
 
@@ -58648,6 +58654,350 @@ async function deleteSeedVaultEntry(entryId = "") {
   renderSessionsList();
 }
 
+function getActiveSeedVaultEntriesForSessionPicker() {
+  const entries = shouldExposeDevModeMockData()
+    ? appState.seedVaultEntries || []
+    : (appState.seedVaultEntries || []).filter((entry) => !isDevModeOnlyMockRecord(entry));
+  return sortSeedVaultEntries(entries)
+    .map(normalizeSeedVaultEntry)
+    .filter((entry) => entry && !entry.isArchived);
+}
+
+function getSeedVaultEntrySessionSeedAgeYears(entry = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  const manualAge = normalizeSeedAgeYears(normalizedEntry?.seedAgeYears);
+  if (manualAge !== null) {
+    return manualAge;
+  }
+  return getEstimatedSeedVaultAgeYears(normalizedEntry?.yearAcquired);
+}
+
+function getNewSessionSeedVaultPartitionLabel(systemType = "KAN", partitionId = 1) {
+  const normalizedSystemType = String(systemType || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+  const numericId = Math.max(1, Number(partitionId) || 1);
+  if (normalizedSystemType !== "TRA") {
+    return `P${numericId}`;
+  }
+  const sectionIndex = Math.floor((numericId - 1) / 4);
+  const sectionLabel = ["A", "B", "C", "D"][sectionIndex] || "A";
+  const localId = ((numericId - 1) % 4) + 1;
+  return `Section ${sectionLabel} · P${localId}`;
+}
+
+function renderNewSessionSeedVaultPartitionOptions(systemType = "KAN") {
+  const count = getPartitionCountForSystem(systemType);
+  return Array.from({ length: count }, (_, index) => {
+    const partitionId = index + 1;
+    return `
+      <label class="new-session-seed-vault-partition-option">
+        <input type="checkbox" value="${partitionId}" data-seed-vault-partition-choice>
+        <span>${escapeHtml(getNewSessionSeedVaultPartitionLabel(systemType, partitionId))}</span>
+      </label>
+    `;
+  }).join("");
+}
+
+function renderNewSessionSeedVaultEntryOptions(entries = []) {
+  return [
+    '<option value="">Choose Vault Entry</option>',
+    ...entries.map((entry) => {
+      const quantityLabel = entry.quantity === null || entry.quantity === undefined
+        ? "Qty not set"
+        : `${entry.quantity} available`;
+      const label = [
+        entry.source || "Source not set",
+        entry.seedName || "Seed Variety not set",
+        getSeedTypeLabel(entry.seedType) || "Type not set",
+        getSeedSexLabel(entry.seedSex) || "Sex not set",
+        formatSeedVaultAgeLabel(entry),
+        quantityLabel,
+      ].join(" · ");
+      return `<option value="${escapeHtml(entry.id)}">${escapeHtml(label)}</option>`;
+    }),
+  ].join("");
+}
+
+function renderNewSessionSeedVaultPicker(section, systemType = "KAN") {
+  if (!(section instanceof HTMLElement)) {
+    return;
+  }
+
+  const signedIn = Boolean(appState.user?.id);
+  if (!signedIn) {
+    section.hidden = true;
+    section.innerHTML = "";
+    return;
+  }
+
+  const entries = getActiveSeedVaultEntriesForSessionPicker();
+  section.hidden = false;
+  if (!entries.length) {
+    section.classList.add("is-empty");
+    section.innerHTML = `
+      <div class="new-session-seed-vault-empty">
+        <div>
+          <p class="eyebrow">My Seed Vault</p>
+          <h3 id="new-session-seed-vault-title">Add from My Seed Vault</h3>
+          <p>Save seeds to My Seed Vault first, then use them to fill partition rows faster.</p>
+        </div>
+        <a class="button button-secondary" href="#seed-vault">Open My Seed Vault</a>
+      </div>
+    `;
+    return;
+  }
+
+  section.classList.remove("is-empty");
+  section.innerHTML = `
+    <div class="new-session-seed-vault-head">
+      <div>
+        <p class="eyebrow">My Seed Vault</p>
+        <h3 id="new-session-seed-vault-title">Add from My Seed Vault</h3>
+        <p>Select seeds from your collection to auto-fill partition details.</p>
+      </div>
+    </div>
+    <div class="new-session-seed-vault-controls">
+      <label>
+        <span>Vault Entry</span>
+        <select data-seed-vault-session-entry>
+          ${renderNewSessionSeedVaultEntryOptions(entries)}
+        </select>
+      </label>
+      <label>
+        <span>Seeds per selected partition</span>
+        <input type="number" min="1" step="1" inputmode="numeric" data-seed-vault-session-count placeholder="#">
+      </label>
+    </div>
+    <div class="new-session-seed-vault-summary" data-seed-vault-session-summary hidden></div>
+    <fieldset class="new-session-seed-vault-partitions">
+      <legend>Apply to partition(s)</legend>
+      <div class="new-session-seed-vault-partition-grid" data-seed-vault-session-partitions>
+        ${renderNewSessionSeedVaultPartitionOptions(systemType)}
+      </div>
+    </fieldset>
+    <div class="new-session-seed-vault-actions">
+      <p class="new-session-seed-vault-message" data-seed-vault-session-message role="alert" aria-live="polite"></p>
+      <button type="button" class="button button-primary" data-seed-vault-apply-to-session>Apply to Session</button>
+    </div>
+  `;
+}
+
+function getSelectedSeedVaultEntryForSession(section) {
+  const entryId = String(section?.querySelector("[data-seed-vault-session-entry]")?.value || "").trim();
+  return getActiveSeedVaultEntriesForSessionPicker().find((entry) => entry.id === entryId) || null;
+}
+
+function renderSelectedSeedVaultEntrySessionSummary(section) {
+  if (!(section instanceof HTMLElement)) {
+    return;
+  }
+  const summary = section.querySelector("[data-seed-vault-session-summary]");
+  if (!(summary instanceof HTMLElement)) {
+    return;
+  }
+
+  const entry = getSelectedSeedVaultEntryForSession(section);
+  if (!entry) {
+    summary.hidden = true;
+    summary.innerHTML = "";
+    return;
+  }
+
+  summary.hidden = false;
+  summary.innerHTML = `
+    <span>${escapeHtml(entry.source || "Source not set")}</span>
+    <span>${escapeHtml(entry.seedName || "Seed Variety not set")}</span>
+    <span>${escapeHtml(getSeedTypeLabel(entry.seedType) || "Type not set")}</span>
+    <span>${escapeHtml(getSeedSexLabel(entry.seedSex) || "Sex not set")}</span>
+    <span>${escapeHtml(formatSeedVaultAgeLabel(entry))}</span>
+    <span>${escapeHtml(formatSeedVaultQuantity(entry))}</span>
+  `;
+}
+
+function isPartitionRowPopulatedForVaultApply(row) {
+  if (!(row instanceof Element)) {
+    return false;
+  }
+  return Boolean(
+    getPartitionRowFieldValue(row, "source").trim()
+    || getPartitionRowFieldValue(row, "seedVariety").trim()
+    || normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType"))
+    || getPartitionRowFieldValue(row, "feminized").trim()
+    || getPartitionRowFieldValue(row, "seedCount").trim()
+    || getPartitionRowFieldValue(row, "seedAgeYears").trim()
+  );
+}
+
+function setPartitionIdentityInputFromVault(input, kind = "", value = "") {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const normalizedValue = String(value || "").trim();
+  const match = buildPartitionIdentityMatch(kind, normalizedValue);
+  input.value = normalizedValue;
+  input.dataset.canonicalId = match.canonicalId;
+  input.dataset.canonicalLabel = match.canonicalName || normalizedValue;
+  input.dataset.normalizedKey = match.normalizedKey;
+  input.dataset.matchStatus = match.matchStatus;
+  input.dataset.matchConfidence = String(match.matchConfidence);
+  input.dataset.reviewCandidateId = match.reviewCandidateId;
+  input.dataset.reviewCandidateName = match.reviewCandidateName;
+}
+
+function applySeedVaultEntryToPartitionRow(row, entry = {}, seedCount = 0) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!(row instanceof Element) || !normalizedEntry) {
+    return;
+  }
+
+  setPartitionIdentityInputFromVault(row.querySelector('input[name^="source-"]'), "source", normalizedEntry.source);
+  setPartitionIdentityInputFromVault(row.querySelector('input[name^="seedVariety-"]'), "seedVariety", normalizedEntry.seedName);
+
+  const typeSelect = row.querySelector('select[name^="seedType-"]');
+  if (typeSelect instanceof HTMLSelectElement) {
+    typeSelect.value = normalizeSeedTypeId(normalizedEntry.seedType);
+    syncCustomSelect(typeSelect);
+  }
+
+  const sexSelect = row.querySelector('select[name^="feminized-"]');
+  if (sexSelect instanceof HTMLSelectElement) {
+    sexSelect.value = normalizeSeedSexValue(normalizedEntry.seedSex);
+    syncCustomSelect(sexSelect);
+  }
+
+  const seedCountInput = row.querySelector('input[name^="seedCount-"]');
+  if (seedCountInput instanceof HTMLInputElement) {
+    seedCountInput.value = String(Math.max(1, Math.floor(Number(seedCount) || 1)));
+  }
+
+  const seedAgeInput = row.querySelector('input[name^="seedAgeYears-"]');
+  const seedAgeYears = getSeedVaultEntrySessionSeedAgeYears(normalizedEntry);
+  if (seedAgeInput instanceof HTMLInputElement && seedAgeYears !== null) {
+    seedAgeInput.value = formatSeedAgeInputValue(seedAgeYears);
+    seedAgeInput.dataset.seedVaultAutofilled = "true";
+  }
+  syncPartitionSeedAgeFieldState(row);
+
+  row.dataset.seedVaultEntryId = normalizedEntry.id;
+  row.dataset.seedVaultEntrySnapshot = JSON.stringify({
+    id: normalizedEntry.id,
+    source: normalizedEntry.source,
+    seedVariety: normalizedEntry.seedName,
+    seedType: normalizeSeedTypeId(normalizedEntry.seedType),
+    feminized: normalizeSeedSexValue(normalizedEntry.seedSex),
+    seedAgeYears,
+    quantity: normalizedEntry.quantity,
+    yearAcquired: normalizedEntry.yearAcquired,
+  });
+}
+
+function readPartitionSeedVaultSnapshotFromRow(row) {
+  const rawSnapshot = String(row?.dataset?.seedVaultEntrySnapshot || "").trim();
+  if (!rawSnapshot) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(rawSnapshot);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function bindNewSessionSeedVaultPicker(section, form, options = {}) {
+  if (!(section instanceof HTMLElement) || !(form instanceof HTMLFormElement) || section.dataset.seedVaultSessionBound === "true") {
+    return;
+  }
+
+  const rerenderPartitions = typeof options.rerenderPartitions === "function" ? options.rerenderPartitions : () => {};
+  const onApplied = typeof options.onApplied === "function" ? options.onApplied : () => {};
+
+  section.addEventListener("change", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLSelectElement && target.matches("[data-seed-vault-session-entry]")) {
+      renderSelectedSeedVaultEntrySessionSummary(section);
+    }
+  });
+
+  section.addEventListener("click", (event) => {
+    const button = event.target instanceof Element
+      ? event.target.closest("[data-seed-vault-apply-to-session]")
+      : null;
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const message = section.querySelector("[data-seed-vault-session-message]");
+    const entry = getSelectedSeedVaultEntryForSession(section);
+    const selectedPartitionIds = [...section.querySelectorAll("[data-seed-vault-partition-choice]:checked")]
+      .map((input) => Number(input.value))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const seedCount = Math.floor(Number(section.querySelector("[data-seed-vault-session-count]")?.value) || 0);
+
+    if (!entry) {
+      setFeedbackMessage(message, "Choose a Vault Entry first.", "error");
+      return;
+    }
+    if (!selectedPartitionIds.length) {
+      setFeedbackMessage(message, "Choose at least one partition.", "error");
+      return;
+    }
+    if (seedCount <= 0) {
+      setFeedbackMessage(message, "Enter a seed count greater than zero.", "error");
+      return;
+    }
+
+    const availableQuantity = Number(entry.quantity);
+    const totalRequested = seedCount * selectedPartitionIds.length;
+    if (Number.isFinite(availableQuantity) && availableQuantity >= 0 && totalRequested > availableQuantity) {
+      setFeedbackMessage(message, `Count per partition uses ${totalRequested} seeds total, but this Vault Entry has ${availableQuantity} available.`, "error");
+      return;
+    }
+
+    const initialRows = [...form.querySelectorAll("#partition-fields .partition-row")];
+    const hasPopulatedRows = selectedPartitionIds
+      .map((partitionId) => initialRows[partitionId - 1])
+      .filter((row) => row instanceof Element)
+      .some(isPartitionRowPopulatedForVaultApply);
+    if (hasPopulatedRows) {
+      const confirmed = window.confirm("Apply this Vault Entry and overwrite details in the selected populated partition(s)?");
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    const seedAgeYears = getSeedVaultEntrySessionSeedAgeYears(entry);
+    const seedAgeState = getSeedAgeSettingsFromForm(form);
+    if (seedAgeYears !== null && (!seedAgeState.trackingEnabled || seedAgeState.mode !== "mixed")) {
+      if (form.elements.seedAgeTrackingEnabled instanceof HTMLInputElement) {
+        form.elements.seedAgeTrackingEnabled.checked = true;
+      }
+      const mixedModeInput = form.querySelector('input[name="seedAgeMode"][value="mixed"]');
+      if (mixedModeInput instanceof HTMLInputElement) {
+        mixedModeInput.checked = true;
+      }
+      persistSeedAgeDraftState(form);
+      syncSeedAgeSetupUi(form);
+      rerenderPartitions();
+    }
+
+    const rows = [...form.querySelectorAll("#partition-fields .partition-row")];
+    const targetRows = selectedPartitionIds
+      .map((partitionId) => rows[partitionId - 1])
+      .filter((row) => row instanceof Element);
+    if (!targetRows.length) {
+      setFeedbackMessage(message, "Selected partition(s) are unavailable for this system.", "error");
+      return;
+    }
+    targetRows.forEach((row) => applySeedVaultEntryToPartitionRow(row, entry, seedCount));
+
+    // TODO: Add inventory depletion only after My Seed Vault has a dedicated, reversible quantity transaction model.
+    setFeedbackMessage(message, "Vault Entry applied to selected partition(s).", "success");
+    onApplied();
+  });
+
+  section.dataset.seedVaultSessionBound = "true";
+}
+
 function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   const filterValue = String(options.filterValue || "all").trim().toLowerCase();
   const sortValue = String(options.sortValue || "date").trim();
@@ -59419,6 +59769,7 @@ function renderSessionForm(initialSystemType = "KAN") {
   const sessionSequenceLabel = document.querySelector("#session-sequence-label");
   const chartShell = document.querySelector("#partition-chart-shell");
   const chartHeader = document.querySelector("#partition-chart-header");
+  const seedVaultSessionSection = document.querySelector("#new-session-seed-vault-section");
   const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
   const seedAgeModeInputs = [...form.querySelectorAll('input[name="seedAgeMode"]')];
   const seedAgeSameInput = form.elements.sessionSeedAgeYears;
@@ -59524,6 +59875,44 @@ function renderSessionForm(initialSystemType = "KAN") {
   });
   syncSeedAgeSetupUi(form);
 
+  function refreshNewSessionSeedVaultPicker() {
+    renderNewSessionSeedVaultPicker(seedVaultSessionSection, systemTypeField.value);
+    renderSelectedSeedVaultEntrySessionSummary(seedVaultSessionSection);
+  }
+
+  function refreshNewSessionAfterVaultApply() {
+    resetNewSessionSaveButtonState(form);
+    updateNewSessionNameDefaultSuggestion(form);
+    syncPartitionButtonStates(partitionFields, sessionStatusField.value);
+    updateSessionSuccessSummary(form, sessionSuccessSummary);
+    updatePartitionProgressChart(
+      getPartitionProgressDataFromForm(form),
+      progressChart,
+      progressSection,
+    );
+    updateRunProgressSummary(
+      runProgressSummary,
+      runProgressSection,
+      sessionStatusField.value,
+      getPartitionProgressDataFromForm(form),
+    );
+    updateSessionLifecycleTimeline(
+      lifecycleSummary,
+      lifecycleSection,
+      buildFormLifecycleState(form),
+    );
+    validateSeedAgeSettings(form);
+    validatePartitions(form, { showMessage: false });
+    refreshUnsavedChangesState();
+  }
+
+  function rerenderPartitionsForSeedVaultApply() {
+    renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+    applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
+    applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
+    applyStageEditingMode(form, sessionStatusField.value);
+  }
+
   renderSystemLayoutReference(layoutReference, systemTypeField.value);
   if (partitionWorkTitle) {
     updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
@@ -59532,6 +59921,11 @@ function renderSessionForm(initialSystemType = "KAN") {
   ensureSourceCatalogDatalist();
   updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
   renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+  refreshNewSessionSeedVaultPicker();
+  bindNewSessionSeedVaultPicker(seedVaultSessionSection, form, {
+    rerenderPartitions: rerenderPartitionsForSeedVaultApply,
+    onApplied: refreshNewSessionAfterVaultApply,
+  });
   updateNewSessionNameDefaultSuggestion(form);
   applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
   applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
@@ -59810,6 +60204,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         updatePartitionWorkHeading(partitionWorkTitle, systemTypeField.value);
       }
       renderPartitionRows(form, systemTypeField.value, sessionStatusField.value);
+      refreshNewSessionSeedVaultPicker();
       updateNewSessionNameDefaultSuggestion(form);
     applySessionStatusLayout(chartShell, chartHeader, partitionFields, sessionStatusField.value);
     applyPartitionSeedAgeLayout(chartShell, chartHeader, partitionFields, form.dataset.seedAgeMode || "");
@@ -60006,6 +60401,8 @@ function renderSessionForm(initialSystemType = "KAN") {
         seedCount: Number(formData.get(`seedCount-${index}`)) || 0,
         plantedCount: row?.querySelector('input[name="plantedCount"]')?.value.trim() || "",
         seedAgeYears: getEffectivePartitionSeedAgeFromRow(row, seedAgeState),
+        seedVaultEntryId: String(row?.dataset.seedVaultEntryId || "").trim(),
+        seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
       };
     });
     const createdAt = new Date().toISOString();
@@ -61456,6 +61853,12 @@ function hydratePartitionRow(row, partition) {
     }
   }
   row.querySelector('input[name="plantedCount"]').value = partition.plantedCount || "";
+  if (partition.seedVaultEntryId) {
+    row.dataset.seedVaultEntryId = partition.seedVaultEntryId;
+  }
+  if (partition.seedVaultEntrySnapshot) {
+    row.dataset.seedVaultEntrySnapshot = JSON.stringify(partition.seedVaultEntrySnapshot);
+  }
 }
 
 function getCurrentPartitionValues(form) {
@@ -61509,6 +61912,8 @@ function getCurrentPartitionValues(form) {
         row.querySelector('input[name^="seedAgeYears-"]')?.value
         ?? previousValues[index]?.seedAgeYears,
       ),
+      seedVaultEntryId: String(row.dataset.seedVaultEntryId || previousValues[index]?.seedVaultEntryId || "").trim(),
+      seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row) || previousValues[index]?.seedVaultEntrySnapshot || null,
     };
   });
 }
@@ -68419,6 +68824,8 @@ function buildPartitionDraftValuesFromContainer(container) {
       seedCount: String(partition.seedCount ?? "").trim(),
       seedAgeYears: String(partition.seedAgeYears ?? "").trim(),
       plantedCount: String(partition.plantedCount ?? "").trim(),
+      seedVaultEntryId: String(partition.seedVaultEntryId || "").trim(),
+      seedVaultEntrySnapshot: partition.seedVaultEntrySnapshot || null,
     }));
   }
 
@@ -68431,6 +68838,8 @@ function buildPartitionDraftValuesFromContainer(container) {
     seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
     seedAgeYears: getPartitionRowFieldValue(row, "seedAgeYears").trim(),
     plantedCount: getPartitionRowFieldValue(row, "plantedCount").trim(),
+    seedVaultEntryId: String(row.dataset.seedVaultEntryId || "").trim(),
+    seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
   }));
 }
 

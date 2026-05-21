@@ -31060,6 +31060,159 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   min-width: 0;
 }
 
+.new-session-seed-vault-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.new-session-seed-vault-section[hidden] {
+  display: none;
+}
+
+.new-session-seed-vault-head,
+.new-session-seed-vault-empty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.new-session-seed-vault-head h3,
+.new-session-seed-vault-empty h3 {
+  margin: 0;
+  color: #f5f8f3;
+  font-size: 1.02rem;
+}
+
+.new-session-seed-vault-head p,
+.new-session-seed-vault-empty p {
+  margin: 4px 0 0;
+  color: rgba(205, 214, 207, 0.74);
+  font-size: 0.88rem;
+}
+
+.new-session-seed-vault-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(150px, 0.45fr);
+  gap: 10px;
+}
+
+.new-session-seed-vault-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.new-session-seed-vault-controls label > span,
+.new-session-seed-vault-partitions legend {
+  color: rgba(214, 220, 214, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.new-session-seed-vault-controls select,
+.new-session-seed-vault-controls input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background: rgba(9, 14, 11, 0.76);
+  color: #f2f7ef;
+}
+
+.new-session-seed-vault-summary {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.new-session-seed-vault-summary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 184, 255, 0.14);
+  background: rgba(127, 184, 255, 0.07);
+  color: rgba(226, 237, 246, 0.86);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.new-session-seed-vault-partitions {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.new-session-seed-vault-partition-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.new-session-seed-vault-partition-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(226, 234, 224, 0.84);
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.new-session-seed-vault-partition-option input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: #94d159;
+}
+
+.new-session-seed-vault-partition-option:has(input:checked) {
+  border-color: rgba(148, 209, 89, 0.36);
+  background: rgba(148, 209, 89, 0.12);
+  color: #d8f7ac;
+  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.08);
+}
+
+.new-session-seed-vault-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.new-session-seed-vault-message {
+  min-height: 20px;
+  margin: 0;
+  color: rgba(214, 220, 214, 0.74);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.new-session-seed-vault-message.is-error {
+  color: #f0b6ae;
+}
+
+.new-session-seed-vault-message.is-success {
+  color: #b8efc0;
+}
+
 .new-session-tutorial-card {
   appearance: none;
   -webkit-appearance: none;
@@ -41267,6 +41420,26 @@ body.theme-dark #session-analytics-section {
     max-height: calc(100dvh - 20px);
     padding: 18px;
     border-radius: 20px;
+  }
+
+  .new-session-seed-vault-head,
+  .new-session-seed-vault-empty,
+  .new-session-seed-vault-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .new-session-seed-vault-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .new-session-seed-vault-partition-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .new-session-seed-vault-actions .button,
+  .new-session-seed-vault-empty .button {
+    width: 100%;
   }
 
   .seed-vault-entry-card-head,
