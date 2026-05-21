@@ -39595,6 +39595,7 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-entry-form input,
+.seed-vault-entry-form select,
 .seed-vault-entry-form textarea {
   width: 100%;
   min-height: 44px;
@@ -39602,6 +39603,22 @@ body.theme-dark #session-analytics-section {
   border: 1px solid rgba(148, 209, 89, 0.14);
   background: rgba(12, 17, 14, 0.9);
   color: #f2f7ef;
+}
+
+.seed-vault-entry-form select {
+  appearance: none;
+  padding: 0 38px 0 12px;
+  background:
+    linear-gradient(45deg, transparent 50%, rgba(220, 229, 220, 0.8) 50%) calc(100% - 20px) 50% / 6px 6px no-repeat,
+    linear-gradient(135deg, rgba(220, 229, 220, 0.8) 50%, transparent 50%) calc(100% - 15px) 50% / 6px 6px no-repeat,
+    rgba(12, 17, 14, 0.9);
+}
+
+.seed-vault-year-estimate {
+  min-height: 1rem;
+  color: rgba(181, 232, 111, 0.78);
+  font-size: 0.74rem;
+  line-height: 1.25;
 }
 
 .seed-vault-entry-form textarea {

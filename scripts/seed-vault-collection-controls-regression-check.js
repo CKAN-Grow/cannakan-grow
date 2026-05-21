@@ -17,6 +17,9 @@ for (const needle of [
   "data-seed-vault-favorite-filter=\"true\"",
   "data-seed-vault-status-filter=\"true\"",
   "data-seed-vault-sort=\"true\"",
+  "data-seed-vault-year-acquired=\"true\"",
+  "function renderSeedVaultYearAcquiredOptionsMarkup(selectedYear = \"\")",
+  "const SEED_VAULT_YEAR_ACQUIRED_MIN = 1980;",
   "data-seed-vault-toggle",
   "data-seed-vault-delete",
   "Delete this Vault Entry from My Seed Vault?",
@@ -34,6 +37,8 @@ for (const needle of [
   ".seed-vault-entry-collapsed-row",
   ".seed-vault-compact-cell",
   ".seed-vault-compact-status",
+  ".seed-vault-entry-form select",
+  ".seed-vault-year-estimate",
   ".seed-vault-entry-details[hidden]",
   ".seed-vault-filter-row",
   ".seed-vault-icon-button--delete",
@@ -49,6 +54,7 @@ for (const forbidden of [
   "My Seed Vault account sync is waiting on the latest Supabase migration",
   "Using browser storage for now",
   "seed-vault-sync-note",
+  'name="yearAcquired" type="number"',
 ]) {
   if (appSource.includes(forbidden) || stylesSource.includes(forbidden)) {
     throw new Error(`Seed Vault should not show developer storage details: ${forbidden}`);
