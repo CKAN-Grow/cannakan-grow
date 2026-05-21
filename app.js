@@ -26755,6 +26755,48 @@ function initializeSessionImageState(scope, options) {
     });
     state.grid.dataset.removeBound = "true";
   }
+
+  if (!state.grid.dataset.lightboxBound) {
+    state.grid.addEventListener("click", (event) => {
+      const card = event.target instanceof Element
+        ? event.target.closest("[data-session-image-lightbox-index]")
+        : null;
+      if (!card || event.target.closest?.(".session-image-remove")) {
+        return;
+      }
+
+      const imageIndex = Number(card.getAttribute("data-session-image-lightbox-index"));
+      if (!Number.isInteger(imageIndex)) {
+        return;
+      }
+
+      event.preventDefault();
+      openSessionImageLightbox(state, imageIndex);
+    });
+    state.grid.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      if (event.target instanceof Element && event.target.closest(".session-image-remove")) {
+        return;
+      }
+      const card = event.target instanceof Element
+        ? event.target.closest("[data-session-image-lightbox-index]")
+        : null;
+      if (!card) {
+        return;
+      }
+
+      const imageIndex = Number(card.getAttribute("data-session-image-lightbox-index"));
+      if (!Number.isInteger(imageIndex)) {
+        return;
+      }
+
+      event.preventDefault();
+      openSessionImageLightbox(state, imageIndex);
+    });
+    state.grid.dataset.lightboxBound = "true";
+  }
 }
 
 function ensureSessionImageDots(scope, grid) {
@@ -26874,6 +26916,10 @@ function renderSessionImageGrid(state) {
     const imageKey = getSessionImageEntryKey(image, index);
     const card = document.createElement("article");
     card.className = "session-image-card";
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-label", `Open ${image.name || "session image"} in large viewer`);
+    card.setAttribute("data-session-image-lightbox-index", String(index));
     card.innerHTML = `
       <div class="session-image-frame">
         <img src="${escapeHtml(image.previewUrl || image.url || "")}" alt="${escapeHtml(image.name || "Session image")}" class="session-image-thumb">
@@ -26892,6 +26938,133 @@ function renderSessionImageGrid(state) {
   state.onRender?.(allImages);
   renderSessionImageDots(state, allImages.length);
   updateSessionImageDotsFromScroll(state);
+}
+
+function getSessionImageLightboxEntries(state) {
+  return [...(state?.images || []), ...(state?.pendingFiles || [])]
+    .map((image, index) => ({
+      ...image,
+      index,
+      source: String(image?.previewUrl || image?.url || "").trim(),
+      name: String(image?.name || image?.filename || `Session image ${index + 1}`).trim(),
+    }))
+    .filter((image) => image.source);
+}
+
+function ensureSessionImageLightboxModal() {
+  let modal = document.querySelector("#session-image-lightbox-modal");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "session-image-lightbox-modal";
+  modal.className = "session-image-lightbox-modal";
+  modal.innerHTML = `
+    <div class="session-image-lightbox-card" role="document">
+      <button type="button" class="session-image-lightbox-close" data-session-image-lightbox-close aria-label="Close image viewer">×</button>
+      <button type="button" class="session-image-lightbox-nav session-image-lightbox-nav--prev" data-session-image-lightbox-prev aria-label="Previous session image">‹</button>
+      <figure class="session-image-lightbox-figure">
+        <img src="" alt="" class="session-image-lightbox-image" data-session-image-lightbox-image>
+        <figcaption class="session-image-lightbox-caption">
+          <span data-session-image-lightbox-title>Session image</span>
+          <span data-session-image-lightbox-count></span>
+        </figcaption>
+      </figure>
+      <button type="button" class="session-image-lightbox-nav session-image-lightbox-nav--next" data-session-image-lightbox-next aria-label="Next session image">›</button>
+    </div>
+  `;
+
+  const closeLightbox = () => closeSessionImageLightbox();
+  modal.querySelector("[data-session-image-lightbox-close]")?.addEventListener("click", closeLightbox);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      closeLightbox();
+    }
+  });
+  modal.addEventListener("cancel", () => {
+    document.body.classList.remove("modal-open");
+  });
+  modal.addEventListener("close", () => {
+    document.body.classList.remove("modal-open");
+  });
+  modal.querySelector("[data-session-image-lightbox-prev]")?.addEventListener("click", () => {
+    showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) - 1);
+  });
+  modal.querySelector("[data-session-image-lightbox-next]")?.addEventListener("click", () => {
+    showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) + 1);
+  });
+  modal.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      showSessionImageLightboxIndex(modal, Number(modal.dataset.currentIndex || 0) + 1);
+    }
+  });
+
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function showSessionImageLightboxIndex(modal, requestedIndex = 0) {
+  const images = Array.isArray(modal.__sessionImageLightboxEntries)
+    ? modal.__sessionImageLightboxEntries
+    : [];
+  if (!images.length) {
+    return;
+  }
+
+  const nextIndex = ((requestedIndex % images.length) + images.length) % images.length;
+  const image = images[nextIndex];
+  const imageElement = modal.querySelector("[data-session-image-lightbox-image]");
+  const titleElement = modal.querySelector("[data-session-image-lightbox-title]");
+  const countElement = modal.querySelector("[data-session-image-lightbox-count]");
+  const prevButton = modal.querySelector("[data-session-image-lightbox-prev]");
+  const nextButton = modal.querySelector("[data-session-image-lightbox-next]");
+
+  modal.dataset.currentIndex = String(nextIndex);
+  if (imageElement instanceof HTMLImageElement) {
+    imageElement.src = image.source;
+    imageElement.alt = image.name || `Session image ${nextIndex + 1}`;
+  }
+  if (titleElement) {
+    titleElement.textContent = image.name || `Session image ${nextIndex + 1}`;
+  }
+  if (countElement) {
+    countElement.textContent = `${nextIndex + 1} / ${images.length}`;
+  }
+
+  [prevButton, nextButton].forEach((button) => {
+    if (button instanceof HTMLButtonElement) {
+      button.hidden = images.length <= 1;
+    }
+  });
+}
+
+function openSessionImageLightbox(state, requestedIndex = 0) {
+  const images = getSessionImageLightboxEntries(state);
+  if (!images.length) {
+    return;
+  }
+
+  const modal = ensureSessionImageLightboxModal();
+  modal.__sessionImageLightboxEntries = images;
+  showSessionImageLightboxIndex(modal, requestedIndex);
+  document.body.classList.add("modal-open");
+  if (!modal.open) {
+    modal.showModal();
+  }
+  modal.querySelector("[data-session-image-lightbox-close]")?.focus({ preventScroll: true });
+}
+
+function closeSessionImageLightbox() {
+  const modal = document.querySelector("#session-image-lightbox-modal");
+  if (modal instanceof HTMLDialogElement && modal.open) {
+    modal.close();
+  }
+  document.body.classList.remove("modal-open");
 }
 
 async function removeSessionImageEntry(state, imageKey, triggerButton = null) {
