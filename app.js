@@ -140,6 +140,11 @@ const DEV_QA_BYPASS_USERNAME = "Dev QA Grower";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
 const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
+const SEED_AGE_MIN_YEARS = 1;
+const SEED_AGE_MAX_YEARS = 99;
+const SEED_AGE_STEP_YEARS = 0.5;
+const SEED_AGE_STEP_EPSILON = 0.000001;
+const SEED_AGE_INPUT_HELPER_TEXT = "Use 0.5 year increments starting at 1 year, or leave blank.";
 const SEED_TYPE_OPTIONS = Object.freeze([
   { id: "auto", label: "Auto", tone: "green-blue" },
   { id: "fast", label: "Fast", tone: "gold-green" },
@@ -4272,7 +4277,12 @@ function normalizeSeedAgeYears(value) {
   }
 
   const parsedValue = Number(value);
-  if (!Number.isFinite(parsedValue) || parsedValue < 0) {
+  if (
+    !Number.isFinite(parsedValue)
+    || parsedValue < SEED_AGE_MIN_YEARS
+    || parsedValue > SEED_AGE_MAX_YEARS
+    || !isSeedAgeHalfYearIncrement(parsedValue)
+  ) {
     return null;
   }
 
@@ -4280,13 +4290,13 @@ function normalizeSeedAgeYears(value) {
 }
 
 function isSeedAgeHalfYearIncrement(value) {
-  const normalizedValue = normalizeSeedAgeYears(value);
-  if (normalizedValue === null) {
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue)) {
     return false;
   }
 
-  const halfYearUnits = normalizedValue / 0.5;
-  return Math.abs(halfYearUnits - Math.round(halfYearUnits)) < 0.000001;
+  const halfYearUnits = parsedValue / SEED_AGE_STEP_YEARS;
+  return Math.abs(halfYearUnits - Math.round(halfYearUnits)) < SEED_AGE_STEP_EPSILON;
 }
 
 function isValidSeedAgeYearsInput(value, options = {}) {
@@ -4294,7 +4304,7 @@ function isValidSeedAgeYearsInput(value, options = {}) {
   if (!rawValue) {
     return Boolean(options.allowBlank);
   }
-  return isSeedAgeHalfYearIncrement(rawValue);
+  return normalizeSeedAgeYears(rawValue) !== null;
 }
 
 function formatSeedAgeInputValue(value) {
@@ -5029,7 +5039,7 @@ function normalizeSeedVaultEntry(entry = {}) {
     source: String(entry.source || "").trim(),
     quantity: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     yearAcquired: Number.isFinite(yearAcquiredValue) ? Math.max(1900, Math.floor(yearAcquiredValue)) : null,
-    seedAgeYears: Number.isFinite(seedAgeYearsValue) ? Math.max(0, seedAgeYearsValue) : null,
+    seedAgeYears: normalizeSeedAgeYears(seedAgeYearsValue),
     storageLocation: String(entry.storageLocation || entry.storage_location || "").trim(),
     notes: String(entry.notes || "").trim(),
     isFavorite: Boolean(entry.isFavorite ?? entry.is_favorite),
@@ -28025,7 +28035,7 @@ function validateSeedAgeSettings(form) {
       sameAgeInput?.classList.add("is-missing");
       return {
         isValid: false,
-        message: "Enter seed age in 0.5 year increments or switch to mixed ages by partition.",
+        message: "Enter seed age in 0.5 year increments starting at 1 year, or switch to mixed ages by partition.",
         firstInvalidField: sameAgeInput,
       };
     }
@@ -45750,7 +45760,7 @@ function renderAdminCstpSessionWorkspaceMarkup(session = null, options = {}) {
                 <label>
                   <span>Seed age</span>
                   <div class="session-seed-age-input-shell">
-                    <input type="number" name="sessionSeedAgeYears" min="0" max="99" step="0.5" inputmode="decimal" placeholder="#" value="${escapeHtml(sessionSeedAgeYears)}">
+                    <input type="number" name="sessionSeedAgeYears" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" value="${escapeHtml(sessionSeedAgeYears)}">
                     <span>years</span>
                   </div>
                 </label>
@@ -56293,9 +56303,9 @@ function formatSeedVaultQuantity(entry = null) {
 
 function formatSeedVaultAgeLabel(entry = null) {
   const yearAcquired = Number(entry?.yearAcquired);
-  const seedAgeYears = Number(entry?.seedAgeYears);
-  if (Number.isFinite(seedAgeYears)) {
-    return `${seedAgeYears.toLocaleString(undefined, { maximumFractionDigits: 1 })} year${seedAgeYears === 1 ? "" : "s"}`;
+  const seedAgeYears = normalizeSeedAgeYears(entry?.seedAgeYears);
+  if (seedAgeYears !== null) {
+    return formatSeedAgeYearsLabel(seedAgeYears);
   }
   if (Number.isFinite(yearAcquired)) {
     return `Acquired ${yearAcquired}`;
@@ -56434,7 +56444,7 @@ function getSeedVaultEntryFormPayload(form) {
     source: String(formData.get("source") || "").trim(),
     quantity: quantityValue ? Number(quantityValue) : null,
     yearAcquired: yearAcquiredValue ? Number(yearAcquiredValue) : null,
-    seedAgeYears: seedAgeYearsValue ? Number(seedAgeYearsValue) : null,
+    seedAgeYears: seedAgeYearsValue ? normalizeSeedAgeYears(seedAgeYearsValue) : null,
     storageLocation: String(formData.get("storageLocation") || "").trim(),
     notes: String(formData.get("notes") || "").trim(),
     isFavorite: formData.get("isFavorite") === "on",
@@ -56442,6 +56452,35 @@ function getSeedVaultEntryFormPayload(form) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
+}
+
+function validateSeedVaultEntryForm(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return {
+      isValid: false,
+      message: "Could not read this Vault Entry.",
+      firstInvalidField: null,
+    };
+  }
+
+  const seedAgeInput = form.elements.seedAgeYears;
+  const rawSeedAgeValue = String(seedAgeInput?.value || "").trim();
+  seedAgeInput?.classList.remove("is-missing");
+
+  if (rawSeedAgeValue && !isValidSeedAgeYearsInput(rawSeedAgeValue, { allowBlank: true })) {
+    seedAgeInput?.classList.add("is-missing");
+    return {
+      isValid: false,
+      message: "Seed age must start at 1 year and use 0.5 year increments.",
+      firstInvalidField: seedAgeInput,
+    };
+  }
+
+  return {
+    isValid: true,
+    message: "",
+    firstInvalidField: null,
+  };
 }
 
 function openSeedVaultEntryModal() {
@@ -56481,7 +56520,7 @@ function openSeedVaultEntryModal() {
           </label>
           <label>
             <span>Seed age</span>
-            <input name="seedAgeYears" type="number" min="0" max="99" step="0.1" inputmode="decimal" placeholder="Years">
+            <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="1, 1.5, 2">
           </label>
         </div>
         <label>
@@ -56518,6 +56557,15 @@ function openSeedVaultEntryModal() {
     const form = event.currentTarget;
     const message = form.querySelector("[data-seed-vault-form-message]");
     const submitButton = form.querySelector("button[type='submit']");
+    const validation = validateSeedVaultEntryForm(form);
+    if (!validation.isValid) {
+      if (message) {
+        message.textContent = validation.message;
+      }
+      validation.firstInvalidField?.focus();
+      return;
+    }
+
     const payload = getSeedVaultEntryFormPayload(form);
     if (!payload?.seedName) {
       if (message) {
@@ -58104,10 +58152,10 @@ function buildPartitionFormCard(partition, index, options = {}) {
     <label data-partition-seed-age-field${showSeedAgeInput ? "" : " hidden"}>
       <span class="mobile-field-label">Age</span>
       <span class="partition-seed-age-input-wrap">
-        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="0" step="0.5" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
+        <input type="number" name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="#" aria-label="Partition ${partition.id} seed age in years"${seedAgeReadOnly ? ' readonly aria-readonly="true" data-seed-age-readonly="true"' : ""}>
         <span class="partition-seed-age-input-unit" aria-hidden="true">years</span>
       </span>
-      <span class="field-warning" aria-live="polite">Use 0.5 year increments or leave blank.</span>
+      <span class="field-warning" aria-live="polite">${SEED_AGE_INPUT_HELPER_TEXT}</span>
     </label>
     ` : ""}
     <label>
