@@ -1308,6 +1308,7 @@ const appState = {
   seedVaultSort: "newest",
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
+  newSessionSeedVaultStarterEntryId: "",
   filterPaperInventory: null,
   filterPaperInventoryError: "",
   filterPaperInventoryBackendUnavailable: false,
@@ -30879,6 +30880,9 @@ function closeNewSessionSystemModal({ navigateBack = false } = {}) {
     if (navigateBack && window.location.hash === "#new") {
       window.location.hash = appState.newSessionReturnHash || "#sessions";
     }
+    if (navigateBack) {
+      clearNewSessionSeedVaultStarterIntent();
+    }
   }, 180);
 }
 
@@ -58028,7 +58032,12 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           </div>
         </div>
         <div class="seed-vault-entry-footer">
-          <button type="button" class="button button-secondary seed-vault-start-session-button" disabled aria-disabled="true">Start Session from Vault Entry</button>
+          <button
+            type="button"
+            class="button button-secondary seed-vault-start-session-button"
+            data-seed-vault-start-session="${escapeHtml(normalizedEntry.id)}"
+            ${normalizedEntry.isArchived ? 'disabled aria-disabled="true"' : ""}
+          >Start Session from Vault Entry</button>
         </div>
       </div>
     </article>
@@ -58655,6 +58664,43 @@ async function deleteSeedVaultEntry(entryId = "") {
   renderSessionsList();
 }
 
+function getSeedVaultEntryForSessionStart(entryId = "") {
+  const normalizedEntryId = String(entryId || "").trim();
+  if (!normalizedEntryId) {
+    return null;
+  }
+  return getActiveSeedVaultEntriesForSessionPicker()
+    .find((entry) => entry.id === normalizedEntryId) || null;
+}
+
+function clearNewSessionSeedVaultStarterIntent() {
+  appState.newSessionSeedVaultStarterEntryId = "";
+}
+
+function startNewSessionFromSeedVaultEntry(entryId = "") {
+  const entry = getSeedVaultEntryForSessionStart(entryId);
+  if (!entry) {
+    showNavigationLockToast({
+      title: "My Seed Vault",
+      message: "This Vault Entry is archived or unavailable.",
+    });
+    return;
+  }
+
+  appState.newSessionSeedVaultStarterEntryId = entry.id;
+  appState.newSessionSeedVaultExpanded = true;
+  appState.newSessionSeedVaultActivePartitionId = 1;
+  appState.newSessionReturnHash = "#seed-vault";
+
+  void promptFilterPaperSetupBeforeNewSession().then((canProceed) => {
+    if (!canProceed) {
+      clearNewSessionSeedVaultStarterIntent();
+      return;
+    }
+    openNewSessionSystemModal();
+  });
+}
+
 function getActiveSeedVaultEntriesForSessionPicker() {
   const entries = shouldExposeDevModeMockData()
     ? appState.seedVaultEntries || []
@@ -58719,6 +58765,14 @@ function renderNewSessionSeedVaultEntryOptions(entries = [], selectedEntryId = "
   ].join("");
 }
 
+function getNewSessionSeedVaultStarterEntry(form = null, entries = []) {
+  const starterEntryId = String(form?.dataset?.seedVaultStarterEntryId || appState.newSessionSeedVaultStarterEntryId || "").trim();
+  if (!starterEntryId) {
+    return null;
+  }
+  return entries.find((entry) => entry.id === starterEntryId) || null;
+}
+
 function getSeedVaultPartitionAssignmentSummary(row, entries = []) {
   const entryId = String(row?.dataset?.seedVaultEntryId || "").trim();
   const entry = entries.find((candidate) => candidate.id === entryId) || null;
@@ -58737,6 +58791,54 @@ function getSeedVaultPartitionAssignmentSummary(row, entries = []) {
     seedCount,
     label: "No Vault Entry assigned",
   };
+}
+
+function getSeedVaultDraftAssignedSeedCount(form, entryId = "", options = {}) {
+  const normalizedEntryId = String(entryId || "").trim();
+  if (!(form instanceof HTMLFormElement) || !normalizedEntryId) {
+    return 0;
+  }
+
+  const currentPartitionId = Math.max(0, Number(options.currentPartitionId) || 0);
+  const currentEntryId = String(options.currentEntryId || "").trim();
+  const hasCurrentSeedCount = options.currentSeedCount !== null && options.currentSeedCount !== undefined;
+  const currentSeedCount = hasCurrentSeedCount
+    ? Math.max(0, Math.floor(Number(options.currentSeedCount) || 0))
+    : 0;
+
+  return getNewSessionSeedVaultPartitionRows(form).reduce((total, row, index) => {
+    const partitionId = index + 1;
+    if (partitionId === currentPartitionId) {
+      return total + (currentEntryId === normalizedEntryId ? currentSeedCount : 0);
+    }
+
+    if (String(row?.dataset?.seedVaultEntryId || "").trim() !== normalizedEntryId) {
+      return total;
+    }
+
+    const seedCount = Math.max(0, Math.floor(Number(row.querySelector('input[name^="seedCount-"]')?.value) || 0));
+    return total + seedCount;
+  }, 0);
+}
+
+function getSeedVaultRemainingSeedCount(entry = null, form = null, options = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  const availableQuantity = Number(normalizedEntry?.quantity);
+  if (!normalizedEntry || !Number.isFinite(availableQuantity) || availableQuantity < 0) {
+    return null;
+  }
+
+  const assignedCount = getSeedVaultDraftAssignedSeedCount(form, normalizedEntry.id, {
+    currentPartitionId: options.currentPartitionId,
+    currentEntryId: normalizedEntry.id,
+    currentSeedCount: options.currentSeedCount,
+  });
+  return Math.max(0, Math.floor(availableQuantity) - assignedCount);
+}
+
+function formatSeedVaultRemainingSeedCount(entry = null, form = null, options = {}) {
+  const remainingCount = getSeedVaultRemainingSeedCount(entry, form, options);
+  return remainingCount === null ? "Remaining Seed Count: Not set" : `Remaining Seed Count: ${remainingCount}`;
 }
 
 function renderSeedVaultPartitionEntrySummaryMarkup(entry) {
@@ -58767,11 +58869,24 @@ function renderNewSessionSeedVaultPartitionAssignmentCard({
   const current = getSeedVaultPartitionAssignmentSummary(row, entries);
   const activePartitionId = Math.max(1, Number(appState.newSessionSeedVaultActivePartitionId) || 1);
   const isActive = activePartitionId === partitionId;
-  const selectedEntry = current.entry || null;
+  const starterEntry = getNewSessionSeedVaultStarterEntry(form, entries);
+  const selectedEntry = current.entry || (isActive ? starterEntry : null);
+  const selectedEntryId = selectedEntry?.id || current.entryId || "";
   const seedCountValue = current.seedCount > 0 ? String(current.seedCount) : "";
   const label = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
   const statusClass = current.entry ? "is-assigned" : "is-empty";
   const buttonLabel = current.entry ? "Update Partition" : "Apply to Partition";
+  const statusLabel = current.entry
+    ? current.label
+    : (selectedEntry
+      ? `${selectedEntry.source || "Source not set"} · ${selectedEntry.seedName || "Seed Variety not set"} ready to assign`
+      : current.label);
+  const remainingLabel = selectedEntry
+    ? formatSeedVaultRemainingSeedCount(selectedEntry, form, {
+      currentPartitionId: partitionId,
+      currentSeedCount: seedCountValue ? Number(seedCountValue) : null,
+    })
+    : "Remaining Seed Count: Select a Vault Entry";
 
   return `
     <article class="new-session-seed-vault-assignment ${isActive ? "is-active" : ""} ${statusClass}" data-seed-vault-assignment-card="${partitionId}">
@@ -58783,7 +58898,7 @@ function renderNewSessionSeedVaultPartitionAssignmentCard({
         aria-controls="seed-vault-partition-assignment-${partitionId}"
       >
         <span class="new-session-seed-vault-partition-label">${escapeHtml(label)}</span>
-        <span class="new-session-seed-vault-partition-status">${escapeHtml(current.label)}</span>
+        <span class="new-session-seed-vault-partition-status">${escapeHtml(statusLabel)}</span>
         <span class="new-session-seed-vault-trigger-icon" aria-hidden="true"></span>
       </button>
       <div id="seed-vault-partition-assignment-${partitionId}" class="new-session-seed-vault-assignment-body" ${isActive ? "" : "hidden"}>
@@ -58791,12 +58906,13 @@ function renderNewSessionSeedVaultPartitionAssignmentCard({
           <label>
             <span>Vault Entry</span>
             <select data-seed-vault-partition-entry="${partitionId}">
-              ${entryOptions}
+              ${renderNewSessionSeedVaultEntryOptions(entries, selectedEntryId)}
             </select>
           </label>
-          <label>
+          <label class="new-session-seed-vault-count-field">
             <span>Seed count</span>
             <input type="number" min="1" step="1" inputmode="numeric" data-seed-vault-partition-count="${partitionId}" placeholder="#" value="${escapeHtml(seedCountValue)}">
+            <small data-seed-vault-remaining-count="${partitionId}">${escapeHtml(remainingLabel)}</small>
           </label>
         </div>
         ${renderSeedVaultPartitionEntrySummaryMarkup(selectedEntry)}
@@ -59049,6 +59165,33 @@ function readPartitionSeedVaultSnapshotFromRow(row) {
   }
 }
 
+function updateSeedVaultPartitionRemainingCount(section, form, partitionId = "") {
+  if (!(section instanceof HTMLElement) || !(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const normalizedPartitionId = String(partitionId || "").trim();
+  if (!normalizedPartitionId) {
+    return;
+  }
+
+  const entry = getSelectedSeedVaultEntryForSession(section, normalizedPartitionId);
+  const countInput = section.querySelector(`[data-seed-vault-partition-count="${CSS.escape(normalizedPartitionId)}"]`);
+  const remainingTarget = section.querySelector(`[data-seed-vault-remaining-count="${CSS.escape(normalizedPartitionId)}"]`);
+  if (!(remainingTarget instanceof HTMLElement)) {
+    return;
+  }
+
+  const rawSeedCount = String(countInput?.value || "").trim();
+  const currentSeedCount = rawSeedCount ? Math.max(0, Math.floor(Number(rawSeedCount) || 0)) : null;
+  remainingTarget.textContent = entry
+    ? formatSeedVaultRemainingSeedCount(entry, form, {
+      currentPartitionId: Number(normalizedPartitionId),
+      currentSeedCount,
+    })
+    : "Remaining Seed Count: Select a Vault Entry";
+}
+
 function bindNewSessionSeedVaultPicker(section, form, options = {}) {
   if (!(section instanceof HTMLElement) || !(form instanceof HTMLFormElement) || section.dataset.seedVaultSessionBound === "true") {
     return;
@@ -59069,7 +59212,19 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
       return;
     }
     if (target instanceof HTMLSelectElement && target.matches("[data-seed-vault-partition-entry]")) {
-      renderSelectedSeedVaultEntrySessionSummary(section, target.getAttribute("data-seed-vault-partition-entry") || "");
+      const partitionId = target.getAttribute("data-seed-vault-partition-entry") || "";
+      if (target.value !== String(form.dataset.seedVaultStarterEntryId || "")) {
+        form.dataset.seedVaultStarterEntryId = "";
+      }
+      renderSelectedSeedVaultEntrySessionSummary(section, partitionId);
+      updateSeedVaultPartitionRemainingCount(section, form, partitionId);
+    }
+  });
+
+  section.addEventListener("input", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.matches("[data-seed-vault-partition-count]")) {
+      updateSeedVaultPartitionRemainingCount(section, form, target.getAttribute("data-seed-vault-partition-count") || "");
     }
   });
 
@@ -59130,8 +59285,14 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
     }
 
     const availableQuantity = Number(entry.quantity);
-    if (Number.isFinite(availableQuantity) && availableQuantity >= 0 && seedCount > availableQuantity) {
-      setFeedbackMessage(message, `This Vault Entry has ${availableQuantity} available. Enter ${availableQuantity} or fewer seeds.`, "error");
+    const totalDraftCountForEntry = getSeedVaultDraftAssignedSeedCount(form, entry.id, {
+      currentPartitionId: partitionId,
+      currentEntryId: entry.id,
+      currentSeedCount: seedCount,
+    });
+    if (Number.isFinite(availableQuantity) && availableQuantity >= 0 && totalDraftCountForEntry > availableQuantity) {
+      setFeedbackMessage(message, `This Vault Entry has ${availableQuantity} available, with ${totalDraftCountForEntry} assigned in this session draft.`, "error");
+      updateSeedVaultPartitionRemainingCount(section, form, partitionId);
       return;
     }
 
@@ -59970,9 +60131,14 @@ function renderSessionForm(initialSystemType = "KAN") {
   const today = new Date();
   const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
   const notesDraft = loadNewSessionNotesDraft();
+  const starterSeedVaultEntry = getSeedVaultEntryForSessionStart(appState.newSessionSeedVaultStarterEntryId);
   appState.newSessionSystemType = normalizedSystemType;
-  appState.newSessionSeedVaultExpanded = false;
+  appState.newSessionSeedVaultExpanded = Boolean(starterSeedVaultEntry);
   appState.newSessionSeedVaultActivePartitionId = 1;
+  if (starterSeedVaultEntry) {
+    form.dataset.seedVaultStarterEntryId = starterSeedVaultEntry.id;
+  }
+  clearNewSessionSeedVaultStarterIntent();
   syncNewSessionNameState(form);
   bindNewSessionQuickStartHelp(app);
   mountContextualOnboardingPrompt(
@@ -62439,6 +62605,14 @@ function renderSessionsList() {
         const entryId = String(archiveButton.getAttribute("data-seed-vault-archive") || "").trim();
         const entry = (appState.seedVaultEntries || []).find((candidate) => candidate.id === entryId);
         await updateSeedVaultEntryFlag(entryId, { isArchived: !entry?.isArchived });
+        return;
+      }
+
+      const startSessionButton = target.closest("[data-seed-vault-start-session]");
+      if (startSessionButton) {
+        event.preventDefault();
+        const entryId = String(startSessionButton.getAttribute("data-seed-vault-start-session") || "").trim();
+        startNewSessionFromSeedVaultEntry(entryId);
         return;
       }
 

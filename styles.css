@@ -31201,6 +31201,17 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   grid-template-columns: minmax(0, 1fr) minmax(96px, 0.32fr);
 }
 
+.new-session-seed-vault-count-field {
+  align-content: start;
+}
+
+.new-session-seed-vault-count-field small {
+  color: rgba(205, 214, 207, 0.72);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .new-session-seed-vault-controls label {
   display: grid;
   gap: 6px;
@@ -40248,6 +40259,9 @@ body.theme-dark #session-analytics-section {
 .seed-vault-start-session-button.button {
   min-height: 36px;
   padding: 0 13px;
+}
+
+.seed-vault-start-session-button.button:disabled {
   opacity: 0.58;
   cursor: not-allowed;
 }

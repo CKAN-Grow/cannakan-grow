@@ -31,6 +31,8 @@ for (const needle of [
   "seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName",
   "seed_sex: normalizedEntry.seedSex || null",
   "data-seed-vault-toggle",
+  "data-seed-vault-start-session",
+  "function startNewSessionFromSeedVaultEntry(entryId = \"\")",
   "data-seed-vault-delete",
   "seed-vault-favorite-button",
   "Delete this Vault Entry from My Seed Vault?",
