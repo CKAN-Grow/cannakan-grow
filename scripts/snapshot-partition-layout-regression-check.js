@@ -11,15 +11,17 @@ function requireNeedle(source, needle, label = needle) {
 }
 
 for (const needle of [
-  "const panelHeight = partitionItemCount > 8 ? 318 : (partitionItemCount > 0 ? 284 : 228);",
-  "const dividerX = x + (roomy ? width * 0.34 : width * 0.292);",
-  "const rightRegionX = dividerX + (roomy ? 34 : 26);",
-  "const percentFontSize = roomy ? 150 : 78;",
-  'context.font = roomy ? "700 27px Arial, sans-serif" : "700 20px Arial, sans-serif";',
-  "const gap = roomy ? 10 : (items.length > 8 ? 6 : 8);",
-  "const rowHeight = roomy ? 52 : (items.length > 8 ? 34 : 44);",
-  "context.font = `700 ${roomy ? 16 : (items.length > 8 ? 10.5 : 13)}px Arial, sans-serif`;",
-  "context.font = `600 ${roomy ? 13 : (items.length > 8 ? 8.5 : 10)}px Arial, sans-serif`;",
+  "const panelHeight = partitionItemCount > 8 ? 392 : (partitionItemCount > 0 ? 354 : 228);",
+  "const inset = roomy ? 72 : 30;",
+  "const dividerX = x + (roomy ? width * 0.295 : width * 0.255);",
+  "const rightRegionX = dividerX + (roomy ? 26 : 22);",
+  "const percentFontSize = roomy ? 138 : 78;",
+  'context.font = roomy ? "800 32px Arial, sans-serif" : "800 25px Arial, sans-serif";',
+  "const columnCount = 4;",
+  "const gap = roomy ? 14 : (items.length > 8 ? 9 : 10);",
+  "const rowHeight = roomy ? 68 : (items.length > 8 ? 45 : 68);",
+  "context.font = `800 ${roomy ? 22 : (items.length > 8 ? 14 : 18)}px Arial, sans-serif`;",
+  "context.font = `700 ${roomy ? 18 : (items.length > 8 ? 11.5 : 14)}px Arial, sans-serif`;",
 ]) {
   requireNeedle(appSource, needle);
 }

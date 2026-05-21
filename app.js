@@ -29576,7 +29576,7 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null, profileA
   const panelX = panelLeft;
   const panelWidth = panelRight - panelLeft;
   const partitionItemCount = getSnapshotPartitionResultItems(data).length;
-  const panelHeight = partitionItemCount > 8 ? 318 : (partitionItemCount > 0 ? 284 : 228);
+  const panelHeight = partitionItemCount > 8 ? 392 : (partitionItemCount > 0 ? 354 : 228);
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
@@ -29607,22 +29607,22 @@ function drawSnapshotTextLayout(context, size, data, brandLogo = null, profileAv
 }
 
 function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null, profileAvatar = null) {
-  const inset = roomy ? 80 : 36;
-  const overlayHeight = roomy ? 338 : height;
-  const overlayTopY = roomy ? y + 132 : y + height - overlayHeight;
+  const inset = roomy ? 72 : 30;
+  const overlayHeight = roomy ? 404 : height;
+  const overlayTopY = roomy ? y + 108 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 154 : 116);
-  const rateY = percentY + (roomy ? 52 : 28);
-  const seedsY = rateY + (roomy ? 42 : 25);
-  const dividerX = x + (roomy ? width * 0.34 : width * 0.292);
-  const footerDividerY = overlayBottomY - (roomy ? 64 : 50);
-  const footerTextY = overlayBottomY - (roomy ? 28 : 20);
+  const percentY = overlayTopY + (roomy ? 160 : 132);
+  const rateY = percentY + (roomy ? 52 : 30);
+  const seedsY = rateY + (roomy ? 42 : 27);
+  const dividerX = x + (roomy ? width * 0.295 : width * 0.255);
+  const footerDividerY = overlayBottomY - (roomy ? 62 : 48);
+  const footerTextY = overlayBottomY - (roomy ? 27 : 19);
   const metaIconSize = roomy ? 18 : 14;
-  const rightRegionX = dividerX + (roomy ? 34 : 26);
+  const rightRegionX = dividerX + (roomy ? 26 : 22);
   const rightRegionWidth = x + width - inset - rightRegionX;
-  const badgeTopY = overlayTopY + (roomy ? 18 : 20);
+  const badgeTopY = overlayTopY + (roomy ? 16 : 14);
 
-  const percentFontSize = roomy ? 150 : 78;
+  const percentFontSize = roomy ? 138 : 78;
   context.save();
   context.shadowColor = "rgba(148, 209, 89, 0.28)";
   context.shadowBlur = 14;
@@ -29643,8 +29643,8 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.strokeStyle = "rgba(148, 209, 89, 0.22)";
   context.lineWidth = 0.8;
   context.beginPath();
-  context.moveTo(dividerX, overlayTopY + (roomy ? 26 : 38));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 82 : 44));
+  context.moveTo(dividerX, overlayTopY + (roomy ? 24 : 28));
+  context.lineTo(dividerX, overlayBottomY - (roomy ? 80 : 44));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -29667,17 +29667,17 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   const seedAgeSnapshotLabel = String(data?.seedAgeSnapshotLabel || "").trim();
   if (seedAgeSnapshotLabel) {
     context.fillStyle = "#dce9d2";
-    context.font = roomy ? "700 27px Arial, sans-serif" : "700 20px Arial, sans-serif";
+    context.font = roomy ? "800 32px Arial, sans-serif" : "800 25px Arial, sans-serif";
     const maxSeedAgeWidth = Math.max(120, rightRegionWidth);
     const seedAgeText = truncateTextToWidth(context, seedAgeSnapshotLabel, maxSeedAgeWidth);
-    context.fillText(seedAgeText, rightRegionX, badgeY + badgeHeight + (roomy ? 42 : 34));
+    context.fillText(seedAgeText, rightRegionX, badgeY + badgeHeight + (roomy ? 46 : 40));
   }
 
   const partitionGrid = drawSnapshotPartitionResultGrid(context, data, {
     x: rightRegionX,
-    y: badgeY + badgeHeight + (seedAgeSnapshotLabel ? (roomy ? 66 : 50) : (roomy ? 34 : 28)),
+    y: badgeY + badgeHeight + (seedAgeSnapshotLabel ? (roomy ? 78 : 64) : (roomy ? 42 : 34)),
     width: rightRegionWidth,
-    bottomY: footerDividerY - (roomy ? 18 : 12),
+    bottomY: footerDividerY - (roomy ? 16 : 10),
     roomy,
   });
 
@@ -30030,9 +30030,9 @@ function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
   const width = Math.max(120, Number(layout.width) || 0);
   const bottomY = Math.max(y, Number(layout.bottomY) || y);
   const roomy = Boolean(layout.roomy);
-  const columnCount = items.length > 8 ? 4 : (roomy ? 2 : 4);
-  const gap = roomy ? 10 : (items.length > 8 ? 6 : 8);
-  const rowHeight = roomy ? 52 : (items.length > 8 ? 34 : 44);
+  const columnCount = 4;
+  const gap = roomy ? 14 : (items.length > 8 ? 9 : 10);
+  const rowHeight = roomy ? 68 : (items.length > 8 ? 45 : 68);
   const columnWidth = Math.max(58, (width - (gap * (columnCount - 1))) / columnCount);
   const maxRows = Math.max(1, Math.floor((bottomY - y) / (rowHeight + gap)));
   const visibleItems = items.slice(0, Math.max(1, maxRows * columnCount));
@@ -30051,19 +30051,19 @@ function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
     drawRoundedRectPath(context, itemX, itemY, columnWidth, rowHeight, roomy ? 10 : 8);
     context.stroke();
     context.fillStyle = "#f4faef";
-    context.font = `700 ${roomy ? 16 : (items.length > 8 ? 10.5 : 13)}px Arial, sans-serif`;
+    context.font = `800 ${roomy ? 22 : (items.length > 8 ? 14 : 18)}px Arial, sans-serif`;
     const valueText = `${item.label} ${item.germinatedCount}/${item.totalCount} ${item.percentageLabel}`;
     context.fillText(
-      truncateTextToWidth(context, valueText, columnWidth - 14),
-      itemX + 8,
-      itemY + (roomy ? 18 : (items.length > 8 ? 12 : 16)),
+      truncateTextToWidth(context, valueText, columnWidth - 18),
+      itemX + 9,
+      itemY + (roomy ? 27 : (items.length > 8 ? 18 : 26)),
     );
     context.fillStyle = "#94d159";
-    context.font = `600 ${roomy ? 13 : (items.length > 8 ? 8.5 : 10)}px Arial, sans-serif`;
+    context.font = `700 ${roomy ? 18 : (items.length > 8 ? 11.5 : 14)}px Arial, sans-serif`;
     context.fillText(
-      truncateTextToWidth(context, item.identityLabel || "Source not shared", columnWidth - 14),
-      itemX + 8,
-      itemY + (roomy ? 38 : (items.length > 8 ? 25 : 32)),
+      truncateTextToWidth(context, item.identityLabel || "Source not shared", columnWidth - 18),
+      itemX + 9,
+      itemY + (roomy ? 54 : (items.length > 8 ? 36 : 52)),
     );
   });
   context.restore();
