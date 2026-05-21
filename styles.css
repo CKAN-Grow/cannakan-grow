@@ -39140,9 +39140,9 @@ body.theme-dark #session-analytics-section {
 
 .seed-vault-empty-state {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   padding: 18px;
   border-radius: 20px;
   border: 1px dashed rgba(127, 184, 255, 0.22);
@@ -40571,8 +40571,7 @@ body.theme-dark #session-analytics-section {
     grid-template-columns: 1fr;
   }
 
-  .seed-vault-add-button.button,
-  .seed-vault-empty-state .button {
+  .seed-vault-add-button.button {
     width: 100%;
   }
 

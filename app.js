@@ -56658,7 +56658,6 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
             <h4>Your first Vault Entry starts here</h4>
             <p>Add seeds you own, then connect entries to grow sessions in a later pass.</p>
           </div>
-          <button type="button" class="button button-primary" data-seed-vault-add="true">Add Seeds</button>
         </div>
       `}
     </section>
