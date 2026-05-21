@@ -20,15 +20,21 @@ for (const needle of [
 
 for (const needle of [
   "Add from My Seed Vault",
+  "newSessionSeedVaultExpanded",
+  "newSessionSeedVaultActivePartitionId",
   "function getActiveSeedVaultEntriesForSessionPicker()",
-  "function renderNewSessionSeedVaultPicker(section, systemType = \"KAN\")",
+  "function renderNewSessionSeedVaultPicker(section, systemType = \"KAN\", form = null)",
   "Select seeds from your collection to auto-fill partition details.",
   "function bindNewSessionSeedVaultPicker(section, form, options = {})",
-  "data-seed-vault-apply-to-session",
-  "Seeds per selected partition",
-  "Count per partition uses ${totalRequested} seeds total",
-  "Apply this Vault Entry and overwrite details in the selected populated partition(s)?",
+  "data-seed-vault-session-toggle",
+  "data-seed-vault-partition-entry",
+  "data-seed-vault-partition-count",
+  "data-seed-vault-apply-partition",
+  "data-seed-vault-clear-partition",
+  "Apply this Vault Entry and overwrite details in this populated partition?",
+  "Clear this partition's Vault Entry assignment and copied fields?",
   "function applySeedVaultEntryToPartitionRow(row, entry = {}, seedCount = 0)",
+  "function clearSeedVaultAssignmentFromPartitionRow(row)",
   "syncCustomSelect(typeSelect);",
   "syncCustomSelect(sexSelect);",
   "row.dataset.seedVaultEntrySnapshot = JSON.stringify({",
@@ -36,18 +42,33 @@ for (const needle of [
   "seedVaultEntryId: String(row?.dataset.seedVaultEntryId || \"\").trim()",
   "seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row)",
   "refreshNewSessionSeedVaultPicker();",
+  "getSystemType: () => systemTypeField.value",
 ]) {
   requireNeedle(appSource, needle);
 }
 
 for (const needle of [
   ".new-session-seed-vault-section",
+  ".new-session-seed-vault-toggle",
+  ".new-session-seed-vault-panel",
+  ".new-session-seed-vault-assignment-grid",
+  ".new-session-seed-vault-assignment-trigger",
   ".new-session-seed-vault-controls",
-  ".new-session-seed-vault-partition-grid",
-  ".new-session-seed-vault-partition-option:has(input:checked)",
+  ".new-session-seed-vault-controls--partition",
+  ".new-session-seed-vault-assignment-actions",
   ".new-session-seed-vault-message.is-success",
 ]) {
   requireNeedle(stylesSource, needle);
+}
+
+for (const retiredNeedle of [
+  "data-seed-vault-apply-to-session",
+  "data-seed-vault-partition-choice",
+  "Seeds per selected partition",
+]) {
+  if (appSource.includes(retiredNeedle)) {
+    throw new Error(`Retired one-entry multi-partition Seed Vault flow is still present: ${retiredNeedle}`);
+  }
 }
 
 console.log("Seed Vault session autofill regression check passed.");

@@ -31063,39 +31063,142 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .new-session-seed-vault-section {
   display: grid;
   gap: 12px;
-  padding: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .new-session-seed-vault-section[hidden] {
   display: none;
 }
 
-.new-session-seed-vault-head,
-.new-session-seed-vault-empty {
-  display: flex;
+.new-session-seed-vault-toggle {
+  width: 100%;
+}
+
+.new-session-seed-vault-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012) 42%),
+    rgba(9, 15, 11, 0.52);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 22px rgba(0, 0, 0, 0.16);
+}
+
+.new-session-seed-vault-panel[hidden] {
+  display: none;
+}
+
+.new-session-seed-vault-assignment-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.new-session-seed-vault-assignment {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 38%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.new-session-seed-vault-assignment.is-active {
+  border-color: rgba(148, 209, 89, 0.28);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.075), rgba(148, 209, 89, 0.025) 46%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px rgba(148, 209, 89, 0.07),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.new-session-seed-vault-assignment-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  display: grid;
+  grid-template-columns: minmax(74px, auto) minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.new-session-seed-vault-head h3,
-.new-session-seed-vault-empty h3 {
-  margin: 0;
-  color: #f5f8f3;
-  font-size: 1.02rem;
+.new-session-seed-vault-assignment-trigger:hover,
+.new-session-seed-vault-assignment-trigger:focus-visible {
+  background: rgba(148, 209, 89, 0.065);
+  outline: none;
 }
 
-.new-session-seed-vault-head p,
-.new-session-seed-vault-empty p {
-  margin: 4px 0 0;
-  color: rgba(205, 214, 207, 0.74);
-  font-size: 0.88rem;
+.new-session-seed-vault-partition-label {
+  color: #dff3c7;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.new-session-seed-vault-partition-status {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(222, 232, 220, 0.76);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-session-seed-vault-assignment.is-assigned .new-session-seed-vault-partition-status {
+  color: #f4f9f0;
+}
+
+.new-session-seed-vault-trigger-icon {
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid rgba(183, 226, 130, 0.82);
+  border-bottom: 2px solid rgba(183, 226, 130, 0.82);
+  transform: rotate(45deg);
+  transition: transform 0.18s ease;
+}
+
+.new-session-seed-vault-assignment.is-active .new-session-seed-vault-trigger-icon {
+  transform: rotate(225deg) translate(-2px, -2px);
+}
+
+.new-session-seed-vault-assignment-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.new-session-seed-vault-assignment-body[hidden] {
+  display: none;
 }
 
 .new-session-seed-vault-controls {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(150px, 0.45fr);
   gap: 10px;
+}
+
+.new-session-seed-vault-controls--partition {
+  grid-template-columns: minmax(0, 1fr) minmax(96px, 0.32fr);
 }
 
 .new-session-seed-vault-controls label {
@@ -31117,7 +31220,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .new-session-seed-vault-controls input {
   width: 100%;
   min-width: 0;
-  min-height: 40px;
+  min-height: 38px;
   border-radius: 12px;
   border: 1px solid rgba(148, 209, 89, 0.14);
   background: rgba(9, 14, 11, 0.76);
@@ -31143,58 +31246,18 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   font-weight: 800;
 }
 
-.new-session-seed-vault-partitions {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.new-session-seed-vault-partition-grid {
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.new-session-seed-vault-partition-option {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 0;
-  min-height: 32px;
-  padding: 0 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 209, 89, 0.14);
-  background: rgba(255, 255, 255, 0.035);
-  color: rgba(226, 234, 224, 0.84);
-  font-size: 0.74rem;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.new-session-seed-vault-partition-option input {
-  width: 13px;
-  height: 13px;
-  margin: 0;
-  accent-color: #94d159;
-}
-
-.new-session-seed-vault-partition-option:has(input:checked) {
-  border-color: rgba(148, 209, 89, 0.36);
-  background: rgba(148, 209, 89, 0.12);
-  color: #d8f7ac;
-  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.08);
-}
-
-.new-session-seed-vault-actions {
+.new-session-seed-vault-assignment-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.new-session-seed-vault-assignment-actions .button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.78rem;
 }
 
 .new-session-seed-vault-message {
@@ -41422,23 +41485,26 @@ body.theme-dark #session-analytics-section {
     border-radius: 20px;
   }
 
-  .new-session-seed-vault-head,
-  .new-session-seed-vault-empty,
-  .new-session-seed-vault-actions {
-    align-items: stretch;
-    flex-direction: column;
+  .new-session-seed-vault-panel {
+    padding: 12px;
   }
 
-  .new-session-seed-vault-controls {
+  .new-session-seed-vault-assignment-trigger {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+
+  .new-session-seed-vault-partition-status {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
+
+  .new-session-seed-vault-controls,
+  .new-session-seed-vault-controls--partition {
     grid-template-columns: 1fr;
   }
 
-  .new-session-seed-vault-partition-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .new-session-seed-vault-actions .button,
-  .new-session-seed-vault-empty .button {
+  .new-session-seed-vault-assignment-actions .button {
     width: 100%;
   }
 
