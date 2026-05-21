@@ -9379,6 +9379,7 @@ async function bootstrapApp() {
   initializeSiteVisitorTracking();
   bindBackToTopVisibilityObservers();
   initializeTopbarControls();
+  initializeGlobalSaveButtonIcons();
   await rehydratePersistentBrowserState("bootstrap:start");
   updateAuthStatus();
   syncInstallPromptBanner();
@@ -30542,13 +30543,109 @@ function setSessionSaveButtonLabel(button, label) {
     return;
   }
 
-  const labelNode = button.querySelector("[data-session-save-button-label]");
+  const labelNode = button.querySelector("[data-session-save-button-label], [data-save-button-label]");
   if (labelNode) {
     labelNode.textContent = label;
     return;
   }
 
   button.textContent = label;
+}
+
+function getSaveButtonIconMarkup() {
+  return `
+    <span class="save-button-icon" data-save-button-icon aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M5 4.75h11.2L19.25 7.8v11.45H5V4.75Z"></path>
+        <path d="M8 4.75v5h7.5v-5"></path>
+        <path d="M8 19.25v-5.5h8v5.5"></path>
+        <path d="M13.6 6.25v2"></path>
+      </svg>
+    </span>
+  `;
+}
+
+function isSaveButtonIconCandidate(button) {
+  if (!(button instanceof HTMLButtonElement)) {
+    return false;
+  }
+  if (button.matches("[data-save-icon-exempt='true'], .button-danger, .gallery-admin-reject")) {
+    return false;
+  }
+  const label = button.textContent.replace(/\s+/g, " ").trim().toLowerCase();
+  const explicitSaveAction = button.matches([
+    "[data-save-icon-button='true']",
+    "[data-new-session-save-button='true']",
+    "[data-session-save-button='true']",
+    "[data-filter-paper-modal-save='true']",
+    "[data-filter-paper-setup-save='true']",
+    "[data-unsaved-action='save']",
+  ].join(", "));
+  if (explicitSaveAction) {
+    return true;
+  }
+  if (button.closest("[data-seed-vault-entry-form]") && label === "add seeds") {
+    return true;
+  }
+  if (/(^|\s)save(\s|$|[&:])/.test(label)) {
+    return true;
+  }
+  return label === "update password";
+}
+
+function enhanceSaveButtonIcon(button) {
+  if (!isSaveButtonIconCandidate(button)) {
+    return;
+  }
+
+  button.dataset.saveIconButton = "true";
+  button.classList.add("save-button");
+  const hasIcon = Boolean(button.querySelector("[data-save-button-icon], .detail-save-shortcut-icon"));
+  const labelNode = button.querySelector("[data-save-button-label], [data-session-save-button-label]");
+  if (hasIcon && labelNode) {
+    return;
+  }
+
+  const label = button.textContent.replace(/\s+/g, " ").trim() || NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
+  button.innerHTML = `${getSaveButtonIconMarkup()}<span data-save-button-label>${escapeHtml(label)}</span>`;
+}
+
+function enhanceGlobalSaveButtonIcons(scope = document) {
+  const root = scope instanceof Element || scope instanceof Document ? scope : document;
+  if (root instanceof HTMLButtonElement) {
+    enhanceSaveButtonIcon(root);
+    return;
+  }
+  root.querySelectorAll?.("button").forEach((button) => {
+    enhanceSaveButtonIcon(button);
+  });
+}
+
+function initializeGlobalSaveButtonIcons() {
+  if (!document.body || document.body.dataset.saveButtonIconsBound === "true") {
+    return;
+  }
+
+  document.body.dataset.saveButtonIconsBound = "true";
+  enhanceGlobalSaveButtonIcons(document);
+  const observer = new MutationObserver((mutations) => {
+    const shouldRefresh = mutations.some((mutation) => (
+      mutation.type === "childList"
+      || mutation.type === "characterData"
+      || (mutation.type === "attributes" && mutation.target instanceof HTMLButtonElement)
+    ));
+    if (!shouldRefresh) {
+      return;
+    }
+    window.requestAnimationFrame(() => enhanceGlobalSaveButtonIcons(document));
+  });
+  observer.observe(document.body, {
+    attributes: true,
+    attributeFilter: ["class", "data-save-icon-button", "data-save-state"],
+    childList: true,
+    characterData: true,
+    subtree: true,
+  });
 }
 
 function clearNewSessionSaveButtonTimer(form) {
@@ -57658,7 +57755,7 @@ function openSeedVaultEntryModal() {
         <p class="seed-vault-form-message" data-seed-vault-form-message role="alert" aria-live="polite"></p>
         <div class="seed-vault-modal-actions">
           <button type="button" class="button button-secondary" data-seed-vault-modal-close="true">Cancel</button>
-          <button type="submit" class="button button-primary">Add Seeds</button>
+          <button type="submit" class="button button-primary" data-save-icon-button="true">Add Seeds</button>
         </div>
       </form>
     </div>
