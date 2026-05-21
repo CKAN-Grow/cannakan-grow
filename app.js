@@ -57918,7 +57918,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           </button>
           <button
             type="button"
-            class="seed-vault-icon-button${normalizedEntry.isFavorite ? " is-active" : ""}"
+            class="seed-vault-icon-button seed-vault-favorite-button${normalizedEntry.isFavorite ? " is-active" : ""}"
             data-seed-vault-favorite="${escapeHtml(normalizedEntry.id)}"
             aria-pressed="${normalizedEntry.isFavorite ? "true" : "false"}"
             aria-label="${normalizedEntry.isFavorite ? "Remove Vault Entry from favorites" : "Favorite Vault Entry"}"

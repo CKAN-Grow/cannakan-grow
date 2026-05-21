@@ -39710,9 +39710,9 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-entry-card.is-favorite {
-  border-color: rgba(181, 232, 111, 0.24);
+  border-color: rgba(255, 111, 130, 0.22);
   background:
-    radial-gradient(circle at top right, rgba(181, 232, 111, 0.12), transparent 38%),
+    radial-gradient(circle at top right, rgba(255, 111, 130, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0) 28%),
     rgba(11, 18, 15, 0.86);
 }
@@ -39799,6 +39799,31 @@ body.theme-dark #session-analytics-section {
   box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.09);
 }
 
+.seed-vault-expand-button {
+  border-color: rgba(127, 184, 255, 0.26);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025)),
+    rgba(127, 184, 255, 0.09);
+  color: #c8e4ff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(127, 184, 255, 0.05);
+}
+
+.seed-vault-expand-button:hover,
+.seed-vault-expand-button:focus-visible,
+.seed-vault-expand-button.is-active {
+  border-color: rgba(127, 184, 255, 0.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(127, 184, 255, 0.16);
+  color: #f2f8ff;
+  box-shadow:
+    0 0 0 3px rgba(127, 184, 255, 0.12),
+    0 0 16px rgba(127, 184, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
 .seed-vault-icon-button--archive:hover,
 .seed-vault-icon-button--archive:focus-visible,
 .seed-vault-icon-button--archive.is-active {
@@ -39814,6 +39839,31 @@ body.theme-dark #session-analytics-section {
   background: rgba(238, 126, 112, 0.12);
   color: #ffb6aa;
   box-shadow: 0 0 0 3px rgba(238, 126, 112, 0.09);
+}
+
+.seed-vault-favorite-button:hover,
+.seed-vault-favorite-button:focus-visible {
+  border-color: rgba(255, 111, 130, 0.34);
+  background: rgba(255, 111, 130, 0.1);
+  color: #ff9aa8;
+  box-shadow: 0 0 0 3px rgba(255, 111, 130, 0.08);
+}
+
+.seed-vault-favorite-button.is-active {
+  border-color: rgba(255, 111, 130, 0.5);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 111, 130, 0.22), transparent 68%),
+    rgba(255, 111, 130, 0.12);
+  color: #ff6f82;
+  box-shadow:
+    0 0 0 3px rgba(255, 111, 130, 0.1),
+    0 0 16px rgba(255, 111, 130, 0.16);
+}
+
+.seed-vault-favorite-button.is-active .seed-vault-action-icon svg path,
+.seed-vault-favorite-indicator.is-active .seed-vault-action-icon svg path {
+  fill: currentColor;
+  stroke-width: 1.45;
 }
 
 .seed-vault-expand-button .seed-vault-action-icon {
@@ -39941,10 +39991,14 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-favorite-indicator.is-active {
-  border-color: rgba(181, 232, 111, 0.28);
-  color: #d6f79e;
-  background: rgba(181, 232, 111, 0.12);
-  box-shadow: 0 0 10px rgba(181, 232, 111, 0.08);
+  border-color: rgba(255, 111, 130, 0.42);
+  color: #ff6f82;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 111, 130, 0.22), transparent 68%),
+    rgba(255, 111, 130, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(255, 111, 130, 0.08),
+    0 0 12px rgba(255, 111, 130, 0.16);
 }
 
 .seed-vault-status-pill {
