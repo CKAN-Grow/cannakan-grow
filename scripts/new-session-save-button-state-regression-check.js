@@ -10,12 +10,21 @@ const saveButtonMatches = indexSource.match(/data-new-session-save-button="true"
 if (saveButtonMatches.length < 2) {
   throw new Error("Both New Session Save Session buttons should expose data-new-session-save-button.");
 }
+const sharedSaveButtonMatches = indexSource.match(/data-session-save-button="true"/g) || [];
+if (sharedSaveButtonMatches.length < 4) {
+  throw new Error("New Session and Session Detail Save Session buttons should expose shared saved-state hooks.");
+}
 
 for (const needle of [
-  'const NEW_SESSION_SAVE_BUTTON_SAVED_LABEL = "Saved";',
+  'const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";',
+  "const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;",
+  "function setSessionSaveButtonLabel(button, label)",
   'function setNewSessionSaveButtonState(form, state = "default")',
-  'button.textContent = isSaved ? NEW_SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;',
+  "setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);",
   'button.disabled = isSaved;',
+  'setNewSessionSaveButtonState(form, "default");',
+  'function setSessionDetailSaveButtonState(detail, state = "default", options = {})',
+  'setSessionDetailSaveButtonState(detail, "saved", {',
   'setNewSessionSaveButtonState(form, "saved");',
   'await waitForNewSessionSavedStateVisibility();',
   'resetNewSessionSaveButtonState(form);',
@@ -27,6 +36,9 @@ for (const needle of [
 
 if (!stylesSource.includes('[data-new-session-save-button="true"].is-saved')) {
   throw new Error("Missing visual saved state styling for the New Session save button.");
+}
+if (!stylesSource.includes('[data-session-save-button="true"].is-saved')) {
+  throw new Error("Missing visual saved state styling for shared session save buttons.");
 }
 
 if (!stylesSource.includes('content: "✓";')) {

@@ -1581,8 +1581,9 @@ const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
 const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
 const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session timestamp editing is restricted to founder/admin accounts.";
 const NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL = "Save Session";
-const NEW_SESSION_SAVE_BUTTON_SAVED_LABEL = "Saved";
+const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";
 const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
+const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;
 const SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE = "Finish your results before completing this session. Your counted seeds must match the total seeds started.";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
@@ -30363,6 +30364,20 @@ function getNewSessionSaveButtons(form) {
     .filter((button) => button instanceof HTMLButtonElement);
 }
 
+function setSessionSaveButtonLabel(button, label) {
+  if (!(button instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const labelNode = button.querySelector("[data-session-save-button-label]");
+  if (labelNode) {
+    labelNode.textContent = label;
+    return;
+  }
+
+  button.textContent = label;
+}
+
 function clearNewSessionSaveButtonTimer(form) {
   if (form?.__newSessionSaveButtonTimer) {
     window.clearTimeout(form.__newSessionSaveButtonTimer);
@@ -30382,15 +30397,13 @@ function setNewSessionSaveButtonState(form, state = "default") {
     button.classList.toggle("is-saved", isSaved);
     button.setAttribute("data-save-state", isSaved ? "saved" : "default");
     button.disabled = isSaved;
-    button.textContent = isSaved ? NEW_SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL;
+    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);
   });
 
   if (isSaved) {
     form.__newSessionSaveButtonTimer = window.setTimeout(() => {
-      buttons.forEach((button) => {
-        button.disabled = false;
-      });
-    }, NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS);
+      setNewSessionSaveButtonState(form, "default");
+    }, SESSION_SAVE_BUTTON_SAVED_RESET_MS);
   }
 }
 
@@ -61989,6 +62002,40 @@ function getSessionDetailElements(scope = document) {
   };
 }
 
+function getSessionDetailSaveButtons(detail) {
+  return [detail?.saveShortcutButton, detail?.saveButton]
+    .filter((button) => button instanceof HTMLButtonElement);
+}
+
+function clearSessionDetailSaveButtonTimer(detail) {
+  if (detail?.__saveButtonStateTimer) {
+    window.clearTimeout(detail.__saveButtonStateTimer);
+    detail.__saveButtonStateTimer = null;
+  }
+}
+
+function setSessionDetailSaveButtonState(detail, state = "default", options = {}) {
+  const buttons = getSessionDetailSaveButtons(detail);
+  if (buttons.length === 0) {
+    return;
+  }
+
+  clearSessionDetailSaveButtonTimer(detail);
+  const isSaved = state === "saved";
+  buttons.forEach((button) => {
+    button.classList.toggle("is-saved", isSaved);
+    button.setAttribute("data-save-state", isSaved ? "saved" : "default");
+    button.disabled = isSaved;
+    setSessionSaveButtonLabel(button, isSaved ? SESSION_SAVE_BUTTON_SAVED_LABEL : NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL);
+  });
+
+  if (isSaved && options.persist !== true) {
+    detail.__saveButtonStateTimer = window.setTimeout(() => {
+      setSessionDetailSaveButtonState(detail, "default");
+    }, SESSION_SAVE_BUTTON_SAVED_RESET_MS);
+  }
+}
+
 function isSessionCreateMode(session = null) {
   return !String(session?.id || "").trim();
 }
@@ -62633,6 +62680,7 @@ function renderSessionDetail(sessionId) {
           syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
           refreshDetailDerivedViews();
           setFeedbackMessage(detail.saveMessage, "");
+          setSessionDetailSaveButtonState(detail, "default");
           refreshDetailUnsavedChanges();
         });
         field.addEventListener("blur", () => {
@@ -62741,6 +62789,7 @@ function renderSessionDetail(sessionId) {
     bindDetailPartitionInputListeners();
     refreshDetailDerivedViews();
     setFeedbackMessage(detail.saveMessage, "");
+    setSessionDetailSaveButtonState(detail, "default");
     refreshDetailUnsavedChanges();
   };
   refreshDetailDerivedViews();
@@ -62764,6 +62813,7 @@ function renderSessionDetail(sessionId) {
 
       if (target.name === "sessionSeedAgeYears") {
         setFeedbackMessage(detail.saveMessage, "");
+        setSessionDetailSaveButtonState(detail, "default");
         rerenderDetailSeedAgeState();
       }
     });
@@ -62939,6 +62989,7 @@ function renderSessionDetail(sessionId) {
     session.sessionNotes = detail.notesField.value.trim();
     session.snapshotState = normalizePersistedSessionSnapshotState(detail.snapshotSection?.__snapshotState?.pendingSnapshotState);
     setFeedbackMessage(detail.saveMessage, "");
+    setSessionDetailSaveButtonState(detail, "default");
     syncSessionDetailHeaderMeta(detail, session);
     if (detail.layoutReference && detail.layoutSection) {
       void renderSystemLayoutReference(detail.layoutReference, session.systemType);
@@ -62961,6 +63012,7 @@ function renderSessionDetail(sessionId) {
       session.timerStartAt || "",
     );
     refreshDetailDerivedViews();
+    setSessionDetailSaveButtonState(detail, "default");
     const savedSession = await saveSessionUpdate(session);
     setFeedbackMessage(
       detail.saveMessage,
@@ -62970,6 +63022,9 @@ function renderSessionDetail(sessionId) {
       savedSession ? "success" : "error",
     );
     if (savedSession) {
+      setSessionDetailSaveButtonState(detail, "saved", {
+        persist: normalizeSessionStatus(savedSession.sessionStatus || "") === "completed",
+      });
       await refreshUserSessionsAfterSave("session-detail:save");
       detail.statusField.value = session.sessionStatus || "soaking";
       syncSessionStatusControlDatasets(detail.statusField, {
@@ -63079,7 +63134,8 @@ function renderSessionDetail(sessionId) {
     const eventName = field instanceof HTMLSelectElement ? "change" : "input";
     field.addEventListener(eventName, () => {
       clearSessionDetailEditorMessage(detail);
-      detail.saveMessage.textContent = "";
+      setFeedbackMessage(detail.saveMessage, "");
+      setSessionDetailSaveButtonState(detail, "default");
       refreshDetailUnsavedChanges();
     });
   });
