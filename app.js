@@ -56756,15 +56756,15 @@ function openSeedVaultEntryModal() {
         <div class="seed-vault-form-grid">
           <label>
             <span>Quantity</span>
-            <input name="quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="#">
+            <input name="quantity" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" placeholder="#">
           </label>
           <label>
             <span>Year acquired</span>
-            <input name="yearAcquired" type="number" min="1900" max="2100" step="1" inputmode="numeric" placeholder="2026">
+            <input name="yearAcquired" type="number" min="1900" max="2100" step="1" inputmode="numeric" autocomplete="off" placeholder="2026">
           </label>
           <label>
             <span>Seed age</span>
-            <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" placeholder="1, 1.5, 2">
+            <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" autocomplete="off" placeholder="1, 1.5, 2">
           </label>
         </div>
         <label>
@@ -56773,7 +56773,7 @@ function openSeedVaultEntryModal() {
         </label>
         <label>
           <span>Notes</span>
-          <textarea name="notes" maxlength="600" rows="4" placeholder="Storage notes, pack date, plans, or observations"></textarea>
+          <textarea name="notes" maxlength="600" rows="4" autocomplete="off" placeholder="Storage notes, pack date, plans, or observations"></textarea>
         </label>
         <label class="seed-vault-favorite-toggle">
           <input name="isFavorite" type="checkbox">
