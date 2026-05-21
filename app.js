@@ -1,7 +1,8 @@
 const STORAGE_KEY = "cannakan-grow-sessions";
 const SAMPLE_SEED_KEY = "cannakan-grow-sample-seed-version";
-const SAMPLE_SEED_VERSION = "history-preview-v3";
-const GALLERY_MOCK_DATA_VERSION = "community-leaderboard-preview-v1";
+const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v1";
+const SAMPLE_SEED_VERSION = DEV_DEMO_DATA_VERSION;
+const GALLERY_MOCK_DATA_VERSION = DEV_DEMO_DATA_VERSION;
 const GALLERY_SNAPSHOT_PAGE_SIZE = 12;
 const MOCK_DATA_STORAGE_KEY = "cannakanGrowMockDataEnabled";
 const DEBUG_UI_STORAGE_KEY = "cannakanGrowDebugUiEnabled";
@@ -10,6 +11,15 @@ const FILTER_PAPER_INVENTORY_STORAGE_KEY = "cannakanGrowFilterPaperInventory";
 const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDeductionRegistry";
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
+const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/seedsman-logo.png";
+const DEV_DEMO_SOURCE_LOGOS = Object.freeze({
+  seedsman: SEEDSMAN_DEMO_LOGO_URL,
+  "lumen-leaf-genetics": "/assets/images/sources/mock/lumen-leaf-genetics.svg",
+  "verdant-vault-seeds": "/assets/images/sources/mock/verdant-vault-seeds.svg",
+  "northstar-germplasm": "/assets/images/sources/mock/northstar-germplasm.svg",
+  "summit-sprout-collective": "/assets/images/sources/mock/summit-sprout-collective.svg",
+  "aurora-calyx-seedworks": "/assets/images/sources/mock/aurora-calyx-seedworks.svg",
+});
 const TIME_FORMAT_KEY = "cannakan-grow-time-format";
 const THEME_KEY = "cannakan-grow-theme";
 const BACK_TO_TOP_VISIBILITY_OFFSET = 300;
@@ -339,43 +349,39 @@ const USER_NOTIFICATION_PREFERENCES_COMPATIBILITY_COLUMNS = Object.freeze([
 const USER_NOTIFICATION_PREFERENCES_SCHEMA_MODES = new Set(["legacy", "modern", "hybrid"]);
 const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   {
-    key: "mock-avery-moss",
-    name: "Avery Moss",
-    avatarUrl: buildMockGalleryProfileAvatarDataUri("Avery Moss", "Humboldt Seed Co", 0),
-    snapshotCount: 36,
-    totalLikes: 1156,
-    averageGermination: 97,
+    key: "mock-seedsman-lab",
+    name: "Seedsman Lab",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Seedsman Lab", "Seedsman", 0),
+    snapshotCount: 42,
+    totalLikes: 1488,
+    averageGermination: 99,
   },
   {
-    key: "mock-don-cannakan",
-    name: "Don-Cannakan",
-    avatarUrl: buildMockGalleryProfileAvatarDataUri("Don-Cannakan", "Royal Queen Seeds", 1),
-    snapshotCount: 24,
-    totalLikes: 842,
+    key: "mock-kan-demo-lead",
+    name: "KAN Demo Lead",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("KAN Demo Lead", "Seedsman", 1),
+    snapshotCount: 31,
+    totalLikes: 986,
     averageGermination: 98,
   },
   {
-    key: "mock-mo",
-    name: "Mo",
-    avatarUrl: buildMockGalleryProfileAvatarDataUri("Mo", "Barney's Farm", 2),
-    snapshotCount: 18,
-    totalLikes: 611,
-    averageGermination: 94,
+    key: "mock-vault-curator",
+    name: "Vault Curator",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Vault Curator", "Verdant Vault Seeds", 2),
+    snapshotCount: 22,
+    totalLikes: 704,
+    averageGermination: 96,
   },
 ]);
 const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
-  { id: "mock-avery-moss", displayName: "Avery Moss", averageGermination: 96, approvedSnapshots: 36, likes: 1156, favoriteSeedType: "Photoperiod", favoriteSource: "Humboldt Seed Co", followerCount: 218, followingCount: 64, isFollowing: true },
-  { id: "mock-don-cannakan", displayName: "Don-Cannakan", averageGermination: 98, approvedSnapshots: 24, likes: 842, favoriteSeedType: "Photoperiod", favoriteSource: "Royal Queen Seeds", followerCount: 194, followingCount: 58, isFollowing: true },
-  { id: "mock-mo", displayName: "Mo", averageGermination: 94, approvedSnapshots: 18, likes: 611, favoriteSeedType: "Auto", favoriteSource: "Barney's Farm", followerCount: 167, followingCount: 46, isFollowing: true },
-  { id: "mock-greenlab", displayName: "GreenLab", averageGermination: 89, approvedSnapshots: 14, likes: 402, favoriteSeedType: "Photoperiod", favoriteSource: "Green House", followerCount: 123, followingCount: 35, isFollowing: true },
-  { id: "mock-seedvault", displayName: "SeedVault", averageGermination: 96, approvedSnapshots: 21, likes: 780, favoriteSeedType: "Auto", favoriteSource: "Fast Buds", followerCount: 176, followingCount: 40, isFollowing: true },
-  { id: "mock-rootrunner", displayName: "RootRunner", averageGermination: 87, approvedSnapshots: 9, likes: 188, favoriteSeedType: "Fast", favoriteSource: "Fast Buds", followerCount: 72, followingCount: 22, isFollowing: true },
-  { id: "mock-sproutscout", displayName: "SproutScout", averageGermination: 93, approvedSnapshots: 16, likes: 530, favoriteSeedType: "Photoperiod", favoriteSource: "Ethos Genetics", followerCount: 144, followingCount: 39, isFollowing: true },
-  { id: "mock-kan-trial-user", displayName: "KAN Trial User", averageGermination: 90, approvedSnapshots: 7, likes: 144, favoriteSeedType: "Auto", favoriteSource: "Cannakan® Labs", followerCount: 58, followingCount: 18, isFollowing: true },
-  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 91, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Other", favoriteSource: "Archive Seeds", followerCount: 86, followingCount: 28, isFollowing: false },
-  { id: "mock-humboldt-tester", displayName: "Humboldt Tester", averageGermination: 95, approvedSnapshots: 19, likes: 690, favoriteSeedType: "Photoperiod", favoriteSource: "Humboldt Seed Co", followerCount: 162, followingCount: 44, isFollowing: false },
-  { id: "mock-eu-germination-lab", displayName: "EU Germination Lab", averageGermination: 92, approvedSnapshots: 13, likes: 356, favoriteSeedType: "Auto", favoriteSource: "Sweet Seeds", followerCount: 108, followingCount: 32, isFollowing: false },
-  { id: "mock-multi-variety-max", displayName: "Multi-Variety Max", averageGermination: 88, approvedSnapshots: 10, likes: 240, favoriteSeedType: "Other", favoriteSource: "Multi-Source", followerCount: 79, followingCount: 24, isFollowing: false },
+  { id: "mock-seedsman-lab", displayName: "Seedsman Lab", averageGermination: 99, approvedSnapshots: 42, likes: 1488, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 284, followingCount: 72, isFollowing: true },
+  { id: "mock-kan-demo-lead", displayName: "KAN Demo Lead", averageGermination: 98, approvedSnapshots: 31, likes: 986, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 221, followingCount: 68, isFollowing: true },
+  { id: "mock-vault-curator", displayName: "Vault Curator", averageGermination: 96, approvedSnapshots: 22, likes: 704, favoriteSeedType: "Auto", favoriteSource: "Verdant Vault Seeds", followerCount: 176, followingCount: 44, isFollowing: true },
+  { id: "mock-lumen-leaf", displayName: "Lumen Leaf", averageGermination: 95, approvedSnapshots: 19, likes: 588, favoriteSeedType: "Fast", favoriteSource: "Lumen Leaf Genetics", followerCount: 151, followingCount: 39, isFollowing: true },
+  { id: "mock-northstar-runner", displayName: "Northstar Runner", averageGermination: 94, approvedSnapshots: 17, likes: 512, favoriteSeedType: "Photoperiod", favoriteSource: "Northstar Germplasm", followerCount: 142, followingCount: 34, isFollowing: true },
+  { id: "mock-summit-scout", displayName: "Summit Scout", averageGermination: 93, approvedSnapshots: 15, likes: 426, favoriteSeedType: "Auto", favoriteSource: "Summit Sprout Collective", followerCount: 118, followingCount: 31, isFollowing: true },
+  { id: "mock-aurora-calyx", displayName: "Aurora Calyx", averageGermination: 92, approvedSnapshots: 14, likes: 389, favoriteSeedType: "Other", favoriteSource: "Aurora Calyx Seedworks", followerCount: 103, followingCount: 28, isFollowing: true },
+  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 88, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Other", favoriteSource: "Archive Vault Lot", followerCount: 86, followingCount: 28, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
@@ -384,110 +390,110 @@ const GROW_NETWORK_NOTIFICATION_MOCK_REFERENCE_AT = "2026-05-02T12:00:00.000Z";
 const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
   {
     id: "mock-activity-avery-snapshot",
-    memberId: "mock-avery-moss",
+    memberId: "mock-seedsman-lab",
     activityType: "approved-snapshot",
     typeLabel: "New approved Community Grow snapshot",
     typeMeta: "Approved in Community Grow",
-    title: "Avery Moss submitted a 96% germination snapshot",
-    summary: "Photoperiod run with a strong early finish and clean germination consistency.",
-    germinationRateLabel: "96%",
-    sourceLabel: "Photoperiod",
+    title: "Seedsman Lab submitted a 100% KAN snapshot",
+    summary: "Fresh Seedsman photoperiod run with complete germination and tight timing.",
+    germinationRateLabel: "100%",
+    sourceLabel: "Seedsman",
     occurredAt: "2026-05-01T09:18:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-don-session",
-    memberId: "mock-don-cannakan",
+    memberId: "mock-kan-demo-lead",
     activityType: "shared-session",
     typeLabel: "Public session shared",
     typeMeta: "Public session now visible",
-    title: "Don-Cannakan started a new KAN® session",
-    summary: "Fresh public session shared for photoperiod-line benchmarking.",
+    title: "KAN Demo Lead started a Seedsman showcase session",
+    summary: "Fresh public KAN run shared for Seedsman demo benchmarking.",
     germinationRateLabel: "98%",
-    sourceLabel: "Photoperiod",
+    sourceLabel: "Seedsman",
     occurredAt: "2026-05-01T08:02:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-mo-follow",
-    memberId: "mock-mo",
+    memberId: "mock-vault-curator",
     activityType: "approved-snapshot",
     typeLabel: "Grow Network update",
     typeMeta: "Community connection",
-    title: "Mo followed SeedVault",
-    summary: "Added a high-performing auto grower to the network.",
-    germinationRateLabel: "94%",
-    sourceLabel: "Auto",
+    title: "Vault Curator followed Seedsman Lab",
+    summary: "Added a high-performing Seedsman benchmark grower to the network.",
+    germinationRateLabel: "96%",
+    sourceLabel: "Seedsman",
     occurredAt: "2026-05-01T06:42:00.000Z",
-    sessionRoute: "#members/mock-seedvault",
+    sessionRoute: "#members/mock-seedsman-lab",
   },
   {
     id: "mock-activity-greenlab-perfect",
-    memberId: "mock-greenlab",
+    memberId: "mock-lumen-leaf",
     activityType: "completed-session",
     typeLabel: "Completed public session",
     typeMeta: "Approved in Community Grow",
-    title: "GreenLab reached 100% germination",
-    summary: "Perfect completion on a photoperiod trial with a public wrap-up.",
-    germinationRateLabel: "100%",
-    sourceLabel: "Photoperiod",
+    title: "Lumen Leaf reached 98% germination",
+    summary: "Polished fast-cycle comparison with a public wrap-up.",
+    germinationRateLabel: "98%",
+    sourceLabel: "Lumen Leaf Genetics",
     occurredAt: "2026-04-30T20:14:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-rootrunner-snapshot",
-    memberId: "mock-rootrunner",
+    memberId: "mock-northstar-runner",
     activityType: "approved-snapshot",
     typeLabel: "New approved Community Grow snapshot",
     typeMeta: "Approved in Community Grow",
-    title: "RootRunner posted a new Community Grow snapshot",
-    summary: "Fast-cycle update with a fresh tray check-in.",
-    germinationRateLabel: "87%",
-    sourceLabel: "Fast",
+    title: "Northstar Runner posted a new Community Grow snapshot",
+    summary: "Fresh tray check-in with strong uniformity.",
+    germinationRateLabel: "94%",
+    sourceLabel: "Northstar Germplasm",
     occurredAt: "2026-04-30T16:25:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-seedvault-source",
-    memberId: "mock-seedvault",
+    memberId: "mock-seedsman-lab",
     activityType: "approved-snapshot",
     typeLabel: "Grow Network update",
     typeMeta: "Community insights highlight",
-    title: "SeedVault added a strong source activity signal this month",
-    summary: "Auto-heavy runs are showing up frequently in this month’s approved source data.",
-    germinationRateLabel: "96%",
-    sourceLabel: "Auto",
+    title: "Seedsman added the strongest source signal this month",
+    summary: "Fresh Seedsman lots are posting repeated 98-100% KAN outcomes.",
+    germinationRateLabel: "99%",
+    sourceLabel: "Seedsman",
     occurredAt: "2026-04-30T13:38:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-sproutscout-complete",
-    memberId: "mock-sproutscout",
+    memberId: "mock-summit-scout",
     activityType: "completed-session",
     typeLabel: "Completed public session",
     typeMeta: "Approved in Community Grow",
-    title: "SproutScout completed a multi-variety session",
-    summary: "Shared the final public results from a mixed-variety comparison.",
+    title: "Summit Scout completed a multi-variety session",
+    summary: "Shared final public results from a compact mixed-variety comparison.",
     germinationRateLabel: "93%",
-    sourceLabel: "Photoperiod",
+    sourceLabel: "Summit Sprout Collective",
     occurredAt: "2026-04-30T10:11:00.000Z",
     sessionRoute: "#gallery",
   },
   {
     id: "mock-activity-kan-joined",
-    memberId: "mock-kan-trial-user",
+    memberId: "mock-aurora-calyx",
     activityType: "shared-session",
     typeLabel: "Grow Network update",
     typeMeta: "New member",
-    title: "KAN Trial User joined the Grow Network",
-    summary: "Started sharing public test runs for new growers to compare against.",
-    germinationRateLabel: "90%",
-    sourceLabel: "Auto",
+    title: "Aurora Calyx joined the Grow Network",
+    summary: "Started sharing polished old-lot and mixed-age comparison runs.",
+    germinationRateLabel: "92%",
+    sourceLabel: "Aurora Calyx Seedworks",
     occurredAt: "2026-04-29T18:47:00.000Z",
-    sessionRoute: "#members/mock-kan-trial-user",
+    sessionRoute: "#members/mock-aurora-calyx",
   },
 ]);
-const SOURCE_PROFILE_DEFAULT_MOCK_ID = "green-horizons-seed-co";
+const SOURCE_PROFILE_DEFAULT_MOCK_ID = "seedsman";
 const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
   gold: "/src/assets/CSTP-gold-badge.png",
   silver: "/src/assets/CSTP-silver-badge.png",
@@ -495,38 +501,38 @@ const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
 });
 const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
   id: SOURCE_PROFILE_DEFAULT_MOCK_ID,
-  name: "Green Horizons Seed Co.",
+  name: "Seedsman",
   type: "Breeder / Seed Source",
   sourceTypeLabel: "Breeder / Seed Source",
-  logoUrl: "",
-  websiteUrl: "",
-  establishedLabel: "Established 2018",
+  logoUrl: SEEDSMAN_DEMO_LOGO_URL,
+  websiteUrl: "https://www.seedsman.com",
+  establishedLabel: "Established 2002",
   community: Object.freeze({
-    avgRate: 87,
-    sessions: 142,
-    rank: 3,
-    seedsTracked: 1240,
+    avgRate: 98,
+    sessions: 164,
+    rank: 1,
+    seedsTracked: 3896,
   }),
   cstp: Object.freeze({
-    status: "gold",
-    testedDate: "Jan 2026",
-    validUntil: "Jan 2027",
+    status: "tested",
+    testedDate: "May 2026",
+    validUntil: "",
     sampleSize: 30,
-    avgTime: "42 hrs",
-    resultPercent: 94,
-    expiringSoon: true,
+    avgTime: "38 hrs",
+    resultPercent: 98,
+    expiringSoon: false,
   }),
   trackRecord: Object.freeze({
-    totalCerts: 8,
-    gold: 5,
+    totalCerts: 9,
+    gold: 4,
     silver: 3,
-    qualificationRate: 83,
-    lastTest: "Jan 2026",
+    qualificationRate: 91,
+    lastTest: "May 2026",
   }),
   directoryStats: Object.freeze({
-    sessionsLogged: 142,
-    varietiesLogged: 0,
-    lastLoggedAt: "",
+    sessionsLogged: 164,
+    varietiesLogged: 18,
+    lastLoggedAt: "2026-05-18T14:20:00.000Z",
   }),
 });
 const SOURCE_DIRECTORY_FILTER_OPTIONS = Object.freeze([
@@ -577,137 +583,179 @@ const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
 const testedSourcesMock = Object.freeze([
   Object.freeze({
-    id: "humboldt-seed-co",
-    name: "Humboldt Seed Co",
-    type: "Seed Bank",
-    logo: "",
-    website: "https://humboldtseedcompany.com",
-    establishedLabel: "Established 2018",
-    community: Object.freeze({
-      avgRate: 82,
-      sessions: 148,
-      rank: 2,
-      seedsTracked: 3621,
-    }),
-    cstp: Object.freeze({
-      status: "gold",
-      testedDate: "Jan 2026",
-      validUntil: "Jan 2027",
-      sampleSize: 30,
-      avgTime: "42 hrs",
-      resultPercent: 94,
-      expiringSoon: true,
-    }),
-    trackRecord: Object.freeze({
-      totalCerts: 11,
-      gold: 7,
-      silver: 4,
-      qualificationRate: 79,
-      lastTest: "Jan 2026",
-    }),
-  }),
-  Object.freeze({
-    id: "royal-queen-seeds",
-    name: "Royal Queen Seeds",
-    type: "Seed Bank",
-    logo: "",
-    website: "https://www.royalqueenseeds.com",
-    establishedLabel: "Established 2007",
-    community: Object.freeze({
-      avgRate: 79,
-      sessions: 124,
-      rank: 4,
-      seedsTracked: 2904,
-    }),
-    cstp: Object.freeze({
-      status: "silver",
-      testedDate: "Feb 2026",
-      validUntil: "Feb 2027",
-      sampleSize: 30,
-      avgTime: "46 hrs",
-      resultPercent: 88,
-      expiringSoon: false,
-    }),
-    trackRecord: Object.freeze({
-      totalCerts: 8,
-      gold: 3,
-      silver: 5,
-      qualificationRate: 68,
-      lastTest: "Feb 2026",
-    }),
-  }),
-  Object.freeze({
-    id: "barneys-farm",
-    name: "Barney's Farm",
-    type: "Breeder",
-    logo: "",
-    website: "https://www.barneysfarm.com",
-    establishedLabel: "Established 1986",
-    community: Object.freeze({
-      avgRate: 77,
-      sessions: 96,
-      rank: 6,
-      seedsTracked: 2118,
-    }),
-    cstp: Object.freeze({
-      status: "tested",
-      testedDate: "Mar 2026",
-      validUntil: "",
-      sampleSize: 30,
-      avgTime: "",
-      resultPercent: 71,
-      expiringSoon: false,
-    }),
-    trackRecord: Object.freeze({
-      totalCerts: 5,
-      gold: 1,
-      silver: 2,
-      qualificationRate: 44,
-      lastTest: "Mar 2026",
-    }),
-  }),
-  Object.freeze({
     id: "seedsman",
     name: "Seedsman",
     type: "Seed Marketplace",
-    logo: "",
+    logo: SEEDSMAN_DEMO_LOGO_URL,
+    logoUrl: SEEDSMAN_DEMO_LOGO_URL,
     website: "https://www.seedsman.com",
+    websiteUrl: "https://www.seedsman.com",
     establishedLabel: "Established 2002",
     community: Object.freeze({
-      avgRate: 75,
-      sessions: 88,
-      rank: 7,
-      seedsTracked: 1964,
+      avgRate: 98,
+      sessions: 164,
+      rank: 1,
+      seedsTracked: 3896,
     }),
     cstp: Object.freeze({
-      status: "expired",
-      testedDate: "Nov 2025",
+      status: "tested",
+      testedDate: "May 2026",
       validUntil: "",
-      sampleSize: 24,
-      avgTime: "",
-      resultPercent: 83,
+      sampleSize: 30,
+      avgTime: "38 hrs",
+      resultPercent: 98,
       expiringSoon: false,
     }),
     trackRecord: Object.freeze({
-      totalCerts: 6,
-      gold: 2,
-      silver: 2,
-      qualificationRate: 51,
-      lastTest: "Nov 2025",
+      totalCerts: 9,
+      gold: 4,
+      silver: 3,
+      qualificationRate: 91,
+      lastTest: "May 2026",
     }),
   }),
   Object.freeze({
-    id: "north-atlantic-seed-co",
-    name: "North Atlantic Seed Co",
-    type: "Seed Marketplace",
-    logo: "",
-    website: "https://northatlanticseed.com",
-    establishedLabel: "Established 2012",
+    id: "lumen-leaf-genetics",
+    name: "Lumen Leaf Genetics",
+    type: "Breeder",
+    logo: DEV_DEMO_SOURCE_LOGOS["lumen-leaf-genetics"],
+    logoUrl: DEV_DEMO_SOURCE_LOGOS["lumen-leaf-genetics"],
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
     community: Object.freeze({
-      avgRate: 74,
-      sessions: 61,
-      rank: 9,
-      seedsTracked: 1402,
+      avgRate: 95,
+      sessions: 91,
+      rank: 2,
+      seedsTracked: 1960,
+    }),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 30,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "verdant-vault-seeds",
+    name: "Verdant Vault Seeds",
+    type: "Breeder",
+    logo: DEV_DEMO_SOURCE_LOGOS["verdant-vault-seeds"],
+    logoUrl: DEV_DEMO_SOURCE_LOGOS["verdant-vault-seeds"],
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 94,
+      sessions: 76,
+      rank: 3,
+      seedsTracked: 1604,
+    }),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 0,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "northstar-germplasm",
+    name: "Northstar Germplasm",
+    type: "Breeder",
+    logo: DEV_DEMO_SOURCE_LOGOS["northstar-germplasm"],
+    logoUrl: DEV_DEMO_SOURCE_LOGOS["northstar-germplasm"],
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 93,
+      sessions: 65,
+      rank: 4,
+      seedsTracked: 1318,
+    }),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 0,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "summit-sprout-collective",
+    name: "Summit Sprout Collective",
+    type: "Seed Collective",
+    logo: DEV_DEMO_SOURCE_LOGOS["summit-sprout-collective"],
+    logoUrl: DEV_DEMO_SOURCE_LOGOS["summit-sprout-collective"],
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 92,
+      sessions: 54,
+      rank: 5,
+      seedsTracked: 1042,
+    }),
+    cstp: Object.freeze({
+      status: "not-tested",
+      testedDate: "",
+      validUntil: "",
+      sampleSize: 0,
+      avgTime: "",
+      resultPercent: 0,
+      expiringSoon: false,
+    }),
+    trackRecord: Object.freeze({
+      totalCerts: 0,
+      gold: 0,
+      silver: 0,
+      qualificationRate: 0,
+      lastTest: "Not tested",
+    }),
+  }),
+  Object.freeze({
+    id: "aurora-calyx-seedworks",
+    name: "Aurora Calyx Seedworks",
+    type: "Breeder",
+    logo: DEV_DEMO_SOURCE_LOGOS["aurora-calyx-seedworks"],
+    logoUrl: DEV_DEMO_SOURCE_LOGOS["aurora-calyx-seedworks"],
+    website: "",
+    websiteUrl: "",
+    establishedLabel: "Demo source",
+    community: Object.freeze({
+      avgRate: 90,
+      sessions: 42,
+      rank: 6,
+      seedsTracked: 812,
     }),
     cstp: Object.freeze({
       status: "not-tested",
@@ -762,16 +810,16 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetRoute: "#network",
   },
   {
-    id: "mock-notification-humboldt-grow-session-like",
+    id: "mock-notification-seedsman-grow-session-like",
     type: "like",
-    displayName: "Humboldt Seed Co",
-    avatarUrl: "",
+    displayName: "Seedsman Lab",
+    avatarUrl: buildMockGalleryProfileAvatarDataUri("Seedsman Lab", "Grow Network", 2),
     occurredAt: "2026-05-02T11:49:00.000Z",
     isUnseen: true,
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
-    targetName: "KAN Session - May 2",
+    targetName: "Seedsman Blue Dream KAN",
     targetRoute: "#sessions",
   },
   {
@@ -784,7 +832,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
-    targetName: "KAN Session - May 2",
+    targetName: "Seedsman Blue Dream KAN",
     targetRoute: "#sessions",
   },
   {
@@ -797,7 +845,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "session",
-    targetName: "KAN Session - May 2",
+    targetName: "Seedsman Blue Dream KAN",
     targetRoute: "#sessions",
   },
   {
@@ -824,7 +872,7 @@ const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
     targetId: "grow-session-demo",
     targetType: "session",
     targetLabel: "Grow Session",
-    targetName: "KAN Session - May 2",
+    targetName: "Seedsman Blue Dream KAN",
     targetRoute: "#sessions",
   },
 ]);
@@ -832,8 +880,8 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   {
     key: "perfect-run",
     name: "Perfect Run",
-    seedVarietyName: "Blue Dream",
-    sourceName: "Humboldt Seed Co",
+    seedVarietyName: "Seedsman Blue Dream",
+    sourceName: "Seedsman",
     seedTypeName: "Photoperiod",
     sexLabel: "Feminized",
     totalSeeds: 24,
@@ -848,14 +896,14 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   },
   {
     key: "strong-average-run",
-    name: "Strong Average Run",
-    seedVarietyName: "Gorilla Glue #4",
+    name: "Strong Seedsman Run",
+    seedVarietyName: "Seedsman Gelato 41",
     sourceName: "Seedsman",
     seedTypeName: "Photoperiod",
     sexLabel: "Feminized",
     totalSeeds: 26,
-    totalPlanted: 22,
-    successPercent: 85,
+    totalPlanted: 25,
+    successPercent: 96,
     timeline: {
       startedAt: "2026-04-22T07:10:00.000Z",
       germinationStartedAt: "2026-04-23T03:15:00.000Z",
@@ -865,14 +913,14 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   },
   {
     key: "difficult-seed-recovery",
-    name: "Difficult Seed Recovery",
-    seedVarietyName: "Old Stock Test",
-    sourceName: "SeedVault",
+    name: "Archive Seed Recovery",
+    seedVarietyName: "Aurora Archive Lot",
+    sourceName: "Aurora Calyx Seedworks",
     seedTypeName: "Other",
     sexLabel: "Not shared",
     totalSeeds: 24,
-    totalPlanted: 17,
-    successPercent: 71,
+    totalPlanted: 20,
+    successPercent: 83,
     timeline: {
       startedAt: "2026-04-18T09:00:00.000Z",
       germinationStartedAt: "2026-04-19T09:00:00.000Z",
@@ -3707,8 +3755,28 @@ async function ensureUserProfile(user) {
   return normalizeProfileRow(savedProfile);
 }
 
+function isDevModeOnlyMockRecord(record = {}) {
+  return Boolean(
+    record?.devModeOnly
+    || record?.dev_mode_only
+    || record?.isMock
+    || record?.is_mock
+    || record?.is_mock_data
+    || record?.isSample
+    || String(record?.id || "").startsWith("sample-")
+    || String(record?.id || "").startsWith("mock-"),
+  );
+}
+
+function shouldExposeDevModeMockData() {
+  return isMockDataEnabled();
+}
+
 function getSessions() {
-  return appState.sessions;
+  const sessions = Array.isArray(appState.sessions) ? appState.sessions : [];
+  return shouldExposeDevModeMockData()
+    ? sessions
+    : sessions.filter((session) => !isDevModeOnlyMockRecord(session));
 }
 
 function normalizeFilterPaperInventory(inventory) {
@@ -4986,7 +5054,14 @@ function normalizeStoredSession(session) {
     germinationStartedAt: String(session.germinationStartedAt || session.germination_started_at || "").trim(),
     firstPlantedAt: String(session.firstPlantedAt || session.first_planted_at || "").trim(),
     completedAt: String(session.completedAt || session.completed_at || "").trim(),
-    isMock: Boolean(session.isMock || session.is_mock),
+    isMock: Boolean(session.isMock || session.is_mock || session.is_mock_data),
+    is_mock: Boolean(session.isMock || session.is_mock || session.is_mock_data),
+    is_mock_data: Boolean(session.isMock || session.is_mock || session.is_mock_data),
+    devModeOnly: Boolean(session.devModeOnly || session.dev_mode_only),
+    dev_mode_only: Boolean(session.devModeOnly || session.dev_mode_only),
+    mockSource: String(session.mockSource || session.mock_source || "").trim(),
+    mock_source: String(session.mockSource || session.mock_source || "").trim(),
+    mockDataVersion: String(session.mockDataVersion || session.mock_data_version || "").trim(),
     isTest: Boolean(session.isTest || session.is_test),
     excludedFromAnalytics: Boolean(session.excludedFromAnalytics || session.excluded_from_analytics),
     userDeleted: Boolean(session.userDeleted || session.user_deleted),
@@ -5055,6 +5130,12 @@ function normalizeSeedVaultEntry(entry = {}) {
     notes: String(entry.notes || "").trim(),
     isFavorite: Boolean(entry.isFavorite ?? entry.is_favorite),
     isArchived: Boolean(entry.isArchived ?? entry.is_archived),
+    isMock: Boolean(entry.isMock ?? entry.is_mock ?? entry.is_mock_data),
+    is_mock: Boolean(entry.isMock ?? entry.is_mock ?? entry.is_mock_data),
+    devModeOnly: Boolean(entry.devModeOnly ?? entry.dev_mode_only),
+    dev_mode_only: Boolean(entry.devModeOnly ?? entry.dev_mode_only),
+    mockSource: String(entry.mockSource || entry.mock_source || "").trim(),
+    mock_source: String(entry.mockSource || entry.mock_source || "").trim(),
     createdAt,
     updatedAt,
   };
@@ -7018,7 +7099,7 @@ function isSessionSoftDeleted(session = null) {
 }
 
 function isMockGrowSession(session = null) {
-  return Boolean(session?.isMock || session?.is_mock);
+  return Boolean(session?.isMock || session?.is_mock || session?.is_mock_data);
 }
 
 function isTestGrowSession(session = null) {
@@ -7168,76 +7249,94 @@ function ensureSampleSessions() {
 function buildSampleSessions() {
   return [
     createSampleSession({
-      id: "sample-kan-blue-dream-apr-21-2026",
-      date: "2026-04-21",
+      id: "sample-kan-seedsman-blue-dream-may-18-2026",
+      date: "2026-05-18",
       time: "07:10",
       systemType: "KAN",
       unitId: "A",
-      sessionName: "Blue Dream pheno test - Seedsman - Apr 21, 2026",
+      sessionName: "Seedsman Blue Dream KAN showcase - May 18, 2026",
       sessionStatus: "germinating",
-      germinationStartedAt: "2026-04-21T18:20:00",
-      firstPlantedAt: "2026-04-22T09:05:00",
-      sessionNotes: "Moved to paper towel after 11 hours soaking. Dome is holding steady humidity and the Blue Dream partitions are opening first.",
+      germinationStartedAt: "2026-05-18T18:20:00",
+      firstPlantedAt: "2026-05-19T08:05:00",
+      sessionNotes: "Fresh Seedsman lot running in KAN A for live demo. Early tails are uniform and moving quickly across all partitions.",
       partitionSeeds: [
-        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 12, 9],
-        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 10, 8],
-        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 14, 11],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 12, 12, 1],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 12, 12, 1],
+        ["White Widow", "Seedsman", "photoperiod", "feminized", 12, 11, 1.5],
       ],
     }),
     createSampleSession({
-      id: "sample-kan-lcg-apr-18-2026",
-      date: "2026-04-18",
+      id: "sample-kan-seedsman-gelato-may-12-2026",
+      date: "2026-05-12",
       time: "18:40",
       systemType: "KAN",
       unitId: "B",
-      sessionName: "Lemon Cherry Gelato check - Elev8 - Apr 18, 2026",
+      sessionName: "Seedsman Gelato 41 fresh lot - May 12, 2026",
       sessionStatus: "completed",
-      germinationStartedAt: "2026-04-19T07:15:00",
-      firstPlantedAt: "2026-04-19T22:40:00",
-      completedAt: "2026-04-20T09:18:00",
-      sessionNotes: "Strong early tails on partitions 2, 3, and 4. One slower pocket stayed in the dome an extra half day before planting.",
+      germinationStartedAt: "2026-05-13T07:15:00",
+      firstPlantedAt: "2026-05-13T22:40:00",
+      completedAt: "2026-05-14T09:18:00",
+      sessionNotes: "Polished demo completion: fresh Seedsman pack, clean partition labels, and a 100% KAN result for Source Directory and leaderboard previews.",
       partitionSeeds: [
-        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 10, 10],
-        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 12, 11],
-        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 8, 7],
-        ["Lemon Cherry Gelato", "Elev8", "photoperiod", "feminized", 9, 8],
+        ["Gelato 41", "Seedsman", "photoperiod", "feminized", 10, 10, 1],
+        ["Gelato 41", "Seedsman", "photoperiod", "feminized", 10, 10, 1],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 8, 8, 1.5],
+        ["White Widow", "Seedsman", "photoperiod", "feminized", 8, 8, 1.5],
       ],
     }),
     createSampleSession({
-      id: "sample-tra-cosmic-queen-apr-17-2026",
-      date: "2026-04-17",
+      id: "sample-tra-seedsman-mixed-may-08-2026",
+      date: "2026-05-08",
       time: "06:55",
       systemType: "TRA",
       unitId: "1",
-      sessionName: "Cosmic Queen mixed tray - Mephisto - Apr 17, 2026",
+      sessionName: "Seedsman mixed TRA verification - May 8, 2026",
       sessionStatus: "germinating",
-      germinationStartedAt: "2026-04-17T20:05:00",
-      firstPlantedAt: "2026-04-18T08:30:00",
-      sessionNotes: "Tray sections A and B were warmed first. Outer edge partitions are a little slower, so keeping the lid cracked slightly for airflow.",
+      germinationStartedAt: "2026-05-08T20:05:00",
+      firstPlantedAt: "2026-05-09T08:30:00",
+      sessionNotes: "TRA demo with a mixed Seedsman tray. Fresh lots are pushing very even tails; older comparison row is intentionally slower.",
       partitionSeeds: [
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 12, 10],
-        ["Cosmic Queen", "Mephisto", "auto", "feminized", 10, 8],
-        ["Sour Stomper", "Mephisto", "auto", "feminized", 9, 7],
-        ["Double Grape", "Mephisto", "auto", "feminized", 11, 8],
+        ["Northern Lights Auto", "Seedsman", "auto", "feminized", 12, 12, 1],
+        ["Amnesia Auto", "Seedsman", "auto", "feminized", 12, 11, 1],
+        ["Blue Dream", "Seedsman", "photoperiod", "feminized", 12, 12, 1.5],
+        ["White Widow archive comparison", "Seedsman", "photoperiod", "feminized", 10, 8, 5],
       ],
     }),
     createSampleSession({
-      id: "sample-tra-orange-creamsicle-apr-11-2026",
-      date: "2026-04-11",
+      id: "sample-kan-verdant-lumen-may-03-2026",
+      date: "2026-05-03",
       time: "19:25",
-      systemType: "TRA",
-      unitId: "2",
-      sessionName: "Orange Creamsicle archive - Humboldt - Apr 11, 2026",
+      systemType: "KAN",
+      unitId: "C",
+      sessionName: "Fictional source comparison - May 3, 2026",
       sessionStatus: "completed",
-      germinationStartedAt: "2026-04-12T08:10:00",
-      firstPlantedAt: "2026-04-13T06:55:00",
-      completedAt: "2026-04-14T09:42:00",
-      sessionNotes: "",
+      germinationStartedAt: "2026-05-04T08:10:00",
+      firstPlantedAt: "2026-05-04T22:55:00",
+      completedAt: "2026-05-05T09:42:00",
+      sessionNotes: "Fictional mock sources round out the demo ecosystem without imitating real brands.",
       partitionSeeds: [
-        ["Orange Creamsicle", "Humboldt Seed Co", "photoperiod", "feminized", 15, 14],
-        ["Blueberry Muffin", "Humboldt Seed Co", "photoperiod", "feminized", 12, 11],
-        ["Pineapple Upside Down Cake", "Humboldt Seed Co", "photoperiod", "feminized", 10, 8],
-        ["Jelly Donutz", "Humboldt Seed Co", "photoperiod", "feminized", 9, 8],
+        ["Lumen Lime Haze", "Lumen Leaf Genetics", "fast", "feminized", 12, 12, 1],
+        ["Vault Mint Cake", "Verdant Vault Seeds", "photoperiod", "feminized", 12, 11, 2],
+        ["Northstar Pearl", "Northstar Germplasm", "photoperiod", "feminized", 10, 9, 3],
+        ["Aurora Nightfall", "Aurora Calyx Seedworks", "other", "regular", 10, 8, 6],
+      ],
+    }),
+    createSampleSession({
+      id: "sample-kan-seedsman-archive-apr-26-2026",
+      date: "2026-04-26",
+      time: "09:35",
+      systemType: "KAN",
+      unitId: "D",
+      sessionName: "Seedsman archive lot viability - Apr 26, 2026",
+      sessionStatus: "completed",
+      germinationStartedAt: "2026-04-26T21:35:00",
+      firstPlantedAt: "2026-04-27T18:15:00",
+      completedAt: "2026-04-28T11:20:00",
+      sessionNotes: "Older Seedsman lot used to show the natural seed-age decline while keeping the source profile credible.",
+      partitionSeeds: [
+        ["White Widow 2021 pack", "Seedsman", "photoperiod", "feminized", 12, 10, 5],
+        ["Northern Lights 2022 pack", "Seedsman", "photoperiod", "feminized", 12, 11, 4],
+        ["Blue Dream 2020 pack", "Seedsman", "photoperiod", "feminized", 12, 9, 6],
       ],
     }),
   ];
@@ -7267,6 +7366,12 @@ function createSampleSession(config) {
     isSample: true,
     isMock: true,
     is_mock: true,
+    is_mock_data: true,
+    devModeOnly: true,
+    dev_mode_only: true,
+    mockSource: config.mockSource || "dev-demo",
+    mock_source: config.mockSource || "dev-demo",
+    mockDataVersion: DEV_DEMO_DATA_VERSION,
     partitions: config.partitionSeeds.map((partition, index) => ({
       id: index + 1,
       seedVariety: partition[0],
@@ -7282,10 +7387,192 @@ function createSampleSession(config) {
 }
 
 function removeSampleSessions() {
-  const sessions = getSessions().filter((session) => !session.isSample);
+  const sessions = (appState.sessions || []).filter((session) => !isDevModeOnlyMockRecord(session));
   saveSessions(sessions);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
   localStorage.removeItem(SAMPLE_SEED_KEY);
+}
+
+function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPASS_USER_ID) {
+  const ownerId = String(userId || DEV_QA_BYPASS_USER_ID).trim();
+  const now = "2026-05-21T12:00:00.000Z";
+  return [
+    {
+      id: "mock-vault-seedsman-blue-dream-2026",
+      userId: ownerId,
+      seedName: "Seedsman Blue Dream",
+      seedType: "Photoperiod",
+      source: "Seedsman",
+      quantity: 24,
+      yearAcquired: 2026,
+      seedAgeYears: 1,
+      storageLocation: "Demo vault / Tray A",
+      notes: "Fresh Seedsman showcase lot for high-confidence KAN demos.",
+      isFavorite: true,
+      isArchived: false,
+    },
+    {
+      id: "mock-vault-seedsman-gelato-41-2026",
+      userId: ownerId,
+      seedName: "Seedsman Gelato 41",
+      seedType: "Photoperiod",
+      source: "Seedsman",
+      quantity: 18,
+      yearAcquired: 2026,
+      seedAgeYears: 1,
+      storageLocation: "Demo vault / Sleeve B",
+      notes: "Fresh lot aligned with the 100% completed KAN demo session.",
+      isFavorite: true,
+      isArchived: false,
+    },
+    {
+      id: "mock-vault-seedsman-white-widow-2021",
+      userId: ownerId,
+      seedName: "Seedsman White Widow archive",
+      seedType: "Photoperiod",
+      source: "Seedsman",
+      quantity: 11,
+      yearAcquired: 2021,
+      seedAgeYears: 5,
+      storageLocation: "Archive vault / Box 2",
+      notes: "Older comparison lot showing a natural, modest seed-age decline.",
+      isFavorite: false,
+      isArchived: false,
+    },
+    {
+      id: "mock-vault-lumen-lime-haze",
+      userId: ownerId,
+      seedName: "Lumen Lime Haze",
+      seedType: "Fast",
+      source: "Lumen Leaf Genetics",
+      quantity: 16,
+      yearAcquired: 2025,
+      seedAgeYears: 1.5,
+      storageLocation: "Demo vault / Fictional sources",
+      notes: "Fictional premium source used to populate the ecosystem.",
+      isFavorite: false,
+      isArchived: false,
+    },
+    {
+      id: "mock-vault-verdant-mint-cake",
+      userId: ownerId,
+      seedName: "Vault Mint Cake",
+      seedType: "Auto",
+      source: "Verdant Vault Seeds",
+      quantity: 9,
+      yearAcquired: 2024,
+      seedAgeYears: 2,
+      storageLocation: "Demo vault / Fictional sources",
+      notes: "Compact mock Vault Entry for collection-scale scanning.",
+      isFavorite: false,
+      isArchived: false,
+    },
+    {
+      id: "mock-vault-aurora-nightfall-archive",
+      userId: ownerId,
+      seedName: "Aurora Nightfall archive",
+      seedType: "Regular",
+      source: "Aurora Calyx Seedworks",
+      quantity: 7,
+      yearAcquired: 2019,
+      seedAgeYears: 7,
+      storageLocation: "Archive vault / Long-term storage",
+      notes: "Archived-style older lot for seed-age analytics contrast.",
+      isFavorite: false,
+      isArchived: true,
+    },
+  ].map((entry) => normalizeSeedVaultEntry({
+    ...entry,
+    isMock: true,
+    is_mock: true,
+    is_mock_data: true,
+    devModeOnly: true,
+    dev_mode_only: true,
+    mockSource: entry.source,
+    mock_source: entry.source,
+    createdAt: now,
+    updatedAt: now,
+  })).filter(Boolean);
+}
+
+function buildDevModeAppNotifications() {
+  return [
+    {
+      id: "mock-app-notification-seedsman-session-ready",
+      eventKey: "mock:seedsman-session-ready",
+      category: "germination-reminder",
+      title: "Seedsman showcase ready",
+      message: "The Seedsman Gelato 41 demo session is ready for review with a clean 100% KAN result.",
+      createdAt: "2026-05-21T10:35:00.000Z",
+      route: "#sessions/sample-kan-seedsman-gelato-may-12-2026",
+      actionKind: "route",
+      actionLabel: "Open Session",
+      isRead: false,
+      isMock: true,
+      devModeOnly: true,
+      mockSource: "Seedsman",
+    },
+    {
+      id: "mock-app-notification-vault-reseeded",
+      eventKey: "mock:seed-vault-reseeded",
+      category: "system-notice",
+      title: "My Seed Vault demo reseeded",
+      message: "Fresh Seedsman and fictional-source Vault Entries are available in Dev Mode.",
+      createdAt: "2026-05-21T10:28:00.000Z",
+      route: "#seed-vault",
+      actionKind: "route",
+      actionLabel: "Open My Seed Vault",
+      isRead: false,
+      isMock: true,
+      devModeOnly: true,
+      mockSource: "Seedsman",
+    },
+  ];
+}
+
+function resetAndReseedDevModeMockData(options = {}) {
+  if (!canAccessMockDataControls()) {
+    return false;
+  }
+
+  const { shouldRender = true } = options || {};
+  const userId = String(appState.user?.id || DEV_QA_BYPASS_USER_ID).trim();
+  const realSessions = (appState.sessions || []).filter((session) => !isDevModeOnlyMockRecord(session));
+  const demoSessions = buildSampleSessions();
+  saveSessions([...demoSessions, ...realSessions]);
+  try {
+    localStorage.setItem(SAMPLE_SEED_KEY, SAMPLE_SEED_VERSION);
+  } catch {}
+
+  const realVaultEntries = (appState.seedVaultEntries || []).filter((entry) => !isDevModeOnlyMockRecord(entry));
+  saveSeedVaultEntries([...buildDevModeSeedVaultEntries(userId), ...realVaultEntries], userId, { notifyOnFailure: true });
+
+  const existingNotifications = getAppNotifications(userId).filter((notification) => !isDevModeOnlyMockRecord(notification));
+  persistAppNotifications([...buildDevModeAppNotifications(), ...existingNotifications], userId);
+
+  try {
+    localStorage.removeItem(SEED_AGE_ANALYTICS_MOCK_DATA_STORAGE_KEY);
+  } catch {}
+  getCachedSeedAgeAnalyticsMockDataset();
+
+  appState.gallerySnapshots = (appState.gallerySnapshots || []).filter((snapshot) => !isDevModeOnlyMockRecord(snapshot));
+  appState.gallerySnapshotsLoaded = true;
+  appState.mockGalleryReviewStatuses = {};
+  appState.mockGrowNetworkFollowStates = {};
+  appState.mockGrowNetworkSeenNotificationIds = {};
+  appState.mockPublicSessionScenarioKey = "perfect-run";
+  appState.mockAdminMessages = [];
+  setMockDataEnabled(true);
+  appState.mockDataEnabled = isMockDataEnabled();
+  ensureMockAdminMessages();
+  syncMockGrowNetworkCaches();
+  syncMockDataBanner();
+  renderAppNotificationCenter();
+  updateAuthStatus();
+  if (shouldRender) {
+    safeRender();
+  }
+  return true;
 }
 
 function isDebugUiEnabled() {
@@ -7352,25 +7639,30 @@ function createMockGalleryMonthDate(monthReference, day, hour) {
   ).toISOString();
 }
 
+function getDevDemoSourceLogoUrl(sourceName = "") {
+  const normalizedKey = normalizeSourceNameForMatching(sourceName);
+  return DEV_DEMO_SOURCE_LOGOS[normalizedKey] || "";
+}
+
 function getMockGallerySourcePalette(sourceName) {
   const normalized = String(sourceName || "").trim().toLowerCase();
   if (normalized.includes("seedsman")) {
     return { background: "#113822", accent: "#8ed16f", text: "#f4ffe9" };
   }
-  if (normalized.includes("humboldt")) {
-    return { background: "#1f3022", accent: "#d8a85d", text: "#fff5df" };
+  if (normalized.includes("lumen")) {
+    return { background: "#142d2a", accent: "#72e0c2", text: "#effff9" };
   }
-  if (normalized.includes("mephisto")) {
-    return { background: "#1f2033", accent: "#9fb8ff", text: "#edf2ff" };
+  if (normalized.includes("verdant")) {
+    return { background: "#173018", accent: "#95df71", text: "#f3ffe8" };
   }
-  if (normalized.includes("barney")) {
-    return { background: "#3a2415", accent: "#f0b06e", text: "#fff0df" };
+  if (normalized.includes("northstar")) {
+    return { background: "#172336", accent: "#8fb9ff", text: "#eef5ff" };
   }
-  if (normalized.includes("ethos")) {
-    return { background: "#1d2833", accent: "#86d7ff", text: "#eefbff" };
+  if (normalized.includes("summit")) {
+    return { background: "#2f2518", accent: "#efc36f", text: "#fff8e8" };
   }
-  if (normalized.includes("royal")) {
-    return { background: "#33211c", accent: "#e7bf7a", text: "#fff6e8" };
+  if (normalized.includes("aurora")) {
+    return { background: "#2d1832", accent: "#d89eff", text: "#fff3ff" };
   }
 
   return { background: "#182422", accent: "#94d159", text: "#f5ffec" };
@@ -7500,23 +7792,23 @@ function getMockGallerySharedProfile(index, record) {
 function buildMockGallerySnapshotSeedRecords(now = new Date()) {
   const sources = [
     "Seedsman",
-    "Humboldt Seed Co",
-    "Mephisto",
-    "Barney's Farm",
-    "Ethos",
-    "Royal Queen Seeds",
+    "Lumen Leaf Genetics",
+    "Verdant Vault Seeds",
+    "Northstar Germplasm",
+    "Summit Sprout Collective",
+    "Aurora Calyx Seedworks",
   ];
   const seedVarieties = [
-    "Blue Dream",
-    "Gelato 41",
-    "Wedding Cake",
-    "Gorilla Glue #4",
-    "Sour Diesel",
-    "White Widow",
+    "Seedsman Blue Dream",
+    "Seedsman Gelato 41",
+    "Seedsman White Widow",
+    "Lumen Lime Haze",
+    "Vault Mint Cake",
+    "Aurora Nightfall",
   ];
-  const varietyBaseRates = [92, 87, 79, 71, 55, 83];
-  const sourceAdjustments = [4, 2, -1, -4, 1, -7];
-  const rowAdjustments = [6, 1, -4, 3, -8, 0];
+  const varietyBaseRates = [98, 97, 96, 94, 92, 88];
+  const sourceAdjustments = [2, -1, -2, -3, -4, -6];
+  const rowAdjustments = [2, 1, 0, -1, -3, -5];
   const seedTypePattern = ["photoperiod", "auto", "fast", "flower", "vegetable", "fruit", "other"];
   const seedCountPattern = [18, 22, 24, 28, 32, 36];
   const dayPattern = [3, 7, 10, 13, 17, 21, 24, 27, 29];
@@ -7532,7 +7824,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       const seedCount = seedCountPattern[(sourceIndex + rowIndex) % seedCountPattern.length];
       const targetRate = clampNumber(
         varietyBaseRates[varietyIndex] + sourceAdjustments[sourceIndex] + rowAdjustments[rowIndex],
-        33,
+        72,
         100,
       );
       const germinatedCount = clampNumber(Math.round((seedCount * targetRate) / 100), 1, seedCount);
@@ -7609,7 +7901,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       successPercent: record.germinationRate,
       submittedBy: "Dev Mock Preview",
       sourceName: record.source,
-      sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
+      sourceLogoUrl: getDevDemoSourceLogoUrl(record.source) || buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
       seedTypeName: getSeedTypeLabel(record.seedType),
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
@@ -7628,6 +7920,11 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       likedByCurrentUser: false,
       isMock: true,
       is_mock: true,
+      is_mock_data: true,
+      devModeOnly: true,
+      dev_mode_only: true,
+      mockSource: record.source,
+      mock_source: record.source,
       mockDataVersion: GALLERY_MOCK_DATA_VERSION,
     };
   });
@@ -7672,7 +7969,7 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
       successPercent: record.germinationRate,
       submittedBy: "Dev Mock Submission",
       sourceName: record.source,
-      sourceLogoUrl: buildMockGallerySourceBadgeDataUri(record.source),
+      sourceLogoUrl: getDevDemoSourceLogoUrl(record.source) || buildMockGallerySourceBadgeDataUri(record.source),
       seedVarietyName: record.seedVariety,
       seedTypeName: getSeedTypeLabel(record.seedType),
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
@@ -7688,6 +7985,11 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
       likedByCurrentUser: false,
       isMock: true,
       is_mock: true,
+      is_mock_data: true,
+      devModeOnly: true,
+      dev_mode_only: true,
+      mockSource: record.source,
+      mock_source: record.source,
       isMockReview: true,
       mockDataVersion: GALLERY_MOCK_DATA_VERSION,
     };
@@ -9972,6 +10274,12 @@ function normalizeAppNotificationRecord(notification = {}, fallbackIndex = 0) {
     actionLabel: String(normalizedNotification.actionLabel || "").trim(),
     actions,
     availableActions,
+    isMock: Boolean(normalizedNotification.isMock ?? normalizedNotification.is_mock ?? normalizedNotification.is_mock_data),
+    is_mock: Boolean(normalizedNotification.isMock ?? normalizedNotification.is_mock ?? normalizedNotification.is_mock_data),
+    devModeOnly: Boolean(normalizedNotification.devModeOnly ?? normalizedNotification.dev_mode_only),
+    dev_mode_only: Boolean(normalizedNotification.devModeOnly ?? normalizedNotification.dev_mode_only),
+    mockSource: String(normalizedNotification.mockSource || normalizedNotification.mock_source || "").trim(),
+    mock_source: String(normalizedNotification.mockSource || normalizedNotification.mock_source || "").trim(),
   };
 }
 
@@ -10039,7 +10347,10 @@ function persistAppNotifications(notifications = [], userId = "") {
 }
 
 function getAppNotifications(userId = appState.user?.id || "") {
-  return syncAppNotificationsUserState(userId);
+  const notifications = syncAppNotificationsUserState(userId);
+  return shouldExposeDevModeMockData()
+    ? notifications
+    : notifications.filter((notification) => !isDevModeOnlyMockRecord(notification));
 }
 
 function getUnreadAppNotificationCount(notifications = getAppNotifications()) {
@@ -22093,7 +22404,9 @@ function getGalleryTopMemberSummaryEntries(monthlySnapshots = []) {
   if (actualEntries.length) {
     return actualEntries;
   }
-  return GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({ ...entry }));
+  return isMockDataEnabled()
+    ? GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({ ...entry }))
+    : [];
 }
 
 function renderGalleryTopMembersSummary(entries = []) {
@@ -36436,6 +36749,7 @@ function renderHomeAdminUtilityCardMarkup() {
             <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
           </button>
           <p class="muted">Shift + D</p>
+          <button type="button" class="button button-secondary" data-dev-demo-reseed="true">Reset &amp; Reseed Demo</button>
         </div>
       </div>
     </section>
@@ -37259,7 +37573,7 @@ function renderSourceProfileCstpVisualMarkup(cstpState = {}) {
 function getSourceDirectoryMockRecords() {
   const { sourceMap } = buildSourceDirectorySessionAggregate();
   const baseSourcesByKey = new Map(
-    testedSourcesMock
+    (isMockDataEnabled() ? testedSourcesMock : [])
       .map((source) => normalizeTestedSourceMockRecord(source))
       .filter(Boolean)
       .map((source) => [normalizeSourceNameForMatching(source.name || source.id || ""), source]),
@@ -38580,7 +38894,7 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
   }
 
   const qualificationLabel = getAdminCstpQualificationLabel(qualificationResult);
-  const sourceName = String(sourceProfile?.name || SOURCE_PROFILE_DEMO_RECORD.name || "Green Horizons Seed Co.").trim();
+  const sourceName = String(sourceProfile?.name || SOURCE_PROFILE_DEMO_RECORD.name || "Seedsman").trim();
   const testedSeedCount = Math.max(1, parseSourceDirectoryMetricNumber(publishedCertification?.sampleSize || cstp.sampleSize || "") || 30);
   const germinationPercent = Math.max(0, Math.min(100, parseSourceDirectoryMetricNumber(publishedCertification?.finalGerminationPercent || cstp.resultPercent || "") || (qualificationResult === "silver" ? 88 : 94)));
   const germinatedCount = Math.round((testedSeedCount * germinationPercent) / 100);
@@ -38591,8 +38905,8 @@ function getSourceCstpReportDetail(sourceProfile = {}) {
     publishedAt: certifiedDate,
   });
   const expiresAt = lifecycleState.expiresAt || (qualificationResult === "silver" ? "2027-02-14T16:20:00.000Z" : "2027-01-18T15:45:00.000Z");
-  const variety = String(publishedCertification?.variety || "").trim() || (qualificationResult === "silver" ? "Northern Lights Feminized" : "Emerald Reserve Auto");
-  const batchLot = String(publishedCertification?.batchLot || "").trim() || (qualificationResult === "silver" ? "RQS-NLF-0226-A" : "GHSC-ERA-0126-A");
+  const variety = String(publishedCertification?.variety || "").trim() || (qualificationResult === "silver" ? "Seedsman White Widow Feminized" : "Seedsman Blue Dream Feminized");
+  const batchLot = String(publishedCertification?.batchLot || "").trim() || (qualificationResult === "silver" ? "SDM-WWF-0226-A" : "SDM-BDF-0126-A");
   const partitionRates = qualificationResult === "silver"
     ? [90, 90, 85]
     : [100, 90, 93];
@@ -53930,6 +54244,9 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-home-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
   });
+  app.querySelector(".home-dashboard-secondary-row [data-dev-demo-reseed='true']")?.addEventListener("click", () => {
+    resetAndReseedDevModeMockData();
+  });
 
   if (showGrowNetworkUnlockNotice) {
     const targetSection = app.querySelector(".home-grow-network-preview-shell");
@@ -54010,12 +54327,16 @@ function renderMockDataAdminSection(target = app, options = {}) {
           <span class="mock-data-toggle-state">${isMockDataEnabled() ? "ON" : "OFF"}</span>
         </button>
         <p class="muted">Shift + D</p>
+        <button type="button" class="button button-secondary" data-dev-demo-reseed="true">Reset &amp; Reseed Demo</button>
       </div>
     </div>
   `;
 
   section.querySelector("[data-mock-data-toggle='true']")?.addEventListener("click", () => {
     setMockDataEnabledAndRefresh(!isMockDataEnabled());
+  });
+  section.querySelector("[data-dev-demo-reseed='true']")?.addEventListener("click", () => {
+    resetAndReseedDevModeMockData();
   });
 
   target.appendChild(section);
@@ -55408,7 +55729,11 @@ function setMockDataEnabledAndRefresh(enabled) {
     return false;
   }
 
-  setMockDataEnabled(enabled);
+  if (enabled) {
+    resetAndReseedDevModeMockData({ shouldRender: false });
+  } else {
+    setMockDataEnabled(false);
+  }
   appState.mockDataEnabled = isMockDataEnabled();
   if (appState.mockDataEnabled) {
     ensureMockAdminMessages();
@@ -56576,7 +56901,11 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
 }
 
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
-  const allEntries = sortSeedVaultEntries(entries);
+  const allEntries = sortSeedVaultEntries(
+    shouldExposeDevModeMockData()
+      ? entries
+      : (entries || []).filter((entry) => !isDevModeOnlyMockRecord(entry)),
+  );
   const collectionState = {
     ...getSeedVaultCollectionState(),
     ...(options.collectionState || {}),
@@ -60785,7 +61114,7 @@ function renderGrowNetworkPage() {
   let sessionsTrendingCount = 0;
 
   if (showPreviewStats) {
-    const mockPrimaryProfile = getMockGrowNetworkProfiles().find((profile) => profile.id === "mock-don-cannakan")
+    const mockPrimaryProfile = getMockGrowNetworkProfiles().find((profile) => profile.id === "mock-seedsman-lab")
       || getMockGrowNetworkProfiles()[0]
       || null;
     const mockActivityEntries = buildMockGrowNetworkActivityEntries();
