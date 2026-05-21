@@ -31075,7 +31075,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .new-session-seed-vault-section {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -31092,12 +31092,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .new-session-seed-vault-panel {
   display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid rgba(148, 209, 89, 0.14);
-  border-radius: 18px;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--session-setup-accent, #72d7ff) 20%, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012) 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--session-setup-accent, #72d7ff) 6%, rgba(255, 255, 255, 0.03)), rgba(255, 255, 255, 0.012) 42%),
     rgba(9, 15, 11, 0.52);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
@@ -31117,7 +31117,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   display: grid;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(148, 209, 89, 0.12);
+  border: 1px solid color-mix(in srgb, var(--session-setup-accent, #72d7ff) 16%, rgba(255, 255, 255, 0.08));
   border-radius: 14px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0) 38%),
@@ -31125,13 +31125,13 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .new-session-seed-vault-assignment.is-active {
-  border-color: rgba(148, 209, 89, 0.28);
+  border-color: color-mix(in srgb, var(--session-setup-accent, #72d7ff) 36%, rgba(255, 255, 255, 0.08));
   background:
-    linear-gradient(180deg, rgba(148, 209, 89, 0.075), rgba(148, 209, 89, 0.025) 46%),
+    linear-gradient(180deg, color-mix(in srgb, var(--session-setup-accent, #72d7ff) 10%, transparent), color-mix(in srgb, var(--session-setup-accent, #72d7ff) 3%, transparent) 46%),
     rgba(255, 255, 255, 0.035);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 0 0 1px rgba(148, 209, 89, 0.07),
+    0 0 0 1px color-mix(in srgb, var(--session-setup-accent, #72d7ff) 10%, transparent),
     0 10px 18px rgba(0, 0, 0, 0.12);
 }
 
@@ -31155,12 +31155,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .new-session-seed-vault-assignment-trigger:hover,
 .new-session-seed-vault-assignment-trigger:focus-visible {
-  background: rgba(148, 209, 89, 0.065);
+  background: color-mix(in srgb, var(--session-setup-accent, #72d7ff) 8%, transparent);
   outline: none;
 }
 
 .new-session-seed-vault-partition-label {
-  color: #dff3c7;
+  color: color-mix(in srgb, var(--session-setup-accent, #72d7ff) 72%, #f4f9f0);
   font-size: 0.8rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -31184,8 +31184,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .new-session-seed-vault-trigger-icon {
   width: 9px;
   height: 9px;
-  border-right: 2px solid rgba(183, 226, 130, 0.82);
-  border-bottom: 2px solid rgba(183, 226, 130, 0.82);
+  border-right: 2px solid color-mix(in srgb, var(--session-setup-accent, #72d7ff) 72%, rgba(255, 255, 255, 0.42));
+  border-bottom: 2px solid color-mix(in srgb, var(--session-setup-accent, #72d7ff) 72%, rgba(255, 255, 255, 0.42));
   transform: rotate(45deg);
   transition: transform 0.18s ease;
 }
@@ -31246,7 +31246,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   min-width: 0;
   min-height: 38px;
   border-radius: 12px;
-  border: 1px solid rgba(148, 209, 89, 0.14);
+  border: 1px solid color-mix(in srgb, var(--session-setup-accent, #72d7ff) 18%, rgba(255, 255, 255, 0.08));
   background: rgba(9, 14, 11, 0.76);
   color: #f2f7ef;
 }
@@ -35090,23 +35090,26 @@ body.modal-open {
 }
 
 .session-seed-age-toggle {
+  --session-setup-accent: #94d159;
+  --session-setup-accent-soft: rgba(148, 209, 89, 0.14);
+  --session-setup-accent-glow: rgba(148, 209, 89, 0.1);
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 14px;
   align-items: center;
   padding: 14px 16px;
-  border: 1px solid rgba(148, 209, 89, 0.24);
+  border: 1px solid color-mix(in srgb, var(--session-setup-accent) 28%, rgba(255, 255, 255, 0.08));
   border-radius: 18px;
   background:
-    radial-gradient(circle at top right, rgba(148, 209, 89, 0.16), transparent 42%),
-    radial-gradient(circle at 18% 120%, rgba(92, 158, 58, 0.16), transparent 52%),
+    radial-gradient(circle at top right, var(--session-setup-accent-soft), transparent 42%),
+    radial-gradient(circle at 18% 120%, color-mix(in srgb, var(--session-setup-accent) 14%, transparent), transparent 52%),
     linear-gradient(180deg, rgba(14, 24, 18, 0.94) 0%, rgba(10, 18, 13, 0.96) 100%);
   box-shadow:
     0 16px 26px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(148, 209, 89, 0.1),
-    inset 0 0 24px rgba(92, 158, 58, 0.12),
-    0 0 22px rgba(148, 209, 89, 0.06);
+    inset 0 0 0 1px color-mix(in srgb, var(--session-setup-accent) 11%, transparent),
+    inset 0 0 24px var(--session-setup-accent-glow),
+    0 0 22px color-mix(in srgb, var(--session-setup-accent) 7%, transparent);
   cursor: pointer;
 }
 
@@ -35122,7 +35125,7 @@ body.modal-open {
   height: 30px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(148, 209, 89, 0.22);
+  border: 1px solid color-mix(in srgb, var(--session-setup-accent) 26%, rgba(255, 255, 255, 0.08));
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -35157,8 +35160,8 @@ body.modal-open {
 }
 
 .session-seed-age-toggle input:checked + .session-seed-age-toggle-control {
-  background: rgba(148, 209, 89, 0.26);
-  border-color: rgba(181, 232, 111, 0.38);
+  background: color-mix(in srgb, var(--session-setup-accent) 28%, rgba(255, 255, 255, 0.08));
+  border-color: color-mix(in srgb, var(--session-setup-accent) 48%, rgba(255, 255, 255, 0.08));
 }
 
 .session-seed-age-toggle input:checked + .session-seed-age-toggle-control::after {
@@ -35166,7 +35169,7 @@ body.modal-open {
 }
 
 .session-seed-age-toggle input:focus-visible + .session-seed-age-toggle-control {
-  box-shadow: 0 0 0 3px rgba(148, 209, 89, 0.14);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--session-setup-accent) 18%, transparent);
 }
 
 .session-seed-age-setup {
@@ -35330,15 +35333,8 @@ body.modal-open {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "heading sequence"
-    "seed-age seed-age";
+    "setup-tools setup-tools";
   gap: 14px 18px;
-}
-
-.session-workspace-form .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
-  grid-template-areas:
-    "heading sequence"
-    "seed-age seed-age"
-    "seed-age-setup seed-age-setup";
 }
 
 .session-workspace-shell--detail .partition-work-header {
@@ -35365,24 +35361,142 @@ body.modal-open {
   grid-area: heading;
 }
 
-.session-workspace-form .partition-work-header .session-seed-age-toggle,
-.session-workspace-shell--detail .partition-work-header .session-detail-seed-age-form {
-  grid-area: seed-age;
-  width: 100%;
-}
-
 .session-workspace-form .partition-work-header .session-sequence-label,
 .session-workspace-shell--detail .partition-work-header .session-sequence-label {
   grid-area: sequence;
 }
 
-.session-workspace-form .partition-work-header .session-seed-age-setup-host {
-  grid-area: seed-age-setup;
+.session-workspace-form .session-setup-tools-card {
+  --session-setup-age-accent: #d9a74e;
+  --session-setup-vault-accent: #72d7ff;
+  grid-area: setup-tools;
+  display: grid;
+  gap: 0;
   width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(217, 167, 78, 0.08), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(114, 215, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(8, 13, 10, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 12px 22px rgba(0, 0, 0, 0.14);
 }
 
-.session-workspace-form .partition-work-header .session-seed-age-setup-host:empty {
+.session-workspace-form .session-setup-tools-header {
+  margin: 0 0 8px;
+}
+
+.session-workspace-form .session-setup-tools-header .eyebrow {
+  width: auto;
+  margin: 0;
+  color: rgba(218, 227, 216, 0.72);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+}
+
+.session-workspace-form .session-setup-tools-card > * + .new-session-seed-vault-section:not([hidden]),
+.session-workspace-form .session-setup-tools-card > .session-seed-age-setup-host:not(:empty) {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.session-workspace-form .session-setup-tools-card .session-seed-age-setup-host:empty {
   display: none;
+}
+
+.session-workspace-form .session-setup-tool {
+  width: 100%;
+  min-height: 0;
+  padding: 11px 12px;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    inset 0 0 18px var(--session-setup-accent-glow),
+    0 0 16px color-mix(in srgb, var(--session-setup-accent) 6%, transparent);
+}
+
+.session-workspace-form .session-setup-tool--seed-age {
+  --session-setup-accent: var(--session-setup-age-accent);
+  --session-setup-accent-soft: rgba(217, 167, 78, 0.14);
+  --session-setup-accent-glow: rgba(217, 167, 78, 0.08);
+}
+
+.session-workspace-form .session-setup-tool--seed-vault,
+.session-workspace-form .new-session-seed-vault-section {
+  --session-setup-accent: var(--session-setup-vault-accent);
+  --session-setup-accent-soft: rgba(114, 215, 255, 0.12);
+  --session-setup-accent-glow: rgba(114, 215, 255, 0.08);
+}
+
+.session-workspace-form .session-setup-tool .session-seed-age-toggle-control {
+  width: 46px;
+  height: 26px;
+}
+
+.session-workspace-form .session-setup-tool .session-seed-age-toggle-control::after {
+  width: 18px;
+  height: 18px;
+}
+
+.session-workspace-form .session-setup-tool input:checked + .session-seed-age-toggle-control::after {
+  transform: translateX(20px);
+}
+
+.session-workspace-form .session-setup-tool .session-seed-age-toggle-copy {
+  color: color-mix(in srgb, var(--session-setup-accent) 34%, #f3f6f1);
+}
+
+.session-workspace-form .session-seed-age-setup {
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--session-setup-age-accent) 18%, rgba(255, 255, 255, 0.08));
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 10, 0.42);
+}
+
+.session-workspace-form .session-seed-age-setup-header .eyebrow,
+.session-workspace-form .session-seed-age-input-field > span {
+  color: var(--session-setup-age-accent);
+}
+
+.session-workspace-form .session-seed-age-mode-group {
+  gap: 8px;
+}
+
+.session-workspace-form .session-seed-age-mode-card {
+  padding: 11px 12px;
+  border-color: color-mix(in srgb, var(--session-setup-age-accent) 16%, rgba(255, 255, 255, 0.08));
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0) 32%),
+    color-mix(in srgb, var(--session-setup-age-accent) 4%, transparent);
+}
+
+.session-workspace-form .session-seed-age-mode-card input {
+  accent-color: var(--session-setup-age-accent);
+}
+
+.session-workspace-form .session-seed-age-mode-card:has(input:checked) {
+  border-color: color-mix(in srgb, var(--session-setup-age-accent) 38%, rgba(255, 255, 255, 0.08));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--session-setup-age-accent) 10%, transparent), color-mix(in srgb, var(--session-setup-age-accent) 3%, transparent) 36%, rgba(255, 255, 255, 0) 100%),
+    color-mix(in srgb, var(--session-setup-age-accent) 7%, rgba(8, 13, 10, 0.34));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 0 1px color-mix(in srgb, var(--session-setup-age-accent) 10%, transparent),
+    0 10px 18px rgba(0, 0, 0, 0.12);
+}
+
+.session-workspace-shell--detail .partition-work-header .session-detail-seed-age-form {
+  grid-area: seed-age;
+  width: 100%;
 }
 
 @media (max-width: 720px) {
@@ -35390,29 +35504,14 @@ body.modal-open {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "heading"
-      "seed-age";
+      "setup-tools";
   }
 
   .session-workspace-form .partition-work-header:has(.session-sequence-label:not([hidden])) {
     grid-template-areas:
       "heading"
-      "seed-age"
+      "setup-tools"
       "sequence";
-  }
-
-  .session-workspace-form .partition-work-header:has(.session-seed-age-setup-host:not(:empty)) {
-    grid-template-areas:
-      "heading"
-      "seed-age"
-      "seed-age-setup";
-  }
-
-  .session-workspace-form .partition-work-header:has(.session-sequence-label:not([hidden])):has(.session-seed-age-setup-host:not(:empty)) {
-    grid-template-areas:
-      "heading"
-      "seed-age"
-      "sequence"
-      "seed-age-setup";
   }
 
   .session-workspace-form .partition-work-header .session-sequence-label {
