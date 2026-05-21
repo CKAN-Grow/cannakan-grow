@@ -1583,6 +1583,7 @@ const GROW_SESSION_MANUAL_TIMESTAMP_RESTRICTED_MESSAGE = "Manual grow session ti
 const NEW_SESSION_SAVE_BUTTON_DEFAULT_LABEL = "Save Session";
 const NEW_SESSION_SAVE_BUTTON_SAVED_LABEL = "Saved";
 const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
+const SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE = "Finish your results before completing this session. Your counted seeds must match the total seeds started.";
 // Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
 // Database access should be protected with Supabase RLS policies.
 
@@ -58552,6 +58553,22 @@ function renderSessionForm(initialSystemType = "KAN") {
     sessionStatusField.addEventListener("change", () => {
       const previousStatus = form.dataset.currentStage || "unselected";
       const nextStatus = normalizeSessionStatus(sessionStatusField.value);
+    if (previousStatus !== "completed" && nextStatus === "completed") {
+      const sessionResults = {
+        partitions: buildPartitionDraftValuesFromContainer(partitionFields),
+      };
+      if (!areSessionSeedResultsFullyAccountedFor(sessionResults)) {
+        sessionStatusField.value = previousStatus === "unselected" ? "" : previousStatus;
+        showSessionCompletionResultsWarning(formMessage);
+        syncSessionStatusControlDatasets(sessionStatusField, {
+          germinationStartedAt: form.dataset.germinationStartedAt || "",
+          firstPlantedAt: form.dataset.firstPlantedAt || "",
+          completedAt: form.dataset.completedAt || "",
+        });
+        updateSessionStatusAppearance(sessionStatusField, sessionStatusTrigger);
+        return;
+      }
+    }
     if (previousStatus !== "germinating" && nextStatus === "germinating") {
       form.dataset.germinationStartedAt = new Date().toISOString();
     }
@@ -58754,13 +58771,20 @@ function renderSessionForm(initialSystemType = "KAN") {
       soakStartedAt,
       timerStartAt: soakStartedAt,
     };
+    const requestedCompleted = normalizeSessionStatus(session.sessionStatus || "") === "completed";
+    if (requestedCompleted && !areSessionSeedResultsFullyAccountedFor(session)) {
+      showSessionCompletionResultsWarning(formMessage);
+      setUnsavedChangesLastSaveError(new Error(SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE), SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
+      return null;
+    }
+    autoCompleteSessionWhenResultsAccounted(session);
     const timelineValidation = validateGrowSessionTimelineOrder({
       sessionStartedAt: session.sessionStartedAt,
       soakStartedAt: session.soakStartedAt,
       germinationStartedAt: session.germinationStartedAt,
       completedAt: session.completedAt,
     }, {
-      requireCompleted: normalizedInitialStatus === "completed",
+      requireCompleted: normalizeSessionStatus(session.sessionStatus || "") === "completed",
     });
     if (!timelineValidation.isValid) {
       formMessage.textContent = timelineValidation.message;
@@ -62611,6 +62635,18 @@ function renderSessionDetail(sessionId) {
     }
     applySessionSeedAgeSettingsFromForm(session, detail.seedAgeForm);
     syncSessionPartitionsFromContainer(session, partitions, { form: detail.seedAgeForm });
+    if (selectedProgressKey === "completed" && previousProgressKey !== "completed" && !areSessionSeedResultsFullyAccountedFor(session)) {
+      detail.statusField.value = previousStatus || "";
+      syncSessionStatusControlDatasets(detail.statusField, {
+        startedAt: getSessionStatusStartedAtValue(session),
+        germinationStartedAt: session.germinationStartedAt || "",
+        firstPlantedAt: session.firstPlantedAt || "",
+        completedAt: session.completedAt || "",
+      });
+      showSessionCompletionResultsWarning(detail.saveMessage);
+      updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+      return;
+    }
     session.sessionStatus = detail.statusField.value;
     session.germinationStartedAt = detail.statusField.dataset.germinationStartedAt || "";
     session.firstPlantedAt = detail.statusField.dataset.firstPlantedAt || "";
@@ -62709,6 +62745,18 @@ function renderSessionDetail(sessionId) {
     detail.saveMessage.classList.toggle("is-error", !savedSession);
     if (savedSession) {
       await refreshUserSessionsAfterSave("session-detail:save");
+      detail.statusField.value = session.sessionStatus || "soaking";
+      syncSessionStatusControlDatasets(detail.statusField, {
+        startedAt: getSessionStatusStartedAtValue(session),
+        germinationStartedAt: session.germinationStartedAt || "",
+        firstPlantedAt: session.firstPlantedAt || "",
+        completedAt: session.completedAt || "",
+      });
+      updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
+      renderDetailPartitions();
+      bindDetailPartitionInputListeners();
+      applyStageEditingMode(app, detail.statusField.value);
+      refreshDetailDerivedViews();
       syncSessionDetailHeaderMeta(detail, session);
       populateSessionDetailEditorForm(detail.detailsForm, session);
       populateSessionSeedAgeForm(detail.seedAgeForm, session);
@@ -63087,6 +63135,84 @@ function getSessionSeedTotals(session) {
     accumulator.totalPlanted += Math.max(0, planted);
     return accumulator;
   }, { totalSeeds: 0, totalPlanted: 0 });
+}
+
+function getSessionSeedResultAccounting(session = null) {
+  const partitions = normalizeSessionPartitions(session?.partitions || []);
+  return partitions.reduce((state, partition) => {
+    const seedCount = Math.max(0, Number(partition.seedCount) || 0);
+    if (seedCount <= 0) {
+      return state;
+    }
+
+    const plantedRawValue = String(partition.plantedCount ?? partition.planted_count ?? "").trim();
+    const plantedCount = Number(plantedRawValue);
+    const hasValidPlantedCount = plantedRawValue !== ""
+      && Number.isFinite(plantedCount)
+      && plantedCount >= 0
+      && plantedCount <= seedCount;
+
+    state.totalSeeds += seedCount;
+    if (!hasValidPlantedCount) {
+      state.hasIncompleteResults = true;
+      return state;
+    }
+
+    const germinatedCount = Math.max(0, Math.min(seedCount, plantedCount));
+    state.totalGerminated += germinatedCount;
+    state.totalFailed += Math.max(0, seedCount - germinatedCount);
+    state.totalAccounted += seedCount;
+    return state;
+  }, {
+    totalSeeds: 0,
+    totalGerminated: 0,
+    totalFailed: 0,
+    totalAccounted: 0,
+    hasIncompleteResults: false,
+  });
+}
+
+function areSessionSeedResultsFullyAccountedFor(session = null) {
+  const accounting = getSessionSeedResultAccounting(session);
+  return Boolean(
+    accounting.totalSeeds > 0
+    && !accounting.hasIncompleteResults
+    && accounting.totalAccounted === accounting.totalSeeds
+  );
+}
+
+function autoCompleteSessionWhenResultsAccounted(session = null, referenceDate = new Date()) {
+  if (!session || normalizeSessionStatus(session.sessionStatus || "") === "completed") {
+    return false;
+  }
+  if (!areSessionSeedResultsFullyAccountedFor(session)) {
+    return false;
+  }
+
+  const completedAt = referenceDate instanceof Date && !Number.isNaN(referenceDate.getTime())
+    ? referenceDate.toISOString()
+    : new Date().toISOString();
+  const totals = getSessionSeedTotals(session);
+  session.sessionStatus = "completed";
+  session.completedAt = session.completedAt || completedAt;
+  session.germinationStartedAt = session.germinationStartedAt || completedAt;
+  if (totals.totalPlanted > 0) {
+    session.firstPlantedAt = session.firstPlantedAt || completedAt;
+  }
+  return true;
+}
+
+function showSessionCompletionResultsWarning(messageElement = null) {
+  if (messageElement) {
+    messageElement.textContent = SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE;
+    messageElement.classList?.add("is-error");
+  }
+  if (typeof showNavigationLockToast === "function") {
+    showNavigationLockToast({
+      title: "Session Results",
+      message: SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE,
+    });
+  }
 }
 
 function sortSessionsNewestFirst(sessions) {
@@ -66497,6 +66623,13 @@ function applyDebugEventToSession(session, stageField, action) {
 async function saveSessionUpdate(session) {
   try {
     const previousSession = getSessions().find((entry) => String(entry?.id || "").trim() === String(session?.id || "").trim()) || null;
+    const previousStatus = previousSession?.sessionStatus || "";
+    const isNewCompletion = normalizeSessionStatus(session?.sessionStatus || "") === "completed"
+      && normalizeSessionStatus(previousStatus) !== "completed";
+    if (isNewCompletion && !areSessionSeedResultsFullyAccountedFor(session)) {
+      throw new Error(SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE);
+    }
+    autoCompleteSessionWhenResultsAccounted(session);
     session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
     processSessionNotificationTriggers(savedSession, {
@@ -66504,6 +66637,9 @@ async function saveSessionUpdate(session) {
       existingSessions: getSessions(),
       isNewSession: false,
     });
+    if (shouldAutoDeductFilterPaperForSessionCompletion(savedSession, previousStatus)) {
+      applyFilterPaperDeductionForCompletedSession(savedSession);
+    }
     Object.assign(session, savedSession);
     return savedSession;
   } catch (error) {
