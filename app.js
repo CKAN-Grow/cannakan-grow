@@ -27017,6 +27017,25 @@ function clearSessionImageMessage(state) {
   state.message.classList.remove("is-error");
 }
 
+function setFeedbackMessageTone(element, tone = "") {
+  if (!element?.classList) {
+    return;
+  }
+  element.classList.remove("is-error", "is-success", "is-warning");
+  const normalizedTone = String(tone || "").trim().toLowerCase();
+  if (["error", "success", "warning"].includes(normalizedTone)) {
+    element.classList.add(`is-${normalizedTone}`);
+  }
+}
+
+function setFeedbackMessage(element, message = "", tone = "") {
+  if (!element) {
+    return;
+  }
+  element.textContent = String(message || "");
+  setFeedbackMessageTone(element, message ? tone : "");
+}
+
 async function uploadPendingSessionImages(form, sessionId, scope) {
   const state = scope?.__sessionImageState || form.__sessionImageState || form.querySelector(".session-images-section")?.__sessionImageState;
   if (!state?.pendingFiles?.length) {
@@ -27292,6 +27311,8 @@ function initializeSnapshotSection(scope, options) {
         publishResult?.published
           ? "Submitted for review. Sharing is not available here. Use Download instead."
           : "Sharing is not available here. Use Download instead.",
+        false,
+        publishResult?.published ? "warning" : "warning",
       );
     }
   });
@@ -27303,7 +27324,7 @@ function initializeSnapshotSection(scope, options) {
         if (socialInput) {
           socialInput.checked = true;
         }
-        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE);
+          setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE, false, "warning");
       }
       syncSnapshotGalleryControls(state);
     });
@@ -27324,7 +27345,7 @@ function initializeSnapshotSection(scope, options) {
           sessionId: existing.sessionId || "",
           userId: appState.user?.id || "",
         });
-        setSnapshotMessage(state, "Removal request noted. Contact support for published Community Grow changes.");
+        setSnapshotMessage(state, "Removal request noted. Contact support for published Community Grow changes.", false, "warning");
         return;
       }
 
@@ -27800,7 +27821,7 @@ async function maybePublishSnapshotFromState(state, result) {
       snapshotState: getSnapshotStateForSection(state),
     });
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE);
+    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE, false, "warning");
     return { published: null, blocked: true };
   }
 
@@ -27901,13 +27922,15 @@ function getSnapshotFeatureIconMarkup(kind) {
   `;
 }
 
-function setSnapshotMessage(state, message, isError = false) {
+function setSnapshotMessage(state, message, isError = false, tone = "") {
   if (!state?.message) {
     return;
   }
 
-  state.message.textContent = message;
-  state.message.classList.toggle("is-error", Boolean(message && isError));
+  const normalizedTone = isError
+    ? "error"
+    : (String(tone || "").trim() || (message ? "success" : ""));
+  setFeedbackMessage(state.message, message, normalizedTone);
 }
 
 function setSnapshotPreview(state, payload) {
@@ -34534,8 +34557,7 @@ function validateNewSessionName(form, { formMessage = null } = {}) {
   updateNewSessionNameDefaultSuggestion(form);
   sessionNameField.setCustomValidity("");
   if (formMessage) {
-    formMessage.textContent = "";
-    formMessage.classList.remove("is-error");
+    setFeedbackMessage(formMessage, "");
   }
   return true;
 }
@@ -36485,10 +36507,7 @@ function openFilterPaperInventoryModal(options = {}) {
   autoSubtractInput.checked = Boolean(inventory.autoSubtract);
   notifyLowSupplyInput.checked = inventory.notifyLowSupply !== false;
   regionSelect.value = inventory.storeRegion;
-  if (message) {
-    message.textContent = "";
-    message.classList.remove("is-error");
-  }
+  setFeedbackMessage(message, "");
 
   let didSave = false;
   const handleClose = () => {
@@ -36508,19 +36527,13 @@ function openFilterPaperInventoryModal(options = {}) {
   saveButton.onclick = async () => {
     const rawCount = Number(countInput.value);
     if (!Number.isFinite(rawCount) || rawCount < 0) {
-      if (message) {
-        message.textContent = "Enter a valid filter paper count of 0 or more.";
-        message.classList.add("is-error");
-      }
+      setFeedbackMessage(message, "Enter a valid filter paper count of 0 or more.", "error");
       countInput.focus();
       return;
     }
 
     saveButton.disabled = true;
-    if (message) {
-      message.textContent = "";
-      message.classList.remove("is-error");
-    }
+    setFeedbackMessage(message, "");
 
     try {
       const nextCount = Math.max(0, Math.floor(rawCount));
@@ -36542,10 +36555,7 @@ function openFilterPaperInventoryModal(options = {}) {
       safeRender();
     } catch (error) {
       console.error("[Filter Paper Supply] Save failed.", error);
-      if (message) {
-        message.textContent = `Filter paper count could not be saved: ${error?.message || "Unknown error"}`;
-        message.classList.add("is-error");
-      }
+      setFeedbackMessage(message, `Filter paper count could not be saved: ${error?.message || "Unknown error"}`, "error");
       countInput.focus();
     } finally {
       saveButton.disabled = false;
@@ -36576,10 +36586,7 @@ function promptFilterPaperSetupBeforeNewSession() {
   }
 
   countInput.value = String(inventory.count || 0);
-  if (message) {
-    message.textContent = "";
-    message.classList.remove("is-error");
-  }
+  setFeedbackMessage(message, "");
 
   return new Promise((resolve) => {
     let settled = false;
@@ -36626,10 +36633,7 @@ function promptFilterPaperSetupBeforeNewSession() {
         finish(true);
       } catch (error) {
         console.error("[Filter Paper Supply] Setup save failed.", error);
-        if (message) {
-          message.textContent = `Filter paper count could not be saved: ${error?.message || "Unknown error"}`;
-          message.classList.add("is-error");
-        }
+        setFeedbackMessage(message, `Filter paper count could not be saved: ${error?.message || "Unknown error"}`, "error");
         saveButton.disabled = false;
       }
     };
@@ -57498,18 +57502,14 @@ function openSeedVaultEntryModal() {
     const submitButton = form.querySelector("button[type='submit']");
     const validation = validateSeedVaultEntryForm(form);
     if (!validation.isValid) {
-      if (message) {
-        message.textContent = validation.message;
-      }
+      setFeedbackMessage(message, validation.message, "error");
       validation.firstInvalidField?.focus();
       return;
     }
 
     const payload = getSeedVaultEntryFormPayload(form);
     if (!payload?.seedName) {
-      if (message) {
-        message.textContent = "Seed name / variety is required.";
-      }
+      setFeedbackMessage(message, "Seed name / variety is required.", "error");
       return;
     }
 
@@ -57520,12 +57520,14 @@ function openSeedVaultEntryModal() {
     try {
       await persistSeedVaultEntry(payload);
       closeSeedVaultEntryModal();
+      showNavigationLockToast({
+        title: "My Seed Vault",
+        message: "Vault Entry saved.",
+      });
       appState.sessionDashboardScrollTarget = "my-seed-vault";
       renderSessionsList();
     } catch (error) {
-      if (message) {
-        message.textContent = error.message || "Could not add this Vault Entry.";
-      }
+      setFeedbackMessage(message, error.message || "Could not add this Vault Entry.", "error");
       if (submitButton) {
         submitButton.disabled = false;
         submitButton.textContent = "Add Seeds";
@@ -58605,17 +58607,11 @@ function renderSessionForm(initialSystemType = "KAN") {
         publicGrowNote: getEffectivePublicGrowNoteValue(snapshotSection?.__snapshotState),
         includePublicGrowNote: shouldIncludePublicGrowNote(snapshotSection?.__snapshotState),
       });
-      if (notesMessage) {
-        notesMessage.textContent = "Note saved.";
-        notesMessage.classList.remove("is-error");
-      }
+      setFeedbackMessage(notesMessage, "Note saved.", "success");
       return true;
     } catch (error) {
       console.error("Could not save new session note", error);
-      if (notesMessage) {
-        notesMessage.textContent = "Could not save note.";
-        notesMessage.classList.add("is-error");
-      }
+      setFeedbackMessage(notesMessage, "Could not save note.", "error");
       return false;
     }
   };
@@ -58627,24 +58623,21 @@ function renderSessionForm(initialSystemType = "KAN") {
       return;
     }
 
-    notesMessage.textContent = "";
-    notesMessage.classList.remove("is-error");
+    setFeedbackMessage(notesMessage, "");
   });
   publicGrowNoteField?.addEventListener("input", () => {
     if (!notesMessage?.textContent) {
       return;
     }
 
-    notesMessage.textContent = "";
-    notesMessage.classList.remove("is-error");
+    setFeedbackMessage(notesMessage, "");
   });
   publicGrowNoteToggle?.addEventListener("change", () => {
     if (!notesMessage?.textContent) {
       return;
     }
 
-    notesMessage.textContent = "";
-    notesMessage.classList.remove("is-error");
+    setFeedbackMessage(notesMessage, "");
   });
   publicGrowNoteModeInputs.forEach((input) => {
     input.addEventListener("change", () => {
@@ -58652,8 +58645,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         return;
       }
 
-      notesMessage.textContent = "";
-      notesMessage.classList.remove("is-error");
+      setFeedbackMessage(notesMessage, "");
     });
   });
     startSessionTimer(() => {
@@ -58753,8 +58745,7 @@ function renderSessionForm(initialSystemType = "KAN") {
         updateSnapshotPublicGrowNotePendingState(snapshotSection.__snapshotState);
       }
       if (notesMessage?.textContent) {
-        notesMessage.textContent = "";
-        notesMessage.classList.remove("is-error");
+        setFeedbackMessage(notesMessage, "");
       }
       renderSystemLayoutReference(layoutReference, systemTypeField.value);
       if (partitionWorkTitle) {
@@ -62108,8 +62099,7 @@ function clearSessionDetailEditorMessage(detail) {
     return;
   }
 
-  detail.detailsMessage.textContent = "";
-  detail.detailsMessage.classList.remove("is-error");
+  setFeedbackMessage(detail.detailsMessage, "");
 }
 
 function canCurrentUserEditSessionTimes(session = null) {
@@ -62230,8 +62220,7 @@ function clearSessionTimesEditorMessage(detail) {
     return;
   }
 
-  detail.timesMessage.textContent = "";
-  detail.timesMessage.classList.remove("is-error");
+  setFeedbackMessage(detail.timesMessage, "");
 }
 
 function setSessionTimesEditorMessage(detail, message = "", isError = false) {
@@ -62239,8 +62228,7 @@ function setSessionTimesEditorMessage(detail, message = "", isError = false) {
     return;
   }
 
-  detail.timesMessage.textContent = message;
-  detail.timesMessage.classList.toggle("is-error", Boolean(isError));
+  setFeedbackMessage(detail.timesMessage, message, isError ? "error" : (message ? "success" : ""));
 }
 
 function getSessionTimesFormPayload(form, session = null) {
@@ -62644,7 +62632,7 @@ function renderSessionDetail(sessionId) {
           updateSessionStatusAppearance(detail.statusField, detail.statusTrigger);
           syncCompletedSessionPartitionVisibility(partitions, detail.statusField.value);
           refreshDetailDerivedViews();
-          detail.saveMessage.textContent = "";
+          setFeedbackMessage(detail.saveMessage, "");
           refreshDetailUnsavedChanges();
         });
         field.addEventListener("blur", () => {
@@ -62752,7 +62740,7 @@ function renderSessionDetail(sessionId) {
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
     refreshDetailDerivedViews();
-    detail.saveMessage.textContent = "";
+    setFeedbackMessage(detail.saveMessage, "");
     refreshDetailUnsavedChanges();
   };
   refreshDetailDerivedViews();
@@ -62775,7 +62763,7 @@ function renderSessionDetail(sessionId) {
       }
 
       if (target.name === "sessionSeedAgeYears") {
-        detail.saveMessage.textContent = "";
+        setFeedbackMessage(detail.saveMessage, "");
         rerenderDetailSeedAgeState();
       }
     });
@@ -62934,17 +62922,14 @@ function renderSessionDetail(sessionId) {
   const persistDetailSession = async () => {
     clearSessionDetailEditorMessage(detail);
     if (!applySessionDetailEditorValues(detail.detailsForm, session)) {
-      if (detail.detailsMessage) {
-        detail.detailsMessage.textContent = "Please enter a session name to continue.";
-        detail.detailsMessage.classList.add("is-error");
-      }
+      setFeedbackMessage(detail.detailsMessage, "Please enter a session name to continue.", "error");
       return null;
     }
     const seedAgeValidation = detail.seedAgeForm?.hidden
       ? { isValid: true, message: "", firstInvalidField: null }
       : validateSeedAgeSettings(detail.seedAgeForm);
     if (!seedAgeValidation.isValid) {
-      detail.saveMessage.textContent = seedAgeValidation.message;
+      setFeedbackMessage(detail.saveMessage, seedAgeValidation.message, "error");
       seedAgeValidation.firstInvalidField?.focus();
       return null;
     }
@@ -62953,7 +62938,7 @@ function renderSessionDetail(sessionId) {
     captureFirstPlantedEventForSession(session);
     session.sessionNotes = detail.notesField.value.trim();
     session.snapshotState = normalizePersistedSessionSnapshotState(detail.snapshotSection?.__snapshotState?.pendingSnapshotState);
-    detail.saveMessage.textContent = "";
+    setFeedbackMessage(detail.saveMessage, "");
     syncSessionDetailHeaderMeta(detail, session);
     if (detail.layoutReference && detail.layoutSection) {
       void renderSystemLayoutReference(detail.layoutReference, session.systemType);
@@ -62977,10 +62962,13 @@ function renderSessionDetail(sessionId) {
     );
     refreshDetailDerivedViews();
     const savedSession = await saveSessionUpdate(session);
-    detail.saveMessage.textContent = savedSession
-      ? "Session saved."
-      : (appState.unsavedChanges.lastSaveError?.message || "Could not save session.");
-    detail.saveMessage.classList.toggle("is-error", !savedSession);
+    setFeedbackMessage(
+      detail.saveMessage,
+      savedSession
+        ? "Session saved."
+        : (appState.unsavedChanges.lastSaveError?.message || "Could not save session."),
+      savedSession ? "success" : "error",
+    );
     if (savedSession) {
       await refreshUserSessionsAfterSave("session-detail:save");
       detail.statusField.value = session.sessionStatus || "soaking";
@@ -63001,9 +62989,8 @@ function renderSessionDetail(sessionId) {
       syncDetailSeedAgeVisibility();
       setSessionDetailEditorOpen(detail, false);
       markUnsavedChangesSaved();
-    } else if (detail.detailsPanel && !detail.detailsPanel.hidden && detail.detailsMessage) {
-      detail.detailsMessage.textContent = "Could not save session name.";
-      detail.detailsMessage.classList.add("is-error");
+    } else if (detail.detailsPanel && !detail.detailsPanel.hidden) {
+      setFeedbackMessage(detail.detailsMessage, "Could not save session name.", "error");
     }
     return savedSession;
   };
@@ -63123,16 +63110,10 @@ function renderSessionDetail(sessionId) {
         publicGrowNote: normalizePublicGrowNote(current.publicGrowNote || ""),
         includePublicGrowNote: Boolean(current.includePublicGrowNote),
       }));
-      if (detail.notesMessage) {
-        detail.notesMessage.textContent = "Note saved.";
-        detail.notesMessage.classList.remove("is-error");
-      }
+      setFeedbackMessage(detail.notesMessage, "Note saved.", "success");
     } catch (error) {
       console.error("Failed to save session note", error);
-      if (detail.notesMessage) {
-        detail.notesMessage.textContent = "Could not save note.";
-        detail.notesMessage.classList.add("is-error");
-      }
+      setFeedbackMessage(detail.notesMessage, "Could not save note.", "error");
     }
   };
 
@@ -63143,8 +63124,7 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
-    detail.notesMessage.textContent = "";
-    detail.notesMessage.classList.remove("is-error");
+    setFeedbackMessage(detail.notesMessage, "");
   });
   detail.publicGrowNoteField?.addEventListener("input", refreshDetailUnsavedChanges);
   detail.publicGrowNoteToggle?.addEventListener("change", refreshDetailUnsavedChanges);
@@ -63154,8 +63134,7 @@ function renderSessionDetail(sessionId) {
       if (!detail.notesMessage?.textContent) {
         return;
       }
-      detail.notesMessage.textContent = "";
-      detail.notesMessage.classList.remove("is-error");
+      setFeedbackMessage(detail.notesMessage, "");
     });
   });
   detail.publicGrowNoteField?.addEventListener("input", () => {
@@ -63163,16 +63142,14 @@ function renderSessionDetail(sessionId) {
       return;
     }
 
-    detail.notesMessage.textContent = "";
-    detail.notesMessage.classList.remove("is-error");
+    setFeedbackMessage(detail.notesMessage, "");
   });
   detail.publicGrowNoteToggle?.addEventListener("change", () => {
     if (!detail.notesMessage?.textContent) {
       return;
     }
 
-    detail.notesMessage.textContent = "";
-    detail.notesMessage.classList.remove("is-error");
+    setFeedbackMessage(detail.notesMessage, "");
   });
 
   detail.deleteButton.addEventListener("click", async () => {
@@ -67664,8 +67641,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
     body.textContent = promptCopy.body;
   }
   if (message) {
-    message.textContent = "";
-    message.classList.remove("is-error");
+    setFeedbackMessage(message, "");
   }
 
   const cleanup = () => {
@@ -67698,8 +67674,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
     leaveButton.disabled = true;
     cancelButton.disabled = true;
     if (message) {
-      message.textContent = "";
-      message.classList.remove("is-error");
+      setFeedbackMessage(message, "");
     }
 
     try {
@@ -67716,10 +67691,7 @@ function promptForUnsavedChangesNavigation(nextHash) {
       }
       navigateWithUnsavedChangesBypass(targetHash);
     } catch (error) {
-      if (message) {
-        message.textContent = formatSaveErrorForDisplay(error, promptCopy.saveError);
-        message.classList.add("is-error");
-      }
+      setFeedbackMessage(message, formatSaveErrorForDisplay(error, promptCopy.saveError), "error");
       saveButton.disabled = false;
       leaveButton.disabled = false;
       cancelButton.disabled = false;
