@@ -36383,12 +36383,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .session-images-heading > div,
 .session-workspace-shell .session-notes-section > .session-notes-field {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  grid-template-areas:
-    "icon eyebrow"
-    "icon title";
-  align-items: center;
-  column-gap: clamp(16px, 2vw, 20px);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
   row-gap: 6px;
 }
 
@@ -36399,8 +36395,6 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .progress-chart-heading > .eyebrow,
 .session-workspace-shell .session-images-heading > div > .eyebrow,
 .session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
-  grid-area: eyebrow;
-  align-self: end;
   margin: 0;
   line-height: 1.08;
 }
@@ -36408,21 +36402,34 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon,
 .session-workspace-shell .session-images-heading .section-title-with-icon,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {
-  display: contents;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,
 .session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon {
-  grid-area: icon;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(245, 249, 243, 0.02) 100%),
+    rgba(12, 18, 14, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 18px rgba(0, 0, 0, 0.16);
+  color: #94d159;
   align-self: center;
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > span,
 .session-workspace-shell .session-images-heading .section-title-with-icon > span,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > span {
-  grid-area: title;
-  align-self: start;
   min-width: 0;
   margin: 0;
   color: #f6f8f5;
@@ -36439,9 +36446,17 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-workspace-shell .session-notes-section > .session-notes-field {
   grid-template-areas:
-    "icon eyebrow"
-    "icon title"
-    "textarea textarea";
+    "eyebrow"
+    "title"
+    "textarea";
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
+  grid-area: eyebrow;
+}
+
+.session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {
+  grid-area: title;
 }
 
 .session-workspace-shell .session-notes-section > .session-notes-field > textarea {
@@ -36510,14 +36525,14 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   overflow-wrap: anywhere;
 }
 
-.session-workspace-shell .session-notes-section > .session-notes-field {
+.session-workspace-shell .session-notes-section > .session-notes-field:has(> .session-detail-lower-heading) {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "header"
     "textarea";
 }
 
-.session-workspace-shell .session-notes-section > .session-notes-field > .session-detail-lower-heading {
+.session-workspace-shell .session-notes-section > .session-notes-field:has(> .session-detail-lower-heading) > .session-detail-lower-heading {
   grid-area: header;
 }
 

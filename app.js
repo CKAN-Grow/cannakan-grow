@@ -58967,7 +58967,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
   }).join("");
 
   section.innerHTML = `
-    <label class="session-seed-age-toggle new-session-seed-vault-toggle">
+    <label class="session-seed-age-toggle session-setup-tool session-setup-tool--seed-vault new-session-seed-vault-toggle">
       <input id="new-session-seed-vault-toggle" type="checkbox" data-seed-vault-session-toggle ${expanded ? "checked" : ""}>
       <span class="session-seed-age-toggle-control" aria-hidden="true"></span>
       <span class="session-seed-age-toggle-text">
