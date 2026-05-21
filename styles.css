@@ -25070,6 +25070,19 @@ body.theme-dark .theme-toggle-button:hover {
   margin: 0;
 }
 
+.growth-stage-modal-copy .growth-stage-modal-helper {
+  margin-top: 8px;
+  max-width: 34rem;
+  color: rgba(225, 236, 218, 0.82);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.growth-stage-modal-copy .growth-stage-modal-helper[hidden] {
+  display: none;
+}
+
 .growth-stage-modal-actions {
   display: grid;
   gap: 12px;

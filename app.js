@@ -60719,7 +60719,12 @@ function renderSessionForm(initialSystemType = "KAN") {
     if (!validateSessionStatus(sessionStatusField, sessionStatusError)) {
       formMessage.textContent = "";
       setUnsavedChangesLastSaveError(new Error(sessionStatusError?.textContent || "Please select a growth stage before saving."), "Please select a growth stage before saving.");
-      sessionStatusTrigger?.focus();
+      openGrowthStageModal({
+        stageField: sessionStatusField,
+        stageTrigger: sessionStatusTrigger,
+        message: "Choose a growth stage before saving this session.",
+        focusStageOptions: true,
+      });
       return null;
     }
 
@@ -61674,10 +61679,11 @@ function ensureGrowthStageModal() {
   overlay.hidden = true;
   overlay.dataset.closing = "false";
   overlay.innerHTML = `
-    <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title">
+    <div class="growth-stage-modal" role="dialog" aria-modal="true" aria-labelledby="growth-stage-modal-title" aria-describedby="growth-stage-modal-helper">
       <button type="button" class="modal-close" data-growth-stage-modal-close aria-label="Close">×</button>
       <div class="growth-stage-modal-copy">
         <h2 id="growth-stage-modal-title">Choose Growth Stage</h2>
+        <p id="growth-stage-modal-helper" class="growth-stage-modal-helper" data-growth-stage-modal-helper hidden></p>
       </div>
       <div class="growth-stage-modal-actions" id="growth-stage-modal-actions"></div>
     </div>
@@ -62029,7 +62035,7 @@ function updatePartitionWorkHeading(titleElement, systemType) {
   }
 }
 
-function openGrowthStageModal({ stageField, stageTrigger } = {}) {
+function openGrowthStageModal({ stageField, stageTrigger, message = "", focusStageOptions = false } = {}) {
   if (!stageField) {
     return false;
   }
@@ -62040,9 +62046,15 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
 
   const overlay = ensureGrowthStageModal();
   const actions = overlay.querySelector("#growth-stage-modal-actions");
+  const helper = overlay.querySelector("[data-growth-stage-modal-helper]");
   const currentProgressKey = getSessionStatusProgressKey(stageField);
   if (!actions) {
     return false;
+  }
+
+  if (helper) {
+    helper.textContent = String(message || "").trim();
+    helper.hidden = !helper.textContent;
   }
 
   actions.innerHTML = SESSION_STAGE_OPTIONS.map((option) => `
@@ -62101,7 +62113,10 @@ function openGrowthStageModal({ stageField, stageTrigger } = {}) {
   overlay.hidden = false;
   overlay.classList.add("is-open");
   document.body.classList.add("modal-open");
-  overlay.querySelector(".modal-close")?.focus();
+  const focusTarget = focusStageOptions
+    ? overlay.querySelector("[data-growth-stage-value]")
+    : overlay.querySelector(".modal-close");
+  focusTarget?.focus();
   return true;
 }
 
