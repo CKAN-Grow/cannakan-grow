@@ -42580,7 +42580,6 @@ function preloadHomeAnnouncementSlides() {
       };
       image.onerror = () => {
         appState.homeAnnouncementSlideLoadState[path] = "failed";
-        console.warn("[Cannakan Feed] Failed to preload default slide image", path);
         resolve({ path, status: "failed" });
       };
       image.src = path;

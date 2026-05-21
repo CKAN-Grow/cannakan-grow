@@ -1,14 +1,14 @@
 globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES = Object.freeze([
-  "/src/assets/Announcement-Slides/slide-02.png",
-  "/src/assets/Announcement-Slides/slide-03.png",
-  "/src/assets/Announcement-Slides/slide-04.png",
-  "/src/assets/Announcement-Slides/slide-05.png",
-  "/src/assets/Announcement-Slides/slide-06.png",
-  "/src/assets/Announcement-Slides/slide-07.png",
-  "/src/assets/Announcement-Slides/slide-08.png",
-  "/src/assets/Announcement-Slides/slide-09.png",
-  "/src/assets/Announcement-Slides/slide-10.png",
-  "/src/assets/Announcement-Slides/slide-11.png",
-  "/src/assets/Announcement-Slides/slide-12.png",
-  "/src/assets/Announcement-Slides/slide-13.png"
+  "/assets/announcement-slides/slide-02.png",
+  "/assets/announcement-slides/slide-03.png",
+  "/assets/announcement-slides/slide-04.png",
+  "/assets/announcement-slides/slide-05.png",
+  "/assets/announcement-slides/slide-06.png",
+  "/assets/announcement-slides/slide-07.png",
+  "/assets/announcement-slides/slide-08.png",
+  "/assets/announcement-slides/slide-09.png",
+  "/assets/announcement-slides/slide-10.png",
+  "/assets/announcement-slides/slide-11.png",
+  "/assets/announcement-slides/slide-12.png",
+  "/assets/announcement-slides/slide-13.png"
 ]);

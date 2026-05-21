@@ -23,6 +23,8 @@ const manifestPath = resolve(process.cwd(), "manifest.json");
 const publicDir = resolve(process.cwd(), "public");
 const publicManifestPath = resolve(publicDir, "manifest.json");
 const announcementSlidesDir = resolve(process.cwd(), "src", "assets", "Announcement-Slides");
+const announcementSlidesPublicPath = "/assets/announcement-slides";
+const announcementSlidesPublicDir = resolve(publicDir, "assets", "announcement-slides");
 const announcementSlidesManifestPath = resolve(process.cwd(), "announcement-slides-manifest.js");
 const publicAnnouncementSlidesManifestPath = resolve(publicDir, "announcement-slides-manifest.js");
 const iconsFallbackDir = resolve(process.cwd(), "Assets", "Icons");
@@ -81,13 +83,14 @@ function buildAnnouncementSlidesManifestContents() {
       .map((entry) => entry.name)
       .filter((fileName) => announcementSlideExtensions.has(extname(fileName).toLowerCase()))
       .sort((left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" }))
-      .map((fileName) => `/src/assets/Announcement-Slides/${encodeURIComponent(fileName)}`)
+      .map((fileName) => `${announcementSlidesPublicPath}/${encodeURIComponent(fileName)}`)
     : [];
 
   return `globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES = Object.freeze(${JSON.stringify(slidePaths, null, 2)});\n`;
 }
 
 mkdirSync(publicDir, { recursive: true });
+mkdirSync(announcementSlidesPublicDir, { recursive: true });
 
 function ensurePwaAsset(targetDir, name, fallbackName) {
   const targetPath = resolve(targetDir, name);
@@ -111,6 +114,19 @@ requiredPwaAssets.forEach(({ name, fallbackName }) => {
   ensurePwaAsset(process.cwd(), name, fallbackName);
   ensurePwaAsset(publicDir, name, fallbackName);
 });
+
+if (existsSync(announcementSlidesDir)) {
+  readdirSync(announcementSlidesDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .filter((fileName) => announcementSlideExtensions.has(extname(fileName).toLowerCase()))
+    .forEach((fileName) => {
+      copyFileSync(
+        resolve(announcementSlidesDir, fileName),
+        resolve(announcementSlidesPublicDir, fileName),
+      );
+    });
+}
 
 writeFileSync(outputPath, configContents, "utf8");
 writeFileSync(manifestPath, `${JSON.stringify(manifestContents, null, 2)}\n`, "utf8");
