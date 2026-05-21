@@ -58066,8 +58066,224 @@ function closeSeedVaultEntryModal() {
   if (!overlay) {
     return;
   }
+  teardownSeedVaultEntryModalGuards(overlay);
   overlay.remove();
   document.body.classList.remove("modal-open");
+}
+
+function getSeedVaultEntryFormSignature(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return "";
+  }
+
+  const formData = new FormData(form);
+  return JSON.stringify({
+    seedName: String(formData.get("seedName") || "").trim(),
+    seedType: String(formData.get("seedType") || "").trim(),
+    source: String(formData.get("source") || "").trim(),
+    quantity: String(formData.get("quantity") || "").trim(),
+    yearAcquired: String(formData.get("yearAcquired") || "").trim(),
+    seedAgeYears: String(formData.get("seedAgeYears") || "").trim(),
+    storageLocation: String(formData.get("storageLocation") || "").trim(),
+    notes: String(formData.get("notes") || "").trim(),
+    isFavorite: formData.get("isFavorite") === "on",
+  });
+}
+
+function hasSeedVaultEntryFormUnsavedChanges(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return false;
+  }
+  return getSeedVaultEntryFormSignature(form) !== String(form.dataset.seedVaultBaselineSignature || "");
+}
+
+function ensureSeedVaultUnsavedChangesDialog() {
+  let modal = document.querySelector("#seed-vault-unsaved-dialog");
+  if (modal instanceof HTMLDialogElement) {
+    return modal;
+  }
+
+  modal = document.createElement("dialog");
+  modal.id = "seed-vault-unsaved-dialog";
+  modal.className = "snapshot-modal seed-vault-unsaved-dialog";
+  modal.innerHTML = `
+    <form method="dialog" class="snapshot-modal-card profile-modal-card seed-vault-unsaved-dialog-card">
+      <div class="snapshot-modal-copy">
+        <p class="eyebrow">Unsaved changes</p>
+        <h3 id="seed-vault-unsaved-dialog-title">Unsaved changes</h3>
+        <p id="seed-vault-unsaved-dialog-body" class="muted">You have unsaved changes in this Vault Entry. Do you want to save before exiting?</p>
+      </div>
+      <p id="seed-vault-unsaved-dialog-message" class="form-message" role="alert" aria-live="polite"></p>
+      <div class="snapshot-modal-actions">
+        <button type="button" class="button button-primary" data-seed-vault-unsaved-action="save">Save &amp; Exit</button>
+        <button type="button" class="button button-danger" data-seed-vault-unsaved-action="discard">Discard Changes</button>
+        <button type="button" class="button button-secondary" data-seed-vault-unsaved-action="cancel">Cancel</button>
+      </div>
+    </form>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function promptSeedVaultUnsavedChanges(form) {
+  return new Promise((resolve) => {
+    const modal = ensureSeedVaultUnsavedChangesDialog();
+    const saveButton = modal.querySelector("[data-seed-vault-unsaved-action='save']");
+    const discardButton = modal.querySelector("[data-seed-vault-unsaved-action='discard']");
+    const cancelButton = modal.querySelector("[data-seed-vault-unsaved-action='cancel']");
+    const message = modal.querySelector("#seed-vault-unsaved-dialog-message");
+    if (!(saveButton instanceof HTMLButtonElement) || !(discardButton instanceof HTMLButtonElement) || !(cancelButton instanceof HTMLButtonElement)) {
+      resolve("cancel");
+      return;
+    }
+
+    if (message) {
+      setFeedbackMessage(message, "");
+    }
+    let settled = false;
+    const cleanup = (result = "cancel") => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      saveButton.onclick = null;
+      discardButton.onclick = null;
+      cancelButton.onclick = null;
+      saveButton.disabled = false;
+      discardButton.disabled = false;
+      cancelButton.disabled = false;
+      modal.removeEventListener("cancel", handleCancel);
+      modal.removeEventListener("close", handleClose);
+      resolve(result);
+    };
+    const closeWithResult = (result) => {
+      modal.removeEventListener("close", handleClose);
+      if (modal.open) {
+        modal.close();
+      }
+      cleanup(result);
+    };
+    const handleCancel = (event) => {
+      event.preventDefault();
+      closeWithResult("cancel");
+    };
+    const handleClose = () => {
+      cleanup("cancel");
+    };
+
+    saveButton.onclick = async () => {
+      saveButton.disabled = true;
+      discardButton.disabled = true;
+      cancelButton.disabled = true;
+      if (message) {
+        setFeedbackMessage(message, "");
+      }
+      const didSave = await saveSeedVaultEntryForm(form, { closeOnSuccess: false, messageElement: message });
+      if (!didSave) {
+        saveButton.disabled = false;
+        discardButton.disabled = false;
+        cancelButton.disabled = false;
+        return;
+      }
+      closeWithResult("save");
+    };
+    discardButton.onclick = () => closeWithResult("discard");
+    cancelButton.onclick = () => closeWithResult("cancel");
+    modal.addEventListener("cancel", handleCancel);
+    modal.addEventListener("close", handleClose, { once: true });
+    if (!modal.open) {
+      modal.showModal();
+    }
+    saveButton.focus();
+  });
+}
+
+async function requestSeedVaultEntryModalClose(options = {}) {
+  const overlay = document.querySelector("#seed-vault-entry-modal-overlay");
+  if (!overlay) {
+    return true;
+  }
+
+  const form = overlay.querySelector("[data-seed-vault-entry-form]");
+  if (!hasSeedVaultEntryFormUnsavedChanges(form)) {
+    closeSeedVaultEntryModal();
+    return true;
+  }
+
+  const result = await promptSeedVaultUnsavedChanges(form);
+  if (result === "cancel") {
+    return false;
+  }
+
+  closeSeedVaultEntryModal();
+  if (typeof options.afterClose === "function") {
+    options.afterClose();
+  }
+  return true;
+}
+
+function teardownSeedVaultEntryModalGuards(overlay) {
+  const guards = overlay?.__seedVaultModalGuards;
+  if (!guards) {
+    return;
+  }
+  document.removeEventListener("keydown", guards.handleKeydown, true);
+  document.removeEventListener("click", guards.handleDocumentClick, true);
+  window.removeEventListener("beforeunload", guards.handleBeforeUnload);
+  delete overlay.__seedVaultModalGuards;
+}
+
+function bindSeedVaultEntryModalGuards(overlay, form) {
+  if (!overlay || !(form instanceof HTMLFormElement) || overlay.__seedVaultModalGuards) {
+    return;
+  }
+
+  const handleKeydown = (event) => {
+    if (
+      event.key !== "Escape"
+      || !document.querySelector("#seed-vault-entry-modal-overlay")
+      || document.querySelector("#seed-vault-unsaved-dialog[open]")
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    void requestSeedVaultEntryModalClose();
+  };
+  const handleDocumentClick = (event) => {
+    const link = event.target instanceof Element
+      ? event.target.closest("a[href]")
+      : null;
+    if (!link || overlay.contains(link) || !hasSeedVaultEntryFormUnsavedChanges(form)) {
+      return;
+    }
+    const href = link.getAttribute("href") || "";
+    event.preventDefault();
+    event.stopPropagation();
+    void requestSeedVaultEntryModalClose({
+      afterClose: () => {
+        if (href) {
+          window.location.href = href;
+        }
+      },
+    });
+  };
+  const handleBeforeUnload = (event) => {
+    if (!hasSeedVaultEntryFormUnsavedChanges(form)) {
+      return;
+    }
+    event.preventDefault();
+    event.returnValue = "";
+  };
+
+  document.addEventListener("keydown", handleKeydown, true);
+  document.addEventListener("click", handleDocumentClick, true);
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  overlay.__seedVaultModalGuards = {
+    handleKeydown,
+    handleDocumentClick,
+    handleBeforeUnload,
+  };
 }
 
 function getSeedVaultEntryFormPayload(form) {
@@ -58121,6 +58337,58 @@ function validateSeedVaultEntryForm(form) {
     message: "",
     firstInvalidField: null,
   };
+}
+
+async function saveSeedVaultEntryForm(form, options = {}) {
+  if (!(form instanceof HTMLFormElement)) {
+    return false;
+  }
+
+  const message = options.messageElement || form.querySelector("[data-seed-vault-form-message]");
+  const submitButton = form.querySelector("button[type='submit']");
+  const validation = validateSeedVaultEntryForm(form);
+  if (!validation.isValid) {
+    setFeedbackMessage(message, validation.message, "error");
+    validation.firstInvalidField?.focus();
+    return false;
+  }
+
+  const payload = getSeedVaultEntryFormPayload(form);
+  if (!payload?.seedName) {
+    setFeedbackMessage(message, "Seed name / variety is required.", "error");
+    form.elements.seedName?.focus();
+    return false;
+  }
+
+  if (submitButton instanceof HTMLButtonElement) {
+    submitButton.dataset.originalText = submitButton.dataset.originalText || submitButton.textContent || "Add Seeds";
+    submitButton.disabled = true;
+    submitButton.textContent = "Saving...";
+  }
+
+  try {
+    await persistSeedVaultEntry(payload);
+    form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
+    setFeedbackMessage(message, "");
+    if (options.closeOnSuccess !== false) {
+      closeSeedVaultEntryModal();
+    }
+    showNavigationLockToast({
+      title: "My Seed Vault",
+      message: "Vault Entry saved.",
+    });
+    appState.sessionDashboardScrollTarget = "my-seed-vault";
+    renderSessionsList();
+    return true;
+  } catch (error) {
+    setFeedbackMessage(message, error.message || "Could not add this Vault Entry.", "error");
+    return false;
+  } finally {
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = false;
+      submitButton.textContent = submitButton.dataset.originalText || "Add Seeds";
+    }
+  }
 }
 
 function getSeedVaultYearAcquiredOptions() {
@@ -58214,9 +58482,10 @@ function openSeedVaultEntryModal() {
   `;
 
   overlay.addEventListener("click", (event) => {
-    if (event.target === overlay || event.target.closest("[data-seed-vault-modal-close='true']")) {
+    const target = event.target instanceof Element ? event.target : null;
+    if (event.target === overlay || target?.closest("[data-seed-vault-modal-close='true']")) {
       event.preventDefault();
-      closeSeedVaultEntryModal();
+      void requestSeedVaultEntryModalClose();
     }
   });
 
@@ -58240,45 +58509,15 @@ function openSeedVaultEntryModal() {
   seedAgeInput?.addEventListener("input", syncSeedVaultAgeEstimate);
   syncSeedVaultAgeEstimate();
 
-  overlay.querySelector("[data-seed-vault-entry-form]")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const message = form.querySelector("[data-seed-vault-form-message]");
-    const submitButton = form.querySelector("button[type='submit']");
-    const validation = validateSeedVaultEntryForm(form);
-    if (!validation.isValid) {
-      setFeedbackMessage(message, validation.message, "error");
-      validation.firstInvalidField?.focus();
-      return;
-    }
-
-    const payload = getSeedVaultEntryFormPayload(form);
-    if (!payload?.seedName) {
-      setFeedbackMessage(message, "Seed name / variety is required.", "error");
-      return;
-    }
-
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.textContent = "Saving...";
-    }
-    try {
-      await persistSeedVaultEntry(payload);
-      closeSeedVaultEntryModal();
-      showNavigationLockToast({
-        title: "My Seed Vault",
-        message: "Vault Entry saved.",
-      });
-      appState.sessionDashboardScrollTarget = "my-seed-vault";
-      renderSessionsList();
-    } catch (error) {
-      setFeedbackMessage(message, error.message || "Could not add this Vault Entry.", "error");
-      if (submitButton) {
-        submitButton.disabled = false;
-        submitButton.textContent = "Add Seeds";
-      }
-    }
-  });
+  const form = overlay.querySelector("[data-seed-vault-entry-form]");
+  if (form instanceof HTMLFormElement) {
+    form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
+    bindSeedVaultEntryModalGuards(overlay, form);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await saveSeedVaultEntryForm(form);
+    });
+  }
 
   document.body.appendChild(overlay);
   document.body.classList.add("modal-open");

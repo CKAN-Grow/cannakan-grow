@@ -40020,18 +40020,24 @@ body.theme-dark #session-analytics-section {
   display: grid;
   place-items: center;
   padding: 18px;
+  overflow: hidden;
   background: rgba(4, 7, 5, 0.72);
   backdrop-filter: blur(14px);
 }
 
 .seed-vault-entry-modal {
   position: relative;
+  box-sizing: border-box;
   display: grid;
   gap: 18px;
-  width: min(100%, 720px);
-  max-height: min(92vh, 820px);
-  overflow: auto;
-  padding: 22px;
+  width: min(100%, 860px);
+  max-width: calc(100vw - 36px);
+  max-height: min(96dvh, 900px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: clamp(18px, 2.2vw, 28px);
   border-radius: 24px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   background:
@@ -40040,6 +40046,12 @@ body.theme-dark #session-analytics-section {
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.48),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.seed-vault-entry-modal *,
+.seed-vault-entry-modal *::before,
+.seed-vault-entry-modal *::after {
+  box-sizing: border-box;
 }
 
 .seed-vault-modal-close {
@@ -40063,11 +40075,13 @@ body.theme-dark #session-analytics-section {
 .seed-vault-entry-form {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .seed-vault-entry-form label {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .seed-vault-entry-form label > span {
@@ -40082,6 +40096,7 @@ body.theme-dark #session-analytics-section {
 .seed-vault-entry-form select,
 .seed-vault-entry-form textarea {
   width: 100%;
+  min-width: 0;
   min-height: 44px;
   border-radius: 14px;
   border: 1px solid rgba(148, 209, 89, 0.14);
@@ -40127,6 +40142,7 @@ body.theme-dark #session-analytics-section {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .seed-vault-favorite-toggle {
@@ -40191,11 +40207,26 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-modal-actions {
+  position: sticky;
+  bottom: -1px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  margin: 0 -2px -2px;
+  padding: 10px 2px 2px;
+  background: linear-gradient(180deg, rgba(13, 19, 15, 0), rgba(13, 19, 15, 0.98) 32%);
+}
+
+.seed-vault-unsaved-dialog-card {
+  display: grid;
+  gap: 16px;
+  width: min(92vw, 560px);
+}
+
+.seed-vault-unsaved-dialog-card .snapshot-modal-actions {
+  justify-content: flex-end;
 }
 
 .session-history-toolbar {
@@ -41169,6 +41200,19 @@ body.theme-dark #session-analytics-section {
 @media (max-width: 640px) {
   .sessions-glass-panel {
     padding: 16px;
+  }
+
+  .seed-vault-entry-modal-overlay {
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .seed-vault-entry-modal {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+    border-radius: 20px;
   }
 
   .seed-vault-entry-card-head,
