@@ -20638,6 +20638,8 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   const profileImageUrl = includeProfileInGallery
     ? String(appState.profile?.avatarUrl || "").trim()
     : "";
+  const publicGrowNote = normalizePublicGrowNote(options.publicGrowNote || "");
+  const includePublicGrowNote = Boolean(options.includeNotes && publicGrowNote);
   const payload = {
     user_id: appState.user.id,
     session_id: session.id,
@@ -20666,11 +20668,14 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     status: "pending_review",
     is_published: false,
     is_mock: false,
-    include_notes: Boolean(options.includeNotes),
+    include_notes: includePublicGrowNote,
+    include_public_grow_note: includePublicGrowNote,
+    public_grow_note: includePublicGrowNote ? publicGrowNote : null,
     published_at: new Date().toISOString(),
   };
 
-  const query = appState.supabase.from("grow_gallery_snapshots").insert(payload).select("*").single();
+  let insertPayload = payload;
+  let query = appState.supabase.from("grow_gallery_snapshots").insert(insertPayload).select("*").single();
   logGrowGalleryDebug("publishSnapshotToGallery:submit", {
     sessionId: session.id,
     userId: appState.user.id,
@@ -20678,7 +20683,15 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     payload,
   });
 
-  const { data, error } = await query;
+  let { data, error } = await query;
+  if (error && isSupabaseColumnMissingError(error, "grow_gallery_snapshots", ["include_public_grow_note", "public_grow_note"])) {
+    insertPayload = { ...payload };
+    delete insertPayload.include_public_grow_note;
+    delete insertPayload.public_grow_note;
+    console.warn("Community Grow public note columns are not available yet; retrying snapshot publish with legacy note payload.", error);
+    query = appState.supabase.from("grow_gallery_snapshots").insert(insertPayload).select("*").single();
+    ({ data, error } = await query);
+  }
   if (error) {
     console.error("Grow Gallery snapshot save failed", {
       bucket: GROW_GALLERY_BUCKET,
@@ -20686,7 +20699,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
       existingSnapshotId: "",
       sessionId: session.id,
       snapshotData,
-      payload,
+      payload: insertPayload,
       error,
     });
     await removeGallerySnapshotImage(upload.path);
@@ -26239,6 +26252,7 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
   if (!snapshot) {
     return normalizedBase;
   }
+  const snapshotPublicGrowNote = normalizePublicGrowNote(snapshot.publicGrowNote);
 
   return normalizePersistedSessionSnapshotState({
     ...normalizedBase,
@@ -26253,11 +26267,9 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
     includeProfileInGallery: Object.prototype.hasOwnProperty.call(snapshot, "includeProfileInGallery")
       ? Boolean(snapshot.includeProfileInGallery)
       : normalizedBase?.includeProfileInGallery,
-    publicGrowNote: Object.prototype.hasOwnProperty.call(snapshot, "publicGrowNote")
-      ? normalizePublicGrowNote(snapshot.publicGrowNote)
-      : normalizedBase?.publicGrowNote,
+    publicGrowNote: snapshotPublicGrowNote || normalizedBase?.publicGrowNote,
     includePublicGrowNote: Object.prototype.hasOwnProperty.call(snapshot, "includePublicGrowNote")
-      ? Boolean(snapshot.includePublicGrowNote)
+      ? Boolean(snapshot.includePublicGrowNote || (normalizedBase?.includePublicGrowNote && normalizedBase?.publicGrowNote))
       : normalizedBase?.includePublicGrowNote,
   });
 }
@@ -27065,7 +27077,9 @@ function initializeSnapshotSection(scope, options) {
     publicGrowNoteToggle: options.publicGrowNoteToggle || null,
     publicGrowNoteCount: options.publicGrowNoteCount || null,
     publicGrowNoteModeInputs: [...(options.publicGrowNoteModeInputs || scope.querySelectorAll("[data-public-grow-note-mode]") || [])],
-    publicGrowNoteFieldShell: options.publicGrowNoteFieldShell || scope.querySelector("[data-public-note-field-shell]"),
+    publicGrowNoteFieldShell: options.publicGrowNoteFieldShell
+      || options.publicGrowNoteField?.closest("[data-public-note-field-shell]")
+      || scope.querySelector("[data-public-note-field-shell]"),
     usageConsentBlock: scope.querySelector(".snapshot-consent-block"),
     usageConsentHelper: scope.querySelector("[data-snapshot-consent-helper]"),
     selectedImageKey: "",
@@ -27337,6 +27351,11 @@ function setPublicGrowNoteSharingMode(state, mode = "private", { updatePendingSt
   if (state.publicGrowNoteFieldShell) {
     state.publicGrowNoteFieldShell.hidden = normalizedMode !== "separate";
   }
+  state.publicGrowNoteModeInputs?.forEach((input) => {
+    if (input.value === "separate" && input.hasAttribute("aria-expanded")) {
+      input.setAttribute("aria-expanded", normalizedMode === "separate" ? "true" : "false");
+    }
+  });
   state.publicGrowNoteField?.closest("[data-note-sharing-block]")?.setAttribute("data-note-sharing-mode", normalizedMode);
   syncSnapshotPublicGrowNoteControls(state);
   if (updatePendingState) {
@@ -27728,6 +27747,7 @@ async function maybePublishSnapshotFromState(state, result) {
     const published = await publishSnapshotToGallery(session, snapshotData, result.blob, {
       includeProfileInGallery: Boolean(state.includeProfileToggle?.checked),
       includeNotes: Boolean(snapshotState?.includePublicGrowNote && normalizePublicGrowNote(snapshotState?.publicGrowNote)),
+      publicGrowNote: normalizePublicGrowNote(snapshotState?.publicGrowNote || ""),
       usageConsent: Boolean(state.usageConsentCheckbox?.checked),
     });
     logGrowGalleryDebug("maybePublishSnapshotFromState:publish-result", {

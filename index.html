@@ -788,11 +788,11 @@
                   <span>Share this note with Community Grow snapshot</span>
                 </label>
                 <label class="session-note-sharing-option">
-                  <input type="radio" name="publicGrowNoteMode" value="separate" data-public-grow-note-mode>
+                  <input type="radio" name="publicGrowNoteMode" value="separate" data-public-grow-note-mode aria-controls="session-public-grow-note-shell" aria-expanded="false">
                   <span>Create a separate Community Grow note</span>
                 </label>
               </div>
-              <div class="session-public-note-field-shell" data-public-note-field-shell hidden>
+              <div id="session-public-grow-note-shell" class="session-public-note-field-shell" data-public-note-field-shell hidden>
                 <label class="session-notes-field session-public-note-field" for="session-public-grow-note">
                   <span>Community Grow Note</span>
                   <textarea
@@ -800,9 +800,11 @@
                     name="publicGrowNote"
                     rows="3"
                     maxlength="500"
-                    placeholder="Write a short public note for Community Grow..."
+                    aria-describedby="session-public-grow-note-help"
+                    placeholder="Add a public note for your Community Grow snapshot..."
                   ></textarea>
                 </label>
+                <p id="session-public-grow-note-help" class="session-public-note-help">This note can be shown with your Community Grow snapshot.</p>
                 <div class="session-public-note-meta">
                   <span id="session-public-grow-note-count" class="session-public-note-count" aria-live="polite">0 / 500</span>
                 </div>
@@ -1357,20 +1359,22 @@
                 <span>Share this note with Community Grow snapshot</span>
               </label>
               <label class="session-note-sharing-option">
-                <input type="radio" name="detailPublicGrowNoteMode" value="separate" data-public-grow-note-mode>
+                <input type="radio" name="detailPublicGrowNoteMode" value="separate" data-public-grow-note-mode aria-controls="detail-session-public-grow-note-shell" aria-expanded="false">
                 <span>Create a separate Community Grow note</span>
               </label>
             </div>
-            <div class="session-public-note-field-shell" data-public-note-field-shell hidden>
+            <div id="detail-session-public-grow-note-shell" class="session-public-note-field-shell" data-public-note-field-shell hidden>
               <label class="session-notes-field session-public-note-field" for="detail-session-public-grow-note">
                 <span>Community Grow Note</span>
                 <textarea
                   id="detail-session-public-grow-note"
                   rows="3"
                   maxlength="500"
-                  placeholder="Write a short public note for Community Grow..."
+                  aria-describedby="detail-session-public-grow-note-help"
+                  placeholder="Add a public note for your Community Grow snapshot..."
                 ></textarea>
               </label>
+              <p id="detail-session-public-grow-note-help" class="session-public-note-help">This note can be shown with your Community Grow snapshot.</p>
               <div class="session-public-note-meta">
                 <span id="detail-session-public-grow-note-count" class="session-public-note-count" aria-live="polite">0 / 500</span>
               </div>
