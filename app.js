@@ -4949,16 +4949,15 @@ function getSeedAgeBucketLabel(bucketKey = "") {
 function buildSeedAgeBucketSessionEntries(sessions = []) {
   return (sessions || []).flatMap((session) => {
     const normalizedSession = normalizeStoredSession(session) || session;
-    const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
+    const resultSummary = getSessionResultSummary(normalizedSession);
 
-    return partitions
-      .map((partition) => {
-        const totalSeeds = Math.max(0, Number(partition?.seedCount) || 0);
-        if (totalSeeds <= 0) {
+    return resultSummary.partitions
+      .map((partitionResult) => {
+        if (!partitionResult.hasSeeds) {
           return null;
         }
 
-        const totalPlanted = Math.max(0, Number(partition?.plantedCount) || 0);
+        const partition = partitionResult.rawPartition;
         const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
         const bucketKey = getSeedAgeBucketKey(seedAgeYears);
         return {
@@ -4967,8 +4966,8 @@ function buildSeedAgeBucketSessionEntries(sessions = []) {
           bucketKey,
           bucketLabel: getSeedAgeBucketLabel(bucketKey),
           seedAgeYears,
-          totalSeeds,
-          totalPlanted,
+          totalSeeds: partitionResult.totalCount,
+          totalPlanted: partitionResult.germinatedCount,
         };
       })
       .filter(Boolean);
@@ -21527,6 +21526,13 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
           <strong>${escapeHtml(publicDetails.seedAgeLabel)}</strong>
         </article>
       </div>
+      ${publicDetails.mixedSessionContext?.isMixedSession && publicDetails.sourceResults?.length ? `
+        <div class="gallery-card-result-breakdown" aria-label="Source result breakdown">
+          ${publicDetails.sourceResults.slice(0, 3).map((group) => `
+            <span>${escapeHtml(group.label)} <strong>${escapeHtml(group.percentageLabel)}</strong></span>
+          `).join("")}
+        </div>
+      ` : ""}
       <div class="gallery-card-feed-meta">
         <div class="gallery-card-feed-row gallery-card-feed-row--primary">
           <span class="gallery-card-chip">${escapeHtml(details.systemLabel)}</span>
@@ -22093,45 +22099,69 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
 
   (snapshots || []).forEach((snapshot) => {
     const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
-    const label = type === "source" ? metadata.sourceName : metadata.seedVarietyName;
-    const normalizedKey = type === "source"
+    const linkedSession = getGallerySnapshotSession(snapshot);
+    const resultSummary = linkedSession ? getSessionResultSummary(linkedSession) : null;
+    const contributions = resultSummary
+      ? (type === "source" ? resultSummary.sourceGroups : resultSummary.varietyGroups)
+      : [];
+    const fallbackLabel = type === "source" ? metadata.sourceName : metadata.seedVarietyName;
+    const fallbackKey = type === "source"
       ? (metadata.sourceCanonicalId || metadata.sourceNormalizedName)
       : (metadata.seedVarietyCanonicalId || metadata.seedVarietyNormalizedName);
-    if (!normalizedKey) {
-      return;
-    }
+    const contributionRows = contributions.length
+      ? contributions.map((group) => ({
+          key: group.key,
+          label: group.label,
+          totalSeeds: group.totalSeeds,
+          totalPlanted: group.totalGerminated,
+          percentage: group.percentage,
+        }))
+      : [{
+          key: fallbackKey,
+          label: fallbackLabel,
+          totalSeeds: Math.max(0, Number(snapshot?.totalSeeds) || 0),
+          totalPlanted: Math.max(0, Number(snapshot?.totalPlanted) || 0),
+          percentage: Math.max(0, Number(snapshot?.successPercent) || 0),
+        }];
 
     const publishedDate = parseLeaderboardSnapshotDate(snapshot);
     const snapshotDurationMs = getGallerySnapshotCompletedDurationMs(snapshot);
-    const currentGroup = groups.get(normalizedKey) || {
-      key: normalizedKey,
-      name: label,
-      sourceLogoUrl: type === "source" ? metadata.sourceLogoUrl : "",
-      snapshotCount: 0,
-      successPercentTotal: 0,
-      totalPlanted: 0,
-      totalSeeds: 0,
-      latestPublishedAt: "",
-      fastestCompletedDurationMs: null,
-    };
+    contributionRows.forEach((contribution) => {
+      const normalizedKey = String(contribution.key || "").trim();
+      if (!normalizedKey || !contribution.label) {
+        return;
+      }
 
-    currentGroup.snapshotCount += 1;
-    currentGroup.successPercentTotal += Number(snapshot?.successPercent) || 0;
-    currentGroup.totalPlanted += Math.max(0, Number(snapshot?.totalPlanted) || 0);
-    currentGroup.totalSeeds += Math.max(0, Number(snapshot?.totalSeeds) || 0);
-    if (metadata.sourceLogoUrl && !currentGroup.sourceLogoUrl) {
-      currentGroup.sourceLogoUrl = metadata.sourceLogoUrl;
-    }
+      const currentGroup = groups.get(normalizedKey) || {
+        key: normalizedKey,
+        name: contribution.label,
+        sourceLogoUrl: type === "source" ? metadata.sourceLogoUrl : "",
+        snapshotCount: 0,
+        successPercentTotal: 0,
+        totalPlanted: 0,
+        totalSeeds: 0,
+        latestPublishedAt: "",
+        fastestCompletedDurationMs: null,
+      };
 
-    const currentLatest = currentGroup.latestPublishedAt ? new Date(currentGroup.latestPublishedAt) : null;
-    if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
-      currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
-    }
-    if (Number.isFinite(snapshotDurationMs) && (!Number.isFinite(currentGroup.fastestCompletedDurationMs) || snapshotDurationMs < currentGroup.fastestCompletedDurationMs)) {
-      currentGroup.fastestCompletedDurationMs = snapshotDurationMs;
-    }
+      currentGroup.snapshotCount += 1;
+      currentGroup.successPercentTotal += Number(contribution.percentage) || 0;
+      currentGroup.totalPlanted += Math.max(0, Number(contribution.totalPlanted) || 0);
+      currentGroup.totalSeeds += Math.max(0, Number(contribution.totalSeeds) || 0);
+      if (type === "source" && metadata.sourceLogoUrl && !currentGroup.sourceLogoUrl && normalizeComparableSourceKey(metadata.sourceName) === normalizeComparableSourceKey(contribution.label)) {
+        currentGroup.sourceLogoUrl = metadata.sourceLogoUrl;
+      }
 
-    groups.set(normalizedKey, currentGroup);
+      const currentLatest = currentGroup.latestPublishedAt ? new Date(currentGroup.latestPublishedAt) : null;
+      if (!currentLatest || Number.isNaN(currentLatest.getTime()) || (publishedDate && publishedDate > currentLatest)) {
+        currentGroup.latestPublishedAt = publishedDate?.toISOString() || currentGroup.latestPublishedAt;
+      }
+      if (Number.isFinite(snapshotDurationMs) && (!Number.isFinite(currentGroup.fastestCompletedDurationMs) || snapshotDurationMs < currentGroup.fastestCompletedDurationMs)) {
+        currentGroup.fastestCompletedDurationMs = snapshotDurationMs;
+      }
+
+      groups.set(normalizedKey, currentGroup);
+    });
   });
 
   return [...groups.values()]
@@ -22139,7 +22169,7 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
     .map((entry) => ({
       ...entry,
       averagePercent: entry.snapshotCount > 0
-        ? Math.round((entry.successPercentTotal / entry.snapshotCount) * 10) / 10
+        ? Math.round(((entry.totalSeeds > 0 ? (entry.totalPlanted / entry.totalSeeds) * 100 : (entry.successPercentTotal / entry.snapshotCount)) * 10)) / 10
         : 0,
       fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
@@ -24170,14 +24200,13 @@ function getSeedAgeAnalyticsResolvedYears(partition = null, session = null) {
 function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
   return (sessions || []).filter((session) => isGrowSessionAnalyticsEligible(session)).flatMap((session) => {
     const normalizedSession = normalizeStoredSession(session) || session;
-    const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
-    return partitions.map((partition) => {
-      const totalSeeds = Math.max(0, Number(partition?.seedCount) || 0);
-      if (totalSeeds <= 0) {
+    const resultSummary = getSessionResultSummary(normalizedSession);
+    return resultSummary.partitions.map((partitionResult) => {
+      if (!partitionResult.hasSeeds) {
         return null;
       }
 
-      const totalPlanted = Math.max(0, Number(partition?.plantedCount) || 0);
+      const partition = partitionResult.rawPartition;
       const seedAgeResolution = getSeedAgeAnalyticsResolvedYears(partition, normalizedSession);
       const seedAgeYears = seedAgeResolution.years;
       const ageBucket = getSeedAgeAnalyticsBucketForYears(seedAgeYears);
@@ -24189,8 +24218,8 @@ function buildCommunitySeedAgeAnalyticsEntries(sessions = []) {
         sessionId,
         sessionStatus: normalizeSessionStatus(normalizedSession?.sessionStatus || ""),
         sessionState: normalizeGrowSessionLifecycleState(normalizedSession),
-        totalSeeds,
-        totalPlanted,
+        totalSeeds: partitionResult.totalCount,
+        totalPlanted: partitionResult.germinatedCount,
         seedAgeYears,
         bucketKey: ageBucket?.key || "1-2",
         bucketLabel: ageBucket?.fullLabel || "0-1 year",
@@ -26107,22 +26136,16 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
 
 function getGallerySnapshotFeedDetails(snapshot) {
   const linkedSession = getGallerySnapshotSession(snapshot);
-  const totalSeeds = snapshot.totalSeeds > 0
-    ? snapshot.totalSeeds
-    : linkedSession
-      ? getSessionSeedTotals(linkedSession).totalSeeds
-      : 0;
-  const totalPlanted = snapshot.totalPlanted > 0
-    ? snapshot.totalPlanted
-    : linkedSession
-      ? getSessionSeedTotals(linkedSession).totalPlanted
-      : 0;
+  const linkedSummary = linkedSession ? getSessionResultSummary(linkedSession) : null;
+  const totalSeeds = linkedSummary?.overall.totalSeeds || Math.max(0, Number(snapshot.totalSeeds) || 0);
+  const totalPlanted = linkedSummary?.overall.totalGerminated || Math.max(0, Number(snapshot.totalPlanted) || 0);
   const unitId = String(snapshot.unitId || linkedSession?.unitId || "").trim();
   const resolvedUnitId = normalizeUnitIdValue(unitId);
 
   return {
     totalSeeds,
     totalPlanted,
+    resultSummary: linkedSummary,
     seedCountLabel: totalSeeds > 0 ? `${totalPlanted} / ${totalSeeds} seeds` : "",
     systemLabel: `${formatSnapshotSystemLabel(snapshot.systemType)} • ${resolvedUnitId}`,
   };
@@ -26132,6 +26155,7 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
   const linkedSession = getGallerySnapshotSession(snapshot);
   const metadata = getGallerySnapshotLeaderboardMetadata(snapshot);
   const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+  const resultSummary = feedDetails.resultSummary || null;
   const seedAgeMetadata = getGallerySnapshotSeedAgeMetadata(snapshot);
   const firstPartition = (linkedSession?.partitions || []).find((partition) => (
     normalizeLeaderboardLabel(formatPartitionSource(partition))
@@ -26141,7 +26165,7 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
   )) || linkedSession?.partitions?.[0] || null;
   const totalSeeds = Math.max(0, Number(feedDetails.totalSeeds) || 0);
   const germinatedCount = Math.max(0, Number(feedDetails.totalPlanted) || 0);
-  const germinationRate = Math.max(0, Number(snapshot?.successPercent) || 0);
+  const germinationRate = resultSummary?.overall.percentage ?? Math.max(0, Number(snapshot?.successPercent) || 0);
   const sexValue = String(firstPartition?.feminized || "").trim();
 
   return {
@@ -26163,6 +26187,17 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
     seedCountLabel: totalSeeds > 0 ? String(totalSeeds) : "Not shared",
     germinatedLabel: totalSeeds > 0 ? String(germinatedCount) : "Not shared",
     germinationRateLabel: `${germinationRate}%`,
+    resultSummary,
+    sourceResults: resultSummary?.sourceGroups || [],
+    varietyResults: resultSummary?.varietyGroups || [],
+    partitionResults: resultSummary?.partitions || [],
+    mixedSessionContext: resultSummary?.mixedContext || {
+      hasMultipleSources: false,
+      hasMultipleVarieties: false,
+      isMixedSession: false,
+      sourceCount: 0,
+      varietyCount: 0,
+    },
     sessionDateLabel: getGallerySnapshotSubmittedDateLabel(snapshot),
   };
 }
@@ -28557,15 +28592,17 @@ function getSessionSnapshotData(session) {
     sessionName: formatSessionLabel(session),
     date: session.date,
     systemType: session.systemType,
+    seedAgeTrackingEnabled: session.seedAgeTrackingEnabled,
+    seedAgeMode: session.seedAgeMode,
+    sessionSeedAgeYears: session.sessionSeedAgeYears,
     partitions: session.partitions || [],
   });
 }
 
 function buildSnapshotData(source) {
-  const totals = getSessionSeedTotals(source);
-  const percentage = totals.totalSeeds > 0
-    ? Math.round((totals.totalPlanted / totals.totalSeeds) * 100)
-    : 0;
+  const resultSummary = getSessionResultSummary(source);
+  const totals = resultSummary.overall;
+  const percentage = totals.percentage || 0;
   const sourceDetails = getPrimaryPartitionSourceDetails(source.partitions || []);
   const seedAgeMetadata = getSessionSeedAgeMetadata(source);
 
@@ -28583,8 +28620,16 @@ function buildSnapshotData(source) {
     seedVarietyCanonicalId: sourceDetails.seedVarietyCanonicalId,
     seedVarietyNormalizedName: sourceDetails.seedVarietyNormalizedName,
     totalSeeds: totals.totalSeeds,
-    totalPlanted: totals.totalPlanted,
+    totalPlanted: totals.totalGerminated,
+    totalGerminated: totals.totalGerminated,
+    totalFailed: totals.totalFailed,
+    totalUnaccounted: totals.totalUnaccounted,
     percentage,
+    resultSummary,
+    partitionResults: resultSummary.partitions,
+    sourceResults: resultSummary.sourceGroups,
+    varietyResults: resultSummary.varietyGroups,
+    mixedSessionContext: resultSummary.mixedContext,
     seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
     seedAgeMode: seedAgeMetadata.mode,
     sessionSeedAgeYears: seedAgeMetadata.sessionSeedAgeYears,
@@ -28652,6 +28697,12 @@ function buildSnapshotRenderKey(state, data, selectedImage) {
     totalSeeds: Number(data.totalSeeds) || 0,
     totalPlanted: Number(data.totalPlanted) || 0,
     percentage: Number(data.percentage) || 0,
+    partitionResults: (data.partitionResults || []).map((partition) => [
+      partition.label,
+      partition.germinatedCount,
+      partition.totalCount,
+      partition.percentage,
+    ]),
     seedAgeSnapshotLabel: String(data.seedAgeSnapshotLabel || "").trim(),
     imageKey: selectedImage?.key || "",
     profileName: data.profileAttribution?.name || "",
@@ -28834,6 +28885,14 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
     context.fillText(seedAgeText, rightRegionX, badgeY + badgeHeight + (roomy ? 42 : 30));
   }
 
+  const partitionGrid = drawSnapshotPartitionResultGrid(context, data, {
+    x: rightRegionX,
+    y: badgeY + badgeHeight + (seedAgeSnapshotLabel ? (roomy ? 56 : 40) : (roomy ? 28 : 22)),
+    width: rightRegionWidth,
+    bottomY: footerDividerY - (roomy ? 18 : 10),
+    roomy,
+  });
+
   context.strokeStyle = "rgba(148, 209, 89, 0.26)";
   context.lineWidth = 0.8;
   context.beginPath();
@@ -28841,7 +28900,7 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.lineTo(x + width - inset, footerDividerY);
   context.stroke();
 
-  if (brandLogo) {
+  if (brandLogo && !partitionGrid.rendered) {
     const maxLogoWidth = roomy ? 280 : 388;
     const baseLogoWidth = Math.min(maxLogoWidth, rightRegionWidth - (roomy ? 18 : 12));
     const baseLogoHeight = baseLogoWidth * (brandLogo.height / brandLogo.width);
@@ -29150,6 +29209,62 @@ function toAbsolutePublicUrl(path = "/") {
   } catch (error) {
     return String(path || "/");
   }
+}
+
+function getSnapshotPartitionResultItems(data = {}) {
+  const maxItems = String(data?.systemType || "").trim().toUpperCase() === "TRA" ? 16 : 8;
+  return (data?.partitionResults || [])
+    .filter((partition) => Number(partition?.totalCount) > 0)
+    .slice(0, maxItems)
+    .map((partition) => ({
+      label: String(partition.label || `P${Number(partition.id) || ""}`).trim() || "P?",
+      germinatedCount: Math.max(0, Number(partition.germinatedCount ?? partition.totalPlanted) || 0),
+      totalCount: Math.max(0, Number(partition.totalCount ?? partition.totalSeeds) || 0),
+      percentageLabel: String(partition.percentageLabel || (Number.isFinite(Number(partition.percentage)) ? `${Math.round(Number(partition.percentage))}%` : "N/A")).trim(),
+    }));
+}
+
+function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
+  const items = getSnapshotPartitionResultItems(data);
+  if (!items.length) {
+    return { rendered: false };
+  }
+
+  const x = Number(layout.x) || 0;
+  const y = Number(layout.y) || 0;
+  const width = Math.max(120, Number(layout.width) || 0);
+  const bottomY = Math.max(y, Number(layout.bottomY) || y);
+  const roomy = Boolean(layout.roomy);
+  const columnCount = items.length > 8 ? 4 : (roomy ? 2 : 4);
+  const gap = roomy ? 8 : 6;
+  const rowHeight = roomy ? 31 : 21;
+  const columnWidth = Math.max(44, (width - (gap * (columnCount - 1))) / columnCount);
+  const maxRows = Math.max(1, Math.floor((bottomY - y) / (rowHeight + gap)));
+  const visibleItems = items.slice(0, Math.max(1, maxRows * columnCount));
+
+  context.save();
+  visibleItems.forEach((item, index) => {
+    const column = index % columnCount;
+    const row = Math.floor(index / columnCount);
+    const itemX = x + (column * (columnWidth + gap));
+    const itemY = y + (row * (rowHeight + gap));
+    context.fillStyle = "rgba(148, 209, 89, 0.10)";
+    drawRoundedRectPath(context, itemX, itemY, columnWidth, rowHeight, roomy ? 10 : 8);
+    context.fill();
+    context.strokeStyle = "rgba(148, 209, 89, 0.24)";
+    context.lineWidth = 0.8;
+    drawRoundedRectPath(context, itemX, itemY, columnWidth, rowHeight, roomy ? 10 : 8);
+    context.stroke();
+    context.fillStyle = "#f4faef";
+    context.font = `700 ${roomy ? 13 : 9}px Arial, sans-serif`;
+    const valueText = `${item.label} ${item.germinatedCount}/${item.totalCount}`;
+    context.fillText(truncateTextToWidth(context, valueText, columnWidth - 10), itemX + 6, itemY + (roomy ? 14 : 9));
+    context.fillStyle = "#94d159";
+    context.font = `700 ${roomy ? 12 : 8}px Arial, sans-serif`;
+    context.fillText(truncateTextToWidth(context, item.percentageLabel, columnWidth - 10), itemX + 6, itemY + (roomy ? 27 : 18));
+  });
+  context.restore();
+  return { rendered: true, visibleCount: visibleItems.length };
 }
 
 function setDocumentMetaAttribute(attributeName = "name", key = "", content = "") {
@@ -37183,31 +37298,33 @@ function buildSourceDirectorySessionAggregate() {
     .filter((session) => isGrowSessionAnalyticsEligible(session));
 
   sessions.forEach((session) => {
-    const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
+    const resultSummary = getSessionResultSummary(session);
     const sessionLoggedAt = getSourceDirectorySessionLoggedAt(session);
     const sessionLoggedTime = sessionLoggedAt?.getTime() || 0;
     const sessionLoggedValue = sessionLoggedAt?.toISOString() || "";
-    const seenSourcesInSession = new Set();
 
-    partitions.forEach((partition) => {
-      const sourceName = formatPartitionSource(partition);
+    resultSummary.partitions.forEach((partitionResult) => {
+      const partition = partitionResult.rawPartition;
+      const sourceName = partitionResult.source;
       const breederName = String(partition?.breeder || sourceName || "").trim();
-      const varietyName = formatPartitionSeedVariety(partition);
-      const sourceKey = getPartitionSourceAnalyticsKey(partition);
+      const varietyName = partitionResult.seedVariety;
 
       if (breederName) {
         breederKeys.add(normalizeSourceNameForMatching(breederName));
       }
       if (varietyName) {
-        varietyKeys.add(getPartitionSeedVarietyAnalyticsKey(partition));
+        varietyKeys.add(partitionResult.varietyKey || getPartitionSeedVarietyAnalyticsKey(partition));
       }
-      if (!sourceName || !sourceKey) {
+    });
+
+    resultSummary.sourceGroups.forEach((sourceGroup) => {
+      if (!sourceGroup.key || !sourceGroup.label) {
         return;
       }
 
-      const existingEntry = sourceMap.get(sourceKey) || {
-        key: sourceKey,
-        name: sourceName,
+      const existingEntry = sourceMap.get(sourceGroup.key) || {
+        key: sourceGroup.key,
+        name: sourceGroup.label,
         sessionsLogged: 0,
         totalSeeds: 0,
         totalGerminated: 0,
@@ -37216,22 +37333,21 @@ function buildSourceDirectorySessionAggregate() {
         lastLoggedTime: 0,
       };
 
-      existingEntry.name = existingEntry.name || sourceName;
-      existingEntry.totalSeeds += Math.max(0, Number(partition?.seedCount) || 0);
-      existingEntry.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
-      if (varietyName) {
-        existingEntry.varieties.set(getPartitionSeedVarietyAnalyticsKey(partition), varietyName);
-      }
-      if (!seenSourcesInSession.has(sourceKey)) {
-        existingEntry.sessionsLogged += 1;
-        seenSourcesInSession.add(sourceKey);
-      }
+      existingEntry.name = existingEntry.name || sourceGroup.label;
+      existingEntry.totalSeeds += sourceGroup.totalSeeds;
+      existingEntry.totalGerminated += sourceGroup.totalGerminated;
+      sourceGroup.contributingPartitions.forEach((partitionResult) => {
+        if (partitionResult.seedVariety) {
+          existingEntry.varieties.set(partitionResult.varietyKey, partitionResult.seedVariety);
+        }
+      });
+      existingEntry.sessionsLogged += 1;
       if (sessionLoggedTime > existingEntry.lastLoggedTime) {
         existingEntry.lastLoggedTime = sessionLoggedTime;
         existingEntry.lastLoggedAt = sessionLoggedValue;
       }
 
-      sourceMap.set(sourceKey, existingEntry);
+      sourceMap.set(sourceGroup.key, existingEntry);
     });
   });
 
@@ -37330,34 +37446,27 @@ function getSampleSourceProfileRecord(sourceId = "") {
   };
 
   matchingSessions.forEach((session) => {
-    const partitions = Array.isArray(session?.partitions) ? session.partitions : [];
-    let countedSession = false;
+    const sourceGroup = getSessionResultSummary(session).sourceGroups.find((group) => group.key === normalizedId) || null;
+    if (!sourceGroup) {
+      return;
+    }
     const sessionLoggedAt = getSourceDirectorySessionLoggedAt(session);
     const sessionLoggedTime = sessionLoggedAt?.getTime() || 0;
     const sessionLoggedValue = sessionLoggedAt?.toISOString() || "";
 
-    partitions.forEach((partition) => {
-      const sourceName = formatPartitionSource(partition);
-      if (getPartitionSourceAnalyticsKey(partition) !== normalizedId) {
-        return;
-      }
-
-      aggregate.name = aggregate.name || sourceName;
-      aggregate.totalSeeds += Math.max(0, Number(partition?.seedCount) || 0);
-      aggregate.totalGerminated += Math.max(0, Number(partition?.plantedCount) || 0);
-      const varietyName = formatPartitionSeedVariety(partition);
-      if (varietyName) {
-        aggregate.varieties.set(getPartitionSeedVarietyAnalyticsKey(partition), varietyName);
-      }
-      if (!countedSession) {
-        aggregate.sessionsLogged += 1;
-        countedSession = true;
-      }
-      if (sessionLoggedTime > aggregate.lastLoggedTime) {
-        aggregate.lastLoggedTime = sessionLoggedTime;
-        aggregate.lastLoggedAt = sessionLoggedValue;
+    aggregate.name = aggregate.name || sourceGroup.label;
+    aggregate.totalSeeds += sourceGroup.totalSeeds;
+    aggregate.totalGerminated += sourceGroup.totalGerminated;
+    sourceGroup.contributingPartitions.forEach((partitionResult) => {
+      if (partitionResult.seedVariety) {
+        aggregate.varieties.set(partitionResult.varietyKey, partitionResult.seedVariety);
       }
     });
+    aggregate.sessionsLogged += 1;
+    if (sessionLoggedTime > aggregate.lastLoggedTime) {
+      aggregate.lastLoggedTime = sessionLoggedTime;
+      aggregate.lastLoggedAt = sessionLoggedValue;
+    }
   });
 
   if (!aggregate.name) {
@@ -60834,6 +60943,7 @@ function renderPublicSessionDetail(snapshotId) {
               </article>
             `).join("")}
           </div>
+          ${!activeMockScenario && publicDetails.resultSummary ? renderSessionResultBreakdownMarkup(publicDetails.resultSummary, { compact: true, maxPartitions: 16, maxGroups: 4 }) : ""}
           ${renderPublicSessionTimelineSection(snapshot)}
         </div>
       </div>
@@ -62501,6 +62611,20 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.partitions,
     );
+    let resultBreakdown = app.querySelector("#detail-session-result-breakdown");
+    const resultBreakdownMarkup = renderSessionResultBreakdownMarkup(session, { maxPartitions: 16, maxGroups: 4 });
+    if (resultBreakdownMarkup) {
+      if (!resultBreakdown) {
+        resultBreakdown = document.createElement("div");
+        resultBreakdown.id = "detail-session-result-breakdown";
+        detail.runProgressSection?.insertAdjacentElement("afterend", resultBreakdown);
+      }
+      resultBreakdown.innerHTML = resultBreakdownMarkup;
+      resultBreakdown.hidden = false;
+    } else if (resultBreakdown) {
+      resultBreakdown.innerHTML = "";
+      resultBreakdown.hidden = true;
+    }
     updateSessionLifecycleTimeline(
       detail.lifecycleSummary,
       detail.lifecycleSection,
@@ -63007,8 +63131,12 @@ function renderSessionCollection(container, sessions, options) {
   }
 
   sessions.forEach((session) => {
+    const resultSummary = getSessionResultSummary(session);
     const successLabel = formatSessionSuccessLabel(session);
     const stageLabel = capitalize(normalizeSessionStatus(session.sessionStatus)).replace("Unselected", "Not started");
+    const mixedResultContext = resultSummary.mixedContext.isMixedSession
+      ? resultSummary.sourceGroups.slice(0, 3).map((group) => `${group.label}: ${group.percentageLabel}`).join(" / ")
+      : "";
     const row = document.createElement("a");
     row.className = `session-row${options.variant === "history-grid" ? " session-history-card" : ""}`;
     row.href = `#sessions/${session.id}`;
@@ -63036,6 +63164,7 @@ function renderSessionCollection(container, sessions, options) {
         </div>
         <div class="session-history-footer">
           <span class="session-success-pill">${formatSessionRateBadgeLabel(session)}</span>
+          ${mixedResultContext ? `<span class="session-mixed-result-context">${escapeHtml(mixedResultContext)}</span>` : ""}
           <span class="session-history-view">Open session</span>
         </div>
       `;
@@ -63110,12 +63239,7 @@ function sortSessionHistorySessions(sessions, sortBy = "date") {
 }
 
 function getSessionSuccessRate(session) {
-  const totals = getSessionSeedTotals(session);
-  if (totals.totalSeeds <= 0) {
-    return 0;
-  }
-
-  return Math.round((totals.totalPlanted / totals.totalSeeds) * 100);
+  return getSessionResultSummary(session).overall.percentage || 0;
 }
 
 function getSessionSystemSummary(session) {
@@ -63144,52 +63268,210 @@ function formatSessionSuccessLabel(session) {
     return "Success --";
   }
 
-  return `Success ${Math.round((totals.totalPlanted / totals.totalSeeds) * 100)}%`;
+  return `Success ${totals.percentage}%`;
 }
 
 function getSessionSeedTotals(session) {
-  return (session.partitions || []).reduce((accumulator, partition) => {
-    const seeds = Number(partition.seedCount) || 0;
-    const planted = Number(partition.plantedCount) || 0;
-    accumulator.totalSeeds += Math.max(0, seeds);
-    accumulator.totalPlanted += Math.max(0, planted);
-    return accumulator;
-  }, { totalSeeds: 0, totalPlanted: 0 });
+  const summary = getSessionResultSummary(session);
+  return {
+    totalSeeds: summary.overall.totalSeeds,
+    totalPlanted: summary.overall.totalGerminated,
+    totalGerminated: summary.overall.totalGerminated,
+    totalFailed: summary.overall.totalFailed,
+    totalUnaccounted: summary.overall.totalUnaccounted,
+    totalAccounted: summary.overall.totalAccounted,
+    percentage: summary.overall.percentage,
+  };
+}
+
+function normalizeSessionResultCount(value = null) {
+  const normalizedValue = Number(value);
+  return Number.isFinite(normalizedValue) ? Math.max(0, normalizedValue) : 0;
+}
+
+function normalizeSessionResultLabel(value = "", fallback = "Not shared") {
+  const normalizedValue = normalizeLeaderboardLabel(value || "");
+  return normalizedValue || fallback;
+}
+
+function createEmptySessionResultGroup(key = "", label = "", type = "source") {
+  return {
+    key,
+    type,
+    label,
+    totalSeeds: 0,
+    totalGerminated: 0,
+    totalPlanted: 0,
+    totalFailed: 0,
+    totalUnaccounted: 0,
+    totalAccounted: 0,
+    percentage: null,
+    percentageLabel: "N/A",
+    contributingPartitions: [],
+    partitionLabels: [],
+  };
+}
+
+function addPartitionResultToGroup(group, partitionResult) {
+  if (!group || !partitionResult) {
+    return;
+  }
+
+  group.totalSeeds += partitionResult.totalCount;
+  group.totalGerminated += partitionResult.germinatedCount;
+  group.totalPlanted = group.totalGerminated;
+  group.totalFailed += partitionResult.failedCount;
+  group.totalUnaccounted += partitionResult.unaccountedCount;
+  group.totalAccounted += partitionResult.accountedCount;
+  group.contributingPartitions.push(partitionResult);
+  group.partitionLabels.push(partitionResult.label);
+  group.percentage = group.totalSeeds > 0
+    ? Math.round((group.totalGerminated / group.totalSeeds) * 100)
+    : null;
+  group.percentageLabel = group.percentage === null ? "N/A" : `${group.percentage}%`;
+}
+
+function getSessionResultSummary(session = null) {
+  const normalizedSession = normalizeStoredSession(session) || session || {};
+  const partitions = normalizeSessionPartitions(normalizedSession?.partitions || []);
+  const sourceGroups = new Map();
+  const varietyGroups = new Map();
+  const sourceKeys = new Set();
+  const varietyKeys = new Set();
+  const partitionResults = partitions.map((partition, index) => {
+    const totalCount = normalizeSessionResultCount(partition.seedCount ?? partition.seed_count);
+    const plantedRawValue = String(partition.plantedCount ?? partition.planted_count ?? "").trim();
+    const plantedCount = Number(plantedRawValue);
+    const hasResultValue = plantedRawValue !== "";
+    const hasValidResultValue = hasResultValue
+      && Number.isFinite(plantedCount)
+      && plantedCount >= 0
+      && plantedCount <= totalCount;
+    const germinatedCount = hasValidResultValue
+      ? Math.max(0, Math.min(totalCount, plantedCount))
+      : 0;
+    const failedCount = hasValidResultValue ? Math.max(0, totalCount - germinatedCount) : 0;
+    const unaccountedCount = hasValidResultValue ? 0 : totalCount;
+    const accountedCount = hasValidResultValue ? totalCount : 0;
+    const percentage = totalCount > 0 && hasValidResultValue
+      ? Math.round((germinatedCount / totalCount) * 100)
+      : null;
+    const sourceLabel = normalizeSessionResultLabel(formatPartitionSource(partition), "");
+    const varietyLabel = normalizeSessionResultLabel(formatPartitionSeedVariety(partition), "");
+    const sourceKey = sourceLabel ? getPartitionSourceAnalyticsKey(partition) || normalizeComparableSourceKey(sourceLabel) : "";
+    const varietyKey = varietyLabel ? getPartitionSeedVarietyAnalyticsKey(partition) || normalizeComparableSourceKey(varietyLabel) : "";
+    const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
+    const seedAgeLabel = seedAgeYears === null ? "" : buildSeedAgeDisplayLabel({
+      seedAgeTrackingEnabled: true,
+      seedAgeMode: "same",
+      sessionSeedAgeYears: seedAgeYears,
+    }, {
+      samePrefix: "",
+      unknownLabel: "",
+      disabledLabel: "",
+    });
+
+    if (sourceKey) {
+      sourceKeys.add(sourceKey);
+    }
+    if (varietyKey) {
+      varietyKeys.add(varietyKey);
+    }
+
+    const result = {
+      id: Number(partition.id) || index + 1,
+      index,
+      label: `P${Number(partition.id) || index + 1}`,
+      displayLabel: `Partition ${Number(partition.id) || index + 1}`,
+      source: sourceLabel,
+      sourceLabel: sourceLabel || "Not shared",
+      sourceKey,
+      seedVariety: varietyLabel,
+      varietyLabel: varietyLabel || "Not shared",
+      varietyKey,
+      seedType: normalizeSeedTypeId(partition.seedType || partition.seed_type || ""),
+      seedAgeYears,
+      seedAgeLabel: String(seedAgeLabel || "").trim(),
+      germinatedCount,
+      totalCount,
+      totalSeeds: totalCount,
+      totalPlanted: germinatedCount,
+      failedCount,
+      notGerminatedCount: failedCount,
+      unaccountedCount,
+      accountedCount,
+      percentage,
+      percentageLabel: percentage === null ? "N/A" : `${percentage}%`,
+      hasSeeds: totalCount > 0,
+      hasResultValue,
+      hasValidResultValue,
+      isAccounted: totalCount > 0 && hasValidResultValue,
+      rawPartition: partition,
+    };
+
+    if (result.hasSeeds && result.sourceKey) {
+      const group = sourceGroups.get(result.sourceKey)
+        || createEmptySessionResultGroup(result.sourceKey, result.sourceLabel, "source");
+      addPartitionResultToGroup(group, result);
+      sourceGroups.set(result.sourceKey, group);
+    }
+    if (result.hasSeeds && result.varietyKey) {
+      const group = varietyGroups.get(result.varietyKey)
+        || createEmptySessionResultGroup(result.varietyKey, result.varietyLabel, "variety");
+      addPartitionResultToGroup(group, result);
+      varietyGroups.set(result.varietyKey, group);
+    }
+
+    return result;
+  });
+
+  const countedPartitions = partitionResults.filter((partition) => partition.hasSeeds);
+  const totalSeeds = countedPartitions.reduce((sum, partition) => sum + partition.totalCount, 0);
+  const totalGerminated = countedPartitions.reduce((sum, partition) => sum + partition.germinatedCount, 0);
+  const totalFailed = countedPartitions.reduce((sum, partition) => sum + partition.failedCount, 0);
+  const totalUnaccounted = countedPartitions.reduce((sum, partition) => sum + partition.unaccountedCount, 0);
+  const totalAccounted = countedPartitions.reduce((sum, partition) => sum + partition.accountedCount, 0);
+  const percentage = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : null;
+
+  return {
+    sessionId: String(normalizedSession?.id || "").trim(),
+    overall: {
+      totalSeeds,
+      totalStarted: totalSeeds,
+      totalGerminated,
+      totalPlanted: totalGerminated,
+      totalFailed,
+      totalUnaccounted,
+      totalAccounted,
+      percentage,
+      percentageLabel: percentage === null ? "N/A" : `${percentage}%`,
+      hasResults: totalSeeds > 0,
+      hasIncompleteResults: countedPartitions.some((partition) => !partition.hasValidResultValue),
+      allSeedsAccountedFor: totalSeeds > 0 && totalAccounted === totalSeeds && totalUnaccounted === 0,
+    },
+    partitions: partitionResults,
+    countedPartitions,
+    sourceGroups: [...sourceGroups.values()],
+    varietyGroups: [...varietyGroups.values()],
+    mixedContext: {
+      hasMultipleSources: sourceKeys.size > 1,
+      hasMultipleVarieties: varietyKeys.size > 1,
+      isMixedSession: sourceKeys.size > 1 || varietyKeys.size > 1,
+      sourceCount: sourceKeys.size,
+      varietyCount: varietyKeys.size,
+    },
+  };
 }
 
 function getSessionSeedResultAccounting(session = null) {
-  const partitions = normalizeSessionPartitions(session?.partitions || []);
-  return partitions.reduce((state, partition) => {
-    const seedCount = Math.max(0, Number(partition.seedCount) || 0);
-    if (seedCount <= 0) {
-      return state;
-    }
-
-    const plantedRawValue = String(partition.plantedCount ?? partition.planted_count ?? "").trim();
-    const plantedCount = Number(plantedRawValue);
-    const hasValidPlantedCount = plantedRawValue !== ""
-      && Number.isFinite(plantedCount)
-      && plantedCount >= 0
-      && plantedCount <= seedCount;
-
-    state.totalSeeds += seedCount;
-    if (!hasValidPlantedCount) {
-      state.hasIncompleteResults = true;
-      return state;
-    }
-
-    const germinatedCount = Math.max(0, Math.min(seedCount, plantedCount));
-    state.totalGerminated += germinatedCount;
-    state.totalFailed += Math.max(0, seedCount - germinatedCount);
-    state.totalAccounted += seedCount;
-    return state;
-  }, {
-    totalSeeds: 0,
-    totalGerminated: 0,
-    totalFailed: 0,
-    totalAccounted: 0,
-    hasIncompleteResults: false,
-  });
+  const summary = getSessionResultSummary(session);
+  return {
+    totalSeeds: summary.overall.totalSeeds,
+    totalGerminated: summary.overall.totalGerminated,
+    totalFailed: summary.overall.totalFailed,
+    totalAccounted: summary.overall.totalAccounted,
+    hasIncompleteResults: summary.overall.hasIncompleteResults,
+  };
 }
 
 function areSessionSeedResultsFullyAccountedFor(session = null) {
@@ -63233,6 +63515,72 @@ function showSessionCompletionResultsWarning(messageElement = null) {
       message: SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE,
     });
   }
+}
+
+function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {}) {
+  const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
+    ? sessionOrSummary
+    : getSessionResultSummary(sessionOrSummary);
+  const maxPartitions = Math.max(0, Number(options.maxPartitions) || 16);
+  const maxGroups = Math.max(0, Number(options.maxGroups) || 4);
+  const compact = options.compact === true;
+  const countedPartitions = summary.partitions.filter((partition) => partition.hasSeeds).slice(0, maxPartitions);
+  const sourceGroups = summary.sourceGroups.slice(0, maxGroups);
+  const varietyGroups = summary.varietyGroups.slice(0, maxGroups);
+  if (!summary.overall.hasResults) {
+    return "";
+  }
+
+  const contextText = summary.mixedContext.isMixedSession
+    ? [
+        summary.mixedContext.hasMultipleSources ? `${summary.mixedContext.sourceCount} sources` : "",
+        summary.mixedContext.hasMultipleVarieties ? `${summary.mixedContext.varietyCount} varieties` : "",
+      ].filter(Boolean).join(" / ")
+    : "Single source or variety";
+
+  return `
+    <section class="session-result-breakdown${compact ? " session-result-breakdown--compact" : ""}" aria-label="Session result breakdown">
+      <div class="session-result-breakdown-head">
+        <div>
+          <p class="eyebrow">RESULT BREAKDOWN</p>
+          <h4>Fair view by partition, source, and variety</h4>
+        </div>
+        <span class="session-result-breakdown-overall">${escapeHtml(summary.overall.percentageLabel)} overall</span>
+      </div>
+      <p class="session-result-breakdown-context">${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}</p>
+      <div class="session-result-partition-grid">
+        ${countedPartitions.map((partition) => `
+          <article class="session-result-partition-chip">
+            <span>${escapeHtml(partition.label)}</span>
+            <strong>${escapeHtml(partition.percentageLabel)}</strong>
+            <p>${escapeHtml(`${partition.germinatedCount}/${partition.totalCount} germinated`)}</p>
+            <p>${escapeHtml(`${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`)}</p>
+            ${partition.source ? `<p>${escapeHtml(partition.source)}</p>` : ""}
+          </article>
+        `).join("")}
+      </div>
+      ${(sourceGroups.length || varietyGroups.length) ? `
+        <div class="session-result-group-grid">
+          ${sourceGroups.length ? `
+            <div class="session-result-group-list">
+              <strong>Sources</strong>
+              ${sourceGroups.map((group) => `
+                <p><span>${escapeHtml(`${group.label} · ${group.partitionLabels.join(", ")}`)}</span><b>${escapeHtml(`${group.percentageLabel} (${group.totalGerminated}/${group.totalSeeds})`)}</b></p>
+              `).join("")}
+            </div>
+          ` : ""}
+          ${varietyGroups.length ? `
+            <div class="session-result-group-list">
+              <strong>Varieties</strong>
+              ${varietyGroups.map((group) => `
+                <p><span>${escapeHtml(`${group.label} · ${group.partitionLabels.join(", ")}`)}</span><b>${escapeHtml(`${group.percentageLabel} (${group.totalGerminated}/${group.totalSeeds})`)}</b></p>
+              `).join("")}
+            </div>
+          ` : ""}
+        </div>
+      ` : ""}
+    </section>
+  `;
 }
 
 function sortSessionsNewestFirst(sessions) {
@@ -65095,23 +65443,10 @@ function updateSessionSuccessSummary(form, summaryElement) {
     return;
   }
 
-  const rows = [...form.querySelectorAll(".partition-row")];
-  const totals = rows.reduce((accumulator, row) => {
-    const seedValue = row.querySelector('input[name^="seedCount-"]')?.value.trim() || "";
-    const plantedValue = row.querySelector('input[name="plantedCount"]')?.value.trim() || "";
-    const seeds = Number(seedValue);
-    const planted = Number(plantedValue);
-
-    if (Number.isFinite(seeds) && seeds > 0) {
-      accumulator.totalSeeds += seeds;
-    }
-
-    if (Number.isFinite(planted) && planted >= 0) {
-      accumulator.totalPlanted += planted;
-    }
-
-    return accumulator;
-  }, { totalSeeds: 0, totalPlanted: 0 });
+  const summary = getSessionResultSummary({
+    partitions: buildPartitionDraftValuesFromContainer(form.querySelector("#partition-fields") || form),
+  });
+  const totals = summary.overall;
 
   if (totals.totalSeeds <= 0) {
     summaryElement.textContent = "";
@@ -65119,8 +65454,7 @@ function updateSessionSuccessSummary(form, summaryElement) {
     return;
   }
 
-  const successRate = Math.round((totals.totalPlanted / totals.totalSeeds) * 100);
-  summaryElement.textContent = `Session Success: ${successRate}% (${totals.totalPlanted} / ${totals.totalSeeds})`;
+  summaryElement.textContent = `Session Success: ${totals.percentage || 0}% (${totals.totalGerminated} / ${totals.totalSeeds})`;
   summaryElement.hidden = false;
 }
 
@@ -65137,9 +65471,7 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
     return;
   }
 
-  const items = (partitions || []).filter((partition) => (
-    Number(partition.seedCount) > 0 || Number(partition.plantedCount) > 0
-  ));
+  const items = getSessionResultSummary({ partitions }).partitions.filter((partition) => partition.hasSeeds || partition.hasResultValue);
 
   if (!items.length) {
     chartElement.innerHTML = "";
@@ -65149,15 +65481,15 @@ function updatePartitionProgressChart(partitions, chartElement, sectionElement) 
 
   sectionElement.hidden = false;
   chartElement.innerHTML = items.map((partition) => {
-    const seeds = Number(partition.seedCount) || 0;
-    const planted = Math.min(Number(partition.plantedCount) || 0, seeds || Number(partition.plantedCount) || 0);
-    const plantedPercentage = seeds > 0 ? Math.max(0, Math.min(100, (planted / seeds) * 100)) : 0;
-    const plantedPercentageLabel = seeds > 0 ? `${Math.round(plantedPercentage)}%` : "0%";
+    const seeds = partition.totalCount;
+    const planted = partition.germinatedCount;
+    const plantedPercentage = partition.percentage === null ? 0 : Math.max(0, Math.min(100, partition.percentage));
+    const plantedPercentageLabel = partition.percentageLabel;
 
     return `
       <div class="progress-chart-row">
-        <div class="progress-chart-label">P${partition.id} <span class="progress-chart-percent">(${plantedPercentageLabel})</span></div>
-        <div class="progress-bar-track" aria-label="Partition ${partition.id} planting progress">
+        <div class="progress-chart-label">${escapeHtml(partition.label)} <span class="progress-chart-percent">(${escapeHtml(plantedPercentageLabel)})</span></div>
+        <div class="progress-bar-track" aria-label="${escapeHtml(partition.displayLabel)} germination progress">
           <div class="progress-bar-total" style="width: 100%"></div>
           <div class="progress-bar-fill" style="width: ${plantedPercentage}%"></div>
         </div>
@@ -65221,13 +65553,8 @@ function updateRunProgressSummary(summaryElement, sectionElement, sessionStatus,
     return;
   }
 
-  const totals = (partitions || []).reduce((accumulator, partition) => {
-    const seeds = Number(partition.seedCount) || 0;
-    const planted = Number(partition.plantedCount) || 0;
-    accumulator.totalSeeds += Math.max(0, seeds);
-    accumulator.totalPlanted += Math.max(0, planted);
-    return accumulator;
-  }, { totalSeeds: 0, totalPlanted: 0 });
+  const resultSummary = getSessionResultSummary({ partitions });
+  const totals = resultSummary.overall;
 
   if (totals.totalSeeds <= 0) {
     summaryElement.innerHTML = "";
@@ -65235,7 +65562,7 @@ function updateRunProgressSummary(summaryElement, sectionElement, sessionStatus,
     return;
   }
 
-  const progressPercent = Math.max(0, Math.min(100, Math.round((totals.totalPlanted / totals.totalSeeds) * 100)));
+  const progressPercent = Math.max(0, Math.min(100, totals.percentage || 0));
   const progressGradient = getRunProgressGradient(progressPercent);
   sectionElement.hidden = false;
   summaryElement.innerHTML = `
