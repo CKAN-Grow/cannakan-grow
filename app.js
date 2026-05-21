@@ -1473,6 +1473,10 @@ const appState = {
   gallerySnapshotsLoaded: false,
   galleryRefreshPromise: null,
   gallerySnapshotLikesTableUnavailable: false,
+  snapshotSharingPreferences: {
+    destination: "",
+    includeProfileInGallery: null,
+  },
   homeGalleryRankingsHydrationRequested: false,
   memberCount: null,
   memberCountLoaded: false,
@@ -27723,10 +27727,9 @@ function initializeSnapshotSection(scope, options) {
   }
   if (state.includeProfileToggle) {
     const persistedSnapshotState = getSnapshotStateForSection(state);
-    state.includeProfileToggle.checked = Object.prototype.hasOwnProperty.call(persistedSnapshotState || {}, "includeProfileInGallery")
-      ? Boolean(persistedSnapshotState.includeProfileInGallery)
-      : true;
+    state.includeProfileToggle.checked = getInitialSnapshotIncludeProfileValue(persistedSnapshotState);
     state.includeProfileToggle.addEventListener("change", async () => {
+      rememberSnapshotIncludeProfilePreference(state.includeProfileToggle.checked);
       await persistSnapshotStateForSection(state, {
         ...(getSnapshotStateForSection(state) || {}),
         includeProfileInGallery: Boolean(state.includeProfileToggle.checked),
@@ -27784,11 +27787,7 @@ function initializeSnapshotSection(scope, options) {
     });
   });
   if (state.destinationInputs.length) {
-    const defaultDestination = "social";
-    const defaultInput = state.destinationInputs.find((input) => input.value === defaultDestination) || state.destinationInputs[0];
-    if (defaultInput) {
-      defaultInput.checked = true;
-    }
+    setSnapshotDestinationValue(state, getInitialSnapshotDestinationValue(state));
   }
   renderSnapshotSourceSummary(state);
   syncSnapshotGalleryControls(state);
@@ -27864,13 +27863,17 @@ function initializeSnapshotSection(scope, options) {
 
   state.destinationInputs.forEach((input) => {
     input.addEventListener("change", () => {
+      if (!input.checked) {
+        return;
+      }
       if (hasExistingGallerySnapshotForState(state) && input.checked && (input.value === "social-gallery" || input.value === "gallery")) {
         const socialInput = state.destinationInputs.find((item) => item.value === "social");
         if (socialInput) {
           socialInput.checked = true;
         }
-          setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE, false, "warning");
+        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE, false, "warning");
       }
+      rememberSnapshotDestinationPreference(getSnapshotDestination(state));
       syncSnapshotGalleryControls(state);
     });
   });
@@ -27916,6 +27919,68 @@ function initializeSnapshotSection(scope, options) {
 function getSnapshotDestination(state) {
   const selectedInput = state?.destinationInputs?.find((input) => input.checked);
   return selectedInput?.value || "social";
+}
+
+function normalizeSnapshotDestinationPreference(value = "") {
+  const normalizedValue = String(value || "").trim();
+  return ["social-gallery", "gallery", "social"].includes(normalizedValue)
+    ? normalizedValue
+    : "";
+}
+
+function getSnapshotSharingPreferences() {
+  if (!appState.snapshotSharingPreferences || typeof appState.snapshotSharingPreferences !== "object") {
+    appState.snapshotSharingPreferences = {
+      destination: "",
+      includeProfileInGallery: null,
+    };
+  }
+  return appState.snapshotSharingPreferences;
+}
+
+function rememberSnapshotDestinationPreference(destination = "") {
+  const normalizedDestination = normalizeSnapshotDestinationPreference(destination);
+  if (!normalizedDestination) {
+    return;
+  }
+  getSnapshotSharingPreferences().destination = normalizedDestination;
+}
+
+function rememberSnapshotIncludeProfilePreference(value) {
+  getSnapshotSharingPreferences().includeProfileInGallery = Boolean(value);
+}
+
+function getInitialSnapshotDestinationValue(state) {
+  const rememberedDestination = normalizeSnapshotDestinationPreference(getSnapshotSharingPreferences().destination);
+  const preferredDestination = rememberedDestination || "social-gallery";
+  return state?.destinationInputs?.some((input) => input.value === preferredDestination)
+    ? preferredDestination
+    : "social-gallery";
+}
+
+function getInitialSnapshotIncludeProfileValue(persistedSnapshotState = null) {
+  if (Object.prototype.hasOwnProperty.call(persistedSnapshotState || {}, "includeProfileInGallery")) {
+    return Boolean(persistedSnapshotState.includeProfileInGallery);
+  }
+
+  const preference = getSnapshotSharingPreferences().includeProfileInGallery;
+  return preference === null || preference === undefined ? true : Boolean(preference);
+}
+
+function setSnapshotDestinationValue(state, destination = "social-gallery") {
+  if (!state?.destinationInputs?.length) {
+    return "";
+  }
+
+  const normalizedDestination = normalizeSnapshotDestinationPreference(destination) || "social-gallery";
+  const input = state.destinationInputs.find((item) => item.value === normalizedDestination)
+    || state.destinationInputs.find((item) => item.value === "social-gallery")
+    || state.destinationInputs[0];
+  if (input) {
+    input.checked = true;
+    return input.value;
+  }
+  return "";
 }
 
 const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
