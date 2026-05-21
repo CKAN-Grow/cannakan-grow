@@ -31,7 +31,9 @@ for (const needle of [
 
 for (const needle of [
   ".seed-vault-controls",
-  ".seed-vault-summary-row",
+  ".seed-vault-entry-collapsed-row",
+  ".seed-vault-compact-cell",
+  ".seed-vault-compact-status",
   ".seed-vault-entry-details[hidden]",
   ".seed-vault-filter-row",
   ".seed-vault-icon-button--delete",

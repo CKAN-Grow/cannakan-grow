@@ -56479,17 +56479,37 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   }
   const isExpanded = Boolean(options.isExpanded);
   const archiveLabel = normalizedEntry.isArchived ? "Restore Vault Entry" : "Archive Vault Entry";
+  const favoriteLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
+  const statusLabel = normalizedEntry.isArchived ? "Archived" : "In vault";
+  const compactStatusLabel = `${favoriteLabel}, ${statusLabel}`;
 
   return `
     <article class="seed-vault-entry-card${normalizedEntry.isFavorite ? " is-favorite" : ""}${normalizedEntry.isArchived ? " is-archived" : ""}${isExpanded ? " is-expanded" : ""}" data-seed-vault-entry-id="${escapeHtml(normalizedEntry.id)}">
-      <div class="seed-vault-entry-card-head">
+      <div class="seed-vault-entry-collapsed-row seed-vault-summary-row">
         <div class="seed-vault-entry-title">
           ${renderMySessionsInlineIconMarkup("seed", "sessions-inline-thumb seed-vault-entry-thumb")}
           <div>
-            <span class="seed-vault-entry-kicker">Vault Entry</span>
             <h4>${escapeHtml(normalizedEntry.seedName || "Unnamed seed variety")}</h4>
             <p>${escapeHtml(normalizedEntry.seedType || "Seed type not set")}</p>
           </div>
+        </div>
+        <div class="seed-vault-compact-cell">
+          <span>Source</span>
+          <strong>${escapeHtml(normalizedEntry.source || "Not set")}</strong>
+        </div>
+        <div class="seed-vault-compact-cell seed-vault-compact-cell--quantity">
+          <span>Qty</span>
+          <strong>${escapeHtml(formatSeedVaultQuantity(normalizedEntry))}</strong>
+        </div>
+        <div class="seed-vault-compact-cell">
+          <span>Seed age</span>
+          <strong>${escapeHtml(formatSeedVaultAgeLabel(normalizedEntry))}</strong>
+        </div>
+        <div class="seed-vault-compact-status" aria-label="${escapeHtml(compactStatusLabel)}">
+          <span class="seed-vault-favorite-indicator${normalizedEntry.isFavorite ? " is-active" : ""}" title="${escapeHtml(favoriteLabel)}" aria-hidden="true">
+            ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
+          </span>
+          <span class="seed-vault-status-pill${normalizedEntry.isArchived ? "" : " seed-vault-status-pill--active"}">${escapeHtml(statusLabel)}</span>
         </div>
         <div class="seed-vault-entry-actions">
           <button
@@ -56532,15 +56552,6 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           >
             ${renderMySessionsInlineIconMarkup("trash", "seed-vault-action-icon")}
           </button>
-        </div>
-      </div>
-      <div class="seed-vault-summary-row">
-        ${renderSeedVaultFieldMarkup("Source", normalizedEntry.source)}
-        ${renderSeedVaultFieldMarkup("Quantity", formatSeedVaultQuantity(normalizedEntry))}
-        ${renderSeedVaultFieldMarkup("Seed age / year acquired", formatSeedVaultAgeLabel(normalizedEntry))}
-        <div class="seed-vault-summary-badges">
-          ${normalizedEntry.isFavorite ? '<span class="seed-vault-status-pill seed-vault-status-pill--favorite">Favorite</span>' : '<span class="seed-vault-status-pill">Not favorite</span>'}
-          ${normalizedEntry.isArchived ? '<span class="seed-vault-status-pill">Archived</span>' : '<span class="seed-vault-status-pill seed-vault-status-pill--active">In vault</span>'}
         </div>
       </div>
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
