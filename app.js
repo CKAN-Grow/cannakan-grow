@@ -20480,6 +20480,10 @@ function mapRowToGallerySnapshot(row) {
     includePublicGrowNote: Object.prototype.hasOwnProperty.call(row, "include_public_grow_note")
       ? Boolean(row.include_public_grow_note)
       : Boolean(row.include_notes),
+    partitionResults: Array.isArray(row.partition_results) ? row.partition_results : [],
+    resultSummary: row.result_summary && typeof row.result_summary === "object" && !Array.isArray(row.result_summary)
+      ? row.result_summary
+      : null,
     publishedAt: row.published_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
@@ -20670,6 +20674,8 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     include_notes: includePublicGrowNote,
     include_public_grow_note: includePublicGrowNote,
     public_grow_note: includePublicGrowNote ? publicGrowNote : null,
+    partition_results: Array.isArray(snapshotData?.partitionResults) ? snapshotData.partitionResults : [],
+    result_summary: snapshotData?.resultSummaryMetadata || buildSnapshotResultSummaryMetadata(snapshotData?.resultSummary || null),
     published_at: new Date().toISOString(),
   };
 
@@ -20683,8 +20689,16 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   });
 
   let { data, error } = await query;
+  if (error && isSupabaseColumnMissingError(error, "grow_gallery_snapshots", ["partition_results", "result_summary"])) {
+    insertPayload = { ...insertPayload };
+    delete insertPayload.partition_results;
+    delete insertPayload.result_summary;
+    console.warn("Community Grow partition result metadata columns are not available yet; retrying snapshot publish without partition metadata.", error);
+    query = appState.supabase.from("grow_gallery_snapshots").insert(insertPayload).select("*").single();
+    ({ data, error } = await query);
+  }
   if (error && isSupabaseColumnMissingError(error, "grow_gallery_snapshots", ["include_public_grow_note", "public_grow_note"])) {
-    insertPayload = { ...payload };
+    insertPayload = { ...insertPayload };
     delete insertPayload.include_public_grow_note;
     delete insertPayload.public_grow_note;
     console.warn("Community Grow public note columns are not available yet; retrying snapshot publish with legacy note payload.", error);
@@ -26137,15 +26151,29 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
 function getGallerySnapshotFeedDetails(snapshot) {
   const linkedSession = getGallerySnapshotSession(snapshot);
   const linkedSummary = linkedSession ? getSessionResultSummary(linkedSession) : null;
-  const totalSeeds = linkedSummary?.overall.totalSeeds || Math.max(0, Number(snapshot.totalSeeds) || 0);
-  const totalPlanted = linkedSummary?.overall.totalGerminated || Math.max(0, Number(snapshot.totalPlanted) || 0);
+  const snapshotPartitionSummary = !linkedSummary && Array.isArray(snapshot?.partitionResults) && snapshot.partitionResults.length
+    ? getSessionResultSummary({
+        partitions: snapshot.partitionResults.map((partition, index) => ({
+          id: partition.id || partition.partitionId || index + 1,
+          source: partition.source || partition.sourceLabel || "",
+          seedVariety: partition.seedVariety || partition.variety || partition.varietyLabel || "",
+          seedType: partition.seedType || "",
+          seedAgeYears: partition.seedAgeYears ?? null,
+          seedCount: partition.totalCount ?? partition.totalSeeds ?? 0,
+          plantedCount: String(partition.germinatedCount ?? partition.totalPlanted ?? ""),
+        })),
+      })
+    : null;
+  const resultSummary = linkedSummary || snapshotPartitionSummary;
+  const totalSeeds = resultSummary?.overall.totalSeeds || Math.max(0, Number(snapshot.totalSeeds) || 0);
+  const totalPlanted = resultSummary?.overall.totalGerminated || Math.max(0, Number(snapshot.totalPlanted) || 0);
   const unitId = String(snapshot.unitId || linkedSession?.unitId || "").trim();
   const resolvedUnitId = normalizeUnitIdValue(unitId);
 
   return {
     totalSeeds,
     totalPlanted,
-    resultSummary: linkedSummary,
+    resultSummary,
     seedCountLabel: totalSeeds > 0 ? `${totalPlanted} / ${totalSeeds} seeds` : "",
     systemLabel: `${formatSnapshotSystemLabel(snapshot.systemType)} • ${resolvedUnitId}`,
   };
@@ -28599,18 +28627,84 @@ function getSessionSnapshotData(session) {
   });
 }
 
+function buildSnapshotPartitionResultMetadata(resultSummary = null, maxItems = 16) {
+  const summary = resultSummary?.overall ? resultSummary : getSessionResultSummary(resultSummary);
+  return (summary?.partitions || [])
+    .filter((partition) => partition.hasSeeds)
+    .slice(0, maxItems)
+    .map((partition) => ({
+      id: partition.id,
+      label: partition.label,
+      displayLabel: partition.displayLabel,
+      source: partition.source,
+      sourceLabel: partition.sourceLabel,
+      sourceKey: partition.sourceKey,
+      seedVariety: partition.seedVariety,
+      varietyLabel: partition.varietyLabel,
+      varietyKey: partition.varietyKey,
+      seedAgeYears: partition.seedAgeYears,
+      seedAgeLabel: partition.seedAgeLabel,
+      germinatedCount: partition.germinatedCount,
+      totalCount: partition.totalCount,
+      failedCount: partition.failedCount,
+      notGerminatedCount: partition.notGerminatedCount,
+      unaccountedCount: partition.unaccountedCount,
+      percentage: partition.percentage,
+      percentageLabel: partition.percentageLabel,
+    }));
+}
+
+function buildSnapshotResultSummaryMetadata(resultSummary = null) {
+  const summary = resultSummary?.overall ? resultSummary : getSessionResultSummary(resultSummary);
+  return {
+    overall: {
+      totalGerminated: summary.overall.totalGerminated,
+      totalSeeds: summary.overall.totalSeeds,
+      totalFailed: summary.overall.totalFailed,
+      totalUnaccounted: summary.overall.totalUnaccounted,
+      percentage: summary.overall.percentage,
+      percentageLabel: summary.overall.percentageLabel,
+    },
+    mixedContext: summary.mixedContext,
+    sourceResults: summary.sourceGroups.map((group) => ({
+      key: group.key,
+      label: group.label,
+      germinatedCount: group.totalGerminated,
+      totalCount: group.totalSeeds,
+      failedCount: group.totalFailed,
+      unaccountedCount: group.totalUnaccounted,
+      percentage: group.percentage,
+      percentageLabel: group.percentageLabel,
+      contributingPartitions: group.partitionLabels,
+    })),
+    varietyResults: summary.varietyGroups.map((group) => ({
+      key: group.key,
+      label: group.label,
+      germinatedCount: group.totalGerminated,
+      totalCount: group.totalSeeds,
+      failedCount: group.totalFailed,
+      unaccountedCount: group.totalUnaccounted,
+      percentage: group.percentage,
+      percentageLabel: group.percentageLabel,
+      contributingPartitions: group.partitionLabels,
+    })),
+  };
+}
+
 function buildSnapshotData(source) {
   const resultSummary = getSessionResultSummary(source);
   const totals = resultSummary.overall;
   const percentage = totals.percentage || 0;
   const sourceDetails = getPrimaryPartitionSourceDetails(source.partitions || []);
   const seedAgeMetadata = getSessionSeedAgeMetadata(source);
+  const snapshotSystemType = source.systemType || "KAN";
+  const snapshotPartitionMaxItems = String(snapshotSystemType).trim().toUpperCase() === "TRA" ? 16 : 8;
 
   return {
     sessionName: source.sessionName || "Session",
     dateLabel: formatSessionNameDate(source.date),
-    systemType: source.systemType || "KAN",
-    systemLabel: formatSnapshotSystemLabel(source.systemType || "KAN"),
+    systemType: snapshotSystemType,
+    systemLabel: formatSnapshotSystemLabel(snapshotSystemType),
     sourceId: sourceDetails.sourceId,
     sourceName: sourceDetails.sourceName,
     sourceCanonicalId: sourceDetails.sourceCanonicalId,
@@ -28626,7 +28720,8 @@ function buildSnapshotData(source) {
     totalUnaccounted: totals.totalUnaccounted,
     percentage,
     resultSummary,
-    partitionResults: resultSummary.partitions,
+    resultSummaryMetadata: buildSnapshotResultSummaryMetadata(resultSummary),
+    partitionResults: buildSnapshotPartitionResultMetadata(resultSummary, snapshotPartitionMaxItems),
     sourceResults: resultSummary.sourceGroups,
     varietyResults: resultSummary.varietyGroups,
     mixedSessionContext: resultSummary.mixedContext,
@@ -28788,7 +28883,8 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null, profileA
   const panelRight = frameX + frameWidth - panelSideInset;
   const panelX = panelLeft;
   const panelWidth = panelRight - panelLeft;
-  const panelHeight = 228;
+  const partitionItemCount = getSnapshotPartitionResultItems(data).length;
+  const panelHeight = partitionItemCount > 8 ? 292 : (partitionItemCount > 0 ? 262 : 228);
   const panelY = frameY + frameHeight - panelHeight - 18;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
@@ -29216,12 +29312,19 @@ function getSnapshotPartitionResultItems(data = {}) {
   return (data?.partitionResults || [])
     .filter((partition) => Number(partition?.totalCount) > 0)
     .slice(0, maxItems)
-    .map((partition) => ({
-      label: String(partition.label || `P${Number(partition.id) || ""}`).trim() || "P?",
-      germinatedCount: Math.max(0, Number(partition.germinatedCount ?? partition.totalPlanted) || 0),
-      totalCount: Math.max(0, Number(partition.totalCount ?? partition.totalSeeds) || 0),
-      percentageLabel: String(partition.percentageLabel || (Number.isFinite(Number(partition.percentage)) ? `${Math.round(Number(partition.percentage))}%` : "N/A")).trim(),
-    }));
+    .map((partition) => {
+      const sourceLabel = normalizeLeaderboardLabel(partition.source || partition.sourceLabel || "");
+      const varietyLabel = normalizeLeaderboardLabel(partition.seedVariety || partition.varietyLabel || partition.variety || "");
+      return {
+        label: String(partition.label || `P${Number(partition.id) || ""}`).trim() || "P?",
+        sourceLabel,
+        varietyLabel,
+        identityLabel: [varietyLabel, sourceLabel].filter(Boolean).join(" / "),
+        germinatedCount: Math.max(0, Number(partition.germinatedCount ?? partition.totalPlanted) || 0),
+        totalCount: Math.max(0, Number(partition.totalCount ?? partition.totalSeeds) || 0),
+        percentageLabel: String(partition.percentageLabel || (Number.isFinite(Number(partition.percentage)) ? `${Math.round(Number(partition.percentage))}%` : "N/A")).trim(),
+      };
+    });
 }
 
 function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
@@ -29237,7 +29340,7 @@ function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
   const roomy = Boolean(layout.roomy);
   const columnCount = items.length > 8 ? 4 : (roomy ? 2 : 4);
   const gap = roomy ? 8 : 6;
-  const rowHeight = roomy ? 31 : 21;
+  const rowHeight = roomy ? 42 : 30;
   const columnWidth = Math.max(44, (width - (gap * (columnCount - 1))) / columnCount);
   const maxRows = Math.max(1, Math.floor((bottomY - y) / (rowHeight + gap)));
   const visibleItems = items.slice(0, Math.max(1, maxRows * columnCount));
@@ -29257,11 +29360,15 @@ function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
     context.stroke();
     context.fillStyle = "#f4faef";
     context.font = `700 ${roomy ? 13 : 9}px Arial, sans-serif`;
-    const valueText = `${item.label} ${item.germinatedCount}/${item.totalCount}`;
+    const valueText = `${item.label} ${item.germinatedCount}/${item.totalCount} ${item.percentageLabel}`;
     context.fillText(truncateTextToWidth(context, valueText, columnWidth - 10), itemX + 6, itemY + (roomy ? 14 : 9));
     context.fillStyle = "#94d159";
-    context.font = `700 ${roomy ? 12 : 8}px Arial, sans-serif`;
-    context.fillText(truncateTextToWidth(context, item.percentageLabel, columnWidth - 10), itemX + 6, itemY + (roomy ? 27 : 18));
+    context.font = `600 ${roomy ? 11 : 7.5}px Arial, sans-serif`;
+    context.fillText(
+      truncateTextToWidth(context, item.identityLabel || "Source not shared", columnWidth - 10),
+      itemX + 6,
+      itemY + (roomy ? 30 : 20),
+    );
   });
   context.restore();
   return { rendered: true, visibleCount: visibleItems.length };
