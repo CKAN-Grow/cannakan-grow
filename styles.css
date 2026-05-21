@@ -39068,16 +39068,6 @@ body.theme-dark #session-analytics-section {
   white-space: nowrap;
 }
 
-.seed-vault-sync-note {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(217, 122, 74, 0.2);
-  background: rgba(217, 122, 74, 0.08);
-  color: rgba(246, 210, 188, 0.9);
-  font-size: 0.86rem;
-}
-
 .seed-vault-empty-state {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;

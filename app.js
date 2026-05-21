@@ -5078,15 +5078,28 @@ function sortSeedVaultEntries(entries = []) {
     });
 }
 
-function saveSeedVaultEntries(entries, userId = appState.user?.id || "") {
+function showSeedVaultSaveFailureToast(message = "My Seed Vault could not be saved. Please try again.") {
+  if (typeof showNavigationLockToast !== "function") {
+    return;
+  }
+  showNavigationLockToast({
+    title: "My Seed Vault",
+    message,
+  });
+}
+
+function saveSeedVaultEntries(entries, userId = appState.user?.id || "", options = {}) {
   appState.seedVaultEntries = sortSeedVaultEntries(entries);
   appState.seedVaultLoaded = true;
   const storageKey = getSeedVaultStorageKey(userId);
   try {
     localStorage.setItem(storageKey, JSON.stringify(appState.seedVaultEntries));
   } catch (error) {
-    appState.seedVaultError = "My Seed Vault could not be saved in this browser.";
+    appState.seedVaultError = "My Seed Vault could not be saved. Please try again.";
     console.warn("[My Seed Vault] Failed to persist local entries.", error);
+    if (options.notifyOnFailure === true) {
+      showSeedVaultSaveFailureToast(appState.seedVaultError);
+    }
   }
   return appState.seedVaultEntries;
 }
@@ -5112,9 +5125,6 @@ function isSeedVaultEntriesTableMissingError(error) {
 
 function markSeedVaultEntriesTableUnavailable(error = null) {
   appState.seedVaultTableUnavailable = true;
-  if (error) {
-    appState.seedVaultError = "My Seed Vault account sync is waiting on the latest Supabase migration. Using browser storage for now.";
-  }
   logRuntimeIssueOnce(
     "warn",
     "seed-vault-entries-unavailable",
@@ -5158,7 +5168,7 @@ async function ensureSeedVaultEntriesForUser(user = appState.user) {
     const result = await loadSeedVaultEntriesFromBackend(userId);
     return saveSeedVaultEntries(result.entries, userId);
   } catch (error) {
-    appState.seedVaultError = "My Seed Vault could not sync with your account. Showing browser entries for now.";
+    appState.seedVaultError = "";
     console.warn("[My Seed Vault] Failed to load account entries.", error);
     return saveSeedVaultEntries(loadStoredSeedVaultEntries(userId), userId);
   }
@@ -5179,7 +5189,7 @@ async function persistSeedVaultEntry(entry = {}) {
     ...currentEntries.filter((candidate) => candidate.id !== normalizedEntry.id),
     normalizedEntry,
   ]);
-  saveSeedVaultEntries(nextEntries, normalizedEntry.userId);
+  saveSeedVaultEntries(nextEntries, normalizedEntry.userId, { notifyOnFailure: true });
 
   if (!appState.supabase || !normalizedEntry.userId || appState.seedVaultTableUnavailable) {
     return normalizedEntry;
@@ -5201,7 +5211,7 @@ async function persistSeedVaultEntry(entry = {}) {
       markSeedVaultEntriesTableUnavailable(error);
       return normalizedEntry;
     }
-    appState.seedVaultError = "My Seed Vault saved in this browser, but account sync failed.";
+    appState.seedVaultError = "";
     console.warn("[My Seed Vault] Backend save failed.", error);
     return normalizedEntry;
   }
@@ -56368,7 +56378,6 @@ function renderSeedVaultEntryCardMarkup(entry = {}) {
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
   const sortedEntries = sortSeedVaultEntries(entries);
   const hasEntries = sortedEntries.length > 0;
-  const syncWarning = String(options.syncWarning || appState.seedVaultError || "").trim();
 
   return `
     <section id="my-seed-vault" class="sessions-glass-panel seed-vault-panel" aria-labelledby="my-seed-vault-title">
@@ -56383,7 +56392,6 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         </div>
         <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
       </div>
-      ${syncWarning ? `<p class="seed-vault-sync-note" role="status">${escapeHtml(syncWarning)}</p>` : ""}
       ${hasEntries ? `
         <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
           ${sortedEntries.map(renderSeedVaultEntryCardMarkup).join("")}
