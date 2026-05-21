@@ -5180,6 +5180,24 @@ function sortSeedVaultEntries(entries = []) {
     });
 }
 
+function getSeedVaultEntrySortTimestamp(entry = {}) {
+  return Date.parse(entry?.updatedAt || entry?.updated_at || entry?.createdAt || entry?.created_at || "") || 0;
+}
+
+function mergeSeedVaultEntryCollections(primaryEntries = [], secondaryEntries = []) {
+  const entriesById = new Map();
+  [...(secondaryEntries || []), ...(primaryEntries || [])]
+    .map(normalizeSeedVaultEntry)
+    .filter(Boolean)
+    .forEach((entry) => {
+      const existingEntry = entriesById.get(entry.id);
+      if (!existingEntry || getSeedVaultEntrySortTimestamp(entry) >= getSeedVaultEntrySortTimestamp(existingEntry)) {
+        entriesById.set(entry.id, entry);
+      }
+    });
+  return sortSeedVaultEntries([...entriesById.values()]);
+}
+
 function showSeedVaultSaveFailureToast(message = "My Seed Vault could not be saved. Please try again.") {
   if (typeof showNavigationLockToast !== "function") {
     return;
@@ -5196,11 +5214,15 @@ function saveSeedVaultEntries(entries, userId = appState.user?.id || "", options
   const storageKey = getSeedVaultStorageKey(userId);
   try {
     localStorage.setItem(storageKey, JSON.stringify(appState.seedVaultEntries));
+    appState.seedVaultError = "";
   } catch (error) {
     appState.seedVaultError = "My Seed Vault could not be saved. Please try again.";
     console.warn("[My Seed Vault] Failed to persist local entries.", error);
     if (options.notifyOnFailure === true) {
       showSeedVaultSaveFailureToast(appState.seedVaultError);
+    }
+    if (options.throwOnFailure === true) {
+      throw error;
     }
   }
   return appState.seedVaultEntries;
@@ -5260,19 +5282,68 @@ async function loadSeedVaultEntriesFromBackend(userId = appState.user?.id || "")
   return { entries: sortSeedVaultEntries(data || []), source: "backend" };
 }
 
+async function syncSeedVaultEntriesToBackend(entries = [], userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!appState.supabase || !normalizedUserId || appState.seedVaultTableUnavailable) {
+    return [];
+  }
+
+  const rows = (entries || [])
+    .map((entry) => normalizeSeedVaultEntry({ ...entry, userId: entry?.userId || normalizedUserId }))
+    .filter((entry) => entry && entry.userId === normalizedUserId && !isDevModeOnlyMockRecord(entry))
+    .map(mapSeedVaultEntryToRow)
+    .filter(Boolean);
+
+  if (!rows.length) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(SEED_VAULT_ENTRIES_TABLE)
+    .upsert(rows, { onConflict: "id" })
+    .select("*");
+
+  if (error) {
+    if (isSeedVaultEntriesTableMissingError(error)) {
+      markSeedVaultEntriesTableUnavailable(error);
+      return [];
+    }
+    console.warn("[My Seed Vault] Backend sync skipped; local entries remain available.", error);
+    return [];
+  }
+
+  return sortSeedVaultEntries(data || []);
+}
+
 async function ensureSeedVaultEntriesForUser(user = appState.user) {
   const userId = String(user?.id || "").trim();
   if (!userId) {
     return saveSeedVaultEntries([], "");
   }
 
+  const localEntries = loadStoredSeedVaultEntries(userId);
   try {
     const result = await loadSeedVaultEntriesFromBackend(userId);
-    return saveSeedVaultEntries(result.entries, userId);
+    if (result.source !== "backend") {
+      return saveSeedVaultEntries(localEntries, userId);
+    }
+
+    const backendEntries = sortSeedVaultEntries(result.entries || []);
+    const mergedEntries = mergeSeedVaultEntryCollections(backendEntries, localEntries);
+    if (localEntries.length) {
+      const syncedEntries = await syncSeedVaultEntriesToBackend(mergedEntries, userId);
+      if (syncedEntries.length) {
+        return saveSeedVaultEntries(
+          mergeSeedVaultEntryCollections(syncedEntries, mergedEntries),
+          userId,
+        );
+      }
+    }
+    return saveSeedVaultEntries(mergedEntries, userId);
   } catch (error) {
     appState.seedVaultError = "";
     console.warn("[My Seed Vault] Failed to load account entries.", error);
-    return saveSeedVaultEntries(loadStoredSeedVaultEntries(userId), userId);
+    return saveSeedVaultEntries(localEntries, userId);
   }
 }
 
@@ -5291,9 +5362,20 @@ async function persistSeedVaultEntry(entry = {}) {
     ...currentEntries.filter((candidate) => candidate.id !== normalizedEntry.id),
     normalizedEntry,
   ]);
-  saveSeedVaultEntries(nextEntries, normalizedEntry.userId, { notifyOnFailure: true });
+  let localSaveFailed = false;
+  try {
+    saveSeedVaultEntries(nextEntries, normalizedEntry.userId, {
+      notifyOnFailure: true,
+      throwOnFailure: true,
+    });
+  } catch (error) {
+    localSaveFailed = true;
+  }
 
   if (!appState.supabase || !normalizedEntry.userId || appState.seedVaultTableUnavailable) {
+    if (localSaveFailed) {
+      throw new Error(appState.seedVaultError || "My Seed Vault could not be saved. Please try again.");
+    }
     return normalizedEntry;
   }
 
@@ -5311,10 +5393,16 @@ async function persistSeedVaultEntry(entry = {}) {
   if (error) {
     if (isSeedVaultEntriesTableMissingError(error)) {
       markSeedVaultEntriesTableUnavailable(error);
+      if (localSaveFailed) {
+        throw new Error(appState.seedVaultError || "My Seed Vault could not be saved. Please try again.");
+      }
       return normalizedEntry;
     }
     appState.seedVaultError = "";
     console.warn("[My Seed Vault] Backend save failed.", error);
+    if (localSaveFailed) {
+      throw new Error("My Seed Vault could not be saved. Please try again.");
+    }
     return normalizedEntry;
   }
 
