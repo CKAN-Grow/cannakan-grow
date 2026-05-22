@@ -60,6 +60,7 @@ const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
+const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed-vault-start";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
@@ -1309,6 +1310,8 @@ const appState = {
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
+  newSessionSeedVaultStarterIntent: null,
+  newSessionSeedVaultStarterLoadPromise: null,
   filterPaperInventory: null,
   filterPaperInventoryError: "",
   filterPaperInventoryBackendUnavailable: false,
@@ -58715,8 +58718,88 @@ function getSeedVaultEntryForSessionStart(entryId = "") {
     .find((entry) => entry.id === normalizedEntryId) || null;
 }
 
-function clearNewSessionSeedVaultStarterIntent() {
+function normalizeNewSessionSeedVaultStarterIntent(intent = null) {
+  const entryId = String(intent?.entryId || intent?.seedVaultEntryId || "").trim();
+  if (!entryId) {
+    return null;
+  }
+
+  return {
+    id: String(intent?.id || `seed-vault-start-${entryId}`).trim(),
+    entryId,
+    activePartitionId: Math.max(1, Number(intent?.activePartitionId) || 1),
+    expanded: intent?.expanded !== false,
+    createdAt: String(intent?.createdAt || new Date().toISOString()).trim(),
+  };
+}
+
+function persistNewSessionSeedVaultStarterIntent(intent = null) {
+  const normalizedIntent = normalizeNewSessionSeedVaultStarterIntent(intent);
+  appState.newSessionSeedVaultStarterIntent = normalizedIntent;
+  appState.newSessionSeedVaultStarterEntryId = normalizedIntent?.entryId || "";
+  if (!normalizedIntent) {
+    try {
+      sessionStorage.removeItem(NEW_SESSION_SEED_VAULT_START_STORAGE_KEY);
+    } catch (error) {
+      console.warn("[My Seed Vault] Could not clear pending new-session start state.", error);
+    }
+    return null;
+  }
+
+  try {
+    sessionStorage.setItem(NEW_SESSION_SEED_VAULT_START_STORAGE_KEY, JSON.stringify(normalizedIntent));
+  } catch (error) {
+    console.warn("[My Seed Vault] Could not persist pending new-session start state.", error);
+  }
+  return normalizedIntent;
+}
+
+function getPendingNewSessionSeedVaultStarterIntent() {
+  const memoryIntent = normalizeNewSessionSeedVaultStarterIntent(appState.newSessionSeedVaultStarterIntent);
+  if (memoryIntent) {
+    appState.newSessionSeedVaultStarterIntent = memoryIntent;
+    appState.newSessionSeedVaultStarterEntryId = memoryIntent.entryId;
+    return memoryIntent;
+  }
+
+  try {
+    const storedIntent = normalizeNewSessionSeedVaultStarterIntent(
+      JSON.parse(sessionStorage.getItem(NEW_SESSION_SEED_VAULT_START_STORAGE_KEY) || "null"),
+    );
+    if (storedIntent) {
+      appState.newSessionSeedVaultStarterIntent = storedIntent;
+      appState.newSessionSeedVaultStarterEntryId = storedIntent.entryId;
+      return storedIntent;
+    }
+  } catch (error) {
+    console.warn("[My Seed Vault] Could not load pending new-session start state.", error);
+    try {
+      sessionStorage.removeItem(NEW_SESSION_SEED_VAULT_START_STORAGE_KEY);
+    } catch (storageError) {
+      console.warn("[My Seed Vault] Could not clear invalid pending new-session start state.", storageError);
+    }
+  }
+
+  const legacyEntryId = String(appState.newSessionSeedVaultStarterEntryId || "").trim();
+  return legacyEntryId
+    ? persistNewSessionSeedVaultStarterIntent({ entryId: legacyEntryId, activePartitionId: 1, expanded: true })
+    : null;
+}
+
+function clearNewSessionSeedVaultStarterIntent(options = {}) {
+  const preserveFormDataset = options.preserveFormDataset === true;
   appState.newSessionSeedVaultStarterEntryId = "";
+  appState.newSessionSeedVaultStarterIntent = null;
+  if (!preserveFormDataset) {
+    document.querySelectorAll("[data-seed-vault-starter-entry-id]").forEach((form) => {
+      delete form.dataset.seedVaultStarterEntryId;
+    });
+  }
+  try {
+    sessionStorage.removeItem(NEW_SESSION_SEED_VAULT_START_STORAGE_KEY);
+  } catch (error) {
+    console.warn("[My Seed Vault] Could not clear pending new-session start state.", error);
+  }
 }
 
 function startNewSessionFromSeedVaultEntry(entryId = "") {
@@ -58729,7 +58812,12 @@ function startNewSessionFromSeedVaultEntry(entryId = "") {
     return;
   }
 
-  appState.newSessionSeedVaultStarterEntryId = entry.id;
+  persistNewSessionSeedVaultStarterIntent({
+    entryId: entry.id,
+    activePartitionId: 1,
+    expanded: true,
+    createdAt: new Date().toISOString(),
+  });
   appState.newSessionSeedVaultExpanded = true;
   appState.newSessionSeedVaultActivePartitionId = 1;
   appState.newSessionReturnHash = "#seed-vault";
@@ -58808,7 +58896,8 @@ function renderNewSessionSeedVaultEntryOptions(entries = [], selectedEntryId = "
 }
 
 function getNewSessionSeedVaultStarterEntry(form = null, entries = []) {
-  const starterEntryId = String(form?.dataset?.seedVaultStarterEntryId || appState.newSessionSeedVaultStarterEntryId || "").trim();
+  const pendingIntent = getPendingNewSessionSeedVaultStarterIntent();
+  const starterEntryId = String(form?.dataset?.seedVaultStarterEntryId || pendingIntent?.entryId || appState.newSessionSeedVaultStarterEntryId || "").trim();
   if (!starterEntryId) {
     return null;
   }
@@ -58972,6 +59061,7 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
     return;
   }
 
+  const pendingStarterIntent = getPendingNewSessionSeedVaultStarterIntent();
   const signedIn = Boolean(appState.user?.id);
   if (!signedIn) {
     section.hidden = true;
@@ -58981,6 +59071,30 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
 
   const entries = getActiveSeedVaultEntriesForSessionPicker();
   if (!entries.length) {
+    if (pendingStarterIntent?.entryId && !appState.seedVaultLoaded) {
+      section.hidden = false;
+      section.classList.add("is-empty");
+      section.innerHTML = `
+        <div class="new-session-seed-vault-loading" data-seed-vault-session-loading>
+          <p class="eyebrow">MY SEED VAULT</p>
+          <p>Loading your Seed Vault entries...</p>
+        </div>
+      `;
+      if (!appState.newSessionSeedVaultStarterLoadPromise) {
+        appState.newSessionSeedVaultStarterLoadPromise = ensureSeedVaultEntriesForUser(appState.user)
+          .then((loadedEntries) => {
+            appState.seedVaultEntries = sortSeedVaultEntries(loadedEntries || appState.seedVaultEntries || []);
+            renderNewSessionSeedVaultPicker(section, systemType, form);
+          })
+          .catch((error) => {
+            console.warn("[My Seed Vault] Could not load entries for new-session preload.", error);
+          })
+          .finally(() => {
+            appState.newSessionSeedVaultStarterLoadPromise = null;
+          });
+      }
+      return;
+    }
     section.hidden = true;
     section.innerHTML = "";
     return;
@@ -59024,6 +59138,45 @@ function renderNewSessionSeedVaultPicker(section, systemType = "KAN", form = nul
       <p class="new-session-seed-vault-message" data-seed-vault-session-message role="alert" aria-live="polite"></p>
     </div>
   `;
+  consumeNewSessionSeedVaultStarterIntentIfApplied(section, form);
+}
+
+function consumeNewSessionSeedVaultStarterIntentIfApplied(section, form = null) {
+  const pendingStarterIntent = getPendingNewSessionSeedVaultStarterIntent();
+  if (!(section instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !pendingStarterIntent?.entryId) {
+    return false;
+  }
+
+  const partitionId = Math.max(1, Number(pendingStarterIntent.activePartitionId) || 1);
+  const toggle = section.querySelector("[data-seed-vault-session-toggle]");
+  const panel = section.querySelector("[data-seed-vault-session-panel]");
+  const card = section.querySelector(`[data-seed-vault-assignment-card="${CSS.escape(String(partitionId))}"]`);
+  const body = section.querySelector(`#seed-vault-partition-assignment-${CSS.escape(String(partitionId))}`);
+  const select = section.querySelector(`[data-seed-vault-partition-entry="${CSS.escape(String(partitionId))}"]`);
+  const countInput = section.querySelector(`[data-seed-vault-partition-count="${CSS.escape(String(partitionId))}"]`);
+
+  const applied = (
+    toggle instanceof HTMLInputElement
+    && toggle.checked
+    && panel instanceof HTMLElement
+    && !panel.hidden
+    && card instanceof HTMLElement
+    && card.classList.contains("is-active")
+    && body instanceof HTMLElement
+    && !body.hidden
+    && select instanceof HTMLSelectElement
+    && select.value === pendingStarterIntent.entryId
+    && countInput instanceof HTMLInputElement
+    && String(countInput.value || "").trim() === ""
+  );
+
+  if (!applied) {
+    return false;
+  }
+
+  form.dataset.seedVaultStarterEntryId = pendingStarterIntent.entryId;
+  clearNewSessionSeedVaultStarterIntent({ preserveFormDataset: true });
+  return true;
 }
 
 function getSelectedSeedVaultEntryForSession(section, partitionId = "") {
@@ -60173,14 +60326,16 @@ function renderSessionForm(initialSystemType = "KAN") {
   const today = new Date();
   const normalizedSystemType = initialSystemType === "TRA" ? "TRA" : "KAN";
   const notesDraft = loadNewSessionNotesDraft();
-  const starterSeedVaultEntry = getSeedVaultEntryForSessionStart(appState.newSessionSeedVaultStarterEntryId);
+  const pendingSeedVaultStarterIntent = getPendingNewSessionSeedVaultStarterIntent();
+  const starterSeedVaultEntry = getSeedVaultEntryForSessionStart(pendingSeedVaultStarterIntent?.entryId || "");
   appState.newSessionSystemType = normalizedSystemType;
-  appState.newSessionSeedVaultExpanded = Boolean(starterSeedVaultEntry);
-  appState.newSessionSeedVaultActivePartitionId = 1;
-  if (starterSeedVaultEntry) {
+  appState.newSessionSeedVaultExpanded = Boolean(pendingSeedVaultStarterIntent || starterSeedVaultEntry);
+  appState.newSessionSeedVaultActivePartitionId = Math.max(1, Number(pendingSeedVaultStarterIntent?.activePartitionId) || 1);
+  if (pendingSeedVaultStarterIntent?.entryId) {
+    form.dataset.seedVaultStarterEntryId = pendingSeedVaultStarterIntent.entryId;
+  } else if (starterSeedVaultEntry) {
     form.dataset.seedVaultStarterEntryId = starterSeedVaultEntry.id;
   }
-  clearNewSessionSeedVaultStarterIntent();
   syncNewSessionNameState(form);
   bindNewSessionQuickStartHelp(app);
   mountContextualOnboardingPrompt(
