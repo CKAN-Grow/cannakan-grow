@@ -36482,9 +36482,14 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .session-images-heading > div,
 .session-workspace-shell .session-notes-section > .session-notes-field {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-areas:
+    "icon eyebrow"
+    "icon title";
+  align-items: center;
+  column-gap: clamp(16px, 2vw, 20px);
   row-gap: 6px;
+  min-width: 0;
 }
 
 .session-workspace-shell .progress-chart-heading {
@@ -36494,6 +36499,8 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .progress-chart-heading > .eyebrow,
 .session-workspace-shell .session-images-heading > div > .eyebrow,
 .session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
+  grid-area: eyebrow;
+  align-self: end;
   margin: 0;
   line-height: 1.08;
 }
@@ -36501,34 +36508,35 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon,
 .session-workspace-shell .session-images-heading .section-title-with-icon,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
+  display: contents;
   min-width: 0;
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,
 .session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  padding: 8px;
-  border-radius: 12px;
+  grid-area: icon;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  padding: 14px;
+  border-radius: 16px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(245, 249, 243, 0.02) 100%),
-    rgba(12, 18, 14, 0.34);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(245, 249, 243, 0.03) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 8px 18px rgba(0, 0, 0, 0.16);
+    0 8px 18px rgba(24, 34, 24, 0.08);
   color: #94d159;
   align-self: center;
+  justify-self: start;
 }
 
 .session-workspace-shell .progress-chart-heading > .section-title-with-icon > span,
 .session-workspace-shell .session-images-heading .section-title-with-icon > span,
 .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > span {
+  grid-area: title;
+  align-self: start;
   min-width: 0;
   margin: 0;
   color: #f6f8f5;
@@ -36545,9 +36553,9 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
 
 .session-workspace-shell .session-notes-section > .session-notes-field {
   grid-template-areas:
-    "eyebrow"
-    "title"
-    "textarea";
+    "icon eyebrow"
+    "icon title"
+    "textarea textarea";
 }
 
 .session-workspace-shell .session-notes-section > .session-notes-field > .eyebrow {
@@ -36918,12 +36926,12 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
   }
 
   .partition-work-heading {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr);
     grid-template-areas:
-      "icon"
-      "eyebrow"
-      "title";
-    row-gap: 10px;
+      "icon eyebrow"
+      "icon title";
+    column-gap: 14px;
+    row-gap: 6px;
   }
 
   .partition-product-icon {
@@ -36935,12 +36943,18 @@ body.theme-dark .session-lifecycle-status-column .session-status-panel[data-sess
     border-radius: 24px;
   }
 
+  .session-workspace-shell .progress-chart-heading,
+  .session-workspace-shell .session-images-heading > div,
+  .session-workspace-shell .session-notes-section > .session-notes-field,
   .session-workspace-shell .session-detail-lower-heading,
   .session-workspace-shell .session-images-heading > .session-detail-lower-heading {
     grid-template-columns: 56px minmax(0, 1fr);
     column-gap: 14px;
   }
 
+  .session-workspace-shell .progress-chart-heading > .section-title-with-icon > svg.section-title-icon,
+  .session-workspace-shell .session-images-heading .section-title-with-icon > svg.section-title-icon,
+  .session-workspace-shell .session-notes-section > .session-notes-field > .section-title-with-icon > svg.section-title-icon,
   .session-workspace-shell .session-detail-lower-heading > svg.section-title-icon {
     width: 56px;
     height: 56px;

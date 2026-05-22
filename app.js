@@ -23050,6 +23050,13 @@ const APP_ICON_LIBRARY = Object.freeze({
     <rect x="10.6" y="6.2" width="2.8" height="12" rx="1.2"></rect>
     <rect x="15.1" y="8.8" width="2.8" height="9.4" rx="1.2"></rect>
   `,
+  seedVault: `
+    <rect x="4.4" y="8" width="15.2" height="10.8" rx="2.4"></rect>
+    <path data-solid="true" d="M7.2 8V6.7c0-1.2 1-2.2 2.2-2.2h5.2c1.2 0 2.2 1 2.2 2.2V8Z"></path>
+    <circle cx="12" cy="13.4" r="2.2"></circle>
+    <path d="M12 11.2v4.4"></path>
+    <path d="M9.8 13.4h4.4"></path>
+  `,
   growNetworkNodes: `
     <circle cx="6.2" cy="12" r="2.4"></circle>
     <circle cx="17.9" cy="7.1" r="2.4"></circle>
@@ -58066,13 +58073,13 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
   return `
     <section id="my-seed-vault" class="sessions-glass-panel seed-vault-panel" aria-labelledby="my-seed-vault-title">
       <div class="seed-vault-header">
-        <div class="seed-vault-header-copy">
-          <div class="sessions-panel-title">
-            ${renderMySessionsInlineIconMarkup("vault", "sessions-inline-icon")}
-            <span>MY SEED VAULT</span>
+        <div class="section-title-with-icon app-section-header-main seed-vault-header-main">
+          <span class="section-title-icon seed-vault-header-icon" data-app-icon="seedVault" data-icon-variant="plate" aria-hidden="true"></span>
+          <div class="seed-vault-header-copy">
+            <p class="eyebrow">MY SEED VAULT</p>
+            <h3 id="my-seed-vault-title">Catalog your seed collection</h3>
+            <p>Track seed age, source, quantity, notes, and session history.</p>
           </div>
-          <h3 id="my-seed-vault-title">Catalog your seed collection</h3>
-          <p>Track seed age, source, quantity, notes, and session history.</p>
         </div>
         <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
       </div>
@@ -62503,6 +62510,8 @@ function renderSessionsList() {
       }
     });
     seedVaultSection.innerHTML = renderMySeedVaultPanelMarkup(appState.seedVaultEntries || []);
+    hydrateAppIconSlots(seedVaultSection);
+    normalizeSectionHeaderLayouts(seedVaultSection);
     applySupplyStatusToSessionEntryButtons(seedVaultSection);
   };
 
