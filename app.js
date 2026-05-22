@@ -26630,7 +26630,8 @@ function getGallerySnapshotFeedDetails(snapshot) {
           id: partition.id || partition.partitionId || index + 1,
           source: partition.source || partition.sourceLabel || "",
           seedVariety: partition.seedVariety || partition.variety || partition.varietyLabel || "",
-          seedType: partition.seedType || "",
+          seedType: partition.seedType || partition.type || partition.seedTypeLabel || "",
+          feminized: partition.sex || partition.sexValue || partition.seedSex || partition.feminized || partition.sexLabel || "",
           seedAgeYears: partition.seedAgeYears ?? null,
           seedCount: partition.totalCount ?? partition.totalSeeds ?? 0,
           plantedCount: String(partition.germinatedCount ?? partition.totalPlanted ?? ""),
@@ -29372,6 +29373,10 @@ function buildSnapshotPartitionResultMetadata(resultSummary = null, maxItems = 1
       seedVariety: partition.seedVariety,
       varietyLabel: partition.varietyLabel,
       varietyKey: partition.varietyKey,
+      seedType: partition.seedType,
+      seedTypeLabel: partition.seedTypeLabel,
+      sex: partition.sex,
+      sexLabel: partition.sexLabel,
       seedAgeYears: partition.seedAgeYears,
       seedAgeLabel: partition.seedAgeLabel,
       germinatedCount: partition.germinatedCount,
@@ -62904,6 +62909,7 @@ function renderPublicSessionDetail(snapshotId) {
       <div class="public-session-layout">
         <div class="public-session-media">
           ${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}
+          ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
         </div>
         <div class="public-session-details">
           <div class="public-session-readonly-note">
@@ -65354,6 +65360,8 @@ function getSessionResultSummary(session = null) {
     const varietyLabel = normalizeSessionResultLabel(formatPartitionSeedVariety(partition), "");
     const sourceKey = sourceLabel ? getPartitionSourceAnalyticsKey(partition) || normalizeComparableSourceKey(sourceLabel) : "";
     const varietyKey = varietyLabel ? getPartitionSeedVarietyAnalyticsKey(partition) || normalizeComparableSourceKey(varietyLabel) : "";
+    const seedType = normalizeSeedTypeId(partition.seedType || partition.seed_type || "");
+    const seedSex = normalizeSeedSexValue(partition.feminized || partition.seedSex || partition.seed_sex || partition.sex || "");
     const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
     const seedAgeLabel = seedAgeYears === null ? "" : buildSeedAgeDisplayLabel({
       seedAgeTrackingEnabled: true,
@@ -65383,7 +65391,10 @@ function getSessionResultSummary(session = null) {
       seedVariety: varietyLabel,
       varietyLabel: varietyLabel || "Not shared",
       varietyKey,
-      seedType: normalizeSeedTypeId(partition.seedType || partition.seed_type || ""),
+      seedType,
+      seedTypeLabel: getSeedTypeLabel(seedType) || "",
+      sex: seedSex,
+      sexLabel: getSeedSexLabel(seedSex) || "",
       seedAgeYears,
       seedAgeLabel: String(seedAgeLabel || "").trim(),
       germinatedCount,
@@ -65496,6 +65507,89 @@ function autoCompleteSessionWhenResultsAccounted(session = null, referenceDate =
     session.firstPlantedAt = session.firstPlantedAt || completedAt;
   }
   return true;
+}
+
+function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, options = {}) {
+  const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
+    ? sessionOrSummary
+    : getSessionResultSummary(sessionOrSummary);
+  if (!summary?.overall?.hasResults) {
+    return "";
+  }
+
+  const systemType = String(options.systemType || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+  const maxPartitions = systemType === "TRA" ? 16 : 8;
+  const partitions = (summary.partitions || []).slice(0, maxPartitions);
+  if (!partitions.length) {
+    return "";
+  }
+
+  const contextText = summary.mixedContext?.isMixedSession
+    ? [
+        summary.mixedContext.hasMultipleSources ? `${summary.mixedContext.sourceCount} sources` : "",
+        summary.mixedContext.hasMultipleVarieties ? `${summary.mixedContext.varietyCount} varieties` : "",
+      ].filter(Boolean).join(" / ")
+    : "Partition results";
+
+  return `
+    <section class="public-session-partition-results" aria-label="Public session partition results">
+      <div class="public-session-partition-results-head">
+        <div>
+          <p class="eyebrow">PARTITION RESULTS</p>
+          <h3>Results below the photo</h3>
+          <p>${escapeHtml(contextText || "Partition results")}${summary.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
+        </div>
+        <span>${escapeHtml(summary.overall.percentageLabel)} overall</span>
+      </div>
+      <div class="public-session-partition-results-grid">
+        ${partitions.map((partition) => {
+          const hasSeeds = Boolean(partition.hasSeeds);
+          const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "N/A") : "N/A";
+          const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "N/A") : "N/A";
+          const typeLabel = hasSeeds ? (partition.seedTypeLabel || getSeedTypeLabel(partition.seedType) || "N/A") : "N/A";
+          const sexLabel = hasSeeds ? (partition.sexLabel || getSeedSexLabel(partition.sex) || "N/A") : "N/A";
+          const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "N/A") : "N/A";
+          const countLabel = hasSeeds ? `${partition.germinatedCount}/${partition.totalCount}` : "N/A";
+          const percentageLabel = hasSeeds ? (partition.percentageLabel || "N/A") : "N/A";
+
+          return `
+            <article class="public-session-partition-result${hasSeeds ? "" : " is-empty"}">
+              <div class="public-session-partition-result-topline">
+                <strong>${escapeHtml(partition.label || "P?")}</strong>
+                <span>${escapeHtml(percentageLabel)}</span>
+              </div>
+              <dl>
+                <div>
+                  <dt>Source</dt>
+                  <dd>${escapeHtml(sourceLabel)}</dd>
+                </div>
+                <div>
+                  <dt>Seed Variety</dt>
+                  <dd>${escapeHtml(varietyLabel)}</dd>
+                </div>
+                <div>
+                  <dt>Type</dt>
+                  <dd>${escapeHtml(typeLabel)}</dd>
+                </div>
+                <div>
+                  <dt>Sex</dt>
+                  <dd>${escapeHtml(sexLabel)}</dd>
+                </div>
+                <div>
+                  <dt>Seed Age</dt>
+                  <dd>${escapeHtml(seedAgeLabel)}</dd>
+                </div>
+                <div>
+                  <dt>Germinated</dt>
+                  <dd>${escapeHtml(countLabel)}</dd>
+                </div>
+              </dl>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function showSessionCompletionResultsWarning(messageElement = null) {
