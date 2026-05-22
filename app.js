@@ -20791,7 +20791,7 @@ async function persistSessionImages(session, images) {
 
 async function uploadGallerySnapshotBlob(sessionId, blob) {
   if (!appState.supabase?.storage || !appState.user) {
-    throw new Error("Community Grow publishing is not available until Supabase Storage is ready.");
+    throw new Error(COMMUNITY_GROW_TEMPORARILY_UNAVAILABLE_MESSAGE);
   }
 
   const scopeId = sessionId || crypto.randomUUID();
@@ -20982,6 +20982,29 @@ function getGallerySnapshotSubmitterLabel(snapshot) {
     : "Anonymous grower";
 }
 
+const COMMUNITY_GROW_TEMPORARILY_UNAVAILABLE_MESSAGE = "Community Grow is temporarily unavailable. Please try again shortly.";
+
+function isCommunityGrowSchemaMismatchError(error) {
+  const normalizedMessage = getSupabaseErrorSearchText(error);
+  return (
+    isSupabaseTableMissingError(error, "grow_gallery_snapshots")
+    || isSupabaseColumnMissingError(error, "grow_gallery_snapshots", [
+      "partition_results",
+      "result_summary",
+      "include_public_grow_note",
+      "public_grow_note",
+    ])
+    || normalizedMessage.includes("find_duplicate_grow_gallery_snapshot_by_hash")
+    || (
+      normalizedMessage.includes("schema cache")
+      && (
+        normalizedMessage.includes("grow_gallery_snapshots")
+        || normalizedMessage.includes("find_duplicate_grow_gallery_snapshot_by_hash")
+      )
+    )
+  );
+}
+
 function getGalleryPublishErrorMessage(error, fallbackMessage) {
   const normalizedMessage = String(
     error?.message
@@ -20991,19 +21014,13 @@ function getGalleryPublishErrorMessage(error, fallbackMessage) {
   ).trim().toLowerCase();
 
   if (normalizedMessage.includes("bucket") && normalizedMessage.includes("not found")) {
-    return "Community Grow storage bucket is missing or not configured.";
+    return COMMUNITY_GROW_TEMPORARILY_UNAVAILABLE_MESSAGE;
   }
   if (normalizedMessage.includes("row-level security") || normalizedMessage.includes("permission denied")) {
     return "You do not have permission to publish to Community Grow.";
   }
-  if (normalizedMessage.includes("relation") && normalizedMessage.includes("grow_gallery_snapshots")) {
-    return "Community Grow data store is missing. Run the latest schema setup.";
-  }
-  if (normalizedMessage.includes("column") && normalizedMessage.includes("grow_gallery_snapshots")) {
-    return "Community Grow schema is out of date. Apply the latest database schema.";
-  }
-  if (normalizedMessage.includes("find_duplicate_grow_gallery_snapshot_by_hash")) {
-    return "Community Grow schema is out of date. Apply the latest database schema.";
+  if (isCommunityGrowSchemaMismatchError(error)) {
+    return COMMUNITY_GROW_TEMPORARILY_UNAVAILABLE_MESSAGE;
   }
 
   return fallbackMessage;
@@ -21043,15 +21060,28 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     try {
       duplicateSnapshot = await findDuplicateGallerySnapshotByImageHash(imageHash, session.id);
     } catch (error) {
-      console.error("Grow Gallery duplicate image check failed", {
-        sessionId: session.id,
-        imageHash,
-        error,
-      });
-      throw new Error(getGalleryPublishErrorMessage(
-        error,
-        "Could not verify whether this snapshot image is already in Community Grow.",
-      ));
+      if (isCommunityGrowSchemaMismatchError(error)) {
+        logRuntimeIssueOnce(
+          "warn",
+          "grow-gallery-duplicate-check-unavailable",
+          "Community Grow duplicate check is unavailable; publishing without duplicate detection.",
+          {
+            sessionId: session.id,
+            imageHash,
+            error,
+          },
+        );
+      } else {
+        console.error("Grow Gallery duplicate image check failed", {
+          sessionId: session.id,
+          imageHash,
+          error,
+        });
+        throw new Error(getGalleryPublishErrorMessage(
+          error,
+          "Could not verify whether this snapshot image is already in Community Grow.",
+        ));
+      }
     }
 
     if (duplicateSnapshot) {
@@ -21350,7 +21380,7 @@ async function toggleGallerySnapshotLike(snapshotId) {
     throw new Error("Sign in to like Community Grow snapshots.");
   }
   if (appState.gallerySnapshotLikesTableUnavailable) {
-    throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+    throw new Error("Community Grow likes are temporarily unavailable.");
   }
 
   if (snapshot.likedByCurrentUser) {
@@ -21363,7 +21393,7 @@ async function toggleGallerySnapshotLike(snapshotId) {
     if (error) {
       if (isGallerySnapshotLikesTableMissingError(error)) {
         markGallerySnapshotLikesTableUnavailable();
-        throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+        throw new Error("Community Grow likes are temporarily unavailable.");
       }
       throw new Error("Could not remove your like right now.");
     }
@@ -21384,7 +21414,7 @@ async function toggleGallerySnapshotLike(snapshotId) {
     if (error) {
       if (isGallerySnapshotLikesTableMissingError(error)) {
         markGallerySnapshotLikesTableUnavailable();
-        throw new Error("Community Grow likes are unavailable until the latest Supabase schema is applied.");
+        throw new Error("Community Grow likes are temporarily unavailable.");
       }
       throw new Error("Could not save your like right now.");
     }
