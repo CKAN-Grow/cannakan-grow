@@ -3339,7 +3339,6 @@ function getSeedVaultRouteHash() {
 }
 
 function navigateToSeedVaultRoute() {
-  appState.sessionDashboardScrollTarget = "my-seed-vault";
   navigateToHashRoute(getSeedVaultRouteHash());
 }
 
@@ -8684,6 +8683,7 @@ function getCurrentAppPathRoute() {
     profile: "profile",
     sources: "sources",
     sessions: "sessions",
+    "seed-vault": "seed-vault",
     "community-grow": "gallery",
     "seed-age-analytics": "seed-age-analytics",
     "grow-network": "network",
@@ -8705,7 +8705,7 @@ function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile" || route === "active-sessions") {
+  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile" || route === "active-sessions" || route === "seed-vault") {
     return true;
   }
 
@@ -30793,7 +30793,7 @@ function render() {
     return;
   }
 
-  if (!appState.user && routeRequiresSignedInUser(window.location.hash || "#home")) {
+  if (!appState.user && routeRequiresSignedInUser(`#${rawRoute || "home"}`)) {
     renderProtectedRouteSignInPrompt();
     return;
   }
@@ -30867,8 +30867,7 @@ function render() {
   }
 
   if (route === "seed-vault") {
-    appState.sessionDashboardScrollTarget = "my-seed-vault";
-    renderSessionsList();
+    renderSeedVaultPage();
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "sessions",
       pageKey: "seed-vault",
@@ -58183,6 +58182,185 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
   `;
 }
 
+function renderMySessionsSeedVaultShortcutMarkup() {
+  return `
+    <section class="sessions-glass-panel seed-vault-shortcut-card" aria-labelledby="seed-vault-shortcut-title">
+      <div class="seed-vault-shortcut-main">
+        ${renderMySessionsInlineIconMarkup("vault", "sessions-inline-icon seed-vault-shortcut-icon")}
+        <div>
+          <p class="eyebrow">MY SEED VAULT</p>
+          <h3 id="seed-vault-shortcut-title">My Seed Vault</h3>
+          <p>Catalog seeds, track age, source, quantity, notes, and session history.</p>
+        </div>
+      </div>
+      <a class="button button-secondary seed-vault-shortcut-button" href="#seed-vault">Open My Seed Vault</a>
+    </section>
+  `;
+}
+
+function renderSeedVaultPanelIntoSection(seedVaultSection) {
+  if (!(seedVaultSection instanceof HTMLElement)) {
+    return;
+  }
+
+  const entryIds = new Set((appState.seedVaultEntries || []).map((entry) => String(entry.id || "").trim()).filter(Boolean));
+  getSeedVaultExpandedEntryIds().forEach((entryId) => {
+    if (!entryIds.has(entryId)) {
+      appState.seedVaultExpandedEntryIds.delete(entryId);
+    }
+  });
+  seedVaultSection.innerHTML = renderMySeedVaultPanelMarkup(appState.seedVaultEntries || []);
+  hydrateAppIconSlots(seedVaultSection);
+  normalizeSectionHeaderLayouts(seedVaultSection);
+  applySupplyStatusToSessionEntryButtons(seedVaultSection);
+}
+
+function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = () => {}) {
+  if (!(seedVaultSection instanceof HTMLElement) || seedVaultSection.dataset.seedVaultPanelBound === "true") {
+    return;
+  }
+
+  seedVaultSection.dataset.seedVaultPanelBound = "true";
+  seedVaultSection.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const addButton = target.closest("[data-seed-vault-add='true']");
+    if (addButton) {
+      event.preventDefault();
+      openSeedVaultEntryModal();
+      return;
+    }
+
+    const toggleButton = target.closest("[data-seed-vault-toggle]");
+    if (toggleButton) {
+      event.preventDefault();
+      const entryId = String(toggleButton.getAttribute("data-seed-vault-toggle") || "").trim();
+      const expandedEntryIds = getSeedVaultExpandedEntryIds();
+      if (expandedEntryIds.has(entryId)) {
+        expandedEntryIds.delete(entryId);
+      } else if (entryId) {
+        expandedEntryIds.add(entryId);
+      }
+      renderSeedVaultSection();
+      return;
+    }
+
+    const favoriteButton = target.closest("[data-seed-vault-favorite]");
+    if (favoriteButton) {
+      event.preventDefault();
+      const entryId = String(favoriteButton.getAttribute("data-seed-vault-favorite") || "").trim();
+      const entry = (appState.seedVaultEntries || []).find((candidate) => candidate.id === entryId);
+      await updateSeedVaultEntryFlag(entryId, { isFavorite: !entry?.isFavorite });
+      return;
+    }
+
+    const archiveButton = target.closest("[data-seed-vault-archive]");
+    if (archiveButton) {
+      event.preventDefault();
+      const entryId = String(archiveButton.getAttribute("data-seed-vault-archive") || "").trim();
+      const entry = (appState.seedVaultEntries || []).find((candidate) => candidate.id === entryId);
+      await updateSeedVaultEntryFlag(entryId, { isArchived: !entry?.isArchived });
+      return;
+    }
+
+    const startSessionButton = target.closest("[data-seed-vault-start-session]");
+    if (startSessionButton) {
+      event.preventDefault();
+      const entryId = String(startSessionButton.getAttribute("data-seed-vault-start-session") || "").trim();
+      startNewSessionFromSeedVaultEntry(entryId);
+      return;
+    }
+
+    const deleteButton = target.closest("[data-seed-vault-delete]");
+    if (deleteButton) {
+      event.preventDefault();
+      const entryId = String(deleteButton.getAttribute("data-seed-vault-delete") || "").trim();
+      await deleteSeedVaultEntry(entryId);
+    }
+  });
+
+  seedVaultSection.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.getAttribute("data-seed-vault-search") !== "true") {
+      return;
+    }
+
+    appState.seedVaultSearchQuery = target.value || "";
+    renderSeedVaultSection();
+    const nextSearch = seedVaultSection.querySelector("[data-seed-vault-search='true']");
+    if (nextSearch instanceof HTMLInputElement) {
+      nextSearch.focus({ preventScroll: true });
+      const valueLength = nextSearch.value.length;
+      nextSearch.setSelectionRange(valueLength, valueLength);
+    }
+  });
+
+  seedVaultSection.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-favorite-filter") === "true") {
+      appState.seedVaultFavoriteFilter = normalizeSeedVaultFavoriteFilter(target.value);
+      renderSeedVaultSection();
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-status-filter") === "true") {
+      appState.seedVaultStatusFilter = normalizeSeedVaultStatusFilter(target.value);
+      renderSeedVaultSection();
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-sort") === "true") {
+      appState.seedVaultSort = normalizeSeedVaultSort(target.value);
+      renderSeedVaultSection();
+    }
+  });
+}
+
+function isSeedVaultRouteActive() {
+  const currentHashRoute = String(window.location.hash || appState.currentRouteHash || "").replace(/^#/, "").split("/")[0];
+  return currentHashRoute === "seed-vault" || getCurrentAppPathRoute() === "seed-vault";
+}
+
+function refreshSeedVaultViewAfterMutation() {
+  if (isSeedVaultRouteActive()) {
+    renderSeedVaultPage();
+    return;
+  }
+
+  const seedVaultSection = document.querySelector("#seed-vault-section");
+  if (seedVaultSection instanceof HTMLElement) {
+    renderSeedVaultPanelIntoSection(seedVaultSection);
+    return;
+  }
+
+  if ((window.location.hash || appState.currentRouteHash || "") === "#sessions") {
+    renderSessionsList();
+  }
+}
+
+function renderSeedVaultPage() {
+  app.innerHTML = `
+    <section class="seed-vault-page">
+      <div class="seed-vault-page-actions">
+        <a class="button button-secondary" href="#sessions">Back to My Sessions</a>
+      </div>
+      <section id="seed-vault-section"></section>
+    </section>
+  `;
+
+  const seedVaultSection = document.querySelector("#seed-vault-section");
+  const renderSeedVaultSection = () => renderSeedVaultPanelIntoSection(seedVaultSection);
+  renderSeedVaultSection();
+  bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection);
+}
+
 function closeSeedVaultEntryModal() {
   const overlay = document.querySelector("#seed-vault-entry-modal-overlay");
   if (!overlay) {
@@ -58501,8 +58679,7 @@ async function saveSeedVaultEntryForm(form, options = {}) {
       title: "My Seed Vault",
       message: "Vault Entry saved.",
     });
-    appState.sessionDashboardScrollTarget = "my-seed-vault";
-    renderSessionsList();
+    refreshSeedVaultViewAfterMutation();
     return true;
   } catch (error) {
     setFeedbackMessage(message, error.message || "Could not add this Vault Entry.", "error");
@@ -58669,8 +58846,7 @@ async function updateSeedVaultEntryFlag(entryId = "", updates = {}) {
     ...entry,
     ...updates,
   });
-  appState.sessionDashboardScrollTarget = "my-seed-vault";
-  renderSessionsList();
+  refreshSeedVaultViewAfterMutation();
 }
 
 async function deleteSeedVaultEntry(entryId = "") {
@@ -58705,8 +58881,7 @@ async function deleteSeedVaultEntry(entryId = "") {
     }
   }
 
-  appState.sessionDashboardScrollTarget = "my-seed-vault";
-  renderSessionsList();
+  refreshSeedVaultViewAfterMutation();
 }
 
 function getSeedVaultEntryForSessionStart(entryId = "") {
@@ -62672,6 +62847,7 @@ function renderSessionsList() {
   const hasSessionHistory = historySessions.length > 0;
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const seedVaultSection = document.querySelector("#seed-vault-section");
+  const seedVaultShortcutSection = document.querySelector("#seed-vault-shortcut-section");
   const recentCompletedSection = document.querySelector("#recent-completed-sessions-section");
   const historySection = document.querySelector("#session-history-section");
   const analyticsSection = document.querySelector("#session-analytics-section");
@@ -62687,6 +62863,10 @@ function renderSessionsList() {
     hasSessionHistory,
     requiresSignIn: !appState.user,
   });
+
+  if (seedVaultShortcutSection) {
+    seedVaultShortcutSection.innerHTML = renderMySessionsSeedVaultShortcutMarkup();
+  }
 
   const renderSeedVaultSection = () => {
     if (!seedVaultSection) {
