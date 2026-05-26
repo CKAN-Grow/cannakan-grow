@@ -141,6 +141,11 @@ const DISMISSED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowDismissedNoti
 const SNOOZED_APP_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowSnoozedNotificationEvents";
 const USER_PUSH_SUBSCRIPTIONS_STORAGE_KEY = "cannakanGrowUserPushSubscriptions";
 const PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY = "cannakanGrowPushDeliveredNotificationEvents";
+const PUSH_SEND_FAILURES_STORAGE_KEY = "cannakanGrowPushSendFailures";
+const PUSH_SEND_MAX_ATTEMPTS = 3;
+const PUSH_SEND_BASE_RETRY_DELAY_MS = 2 * 60 * 1000;
+const PUSH_SEND_MAX_RETRY_DELAY_MS = 60 * 60 * 1000;
+const PUSH_SEND_SKIP_RETRY_DELAY_MS = 30 * 60 * 1000;
 const APP_NOTIFICATION_REMINDER_ENGINE_INTERVAL_MS = 60 * 1000;
 const SESSION_SETUP_GRACE_MINUTES = 30;
 const SESSION_SETUP_GRACE_MS = SESSION_SETUP_GRACE_MINUTES * 60 * 1000;
@@ -6382,6 +6387,13 @@ function getPushDeliveredNotificationEventsStorageKey(userId = "") {
     : PUSH_DELIVERED_NOTIFICATION_EVENTS_STORAGE_KEY;
 }
 
+function getPushSendFailuresStorageKey(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  return normalizedUserId
+    ? `${PUSH_SEND_FAILURES_STORAGE_KEY}:${normalizedUserId}`
+    : PUSH_SEND_FAILURES_STORAGE_KEY;
+}
+
 function normalizePushSubscriptionRecord(record = {}) {
   const sourceRecord = record && typeof record === "object" ? record : {};
   const endpoint = String(sourceRecord.endpoint || "").trim();
@@ -7074,6 +7086,152 @@ function markPushNotificationEventDelivered(eventKey = "", userId = appState.use
   const deliveredEvents = loadDeliveredPushNotificationEvents(normalizedUserId);
   deliveredEvents.add(normalizedEventKey);
   saveDeliveredPushNotificationEvents(deliveredEvents, normalizedUserId);
+}
+
+function loadPushSendFailureState(userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return {};
+  }
+
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(getPushSendFailuresStorageKey(normalizedUserId)) || "{}");
+    return storedValue && typeof storedValue === "object" && !Array.isArray(storedValue)
+      ? storedValue
+      : {};
+  } catch (error) {
+    logRuntimeIssueOnce(
+      "warn",
+      "push-send-failure-state-read",
+      "Push delivery retry state could not be read; continuing with in-memory guard only.",
+      error,
+    );
+    return {};
+  }
+}
+
+function savePushSendFailureState(records = {}, userId = "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return;
+  }
+
+  const now = Date.now();
+  const normalizedRecords = Object.entries(records && typeof records === "object" ? records : {})
+    .reduce((accumulator, [key, value]) => {
+      const normalizedKey = String(key || "").trim();
+      const nextRetryAt = Number(value?.nextRetryAt || 0) || 0;
+      if (!normalizedKey || (nextRetryAt > 0 && nextRetryAt < now - PUSH_SEND_MAX_RETRY_DELAY_MS)) {
+        return accumulator;
+      }
+      accumulator[normalizedKey] = {
+        attempts: Math.max(0, Number(value?.attempts || 0) || 0),
+        nextRetryAt,
+        status: Number(value?.status || 0) || 0,
+        code: String(value?.code || "").trim(),
+        message: String(value?.message || "").trim(),
+        updatedAt: String(value?.updatedAt || new Date(now).toISOString()).trim(),
+      };
+      return accumulator;
+    }, {});
+
+  try {
+    localStorage.setItem(getPushSendFailuresStorageKey(normalizedUserId), JSON.stringify(normalizedRecords));
+  } catch (error) {
+    logRuntimeIssueOnce(
+      "warn",
+      "push-send-failure-state-write",
+      "Push delivery retry state could not be saved.",
+      error,
+    );
+  }
+}
+
+function getPushSendFailureRecord(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return null;
+  }
+  return loadPushSendFailureState(normalizedUserId)[normalizedEventKey] || null;
+}
+
+function shouldSkipBackendPushSendForEvent(eventKey = "", userId = appState.user?.id || "") {
+  const record = getPushSendFailureRecord(eventKey, userId);
+  if (!record) {
+    return false;
+  }
+
+  const nextRetryAt = Number(record.nextRetryAt || 0) || 0;
+  if (nextRetryAt > Date.now()) {
+    return true;
+  }
+  return false;
+}
+
+function recordBackendPushSendFailure(eventKey = "", details = {}, userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return null;
+  }
+
+  const records = loadPushSendFailureState(normalizedUserId);
+  const previous = records[normalizedEventKey] || {};
+  const attempts = Math.min(PUSH_SEND_MAX_ATTEMPTS, Math.max(0, Number(previous.attempts || 0) || 0) + 1);
+  const retryDelay = Math.min(
+    PUSH_SEND_MAX_RETRY_DELAY_MS,
+    PUSH_SEND_BASE_RETRY_DELAY_MS * (2 ** Math.max(0, attempts - 1)),
+  );
+  const nextRetryAt = Date.now() + (attempts >= PUSH_SEND_MAX_ATTEMPTS ? PUSH_SEND_MAX_RETRY_DELAY_MS : retryDelay);
+  const nextRecord = {
+    attempts,
+    nextRetryAt,
+    status: Number(details?.status || 0) || 0,
+    code: String(details?.code || "").trim(),
+    message: String(details?.message || "").trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  records[normalizedEventKey] = nextRecord;
+  savePushSendFailureState(records, normalizedUserId);
+  return nextRecord;
+}
+
+function recordBackendPushSendSkip(eventKey = "", details = {}, userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return null;
+  }
+
+  const records = loadPushSendFailureState(normalizedUserId);
+  const previous = records[normalizedEventKey] || {};
+  const nextRecord = {
+    attempts: Math.max(1, Number(previous.attempts || 0) || 0),
+    nextRetryAt: Date.now() + PUSH_SEND_SKIP_RETRY_DELAY_MS,
+    status: Number(details?.status || 0) || 0,
+    code: String(details?.code || "").trim(),
+    message: String(details?.message || "").trim(),
+    updatedAt: new Date().toISOString(),
+  };
+  records[normalizedEventKey] = nextRecord;
+  savePushSendFailureState(records, normalizedUserId);
+  return nextRecord;
+}
+
+function clearBackendPushSendFailure(eventKey = "", userId = appState.user?.id || "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedEventKey || !normalizedUserId) {
+    return;
+  }
+
+  const records = loadPushSendFailureState(normalizedUserId);
+  if (!Object.prototype.hasOwnProperty.call(records, normalizedEventKey)) {
+    return;
+  }
+  delete records[normalizedEventKey];
+  savePushSendFailureState(records, normalizedUserId);
 }
 
 function clearPushNotificationEventDelivered(eventKey = "", userId = appState.user?.id || "") {
@@ -12579,6 +12737,9 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
   if (!canUseBackendPushMirror() || !eventKey || (!test && !isPushEligibleAppNotification(notification))) {
     return false;
   }
+  if (!test && shouldSkipBackendPushSendForEvent(eventKey)) {
+    return false;
+  }
 
   try {
     const response = await fetch("/api/push-send", {
@@ -12600,14 +12761,48 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
       }),
     });
 
+    const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(`Push mirror request returned ${response.status}`);
+      recordBackendPushSendFailure(eventKey, {
+        status: response.status,
+        code: result?.code || "",
+        message: result?.error || result?.reason || `Push mirror request returned ${response.status}`,
+      });
+      logRuntimeIssueOnce(
+        "warn",
+        `push-send-backend-http-${response.status}`,
+        "Push delivery is temporarily unavailable; background reminders will retry later.",
+        { status: response.status, code: result?.code || "" },
+      );
+      return false;
     }
 
-    const result = await response.json().catch(() => ({}));
-    return result?.ok === true && Number(result?.sentCount || 0) > 0;
+    const sentCount = Number(result?.sentCount || 0) || 0;
+    if (result?.ok === true && sentCount > 0) {
+      clearBackendPushSendFailure(eventKey);
+      return true;
+    }
+
+    if (result?.skipped === true || sentCount === 0) {
+      recordBackendPushSendSkip(eventKey, {
+        status: response.status,
+        code: result?.code || "",
+        message: result?.reason || "Push delivery skipped.",
+      });
+    }
+    return false;
   } catch (error) {
-    console.warn("[Push Delivery] Backend push mirror failed.", error);
+    recordBackendPushSendFailure(eventKey, {
+      status: 0,
+      code: "push_send_network_error",
+      message: error?.message || "Push delivery request failed.",
+    });
+    logRuntimeIssueOnce(
+      "warn",
+      "push-send-backend-request-failed",
+      "Push delivery is temporarily unavailable; background reminders will retry later.",
+      error,
+    );
     return false;
   }
 }

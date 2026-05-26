@@ -15,6 +15,15 @@ function getEnv(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
 }
 
+function createRequestError(message, statusCode = 500, payload = {}) {
+  const error = new Error(message || `Request failed with ${statusCode}`);
+  error.statusCode = Number(statusCode) || 500;
+  error.status = error.statusCode;
+  error.payload = payload && typeof payload === "object" ? payload : {};
+  error.body = String(payload?.body || payload?.message || message || "").trim();
+  return error;
+}
+
 function getRuntimeConfig() {
   return {
     supabaseUrl: getEnv(
@@ -77,6 +86,26 @@ function getBackendReadiness(config = {}) {
 
 function json(response, status, payload) {
   return response.status(status).json(payload);
+}
+
+function getErrorStatusCode(error) {
+  return Number(error?.statusCode || error?.status || error?.payload?.status || 0) || 0;
+}
+
+function getErrorMessage(error, fallback = "Unknown error.") {
+  return String(error?.body || error?.message || error?.payload?.body || fallback).trim() || fallback;
+}
+
+function isSupabaseRestSchemaError(error) {
+  const statusCode = getErrorStatusCode(error);
+  const message = getErrorMessage(error, "").toLowerCase();
+  return Boolean(
+    statusCode === 404
+    || message.includes("schema cache")
+    || message.includes("could not find the table")
+    || message.includes("could not find the")
+    || message.includes("pgrst"),
+  );
 }
 
 function toBoolean(value, fallback = false) {
@@ -340,7 +369,9 @@ async function supabaseAuthGetUser(token, config) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `Supabase auth user lookup failed with ${response.status}`);
+    throw createRequestError(errorText || `Supabase auth user lookup failed with ${response.status}`, response.status, {
+      body: errorText,
+    });
   }
 
   return response.json();
@@ -367,7 +398,10 @@ async function supabaseRest(path, config, options = {}) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `Supabase REST request failed with ${response.status}`);
+    throw createRequestError(errorText || `Supabase REST request failed with ${response.status}`, response.status, {
+      body: errorText,
+      path,
+    });
   }
 
   if (response.status === 204) {
@@ -441,6 +475,34 @@ async function deletePushSubscriptionRecord(record, config) {
   );
 }
 
+async function safeUpsertPushDeliveryRecord(record, config) {
+  try {
+    return await upsertPushDeliveryRecord(record, config);
+  } catch (error) {
+    console.warn("[push-send] Push delivery log write skipped.", {
+      statusCode: getErrorStatusCode(error),
+      message: getErrorMessage(error),
+      eventKey: record?.event_key || "",
+      deviceKey: record?.device_key || "",
+    });
+    return null;
+  }
+}
+
+async function safeDeletePushSubscriptionRecord(record, config) {
+  try {
+    await deletePushSubscriptionRecord(record, config);
+    return true;
+  } catch (error) {
+    console.warn("[push-send] Expired push subscription cleanup skipped.", {
+      statusCode: getErrorStatusCode(error),
+      message: getErrorMessage(error),
+      deviceKey: record?.deviceKey || "",
+    });
+    return false;
+  }
+}
+
 function shouldTreatSubscriptionAsExpired(error) {
   const statusCode = Number(error?.statusCode || error?.status || 0);
   return statusCode === 404 || statusCode === 410;
@@ -490,9 +552,38 @@ module.exports = async function handler(request, response) {
   }
 
   try {
-    webpush.setVapidDetails(config.vapidSubject, config.vapidPublicKey, config.vapidPrivateKey);
+    try {
+      webpush.setVapidDetails(config.vapidSubject, config.vapidPublicKey, config.vapidPrivateKey);
+    } catch (error) {
+      console.warn("[push-send] VAPID configuration is invalid.", {
+        message: getErrorMessage(error),
+      });
+      return json(response, 202, {
+        ok: false,
+        skipped: true,
+        retryable: false,
+        code: "push_config_invalid",
+        reason: "Push delivery is temporarily unavailable.",
+      });
+    }
 
-    const authenticatedUser = await supabaseAuthGetUser(accessToken, config);
+    let authenticatedUser = null;
+    try {
+      authenticatedUser = await supabaseAuthGetUser(accessToken, config);
+    } catch (error) {
+      const statusCode = getErrorStatusCode(error);
+      const isAuthFailure = statusCode === 401 || statusCode === 403;
+      console.warn("[push-send] Could not verify push request user.", {
+        statusCode,
+        message: getErrorMessage(error),
+      });
+      return json(response, isAuthFailure ? 401 : 503, {
+        ok: false,
+        retryable: !isAuthFailure,
+        code: isAuthFailure ? "push_auth_failed" : "push_auth_unavailable",
+        error: isAuthFailure ? "Could not verify the signed-in user." : "Push delivery is temporarily unavailable.",
+      });
+    }
     const userId = String(authenticatedUser?.id || "").trim();
     if (!userId) {
       return json(response, 401, { ok: false, error: "Could not verify the signed-in user." });
@@ -529,7 +620,23 @@ module.exports = async function handler(request, response) {
       return json(response, 400, { ok: false, error: "This notification category is not eligible for push delivery." });
     }
 
-    const preferences = await loadUserNotificationPreferences(userId, config);
+    let preferences = null;
+    try {
+      preferences = await loadUserNotificationPreferences(userId, config);
+    } catch (error) {
+      console.warn("[push-send] Notification preferences unavailable; push send skipped.", {
+        statusCode: getErrorStatusCode(error),
+        schemaIssue: isSupabaseRestSchemaError(error),
+        message: getErrorMessage(error),
+      });
+      return json(response, 200, {
+        ok: true,
+        skipped: true,
+        retryable: false,
+        code: "push_preferences_unavailable",
+        reason: "Push delivery is temporarily unavailable.",
+      });
+    }
     if (preferences.pushNotificationsEnabled !== true) {
       return json(response, 200, { ok: true, skipped: true, reason: "Push notifications are disabled for this user." });
     }
@@ -537,12 +644,39 @@ module.exports = async function handler(request, response) {
       return json(response, 200, { ok: true, skipped: true, reason: "This notification category is disabled for this user." });
     }
 
-    const subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config, targetDeviceKeys);
+    let subscriptions = [];
+    try {
+      subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config, targetDeviceKeys);
+    } catch (error) {
+      console.warn("[push-send] Active push subscriptions unavailable; push send skipped.", {
+        statusCode: getErrorStatusCode(error),
+        schemaIssue: isSupabaseRestSchemaError(error),
+        message: getErrorMessage(error),
+      });
+      return json(response, 200, {
+        ok: true,
+        skipped: true,
+        retryable: false,
+        code: "push_subscriptions_unavailable",
+        reason: "No active push subscriptions are available right now.",
+      });
+    }
     if (!subscriptions.length) {
       return json(response, 200, { ok: true, skipped: true, reason: "No active push subscriptions are available for this user." });
     }
 
-    const existingDeliveries = await loadExistingPushDeliveries(userId, eventKey, config);
+    let existingDeliveries = [];
+    let deliveryLogAvailable = true;
+    try {
+      existingDeliveries = await loadExistingPushDeliveries(userId, eventKey, config);
+    } catch (error) {
+      deliveryLogAvailable = false;
+      console.warn("[push-send] Push delivery history unavailable; continuing with send guard fallback.", {
+        statusCode: getErrorStatusCode(error),
+        schemaIssue: isSupabaseRestSchemaError(error),
+        message: getErrorMessage(error),
+      });
+    }
     const alreadyDeliveredDeviceKeys = new Set(
       existingDeliveries
         .filter((entry) => ["sent", "delivered", "test-sent"].includes(String(entry?.status || "").trim()))
@@ -578,7 +712,7 @@ module.exports = async function handler(request, response) {
           topic: notificationPayload.tag || eventKey,
         });
 
-        await upsertPushDeliveryRecord({
+        await safeUpsertPushDeliveryRecord({
           user_id: userId,
           event_key: eventKey,
           device_key: record.deviceKey,
@@ -595,8 +729,8 @@ module.exports = async function handler(request, response) {
         sentRecords.push(record.deviceKey);
       } catch (error) {
         if (shouldTreatSubscriptionAsExpired(error)) {
-          await deletePushSubscriptionRecord(record, config);
-          await upsertPushDeliveryRecord({
+          await safeDeletePushSubscriptionRecord(record, config);
+          await safeUpsertPushDeliveryRecord({
             user_id: userId,
             event_key: eventKey,
             device_key: record.deviceKey,
@@ -613,7 +747,7 @@ module.exports = async function handler(request, response) {
           continue;
         }
 
-        await upsertPushDeliveryRecord({
+        await safeUpsertPushDeliveryRecord({
           user_id: userId,
           event_key: eventKey,
           device_key: record.deviceKey,
@@ -640,12 +774,17 @@ module.exports = async function handler(request, response) {
       skippedDeviceKeys,
       invalidatedDeviceKeys,
       failedDeviceKeys,
+      deliveryLogAvailable,
     });
   } catch (error) {
     console.error("[push-send] Failed to send push notifications.", error);
-    return json(response, 500, {
+    const statusCode = getErrorStatusCode(error);
+    const responseStatus = statusCode >= 400 && statusCode < 500 ? statusCode : 503;
+    return json(response, responseStatus, {
       ok: false,
-      error: "Could not send push notifications.",
+      retryable: responseStatus >= 500,
+      code: "push_send_failed",
+      error: "Push delivery is temporarily unavailable.",
     });
   }
 };
