@@ -8,7 +8,10 @@ for (const needle of [
   "function mergeSeedVaultEntryCollections(primaryEntries = [], secondaryEntries = [])",
   "function syncSeedVaultEntriesToBackend(entries = [], userId = appState.user?.id || \"\")",
   "seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName",
+  "sex: normalizedEntry.seedSex || null",
   "seed_sex: normalizedEntry.seedSex || null",
+  "seed_count: normalizedEntry.seedCount",
+  "remaining_count: normalizedEntry.remainingCount",
   "return normalizedUserId ? `${SEED_VAULT_STORAGE_KEY}:${normalizedUserId}` : SEED_VAULT_STORAGE_KEY;",
   ".upsert(rows, { onConflict: \"id\" })",
   "const localEntries = loadStoredSeedVaultEntries(userId);",
@@ -18,6 +21,8 @@ for (const needle of [
   "localSaveFailed",
   "showSeedVaultSaveFailureToast(appState.seedVaultError);",
   "My Seed Vault could not be saved. Please try again.",
+  "function handleSeedVaultEntriesSchemaMissing(error = null)",
+  "My Seed Vault table is missing from Supabase REST schema cache. Apply the latest seed_vault_entries migration.",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing Seed Vault persistence safeguard: ${needle}`);

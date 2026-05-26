@@ -5181,8 +5181,9 @@ function normalizeSeedVaultEntry(entry = {}) {
   const userId = String(entry.userId || entry.user_id || appState.user?.id || "").trim();
   const seedVariety = String(entry.seedVariety || entry.seed_variety || entry.seedName || entry.seed_name || "").trim();
   const seedType = normalizeSeedTypeId(entry.seedType || entry.seed_type || entry.type || "");
-  const seedSex = normalizeSeedSexValue(entry.seedSex || entry.seed_sex || entry.feminized || entry.sex || "");
-  const quantityValue = Number(entry.quantity);
+  const seedSex = normalizeSeedSexValue(entry.seedSex || entry.sex || entry.seed_sex || entry.feminized || "");
+  const quantityValue = Number(entry.seedCount ?? entry.seed_count ?? entry.quantity);
+  const remainingCountValue = Number(entry.remainingCount ?? entry.remaining_count);
   const yearAcquiredValue = Number(entry.yearAcquired ?? entry.year_acquired);
   const seedAgeYearsValue = Number(entry.seedAgeYears ?? entry.seed_age_years);
   const createdAt = String(entry.createdAt || entry.created_at || "").trim() || new Date().toISOString();
@@ -5198,7 +5199,11 @@ function normalizeSeedVaultEntry(entry = {}) {
     seedSex,
     feminized: seedSex,
     source: String(entry.source || "").trim(),
+    seedCount: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
     quantity: Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null,
+    remainingCount: Number.isFinite(remainingCountValue)
+      ? Math.max(0, Math.floor(remainingCountValue))
+      : (Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null),
     yearAcquired: Number.isFinite(yearAcquiredValue) ? Math.max(1900, Math.floor(yearAcquiredValue)) : null,
     seedAgeYears: normalizeSeedAgeYears(seedAgeYearsValue),
     storageLocation: String(entry.storageLocation || entry.storage_location || "").trim(),
@@ -5228,9 +5233,12 @@ function mapSeedVaultEntryToRow(entry = {}) {
     seed_name: normalizedEntry.seedName,
     seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName,
     seed_type: normalizedEntry.seedType || null,
+    sex: normalizedEntry.seedSex || null,
     seed_sex: normalizedEntry.seedSex || null,
     source: normalizedEntry.source || null,
+    seed_count: normalizedEntry.seedCount,
     quantity: normalizedEntry.quantity,
+    remaining_count: normalizedEntry.remainingCount,
     year_acquired: normalizedEntry.yearAcquired,
     seed_age_years: normalizedEntry.seedAgeYears,
     storage_location: normalizedEntry.storageLocation || null,
@@ -5324,6 +5332,21 @@ function isSeedVaultEntriesTableMissingError(error) {
   return isSupabaseTableMissingError(error, SEED_VAULT_ENTRIES_TABLE);
 }
 
+function getSeedVaultBackendUnavailableMessage() {
+  return "My Seed Vault account sync is temporarily unavailable. Please try again shortly.";
+}
+
+function handleSeedVaultEntriesSchemaMissing(error = null) {
+  appState.seedVaultTableUnavailable = false;
+  appState.seedVaultError = getSeedVaultBackendUnavailableMessage();
+  logRuntimeIssueOnce(
+    "warn",
+    "seed-vault-entries-schema-missing",
+    "My Seed Vault table is missing from Supabase REST schema cache. Apply the latest seed_vault_entries migration.",
+    error || undefined,
+  );
+}
+
 function markSeedVaultEntriesTableUnavailable(error = null) {
   appState.seedVaultTableUnavailable = true;
   logRuntimeIssueOnce(
@@ -5350,8 +5373,8 @@ async function loadSeedVaultEntriesFromBackend(userId = appState.user?.id || "")
 
   if (error) {
     if (isSeedVaultEntriesTableMissingError(error)) {
-      markSeedVaultEntriesTableUnavailable(error);
-      return { entries: loadStoredSeedVaultEntries(normalizedUserId), source: "local" };
+      handleSeedVaultEntriesSchemaMissing(error);
+      throw error;
     }
     throw error;
   }
@@ -5382,8 +5405,8 @@ async function syncSeedVaultEntriesToBackend(entries = [], userId = appState.use
 
   if (error) {
     if (isSeedVaultEntriesTableMissingError(error)) {
-      markSeedVaultEntriesTableUnavailable(error);
-      return [];
+      handleSeedVaultEntriesSchemaMissing(error);
+      throw error;
     }
     console.warn("[My Seed Vault] Backend sync skipped; local entries remain available.", error);
     return [];
@@ -5418,9 +5441,15 @@ async function ensureSeedVaultEntriesForUser(user = appState.user) {
     }
     return saveSeedVaultEntries(mergedEntries, userId);
   } catch (error) {
-    appState.seedVaultError = "";
+    const isMissingSeedVaultTable = isSeedVaultEntriesTableMissingError(error);
+    const fallbackEntries = saveSeedVaultEntries(localEntries, userId);
+    if (isMissingSeedVaultTable) {
+      handleSeedVaultEntriesSchemaMissing(error);
+    } else {
+      appState.seedVaultError = "";
+    }
     console.warn("[My Seed Vault] Failed to load account entries.", error);
-    return saveSeedVaultEntries(localEntries, userId);
+    return fallbackEntries;
   }
 }
 
@@ -5469,11 +5498,8 @@ async function persistSeedVaultEntry(entry = {}) {
 
   if (error) {
     if (isSeedVaultEntriesTableMissingError(error)) {
-      markSeedVaultEntriesTableUnavailable(error);
-      if (localSaveFailed) {
-        throw new Error(appState.seedVaultError || "My Seed Vault could not be saved. Please try again.");
-      }
-      return normalizedEntry;
+      handleSeedVaultEntriesSchemaMissing(error);
+      throw new Error(appState.seedVaultError || getSeedVaultBackendUnavailableMessage());
     }
     appState.seedVaultError = "";
     console.warn("[My Seed Vault] Backend save failed.", error);
@@ -59073,7 +59099,7 @@ async function deleteSeedVaultEntry(entryId = "") {
 
     if (error) {
       if (isSeedVaultEntriesTableMissingError(error)) {
-        markSeedVaultEntriesTableUnavailable(error);
+        handleSeedVaultEntriesSchemaMissing(error);
       } else {
         console.warn("[My Seed Vault] Backend delete failed.", error);
       }
