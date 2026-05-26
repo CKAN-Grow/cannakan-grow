@@ -1530,6 +1530,7 @@ const appState = {
   galleryCertificationFilter: "all",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   theme: "dark",
+  sessionHistoryExpanded: false,
   sessionHistorySort: "date",
   sessionHistoryFilter: "all",
   sessionHistoryVisibleCount: 6,
@@ -44286,6 +44287,9 @@ function flushPendingSessionDashboardScrollTarget() {
     return;
   }
 
+  if (targetId === "session-history") {
+    appState.sessionHistoryExpanded = true;
+  }
   if (scrollToSessionDashboardSection(targetId)) {
     appState.sessionDashboardScrollTarget = "";
   }
@@ -59917,6 +59921,13 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   const hasAnySessions = Boolean(options.hasAnySessions);
   const visibleCount = Math.max(6, Number(options.visibleCount) || 6);
   const focusSessionId = String(options.focusSessionId || "").trim();
+  const isExpanded = options.expanded === true;
+  const summaryCounts = options.summaryCounts && typeof options.summaryCounts === "object"
+    ? options.summaryCounts
+    : {};
+  const totalCount = Math.max(0, Number(summaryCounts.total || 0) || 0);
+  const activeCount = Math.max(0, Number(summaryCounts.active || 0) || 0);
+  const completedCount = Math.max(0, Number(summaryCounts.completed || 0) || 0);
   const visibleSessions = sessions.slice(0, visibleCount);
   const hasMoreSessions = sessions.length > visibleCount;
   const filterPills = [
@@ -59926,12 +59937,29 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   ];
 
   return `
-    <section id="session-history" class="sessions-glass-panel session-history-panel">
+    <section id="session-history" class="sessions-glass-panel session-history-panel${isExpanded ? " is-expanded" : " is-collapsed"}">
       <div class="sessions-panel-header sessions-panel-header--compact sessions-panel-header--history">
         <div class="sessions-panel-title">
           ${renderMySessionsInlineIconMarkup("history", "sessions-inline-icon")}
           <span>SESSION HISTORY</span>
         </div>
+        <div class="session-history-summary">
+          <span><strong>${escapeHtml(totalCount)}</strong> total</span>
+          <span><strong>${escapeHtml(activeCount)}</strong> active</span>
+          <span><strong>${escapeHtml(completedCount)}</strong> completed</span>
+        </div>
+        <button
+          type="button"
+          class="session-history-toggle-button"
+          data-session-history-toggle="true"
+          aria-expanded="${isExpanded ? "true" : "false"}"
+          aria-controls="session-history-body"
+        >
+          <span>${escapeHtml(isExpanded ? "Collapse" : "Expand")}</span>
+          ${renderMySessionsInlineIconMarkup("chevron", "session-history-toggle-icon")}
+        </button>
+      </div>
+      <div id="session-history-body" class="session-history-collapsible-body"${isExpanded ? "" : " hidden"}>
         <div class="session-history-toolbar">
           <div class="session-history-filter-pills" role="tablist" aria-label="Session history filters">
             ${filterPills.map((pill) => `
@@ -59953,105 +59981,105 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
             </select>
           </label>
         </div>
-      </div>
-      <div class="session-history-table-shell">
-        <div class="session-history-table">
-          <div class="session-history-table-head" aria-hidden="true">
-            <span>SESSION</span>
-            <span>DATE</span>
-            <span>VARIETY</span>
-            <span>STATUS</span>
-            <span>SEEDS</span>
-            <span>GERMINATION</span>
-            <span>ACTIONS</span>
-          </div>
-          <div class="session-history-table-body">
-            ${sessions.length ? visibleSessions.map((session) => {
-              const isDeleted = isSessionSoftDeleted(session);
-              const statusMeta = getMySessionsHistoryStatusMeta(session);
-              const totals = getSessionSeedTotals(session);
-              const sessionSequenceNumber = getSessionSequenceNumber(session);
-              const seedSummary = totals.totalSeeds > 0 ? `${totals.totalPlanted} / ${totals.totalSeeds}` : "--";
-              const germinationRateValue = !isDeleted && totals.totalSeeds > 0 ? getSessionSuccessRate(session) : null;
-              const germinationRate = germinationRateValue !== null ? `${germinationRateValue}%` : "--";
-              const germinationRateTone = (
-                !isDeleted
-                && germinationRateValue !== null
-                && germinationRateValue > 0
-                && ["first-germinated", "completed"].includes(statusMeta.tone)
-              )
-                ? " session-history-germination-rate--success"
-                : "";
-              const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
-              const dateContext = isDeleted
-                ? "Created"
-                : (getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started");
-              const actionMarkup = isDeleted
-                ? `<span class="session-history-open-button session-history-open-button--disabled" aria-disabled="true">Deleted</span>`
-                : `
-                    <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
-                    <button
-                      type="button"
-                      class="session-history-delete-button"
-                      data-session-delete="${escapeHtml(session.id)}"
-                      aria-label="Delete session"
-                      title="Delete session"
-                    >
-                      ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
-                    </button>
-                  `;
+        <div class="session-history-table-shell">
+          <div class="session-history-table">
+            <div class="session-history-table-head" aria-hidden="true">
+              <span>SESSION</span>
+              <span>DATE</span>
+              <span>VARIETY</span>
+              <span>STATUS</span>
+              <span>SEEDS</span>
+              <span>GERMINATION</span>
+              <span>ACTIONS</span>
+            </div>
+            <div class="session-history-table-body">
+              ${sessions.length ? visibleSessions.map((session) => {
+                const isDeleted = isSessionSoftDeleted(session);
+                const statusMeta = getMySessionsHistoryStatusMeta(session);
+                const totals = getSessionSeedTotals(session);
+                const sessionSequenceNumber = getSessionSequenceNumber(session);
+                const seedSummary = totals.totalSeeds > 0 ? `${totals.totalPlanted} / ${totals.totalSeeds}` : "--";
+                const germinationRateValue = !isDeleted && totals.totalSeeds > 0 ? getSessionSuccessRate(session) : null;
+                const germinationRate = germinationRateValue !== null ? `${germinationRateValue}%` : "--";
+                const germinationRateTone = (
+                  !isDeleted
+                  && germinationRateValue !== null
+                  && germinationRateValue > 0
+                  && ["first-germinated", "completed"].includes(statusMeta.tone)
+                )
+                  ? " session-history-germination-rate--success"
+                  : "";
+                const strainLabel = getSessionCommandCenterPrimaryStrain(session) || session.systemType || "Not set";
+                const dateContext = isDeleted
+                  ? "Created"
+                  : (getMySessionsHistoryCategory(session) === "completed" ? "Completed" : "Started");
+                const actionMarkup = isDeleted
+                  ? `<span class="session-history-open-button session-history-open-button--disabled" aria-disabled="true">Deleted</span>`
+                  : `
+                      <a class="button button-secondary session-history-open-button" href="#sessions/${escapeHtml(session.id)}">Open Session</a>
+                      <button
+                        type="button"
+                        class="session-history-delete-button"
+                        data-session-delete="${escapeHtml(session.id)}"
+                        aria-label="Delete session"
+                        title="Delete session"
+                      >
+                        ${renderMySessionsInlineIconMarkup("trash", "sessions-inline-icon sessions-inline-icon--trash")}
+                      </button>
+                    `;
 
-              return `
-                <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}${isDeleted ? " is-deleted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
-                  <div class="session-history-cell session-history-cell--session" data-label="Session">
-                    ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
-                    <div class="session-history-session-copy">
-                      <strong>${escapeHtml(formatSessionLabel(session))}</strong>
-                      <span class="session-history-session-sequence">${escapeHtml(sessionSequenceNumber ? `Session #${sessionSequenceNumber}` : "Session #--")}</span>
+                return `
+                  <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}${isDeleted ? " is-deleted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
+                    <div class="session-history-cell session-history-cell--session" data-label="Session">
+                      ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
+                      <div class="session-history-session-copy">
+                        <strong>${escapeHtml(formatSessionLabel(session))}</strong>
+                        <span class="session-history-session-sequence">${escapeHtml(sessionSequenceNumber ? `Session #${sessionSequenceNumber}` : "Session #--")}</span>
+                      </div>
+                    </div>
+                    <div class="session-history-cell" data-label="Date">
+                      <strong>${escapeHtml(formatSessionNameDate(session.date) || "Not available")}</strong>
+                      <span>${escapeHtml(dateContext)}</span>
+                    </div>
+                    <div class="session-history-cell" data-label="Variety">
+                      <strong>${escapeHtml(strainLabel)}</strong>
+                    </div>
+                    <div class="session-history-cell" data-label="Status">
+                      <strong class="session-history-status session-history-status--${escapeHtml(statusMeta.tone)}">
+                        <span class="session-history-status-dot" aria-hidden="true"></span>
+                        ${escapeHtml(statusMeta.label)}
+                      </strong>
+                      <span class="session-history-status-detail session-history-status-detail--${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.detail)}</span>
+                    </div>
+                    <div class="session-history-cell" data-label="Seeds">
+                      <strong>${escapeHtml(seedSummary)}</strong>
+                    </div>
+                    <div class="session-history-cell" data-label="Germination">
+                      <strong class="session-history-germination-rate${germinationRateTone}${isDeleted ? " session-history-germination-rate--deleted" : ""}">${escapeHtml(germinationRate)}</strong>
+                    </div>
+                    <div class="session-history-cell session-history-cell--actions" data-label="Actions">
+                      ${actionMarkup}
                     </div>
                   </div>
-                  <div class="session-history-cell" data-label="Date">
-                    <strong>${escapeHtml(formatSessionNameDate(session.date) || "Not available")}</strong>
-                    <span>${escapeHtml(dateContext)}</span>
-                  </div>
-                  <div class="session-history-cell" data-label="Variety">
-                    <strong>${escapeHtml(strainLabel)}</strong>
-                  </div>
-                  <div class="session-history-cell" data-label="Status">
-                    <strong class="session-history-status session-history-status--${escapeHtml(statusMeta.tone)}">
-                      <span class="session-history-status-dot" aria-hidden="true"></span>
-                      ${escapeHtml(statusMeta.label)}
-                    </strong>
-                    <span class="session-history-status-detail session-history-status-detail--${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.detail)}</span>
-                  </div>
-                  <div class="session-history-cell" data-label="Seeds">
-                    <strong>${escapeHtml(seedSummary)}</strong>
-                  </div>
-                  <div class="session-history-cell" data-label="Germination">
-                    <strong class="session-history-germination-rate${germinationRateTone}${isDeleted ? " session-history-germination-rate--deleted" : ""}">${escapeHtml(germinationRate)}</strong>
-                  </div>
-                  <div class="session-history-cell session-history-cell--actions" data-label="Actions">
-                    ${actionMarkup}
-                  </div>
+                `;
+              }).join("") : `
+                <div class="sessions-panel-empty sessions-panel-empty--history">
+                  <p>${escapeHtml(hasAnySessions ? "No sessions match this filter yet." : "No grow sessions yet.")}</p>
+                  <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasAnySessions ? "Start New Session" : "Create Your First Session")}</a>
+                  ${renderLearnEmptyStateCtaMarkup(hasAnySessions ? "understanding-the-timeline" : "creating-your-first-session", hasAnySessions ? "Understanding the Timeline" : "Creating Your First Session")}
                 </div>
-              `;
-            }).join("") : `
-              <div class="sessions-panel-empty sessions-panel-empty--history">
-                <p>${escapeHtml(hasAnySessions ? "No sessions match this filter yet." : "No grow sessions yet.")}</p>
-                <a class="button button-primary" href="#new" data-session-entry="true">${escapeHtml(hasAnySessions ? "Start New Session" : "Create Your First Session")}</a>
-                ${renderLearnEmptyStateCtaMarkup(hasAnySessions ? "understanding-the-timeline" : "creating-your-first-session", hasAnySessions ? "Understanding the Timeline" : "Creating Your First Session")}
-              </div>
-            `}
+              `}
+            </div>
           </div>
         </div>
+        ${hasMoreSessions ? `
+          <div class="session-history-pagination">
+            <button type="button" class="button button-secondary session-history-see-more-button" data-session-history-see-more="true">
+              <span>See More <span aria-hidden="true">&darr;</span></span>
+            </button>
+          </div>
+        ` : ""}
       </div>
-      ${hasMoreSessions ? `
-        <div class="session-history-pagination">
-          <button type="button" class="button button-secondary session-history-see-more-button" data-session-history-see-more="true">
-            <span>See More <span aria-hidden="true">&darr;</span></span>
-          </button>
-        </div>
-      ` : ""}
     </section>
   `;
 }
@@ -63040,6 +63068,9 @@ function renderSessionsList() {
   const visibleSessions = getVisibleUserSessions(sessions);
   const historySessions = visibleSessions;
   const hasSessionHistory = historySessions.length > 0;
+  if (String(appState.sessionDashboardScrollTarget || "").trim() === "session-history") {
+    appState.sessionHistoryExpanded = true;
+  }
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const seedVaultSection = document.querySelector("#seed-vault-section");
   const seedVaultShortcutSection = document.querySelector("#seed-vault-shortcut-section");
@@ -63095,6 +63126,16 @@ function renderSessionsList() {
     }
 
     const historySource = visibleSessions;
+    const summaryCounts = historySource.reduce((counts, session) => {
+      counts.total += 1;
+      const lifecycleState = normalizeGrowSessionLifecycleState(session);
+      if (lifecycleState === "active") {
+        counts.active += 1;
+      } else if (lifecycleState === "completed") {
+        counts.completed += 1;
+      }
+      return counts;
+    }, { total: 0, active: 0, completed: 0 });
     const filteredSessions = filterMySessionsHistorySessions(historySource, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
@@ -63103,10 +63144,12 @@ function renderSessionsList() {
       visibleCount: appState.sessionHistoryVisibleCount || 6,
       hasAnySessions: historySessions.length > 0,
       focusSessionId: appState.sessionHistoryFocusSessionId || "",
+      expanded: appState.sessionHistoryExpanded === true,
+      summaryCounts,
     });
     applySupplyStatusToSessionEntryButtons(historySection);
     const focusSessionId = String(appState.sessionHistoryFocusSessionId || "").trim();
-    if (focusSessionId) {
+    if (focusSessionId && appState.sessionHistoryExpanded === true) {
       const highlightedRow = historySection.querySelector(`[data-session-history-row="${CSS.escape(focusSessionId)}"]`);
       if (highlightedRow instanceof Element) {
         scrollElementIntoViewAfterLayout(highlightedRow, {
@@ -63143,6 +63186,7 @@ function renderSessionsList() {
 
       event.preventDefault();
       appState.sessionHistoryFilter = String(filterLink.getAttribute("data-history-filter-link") || "completed");
+      appState.sessionHistoryExpanded = true;
       renderHistorySessions();
       if (historySection) {
         scrollElementIntoViewAfterLayout(historySection, { delayMs: 80, block: "start" });
@@ -63262,9 +63306,18 @@ function renderSessionsList() {
         return;
       }
 
+      const toggleButton = target.closest("[data-session-history-toggle='true']");
+      if (toggleButton) {
+        event.preventDefault();
+        appState.sessionHistoryExpanded = appState.sessionHistoryExpanded !== true;
+        renderHistorySessions();
+        return;
+      }
+
       const filterButton = target.closest("[data-session-history-filter]");
       if (filterButton) {
         event.preventDefault();
+        appState.sessionHistoryExpanded = true;
         appState.sessionHistoryFilter = String(filterButton.getAttribute("data-session-history-filter") || "all");
         appState.sessionHistoryVisibleCount = 6;
         renderHistorySessions();
@@ -63274,6 +63327,7 @@ function renderSessionsList() {
       const seeMoreButton = target.closest("[data-session-history-see-more]");
       if (seeMoreButton) {
         event.preventDefault();
+        appState.sessionHistoryExpanded = true;
         appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6) + 6;
         renderHistorySessions();
         return;
@@ -63304,6 +63358,7 @@ function renderSessionsList() {
         }
         appState.sessionHistoryFocusSessionId = sessionId;
         appState.sessionHistoryFilter = "all";
+        appState.sessionHistoryExpanded = true;
         renderSessionsList();
       } catch (error) {
         window.alert(error.message || "Could not delete session.");
@@ -63318,6 +63373,7 @@ function renderSessionsList() {
 
       appState.sessionHistorySort = target.value || "date";
       appState.sessionHistoryVisibleCount = 6;
+      appState.sessionHistoryExpanded = true;
       renderHistorySessions();
     });
   }
@@ -65624,6 +65680,7 @@ function renderSessionDetail(sessionId) {
       }
       appState.sessionHistoryFocusSessionId = sessionId;
       appState.sessionHistoryFilter = "all";
+      appState.sessionHistoryExpanded = true;
       navigateWithUnsavedChangesBypass("#sessions");
     } catch (error) {
       window.alert(error.message || "Could not delete session.");
@@ -65730,6 +65787,7 @@ function renderSessionCollection(container, sessions, options) {
         }
         appState.sessionHistoryFocusSessionId = session.id;
         appState.sessionHistoryFilter = "all";
+        appState.sessionHistoryExpanded = true;
         renderSessionsList();
       } catch (error) {
         window.alert(error.message || "Could not delete session.");
@@ -66380,6 +66438,7 @@ function openSessionHistoryForSession(sessionId = "") {
   appState.sessionHistoryFocusSessionId = normalizedSessionId;
   appState.sessionHistoryFilter = "all";
   appState.sessionHistorySort = "date";
+  appState.sessionHistoryExpanded = true;
   appState.sessionHistoryVisibleCount = Math.max(
     6,
     Number(appState.sessionHistoryVisibleCount) || 6,
