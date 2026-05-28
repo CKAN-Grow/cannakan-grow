@@ -180,7 +180,7 @@ const APP_NOTIFICATION_SNOOZE_OPTIONS = Object.freeze([
   { key: "tonight", label: "Tonight", confirmationLabel: "tonight" },
   { key: "tomorrow-morning", label: "Tomorrow morning", confirmationLabel: "tomorrow morning" },
 ]);
-const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "tonight", "tomorrow-morning"]);
+const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "2h", "tonight", "tomorrow-morning"]);
 
 function getAnnouncementSlideManifestPaths() {
   const candidatePaths = Array.isArray(globalThis.CANNAKAN_ANNOUNCEMENT_SLIDES)
@@ -11322,6 +11322,74 @@ function clearDismissedAppNotificationEvent(eventKey = "", userId = appState.use
   saveDismissedAppNotificationEvents(dismissedEvents, normalizedUserId);
 }
 
+function getNotificationSessionReference(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+  return getSessions().find((session) => String(session?.id || "").trim() === normalizedSessionId) || null;
+}
+
+function shouldSuppressManagedAppNotification(notification = {}) {
+  const eventKey = String(notification?.eventKey || "").trim();
+  const sessionId = String(notification?.sessionId || notification?.session_id || "").trim();
+  if (!eventKey || !isManagedDueGrowReminderEventKey(eventKey)) {
+    return false;
+  }
+
+  if (!sessionId) {
+    return false;
+  }
+
+  const session = getNotificationSessionReference(sessionId);
+  if (!session || isSessionSoftDeleted(session)) {
+    return true;
+  }
+
+  if (eventKey.startsWith(`stage-progress:${sessionId}:`) || eventKey === `session:${sessionId}:perfect-germination`) {
+    return !isGrowSessionLifecycleRemindable(session)
+      || normalizeSessionStatus(session?.sessionStatus || "") === "completed";
+  }
+
+  if (eventKey === "onboarding:first-snapshot-reminder") {
+    return !isMeaningfulGrowNetworkUnlockSession(session)
+      || hasCreatedMeaningfulSnapshotState(session?.snapshotState);
+  }
+
+  return false;
+}
+
+function isStageProgressReminderSuppressed(session = null, reminder = null, eventKey = "") {
+  const normalizedEventKey = String(eventKey || "").trim();
+  if (!session?.id || !normalizedEventKey || !reminder) {
+    return true;
+  }
+  if (!isGrowSessionLifecycleRemindable(session)) {
+    return true;
+  }
+  if (isAppNotificationEventSnoozed(normalizedEventKey) || isAppNotificationEventDismissed(normalizedEventKey)) {
+    return true;
+  }
+  return false;
+}
+
+function dedupeGrowReminderNotifications(notifications = []) {
+  const byEventKey = new Map();
+  (Array.isArray(notifications) ? notifications : []).forEach((notification) => {
+    const normalizedNotification = normalizeAppNotificationRecord(notification, byEventKey.size);
+    if (shouldSuppressManagedAppNotification(normalizedNotification)) {
+      return;
+    }
+    const eventKey = String(normalizedNotification?.eventKey || "").trim();
+    const dedupeKey = eventKey || String(normalizedNotification?.id || "").trim();
+    if (!dedupeKey || byEventKey.has(dedupeKey)) {
+      return;
+    }
+    byEventKey.set(dedupeKey, normalizedNotification);
+  });
+  return [...byEventKey.values()];
+}
+
 const APP_NOTIFICATION_ACTION_KINDS = [
   "open-snooze",
   "open-session",
@@ -11568,6 +11636,9 @@ function addAppNotification(notification = {}, options = {}) {
   } = options || {};
   const existingNotifications = getAppNotifications(normalizedUserId);
   const normalizedNotification = normalizeAppNotificationRecord(notification, existingNotifications.length);
+  if (shouldSuppressManagedAppNotification(normalizedNotification)) {
+    return null;
+  }
   if (normalizedNotification.eventKey && isAppNotificationEventSnoozed(normalizedNotification.eventKey, normalizedUserId)) {
     return null;
   }
@@ -12035,7 +12106,7 @@ function collectDueGrowReminderNotifications(sessions = getSessions()) {
     dueNotifications.push(supplyReminder);
   }
 
-  return dueNotifications;
+  return dedupeGrowReminderNotifications(dueNotifications);
 }
 
 function isManagedDueGrowReminderEventKey(eventKey = "") {
@@ -12340,6 +12411,9 @@ function buildStageProgressReminderEntries(session = null) {
     String(latestDueReminder?.key || `${normalizedStatus}-${Math.max(0, Number(latestDueReminder?.hours) || 0)}h`).trim(),
     normalizedStatus,
   );
+  if (isStageProgressReminderSuppressed(session, latestDueReminder, reminderEventKey)) {
+    return [];
+  }
   const defaultActions = normalizedStatus === "soaking"
     ? [
       {
@@ -13298,6 +13372,7 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
   const {
     payload = buildPushNotificationPayloadFromAppNotification(notification),
     excludeDeviceKeys = [],
+    excludeEndpoints = [],
     test = false,
   } = options || {};
 
@@ -13327,6 +13402,7 @@ async function sendBackendPushNotificationMirror(notification = {}, options = {}
         body: String(notification?.message || payload?.body || "").trim(),
         payload,
         excludeDeviceKeys: Array.isArray(excludeDeviceKeys) ? excludeDeviceKeys : [],
+        excludeEndpoints: Array.isArray(excludeEndpoints) ? excludeEndpoints : [],
         test: test === true,
       }),
     });
@@ -13604,13 +13680,15 @@ async function maybeDeliverPushNotificationForAppNotification(notification = {},
     body,
   });
   const pageIsActive = document.visibilityState === "visible" && document.hasFocus?.();
+  const pushEventAlreadyDelivered = Boolean(eventKey && hasDeliveredPushNotificationEvent(eventKey));
   let deliveredLocally = false;
   const excludeDeviceKeys = [];
+  const excludeEndpoints = [];
 
   if (
     (force || !pageIsActive)
     && canUseBrowserNotificationDelivery()
-    && (force || !hasDeliveredPushNotificationEvent(eventKey))
+    && (force || !pushEventAlreadyDelivered)
   ) {
     try {
       await sendServiceWorkerNotificationPayload(payload);
@@ -13620,6 +13698,7 @@ async function maybeDeliverPushNotificationForAppNotification(notification = {},
       deliveredLocally = true;
       if (appState.currentPushSubscriptionRecord) {
         excludeDeviceKeys.push(appState.currentPushSubscriptionRecord.deviceKey);
+        excludeEndpoints.push(appState.currentPushSubscriptionRecord.endpoint);
         await saveUserPushSubscriptionRecord(appState.currentPushSubscriptionRecord.subscription || null, {
           userId: appState.user?.id || "",
           endpoint: appState.currentPushSubscriptionRecord.endpoint,
@@ -13637,12 +13716,21 @@ async function maybeDeliverPushNotificationForAppNotification(notification = {},
     }
   } else if (pageIsActive && appState.currentPushSubscriptionRecord?.deviceKey) {
     excludeDeviceKeys.push(appState.currentPushSubscriptionRecord.deviceKey);
+    excludeEndpoints.push(appState.currentPushSubscriptionRecord.endpoint);
+  }
+
+  if (!force && pushEventAlreadyDelivered) {
+    return deliveredLocally;
   }
 
   const mirroredToBackend = await sendBackendPushNotificationMirror(notification, {
     payload,
     excludeDeviceKeys,
+    excludeEndpoints,
   });
+  if (mirroredToBackend && eventKey) {
+    markPushNotificationEventDelivered(eventKey);
+  }
   return deliveredLocally || mirroredToBackend;
 }
 
@@ -24531,6 +24619,14 @@ function navigateToNotificationSessionTarget(sessionId = "", options = {}) {
   if (!normalizedSessionId) {
     return;
   }
+  const session = getNotificationSessionReference(normalizedSessionId);
+  if (!session || isSessionSoftDeleted(session)) {
+    showNavigationLockToast({
+      title: "Session unavailable",
+      message: "This reminder points to a session that is no longer available.",
+    });
+    return;
+  }
   const {
     focusTarget = "",
   } = options || {};
@@ -24847,6 +24943,16 @@ async function handleAppNotificationAction(notification = null, action = null) {
   }
 
   if ((normalizedKind === "route" || normalizedKind === "open-session") && targetRoute) {
+    if (targetSessionId) {
+      const session = getNotificationSessionReference(targetSessionId);
+      if (!session || isSessionSoftDeleted(session)) {
+        showNavigationLockToast({
+          title: "Session unavailable",
+          message: "This notification points to a session that is no longer available.",
+        });
+        return;
+      }
+    }
     if (hasPendingUnsavedChanges()) {
       promptForUnsavedChangesNavigation(targetRoute);
       return;

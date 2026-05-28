@@ -1,3 +1,4 @@
+const GROW_SESSIONS_TABLE = "grow_sessions";
 const REMINDER_EVENTS_TABLE = "grow_session_reminder_events";
 
 function getEnv(name, fallback = "") {
@@ -89,6 +90,8 @@ function resolveSnoozeUntil(optionKey = "") {
       return new Date(now.getTime() + 30 * 60 * 1000);
     case "1h":
       return new Date(now.getTime() + 60 * 60 * 1000);
+    case "2h":
+      return new Date(now.getTime() + 2 * 60 * 60 * 1000);
     case "tonight": {
       const tonight = new Date(now);
       tonight.setHours(20, 0, 0, 0);
@@ -118,6 +121,35 @@ function normalizeAction(action = "") {
     "mark-completed",
     "open-session",
   ].includes(normalized) ? normalized : "";
+}
+
+function normalizeSessionStatus(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (["soaking", "germinating", "completed"].includes(normalized)) {
+    return normalized;
+  }
+  return "";
+}
+
+function isSessionActionInvalid(row = {}) {
+  const visibilityStatus = String(row?.visibility_status || "").trim().toLowerCase();
+  const sessionStatus = normalizeSessionStatus(row?.session_status || "");
+  return Boolean(
+    row?.is_deleted === true
+    || row?.user_deleted === true
+    || ["deleted", "archived", "archived_test", "hidden"].includes(visibilityStatus)
+    || ["deleted", "archived", "archived_test"].includes(String(row?.session_status || "").trim().toLowerCase())
+    || sessionStatus === "completed"
+    || !sessionStatus
+  );
+}
+
+async function loadOwnedSessionForReminderAction(userId, sessionId, config) {
+  const rows = await supabaseRest(
+    `${GROW_SESSIONS_TABLE}?user_id=eq.${encodeURIComponent(userId)}&id=eq.${encodeURIComponent(sessionId)}&select=id,user_id,session_status,is_deleted,user_deleted,visibility_status&limit=1`,
+    config,
+  );
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
 
 module.exports = async function handler(request, response) {
@@ -171,6 +203,11 @@ module.exports = async function handler(request, response) {
     const existingRecord = Array.isArray(rows) && rows.length ? rows[0] : null;
     if (!existingRecord) {
       return json(response, 200, { ok: true, skipped: true, reason: "Reminder event was not found." });
+    }
+
+    const session = await loadOwnedSessionForReminderAction(userId, sessionId, config);
+    if (!session || isSessionActionInvalid(session)) {
+      return json(response, 200, { ok: true, skipped: true, reason: "Reminder session is no longer available." });
     }
 
     const actionAt = new Date().toISOString();

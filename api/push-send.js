@@ -10,6 +10,8 @@ const ELIGIBLE_PUSH_CATEGORIES = new Set([
   "supply-reminder",
   "system-notice",
 ]);
+const STALE_PUSH_SUBSCRIPTION_STATUSES = new Set(["failed", "invalid", "rejected", "expired", "stale", "removed"]);
+const PUSH_DELIVERY_SUCCESS_STATUSES = new Set(["sent", "delivered", "test-sent"]);
 
 function getEnv(name, fallback = "") {
   return String(process.env[name] || fallback).trim();
@@ -352,10 +354,43 @@ function normalizePushSubscriptionRecord(record = {}) {
     deviceKey: String(record?.device_key || "").trim(),
     endpoint,
     permissionState: String(record?.permission_state || "default").trim().toLowerCase() || "default",
+    status: String(record?.status || record?.delivery_status || "").trim().toLowerCase(),
     pushEnabled: record?.push_enabled === true,
     disabledAt: record?.disabled_at ? String(record.disabled_at).trim() : "",
+    removedAt: record?.removed_at ? String(record.removed_at).trim() : "",
     subscription,
   };
+}
+
+function isDeliverablePushSubscriptionRecord(record = {}) {
+  return Boolean(
+    record
+    && record.endpoint
+    && record.subscription?.keys?.p256dh
+    && record.subscription?.keys?.auth
+    && record.permissionState === "granted"
+    && record.pushEnabled === true
+    && !record.disabledAt
+    && !record.removedAt
+    && !STALE_PUSH_SUBSCRIPTION_STATUSES.has(String(record.status || "").trim().toLowerCase())
+  );
+}
+
+function dedupePushSubscriptionsForDelivery(records = []) {
+  const byEndpoint = new Map();
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    if (!isDeliverablePushSubscriptionRecord(record)) {
+      return;
+    }
+    const endpointKey = String(record.endpoint || "").trim();
+    const fallbackKey = String(record.deviceKey || "").trim();
+    const dedupeKey = endpointKey || fallbackKey;
+    if (!dedupeKey || byEndpoint.has(dedupeKey)) {
+      return;
+    }
+    byEndpoint.set(dedupeKey, record);
+  });
+  return [...byEndpoint.values()];
 }
 
 async function supabaseAuthGetUser(token, config) {
@@ -428,22 +463,24 @@ async function loadUserNotificationPreferences(userId, config) {
   return normalized;
 }
 
-async function loadActivePushSubscriptions(userId, excludeDeviceKeys = [], config, targetDeviceKeys = []) {
+async function loadActivePushSubscriptions(userId, excludeDeviceKeys = [], config, targetDeviceKeys = [], excludeEndpoints = []) {
   const rows = await supabaseRest(
     `${PUSH_SUBSCRIPTIONS_TABLE}?user_id=eq.${encodeURIComponent(userId)}&push_enabled=is.true&permission_state=eq.granted&disabled_at=is.null&select=*`,
     config,
   );
   const excluded = new Set((Array.isArray(excludeDeviceKeys) ? excludeDeviceKeys : []).map((entry) => String(entry || "").trim()).filter(Boolean));
+  const excludedEndpoints = new Set((Array.isArray(excludeEndpoints) ? excludeEndpoints : []).map((entry) => String(entry || "").trim()).filter(Boolean));
   const targeted = new Set((Array.isArray(targetDeviceKeys) ? targetDeviceKeys : []).map((entry) => String(entry || "").trim()).filter(Boolean));
-  return (Array.isArray(rows) ? rows : [])
+  return dedupePushSubscriptionsForDelivery((Array.isArray(rows) ? rows : [])
     .map((row) => normalizePushSubscriptionRecord(row))
     .filter((record) => record && !excluded.has(record.deviceKey))
-    .filter((record) => !targeted.size || targeted.has(record.deviceKey));
+    .filter((record) => record && !excludedEndpoints.has(record.endpoint))
+    .filter((record) => !targeted.size || targeted.has(record.deviceKey)));
 }
 
 async function loadExistingPushDeliveries(userId, eventKey, config) {
   const rows = await supabaseRest(
-    `${PUSH_DELIVERIES_TABLE}?user_id=eq.${encodeURIComponent(userId)}&event_key=eq.${encodeURIComponent(eventKey)}&select=device_key,status`,
+    `${PUSH_DELIVERIES_TABLE}?user_id=eq.${encodeURIComponent(userId)}&event_key=eq.${encodeURIComponent(eventKey)}&select=device_key,status,endpoint`,
     config,
   );
   return Array.isArray(rows) ? rows : [];
@@ -615,6 +652,7 @@ module.exports = async function handler(request, response) {
     const category = String(payload.category || "").trim();
     const sessionId = String(payload.sessionId || payload?.notification?.sessionId || "").trim();
     const excludeDeviceKeys = Array.isArray(payload.excludeDeviceKeys) ? payload.excludeDeviceKeys : [];
+    const excludeEndpoints = Array.isArray(payload.excludeEndpoints) ? payload.excludeEndpoints : [];
     const targetDeviceKeys = Array.isArray(payload.targetDeviceKeys) ? payload.targetDeviceKeys : [];
     const isTest = payload.test === true;
     const notificationPayload = normalizePushPayload(payload.payload || {}, {
@@ -658,7 +696,7 @@ module.exports = async function handler(request, response) {
 
     let subscriptions = [];
     try {
-      subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config, targetDeviceKeys);
+      subscriptions = await loadActivePushSubscriptions(userId, excludeDeviceKeys, config, targetDeviceKeys, excludeEndpoints);
     } catch (error) {
       console.warn("[push-send] Active push subscriptions unavailable; push send skipped.", {
         statusCode: getErrorStatusCode(error),
@@ -691,8 +729,14 @@ module.exports = async function handler(request, response) {
     }
     const alreadyDeliveredDeviceKeys = new Set(
       existingDeliveries
-        .filter((entry) => ["sent", "delivered", "test-sent"].includes(String(entry?.status || "").trim()))
+        .filter((entry) => PUSH_DELIVERY_SUCCESS_STATUSES.has(String(entry?.status || "").trim().toLowerCase()))
         .map((entry) => String(entry?.device_key || "").trim())
+        .filter(Boolean),
+    );
+    const alreadyDeliveredEndpoints = new Set(
+      existingDeliveries
+        .filter((entry) => PUSH_DELIVERY_SUCCESS_STATUSES.has(String(entry?.status || "").trim().toLowerCase()))
+        .map((entry) => String(entry?.endpoint || "").trim())
         .filter(Boolean),
     );
 
@@ -702,7 +746,7 @@ module.exports = async function handler(request, response) {
     const failedDeviceKeys = [];
 
     for (const record of subscriptions) {
-      if (!record || alreadyDeliveredDeviceKeys.has(record.deviceKey)) {
+      if (!record || alreadyDeliveredDeviceKeys.has(record.deviceKey) || alreadyDeliveredEndpoints.has(record.endpoint)) {
         if (record?.deviceKey) {
           skippedDeviceKeys.push(record.deviceKey);
         }

@@ -7,7 +7,9 @@ const PUSH_DELIVERIES_TABLE = "push_notification_deliveries";
 const REMINDER_EVENTS_TABLE = "grow_session_reminder_events";
 const PAGE_SIZE = 500;
 const MAX_SEND_ATTEMPTS = 3;
-const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "tonight", "tomorrow-morning"]);
+const PUSH_NOTIFICATION_SNOOZE_ACTION_OPTIONS = Object.freeze(["30m", "1h", "2h", "tonight", "tomorrow-morning"]);
+const STALE_PUSH_SUBSCRIPTION_STATUSES = new Set(["failed", "invalid", "rejected", "expired", "stale", "removed"]);
+const PUSH_DELIVERY_SUCCESS_STATUSES = new Set(["sent", "delivered", "test-sent"]);
 const SESSION_LIFECYCLE_STALE_THRESHOLDS = Object.freeze({
   soakingAttentionHours: 24,
   soakingStaleHours: 72,
@@ -464,13 +466,10 @@ function buildAbsoluteUrl(appOrigin = "", route = "#home") {
 function buildStageProgressReminderEventKey(sessionId = "", reminderKey = "", attemptCount = 1) {
   const normalizedSessionId = String(sessionId || "").trim();
   const normalizedReminderKey = String(reminderKey || "").trim();
-  const normalizedAttemptCount = Math.max(1, Number(attemptCount) || 1);
   if (!normalizedSessionId || !normalizedReminderKey) {
     return "";
   }
-  return normalizedAttemptCount > 1
-    ? `stage-progress:${normalizedSessionId}:${normalizedReminderKey}:attempt-${normalizedAttemptCount}`
-    : `stage-progress:${normalizedSessionId}:${normalizedReminderKey}`;
+  return `stage-progress:${normalizedSessionId}:${normalizedReminderKey}`;
 }
 
 function buildReminderRoute(session = {}) {
@@ -627,10 +626,44 @@ function normalizePushSubscriptionRecord(record = {}) {
     userId: String(record?.user_id || "").trim(),
     deviceKey: String(record?.device_key || "").trim(),
     endpoint,
+    permissionState: String(record?.permission_state || "default").trim().toLowerCase() || "default",
+    status: String(record?.status || record?.delivery_status || "").trim().toLowerCase(),
     pushEnabled: record?.push_enabled === true,
     disabledAt: record?.disabled_at ? String(record.disabled_at).trim() : "",
+    removedAt: record?.removed_at ? String(record.removed_at).trim() : "",
     subscription,
   };
+}
+
+function isDeliverablePushSubscriptionRecord(record = {}) {
+  return Boolean(
+    record
+    && record.endpoint
+    && record.subscription?.keys?.p256dh
+    && record.subscription?.keys?.auth
+    && record.pushEnabled === true
+    && record.permissionState === "granted"
+    && !record.disabledAt
+    && !record.removedAt
+    && !STALE_PUSH_SUBSCRIPTION_STATUSES.has(String(record.status || "").trim().toLowerCase())
+  );
+}
+
+function dedupePushSubscriptionsForDelivery(records = []) {
+  const byEndpoint = new Map();
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    if (!isDeliverablePushSubscriptionRecord(record)) {
+      return;
+    }
+    const endpointKey = String(record.endpoint || "").trim();
+    const fallbackKey = String(record.deviceKey || "").trim();
+    const dedupeKey = endpointKey || fallbackKey;
+    if (!dedupeKey || byEndpoint.has(dedupeKey)) {
+      return;
+    }
+    byEndpoint.set(dedupeKey, record);
+  });
+  return [...byEndpoint.values()];
 }
 
 async function supabaseRest(path, config, options = {}) {
@@ -762,9 +795,9 @@ async function loadActivePushSubscriptions(userId, config) {
     `${USER_PUSH_SUBSCRIPTIONS_TABLE}?user_id=eq.${encodeURIComponent(userId)}&push_enabled=is.true&permission_state=eq.granted&disabled_at=is.null&select=*`,
     config,
   );
-  return (Array.isArray(rows) ? rows : [])
+  return dedupePushSubscriptionsForDelivery((Array.isArray(rows) ? rows : [])
     .map((row) => normalizePushSubscriptionRecord(row))
-    .filter(Boolean);
+    .filter(Boolean));
 }
 
 async function upsertPushDeliveryRecord(record, config) {
@@ -777,6 +810,19 @@ async function upsertPushDeliveryRecord(record, config) {
       body: record,
     },
   );
+}
+
+async function loadExistingPushDeliveries(userId, eventKey, config) {
+  const normalizedUserId = String(userId || "").trim();
+  const normalizedEventKey = String(eventKey || "").trim();
+  if (!normalizedUserId || !normalizedEventKey) {
+    return [];
+  }
+  const rows = await supabaseRest(
+    `${PUSH_DELIVERIES_TABLE}?user_id=eq.${encodeURIComponent(normalizedUserId)}&event_key=eq.${encodeURIComponent(normalizedEventKey)}&select=device_key,status,endpoint`,
+    config,
+  );
+  return Array.isArray(rows) ? rows : [];
 }
 
 async function deletePushSubscriptionRecord(record, config) {
@@ -1006,14 +1052,42 @@ async function deliverReminder(rule, session, existingRecord, config, preference
   const attemptCount = existingAttemptCount + 1;
   const appOrigin = config.appOrigin || getEnv("CANNAKAN_APP_ORIGIN");
   const { eventKey, payload } = buildReminderNotificationPayload(rule, session, appOrigin, attemptCount);
+  let existingDeliveries = [];
+  try {
+    existingDeliveries = await loadExistingPushDeliveries(session.userId, eventKey, config);
+  } catch (error) {
+    console.warn("[Grow Reminders] Push delivery history unavailable; continuing with reminder event guard only.", {
+      sessionId: session.id,
+      eventKey,
+      message: String(error?.message || error || "").trim(),
+    });
+  }
+  const alreadyDeliveredDeviceKeys = new Set(
+    existingDeliveries
+      .filter((entry) => PUSH_DELIVERY_SUCCESS_STATUSES.has(String(entry?.status || "").trim().toLowerCase()))
+      .map((entry) => String(entry?.device_key || "").trim())
+      .filter(Boolean),
+  );
+  const alreadyDeliveredEndpoints = new Set(
+    existingDeliveries
+      .filter((entry) => PUSH_DELIVERY_SUCCESS_STATUSES.has(String(entry?.status || "").trim().toLowerCase()))
+      .map((entry) => String(entry?.endpoint || "").trim())
+      .filter(Boolean),
+  );
   const sentAtIso = new Date().toISOString();
   const sentDeviceKeys = [];
+  const skippedDuplicateDeviceKeys = [];
   const invalidatedDeviceKeys = [];
   const failedDeviceKeys = [];
 
   webpush.setVapidDetails(config.vapidSubject, config.vapidPublicKey, config.vapidPrivateKey);
 
   for (const subscriptionRecord of subscriptions) {
+    if (alreadyDeliveredDeviceKeys.has(subscriptionRecord.deviceKey) || alreadyDeliveredEndpoints.has(subscriptionRecord.endpoint)) {
+      skippedDuplicateDeviceKeys.push(subscriptionRecord.deviceKey);
+      continue;
+    }
+
     try {
       await webpush.sendNotification(subscriptionRecord.subscription, JSON.stringify(payload), {
         TTL: 60 * 60,
@@ -1083,6 +1157,7 @@ async function deliverReminder(rule, session, existingRecord, config, preference
       notificationPayload: payload,
       metadata: {
         sentDeviceKeys,
+        skippedDuplicateDeviceKeys,
         invalidatedDeviceKeys,
         failedDeviceKeys,
         supportsPostpone: rule.supportsPostpone === true,
@@ -1100,6 +1175,24 @@ async function deliverReminder(rule, session, existingRecord, config, preference
       notificationPayload: payload,
       metadata: {
         sentDeviceKeys,
+        skippedDuplicateDeviceKeys,
+        invalidatedDeviceKeys,
+        failedDeviceKeys,
+      },
+    };
+  }
+
+  if (skippedDuplicateDeviceKeys.length && !invalidatedDeviceKeys.length && !failedDeviceKeys.length) {
+    return {
+      status: "skipped",
+      skipReason: "duplicate-device-delivery",
+      eventKey,
+      attemptCount,
+      notificationPayload: payload,
+      duplicatesPrevented: skippedDuplicateDeviceKeys.length,
+      metadata: {
+        sentDeviceKeys,
+        skippedDuplicateDeviceKeys,
         invalidatedDeviceKeys,
         failedDeviceKeys,
       },
@@ -1114,6 +1207,7 @@ async function deliverReminder(rule, session, existingRecord, config, preference
     notificationPayload: payload,
     metadata: {
       sentDeviceKeys,
+      skippedDuplicateDeviceKeys,
       invalidatedDeviceKeys,
       failedDeviceKeys,
     },
@@ -1217,11 +1311,17 @@ async function processSessionReminders(session, config, preferencesCache, summar
     skipReason: deliveryResult.skipReason,
     attemptCount: currentAttemptCount,
     deliveryCount: currentDeliveryCount,
+    eventKey: deliveryResult.eventKey || existingRecord?.event_key || "",
+    notificationPayload: deliveryResult.notificationPayload || existingRecord?.notification_payload || {},
     metadata: {
       ...(existingRecord?.metadata || {}),
       lastMessage: deliveryResult.message,
+      ...(deliveryResult.metadata || {}),
     },
   }), config);
+  if (Number(deliveryResult.duplicatesPrevented || 0) > 0) {
+    summary.duplicatesPrevented += Number(deliveryResult.duplicatesPrevented || 0);
+  }
   summary.skipped += 1;
 }
 
