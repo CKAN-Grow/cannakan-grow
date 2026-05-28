@@ -1032,6 +1032,17 @@ const STAGE_REMINDER_SCHEDULES = {
     },
   ],
 };
+const SESSION_LIFECYCLE_STALE_THRESHOLDS = Object.freeze({
+  soakingAttentionHours: 24,
+  soakingStaleHours: 72,
+  soakingAbandonedHours: 168,
+  germinationAttentionHours: 54,
+  germinationStaleHours: 168,
+  germinationAbandonedHours: 336,
+  inactiveStaleHours: 336,
+  inactiveAbandonedHours: 720,
+  futureTimestampGraceMinutes: 10,
+});
 const MOCK_ADMIN_REPORTS = Object.freeze([
   {
     id: "mock-admin-report-technical",
@@ -7579,6 +7590,334 @@ function isGrowSessionAnalyticsExcluded(session = null) {
   return Boolean(session?.excludedFromAnalytics || session?.excluded_from_analytics);
 }
 
+function getDateHourDelta(startAt, endAt = new Date()) {
+  if (!(startAt instanceof Date) || Number.isNaN(startAt.getTime())) {
+    return null;
+  }
+  if (!(endAt instanceof Date) || Number.isNaN(endAt.getTime())) {
+    return null;
+  }
+  return Math.max(0, (endAt.getTime() - startAt.getTime()) / (60 * 60 * 1000));
+}
+
+function getLatestSessionLifecycleActivityAt(session = null) {
+  if (!session) {
+    return null;
+  }
+
+  const candidates = [
+    session.updatedAt || session.updated_at || "",
+    session.completedAt || session.completed_at || "",
+    session.firstPlantedAt || session.first_planted_at || "",
+    session.germinationStartedAt || session.germination_started_at || "",
+    session.soakStartedAt || session.soak_started_at || "",
+    session.sessionStartedAt || session.session_started_at || "",
+    session.timerStartAt || session.timer_start_at || "",
+    session.createdAt || session.created_at || "",
+  ]
+    .map((value) => parseCompletedAtValue(value))
+    .filter((date) => date instanceof Date && !Number.isNaN(date.getTime()));
+
+  return candidates.reduce((latestDate, date) => {
+    if (!latestDate || date.getTime() > latestDate.getTime()) {
+      return date;
+    }
+    return latestDate;
+  }, null);
+}
+
+function getSessionLifecycleTimestampHealth(session = null, now = new Date()) {
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  const sessionStartedAtIso = getSessionStartedAtIso(session)
+    || parseCompletedAtValue(session?.createdAt || session?.created_at || "")?.toISOString()
+    || "";
+  const soakStartedAtIso = getSessionSoakStartedAtIso(session)
+    || sessionStartedAtIso;
+  const hasStartedIntent = Boolean(
+    ["soaking", "germinating", "completed"].includes(normalizedStatus)
+    || String(session?.sessionStartedAt || session?.session_started_at || "").trim()
+    || String(session?.soakStartedAt || session?.soak_started_at || "").trim()
+    || String(session?.timerStartAt || session?.timer_start_at || "").trim()
+    || String(session?.date || "").trim()
+  );
+  const timelineValidation = validateGrowSessionTimelineOrder({
+    sessionStartedAt: sessionStartedAtIso,
+    soakStartedAt: soakStartedAtIso,
+    germinationStartedAt: session?.germinationStartedAt || session?.germination_started_at || "",
+    completedAt: session?.completedAt || session?.completed_at || "",
+  }, {
+    requireSessionStarted: hasStartedIntent,
+    requireSoakStarted: hasStartedIntent,
+    requireCompleted: normalizedStatus === "completed",
+  });
+  if (!timelineValidation.isValid) {
+    return { isValid: false, reason: "invalid_timestamp_order", message: timelineValidation.message || "Session timestamps need review." };
+  }
+
+  const futureGraceMs = SESSION_LIFECYCLE_STALE_THRESHOLDS.futureTimestampGraceMinutes * 60 * 1000;
+  const futureTimestamp = [
+    session?.updatedAt || session?.updated_at || "",
+    session?.completedAt || session?.completed_at || "",
+    session?.firstPlantedAt || session?.first_planted_at || "",
+    session?.germinationStartedAt || session?.germination_started_at || "",
+    session?.soakStartedAt || session?.soak_started_at || "",
+    session?.sessionStartedAt || session?.session_started_at || "",
+    session?.timerStartAt || session?.timer_start_at || "",
+    session?.createdAt || session?.created_at || "",
+  ]
+    .map((value) => parseCompletedAtValue(value))
+    .find((date) => date instanceof Date && !Number.isNaN(date.getTime()) && date.getTime() > now.getTime() + futureGraceMs);
+
+  if (futureTimestamp) {
+    return { isValid: false, reason: "future_timestamp", message: "Session timestamps are ahead of the current time." };
+  }
+
+  return { isValid: true, reason: "", message: "" };
+}
+
+function formatLifecycleHoursShort(hours = 0) {
+  const normalizedHours = Math.max(0, Number(hours) || 0);
+  if (normalizedHours >= 24) {
+    const days = Math.floor(normalizedHours / 24);
+    return `${days}d`;
+  }
+  return `${Math.floor(normalizedHours)}h`;
+}
+
+function getGrowSessionLifecycleHealth(session = null, options = {}) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  const now = options.now instanceof Date && !Number.isNaN(options.now.getTime())
+    ? options.now
+    : new Date();
+  if (!normalizedSession) {
+    return {
+      classification: "healthy",
+      lifecycleState: "draft",
+      reason: "",
+      label: "Healthy",
+      detail: "No session data yet",
+      suppressReminders: false,
+      activeMetricEligible: false,
+    };
+  }
+
+  const visibilityStatus = normalizeSessionVisibilityStatus(normalizedSession.visibilityStatus || normalizedSession.visibility_status || "");
+  const normalizedStatus = normalizeSessionStatus(normalizedSession.sessionStatus || normalizedSession.session_status || "");
+  const hardDeleted = Boolean(
+    normalizedSession.isDeleted
+    || normalizedSession.is_deleted
+    || String(normalizedSession.deletedAt || normalizedSession.deleted_at || "").trim()
+    || ["deleted", "archived", "archived_test"].includes(normalizedStatus)
+  );
+  const archived = Boolean(
+    hardDeleted
+    || normalizedSession.userDeleted
+    || normalizedSession.user_deleted
+    || String(normalizedSession.userDeletedAt || normalizedSession.user_deleted_at || "").trim()
+    || ["deleted", "archived", "archived_test", "hidden"].includes(visibilityStatus)
+  );
+
+  if (archived) {
+    return {
+      classification: "archived",
+      lifecycleState: hardDeleted ? "deleted" : "archived",
+      reason: hardDeleted ? "deleted_or_archived" : "hidden_by_owner",
+      label: hardDeleted ? "Archived" : "Hidden",
+      detail: "Not included in active session workflows",
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  const timestampHealth = getSessionLifecycleTimestampHealth(normalizedSession, now);
+  const completedAt = getSessionCompletedAtDate(normalizedSession);
+  if (!timestampHealth.isValid) {
+    return {
+      classification: "stale",
+      lifecycleState: "stale",
+      reason: timestampHealth.reason,
+      label: "Needs attention",
+      detail: timestampHealth.message,
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  if (normalizedStatus === "completed" || completedAt) {
+    return {
+      classification: "completed",
+      lifecycleState: "completed",
+      reason: "",
+      label: "Completed",
+      detail: "Session completed",
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  if (["abandoned", "failed", "canceled", "cancelled"].includes(normalizedStatus)) {
+    return {
+      classification: "abandoned",
+      lifecycleState: "abandoned",
+      reason: "terminal_incomplete_status",
+      label: "Session inactive",
+      detail: "Session ended without completion",
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  const progressKey = getSessionProgressKeyFromSession(normalizedSession);
+  const sessionStartedAt = getSessionDurationStartAt(normalizedSession);
+  const stageStartedAt = getSessionStageDurationStartAt(normalizedSession);
+  const lastActivityAt = getLatestSessionLifecycleActivityAt(normalizedSession) || stageStartedAt || sessionStartedAt;
+  const sessionHours = getDateHourDelta(sessionStartedAt, now);
+  const stageHours = getDateHourDelta(stageStartedAt, now);
+  const inactiveHours = getDateHourDelta(lastActivityAt, now);
+  const missingGerminationStartedAt = normalizedStatus === "germinating"
+    && !parseCompletedAtValue(normalizedSession.germinationStartedAt || normalizedSession.germination_started_at || "");
+
+  const staleDetail = inactiveHours !== null
+    ? `Inactive ${formatLifecycleHoursShort(inactiveHours)}`
+    : "Session timing needs review";
+
+  if (
+    inactiveHours !== null
+    && inactiveHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.inactiveAbandonedHours
+  ) {
+    return {
+      classification: "abandoned",
+      lifecycleState: "abandoned",
+      reason: "inactive_abandoned_threshold",
+      label: "Session inactive",
+      detail: staleDetail,
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  if (
+    inactiveHours !== null
+    && inactiveHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.inactiveStaleHours
+  ) {
+    return {
+      classification: "stale",
+      lifecycleState: "stale",
+      reason: "inactive_stale_threshold",
+      label: "Session inactive",
+      detail: staleDetail,
+      suppressReminders: true,
+      activeMetricEligible: false,
+    };
+  }
+
+  if (missingGerminationStartedAt) {
+    return {
+      classification: "needs_attention",
+      lifecycleState: "active",
+      reason: "missing_germination_started_at",
+      label: "Needs attention",
+      detail: "Germination start time missing",
+      suppressReminders: true,
+      activeMetricEligible: true,
+    };
+  }
+
+  if (normalizedStatus === "soaking" || progressKey === "soaking") {
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.soakingAbandonedHours) {
+      return {
+        classification: "abandoned",
+        lifecycleState: "abandoned",
+        reason: "soaking_abandoned_threshold",
+        label: "Session inactive",
+        detail: `Soaking ${formatLifecycleHoursShort(sessionHours)}`,
+        suppressReminders: true,
+        activeMetricEligible: false,
+      };
+    }
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.soakingStaleHours) {
+      return {
+        classification: "stale",
+        lifecycleState: "stale",
+        reason: "soaking_stale_threshold",
+        label: "Session inactive",
+        detail: `Soaking ${formatLifecycleHoursShort(sessionHours)}`,
+        suppressReminders: true,
+        activeMetricEligible: false,
+      };
+    }
+    if (sessionHours !== null && sessionHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.soakingAttentionHours) {
+      return {
+        classification: "needs_attention",
+        lifecycleState: "active",
+        reason: "soaking_attention_threshold",
+        label: "Needs attention",
+        detail: `Soaking ${formatLifecycleHoursShort(sessionHours)}`,
+        suppressReminders: false,
+        activeMetricEligible: true,
+      };
+    }
+  }
+
+  if (["germination", "first-germinated"].includes(progressKey) || normalizedStatus === "germinating") {
+    if (stageHours !== null && stageHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAbandonedHours) {
+      return {
+        classification: "abandoned",
+        lifecycleState: "abandoned",
+        reason: "germination_abandoned_threshold",
+        label: "Session inactive",
+        detail: `Germinating ${formatLifecycleHoursShort(stageHours)}`,
+        suppressReminders: true,
+        activeMetricEligible: false,
+      };
+    }
+    if (stageHours !== null && stageHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationStaleHours) {
+      return {
+        classification: "stale",
+        lifecycleState: "stale",
+        reason: "germination_stale_threshold",
+        label: "Session inactive",
+        detail: `Germinating ${formatLifecycleHoursShort(stageHours)}`,
+        suppressReminders: true,
+        activeMetricEligible: false,
+      };
+    }
+    if (stageHours !== null && stageHours >= SESSION_LIFECYCLE_STALE_THRESHOLDS.germinationAttentionHours) {
+      return {
+        classification: "needs_attention",
+        lifecycleState: "active",
+        reason: "germination_attention_threshold",
+        label: "Needs attention",
+        detail: `Germinating ${formatLifecycleHoursShort(stageHours)}`,
+        suppressReminders: false,
+        activeMetricEligible: true,
+      };
+    }
+  }
+
+  return {
+    classification: "healthy",
+    lifecycleState: ["soaking", "germinating", "active", "first-germinated"].includes(normalizedStatus) || progressKey
+      ? "active"
+      : "draft",
+    reason: "",
+    label: "Healthy",
+    detail: "Session is active",
+    suppressReminders: false,
+    activeMetricEligible: ["soaking", "germinating", "active", "first-germinated"].includes(normalizedStatus) || Boolean(progressKey),
+  };
+}
+
+function isGrowSessionLifecycleRemindable(session = null) {
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+  const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || session?.session_status || "");
+  return Boolean(
+    ["healthy", "needs_attention"].includes(lifecycleHealth.classification)
+    && ["soaking", "germinating"].includes(normalizedStatus)
+    && !lifecycleHealth.suppressReminders
+  );
+}
+
 function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
   const session = sessionOrStatus && typeof sessionOrStatus === "object" ? sessionOrStatus : null;
   if (session && isSessionSoftDeleted(session)) {
@@ -7593,6 +7932,12 @@ function normalizeGrowSessionLifecycleState(sessionOrStatus = null) {
   }
   if (["abandoned", "failed", "canceled", "cancelled"].includes(normalizedStatus)) {
     return "abandoned";
+  }
+  if (session) {
+    const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+    if (["completed", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
+      return lifecycleHealth.lifecycleState;
+    }
   }
   if (normalizedStatus === "completed") {
     return "completed";
@@ -11489,7 +11834,12 @@ function buildFirstSnapshotReminderNotification(session = null, existingSessions
 }
 
 function buildPerfectGerminationNotification(session = null) {
-  if (!session?.id || isSessionSoftDeleted(session) || !areGerminationReminderNotificationsEnabled()) {
+  if (
+    !session?.id
+    || isSessionSoftDeleted(session)
+    || !areGerminationReminderNotificationsEnabled()
+    || !isGrowSessionLifecycleRemindable(session)
+  ) {
     return null;
   }
 
@@ -11615,6 +11965,7 @@ function getDueReminderVisibleSessions(sessions = getSessions()) {
 function getFirstSnapshotReminderCandidateSession(sessions = getDueReminderVisibleSessions()) {
   return (Array.isArray(sessions) ? sessions : []).find((session) => (
     !isSessionSoftDeleted(session)
+    && !["stale", "abandoned"].includes(getGrowSessionLifecycleHealth(session).classification)
     && isMeaningfulGrowNetworkUnlockSession(session)
     && !hasCreatedMeaningfulSnapshotState(session?.snapshotState)
   )) || null;
@@ -11930,7 +12281,12 @@ function buildGrowReminderAvailableActions(session = null, options = {}) {
 }
 
 function buildStageProgressReminderEntries(session = null) {
-  if (!session?.id || isSessionSoftDeleted(session) || normalizeSessionStatus(session?.sessionStatus || "") === "completed") {
+  if (
+    !session?.id
+    || isSessionSoftDeleted(session)
+    || normalizeSessionStatus(session?.sessionStatus || "") === "completed"
+    || !isGrowSessionLifecycleRemindable(session)
+  ) {
     return [];
   }
 
@@ -58328,6 +58684,11 @@ function getMySessionsHistoryCategory(session = null) {
     return "deleted";
   }
 
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+  if (["needs_attention", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
+    return "attention";
+  }
+
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   if (normalizedStatus === "completed") {
     return "completed";
@@ -58358,6 +58719,7 @@ function getMySessionsHistoryStatusMeta(session = null) {
   const normalizedStatus = normalizeSessionStatus(session?.sessionStatus || "");
   const dayLabel = formatSessionCommandCenterDayLabel(session);
   const lifecycleState = session ? buildSessionLifecycleState(session) : null;
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
 
   if (normalizedStatus === "completed") {
     return {
@@ -58372,6 +58734,14 @@ function getMySessionsHistoryStatusMeta(session = null) {
       label: "Failed",
       tone: "failed",
       detail: "Session ended",
+    };
+  }
+
+  if (["needs_attention", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
+    return {
+      label: lifecycleHealth.label || "Needs attention",
+      tone: lifecycleHealth.classification === "needs_attention" ? "needs-attention" : lifecycleHealth.classification,
+      detail: lifecycleHealth.detail || "Review session",
     };
   }
 
@@ -58398,7 +58768,7 @@ function getMySessionsHistoryStatusMeta(session = null) {
 
 function filterMySessionsHistorySessions(sessions = [], filterValue = "all") {
   const normalizedFilter = String(filterValue || "all").trim().toLowerCase();
-  if (!["all", "active", "completed", "failed"].includes(normalizedFilter) || normalizedFilter === "all") {
+  if (!["all", "active", "completed", "failed", "attention"].includes(normalizedFilter) || normalizedFilter === "all") {
     return [...sessions];
   }
 
@@ -60391,12 +60761,14 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
   const totalCount = Math.max(0, Number(summaryCounts.total || 0) || 0);
   const activeCount = Math.max(0, Number(summaryCounts.active || 0) || 0);
   const completedCount = Math.max(0, Number(summaryCounts.completed || 0) || 0);
+  const attentionCount = Math.max(0, Number(summaryCounts.attention || 0) || 0);
   const visibleSessions = sessions.slice(0, visibleCount);
   const hasMoreSessions = sessions.length > visibleCount;
   const filterPills = [
     { key: "all", label: "All" },
     { key: "active", label: "Active" },
     { key: "completed", label: "Completed" },
+    { key: "attention", label: "Needs Attention" },
   ];
 
   return `
@@ -60410,6 +60782,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
           <span><strong>${escapeHtml(totalCount)}</strong> total</span>
           <span><strong>${escapeHtml(activeCount)}</strong> active</span>
           <span><strong>${escapeHtml(completedCount)}</strong> completed</span>
+          ${attentionCount ? `<span><strong>${escapeHtml(attentionCount)}</strong> attention</span>` : ""}
         </div>
         <button
           type="button"
@@ -60459,6 +60832,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
               ${sessions.length ? visibleSessions.map((session) => {
                 const isDeleted = isSessionSoftDeleted(session);
                 const statusMeta = getMySessionsHistoryStatusMeta(session);
+                const lifecycleHealth = getGrowSessionLifecycleHealth(session);
                 const totals = getSessionSeedTotals(session);
                 const sessionSequenceNumber = getSessionSequenceNumber(session);
                 const seedSummary = totals.totalSeeds > 0 ? `${totals.totalPlanted} / ${totals.totalSeeds}` : "--";
@@ -60492,7 +60866,7 @@ function renderMySessionsHistoryPanelMarkup(sessions = [], options = {}) {
                     `;
 
                 return `
-                  <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}${isDeleted ? " is-deleted" : ""}" data-session-history-row="${escapeHtml(session.id)}">
+                  <div class="session-history-table-row${focusSessionId && focusSessionId === String(session.id || "").trim() ? " is-highlighted" : ""}${isDeleted ? " is-deleted" : ""} is-lifecycle-${escapeHtml(lifecycleHealth.classification)}" data-session-history-row="${escapeHtml(session.id)}">
                     <div class="session-history-cell session-history-cell--session" data-label="Session">
                       ${renderMySessionsInlineIconMarkup("thumb", "sessions-inline-thumb sessions-inline-thumb--history")}
                       <div class="session-history-session-copy">
@@ -63523,7 +63897,7 @@ function renderSessionsList() {
   app.replaceChildren(cloneTemplate(templates.sessions));
   initializeCustomSelects(app);
   applySupplyStatusToSessionEntryButtons(app);
-  if (!["all", "active", "completed"].includes(appState.sessionHistoryFilter || "")) {
+  if (!["all", "active", "completed", "attention"].includes(appState.sessionHistoryFilter || "")) {
     appState.sessionHistoryFilter = "all";
   }
   appState.sessionHistoryVisibleCount = Math.max(6, Number(appState.sessionHistoryVisibleCount) || 6);
@@ -63597,8 +63971,11 @@ function renderSessionsList() {
       } else if (lifecycleState === "completed") {
         counts.completed += 1;
       }
+      if (["needs_attention", "stale", "abandoned"].includes(getGrowSessionLifecycleHealth(session).classification)) {
+        counts.attention += 1;
+      }
       return counts;
-    }, { total: 0, active: 0, completed: 0 });
+    }, { total: 0, active: 0, completed: 0, attention: 0 });
     const filteredSessions = filterMySessionsHistorySessions(historySource, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
@@ -67832,7 +68209,11 @@ function updateSessionStatusAppearance(control, trigger) {
 }
 
 function getSessionStatusAlertTone(level = "") {
-  return String(level || "").trim().toLowerCase() === "critical" ? "critical" : "info";
+  const normalizedLevel = String(level || "").trim().toLowerCase();
+  if (["critical", "warning", "success"].includes(normalizedLevel)) {
+    return normalizedLevel;
+  }
+  return "info";
 }
 
 function getSessionStatusAlertTitle(sessionStatus = "", level = "") {
@@ -67948,31 +68329,52 @@ function renderSessionStatusAlertsMarkup(alerts = []) {
   }).join("");
 }
 
+function getSessionLifecycleRecoveryAlert(session = null) {
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+  if (!["needs_attention", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
+    return null;
+  }
+
+  const actionText = lifecycleHealth.classification === "needs_attention"
+    ? "Resume session or mark completed when results are ready."
+    : "Resume session · Archive session · Mark completed";
+  return {
+    level: "warning",
+    title: lifecycleHealth.label || "Needs attention",
+    message: lifecycleHealth.detail || "Review this session before it appears in active workflows.",
+    actionText,
+  };
+}
+
 function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "", options = {}) {
   if (!element) {
     return;
   }
 
+  const lifecycleAlert = getSessionLifecycleRecoveryAlert(options.session || null);
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
   if (normalizedStatus === "unselected" || !["soaking", "germinating"].includes(normalizedStatus)) {
-    element.innerHTML = "";
-    element.hidden = true;
+    element.innerHTML = lifecycleAlert ? renderSessionStatusAlertsMarkup([lifecycleAlert]) : "";
+    element.hidden = !lifecycleAlert;
     return;
   }
 
   const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt, timerStartAt, options);
   if (!reminder) {
-    element.innerHTML = "";
-    element.hidden = true;
+    element.innerHTML = lifecycleAlert ? renderSessionStatusAlertsMarkup([lifecycleAlert]) : "";
+    element.hidden = !lifecycleAlert;
     return;
   }
 
-  element.innerHTML = renderSessionStatusAlertsMarkup([{
+  element.innerHTML = renderSessionStatusAlertsMarkup([
+    ...(lifecycleAlert ? [lifecycleAlert] : []),
+    {
     level: reminder.level,
     title: reminder.title || getSessionStatusAlertTitle(normalizedStatus, reminder.level),
     message: reminder.message,
     actionText: reminder.actionText || getSessionStatusAlertActionText(normalizedStatus, reminder.level),
-  }]);
+    },
+  ]);
   element.hidden = false;
 }
 
@@ -68040,6 +68442,7 @@ function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinat
 
 function getSessionStageReminderOptions(session = null) {
   return {
+    session,
     sessionStartedAt: session?.sessionStartedAt || session?.session_started_at || "",
     soakStartedAt: session?.soakStartedAt || session?.soak_started_at || "",
   };
@@ -69161,6 +69564,16 @@ function getSessionCommandCenterPrimaryStrain(session = null) {
 }
 
 function getSessionCommandCenterStageBadge(session = null) {
+  const lifecycleHealth = getGrowSessionLifecycleHealth(session);
+  if (lifecycleHealth.classification === "needs_attention") {
+    return { label: "Needs attention", className: "is-needs-attention" };
+  }
+  if (lifecycleHealth.classification === "stale") {
+    return { label: "Session inactive", className: "is-stale" };
+  }
+  if (lifecycleHealth.classification === "abandoned") {
+    return { label: "Session inactive", className: "is-abandoned" };
+  }
   const stageState = session ? buildSessionLifecycleState(session) : null;
   const normalizedStage = normalizeSessionStatus(session?.sessionStatus || "");
 
@@ -69485,13 +69898,14 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
   const cardsMarkup = activeSessions.map((session) => {
     const isSelected = session.id === selectedSessionId;
     const stageBadge = getSessionCommandCenterStageBadge(session);
+    const lifecycleHealth = getGrowSessionLifecycleHealth(session);
     const varietyLabel = getSessionCommandCenterPrimaryStrain(session) || "Variety not set";
     const dateLabel = formatSessionNameDate(session.date);
     const dayLabel = formatSessionCommandCenterDayLabel(session);
 
     return `
       <article
-        class="session-command-session-card${isSelected ? " is-selected" : ""}"
+        class="session-command-session-card${isSelected ? " is-selected" : ""} is-lifecycle-${escapeHtml(lifecycleHealth.classification)}"
         data-session-command-select="${escapeHtml(session.id)}"
         tabindex="0"
         role="button"
@@ -69507,6 +69921,7 @@ function renderMySessionsCommandCenterListMarkup(activeSessions = [], selectedSe
           </div>
           <div class="session-command-session-footer">
             <span class="session-command-stage-badge session-status-pill ${escapeHtml(stageBadge.className)}">${escapeHtml(stageBadge.label)}</span>
+            ${lifecycleHealth.classification === "needs_attention" ? `<span class="session-command-session-recovery">${escapeHtml(lifecycleHealth.detail || "Review session")}</span>` : ""}
           </div>
         </div>
         <div class="session-command-session-actions">
