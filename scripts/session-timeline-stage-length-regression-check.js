@@ -20,7 +20,7 @@ for (const needle of [
   }
 }
 
-const currentStageStartMatch = appSource.match(/function getSessionLifecycleTimelineCurrentStageStartAt[\s\S]*?\n}\n\nfunction getSessionLifecycleTimelineStageStarts/);
+const currentStageStartMatch = appSource.match(/function getSessionLifecycleTimelineCurrentStageStartAt[\s\S]*?\r?\n}\r?\n\r?\nfunction getSessionLifecycleTimelineStageStarts/);
 if (!currentStageStartMatch) {
   throw new Error("Could not locate current timeline stage start resolver.");
 }

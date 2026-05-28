@@ -20,7 +20,7 @@ for (const needle of [
   }
 }
 
-const timelineBoundsMatch = appSource.match(/function getSessionLifecycleTimelineStageBounds[\s\S]*?\n}\n\nfunction getSessionLifecycleTimelineCardMeta/);
+const timelineBoundsMatch = appSource.match(/function getSessionLifecycleTimelineStageBounds[\s\S]*?\r?\n}\r?\n\r?\nfunction getSessionLifecycleTimelineCardMeta/);
 if (!timelineBoundsMatch) {
   throw new Error("Could not locate timeline stage bounds.");
 }

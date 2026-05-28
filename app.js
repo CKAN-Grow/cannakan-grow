@@ -5119,7 +5119,7 @@ function normalizeStoredSession(session) {
     customSessionName: String(session.customSessionName || "").trim(),
     sessionNotes: String(session.sessionNotes || "").trim(),
     sessionImages: normalizePersistedSessionImages(session.sessionImages),
-    sessionStatus: String(session.sessionStatus || "").trim(),
+    sessionStatus: String(session.sessionStatus || session.session_status || "").trim(),
     userId: String(session.userId || session.user_id || "").trim(),
     sessionStartedAt: String(session.sessionStartedAt || session.session_started_at || "").trim(),
     soakStartedAt: String(session.soakStartedAt || session.soak_started_at || session.timerStartAt || session.timer_start_at || "").trim(),
@@ -5147,7 +5147,7 @@ function normalizeStoredSession(session) {
     sessionSeedAgeYears,
     partitions: normalizeSessionPartitions(session.partitions),
     snapshotState: normalizePersistedSessionSnapshotState(session.snapshotState),
-    createdAt: String(session.createdAt || "").trim(),
+    createdAt: String(session.createdAt || session.created_at || "").trim(),
     timerStartAt: String(session.timerStartAt || session.timer_start_at || session.soakStartedAt || session.soak_started_at || "").trim(),
     updatedAt: String(
       session.updatedAt
@@ -7614,9 +7614,21 @@ function isGrowSessionAnalyticsEligible(session = null, options = {}) {
   if (!options.includeMock && isMockGrowSession(normalizedSession)) {
     return false;
   }
+  const visibilityStatus = normalizeSessionVisibilityStatus(
+    normalizedSession.visibilityStatus || normalizedSession.visibility_status || "",
+  );
   const normalizedStatus = normalizeSessionStatus(
     normalizedSession.sessionStatus || normalizedSession.session_status || "",
   );
+  if (
+    normalizedSession.isDeleted
+    || normalizedSession.is_deleted
+    || String(normalizedSession.deletedAt || normalizedSession.deleted_at || "").trim()
+    || ["deleted", "archived", "archived_test"].includes(visibilityStatus)
+    || ["deleted", "archived", "archived_test"].includes(normalizedStatus)
+  ) {
+    return false;
+  }
   if (normalizedStatus !== "completed") {
     return false;
   }
@@ -11940,6 +11952,10 @@ function buildStageProgressReminderEntries(session = null) {
     normalizedStatus,
     session?.germinationStartedAt || "",
     session?.timerStartAt || "",
+    {
+      sessionStartedAt: session?.sessionStartedAt || session?.session_started_at || "",
+      soakStartedAt: session?.soakStartedAt || session?.soak_started_at || "",
+    },
   );
   if (!stageStart) {
     return [];
@@ -19516,6 +19532,7 @@ function syncSessionTimeDependentDetailViews(detail, session, options = {}) {
     detail.statusField?.value || session.sessionStatus || "",
     session.germinationStartedAt || "",
     session.timerStartAt || "",
+    getSessionStageReminderOptions(session),
   );
 
   if (typeof options.refreshDerivedViews === "function") {
@@ -47614,7 +47631,7 @@ function updateAdminCstpSessionTimingSummary(summaryElement, sectionElement, ses
     ` : ""}
     ${startedAt && !completedAt ? `
       <article class="timing-card timing-card-elapsed">
-        <strong>Elapsed Time</strong>
+        <strong>Session Duration</strong>
         <p>${escapeHtml(formatDurationBetween(startedAt, durationTarget))}</p>
       </article>
     ` : ""}
@@ -65517,6 +65534,7 @@ function renderSessionDetail(sessionId) {
     detail.statusField.value,
     session.germinationStartedAt || "",
     session.timerStartAt || "",
+    getSessionStageReminderOptions(session),
   );
 
   const partitions = detail.partitions;
@@ -65647,6 +65665,7 @@ function renderSessionDetail(sessionId) {
       session.completedAt,
       session.timerStartAt || "",
       {
+        session,
         sessionDurationStartAt: getSessionDurationStartAt(session)?.toISOString() || "",
       },
     );
@@ -65749,6 +65768,7 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.germinationStartedAt || "",
       session.timerStartAt || "",
+      getSessionStageReminderOptions(session),
     );
     updateRunProgressSummary(
       detail.runProgressSummary,
@@ -65775,6 +65795,7 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.germinationStartedAt || "",
       session.timerStartAt || "",
+      getSessionStageReminderOptions(session),
     );
     updateSessionTimingSummary(
       detail.timingSummary,
@@ -65785,6 +65806,7 @@ function renderSessionDetail(sessionId) {
       session.completedAt,
       session.timerStartAt || "",
       {
+        session,
         sessionDurationStartAt: getSessionDurationStartAt(session)?.toISOString() || "",
       },
     );
@@ -65861,6 +65883,7 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.germinationStartedAt || "",
       session.timerStartAt || "",
+      getSessionStageReminderOptions(session),
     );
     renderDetailPartitions();
     bindDetailPartitionInputListeners();
@@ -65915,6 +65938,7 @@ function renderSessionDetail(sessionId) {
       detail.statusField.value,
       session.germinationStartedAt || "",
       session.timerStartAt || "",
+      getSessionStageReminderOptions(session),
     );
     refreshDetailDerivedViews();
     setSessionDetailSaveButtonState(detail, "default");
@@ -67693,9 +67717,9 @@ function normalizeSessionStatus(sessionStatus) {
 
 function resolveGrowSessionCurrentProgressKey(source = {}) {
   const normalizedStatus = normalizeSessionStatus(source.sessionStatus || source.status || source.value || "");
-  const completedAt = String(source.completedAt || source.completed_at || "").trim();
-  const firstPlantedAt = String(source.firstPlantedAt || source.first_planted_at || "").trim();
-  const germinationStartedAt = String(source.germinationStartedAt || source.germination_started_at || "").trim();
+  const completedAt = parseCompletedAtValue(source.completedAt || source.completed_at || "");
+  const firstPlantedAt = parseCompletedAtValue(source.firstPlantedAt || source.first_planted_at || "");
+  const germinationStartedAt = parseCompletedAtValue(source.germinationStartedAt || source.germination_started_at || "");
 
   if (normalizedStatus === "completed" || completedAt) {
     return "completed";
@@ -67924,7 +67948,7 @@ function renderSessionStatusAlertsMarkup(alerts = []) {
   }).join("");
 }
 
-function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
+function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "", options = {}) {
   if (!element) {
     return;
   }
@@ -67936,7 +67960,7 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
     return;
   }
 
-  const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt, timerStartAt);
+  const reminder = getActiveStageReminder(sessionDate, sessionTime, normalizedStatus, germinationStartedAt, timerStartAt, options);
   if (!reminder) {
     element.innerHTML = "";
     element.hidden = true;
@@ -67975,13 +67999,13 @@ function updateSessionStatusReminder(element, sessionDate, sessionTime, sessionS
     }
   }
 
-function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
+function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "", options = {}) {
   const schedule = STAGE_REMINDER_SCHEDULES[sessionStatus];
   if (!schedule?.length) {
     return null;
   }
 
-  const stageStart = getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt, timerStartAt);
+  const stageStart = getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt, timerStartAt, options);
   if (!stageStart) {
     return null;
   }
@@ -68002,14 +68026,23 @@ function getActiveStageReminder(sessionDate, sessionTime, sessionStatus, germina
     .sort((left, right) => (Number(right?.hours) || 0) - (Number(left?.hours) || 0))[0] || null;
 }
 
-function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "") {
-  if (sessionStatus === "germinating") {
-    return parseCompletedAtValue(germinationStartedAt)
-      || parseCompletedAtValue(timerStartAt)
-      || parseSessionStartDateTime(sessionDate, sessionTime);
+function getStageStartDateTime(sessionDate, sessionTime, sessionStatus, germinationStartedAt = "", timerStartAt = "", options = {}) {
+  const normalizedStatus = normalizeSessionStatus(sessionStatus);
+  if (normalizedStatus === "germinating") {
+    return parseCompletedAtValue(germinationStartedAt);
   }
 
-  return parseCompletedAtValue(timerStartAt) || parseSessionStartDateTime(sessionDate, sessionTime);
+  return parseCompletedAtValue(options.soakStartedAt || "")
+    || parseCompletedAtValue(timerStartAt)
+    || parseCompletedAtValue(options.sessionStartedAt || "")
+    || parseSessionStartDateTime(sessionDate, sessionTime);
+}
+
+function getSessionStageReminderOptions(session = null) {
+  return {
+    sessionStartedAt: session?.sessionStartedAt || session?.session_started_at || "",
+    soakStartedAt: session?.soakStartedAt || session?.soak_started_at || "",
+  };
 }
 
 function parseSessionStartDateTime(sessionDate, sessionTime) {
@@ -68059,7 +68092,55 @@ function getSessionDurationStartAt(session = null) {
   return parseCompletedAtValue(session.soakStartedAt || session.soak_started_at || "")
     || parseCompletedAtValue(session.sessionStartedAt || session.session_started_at || "")
     || parseSessionStartDateTime(session.date, session.time)
-    || parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "");
+    || parseCompletedAtValue(session.timerStartAt || session.timer_start_at || "")
+    || parseCompletedAtValue(session.createdAt || session.created_at || "");
+}
+
+function getSessionCompletedAtDate(session = null) {
+  return parseCompletedAtValue(session?.completedAt || session?.completed_at || "");
+}
+
+function getSessionStageDurationStartAt(session = null) {
+  if (!session) {
+    return null;
+  }
+
+  const normalizedStatus = normalizeSessionStatus(session.sessionStatus || session.session_status || "");
+  if (normalizedStatus === "completed") {
+    return getSessionCompletedAtDate(session);
+  }
+  const firstPlantedAt = parseCompletedAtValue(session.firstPlantedAt || session.first_planted_at || "");
+  if (firstPlantedAt) {
+    return firstPlantedAt;
+  }
+  const germinationStartedAt = parseCompletedAtValue(session.germinationStartedAt || session.germination_started_at || "");
+  if (normalizedStatus === "germinating" || germinationStartedAt) {
+    return germinationStartedAt;
+  }
+  if (normalizedStatus === "soaking") {
+    return getSessionDurationStartAt(session);
+  }
+  return null;
+}
+
+function getSessionTimingState(session = null, options = {}) {
+  const now = options.now instanceof Date && !Number.isNaN(options.now.getTime())
+    ? options.now
+    : new Date();
+  const totalStartedAt = getSessionDurationStartAt(session);
+  const completedAt = getSessionCompletedAtDate(session);
+  const currentStageStartedAt = getSessionStageDurationStartAt(session);
+  const totalEndedAt = completedAt || now;
+  const currentStageEndedAt = completedAt || now;
+
+  return {
+    totalStartedAt,
+    completedAt,
+    currentStageStartedAt,
+    totalEndedAt,
+    currentStageEndedAt,
+    setupGraceActive: !completedAt && isSetupGracePeriodActive(totalStartedAt, now),
+  };
 }
 
 function getSessionStatusStartedAtValue(session = null) {
@@ -68627,7 +68708,9 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
     return;
   }
 
-  const startedAt = parseCompletedAtValue(options.sessionDurationStartAt || "")
+  const timingState = options.session ? getSessionTimingState(options.session) : null;
+  const startedAt = timingState?.totalStartedAt
+    || parseCompletedAtValue(options.sessionDurationStartAt || "")
     || parseCompletedAtValue(timerStartAt)
     || parseSessionStartDateTime(sessionDate, sessionTime);
   if (!startedAt) {
@@ -68639,10 +68722,12 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
   const now = new Date();
   const normalizedStatus = normalizeSessionStatus(sessionStatus);
   const completedDate = normalizedStatus === "completed"
-    ? parseCompletedAtValue(completedAt) || new Date()
+    ? timingState?.completedAt || parseCompletedAtValue(completedAt) || new Date()
     : null;
   const durationTarget = completedDate || now;
-  const setupGraceActive = !completedDate && isSetupGracePeriodActive(startedAt, now);
+  const setupGraceActive = timingState
+    ? timingState.setupGraceActive
+    : !completedDate && isSetupGracePeriodActive(startedAt, now);
   const elapsedLabel = setupGraceActive
     ? formatSetupGraceStartsIn(startedAt, now)
     : formatDurationBetween(startedAt, durationTarget);
@@ -68663,7 +68748,7 @@ function updateSessionTimingSummary(summaryElement, sectionElement, sessionDate,
       </article>
     ` : `
       <article class="timing-card timing-card-elapsed${setupGraceActive ? " timing-card-setup" : ""}">
-        <strong>${setupGraceActive ? "Setup Grace Period" : "Elapsed Time"}</strong>
+        <strong>${setupGraceActive ? "Setup Grace Period" : "Session Duration"}</strong>
         <p>${elapsedLabel || "0m"}</p>
       </article>
     `}
@@ -69008,7 +69093,7 @@ function renderSessionLifecycleTimelineMarkup(state) {
           <p class="session-command-stage-helper">${renderSessionLifecycleTimelineStatusMarkup(event.statusText)}</p>
           <div class="session-lifecycle-stage-card" aria-label="${escapeHtml(`${event.label} timing details`)}">
             <dl class="session-lifecycle-stage-card-grid">
-              <dt>Length</dt>
+              <dt>Stage Duration</dt>
               <dd>${escapeHtml(cardMeta.lengthText)}</dd>
             </dl>
           </div>
@@ -69296,6 +69381,7 @@ function renderSessionCommandCenterStatsMarkup(session = null, options = {}) {
       normalizedStage,
       session.germinationStartedAt || "",
       session.timerStartAt || "",
+      getSessionStageReminderOptions(session),
     )
     : null;
   const rateValue = session && totalsForSession.totalSeeds > 0
@@ -69802,8 +69888,9 @@ function buildFormLifecycleState(form) {
 }
 
 function buildSessionLifecycleState(session) {
-  const startedAt = getEffectiveSessionTimerStartAt(session);
-  const completedAt = parseCompletedAtValue(session.completedAt || session.completed_at || "");
+  const timingState = getSessionTimingState(session);
+  const startedAt = timingState.totalStartedAt;
+  const completedAt = timingState.completedAt;
   return {
     showEmptyTimeline: false,
     sessionStatus: normalizeSessionStatus(session?.sessionStatus || ""),
@@ -69812,7 +69899,7 @@ function buildSessionLifecycleState(session) {
     germinationStartedAt: parseCompletedAtValue(session.germinationStartedAt || session.germination_started_at || ""),
     firstPlantedAt: parseCompletedAtValue(session.firstPlantedAt || session.first_planted_at || ""),
     completedAt,
-    setupGraceActive: !completedAt && isSetupGracePeriodActive(startedAt),
+    setupGraceActive: timingState.setupGraceActive,
   };
 }
 

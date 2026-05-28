@@ -283,12 +283,13 @@ function parseSessionStartDateTime(sessionDate = "", sessionTime = "") {
 
 function getStageStartDateTime(session = {}, stage = "") {
   if (stage === "germinating") {
-    return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "")
-      || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
-      || parseSessionStartDateTime(session?.date || "", session?.time || "");
+    return parseTimestamp(session?.germinationStartedAt || session?.germination_started_at || "");
   }
-  return parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
-    || parseSessionStartDateTime(session?.date || "", session?.time || "");
+  return parseTimestamp(session?.soakStartedAt || session?.soak_started_at || "")
+    || parseTimestamp(session?.timerStartAt || session?.timer_start_at || "")
+    || parseTimestamp(session?.sessionStartedAt || session?.session_started_at || "")
+    || parseSessionStartDateTime(session?.date || "", session?.time || "")
+    || parseTimestamp(session?.createdAt || session?.created_at || "");
 }
 
 function buildAbsoluteUrl(appOrigin = "", route = "#home") {
@@ -516,7 +517,7 @@ async function fetchAllCandidateSessions(config) {
 
   while (true) {
     const rows = await supabaseRest(
-      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,timer_start_at,session_name,custom_session_name,session_status,germination_started_at,completed_at,is_deleted&is_deleted=is.false&session_status=in.(soaking,germinating,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
+      `${GROW_SESSIONS_TABLE}?select=id,user_id,date,time,session_started_at,soak_started_at,timer_start_at,session_name,custom_session_name,session_status,germination_started_at,completed_at,is_deleted,user_deleted,visibility_status,excluded_from_analytics,created_at&is_deleted=is.false&session_status=in.(soaking,germinating,completed)&order=created_at.asc&limit=${PAGE_SIZE}&offset=${offset}`,
       config,
     );
     const normalizedRows = Array.isArray(rows) ? rows : [];
@@ -527,17 +528,31 @@ async function fetchAllCandidateSessions(config) {
     offset += PAGE_SIZE;
   }
 
-  return sessions.map((row) => ({
+  return sessions.filter(isReminderCandidateSessionVisible).map((row) => ({
     id: String(row?.id || "").trim(),
     userId: String(row?.user_id || "").trim(),
     date: String(row?.date || "").trim(),
     time: String(row?.time || "").trim(),
+    sessionStartedAt: String(row?.session_started_at || "").trim(),
+    soakStartedAt: String(row?.soak_started_at || "").trim(),
     timerStartAt: String(row?.timer_start_at || "").trim(),
     sessionName: String(row?.session_name || row?.custom_session_name || "").trim(),
     sessionStatus: normalizeSessionStatus(row?.session_status || ""),
     germinationStartedAt: String(row?.germination_started_at || "").trim(),
     completedAt: String(row?.completed_at || "").trim(),
+    createdAt: String(row?.created_at || "").trim(),
   })).filter((row) => row.id && row.userId && row.sessionStatus);
+}
+
+function isReminderCandidateSessionVisible(row = {}) {
+  const visibilityStatus = String(row?.visibility_status || "").trim().toLowerCase();
+  const sessionStatus = String(row?.session_status || "").trim().toLowerCase();
+  return !(
+    row?.is_deleted === true
+    || row?.user_deleted === true
+    || ["deleted", "archived", "archived_test", "hidden"].includes(visibilityStatus)
+    || ["deleted", "archived", "archived_test"].includes(sessionStatus)
+  );
 }
 
 async function loadReminderEventsForSession(userId, sessionId, config) {
