@@ -62,6 +62,7 @@ const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
 const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed-vault-start";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
+const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
@@ -1264,6 +1265,8 @@ const appState = {
   notificationPreferencesUnavailableColumns: [],
   pushSubscriptions: [],
   currentPushSubscriptionRecord: null,
+  currentPushEndpoint: "",
+  pushDeliveryStatuses: {},
   pushSubscriptionsError: "",
   pushSubscriptionsTableUnavailable: false,
   serviceWorkerRegistration: null,
@@ -6450,16 +6453,75 @@ function normalizePushSubscriptionRecord(record = {}) {
     lastTestedAt: String(sourceRecord.lastTestedAt || sourceRecord.last_tested_at || "").trim(),
     lastDeliveryAt: String(sourceRecord.lastDeliveryAt || sourceRecord.last_delivery_at || "").trim(),
     disabledAt: String(sourceRecord.disabledAt || sourceRecord.disabled_at || "").trim(),
+    removedAt: String(sourceRecord.removedAt || sourceRecord.removed_at || "").trim(),
     createdAt: String(sourceRecord.createdAt || sourceRecord.created_at || "").trim(),
     updatedAt: String(sourceRecord.updatedAt || sourceRecord.updated_at || "").trim(),
   };
 }
 
+function getCurrentPushEndpointCandidate() {
+  return String(appState.currentPushEndpoint || appState.currentPushSubscriptionRecord?.endpoint || "").trim();
+}
+
+function isCurrentPushSubscriptionRecord(record = {}) {
+  const endpoint = String(record?.endpoint || "").trim();
+  const currentEndpoint = getCurrentPushEndpointCandidate();
+  if (endpoint && currentEndpoint) {
+    return endpoint === currentEndpoint;
+  }
+  return String(record?.deviceKey || "").trim() === getCurrentPushDeviceKey();
+}
+
+function getPushDeviceVisualStatus(record = {}) {
+  if (record?.removedAt || record?.removed_at) {
+    return "removed";
+  }
+  const result = getPushDeviceTestResult(record);
+  if (result?.ok === false) {
+    return isStalePushFailureText(result.message || "")
+      ? "stale"
+      : "failed";
+  }
+  const deliveryStatus = getPushDeviceDeliveryStatus(record);
+  if (deliveryStatus) {
+    if (isStalePushFailureText(deliveryStatus.failureCode || "") || isStalePushFailureText(deliveryStatus.failureReason || "")) {
+      return "stale";
+    }
+    if (isFailedPushDeliveryStatus(deliveryStatus.status)) {
+      return String(deliveryStatus.status || "").trim().toLowerCase() === "invalid" ? "stale" : "failed";
+    }
+  }
+  if (record?.disabledAt || record?.disabled_at || record?.pushEnabled === false || record?.permissionState !== "granted") {
+    return "paused";
+  }
+  return "active";
+}
+
+function getPushDeviceStatusMeta(record = {}) {
+  switch (getPushDeviceVisualStatus(record)) {
+    case "stale":
+      return { label: "Stale", tone: "warning", cardClass: "is-stale" };
+    case "failed":
+      return { label: "Failed", tone: "warning", cardClass: "is-warning" };
+    case "removed":
+      return { label: "Removed", tone: "critical", cardClass: "is-removed" };
+    case "paused":
+      return { label: "Paused", tone: "info", cardClass: "is-paused" };
+    case "active":
+    default:
+      return { label: "Active", tone: "success", cardClass: "" };
+  }
+}
+
+function isPushDeviceCleanupCandidate(record = {}) {
+  const status = getPushDeviceVisualStatus(record);
+  return status === "failed" || status === "stale";
+}
+
 function sortPushSubscriptionsCurrentDeviceFirst(records = []) {
-  const currentDeviceKey = getCurrentPushDeviceKey();
   return [...records].sort((left, right) => {
-    const leftCurrent = left?.deviceKey === currentDeviceKey ? 1 : 0;
-    const rightCurrent = right?.deviceKey === currentDeviceKey ? 1 : 0;
+    const leftCurrent = isCurrentPushSubscriptionRecord(left) ? 1 : 0;
+    const rightCurrent = isCurrentPushSubscriptionRecord(right) ? 1 : 0;
     if (leftCurrent !== rightCurrent) {
       return rightCurrent - leftCurrent;
     }
@@ -6499,7 +6561,7 @@ function syncUserPushSubscriptionsCache(userId = "", records = [], options = {})
   );
 
   appState.pushSubscriptions = normalizedRecords;
-  appState.currentPushSubscriptionRecord = normalizedRecords.find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+  appState.currentPushSubscriptionRecord = normalizedRecords.find((record) => isCurrentPushSubscriptionRecord(record)) || null;
 
   if (persistLocal && normalizedUserId) {
     try {
@@ -6529,7 +6591,7 @@ function getCurrentUserPushSubscriptions(userId = appState.user?.id || "") {
     });
   }
 
-  appState.currentPushSubscriptionRecord = appState.pushSubscriptions.find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+  appState.currentPushSubscriptionRecord = appState.pushSubscriptions.find((record) => isCurrentPushSubscriptionRecord(record)) || null;
   return appState.pushSubscriptions;
 }
 
@@ -6723,11 +6785,9 @@ function getActiveRegisteredPushDevices(records = getCurrentUserPushSubscription
       .map((record) => normalizePushSubscriptionRecord(record))
       .filter((record) => (
         record
-        && record.pushEnabled === true
-        && !record.disabledAt
-        && record.permissionState === "granted"
         && Boolean(record.endpoint)
         && Boolean(record.deviceKey)
+        && getPushDeviceVisualStatus(record) !== "removed"
       )),
   );
 }
@@ -6735,7 +6795,7 @@ function getActiveRegisteredPushDevices(records = getCurrentUserPushSubscription
 function getPushDeviceDisplayLabel(record = {}) {
   const label = String(record?.deviceLabel || "").trim();
   if (label) {
-    return record?.deviceKey === getCurrentPushDeviceKey() ? `${label} · Current device` : label;
+    return isCurrentPushSubscriptionRecord(record) ? `${label} · Current device` : label;
   }
 
   const userAgent = String(record?.userAgent || "").toLowerCase();
@@ -6750,12 +6810,38 @@ function getPushDeviceDisplayLabel(record = {}) {
       ? "Android"
       : (userAgent.includes("iphone") || userAgent.includes("ipad") ? "iOS" : "Device"));
   const fallback = `${browser} on ${platform}`;
-  return record?.deviceKey === getCurrentPushDeviceKey() ? `${fallback} · Current device` : fallback;
+  return isCurrentPushSubscriptionRecord(record) ? `${fallback} · Current device` : fallback;
 }
 
 function getPushDeviceTestResult(record = {}) {
   const key = String(record?.deviceKey || "").trim();
   return key ? (appState.pushDiagnostics?.deviceTestResults?.[key] || null) : null;
+}
+
+function getPushDeviceDeliveryStatus(record = {}) {
+  const key = String(record?.deviceKey || "").trim();
+  return key ? (appState.pushDeliveryStatuses?.[key] || null) : null;
+}
+
+function isFailedPushDeliveryStatus(status = "") {
+  return ["failed", "invalid", "rejected", "expired", "stale"].includes(String(status || "").trim().toLowerCase());
+}
+
+function isStalePushFailureText(value = "") {
+  const text = String(value || "").trim().toLowerCase();
+  return Boolean(
+    text
+    && (
+      text.includes("404")
+      || text.includes("410")
+      || text.includes("gone")
+      || text.includes("expired")
+      || text.includes("invalid")
+      || text.includes("not registered")
+      || text.includes("unregistered")
+      || text.includes("rejected")
+    ),
+  );
 }
 
 function setPushDeviceTestResults(deviceKeys = [], result = {}) {
@@ -6789,34 +6875,47 @@ function setPushDeviceTestResults(deviceKeys = [], result = {}) {
 function renderPushRegisteredDeviceMarkup(record = {}, options = {}) {
   const { canSend = false, sendingKey = "" } = options || {};
   const deviceKey = String(record?.deviceKey || "").trim();
+  const endpoint = String(record?.endpoint || "").trim();
   const isSending = sendingKey === deviceKey;
   const result = getPushDeviceTestResult(record);
   const resultTone = result?.ok === true ? "success" : "warning";
+  const statusMeta = getPushDeviceStatusMeta(record);
+  const isCurrent = isCurrentPushSubscriptionRecord(record);
+  const canSendDevice = canSend && getPushDeviceVisualStatus(record) === "active" && record.pushEnabled === true && !record.disabledAt && record.permissionState === "granted";
   const lastSeen = record?.lastSeenAt ? formatPushDiagnosticsTimestamp(record.lastSeenAt) : "";
   const created = record?.createdAt ? formatPushDiagnosticsTimestamp(record.createdAt) : "";
   const lastTested = record?.lastTestedAt ? formatPushDiagnosticsTimestamp(record.lastTestedAt) : "";
+  const lastDelivery = record?.lastDeliveryAt ? formatPushDiagnosticsTimestamp(record.lastDeliveryAt) : "";
   const details = [
     lastSeen ? `Last seen ${lastSeen}` : "",
     created ? `Created ${created}` : "",
     lastTested ? `Last tested ${lastTested}` : "",
+    lastDelivery ? `Last delivery ${lastDelivery}` : "",
   ].filter(Boolean);
 
   return `
-    <article class="profile-push-device-card">
+    <article class="profile-push-device-card ${escapeHtml(statusMeta.cardClass)}${isCurrent ? " is-current" : ""}">
       <div class="profile-push-device-main">
         <div class="profile-push-diagnostics-copy">
           <strong>${escapeHtml(getPushDeviceDisplayLabel(record))}</strong>
           <span>${escapeHtml(details.length ? details.join(" · ") : "No device timestamps recorded yet")}</span>
         </div>
-        <span class="profile-permission-badge is-success">Registered</span>
+        <span class="profile-permission-badge is-${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.label)}</span>
       </div>
       <div class="profile-push-device-actions">
         <button
           type="button"
           class="button button-secondary"
           data-profile-push-diagnostics-test-device="${escapeHtml(deviceKey)}"
-          ${canSend && deviceKey && !isSending ? "" : "disabled"}
+          ${canSendDevice && deviceKey && !isSending ? "" : "disabled"}
         >${isSending ? "Sending..." : "Send Test To This Device"}</button>
+        <button
+          type="button"
+          class="button button-secondary profile-push-device-remove"
+          data-profile-push-device-remove="${escapeHtml(deviceKey)}"
+          data-profile-push-device-endpoint="${escapeHtml(endpoint)}"
+          ${deviceKey || endpoint ? "" : "disabled"}
+        >Remove This Device</button>
       </div>
       ${result ? `<p class="profile-push-device-feedback is-${escapeHtml(resultTone)}">${escapeHtml(result.message || (result.ok ? "Test push sent." : "Test push failed."))}</p>` : ""}
     </article>
@@ -6826,12 +6925,17 @@ function renderPushRegisteredDeviceMarkup(record = {}, options = {}) {
 function renderPushRegisteredDevicesMarkup(options = {}) {
   const diagnostics = appState.pushDiagnostics || {};
   const devices = getActiveRegisteredPushDevices();
+  const sendableDevices = devices.filter((record) => getPushDeviceVisualStatus(record) === "active" && record.pushEnabled === true && !record.disabledAt && record.permissionState === "granted");
   const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
-  const canSend = pushPreferenceEnabled && !diagnostics.loading && diagnostics.backendReachable && diagnostics.backendConfigured && Boolean(getCurrentAuthAccessToken()) && devices.length > 0;
+  const canUseBackendActions = !diagnostics.loading && diagnostics.backendReachable && Boolean(getCurrentAuthAccessToken());
+  const canSend = pushPreferenceEnabled && canUseBackendActions && diagnostics.backendConfigured && sendableDevices.length > 0;
+  const canRemoveFailed = canUseBackendActions && devices.length > 0;
+  const canKeepCurrent = canUseBackendActions && Boolean(getCurrentPushEndpointCandidate() || appState.currentPushSubscriptionRecord?.deviceKey) && devices.some((record) => !isCurrentPushSubscriptionRecord(record));
   const sendingKey = String(diagnostics.sendingDeviceKey || "").trim();
   const isSendingAll = sendingKey === "__all__";
+  const isCleaning = sendingKey.startsWith("__cleanup__");
   const helperText = pushPreferenceEnabled
-    ? "Send test pushes to a specific saved endpoint to verify phone and PC delivery separately."
+    ? "Send test pushes to specific endpoints, or clean up stale saved devices without changing notification preferences."
     : "Registered devices are saved, but delivery is paused until Enable Push Notifications is turned on.";
 
   return `
@@ -6841,12 +6945,26 @@ function renderPushRegisteredDevicesMarkup(options = {}) {
           <strong>Registered Push Devices</strong>
           <span>${escapeHtml(helperText)}</span>
         </div>
-        <button
-          type="button"
-          class="button button-secondary"
-          data-profile-push-diagnostics-test-all="true"
-          ${canSend && !isSendingAll ? "" : "disabled"}
-        >${isSendingAll ? "Sending..." : "Send Test To All Devices"}</button>
+        <div class="profile-push-device-actions">
+          <button
+            type="button"
+            class="button button-secondary"
+            data-profile-push-diagnostics-test-all="true"
+            ${canSend && !isSendingAll && !isCleaning ? "" : "disabled"}
+          >${isSendingAll ? "Sending..." : "Send Test To All Devices"}</button>
+          <button
+            type="button"
+            class="button button-secondary"
+            data-profile-push-cleanup-failed="true"
+            ${canRemoveFailed && !isCleaning ? "" : "disabled"}
+          >Remove Failed Devices</button>
+          <button
+            type="button"
+            class="button button-secondary"
+            data-profile-push-keep-current="true"
+            ${canKeepCurrent && !isCleaning ? "" : "disabled"}
+          >Keep Only Current Device</button>
+        </div>
       </div>
       <div class="profile-push-device-list">
         ${devices.length
@@ -6990,10 +7108,17 @@ async function refreshPushDiagnosticsState(options = {}) {
     const serviceWorkerReady = serviceWorkerStatus === "active";
     if (appState.user?.id) {
       await loadUserPushSubscriptions(appState.user);
+      await loadUserPushDeliveryStatuses(appState.user);
     }
     const browserSubscription = serviceWorkerReady
       ? await getCurrentBrowserPushSubscription({ registration })
       : null;
+    if (browserSubscription?.endpoint) {
+      appState.currentPushEndpoint = String(browserSubscription.endpoint || "").trim();
+      syncUserPushSubscriptionsCache(String(appState.user?.id || "").trim(), getCurrentUserPushSubscriptions(), {
+        persistLocal: false,
+      });
+    }
     const currentDeviceRecord = appState.currentPushSubscriptionRecord;
 
     try {
@@ -12436,6 +12561,48 @@ async function loadUserPushSubscriptions(user = appState.user) {
   }
 }
 
+async function loadUserPushDeliveryStatuses(user = appState.user) {
+  const normalizedUserId = String(user?.id || "").trim();
+  if (!appState.supabase || !normalizedUserId) {
+    appState.pushDeliveryStatuses = {};
+    return {};
+  }
+
+  try {
+    const { data, error } = await appState.supabase
+      .from(PUSH_NOTIFICATION_DELIVERIES_TABLE)
+      .select("device_key,status,failure_code,failure_reason,created_at,updated_at")
+      .eq("user_id", normalizedUserId)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (error) {
+      throw error;
+    }
+
+    const latestByDeviceKey = {};
+    (Array.isArray(data) ? data : []).forEach((row) => {
+      const deviceKey = String(row?.device_key || "").trim();
+      if (deviceKey && !latestByDeviceKey[deviceKey]) {
+        latestByDeviceKey[deviceKey] = {
+          status: String(row?.status || "").trim(),
+          failureCode: String(row?.failure_code || "").trim(),
+          failureReason: String(row?.failure_reason || "").trim(),
+          createdAt: String(row?.created_at || "").trim(),
+          updatedAt: String(row?.updated_at || "").trim(),
+        };
+      }
+    });
+    appState.pushDeliveryStatuses = latestByDeviceKey;
+    return latestByDeviceKey;
+  } catch (error) {
+    if (!isSupabaseTableMissingError(error, PUSH_NOTIFICATION_DELIVERIES_TABLE)) {
+      console.warn("[Push Delivery] Failed to load recent push delivery statuses.", error);
+    }
+    appState.pushDeliveryStatuses = {};
+    return {};
+  }
+}
+
 function buildPushSubscriptionUpsertPayload(subscription = null, options = {}) {
   const normalizedUserId = String(options.userId || appState.user?.id || "").trim();
   const permissionState = String(options.permissionState || getGrowRemindersBrowserPermissionState()).trim().toLowerCase() || "default";
@@ -12526,7 +12693,9 @@ async function getCurrentBrowserPushSubscription(options = {}) {
   }
 
   try {
-    return await registration.pushManager.getSubscription();
+    const subscription = await registration.pushManager.getSubscription();
+    appState.currentPushEndpoint = String(subscription?.endpoint || appState.currentPushEndpoint || "").trim();
+    return subscription;
   } catch (error) {
     console.warn("[Push Delivery] Could not read browser push subscription.", error);
     return null;
@@ -12545,9 +12714,11 @@ async function ensureCurrentUserPushSubscriptionState(options = {}) {
   const subscription = await getCurrentBrowserPushSubscription();
   if (!subscription) {
     appState.currentPushSubscriptionRecord = getCurrentUserPushSubscriptions(normalizedUserId)
-      .find((record) => record.deviceKey === getCurrentPushDeviceKey()) || null;
+      .find((record) => isCurrentPushSubscriptionRecord(record)) || null;
     return appState.currentPushSubscriptionRecord;
   }
+
+  appState.currentPushEndpoint = String(subscription.endpoint || "").trim();
 
   if (!persistRecord) {
     const currentRecord = normalizePushSubscriptionRecord(buildPushSubscriptionUpsertPayload(subscription, {
@@ -12635,7 +12806,7 @@ async function disableCurrentDevicePushNotifications() {
   }
 
   const existingRecord = appState.currentPushSubscriptionRecord
-    || getCurrentUserPushSubscriptions(normalizedUserId).find((record) => record.deviceKey === getCurrentPushDeviceKey())
+    || getCurrentUserPushSubscriptions(normalizedUserId).find((record) => isCurrentPushSubscriptionRecord(record))
     || null;
   const subscription = await getCurrentBrowserPushSubscription();
   if (subscription) {
@@ -12896,6 +13067,121 @@ async function sendBackendPushTestToRegisteredDevices(options = {}) {
   }
 
   return result;
+}
+
+function removePushSubscriptionRecordsLocally(recordsToRemove = []) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const removalKeys = new Set((Array.isArray(recordsToRemove) ? recordsToRemove : [])
+    .map((record) => String(record?.deviceKey || record?.device_key || record || "").trim())
+    .filter(Boolean));
+  const removalEndpoints = new Set((Array.isArray(recordsToRemove) ? recordsToRemove : [])
+    .map((record) => String(record?.endpoint || "").trim())
+    .filter(Boolean));
+  const existingRecords = getCurrentUserPushSubscriptions(normalizedUserId);
+  const nextRecords = existingRecords.filter((record) => !removalKeys.has(record.deviceKey) && !removalEndpoints.has(record.endpoint));
+  syncUserPushSubscriptionsCache(normalizedUserId, nextRecords);
+  return {
+    ok: true,
+    removedCount: Math.max(0, existingRecords.length - nextRecords.length),
+    removedDeviceKeys: [...removalKeys],
+  };
+}
+
+async function cleanupPushSubscriptions(options = {}) {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  const mode = String(options.mode || "").trim();
+  if (!normalizedUserId) {
+    throw new Error("You must be signed in to clean up push devices.");
+  }
+  if (!["remove-device", "remove-failed", "keep-current"].includes(mode)) {
+    throw new Error("Choose a valid push device cleanup action.");
+  }
+
+  const deviceKey = String(options.deviceKey || "").trim();
+  const endpoint = String(options.endpoint || "").trim();
+  const currentEndpoint = String(options.currentEndpoint || getCurrentPushEndpointCandidate()).trim();
+  const currentDeviceKey = String(options.currentDeviceKey || appState.currentPushSubscriptionRecord?.deviceKey || getCurrentPushDeviceKey()).trim();
+  const allDevices = getActiveRegisteredPushDevices();
+  const localRemovalCandidates = (() => {
+    if (mode === "remove-device") {
+      return allDevices.filter((record) => (
+        (deviceKey && record.deviceKey === deviceKey)
+        || (endpoint && record.endpoint === endpoint)
+      ));
+    }
+    if (mode === "remove-failed") {
+      return allDevices.filter((record) => isPushDeviceCleanupCandidate(record));
+    }
+    return allDevices.filter((record) => (
+      currentEndpoint
+        ? record.endpoint !== currentEndpoint
+        : !isCurrentPushSubscriptionRecord(record)
+    ));
+  })();
+
+  const accessToken = getCurrentAuthAccessToken();
+  if (accessToken) {
+    const response = await fetch("/api/push-subscriptions-cleanup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        mode,
+        deviceKey,
+        endpoint,
+        currentEndpoint,
+        currentDeviceKey,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.ok !== true) {
+      throw new Error(result?.error || result?.reason || `Push device cleanup returned ${response.status}.`);
+    }
+    await loadUserPushSubscriptions(appState.user);
+    return result;
+  }
+
+  if (appState.supabase && !appState.pushSubscriptionsTableUnavailable) {
+    try {
+      if (!localRemovalCandidates.length) {
+        return { ok: true, removedCount: 0, removedDeviceKeys: [] };
+      }
+      const removalIds = localRemovalCandidates.map((record) => record.id).filter(Boolean);
+      let query = appState.supabase
+        .from(USER_PUSH_SUBSCRIPTIONS_TABLE)
+        .delete()
+        .eq("user_id", normalizedUserId);
+      if (removalIds.length) {
+        query = query.in("id", removalIds);
+      } else if (mode === "remove-device" && endpoint) {
+        query = query.eq("endpoint", endpoint);
+      } else if (mode === "remove-device" && deviceKey) {
+        query = query.eq("device_key", deviceKey);
+      } else {
+        return removePushSubscriptionRecordsLocally(localRemovalCandidates);
+      }
+      const { error } = await query;
+      if (error) {
+        throw error;
+      }
+      await loadUserPushSubscriptions(appState.user);
+      return {
+        ok: true,
+        removedCount: localRemovalCandidates.length,
+        removedDeviceKeys: localRemovalCandidates.map((record) => record.deviceKey).filter(Boolean),
+      };
+    } catch (error) {
+      if (isUserPushSubscriptionsTableMissingError(error)) {
+        markUserPushSubscriptionsTableUnavailable();
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  return removePushSubscriptionRecordsLocally(localRemovalCandidates);
 }
 
 async function sendServiceWorkerNotificationPayload(payload = {}) {
@@ -36071,6 +36357,140 @@ function bindProfilePageForm(form) {
           setMessage(error.message || "Could not send a test push to this device.", true);
         }
       });
+    });
+
+    form.querySelectorAll("[data-profile-push-device-remove]").forEach((button) => {
+      if (!(button instanceof HTMLButtonElement) || button.dataset.bound === "true") {
+        return;
+      }
+      button.dataset.bound = "true";
+      button.addEventListener("click", async () => {
+        const deviceKey = String(button.dataset.profilePushDeviceRemove || "").trim();
+        const endpoint = String(button.dataset.profilePushDeviceEndpoint || "").trim();
+        const device = getActiveRegisteredPushDevices().find((record) => (
+          (deviceKey && record.deviceKey === deviceKey)
+          || (endpoint && record.endpoint === endpoint)
+        )) || null;
+        try {
+          if (!device) {
+            throw new Error("That registered push device is no longer available.");
+          }
+          if (!window.confirm(`Remove ${getPushDeviceDisplayLabel(device)} from registered push devices?`)) {
+            return;
+          }
+          setMessage(`Removing ${getPushDeviceDisplayLabel(device)}...`);
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: `__cleanup__${deviceKey || endpoint}`,
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          const result = await cleanupPushSubscriptions({
+            mode: "remove-device",
+            deviceKey,
+            endpoint,
+          });
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+          };
+          await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+          bindPushDiagnosticsActions();
+          setMessage(result?.removedCount ? "Push device removed." : "No matching push device was removed.");
+        } catch (error) {
+          appState.pushDiagnostics = {
+            ...(appState.pushDiagnostics || {}),
+            sendingDeviceKey: "",
+            lastErrorMessage: error.message || "Could not remove that push device.",
+          };
+          syncPushDiagnosticsStateUi(form);
+          bindPushDiagnosticsActions();
+          setMessage(error.message || "Could not remove that push device.", true);
+        }
+      });
+    });
+
+    form.querySelector("[data-profile-push-cleanup-failed='true']")?.addEventListener("click", async () => {
+      const devices = getActiveRegisteredPushDevices();
+      try {
+        if (!devices.length) {
+          throw new Error("No registered push devices are available to clean up.");
+        }
+        if (!window.confirm("Remove failed or stale push devices?")) {
+          return;
+        }
+        setMessage("Removing failed push devices...");
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "__cleanup__failed",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        const result = await cleanupPushSubscriptions({ mode: "remove-failed" });
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "",
+        };
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        const removedCount = Number(result?.removedCount || 0);
+        setMessage(removedCount ? `Removed ${removedCount} failed push device${removedCount === 1 ? "" : "s"}.` : "No failed push devices were removed.");
+      } catch (error) {
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "",
+          lastErrorMessage: error.message || "Could not remove failed push devices.",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        setMessage(error.message || "Could not remove failed push devices.", true);
+      }
+    });
+
+    form.querySelector("[data-profile-push-keep-current='true']")?.addEventListener("click", async () => {
+      try {
+        const currentRecord = await ensureCurrentUserPushSubscriptionState({ persistRecord: false });
+        const currentEndpoint = getCurrentPushEndpointCandidate();
+        if (!currentEndpoint && !currentRecord?.deviceKey) {
+          throw new Error("Register this browser first so the current device can be identified safely.");
+        }
+        const otherDevices = getActiveRegisteredPushDevices().filter((record) => !isCurrentPushSubscriptionRecord(record));
+        if (!otherDevices.length) {
+          throw new Error("Only the current device is registered right now.");
+        }
+        if (!window.confirm(`Keep only this browser/device and remove ${otherDevices.length} other push device${otherDevices.length === 1 ? "" : "s"}?`)) {
+          return;
+        }
+        setMessage("Keeping only the current push device...");
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "__cleanup__current",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        const result = await cleanupPushSubscriptions({
+          mode: "keep-current",
+          currentEndpoint,
+          currentDeviceKey: currentRecord?.deviceKey || getCurrentPushDeviceKey(),
+        });
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "",
+        };
+        await refreshPushDiagnosticsState({ scope: form, preserveLastStatus: true });
+        bindPushDiagnosticsActions();
+        const removedCount = Number(result?.removedCount || 0);
+        setMessage(removedCount ? `Kept this device and removed ${removedCount} other push device${removedCount === 1 ? "" : "s"}.` : "No other push devices were removed.");
+      } catch (error) {
+        appState.pushDiagnostics = {
+          ...(appState.pushDiagnostics || {}),
+          sendingDeviceKey: "",
+          lastErrorMessage: error.message || "Could not keep only the current device.",
+        };
+        syncPushDiagnosticsStateUi(form);
+        bindPushDiagnosticsActions();
+        setMessage(error.message || "Could not keep only the current device.", true);
+      }
     });
 
     form.querySelector("[data-profile-push-diagnostics-refresh='true']")?.addEventListener("click", async () => {

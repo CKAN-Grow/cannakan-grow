@@ -612,8 +612,11 @@ async function deletePushSubscriptionRecord(record, config) {
   if (!record?.id) {
     return;
   }
+  const ownerFilter = record?.userId
+    ? `&user_id=eq.${encodeURIComponent(record.userId)}`
+    : "";
   await supabaseRest(
-    `${USER_PUSH_SUBSCRIPTIONS_TABLE}?id=eq.${encodeURIComponent(record.id)}`,
+    `${USER_PUSH_SUBSCRIPTIONS_TABLE}?id=eq.${encodeURIComponent(record.id)}${ownerFilter}`,
     config,
     {
       method: "DELETE",
@@ -642,7 +645,16 @@ async function updatePushSubscriptionDeliveryTimestamp(record, config, sentAtIso
 
 function shouldTreatSubscriptionAsExpired(error) {
   const statusCode = Number(error?.statusCode || error?.status || 0);
-  return statusCode === 404 || statusCode === 410;
+  const message = String(error?.body || error?.message || "").trim().toLowerCase();
+  return statusCode === 404
+    || statusCode === 410
+    || message.includes("404")
+    || message.includes("410")
+    || message.includes("gone")
+    || message.includes("expired")
+    || message.includes("invalid")
+    || message.includes("not registered")
+    || message.includes("unregistered");
 }
 
 function getRuleDueAt(session, rule) {

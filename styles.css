@@ -22540,6 +22540,8 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
 }
 
 .profile-push-device-card {
+  position: relative;
+  overflow: hidden;
   display: grid;
   gap: 10px;
   padding: 12px 14px;
@@ -22549,6 +22551,72 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
     linear-gradient(135deg, rgba(148, 209, 89, 0.08), rgba(255, 255, 255, 0.028)),
     rgba(10, 16, 12, 0.34);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.profile-push-device-card::before {
+  content: "";
+  position: absolute;
+  inset: 10px auto 10px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.34);
+  opacity: 0;
+  box-shadow: 0 0 18px rgba(148, 209, 89, 0.14);
+}
+
+.profile-push-device-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.profile-push-device-card.is-current {
+  border-color: rgba(148, 209, 89, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 0 1px rgba(148, 209, 89, 0.06),
+    0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.profile-push-device-card.is-current::before {
+  opacity: 1;
+}
+
+.profile-push-device-card.is-warning {
+  border-color: rgba(221, 168, 82, 0.24);
+  background:
+    linear-gradient(135deg, rgba(221, 168, 82, 0.105), rgba(255, 255, 255, 0.024)),
+    rgba(14, 15, 11, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 20px rgba(221, 168, 82, 0.08);
+}
+
+.profile-push-device-card.is-warning::before {
+  opacity: 1;
+  background: rgba(221, 168, 82, 0.52);
+  box-shadow: 0 0 18px rgba(221, 168, 82, 0.18);
+}
+
+.profile-push-device-card.is-stale,
+.profile-push-device-card.is-removed {
+  border-color: rgba(173, 74, 76, 0.26);
+  background:
+    linear-gradient(135deg, rgba(173, 74, 76, 0.105), rgba(255, 255, 255, 0.022)),
+    rgba(16, 12, 12, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 0 22px rgba(173, 74, 76, 0.08);
+}
+
+.profile-push-device-card.is-stale::before,
+.profile-push-device-card.is-removed::before {
+  opacity: 1;
+  background: rgba(173, 74, 76, 0.54);
+  box-shadow: 0 0 18px rgba(173, 74, 76, 0.2);
+}
+
+.profile-push-device-remove {
+  border-color: rgba(190, 91, 89, 0.18);
 }
 
 .profile-push-device-feedback {
@@ -23303,6 +23371,37 @@ body.theme-dark .profile-push-device-card {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.045),
     0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+body.theme-dark .profile-push-device-card.is-current {
+  border-color: rgba(148, 209, 89, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 0 1px rgba(148, 209, 89, 0.08),
+    0 12px 26px rgba(0, 0, 0, 0.2);
+}
+
+body.theme-dark .profile-push-device-card.is-warning {
+  border-color: rgba(221, 168, 82, 0.28);
+  background:
+    linear-gradient(135deg, rgba(221, 168, 82, 0.12), rgba(255, 255, 255, 0.024)),
+    rgba(18, 17, 12, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    0 0 22px rgba(221, 168, 82, 0.1);
+}
+
+body.theme-dark .profile-push-device-card.is-stale,
+body.theme-dark .profile-push-device-card.is-removed {
+  border-color: rgba(173, 74, 76, 0.3);
+  background:
+    linear-gradient(135deg, rgba(173, 74, 76, 0.13), rgba(255, 255, 255, 0.022)),
+    rgba(18, 12, 12, 0.62);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 24px rgba(0, 0, 0, 0.18),
+    0 0 22px rgba(173, 74, 76, 0.1);
 }
 
 body.theme-dark .profile-push-diagnostics-copy strong {
