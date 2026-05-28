@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "node ./scripts/build-config.mjs",
-    "generate:profile-migration": "node ./scripts/generate-profile-columns-migration.mjs"
+    "generate:profile-migration": "node ./scripts/generate-profile-columns-migration.mjs",
+    "qa:founder": "node ./scripts/run-founder-admin-qa-sweep.js"
   }
 }

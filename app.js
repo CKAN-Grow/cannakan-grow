@@ -39552,6 +39552,366 @@ function renderAdminOverviewCardMarkup({ label, value, subtext = "", className =
   `;
 }
 
+const FOUNDER_ADMIN_QA_SWEEP_COMMAND = "npm run qa:founder";
+const FOUNDER_ADMIN_QA_REGRESSION_SCRIPTS = Object.freeze([
+  "session-lifecycle-cleanup-regression-check.js",
+  "session-stabilization-audit-regression-check.js",
+  "session-duration-full-elapsed-regression-check.js",
+  "session-times-recalculation-regression-check.js",
+  "grow-session-save-regression-check.js",
+  "snapshot-community-integrity-regression-check.js",
+  "snapshot-sharing-defaults-regression-check.js",
+  "public-session-partition-results-regression-check.js",
+  "notification-reminder-orchestration-regression-check.js",
+  "founder-admin-qa-framework-regression-check.js",
+  "push-send-resilience-regression-check.js",
+  "seed-age-half-step-regression-check.js",
+  "seed-vault-estimated-age-regression-check.js",
+  "home-gallery-rankings-teaser-regression-check.js",
+  "community-grow-schema-warning-regression-check.js",
+  "community-grow-note-sharing-regression-check.js",
+  "stage-color-mapping-regression-check.js",
+]);
+
+function canViewFounderAdminQaTools() {
+  return Boolean(appState.user && (isAdminUser() || isLocalDevQaBypassActive()));
+}
+
+function countByKey(records = [], keyGetter = null) {
+  const counts = {};
+  (Array.isArray(records) ? records : []).forEach((record) => {
+    const key = typeof keyGetter === "function" ? keyGetter(record) : "";
+    const normalizedKey = String(key || "unknown").trim() || "unknown";
+    counts[normalizedKey] = (counts[normalizedKey] || 0) + 1;
+  });
+  return counts;
+}
+
+function getDuplicateKeys(records = [], keyGetter = null) {
+  return Object.entries(countByKey(records, keyGetter))
+    .filter(([key, count]) => key !== "unknown" && count > 1)
+    .map(([key, count]) => ({ key, count }));
+}
+
+function getFounderAdminQaStatusTone(status = "ok") {
+  switch (String(status || "").trim()) {
+    case "attention":
+      return "warning";
+    case "blocked":
+      return "critical";
+    case "info":
+      return "info";
+    case "ok":
+    default:
+      return "success";
+  }
+}
+
+function buildFounderAdminQaCheck(label = "", status = "ok", detail = "") {
+  return {
+    label: String(label || "").trim(),
+    status: ["ok", "attention", "blocked", "info"].includes(String(status || "").trim())
+      ? String(status || "").trim()
+      : "info",
+    detail: String(detail || "").trim(),
+  };
+}
+
+function getFounderAdminQaSweepSummary() {
+  const sessions = getSessions();
+  const visibleSessions = getVisibleUserSessions(sessions);
+  const lifecycleBuckets = countByKey(sessions, (session) => getGrowSessionLifecycleHealth(session).classification);
+  const invalidTimestampSessions = sessions.filter((session) => !getSessionLifecycleTimestampHealth(session).isValid);
+  const analyticsEligibleSessions = sessions.filter((session) => isGrowSessionAnalyticsEligible(session, { includeMock: isMockDataEnabled() }));
+  const completedAnalyticsSessions = analyticsEligibleSessions.filter((session) => normalizeSessionStatus(session?.sessionStatus || "") === "completed");
+  const activeMetricEligibleSessions = sessions.filter((session) => getGrowSessionLifecycleHealth(session).activeMetricEligible);
+  const recoverySessions = sessions.filter((session) => ["needs_attention", "stale", "abandoned"].includes(getGrowSessionLifecycleHealth(session).classification));
+
+  const snapshots = getGallerySnapshotsForDisplay();
+  const snapshotIntegrityFailures = snapshots
+    .map((snapshot) => ({ snapshot, integrity: getGallerySnapshotIntegrity(snapshot) }))
+    .filter((entry) => !entry.integrity.ok);
+  const publicVisibleSnapshots = snapshots.filter((snapshot) => isGallerySnapshotPubliclyVisible(snapshot, snapshots));
+  const approvedActiveSnapshots = snapshots.filter((snapshot) => isApprovedActiveGallerySnapshotStatus(snapshot));
+  const duplicatePublicSnapshotSessions = getDuplicateKeys(
+    approvedActiveSnapshots,
+    (snapshot) => String(snapshot?.sessionId || "").trim(),
+  );
+  const moderationBuckets = countByKey(snapshots, (snapshot) => getGallerySnapshotDisplayStatus(snapshot));
+
+  const notifications = getAppNotifications();
+  const managedNotifications = notifications.filter((notification) => isManagedDueGrowReminderEventKey(notification?.eventKey || ""));
+  const duplicateManagedEvents = getDuplicateKeys(managedNotifications, (notification) => notification?.eventKey || "");
+  const suppressedManagedNotifications = managedNotifications.filter((notification) => shouldSuppressManagedAppNotification(notification));
+  const snoozedNotifications = loadSnoozedAppNotificationEvents(appState.user?.id || "");
+  const pushDevices = getActiveRegisteredPushDevices();
+  const stalePushDevices = pushDevices.filter((record) => isPushDeviceCleanupCandidate(record));
+  const duplicatePushEndpoints = getDuplicateKeys(pushDevices, (record) => record?.endpoint || "");
+  const currentDeviceExcluded = Boolean(getCurrentPushEndpointCandidate() || appState.currentPushSubscriptionRecord?.deviceKey);
+
+  const mixedAgeSessions = sessions.filter((session) => {
+    const mode = String(session?.seedAgeMode || session?.seed_age_mode || "").trim().toLowerCase();
+    return mode === "mixed";
+  });
+  const sameAgeSessions = sessions.filter((session) => {
+    const mode = String(session?.seedAgeMode || session?.seed_age_mode || "").trim().toLowerCase();
+    return mode === "same" || (!mode && String(session?.seedAgeYears || session?.seed_age_years || "").trim());
+  });
+  const seedAgeMetadataIssues = sessions.filter((session) => {
+    const mode = String(session?.seedAgeMode || session?.seed_age_mode || "").trim().toLowerCase();
+    if (mode === "same") {
+      return String(session?.seedAgeYears || session?.seed_age_years || "").trim()
+        && !isValidSeedAgeYearsInput(session.seedAgeYears || session.seed_age_years);
+    }
+    const partitions = normalizeSessionPartitions(session?.partitions || []);
+    return partitions.some((partition) => (
+      String(partition?.seedAgeYears || partition?.seed_age_years || "").trim()
+      && !isValidSeedAgeYearsInput(partition.seedAgeYears || partition.seed_age_years)
+    ));
+  });
+
+  const serviceWorkerStatus = getServiceWorkerLifecycleStatus(appState.serviceWorkerRegistration || null);
+  const installMode = getInstallPromptMode();
+  const notificationPermission = getGrowRemindersBrowserPermissionState();
+  const isInstalled = getInstallEnvironment().isInstalled;
+
+  const checks = [
+    buildFounderAdminQaCheck(
+      "Session lifecycle",
+      invalidTimestampSessions.length || (lifecycleBuckets.abandoned || 0) ? "attention" : "ok",
+      `${sessions.length} total, ${visibleSessions.length} visible, ${completedAnalyticsSessions.length} completed analytics sessions, ${recoverySessions.length} recovery candidates.`,
+    ),
+    buildFounderAdminQaCheck(
+      "Snapshot + Community Grow",
+      snapshotIntegrityFailures.length || duplicatePublicSnapshotSessions.length ? "blocked" : "ok",
+      `${publicVisibleSnapshots.length} public, ${moderationBuckets.pending_review || 0} pending, ${snapshotIntegrityFailures.length} integrity issue(s), ${duplicatePublicSnapshotSessions.length} duplicate public session(s).`,
+    ),
+    buildFounderAdminQaCheck(
+      "Notification orchestration",
+      duplicateManagedEvents.length || suppressedManagedNotifications.length || stalePushDevices.length || duplicatePushEndpoints.length ? "attention" : "ok",
+      `${managedNotifications.length} managed in-app event(s), ${snoozedNotifications.length} snoozed, ${stalePushDevices.length} stale/failed device(s), ${duplicatePushEndpoints.length} duplicate endpoint(s).`,
+    ),
+    buildFounderAdminQaCheck(
+      "Seed age + analytics",
+      seedAgeMetadataIssues.length ? "attention" : "ok",
+      `${sameAgeSessions.length} same-age session(s), ${mixedAgeSessions.length} mixed-age session(s), ${activeMetricEligibleSessions.length} active metric eligible, ${seedAgeMetadataIssues.length} seed-age metadata issue(s).`,
+    ),
+    buildFounderAdminQaCheck(
+      "PWA/install",
+      serviceWorkerStatus === "active" ? "ok" : "info",
+      `Install mode ${installMode}; installed ${isInstalled ? "yes" : "no"}; service worker ${serviceWorkerStatus}; notification permission ${notificationPermission}; current device ${currentDeviceExcluded ? "identified" : "not identified"}.`,
+    ),
+  ];
+
+  return {
+    generatedAt: new Date().toISOString(),
+    sessions,
+    lifecycleBuckets,
+    invalidTimestampSessions,
+    recoverySessions,
+    snapshots,
+    snapshotIntegrityFailures,
+    duplicatePublicSnapshotSessions,
+    moderationBuckets,
+    notifications,
+    duplicateManagedEvents,
+    suppressedManagedNotifications,
+    snoozedNotifications,
+    pushDevices,
+    stalePushDevices,
+    duplicatePushEndpoints,
+    seedAgeMetadataIssues,
+    checks,
+    pwa: {
+      serviceWorkerStatus,
+      installMode,
+      notificationPermission,
+      isInstalled,
+      currentDeviceExcluded,
+    },
+  };
+}
+
+function renderFounderAdminQaStatusPillMarkup(status = "ok", label = "") {
+  const tone = getFounderAdminQaStatusTone(status);
+  const displayLabel = label || (status === "ok" ? "OK" : capitalize(status));
+  return `<span class="profile-permission-badge is-${escapeHtml(tone)}">${escapeHtml(displayLabel)}</span>`;
+}
+
+function renderFounderAdminQaCheckMarkup(check = {}) {
+  return `
+    <article class="meta-card founder-admin-qa-check is-${escapeHtml(check.status || "info")}">
+      <div class="profile-notification-permission-head">
+        <div class="profile-notification-permission-copy">
+          <strong>${escapeHtml(check.label || "QA check")}</strong>
+          <span>${escapeHtml(check.detail || "No detail available.")}</span>
+        </div>
+        ${renderFounderAdminQaStatusPillMarkup(check.status)}
+      </div>
+    </article>
+  `;
+}
+
+function renderFounderAdminQaIssueListMarkup(items = [], emptyLabel = "No issues detected.") {
+  const normalizedItems = (Array.isArray(items) ? items : []).slice(0, 6);
+  if (!normalizedItems.length) {
+    return `<p class="muted">${escapeHtml(emptyLabel)}</p>`;
+  }
+  return `
+    <ul class="admin-integrity-issue-list founder-admin-qa-issue-list">
+      ${normalizedItems.map((item) => {
+        const label = typeof item === "string"
+          ? item
+          : [
+            item?.key,
+            item?.count ? `${item.count}x` : "",
+            item?.integrity?.reason || item?.reason || "",
+            item?.snapshot?.id ? `snapshot ${item.snapshot.id}` : "",
+            item?.id ? `session ${item.id}` : "",
+          ].filter(Boolean).join(" · ");
+        return `<li>${escapeHtml(label || "Review item")}</li>`;
+      }).join("")}
+    </ul>
+  `;
+}
+
+function logFounderAdminQaSweepIssues(summary = getFounderAdminQaSweepSummary()) {
+  if (!canViewFounderAdminQaTools()) {
+    return;
+  }
+
+  const issues = {
+    invalidTimestampSessions: summary.invalidTimestampSessions.map((session) => ({
+      id: session.id,
+      status: normalizeSessionStatus(session.sessionStatus || ""),
+      timestampHealth: getSessionLifecycleTimestampHealth(session),
+    })),
+    snapshotIntegrityFailures: summary.snapshotIntegrityFailures.map((entry) => ({
+      id: entry.snapshot?.id || "",
+      sessionId: entry.snapshot?.sessionId || "",
+      reason: entry.integrity.reason,
+    })),
+    duplicatePublicSnapshotSessions: summary.duplicatePublicSnapshotSessions,
+    duplicateReminderEvents: summary.duplicateManagedEvents,
+    suppressedManagedNotifications: summary.suppressedManagedNotifications.map((notification) => notification.eventKey),
+    stalePushDevices: summary.stalePushDevices.map((record) => ({
+      deviceKey: record.deviceKey,
+      endpoint: record.endpoint,
+      status: getPushDeviceVisualStatus(record),
+    })),
+    seedAgeMetadataIssues: summary.seedAgeMetadataIssues.map((session) => session.id),
+  };
+
+  console.groupCollapsed("[Founder/Admin QA] Grow ecosystem sweep");
+  console.info("Summary", summary);
+  if (Object.values(issues).some((value) => Array.isArray(value) && value.length)) {
+    console.warn("Integrity findings", issues);
+  } else {
+    console.info("No blocking QA findings detected in loaded client state.");
+  }
+  console.groupEnd();
+}
+
+function renderFounderAdminQaSweepSectionMarkup() {
+  if (!canViewFounderAdminQaTools()) {
+    return "";
+  }
+
+  const summary = getFounderAdminQaSweepSummary();
+  const bodyMarkup = `
+    <div class="profile-push-devices-panel founder-admin-qa-panel">
+      <div class="profile-push-devices-head">
+        <div class="profile-push-diagnostics-copy">
+          <strong>Founder/Admin QA Sweep</strong>
+          <span>Loaded-state diagnostics for lifecycle, Community Grow, notifications, seed age, analytics, and PWA readiness.</span>
+        </div>
+        <div class="profile-push-device-actions">
+          <button type="button" class="button button-secondary" data-founder-admin-qa-log="true">Log QA Summary</button>
+          <button type="button" class="button button-secondary" data-founder-admin-qa-copy-command="true">Copy QA Command</button>
+        </div>
+      </div>
+      <div class="summary-grid admin-overview-grid founder-admin-qa-grid">
+        ${summary.checks.map((check) => renderFounderAdminQaCheckMarkup(check)).join("")}
+      </div>
+      <div class="admin-sources-layout founder-admin-qa-detail-grid">
+        <div class="meta-card">
+          <strong>Lifecycle Recovery Preview</strong>
+          ${renderFounderAdminQaIssueListMarkup(summary.recoverySessions.map((session) => {
+            const health = getGrowSessionLifecycleHealth(session);
+            return `${formatSessionLabel(session)} · ${health.label} · ${health.reason || health.detail}`;
+          }), "No loaded sessions need recovery attention.")}
+        </div>
+        <div class="meta-card">
+          <strong>Snapshot Visibility Conflicts</strong>
+          ${renderFounderAdminQaIssueListMarkup([
+            ...summary.snapshotIntegrityFailures,
+            ...summary.duplicatePublicSnapshotSessions,
+          ], "No snapshot visibility conflicts detected.")}
+        </div>
+        <div class="meta-card">
+          <strong>Reminder/Event Preview</strong>
+          ${renderFounderAdminQaIssueListMarkup([
+            ...summary.duplicateManagedEvents,
+            ...summary.suppressedManagedNotifications.map((notification) => `${notification.eventKey} · suppressed by lifecycle/session state`),
+            ...summary.stalePushDevices.map((record) => `${getPushDeviceDisplayLabel(record)} · ${getPushDeviceVisualStatus(record)}`),
+          ], "No duplicate reminder or stale push-device findings in loaded state.")}
+        </div>
+        <div class="meta-card">
+          <strong>Regression Guard Command</strong>
+          <p class="muted">${escapeHtml(FOUNDER_ADMIN_QA_SWEEP_COMMAND)}</p>
+          <p class="muted">${escapeHtml(`${FOUNDER_ADMIN_QA_REGRESSION_SCRIPTS.length} focused regression checks plus syntax/build guards.`)}</p>
+        </div>
+      </div>
+      <p class="profile-push-device-feedback is-info" data-founder-admin-qa-feedback hidden></p>
+    </div>
+  `;
+
+  return renderAdminCollapsibleSectionMarkup({
+    eyebrow: "Founder QA",
+    title: "Grow ecosystem QA sweep",
+    description: "Admin-only diagnostics for stabilization checks before major expansion resumes.",
+    iconType: "analytics",
+    storageKey: "adminFounderQaSweepOpen",
+    contentId: "admin-founder-qa-sweep-content",
+    defaultOpen: false,
+    bodyMarkup,
+  });
+}
+
+function bindFounderAdminQaSweepSection(scope = app) {
+  if (!scope?.querySelectorAll || !canViewFounderAdminQaTools()) {
+    return;
+  }
+
+  const feedback = scope.querySelector("[data-founder-admin-qa-feedback]");
+  const setFeedback = (message = "", tone = "info") => {
+    if (!feedback) {
+      return;
+    }
+    feedback.hidden = !message;
+    feedback.textContent = message;
+    feedback.className = `profile-push-device-feedback is-${tone}`;
+  };
+
+  scope.querySelector("[data-founder-admin-qa-log='true']")?.addEventListener("click", () => {
+    logFounderAdminQaSweepIssues();
+    setFeedback("QA summary logged to the developer console.", "success");
+  });
+
+  scope.querySelector("[data-founder-admin-qa-copy-command='true']")?.addEventListener("click", async () => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable.");
+      }
+      await navigator.clipboard.writeText(FOUNDER_ADMIN_QA_SWEEP_COMMAND);
+      setFeedback("QA command copied.", "success");
+    } catch (error) {
+      console.info("[Founder/Admin QA] Copy unavailable. Run:", FOUNDER_ADMIN_QA_SWEEP_COMMAND);
+      setFeedback(`Copy unavailable. Run ${FOUNDER_ADMIN_QA_SWEEP_COMMAND}.`, "warning");
+    }
+  });
+}
+
 function formatAdminTimestamp(value) {
   const parsedDate = parseCompletedAtValue(value);
   return parsedDate ? formatTimingDateTime(parsedDate) : "Not available";
@@ -56400,6 +56760,10 @@ function renderAdminPage() {
       markup: renderSiteVisitorAnalyticsSectionMarkup(),
     },
     {
+      key: "founder-admin-qa-sweep",
+      markup: renderFounderAdminQaSweepSectionMarkup(),
+    },
+    {
       key: "community-grow-moderation",
       markup: `
         <section class="card admin-section-card">
@@ -56744,6 +57108,7 @@ function renderAdminPage() {
   bindAdminSourcesSection();
   bindAdminAnnouncementsSection();
   bindAdminTutorialManagementSection();
+  bindFounderAdminQaSweepSection(app);
   bindSiteVisitorAnalyticsSection();
   bindMessageBoardImageFallbacks(app);
   app.querySelector('[data-open-community-grow-moderation="true"]')?.addEventListener("click", () => {
