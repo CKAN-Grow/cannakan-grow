@@ -21814,6 +21814,9 @@ function mapRowToGallerySnapshot(row) {
 
 function normalizeGallerySnapshotRecordStatus(status, isPublished = false) {
   const normalizedStatus = String(status || "").trim().toLowerCase();
+  if (["hidden", "unpublished"].includes(normalizedStatus)) {
+    return "hidden";
+  }
   if (normalizedStatus === "pending") {
     logGrowGalleryDebug("normalizeGallerySnapshotRecordStatus", {
       inputStatus: status,
@@ -21830,7 +21833,7 @@ function normalizeGallerySnapshotRecordStatus(status, isPublished = false) {
     });
     return "approved";
   }
-  if (["private", "pending_review", "approved", "rejected"].includes(normalizedStatus)) {
+  if (["private", "pending_review", "approved", "rejected", "hidden"].includes(normalizedStatus)) {
     return normalizedStatus;
   }
   logGrowGalleryDebug("normalizeGallerySnapshotRecordStatus:fallback", {
@@ -21847,6 +21850,185 @@ function getGallerySnapshotForSession(sessionId) {
   }
 
   return appState.gallerySnapshots.find((entry) => entry.sessionId === sessionId) || null;
+}
+
+function getBlockingGallerySnapshotForSession(sessionId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+
+  return appState.gallerySnapshots.find((entry) => (
+    String(entry?.sessionId || "").trim() === normalizedSessionId
+    && ["pending_review", "approved", "rejected"].includes(getGallerySnapshotDisplayStatus(entry))
+  )) || null;
+}
+
+function canCurrentUserUseSnapshotSession(session = null) {
+  if (!session?.id || isSessionSoftDeleted(session)) {
+    return false;
+  }
+  if (isLocalDevQaBypassActive() || !appState.supabase) {
+    return true;
+  }
+
+  const currentUserId = String(appState.user?.id || "").trim();
+  const ownerUserId = String(session.userId || session.user_id || "").trim();
+  return Boolean(currentUserId && ownerUserId && currentUserId === ownerUserId);
+}
+
+function getSnapshotSessionIntegrity(session = null, options = {}) {
+  const requireOwner = options.requireOwner !== false;
+  const normalizedSession = normalizeStoredSession(session) || session;
+  if (!normalizedSession?.id) {
+    return {
+      ok: false,
+      reason: "missing_session",
+      message: "Save this session before creating a snapshot.",
+    };
+  }
+  if (isSessionSoftDeleted(normalizedSession)) {
+    return {
+      ok: false,
+      reason: "deleted_session",
+      message: "Snapshots are not available for deleted or archived sessions.",
+    };
+  }
+  if (requireOwner && !canCurrentUserUseSnapshotSession(normalizedSession)) {
+    return {
+      ok: false,
+      reason: "owner_mismatch",
+      message: "You can only create snapshots for your own sessions.",
+    };
+  }
+
+  const lifecycleHealth = getGrowSessionLifecycleHealth(normalizedSession);
+  if (["stale", "abandoned", "archived"].includes(lifecycleHealth.classification)) {
+    return {
+      ok: false,
+      reason: `session_${lifecycleHealth.classification}`,
+      message: lifecycleHealth.classification === "abandoned"
+        ? "Resume or archive this inactive session before creating a snapshot."
+        : "Review this session before creating a snapshot.",
+    };
+  }
+
+  const timestampHealth = getSessionLifecycleTimestampHealth(normalizedSession);
+  if (!timestampHealth.isValid) {
+    return {
+      ok: false,
+      reason: timestampHealth.reason || "invalid_timestamps",
+      message: timestampHealth.message || "Fix the session timing before creating a snapshot.",
+    };
+  }
+
+  return {
+    ok: true,
+    reason: "",
+    message: "",
+    lifecycleHealth,
+  };
+}
+
+function getSnapshotSessionIntegrityMessage(session = null, options = {}) {
+  const integrity = getSnapshotSessionIntegrity(session, options);
+  return integrity.ok ? "" : integrity.message;
+}
+
+function getGallerySnapshotIntegrity(snapshot = null) {
+  if (!snapshot?.id) {
+    return { ok: false, reason: "missing_snapshot", message: "Snapshot record is missing." };
+  }
+
+  const status = getGallerySnapshotDisplayStatus(snapshot);
+  const isApproved = status === "approved";
+  const isPublished = snapshot.published === true;
+  if (isApproved && !isPublished) {
+    return { ok: false, reason: "approved_not_published", message: "Approved snapshot is not marked public." };
+  }
+  if (!isApproved && isPublished) {
+    return { ok: false, reason: "published_without_approval", message: "Snapshot visibility conflicts with moderation status." };
+  }
+  if (snapshot.analyticsExcluded === true) {
+    return { ok: false, reason: "analytics_excluded", message: "Snapshot is excluded from public analytics." };
+  }
+
+  const linkedSession = getGallerySnapshotSession(snapshot);
+  if (linkedSession) {
+    const sessionIntegrity = getSnapshotSessionIntegrity(linkedSession, { requireOwner: false });
+    if (!sessionIntegrity.ok) {
+      return {
+        ok: false,
+        reason: sessionIntegrity.reason,
+        message: sessionIntegrity.message,
+      };
+    }
+  }
+
+  const totalSeeds = Math.max(0, Number(snapshot.totalSeeds) || 0);
+  const totalPlanted = Math.max(0, Number(snapshot.totalPlanted) || 0);
+  const successPercent = Number(snapshot.successPercent);
+  if (totalPlanted > totalSeeds) {
+    return { ok: false, reason: "impossible_seed_totals", message: "Snapshot seed totals need review." };
+  }
+  if (Number.isFinite(successPercent) && (successPercent < 0 || successPercent > 100)) {
+    return { ok: false, reason: "impossible_success_percent", message: "Snapshot success rate needs review." };
+  }
+
+  return { ok: true, reason: "", message: "" };
+}
+
+function isApprovedActiveGallerySnapshotStatus(snapshot = null) {
+  return Boolean(getGallerySnapshotDisplayStatus(snapshot) === "approved" && snapshot?.published === true);
+}
+
+function getLatestActivePublicGallerySnapshotForSession(sessionId = "", snapshots = getGallerySnapshotsForDisplay()) {
+  const normalizedSessionId = String(sessionId || "").trim();
+  if (!normalizedSessionId) {
+    return null;
+  }
+
+  return sortGallerySnapshotsNewestFirst((snapshots || []).filter((snapshot) => (
+    String(snapshot?.sessionId || "").trim() === normalizedSessionId
+    && isApprovedActiveGallerySnapshotStatus(snapshot)
+    && getGallerySnapshotIntegrity(snapshot).ok
+  )))[0] || null;
+}
+
+function isLatestActivePublicGallerySnapshot(snapshot = null, snapshots = getGallerySnapshotsForDisplay()) {
+  if (!snapshot?.sessionId || !isApprovedActiveGallerySnapshotStatus(snapshot)) {
+    return isApprovedActiveGallerySnapshotStatus(snapshot);
+  }
+
+  const activeSnapshot = getLatestActivePublicGallerySnapshotForSession(snapshot.sessionId, snapshots);
+  return Boolean(activeSnapshot?.id && activeSnapshot.id === snapshot.id);
+}
+
+function isGallerySnapshotPubliclyVisible(snapshot = null, snapshots = getGallerySnapshotsForDisplay()) {
+  return Boolean(
+    snapshot
+    && isApprovedActiveGallerySnapshotStatus(snapshot)
+    && getGallerySnapshotIntegrity(snapshot).ok
+    && isLatestActivePublicGallerySnapshot(snapshot, snapshots)
+  );
+}
+
+function canCurrentViewerSeeGallerySnapshot(snapshot = null, options = {}) {
+  if (!snapshot) {
+    return false;
+  }
+  if (options.isAdminView || isAdminUser()) {
+    return true;
+  }
+  if (isGallerySnapshotPubliclyVisible(snapshot)) {
+    return true;
+  }
+
+  const status = getGallerySnapshotDisplayStatus(snapshot);
+  return Boolean(
+    isGallerySnapshotOwner(snapshot)
+    && ["private", "pending_review", "approved", "rejected", "hidden"].includes(status)
+  );
 }
 
 function getGallerySnapshotSubmitterLabel(snapshot) {
@@ -21915,11 +22097,17 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
     throw new Error("You must be signed in to publish to Community Grow.");
   }
 
-  if (!session?.id) {
-    throw new Error("Save this session before publishing it to Community Grow.");
+  const sessionIntegrity = getSnapshotSessionIntegrity(session);
+  if (!sessionIntegrity.ok) {
+    throw new Error(sessionIntegrity.message || "This session is not eligible for Community Grow.");
   }
 
-  const existing = getGallerySnapshotForSession(session.id);
+  const metadataIntegrity = getSnapshotDataIntegrity(snapshotData);
+  if (!metadataIntegrity.ok) {
+    throw new Error(metadataIntegrity.message || "Snapshot metadata needs review before publishing.");
+  }
+
+  const existing = getBlockingGallerySnapshotForSession(session.id);
   if (existing) {
     logGrowGalleryDebug("publishSnapshotToGallery:blocked-existing", {
       sessionId: session.id,
@@ -22084,13 +22272,69 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
   return mapped;
 }
 
+async function retireOtherActivePublicGallerySnapshotsForSession(sessionId = "", activeSnapshotId = "") {
+  const normalizedSessionId = String(sessionId || "").trim();
+  const normalizedActiveSnapshotId = String(activeSnapshotId || "").trim();
+  if (!normalizedSessionId || !normalizedActiveSnapshotId || !appState.supabase) {
+    return [];
+  }
+
+  const staleActiveSnapshots = appState.gallerySnapshots.filter((snapshot) => (
+    String(snapshot?.sessionId || "").trim() === normalizedSessionId
+    && String(snapshot?.id || "").trim() !== normalizedActiveSnapshotId
+    && isApprovedActiveGallerySnapshotStatus(snapshot)
+  ));
+  if (!staleActiveSnapshots.length) {
+    return [];
+  }
+
+  const { error } = await appState.supabase
+    .from("grow_gallery_snapshots")
+    .update({
+      status: "hidden",
+      is_published: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("session_id", normalizedSessionId)
+    .neq("id", normalizedActiveSnapshotId)
+    .eq("status", "approved");
+
+  if (error) {
+    console.warn("Could not retire older active Community Grow snapshots for session.", {
+      sessionId: normalizedSessionId,
+      activeSnapshotId: normalizedActiveSnapshotId,
+      error,
+    });
+    return [];
+  }
+
+  const staleIds = new Set(staleActiveSnapshots.map((snapshot) => snapshot.id));
+  appState.gallerySnapshots = appState.gallerySnapshots.map((snapshot) => (
+    staleIds.has(snapshot.id)
+      ? { ...snapshot, status: "hidden", published: false, updatedAt: new Date().toISOString() }
+      : snapshot
+  ));
+  await Promise.all(staleActiveSnapshots.map((snapshot) => clearCommunityActivityForSnapshot(snapshot.id)));
+  return staleActiveSnapshots;
+}
+
 async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
-  const allowedStatuses = new Set(["private", "pending_review", "approved", "rejected"]);
+  const allowedStatuses = new Set(["private", "pending_review", "approved", "rejected", "hidden"]);
   if (!allowedStatuses.has(nextStatus)) {
     throw new Error("Invalid moderation status.");
   }
 
   const previousSnapshot = appState.gallerySnapshots.find((entry) => entry.id === snapshotId) || null;
+  if (nextStatus === "approved" && previousSnapshot) {
+    const integrity = getGallerySnapshotIntegrity({
+      ...previousSnapshot,
+      status: "approved",
+      published: true,
+    });
+    if (!integrity.ok) {
+      throw new Error(integrity.message || "Snapshot needs review before approval.");
+    }
+  }
 
   const { data, error } = await appState.supabase
     .from("grow_gallery_snapshots")
@@ -22119,6 +22363,7 @@ async function updateGallerySnapshotModerationStatus(snapshotId, nextStatus) {
   ]);
 
   if (nextStatus === "approved") {
+    await retireOtherActivePublicGallerySnapshotsForSession(mapped.sessionId, mapped.id);
     const sessionContext = await loadCommunityActivitySessionContext(mapped.sessionId || "");
     await syncCommunityActivityForApprovedSnapshot(mapped, { sessionContext });
   } else if (!previousSnapshot || getGallerySnapshotDisplayStatus(previousSnapshot) === "approved") {
@@ -22748,6 +22993,8 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   const isRejected = snapshotStatus === "rejected";
   const isApproved = snapshotStatus === "approved";
   const isPrivate = snapshotStatus === "private";
+  const snapshotIntegrity = getGallerySnapshotIntegrity(snapshot);
+  const isPubliclyVisible = isGallerySnapshotPubliclyVisible(snapshot);
   const ownerAction = allowOwnerManagement && isOwner ? getOwnerGalleryAction(snapshot) : null;
   const details = getGallerySnapshotFeedDetails(snapshot);
   const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
@@ -22778,9 +23025,13 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     ? "Visible to you while under review"
     : isRejected
       ? "Rejected submission"
-      : isPrivate
-        ? "Private submission"
-        : "Approved public snapshot";
+      : !snapshotIntegrity.ok
+        ? "Needs review"
+        : isPrivate || snapshotStatus === "hidden"
+          ? "Private submission"
+          : isPubliclyVisible
+            ? "Approved public snapshot"
+            : "Superseded snapshot";
   const cstpCertifiedMarkup = publishedCertification
     ? renderPublishedCstpCertifiedSealMarkup(
       publishedCertification.qualificationResult,
@@ -22899,7 +23150,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
           <span class="gallery-card-chip">${escapeHtml(visibilityLabel)}</span>
         </div>
       </div>
-      ${allowOwnerManagement && isOwner && isApproved ? '<p class="gallery-owner-note">This snapshot is published. To make changes, contact support or remove it.</p>' : ""}
+      ${allowOwnerManagement && isOwner && isApproved ? `<p class="gallery-owner-note">${escapeHtml(snapshotIntegrity.ok ? "This snapshot is published. To make changes, contact support or remove it." : (snapshotIntegrity.message || "This snapshot needs review before it appears publicly."))}</p>` : ""}
       <div class="gallery-card-footer">
         ${renderGalleryLikeButtonMarkup(snapshot)}
         <div class="gallery-card-actions gallery-card-social-actions">
@@ -23054,7 +23305,7 @@ function ensureGallerySnapshotOverviewModal() {
 function openGallerySnapshotOverview(snapshotId) {
   const snapshot = getGallerySnapshotsForDisplay().find((entry) => entry.id === snapshotId)
     || getGalleryReviewSnapshotById(snapshotId);
-  if (!snapshot) {
+  if (!snapshot || !canCurrentViewerSeeGallerySnapshot(snapshot, { isAdminView: isAdminUser() })) {
     window.alert("Could not find this Community Grow snapshot.");
     return;
   }
@@ -23094,13 +23345,18 @@ function openGallerySnapshotOverview(snapshotId) {
   const status = getGallerySnapshotDisplayStatus(snapshot);
   const isOwner = isGallerySnapshotOwner(snapshot);
   const ownerAction = isOwner ? getOwnerGalleryAction(snapshot) : null;
+  const snapshotIntegrity = getGallerySnapshotIntegrity(snapshot);
   const visibilityLabel = status === "pending_review"
     ? "Visible to you while under review"
     : status === "rejected"
       ? "Rejected submission"
-      : status === "private"
-        ? "Private submission"
-        : "Approved public snapshot";
+      : !snapshotIntegrity.ok
+        ? "Needs review"
+        : status === "private" || status === "hidden"
+          ? "Private submission"
+          : isGallerySnapshotPubliclyVisible(snapshot)
+            ? "Approved public snapshot"
+            : "Superseded snapshot";
   const primaryActionMarkup = isOwner && snapshot.sessionId
     ? `<a class="button button-secondary" href="#sessions/${escapeHtml(snapshot.sessionId)}">Open Session</a>`
     : `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Session</a>`;
@@ -27416,7 +27672,7 @@ function isGallerySnapshotAnalyticsEligible(snapshot = null) {
   if (isMockGallerySnapshot(snapshot) && !isMockDataEnabled()) {
     return false;
   }
-  if (getGallerySnapshotDisplayStatus(snapshot) !== "approved") {
+  if (!isGallerySnapshotPubliclyVisible(snapshot)) {
     return false;
   }
 
@@ -27613,7 +27869,7 @@ function getMockPublicSessionDetails(snapshot, scenario) {
 
 function normalizeSessionSnapshotGalleryStatus(status) {
   const normalizedStatus = String(status || "").trim();
-  return ["social-only", "private", "pending_review", "approved", "rejected"].includes(normalizedStatus)
+  return ["social-only", "private", "pending_review", "approved", "rejected", "hidden"].includes(normalizedStatus)
     ? normalizedStatus
     : "";
 }
@@ -27649,7 +27905,7 @@ function normalizePersistedSessionSnapshotState(snapshotState) {
     normalized.includePublicGrowNote = Boolean(snapshotState.includePublicGrowNote);
   }
 
-  const hasSubmittedStatus = ["pending_review", "approved", "rejected"].includes(normalized.galleryStatus);
+  const hasSubmittedStatus = ["pending_review", "approved", "rejected", "hidden"].includes(normalized.galleryStatus);
   if (normalized.gallerySnapshotId && !normalized.submittedAt) {
     normalized.gallerySnapshotId = "";
     normalized.galleryRoute = "";
@@ -27697,7 +27953,7 @@ function buildSessionSnapshotStateFromGallerySnapshot(snapshot, baseSnapshotStat
 
 function getConfirmedGallerySnapshotForState(session = null, snapshotState = null) {
   const liveGallerySnapshot = getGallerySnapshotForSession(session?.id);
-  if (liveGallerySnapshot?.id) {
+  if (liveGallerySnapshot?.id && ["pending_review", "approved", "rejected"].includes(getGallerySnapshotDisplayStatus(liveGallerySnapshot))) {
     return liveGallerySnapshot;
   }
 
@@ -27709,6 +27965,7 @@ function getConfirmedGallerySnapshotForState(session = null, snapshotState = nul
   return appState.gallerySnapshots.find((entry) => (
     entry.id === persistedSnapshotId
     && (!session?.id || entry.sessionId === session.id)
+    && ["pending_review", "approved", "rejected"].includes(getGallerySnapshotDisplayStatus(entry))
   )) || null;
 }
 
@@ -28978,13 +29235,15 @@ function syncSnapshotShareActionAvailability(state) {
 
   const hasGeneratedSnapshot = Boolean(state.generatedBlob);
   const hasConsent = Boolean(state.usageConsentCheckbox?.checked);
+  const session = state.getGallerySession?.() || null;
+  const sessionIntegrity = session ? getSnapshotSessionIntegrity(session) : { ok: false };
   if (state.usageConsentBlock) {
     state.usageConsentBlock.dataset.consentState = hasConsent ? "checked" : "unchecked";
   }
   if (state.usageConsentHelper) {
     state.usageConsentHelper.hidden = hasConsent;
   }
-  if (!hasGeneratedSnapshot || !hasConsent) {
+  if (!hasGeneratedSnapshot || !hasConsent || !sessionIntegrity.ok) {
     state.shareButton.setAttribute("disabled", "disabled");
     return;
   }
@@ -29104,7 +29363,7 @@ function hasSubmittedGallerySnapshotState(snapshotState) {
   }
 
   const galleryStatus = String(snapshotState.galleryStatus || "").trim();
-  const hasSubmissionStatus = ["pending_review", "approved", "rejected"].includes(galleryStatus);
+  const hasSubmissionStatus = ["pending_review", "approved", "rejected", "hidden"].includes(galleryStatus);
   return Boolean(
     snapshotState.gallerySnapshotId
     && snapshotState.submittedAt
@@ -29120,7 +29379,7 @@ function hasConfirmedGallerySubmissionForState(state) {
     confirmedSnapshot?.id
     && snapshotState?.gallerySnapshotId
     && snapshotState?.submittedAt
-    && ["pending_review", "approved", "rejected"].includes(String(snapshotState?.galleryStatus || "").trim())
+    && ["pending_review", "approved", "rejected", "hidden"].includes(String(snapshotState?.galleryStatus || "").trim())
   );
 }
 
@@ -29344,7 +29603,8 @@ function syncSnapshotGalleryControls(state) {
   const session = state.getGallerySession?.() || null;
   const snapshotState = getSnapshotStateForSection(state);
   const publishedEntry = getConfirmedGallerySnapshotForState(session, snapshotState);
-  const canPublish = Boolean(state.canPublish && session?.id);
+  const sessionIntegrity = session ? getSnapshotSessionIntegrity(session) : null;
+  const canPublish = Boolean(state.canPublish && session?.id && (!sessionIntegrity || sessionIntegrity.ok));
   const currentStatus = String(publishedEntry?.status || "private");
   syncSnapshotDestinationAvailability(state);
   const destination = getSnapshotDestination(state);
@@ -29354,7 +29614,9 @@ function syncSnapshotGalleryControls(state) {
   setSnapshotAnimatedVisibility([state.includeProfileToggleRow, state.includeProfileDividerRow], includesGallery);
 
   if (state.galleryNote) {
-    if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
+    if (sessionIntegrity && !sessionIntegrity.ok) {
+      state.galleryNote.textContent = sessionIntegrity.message;
+    } else if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
       state.galleryNote.textContent = "This snapshot is published. To make changes, contact support or remove it.";
     } else if (hasConfirmedSubmission) {
       state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
@@ -29706,26 +29968,37 @@ async function resetSnapshotState(state) {
 }
 
 async function ensureSnapshotGenerated(state) {
-  const baseData = state.getSnapshotData?.();
-  const data = buildSnapshotGenerationData(state, baseData);
-  const selectedImage = getExistingSnapshotSelection(state);
-  const renderKey = buildSnapshotRenderKey(state, data, selectedImage);
+  try {
+    validateSnapshotStateSessionEligibility(state);
+    const baseData = state.getSnapshotData?.();
+    const data = buildSnapshotGenerationData(state, baseData);
+    const metadataIntegrity = getSnapshotDataIntegrity(data);
+    if (!metadataIntegrity.ok) {
+      throw new Error(metadataIntegrity.message || "Snapshot metadata needs review.");
+    }
+    const selectedImage = getExistingSnapshotSelection(state);
+    const renderKey = buildSnapshotRenderKey(state, data, selectedImage);
 
-  if (state.generatedBlob && renderKey && renderKey === state.generatedRenderKey) {
-    return {
-      blob: state.generatedBlob,
-      fileName: buildSnapshotFileName(data),
-      summaryText: buildSnapshotShareText(data),
-    };
+    if (state.generatedBlob && renderKey && renderKey === state.generatedRenderKey) {
+      return {
+        blob: state.generatedBlob,
+        fileName: buildSnapshotFileName(data),
+        summaryText: buildSnapshotShareText(data),
+      };
+    }
+
+    return generateSnapshotPreview(state);
+  } catch (error) {
+    setSnapshotMessage(state, error.message || "Could not generate snapshot.", true);
+    return null;
   }
-
-  return generateSnapshotPreview(state);
 }
 
 async function generateSnapshotPreview(state) {
   try {
     setSnapshotMessage(state, "");
     state.generateButton?.setAttribute("disabled", "disabled");
+    validateSnapshotStateSessionEligibility(state);
     const wasCommunityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
     const baseData = state.getSnapshotData?.();
     if (!baseData) {
@@ -29737,6 +30010,10 @@ async function generateSnapshotPreview(state) {
       return null;
     }
     const data = buildSnapshotGenerationData(state, baseData);
+    const metadataIntegrity = getSnapshotDataIntegrity(data);
+    if (!metadataIntegrity.ok) {
+      throw new Error(metadataIntegrity.message || "Snapshot metadata needs review.");
+    }
     const blob = await buildSessionSnapshotBlob(data, selectedImage?.displayUrl || "");
     const renderKey = buildSnapshotRenderKey(state, data, selectedImage);
     setSnapshotPreview(state, {
@@ -30218,6 +30495,10 @@ function getFormSnapshotData(form) {
       unitId: form.elements.unitId?.value || "",
     }),
     date,
+    sessionStatus: form.elements.sessionStatus?.value || form.dataset.currentStage || "",
+    germinationStartedAt: form.dataset.germinationStartedAt || "",
+    firstPlantedAt: form.dataset.firstPlantedAt || "",
+    completedAt: form.dataset.completedAt || "",
     systemType: form.elements.systemType?.value || "",
     seedAgeTrackingEnabled: seedAgeState.trackingEnabled,
     seedAgeMode: seedAgeState.mode,
@@ -30234,6 +30515,12 @@ function getSessionSnapshotData(session) {
   return buildSnapshotData({
     sessionName: formatSessionLabel(session),
     date: session.date,
+    sessionStatus: session.sessionStatus,
+    sessionStartedAt: getSessionStartedAtIso(session),
+    soakStartedAt: getSessionSoakStartedAtIso(session),
+    germinationStartedAt: session.germinationStartedAt || "",
+    firstPlantedAt: session.firstPlantedAt || "",
+    completedAt: session.completedAt || "",
     systemType: session.systemType,
     seedAgeTrackingEnabled: session.seedAgeTrackingEnabled,
     seedAgeMode: session.seedAgeMode,
@@ -30310,6 +30597,27 @@ function buildSnapshotResultSummaryMetadata(resultSummary = null) {
   };
 }
 
+function getSnapshotDataIntegrity(snapshotData = null) {
+  if (!snapshotData || typeof snapshotData !== "object") {
+    return { ok: false, reason: "missing_snapshot_data", message: "Snapshot data is not available yet." };
+  }
+
+  const totalSeeds = Math.max(0, Number(snapshotData.totalSeeds) || 0);
+  const totalPlanted = Math.max(0, Number(snapshotData.totalPlanted ?? snapshotData.totalGerminated) || 0);
+  const percentage = Number(snapshotData.percentage);
+  if (totalSeeds <= 0) {
+    return { ok: false, reason: "missing_seed_totals", message: "Add seed counts before creating a snapshot." };
+  }
+  if (totalPlanted > totalSeeds) {
+    return { ok: false, reason: "impossible_seed_totals", message: "Snapshot seed totals need review before sharing." };
+  }
+  if (Number.isFinite(percentage) && (percentage < 0 || percentage > 100)) {
+    return { ok: false, reason: "impossible_success_percent", message: "Snapshot germination rate needs review before sharing." };
+  }
+
+  return { ok: true, reason: "", message: "" };
+}
+
 function buildSnapshotData(source) {
   const resultSummary = getSessionResultSummary(source);
   const totals = resultSummary.overall;
@@ -30318,10 +30626,19 @@ function buildSnapshotData(source) {
   const seedAgeMetadata = getSessionSeedAgeMetadata(source);
   const snapshotSystemType = source.systemType || "KAN";
   const snapshotPartitionMaxItems = String(snapshotSystemType).trim().toUpperCase() === "TRA" ? 16 : 8;
+  const sessionStatus = normalizeSessionStatus(source.sessionStatus || source.status || "");
+  const progressKey = resolveGrowSessionCurrentProgressKey(source);
 
   return {
     sessionName: source.sessionName || "Session",
     dateLabel: formatSessionNameDate(source.date),
+    sessionStatus,
+    stageLabel: getCanonicalSessionStageDisplayLabel(progressKey || sessionStatus) || "Not Started",
+    sessionStartedAt: source.sessionStartedAt || source.session_started_at || "",
+    soakStartedAt: source.soakStartedAt || source.soak_started_at || source.timerStartAt || source.timer_start_at || "",
+    germinationStartedAt: source.germinationStartedAt || source.germination_started_at || "",
+    firstPlantedAt: source.firstPlantedAt || source.first_planted_at || "",
+    completedAt: source.completedAt || source.completed_at || "",
     systemType: snapshotSystemType,
     systemLabel: formatSnapshotSystemLabel(snapshotSystemType),
     sourceId: sourceDetails.sourceId,
@@ -30381,6 +30698,15 @@ function buildSnapshotGenerationData(state, baseData) {
     ...baseData,
     profileAttribution: getSnapshotProfileAttribution(state),
   };
+}
+
+function validateSnapshotStateSessionEligibility(state) {
+  const session = state?.getGallerySession?.() || null;
+  const integrity = getSnapshotSessionIntegrity(session);
+  if (!integrity.ok) {
+    throw new Error(integrity.message || "This session is not eligible for snapshots yet.");
+  }
+  return integrity;
 }
 
 function getExistingSnapshotSelection(state, images = getSnapshotImageEntries(state)) {
@@ -57961,16 +58287,9 @@ function renderGallery(targetSnapshotId = "") {
   const communityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
   const showCommunityGrowUnlockNotice = communityGrowUnlocked && consumeCommunityGrowUnlockNotice();
   const isCommunityGrowLocked = !isAdminView && !communityGrowUnlocked;
-  const gallerySnapshots = getGallerySnapshotsForDisplay().filter((entry) => {
-    const status = getGallerySnapshotDisplayStatus(entry);
-    if (isAdminView) {
-      return true;
-    }
-    if (status === "approved") {
-      return true;
-    }
-    return entry.userId === appState.user?.id && ["pending_review", "rejected"].includes(status);
-  });
+  const gallerySnapshots = getGallerySnapshotsForDisplay().filter((entry) => (
+    canCurrentViewerSeeGallerySnapshot(entry, { isAdminView })
+  ));
   logGrowGalleryDebug("renderGallery:start", {
     targetSnapshotId,
     isAdminView,
