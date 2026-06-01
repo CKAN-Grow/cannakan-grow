@@ -61917,6 +61917,50 @@ function buildPrivateAnalyticsMonthlyRows(sessions = []) {
   }));
 }
 
+function buildPrivateAnalyticsMonthlyTrendData(sessions = []) {
+  const buckets = new Map();
+  (sessions || []).forEach((session) => {
+    const date = getPrivateAnalyticsSessionDate(session);
+    if (!date) {
+      return;
+    }
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const bucket = buckets.get(key) || {
+      key,
+      label: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(date),
+      sortTime: new Date(date.getFullYear(), date.getMonth(), 1).getTime(),
+      totalSessions: 0,
+      completedSessions: 0,
+      activeSessions: 0,
+      totalSeeds: 0,
+      totalGerminated: 0,
+    };
+    bucket.totalSessions += 1;
+    const lifecycleState = normalizeGrowSessionLifecycleState(session);
+    if (lifecycleState === "completed") {
+      bucket.completedSessions += 1;
+    }
+    if (lifecycleState === "active") {
+      bucket.activeSessions += 1;
+    }
+    if (isCompletedValidSessionForAnalytics(session)) {
+      const totals = getSessionSeedTotals(session);
+      bucket.totalSeeds += Math.max(0, Number(totals.totalSeeds) || 0);
+      bucket.totalGerminated += Math.max(0, Number(totals.totalGerminated || totals.totalPlanted) || 0);
+    }
+    buckets.set(key, bucket);
+  });
+
+  return [...buckets.values()]
+    .sort((left, right) => left.sortTime - right.sortTime)
+    .slice(-8)
+    .map((bucket) => ({
+      ...bucket,
+      germinationRate: bucket.totalSeeds > 0 ? Math.round((bucket.totalGerminated / bucket.totalSeeds) * 100) : null,
+      completionRate: bucket.totalSessions > 0 ? Math.round((bucket.completedSessions / bucket.totalSessions) * 100) : null,
+    }));
+}
+
 function buildPrivateAnalyticsSessionTrendRows(sessions = []) {
   return getPrivateAnalyticsCompletedSessions(sessions).slice(0, 6).map((session, index) => {
     const totals = getSessionSeedTotals(session);
@@ -62045,6 +62089,96 @@ function buildPrivateAnalyticsVaultDistributionRows(rollups = []) {
   });
 }
 
+function buildPrivateAnalyticsQuantityRowsFromAgeBuckets(vaultAnalytics = null) {
+  const buckets = vaultAnalytics?.ageIntelligence?.buckets || [];
+  const maxQuantity = Math.max(...buckets.map((bucket) => Math.max(0, Number(bucket.quantity) || 0)), 1);
+  return buckets
+    .filter((bucket) => bucket.quantity > 0 || bucket.entryCount > 0)
+    .map((bucket, index) => {
+      const quantity = Math.max(0, Number(bucket.quantity) || 0);
+      return {
+        label: bucket.label,
+        metric: quantity,
+        valueLabel: `${quantity} seed${quantity === 1 ? "" : "s"}`,
+        detail: `${bucket.entryCount} entr${bucket.entryCount === 1 ? "y" : "ies"}`,
+        fillWidth: `${Math.round((quantity / maxQuantity) * 100)}%`,
+        tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+      };
+    });
+}
+
+function buildPrivateAnalyticsPerformanceChartRows(rows = [], options = {}) {
+  const metricKey = options.metricKey || "averageRate";
+  const maxMetric = Math.max(...(rows || []).map((row) => Math.max(0, Number(row[metricKey]) || 0)), metricKey === "averageRate" ? 100 : 1);
+  return (rows || []).map((row, index) => {
+    const metric = Math.max(0, Number(row[metricKey]) || 0);
+    const fillWidth = metricKey === "averageRate"
+      ? `${Math.min(100, Math.round(metric))}%`
+      : `${maxMetric > 0 ? Math.round((metric / maxMetric) * 100) : 0}%`;
+    const valueLabel = options.valueFormatter
+      ? options.valueFormatter(row)
+      : metricKey === "averageRate"
+        ? formatPrivateAnalyticsPercent(row.averageRate)
+        : formatPrivateAnalyticsNumber(metric);
+    return {
+      label: row.label,
+      metric,
+      valueLabel,
+      detail: options.detailFormatter ? options.detailFormatter(row) : "",
+      fillWidth,
+      tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+    };
+  });
+}
+
+function buildPrivateAnalyticsInsightCards(state = {}) {
+  const vaultAnalytics = state.vaultAnalytics || {};
+  const bestAgeInsight = (vaultAnalytics.ageIntelligence?.insights || []).find((insight) => insight.key === "best-performing-age-range");
+  const topSource = (state.sourcePerformanceRows || [])[0] || null;
+  const mostTestedGenetics = (state.varietyPerformanceRows || []).length
+    ? [...state.varietyPerformanceRows].sort((left, right) => right.totalSeeds - left.totalSeeds)[0]
+    : null;
+  const oldestSuccessful = vaultAnalytics.ageIntelligence?.oldestSuccessfulGermination || null;
+  const lowInventory = Math.max(0, Number(vaultAnalytics.overview?.lowInventoryEntries) || 0);
+  const unknownAgeCount = Math.max(0, Number(vaultAnalytics.overview?.unknownAgeCount) || 0);
+  const oldestSuccessfulDetail = oldestSuccessful
+    ? [oldestSuccessful.source, oldestSuccessful.variety].filter(Boolean).join(" · ") || "Linked Vault Entry"
+    : "Linked completed sessions with known age will unlock this.";
+
+  return [
+    {
+      key: "best-performing-age-range",
+      label: "Best Performing Age Range",
+      value: bestAgeInsight?.value || "Not enough linked data",
+      detail: bestAgeInsight?.detail || "More linked completed sessions will strengthen this signal.",
+    },
+    {
+      key: "most-reliable-source",
+      label: "Most Reliable Source",
+      value: topSource ? `${topSource.label} · ${formatPrivateAnalyticsPercent(topSource.averageRate)}` : "Not enough source data",
+      detail: topSource ? `${formatPrivateAnalyticsNumber(topSource.totalSeeds)} seeds tested across ${formatPrivateAnalyticsNumber(topSource.completedSessions)} completed session${topSource.completedSessions === 1 ? "" : "s"}.` : "Source-labeled completed sessions will unlock this.",
+    },
+    {
+      key: "most-tested-genetics",
+      label: "Most Tested Genetics",
+      value: mostTestedGenetics ? mostTestedGenetics.label : "Not enough variety data",
+      detail: mostTestedGenetics ? `${formatPrivateAnalyticsNumber(mostTestedGenetics.totalSeeds)} seeds tested · ${formatPrivateAnalyticsPercent(mostTestedGenetics.averageRate)}` : "Variety-labeled completed sessions will unlock this.",
+    },
+    {
+      key: "inventory-needs-attention",
+      label: "Inventory Needs Attention",
+      value: lowInventory || unknownAgeCount ? `${formatPrivateAnalyticsNumber(lowInventory)} low · ${formatPrivateAnalyticsNumber(unknownAgeCount)} unknown age` : "Inventory looks balanced",
+      detail: lowInventory || unknownAgeCount ? "Review low-stock entries and add age data where available." : "No low-stock or unknown-age Vault pressure surfaced.",
+    },
+    {
+      key: "oldest-successful-germination",
+      label: "Oldest Successful Germination",
+      value: oldestSuccessful ? `${formatSeedAgeYearsLabel(oldestSuccessful.ageYears)} · ${formatPrivateAnalyticsPercent(oldestSuccessful.rate)}` : "No linked result yet",
+      detail: oldestSuccessfulDetail,
+    },
+  ];
+}
+
 function getPrivateAnalyticsBestSession(sessions = []) {
   return getPrivateAnalyticsCompletedSessions(sessions)
     .map((session) => ({
@@ -62138,6 +62272,7 @@ function buildPrivateAnalyticsDashboardState() {
     averageSession: getPrivateAnalyticsAverageSession(completedSessions),
     sessionTimelineRows: buildPrivateAnalyticsMonthlyRows(visibleSessions),
     germinationTrendRows: buildPrivateAnalyticsSessionTrendRows(completedSessions),
+    monthlyTrendData: buildPrivateAnalyticsMonthlyTrendData(visibleSessions),
     sourcePerformanceRows,
     varietyPerformanceRows,
     agePerformanceRows,
@@ -62145,7 +62280,9 @@ function buildPrivateAnalyticsDashboardState() {
     sourceAgeRows,
     sourceDistributionRows: buildPrivateAnalyticsVaultDistributionRows(vaultAnalytics.rollups?.sources || []),
     varietyDistributionRows: buildPrivateAnalyticsVaultDistributionRows(vaultAnalytics.rollups?.varieties || []),
+    ageQuantityRows: buildPrivateAnalyticsQuantityRowsFromAgeBuckets(vaultAnalytics),
   };
+  state.insightCards = buildPrivateAnalyticsInsightCards(state);
   state.futureCommunityInsightsHooks = buildPrivateAnalyticsCommunityInsightsHooks(state);
   return state;
 }
@@ -62155,6 +62292,20 @@ function renderPrivateAnalyticsMetricGrid(cards = []) {
     <div class="private-analytics-kpi-grid">
       ${cards.map((card) => `
         <article class="private-analytics-kpi-card">
+          <span>${escapeHtml(card.label || "")}</span>
+          <strong>${escapeHtml(card.value || "")}</strong>
+          <small>${escapeHtml(card.detail || "")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsHeroKpis(cards = []) {
+  return `
+    <div class="private-analytics-hero-kpi-grid" aria-label="Analytics Dashboard key metrics">
+      ${cards.map((card, index) => `
+        <article class="private-analytics-hero-kpi-card${index === 0 ? " is-primary" : ""}">
           <span>${escapeHtml(card.label || "")}</span>
           <strong>${escapeHtml(card.value || "")}</strong>
           <small>${escapeHtml(card.detail || "")}</small>
@@ -62177,11 +62328,108 @@ function renderPrivateAnalyticsSectionMarkup(title = "", subtitle = "", bodyMark
   `;
 }
 
+function renderPrivateAnalyticsMiniBarChart(title = "", rows = [], options = {}) {
+  const emptyMessage = String(options.emptyMessage || "Not enough data yet.").trim();
+  return `
+    <div class="private-analytics-chart-card private-analytics-chart-card--bar">
+      <div class="private-analytics-chart-heading">
+        <strong>${escapeHtml(title)}</strong>
+        ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+      </div>
+      ${rows.length ? `
+        <div class="private-analytics-bar-chart" role="list">
+          ${rows.map((row) => `
+            <div class="private-analytics-bar-row" role="listitem">
+              <div class="private-analytics-bar-label">
+                <span>${escapeHtml(row.label || "")}</span>
+                ${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}
+              </div>
+              <div class="private-analytics-bar-track" aria-hidden="true">
+                <i class="${row.tone ? `chart-gradient-bar-${escapeHtml(row.tone)}` : ""}" style="width:${escapeHtml(row.fillWidth || "0%")};"></i>
+              </div>
+              <strong>${escapeHtml(row.valueLabel || row.value || "")}</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="private-analytics-empty">
+          <p>${escapeHtml(emptyMessage)}</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsTrendChart(title = "", points = [], options = {}) {
+  const metricKey = options.metricKey || "germinationRate";
+  const emptyMessage = String(options.emptyMessage || "Not enough trend data yet.").trim();
+  const maxValue = Math.max(
+    ...points.map((point) => Math.max(0, Number(point[metricKey]) || 0)),
+    options.percent ? 100 : 1,
+  );
+  return `
+    <div class="private-analytics-chart-card private-analytics-chart-card--trend">
+      <div class="private-analytics-chart-heading">
+        <strong>${escapeHtml(title)}</strong>
+        ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+      </div>
+      ${points.length ? `
+        <div class="private-analytics-trend-chart" style="--private-analytics-trend-count:${escapeHtml(String(points.length))};">
+          ${points.map((point) => {
+            const rawValue = Number(point[metricKey]);
+            const hasValue = Number.isFinite(rawValue);
+            const safeValue = hasValue ? Math.max(0, rawValue) : 0;
+            const height = options.percent
+              ? Math.min(100, Math.max(3, safeValue))
+              : maxValue > 0
+                ? Math.max(3, Math.round((safeValue / maxValue) * 100))
+                : 3;
+            const label = hasValue
+              ? options.valueFormatter
+                ? options.valueFormatter(point)
+                : options.percent
+                  ? formatPrivateAnalyticsPercent(safeValue)
+                  : formatPrivateAnalyticsNumber(safeValue)
+              : "No data";
+            return `
+              <div class="private-analytics-trend-point">
+                <div class="private-analytics-trend-bar" aria-hidden="true">
+                  <i style="height:${escapeHtml(`${height}%`)};"></i>
+                </div>
+                <strong>${escapeHtml(label)}</strong>
+                <span>${escapeHtml(point.label || "")}</span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="private-analytics-empty">
+          <p>${escapeHtml(emptyMessage)}</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
 function renderPrivateAnalyticsProgressBlock(title = "", rows = [], emptyMessage = "Not enough data yet.") {
   return `
     <div class="private-analytics-chart-card">
       <strong>${escapeHtml(title)}</strong>
       ${renderSessionAnalyticsProgressRows(rows, { emptyMessage })}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsInsightCards(cards = []) {
+  return `
+    <div class="private-analytics-insight-grid">
+      ${cards.map((card) => `
+        <article class="private-analytics-insight-card" data-private-analytics-insight="${escapeHtml(card.key || "")}">
+          <span>${escapeHtml(card.label || "")}</span>
+          <strong>${escapeHtml(card.value || "")}</strong>
+          <p>${escapeHtml(card.detail || "")}</p>
+        </article>
+      `).join("")}
     </div>
   `;
 }
@@ -62253,9 +62501,115 @@ function renderPrivateAnalyticsDashboardPage() {
     ...row,
     tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
   }));
+  const mostTestedSourceRows = [...state.sourcePerformanceRows]
+    .sort((left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label))
+    .slice(0, 6);
+  const mostTestedVarietyRows = [...state.varietyPerformanceRows]
+    .sort((left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label))
+    .slice(0, 6);
   const mostTestedVariety = state.varietyPerformanceRows.length
     ? [...state.varietyPerformanceRows].sort((left, right) => right.totalSeeds - left.totalSeeds)[0]
     : null;
+  const bestSource = state.sourcePerformanceRows[0] || null;
+  const bestAgeRange = (vaultAnalytics.ageIntelligence.buckets || [])
+    .filter((bucket) => bucket.performance?.totalSeedsTested > 0)
+    .sort((left, right) => (
+      (right.performance.averageGerminationRate ?? -1) - (left.performance.averageGerminationRate ?? -1)
+      || right.performance.totalSeedsTested - left.performance.totalSeedsTested
+    ))[0] || null;
+  const heroKpiCards = [
+    {
+      label: "Average Germination Rate",
+      value: formatPrivateAnalyticsPercent(ownerAnalytics.averageGerminationRate),
+      detail: `${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated)} of ${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested)} seeds germinated`,
+    },
+    {
+      label: "Total Seeds Tested",
+      value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested),
+      detail: "eligible completed session results",
+    },
+    {
+      label: "Total Completed Sessions",
+      value: formatPrivateAnalyticsNumber(ownerAnalytics.completedSessions),
+      detail: `${formatPrivateAnalyticsPercent(ownerAnalytics.completionRate)} completion rate`,
+    },
+    {
+      label: "Best Performing Source",
+      value: bestSource ? bestSource.label : "Not enough data",
+      detail: bestSource ? `${formatPrivateAnalyticsPercent(bestSource.averageRate)} · ${formatPrivateAnalyticsNumber(bestSource.totalSeeds)} seeds` : "source-labeled sessions will unlock this",
+    },
+    {
+      label: "Best Performing Age Range",
+      value: bestAgeRange ? bestAgeRange.label : "Not enough linked data",
+      detail: bestAgeRange ? `${formatPrivateAnalyticsPercent(bestAgeRange.performance.averageGerminationRate)} · ${formatPrivateAnalyticsNumber(bestAgeRange.performance.totalSeedsTested)} seeds tested` : "link Vault entries to completed sessions",
+    },
+    {
+      label: "Total Vault Inventory",
+      value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalSeedsOwned),
+      detail: `${formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalVarieties)} varieties · ${formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalSources)} sources`,
+    },
+  ];
+  const sourcePerformanceChartRows = buildPrivateAnalyticsPerformanceChartRows(state.sourcePerformanceRows.slice(0, 6), {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.completedSessions)} completed session${row.completedSessions === 1 ? "" : "s"}`,
+  });
+  const mostTestedSourceChartRows = buildPrivateAnalyticsPerformanceChartRows(mostTestedSourceRows, {
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} average germination`,
+  });
+  const varietyPerformanceChartRows = buildPrivateAnalyticsPerformanceChartRows(topVarietyRows, {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.completedSessions)} completed session${row.completedSessions === 1 ? "" : "s"}`,
+  });
+  const mostTestedVarietyChartRows = buildPrivateAnalyticsPerformanceChartRows(mostTestedVarietyRows, {
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} average germination`,
+  });
+  const sourceAgeChartRows = state.sourceAgeRows.map((row) => ({
+    ...row,
+    valueLabel: row.value,
+  }));
+  const agePerformanceChartRows = state.agePerformanceRows.map((row) => ({
+    ...row,
+    valueLabel: row.value,
+  }));
+  const ageInventoryChartRows = state.ageQuantityRows;
+  const sourceInventoryChartRows = state.sourceDistributionRows.map((row) => ({
+    ...row,
+    valueLabel: row.value,
+  }));
+  const lowInventoryRows = (vaultAnalytics.activeEntries || [])
+    .map((entry) => ({
+      entry,
+      quantity: getSeedVaultEntryAvailableQuantity(entry),
+      status: getSeedVaultInventoryStatus(entry),
+    }))
+    .filter((item) => ["low", "out"].includes(item.status.key))
+    .sort((left, right) => (left.quantity ?? 0) - (right.quantity ?? 0))
+    .slice(0, 6)
+    .map((item, index) => ({
+      label: item.entry.seedName || item.entry.seedVariety || "Vault Entry",
+      fillWidth: `${Math.max(6, Math.min(100, Math.round(((item.quantity ?? 0) / 5) * 100)))}%`,
+      valueLabel: item.quantity === null ? "Unknown" : `${item.quantity} seed${item.quantity === 1 ? "" : "s"}`,
+      detail: item.entry.source || item.status.label,
+      tone: index % 2 === 0 ? "orange-green" : "gold-green",
+    }));
+  const repeatTestedVarietyRows = (vaultAnalytics.ageIntelligence.repeatTestedVarieties || []).slice(0, 6).map((row, index) => ({
+    label: row.label,
+    fillWidth: `${Math.min(100, Math.max(8, (row.performance?.completedLinkedSessions || 0) * 18))}%`,
+    valueLabel: `${formatPrivateAnalyticsNumber(row.performance?.completedLinkedSessions || 0)} linked`,
+    detail: `${formatPrivateAnalyticsPercent(row.performance?.averageGerminationRate)} average germination`,
+    tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+  }));
+  const oldestSuccessfulVarietyRows = (vaultAnalytics.ageIntelligence.oldestSuccessfulVarieties || []).slice(0, 6).map((row, index) => ({
+    label: row.label,
+    fillWidth: `${Math.min(100, Math.max(8, (row.oldestSuccessfulGermination?.ageYears || 0) * 6))}%`,
+    valueLabel: row.oldestSuccessfulGermination ? formatSeedAgeYearsLabel(row.oldestSuccessfulGermination.ageYears) : "No data",
+    detail: row.oldestSuccessfulGermination ? `${formatPrivateAnalyticsPercent(row.oldestSuccessfulGermination.rate)} · ${row.oldestSuccessfulGermination.totalGerminated}/${row.oldestSuccessfulGermination.totalSeeds}` : "",
+    tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+  }));
 
   app.innerHTML = `
     <section class="private-analytics-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
@@ -62276,11 +62630,36 @@ function renderPrivateAnalyticsDashboardPage() {
           </div>
           <small>${escapeHtml(`${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated)} of ${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested)} seeds`)}</small>
         </div>
+        ${renderPrivateAnalyticsHeroKpis(heroKpiCards)}
       </header>
 
       ${renderPrivateAnalyticsSectionMarkup("Overview", "A compact rollup across private owner data and public-safe contribution counts.", renderPrivateAnalyticsMetricGrid(overviewCards), { wide: true, eyebrow: "Overview" })}
 
+      ${renderPrivateAnalyticsSectionMarkup("Insight Cards", "Readable owner-only signals generated from the same centralized analytics helpers.", renderPrivateAnalyticsInsightCards(state.insightCards), { wide: true, eyebrow: "Insights" })}
+
       <div class="private-analytics-dashboard-grid">
+        ${renderPrivateAnalyticsSectionMarkup("Germination Trends", "Rate, volume, and completion movement over recent session history.", `
+          <div class="private-analytics-visual-grid private-analytics-visual-grid--three">
+            ${renderPrivateAnalyticsTrendChart("Germination rate over time", state.monthlyTrendData, {
+              metricKey: "germinationRate",
+              percent: true,
+              caption: "monthly eligible completed sessions",
+              emptyMessage: "Complete sessions to build a germination rate trend.",
+            })}
+            ${renderPrivateAnalyticsTrendChart("Seeds tested over time", state.monthlyTrendData, {
+              metricKey: "totalSeeds",
+              caption: "monthly seed volume",
+              emptyMessage: "Completed sessions with seed totals will build this chart.",
+            })}
+            ${renderPrivateAnalyticsTrendChart("Session completion trends", state.monthlyTrendData, {
+              metricKey: "completionRate",
+              percent: true,
+              caption: "completed sessions / total sessions",
+              emptyMessage: "Session history will build this chart.",
+            })}
+          </div>
+        `, { eyebrow: "Trends", wide: true })}
+
         ${renderPrivateAnalyticsSectionMarkup("Germination Performance", "Session-level results with integrity filters applied.", `
           ${renderPrivateAnalyticsHighlightList([
             {
@@ -62321,13 +62700,29 @@ function renderPrivateAnalyticsDashboardPage() {
             },
             { label: "Unknown age inventory", value: `${formatPrivateAnalyticsNumber(vaultAnalytics.overview.unknownAgeCount)} entries`, detail: "private Vault entries without known age" },
           ])}
-          ${renderPrivateAnalyticsProgressBlock("Performance by age bucket", state.agePerformanceRows, "Link Vault entries to completed sessions to unlock age performance.")}
-          ${renderPrivateAnalyticsProgressBlock("Inventory by age bucket", state.ageInventoryRows, "Add age data to Vault entries to see distribution.")}
+          ${renderPrivateAnalyticsMiniBarChart("Age bucket distribution", ageInventoryChartRows, {
+            caption: "private Vault inventory",
+            emptyMessage: "Add age data to Vault entries to see distribution.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Germination by age bucket", agePerformanceChartRows, {
+            caption: "linked completed sessions",
+            emptyMessage: "Link Vault entries to completed sessions to unlock age performance.",
+          })}
         `, { eyebrow: "Seed Age" })}
 
         ${renderPrivateAnalyticsSectionMarkup("Source Performance", "Source averages and source age-performance trends remain private.", `
-          ${renderPrivateAnalyticsProgressBlock("Source averages", topSourceRows, "No source performance data yet.")}
-          ${renderPrivateAnalyticsProgressBlock("Source age-performance trends", state.sourceAgeRows, "Add Vault age data and linked sessions to unlock source age trends.")}
+          ${renderPrivateAnalyticsMiniBarChart("Top sources", sourcePerformanceChartRows, {
+            caption: "average germination by source",
+            emptyMessage: "No source performance data yet.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Most tested sources", mostTestedSourceChartRows, {
+            caption: "seed volume by source",
+            emptyMessage: "Track source-labeled sessions to build this comparison.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Source age-performance relationships", sourceAgeChartRows, {
+            caption: "Vault age data + linked session performance",
+            emptyMessage: "Add Vault age data and linked sessions to unlock source age trends.",
+          })}
         `, { eyebrow: "Sources" })}
 
         ${renderPrivateAnalyticsSectionMarkup("Variety / Genetics", "Top, repeat-tested, and oldest-successful variety signals.", `
@@ -62348,7 +62743,22 @@ function renderPrivateAnalyticsDashboardPage() {
               detail: "linked Vault varieties with repeated completed data",
             },
           ])}
-          ${renderPrivateAnalyticsProgressBlock("Variety performance", topVarietyRows, "No variety performance data yet.")}
+          ${renderPrivateAnalyticsMiniBarChart("Top performing varieties", varietyPerformanceChartRows, {
+            caption: "average germination by genetics",
+            emptyMessage: "No variety performance data yet.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Most tested varieties", mostTestedVarietyChartRows, {
+            caption: "seed volume by genetics",
+            emptyMessage: "Track variety-labeled sessions to build this comparison.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Repeat-tested varieties", repeatTestedVarietyRows, {
+            caption: "linked Vault session repetition",
+            emptyMessage: "Repeat-tested varieties appear after linked completed sessions.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Oldest successful varieties", oldestSuccessfulVarietyRows, {
+            caption: "known-age linked germination",
+            emptyMessage: "Oldest successful varieties appear after linked known-age completions.",
+          })}
         `, { eyebrow: "Genetics" })}
 
         ${renderPrivateAnalyticsSectionMarkup("Seed Vault Intelligence", "Inventory health, low stock, age distribution, and source distribution.", `
@@ -62358,8 +62768,18 @@ function renderPrivateAnalyticsDashboardPage() {
             { label: "Average known age", value: vaultAnalytics.overview.averageAge === null ? "Not enough data" : formatSeedAgeYearsLabel(vaultAnalytics.overview.averageAge), detail: "known or estimated Vault age" },
             { label: "Largest age group", value: largestAgeInsight?.value || "No inventory yet", detail: largestAgeInsight?.detail || "Add Vault Entries to build this." },
           ])}
-          ${renderPrivateAnalyticsProgressBlock("Source distribution", state.sourceDistributionRows, "Add Vault sources to see inventory distribution.")}
-          ${renderPrivateAnalyticsProgressBlock("Variety distribution", state.varietyDistributionRows, "Add Vault varieties to see inventory distribution.")}
+          ${renderPrivateAnalyticsMiniBarChart("Inventory by source", sourceInventoryChartRows, {
+            caption: "private active inventory",
+            emptyMessage: "Add Vault sources to see inventory distribution.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Inventory by age", ageInventoryChartRows, {
+            caption: "private known and unknown age buckets",
+            emptyMessage: "Add age data to Vault entries to see distribution.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Low inventory indicators", lowInventoryRows, {
+            caption: "entries needing review",
+            emptyMessage: "No low inventory entries need attention right now.",
+          })}
         `, { eyebrow: "Seed Vault" })}
 
         ${renderPrivateAnalyticsSectionMarkup("Community Participation", "Only approved public snapshots are counted here.", `
@@ -62372,10 +62792,27 @@ function renderPrivateAnalyticsDashboardPage() {
         `, { eyebrow: "Community Grow" })}
 
         ${renderPrivateAnalyticsSectionMarkup("Personal Trends", "Private trend hooks for sessions, germination, sources, and seed age.", `
-          ${renderPrivateAnalyticsProgressBlock("Sessions over time", state.sessionTimelineRows, "Start sessions to build a timeline.")}
-          ${renderPrivateAnalyticsProgressBlock("Germination trend", state.germinationTrendRows, "Complete sessions to build a germination trend.")}
-          ${renderPrivateAnalyticsProgressBlock("Source trend", topSourceRows, "Track sources to build a source trend.")}
-          ${renderPrivateAnalyticsProgressBlock("Age trend", state.agePerformanceRows, "Link Vault age data to sessions to build an age trend.")}
+          <div class="private-analytics-visual-grid private-analytics-visual-grid--two">
+            ${renderPrivateAnalyticsTrendChart("Sessions over time", state.monthlyTrendData, {
+              metricKey: "totalSessions",
+              caption: "recent monthly session volume",
+              emptyMessage: "Start sessions to build a timeline.",
+            })}
+            ${renderPrivateAnalyticsTrendChart("Germination trend", state.monthlyTrendData, {
+              metricKey: "germinationRate",
+              percent: true,
+              caption: "recent monthly germination rate",
+              emptyMessage: "Complete sessions to build a germination trend.",
+            })}
+          </div>
+          ${renderPrivateAnalyticsMiniBarChart("Source trend", sourcePerformanceChartRows, {
+            caption: "current source performance leaders",
+            emptyMessage: "Track sources to build a source trend.",
+          })}
+          ${renderPrivateAnalyticsMiniBarChart("Age trend", agePerformanceChartRows, {
+            caption: "current age-performance leaders",
+            emptyMessage: "Link Vault age data to sessions to build an age trend.",
+          })}
         `, { eyebrow: "Trends", wide: true })}
       </div>
     </section>
