@@ -4971,19 +4971,24 @@ function getGallerySnapshotSeedAgeMetadata(snapshot = null) {
 function getSeedAgeBucketDefinitions() {
   return [
     {
-      key: "under-1",
-      label: "0-1 year",
-      matches: (ageYears) => ageYears >= 0 && ageYears < 1.000001,
+      key: "unknown",
+      label: "Unknown",
+      matches: (ageYears) => ageYears === null,
+    },
+    {
+      key: "0-1",
+      label: "0-1 years",
+      matches: (ageYears) => ageYears !== null && ageYears >= 0 && ageYears <= 1,
     },
     {
       key: "1-2",
       label: "1-2 years",
-      matches: (ageYears) => ageYears >= 1.000001 && ageYears < 3,
+      matches: (ageYears) => ageYears > 1 && ageYears <= 2,
     },
     {
-      key: "3-5",
-      label: "3-5 years",
-      matches: (ageYears) => ageYears >= 3 && ageYears <= 5,
+      key: "2-5",
+      label: "2-5 years",
+      matches: (ageYears) => ageYears > 2 && ageYears <= 5,
     },
     {
       key: "5-10",
@@ -5005,16 +5010,14 @@ function getSeedAgeBucketDefinitions() {
       label: "20+ years",
       matches: (ageYears) => ageYears > 20,
     },
-    {
-      key: "unknown",
-      label: "Unknown",
-      matches: (ageYears) => ageYears === null,
-    },
   ];
 }
 
 function normalizeSeedAgeBucketFilter(value = "") {
-  const normalizedValue = String(value || "").trim().toLowerCase();
+  const rawValue = String(value || "").trim().toLowerCase();
+  const normalizedValue = rawValue === "under-1"
+    ? "0-1"
+    : (rawValue === "3-5" ? "2-5" : rawValue);
   const validKeys = new Set([
     ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
     ...getSeedAgeBucketDefinitions().map((bucket) => bucket.key),
@@ -5038,9 +5041,12 @@ function getSeedAgeBucketLabel(bucketKey = "") {
   return getSeedAgeBucketDefinitions().find((bucket) => bucket.key === normalizedBucketKey)?.label || "Unknown";
 }
 
-function buildSeedAgeBucketSessionEntries(sessions = []) {
+function buildSeedAgeBucketSessionEntries(sessions = [], options = {}) {
   return (sessions || []).flatMap((session) => {
     const normalizedSession = normalizeStoredSession(session) || session;
+    if (options.applyIntegrityFilters !== false && !isGrowSessionAnalyticsEligible(normalizedSession)) {
+      return [];
+    }
     const resultSummary = getSessionResultSummary(normalizedSession);
 
     return resultSummary.partitions
@@ -5052,14 +5058,17 @@ function buildSeedAgeBucketSessionEntries(sessions = []) {
         const partition = partitionResult.rawPartition;
         const seedAgeYears = getEffectivePartitionSeedAgeYears(partition, normalizedSession);
         const bucketKey = getSeedAgeBucketKey(seedAgeYears);
+        const totalSeeds = partitionResult.totalCount;
+        const totalPlanted = partitionResult.germinatedCount;
         return {
           sessionId: String(normalizedSession?.id || "").trim(),
           sessionStatus: normalizeSessionStatus(normalizedSession?.sessionStatus || ""),
           bucketKey,
           bucketLabel: getSeedAgeBucketLabel(bucketKey),
           seedAgeYears,
-          totalSeeds: partitionResult.totalCount,
-          totalPlanted: partitionResult.germinatedCount,
+          totalSeeds,
+          totalPlanted,
+          germinationRate: totalSeeds > 0 ? Math.round((totalPlanted / totalSeeds) * 100) : null,
         };
       })
       .filter(Boolean);
@@ -5073,6 +5082,7 @@ function buildSeedAgeBucketAnalytics(entries = []) {
       label: bucket.label,
       totalSeeds: 0,
       totalPlanted: 0,
+      bestGerminationRate: null,
       sessionIds: new Set(),
     }]),
   );
@@ -5085,6 +5095,11 @@ function buildSeedAgeBucketAnalytics(entries = []) {
 
     bucket.totalSeeds += Math.max(0, Number(entry.totalSeeds) || 0);
     bucket.totalPlanted += Math.max(0, Number(entry.totalPlanted) || 0);
+    if (entry.germinationRate !== null && entry.germinationRate !== undefined) {
+      bucket.bestGerminationRate = bucket.bestGerminationRate === null
+        ? entry.germinationRate
+        : Math.max(bucket.bestGerminationRate, entry.germinationRate);
+    }
     if (entry.sessionId) {
       bucket.sessionIds.add(entry.sessionId);
     }
@@ -5102,6 +5117,7 @@ function buildSeedAgeBucketAnalytics(entries = []) {
       totalSeeds: bucket?.totalSeeds || 0,
       totalPlanted: bucket?.totalPlanted || 0,
       germinationRate,
+      bestGerminationRate: bucket?.bestGerminationRate ?? null,
       completedSessionCount: bucket?.sessionIds?.size || 0,
     };
   });
@@ -60607,6 +60623,35 @@ function createSeedVaultPerformanceAccumulator() {
   };
 }
 
+function addSeedVaultPerformanceSample(accumulator, sample = {}) {
+  if (!accumulator || !sample) {
+    return accumulator;
+  }
+  const totalSeeds = Math.max(0, Number(sample.totalSeeds ?? sample.totalSeedsTested) || 0);
+  const totalGerminated = Math.max(0, Number(sample.totalGerminated ?? sample.germinatedCount) || 0);
+  if (totalSeeds <= 0) {
+    return accumulator;
+  }
+  const rate = sample.rate ?? Math.round((totalGerminated / totalSeeds) * 100);
+  accumulator.totalSeedsTested += totalSeeds;
+  accumulator.totalGerminated += totalGerminated;
+  accumulator.bestGerminationRate = accumulator.bestGerminationRate === null
+    ? rate
+    : Math.max(accumulator.bestGerminationRate, rate);
+  if (sample.sessionId) {
+    accumulator.linkedSessionIds.add(String(sample.sessionId));
+  }
+  if (sample.completedAt && (!accumulator.latestResult || Date.parse(sample.completedAt) > Date.parse(accumulator.latestResult.completedAt || ""))) {
+    accumulator.latestResult = {
+      completedAt: sample.completedAt,
+      rate,
+      totalSeeds,
+      totalGerminated,
+    };
+  }
+  return accumulator;
+}
+
 function finalizeSeedVaultPerformanceAccumulator(accumulator) {
   const totalSeedsTested = Math.max(0, Number(accumulator?.totalSeedsTested) || 0);
   const totalGerminated = Math.max(0, Number(accumulator?.totalGerminated) || 0);
@@ -60620,6 +60665,81 @@ function finalizeSeedVaultPerformanceAccumulator(accumulator) {
   };
 }
 
+function createSeedVaultAgeCorrelationBucket(bucketDefinition = {}) {
+  return {
+    key: bucketDefinition.key || "unknown",
+    label: bucketDefinition.label || "Unknown",
+    entryCount: 0,
+    quantity: 0,
+    sources: new Set(),
+    varieties: new Set(),
+    sessionIds: new Set(),
+    performance: createSeedVaultPerformanceAccumulator(),
+    oldestSuccessfulGermination: null,
+  };
+}
+
+function addSeedVaultInventoryToAgeBucket(bucket, entry = {}, quantity = 0) {
+  if (!bucket) {
+    return bucket;
+  }
+  bucket.entryCount += 1;
+  bucket.quantity += Math.max(0, Number(quantity) || 0);
+  const source = String(entry?.source || "").trim();
+  const variety = String(entry?.seedName || entry?.seedVariety || "").trim();
+  if (source) {
+    bucket.sources.add(source);
+  }
+  if (variety) {
+    bucket.varieties.add(variety);
+  }
+  return bucket;
+}
+
+function addSeedVaultAgePerformanceSample(bucket, sample = {}) {
+  if (!bucket || !sample) {
+    return bucket;
+  }
+  addSeedVaultPerformanceSample(bucket.performance, sample);
+  if (sample.sessionId) {
+    bucket.sessionIds.add(String(sample.sessionId));
+  }
+  const totalGerminated = Math.max(0, Number(sample.totalGerminated) || 0);
+  const ageYears = normalizeSeedAgeYears(sample.ageYears);
+  if (totalGerminated > 0 && ageYears !== null) {
+    const currentAge = normalizeSeedAgeYears(bucket.oldestSuccessfulGermination?.ageYears);
+    if (currentAge === null || ageYears > currentAge) {
+      bucket.oldestSuccessfulGermination = {
+        ageYears,
+        source: String(sample.source || "").trim(),
+        variety: String(sample.variety || "").trim(),
+        rate: sample.rate ?? null,
+        totalSeeds: Math.max(0, Number(sample.totalSeeds) || 0),
+        totalGerminated,
+        completedAt: String(sample.completedAt || "").trim(),
+      };
+    }
+  }
+  return bucket;
+}
+
+function finalizeSeedVaultAgeCorrelationBucket(bucket = {}) {
+  return {
+    key: bucket.key || "unknown",
+    label: bucket.label || "Unknown",
+    entryCount: Math.max(0, Number(bucket.entryCount) || 0),
+    quantity: Math.max(0, Number(bucket.quantity) || 0),
+    sourceCount: bucket.sources?.size || 0,
+    sources: [...(bucket.sources || [])].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
+    varietyCount: bucket.varieties?.size || 0,
+    varieties: [...(bucket.varieties || [])].sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" })),
+    sessionsByAgeBucket: bucket.sessionIds?.size || 0,
+    completedSessionsByAgeBucket: bucket.performance?.linkedSessionIds?.size || 0,
+    performance: finalizeSeedVaultPerformanceAccumulator(bucket.performance),
+    oldestSuccessfulGermination: bucket.oldestSuccessfulGermination || null,
+  };
+}
+
 function getSeedVaultEntrySessionAnalytics(entry = null, sessions = getSessions()) {
   const normalizedEntry = normalizeSeedVaultEntry(entry);
   const result = {
@@ -60629,6 +60749,7 @@ function getSeedVaultEntrySessionAnalytics(entry = null, sessions = getSessions(
     lastSessionLabel: "No linked sessions",
     remainingQuantity: getSeedVaultEntryAvailableQuantity(normalizedEntry),
     performance: finalizeSeedVaultPerformanceAccumulator(createSeedVaultPerformanceAccumulator()),
+    performanceSamples: [],
   };
   if (!normalizedEntry?.id) {
     return result;
@@ -60670,22 +60791,19 @@ function getSeedVaultEntrySessionAnalytics(entry = null, sessions = getSessions(
       return;
     }
     const sessionRate = Math.round((sessionGerminated / sessionSeeds) * 100);
-    performance.totalSeedsTested += sessionSeeds;
-    performance.totalGerminated += sessionGerminated;
-    performance.bestGerminationRate = performance.bestGerminationRate === null
-      ? sessionRate
-      : Math.max(performance.bestGerminationRate, sessionRate);
-    if (session?.id) {
-      performance.linkedSessionIds.add(String(session.id));
-    }
-    if (completedAt && (!performance.latestResult || Date.parse(completedAt) > Date.parse(performance.latestResult.completedAt || ""))) {
-      performance.latestResult = {
-        completedAt,
-        rate: sessionRate,
-        totalSeeds: sessionSeeds,
-        totalGerminated: sessionGerminated,
-      };
-    }
+    const sample = {
+      sessionId: String(session?.id || "").trim(),
+      completedAt,
+      source: normalizedEntry.source,
+      variety: normalizedEntry.seedName || normalizedEntry.seedVariety,
+      ageYears: getSeedVaultEntryEffectiveAgeYears(normalizedEntry),
+      bucketKey: getSeedAgeBucketKey(getSeedVaultEntryEffectiveAgeYears(normalizedEntry)),
+      totalSeeds: sessionSeeds,
+      totalGerminated: sessionGerminated,
+      rate: sessionRate,
+    };
+    result.performanceSamples.push(sample);
+    addSeedVaultPerformanceSample(performance, sample);
   });
 
   result.sessionsStarted = usageSessionIds.size;
@@ -60707,6 +60825,9 @@ function createSeedVaultRollup(label = "") {
     knownAgeCount: 0,
     averageAge: null,
     performance: createSeedVaultPerformanceAccumulator(),
+    ageBuckets: new Map(getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, createSeedVaultAgeCorrelationBucket(bucket)])),
+    oldestSuccessfulGermination: null,
+    testedEntryIds: new Set(),
   };
 }
 
@@ -60716,6 +60837,9 @@ function finalizeSeedVaultRollup(rollup) {
     ...rollup,
     averageAge: knownAgeCount > 0 ? Number((rollup.knownAgeTotal / knownAgeCount).toFixed(1)) : null,
     performance: finalizeSeedVaultPerformanceAccumulator(rollup.performance),
+    ageBuckets: [...(rollup.ageBuckets?.values?.() || [])].map(finalizeSeedVaultAgeCorrelationBucket),
+    oldestSuccessfulGermination: rollup.oldestSuccessfulGermination || null,
+    repeatTested: (rollup.testedEntryIds?.size || 0) > 1 || (rollup.performance?.linkedSessionIds?.size || 0) > 1,
   };
 }
 
@@ -60729,13 +60853,7 @@ function buildSeedVaultAnalytics(entries = [], sessions = getSessions()) {
   const sourceRollups = new Map();
   const varietyRollups = new Map();
   const ageBuckets = new Map(
-    getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, {
-      key: bucket.key,
-      label: bucket.label,
-      entryCount: 0,
-      quantity: 0,
-      performance: createSeedVaultPerformanceAccumulator(),
-    }]),
+    getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, createSeedVaultAgeCorrelationBucket(bucket)]),
   );
   let totalSeedsOwned = 0;
   let unknownAgeCount = 0;
@@ -60789,26 +60907,35 @@ function buildSeedVaultAnalytics(entries = [], sessions = getSessions()) {
         rollup.knownAgeTotal += ageYears;
         rollup.knownAgeCount += 1;
       }
-      rollup.performance.totalSeedsTested += entrySessionAnalytics.performance.totalSeedsTested;
-      rollup.performance.totalGerminated += entrySessionAnalytics.performance.totalGerminated;
-      if (entrySessionAnalytics.performance.bestGerminationRate !== null) {
-        rollup.performance.bestGerminationRate = rollup.performance.bestGerminationRate === null
-          ? entrySessionAnalytics.performance.bestGerminationRate
-          : Math.max(rollup.performance.bestGerminationRate, entrySessionAnalytics.performance.bestGerminationRate);
+      if (entry.id && entrySessionAnalytics.performance.totalSeedsTested > 0) {
+        rollup.testedEntryIds.add(entry.id);
       }
+      const rollupBucket = rollup.ageBuckets.get(bucketKey) || rollup.ageBuckets.get("unknown");
+      addSeedVaultInventoryToAgeBucket(rollupBucket, entry, safeQuantity);
+      entrySessionAnalytics.performanceSamples.forEach((sample) => {
+        addSeedVaultPerformanceSample(rollup.performance, sample);
+        addSeedVaultAgePerformanceSample(rollupBucket, sample);
+        if (sample.totalGerminated > 0 && sample.ageYears !== null) {
+          const currentAge = normalizeSeedAgeYears(rollup.oldestSuccessfulGermination?.ageYears);
+          if (currentAge === null || sample.ageYears > currentAge) {
+            rollup.oldestSuccessfulGermination = {
+              ageYears: sample.ageYears,
+              rate: sample.rate,
+              totalSeeds: sample.totalSeeds,
+              totalGerminated: sample.totalGerminated,
+              completedAt: sample.completedAt,
+              source: sample.source,
+              variety: sample.variety,
+            };
+          }
+        }
+      });
       rollups.set(key, rollup);
     });
 
     if (bucket) {
-      bucket.entryCount += 1;
-      bucket.quantity += safeQuantity;
-      bucket.performance.totalSeedsTested += entrySessionAnalytics.performance.totalSeedsTested;
-      bucket.performance.totalGerminated += entrySessionAnalytics.performance.totalGerminated;
-      if (entrySessionAnalytics.performance.bestGerminationRate !== null) {
-        bucket.performance.bestGerminationRate = bucket.performance.bestGerminationRate === null
-          ? entrySessionAnalytics.performance.bestGerminationRate
-          : Math.max(bucket.performance.bestGerminationRate, entrySessionAnalytics.performance.bestGerminationRate);
-      }
+      addSeedVaultInventoryToAgeBucket(bucket, entry, safeQuantity);
+      entrySessionAnalytics.performanceSamples.forEach((sample) => addSeedVaultAgePerformanceSample(bucket, sample));
     }
   });
 
@@ -60817,6 +60944,9 @@ function buildSeedVaultAnalytics(entries = [], sessions = getSessions()) {
     .filter((item) => item.ageYears !== null)
     .sort((left, right) => right.ageYears - left.ageYears)
     .slice(0, 5);
+  const finalizedAgeBuckets = [...ageBuckets.values()].map(finalizeSeedVaultAgeCorrelationBucket);
+  const sourceAgeCorrelations = [...sourceRollups.values()].map(finalizeSeedVaultRollup);
+  const varietyAgeCorrelations = [...varietyRollups.values()].map(finalizeSeedVaultRollup);
 
   return {
     entries: normalizedEntries,
@@ -60835,21 +60965,99 @@ function buildSeedVaultAnalytics(entries = [], sessions = getSessions()) {
       averageAge: knownAgeCount > 0 ? Number((knownAgeTotal / knownAgeCount).toFixed(1)) : null,
     },
     rollups: {
-      sources: [...sourceRollups.values()].map(finalizeSeedVaultRollup)
+      sources: sourceAgeCorrelations
         .sort((left, right) => right.quantity - left.quantity || left.label.localeCompare(right.label)),
-      varieties: [...varietyRollups.values()].map(finalizeSeedVaultRollup)
+      varieties: varietyAgeCorrelations
         .sort((left, right) => right.quantity - left.quantity || left.label.localeCompare(right.label)),
     },
     ageIntelligence: {
-      buckets: [...ageBuckets.values()].map((bucket) => ({
-        ...bucket,
-        performance: finalizeSeedVaultPerformanceAccumulator(bucket.performance),
-      })),
+      buckets: finalizedAgeBuckets,
       unknownAgeCount,
       oldestEntries,
       averageAge: knownAgeCount > 0 ? Number((knownAgeTotal / knownAgeCount).toFixed(1)) : null,
+      sourceAgeCorrelations,
+      varietyAgeCorrelations,
+      oldestSuccessfulGermination: finalizedAgeBuckets
+        .map((bucket) => bucket.oldestSuccessfulGermination)
+        .filter(Boolean)
+        .sort((left, right) => (right.ageYears || 0) - (left.ageYears || 0))[0] || null,
+      oldestSuccessfulSources: sourceAgeCorrelations
+        .filter((source) => source.oldestSuccessfulGermination)
+        .sort((left, right) => (right.oldestSuccessfulGermination.ageYears || 0) - (left.oldestSuccessfulGermination.ageYears || 0)),
+      oldestSuccessfulVarieties: varietyAgeCorrelations
+        .filter((variety) => variety.oldestSuccessfulGermination)
+        .sort((left, right) => (right.oldestSuccessfulGermination.ageYears || 0) - (left.oldestSuccessfulGermination.ageYears || 0)),
+      repeatTestedVarieties: varietyAgeCorrelations.filter((variety) => variety.repeatTested),
+      insights: buildSeedVaultAgeInsightCards(finalizedAgeBuckets, {
+        unknownAgeCount,
+        oldestEntries,
+      }),
     },
   };
+}
+
+function buildSeedVaultAgeInsightCards(ageBuckets = [], context = {}) {
+  const bucketsWithPerformance = (ageBuckets || []).filter((bucket) => bucket.performance?.totalSeedsTested > 0);
+  const bestPerformingAgeRange = bucketsWithPerformance.length
+    ? [...bucketsWithPerformance].sort((left, right) => (
+      (right.performance.averageGerminationRate ?? -1) - (left.performance.averageGerminationRate ?? -1)
+      || right.performance.totalSeedsTested - left.performance.totalSeedsTested
+    ))[0]
+    : null;
+  const largestAgeGroup = (ageBuckets || []).length
+    ? [...ageBuckets].sort((left, right) => right.quantity - left.quantity || right.entryCount - left.entryCount)[0]
+    : null;
+  const mostTestedAgeGroup = bucketsWithPerformance.length
+    ? [...bucketsWithPerformance].sort((left, right) => right.performance.totalSeedsTested - left.performance.totalSeedsTested)[0]
+    : null;
+  const oldestSuccessfulGermination = (ageBuckets || [])
+    .map((bucket) => bucket.oldestSuccessfulGermination)
+    .filter(Boolean)
+    .sort((left, right) => (right.ageYears || 0) - (left.ageYears || 0))[0] || null;
+  const unknownBucket = (ageBuckets || []).find((bucket) => bucket.key === "unknown") || null;
+
+  return [
+    {
+      key: "best-performing-age-range",
+      label: "Best Performing Age Range",
+      value: bestPerformingAgeRange
+        ? `${bestPerformingAgeRange.label} · ${formatSeedVaultPercent(bestPerformingAgeRange.performance.averageGerminationRate)}`
+        : "Not enough linked data",
+      detail: bestPerformingAgeRange
+        ? `${bestPerformingAgeRange.performance.totalSeedsTested} linked seeds tested`
+        : "Completed linked sessions will unlock this.",
+    },
+    {
+      key: "oldest-successful-germination",
+      label: "Oldest Successfully Germinated Seeds",
+      value: oldestSuccessfulGermination
+        ? `${formatSeedAgeYearsLabel(oldestSuccessfulGermination.ageYears)} · ${formatSeedVaultPercent(oldestSuccessfulGermination.rate)}`
+        : "No completed linked result",
+      detail: oldestSuccessfulGermination
+        ? [oldestSuccessfulGermination.source, oldestSuccessfulGermination.variety].filter(Boolean).join(" · ") || "Linked Vault Entry"
+        : "Requires a completed linked session with germination recorded.",
+    },
+    {
+      key: "largest-age-group",
+      label: "Largest Age Group",
+      value: largestAgeGroup ? `${largestAgeGroup.label} · ${largestAgeGroup.quantity} seeds` : "No inventory yet",
+      detail: largestAgeGroup ? `${largestAgeGroup.entryCount} active entr${largestAgeGroup.entryCount === 1 ? "y" : "ies"}` : "Add Vault Entries to build this.",
+    },
+    {
+      key: "unknown-age-inventory",
+      label: "Unknown Age Inventory",
+      value: `${unknownBucket?.entryCount || context.unknownAgeCount || 0} entr${(unknownBucket?.entryCount || context.unknownAgeCount || 0) === 1 ? "y" : "ies"}`,
+      detail: `${unknownBucket?.quantity || 0} seed${(unknownBucket?.quantity || 0) === 1 ? "" : "s"} without known age`,
+    },
+    {
+      key: "most-tested-age-group",
+      label: "Most Tested Age Group",
+      value: mostTestedAgeGroup ? mostTestedAgeGroup.label : "Not enough linked data",
+      detail: mostTestedAgeGroup
+        ? `${mostTestedAgeGroup.performance.totalSeedsTested} seeds · ${mostTestedAgeGroup.completedSessionsByAgeBucket} completed session${mostTestedAgeGroup.completedSessionsByAgeBucket === 1 ? "" : "s"}`
+        : "Completed linked sessions will unlock this.",
+    },
+  ];
 }
 
 function normalizeSeedVaultFavoriteFilter(value = "") {
@@ -61094,6 +61302,24 @@ function renderSeedVaultIndicatorMarkup(indicator = null) {
   return `<span class="seed-vault-health-pill is-${escapeHtml(status.tone || "neutral")}" data-seed-vault-health="${escapeHtml(status.key || "healthy")}">${escapeHtml(status.label || "Healthy inventory")}</span>`;
 }
 
+function renderSeedVaultAgeInsightCardsMarkup(analytics = null) {
+  const insights = analytics?.ageIntelligence?.insights || [];
+  if (!insights.length) {
+    return "";
+  }
+  return `
+    <div class="seed-vault-insight-grid" aria-label="Seed Vault age intelligence insights">
+      ${insights.map((insight) => `
+        <article class="seed-vault-insight-card" data-seed-vault-insight="${escapeHtml(insight.key)}">
+          <span>${escapeHtml(insight.label)}</span>
+          <strong>${escapeHtml(insight.value)}</strong>
+          <small>${escapeHtml(insight.detail)}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
   const analytics = entryAnalytics || {};
   const performance = analytics.performance || {};
@@ -61319,6 +61545,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
       </div>
       ${renderSeedVaultMetricCardsMarkup(analytics)}
+      ${renderSeedVaultAgeInsightCardsMarkup(analytics)}
       ${renderSeedVaultRollupMarkup(analytics)}
       ${hasEntries ? `
         <div class="seed-vault-controls" aria-label="My Seed Vault controls">

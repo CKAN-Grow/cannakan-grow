@@ -40450,6 +40450,7 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-metric-card,
+.seed-vault-insight-card,
 .seed-vault-intelligence-panel,
 .seed-vault-rollup-card {
   border: 1px solid rgba(127, 184, 255, 0.12);
@@ -40468,6 +40469,7 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-metric-card span,
+.seed-vault-insight-card span,
 .seed-vault-intelligence-copy span,
 .seed-vault-rollup-card > span {
   color: rgba(199, 208, 201, 0.68);
@@ -40483,9 +40485,40 @@ body.theme-dark #session-analytics-section {
   line-height: 1.1;
 }
 
+.seed-vault-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.seed-vault-insight-card {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  border-color: rgba(245, 190, 96, 0.13);
+  background:
+    linear-gradient(180deg, rgba(245, 190, 96, 0.055), rgba(255, 255, 255, 0) 72%),
+    rgba(8, 13, 11, 0.58);
+}
+
+.seed-vault-insight-card strong {
+  color: #f6faf4;
+  font-size: 0.92rem;
+  line-height: 1.22;
+}
+
 .seed-vault-metric-card small {
   color: rgba(205, 214, 207, 0.68);
   font-size: 0.72rem;
+}
+
+.seed-vault-insight-card small {
+  color: rgba(205, 214, 207, 0.7);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .seed-vault-intelligence-panel {
@@ -41094,6 +41127,10 @@ body.theme-dark #session-analytics-section {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .seed-vault-insight-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .seed-vault-controls {
     grid-template-columns: 1fr;
   }
@@ -41109,6 +41146,7 @@ body.theme-dark #session-analytics-section {
 
 @media (max-width: 760px) {
   .seed-vault-metric-grid,
+  .seed-vault-insight-grid,
   .seed-vault-rollup-grid,
   .seed-vault-usage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
