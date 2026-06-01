@@ -3620,7 +3620,7 @@ function syncMobileNavigationMenu() {
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">My Sessions</a>
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
-      <a class="mobile-nav-link" href="#sources" data-mobile-nav-link="true">Source Directory</a>
+      <a class="mobile-nav-link" href="#source-directory" data-mobile-nav-link="true">Source Directory</a>
       ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
@@ -9396,6 +9396,7 @@ function getCurrentAppPathRoute() {
     profile: "profile",
     analytics: "analytics",
     "community-insights": "community-insights",
+    "source-directory": "source-directory",
     sources: "sources",
     sessions: "sessions",
     "seed-vault": "seed-vault",
@@ -10860,6 +10861,14 @@ function getCurrentSiteAnalyticsPageContext() {
         pageLabel: "Source Directory",
         pagePath: "#sources",
       });
+  }
+  if (route === "source-directory") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "sources",
+      pageKey: id ? "source-directory-detail" : "source-directory",
+      pageLabel: id ? "Source Directory Detail" : "Source Directory",
+      pagePath: rawRoute ? `#${rawRoute}` : "#source-directory",
+    });
   }
   if (route === "disclaimer") {
     return buildSiteAnalyticsPageContext({
@@ -25105,7 +25114,7 @@ function renderGalleryTopMembersSummary(entries = []) {
           <h4>Source Activity</h4>
           <p class="gallery-top-members-summary-note">Approved source activity and germination averages from community sessions this month.</p>
         </div>
-        ${renderGalleryLeaderboardViewAllButton("/sources", "View all sources in Source Directory")}
+        ${renderGalleryLeaderboardViewAllButton("#source-directory", "View all sources in Source Directory")}
       </div>
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.map((entry, index) => `
@@ -26537,6 +26546,7 @@ function getCommunityInsightsSafeSnapshotPartitions(snapshot = null) {
 
 function createCommunityInsightsRollup(label = "") {
   return {
+    key: "",
     label: getCommunityInsightsSafeText(label),
     totalSeeds: 0,
     totalGerminated: 0,
@@ -26573,6 +26583,7 @@ function finalizeCommunityInsightsRollup(rollup = {}) {
   const totalGerminated = Math.max(0, Number(rollup.totalGerminated) || 0);
   return {
     label: rollup.label || "Not shared",
+    key: rollup.key || "",
     totalSeeds,
     totalGerminated,
     averageRate: totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 1000) / 10 : null,
@@ -26670,12 +26681,14 @@ function buildCommunityInsightsState() {
 
       if (partition.sourceKey) {
         const sourceRollup = sourceRollups.get(partition.sourceKey) || createCommunityInsightsRollup(partition.source);
+        sourceRollup.key = partition.sourceKey;
         addCommunityInsightsRollupSample(sourceRollup, sample);
         sourceRollups.set(partition.sourceKey, sourceRollup);
       }
 
       if (partition.varietyKey) {
         const varietyRollup = varietyRollups.get(partition.varietyKey) || createCommunityInsightsRollup(partition.variety);
+        varietyRollup.key = partition.varietyKey;
         addCommunityInsightsRollupSample(varietyRollup, sample);
         varietyRollups.set(partition.varietyKey, varietyRollup);
       }
@@ -33161,6 +33174,28 @@ function render() {
       pagePath: pathRoute === "community-insights" && isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
     }));
     void refreshGallerySnapshots("route:community-insights");
+    return;
+  }
+
+  if (route === "source-directory") {
+    if (id) {
+      renderSourceDirectoryPublicDetailPage(id);
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-directory-detail",
+        pageLabel: "Source Directory Detail",
+        pagePath: rawRoute ? `#${rawRoute}` : "#source-directory",
+      }));
+    } else {
+      renderSourceDirectoryPublicPage();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sources",
+        pageKey: "source-directory",
+        pageLabel: "Source Directory",
+        pagePath: pathRoute === "source-directory" && isUsingPathRoute("source-directory") ? "/source-directory" : "#source-directory",
+      }));
+    }
+    void refreshGallerySnapshots("route:source-directory");
     return;
   }
 
@@ -42341,7 +42376,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
             <p class="muted">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
           </div>
         </div>
-        <a class="button button-secondary" href="/sources">View Source Directory</a>
+        <a class="button button-secondary" href="#source-directory">View Source Directory</a>
       </div>
       <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
         ${previewCardsMarkup}
@@ -43000,6 +43035,417 @@ function bindSourcesLandingPage() {
     );
   }
   applyDirectoryListView();
+}
+
+function getSourceDirectoryPublicRoute(sourceKey = "") {
+  const normalizedKey = String(sourceKey || "").trim();
+  return normalizedKey ? `#source-directory/${encodeURIComponent(normalizedKey)}` : "#source-directory";
+}
+
+function getSourceDirectoryPublicTrustHooks(sourceRecord = {}) {
+  void sourceRecord;
+  return {
+    cstpTestedStatus: null,
+    goldCertification: null,
+    silverCertification: null,
+    certificationExpiration: null,
+    publicReportLinks: [],
+    testedButNotCertifiedStatus: null,
+    historicalTrustRecords: [],
+    placeholderLabel: "CSTP status pending",
+    placeholderDetail: "Future public CSTP reports and certifications will appear separately when available.",
+  };
+}
+
+function buildSourceDirectoryPublicSourceDetail(sourceKey = "", communityState = buildCommunityInsightsState()) {
+  const normalizedSourceKey = String(sourceKey || "").trim().toLowerCase();
+  const sourceRow = (communityState.sourceRows || []).find((row) => String(row.key || "").trim().toLowerCase() === normalizedSourceKey) || null;
+  if (!normalizedSourceKey || !sourceRow) {
+    return null;
+  }
+
+  const varietyRollups = new Map();
+  const ageRollups = new Map(getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, {
+    ...createCommunityInsightsRollup(bucket.label),
+    key: bucket.key,
+    label: bucket.label,
+  }]));
+  const monthRollups = new Map();
+  const snapshots = [];
+  getApprovedPublicGallerySnapshots().forEach((snapshot) => {
+    const snapshotId = String(snapshot?.id || "").trim();
+    const sessionId = String(snapshot?.sessionId || snapshotId || "").trim();
+    const contributorId = String(snapshot?.userId || "").trim();
+    const publishedDate = getCommunityInsightsSafeDate(snapshot);
+    const publishedAt = publishedDate?.toISOString() || "";
+    const partitions = getCommunityInsightsSafeSnapshotPartitions(snapshot)
+      .filter((partition) => String(partition.sourceKey || "").trim().toLowerCase() === normalizedSourceKey);
+    if (!partitions.length) {
+      return;
+    }
+    snapshots.push(snapshot);
+    const monthKey = publishedDate ? getLeaderboardMonthKey(publishedDate) : "unknown";
+    const monthRollup = monthRollups.get(monthKey) || {
+      key: monthKey,
+      label: publishedDate ? getCommunityInsightsMonthLabel(publishedDate) : "Unknown",
+      sortTime: publishedDate?.getTime() || 0,
+      snapshotCount: 0,
+      sessionIds: new Set(),
+      totalSeeds: 0,
+      totalGerminated: 0,
+    };
+    monthRollup.snapshotCount += 1;
+    if (sessionId) {
+      monthRollup.sessionIds.add(sessionId);
+    }
+
+    partitions.forEach((partition) => {
+      const sample = {
+        snapshotId,
+        sessionId,
+        contributorId,
+        publishedAt,
+        totalSeeds: partition.totalSeeds,
+        totalGerminated: partition.totalGerminated,
+      };
+      monthRollup.totalSeeds += partition.totalSeeds;
+      monthRollup.totalGerminated += partition.totalGerminated;
+
+      if (partition.varietyKey) {
+        const varietyRollup = varietyRollups.get(partition.varietyKey) || createCommunityInsightsRollup(partition.variety);
+        varietyRollup.key = partition.varietyKey;
+        addCommunityInsightsRollupSample(varietyRollup, sample);
+        varietyRollups.set(partition.varietyKey, varietyRollup);
+      }
+
+      const ageKey = getSeedAgeBucketKey(partition.seedAgeYears);
+      const ageRollup = ageRollups.get(ageKey) || {
+        ...createCommunityInsightsRollup(getSeedAgeBucketLabel(ageKey)),
+        key: ageKey,
+        label: getSeedAgeBucketLabel(ageKey),
+      };
+      addCommunityInsightsRollupSample(ageRollup, sample);
+      ageRollups.set(ageKey, ageRollup);
+    });
+    monthRollups.set(monthKey, monthRollup);
+  });
+
+  const sortByRate = (left, right) => (
+    (right.averageRate ?? -1) - (left.averageRate ?? -1)
+    || right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  );
+  const sortBySeeds = (left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
+  const varietyRows = [...varietyRollups.values()].map(finalizeCommunityInsightsRollup);
+  const ageRows = [...ageRollups.values()].map((rollup) => ({
+    ...finalizeCommunityInsightsRollup(rollup),
+    key: rollup.key || "unknown",
+  }));
+  const monthRows = [...monthRollups.values()].sort((left, right) => left.sortTime - right.sortTime).map((row) => ({
+    ...row,
+    sessionCount: row.sessionIds.size,
+    averageRate: row.totalSeeds > 0 ? Math.round((row.totalGerminated / row.totalSeeds) * 1000) / 10 : null,
+  }));
+
+  return {
+    ...sourceRow,
+    route: getSourceDirectoryPublicRoute(sourceRow.key),
+    trustHooks: getSourceDirectoryPublicTrustHooks(sourceRow),
+    topVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
+    mostTestedVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
+    ageRows: ageRows.filter((row) => row.totalSeeds > 0),
+    monthRows,
+    snapshots: sortGallerySnapshotsNewestFirst(snapshots).slice(0, 8),
+  };
+}
+
+function buildSourceDirectoryPublicRecords() {
+  const communityState = buildCommunityInsightsState();
+  return (communityState.sourceRows || [])
+    .filter((source) => source.totalSeeds > 0)
+    .map((source) => {
+      const detail = buildSourceDirectoryPublicSourceDetail(source.key, communityState);
+      return {
+        ...source,
+        route: getSourceDirectoryPublicRoute(source.key),
+        latestActivityLabel: formatSourceDirectoryLastLoggedDate(source.latestAt || ""),
+        topVarieties: (detail?.topVarieties || []).slice(0, 3),
+        trustHooks: getSourceDirectoryPublicTrustHooks(source),
+      };
+    })
+    .sort((left, right) => (
+      (right.averageRate ?? -1) - (left.averageRate ?? -1)
+      || right.totalSeeds - left.totalSeeds
+      || left.label.localeCompare(right.label)
+    ));
+}
+
+function normalizeSourceDirectoryPublicSort(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return ["average-germination", "seeds-tested", "latest-activity", "public-entries"].includes(normalizedValue)
+    ? normalizedValue
+    : "average-germination";
+}
+
+function filterAndSortSourceDirectoryPublicRecords(records = [], options = {}) {
+  const query = String(options.query || "").trim().toLowerCase();
+  const sort = normalizeSourceDirectoryPublicSort(options.sort);
+  return (records || [])
+    .filter((record) => !query || String(record.label || "").toLowerCase().includes(query))
+    .sort((left, right) => {
+      if (sort === "seeds-tested") {
+        return right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
+      }
+      if (sort === "latest-activity") {
+        return (Date.parse(right.latestAt || "") || 0) - (Date.parse(left.latestAt || "") || 0) || left.label.localeCompare(right.label);
+      }
+      if (sort === "public-entries") {
+        return right.snapshotCount - left.snapshotCount || left.label.localeCompare(right.label);
+      }
+      return (right.averageRate ?? -1) - (left.averageRate ?? -1) || right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
+    });
+}
+
+function renderSourceDirectoryPublicMetricGrid(cards = []) {
+  return `
+    <div class="source-directory-public-metric-grid">
+      ${cards.map((card) => `
+        <article class="source-directory-public-metric-card">
+          <span>${escapeHtml(card.label || "")}</span>
+          <strong>${escapeHtml(card.value || "")}</strong>
+          <small>${escapeHtml(card.detail || "")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSourceDirectoryPublicCard(record = {}) {
+  const topVarietyLabel = (record.topVarieties || []).map((variety) => variety.label).slice(0, 3).join(", ") || "Not enough public variety data";
+  const hooks = record.trustHooks || getSourceDirectoryPublicTrustHooks(record);
+  return `
+    <article class="source-directory-public-card">
+      <div class="source-directory-public-card-head">
+        <div>
+          <span>Public Source</span>
+          <h3>${escapeHtml(record.label || "Source")}</h3>
+        </div>
+        <strong>${escapeHtml(formatPrivateAnalyticsPercent(record.averageRate))}</strong>
+      </div>
+      ${renderSourceDirectoryPublicMetricGrid([
+        { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(record.totalSeeds), detail: `${formatPrivateAnalyticsNumber(record.totalGerminated)} germinated` },
+        { label: "Public Entries", value: formatPrivateAnalyticsNumber(record.snapshotCount), detail: `${formatPrivateAnalyticsNumber(record.sessionCount)} sessions represented` },
+        { label: "Latest Activity", value: record.latestActivityLabel || "Not available", detail: "approved public snapshot date" },
+      ])}
+      <div class="source-directory-public-varieties">
+        <span>Top public varieties/genetics</span>
+        <p>${escapeHtml(topVarietyLabel)}</p>
+      </div>
+      <div class="source-directory-public-cstp-placeholder" data-cstp-placeholder="true">
+        <span>${escapeHtml(hooks.placeholderLabel)}</span>
+        <p>${escapeHtml(hooks.placeholderDetail)}</p>
+      </div>
+      <div class="source-directory-public-card-actions">
+        <a class="button button-secondary" href="${escapeHtml(record.route)}">View Source Detail</a>
+      </div>
+    </article>
+  `;
+}
+
+function renderSourceDirectoryPublicResults(records = []) {
+  return records.length
+    ? records.map(renderSourceDirectoryPublicCard).join("")
+    : `
+      <article class="source-directory-public-empty">
+        <h3>No public source data matches your filters yet.</h3>
+        <p>Try a different source search or wait for more approved Community Grow entries.</p>
+      </article>
+    `;
+}
+
+function bindSourceDirectoryPublicControls(allRecords = []) {
+  const searchInput = app.querySelector("#source-directory-public-search");
+  const sortSelect = app.querySelector("#source-directory-public-sort");
+  const results = app.querySelector("#source-directory-public-results");
+  const summary = app.querySelector("#source-directory-public-summary");
+  if (!results || !summary) {
+    return;
+  }
+  const renderResults = () => {
+    const visibleRecords = filterAndSortSourceDirectoryPublicRecords(allRecords, {
+      query: searchInput?.value || "",
+      sort: sortSelect?.value || "average-germination",
+    });
+    results.innerHTML = renderSourceDirectoryPublicResults(visibleRecords);
+    summary.textContent = `Showing ${visibleRecords.length} of ${allRecords.length} public source${allRecords.length === 1 ? "" : "s"}`;
+  };
+  searchInput?.addEventListener("input", renderResults);
+  sortSelect?.addEventListener("change", renderResults);
+  renderResults();
+}
+
+function renderSourceDirectoryPublicPage() {
+  const records = buildSourceDirectoryPublicRecords();
+  const aggregate = records.reduce((accumulator, record) => {
+    accumulator.totalSeeds += record.totalSeeds;
+    accumulator.totalGerminated += record.totalGerminated;
+    accumulator.publicEntries += record.snapshotCount;
+    return accumulator;
+  }, { totalSeeds: 0, totalGerminated: 0, publicEntries: 0 });
+  const averageRate = aggregate.totalSeeds > 0 ? Math.round((aggregate.totalGerminated / aggregate.totalSeeds) * 1000) / 10 : null;
+  app.innerHTML = `
+    <section class="source-directory-public-page">
+      <header class="source-directory-public-hero">
+        <div>
+          <p class="eyebrow">Public Transparency Directory</p>
+          <h2>Source Directory</h2>
+          <p>Public source performance based on approved Cannakan Grow submissions only. Results are observational and may not represent all seeds from a source. Future CSTP certifications will display separately when available.</p>
+        </div>
+        <div class="source-directory-public-hero-actions">
+          <a class="button button-secondary" href="#community-insights">Community Insights</a>
+          <a class="button button-secondary" href="#gallery">Community Grow</a>
+        </div>
+      </header>
+
+      ${renderSourceDirectoryPublicMetricGrid([
+        { label: "Public Sources", value: formatPrivateAnalyticsNumber(records.length), detail: "sources with approved public data" },
+        { label: "Average Germination", value: formatPrivateAnalyticsPercent(averageRate), detail: "weighted across public source entries" },
+        { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(aggregate.totalSeeds), detail: `${formatPrivateAnalyticsNumber(aggregate.totalGerminated)} public germinations` },
+        { label: "Approved Entries", value: formatPrivateAnalyticsNumber(aggregate.publicEntries), detail: "approved public Community Grow entries" },
+      ])}
+
+      <section class="source-directory-public-controls">
+        <div>
+          <p class="eyebrow">Directory Controls</p>
+          <h3>Find Sources</h3>
+        </div>
+        <label class="source-directory-public-field">
+          <span>Search by source name</span>
+          <input id="source-directory-public-search" type="search" placeholder="Search public sources..." autocomplete="off">
+        </label>
+        <label class="source-directory-public-field">
+          <span>Sort</span>
+          <select id="source-directory-public-sort">
+            <option value="average-germination">Average germination</option>
+            <option value="seeds-tested">Seeds tested</option>
+            <option value="latest-activity">Latest activity</option>
+            <option value="public-entries">Public entries</option>
+          </select>
+        </label>
+      </section>
+
+      <div class="source-directory-public-results-head">
+        <h3>Public Source Cards</h3>
+        <p id="source-directory-public-summary">Showing 0 of ${records.length} public sources</p>
+      </div>
+      <section id="source-directory-public-results" class="source-directory-public-grid" aria-label="Public Source Directory entries"></section>
+    </section>
+  `;
+  bindSourceDirectoryPublicControls(records);
+}
+
+function getSourceDirectoryPublicSnapshotSummary(snapshot = null, sourceKey = "") {
+  const normalizedSourceKey = String(sourceKey || "").trim().toLowerCase();
+  const partitions = getCommunityInsightsSafeSnapshotPartitions(snapshot)
+    .filter((partition) => String(partition.sourceKey || "").trim().toLowerCase() === normalizedSourceKey);
+  const totalSeeds = partitions.reduce((sum, partition) => sum + Math.max(0, Number(partition.totalSeeds) || 0), 0);
+  const totalGerminated = partitions.reduce((sum, partition) => sum + Math.max(0, Number(partition.totalGerminated) || 0), 0);
+  const varietyLabels = [...new Set(partitions.map((partition) => String(partition.variety || "").trim()).filter(Boolean))];
+  const publishedAt = snapshot?.publishedAt || snapshot?.createdAt || "";
+  return {
+    varietyLabel: varietyLabels.slice(0, 2).join(", ") || "Community Grow snapshot",
+    germinationRateLabel: totalSeeds > 0 ? formatPrivateAnalyticsPercent(Math.round((totalGerminated / totalSeeds) * 1000) / 10) : "Result unavailable",
+    seedCountLabel: totalSeeds > 0 ? `${formatPrivateAnalyticsNumber(totalGerminated)} / ${formatPrivateAnalyticsNumber(totalSeeds)} seeds` : "Public result",
+    activityLabel: formatSourceDirectoryLastLoggedDate(publishedAt),
+  };
+}
+
+function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
+  const detail = buildSourceDirectoryPublicSourceDetail(decodeURIComponent(String(sourceKey || "").trim()));
+  if (!detail) {
+    app.innerHTML = `
+      <section class="source-directory-public-page">
+        <article class="source-directory-public-empty">
+          <h3>Source detail unavailable</h3>
+          <p>This source does not have approved public Community Grow data yet.</p>
+          <a class="button button-secondary" href="#source-directory">Back to Source Directory</a>
+        </article>
+      </section>
+    `;
+    return;
+  }
+  const sourcePerformanceRows = buildCommunityInsightsChartRows([detail], {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} public entries`,
+  });
+  const varietyRows = buildCommunityInsightsChartRows(detail.topVarieties, {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} public entries`,
+  });
+  const ageRows = buildCommunityInsightsChartRows(detail.ageRows, {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.sessionCount)} public sessions`,
+  });
+  app.innerHTML = `
+    <section class="source-directory-public-page">
+      <header class="source-directory-public-hero">
+        <div>
+          <p class="eyebrow">Source Detail</p>
+          <h2>${escapeHtml(detail.label)}</h2>
+          <p>Public-safe source detail from approved Community Grow submissions. No private sessions, Seed Vault inventory, private profiles, emails, admin fields, owner analytics, or CSTP-private data are used.</p>
+        </div>
+        <div class="source-directory-public-hero-actions">
+          <a class="button button-secondary" href="#source-directory">Back to Source Directory</a>
+        </div>
+      </header>
+
+      ${renderSourceDirectoryPublicMetricGrid([
+        { label: "Average Germination", value: formatPrivateAnalyticsPercent(detail.averageRate), detail: "approved public source entries" },
+        { label: "Seeds Tested", value: formatPrivateAnalyticsNumber(detail.totalSeeds), detail: `${formatPrivateAnalyticsNumber(detail.totalGerminated)} germinated` },
+        { label: "Public Entries", value: formatPrivateAnalyticsNumber(detail.snapshotCount), detail: `${formatPrivateAnalyticsNumber(detail.sessionCount)} sessions represented` },
+        { label: "Latest Activity", value: formatSourceDirectoryLastLoggedDate(detail.latestAt || ""), detail: "latest approved public activity" },
+      ])}
+
+      <div class="source-directory-public-detail-grid">
+        ${renderCommunityInsightsSection("Community Performance", "Aggregate public source performance.", renderCommunityInsightsBarChart("Source overview", sourcePerformanceRows, { caption: "public-safe aggregate" }), { eyebrow: "Performance" })}
+        ${renderCommunityInsightsSection("Varieties / Genetics", "Public varieties tied to this source.", renderCommunityInsightsBarChart("Variety performance", varietyRows, { caption: "approved public entries", emptyMessage: "Not enough public variety data for this source yet." }), { eyebrow: "Genetics" })}
+        ${renderCommunityInsightsSection("Age Bucket Performance", "Public seed age buckets tied to this source when available.", renderCommunityInsightsBarChart("Age bucket performance", ageRows, { caption: "public-safe age metadata", emptyMessage: "Not enough public age data for this source yet." }), { eyebrow: "Seed Age" })}
+        ${renderCommunityInsightsSection("Public Trend Summary", "Approved public activity for this source.", renderCommunityInsightsTrendChart("Public source activity", detail.monthRows, { metricKey: "snapshotCount", caption: "approved entries", emptyMessage: "Not enough public trend data for this source yet." }), { eyebrow: "Trends" })}
+      </div>
+
+      <section class="source-directory-public-panel">
+        <div class="community-insights-panel-heading">
+          <span>Approved Public Snapshots</span>
+          <h3>Public Grow History</h3>
+          <p>Snapshot links remain within approved Community Grow data.</p>
+        </div>
+        <div class="source-directory-public-snapshot-list">
+          ${detail.snapshots.length ? detail.snapshots.map((snapshot) => {
+            const details = getSourceDirectoryPublicSnapshotSummary(snapshot, detail.key);
+            return `
+              <a href="#gallery/${escapeHtml(snapshot.id)}" class="source-directory-public-snapshot-row">
+                <strong>${escapeHtml(details.varietyLabel)}</strong>
+                <span>${escapeHtml(`${details.germinationRateLabel} · ${details.seedCountLabel} · ${details.activityLabel}`)}</span>
+              </a>
+            `;
+          }).join("") : `<p class="source-directory-public-muted">No approved public snapshots are available for this source yet.</p>`}
+        </div>
+      </section>
+
+      <section class="source-directory-public-panel source-directory-public-cstp-placeholder" data-cstp-placeholder="true">
+        <div class="community-insights-panel-heading">
+          <span>CSTP Future Hooks</span>
+          <h3>Certification Status</h3>
+          <p>${escapeHtml(detail.trustHooks.placeholderDetail)}</p>
+        </div>
+        ${renderSourceDirectoryPublicMetricGrid([
+          { label: "CSTP Tested Status", value: "Not public yet", detail: "placeholder only" },
+          { label: "Gold/Silver Certification", value: "Not certified", detail: "no active certification inferred" },
+          { label: "Public Report Links", value: "Unavailable", detail: "future CSTP public reports" },
+        ])}
+      </section>
+    </section>
+  `;
 }
 
 function renderSourcesLandingPage() {
@@ -57291,7 +57737,7 @@ function renderAdminDevAccessSectionMarkup() {
     defaultOpen: false,
     bodyMarkup: `
       <div class="admin-dev-access-grid">
-            <a class="button button-secondary" href="#sources">View Source Directory</a>
+            <a class="button button-secondary" href="#source-directory">View Source Directory</a>
         <a class="button button-secondary" href="#sources/${escapeHtml(SOURCE_PROFILE_DEFAULT_MOCK_ID)}">View Source Profile</a>
         <a class="button button-secondary" href="#contact">View Contact Page</a>
         <a class="button button-secondary" href="#home">View CSTP Overview</a>
