@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
-const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
+const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 const requiredNeedles = [
   ".session-workspace-shell .progress-chart-heading,\n.session-workspace-shell .session-images-heading > div,\n.session-workspace-shell .session-notes-section > .session-notes-field {\n  display: grid;\n  grid-template-columns: 64px minmax(0, 1fr);",

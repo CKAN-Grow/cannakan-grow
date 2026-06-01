@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
-const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
+const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
 
 for (const needle of [
   "const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;",

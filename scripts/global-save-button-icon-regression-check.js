@@ -3,9 +3,9 @@ const path = require("path");
 const assert = require("assert");
 
 const repoRoot = path.resolve(__dirname, "..");
-const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
-const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8");
-const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
+const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8").replace(/\r\n/g, "\n");
+const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 [
   "function getSaveButtonIconMarkup()",
@@ -16,7 +16,7 @@ const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
   "function initializeGlobalSaveButtonIcons()",
   "initializeGlobalSaveButtonIcons();",
   "button.dataset.saveIconButton = \"true\";",
-  "data-save-icon-button=\"true\">Add Seeds</button>",
+  "data-save-icon-button=\"true\">${isEditing ? \"Save Entry\" : \"Add Seeds\"}</button>",
   "[data-unsaved-action='save']",
   "[data-filter-paper-modal-save='true']",
   "[data-filter-paper-setup-save='true']",

@@ -2,9 +2,9 @@ const fs = require("fs");
 const path = require("path");
 
 const repoRoot = path.resolve(__dirname, "..");
-const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8");
-const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8");
-const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8");
+const indexSource = fs.readFileSync(path.join(repoRoot, "index.html"), "utf8").replace(/\r\n/g, "\n");
+const appSource = fs.readFileSync(path.join(repoRoot, "app.js"), "utf8").replace(/\r\n/g, "\n");
+const stylesSource = fs.readFileSync(path.join(repoRoot, "styles.css"), "utf8").replace(/\r\n/g, "\n");
 
 const setupToolsMatch = indexSource.match(/<div class="session-setup-tools-card"[\s\S]*?<div id="partition-chart-shell"/);
 if (!setupToolsMatch) {
