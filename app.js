@@ -64,6 +64,7 @@ const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
+const SAFE_PUBLIC_MEMBER_PROFILES_VIEW = "safe_public_member_profiles";
 const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
@@ -16285,7 +16286,14 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
 
 function isPublicMemberProfilesViewUnavailableError(error) {
   return isSupabaseTableMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE)
+    || isSupabaseTableMissingError(error, SAFE_PUBLIC_MEMBER_PROFILES_VIEW)
     || isSupabaseColumnMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE, [
+      "bio",
+      "public_handle",
+      "location_region",
+      "profile_visibility",
+    ])
+    || isSupabaseColumnMissingError(error, SAFE_PUBLIC_MEMBER_PROFILES_VIEW, [
       "bio",
       "public_handle",
       "location_region",
@@ -16306,6 +16314,31 @@ function markPublicMemberProfilesViewUnavailable(details = {}) {
 
 function logPublicMemberProfilesFallback(key = "public-member-profiles-fallback", message = "Public member profiles request failed; using safe fallback data.", details = {}) {
   logRuntimeIssueOnce("warn", key, message, details);
+}
+
+function isPublicProfileHandleCollisionError(error = null) {
+  if (error?.cause && error.cause !== error && isPublicProfileHandleCollisionError(error.cause)) {
+    return true;
+  }
+  const normalizedMessage = getSupabaseErrorSearchText(error);
+  return Boolean(
+    normalizedMessage.includes("public_member_profiles_public_handle_unique_idx")
+    || (
+      normalizedMessage.includes("duplicate key")
+      && (
+        normalizedMessage.includes("public_handle")
+        || normalizedMessage.includes("safe_public_member_profiles")
+        || normalizedMessage.includes("public_member_profiles")
+      )
+    )
+  );
+}
+
+function getPublicMemberProfileSaveErrorMessage(error = null, fallbackMessage = "Community profile settings could not be saved right now.") {
+  if (isPublicProfileHandleCollisionError(error)) {
+    return "That profile handle is already taken. Please choose another.";
+  }
+  return fallbackMessage;
 }
 
 function cachePublicMemberProfile(profile = null) {
@@ -16375,18 +16408,132 @@ function getMostCommonProfileStatValue(values = []) {
   ))[0]?.value || "";
 }
 
-function calculateProfileStatsFromPublicSnapshots(snapshots = []) {
+function getRoundedProfileRate(value = null) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.round(numericValue * 10) / 10 : null;
+}
+
+function getProfileAnalyticsRateLabel(value = null, fallback = "Not enough data") {
+  const roundedValue = getRoundedProfileRate(value);
+  return roundedValue === null
+    ? fallback
+    : `${String(Number(roundedValue.toFixed(1))).replace(/\.0$/, "")}%`;
+}
+
+function getProfileAnalyticsCountLabel(value = 0) {
+  return Math.max(0, Number(value) || 0).toLocaleString();
+}
+
+function isProfileAnalyticsBaseSessionEligible(session = null, options = {}) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  if (!normalizedSession || isSessionSoftDeleted(normalizedSession)) {
+    return false;
+  }
+  if (isTestGrowSession(normalizedSession) || isGrowSessionAnalyticsExcluded(normalizedSession)) {
+    return false;
+  }
+  if (!options.includeMock && isMockGrowSession(normalizedSession)) {
+    return false;
+  }
+  const lifecycleHealth = getGrowSessionLifecycleHealth(normalizedSession);
+  if (["archived", "stale", "abandoned"].includes(lifecycleHealth.classification)) {
+    return false;
+  }
+  if (!getSessionLifecycleTimestampHealth(normalizedSession).isValid) {
+    return false;
+  }
+  return true;
+}
+
+function getProfileAnalyticsSessionRate(session = null) {
+  const totals = getSessionSeedTotals(session);
+  return totals.totalSeeds > 0 ? (totals.totalPlanted / totals.totalSeeds) * 100 : null;
+}
+
+function calculateProfileAnalyticsFromOwnerSessions(sessions = []) {
+  const eligibleSessions = (sessions || []).filter((session) => isProfileAnalyticsBaseSessionEligible(session, {
+    includeMock: isMockDataEnabled(),
+  }));
+  const completedSessions = eligibleSessions.filter(isGrowSessionAnalyticsEligible);
+  const activeSessions = eligibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active");
+  const totals = completedSessions.reduce((accumulator, session) => {
+    const sessionTotals = getSessionSeedTotals(session);
+    accumulator.totalSeedsTested += Math.max(0, Number(sessionTotals.totalSeeds) || 0);
+    accumulator.totalSeedsGerminated += Math.max(0, Number(sessionTotals.totalPlanted) || 0);
+    normalizeSessionPartitions(session?.partitions || []).forEach((partition) => {
+      accumulator.sources.push(partition.sourceDisplayName || partition.source);
+      accumulator.varieties.push(partition.seedVarietyDisplayName || partition.seedVariety);
+    });
+    const sessionRate = getProfileAnalyticsSessionRate(session);
+    if (sessionRate !== null) {
+      accumulator.rates.push(sessionRate);
+    }
+    const durationMs = getSessionCompletedDurationMs(session);
+    if (Number.isFinite(durationMs)) {
+      accumulator.durations.push(durationMs);
+    }
+    return accumulator;
+  }, {
+    totalSeedsTested: 0,
+    totalSeedsGerminated: 0,
+    rates: [],
+    durations: [],
+    sources: [],
+    varieties: [],
+  });
+
+  const averageGerminationRate = totals.totalSeedsTested > 0
+    ? (totals.totalSeedsGerminated / totals.totalSeedsTested) * 100
+    : null;
+  const averageSessionDurationMs = totals.durations.length
+    ? Math.round(totals.durations.reduce((sum, durationMs) => sum + durationMs, 0) / totals.durations.length)
+    : null;
+
+  return {
+    totalSessions: eligibleSessions.length,
+    completedSessions: completedSessions.length,
+    activeSessions: activeSessions.length,
+    averageGerminationRate: getRoundedProfileRate(averageGerminationRate),
+    bestGerminationRate: totals.rates.length ? getRoundedProfileRate(Math.max(...totals.rates)) : null,
+    totalSeedsTested: totals.totalSeedsTested,
+    totalSeedsGerminated: totals.totalSeedsGerminated,
+    completionRate: eligibleSessions.length ? getRoundedProfileRate((completedSessions.length / eligibleSessions.length) * 100) : null,
+    averageSessionDurationMs,
+    favoriteSource: getMostCommonProfileStatValue(totals.sources),
+    favoriteVariety: getMostCommonProfileStatValue(totals.varieties),
+    dataScope: "owner",
+  };
+}
+
+function calculateProfileAnalyticsFromPublicSnapshots(snapshots = []) {
   const safeSnapshots = (snapshots || []).filter(isGallerySnapshotAnalyticsEligible);
-  const completedSessionIds = new Set();
+  const publicSessionSnapshots = [];
+  const publicSessionKeys = new Set();
+  safeSnapshots.forEach((snapshot) => {
+    const sessionKey = String(snapshot?.sessionId || snapshot?.id || "").trim();
+    if (!sessionKey || publicSessionKeys.has(sessionKey)) {
+      return;
+    }
+    publicSessionKeys.add(sessionKey);
+    publicSessionSnapshots.push(snapshot);
+  });
   const rates = [];
   const sources = [];
   const varieties = [];
+  const durations = [];
+  const totals = publicSessionSnapshots.reduce((accumulator, snapshot) => {
+    const feedDetails = getGallerySnapshotFeedDetails(snapshot);
+    const totalSeeds = Math.max(0, Number(feedDetails.totalSeeds || snapshot?.totalSeeds) || 0);
+    const totalGerminated = Math.max(0, Number(feedDetails.totalPlanted || snapshot?.totalPlanted) || 0);
+    accumulator.totalSeedsTested += totalSeeds;
+    accumulator.totalSeedsGerminated += totalGerminated;
+    return accumulator;
+  }, {
+    totalSeedsTested: 0,
+    totalSeedsGerminated: 0,
+  });
 
-  safeSnapshots.forEach((snapshot) => {
-    const sessionId = String(snapshot?.sessionId || "").trim();
-    if (sessionId) {
-      completedSessionIds.add(sessionId);
-    }
+  publicSessionSnapshots.forEach((snapshot) => {
     const rate = getGallerySnapshotSuccessRate(snapshot);
     if (Number.isFinite(rate)) {
       rates.push(rate);
@@ -16394,20 +16541,36 @@ function calculateProfileStatsFromPublicSnapshots(snapshots = []) {
     const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
     sources.push(publicDetails.sourceLabel);
     varieties.push(publicDetails.seedVarietyLabel);
+    const durationMs = getGallerySnapshotCompletedDurationMs(snapshot);
+    if (Number.isFinite(durationMs)) {
+      durations.push(durationMs);
+    }
   });
 
-  const averageRate = rates.length
-    ? Math.round((rates.reduce((sum, rate) => sum + rate, 0) / rates.length) * 10) / 10
+  const publicSessionCount = publicSessionSnapshots.length;
+  const averageRate = totals.totalSeedsTested > 0
+    ? (totals.totalSeedsGerminated / totals.totalSeedsTested) * 100
     : null;
   const bestRate = rates.length ? Math.max(...rates) : null;
+  const averageSessionDurationMs = durations.length
+    ? Math.round(durations.reduce((sum, durationMs) => sum + durationMs, 0) / durations.length)
+    : null;
 
   return {
+    totalSessions: publicSessionCount,
     totalPublicSnapshots: safeSnapshots.length,
-    completedSessions: completedSessionIds.size || safeSnapshots.length,
-    averageGerminationRate: averageRate,
-    bestGerminationResult: bestRate,
+    completedSessions: publicSessionCount,
+    activeSessions: 0,
+    averageGerminationRate: getRoundedProfileRate(averageRate),
+    bestGerminationRate: getRoundedProfileRate(bestRate),
+    bestGerminationResult: getRoundedProfileRate(bestRate),
+    totalSeedsTested: totals.totalSeedsTested,
+    totalSeedsGerminated: totals.totalSeedsGerminated,
+    completionRate: publicSessionCount ? 100 : null,
+    averageSessionDurationMs,
     favoriteSource: getMostCommonProfileStatValue(sources),
     favoriteVariety: getMostCommonProfileStatValue(varieties),
+    dataScope: "public",
   };
 }
 
@@ -16416,19 +16579,16 @@ function calculateOwnerProfilePrivateStats(memberId = "", sessions = getSessions
   if (!normalizedId || normalizedId !== String(appState.user?.id || "").trim()) {
     return null;
   }
-
-  const eligibleSessions = getAggregateStatsSessions(sessions || []);
-  return {
-    completedSessions: eligibleSessions.length,
-  };
+  return calculateProfileAnalyticsFromOwnerSessions(sessions || []);
 }
 
 function calculatePublicProfileStats({ memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId), includeOwnerPrivate = false } = {}) {
-  const publicStats = calculateProfileStatsFromPublicSnapshots(snapshots);
+  const publicStats = calculateProfileAnalyticsFromPublicSnapshots(snapshots);
   const ownerStats = includeOwnerPrivate ? calculateOwnerProfilePrivateStats(memberId) : null;
   return {
-    ...publicStats,
-    completedSessions: ownerStats?.completedSessions ?? publicStats.completedSessions,
+    ...(ownerStats || publicStats),
+    totalPublicSnapshots: publicStats.totalPublicSnapshots,
+    publicAnalytics: publicStats,
     futureHooks: {
       reputation: null,
       verifiedGrowerTrust: null,
@@ -16436,6 +16596,93 @@ function calculatePublicProfileStats({ memberId = "", snapshots = getApprovedPub
       seedVaultPublicStats: null,
       seedAgeInsights: null,
     },
+  };
+}
+
+function buildProfileMilestones(analytics = {}, profile = null) {
+  const milestones = [];
+  if (analytics.completedSessions > 0) {
+    milestones.push(`${analytics.completedSessions.toLocaleString()} completed grow${analytics.completedSessions === 1 ? "" : "s"}`);
+  }
+  if (analytics.totalPublicSnapshots > 0) {
+    milestones.push(`${analytics.totalPublicSnapshots.toLocaleString()} approved Community Grow snapshot${analytics.totalPublicSnapshots === 1 ? "" : "s"}`);
+  }
+  if (analytics.bestGerminationRate !== null && analytics.bestGerminationRate !== undefined) {
+    milestones.push(`${getProfileAnalyticsRateLabel(analytics.bestGerminationRate)} best germination result`);
+  }
+  if (profile?.joinedAt) {
+    const joinedLabel = formatPublicMemberJoinedDateLabel(profile.joinedAt);
+    if (joinedLabel) {
+      milestones.push(`Member since ${joinedLabel}`);
+    }
+  }
+  if (!milestones.length) {
+    milestones.push("Cultivation history will appear after eligible public grow data is available.");
+  }
+  return milestones;
+}
+
+function buildProfileParticipationHistory(snapshots = [], analytics = {}) {
+  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
+  const latestSnapshot = safeSnapshots[0] || null;
+  return {
+    latestPublicActivityLabel: latestSnapshot
+      ? `Latest public snapshot ${getGallerySnapshotSubmittedDateLabel(latestSnapshot)}`
+      : "No public snapshot activity yet",
+    publicSnapshotCount: safeSnapshots.length,
+    completedSessionCount: Math.max(0, Number(analytics.completedSessions) || 0),
+    activeSessionCount: Math.max(0, Number(analytics.activeSessions) || 0),
+  };
+}
+
+function calculateProfileCompleteness(profile = null) {
+  const fields = [
+    profile?.displayName,
+    profile?.avatarUrl,
+    profile?.bio,
+    profile?.publicHandle,
+    profile?.locationRegion,
+  ];
+  const completedCount = fields.filter((value) => String(value || "").trim()).length;
+  return fields.length ? completedCount / fields.length : 0;
+}
+
+function buildProfileReputationFoundation({
+  profile = null,
+  analytics = {},
+  publicSnapshots = [],
+  referenceDate = new Date(),
+} = {}) {
+  const accountCreatedAt = parseCompletedAtValue(profile?.joinedAt || profile?.createdAt || "");
+  const accountAgeDays = accountCreatedAt
+    ? Math.max(0, Math.floor((referenceDate.getTime() - accountCreatedAt.getTime()) / (24 * 60 * 60 * 1000)))
+    : 0;
+  const latestSnapshotAt = sortGallerySnapshotsNewestFirst(publicSnapshots || [])[0]?.publishedAt || "";
+  return {
+    inputs: {
+      completedSessions: Math.max(0, Number(analytics.completedSessions) || 0),
+      approvedPublicSnapshots: Math.max(0, Number(analytics.totalPublicSnapshots) || 0),
+      participationConsistency: buildProfileParticipationHistory(publicSnapshots, analytics),
+      accountAgeDays,
+      profileCompleteness: calculateProfileCompleteness(profile),
+      latestPublicSnapshotAt: latestSnapshotAt,
+    },
+    visibleScore: null,
+    scoreEnabled: false,
+  };
+}
+
+function buildProfileTrustHooks(profile = null, options = {}) {
+  return {
+    verifiedGrower: false,
+    cstpParticipant: false,
+    cstpCertifiedGrower: false,
+    sourceTester: false,
+    founderAdmin: Boolean(options.isFounderAdminProfile || options.isOwnerAdmin),
+    cstpLinkedTrustBadges: [],
+    seedVaultPublicStats: null,
+    seedAgeAnalyticsInsights: null,
+    profileId: String(profile?.id || "").trim(),
   };
 }
 
@@ -16574,7 +16821,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
     try {
       const canReadOwnerFields = Boolean(normalizedId && String(appState.user?.id || "").trim() === normalizedId);
       let query = appState.supabase
-        .from(PUBLIC_MEMBER_PROFILES_TABLE)
+        .from(canReadOwnerFields ? PUBLIC_MEMBER_PROFILES_TABLE : SAFE_PUBLIC_MEMBER_PROFILES_VIEW)
         .select(canReadOwnerFields ? "*" : PUBLIC_MEMBER_PROFILE_SAFE_SELECT);
       query = normalizedId
         ? query.eq("id", normalizedId)
@@ -16685,7 +16932,7 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
   let data = null;
   try {
     const response = await appState.supabase
-      .from(PUBLIC_MEMBER_PROFILES_TABLE)
+      .from(SAFE_PUBLIC_MEMBER_PROFILES_VIEW)
       .select(PUBLIC_MEMBER_PROFILE_SAFE_SELECT)
       .in("id", missingIds);
     data = response.data;
@@ -19326,6 +19573,10 @@ async function upsertCurrentUserPublicMemberProfile(
   }
 
   if (error) {
+    const publicMessage = getPublicMemberProfileSaveErrorMessage(
+      error,
+      "Community profile settings could not be saved right now.",
+    );
     if (isPublicMemberProfilesViewUnavailableError(error)) {
       markPublicMemberProfilesViewUnavailable({
         reason,
@@ -19333,6 +19584,16 @@ async function upsertCurrentUserPublicMemberProfile(
         error,
         unavailable: true,
       });
+    } else if (isPublicProfileHandleCollisionError(error)) {
+      logPublicMemberProfilesFallback(
+        "public-member-profile-handle-collision",
+        "Community profile handle collision during save.",
+        {
+          reason,
+          memberId: normalizedUserId,
+          error,
+        },
+      );
     } else {
       logPublicMemberProfilesFallback(
         "public-member-profile-settings-write-fallback",
@@ -19349,7 +19610,7 @@ async function upsertCurrentUserPublicMemberProfile(
       appState.publicMemberProfiles[normalizedUserId] = fallbackProfile;
       syncProfilePageSettingsCache(normalizedUserId, fallbackProfile, { persistLocal });
     }
-    throwPublicMemberProfileSaveError("Community profile settings could not be saved right now.", error);
+    throwPublicMemberProfileSaveError(publicMessage, error);
     return fallbackProfile;
   }
 
@@ -37910,8 +38171,10 @@ function renderProfilePage() {
               ${[
                 { label: "Public Snapshots", value: ownerPublicStats.totalPublicSnapshots.toLocaleString() },
                 { label: "Completed Sessions", value: ownerPublicStats.completedSessions.toLocaleString() },
-                { label: "Avg Germination", value: ownerPublicStats.averageGerminationRate === null ? "Not enough data" : `${String(Number(ownerPublicStats.averageGerminationRate.toFixed(1))).replace(/\.0$/, "")}%` },
-                { label: "Best Result", value: ownerPublicStats.bestGerminationResult === null ? "Not enough data" : `${String(Number(ownerPublicStats.bestGerminationResult.toFixed(1))).replace(/\.0$/, "")}%` },
+                { label: "Avg Germination", value: getProfileAnalyticsRateLabel(ownerPublicStats.averageGerminationRate) },
+                { label: "Best Result", value: getProfileAnalyticsRateLabel(ownerPublicStats.bestGerminationRate) },
+                { label: "Seeds Tested", value: getProfileAnalyticsCountLabel(ownerPublicStats.totalSeedsTested) },
+                { label: "Completion Rate", value: getProfileAnalyticsRateLabel(ownerPublicStats.completionRate) },
                 { label: "Favorite Source", value: ownerPublicStats.favoriteSource || "Not enough data" },
                 { label: "Favorite Variety", value: ownerPublicStats.favoriteVariety || "Not enough data" },
               ].map((row) => `
@@ -38463,7 +38726,7 @@ function bindProfileForm(form, options = {}) {
           publicHandle,
           locationRegion,
         }, {
-          requirePersistence: false,
+          requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
           verifyAfterSave: false,
         });
@@ -38478,7 +38741,10 @@ function bindProfileForm(form, options = {}) {
         }
       } catch (error) {
         console.warn("[Cannakan Profile] Public profile/settings save warning", error);
-        warnings.push(`Profile saved, but public profile or notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
+        const publicMessage = getPublicMemberProfileSaveErrorMessage(error, error.message || "Unknown settings error.");
+        warnings.push(isPublicProfileHandleCollisionError(error) || publicMessage.includes("profile handle is already taken")
+          ? publicMessage
+          : `Profile saved, but public profile or notification preferences could not be saved: ${publicMessage}`);
         syncNotificationPreferenceAvailability();
       }
 
@@ -65522,24 +65788,56 @@ function renderPublicMemberProfile(memberId) {
   const roundedAverageRate = publicStats.averageGerminationRate === null
     ? ""
     : String(Number(publicStats.averageGerminationRate.toFixed(1))).replace(/\.0$/, "");
-  const bestRateLabel = publicStats.bestGerminationResult === null
+  const bestRateLabel = publicStats.bestGerminationRate === null
     ? ""
-    : `${String(Number(publicStats.bestGerminationResult.toFixed(1))).replace(/\.0$/, "")}%`;
+    : getProfileAnalyticsRateLabel(publicStats.bestGerminationRate);
   const publicHandleLabel = profile?.publicHandle ? `@${profile.publicHandle}` : "";
   const locationRegionLabel = canShowPublicProfileData ? profile?.locationRegion || "" : "";
   const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
   const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
+  const profileMilestones = buildProfileMilestones(publicStats, profile);
+  const participationHistory = buildProfileParticipationHistory(approvedSnapshots, publicStats);
+  const reputationFoundation = buildProfileReputationFoundation({
+    profile,
+    analytics: publicStats,
+    publicSnapshots: approvedSnapshots,
+  });
+  const trustHooks = buildProfileTrustHooks(profile, { isOwnerAdmin: isOwnProfile && isAdminUser() });
+  const performanceCards = [
+    {
+      label: "Overall Performance",
+      value: getProfileAnalyticsRateLabel(publicStats.averageGerminationRate),
+      detail: `${getProfileAnalyticsCountLabel(publicStats.totalSeedsGerminated)} / ${getProfileAnalyticsCountLabel(publicStats.totalSeedsTested)} seeds germinated`,
+    },
+    {
+      label: "Completed Grows",
+      value: getProfileAnalyticsCountLabel(publicStats.completedSessions),
+      detail: "eligible cultivation history",
+    },
+    {
+      label: "Average Duration",
+      value: formatDurationMsShort(publicStats.averageSessionDurationMs) || "Not enough data",
+      detail: "completed session timing",
+    },
+    {
+      label: "Completion Rate",
+      value: getProfileAnalyticsRateLabel(publicStats.completionRate),
+      detail: publicStats.dataScope === "owner" ? "eligible owner sessions" : "public-safe grow history",
+    },
+  ];
   const stats = [
     {
       label: "Public Snapshots",
       value: publicStats.totalPublicSnapshots.toLocaleString(),
       detail: approvedSnapshots.length === 1 ? "approved public snapshot" : "approved public snapshots",
     },
-    {
-      label: "Completed Sessions",
-      value: publicStats.completedSessions.toLocaleString(),
-      detail: isOwnProfile ? "eligible completed sessions" : "public-safe completed sessions",
-    },
+    !showPublicStats
+      ? null
+      : {
+        label: "Completed Sessions",
+        value: publicStats.completedSessions.toLocaleString(),
+        detail: isOwnProfile ? "eligible completed sessions" : "public-safe completed sessions",
+      },
     !showPublicStats || publicStats.averageGerminationRate === null
       ? null
       : {
@@ -65622,6 +65920,46 @@ function renderPublicMemberProfile(memberId) {
           </article>
         `).join("")}
       </div>
+      ${showPublicStats ? `
+        <section
+          class="public-member-profile-performance"
+          data-profile-analytics-framework="${escapeHtml(reputationFoundation.scoreEnabled === false && trustHooks ? "ready" : "pending")}"
+        >
+          <div class="section-heading app-section-header">
+            <div class="section-title-with-icon app-section-header-main">
+              ${renderAppSectionHeaderIcon("analytics")}
+              <div>
+                <p class="eyebrow">Cultivation History</p>
+                <h3>Performance foundation</h3>
+                <p class="muted">Public-safe performance and participation history for this profile.</p>
+              </div>
+            </div>
+          </div>
+          <div class="public-member-profile-performance-grid">
+            ${performanceCards.map((card) => `
+              <article class="meta-card public-member-profile-performance-card">
+                <strong>${escapeHtml(card.label)}</strong>
+                <p class="public-member-profile-stat-value">${escapeHtml(card.value)}</p>
+                <p class="public-member-profile-stat-detail">${escapeHtml(card.detail)}</p>
+              </article>
+            `).join("")}
+          </div>
+          <div class="public-member-profile-history-grid">
+            <article class="public-member-profile-history-card">
+              <strong>Profile milestones</strong>
+              <ul>
+                ${profileMilestones.map((milestone) => `<li>${escapeHtml(milestone)}</li>`).join("")}
+              </ul>
+            </article>
+            <article class="public-member-profile-history-card">
+              <strong>Participation history</strong>
+              <p>${escapeHtml(participationHistory.latestPublicActivityLabel)}</p>
+              <p>${escapeHtml(`${participationHistory.publicSnapshotCount.toLocaleString()} public snapshot${participationHistory.publicSnapshotCount === 1 ? "" : "s"} recorded`)}</p>
+              ${isOwnProfile ? `<p>${escapeHtml(`${participationHistory.activeSessionCount.toLocaleString()} active owner session${participationHistory.activeSessionCount === 1 ? "" : "s"}`)}</p>` : ""}
+            </article>
+          </div>
+        </section>
+      ` : ""}
       <section class="public-member-profile-snapshots">
         <div class="section-heading app-section-header">
           <div class="section-title-with-icon app-section-header-main">

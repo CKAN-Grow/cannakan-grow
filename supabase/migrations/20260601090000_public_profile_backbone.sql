@@ -80,8 +80,8 @@ begin
 end;
 $$;
 
-revoke select on table public.public_member_profiles from anon;
-grant select (
+create or replace view public.safe_public_member_profiles as
+select
   id,
   user_id,
   display_name,
@@ -95,10 +95,29 @@ grant select (
   show_grow_stats_publicly,
   created_at,
   updated_at
-) on public.public_member_profiles to anon;
+from public.public_member_profiles
+where coalesce(show_profile_in_community_grow, true) = true
+  and coalesce(profile_visibility, 'public') = 'public'
+  and nullif(btrim(coalesce(display_name, '')), '') is not null
+  and exists (
+    select 1
+    from public.profiles
+    where profiles.id = public_member_profiles.user_id
+      and coalesce(profiles.account_status, 'active') = 'active'
+      and coalesce(profiles.deletion_status, '') <> 'deleted'
+  );
+
+comment on view public.safe_public_member_profiles is
+  'Public-safe profile lookup surface. Exposes approved profile identity fields only for visible active public profiles.';
+
+revoke all on table public.safe_public_member_profiles from public;
+grant select on table public.safe_public_member_profiles to anon, authenticated;
+revoke select on table public.public_member_profiles from anon;
+grant select, insert, update on table public.public_member_profiles to authenticated;
 
 drop policy if exists "Visible public member profiles can be read" on public.public_member_profiles;
-create policy "Visible public member profiles can be read"
+drop policy if exists "Owners and admins can read member profile rows" on public.public_member_profiles;
+create policy "Owners and admins can read member profile rows"
 on public.public_member_profiles
 for select
 to public
@@ -109,18 +128,6 @@ using (
     select 1
     from public.admin_users
     where admin_users.user_id = auth.uid()
-  )
-  or (
-    coalesce(show_profile_in_community_grow, true) = true
-    and coalesce(profile_visibility, 'public') = 'public'
-    and nullif(btrim(coalesce(display_name, '')), '') is not null
-    and exists (
-      select 1
-      from public.profiles
-      where profiles.id = public_member_profiles.user_id
-        and coalesce(profiles.account_status, 'active') = 'active'
-        and coalesce(profiles.deletion_status, '') <> 'deleted'
-    )
   )
 );
 
