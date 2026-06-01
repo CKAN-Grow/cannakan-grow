@@ -23,6 +23,13 @@ const restContractMigrationPath = path.join(
   "20260526113000_ensure_seed_vault_entries_rest_contract.sql",
 );
 const restContractSql = fs.readFileSync(restContractMigrationPath, "utf8");
+const privacyInventoryMigrationPath = path.join(
+  repoRoot,
+  "supabase",
+  "migrations",
+  "20260601102000_seed_vault_privacy_inventory_foundation.sql",
+);
+const privacyInventorySql = fs.readFileSync(privacyInventoryMigrationPath, "utf8");
 
 for (const needle of [
   "create table if not exists public.seed_vault_entries",
@@ -116,6 +123,30 @@ for (const needle of [
 
 if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(restContractSql)) {
   throw new Error("Seed Vault REST contract migration must stay additive and non-destructive.");
+}
+
+for (const needle of [
+  "alter table public.seed_vault_entries",
+  "add column if not exists visibility text not null default 'private'",
+  "add column if not exists acquired_at date",
+  "add column if not exists storage_notes text",
+  "add column if not exists archived_at timestamptz",
+  "add column if not exists is_deleted boolean not null default false",
+  "seed_vault_entries_visibility_check",
+  "alter table public.seed_vault_entries enable row level security",
+  "using (auth.uid() = user_id)",
+  "with check (auth.uid() = user_id)",
+  "revoke all on public.seed_vault_entries from anon",
+  "grant select, insert, update, delete on public.seed_vault_entries to authenticated",
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!privacyInventorySql.includes(needle)) {
+    throw new Error(`Missing Seed Vault privacy/inventory migration safeguard: ${needle}`);
+  }
+}
+
+if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(privacyInventorySql)) {
+  throw new Error("Seed Vault privacy/inventory migration must stay additive and non-destructive.");
 }
 
 console.log("Seed Vault migration regression check passed.");

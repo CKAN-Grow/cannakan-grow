@@ -1328,6 +1328,9 @@ const appState = {
   seedVaultFavoriteFilter: "all",
   seedVaultStatusFilter: "in-vault",
   seedVaultSort: "newest",
+  seedVaultSourceFilter: "all",
+  seedVaultTypeFilter: "all",
+  seedVaultSexFilter: "all",
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
@@ -1924,6 +1927,9 @@ function resetSessionScopedAppState() {
   appState.seedVaultFavoriteFilter = "all";
   appState.seedVaultStatusFilter = "in-vault";
   appState.seedVaultSort = "newest";
+  appState.seedVaultSourceFilter = "all";
+  appState.seedVaultTypeFilter = "all";
+  appState.seedVaultSexFilter = "all";
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -5203,6 +5209,7 @@ function normalizeSeedVaultEntry(entry = {}) {
   const remainingCountValue = Number(entry.remainingCount ?? entry.remaining_count);
   const yearAcquiredValue = Number(entry.yearAcquired ?? entry.year_acquired);
   const seedAgeYearsValue = Number(entry.seedAgeYears ?? entry.seed_age_years);
+  const visibilityValue = String(entry.visibility || entry.visibility_setting || "private").trim().toLowerCase();
   const createdAt = String(entry.createdAt || entry.created_at || "").trim() || new Date().toISOString();
   const updatedAt = String(entry.updatedAt || entry.updated_at || "").trim() || createdAt;
 
@@ -5222,11 +5229,17 @@ function normalizeSeedVaultEntry(entry = {}) {
       ? Math.max(0, Math.floor(remainingCountValue))
       : (Number.isFinite(quantityValue) ? Math.max(0, Math.floor(quantityValue)) : null),
     yearAcquired: Number.isFinite(yearAcquiredValue) ? Math.max(1900, Math.floor(yearAcquiredValue)) : null,
+    acquiredAt: String(entry.acquiredAt || entry.acquired_at || "").trim(),
     seedAgeYears: normalizeSeedAgeYears(seedAgeYearsValue),
     storageLocation: String(entry.storageLocation || entry.storage_location || "").trim(),
+    storageNotes: String(entry.storageNotes || entry.storage_notes || "").trim(),
     notes: String(entry.notes || "").trim(),
+    visibility: visibilityValue === "public" ? "public" : "private",
     isFavorite: Boolean(entry.isFavorite ?? entry.is_favorite),
     isArchived: Boolean(entry.isArchived ?? entry.is_archived),
+    archivedAt: String(entry.archivedAt || entry.archived_at || "").trim(),
+    isDeleted: Boolean(entry.isDeleted ?? entry.is_deleted),
+    deletedAt: String(entry.deletedAt || entry.deleted_at || "").trim(),
     isMock: Boolean(entry.isMock ?? entry.is_mock ?? entry.is_mock_data),
     is_mock: Boolean(entry.isMock ?? entry.is_mock ?? entry.is_mock_data),
     devModeOnly: Boolean(entry.devModeOnly ?? entry.dev_mode_only),
@@ -5257,11 +5270,17 @@ function mapSeedVaultEntryToRow(entry = {}) {
     quantity: normalizedEntry.quantity,
     remaining_count: normalizedEntry.remainingCount,
     year_acquired: normalizedEntry.yearAcquired,
+    acquired_at: normalizedEntry.acquiredAt || null,
     seed_age_years: normalizedEntry.seedAgeYears,
     storage_location: normalizedEntry.storageLocation || null,
+    storage_notes: normalizedEntry.storageNotes || null,
     notes: normalizedEntry.notes || null,
+    visibility: normalizedEntry.visibility || "private",
     is_favorite: normalizedEntry.isFavorite,
     is_archived: normalizedEntry.isArchived,
+    archived_at: normalizedEntry.archivedAt || null,
+    is_deleted: normalizedEntry.isDeleted,
+    deleted_at: normalizedEntry.deletedAt || null,
   };
 }
 
@@ -60259,6 +60278,15 @@ function renderMySessionsInlineIconMarkup(iconName, className = "") {
           </svg>
         </span>
       `;
+    case "edit":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <path d="M6.4 17.6 7.2 14l7.7-7.7a1.7 1.7 0 0 1 2.4 0l.4.4a1.7 1.7 0 0 1 0 2.4L10 16.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path>
+            <path d="M13.6 7.6 16.4 10.4M6 19h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
     case "chevron":
       return `
         <span class="${classes}" aria-hidden="true">
@@ -60505,6 +60533,325 @@ function getSeedVaultEstimatedAgeHelperText(yearAcquiredValue = "") {
     : `Estimated seed age: ${formatSeedAgeYearsLabel(estimatedSeedAgeYears)}`;
 }
 
+function getSeedVaultEntryEffectiveAgeYears(entry = null) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!normalizedEntry) {
+    return null;
+  }
+  const explicitAge = normalizeSeedAgeYears(normalizedEntry.seedAgeYears);
+  return explicitAge !== null ? explicitAge : getEstimatedSeedVaultAgeYears(normalizedEntry.yearAcquired);
+}
+
+function getSeedVaultInventoryStatus(entry = null) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  const quantity = getSeedVaultEntryAvailableQuantity(normalizedEntry);
+  const ageYears = getSeedVaultEntryEffectiveAgeYears(normalizedEntry);
+  if (quantity !== null && quantity <= 0) {
+    return { key: "out", label: "Out of stock", tone: "muted" };
+  }
+  if (quantity !== null && quantity <= 2) {
+    return { key: "low", label: "Low quantity", tone: "attention" };
+  }
+  if (ageYears === null) {
+    return { key: "unknown-age", label: "Unknown age", tone: "neutral" };
+  }
+  if (ageYears >= 5) {
+    return { key: "older-age", label: "Older seed age", tone: "warm" };
+  }
+  return { key: "healthy", label: "Healthy inventory", tone: "success" };
+}
+
+function isSeedVaultSessionUsageEligible(session = null) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  if (!normalizedSession) {
+    return false;
+  }
+  if (isSessionSoftDeleted(normalizedSession) || isTestGrowSession(normalizedSession) || isGrowSessionAnalyticsExcluded(normalizedSession)) {
+    return false;
+  }
+  if (!shouldExposeDevModeMockData() && isMockGrowSession(normalizedSession)) {
+    return false;
+  }
+  const lifecycleHealth = getGrowSessionLifecycleHealth(normalizedSession);
+  if (["archived", "deleted", "stale", "abandoned"].includes(lifecycleHealth.lifecycleState || lifecycleHealth.classification)) {
+    return false;
+  }
+  return getSessionLifecycleTimestampHealth(normalizedSession).isValid;
+}
+
+function getSeedVaultLinkedPartitionResults(session = null, entryId = "", options = {}) {
+  const normalizedEntryId = String(entryId || "").trim();
+  if (!normalizedEntryId) {
+    return [];
+  }
+  const requireCompleted = options.requireCompleted === true;
+  if (requireCompleted ? !isGrowSessionAnalyticsEligible(session) : !isSeedVaultSessionUsageEligible(session)) {
+    return [];
+  }
+  const summary = getSessionResultSummary(session);
+  return (summary.partitions || []).filter((partitionResult) => (
+    String(partitionResult.rawPartition?.seedVaultEntryId || partitionResult.rawPartition?.seed_vault_entry_id || "").trim() === normalizedEntryId
+    && partitionResult.hasSeeds
+  ));
+}
+
+function createSeedVaultPerformanceAccumulator() {
+  return {
+    totalSeedsTested: 0,
+    totalGerminated: 0,
+    averageGerminationRate: null,
+    bestGerminationRate: null,
+    completedLinkedSessions: 0,
+    linkedSessionIds: new Set(),
+    latestResult: null,
+  };
+}
+
+function finalizeSeedVaultPerformanceAccumulator(accumulator) {
+  const totalSeedsTested = Math.max(0, Number(accumulator?.totalSeedsTested) || 0);
+  const totalGerminated = Math.max(0, Number(accumulator?.totalGerminated) || 0);
+  return {
+    totalSeedsTested,
+    totalGerminated,
+    averageGerminationRate: totalSeedsTested > 0 ? Math.round((totalGerminated / totalSeedsTested) * 100) : null,
+    bestGerminationRate: accumulator?.bestGerminationRate ?? null,
+    completedLinkedSessions: accumulator?.linkedSessionIds?.size || accumulator?.completedLinkedSessions || 0,
+    latestResult: accumulator?.latestResult || null,
+  };
+}
+
+function getSeedVaultEntrySessionAnalytics(entry = null, sessions = getSessions()) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  const result = {
+    sessionsStarted: 0,
+    totalSeedsUsed: 0,
+    lastSessionStartedAt: "",
+    lastSessionLabel: "No linked sessions",
+    remainingQuantity: getSeedVaultEntryAvailableQuantity(normalizedEntry),
+    performance: finalizeSeedVaultPerformanceAccumulator(createSeedVaultPerformanceAccumulator()),
+  };
+  if (!normalizedEntry?.id) {
+    return result;
+  }
+
+  const usageSessionIds = new Set();
+  const performance = createSeedVaultPerformanceAccumulator();
+  (sessions || []).forEach((session) => {
+    const usagePartitions = getSeedVaultLinkedPartitionResults(session, normalizedEntry.id);
+    if (usagePartitions.length) {
+      const sessionId = String(session?.id || "").trim();
+      if (sessionId) {
+        usageSessionIds.add(sessionId);
+      }
+      result.totalSeedsUsed += usagePartitions.reduce((total, partitionResult) => total + Math.max(0, Number(partitionResult.totalCount) || 0), 0);
+      const startedAt = getSessionStartedAtIso(session)
+        || parseCompletedAtValue(session?.createdAt || session?.created_at || "")?.toISOString()
+        || "";
+      if (startedAt && (!result.lastSessionStartedAt || Date.parse(startedAt) > Date.parse(result.lastSessionStartedAt))) {
+        result.lastSessionStartedAt = startedAt;
+        result.lastSessionLabel = formatSessionNameDate(startedAt.slice(0, 10));
+      }
+    }
+
+    const completedPartitions = getSeedVaultLinkedPartitionResults(session, normalizedEntry.id, { requireCompleted: true });
+    if (!completedPartitions.length) {
+      return;
+    }
+    const completedAt = getSessionCompletedAtDate(session)?.toISOString()
+      || parseCompletedAtValue(session?.updatedAt || session?.updated_at || "")?.toISOString()
+      || "";
+    let sessionSeeds = 0;
+    let sessionGerminated = 0;
+    completedPartitions.forEach((partitionResult) => {
+      sessionSeeds += Math.max(0, Number(partitionResult.totalCount) || 0);
+      sessionGerminated += Math.max(0, Number(partitionResult.germinatedCount) || 0);
+    });
+    if (sessionSeeds <= 0) {
+      return;
+    }
+    const sessionRate = Math.round((sessionGerminated / sessionSeeds) * 100);
+    performance.totalSeedsTested += sessionSeeds;
+    performance.totalGerminated += sessionGerminated;
+    performance.bestGerminationRate = performance.bestGerminationRate === null
+      ? sessionRate
+      : Math.max(performance.bestGerminationRate, sessionRate);
+    if (session?.id) {
+      performance.linkedSessionIds.add(String(session.id));
+    }
+    if (completedAt && (!performance.latestResult || Date.parse(completedAt) > Date.parse(performance.latestResult.completedAt || ""))) {
+      performance.latestResult = {
+        completedAt,
+        rate: sessionRate,
+        totalSeeds: sessionSeeds,
+        totalGerminated: sessionGerminated,
+      };
+    }
+  });
+
+  result.sessionsStarted = usageSessionIds.size;
+  result.performance = finalizeSeedVaultPerformanceAccumulator(performance);
+  return result;
+}
+
+function getSeedVaultRollupKey(value = "", fallback = "Not set") {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue || fallback;
+}
+
+function createSeedVaultRollup(label = "") {
+  return {
+    label,
+    entryCount: 0,
+    quantity: 0,
+    knownAgeTotal: 0,
+    knownAgeCount: 0,
+    averageAge: null,
+    performance: createSeedVaultPerformanceAccumulator(),
+  };
+}
+
+function finalizeSeedVaultRollup(rollup) {
+  const knownAgeCount = Math.max(0, Number(rollup.knownAgeCount) || 0);
+  return {
+    ...rollup,
+    averageAge: knownAgeCount > 0 ? Number((rollup.knownAgeTotal / knownAgeCount).toFixed(1)) : null,
+    performance: finalizeSeedVaultPerformanceAccumulator(rollup.performance),
+  };
+}
+
+function buildSeedVaultAnalytics(entries = [], sessions = getSessions()) {
+  const normalizedEntries = sortSeedVaultEntries(entries)
+    .map(normalizeSeedVaultEntry)
+    .filter((entry) => entry && !entry.isDeleted && (shouldExposeDevModeMockData() || !isDevModeOnlyMockRecord(entry)));
+  const activeEntries = normalizedEntries.filter((entry) => !entry.isArchived);
+  const archivedEntries = normalizedEntries.filter((entry) => entry.isArchived);
+  const entryAnalyticsById = {};
+  const sourceRollups = new Map();
+  const varietyRollups = new Map();
+  const ageBuckets = new Map(
+    getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, {
+      key: bucket.key,
+      label: bucket.label,
+      entryCount: 0,
+      quantity: 0,
+      performance: createSeedVaultPerformanceAccumulator(),
+    }]),
+  );
+  let totalSeedsOwned = 0;
+  let unknownAgeCount = 0;
+  let knownAgeTotal = 0;
+  let knownAgeCount = 0;
+  let oldestSeedAge = null;
+  let lowInventoryEntries = 0;
+  let outOfStockEntries = 0;
+
+  activeEntries.forEach((entry) => {
+    const quantity = getSeedVaultEntryAvailableQuantity(entry);
+    const safeQuantity = quantity === null ? 0 : quantity;
+    const ageYears = getSeedVaultEntryEffectiveAgeYears(entry);
+    const status = getSeedVaultInventoryStatus(entry);
+    const entrySessionAnalytics = getSeedVaultEntrySessionAnalytics(entry, sessions);
+    const sourceKey = getSeedVaultRollupKey(entry.source);
+    const varietyKey = getSeedVaultRollupKey(entry.seedName || entry.seedVariety);
+    const bucketKey = getSeedAgeBucketKey(ageYears);
+    const bucket = ageBuckets.get(bucketKey) || ageBuckets.get("unknown");
+
+    totalSeedsOwned += safeQuantity;
+    if (status.key === "low") {
+      lowInventoryEntries += 1;
+    }
+    if (status.key === "out") {
+      outOfStockEntries += 1;
+    }
+    if (ageYears === null) {
+      unknownAgeCount += 1;
+    } else {
+      knownAgeTotal += ageYears;
+      knownAgeCount += 1;
+      oldestSeedAge = oldestSeedAge === null ? ageYears : Math.max(oldestSeedAge, ageYears);
+    }
+
+    entryAnalyticsById[entry.id] = {
+      inventoryStatus: status,
+      ageYears,
+      ageBucketKey: bucketKey,
+      ...entrySessionAnalytics,
+    };
+
+    [
+      [sourceRollups, sourceKey],
+      [varietyRollups, varietyKey],
+    ].forEach(([rollups, key]) => {
+      const rollup = rollups.get(key) || createSeedVaultRollup(key);
+      rollup.entryCount += 1;
+      rollup.quantity += safeQuantity;
+      if (ageYears !== null) {
+        rollup.knownAgeTotal += ageYears;
+        rollup.knownAgeCount += 1;
+      }
+      rollup.performance.totalSeedsTested += entrySessionAnalytics.performance.totalSeedsTested;
+      rollup.performance.totalGerminated += entrySessionAnalytics.performance.totalGerminated;
+      if (entrySessionAnalytics.performance.bestGerminationRate !== null) {
+        rollup.performance.bestGerminationRate = rollup.performance.bestGerminationRate === null
+          ? entrySessionAnalytics.performance.bestGerminationRate
+          : Math.max(rollup.performance.bestGerminationRate, entrySessionAnalytics.performance.bestGerminationRate);
+      }
+      rollups.set(key, rollup);
+    });
+
+    if (bucket) {
+      bucket.entryCount += 1;
+      bucket.quantity += safeQuantity;
+      bucket.performance.totalSeedsTested += entrySessionAnalytics.performance.totalSeedsTested;
+      bucket.performance.totalGerminated += entrySessionAnalytics.performance.totalGerminated;
+      if (entrySessionAnalytics.performance.bestGerminationRate !== null) {
+        bucket.performance.bestGerminationRate = bucket.performance.bestGerminationRate === null
+          ? entrySessionAnalytics.performance.bestGerminationRate
+          : Math.max(bucket.performance.bestGerminationRate, entrySessionAnalytics.performance.bestGerminationRate);
+      }
+    }
+  });
+
+  const oldestEntries = activeEntries
+    .map((entry) => ({ entry, ageYears: getSeedVaultEntryEffectiveAgeYears(entry) }))
+    .filter((item) => item.ageYears !== null)
+    .sort((left, right) => right.ageYears - left.ageYears)
+    .slice(0, 5);
+
+  return {
+    entries: normalizedEntries,
+    activeEntries,
+    archivedEntries,
+    entryAnalyticsById,
+    overview: {
+      totalSeedsOwned,
+      totalVarieties: new Set(activeEntries.map((entry) => getSeedVaultRollupKey(entry.seedName || entry.seedVariety)).filter(Boolean)).size,
+      totalSources: new Set(activeEntries.map((entry) => getSeedVaultRollupKey(entry.source)).filter(Boolean)).size,
+      archivedEntries: archivedEntries.length,
+      oldestSeedAge,
+      unknownAgeCount,
+      lowInventoryEntries,
+      outOfStockEntries,
+      averageAge: knownAgeCount > 0 ? Number((knownAgeTotal / knownAgeCount).toFixed(1)) : null,
+    },
+    rollups: {
+      sources: [...sourceRollups.values()].map(finalizeSeedVaultRollup)
+        .sort((left, right) => right.quantity - left.quantity || left.label.localeCompare(right.label)),
+      varieties: [...varietyRollups.values()].map(finalizeSeedVaultRollup)
+        .sort((left, right) => right.quantity - left.quantity || left.label.localeCompare(right.label)),
+    },
+    ageIntelligence: {
+      buckets: [...ageBuckets.values()].map((bucket) => ({
+        ...bucket,
+        performance: finalizeSeedVaultPerformanceAccumulator(bucket.performance),
+      })),
+      unknownAgeCount,
+      oldestEntries,
+      averageAge: knownAgeCount > 0 ? Number((knownAgeTotal / knownAgeCount).toFixed(1)) : null,
+    },
+  };
+}
+
 function normalizeSeedVaultFavoriteFilter(value = "") {
   const normalizedValue = String(value || "").trim().toLowerCase();
   return normalizedValue === "favorites" ? "favorites" : "all";
@@ -60517,9 +60864,21 @@ function normalizeSeedVaultStatusFilter(value = "") {
 
 function normalizeSeedVaultSort(value = "") {
   const normalizedValue = String(value || "").trim().toLowerCase();
-  return ["newest", "oldest", "seed-age", "quantity", "source-az"].includes(normalizedValue)
+  return ["newest", "oldest", "seed-age", "quantity", "quantity-low", "source-az", "performance"].includes(normalizedValue)
     ? normalizedValue
     : "newest";
+}
+
+function normalizeSeedVaultDropdownFilter(value = "") {
+  const normalizedValue = String(value || "").trim();
+  return normalizedValue ? normalizedValue : "all";
+}
+
+function getSeedVaultFilterOptions(entries = [], selector = () => "") {
+  return [...new Set((entries || [])
+    .map((entry) => String(selector(entry) || "").trim())
+    .filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, undefined, { sensitivity: "base" }));
 }
 
 function getSeedVaultExpandedEntryIds() {
@@ -60541,6 +60900,8 @@ function getSeedVaultSearchText(entry = {}) {
     entry.seed_sex,
     entry.feminized,
     entry.source,
+    entry.storageLocation,
+    entry.storageNotes,
     entry.notes,
   ].map((value) => String(value || "").trim().toLowerCase()).filter(Boolean).join(" ");
 }
@@ -60558,11 +60919,12 @@ function getSeedVaultEntryAgeSortValue(entry = {}) {
     : null;
 }
 
-function sortSeedVaultEntriesForCollection(entries = [], sortValue = appState.seedVaultSort) {
+function sortSeedVaultEntriesForCollection(entries = [], sortValue = appState.seedVaultSort, analytics = null) {
   const normalizedSort = normalizeSeedVaultSort(sortValue);
   const normalizedEntries = (entries || []).map(normalizeSeedVaultEntry).filter(Boolean);
   const byName = (left, right) => String(left.seedName || "").localeCompare(String(right.seedName || ""), undefined, { sensitivity: "base" });
   const byCreatedAt = (left, right) => (Date.parse(left.createdAt || left.updatedAt || "") || 0) - (Date.parse(right.createdAt || right.updatedAt || "") || 0);
+  const getPerformanceRate = (entry) => analytics?.entryAnalyticsById?.[entry.id]?.performance?.averageGerminationRate ?? -1;
 
   return normalizedEntries.sort((left, right) => {
     if (normalizedSort === "oldest") {
@@ -60601,9 +60963,35 @@ function sortSeedVaultEntriesForCollection(entries = [], sortValue = appState.se
       return byName(left, right);
     }
 
+    if (normalizedSort === "quantity-low") {
+      const leftQuantity = Number(left.quantity);
+      const rightQuantity = Number(right.quantity);
+      const leftHasQuantity = Number.isFinite(leftQuantity);
+      const rightHasQuantity = Number.isFinite(rightQuantity);
+      if (leftHasQuantity && rightHasQuantity && leftQuantity !== rightQuantity) {
+        return leftQuantity - rightQuantity;
+      }
+      if (leftHasQuantity && !rightHasQuantity) {
+        return -1;
+      }
+      if (!leftHasQuantity && rightHasQuantity) {
+        return 1;
+      }
+      return byName(left, right);
+    }
+
     if (normalizedSort === "source-az") {
       const sourceCompare = String(left.source || "").localeCompare(String(right.source || ""), undefined, { sensitivity: "base" });
       return sourceCompare || byName(left, right);
+    }
+
+    if (normalizedSort === "performance") {
+      const leftRate = getPerformanceRate(left);
+      const rightRate = getPerformanceRate(right);
+      if (leftRate !== rightRate) {
+        return rightRate - leftRate;
+      }
+      return byName(left, right);
     }
 
     return (byCreatedAt(right, left) || byName(left, right));
@@ -60614,8 +61002,14 @@ function filterSeedVaultEntriesForCollection(entries = [], options = {}) {
   const searchQuery = String(options.searchQuery ?? appState.seedVaultSearchQuery ?? "").trim().toLowerCase();
   const favoriteFilter = normalizeSeedVaultFavoriteFilter(options.favoriteFilter ?? appState.seedVaultFavoriteFilter);
   const statusFilter = normalizeSeedVaultStatusFilter(options.statusFilter ?? appState.seedVaultStatusFilter);
+  const sourceFilter = normalizeSeedVaultDropdownFilter(options.sourceFilter ?? appState.seedVaultSourceFilter);
+  const typeFilter = normalizeSeedVaultDropdownFilter(options.typeFilter ?? appState.seedVaultTypeFilter);
+  const sexFilter = normalizeSeedVaultDropdownFilter(options.sexFilter ?? appState.seedVaultSexFilter);
 
   return (entries || []).map(normalizeSeedVaultEntry).filter(Boolean).filter((entry) => {
+    if (entry.isDeleted) {
+      return false;
+    }
     if (favoriteFilter === "favorites" && !entry.isFavorite) {
       return false;
     }
@@ -60623,6 +61017,15 @@ function filterSeedVaultEntriesForCollection(entries = [], options = {}) {
       return false;
     }
     if (statusFilter === "archived" && !entry.isArchived) {
+      return false;
+    }
+    if (sourceFilter !== "all" && String(entry.source || "").trim() !== sourceFilter) {
+      return false;
+    }
+    if (typeFilter !== "all" && normalizeSeedTypeId(entry.seedType) !== typeFilter) {
+      return false;
+    }
+    if (sexFilter !== "all" && normalizeSeedSexValue(entry.seedSex) !== sexFilter) {
       return false;
     }
     if (searchQuery && !getSeedVaultSearchText(entry).includes(searchQuery)) {
@@ -60638,16 +61041,124 @@ function getSeedVaultCollectionState() {
     favoriteFilter: normalizeSeedVaultFavoriteFilter(appState.seedVaultFavoriteFilter),
     statusFilter: normalizeSeedVaultStatusFilter(appState.seedVaultStatusFilter),
     sort: normalizeSeedVaultSort(appState.seedVaultSort),
+    sourceFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSourceFilter),
+    typeFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultTypeFilter),
+    sexFilter: normalizeSeedVaultDropdownFilter(appState.seedVaultSexFilter),
   };
 }
 
 function renderSeedVaultFieldMarkup(label = "", value = "") {
-  const normalizedValue = String(value || "").trim() || "Not set";
+  const normalizedValue = value === 0 ? "0" : (String(value || "").trim() || "Not set");
   return `
     <div class="seed-vault-field">
       <span>${escapeHtml(label)}</span>
       <strong>${escapeHtml(normalizedValue)}</strong>
     </div>
+  `;
+}
+
+function formatSeedVaultPercent(value = null) {
+  return value === null || value === undefined ? "N/A" : `${Math.round(Number(value) || 0)}%`;
+}
+
+function renderSeedVaultMetricCardsMarkup(analytics = null) {
+  const overview = analytics?.overview || {};
+  const oldestAgeLabel = overview.oldestSeedAge === null || overview.oldestSeedAge === undefined
+    ? "Not set"
+    : formatSeedAgeYearsLabel(overview.oldestSeedAge);
+  const metricCards = [
+    { label: "Total seeds", value: String(overview.totalSeedsOwned || 0), detail: "active inventory" },
+    { label: "Varieties", value: String(overview.totalVarieties || 0), detail: "active entries" },
+    { label: "Sources", value: String(overview.totalSources || 0), detail: "owner-only" },
+    { label: "Archived", value: String(overview.archivedEntries || 0), detail: "stored separately" },
+    { label: "Oldest age", value: oldestAgeLabel, detail: "known or estimated" },
+    { label: "Unknown age", value: String(overview.unknownAgeCount || 0), detail: "entries to review" },
+    { label: "Low inventory", value: String(overview.lowInventoryEntries || 0), detail: "2 seeds or fewer" },
+  ];
+
+  return `
+    <div class="seed-vault-metric-grid" aria-label="Seed Vault overview metrics">
+      ${metricCards.map((card) => `
+        <article class="seed-vault-metric-card">
+          <span>${escapeHtml(card.label)}</span>
+          <strong>${escapeHtml(card.value)}</strong>
+          <small>${escapeHtml(card.detail)}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderSeedVaultIndicatorMarkup(indicator = null) {
+  const status = indicator || { key: "healthy", label: "Healthy inventory", tone: "success" };
+  return `<span class="seed-vault-health-pill is-${escapeHtml(status.tone || "neutral")}" data-seed-vault-health="${escapeHtml(status.key || "healthy")}">${escapeHtml(status.label || "Healthy inventory")}</span>`;
+}
+
+function renderSeedVaultUsageMarkup(entry = {}, entryAnalytics = null) {
+  const analytics = entryAnalytics || {};
+  const performance = analytics.performance || {};
+  const latestResult = performance.latestResult || null;
+  const lastSessionLabel = analytics.lastSessionStartedAt
+    ? analytics.lastSessionLabel || formatSessionNameDate(String(analytics.lastSessionStartedAt).slice(0, 10))
+    : "No linked sessions";
+  const latestResultLabel = latestResult
+    ? `${formatSeedVaultPercent(latestResult.rate)} (${latestResult.totalGerminated}/${latestResult.totalSeeds})`
+    : "No completed result";
+
+  return `
+    <div class="seed-vault-usage-grid" aria-label="Vault Entry session usage">
+      ${renderSeedVaultFieldMarkup("Sessions from vault", analytics.sessionsStarted || 0)}
+      ${renderSeedVaultFieldMarkup("Seeds used", analytics.totalSeedsUsed || 0)}
+      ${renderSeedVaultFieldMarkup("Remaining", formatSeedVaultQuantity(entry))}
+      ${renderSeedVaultFieldMarkup("Last session", lastSessionLabel)}
+      ${renderSeedVaultFieldMarkup("Latest result", latestResultLabel)}
+      ${renderSeedVaultFieldMarkup("Average result", formatSeedVaultPercent(performance.averageGerminationRate))}
+      ${renderSeedVaultFieldMarkup("Best result", formatSeedVaultPercent(performance.bestGerminationRate))}
+      ${renderSeedVaultFieldMarkup("Completed linked", performance.completedLinkedSessions || 0)}
+    </div>
+  `;
+}
+
+function renderSeedVaultRollupMarkup(analytics = null) {
+  const sourceRows = (analytics?.rollups?.sources || []).slice(0, 4);
+  const bucketRows = (analytics?.ageIntelligence?.buckets || [])
+    .filter((bucket) => bucket.entryCount > 0)
+    .slice(0, 5);
+  if (!sourceRows.length && !bucketRows.length) {
+    return "";
+  }
+
+  return `
+    <section class="seed-vault-intelligence-panel" aria-label="Seed Vault private intelligence">
+      <div class="seed-vault-intelligence-copy">
+        <span>Private Vault Intelligence</span>
+        <strong>Source, quantity, age, and linked-session performance stay owner-only.</strong>
+      </div>
+      <div class="seed-vault-rollup-grid">
+        ${sourceRows.length ? `
+          <div class="seed-vault-rollup-card">
+            <span>Source rollup</span>
+            ${sourceRows.map((row) => `
+              <p>
+                <strong>${escapeHtml(row.label)}</strong>
+                <small>${escapeHtml(`${row.quantity} seeds · ${formatSeedVaultPercent(row.performance.averageGerminationRate)} avg`)}</small>
+              </p>
+            `).join("")}
+          </div>
+        ` : ""}
+        ${bucketRows.length ? `
+          <div class="seed-vault-rollup-card">
+            <span>Age buckets</span>
+            ${bucketRows.map((row) => `
+              <p>
+                <strong>${escapeHtml(row.label)}</strong>
+                <small>${escapeHtml(`${row.entryCount} entries · ${row.quantity} seeds · ${formatSeedVaultPercent(row.performance.averageGerminationRate)} avg`)}</small>
+              </p>
+            `).join("")}
+          </div>
+        ` : ""}
+      </div>
+    </section>
   `;
 }
 
@@ -60657,6 +61168,8 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
     return "";
   }
   const isExpanded = Boolean(options.isExpanded);
+  const entryAnalytics = options.entryAnalytics || {};
+  const inventoryStatus = entryAnalytics.inventoryStatus || getSeedVaultInventoryStatus(normalizedEntry);
   const archiveLabel = normalizedEntry.isArchived ? "Restore Vault Entry" : "Archive Vault Entry";
   const favoriteLabel = normalizedEntry.isFavorite ? "Favorite" : "Not favorite";
   const statusLabel = normalizedEntry.isArchived ? "Archived" : "In vault";
@@ -60691,6 +61204,7 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
           <span class="seed-vault-favorite-indicator${normalizedEntry.isFavorite ? " is-active" : ""}" title="${escapeHtml(favoriteLabel)}" aria-hidden="true">
             ${renderMySessionsInlineIconMarkup("heart", "seed-vault-action-icon")}
           </span>
+          ${renderSeedVaultIndicatorMarkup(inventoryStatus)}
           <span class="seed-vault-status-pill${normalizedEntry.isArchived ? "" : " seed-vault-status-pill--active"}">${escapeHtml(statusLabel)}</span>
         </div>
         <div class="seed-vault-entry-actions">
@@ -60704,6 +61218,15 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
             title="${isExpanded ? "Collapse" : "Expand"}"
           >
             ${renderMySessionsInlineIconMarkup("chevron", "seed-vault-action-icon")}
+          </button>
+          <button
+            type="button"
+            class="seed-vault-icon-button seed-vault-edit-button"
+            data-seed-vault-edit="${escapeHtml(normalizedEntry.id)}"
+            aria-label="Edit Vault Entry"
+            title="Edit"
+          >
+            ${renderMySessionsInlineIconMarkup("edit", "seed-vault-action-icon")}
           </button>
           <button
             type="button"
@@ -60739,13 +61262,15 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
       <div id="seed-vault-entry-details-${escapeHtml(normalizedEntry.id)}" class="seed-vault-entry-details"${isExpanded ? "" : " hidden"}>
         <div class="seed-vault-detail-grid">
           ${renderSeedVaultFieldMarkup("Storage location", normalizedEntry.storageLocation)}
+          ${renderSeedVaultFieldMarkup("Storage notes", normalizedEntry.storageNotes)}
+          ${renderSeedVaultFieldMarkup("Visibility", normalizedEntry.visibility === "public" ? "Public-safe metadata" : "Private")}
           <div class="seed-vault-notes">
             <span>Notes</span>
             <p>${escapeHtml(normalizedEntry.notes || "No notes yet.")}</p>
           </div>
           <div class="seed-vault-session-history">
             <span>Session history</span>
-            <p>No linked grow sessions yet.</p>
+            ${renderSeedVaultUsageMarkup(normalizedEntry, entryAnalytics)}
           </div>
         </div>
         <div class="seed-vault-entry-footer">
@@ -60762,20 +61287,20 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
 }
 
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
-  const allEntries = sortSeedVaultEntries(
-    shouldExposeDevModeMockData()
-      ? entries
-      : (entries || []).filter((entry) => !isDevModeOnlyMockRecord(entry)),
-  );
+  const analytics = buildSeedVaultAnalytics(entries, getSessions());
+  const allEntries = analytics.entries || [];
   const collectionState = {
     ...getSeedVaultCollectionState(),
     ...(options.collectionState || {}),
   };
   const filteredEntries = filterSeedVaultEntriesForCollection(allEntries, collectionState);
-  const sortedEntries = sortSeedVaultEntriesForCollection(filteredEntries, collectionState.sort);
+  const sortedEntries = sortSeedVaultEntriesForCollection(filteredEntries, collectionState.sort, analytics);
   const hasEntries = allEntries.length > 0;
   const hasVisibleEntries = sortedEntries.length > 0;
   const expandedEntryIds = getSeedVaultExpandedEntryIds();
+  const sourceOptions = getSeedVaultFilterOptions(allEntries, (entry) => entry.source);
+  const typeOptions = getSeedVaultFilterOptions(allEntries, (entry) => normalizeSeedTypeId(entry.seedType));
+  const sexOptions = getSeedVaultFilterOptions(allEntries, (entry) => normalizeSeedSexValue(entry.seedSex));
   const visibleSummary = hasEntries
     ? `${sortedEntries.length} of ${allEntries.length} Vault Entr${allEntries.length === 1 ? "y" : "ies"}`
     : "No Vault Entries yet";
@@ -60793,6 +61318,8 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         </div>
         <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
       </div>
+      ${renderSeedVaultMetricCardsMarkup(analytics)}
+      ${renderSeedVaultRollupMarkup(analytics)}
       ${hasEntries ? `
         <div class="seed-vault-controls" aria-label="My Seed Vault controls">
           <label class="seed-vault-search-field">
@@ -60816,12 +61343,35 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
               </select>
             </label>
             <label>
+              <span>Source</span>
+              <select data-seed-vault-source-filter="true" aria-label="Filter My Seed Vault source">
+                <option value="all"${collectionState.sourceFilter === "all" ? " selected" : ""}>All sources</option>
+                ${sourceOptions.map((source) => `<option value="${escapeHtml(source)}"${collectionState.sourceFilter === source ? " selected" : ""}>${escapeHtml(source)}</option>`).join("")}
+              </select>
+            </label>
+            <label>
+              <span>Type</span>
+              <select data-seed-vault-type-filter="true" aria-label="Filter My Seed Vault seed type">
+                <option value="all"${collectionState.typeFilter === "all" ? " selected" : ""}>All types</option>
+                ${typeOptions.map((type) => `<option value="${escapeHtml(type)}"${collectionState.typeFilter === type ? " selected" : ""}>${escapeHtml(getSeedTypeLabel(type) || type)}</option>`).join("")}
+              </select>
+            </label>
+            <label>
+              <span>Sex</span>
+              <select data-seed-vault-sex-filter="true" aria-label="Filter My Seed Vault sex">
+                <option value="all"${collectionState.sexFilter === "all" ? " selected" : ""}>All sex</option>
+                ${sexOptions.map((sex) => `<option value="${escapeHtml(sex)}"${collectionState.sexFilter === sex ? " selected" : ""}>${escapeHtml(getSeedSexLabel(sex) || sex)}</option>`).join("")}
+              </select>
+            </label>
+            <label>
               <span>Sort</span>
               <select data-seed-vault-sort="true" aria-label="Sort My Seed Vault entries">
                 <option value="newest"${collectionState.sort === "newest" ? " selected" : ""}>Newest</option>
                 <option value="oldest"${collectionState.sort === "oldest" ? " selected" : ""}>Oldest</option>
-                <option value="seed-age"${collectionState.sort === "seed-age" ? " selected" : ""}>Seed age</option>
-                <option value="quantity"${collectionState.sort === "quantity" ? " selected" : ""}>Quantity</option>
+                <option value="seed-age"${collectionState.sort === "seed-age" ? " selected" : ""}>Oldest seed age</option>
+                <option value="quantity"${collectionState.sort === "quantity" ? " selected" : ""}>Quantity high first</option>
+                <option value="quantity-low"${collectionState.sort === "quantity-low" ? " selected" : ""}>Quantity low first</option>
+                <option value="performance"${collectionState.sort === "performance" ? " selected" : ""}>Performance</option>
                 <option value="source-az"${collectionState.sort === "source-az" ? " selected" : ""}>Source A-Z</option>
               </select>
             </label>
@@ -60832,6 +61382,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
           <div class="seed-vault-entry-grid" aria-label="My Seed Vault entries">
             ${sortedEntries.map((entry) => renderSeedVaultEntryCardMarkup(entry, {
               isExpanded: expandedEntryIds.has(entry.id),
+              entryAnalytics: analytics.entryAnalyticsById?.[entry.id],
             })).join("")}
           </div>
         ` : `
@@ -60921,6 +61472,17 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
       return;
     }
 
+    const editButton = target.closest("[data-seed-vault-edit]");
+    if (editButton) {
+      event.preventDefault();
+      const entryId = String(editButton.getAttribute("data-seed-vault-edit") || "").trim();
+      const entry = (appState.seedVaultEntries || []).find((candidate) => candidate.id === entryId);
+      if (entry) {
+        openSeedVaultEntryModal(entry);
+      }
+      return;
+    }
+
     const favoriteButton = target.closest("[data-seed-vault-favorite]");
     if (favoriteButton) {
       event.preventDefault();
@@ -60935,7 +61497,11 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
       event.preventDefault();
       const entryId = String(archiveButton.getAttribute("data-seed-vault-archive") || "").trim();
       const entry = (appState.seedVaultEntries || []).find((candidate) => candidate.id === entryId);
-      await updateSeedVaultEntryFlag(entryId, { isArchived: !entry?.isArchived });
+      const nextArchived = !entry?.isArchived;
+      await updateSeedVaultEntryFlag(entryId, {
+        isArchived: nextArchived,
+        archivedAt: nextArchived ? new Date().toISOString() : "",
+      });
       return;
     }
 
@@ -60985,6 +61551,24 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
 
     if (target.getAttribute("data-seed-vault-status-filter") === "true") {
       appState.seedVaultStatusFilter = normalizeSeedVaultStatusFilter(target.value);
+      renderSeedVaultSection();
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-source-filter") === "true") {
+      appState.seedVaultSourceFilter = normalizeSeedVaultDropdownFilter(target.value);
+      renderSeedVaultSection();
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-type-filter") === "true") {
+      appState.seedVaultTypeFilter = normalizeSeedVaultDropdownFilter(target.value);
+      renderSeedVaultSection();
+      return;
+    }
+
+    if (target.getAttribute("data-seed-vault-sex-filter") === "true") {
+      appState.seedVaultSexFilter = normalizeSeedVaultDropdownFilter(target.value);
       renderSeedVaultSection();
       return;
     }
@@ -61059,6 +61643,8 @@ function getSeedVaultEntryFormSignature(form) {
     yearAcquired: String(formData.get("yearAcquired") || "").trim(),
     seedAgeYears: String(formData.get("seedAgeYears") || "").trim(),
     storageLocation: String(formData.get("storageLocation") || "").trim(),
+    storageNotes: String(formData.get("storageNotes") || "").trim(),
+    visibility: String(formData.get("visibility") || "private").trim(),
     notes: String(formData.get("notes") || "").trim(),
     isFavorite: formData.get("isFavorite") === "on",
   });
@@ -61265,6 +61851,7 @@ function getSeedVaultEntryFormPayload(form) {
   const quantityValue = String(formData.get("quantity") || "").trim();
   const yearAcquiredValue = String(formData.get("yearAcquired") || "").trim();
   const seedAgeYearsValue = String(formData.get("seedAgeYears") || "").trim();
+  const existingEntry = (appState.seedVaultEntries || []).find((entry) => entry.id === String(form.dataset.seedVaultEntryId || "").trim()) || {};
 
   return normalizeSeedVaultEntry({
     id: String(form.dataset.seedVaultEntryId || "").trim(),
@@ -61277,10 +61864,13 @@ function getSeedVaultEntryFormPayload(form) {
     yearAcquired: yearAcquiredValue ? Number(yearAcquiredValue) : null,
     seedAgeYears: seedAgeYearsValue ? normalizeSeedAgeYears(seedAgeYearsValue) : null,
     storageLocation: String(formData.get("storageLocation") || "").trim(),
+    storageNotes: String(formData.get("storageNotes") || "").trim(),
     notes: String(formData.get("notes") || "").trim(),
+    visibility: String(formData.get("visibility") || "private").trim(),
     isFavorite: formData.get("isFavorite") === "on",
-    isArchived: false,
-    createdAt: new Date().toISOString(),
+    isArchived: Boolean(existingEntry.isArchived),
+    archivedAt: existingEntry.archivedAt || "",
+    createdAt: existingEntry.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
 }
@@ -61389,8 +61979,10 @@ function getSeedVaultYearAcquiredEstimateLabel(yearValue = "") {
   return getSeedVaultEstimatedAgeHelperText(yearValue);
 }
 
-function openSeedVaultEntryModal() {
+function openSeedVaultEntryModal(entry = null) {
   closeSeedVaultEntryModal();
+  const normalizedEntry = normalizeSeedVaultEntry(entry || {});
+  const isEditing = Boolean(entry && normalizedEntry?.id);
   const overlay = document.createElement("div");
   overlay.id = "seed-vault-entry-modal-overlay";
   overlay.className = "seed-vault-entry-modal-overlay";
@@ -61399,67 +61991,78 @@ function openSeedVaultEntryModal() {
       <button type="button" class="modal-close seed-vault-modal-close" data-seed-vault-modal-close="true" aria-label="Close">×</button>
       <div class="seed-vault-modal-copy">
         <p class="eyebrow">MY SEED VAULT</p>
-        <h3 id="seed-vault-entry-modal-title">Add Seeds</h3>
-        <p>Create a Vault Entry for seeds you own. Session linking will come in a later pass.</p>
+        <h3 id="seed-vault-entry-modal-title">${isEditing ? "Edit Vault Entry" : "Add Seeds"}</h3>
+        <p>Track owner-only seed inventory that can safely prefill future grow sessions.</p>
       </div>
       <form class="seed-vault-entry-form" data-seed-vault-entry-form>
         <label class="partition-identity-field" data-identity-autocomplete="source">
           <span>Source</span>
-          <input name="source" type="text" maxlength="120" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-autocomplete="list">
+          <input name="source" type="text" maxlength="120" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.source || "")}">
           <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
         </label>
         <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
           <span>Seed Variety</span>
-          <input name="seedVariety" type="text" maxlength="120" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-autocomplete="list" required>
+          <input name="seedVariety" type="text" maxlength="120" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.seedName || "")}" required>
           <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
         </label>
         <div class="seed-vault-form-grid">
           <label>
             <span>Type</span>
             <select name="seedType" autocomplete="off">
-              ${renderSeedTypeSelectOptions()}
+              ${renderSeedTypeSelectOptions(normalizedEntry?.seedType || "")}
             </select>
           </label>
           <label>
             <span>Sex</span>
             <select name="seedSex" autocomplete="off">
-              ${renderSeedSexSelectOptions()}
+              ${renderSeedSexSelectOptions(normalizedEntry?.seedSex || "")}
             </select>
           </label>
           <label>
             <span>Quantity</span>
-            <input name="quantity" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" placeholder="#">
+            <input name="quantity" type="number" min="0" step="1" inputmode="numeric" autocomplete="off" placeholder="#" value="${normalizedEntry?.quantity === null || normalizedEntry?.quantity === undefined ? "" : escapeHtml(String(normalizedEntry.quantity))}">
           </label>
           <label>
             <span>Year acquired</span>
             <select name="yearAcquired" class="seed-vault-year-select" data-seed-vault-year-acquired="true" autocomplete="off">
-              ${renderSeedVaultYearAcquiredOptionsMarkup()}
+              ${renderSeedVaultYearAcquiredOptionsMarkup(normalizedEntry?.yearAcquired || "")}
             </select>
             <small class="seed-vault-year-estimate" data-seed-vault-year-estimate aria-live="polite"></small>
           </label>
           <label>
             <span>Seed age</span>
-            <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" autocomplete="off" placeholder="1, 1.5, 2">
+            <input name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}" inputmode="decimal" autocomplete="off" placeholder="1, 1.5, 2" value="${normalizedEntry?.seedAgeYears === null || normalizedEntry?.seedAgeYears === undefined ? "" : escapeHtml(formatSeedAgeInputValue(normalizedEntry.seedAgeYears))}">
             <small class="seed-vault-seed-age-estimate" data-seed-vault-age-estimate aria-live="polite"></small>
           </label>
         </div>
         <label>
           <span>Storage location</span>
-          <input name="storageLocation" type="text" maxlength="120" autocomplete="off" placeholder="Fridge drawer, jar, vault box">
+          <input name="storageLocation" type="text" maxlength="120" autocomplete="off" placeholder="Fridge drawer, jar, vault box" value="${escapeHtml(normalizedEntry?.storageLocation || "")}">
+        </label>
+        <label>
+          <span>Storage notes</span>
+          <textarea name="storageNotes" maxlength="400" rows="3" autocomplete="off" placeholder="Temperature, container, desiccant, or pack condition">${escapeHtml(normalizedEntry?.storageNotes || "")}</textarea>
+        </label>
+        <label>
+          <span>Visibility</span>
+          <select name="visibility" autocomplete="off">
+            <option value="private"${normalizedEntry?.visibility !== "public" ? " selected" : ""}>Private</option>
+            <option value="public"${normalizedEntry?.visibility === "public" ? " selected" : ""}>Public-safe metadata</option>
+          </select>
         </label>
         <label>
           <span>Notes</span>
-          <textarea name="notes" maxlength="600" rows="4" autocomplete="off" placeholder="Storage notes, pack date, plans, or observations"></textarea>
+          <textarea name="notes" maxlength="600" rows="4" autocomplete="off" placeholder="Pack date, plans, or observations">${escapeHtml(normalizedEntry?.notes || "")}</textarea>
         </label>
         <label class="seed-vault-favorite-toggle">
-          <input name="isFavorite" type="checkbox">
+          <input name="isFavorite" type="checkbox"${normalizedEntry?.isFavorite ? " checked" : ""}>
           <span class="seed-vault-favorite-control" aria-hidden="true"></span>
           <span>Favorite Vault Entry</span>
         </label>
         <p class="seed-vault-form-message" data-seed-vault-form-message role="alert" aria-live="polite"></p>
         <div class="seed-vault-modal-actions">
           <button type="button" class="button button-secondary" data-seed-vault-modal-close="true">Cancel</button>
-          <button type="submit" class="button button-primary" data-save-icon-button="true">Add Seeds</button>
+          <button type="submit" class="button button-primary" data-save-icon-button="true">${isEditing ? "Save Entry" : "Add Seeds"}</button>
         </div>
       </form>
     </div>
@@ -61495,6 +62098,9 @@ function openSeedVaultEntryModal() {
 
   const form = overlay.querySelector("[data-seed-vault-entry-form]");
   if (form instanceof HTMLFormElement) {
+    if (isEditing) {
+      form.dataset.seedVaultEntryId = normalizedEntry.id;
+    }
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     bindSeedVaultEntryModalGuards(overlay, form);
     initializePartitionIdentityAutocompletes(form);
@@ -61685,7 +62291,7 @@ function getActiveSeedVaultEntriesForSessionPicker() {
     : (appState.seedVaultEntries || []).filter((entry) => !isDevModeOnlyMockRecord(entry));
   return sortSeedVaultEntries(entries)
     .map(normalizeSeedVaultEntry)
-    .filter((entry) => entry && !entry.isArchived);
+    .filter((entry) => entry && !entry.isArchived && !entry.isDeleted);
 }
 
 function getSeedVaultEntrySessionSeedAgeYears(entry = {}) {
@@ -61695,6 +62301,106 @@ function getSeedVaultEntrySessionSeedAgeYears(entry = {}) {
     return manualAge;
   }
   return getEstimatedSeedVaultAgeYears(normalizedEntry?.yearAcquired);
+}
+
+function getSeedVaultEntryAvailableQuantity(entry = null) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  const quantity = Number(normalizedEntry?.quantity);
+  return Number.isFinite(quantity) && quantity >= 0 ? Math.floor(quantity) : null;
+}
+
+function getSeedVaultEntryById(entryId = "") {
+  const normalizedEntryId = String(entryId || "").trim();
+  if (!normalizedEntryId) {
+    return null;
+  }
+  return (appState.seedVaultEntries || [])
+    .map(normalizeSeedVaultEntry)
+    .filter(Boolean)
+    .find((entry) => entry.id === normalizedEntryId) || null;
+}
+
+function getSeedVaultSessionUsageFromPartitions(partitions = []) {
+  const usage = new Map();
+  (partitions || []).forEach((partition) => {
+    const entryId = String(partition?.seedVaultEntryId || partition?.seed_vault_entry_id || "").trim();
+    const seedCount = Math.max(0, Math.floor(Number(partition?.seedCount ?? partition?.seed_count) || 0));
+    if (!entryId || seedCount <= 0) {
+      return;
+    }
+    usage.set(entryId, (usage.get(entryId) || 0) + seedCount);
+  });
+  return usage;
+}
+
+function validateSeedVaultSessionUsage(partitions = []) {
+  const usage = getSeedVaultSessionUsageFromPartitions(partitions);
+  for (const [entryId, usedCount] of usage.entries()) {
+    const entry = getSeedVaultEntryById(entryId);
+    if (!entry || entry.isArchived || entry.isDeleted) {
+      return {
+        isValid: false,
+        message: "A selected Vault Entry is archived or unavailable. Clear it before saving this session.",
+      };
+    }
+
+    const availableQuantity = getSeedVaultEntryAvailableQuantity(entry);
+    if (availableQuantity !== null && usedCount > availableQuantity) {
+      return {
+        isValid: false,
+        message: `Only ${availableQuantity} seed${availableQuantity === 1 ? "" : "s"} remain for ${entry.seedName || "this Vault Entry"}. Adjust the assigned seed count before saving.`,
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    message: "",
+  };
+}
+
+async function applySeedVaultSessionQuantityUsage(partitions = []) {
+  const usage = getSeedVaultSessionUsageFromPartitions(partitions);
+  const updatedEntries = [];
+  for (const [entryId, usedCount] of usage.entries()) {
+    const entry = getSeedVaultEntryById(entryId);
+    const availableQuantity = getSeedVaultEntryAvailableQuantity(entry);
+    if (!entry || availableQuantity === null || usedCount <= 0) {
+      continue;
+    }
+
+    const nextQuantity = Math.max(0, availableQuantity - usedCount);
+    if (nextQuantity === availableQuantity) {
+      continue;
+    }
+
+    updatedEntries.push(await persistSeedVaultEntry({
+      ...entry,
+      quantity: nextQuantity,
+      seedCount: nextQuantity,
+      remainingCount: nextQuantity,
+    }));
+  }
+  return updatedEntries;
+}
+
+function buildSeedVaultEntrySessionSnapshot(entry = {}) {
+  const normalizedEntry = normalizeSeedVaultEntry(entry);
+  if (!normalizedEntry) {
+    return null;
+  }
+  return {
+    id: normalizedEntry.id,
+    source: normalizedEntry.source,
+    seedVariety: normalizedEntry.seedName,
+    seedType: normalizeSeedTypeId(normalizedEntry.seedType),
+    feminized: normalizeSeedSexValue(normalizedEntry.seedSex),
+    seedAgeYears: getSeedVaultEntrySessionSeedAgeYears(normalizedEntry),
+    quantity: normalizedEntry.quantity,
+    yearAcquired: normalizedEntry.yearAcquired,
+    acquiredAt: normalizedEntry.acquiredAt,
+    visibility: normalizedEntry.visibility || "private",
+  };
 }
 
 function getNewSessionSeedVaultPartitionLabel(systemType = "KAN", partitionId = 1) {
@@ -62147,16 +62853,7 @@ function applySeedVaultEntryToPartitionRow(row, entry = {}, seedCount = 0) {
   syncPartitionSeedAgeFieldState(row);
 
   row.dataset.seedVaultEntryId = normalizedEntry.id;
-  row.dataset.seedVaultEntrySnapshot = JSON.stringify({
-    id: normalizedEntry.id,
-    source: normalizedEntry.source,
-    seedVariety: normalizedEntry.seedName,
-    seedType: normalizeSeedTypeId(normalizedEntry.seedType),
-    feminized: normalizeSeedSexValue(normalizedEntry.seedSex),
-    seedAgeYears,
-    quantity: normalizedEntry.quantity,
-    yearAcquired: normalizedEntry.yearAcquired,
-  });
+  row.dataset.seedVaultEntrySnapshot = JSON.stringify(buildSeedVaultEntrySessionSnapshot(normalizedEntry));
 }
 
 function clearSeedVaultAssignmentFromPartitionRow(row) {
@@ -62376,7 +63073,6 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
     }
     applySeedVaultEntryToPartitionRow(row, entry, seedCount);
 
-    // TODO: Add inventory depletion only after My Seed Vault has a dedicated, reversible quantity transaction model.
     rerenderPicker();
     setFeedbackMessage(
       section.querySelector("[data-seed-vault-session-message]"),
@@ -63838,6 +64534,13 @@ function renderSessionForm(initialSystemType = "KAN") {
         seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
       };
     });
+    const seedVaultUsageValidation = validateSeedVaultSessionUsage(partitionEntries);
+    if (!seedVaultUsageValidation.isValid) {
+      formMessage.textContent = seedVaultUsageValidation.message;
+      formMessage.classList.add("is-error");
+      setUnsavedChangesLastSaveError(new Error(seedVaultUsageValidation.message), seedVaultUsageValidation.message);
+      return null;
+    }
     const createdAt = new Date().toISOString();
     const sessionStartedAt = parseSessionStartDateTime(formData.get("date"), formData.get("time"))?.toISOString() || createdAt;
     const normalizedInitialStatus = normalizeSessionStatus(formData.get("sessionStatus"));
@@ -63913,6 +64616,15 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
+      try {
+        await applySeedVaultSessionQuantityUsage(partitionEntries);
+      } catch (seedVaultError) {
+        console.warn("[My Seed Vault] Session saved, but inventory quantity could not be updated.", seedVaultError);
+        showNavigationLockToast({
+          title: "My Seed Vault",
+          message: "Session saved, but Vault quantity could not be updated. Review your Seed Vault when you can.",
+        });
+      }
       const unlockedGrowNetworkNow = !wasGrowNetworkUnlocked && isMeaningfulGrowNetworkUnlockSession(savedSession);
       if (unlockedGrowNetworkNow) {
         markGrowNetworkUnlocked({ showNotice: true });
@@ -65768,6 +66480,24 @@ function renderSessionsList() {
 
       if (target.getAttribute("data-seed-vault-status-filter") === "true") {
         appState.seedVaultStatusFilter = normalizeSeedVaultStatusFilter(target.value);
+        renderSeedVaultSection();
+        return;
+      }
+
+      if (target.getAttribute("data-seed-vault-source-filter") === "true") {
+        appState.seedVaultSourceFilter = normalizeSeedVaultDropdownFilter(target.value);
+        renderSeedVaultSection();
+        return;
+      }
+
+      if (target.getAttribute("data-seed-vault-type-filter") === "true") {
+        appState.seedVaultTypeFilter = normalizeSeedVaultDropdownFilter(target.value);
+        renderSeedVaultSection();
+        return;
+      }
+
+      if (target.getAttribute("data-seed-vault-sex-filter") === "true") {
+        appState.seedVaultSexFilter = normalizeSeedVaultDropdownFilter(target.value);
         renderSeedVaultSection();
         return;
       }

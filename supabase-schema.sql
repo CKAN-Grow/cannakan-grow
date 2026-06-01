@@ -52,6 +52,93 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.seed_vault_entries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  source text,
+  seed_variety text,
+  seed_name text,
+  seed_type text,
+  sex text,
+  seed_sex text,
+  seed_age_years numeric,
+  seed_count integer,
+  quantity integer,
+  remaining_count integer,
+  year_acquired integer,
+  acquired_at date,
+  storage_location text,
+  storage_notes text,
+  notes text,
+  visibility text not null default 'private',
+  is_favorite boolean default false,
+  is_archived boolean default false,
+  archived_at timestamptz,
+  is_deleted boolean not null default false,
+  deleted_at timestamptz,
+  is_mock boolean default false,
+  dev_mode_only boolean default false,
+  mock_source text,
+  created_at timestamptz default timezone('utc', now()),
+  updated_at timestamptz default timezone('utc', now())
+);
+
+alter table public.seed_vault_entries
+  add column if not exists acquired_at date,
+  add column if not exists storage_notes text,
+  add column if not exists visibility text not null default 'private',
+  add column if not exists archived_at timestamptz,
+  add column if not exists is_deleted boolean not null default false,
+  add column if not exists deleted_at timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.seed_vault_entries'::regclass
+      and conname = 'seed_vault_entries_visibility_check'
+  ) then
+    alter table public.seed_vault_entries
+      add constraint seed_vault_entries_visibility_check
+      check (visibility in ('private', 'public'));
+  end if;
+end;
+$$;
+
+create index if not exists seed_vault_entries_user_updated_idx
+  on public.seed_vault_entries (user_id, is_archived, is_favorite desc, updated_at desc);
+
+create index if not exists seed_vault_entries_user_visibility_idx
+  on public.seed_vault_entries (user_id, visibility, is_archived, is_deleted);
+
+alter table public.seed_vault_entries enable row level security;
+
+create policy "Users can view their own seed vault entries"
+  on public.seed_vault_entries
+  for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own seed vault entries"
+  on public.seed_vault_entries
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own seed vault entries"
+  on public.seed_vault_entries
+  for update
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete their own seed vault entries"
+  on public.seed_vault_entries
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
 create table if not exists public.user_notification_preferences (
   user_id uuid primary key references auth.users(id) on delete cascade,
   notify_snapshot boolean not null default true,
