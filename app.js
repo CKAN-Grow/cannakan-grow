@@ -9395,6 +9395,7 @@ function getCurrentAppPathRoute() {
     learn: "learn",
     profile: "profile",
     analytics: "analytics",
+    "community-insights": "community-insights",
     sources: "sources",
     sessions: "sessions",
     "seed-vault": "seed-vault",
@@ -10835,6 +10836,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "seed-age-analytics",
       pageLabel: "Seed Age Analytics",
       pagePath: "/seed-age-analytics",
+    });
+  }
+  if (route === "community-insights") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "community-insights",
+      pageLabel: "Community Insights",
+      pagePath: isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
     });
   }
   if (route === "sources") {
@@ -26390,6 +26399,7 @@ function renderGalleryLeaderboardSection() {
           <p class="muted">Approved community session data, source activity, seed type trends, and germination performance patterns.</p>
         </div>
       </div>
+      <a class="button button-secondary" href="#community-insights">View full Community Insights</a>
     </div>
     <div class="gallery-leaderboard-summary">
       ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
@@ -26429,6 +26439,564 @@ function renderGalleryLeaderboardSection() {
   `;
 
   return section;
+}
+
+function getCommunityInsightsSafeDate(snapshot = null) {
+  return parseCompletedAtValue(snapshot?.publishedAt || snapshot?.createdAt || snapshot?.completedAt || "");
+}
+
+function getCommunityInsightsMonthLabel(date = null) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(date);
+}
+
+function getCommunityInsightsSafeText(value = "", fallback = "Not shared") {
+  const normalizedValue = normalizeLeaderboardLabel(value);
+  return normalizedValue || fallback;
+}
+
+function getCommunityInsightsSafeSnapshotPartitions(snapshot = null) {
+  if (!snapshot || typeof snapshot !== "object") {
+    return [];
+  }
+
+  const publicPartitions = Array.isArray(snapshot.partitionResults) && snapshot.partitionResults.length
+    ? snapshot.partitionResults
+    : (Array.isArray(snapshot.partitions) ? snapshot.partitions : []);
+
+  const normalizedPartitions = publicPartitions.map((partition, index) => {
+    const totalSeeds = Math.max(0, Number(
+      partition?.totalSeeds
+      ?? partition?.totalCount
+      ?? partition?.seedCount
+      ?? partition?.seed_count
+      ?? 0,
+    ) || 0);
+    const totalGerminated = Math.max(0, Number(
+      partition?.totalGerminated
+      ?? partition?.germinatedCount
+      ?? partition?.totalPlanted
+      ?? partition?.plantedCount
+      ?? partition?.planted_count
+      ?? 0,
+    ) || 0);
+    const source = getCommunityInsightsSafeText(
+      partition?.sourceLabel
+      || partition?.source
+      || partition?.sourceName
+      || "",
+    );
+    const variety = getCommunityInsightsSafeText(
+      partition?.varietyLabel
+      || partition?.seedVariety
+      || partition?.variety
+      || partition?.seedVarietyName
+      || "",
+    );
+    const seedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+    return {
+      id: String(partition?.id || partition?.partitionId || index + 1),
+      source,
+      sourceKey: normalizeSourceNameForMatching(source),
+      variety,
+      varietyKey: normalizeSeedVarietyNameForMatching(variety),
+      seedType: normalizeSeedTypeId(partition?.seedType || partition?.seed_type || ""),
+      seedAgeYears,
+      totalSeeds,
+      totalGerminated: Math.min(totalSeeds, totalGerminated),
+    };
+  }).filter((partition) => partition.totalSeeds > 0);
+
+  if (normalizedPartitions.length) {
+    return normalizedPartitions;
+  }
+
+  const totalSeeds = Math.max(0, Number(snapshot?.totalSeeds) || 0);
+  const totalGerminated = Math.max(0, Number(snapshot?.totalPlanted) || 0);
+  if (totalSeeds <= 0) {
+    return [];
+  }
+
+  const source = getCommunityInsightsSafeText(snapshot?.sourceName || "");
+  const variety = getCommunityInsightsSafeText(snapshot?.seedVarietyName || "");
+  const seedAgeYears = normalizeSeedAgeYears(snapshot?.sessionSeedAgeYears ?? snapshot?.session_seed_age_years);
+  return [{
+    id: String(snapshot?.id || "snapshot"),
+    source,
+    sourceKey: normalizeSourceNameForMatching(source),
+    variety,
+    varietyKey: normalizeSeedVarietyNameForMatching(variety),
+    seedType: normalizeSeedTypeId(snapshot?.seedTypeName || ""),
+    seedAgeYears,
+    totalSeeds,
+    totalGerminated: Math.min(totalSeeds, totalGerminated),
+  }];
+}
+
+function createCommunityInsightsRollup(label = "") {
+  return {
+    label: getCommunityInsightsSafeText(label),
+    totalSeeds: 0,
+    totalGerminated: 0,
+    snapshotIds: new Set(),
+    sessionIds: new Set(),
+    contributorIds: new Set(),
+    latestAt: "",
+  };
+}
+
+function addCommunityInsightsRollupSample(rollup, sample = {}) {
+  if (!rollup) {
+    return rollup;
+  }
+  rollup.totalSeeds += Math.max(0, Number(sample.totalSeeds) || 0);
+  rollup.totalGerminated += Math.max(0, Number(sample.totalGerminated) || 0);
+  if (sample.snapshotId) {
+    rollup.snapshotIds.add(String(sample.snapshotId));
+  }
+  if (sample.sessionId) {
+    rollup.sessionIds.add(String(sample.sessionId));
+  }
+  if (sample.contributorId) {
+    rollup.contributorIds.add(String(sample.contributorId));
+  }
+  if (sample.publishedAt && (!rollup.latestAt || Date.parse(sample.publishedAt) > Date.parse(rollup.latestAt))) {
+    rollup.latestAt = sample.publishedAt;
+  }
+  return rollup;
+}
+
+function finalizeCommunityInsightsRollup(rollup = {}) {
+  const totalSeeds = Math.max(0, Number(rollup.totalSeeds) || 0);
+  const totalGerminated = Math.max(0, Number(rollup.totalGerminated) || 0);
+  return {
+    label: rollup.label || "Not shared",
+    totalSeeds,
+    totalGerminated,
+    averageRate: totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 1000) / 10 : null,
+    snapshotCount: rollup.snapshotIds?.size || 0,
+    sessionCount: rollup.sessionIds?.size || 0,
+    contributorCount: rollup.contributorIds?.size || 0,
+    latestAt: rollup.latestAt || "",
+  };
+}
+
+function buildCommunityInsightsChartRows(rows = [], options = {}) {
+  const metricKey = options.metricKey || "averageRate";
+  const maxMetric = Math.max(...(rows || []).map((row) => Math.max(0, Number(row[metricKey]) || 0)), metricKey === "averageRate" ? 100 : 1);
+  return (rows || []).slice(0, options.limit || 6).map((row, index) => {
+    const metric = Math.max(0, Number(row[metricKey]) || 0);
+    return {
+      label: row.label,
+      fillWidth: metricKey === "averageRate"
+        ? `${Math.min(100, Math.round(metric))}%`
+        : `${maxMetric > 0 ? Math.round((metric / maxMetric) * 100) : 0}%`,
+      value: options.valueFormatter
+        ? options.valueFormatter(row)
+        : metricKey === "averageRate"
+          ? formatPrivateAnalyticsPercent(row.averageRate)
+          : formatPrivateAnalyticsNumber(metric),
+      detail: options.detailFormatter ? options.detailFormatter(row) : "",
+      tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+    };
+  });
+}
+
+function buildCommunityInsightsState() {
+  const approvedSnapshots = getApprovedPublicGallerySnapshots();
+  const sourceRollups = new Map();
+  const varietyRollups = new Map();
+  const ageRollups = new Map(getSeedAgeBucketDefinitions().map((bucket) => [bucket.key, {
+    ...createCommunityInsightsRollup(bucket.label),
+    key: bucket.key,
+    label: bucket.label,
+  }]));
+  const monthRollups = new Map();
+  const sessionIds = new Set();
+  const contributorIds = new Set();
+  let totalSeedsTested = 0;
+  let totalSeedsGerminated = 0;
+
+  approvedSnapshots.forEach((snapshot) => {
+    const snapshotId = String(snapshot?.id || "").trim();
+    const sessionId = String(snapshot?.sessionId || snapshotId || "").trim();
+    const contributorId = String(snapshot?.userId || "").trim();
+    const publishedDate = getCommunityInsightsSafeDate(snapshot);
+    const publishedAt = publishedDate?.toISOString() || "";
+    const monthKey = publishedDate ? getLeaderboardMonthKey(publishedDate) : "unknown";
+    const monthLabel = publishedDate ? getCommunityInsightsMonthLabel(publishedDate) : "Unknown";
+    const partitions = getCommunityInsightsSafeSnapshotPartitions(snapshot);
+    if (sessionId) {
+      sessionIds.add(sessionId);
+    }
+    if (contributorId) {
+      contributorIds.add(contributorId);
+    }
+
+    const monthRollup = monthRollups.get(monthKey) || {
+      key: monthKey,
+      label: monthLabel,
+      sortTime: publishedDate?.getTime() || 0,
+      snapshotCount: 0,
+      sessionIds: new Set(),
+      contributorIds: new Set(),
+      totalSeeds: 0,
+      totalGerminated: 0,
+    };
+    monthRollup.snapshotCount += 1;
+    if (sessionId) {
+      monthRollup.sessionIds.add(sessionId);
+    }
+    if (contributorId) {
+      monthRollup.contributorIds.add(contributorId);
+    }
+
+    partitions.forEach((partition) => {
+      totalSeedsTested += partition.totalSeeds;
+      totalSeedsGerminated += partition.totalGerminated;
+      monthRollup.totalSeeds += partition.totalSeeds;
+      monthRollup.totalGerminated += partition.totalGerminated;
+
+      const sample = {
+        snapshotId,
+        sessionId,
+        contributorId,
+        publishedAt,
+        totalSeeds: partition.totalSeeds,
+        totalGerminated: partition.totalGerminated,
+      };
+
+      if (partition.sourceKey) {
+        const sourceRollup = sourceRollups.get(partition.sourceKey) || createCommunityInsightsRollup(partition.source);
+        addCommunityInsightsRollupSample(sourceRollup, sample);
+        sourceRollups.set(partition.sourceKey, sourceRollup);
+      }
+
+      if (partition.varietyKey) {
+        const varietyRollup = varietyRollups.get(partition.varietyKey) || createCommunityInsightsRollup(partition.variety);
+        addCommunityInsightsRollupSample(varietyRollup, sample);
+        varietyRollups.set(partition.varietyKey, varietyRollup);
+      }
+
+      const ageKey = getSeedAgeBucketKey(partition.seedAgeYears);
+      const ageRollup = ageRollups.get(ageKey) || {
+        ...createCommunityInsightsRollup(getSeedAgeBucketLabel(ageKey)),
+        key: ageKey,
+        label: getSeedAgeBucketLabel(ageKey),
+      };
+      addCommunityInsightsRollupSample(ageRollup, sample);
+      ageRollups.set(ageKey, ageRollup);
+    });
+
+    monthRollups.set(monthKey, monthRollup);
+  });
+
+  const sourceRows = [...sourceRollups.values()].map(finalizeCommunityInsightsRollup);
+  const varietyRows = [...varietyRollups.values()].map(finalizeCommunityInsightsRollup);
+  const ageRows = [...ageRollups.values()].map((rollup) => ({
+    ...finalizeCommunityInsightsRollup(rollup),
+    key: rollup.key || "unknown",
+  }));
+  const monthRows = [...monthRollups.values()]
+    .sort((left, right) => left.sortTime - right.sortTime)
+    .slice(-8)
+    .map((row) => ({
+      ...row,
+      sessionCount: row.sessionIds.size,
+      contributorCount: row.contributorIds.size,
+      averageRate: row.totalSeeds > 0 ? Math.round((row.totalGerminated / row.totalSeeds) * 1000) / 10 : null,
+    }));
+
+  const sortByRate = (left, right) => (
+    (right.averageRate ?? -1) - (left.averageRate ?? -1)
+    || right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  );
+  const sortBySeeds = (left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
+  const sortBySnapshots = (left, right) => right.snapshotCount - left.snapshotCount || left.label.localeCompare(right.label);
+  const communityAverageRate = totalSeedsTested > 0 ? Math.round((totalSeedsGerminated / totalSeedsTested) * 1000) / 10 : null;
+  const bestAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
+  const mostTestedAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds)[0] || null;
+  const bestSource = [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
+  const mostTestedVariety = [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds)[0] || null;
+  const fastestGrowingMonth = monthRows.length > 1
+    ? [...monthRows].slice(1).map((row, index) => ({
+        ...row,
+        growth: row.snapshotCount - monthRows[index].snapshotCount,
+      })).sort((left, right) => right.growth - left.growth)[0]
+    : null;
+
+  return {
+    privacyBoundary: "approved-public-community-grow-only",
+    approvedSnapshots,
+    overview: {
+      communityAverageRate,
+      totalPublicSessionsRepresented: sessionIds.size,
+      totalPublicSeedsTested: totalSeedsTested,
+      totalPublicSeedsGerminated: totalSeedsGerminated,
+      totalApprovedCommunityGrowEntries: approvedSnapshots.length,
+      activeCommunityContributors: contributorIds.size,
+    },
+    sourceRows,
+    varietyRows,
+    ageRows,
+    monthRows,
+    topSources: [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
+    mostTestedSources: [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
+    highestParticipationSources: [...sourceRows].sort(sortBySnapshots),
+    topVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
+    mostTestedVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
+    repeatTestedVarieties: [...varietyRows].filter((row) => row.snapshotCount > 1).sort(sortBySnapshots),
+    bestAgeRange,
+    mostTestedAgeRange,
+    insightCards: [
+      {
+        label: "Best Performing Age Range",
+        value: bestAgeRange ? `${bestAgeRange.label} · ${formatPrivateAnalyticsPercent(bestAgeRange.averageRate)}` : "Not enough age data",
+        detail: bestAgeRange ? `${formatPrivateAnalyticsNumber(bestAgeRange.totalSeeds)} public seeds tested` : "Age-labeled public snapshots will unlock this.",
+      },
+      {
+        label: "Most Reliable Source",
+        value: bestSource ? `${bestSource.label} · ${formatPrivateAnalyticsPercent(bestSource.averageRate)}` : "Not enough source data",
+        detail: bestSource ? `${formatPrivateAnalyticsNumber(bestSource.totalSeeds)} public seeds tested` : "Source-labeled public snapshots will unlock this.",
+      },
+      {
+        label: "Most Tested Genetics",
+        value: mostTestedVariety ? mostTestedVariety.label : "Not enough variety data",
+        detail: mostTestedVariety ? `${formatPrivateAnalyticsNumber(mostTestedVariety.totalSeeds)} public seeds tested` : "Variety-labeled public snapshots will unlock this.",
+      },
+      {
+        label: "Fastest Growing Category",
+        value: fastestGrowingMonth && fastestGrowingMonth.growth > 0 ? fastestGrowingMonth.label : "Building history",
+        detail: fastestGrowingMonth && fastestGrowingMonth.growth > 0 ? `Snapshot submissions increased by ${fastestGrowingMonth.growth}.` : "More monthly public activity will clarify this trend.",
+      },
+      {
+        label: "Community Trend Highlights",
+        value: monthRows.length ? `${monthRows[monthRows.length - 1].snapshotCount} recent entries` : "No trend yet",
+        detail: monthRows.length ? `${formatPrivateAnalyticsPercent(monthRows[monthRows.length - 1].averageRate)} recent community germination average` : "Approved public snapshots will build this.",
+      },
+    ],
+    futureHooks: {
+      sourceDirectoryIntegration: null,
+      cstpPublicStatistics: null,
+      certificationAnalytics: null,
+      publicLeaderboards: null,
+      communityBenchmarking: null,
+    },
+  };
+}
+
+function renderCommunityInsightsKpiGrid(cards = []) {
+  return `
+    <div class="community-insights-kpi-grid">
+      ${cards.map((card) => `
+        <article class="community-insights-kpi-card">
+          <span>${escapeHtml(card.label || "")}</span>
+          <strong>${escapeHtml(card.value || "")}</strong>
+          <small>${escapeHtml(card.detail || "")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderCommunityInsightsBarChart(title = "", rows = [], options = {}) {
+  const emptyMessage = String(options.emptyMessage || "Not enough approved public data yet.").trim();
+  return `
+    <div class="community-insights-chart-card">
+      <div class="community-insights-chart-heading">
+        <strong>${escapeHtml(title)}</strong>
+        ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+      </div>
+      ${rows.length ? `
+        <div class="community-insights-bar-chart">
+          ${rows.map((row) => `
+            <div class="community-insights-bar-row">
+              <div class="community-insights-bar-label">
+                <span>${escapeHtml(row.label || "")}</span>
+                ${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}
+              </div>
+              <div class="community-insights-bar-track" aria-hidden="true">
+                <i class="${row.tone ? `chart-gradient-bar-${escapeHtml(row.tone)}` : ""}" style="width:${escapeHtml(row.fillWidth || "0%")};"></i>
+              </div>
+              <strong>${escapeHtml(row.value || "")}</strong>
+            </div>
+          `).join("")}
+        </div>
+      ` : `
+        <div class="community-insights-empty">
+          <p>${escapeHtml(emptyMessage)}</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderCommunityInsightsTrendChart(title = "", rows = [], options = {}) {
+  const metricKey = options.metricKey || "averageRate";
+  const maxMetric = Math.max(...rows.map((row) => Math.max(0, Number(row[metricKey]) || 0)), options.percent ? 100 : 1);
+  return `
+    <div class="community-insights-chart-card">
+      <div class="community-insights-chart-heading">
+        <strong>${escapeHtml(title)}</strong>
+        ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+      </div>
+      ${rows.length ? `
+        <div class="community-insights-trend-chart" style="--community-insights-trend-count:${escapeHtml(String(rows.length))};">
+          ${rows.map((row) => {
+            const value = Number(row[metricKey]);
+            const hasValue = Number.isFinite(value);
+            const safeValue = hasValue ? Math.max(0, value) : 0;
+            const height = options.percent ? Math.min(100, Math.max(3, safeValue)) : (maxMetric > 0 ? Math.max(3, Math.round((safeValue / maxMetric) * 100)) : 3);
+            const label = hasValue
+              ? options.percent ? formatPrivateAnalyticsPercent(value) : formatPrivateAnalyticsNumber(value)
+              : "No data";
+            return `
+              <div class="community-insights-trend-point">
+                <div class="community-insights-trend-bar" aria-hidden="true">
+                  <i style="height:${escapeHtml(`${height}%`)};"></i>
+                </div>
+                <strong>${escapeHtml(label)}</strong>
+                <span>${escapeHtml(row.label || "")}</span>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="community-insights-empty">
+          <p>${escapeHtml(options.emptyMessage || "Not enough approved public trend data yet.")}</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderCommunityInsightsSection(title = "", subtitle = "", bodyMarkup = "", options = {}) {
+  return `
+    <section class="community-insights-panel${options.wide ? " community-insights-panel--wide" : ""}">
+      <div class="community-insights-panel-heading">
+        <span>${escapeHtml(options.eyebrow || "Community Insights")}</span>
+        <h3>${escapeHtml(title)}</h3>
+        ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+      </div>
+      ${bodyMarkup}
+    </section>
+  `;
+}
+
+function renderCommunityInsightsPage() {
+  const state = buildCommunityInsightsState();
+  const overviewCards = [
+    { label: "Community Average Germination Rate", value: formatPrivateAnalyticsPercent(state.overview.communityAverageRate), detail: "approved public seed results only" },
+    { label: "Total Public Sessions Represented", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSessionsRepresented), detail: "deduplicated public session ids" },
+    { label: "Total Public Seeds Tested", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSeedsTested), detail: "public-safe aggregate volume" },
+    { label: "Total Public Seeds Germinated", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSeedsGerminated), detail: "public-safe aggregate results" },
+    { label: "Total Approved Community Grow Entries", value: formatPrivateAnalyticsNumber(state.overview.totalApprovedCommunityGrowEntries), detail: "approved public snapshots" },
+    { label: "Active Community Contributors", value: formatPrivateAnalyticsNumber(state.overview.activeCommunityContributors), detail: "anonymous contributor count" },
+  ];
+  const sourcePerformanceRows = buildCommunityInsightsChartRows(state.topSources, {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} public entries`,
+  });
+  const sourceTestedRows = buildCommunityInsightsChartRows(state.mostTestedSources, {
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} community average`,
+  });
+  const sourceParticipationRows = buildCommunityInsightsChartRows(state.highestParticipationSources, {
+    metricKey: "snapshotCount",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} entries`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.contributorCount)} contributors`,
+  });
+  const varietyPerformanceRows = buildCommunityInsightsChartRows(state.topVarieties, {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} public entries`,
+  });
+  const varietyTestedRows = buildCommunityInsightsChartRows(state.mostTestedVarieties, {
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} community average`,
+  });
+  const repeatVarietyRows = buildCommunityInsightsChartRows(state.repeatTestedVarieties, {
+    metricKey: "snapshotCount",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} entries`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} public seeds`,
+  });
+  const agePerformanceRows = buildCommunityInsightsChartRows(state.ageRows.filter((row) => row.totalSeeds > 0), {
+    valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.sessionCount)} public sessions`,
+  });
+  const ageDistributionRows = buildCommunityInsightsChartRows(state.ageRows.filter((row) => row.totalSeeds > 0), {
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} community average`,
+  });
+
+  app.innerHTML = `
+    <section class="community-insights-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
+      <header class="community-insights-hero">
+        <div class="community-insights-hero-copy">
+          <p class="eyebrow">Public Knowledge System</p>
+          <h2>Community Insights</h2>
+          <p>Aggregated, anonymized germination intelligence from approved Community Grow entries. No private sessions, profiles, Seed Vault inventory, emails, admin fields, or CSTP-private data are used.</p>
+        </div>
+        <div class="community-insights-hero-actions">
+          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+          <a class="button button-secondary" href="/seed-age-analytics">Seed Age Analytics</a>
+        </div>
+      </header>
+
+      ${renderCommunityInsightsSection("Community Overview", "Public-safe summary metrics from approved Community Grow data.", renderCommunityInsightsKpiGrid(overviewCards), { wide: true, eyebrow: "Overview" })}
+
+      ${renderCommunityInsightsSection("Insight Cards", "Descriptive signals from public aggregates only.", `
+        <div class="community-insights-insight-grid">
+          ${state.insightCards.map((insight) => `
+            <article class="community-insights-insight-card">
+              <span>${escapeHtml(insight.label)}</span>
+              <strong>${escapeHtml(insight.value)}</strong>
+              <p>${escapeHtml(insight.detail)}</p>
+            </article>
+          `).join("")}
+        </div>
+      `, { wide: true, eyebrow: "Insights" })}
+
+      <div class="community-insights-grid">
+        ${renderCommunityInsightsSection("Source Intelligence", "Source trends aggregated from approved public snapshot metadata.", `
+          ${renderCommunityInsightsBarChart("Top Performing Sources", sourcePerformanceRows, { caption: "average germination" })}
+          ${renderCommunityInsightsBarChart("Most Tested Sources", sourceTestedRows, { caption: "public seed volume" })}
+          ${renderCommunityInsightsBarChart("Highest Participation Sources", sourceParticipationRows, { caption: "approved entry count" })}
+          ${renderCommunityInsightsBarChart("Source performance distribution", sourcePerformanceRows, { caption: "public-safe comparison" })}
+        `, { eyebrow: "Sources" })}
+
+        ${renderCommunityInsightsSection("Genetics / Variety Intelligence", "Variety trends from public-safe approved entries.", `
+          ${renderCommunityInsightsBarChart("Most Tested Varieties", varietyTestedRows, { caption: "public seed volume" })}
+          ${renderCommunityInsightsBarChart("Best Performing Varieties", varietyPerformanceRows, { caption: "average germination" })}
+          ${renderCommunityInsightsBarChart("Repeat-Tested Varieties", repeatVarietyRows, { caption: "multiple public entries" })}
+          ${renderCommunityInsightsBarChart("Variety participation distribution", repeatVarietyRows, { caption: "approved entry count" })}
+        `, { eyebrow: "Genetics" })}
+
+        ${renderCommunityInsightsSection("Seed Age Insights", "Age bucket intelligence from approved public-safe seed age metadata.", `
+          ${renderCommunityInsightsBarChart("Germination by Age Bucket", agePerformanceRows, { caption: "average germination" })}
+          ${renderCommunityInsightsKpiGrid([
+            { label: "Most Tested Age Range", value: state.mostTestedAgeRange?.label || "Not enough age data", detail: state.mostTestedAgeRange ? `${formatPrivateAnalyticsNumber(state.mostTestedAgeRange.totalSeeds)} public seeds` : "Age-labeled snapshots will unlock this." },
+            { label: "Best Performing Age Range", value: state.bestAgeRange?.label || "Not enough age data", detail: state.bestAgeRange ? `${formatPrivateAnalyticsPercent(state.bestAgeRange.averageRate)} public average` : "Age-labeled snapshots will unlock this." },
+          ])}
+          ${renderCommunityInsightsBarChart("Community Age Distribution", ageDistributionRows, { caption: "public seed volume" })}
+        `, { eyebrow: "Seed Age" })}
+
+        ${renderCommunityInsightsSection("Community Trends", "Lightweight public activity trends from approved entries.", `
+          <div class="community-insights-trend-grid">
+            ${renderCommunityInsightsTrendChart("Germination performance over time", state.monthRows, { metricKey: "averageRate", percent: true, caption: "monthly public average" })}
+            ${renderCommunityInsightsTrendChart("Session participation trends", state.monthRows, { metricKey: "sessionCount", caption: "public sessions represented" })}
+            ${renderCommunityInsightsTrendChart("Snapshot submission trends", state.monthRows, { metricKey: "snapshotCount", caption: "approved entries" })}
+            ${renderCommunityInsightsTrendChart("Community activity trends", state.monthRows, { metricKey: "contributorCount", caption: "anonymous contributors" })}
+          </div>
+        `, { wide: true, eyebrow: "Trends" })}
+      </div>
+    </section>
+  `;
 }
 
 function formatSeedAgePercentMetric(value = null) {
@@ -32581,6 +33149,18 @@ function render() {
       pagePath: "/seed-age-analytics",
     }));
     void refreshGallerySnapshots("route:seed-age-analytics");
+    return;
+  }
+
+  if (route === "community-insights") {
+    renderCommunityInsightsPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "gallery",
+      pageKey: "community-insights",
+      pageLabel: "Community Insights",
+      pagePath: pathRoute === "community-insights" && isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
+    }));
+    void refreshGallerySnapshots("route:community-insights");
     return;
   }
 
