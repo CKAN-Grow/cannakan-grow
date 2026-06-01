@@ -9495,10 +9495,18 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   gap: 10px;
   min-width: 0;
   max-width: 100%;
+  color: inherit;
+  text-decoration: none;
 }
 
 .leaderboard-member-identity--compact {
   gap: 8px;
+}
+
+.leaderboard-member-identity-link:hover,
+.leaderboard-member-identity-link:focus-visible {
+  color: #c7f19a;
+  outline: none;
 }
 
 .leaderboard-member-avatar {
@@ -9533,6 +9541,23 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.leaderboard-member-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.leaderboard-member-hint {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .gallery-top-members-summary-name {
@@ -14686,6 +14711,18 @@ body.theme-dark .contact-reason-card.is-active {
 .gallery-card-profile-link:hover .gallery-card-profile-name,
 .gallery-card-profile-link:focus-visible .gallery-card-profile-name {
   color: #c7f19a;
+}
+
+.gallery-tile-profile-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.gallery-tile-profile-link:hover,
+.gallery-tile-profile-link:focus-visible {
+  color: #c7f19a;
+  outline: none;
 }
 
 .gallery-card-profile-avatar {

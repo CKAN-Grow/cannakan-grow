@@ -16294,6 +16294,8 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     cstpParticipant: getSafePublicProfileFlagValue(row, ["cstp_participant", "cstpParticipant", "is_cstp_participant"]),
     cstpCertifiedGrower: getSafePublicProfileFlagValue(row, ["cstp_certified_grower", "cstpCertifiedGrower", "is_cstp_certified_grower"]),
     trustedContributor: getSafePublicProfileFlagValue(row, ["trusted_contributor", "trustedContributor", "is_trusted_contributor"]),
+    hasCustomPublicProfile: true,
+    isDerivedPublicProfile: false,
     ...normalizedSettings,
   };
 }
@@ -16390,6 +16392,21 @@ function getPublicMemberProfileRoute(memberIdOrProfile = "") {
   const normalizedId = String(profile?.id || memberIdOrProfile || "").trim();
   const routeKey = handle || normalizedId;
   return routeKey ? `#members/${encodeURIComponent(routeKey)}` : "#gallery";
+}
+
+function canLinkToPublicMemberProfile(profile = null) {
+  return Boolean(
+    profile?.id
+    && profile.hasCustomPublicProfile !== false
+    && profile.isDerivedPublicProfile !== true
+    && profile.isPublicVisible !== false
+    && profile.profileVisibility !== "private"
+  );
+}
+
+function getPublicMemberProfileTrustHint(profile = null) {
+  const trustIndicators = buildProfileTrustIndicators(buildProfileTrustHooks(profile));
+  return trustIndicators[0]?.label || "";
 }
 
 function getApprovedPublicSnapshotsForMember(memberId = "", snapshots = getApprovedPublicGallerySnapshots()) {
@@ -16953,6 +16970,8 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     locationRegion: "",
     profileVisibility: "public",
     isPublicVisible: true,
+    hasCustomPublicProfile: false,
+    isDerivedPublicProfile: true,
     joinedAt: "",
     ...getDefaultProfilePageSettings(),
   };
@@ -16985,6 +17004,8 @@ function buildCurrentUserPublicMemberProfileFallback(
     locationRegion: normalizePublicProfileTextField(existingPublicProfile?.locationRegion || "", 80),
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
     isPublicVisible: normalizedSettings.showProfileInCommunityGrow !== false,
+    hasCustomPublicProfile: true,
+    isDerivedPublicProfile: false,
     joinedAt: profile?.createdAt || user?.created_at || "",
     ...normalizedSettings,
   };
@@ -17019,6 +17040,8 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
     createdAt: primaryProfile?.createdAt || fallbackProfile?.createdAt || "",
     updatedAt: primaryProfile?.updatedAt || fallbackProfile?.updatedAt || "",
+    hasCustomPublicProfile: Boolean(primaryProfile?.hasCustomPublicProfile ?? fallbackProfile?.hasCustomPublicProfile),
+    isDerivedPublicProfile: Boolean(primaryProfile?.isDerivedPublicProfile ?? fallbackProfile?.isDerivedPublicProfile),
     ...resolvedSettings,
   };
   resolvedProfile.isPublicVisible = resolvedProfile.profileVisibility === "public" && resolvedProfile.showProfileInCommunityGrow !== false;
@@ -23694,8 +23717,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
     return "";
   }
 
-  const memberId = String(snapshot.userId || "").trim();
-  const memberRoute = member.profileRoute || (memberId ? getPublicMemberProfileRoute(memberId) : "");
+  const memberRoute = member.profileRoute || "";
   const profileLabel = profileName || "this member";
   const wrapperTag = memberRoute ? "a" : "div";
   const wrapperAttributes = memberRoute
@@ -23714,43 +23736,39 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
   const memberId = String(snapshot?.userId || "").trim();
   const cachedProfile = memberId ? getPublicMemberProfile(memberId) : null;
   const isOwnSnapshot = Boolean(memberId && String(appState.user?.id || "").trim() === memberId);
-  const canShowCachedProfile = Boolean(cachedProfile && (cachedProfile.isPublicVisible !== false || isOwnSnapshot || isAdminUser()));
-  const canShowSubmittedProfile = Boolean(isOwnSnapshot || isAdminUser());
+  const canShowCachedProfile = canLinkToPublicMemberProfile(cachedProfile);
+  const canShowPrivateViewerContext = Boolean(cachedProfile?.id && (isOwnSnapshot || isAdminUser()) && !canShowCachedProfile);
   const publicProfile = canShowCachedProfile
     ? cachedProfile
-    : (isOwnSnapshot
-      ? buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, getCurrentProfilePageSettings())
-      : (canShowSubmittedProfile
-        ? {
-          id: memberId,
-          displayName: snapshot?.profileName || snapshot?.submittedBy || "",
-          avatarUrl: snapshot?.profileImageUrl || "",
-          isPublicVisible: true,
-        }
-        : null));
-  const fallbackDisplayName = getDisplayName(
-    {
-      id: memberId,
-      displayName: publicProfile?.displayName || "",
-      profileName: canShowSubmittedProfile ? snapshot?.profileName || "" : "",
-      submittedBy: canShowSubmittedProfile ? snapshot?.submittedBy || "" : "",
-      submittedByName: canShowSubmittedProfile ? snapshot?.submittedByName || "" : "",
-    },
-    { fallbackLabel: "Community grower" },
-  );
-  const fallbackAvatarUrl = String(
-    publicProfile?.avatarUrl
-    || (canShowSubmittedProfile ? snapshot?.profileImageUrl : "")
-    || "",
-  ).trim();
+    : null;
+  const privateViewerProfile = canShowPrivateViewerContext && isOwnSnapshot
+    ? mergePublicMemberProfileRecord(
+      cachedProfile,
+      buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, getCurrentProfilePageSettings()),
+    )
+    : null;
+  const fallbackLabel = snapshot?.includeProfileInGallery === false || canShowPrivateViewerContext
+    ? "Private Grower"
+    : "Community Member";
+  const displayName = publicProfile
+    ? getDisplayName({ id: memberId, displayName: publicProfile.displayName || "" }, { fallbackLabel })
+    : (privateViewerProfile
+      ? getDisplayName({ id: memberId, displayName: privateViewerProfile.displayName || "" }, { fallbackLabel })
+      : fallbackLabel);
+  const fallbackAvatarUrl = publicProfile?.avatarUrl || privateViewerProfile?.avatarUrl || "";
+  const profileHint = publicProfile
+    ? getProfileCommunityCardHint(publicProfile, getGallerySnapshotsForDisplay())
+    : (canShowPrivateViewerContext ? "Private profile" : "");
 
   return {
     memberId,
-    displayName: publicProfile ? fallbackDisplayName : "Community grower",
+    displayName,
     avatarUrl: getSafeAvatarImageUrl(fallbackAvatarUrl),
     profileRoute: publicProfile && memberId ? getPublicMemberProfileRoute(publicProfile) : "",
-    profileHint: publicProfile ? getProfileCommunityCardHint(publicProfile, getGallerySnapshotsForDisplay()) : "",
-    canShowIdentity: Boolean(publicProfile),
+    profileHint,
+    canShowIdentity: Boolean(publicProfile || privateViewerProfile),
+    canLinkProfile: Boolean(publicProfile),
+    isFallbackIdentity: !publicProfile,
   };
 }
 
@@ -23766,8 +23784,8 @@ function renderGallerySnapshotMemberMarkup(snapshot) {
   return `
     <${wrapperTag} ${wrapperAttributes}>
       ${avatarMarkup}
-        <span class="gallery-card-profile-copy">
-          <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
+      <span class="gallery-card-profile-copy">
+        <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
         <span class="gallery-card-profile-meta">${escapeHtml(member.profileHint ? `${submittedLabel} · ${member.profileHint}` : submittedLabel)}</span>
       </span>
     </${wrapperTag}>
@@ -23891,6 +23909,9 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
       : (snapshot.title || "Community Grow snapshot");
     const systemBadgeLabel = formatSnapshotSystemLabel(snapshot.systemType || "KAN");
     const submittedLabel = getGallerySnapshotSubmittedDateLabel(snapshot);
+    const compactProfileMarkup = member.profileRoute
+      ? `<a class="gallery-tile-profile-link gallery-card-profile-link" href="${escapeHtml(member.profileRoute)}" aria-label="${escapeHtml(`View ${member.displayName}'s public profile`)}">${escapeHtml(member.displayName)}</a>`
+      : `<span>${escapeHtml(member.displayName)}</span>`;
     return `
       <div class="gallery-card-media gallery-card-media--tile" data-gallery-preview="${escapeHtml(snapshot.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`View snapshot for ${varietyLabel}`)}">
         ${hasGallerySnapshotImage(snapshot)
@@ -23922,7 +23943,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
           <div class="gallery-tile-bottom-row">
             <div class="gallery-tile-copy">
               <strong>${escapeHtml(varietyLabel)}</strong>
-              <p>${escapeHtml(`${member.displayName} • ${submittedLabel}${member.profileHint ? ` • ${member.profileHint}` : ""}`)}</p>
+              <p>${compactProfileMarkup}<span>${escapeHtml(` • ${submittedLabel}${member.profileHint ? ` • ${member.profileHint}` : ""}`)}</span></p>
             </div>
             <div class="gallery-tile-like">
               ${renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" })}
@@ -24053,6 +24074,12 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
       if (snapshotId) {
         openGallerySnapshotOverview(snapshotId);
       }
+    });
+  });
+
+  scope.querySelectorAll(".gallery-card-profile-link").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.stopPropagation();
     });
   });
 
@@ -24860,34 +24887,20 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
 }
 
 function getGallerySnapshotMemberKey(snapshot = {}) {
-  return String(
-    snapshot?.userId
-    || snapshot?.profileName
-    || snapshot?.submittedBy
-    || snapshot?.submittedByName
-    || "",
-  ).trim();
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  if (member.canLinkProfile && member.memberId) {
+    return `profile:${member.memberId}`;
+  }
+  return "community-member";
 }
 
 function getGallerySnapshotMemberLabel(snapshot = {}) {
-  return getDisplayName(
-    {
-      userId: snapshot?.userId || "",
-      profileName: snapshot?.profileName || "",
-      submittedBy: snapshot?.submittedBy || "",
-      submittedByName: snapshot?.submittedByName || "",
-    },
-    { fallbackLabel: "User" },
-  );
+  return getGallerySnapshotCardMemberProfile(snapshot).displayName || "Community Member";
 }
 
 function getGallerySnapshotMemberAvatarUrl(snapshot = {}) {
-  return String(
-    snapshot?.profileImageUrl
-    || snapshot?.submittedProfileAvatarUrl
-    || snapshot?.avatarUrl
-    || "",
-  ).trim();
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  return member.canLinkProfile ? String(member.avatarUrl || "").trim() : "";
 }
 
 function findMockGalleryTopMemberEntry(entry = {}) {
@@ -24903,6 +24916,7 @@ function buildGalleryTopMemberEntries(snapshots = []) {
   const entriesByMemberKey = new Map();
 
   (snapshots || []).filter(isGallerySnapshotAnalyticsEligible).forEach((snapshot) => {
+    const member = getGallerySnapshotCardMemberProfile(snapshot);
     const memberKey = getGallerySnapshotMemberKey(snapshot);
     if (!memberKey) {
       return;
@@ -24910,8 +24924,13 @@ function buildGalleryTopMemberEntries(snapshots = []) {
 
     const existingEntry = entriesByMemberKey.get(memberKey) || {
       key: memberKey,
-      name: getGallerySnapshotMemberLabel(snapshot),
+      memberId: member.canLinkProfile ? member.memberId : "",
+      name: member.displayName || getGallerySnapshotMemberLabel(snapshot),
       avatarUrl: "",
+      profileRoute: member.canLinkProfile ? member.profileRoute : "",
+      profileHint: member.canLinkProfile ? member.profileHint : "",
+      trustHint: member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "",
+      isFallbackIdentity: !member.canLinkProfile,
       snapshotCount: 0,
       totalLikes: 0,
       latestPublishedAt: 0,
@@ -24919,9 +24938,12 @@ function buildGalleryTopMemberEntries(snapshots = []) {
     };
 
     existingEntry.name = isGenericDisplayNamePlaceholder(existingEntry.name)
-      ? getGallerySnapshotMemberLabel(snapshot)
+      ? (member.displayName || getGallerySnapshotMemberLabel(snapshot))
       : existingEntry.name;
     existingEntry.avatarUrl = existingEntry.avatarUrl || getGallerySnapshotMemberAvatarUrl(snapshot);
+    existingEntry.profileRoute = existingEntry.profileRoute || (member.canLinkProfile ? member.profileRoute : "");
+    existingEntry.profileHint = existingEntry.profileHint || (member.canLinkProfile ? member.profileHint : "");
+    existingEntry.trustHint = existingEntry.trustHint || (member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "");
     existingEntry.snapshotCount += 1;
     existingEntry.totalLikes += Math.max(0, Number(snapshot?.likeCount) || 0);
     existingEntry.totalSuccessPercent += Math.max(0, Number(snapshot?.successPercent) || 0);
@@ -24952,14 +24974,23 @@ function renderLeaderboardMemberIdentityMarkup(entry = {}, className = "leaderbo
       id: entry?.key || "",
       name: entry?.name || "",
     },
-    { fallbackLabel: "User" },
+    { fallbackLabel: "Community Member" },
   );
   const avatarUrl = String(entry?.avatarUrl || "").trim();
+  const profileRoute = String(entry?.profileRoute || "").trim();
+  const trustHint = String(entry?.trustHint || entry?.profileHint || "").trim();
+  const wrapperTag = profileRoute ? "a" : "span";
+  const wrapperAttributes = profileRoute
+    ? `class="${escapeHtml(`${className} leaderboard-member-identity-link`)}" href="${escapeHtml(profileRoute)}" aria-label="${escapeHtml(`View ${displayName}'s public profile`)}"`
+    : `class="${escapeHtml(className)}"`;
   return `
-    <span class="${escapeHtml(className)}">
+    <${wrapperTag} ${wrapperAttributes}>
       ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "leaderboard-member-avatar")}
-      <span class="leaderboard-member-name">${escapeHtml(displayName)}</span>
-    </span>
+      <span class="leaderboard-member-copy">
+        <span class="leaderboard-member-name">${escapeHtml(displayName)}</span>
+        ${trustHint ? `<span class="leaderboard-member-hint">${escapeHtml(trustHint)}</span>` : ""}
+      </span>
+    </${wrapperTag}>
   `;
 }
 
@@ -26288,6 +26319,7 @@ function renderGalleryLeaderboardSection() {
   const allTimeTopSeedType = buildGallerySeedTypeHighlightEntry(approvedSnapshots);
   const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
   const thisMonthVarieties = buildGalleryLeaderboardEntries(monthlySnapshots, "variety").slice(0, 3);
+  const thisMonthMembers = buildGalleryTopMemberEntries(monthlySnapshots).slice(0, 3);
   const allTimeSources = buildGalleryLeaderboardEntries(approvedSnapshots, "source").slice(0, 3);
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
@@ -26327,6 +26359,10 @@ function renderGalleryLeaderboardSection() {
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
         ${renderGalleryLeaderboardCardHeadingWithAction("Varieties", "This month · approved variety germination averages", "varieties", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
+      </article>
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--month-members">
+        ${renderGalleryLeaderboardCardHeading("Public Contributors", "This month · profile-safe Community Grow participation", "members")}
+        ${renderGalleryTopMemberRows(thisMonthMembers, "Not enough approved public member activity this month yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
         ${renderGalleryLeaderboardCardHeading("Sources", "All-time · recorded source germination averages", "sources")}
@@ -59548,6 +59584,18 @@ function renderGallery(targetSnapshotId = "") {
   );
   if (gallerySortState) {
     gallerySortState.textContent = `Sorted by: ${getGallerySortLabel(appState.gallerySort)} · ${getGallerySortOrderLabel(appState.gallerySort, appState.gallerySortOrder)} · View: ${getGalleryCertificationFilterLabel(appState.galleryCertificationFilter)}`;
+  }
+
+  const leaderboardProfileIds = [...new Set(getApprovedPublicGallerySnapshots()
+    .map((snapshot) => String(snapshot?.userId || "").trim())
+    .filter(Boolean))];
+  const missingLeaderboardProfileIds = leaderboardProfileIds.filter((memberId) => !appState.publicMemberProfiles[memberId]);
+  if (missingLeaderboardProfileIds.length) {
+    void loadPublicMemberProfilesByIds(missingLeaderboardProfileIds, { reason: "gallery:leaderboard-profiles" }).then(() => {
+      if (normalizeNavigationHash(window.location.hash || "#home") === "#gallery") {
+        renderGallery(targetSnapshotId);
+      }
+    });
   }
 
   if (galleryFeedSection) {
