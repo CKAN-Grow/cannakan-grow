@@ -3687,6 +3687,14 @@ function getMenuIconMarkup(icon) {
         <path d="M17 16.5c-2.4 0-3.8-1.4-3.8-3.6 2.4 0 3.8 1.3 3.8 3.6Z"></path>
       </svg>
     `,
+    analytics: `
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M5.5 18.5h13"></path>
+        <path d="M7.5 16v-4.5"></path>
+        <path d="M12 16V8"></path>
+        <path d="M16.5 16v-6"></path>
+      </svg>
+    `,
     admin: `
       <svg viewBox="0 0 24 24" focusable="false">
         <path d="M12 3.5 5 6.8V12c0 4 2.6 7.7 7 8.8 4.4-1.1 7-4.8 7-8.8V6.8Z"></path>
@@ -9386,6 +9394,7 @@ function getCurrentAppPathRoute() {
     "": "",
     learn: "learn",
     profile: "profile",
+    analytics: "analytics",
     sources: "sources",
     sessions: "sessions",
     "seed-vault": "seed-vault",
@@ -9410,7 +9419,7 @@ function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "profile" || route === "active-sessions" || route === "seed-vault") {
+  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "profile" || route === "active-sessions" || route === "seed-vault" || route === "analytics") {
     return true;
   }
 
@@ -10897,6 +10906,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "profile",
       pageLabel: "Profile",
       pagePath: isUsingPathRoute("profile") ? "/profile" : "#profile",
+    });
+  }
+  if (route === "analytics") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "private-analytics-dashboard",
+      pageLabel: "Analytics Dashboard",
+      pagePath: isUsingPathRoute("analytics") ? "/analytics" : "#analytics",
     });
   }
   if (route === "sessions" || route === "new") {
@@ -29153,6 +29170,10 @@ function updateAuthStatus() {
           ${getMenuIconMarkup("vault")}
           <span>My Seed Vault</span>
         </button>
+        <button id="account-analytics-link" class="account-menu-item" type="button" role="menuitem">
+          ${getMenuIconMarkup("analytics")}
+          <span>Analytics Dashboard</span>
+        </button>
         <button id="account-learn-link" class="account-menu-item account-menu-item--learn" type="button" role="menuitem">
           ${getMenuIconMarkup("learn")}
           <span>Learn / Tutorials</span>
@@ -29199,6 +29220,13 @@ function updateAuthStatus() {
     event.preventDefault();
     event.stopPropagation();
     navigateToSeedVaultRoute();
+  });
+
+  dropdown?.querySelector("#account-analytics-link")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeAccountMenu();
+    navigateToHashRoute("#analytics");
   });
 
   dropdown?.querySelector("#account-learn-link")?.addEventListener("click", (event) => {
@@ -32984,6 +33012,17 @@ function render() {
       pageKey: "sessions",
       pageLabel: "My Sessions",
       pagePath: "#sessions",
+    }));
+    return;
+  }
+
+  if (route === "analytics") {
+    renderPrivateAnalyticsDashboardPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "private-analytics-dashboard",
+      pageLabel: "Analytics Dashboard",
+      pagePath: "#analytics",
     }));
     return;
   }
@@ -61807,6 +61846,543 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
   });
 }
 
+function formatPrivateAnalyticsNumber(value = 0) {
+  return Math.max(0, Number(value) || 0).toLocaleString();
+}
+
+function formatPrivateAnalyticsPercent(value = null, fallback = "Not enough data") {
+  return value === null || value === undefined || !Number.isFinite(Number(value))
+    ? fallback
+    : `${String(Number(Number(value).toFixed(1))).replace(/\.0$/, "")}%`;
+}
+
+function formatPrivateAnalyticsDuration(value = null) {
+  return formatDurationMsShort(value) || "Not enough data";
+}
+
+function formatPrivateAnalyticsDateLabel(value = "", fallback = "No activity yet") {
+  const parsedDate = parseCompletedAtValue(value);
+  return parsedDate ? formatPublicMemberJoinedDateLabel(parsedDate.toISOString()) : fallback;
+}
+
+function getPrivateAnalyticsCompletedSessions(sessions = []) {
+  return sortSessionsNewestFirst((sessions || []).filter(isCompletedValidSessionForAnalytics));
+}
+
+function getPrivateAnalyticsActiveSessions(sessions = []) {
+  return sortActiveSessionsNewestFirst(
+    (sessions || []).filter((session) => normalizeGrowSessionLifecycleState(session) === "active"),
+  );
+}
+
+function getPrivateAnalyticsSessionDate(session = null) {
+  return parseCompletedAtValue(
+    session?.completedAt
+    || session?.completed_at
+    || getSessionStartedAtIso(session)
+    || session?.createdAt
+    || session?.created_at
+    || "",
+  );
+}
+
+function buildPrivateAnalyticsMonthlyRows(sessions = []) {
+  const monthBuckets = new Map();
+  (sessions || []).forEach((session) => {
+    const date = getPrivateAnalyticsSessionDate(session);
+    if (!date) {
+      return;
+    }
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const existing = monthBuckets.get(key) || {
+      key,
+      label: new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(date),
+      count: 0,
+      sortTime: new Date(date.getFullYear(), date.getMonth(), 1).getTime(),
+    };
+    existing.count += 1;
+    monthBuckets.set(key, existing);
+  });
+
+  const rows = [...monthBuckets.values()]
+    .sort((left, right) => left.sortTime - right.sortTime)
+    .slice(-6);
+  const maxCount = Math.max(...rows.map((row) => row.count), 1);
+  return rows.map((row, index) => ({
+    label: row.label,
+    fillWidth: `${Math.round((row.count / maxCount) * 100)}%`,
+    totalWidth: "100%",
+    value: `${row.count} session${row.count === 1 ? "" : "s"}`,
+    tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+  }));
+}
+
+function buildPrivateAnalyticsSessionTrendRows(sessions = []) {
+  return getPrivateAnalyticsCompletedSessions(sessions).slice(0, 6).map((session, index) => {
+    const totals = getSessionSeedTotals(session);
+    const rate = totals.totalSeeds > 0 ? getSessionSuccessRate(session) : 0;
+    return {
+      label: formatSessionLabel(session),
+      fillWidth: `${rate}%`,
+      totalWidth: "100%",
+      value: `${rate}%`,
+      tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+    };
+  });
+}
+
+function createPrivateAnalyticsRollup(label = "") {
+  return {
+    label,
+    totalSeeds: 0,
+    totalGerminated: 0,
+    sessionIds: new Set(),
+    bestRate: null,
+  };
+}
+
+function buildPrivateAnalyticsPerformanceRollups(sessions = [], groupType = "source") {
+  const rollups = new Map();
+  getPrivateAnalyticsCompletedSessions(sessions).forEach((session) => {
+    const summary = getSessionResultSummary(session);
+    const groups = groupType === "variety" ? summary.varietyGroups : summary.sourceGroups;
+    (groups || []).forEach((group) => {
+      const label = String(group?.label || "").trim() || "Not shared";
+      const key = String(group?.key || label).trim().toLowerCase();
+      const rollup = rollups.get(key) || createPrivateAnalyticsRollup(label);
+      const totalSeeds = Math.max(0, Number(group.totalSeeds) || 0);
+      const totalGerminated = Math.max(0, Number(group.totalGerminated || group.totalPlanted) || 0);
+      rollup.totalSeeds += totalSeeds;
+      rollup.totalGerminated += totalGerminated;
+      if (session?.id) {
+        rollup.sessionIds.add(String(session.id));
+      }
+      const rate = totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 100) : null;
+      if (rate !== null) {
+        rollup.bestRate = rollup.bestRate === null ? rate : Math.max(rollup.bestRate, rate);
+      }
+      rollups.set(key, rollup);
+    });
+  });
+
+  return [...rollups.values()].map((rollup) => {
+    const averageRate = rollup.totalSeeds > 0
+      ? Math.round((rollup.totalGerminated / rollup.totalSeeds) * 100)
+      : null;
+    return {
+      label: rollup.label,
+      totalSeeds: rollup.totalSeeds,
+      totalGerminated: rollup.totalGerminated,
+      completedSessions: rollup.sessionIds.size,
+      averageRate,
+      bestRate: rollup.bestRate,
+      fillWidth: `${averageRate || 0}%`,
+      totalWidth: "100%",
+      value: averageRate === null
+        ? "No result"
+        : `${averageRate}% · ${rollup.totalGerminated}/${rollup.totalSeeds}`,
+    };
+  }).sort((left, right) => (
+    (right.averageRate ?? -1) - (left.averageRate ?? -1)
+    || right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  ));
+}
+
+function buildPrivateAnalyticsAgeBucketRows(vaultAnalytics = null, mode = "performance") {
+  const buckets = vaultAnalytics?.ageIntelligence?.buckets || [];
+  return buckets
+    .filter((bucket) => mode === "inventory" ? bucket.quantity > 0 || bucket.entryCount > 0 : bucket.performance?.totalSeedsTested > 0)
+    .map((bucket, index) => {
+      const rate = bucket.performance?.averageGerminationRate;
+      const quantity = Math.max(0, Number(bucket.quantity) || 0);
+      const fill = mode === "inventory"
+        ? Math.min(100, quantity > 0 ? Math.max(8, quantity) : 0)
+        : Math.max(0, Number(rate) || 0);
+      return {
+        label: bucket.label,
+        fillWidth: `${Math.min(100, Math.round(fill))}%`,
+        totalWidth: "100%",
+        value: mode === "inventory"
+          ? `${quantity} seed${quantity === 1 ? "" : "s"}`
+          : `${formatPrivateAnalyticsPercent(rate)} · ${bucket.performance.totalSeedsTested} tested`,
+        tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+      };
+    });
+}
+
+function buildPrivateAnalyticsSourceAgeRows(vaultAnalytics = null) {
+  return (vaultAnalytics?.ageIntelligence?.sourceAgeCorrelations || [])
+    .filter((source) => source.quantity > 0 || source.performance?.totalSeedsTested > 0)
+    .slice(0, 6)
+    .map((source, index) => {
+      const rate = source.performance?.averageGerminationRate;
+      const averageAgeLabel = source.averageAge === null || source.averageAge === undefined
+        ? "Unknown age"
+        : `${formatSeedAgeYearsLabel(source.averageAge)} avg`;
+      return {
+        label: source.label,
+        fillWidth: `${Math.max(0, Number(rate) || 0)}%`,
+        totalWidth: "100%",
+        value: `${formatPrivateAnalyticsPercent(rate)} · ${averageAgeLabel}`,
+        tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+      };
+    });
+}
+
+function buildPrivateAnalyticsVaultDistributionRows(rollups = []) {
+  const rows = (rollups || []).filter((rollup) => rollup.quantity > 0).slice(0, 6);
+  const maxQuantity = Math.max(...rows.map((row) => Math.max(0, Number(row.quantity) || 0)), 1);
+  return rows.map((row, index) => {
+    const quantity = Math.max(0, Number(row.quantity) || 0);
+    return {
+      label: row.label,
+      fillWidth: `${Math.round((quantity / maxQuantity) * 100)}%`,
+      totalWidth: "100%",
+      value: `${quantity} seed${quantity === 1 ? "" : "s"}`,
+      tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+    };
+  });
+}
+
+function getPrivateAnalyticsBestSession(sessions = []) {
+  return getPrivateAnalyticsCompletedSessions(sessions)
+    .map((session) => ({
+      session,
+      rate: getSessionSuccessRate(session),
+      totals: getSessionSeedTotals(session),
+      durationMs: getSessionCompletedDurationMs(session),
+    }))
+    .filter((entry) => entry.totals.totalSeeds > 0)
+    .sort((left, right) => (
+      right.rate - left.rate
+      || right.totals.totalSeeds - left.totals.totalSeeds
+      || (getSessionSortTime(right.session) - getSessionSortTime(left.session))
+    ))[0] || null;
+}
+
+function getPrivateAnalyticsAverageSession(sessions = []) {
+  const completedSessions = getPrivateAnalyticsCompletedSessions(sessions)
+    .filter((session) => getSessionSeedTotals(session).totalSeeds > 0);
+  if (!completedSessions.length) {
+    return null;
+  }
+  const averageRate = Math.round(
+    completedSessions.reduce((sum, session) => sum + getSessionSuccessRate(session), 0) / completedSessions.length,
+  );
+  return {
+    label: `${completedSessions.length} completed session${completedSessions.length === 1 ? "" : "s"}`,
+    rate: averageRate,
+  };
+}
+
+function buildPrivateAnalyticsCommunitySnapshotSummary(memberId = "") {
+  const snapshots = getApprovedPublicSnapshotsForMember(memberId, getApprovedPublicGallerySnapshots());
+  const analytics = calculateProfileAnalyticsFromPublicSnapshots(snapshots);
+  const recentSnapshots = sortGallerySnapshotsNewestFirst(snapshots).slice(0, 4);
+  const lastContribution = recentSnapshots[0] ? getProfileSnapshotActivityDate(recentSnapshots[0]) : "";
+  return {
+    snapshots,
+    recentSnapshots,
+    analytics,
+    lastContribution,
+  };
+}
+
+function buildPrivateAnalyticsCommunityInsightsHooks(state = {}) {
+  return {
+    privacyBoundary: "owner-only",
+    futurePublicCommunityInsights: {
+      sourcePerformanceRows: (state.sourcePerformanceRows || []).map(({ label, totalSeeds, totalGerminated, averageRate }) => ({
+        label,
+        totalSeeds,
+        totalGerminated,
+        averageRate,
+      })),
+      varietyPerformanceRows: (state.varietyPerformanceRows || []).map(({ label, totalSeeds, totalGerminated, averageRate }) => ({
+        label,
+        totalSeeds,
+        totalGerminated,
+        averageRate,
+      })),
+      ageBucketPerformanceRows: (state.agePerformanceRows || []).map(({ label, value }) => ({ label, value })),
+      publicContributionStats: {
+        approvedPublicSnapshots: state.communitySummary?.analytics?.totalPublicSnapshots || 0,
+        bestPublicResult: state.communitySummary?.analytics?.bestGerminationRate ?? null,
+      },
+    },
+  };
+}
+
+function buildPrivateAnalyticsDashboardState() {
+  const visibleSessions = getVisibleUserSessions(getSessions());
+  const ownerAnalytics = calculateProfileAnalyticsFromOwnerSessions(visibleSessions);
+  const completedSessions = getPrivateAnalyticsCompletedSessions(visibleSessions);
+  const activeSessions = getPrivateAnalyticsActiveSessions(visibleSessions);
+  const vaultAnalytics = buildSeedVaultAnalytics(appState.seedVaultEntries || [], visibleSessions);
+  const communitySummary = buildPrivateAnalyticsCommunitySnapshotSummary(appState.user?.id || "");
+  const sourcePerformanceRows = buildPrivateAnalyticsPerformanceRollups(completedSessions, "source");
+  const varietyPerformanceRows = buildPrivateAnalyticsPerformanceRollups(completedSessions, "variety");
+  const agePerformanceRows = buildPrivateAnalyticsAgeBucketRows(vaultAnalytics, "performance");
+  const ageInventoryRows = buildPrivateAnalyticsAgeBucketRows(vaultAnalytics, "inventory");
+  const sourceAgeRows = buildPrivateAnalyticsSourceAgeRows(vaultAnalytics);
+  const state = {
+    privacyBoundary: "owner-only",
+    sessions: visibleSessions,
+    completedSessions,
+    activeSessions,
+    ownerAnalytics,
+    vaultAnalytics,
+    communitySummary,
+    bestSession: getPrivateAnalyticsBestSession(completedSessions),
+    averageSession: getPrivateAnalyticsAverageSession(completedSessions),
+    sessionTimelineRows: buildPrivateAnalyticsMonthlyRows(visibleSessions),
+    germinationTrendRows: buildPrivateAnalyticsSessionTrendRows(completedSessions),
+    sourcePerformanceRows,
+    varietyPerformanceRows,
+    agePerformanceRows,
+    ageInventoryRows,
+    sourceAgeRows,
+    sourceDistributionRows: buildPrivateAnalyticsVaultDistributionRows(vaultAnalytics.rollups?.sources || []),
+    varietyDistributionRows: buildPrivateAnalyticsVaultDistributionRows(vaultAnalytics.rollups?.varieties || []),
+  };
+  state.futureCommunityInsightsHooks = buildPrivateAnalyticsCommunityInsightsHooks(state);
+  return state;
+}
+
+function renderPrivateAnalyticsMetricGrid(cards = []) {
+  return `
+    <div class="private-analytics-kpi-grid">
+      ${cards.map((card) => `
+        <article class="private-analytics-kpi-card">
+          <span>${escapeHtml(card.label || "")}</span>
+          <strong>${escapeHtml(card.value || "")}</strong>
+          <small>${escapeHtml(card.detail || "")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsSectionMarkup(title = "", subtitle = "", bodyMarkup = "", options = {}) {
+  return `
+    <section class="private-analytics-section${options.wide ? " private-analytics-section--wide" : ""}">
+      <div class="private-analytics-section-heading">
+        <span>${escapeHtml(options.eyebrow || "Private Analytics")}</span>
+        <h3>${escapeHtml(title)}</h3>
+        ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+      </div>
+      ${bodyMarkup}
+    </section>
+  `;
+}
+
+function renderPrivateAnalyticsProgressBlock(title = "", rows = [], emptyMessage = "Not enough data yet.") {
+  return `
+    <div class="private-analytics-chart-card">
+      <strong>${escapeHtml(title)}</strong>
+      ${renderSessionAnalyticsProgressRows(rows, { emptyMessage })}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsHighlightList(items = []) {
+  return `
+    <div class="private-analytics-highlight-list">
+      ${items.map((item) => `
+        <article class="private-analytics-highlight-card">
+          <span>${escapeHtml(item.label || "")}</span>
+          <strong>${escapeHtml(item.value || "")}</strong>
+          <small>${escapeHtml(item.detail || "")}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsSnapshotActivityMarkup(snapshots = []) {
+  if (!snapshots.length) {
+    return `
+      <div class="private-analytics-empty">
+        <p>No approved public Community Grow snapshots yet.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="private-analytics-activity-list">
+      ${snapshots.map((snapshot) => {
+        const details = getGallerySnapshotPublicSessionDetails(snapshot);
+        const rate = getGallerySnapshotSuccessRate(snapshot);
+        const dateLabel = formatPrivateAnalyticsDateLabel(getProfileSnapshotActivityDate(snapshot));
+        return `
+          <article class="private-analytics-activity-card">
+            <span>${escapeHtml(dateLabel)}</span>
+            <strong>${escapeHtml(formatPrivateAnalyticsPercent(rate, "Result pending"))}</strong>
+            <small>${escapeHtml([details.seedVarietyLabel, details.sourceLabel].filter(Boolean).join(" · ") || "Community Grow contribution")}</small>
+          </article>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderPrivateAnalyticsDashboardPage() {
+  const state = buildPrivateAnalyticsDashboardState();
+  const { ownerAnalytics, vaultAnalytics, communitySummary } = state;
+  const overviewCards = [
+    { label: "Total sessions", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSessions), detail: "valid owner history" },
+    { label: "Completed", value: formatPrivateAnalyticsNumber(ownerAnalytics.completedSessions), detail: "eligible completed grows" },
+    { label: "Active", value: formatPrivateAnalyticsNumber(ownerAnalytics.activeSessions), detail: "currently in progress" },
+    { label: "Avg germination", value: formatPrivateAnalyticsPercent(ownerAnalytics.averageGerminationRate), detail: "completed session seeds" },
+    { label: "Seeds tested", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested), detail: "eligible completed grows" },
+    { label: "Germinated", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated), detail: "recorded successes" },
+    { label: "Vault inventory", value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalSeedsOwned), detail: "private active seeds" },
+    { label: "Community Grow", value: formatPrivateAnalyticsNumber(communitySummary.analytics.totalPublicSnapshots), detail: "approved public snapshots" },
+  ];
+  const bestSession = state.bestSession;
+  const averageSession = state.averageSession;
+  const oldestSuccessful = vaultAnalytics.ageIntelligence.oldestSuccessfulGermination;
+  const bestAgeInsight = (vaultAnalytics.ageIntelligence.insights || []).find((insight) => insight.key === "best-performing-age-range");
+  const largestAgeInsight = (vaultAnalytics.ageIntelligence.insights || []).find((insight) => insight.key === "largest-age-group");
+  const topSourceRows = state.sourcePerformanceRows.slice(0, 6).map((row, index) => ({
+    ...row,
+    tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+  }));
+  const topVarietyRows = state.varietyPerformanceRows.slice(0, 6).map((row, index) => ({
+    ...row,
+    tone: ["green-lime", "green-blue", "orange-green", "gold-green"][index % 4],
+  }));
+  const mostTestedVariety = state.varietyPerformanceRows.length
+    ? [...state.varietyPerformanceRows].sort((left, right) => right.totalSeeds - left.totalSeeds)[0]
+    : null;
+
+  app.innerHTML = `
+    <section class="private-analytics-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
+      <div class="private-analytics-page-actions">
+        <a class="button button-secondary" href="#sessions">Back to My Sessions</a>
+        <a class="button button-secondary" href="#seed-vault">Open My Seed Vault</a>
+      </div>
+      <header class="private-analytics-hero">
+        <div class="private-analytics-hero-copy">
+          <p class="eyebrow">Owner-only dashboard</p>
+          <h2>Analytics Dashboard</h2>
+          <p>Deeper private cultivation intelligence built from your sessions, Seed Vault, age buckets, and approved Community Grow contributions.</p>
+        </div>
+        <div class="private-analytics-hero-stat">
+          <span>Overall Germination</span>
+          <div class="overall-rate-ring session-analytics-rate-ring session-analytics-rate-ring--overall chart-gradient-radial-primary" aria-hidden="true" style="--overall-ring-progress:${escapeHtml(formatPrivateAnalyticsPercent(ownerAnalytics.averageGerminationRate, "0%"))};">
+            <strong class="overall-rate-value">${escapeHtml(formatPrivateAnalyticsPercent(ownerAnalytics.averageGerminationRate, "0%"))}</strong>
+          </div>
+          <small>${escapeHtml(`${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated)} of ${formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested)} seeds`)}</small>
+        </div>
+      </header>
+
+      ${renderPrivateAnalyticsSectionMarkup("Overview", "A compact rollup across private owner data and public-safe contribution counts.", renderPrivateAnalyticsMetricGrid(overviewCards), { wide: true, eyebrow: "Overview" })}
+
+      <div class="private-analytics-dashboard-grid">
+        ${renderPrivateAnalyticsSectionMarkup("Germination Performance", "Session-level results with integrity filters applied.", `
+          ${renderPrivateAnalyticsHighlightList([
+            {
+              label: "Best session",
+              value: bestSession ? `${formatSessionLabel(bestSession.session)} · ${bestSession.rate}%` : "Not enough data",
+              detail: bestSession ? `${bestSession.totals.totalGerminated}/${bestSession.totals.totalSeeds} seeds${bestSession.durationMs ? ` · ${formatDurationMsShort(bestSession.durationMs)}` : ""}` : "Complete a session to unlock this.",
+            },
+            {
+              label: "Average session",
+              value: averageSession ? `${averageSession.rate}%` : "Not enough data",
+              detail: averageSession?.label || "Completed sessions with seed totals.",
+            },
+            {
+              label: "Completion rate",
+              value: formatPrivateAnalyticsPercent(ownerAnalytics.completionRate),
+              detail: `${formatPrivateAnalyticsNumber(ownerAnalytics.completedSessions)} completed of ${formatPrivateAnalyticsNumber(ownerAnalytics.totalSessions)} eligible sessions`,
+            },
+            {
+              label: "Avg duration",
+              value: formatPrivateAnalyticsDuration(ownerAnalytics.averageSessionDurationMs),
+              detail: "average completed-session timeline",
+            },
+          ])}
+          ${renderPrivateAnalyticsProgressBlock("Seeds tested vs germinated", [
+            { label: "Seeds tested", fillWidth: "100%", totalWidth: "100%", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested), tone: "green-blue" },
+            { label: "Germinated", fillWidth: `${Math.max(0, Number(ownerAnalytics.averageGerminationRate) || 0)}%`, totalWidth: "100%", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated), tone: "green-lime" },
+          ], "No completed session seed totals yet.")}
+          ${renderPrivateAnalyticsProgressBlock("Recent germination trend", state.germinationTrendRows, "Complete sessions to build a germination trend.")}
+        `, { eyebrow: "Performance" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Seed Age", "Owner-only age bucket intelligence from linked Vault entries and sessions.", `
+          ${renderPrivateAnalyticsHighlightList([
+            { label: "Best performing age range", value: bestAgeInsight?.value || "Not enough linked data", detail: bestAgeInsight?.detail || "Requires completed linked sessions." },
+            {
+              label: "Oldest successful",
+              value: oldestSuccessful ? `${formatSeedAgeYearsLabel(oldestSuccessful.ageYears)} · ${formatPrivateAnalyticsPercent(oldestSuccessful.rate)}` : "No linked result",
+              detail: oldestSuccessful ? [oldestSuccessful.source, oldestSuccessful.variety].filter(Boolean).join(" · ") || "Linked Vault Entry" : "Complete a linked session with known age.",
+            },
+            { label: "Unknown age inventory", value: `${formatPrivateAnalyticsNumber(vaultAnalytics.overview.unknownAgeCount)} entries`, detail: "private Vault entries without known age" },
+          ])}
+          ${renderPrivateAnalyticsProgressBlock("Performance by age bucket", state.agePerformanceRows, "Link Vault entries to completed sessions to unlock age performance.")}
+          ${renderPrivateAnalyticsProgressBlock("Inventory by age bucket", state.ageInventoryRows, "Add age data to Vault entries to see distribution.")}
+        `, { eyebrow: "Seed Age" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Source Performance", "Source averages and source age-performance trends remain private.", `
+          ${renderPrivateAnalyticsProgressBlock("Source averages", topSourceRows, "No source performance data yet.")}
+          ${renderPrivateAnalyticsProgressBlock("Source age-performance trends", state.sourceAgeRows, "Add Vault age data and linked sessions to unlock source age trends.")}
+        `, { eyebrow: "Sources" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Variety / Genetics", "Top, repeat-tested, and oldest-successful variety signals.", `
+          ${renderPrivateAnalyticsHighlightList([
+            {
+              label: "Top performing variety",
+              value: topVarietyRows[0] ? `${topVarietyRows[0].label} · ${formatPrivateAnalyticsPercent(topVarietyRows[0].averageRate)}` : "Not enough data",
+              detail: topVarietyRows[0] ? `${topVarietyRows[0].totalGerminated}/${topVarietyRows[0].totalSeeds} seeds` : "Completed sessions unlock this.",
+            },
+            {
+              label: "Most tested variety",
+              value: mostTestedVariety ? mostTestedVariety.label : "Not enough data",
+              detail: mostTestedVariety ? `${formatPrivateAnalyticsNumber(mostTestedVariety.totalSeeds)} seeds tested` : "Track varieties in sessions.",
+            },
+            {
+              label: "Repeat-tested varieties",
+              value: formatPrivateAnalyticsNumber(vaultAnalytics.ageIntelligence.repeatTestedVarieties.length),
+              detail: "linked Vault varieties with repeated completed data",
+            },
+          ])}
+          ${renderPrivateAnalyticsProgressBlock("Variety performance", topVarietyRows, "No variety performance data yet.")}
+        `, { eyebrow: "Genetics" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Seed Vault Intelligence", "Inventory health, low stock, age distribution, and source distribution.", `
+          ${renderPrivateAnalyticsHighlightList([
+            { label: "Low inventory", value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.lowInventoryEntries), detail: "active entries at 2 seeds or fewer" },
+            { label: "Out of stock", value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.outOfStockEntries), detail: "active entries with zero remaining" },
+            { label: "Average known age", value: vaultAnalytics.overview.averageAge === null ? "Not enough data" : formatSeedAgeYearsLabel(vaultAnalytics.overview.averageAge), detail: "known or estimated Vault age" },
+            { label: "Largest age group", value: largestAgeInsight?.value || "No inventory yet", detail: largestAgeInsight?.detail || "Add Vault Entries to build this." },
+          ])}
+          ${renderPrivateAnalyticsProgressBlock("Source distribution", state.sourceDistributionRows, "Add Vault sources to see inventory distribution.")}
+          ${renderPrivateAnalyticsProgressBlock("Variety distribution", state.varietyDistributionRows, "Add Vault varieties to see inventory distribution.")}
+        `, { eyebrow: "Seed Vault" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Community Participation", "Only approved public snapshots are counted here.", `
+          ${renderPrivateAnalyticsHighlightList([
+            { label: "Approved public snapshots", value: formatPrivateAnalyticsNumber(communitySummary.analytics.totalPublicSnapshots), detail: "public-safe Community Grow contributions" },
+            { label: "Best public result", value: formatPrivateAnalyticsPercent(communitySummary.analytics.bestGerminationRate), detail: "approved public snapshot history" },
+            { label: "Last contribution", value: formatPrivateAnalyticsDateLabel(communitySummary.lastContribution), detail: "latest approved public contribution" },
+          ])}
+          ${renderPrivateAnalyticsSnapshotActivityMarkup(communitySummary.recentSnapshots)}
+        `, { eyebrow: "Community Grow" })}
+
+        ${renderPrivateAnalyticsSectionMarkup("Personal Trends", "Private trend hooks for sessions, germination, sources, and seed age.", `
+          ${renderPrivateAnalyticsProgressBlock("Sessions over time", state.sessionTimelineRows, "Start sessions to build a timeline.")}
+          ${renderPrivateAnalyticsProgressBlock("Germination trend", state.germinationTrendRows, "Complete sessions to build a germination trend.")}
+          ${renderPrivateAnalyticsProgressBlock("Source trend", topSourceRows, "Track sources to build a source trend.")}
+          ${renderPrivateAnalyticsProgressBlock("Age trend", state.agePerformanceRows, "Link Vault age data to sessions to build an age trend.")}
+        `, { eyebrow: "Trends", wide: true })}
+      </div>
+    </section>
+  `;
+  hydrateAppIconSlots(app);
+}
+
 function isSeedVaultRouteActive() {
   const currentHashRoute = String(window.location.hash || appState.currentRouteHash || "").replace(/^#/, "").split("/")[0];
   return currentHashRoute === "seed-vault" || getCurrentAppPathRoute() === "seed-vault";
@@ -63684,6 +64260,7 @@ function renderMySessionsAnalyticsPanelMarkup(sessions = [], options = {}) {
           <h3>Session Analytics</h3>
           <p>Visual trends based on recorded session results and germination performance.</p>
         </div>
+        <a class="button button-primary session-analytics-full-dashboard-link" href="#analytics">View Full Analytics</a>
       </div>
       <div class="session-analytics-grid">
         <article class="session-analytics-card session-analytics-card--overview">
