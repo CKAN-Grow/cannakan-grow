@@ -227,6 +227,18 @@
           <span>Username / Display Name</span>
           <input type="text" name="username" placeholder="Choose a display name" maxlength="40" required>
         </label>
+        <label>
+          <span>Public Handle (optional)</span>
+          <input type="text" name="publicHandle" placeholder="grower-name" maxlength="32" pattern="[A-Za-z0-9_-]{3,32}">
+        </label>
+        <label>
+          <span>Region (optional)</span>
+          <input type="text" name="locationRegion" placeholder="Pacific Northwest" maxlength="80">
+        </label>
+        <label>
+          <span>Bio (optional)</span>
+          <textarea name="bio" placeholder="A short public grow profile bio" maxlength="280" rows="3"></textarea>
+        </label>
         <label class="profile-avatar-field">
           <span>Profile Picture (optional)</span>
           <span class="file-upload-control">

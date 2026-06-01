@@ -64,6 +64,7 @@ const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
+const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -1468,6 +1469,7 @@ const appState = {
     status: "all",
   },
   publicMemberProfiles: {},
+  publicMemberProfileHandleIndex: {},
   publicMemberProfilesRefreshPromises: {},
   publicMemberProfilesViewUnavailable: false,
   publicMemberFollowSummaries: {},
@@ -9372,7 +9374,7 @@ function routeRequiresSignedInUser(hash = window.location.hash || "#home") {
   const normalizedHash = normalizeNavigationHash(hash);
   const [route, id, subroute] = normalizedHash.replace(/^#/, "").split("/");
 
-  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "members" || route === "profile" || route === "active-sessions" || route === "seed-vault") {
+  if (route === "admin" || route === "community-grow-moderation" || route === "network" || route === "new" || route === "profile" || route === "active-sessions" || route === "seed-vault") {
     return true;
   }
 
@@ -16224,12 +16226,40 @@ function normalizeProfilePageSettings(settings = {}, fallbackSettings = DEFAULT_
   };
 }
 
+function normalizePublicProfileVisibility(value = "", showProfileInCommunityGrow = true) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  if (["private", "hidden", "disabled"].includes(normalizedValue) || showProfileInCommunityGrow === false) {
+    return "private";
+  }
+  return "public";
+}
+
+function normalizePublicProfileHandle(value = "") {
+  const normalizedValue = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32);
+  return normalizedValue.length >= 3 ? normalizedValue : "";
+}
+
+function normalizePublicProfileTextField(value = "", maxLength = 240) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+}
+
 function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE_PAGE_SETTINGS) {
   if (!row) {
     return null;
   }
 
   const normalizedSettings = normalizeProfilePageSettings(row, fallbackSettings);
+  const profileVisibility = normalizePublicProfileVisibility(
+    row.profile_visibility || row.profileVisibility || "",
+    normalizedSettings.showProfileInCommunityGrow,
+  );
+  const publicHandle = normalizePublicProfileHandle(row.public_handle || row.publicHandle || row.handle || "");
   return {
     id: String(row.id || "").trim(),
     displayName: getDisplayName(
@@ -16241,13 +16271,26 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
       { fallbackLabel: "User" },
     ),
     avatarUrl: resolveAvatarImageUrl(row.avatar_url, row.avatar_path),
+    bio: normalizePublicProfileTextField(row.bio || "", 280),
+    publicHandle,
+    locationRegion: normalizePublicProfileTextField(row.location_region || row.locationRegion || row.region || "", 80),
+    profileVisibility,
+    isPublicVisible: profileVisibility === "public" && normalizedSettings.showProfileInCommunityGrow !== false,
     joinedAt: row.joined_at || row.created_at || "",
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
     ...normalizedSettings,
   };
 }
 
 function isPublicMemberProfilesViewUnavailableError(error) {
   return isSupabaseTableMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE)
+    || isSupabaseColumnMissingError(error, PUBLIC_MEMBER_PROFILES_TABLE, [
+      "bio",
+      "public_handle",
+      "location_region",
+      "profile_visibility",
+    ])
     || getSupabaseErrorStatusCode(error) === 404;
 }
 
@@ -16265,9 +16308,41 @@ function logPublicMemberProfilesFallback(key = "public-member-profiles-fallback"
   logRuntimeIssueOnce("warn", key, message, details);
 }
 
-function getPublicMemberProfileRoute(memberId = "") {
-  const normalizedId = String(memberId || "").trim();
-  return normalizedId ? `#members/${encodeURIComponent(normalizedId)}` : "#gallery";
+function cachePublicMemberProfile(profile = null) {
+  if (!profile?.id) {
+    return null;
+  }
+  const normalizedProfile = mergePublicMemberProfileRecord(profile, null);
+  if (!normalizedProfile?.id) {
+    return null;
+  }
+  appState.publicMemberProfiles[normalizedProfile.id] = normalizedProfile;
+  if (normalizedProfile.publicHandle) {
+    appState.publicMemberProfileHandleIndex[normalizedProfile.publicHandle] = normalizedProfile.id;
+  }
+  return normalizedProfile;
+}
+
+function resolvePublicMemberProfileId(profileKey = "") {
+  const normalizedKey = String(profileKey || "").trim();
+  if (!normalizedKey) {
+    return "";
+  }
+  if (isUuidLike(normalizedKey)) {
+    return normalizedKey;
+  }
+  const normalizedHandle = normalizePublicProfileHandle(decodeURIComponent(normalizedKey));
+  return normalizedHandle ? String(appState.publicMemberProfileHandleIndex[normalizedHandle] || "").trim() : "";
+}
+
+function getPublicMemberProfileRoute(memberIdOrProfile = "") {
+  const profile = memberIdOrProfile && typeof memberIdOrProfile === "object"
+    ? memberIdOrProfile
+    : getPublicMemberProfile(memberIdOrProfile);
+  const handle = normalizePublicProfileHandle(profile?.publicHandle || "");
+  const normalizedId = String(profile?.id || memberIdOrProfile || "").trim();
+  const routeKey = handle || normalizedId;
+  return routeKey ? `#members/${encodeURIComponent(routeKey)}` : "#gallery";
 }
 
 function getApprovedPublicSnapshotsForMember(memberId = "", snapshots = getApprovedPublicGallerySnapshots()) {
@@ -16282,6 +16357,88 @@ function getApprovedPublicSnapshotsForMember(memberId = "", snapshots = getAppro
   ));
 }
 
+function getMostCommonProfileStatValue(values = []) {
+  const counts = new Map();
+  (values || []).forEach((value) => {
+    const normalizedValue = normalizePublicProfileTextField(value, 120);
+    if (!normalizedValue || normalizedValue === "Not shared") {
+      return;
+    }
+    const key = normalizedValue.toLowerCase();
+    const existing = counts.get(key) || { value: normalizedValue, count: 0 };
+    existing.count += 1;
+    counts.set(key, existing);
+  });
+  return [...counts.values()].sort((left, right) => (
+    (right.count - left.count)
+    || left.value.localeCompare(right.value)
+  ))[0]?.value || "";
+}
+
+function calculateProfileStatsFromPublicSnapshots(snapshots = []) {
+  const safeSnapshots = (snapshots || []).filter(isGallerySnapshotAnalyticsEligible);
+  const completedSessionIds = new Set();
+  const rates = [];
+  const sources = [];
+  const varieties = [];
+
+  safeSnapshots.forEach((snapshot) => {
+    const sessionId = String(snapshot?.sessionId || "").trim();
+    if (sessionId) {
+      completedSessionIds.add(sessionId);
+    }
+    const rate = getGallerySnapshotSuccessRate(snapshot);
+    if (Number.isFinite(rate)) {
+      rates.push(rate);
+    }
+    const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
+    sources.push(publicDetails.sourceLabel);
+    varieties.push(publicDetails.seedVarietyLabel);
+  });
+
+  const averageRate = rates.length
+    ? Math.round((rates.reduce((sum, rate) => sum + rate, 0) / rates.length) * 10) / 10
+    : null;
+  const bestRate = rates.length ? Math.max(...rates) : null;
+
+  return {
+    totalPublicSnapshots: safeSnapshots.length,
+    completedSessions: completedSessionIds.size || safeSnapshots.length,
+    averageGerminationRate: averageRate,
+    bestGerminationResult: bestRate,
+    favoriteSource: getMostCommonProfileStatValue(sources),
+    favoriteVariety: getMostCommonProfileStatValue(varieties),
+  };
+}
+
+function calculateOwnerProfilePrivateStats(memberId = "", sessions = getSessions()) {
+  const normalizedId = String(memberId || "").trim();
+  if (!normalizedId || normalizedId !== String(appState.user?.id || "").trim()) {
+    return null;
+  }
+
+  const eligibleSessions = getAggregateStatsSessions(sessions || []);
+  return {
+    completedSessions: eligibleSessions.length,
+  };
+}
+
+function calculatePublicProfileStats({ memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId), includeOwnerPrivate = false } = {}) {
+  const publicStats = calculateProfileStatsFromPublicSnapshots(snapshots);
+  const ownerStats = includeOwnerPrivate ? calculateOwnerProfilePrivateStats(memberId) : null;
+  return {
+    ...publicStats,
+    completedSessions: ownerStats?.completedSessions ?? publicStats.completedSessions,
+    futureHooks: {
+      reputation: null,
+      verifiedGrowerTrust: null,
+      cstpTrustBadges: [],
+      seedVaultPublicStats: null,
+      seedAgeInsights: null,
+    },
+  };
+}
+
 function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId)) {
   const normalizedId = String(memberId || "").trim();
   if (!normalizedId) {
@@ -16293,11 +16450,15 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     return null;
   }
 
-  const sharedProfileSnapshot = memberSnapshots.find(hasGallerySnapshotGrowMember) || memberSnapshots[0];
   return {
     id: normalizedId,
-    displayName: getGallerySnapshotMemberLabel(sharedProfileSnapshot),
-    avatarUrl: getSafeAvatarImageUrl(sharedProfileSnapshot?.profileImageUrl || ""),
+    displayName: "Community grower",
+    avatarUrl: "",
+    bio: "",
+    publicHandle: "",
+    locationRegion: "",
+    profileVisibility: "public",
+    isPublicVisible: true,
     joinedAt: "",
     ...getDefaultProfilePageSettings(),
   };
@@ -16314,6 +16475,7 @@ function buildCurrentUserPublicMemberProfileFallback(
   }
 
   const normalizedSettings = normalizeProfilePageSettings(settings, DEFAULT_PROFILE_PAGE_SETTINGS);
+  const existingPublicProfile = normalizedUserId ? appState.publicMemberProfiles[normalizedUserId] || null : null;
   return {
     id: normalizedUserId,
     displayName: getDisplayName(
@@ -16324,6 +16486,11 @@ function buildCurrentUserPublicMemberProfileFallback(
       { fallbackLabel: "User" },
     ),
     avatarUrl: getSafeAvatarImageUrl(profile?.avatarUrl || ""),
+    bio: normalizePublicProfileTextField(existingPublicProfile?.bio || "", 280),
+    publicHandle: normalizePublicProfileHandle(existingPublicProfile?.publicHandle || ""),
+    locationRegion: normalizePublicProfileTextField(existingPublicProfile?.locationRegion || "", 80),
+    profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
+    isPublicVisible: normalizedSettings.showProfileInCommunityGrow !== false,
     joinedAt: profile?.createdAt || user?.created_at || "",
     ...normalizedSettings,
   };
@@ -16348,15 +16515,25 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
       { fallbackLabel: "User" },
     ),
     avatarUrl: getSafeAvatarImageUrl(primaryProfile?.avatarUrl || fallbackProfile?.avatarUrl || ""),
+    bio: normalizePublicProfileTextField(primaryProfile?.bio || fallbackProfile?.bio || "", 280),
+    publicHandle: normalizePublicProfileHandle(primaryProfile?.publicHandle || fallbackProfile?.publicHandle || ""),
+    locationRegion: normalizePublicProfileTextField(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || "", 80),
+    profileVisibility: normalizePublicProfileVisibility(
+      primaryProfile?.profileVisibility || fallbackProfile?.profileVisibility || "",
+      resolvedSettings.showProfileInCommunityGrow,
+    ),
     joinedAt: primaryProfile?.joinedAt || fallbackProfile?.joinedAt || "",
+    createdAt: primaryProfile?.createdAt || fallbackProfile?.createdAt || "",
+    updatedAt: primaryProfile?.updatedAt || fallbackProfile?.updatedAt || "",
     ...resolvedSettings,
   };
+  resolvedProfile.isPublicVisible = resolvedProfile.profileVisibility === "public" && resolvedProfile.showProfileInCommunityGrow !== false;
 
   return resolvedProfile.id ? resolvedProfile : null;
 }
 
 function getPublicMemberProfile(memberId = "") {
-  const normalizedId = String(memberId || "").trim();
+  const normalizedId = resolvePublicMemberProfileId(memberId) || String(memberId || "").trim();
   if (!normalizedId) {
     return null;
   }
@@ -16367,14 +16544,18 @@ function getPublicMemberProfile(memberId = "") {
 }
 
 async function loadPublicMemberProfile(memberId = "", options = {}) {
-  const normalizedId = String(memberId || "").trim();
-  if (!normalizedId) {
+  const normalizedKey = String(memberId || "").trim();
+  const normalizedHandle = isUuidLike(normalizedKey) ? "" : normalizePublicProfileHandle(decodeURIComponent(normalizedKey));
+  const cachedId = resolvePublicMemberProfileId(normalizedKey);
+  const normalizedId = cachedId || (isUuidLike(normalizedKey) ? normalizedKey : "");
+  if (!normalizedId && !normalizedHandle) {
     return null;
   }
 
   const { force = false, reason = "unspecified" } = options;
-  const fallbackProfile = buildDerivedPublicMemberProfile(normalizedId);
-  if (!force && appState.publicMemberProfiles[normalizedId]) {
+  const fallbackProfile = normalizedId ? buildDerivedPublicMemberProfile(normalizedId) : null;
+  const refreshKey = normalizedId || normalizedHandle;
+  if (!force && normalizedId && appState.publicMemberProfiles[normalizedId]) {
     return appState.publicMemberProfiles[normalizedId];
   }
 
@@ -16385,23 +16566,26 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
     return fallbackProfile || null;
   }
 
-  if (!force && appState.publicMemberProfilesRefreshPromises[normalizedId]) {
-    return appState.publicMemberProfilesRefreshPromises[normalizedId];
+  if (!force && appState.publicMemberProfilesRefreshPromises[refreshKey]) {
+    return appState.publicMemberProfilesRefreshPromises[refreshKey];
   }
 
   const refreshPromise = (async () => {
     try {
-      const { data, error } = await appState.supabase
+      const canReadOwnerFields = Boolean(normalizedId && String(appState.user?.id || "").trim() === normalizedId);
+      let query = appState.supabase
         .from(PUBLIC_MEMBER_PROFILES_TABLE)
-        .select("*")
-        .eq("id", normalizedId)
-        .maybeSingle();
+        .select(canReadOwnerFields ? "*" : PUBLIC_MEMBER_PROFILE_SAFE_SELECT);
+      query = normalizedId
+        ? query.eq("id", normalizedId)
+        : query.eq("public_handle", normalizedHandle);
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         if (isPublicMemberProfilesViewUnavailableError(error)) {
           markPublicMemberProfilesViewUnavailable({
             reason,
-            memberId: normalizedId,
+            memberId: normalizedId || normalizedHandle,
             error,
             unavailable: true,
           });
@@ -16411,7 +16595,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
             "Public member profile lookup failed; using snapshot-only fallback data.",
             {
               reason,
-              memberId: normalizedId,
+              memberId: normalizedId || normalizedHandle,
               error,
             },
           );
@@ -16427,7 +16611,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
       const resolvedProfile = mergePublicMemberProfileRecord(loadedProfile, fallbackProfile) || fallbackProfile || null;
 
       if (resolvedProfile) {
-        appState.publicMemberProfiles[normalizedId] = resolvedProfile;
+        cachePublicMemberProfile(resolvedProfile);
       }
 
       return resolvedProfile;
@@ -16435,7 +16619,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
       if (isPublicMemberProfilesViewUnavailableError(error)) {
         markPublicMemberProfilesViewUnavailable({
           reason,
-          memberId: normalizedId,
+          memberId: normalizedId || normalizedHandle,
           error,
           unavailable: true,
         });
@@ -16445,7 +16629,7 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
           "Public member profile lookup failed; using snapshot-only fallback data.",
           {
             reason,
-            memberId: normalizedId,
+            memberId: normalizedId || normalizedHandle,
             error,
           },
         );
@@ -16455,11 +16639,11 @@ async function loadPublicMemberProfile(memberId = "", options = {}) {
       }
       return fallbackProfile || null;
     } finally {
-      delete appState.publicMemberProfilesRefreshPromises[normalizedId];
+      delete appState.publicMemberProfilesRefreshPromises[refreshKey];
     }
   })();
 
-  appState.publicMemberProfilesRefreshPromises[normalizedId] = refreshPromise;
+  appState.publicMemberProfilesRefreshPromises[refreshKey] = refreshPromise;
   return refreshPromise;
 }
 
@@ -16470,8 +16654,8 @@ async function refreshPublicMemberProfile(memberId = "", options = {}) {
   }
 
   const profile = await loadPublicMemberProfile(normalizedId, options);
-  if (normalizeNavigationHash(window.location.hash || "#home") === getPublicMemberProfileRoute(normalizedId)) {
-    renderPublicMemberProfile(normalizedId);
+  if (normalizeNavigationHash(window.location.hash || "#home").startsWith("#members/")) {
+    renderPublicMemberProfile(profile?.id || normalizedId);
   }
   return profile;
 }
@@ -16502,7 +16686,7 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
   try {
     const response = await appState.supabase
       .from(PUBLIC_MEMBER_PROFILES_TABLE)
-      .select("*")
+      .select(PUBLIC_MEMBER_PROFILE_SAFE_SELECT)
       .in("id", missingIds);
     data = response.data;
 
@@ -16571,7 +16755,7 @@ async function loadPublicMemberProfilesByIds(memberIds = [], options = {}) {
     const loadedProfile = normalizePublicMemberProfileRow(rowsById.get(memberId));
     const resolvedProfile = mergePublicMemberProfileRecord(loadedProfile, fallbackProfile) || fallbackProfile;
     if (resolvedProfile) {
-      appState.publicMemberProfiles[memberId] = resolvedProfile;
+      cachePublicMemberProfile(resolvedProfile);
     }
   });
 
@@ -19012,12 +19196,45 @@ function buildPublicMemberProfileUpsertPayload(
   const existingSettings = normalizeProfilePageSettings(existingProfile || {}, loadStoredProfilePageSettings(normalizedUserId));
   const normalizedSettings = normalizeProfilePageSettings(settingsInput, existingSettings);
   const displayName = String(profileInput?.username || existingProfile?.displayName || "").trim();
+  const bio = normalizePublicProfileTextField(
+    settingsInput?.bio
+    ?? profileInput?.bio
+    ?? existingProfile?.bio
+    ?? "",
+    280,
+  );
+  const publicHandle = normalizePublicProfileHandle(
+    settingsInput?.publicHandle
+    ?? settingsInput?.public_handle
+    ?? profileInput?.publicHandle
+    ?? existingProfile?.publicHandle
+    ?? "",
+  );
+  const locationRegion = normalizePublicProfileTextField(
+    settingsInput?.locationRegion
+    ?? settingsInput?.location_region
+    ?? profileInput?.locationRegion
+    ?? existingProfile?.locationRegion
+    ?? "",
+    80,
+  );
+  const profileVisibility = normalizePublicProfileVisibility(
+    settingsInput?.profileVisibility
+    ?? settingsInput?.profile_visibility
+    ?? existingProfile?.profileVisibility
+    ?? "",
+    normalizedSettings.showProfileInCommunityGrow,
+  );
 
   return {
     id: normalizedUserId,
     user_id: normalizedUserId,
     display_name: displayName || null,
     avatar_url: String(profileInput?.avatarUrl || existingProfile?.avatarUrl || "").trim(),
+    bio,
+    public_handle: publicHandle || null,
+    location_region: locationRegion,
+    profile_visibility: profileVisibility,
     notify_community_activity: normalizedSettings.notifyCommunityActivity === true,
     show_profile_in_community_grow: normalizedSettings.showProfileInCommunityGrow !== false,
     allow_followers: normalizedSettings.allowFollowers !== false,
@@ -19188,7 +19405,7 @@ async function upsertCurrentUserPublicMemberProfile(
   }
 
   if (verifiedProfile) {
-    appState.publicMemberProfiles[normalizedUserId] = verifiedProfile;
+    cachePublicMemberProfile(verifiedProfile);
     syncProfilePageSettingsCache(normalizedUserId, verifiedProfile, { persistLocal });
   }
   return verifiedProfile;
@@ -22813,11 +23030,8 @@ function getGallerySnapshotSortLabel(snapshot) {
 }
 
 function getGallerySnapshotGrowMemberLabel(snapshot) {
-  if (!hasGallerySnapshotGrowMember(snapshot)) {
-    return "";
-  }
-
-  return String(snapshot?.profileName || "").trim();
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  return member.canShowIdentity ? String(member.displayName || "").trim() : "";
 }
 
 function hasGallerySnapshotImage(snapshot) {
@@ -22957,8 +23171,12 @@ function renderGallerySharedProfileMarkup(snapshot) {
     return "";
   }
 
-  const profileName = String(snapshot.profileName || "").trim();
-  const safeProfileImageUrl = getSafeAvatarImageUrl(snapshot.profileImageUrl);
+  const member = getGallerySnapshotCardMemberProfile(snapshot);
+  if (!member.canShowIdentity) {
+    return "";
+  }
+  const profileName = String(member.displayName || "").trim();
+  const safeProfileImageUrl = getSafeAvatarImageUrl(member.avatarUrl);
   const avatarMarkup = renderPublicMemberAvatarMarkup(
     profileName || "Shared grower profile",
     safeProfileImageUrl,
@@ -22969,7 +23187,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
   }
 
   const memberId = String(snapshot.userId || "").trim();
-  const memberRoute = memberId ? getPublicMemberProfileRoute(memberId) : "";
+  const memberRoute = member.profileRoute || (memberId ? getPublicMemberProfileRoute(memberId) : "");
   const profileLabel = profileName || "this member";
   const wrapperTag = memberRoute ? "a" : "div";
   const wrapperAttributes = memberRoute
@@ -22987,27 +23205,43 @@ function renderGallerySharedProfileMarkup(snapshot) {
 function getGallerySnapshotCardMemberProfile(snapshot) {
   const memberId = String(snapshot?.userId || "").trim();
   const cachedProfile = memberId ? getPublicMemberProfile(memberId) : null;
+  const isOwnSnapshot = Boolean(memberId && String(appState.user?.id || "").trim() === memberId);
+  const canShowCachedProfile = Boolean(cachedProfile && (cachedProfile.isPublicVisible !== false || isOwnSnapshot || isAdminUser()));
+  const canShowSubmittedProfile = Boolean(isOwnSnapshot || isAdminUser());
+  const publicProfile = canShowCachedProfile
+    ? cachedProfile
+    : (isOwnSnapshot
+      ? buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, getCurrentProfilePageSettings())
+      : (canShowSubmittedProfile
+        ? {
+          id: memberId,
+          displayName: snapshot?.profileName || snapshot?.submittedBy || "",
+          avatarUrl: snapshot?.profileImageUrl || "",
+          isPublicVisible: true,
+        }
+        : null));
   const fallbackDisplayName = getDisplayName(
     {
       id: memberId,
-      displayName: cachedProfile?.displayName || "",
-      profileName: snapshot?.profileName || "",
-      submittedBy: snapshot?.submittedBy || "",
-      submittedByName: snapshot?.submittedByName || "",
+      displayName: publicProfile?.displayName || "",
+      profileName: canShowSubmittedProfile ? snapshot?.profileName || "" : "",
+      submittedBy: canShowSubmittedProfile ? snapshot?.submittedBy || "" : "",
+      submittedByName: canShowSubmittedProfile ? snapshot?.submittedByName || "" : "",
     },
-    { fallbackLabel: "User" },
+    { fallbackLabel: "Community grower" },
   );
   const fallbackAvatarUrl = String(
-    cachedProfile?.avatarUrl
-    || snapshot?.profileImageUrl
+    publicProfile?.avatarUrl
+    || (canShowSubmittedProfile ? snapshot?.profileImageUrl : "")
     || "",
   ).trim();
 
   return {
     memberId,
-    displayName: fallbackDisplayName,
+    displayName: publicProfile ? fallbackDisplayName : "Community grower",
     avatarUrl: getSafeAvatarImageUrl(fallbackAvatarUrl),
-    profileRoute: memberId ? getPublicMemberProfileRoute(memberId) : "",
+    profileRoute: publicProfile && memberId ? getPublicMemberProfileRoute(publicProfile) : "",
+    canShowIdentity: Boolean(publicProfile),
   };
 }
 
@@ -23039,6 +23273,10 @@ function renderGalleryFollowButtonMarkup(snapshot, options = {}) {
 
   const memberId = String(snapshot?.userId || "").trim();
   if (!memberId || isViewingOwnPublicMemberProfile(memberId)) {
+    return "";
+  }
+  const memberProfile = getPublicMemberProfile(memberId);
+  if (!memberProfile || memberProfile.isPublicVisible === false) {
     return "";
   }
 
@@ -32021,10 +32259,6 @@ function render() {
   }
 
   if (route === "members" && id) {
-    if (!appState.user) {
-      renderProtectedRouteSignInPrompt();
-      return;
-    }
     const memberId = decodeURIComponent(id);
     renderPublicMemberProfile(memberId);
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -32035,13 +32269,8 @@ function render() {
     }));
     void refreshGallerySnapshots("route:public-member-profile");
     void refreshPublicMemberProfile(memberId, { reason: "route:public-member-profile" });
-    void refreshPublicMemberFollowSummary(memberId, { reason: "route:public-member-profile" });
-    void refreshPublicMemberFollowLists(memberId, { reason: "route:public-member-profile" });
     if (appState.user?.id) {
       void refreshGrowNetworkFollowing({ force: true, reason: "route:public-member-profile" });
-    }
-    if (appState.user?.id && appState.user.id !== memberId) {
-      void refreshPublicMemberFollowState(memberId, { reason: "route:public-member-profile" });
     }
     return;
   }
@@ -37603,14 +37832,23 @@ function renderProfilePage() {
   const email = String(appState.user?.email || appState.profile?.email || "").trim() || "No email on file";
   const notificationPreferences = appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const profilePageSettings = getCurrentProfilePageSettings();
+  const currentPublicProfile = getPublicMemberProfile(String(appState.user?.id || "").trim()) || buildCurrentUserPublicMemberProfileFallback(appState.user, appState.profile, profilePageSettings);
   const profileSetupComplete = hasCompletedProfile();
   const memberSinceValue = appState.profile?.createdAt || appState.user?.created_at || "";
   const memberSinceLabel = memberSinceValue ? formatPublicMemberJoinedDateLabel(memberSinceValue) : "Not available yet";
   const accountInfoRows = [
     { label: "Email", value: email },
     { label: "Display Name", value: displayName || "Choose a display name in Edit Profile" },
+    { label: "Public Handle", value: currentPublicProfile?.publicHandle ? `@${currentPublicProfile.publicHandle}` : "Not set" },
+    { label: "Region", value: currentPublicProfile?.locationRegion || "Not set" },
     { label: "Member Since", value: memberSinceLabel },
+    { label: "Profile Visibility", value: profilePageSettings.showProfileInCommunityGrow !== false ? "Public in Community Grow" : "Private" },
   ];
+  const ownerPublicStats = calculatePublicProfileStats({
+    memberId: String(appState.user?.id || "").trim(),
+    snapshots: getApprovedPublicSnapshotsForMember(String(appState.user?.id || "").trim()),
+    includeOwnerPrivate: true,
+  });
   const usesNotificationFallback = Boolean(appState.notificationPreferencesTableUnavailable);
 
   app.innerHTML = `
@@ -37632,6 +37870,7 @@ function renderProfilePage() {
         </div>
         <div class="profile-page-header-actions">
           <span class="profile-status-badge is-member">Member</span>
+          <a class="button button-secondary profile-page-edit-button" href="${escapeHtml(getPublicMemberProfileRoute(currentPublicProfile || appState.user?.id || ""))}">View Public Profile</a>
           <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
         </div>
       </header>
@@ -37657,6 +37896,31 @@ function renderProfilePage() {
             <p class="profile-section-note">${profileSetupComplete
               ? "Update your display name and avatar any time with Edit Profile."
               : "Complete your display name and avatar so your public and community profile can stay consistent."}</p>
+            ${currentPublicProfile?.bio ? `<p class="profile-section-note"><strong>Bio:</strong> ${escapeHtml(currentPublicProfile.bio)}</p>` : ""}
+          </article>
+          <article class="profile-section-card">
+            <div class="profile-section-heading">
+              <div>
+                <p class="eyebrow">Public Backbone</p>
+                <h3>Profile Stats</h3>
+                <p class="profile-section-subtitle">Public-safe stats are ready for Community Grow, trust, and future reputation features.</p>
+              </div>
+            </div>
+            <div class="profile-account-grid">
+              ${[
+                { label: "Public Snapshots", value: ownerPublicStats.totalPublicSnapshots.toLocaleString() },
+                { label: "Completed Sessions", value: ownerPublicStats.completedSessions.toLocaleString() },
+                { label: "Avg Germination", value: ownerPublicStats.averageGerminationRate === null ? "Not enough data" : `${String(Number(ownerPublicStats.averageGerminationRate.toFixed(1))).replace(/\.0$/, "")}%` },
+                { label: "Best Result", value: ownerPublicStats.bestGerminationResult === null ? "Not enough data" : `${String(Number(ownerPublicStats.bestGerminationResult.toFixed(1))).replace(/\.0$/, "")}%` },
+                { label: "Favorite Source", value: ownerPublicStats.favoriteSource || "Not enough data" },
+                { label: "Favorite Variety", value: ownerPublicStats.favoriteVariety || "Not enough data" },
+              ].map((row) => `
+                <div class="profile-detail-card">
+                  <span class="profile-detail-label">${escapeHtml(row.label)}</span>
+                  <strong class="profile-detail-value">${escapeHtml(row.value)}</strong>
+                </div>
+              `).join("")}
+            </div>
           </article>
           <article class="profile-section-card" id="profile-notification-preferences-card" tabindex="-1">
             <div class="profile-section-heading">
@@ -37850,7 +38114,7 @@ function openProfileEditor() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Account</p>
           <h3>Edit Profile</h3>
-          <p class="muted">Update the name and avatar shown in ${BRAND_APP_NAME}.</p>
+          <p class="muted">Update the public-safe name, handle, bio, region, and avatar shown in ${BRAND_APP_NAME}.</p>
         </div>
         <div id="profile-modal-body"></div>
         <div class="snapshot-modal-actions">
@@ -37876,7 +38140,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = `Update the name, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
+    copy.textContent = `Update the public-safe name, handle, bio, region, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -37914,7 +38178,11 @@ function bindProfileForm(form, options = {}) {
 
   const profile = options.initialProfile || appState.profile || null;
   const notificationPreferences = options.initialNotificationPreferences || appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
+  const existingPublicProfile = appState.publicMemberProfiles[String(appState.user?.id || "").trim()] || null;
   const usernameInput = form.elements.username;
+  const publicHandleInput = form.elements.publicHandle;
+  const locationRegionInput = form.elements.locationRegion;
+  const bioInput = form.elements.bio;
   const avatarInput = form.elements.avatar;
   const message = form.querySelector("#profile-message");
   const preview = form.querySelector("#profile-avatar-preview");
@@ -37950,6 +38218,15 @@ function bindProfileForm(form, options = {}) {
   };
 
   usernameInput.value = profile?.username || "";
+  if (publicHandleInput instanceof HTMLInputElement) {
+    publicHandleInput.value = existingPublicProfile?.publicHandle || "";
+  }
+  if (locationRegionInput instanceof HTMLInputElement) {
+    locationRegionInput.value = existingPublicProfile?.locationRegion || "";
+  }
+  if (bioInput instanceof HTMLTextAreaElement) {
+    bioInput.value = existingPublicProfile?.bio || "";
+  }
   applyNotificationPreferenceStateToForm(form, notificationPreferences);
   syncNotificationPreferenceAvailability();
   bindFileUploadControl(avatarInput);
@@ -38043,10 +38320,19 @@ function bindProfileForm(form, options = {}) {
       removeAvatar: state.removeAvatar,
     });
     const username = String(usernameInput.value || "").trim();
+    const rawPublicHandle = String(publicHandleInput?.value || "").trim();
+    const publicHandle = normalizePublicProfileHandle(rawPublicHandle);
+    const locationRegion = normalizePublicProfileTextField(locationRegionInput?.value || "", 80);
+    const bio = normalizePublicProfileTextField(bioInput?.value || "", 280);
 
     if (!username) {
       setProfileFormMessage("Please enter a username before saving.", "error");
       usernameInput.reportValidity();
+      return;
+    }
+    if (rawPublicHandle && !publicHandle) {
+      setProfileFormMessage("Public handle must be 3-32 letters, numbers, underscores, or hyphens.", "error");
+      publicHandleInput?.reportValidity?.();
       return;
     }
 
@@ -38173,6 +38459,9 @@ function bindProfileForm(form, options = {}) {
         appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
         appState.profilePageSettings = await savePublicMemberProfileSettings({
           notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
+          bio,
+          publicHandle,
+          locationRegion,
         }, {
           requirePersistence: false,
           debugContext: "profile-editor-notification-settings",
@@ -38188,8 +38477,8 @@ function bindProfileForm(form, options = {}) {
           warnings.push("Profile saved. Notification preferences are using safe defaults until the backend is available.");
         }
       } catch (error) {
-        console.warn("[Cannakan Profile] Notification preference save warning", error);
-        warnings.push(`Profile saved, but notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
+        console.warn("[Cannakan Profile] Public profile/settings save warning", error);
+        warnings.push(`Profile saved, but public profile or notification preferences could not be saved: ${error.message || "Unknown settings error."}`);
         syncNotificationPreferenceAvailability();
       }
 
@@ -65156,22 +65445,30 @@ function renderPublicSessionDetail(snapshotId) {
 }
 
 function renderPublicMemberProfile(memberId) {
-  const normalizedId = String(memberId || "").trim();
+  const profileKey = String(memberId || "").trim();
+  const normalizedId = resolvePublicMemberProfileId(profileKey) || (isUuidLike(profileKey) ? profileKey : "");
+  const normalizedHandle = !isUuidLike(profileKey) ? normalizePublicProfileHandle(decodeURIComponent(profileKey)) : "";
+  if (!normalizedId && normalizedHandle && !appState.publicMemberProfilesRefreshPromises[normalizedHandle]) {
+    void loadPublicMemberProfile(normalizedHandle, { reason: "route:public-member-profile-handle" }).then((profile) => {
+      const resolvedId = String(profile?.id || "").trim();
+      if (resolvedId && normalizeNavigationHash(window.location.hash || "#home").startsWith("#members/")) {
+        renderPublicMemberProfile(resolvedId);
+      }
+    });
+  }
   const isLoadingSnapshots = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
-  const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId]);
-  const followSummary = getPublicMemberFollowSummary(normalizedId);
-  const isLoadingFollowSummary = Boolean(appState.publicMemberFollowSummaryRefreshPromises[normalizedId]);
-  const followLists = getPublicMemberFollowLists(normalizedId);
+  const isLoadingProfile = Boolean(appState.publicMemberProfilesRefreshPromises[normalizedId] || appState.publicMemberProfilesRefreshPromises[normalizedHandle]);
   const isOwnProfile = isViewingOwnPublicMemberProfile(normalizedId);
-  const canShowFollowButton = Boolean(appState.user?.id) && !isOwnProfile && !appState.publicMemberFollowsTableUnavailable;
-  const followState = getPublicMemberFollowState(normalizedId);
-  const isFollowing = followState === true;
-  const isLoadingFollowState = Boolean(appState.publicMemberFollowStateRefreshPromises[normalizedId]);
-  const isFollowPending = isPublicMemberFollowPending(normalizedId);
   const approvedSnapshots = sortGallerySnapshotsNewestFirst(getApprovedPublicSnapshotsForMember(normalizedId));
   const profile = getPublicMemberProfile(normalizedId);
+  const canShowPublicProfileData = Boolean(profile && (profile.isPublicVisible !== false || isOwnProfile || isAdminUser()));
+  const publicStats = calculatePublicProfileStats({
+    memberId: normalizedId,
+    snapshots: approvedSnapshots,
+    includeOwnerPrivate: isOwnProfile,
+  });
 
-  if (!normalizedId) {
+  if (!normalizedId && !normalizedHandle) {
     app.innerHTML = `
       <section class="card public-member-profile-page">
         <div class="section-heading app-section-header">
@@ -65216,48 +65513,60 @@ function renderPublicMemberProfile(memberId) {
   const displayName = getDisplayName(
     {
       id: normalizedId,
-      displayName: profile?.displayName || "",
+      displayName: canShowPublicProfileData ? profile?.displayName || "" : "",
     },
-    { fallbackLabel: "User" },
+    { fallbackLabel: "Community grower" },
   );
-  const avatarUrl = profile?.avatarUrl || "";
+  const avatarUrl = canShowPublicProfileData ? profile?.avatarUrl || "" : "";
   const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
-  const followerCountValue = followSummary
-    ? followSummary.followerCount.toLocaleString()
-    : (Array.isArray(followLists?.followers) ? followLists.followers.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
-  const followingCountValue = followSummary
-    ? followSummary.followingCount.toLocaleString()
-    : (Array.isArray(followLists?.following) ? followLists.following.length.toLocaleString() : (isLoadingFollowSummary ? "--" : "0"));
-  const averageRate = approvedSnapshots.length
-    ? (approvedSnapshots.reduce((sum, snapshot) => sum + getGallerySnapshotSuccessRate(snapshot), 0) / approvedSnapshots.length)
-    : null;
-  const roundedAverageRate = averageRate === null
+  const roundedAverageRate = publicStats.averageGerminationRate === null
     ? ""
-    : String(Number((Math.round(averageRate * 10) / 10).toFixed(1))).replace(/\.0$/, "");
+    : String(Number(publicStats.averageGerminationRate.toFixed(1))).replace(/\.0$/, "");
+  const bestRateLabel = publicStats.bestGerminationResult === null
+    ? ""
+    : `${String(Number(publicStats.bestGerminationResult.toFixed(1))).replace(/\.0$/, "")}%`;
+  const publicHandleLabel = profile?.publicHandle ? `@${profile.publicHandle}` : "";
+  const locationRegionLabel = canShowPublicProfileData ? profile?.locationRegion || "" : "";
+  const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
+  const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
   const stats = [
     {
-      label: "Followers",
-      value: followerCountValue,
-      detail: "community members following this grower",
-      listType: "followers",
-    },
-    {
-      label: "Following",
-      value: followingCountValue,
-      detail: "community members this grower follows",
-      listType: "following",
-    },
-    {
-      label: "Approved Snapshots",
-      value: approvedSnapshots.length.toLocaleString(),
+      label: "Public Snapshots",
+      value: publicStats.totalPublicSnapshots.toLocaleString(),
       detail: approvedSnapshots.length === 1 ? "approved public snapshot" : "approved public snapshots",
     },
-    averageRate === null
+    {
+      label: "Completed Sessions",
+      value: publicStats.completedSessions.toLocaleString(),
+      detail: isOwnProfile ? "eligible completed sessions" : "public-safe completed sessions",
+    },
+    !showPublicStats || publicStats.averageGerminationRate === null
       ? null
       : {
         label: "Avg Germination",
         value: `${roundedAverageRate}%`,
         detail: "based on approved public snapshots",
+      },
+    !showPublicStats || !bestRateLabel
+      ? null
+      : {
+        label: "Best Result",
+        value: bestRateLabel,
+        detail: "best approved public result",
+      },
+    !showPublicStats || !publicStats.favoriteSource
+      ? null
+      : {
+        label: "Favorite Source",
+        value: publicStats.favoriteSource,
+        detail: "most common public source",
+      },
+    !showPublicStats || !publicStats.favoriteVariety
+      ? null
+      : {
+        label: "Favorite Variety",
+        value: publicStats.favoriteVariety,
+        detail: "most common public genetics",
       },
     joinedLabel
       ? {
@@ -65275,23 +65584,18 @@ function renderPublicMemberProfile(memberId) {
           <div class="public-member-profile-avatar-shell">
             ${renderPublicMemberAvatarMarkup(displayName, avatarUrl)}
           </div>
-          <div class="public-member-profile-copy">
-            <p class="eyebrow">Community Member</p>
-            <h2>${escapeHtml(displayName)}</h2>
-            <p class="muted">Public grow profile</p>
+        <div class="public-member-profile-copy">
+          <p class="eyebrow">Community Member</p>
+          <h2>${escapeHtml(displayName)}</h2>
+            <p class="muted">${escapeHtml(publicHandleLabel || "Public grow profile")}</p>
+            ${locationRegionLabel ? `<p class="public-member-profile-region">${escapeHtml(locationRegionLabel)}</p>` : ""}
             ${joinedLabel ? `<p class="public-member-profile-joined">Joined ${escapeHtml(joinedLabel)}</p>` : ""}
+            ${profileBio ? `<p class="public-member-profile-bio">${escapeHtml(profileBio)}</p>` : ""}
+            ${isOwnProfile && profile?.isPublicVisible === false ? `<p class="public-member-profile-owner-note">Your profile is private. Other viewers see a community grower fallback.</p>` : ""}
           </div>
         </div>
         <div class="inline-actions">
-          ${canShowFollowButton ? `
-            <button
-              type="button"
-              class="button ${isFollowing ? "button-secondary" : "button-primary"} public-member-follow-button${isFollowing ? " is-following" : ""}"
-              data-public-member-follow="${escapeHtml(normalizedId)}"
-              ${(isFollowPending || (isLoadingFollowState && followState === null)) ? "disabled" : ""}
-              aria-pressed="${isFollowing ? "true" : "false"}"
-            >${escapeHtml(isFollowing ? "Following" : "Follow")}</button>
-          ` : ""}
+          ${isOwnProfile ? '<a class="button button-secondary" href="#profile">Edit Profile</a>' : ""}
           <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Report content">Report / Contact Admin</button>
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
@@ -65339,14 +65643,6 @@ function renderPublicMemberProfile(memberId) {
       </section>
     </section>
   `;
-
-  app.querySelector("[data-public-member-follow]")?.addEventListener("click", async () => {
-    try {
-      await togglePublicMemberFollow(normalizedId);
-    } catch (error) {
-      window.alert(error.message || "Could not update this follow right now.");
-    }
-  });
   app.querySelectorAll("[data-public-member-open-list]").forEach((button) => {
     button.addEventListener("click", () => {
       openPublicMemberConnectionsModal(normalizedId, button.dataset.publicMemberOpenList || "followers");

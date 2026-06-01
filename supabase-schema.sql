@@ -190,6 +190,10 @@ create table if not exists public.public_member_profiles (
   user_id uuid not null unique references auth.users(id) on delete cascade,
   display_name text,
   avatar_url text default '',
+  bio text default '',
+  public_handle text,
+  location_region text default '',
+  profile_visibility text not null default 'public',
   joined_at timestamptz not null default timezone('utc', now()),
   notify_community_activity boolean not null default true,
   show_profile_in_community_grow boolean not null default true,
@@ -504,6 +508,13 @@ create unique index if not exists public_member_profiles_user_id_idx
 create index if not exists public_member_profiles_display_name_idx
   on public.public_member_profiles (lower(coalesce(display_name, '')));
 
+create unique index if not exists public_member_profiles_public_handle_unique_idx
+  on public.public_member_profiles (lower(public_handle))
+  where public_handle is not null and btrim(public_handle) <> '';
+
+create index if not exists public_member_profiles_public_handle_lookup_idx
+  on public.public_member_profiles (lower(public_handle), profile_visibility, show_profile_in_community_grow);
+
 alter table public.user_notification_preferences
   add column if not exists notify_snapshot boolean not null default true;
 
@@ -594,6 +605,18 @@ alter table public.public_member_profiles
   add column if not exists avatar_url text default '';
 
 alter table public.public_member_profiles
+  add column if not exists bio text default '';
+
+alter table public.public_member_profiles
+  add column if not exists public_handle text;
+
+alter table public.public_member_profiles
+  add column if not exists location_region text default '';
+
+alter table public.public_member_profiles
+  add column if not exists profile_visibility text not null default 'public';
+
+alter table public.public_member_profiles
   add column if not exists joined_at timestamptz not null default timezone('utc', now());
 
 alter table public.public_member_profiles
@@ -613,6 +636,21 @@ alter table public.public_member_profiles
 
 alter table public.public_member_profiles
   add column if not exists updated_at timestamptz not null default timezone('utc', now());
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'public_member_profiles_visibility_check'
+      and conrelid = 'public.public_member_profiles'::regclass
+  ) then
+    alter table public.public_member_profiles
+      add constraint public_member_profiles_visibility_check
+      check (profile_visibility in ('public', 'private'));
+  end if;
+end
+$$;
 
 alter table public.announcements
   add column if not exists title text default '';
@@ -866,7 +904,21 @@ comment on table public.public_member_profiles is
   'Writable replacement for the old public_member_profiles view. Stores public profile and Grow Network preference fields while keeping Community Grow lookups on the same surface.';
 
 revoke all on table public.public_member_profiles from public;
-grant select on table public.public_member_profiles to anon;
+grant select (
+  id,
+  user_id,
+  display_name,
+  avatar_url,
+  bio,
+  public_handle,
+  location_region,
+  profile_visibility,
+  joined_at,
+  show_profile_in_community_grow,
+  show_grow_stats_publicly,
+  created_at,
+  updated_at
+) on public.public_member_profiles to anon;
 grant select, insert, update on table public.public_member_profiles to authenticated;
 
 create or replace function public.get_public_member_follow_summary(target_user_id uuid)
@@ -888,6 +940,7 @@ as $$
     inner join public.profiles
       on profiles.id = public_member_profiles.id
     where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and coalesce(public_member_profiles.profile_visibility, 'public') = 'public'
       and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
       and coalesce(profiles.account_status, 'active') = 'active'
       and coalesce(profiles.deletion_status, '') <> 'deleted'
@@ -933,6 +986,7 @@ as $$
     inner join public.profiles
       on profiles.id = public_member_profiles.id
     where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and coalesce(public_member_profiles.profile_visibility, 'public') = 'public'
       and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
       and coalesce(profiles.account_status, 'active') = 'active'
       and coalesce(profiles.deletion_status, '') <> 'deleted'
@@ -996,6 +1050,7 @@ as $$
     inner join public.profiles
       on profiles.id = public_member_profiles.id
     where coalesce(public_member_profiles.show_profile_in_community_grow, true) = true
+      and coalesce(public_member_profiles.profile_visibility, 'public') = 'public'
       and nullif(btrim(coalesce(public_member_profiles.display_name, '')), '') is not null
       and coalesce(profiles.account_status, 'active') = 'active'
       and coalesce(profiles.deletion_status, '') <> 'deleted'
@@ -1668,6 +1723,15 @@ begin
     new.joined_at = coalesce(new.created_at, timezone('utc', now()));
   end if;
 
+  new.bio = coalesce(new.bio, '');
+  new.location_region = coalesce(new.location_region, '');
+  new.public_handle = nullif(lower(regexp_replace(regexp_replace(coalesce(new.public_handle, ''), '^@+', ''), '[^a-zA-Z0-9_-]+', '-', 'g')), '');
+  new.profile_visibility = case
+    when coalesce(new.show_profile_in_community_grow, true) = false then 'private'
+    when lower(coalesce(new.profile_visibility, 'public')) = 'private' then 'private'
+    else 'public'
+  end;
+
   return new;
 end;
 $$;
@@ -1909,6 +1973,7 @@ using (
   )
   or (
     coalesce(show_profile_in_community_grow, true) = true
+    and coalesce(profile_visibility, 'public') = 'public'
     and nullif(btrim(coalesce(display_name, '')), '') is not null
     and exists (
       select 1
