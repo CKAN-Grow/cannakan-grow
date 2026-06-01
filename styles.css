@@ -26402,6 +26402,27 @@ textarea::placeholder {
   overflow-wrap: anywhere;
 }
 
+.public-member-profile-trust-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.public-member-profile-trust-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(148, 209, 89, 0.2);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.08);
+  color: #dfeadb;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .public-member-follow-button {
   min-width: 124px;
 }
@@ -26491,7 +26512,8 @@ textarea::placeholder {
 }
 
 .public-member-profile-performance-grid,
-.public-member-profile-history-grid {
+.public-member-profile-history-grid,
+.public-member-profile-activity-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
@@ -26527,6 +26549,55 @@ textarea::placeholder {
 .public-member-profile-history-card p {
   margin: 0;
   line-height: 1.45;
+}
+
+.public-member-profile-milestone-list,
+.public-member-profile-activity-list {
+  display: grid;
+  gap: 10px;
+}
+
+.public-member-profile-milestone,
+.public-member-profile-activity-item {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.public-member-profile-milestone.is-achieved {
+  border-color: rgba(148, 209, 89, 0.22);
+  background: rgba(148, 209, 89, 0.07);
+}
+
+.public-member-profile-milestone span,
+.public-member-profile-activity-item span {
+  color: var(--ink);
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.public-member-profile-milestone small,
+.public-member-profile-activity-item small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.public-member-profile-activity-item:hover,
+.public-member-profile-activity-item:focus-visible {
+  border-color: rgba(148, 209, 89, 0.28);
+  color: var(--ink);
+  outline: none;
+}
+
+.public-member-profile-activity {
+  display: grid;
+  gap: 16px;
 }
 
 .public-member-profile-snapshots {

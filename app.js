@@ -16250,6 +16250,14 @@ function normalizePublicProfileTextField(value = "", maxLength = 240) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
+function getSafePublicProfileFlagValue(row = {}, keys = []) {
+  const source = row && typeof row === "object" ? row : {};
+  return (keys || []).some((key) => (
+    Object.prototype.hasOwnProperty.call(source, key)
+    && (source[key] === true || String(source[key]).trim().toLowerCase() === "true")
+  ));
+}
+
 function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE_PAGE_SETTINGS) {
   if (!row) {
     return null;
@@ -16280,6 +16288,12 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     joinedAt: row.joined_at || row.created_at || "",
     createdAt: row.created_at || "",
     updatedAt: row.updated_at || "",
+    verifiedProfile: getSafePublicProfileFlagValue(row, ["verified_profile", "verifiedProfile", "is_verified_profile"]),
+    founderAdmin: getSafePublicProfileFlagValue(row, ["founder_admin", "founderAdmin", "is_founder_admin"]),
+    sourceTester: getSafePublicProfileFlagValue(row, ["source_tester", "sourceTester", "is_source_tester"]),
+    cstpParticipant: getSafePublicProfileFlagValue(row, ["cstp_participant", "cstpParticipant", "is_cstp_participant"]),
+    cstpCertifiedGrower: getSafePublicProfileFlagValue(row, ["cstp_certified_grower", "cstpCertifiedGrower", "is_cstp_certified_grower"]),
+    trustedContributor: getSafePublicProfileFlagValue(row, ["trusted_contributor", "trustedContributor", "is_trusted_contributor"]),
     ...normalizedSettings,
   };
 }
@@ -16424,6 +16438,25 @@ function getProfileAnalyticsCountLabel(value = 0) {
   return Math.max(0, Number(value) || 0).toLocaleString();
 }
 
+function getProfileActivityDateValue(value = "") {
+  const parsedDate = parseCompletedAtValue(value);
+  return parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate : null;
+}
+
+function formatProfileActivityDateLabel(value = "", fallback = "Not available") {
+  const parsedDate = getProfileActivityDateValue(value);
+  return parsedDate ? formatPublicMemberJoinedDateLabel(parsedDate.toISOString()) : fallback;
+}
+
+function getProfileSnapshotActivityDate(snapshot = null) {
+  return String(
+    snapshot?.publishedAt
+    || snapshot?.createdAt
+    || snapshot?.completedAt
+    || "",
+  ).trim();
+}
+
 function isProfileAnalyticsBaseSessionEligible(session = null, options = {}) {
   const normalizedSession = normalizeStoredSession(session) || session;
   if (!normalizedSession || isSessionSoftDeleted(normalizedSession)) {
@@ -16445,6 +16478,16 @@ function isProfileAnalyticsBaseSessionEligible(session = null, options = {}) {
   return true;
 }
 
+function getProfileEligibleCompletedSessions(sessions = [], options = {}) {
+  return (sessions || [])
+    .map((session) => normalizeStoredSession(session) || session)
+    .filter((session) => isProfileAnalyticsBaseSessionEligible(session, options) && isGrowSessionAnalyticsEligible(session))
+    .sort((left, right) => (
+      (getProfileActivityDateValue(right?.completedAt || right?.completed_at || right?.updatedAt || right?.createdAt || "")?.getTime() || 0)
+      - (getProfileActivityDateValue(left?.completedAt || left?.completed_at || left?.updatedAt || left?.createdAt || "")?.getTime() || 0)
+    ));
+}
+
 function getProfileAnalyticsSessionRate(session = null) {
   const totals = getSessionSeedTotals(session);
   return totals.totalSeeds > 0 ? (totals.totalPlanted / totals.totalSeeds) * 100 : null;
@@ -16454,7 +16497,9 @@ function calculateProfileAnalyticsFromOwnerSessions(sessions = []) {
   const eligibleSessions = (sessions || []).filter((session) => isProfileAnalyticsBaseSessionEligible(session, {
     includeMock: isMockDataEnabled(),
   }));
-  const completedSessions = eligibleSessions.filter(isGrowSessionAnalyticsEligible);
+  const completedSessions = getProfileEligibleCompletedSessions(eligibleSessions, {
+    includeMock: isMockDataEnabled(),
+  });
   const activeSessions = eligibleSessions.filter((session) => normalizeGrowSessionLifecycleState(session) === "active");
   const totals = completedSessions.reduce((accumulator, session) => {
     const sessionTotals = getSessionSeedTotals(session);
@@ -16506,7 +16551,7 @@ function calculateProfileAnalyticsFromOwnerSessions(sessions = []) {
 }
 
 function calculateProfileAnalyticsFromPublicSnapshots(snapshots = []) {
-  const safeSnapshots = (snapshots || []).filter(isGallerySnapshotAnalyticsEligible);
+  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
   const publicSessionSnapshots = [];
   const publicSessionKeys = new Set();
   safeSnapshots.forEach((snapshot) => {
@@ -16599,39 +16644,128 @@ function calculatePublicProfileStats({ memberId = "", snapshots = getApprovedPub
   };
 }
 
-function buildProfileMilestones(analytics = {}, profile = null) {
-  const milestones = [];
-  if (analytics.completedSessions > 0) {
-    milestones.push(`${analytics.completedSessions.toLocaleString()} completed grow${analytics.completedSessions === 1 ? "" : "s"}`);
-  }
-  if (analytics.totalPublicSnapshots > 0) {
-    milestones.push(`${analytics.totalPublicSnapshots.toLocaleString()} approved Community Grow snapshot${analytics.totalPublicSnapshots === 1 ? "" : "s"}`);
-  }
-  if (analytics.bestGerminationRate !== null && analytics.bestGerminationRate !== undefined) {
-    milestones.push(`${getProfileAnalyticsRateLabel(analytics.bestGerminationRate)} best germination result`);
-  }
-  if (profile?.joinedAt) {
-    const joinedLabel = formatPublicMemberJoinedDateLabel(profile.joinedAt);
-    if (joinedLabel) {
-      milestones.push(`Member since ${joinedLabel}`);
+function getProfileDistinctPublicSessionSnapshots(snapshots = []) {
+  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
+  const publicSessionSnapshots = [];
+  const publicSessionKeys = new Set();
+  safeSnapshots.forEach((snapshot) => {
+    const sessionKey = String(snapshot?.sessionId || snapshot?.id || "").trim();
+    if (!sessionKey || publicSessionKeys.has(sessionKey)) {
+      return;
     }
-  }
-  if (!milestones.length) {
-    milestones.push("Cultivation history will appear after eligible public grow data is available.");
-  }
-  return milestones;
+    publicSessionKeys.add(sessionKey);
+    publicSessionSnapshots.push(snapshot);
+  });
+  return publicSessionSnapshots;
+}
+
+function buildProfileParticipationConsistency(snapshots = []) {
+  const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
+  const monthKeys = new Set();
+  safeSnapshots.forEach((snapshot) => {
+    const parsedDate = getProfileActivityDateValue(getProfileSnapshotActivityDate(snapshot));
+    if (parsedDate) {
+      monthKeys.add(`${parsedDate.getUTCFullYear()}-${String(parsedDate.getUTCMonth() + 1).padStart(2, "0")}`);
+    }
+  });
+  const latestDate = getProfileActivityDateValue(getProfileSnapshotActivityDate(safeSnapshots[0]));
+  const latestAgeDays = latestDate
+    ? Math.floor((Date.now() - latestDate.getTime()) / (24 * 60 * 60 * 1000))
+    : null;
+  const isConsistent = safeSnapshots.length >= 3 && monthKeys.size >= 2 && (latestAgeDays === null || latestAgeDays <= 120);
+  return {
+    isConsistent,
+    publicSnapshotCount: safeSnapshots.length,
+    activeMonthCount: monthKeys.size,
+    latestAgeDays,
+  };
+}
+
+function buildProfileMilestones({
+  analytics = {},
+  profile = null,
+  publicSnapshots = [],
+  ownerSessions = [],
+  includeOwnerPrivate = false,
+} = {}) {
+  const safePublicSnapshots = sortGallerySnapshotsNewestFirst((publicSnapshots || []).filter(isGallerySnapshotAnalyticsEligible));
+  const publicSessionSnapshots = getProfileDistinctPublicSessionSnapshots(safePublicSnapshots);
+  const ownerCompletedSessions = includeOwnerPrivate
+    ? getProfileEligibleCompletedSessions(ownerSessions, { includeMock: isMockDataEnabled() })
+    : [];
+  const oldestOwnerCompletedSession = ownerCompletedSessions[ownerCompletedSessions.length - 1] || null;
+  const oldestPublicSessionSnapshot = publicSessionSnapshots[publicSessionSnapshots.length - 1] || null;
+  const firstCompletedAt = includeOwnerPrivate
+    ? (oldestOwnerCompletedSession?.completedAt || oldestOwnerCompletedSession?.completed_at || oldestOwnerCompletedSession?.createdAt || "")
+    : getProfileSnapshotActivityDate(oldestPublicSessionSnapshot);
+  const firstApprovedSnapshot = safePublicSnapshots[safePublicSnapshots.length - 1] || null;
+  const profileCompleteness = calculateProfileCompleteness(profile);
+  const consistency = buildProfileParticipationConsistency(safePublicSnapshots);
+  const milestoneSpecs = [
+    {
+      key: "first-completed-session",
+      label: "First completed session",
+      detail: firstCompletedAt ? formatProfileActivityDateLabel(firstCompletedAt) : "Eligible completed session not available yet",
+      achieved: Boolean(firstCompletedAt),
+    },
+    {
+      key: "first-approved-snapshot",
+      label: "First approved Community Grow snapshot",
+      detail: firstApprovedSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(firstApprovedSnapshot)) : "Approved public snapshot not available yet",
+      achieved: Boolean(firstApprovedSnapshot),
+    },
+    ...[5, 10, 25].map((threshold) => ({
+      key: `${threshold}-completed-sessions`,
+      label: `${threshold} completed sessions`,
+      detail: `${Math.max(0, Number(analytics.completedSessions) || 0).toLocaleString()} eligible session${Number(analytics.completedSessions) === 1 ? "" : "s"} recorded`,
+      achieved: Math.max(0, Number(analytics.completedSessions) || 0) >= threshold,
+    })),
+    {
+      key: "perfect-germination-result",
+      label: "100% germination result",
+      detail: analytics.bestGerminationRate !== null && analytics.bestGerminationRate !== undefined
+        ? `${getProfileAnalyticsRateLabel(analytics.bestGerminationRate)} best result`
+        : "Best result not available yet",
+      achieved: Number(analytics.bestGerminationRate) >= 100,
+    },
+    {
+      key: "consistent-participation",
+      label: "Consistent public participation",
+      detail: `${consistency.publicSnapshotCount.toLocaleString()} approved snapshot${consistency.publicSnapshotCount === 1 ? "" : "s"} across ${consistency.activeMonthCount.toLocaleString()} active month${consistency.activeMonthCount === 1 ? "" : "s"}`,
+      achieved: consistency.isConsistent,
+    },
+    {
+      key: "profile-completed",
+      label: "Profile completed",
+      detail: `${Math.round(profileCompleteness * 100)}% of public profile fields completed`,
+      achieved: profileCompleteness >= 1,
+    },
+  ];
+  const achievedMilestones = milestoneSpecs.filter((milestone) => milestone.achieved);
+  return achievedMilestones.length
+    ? achievedMilestones
+    : [{
+      key: "milestones-pending",
+      label: "Cultivation milestones pending",
+      detail: "Milestones appear after eligible public grow history or owner-visible session history is available.",
+      achieved: false,
+    }];
 }
 
 function buildProfileParticipationHistory(snapshots = [], analytics = {}) {
   const safeSnapshots = sortGallerySnapshotsNewestFirst((snapshots || []).filter(isGallerySnapshotAnalyticsEligible));
   const latestSnapshot = safeSnapshots[0] || null;
+  const consistency = buildProfileParticipationConsistency(safeSnapshots);
   return {
     latestPublicActivityLabel: latestSnapshot
       ? `Latest public snapshot ${getGallerySnapshotSubmittedDateLabel(latestSnapshot)}`
       : "No public snapshot activity yet",
+    lastPublicContributionDate: latestSnapshot ? getProfileSnapshotActivityDate(latestSnapshot) : "",
+    lastPublicContributionLabel: latestSnapshot ? formatProfileActivityDateLabel(getProfileSnapshotActivityDate(latestSnapshot)) : "No public contributions yet",
     publicSnapshotCount: safeSnapshots.length,
     completedSessionCount: Math.max(0, Number(analytics.completedSessions) || 0),
     activeSessionCount: Math.max(0, Number(analytics.activeSessions) || 0),
+    consistency,
   };
 }
 
@@ -16674,16 +16808,129 @@ function buildProfileReputationFoundation({
 
 function buildProfileTrustHooks(profile = null, options = {}) {
   return {
-    verifiedGrower: false,
-    cstpParticipant: false,
-    cstpCertifiedGrower: false,
-    sourceTester: false,
-    founderAdmin: Boolean(options.isFounderAdminProfile || options.isOwnerAdmin),
+    verifiedProfile: Boolean(profile?.verifiedProfile),
+    founderAdmin: Boolean(profile?.founderAdmin),
+    sourceTester: Boolean(profile?.sourceTester),
+    cstpParticipant: Boolean(profile?.cstpParticipant),
+    cstpCertifiedGrower: Boolean(profile?.cstpCertifiedGrower),
+    trustedContributor: Boolean(profile?.trustedContributor),
     cstpLinkedTrustBadges: [],
     seedVaultPublicStats: null,
     seedAgeAnalyticsInsights: null,
     profileId: String(profile?.id || "").trim(),
   };
+}
+
+function buildProfileTrustIndicators(trustHooks = {}) {
+  return [
+    trustHooks.verifiedProfile ? { key: "verified-profile", label: "Verified profile" } : null,
+    trustHooks.founderAdmin ? { key: "founder-admin", label: "Founder / admin" } : null,
+    trustHooks.sourceTester ? { key: "source-tester", label: "Source tester" } : null,
+    trustHooks.cstpParticipant ? { key: "cstp-participant", label: "CSTP participant" } : null,
+    trustHooks.cstpCertifiedGrower ? { key: "cstp-certified-grower", label: "CSTP certified grower" } : null,
+    trustHooks.trustedContributor ? { key: "trusted-contributor", label: "Trusted contributor" } : null,
+  ].filter(Boolean);
+}
+
+function buildProfilePerformanceHighlights(analytics = {}) {
+  return [
+    {
+      label: "Best Public Result",
+      value: getProfileAnalyticsRateLabel(analytics.bestGerminationRate),
+      detail: "highest approved public germination result",
+    },
+    {
+      label: "Average Public Rate",
+      value: getProfileAnalyticsRateLabel(analytics.averageGerminationRate),
+      detail: "weighted by public-safe seeds tested",
+    },
+    {
+      label: "Public Seeds Tested",
+      value: getProfileAnalyticsCountLabel(analytics.totalSeedsTested),
+      detail: `${getProfileAnalyticsCountLabel(analytics.totalSeedsGerminated)} germinated in public history`,
+    },
+    analytics.favoriteSource
+      ? {
+        label: "Frequent Source",
+        value: analytics.favoriteSource,
+        detail: "most common approved public source",
+      }
+      : null,
+    analytics.favoriteVariety
+      ? {
+        label: "Frequent Genetics",
+        value: analytics.favoriteVariety,
+        detail: "most common approved public genetics",
+      }
+      : null,
+  ].filter(Boolean);
+}
+
+function buildProfileActivitySummary({
+  profile = null,
+  analytics = {},
+  publicSnapshots = [],
+  ownerSessions = [],
+  includeOwnerPrivate = false,
+} = {}) {
+  const recentPublicSnapshots = sortGallerySnapshotsNewestFirst((publicSnapshots || []).filter(isGallerySnapshotAnalyticsEligible))
+    .slice(0, 3)
+    .map((snapshot) => ({
+      key: `snapshot:${snapshot.id}`,
+      type: "snapshot",
+      label: snapshot.title || "Community Grow snapshot",
+      detail: getGallerySnapshotPublicSessionDetails(snapshot).germinationRateLabel,
+      dateLabel: formatProfileActivityDateLabel(getProfileSnapshotActivityDate(snapshot)),
+      href: snapshot.id ? `#sessions/public/${encodeURIComponent(snapshot.id)}` : "",
+    }));
+  const recentOwnerCompletedSessions = includeOwnerPrivate
+    ? getProfileEligibleCompletedSessions(ownerSessions, { includeMock: isMockDataEnabled() })
+      .slice(0, 3)
+      .map((session) => ({
+        key: `session:${session.id || session.sessionName || session.completedAt}`,
+        type: "owner-session",
+        label: formatSessionLabel(session),
+        detail: getProfileAnalyticsRateLabel(getProfileAnalyticsSessionRate(session)),
+        dateLabel: formatProfileActivityDateLabel(session.completedAt || session.completed_at || session.updatedAt || session.createdAt || ""),
+        href: session.id ? `#sessions/${encodeURIComponent(session.id)}` : "",
+      }))
+    : [];
+  const participationHistory = buildProfileParticipationHistory(publicSnapshots, analytics);
+  return {
+    recentPublicSnapshots,
+    recentOwnerCompletedSessions,
+    participationHistory,
+    memberSinceLabel: profile?.joinedAt ? formatPublicMemberJoinedDateLabel(profile.joinedAt) : "Not available",
+    lastPublicContributionLabel: participationHistory.lastPublicContributionLabel,
+    publicParticipationSummary: `${participationHistory.publicSnapshotCount.toLocaleString()} approved public snapshot${participationHistory.publicSnapshotCount === 1 ? "" : "s"}`,
+  };
+}
+
+function getProfileCommunityCardHint(profile = null, snapshots = []) {
+  if (!profile?.id || profile.isPublicVisible === false || profile.showGrowStatsPublicly === false) {
+    return "";
+  }
+  const analytics = calculateProfileAnalyticsFromPublicSnapshots(getApprovedPublicSnapshotsForMember(profile.id, snapshots));
+  const milestones = buildProfileMilestones({
+    analytics,
+    profile,
+    publicSnapshots: getApprovedPublicSnapshotsForMember(profile.id, snapshots),
+    includeOwnerPrivate: false,
+  }).filter((milestone) => milestone.achieved);
+  const trustIndicators = buildProfileTrustIndicators(buildProfileTrustHooks(profile));
+  if (trustIndicators.length) {
+    return trustIndicators[0].label;
+  }
+  if (milestones.some((milestone) => milestone.key === "perfect-germination-result")) {
+    return "100% public result";
+  }
+  const completedMilestone = milestones.find((milestone) => milestone.key.endsWith("-completed-sessions"));
+  if (completedMilestone) {
+    return completedMilestone.label;
+  }
+  return analytics.totalPublicSnapshots > 1
+    ? `${analytics.totalPublicSnapshots.toLocaleString()} public snapshots`
+    : "";
 }
 
 function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedPublicSnapshotsForMember(memberId)) {
@@ -23502,6 +23749,7 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
     displayName: publicProfile ? fallbackDisplayName : "Community grower",
     avatarUrl: getSafeAvatarImageUrl(fallbackAvatarUrl),
     profileRoute: publicProfile && memberId ? getPublicMemberProfileRoute(publicProfile) : "",
+    profileHint: publicProfile ? getProfileCommunityCardHint(publicProfile, getGallerySnapshotsForDisplay()) : "",
     canShowIdentity: Boolean(publicProfile),
   };
 }
@@ -23518,9 +23766,9 @@ function renderGallerySnapshotMemberMarkup(snapshot) {
   return `
     <${wrapperTag} ${wrapperAttributes}>
       ${avatarMarkup}
-      <span class="gallery-card-profile-copy">
-        <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
-        <span class="gallery-card-profile-meta">${escapeHtml(submittedLabel)}</span>
+        <span class="gallery-card-profile-copy">
+          <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
+        <span class="gallery-card-profile-meta">${escapeHtml(member.profileHint ? `${submittedLabel} · ${member.profileHint}` : submittedLabel)}</span>
       </span>
     </${wrapperTag}>
   `;
@@ -23674,7 +23922,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
           <div class="gallery-tile-bottom-row">
             <div class="gallery-tile-copy">
               <strong>${escapeHtml(varietyLabel)}</strong>
-              <p>${escapeHtml(`${member.displayName} • ${submittedLabel}`)}</p>
+              <p>${escapeHtml(`${member.displayName} • ${submittedLabel}${member.profileHint ? ` • ${member.profileHint}` : ""}`)}</p>
             </div>
             <div class="gallery-tile-like">
               ${renderGalleryLikeButtonMarkup(snapshot, { variant: "thumb" })}
@@ -65795,36 +66043,30 @@ function renderPublicMemberProfile(memberId) {
   const locationRegionLabel = canShowPublicProfileData ? profile?.locationRegion || "" : "";
   const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
   const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
-  const profileMilestones = buildProfileMilestones(publicStats, profile);
+  const publicAnalytics = publicStats.publicAnalytics || calculateProfileAnalyticsFromPublicSnapshots(approvedSnapshots);
+  const profileMilestones = buildProfileMilestones({
+    analytics: publicStats,
+    profile,
+    publicSnapshots: approvedSnapshots,
+    ownerSessions: isOwnProfile ? getSessions() : [],
+    includeOwnerPrivate: isOwnProfile,
+  });
   const participationHistory = buildProfileParticipationHistory(approvedSnapshots, publicStats);
   const reputationFoundation = buildProfileReputationFoundation({
     profile,
     analytics: publicStats,
     publicSnapshots: approvedSnapshots,
   });
-  const trustHooks = buildProfileTrustHooks(profile, { isOwnerAdmin: isOwnProfile && isAdminUser() });
-  const performanceCards = [
-    {
-      label: "Overall Performance",
-      value: getProfileAnalyticsRateLabel(publicStats.averageGerminationRate),
-      detail: `${getProfileAnalyticsCountLabel(publicStats.totalSeedsGerminated)} / ${getProfileAnalyticsCountLabel(publicStats.totalSeedsTested)} seeds germinated`,
-    },
-    {
-      label: "Completed Grows",
-      value: getProfileAnalyticsCountLabel(publicStats.completedSessions),
-      detail: "eligible cultivation history",
-    },
-    {
-      label: "Average Duration",
-      value: formatDurationMsShort(publicStats.averageSessionDurationMs) || "Not enough data",
-      detail: "completed session timing",
-    },
-    {
-      label: "Completion Rate",
-      value: getProfileAnalyticsRateLabel(publicStats.completionRate),
-      detail: publicStats.dataScope === "owner" ? "eligible owner sessions" : "public-safe grow history",
-    },
-  ];
+  const trustHooks = buildProfileTrustHooks(profile);
+  const trustIndicators = buildProfileTrustIndicators(trustHooks);
+  const performanceCards = buildProfilePerformanceHighlights(publicAnalytics);
+  const activitySummary = buildProfileActivitySummary({
+    profile,
+    analytics: publicStats,
+    publicSnapshots: approvedSnapshots,
+    ownerSessions: isOwnProfile ? getSessions() : [],
+    includeOwnerPrivate: isOwnProfile,
+  });
   const stats = [
     {
       label: "Public Snapshots",
@@ -65886,6 +66128,11 @@ function renderPublicMemberProfile(memberId) {
           <p class="eyebrow">Community Member</p>
           <h2>${escapeHtml(displayName)}</h2>
             <p class="muted">${escapeHtml(publicHandleLabel || "Public grow profile")}</p>
+            ${trustIndicators.length ? `
+              <div class="public-member-profile-trust-row" aria-label="Profile trust indicators">
+                ${trustIndicators.map((indicator) => `<span class="public-member-profile-trust-chip">${escapeHtml(indicator.label)}</span>`).join("")}
+              </div>
+            ` : ""}
             ${locationRegionLabel ? `<p class="public-member-profile-region">${escapeHtml(locationRegionLabel)}</p>` : ""}
             ${joinedLabel ? `<p class="public-member-profile-joined">Joined ${escapeHtml(joinedLabel)}</p>` : ""}
             ${profileBio ? `<p class="public-member-profile-bio">${escapeHtml(profileBio)}</p>` : ""}
@@ -65930,8 +66177,8 @@ function renderPublicMemberProfile(memberId) {
               ${renderAppSectionHeaderIcon("analytics")}
               <div>
                 <p class="eyebrow">Cultivation History</p>
-                <h3>Performance foundation</h3>
-                <p class="muted">Public-safe performance and participation history for this profile.</p>
+                <h3>Performance highlights</h3>
+                <p class="muted">Approved public results only. Owner-only session analytics stay private.</p>
               </div>
             </div>
           </div>
@@ -65946,10 +66193,15 @@ function renderPublicMemberProfile(memberId) {
           </div>
           <div class="public-member-profile-history-grid">
             <article class="public-member-profile-history-card">
-              <strong>Profile milestones</strong>
-              <ul>
-                ${profileMilestones.map((milestone) => `<li>${escapeHtml(milestone)}</li>`).join("")}
-              </ul>
+              <strong>Professional milestones</strong>
+              <div class="public-member-profile-milestone-list">
+                ${profileMilestones.map((milestone) => `
+                  <div class="public-member-profile-milestone${milestone.achieved ? " is-achieved" : ""}">
+                    <span>${escapeHtml(milestone.label)}</span>
+                    <small>${escapeHtml(milestone.detail)}</small>
+                  </div>
+                `).join("")}
+              </div>
             </article>
             <article class="public-member-profile-history-card">
               <strong>Participation history</strong>
@@ -65960,6 +66212,54 @@ function renderPublicMemberProfile(memberId) {
           </div>
         </section>
       ` : ""}
+      <section class="public-member-profile-activity">
+        <div class="section-heading app-section-header">
+          <div class="section-title-with-icon app-section-header-main">
+            ${renderAppSectionHeaderIcon("activity")}
+            <div>
+              <p class="eyebrow">Activity</p>
+              <h3>Profile activity summary</h3>
+              <p class="muted">Recent approved Community Grow activity and public participation dates.</p>
+            </div>
+          </div>
+        </div>
+        <div class="public-member-profile-activity-grid">
+          <article class="public-member-profile-history-card">
+            <strong>Participation summary</strong>
+            <p>${escapeHtml(activitySummary.publicParticipationSummary)}</p>
+            <p>${escapeHtml(`Last public contribution: ${activitySummary.lastPublicContributionLabel}`)}</p>
+            <p>${escapeHtml(`Member since: ${activitySummary.memberSinceLabel}`)}</p>
+          </article>
+          <article class="public-member-profile-history-card">
+            <strong>Recent public snapshots</strong>
+            ${activitySummary.recentPublicSnapshots.length ? `
+              <div class="public-member-profile-activity-list">
+                ${activitySummary.recentPublicSnapshots.map((entry) => `
+                  <a class="public-member-profile-activity-item" href="${escapeHtml(entry.href || "#gallery")}">
+                    <span>${escapeHtml(entry.label)}</span>
+                    <small>${escapeHtml(`${entry.detail} · ${entry.dateLabel}`)}</small>
+                  </a>
+                `).join("")}
+              </div>
+            ` : "<p>No approved public snapshot activity yet.</p>"}
+          </article>
+          ${isOwnProfile ? `
+            <article class="public-member-profile-history-card">
+              <strong>Recent completed sessions</strong>
+              ${activitySummary.recentOwnerCompletedSessions.length ? `
+                <div class="public-member-profile-activity-list">
+                  ${activitySummary.recentOwnerCompletedSessions.map((entry) => `
+                    <a class="public-member-profile-activity-item" href="${escapeHtml(entry.href || "#sessions")}">
+                      <span>${escapeHtml(entry.label)}</span>
+                      <small>${escapeHtml(`${entry.detail} · ${entry.dateLabel}`)}</small>
+                    </a>
+                  `).join("")}
+                </div>
+              ` : "<p>No eligible completed owner sessions yet.</p>"}
+            </article>
+          ` : ""}
+        </div>
+      </section>
       <section class="public-member-profile-snapshots">
         <div class="section-heading app-section-header">
           <div class="section-title-with-icon app-section-header-main">
