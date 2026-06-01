@@ -23922,6 +23922,10 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
   const details = getGallerySnapshotFeedDetails(snapshot);
   const publicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
   const publishedCertification = getPublishedAdminCstpCertificationForSnapshot(snapshot);
+  const publicCstpPresence = getPublicCstpPresence(snapshot);
+  const publicCstpTrustMarkup = renderPublicCstpTrustIndicatorsMarkup(snapshot, {
+    className: "gallery-card-cstp-trust-row public-cstp-trust-row",
+  });
   const memberMarkup = renderGallerySnapshotMemberMarkup(snapshot);
   const followButtonMarkup = renderGalleryFollowButtonMarkup(snapshot, { showFollowAction });
   const sharedProfileMarkup = linkSharedProfile
@@ -24009,6 +24013,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
               <strong>${escapeHtml(publicDetails.germinationRateLabel)}</strong>
             </div>
             <div class="gallery-tile-badge gallery-tile-badge--system">${escapeHtml(systemBadgeLabel)}</div>
+            ${publicCstpPresence.hasPublicCstpStatus ? renderPublicCstpStatusBadge(snapshot, { className: "gallery-tile-badge gallery-tile-badge--cstp public-cstp-status-badge" }) : ""}
           </div>
           <div class="gallery-tile-bottom-row">
             <div class="gallery-tile-copy">
@@ -24044,6 +24049,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
         </div>
       </div>
       ${cstpCertifiedMarkup}
+      ${publicCstpTrustMarkup}
       <div class="gallery-card-performance-grid">
         <article class="gallery-card-performance-stat">
           <span>Seed Type</span>
@@ -24295,6 +24301,7 @@ function openGallerySnapshotOverview(snapshotId) {
   const ownerActionMarkup = ownerAction
     ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-modal-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-modal-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
     : "";
+  const publicCstpPresence = getPublicCstpPresence(snapshot);
   const facts = [
     { label: "System / Partition", value: publicDetails.systemLabel },
     { label: "Source / Company", value: publicDetails.sourceLabel },
@@ -24303,9 +24310,10 @@ function openGallerySnapshotOverview(snapshotId) {
     { label: "Seed Type", value: publicDetails.seedTypeLabel },
     { label: "Seeds", value: `${publicDetails.germinatedLabel} / ${publicDetails.seedCountLabel}` },
     { label: "Seed Age", value: publicDetails.seedAgeLabel },
+    publicCstpPresence.hasPublicCstpStatus ? { label: "CSTP Source Status", value: publicCstpPresence.label } : null,
     { label: "Status", value: visibilityLabel },
     { label: "Published", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) },
-  ];
+  ].filter(Boolean);
 
   content.innerHTML = `
     <div class="gallery-snapshot-overview-header">
@@ -24332,6 +24340,7 @@ function openGallerySnapshotOverview(snapshotId) {
         <div class="gallery-snapshot-overview-member">
           ${memberMarkup}
         </div>
+        ${renderPublicCstpTrustIndicatorsMarkup(snapshot, { className: "gallery-card-cstp-trust-row public-cstp-trust-row" })}
         <p class="gallery-snapshot-overview-caption">${escapeHtml(`${publicDetails.systemLabel} • ${visibilityLabel}`)}</p>
         <div class="gallery-snapshot-overview-facts">
           ${facts.map((fact) => `
@@ -26466,6 +26475,312 @@ function getCommunityInsightsSafeText(value = "", fallback = "Not shared") {
   return normalizedValue || fallback;
 }
 
+const PUBLIC_CSTP_STATUS_DEFINITIONS = Object.freeze({
+  "not-tested": {
+    key: "not-tested",
+    label: "Not Tested",
+    tone: "neutral",
+    trustLabel: "",
+    description: "No public CSTP testing record has been published for this source.",
+  },
+  tested: {
+    key: "tested",
+    label: "Tested",
+    tone: "tested",
+    trustLabel: "Tested Source",
+    description: "A public-safe CSTP testing status has been provided for this source.",
+  },
+  "certified-silver": {
+    key: "certified-silver",
+    label: "Certified Silver",
+    tone: "silver",
+    trustLabel: "Certified Source",
+    description: "A public-safe CSTP Silver certification status has been provided for this source.",
+  },
+  "certified-gold": {
+    key: "certified-gold",
+    label: "Certified Gold",
+    tone: "gold",
+    trustLabel: "Certified Source",
+    description: "A public-safe CSTP Gold certification status has been provided for this source.",
+  },
+  expired: {
+    key: "expired",
+    label: "Expired",
+    tone: "expired",
+    trustLabel: "Expired CSTP",
+    description: "A public-safe CSTP certification exists, but its public expiration state is expired.",
+  },
+});
+
+function normalizePublicCstpStatus(value = "") {
+  const normalizedValue = String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+  if (["not-tested", "none", "unverified", "untested"].includes(normalizedValue)) {
+    return "not-tested";
+  }
+  if (["tested", "cstp-tested"].includes(normalizedValue)) {
+    return "tested";
+  }
+  if (["silver", "certified-silver", "silver-certified", "cstp-silver"].includes(normalizedValue)) {
+    return "certified-silver";
+  }
+  if (["gold", "certified-gold", "gold-certified", "cstp-gold"].includes(normalizedValue)) {
+    return "certified-gold";
+  }
+  if (["expired", "certification-expired", "cstp-expired"].includes(normalizedValue)) {
+    return "expired";
+  }
+  return "";
+}
+
+function getPublicCstpStatusDefinition(status = "") {
+  return PUBLIC_CSTP_STATUS_DEFINITIONS[normalizePublicCstpStatus(status)] || null;
+}
+
+function hasOwnPublicCstpField(source = {}, key = "") {
+  return Boolean(source && typeof source === "object" && Object.prototype.hasOwnProperty.call(source, key));
+}
+
+function getPublicCstpOwnFieldValue(source = {}, keys = []) {
+  const record = source && typeof source === "object" ? source : {};
+  const fieldKey = (keys || []).find((key) => hasOwnPublicCstpField(record, key));
+  return fieldKey ? record[fieldKey] : undefined;
+}
+
+function getPublicCstpExplicitStatus(source = {}) {
+  const record = source && typeof source === "object" ? source : {};
+  const explicitStatus = getPublicCstpOwnFieldValue(record, [
+    "publicCstpStatus",
+    "public_cstp_status",
+    "cstpPublicStatus",
+    "cstp_public_status",
+    "cstpStatusPublic",
+    "cstp_status_public",
+    "publicCstpCertificationStatus",
+    "public_cstp_certification_status",
+  ]);
+  const normalizedExplicitStatus = normalizePublicCstpStatus(explicitStatus);
+  if (normalizedExplicitStatus) {
+    return normalizedExplicitStatus;
+  }
+
+  const explicitFlagChecks = [
+    {
+      keys: ["publicCstpCertifiedGold", "public_cstp_certified_gold", "cstpPublicCertifiedGold", "cstp_public_certified_gold"],
+      status: "certified-gold",
+    },
+    {
+      keys: ["publicCstpCertifiedSilver", "public_cstp_certified_silver", "cstpPublicCertifiedSilver", "cstp_public_certified_silver"],
+      status: "certified-silver",
+    },
+    {
+      keys: ["publicCstpExpired", "public_cstp_expired", "cstpPublicExpired", "cstp_public_expired"],
+      status: "expired",
+    },
+    {
+      keys: ["publicCstpTested", "public_cstp_tested", "cstpPublicTested", "cstp_public_tested"],
+      status: "tested",
+    },
+    {
+      keys: ["publicCstpNotTested", "public_cstp_not_tested", "cstpPublicNotTested", "cstp_public_not_tested"],
+      status: "not-tested",
+    },
+  ];
+  const matchedFlag = explicitFlagChecks.find((check) => getPublicCstpOwnFieldValue(record, check.keys) === true);
+  return matchedFlag?.status || "";
+}
+
+function normalizePublicCstpDateLabel(value = "") {
+  const date = parseCompletedAtValue(value || "");
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function getPublicCstpPresence(source = {}) {
+  const status = getPublicCstpExplicitStatus(source);
+  const definition = getPublicCstpStatusDefinition(status);
+  const expiresAt = getPublicCstpOwnFieldValue(source, [
+    "publicCstpCertificationExpiresAt",
+    "public_cstp_certification_expires_at",
+    "cstpPublicCertificationExpiresAt",
+    "cstp_public_certification_expires_at",
+    "publicCstpExpiresAt",
+    "public_cstp_expires_at",
+  ]);
+  const reportUrl = String(getPublicCstpOwnFieldValue(source, [
+    "publicCstpReportUrl",
+    "public_cstp_report_url",
+    "cstpPublicReportUrl",
+    "cstp_public_report_url",
+  ]) || "").trim();
+  const testingHistoryUrl = String(getPublicCstpOwnFieldValue(source, [
+    "publicCstpTestingHistoryUrl",
+    "public_cstp_testing_history_url",
+    "cstpPublicTestingHistoryUrl",
+    "cstp_public_testing_history_url",
+  ]) || "").trim();
+  const certificationHistoryUrl = String(getPublicCstpOwnFieldValue(source, [
+    "publicCstpCertificationHistoryUrl",
+    "public_cstp_certification_history_url",
+    "cstpPublicCertificationHistoryUrl",
+    "cstp_public_certification_history_url",
+  ]) || "").trim();
+
+  return {
+    hasPublicCstpStatus: Boolean(definition),
+    status: definition?.key || "",
+    label: definition?.label || "CSTP status pending",
+    tone: definition?.tone || "pending",
+    trustLabel: definition?.trustLabel || "",
+    description: definition?.description || "Public CSTP testing and certification fields have not been published for this source yet.",
+    expirationLabel: normalizePublicCstpDateLabel(expiresAt),
+    reportUrl,
+    testingHistoryUrl,
+    certificationHistoryUrl,
+    placeholderOnly: !definition,
+  };
+}
+
+function getPublicCstpFutureRoutePlaceholder(sourceKey = "", routeType = "report") {
+  const normalizedSourceKey = String(sourceKey || "").trim();
+  const normalizedRouteType = String(routeType || "report").trim().toLowerCase();
+  return normalizedSourceKey
+    ? `#source-directory/${encodeURIComponent(normalizedSourceKey)}?cstp=${encodeURIComponent(normalizedRouteType)}`
+    : `#source-directory?cstp=${encodeURIComponent(normalizedRouteType)}`;
+}
+
+function renderPublicCstpStatusBadge(source = {}, options = {}) {
+  const presence = getPublicCstpPresence(source);
+  if (!presence.hasPublicCstpStatus && !options.showPlaceholder) {
+    return "";
+  }
+  const className = options.className || "public-cstp-status-badge";
+  return `
+    <span class="${escapeHtml(className)} is-${escapeHtml(presence.tone)}" data-public-cstp-status="${escapeHtml(presence.status || "pending")}">
+      ${escapeHtml(presence.label)}
+    </span>
+  `;
+}
+
+function getPublicCstpTrustIndicators(source = {}) {
+  const presence = getPublicCstpPresence(source);
+  if (!presence.hasPublicCstpStatus || !presence.trustLabel) {
+    return [];
+  }
+  return [{
+    key: presence.status,
+    label: presence.trustLabel,
+    tone: presence.tone,
+  }];
+}
+
+function renderPublicCstpTrustIndicatorsMarkup(source = {}, options = {}) {
+  const indicators = getPublicCstpTrustIndicators(source);
+  if (!indicators.length) {
+    return "";
+  }
+  const className = options.className || "public-cstp-trust-row";
+  return `
+    <div class="${escapeHtml(className)}" aria-label="Public CSTP source indicators">
+      ${indicators.map((indicator) => `
+        <span class="public-cstp-trust-chip is-${escapeHtml(indicator.tone)}">${escapeHtml(indicator.label)}</span>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderPublicCstpActionPlaceholder(label = "", href = "", detail = "", futureRoute = "") {
+  const safeHref = String(href || "").trim();
+  if (safeHref) {
+    return `<a class="button button-secondary public-cstp-action" href="${escapeHtml(safeHref)}">${escapeHtml(label)}</a>`;
+  }
+  const futureRouteAttribute = futureRoute ? ` data-public-cstp-future-route="${escapeHtml(futureRoute)}"` : "";
+  return `
+    <button type="button" class="button button-secondary public-cstp-action" disabled aria-disabled="true"${futureRouteAttribute}>
+      ${escapeHtml(label)}
+      ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+    </button>
+  `;
+}
+
+function renderPublicCstpTestingCertificationPanel(source = {}, options = {}) {
+  const presence = getPublicCstpPresence(source);
+  const sourceKey = options.sourceKey || source.key || "";
+  const statusValue = presence.hasPublicCstpStatus ? presence.label : "Pending public CSTP data";
+  const testingValue = presence.status === "tested" || presence.status === "certified-silver" || presence.status === "certified-gold" || presence.status === "expired"
+    ? "Public testing status available"
+    : "Testing participation placeholder";
+  const certificationValue = presence.status === "certified-silver" || presence.status === "certified-gold" || presence.status === "expired"
+    ? presence.label
+    : "Certification placeholder";
+  const expirationValue = presence.expirationLabel || "Certification expiration placeholder";
+  const reportValue = presence.reportUrl ? "Public report available" : "Future report placeholder";
+  return `
+    <section class="source-directory-public-panel public-cstp-panel" data-public-cstp-panel="testing-certification">
+      <div class="community-insights-panel-heading">
+        <span>CSTP Public Presence</span>
+        <h3>Testing &amp; Certification</h3>
+        <p>${escapeHtml(presence.description)}</p>
+      </div>
+      <div class="public-cstp-panel-status-row">
+        ${renderPublicCstpStatusBadge(source, { showPlaceholder: true })}
+        <p>${escapeHtml(presence.hasPublicCstpStatus ? "Displayed from explicit public-safe CSTP fields only." : "No public CSTP status is displayed until explicit safe public fields exist.")}</p>
+      </div>
+      ${renderSourceDirectoryPublicMetricGrid([
+        { label: "CSTP Status", value: statusValue, detail: presence.hasPublicCstpStatus ? "explicit public-safe field" : "placeholder only" },
+        { label: "Testing Participation", value: testingValue, detail: "future public testing state" },
+        { label: "Gold/Silver Certification", value: certificationValue, detail: "no certification inferred" },
+        { label: "Expiration", value: expirationValue, detail: "future public expiration state" },
+        { label: "Public Report Links", value: reportValue, detail: "public report routing placeholder" },
+      ])}
+      <div class="public-cstp-action-row" data-public-cstp-future-routes="true">
+        ${renderPublicCstpActionPlaceholder("View Report", presence.reportUrl, "Future", getPublicCstpFutureRoutePlaceholder(sourceKey, "report"))}
+        ${renderPublicCstpActionPlaceholder("Testing History", presence.testingHistoryUrl, "Future", getPublicCstpFutureRoutePlaceholder(sourceKey, "testing-history"))}
+        ${renderPublicCstpActionPlaceholder("Certification History", presence.certificationHistoryUrl, "Future", getPublicCstpFutureRoutePlaceholder(sourceKey, "certification-history"))}
+      </div>
+      <p class="source-directory-public-muted">CSTP report pages, scoring, and certification publishing are not active in this public foundation.</p>
+    </section>
+  `;
+}
+
+function buildCommunityInsightsCstpPublicHooks(approvedSnapshots = []) {
+  const testedSources = new Set();
+  const certifiedSources = new Set();
+  const statuses = new Map();
+  let publicCstpSnapshotCount = 0;
+  (approvedSnapshots || []).forEach((snapshot) => {
+    const presence = getPublicCstpPresence(snapshot);
+    if (!presence.hasPublicCstpStatus) {
+      return;
+    }
+    publicCstpSnapshotCount += 1;
+    statuses.set(presence.status, (statuses.get(presence.status) || 0) + 1);
+    const sourceKey = normalizeSourceNameForMatching(snapshot?.sourceName || snapshot?.sourceLabel || "");
+    if (!sourceKey) {
+      return;
+    }
+    if (["tested", "certified-silver", "certified-gold", "expired"].includes(presence.status)) {
+      testedSources.add(sourceKey);
+    }
+    if (["certified-silver", "certified-gold", "expired"].includes(presence.status)) {
+      certifiedSources.add(sourceKey);
+    }
+  });
+  const hasPublicCstpData = publicCstpSnapshotCount > 0;
+  return {
+    hasPublicCstpData,
+    testedSourceCounts: hasPublicCstpData ? testedSources.size : null,
+    certifiedSourceCounts: hasPublicCstpData ? certifiedSources.size : null,
+    certificationParticipationRates: hasPublicCstpData && testedSources.size > 0
+      ? Math.round((certifiedSources.size / testedSources.size) * 1000) / 10
+      : null,
+    publicTestingStatistics: hasPublicCstpData ? Object.fromEntries(statuses.entries()) : null,
+    placeholderOnly: !hasPublicCstpData,
+  };
+}
+
 function getCommunityInsightsSafeSnapshotPartitions(snapshot = null) {
   if (!snapshot || typeof snapshot !== "object") {
     return [];
@@ -26730,6 +27045,7 @@ function buildCommunityInsightsState() {
   const sortBySeeds = (left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
   const sortBySnapshots = (left, right) => right.snapshotCount - left.snapshotCount || left.label.localeCompare(right.label);
   const communityAverageRate = totalSeedsTested > 0 ? Math.round((totalSeedsGerminated / totalSeedsTested) * 1000) / 10 : null;
+  const cstpPublicStatistics = buildCommunityInsightsCstpPublicHooks(approvedSnapshots);
   const bestAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
   const mostTestedAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds)[0] || null;
   const bestSource = [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
@@ -26793,7 +27109,7 @@ function buildCommunityInsightsState() {
     ],
     futureHooks: {
       sourceDirectoryIntegration: null,
-      cstpPublicStatistics: null,
+      cstpPublicStatistics,
       certificationAnalytics: null,
       publicLeaderboards: null,
       communityBenchmarking: null,
@@ -26946,6 +27262,15 @@ function renderCommunityInsightsPage() {
     valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
     detailFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} community average`,
   });
+  const cstpPublicStatistics = state.futureHooks?.cstpPublicStatistics || {};
+  const cstpPublicSectionMarkup = cstpPublicStatistics.hasPublicCstpData
+    ? renderCommunityInsightsSection("CSTP Public Testing Statistics", "Aggregate public CSTP hooks from explicit safe-public fields only.", renderCommunityInsightsKpiGrid([
+      { label: "Tested Source Counts", value: formatPrivateAnalyticsNumber(cstpPublicStatistics.testedSourceCounts), detail: "explicit public CSTP status only" },
+      { label: "Certified Source Counts", value: formatPrivateAnalyticsNumber(cstpPublicStatistics.certifiedSourceCounts), detail: "Gold/Silver/expired public status only" },
+      { label: "Certification Participation Rates", value: formatPrivateAnalyticsPercent(cstpPublicStatistics.certificationParticipationRates), detail: "certified sources divided by tested sources" },
+      { label: "Public Testing Statistics", value: formatPrivateAnalyticsNumber(Object.values(cstpPublicStatistics.publicTestingStatistics || {}).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0)), detail: "public-safe CSTP snapshot flags" },
+    ]), { wide: true, eyebrow: "CSTP" })
+    : "";
 
   app.innerHTML = `
     <section class="community-insights-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
@@ -26962,6 +27287,7 @@ function renderCommunityInsightsPage() {
       </header>
 
       ${renderCommunityInsightsSection("Community Overview", "Public-safe summary metrics from approved Community Grow data.", renderCommunityInsightsKpiGrid(overviewCards), { wide: true, eyebrow: "Overview" })}
+      ${cstpPublicSectionMarkup}
 
       ${renderCommunityInsightsSection("Insight Cards", "Descriptive signals from public aggregates only.", `
         <div class="community-insights-insight-grid">
@@ -43043,15 +43369,18 @@ function getSourceDirectoryPublicRoute(sourceKey = "") {
 }
 
 function getSourceDirectoryPublicTrustHooks(sourceRecord = {}) {
-  void sourceRecord;
+  const presence = getPublicCstpPresence(sourceRecord);
   return {
-    cstpTestedStatus: null,
-    goldCertification: null,
-    silverCertification: null,
-    certificationExpiration: null,
-    publicReportLinks: [],
-    testedButNotCertifiedStatus: null,
-    historicalTrustRecords: [],
+    cstpTestedStatus: presence.status === "tested" ? presence.label : null,
+    goldCertification: presence.status === "certified-gold" ? presence.label : null,
+    silverCertification: presence.status === "certified-silver" ? presence.label : null,
+    certificationExpiration: presence.expirationLabel || null,
+    publicReportLinks: presence.reportUrl ? [presence.reportUrl] : [],
+    testedButNotCertifiedStatus: presence.status === "tested" ? "Tested but not certified" : null,
+    historicalTrustRecords: presence.testingHistoryUrl || presence.certificationHistoryUrl
+      ? [presence.testingHistoryUrl, presence.certificationHistoryUrl].filter(Boolean)
+      : [],
+    publicCstpPresence: presence,
     placeholderLabel: "CSTP status pending",
     placeholderDetail: "Future public CSTP reports and certifications will appear separately when available.",
   };
@@ -43072,6 +43401,7 @@ function buildSourceDirectoryPublicSourceDetail(sourceKey = "", communityState =
   }]));
   const monthRollups = new Map();
   const snapshots = [];
+  let latestPublicCstpRecord = null;
   getApprovedPublicGallerySnapshots().forEach((snapshot) => {
     const snapshotId = String(snapshot?.id || "").trim();
     const sessionId = String(snapshot?.sessionId || snapshotId || "").trim();
@@ -43084,6 +43414,25 @@ function buildSourceDirectoryPublicSourceDetail(sourceKey = "", communityState =
       return;
     }
     snapshots.push(snapshot);
+    const snapshotCstpPresence = getPublicCstpPresence(snapshot);
+    const latestPublicCstpTime = Date.parse(latestPublicCstpRecord?.publishedAt || "") || 0;
+    if (snapshotCstpPresence.hasPublicCstpStatus && (publishedDate?.getTime() || 0) >= latestPublicCstpTime) {
+      latestPublicCstpRecord = {
+        publicCstpStatus: snapshotCstpPresence.status,
+        publicCstpCertificationExpiresAt: getPublicCstpOwnFieldValue(snapshot, [
+          "publicCstpCertificationExpiresAt",
+          "public_cstp_certification_expires_at",
+          "cstpPublicCertificationExpiresAt",
+          "cstp_public_certification_expires_at",
+          "publicCstpExpiresAt",
+          "public_cstp_expires_at",
+        ]) || "",
+        publicCstpReportUrl: snapshotCstpPresence.reportUrl,
+        publicCstpTestingHistoryUrl: snapshotCstpPresence.testingHistoryUrl,
+        publicCstpCertificationHistoryUrl: snapshotCstpPresence.certificationHistoryUrl,
+        publishedAt,
+      };
+    }
     const monthKey = publishedDate ? getLeaderboardMonthKey(publishedDate) : "unknown";
     const monthRollup = monthRollups.get(monthKey) || {
       key: monthKey,
@@ -43147,10 +43496,16 @@ function buildSourceDirectoryPublicSourceDetail(sourceKey = "", communityState =
     averageRate: row.totalSeeds > 0 ? Math.round((row.totalGerminated / row.totalSeeds) * 1000) / 10 : null,
   }));
 
+  const sourcePublicCstpPresence = getPublicCstpPresence(sourceRow);
+  const sourcePublicCstpFields = sourcePublicCstpPresence.hasPublicCstpStatus || !latestPublicCstpRecord
+    ? {}
+    : latestPublicCstpRecord;
+
   return {
     ...sourceRow,
+    ...sourcePublicCstpFields,
     route: getSourceDirectoryPublicRoute(sourceRow.key),
-    trustHooks: getSourceDirectoryPublicTrustHooks(sourceRow),
+    trustHooks: getSourceDirectoryPublicTrustHooks({ ...sourceRow, ...sourcePublicCstpFields }),
     topVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
     mostTestedVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
     ageRows: ageRows.filter((row) => row.totalSeeds > 0),
@@ -43167,10 +43522,15 @@ function buildSourceDirectoryPublicRecords() {
       const detail = buildSourceDirectoryPublicSourceDetail(source.key, communityState);
       return {
         ...source,
+        publicCstpStatus: detail?.publicCstpStatus || source.publicCstpStatus || "",
+        publicCstpCertificationExpiresAt: detail?.publicCstpCertificationExpiresAt || source.publicCstpCertificationExpiresAt || "",
+        publicCstpReportUrl: detail?.publicCstpReportUrl || source.publicCstpReportUrl || "",
+        publicCstpTestingHistoryUrl: detail?.publicCstpTestingHistoryUrl || source.publicCstpTestingHistoryUrl || "",
+        publicCstpCertificationHistoryUrl: detail?.publicCstpCertificationHistoryUrl || source.publicCstpCertificationHistoryUrl || "",
         route: getSourceDirectoryPublicRoute(source.key),
         latestActivityLabel: formatSourceDirectoryLastLoggedDate(source.latestAt || ""),
         topVarieties: (detail?.topVarieties || []).slice(0, 3),
-        trustHooks: getSourceDirectoryPublicTrustHooks(source),
+        trustHooks: getSourceDirectoryPublicTrustHooks(detail || source),
       };
     })
     .sort((left, right) => (
@@ -43223,6 +43583,7 @@ function renderSourceDirectoryPublicMetricGrid(cards = []) {
 function renderSourceDirectoryPublicCard(record = {}) {
   const topVarietyLabel = (record.topVarieties || []).map((variety) => variety.label).slice(0, 3).join(", ") || "Not enough public variety data";
   const hooks = record.trustHooks || getSourceDirectoryPublicTrustHooks(record);
+  const cstpPresence = hooks.publicCstpPresence || getPublicCstpPresence(record);
   return `
     <article class="source-directory-public-card">
       <div class="source-directory-public-card-head">
@@ -43242,8 +43603,10 @@ function renderSourceDirectoryPublicCard(record = {}) {
         <p>${escapeHtml(topVarietyLabel)}</p>
       </div>
       <div class="source-directory-public-cstp-placeholder" data-cstp-placeholder="true">
-        <span>${escapeHtml(hooks.placeholderLabel)}</span>
-        <p>${escapeHtml(hooks.placeholderDetail)}</p>
+        ${cstpPresence.hasPublicCstpStatus
+          ? renderPublicCstpStatusBadge(record, { showPlaceholder: true, className: "source-directory-public-cstp-badge public-cstp-status-badge" })
+          : `<span>${escapeHtml(hooks.placeholderLabel)}</span>`}
+        <p>${escapeHtml(cstpPresence.hasPublicCstpStatus ? cstpPresence.description : hooks.placeholderDetail)}</p>
       </div>
       <div class="source-directory-public-card-actions">
         <a class="button button-secondary" href="${escapeHtml(record.route)}">View Source Detail</a>
@@ -43432,18 +43795,7 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
         </div>
       </section>
 
-      <section class="source-directory-public-panel source-directory-public-cstp-placeholder" data-cstp-placeholder="true">
-        <div class="community-insights-panel-heading">
-          <span>CSTP Future Hooks</span>
-          <h3>Certification Status</h3>
-          <p>${escapeHtml(detail.trustHooks.placeholderDetail)}</p>
-        </div>
-        ${renderSourceDirectoryPublicMetricGrid([
-          { label: "CSTP Tested Status", value: "Not public yet", detail: "placeholder only" },
-          { label: "Gold/Silver Certification", value: "Not certified", detail: "no active certification inferred" },
-          { label: "Public Report Links", value: "Unavailable", detail: "future CSTP public reports" },
-        ])}
-      </section>
+      ${renderPublicCstpTestingCertificationPanel(detail, { sourceKey: detail.key })}
     </section>
   `;
 }

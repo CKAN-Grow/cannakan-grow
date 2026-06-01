@@ -40,7 +40,7 @@ for (const needle of [
   "CSTP status pending",
   "Gold/Silver Certification",
   "Public Report Links",
-  "Not certified",
+  "Certification placeholder",
   "placeholder only",
   "href=\"#source-directory\"",
   "href=\"#community-insights\"",

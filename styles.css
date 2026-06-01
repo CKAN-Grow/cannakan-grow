@@ -27218,6 +27218,114 @@ textarea::placeholder {
   color: rgba(213, 222, 214, 0.72);
 }
 
+.public-cstp-status-badge,
+.public-cstp-trust-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.08);
+  color: rgba(238, 247, 237, 0.92);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.public-cstp-status-badge.is-neutral,
+.public-cstp-status-badge.is-pending,
+.public-cstp-trust-chip.is-neutral,
+.public-cstp-trust-chip.is-pending {
+  border-color: rgba(199, 208, 201, 0.16);
+  background: rgba(199, 208, 201, 0.07);
+  color: rgba(217, 225, 218, 0.82);
+}
+
+.public-cstp-status-badge.is-tested,
+.public-cstp-trust-chip.is-tested {
+  border-color: rgba(128, 211, 255, 0.18);
+  background: rgba(128, 211, 255, 0.08);
+  color: rgba(218, 242, 255, 0.92);
+}
+
+.public-cstp-status-badge.is-silver,
+.public-cstp-trust-chip.is-silver {
+  border-color: rgba(200, 208, 215, 0.24);
+  background: rgba(200, 208, 215, 0.1);
+  color: rgba(240, 244, 247, 0.95);
+}
+
+.public-cstp-status-badge.is-gold,
+.public-cstp-trust-chip.is-gold {
+  border-color: rgba(216, 177, 95, 0.28);
+  background: rgba(216, 177, 95, 0.1);
+  color: rgba(255, 235, 190, 0.96);
+}
+
+.public-cstp-status-badge.is-expired,
+.public-cstp-trust-chip.is-expired {
+  border-color: rgba(255, 184, 107, 0.22);
+  background: rgba(255, 184, 107, 0.08);
+  color: rgba(255, 220, 181, 0.9);
+}
+
+.public-cstp-trust-row,
+.gallery-card-cstp-trust-row,
+.public-cstp-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-cstp-panel {
+  border-style: solid;
+}
+
+.public-cstp-panel-status-row {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.public-cstp-panel-status-row p {
+  margin: 0;
+  color: rgba(213, 222, 214, 0.72);
+  line-height: 1.45;
+}
+
+.public-cstp-action {
+  min-width: 142px;
+}
+
+.public-cstp-action[disabled],
+.public-cstp-action[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.public-cstp-action span {
+  display: block;
+  color: rgba(213, 222, 214, 0.62);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gallery-card-cstp-trust-row {
+  margin-top: -2px;
+}
+
+.gallery-tile-badge--cstp {
+  max-width: 150px;
+}
+
 .disclaimer-page {
   display: grid;
   gap: 22px;
