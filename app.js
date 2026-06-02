@@ -27584,6 +27584,21 @@ function getCommunitySeedAgeOverviewMockCards() {
 // Reusable public/community seed-age rollup for future Source Directory,
 // Community Grow deep-dive analytics, and CSTP/public reporting.
 function buildCommunitySeedAgeOverviewState() {
+  if (isFirstSessionAccessGateActive(getSessions())) {
+    return {
+      hasData: false,
+      isDemo: false,
+      demoLabel: "",
+      cards: [],
+      optimalAgeRange: "Not enough data yet",
+      overallAverage: "Not enough data yet",
+      totalSessions: "Not enough data yet",
+      ageRange: "Not enough data yet",
+      bestPerformance: "Not enough data yet",
+      bestPerformanceHelper: "Start your first session to unlock Seed Age Intelligence.",
+    };
+  }
+
   const sessions = getCommunitySeedAgeOverviewSessions();
   if (!sessions.some((session) => hasCommunitySeedAgeOverviewRealData(session))) {
     const mockCards = getCommunitySeedAgeOverviewMockCards();
@@ -28209,6 +28224,10 @@ function buildSeedAgeAnalyticsDemoState() {
 
 function buildPublicSeedAgeAnalyticsState(options = {}) {
   const allowDemoData = options.allowDemoData !== false;
+  if (allowDemoData && isFirstSessionAccessGateActive(getSessions())) {
+    return buildSeedAgeAnalyticsNoDataState();
+  }
+
   const communitySessions = getCommunitySeedAgeOverviewSessions();
   const trackedEntries = buildCommunitySeedAgeAnalyticsEntries(communitySessions);
   if (!trackedEntries.length) {
@@ -41416,6 +41435,35 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
   `;
 }
 
+function renderHomeAnalyticsUnlockCardMarkup() {
+  return `
+    <section class="card home-grow-network-unlock-banner" aria-labelledby="home-analytics-unlock-title">
+      <div class="home-grow-network-unlock-banner-shell">
+        <div class="home-grow-network-unlock-banner-copy">
+          ${renderAppSectionHeaderIcon("analytics", {
+            className: "home-grow-network-unlock-banner-icon",
+          })}
+          <div>
+            <p class="eyebrow">Onboarding</p>
+            <h3 id="home-analytics-unlock-title">Unlock Analytics</h3>
+            <p>Start your first grow session to unlock:</p>
+            <ul class="home-grow-network-unlock-list">
+              <li>Analytics Dashboard</li>
+              <li>Seed Vault</li>
+              <li>Community Insights</li>
+              <li>Source Performance</li>
+              <li>Seed Age Intelligence</li>
+            </ul>
+          </div>
+        </div>
+        <div class="home-grow-network-unlock-banner-actions">
+          <a class="button button-primary" href="#new" data-session-entry="true">Start First Session</a>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderHomeGrowNetworkUnlockedNoticeMarkup() {
   return `
     <section class="home-grow-network-unlocked-notice" aria-live="polite">
@@ -41472,10 +41520,26 @@ function renderHomeLearnSectionMarkup() {
 function renderHomeSecondaryInfoRowMarkup(options = {}) {
   const growNetworkUnlocked = Boolean(options.growNetworkUnlocked);
   const showGrowNetworkUnlockNotice = Boolean(options.showGrowNetworkUnlockNotice);
+  const firstSessionGateActive = isFirstSessionAccessGateActive(getSessions());
   const announcementMarkup = renderHomeAnnouncementCard(
     getHomeAnnouncementCardData(new Date()),
   );
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
+  if (firstSessionGateActive) {
+    return `
+      <div class="home-dashboard-secondary-row">
+        <div class="home-dashboard-secondary-row-top">
+          <div class="home-dashboard-secondary-main-column">
+            ${renderHomeAnalyticsUnlockCardMarkup()}
+          </div>
+          <div class="home-dashboard-secondary-side-column">
+            ${renderHomeInstallInfoCardMarkup()}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   const growNetworkPreviewShellClassName = [
     "home-grow-network-preview-shell",
     growNetworkUnlocked ? "is-unlocked" : "is-locked",
