@@ -297,6 +297,7 @@ const FILTER_PAPER_STORE_URLS = Object.freeze({
 });
 // Button label intentionally generic to avoid SKU lock-in.
 const FILTER_PAPER_REORDER_BUTTON_LABEL = "Reorder Filter Papers";
+const FILTER_PAPER_SET_BUTTON_LABEL = "Set Count";
 const FILTER_PAPER_UPDATE_BUTTON_LABEL = "Update Count";
 const DEFAULT_FILTER_PAPER_INVENTORY = Object.freeze({
   count: 0,
@@ -3878,11 +3879,21 @@ function getFilterPaperInventoryStorageKey(userId = appState.user?.id || "") {
     : FILTER_PAPER_INVENTORY_STORAGE_KEY;
 }
 
+function shouldUseLegacyGlobalFilterPaperInventoryFallback(userId = appState.user?.id || "") {
+  const normalizedUserId = String(userId || "").trim();
+  if (!normalizedUserId) {
+    return true;
+  }
+
+  return shouldBypassFirstSessionAccessGate() || hasFirstSavedGrowSessionForAccessUnlock(getSessions());
+}
+
 function getFilterPaperInventoryStorageKeys(userId = appState.user?.id || "") {
-  const keys = [
-    getFilterPaperInventoryStorageKey(userId),
-    FILTER_PAPER_INVENTORY_STORAGE_KEY,
-  ];
+  const normalizedUserId = String(userId || "").trim();
+  const keys = [getFilterPaperInventoryStorageKey(normalizedUserId)];
+  if (shouldUseLegacyGlobalFilterPaperInventoryFallback(normalizedUserId)) {
+    keys.push(FILTER_PAPER_INVENTORY_STORAGE_KEY);
+  }
   return Array.from(new Set(keys.filter(Boolean)));
 }
 
@@ -4892,9 +4903,9 @@ function getFilterPaperSupplyDisplayState() {
     return {
       count: inventory.count,
       tone: "unset",
-      statusLabel: "Not Set",
-      countLabel: "Filter papers remaining: Not set",
-      helperText: "Set your total available filter paper count so reminders stay accurate across all sessions.",
+      statusLabel: "Setup Needed",
+      countLabel: "Filter papers remaining: 0",
+      helperText: "Set your current inventory to enable supply tracking.",
     };
   }
 
@@ -4938,6 +4949,12 @@ function getFilterPaperSupplyDisplayState() {
 }
 
 function renderFilterPaperSupplyActionButtonsMarkup(supply) {
+  if (supply?.tone === "unset") {
+    return `
+      <button type="button" class="button button-primary filter-paper-supply-button filter-paper-supply-button--unset" data-filter-paper-edit="true">${escapeHtml(FILTER_PAPER_SET_BUTTON_LABEL)}</button>
+    `;
+  }
+
   return `
     <button type="button" class="button button-primary filter-paper-supply-button filter-paper-supply-button--reorder filter-paper-supply-button--${escapeHtml(supply?.tone || "ok")}" data-filter-paper-reorder="true">${escapeHtml(FILTER_PAPER_REORDER_BUTTON_LABEL)}</button>
     <button type="button" class="button button-secondary filter-paper-supply-button filter-paper-supply-button--update" data-filter-paper-edit="true">${escapeHtml(FILTER_PAPER_UPDATE_BUTTON_LABEL)}</button>
@@ -40581,7 +40598,7 @@ function renderSessionsFilterPaperCardMarkup() {
   const toneKey = supply.tone;
   const statusLabel = supply.statusLabel;
   const reminder = isInventorySet && inventory.count <= 2 ? getFilterPaperReminder(inventory.count) : "";
-  const countLabel = isInventorySet ? `${inventory.count}` : "Not set";
+  const countLabel = isInventorySet ? `${inventory.count}` : "0";
   const storeLabel = inventory.storeRegion === "EU" ? "cannakan.eu" : "cannakan.com";
   const autoSubtractLabel = inventory.autoSubtract ? "Enabled" : "Off";
 
@@ -40597,6 +40614,7 @@ function renderSessionsFilterPaperCardMarkup() {
       <div class="filter-paper-card-body">
         <p class="filter-paper-count">Filter papers remaining: <strong>${escapeHtml(String(countLabel))}</strong></p>
         <p class="filter-paper-status-line">Status: <strong>${escapeHtml(statusLabel)}</strong></p>
+        ${!isInventorySet ? `<p class="filter-paper-helper">${escapeHtml(supply.helperText)}</p>` : ""}
         ${renderFilterPaperInventoryErrorMarkup()}
         <p class="filter-paper-store">Store region: <strong>${escapeHtml(inventory.storeRegion)}</strong> - ${escapeHtml(storeLabel)}</p>
         <p class="filter-paper-auto-subtract ${inventory.autoSubtract ? "is-enabled" : "is-disabled"}">Auto subtract: <strong>${escapeHtml(autoSubtractLabel)}</strong></p>
