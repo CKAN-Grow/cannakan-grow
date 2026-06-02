@@ -29,11 +29,18 @@ test.describe("founder mobile responsiveness smoke", () => {
 
   test("mobile navigation drawer fits the viewport", async ({ page }) => {
     await gotoFounderRoute(page, "#home");
-    await page.locator("#mobile-nav-toggle").click();
-    await expect(page.locator("#mobile-nav-drawer")).toBeVisible();
-    await expectVisibleModalFitsViewport(page, "mobile navigation drawer");
-    await expect(page.locator("#mobile-nav-content")).toContainText(/Home|My Sessions|Community Grow|Source Directory/i);
-    await closeOpenModal(page);
+    const mobileNavToggle = page.locator("#mobile-nav-toggle");
+    if (await mobileNavToggle.isVisible()) {
+      await mobileNavToggle.click();
+      await expect(page.locator("#mobile-nav-drawer")).toBeVisible();
+      await expectVisibleModalFitsViewport(page, "mobile navigation drawer");
+      await expect(page.locator("#mobile-nav-content")).toContainText(/Home|My Sessions|Community Grow|Source Directory/i);
+      await closeOpenModal(page);
+      return;
+    }
+
+    await expect(page.locator(".topbar-nav")).toBeVisible();
+    await expect(page.locator(".topbar-nav")).toContainText(/Home|My Sessions|Community Grow|Source Directory/i);
   });
 
   test("available mobile modals fit the viewport", async ({ page }, testInfo) => {

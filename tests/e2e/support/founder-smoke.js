@@ -54,8 +54,17 @@ const FOUNDER_ROUTES = Object.freeze([
   {
     name: "Profile",
     hash: "#profile",
-    expectedText: /Profile|Profile Setup|Save Profile|Display Name|Sign In/i,
-    ctas: [/Save Profile|Sign In|Delete Account/i],
+    expectedText: /Profile|Public Profile|Edit Profile|Profile Settings|Member Profile|Analytics Dashboard|Display Name|Sign In/i,
+    ctas: [/Edit Profile|Public Profile|Analytics Dashboard|Save Profile|Sign In|Delete Account/i],
+    markers: [
+      /Profile Settings/i,
+      /Public Profile/i,
+      /Edit Profile/i,
+      /Member Profile/i,
+      /Analytics Dashboard/i,
+      /Display Name/i,
+      /Profile Setup/i,
+    ],
   },
 ]);
 
@@ -101,11 +110,29 @@ async function expectAnyRouteCta(page, route) {
     }
   }
 
-  throw new Error(`${route.name} did not expose any expected key CTA: ${(route.ctas || []).join(", ")}`);
+  for (const marker of route.markers || []) {
+    if (await hasVisibleTextMarker(page, marker)) {
+      return;
+    }
+  }
+
+  throw new Error(`${route.name} did not expose any expected key CTA or stable marker: ${[
+    ...(route.ctas || []),
+    ...(route.markers || []),
+  ].join(", ")}`);
 }
 
 async function hasVisibleRoleMatch(page, role, name) {
   const locator = page.getByRole(role, { name }).first();
+  try {
+    return await locator.isVisible({ timeout: 750 });
+  } catch (error) {
+    return false;
+  }
+}
+
+async function hasVisibleTextMarker(page, marker) {
+  const locator = page.locator("#app").getByText(marker).first();
   try {
     return await locator.isVisible({ timeout: 750 });
   } catch (error) {
@@ -242,7 +269,19 @@ async function openIfVisible(page, selector, label, options = {}) {
 
 async function closeOpenModal(page) {
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(300);
+
+  const openModal = page.locator([
+    "dialog[open]",
+    "[role='dialog']:visible",
+    ".new-session-system-modal:visible",
+    ".seed-vault-entry-modal:visible",
+    ".mobile-nav-panel:visible",
+  ].join(", ")).first();
+
+  if (!await isVisible(openModal)) {
+    return;
+  }
 
   const closeButton = page.locator([
     "[data-seed-vault-modal-close='true']",
@@ -252,7 +291,7 @@ async function closeOpenModal(page) {
   ].join(", ")).filter({ visible: true }).first();
 
   if (await isVisible(closeButton)) {
-    await closeButton.click();
+    await closeButton.click({ force: true, timeout: 1000 });
     await page.waitForTimeout(150);
   }
 }

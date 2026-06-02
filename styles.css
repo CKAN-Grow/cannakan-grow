@@ -5689,6 +5689,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 @media (max-width: 768px) {
+  .session-command-start-link {
+    min-height: 40px;
+    padding-block: 10px;
+  }
+
   .gallery-sort-controls {
     width: 100%;
     justify-content: flex-start;
