@@ -5838,6 +5838,10 @@ function ensureGrowNetworkUnlockStateSynced(sessions = getSessions()) {
 }
 
 function isGrowNetworkUnlocked(sessions = getSessions()) {
+  if (appState.user && (hasFirstSavedGrowSessionForAccessUnlock(sessions) || shouldBypassFirstSessionAccessGate())) {
+    return true;
+  }
+
   return ensureGrowNetworkUnlockStateSynced(sessions);
 }
 
@@ -5916,6 +5920,10 @@ function ensureCommunityGrowUnlockStateSynced(sessions = getSessions()) {
 }
 
 function isCommunityGrowUnlocked(sessions = getSessions()) {
+  if (appState.user && (hasFirstSavedGrowSessionForAccessUnlock(sessions) || shouldBypassFirstSessionAccessGate())) {
+    return true;
+  }
+
   return ensureCommunityGrowUnlockStateSynced(sessions);
 }
 
@@ -5950,6 +5958,11 @@ function consumeCommunityGrowUnlockNotice() {
 function getNavigationLockStateForHash(hash = "#home") {
   const normalizedHash = normalizeNavigationHash(hash || "#home");
   const isAdminContext = isAdminUser();
+  const firstSessionLockState = getFirstSessionAccessLockStateForHash(normalizedHash);
+  if (firstSessionLockState.locked) {
+    return firstSessionLockState;
+  }
+
   const growNetworkUnlocked = isGrowNetworkUnlocked(getSessions());
   const communityGrowUnlocked = isCommunityGrowUnlocked(getSessions());
 
@@ -5997,6 +6010,92 @@ function getNavigationLockStateForHash(hash = "#home") {
     ctaLabel: "",
     ctaHref: "",
   };
+}
+
+function shouldBypassFirstSessionAccessGate() {
+  return Boolean(appState.user && (hasResolvedAdminAccess() || isAdminUser() || isLocalDevQaBypassActive()));
+}
+
+function isFirstSessionAccessUnlockSession(session = null) {
+  const normalizedSession = normalizeStoredSession(session) || session;
+  return Boolean(
+    normalizedSession
+    && String(normalizedSession.id || "").trim()
+    && !isSessionSoftDeleted(normalizedSession)
+    && !isDevModeOnlyMockRecord(normalizedSession)
+    && !isMockGrowSession(normalizedSession)
+    && !isTestGrowSession(normalizedSession)
+  );
+}
+
+function hasFirstSavedGrowSessionForAccessUnlock(sessions = getSessions()) {
+  return (Array.isArray(sessions) ? sessions : []).some((session) => isFirstSessionAccessUnlockSession(session));
+}
+
+function isFirstSessionAccessGateActive(sessions = getSessions()) {
+  if (!appState.user || shouldBypassFirstSessionAccessGate()) {
+    return false;
+  }
+
+  return !hasFirstSavedGrowSessionForAccessUnlock(sessions);
+}
+
+function isFirstSessionLockedRouteHash(hash = "#home") {
+  const normalizedHash = normalizeNavigationHash(hash || "#home");
+  const [route, id] = normalizedHash.replace(/^#/, "").split("/");
+  if (!route) {
+    return false;
+  }
+
+  if (route === "gallery"
+    || route === "community-insights"
+    || route === "community-insights-seed-age"
+    || route === "source-directory"
+    || route === "sources"
+    || route === "seed-age-analytics"
+    || route === "seed-vault"
+    || route === "analytics"
+    || route === "network"
+    || route === "members"
+    || route === "active-sessions") {
+    return true;
+  }
+
+  return route === "sessions" && id === "public";
+}
+
+function getFirstSessionAccessLockStateForHash(hash = "#home") {
+  if (!isFirstSessionAccessGateActive(getSessions()) || !isFirstSessionLockedRouteHash(hash)) {
+    return {
+      locked: false,
+      mode: "",
+      message: "",
+      ctaLabel: "",
+      ctaHref: "",
+      redirectHash: "",
+    };
+  }
+
+  return {
+    locked: true,
+    mode: "first-session",
+    message: "Start your first session to unlock the full Grow experience.",
+    ctaLabel: "Start First Session",
+    ctaHref: "#new",
+    redirectHash: "#sessions",
+  };
+}
+
+function getNavigationLockTitle(mode = "") {
+  switch (String(mode || "").trim()) {
+    case "community-grow":
+      return "Community Grow";
+    case "first-session":
+      return "Grow Experience";
+    case "grow-network":
+    default:
+      return "Grow Network";
+  }
 }
 
 function ensureNavigationLockToast() {
@@ -33467,6 +33566,39 @@ function render() {
   syncSessionProgressionReminderNotifications(getSessions());
   renderAppNotificationCenter();
 
+  const firstSessionRouteLockState = getFirstSessionAccessLockStateForHash(rawRoute ? `#${rawRoute}` : "#home");
+  if (firstSessionRouteLockState.locked) {
+    const redirectHash = replaceLocationHashWithoutNavigation(firstSessionRouteLockState.redirectHash || "#sessions");
+    appState.currentRouteHash = redirectHash;
+    updateNavState();
+    if (!hasCompletedProfile()) {
+      renderProfileSetupScreen();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "profile",
+        pageKey: "profile-setup",
+        pageLabel: "Profile Setup",
+        pagePath: "#profile",
+      }));
+    } else {
+      renderSessionsList();
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "sessions",
+        pageKey: "sessions",
+        pageLabel: "My Sessions",
+        pagePath: "#sessions",
+      }));
+    }
+    queueMicrotask(() => {
+      showNavigationLockToast({
+        title: getNavigationLockTitle(firstSessionRouteLockState.mode),
+        message: firstSessionRouteLockState.message,
+        ctaLabel: firstSessionRouteLockState.ctaLabel,
+        ctaHref: firstSessionRouteLockState.ctaHref,
+      });
+    });
+    return;
+  }
+
   if (route === "gallery") {
     renderGallery(id || "");
     finalizeRender(buildSiteAnalyticsPageContext({
@@ -38686,17 +38818,24 @@ function bindProfilePageForm(form) {
     "showGrowStatsPublicly",
   ];
 
+  const getCheckboxState = (fieldName, fallbackValue = false) => {
+    const field = form.elements?.[fieldName];
+    return field instanceof HTMLInputElement && field.type === "checkbox"
+      ? Boolean(field.checked)
+      : Boolean(fallbackValue);
+  };
+
   const getFormState = () => ({
-    growRemindersEnabled: Boolean(form.elements.growRemindersEnabled?.checked),
-    notifySoakingReminders: Boolean(form.elements.notifySoakingReminders?.checked),
-    notifyGerminationReminders: Boolean(form.elements.notifyGerminationReminders?.checked),
-    notifySnapshotReminders: Boolean(form.elements.notifySnapshotReminders?.checked),
-    notifySupplyReminders: Boolean(form.elements.notifySupplyReminders?.checked),
-    notifyCommunityActivity: Boolean(form.elements.notifyCommunityActivity?.checked),
-    pushNotificationsEnabled: Boolean(form.elements.pushNotificationsEnabled?.checked),
-    showProfileInCommunityGrow: Boolean(form.elements.showProfileInCommunityGrow?.checked),
-    allowFollowers: Boolean(form.elements.allowFollowers?.checked),
-    showGrowStatsPublicly: Boolean(form.elements.showGrowStatsPublicly?.checked),
+    growRemindersEnabled: getCheckboxState("growRemindersEnabled", notificationPreferences.growRemindersEnabled !== false),
+    notifySoakingReminders: getCheckboxState("notifySoakingReminders", notificationPreferences.notifySoakingReminders !== false),
+    notifyGerminationReminders: getCheckboxState("notifyGerminationReminders", notificationPreferences.notifyGerminationReminders !== false),
+    notifySnapshotReminders: getCheckboxState("notifySnapshotReminders", notificationPreferences.notifySnapshotReminders !== false),
+    notifySupplyReminders: getCheckboxState("notifySupplyReminders", notificationPreferences.notifySupplyReminders !== false),
+    notifyCommunityActivity: getCheckboxState("notifyCommunityActivity", profilePageSettings.notifyCommunityActivity !== false),
+    pushNotificationsEnabled: getCheckboxState("pushNotificationsEnabled", notificationPreferences.pushNotificationsEnabled === true),
+    showProfileInCommunityGrow: getCheckboxState("showProfileInCommunityGrow", profilePageSettings.showProfileInCommunityGrow !== false),
+    allowFollowers: getCheckboxState("allowFollowers", profilePageSettings.allowFollowers !== false),
+    showGrowStatsPublicly: getCheckboxState("showGrowStatsPublicly", profilePageSettings.showGrowStatsPublicly !== false),
   });
 
   const setMessage = (message, isError = false) => {
@@ -39396,6 +39535,7 @@ function renderProfilePage() {
   const profileSetupComplete = hasCompletedProfile();
   const memberSinceValue = appState.profile?.createdAt || appState.user?.created_at || "";
   const memberSinceLabel = memberSinceValue ? formatPublicMemberJoinedDateLabel(memberSinceValue) : "Not available yet";
+  const firstSessionGateActive = isFirstSessionAccessGateActive(getSessions());
   const accountInfoRows = [
     { label: "Email", value: email },
     { label: "Display Name", value: displayName || "Choose a display name in Edit Profile" },
@@ -39404,11 +39544,13 @@ function renderProfilePage() {
     { label: "Member Since", value: memberSinceLabel },
     { label: "Profile Visibility", value: profilePageSettings.showProfileInCommunityGrow !== false ? "Public in Community Grow" : "Private" },
   ];
-  const ownerPublicStats = calculatePublicProfileStats({
-    memberId: String(appState.user?.id || "").trim(),
-    snapshots: getApprovedPublicSnapshotsForMember(String(appState.user?.id || "").trim()),
-    includeOwnerPrivate: true,
-  });
+  const ownerPublicStats = firstSessionGateActive
+    ? null
+    : calculatePublicProfileStats({
+      memberId: String(appState.user?.id || "").trim(),
+      snapshots: getApprovedPublicSnapshotsForMember(String(appState.user?.id || "").trim()),
+      includeOwnerPrivate: true,
+    });
   const usesNotificationFallback = Boolean(appState.notificationPreferencesTableUnavailable);
 
   app.innerHTML = `
@@ -39430,7 +39572,7 @@ function renderProfilePage() {
         </div>
         <div class="profile-page-header-actions">
           <span class="profile-status-badge is-member">Member</span>
-          <a class="button button-secondary profile-page-edit-button" href="${escapeHtml(getPublicMemberProfileRoute(currentPublicProfile || appState.user?.id || ""))}">View Public Profile</a>
+          ${firstSessionGateActive ? "" : `<a class="button button-secondary profile-page-edit-button" href="${escapeHtml(getPublicMemberProfileRoute(currentPublicProfile || appState.user?.id || ""))}">View Public Profile</a>`}
           <button type="button" class="button button-secondary profile-page-edit-button" data-profile-open-editor="true">Edit Profile</button>
         </div>
       </header>
@@ -39458,7 +39600,22 @@ function renderProfilePage() {
               : "Complete your display name and avatar so your public and community profile can stay consistent."}</p>
             ${currentPublicProfile?.bio ? `<p class="profile-section-note"><strong>Bio:</strong> ${escapeHtml(currentPublicProfile.bio)}</p>` : ""}
           </article>
-          <article class="profile-section-card">
+          ${firstSessionGateActive ? `
+            <article class="profile-section-card">
+              <div class="profile-section-heading">
+                <div>
+                  <p class="eyebrow">First Session</p>
+                  <h3>Grow Experience Locked</h3>
+                  <p class="profile-section-subtitle">Start your first session to unlock the full Grow experience.</p>
+                </div>
+              </div>
+              <p class="profile-section-note">Public profile stats, Community Grow identity, trust hooks, and reputation-ready profile sections unlock after your first saved grow session.</p>
+              <div class="inline-actions">
+                <a class="button button-primary" href="#new" data-session-entry="true">Start First Session</a>
+                <a class="button button-secondary" href="#sessions">My Sessions</a>
+              </div>
+            </article>
+          ` : `<article class="profile-section-card">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Public Backbone</p>
@@ -39483,7 +39640,7 @@ function renderProfilePage() {
                 </div>
               `).join("")}
             </div>
-          </article>
+          </article>`}
           <article class="profile-section-card" id="profile-notification-preferences-card" tabindex="-1">
             <div class="profile-section-heading">
               <div>
@@ -39543,7 +39700,7 @@ function renderProfilePage() {
               ? "Notification preferences are currently using your latest saved browser fallback while the backend is unavailable."
               : `Notification settings are connected to your saved ${BRAND_APP_NAME} preferences and will reload whenever you sign back in.`}</p>
           </article>
-          <article class="profile-section-card" id="profile-privacy-community-card">
+          ${firstSessionGateActive ? "" : `<article class="profile-section-card" id="profile-privacy-community-card">
             <div class="profile-section-heading">
               <div>
                 <p class="eyebrow">Privacy</p>
@@ -39572,7 +39729,7 @@ function renderProfilePage() {
               })}
             </div>
             <p class="profile-section-note">These community preferences save to your Grow Network profile when available, with a safe local fallback if needed.</p>
-          </article>
+          </article>`}
           <article class="profile-section-card">
             <div class="profile-section-heading">
               <div>
@@ -41247,8 +41404,8 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
           })}
           <div>
             <p class="eyebrow">Grow Network</p>
-            <h3 id="home-grow-network-unlock-title">Start your first soaking session to begin unlocking community insights, rankings, source discovery, and advanced grow tracking.</h3>
-            <p>The ecosystem below will begin waking up naturally as you start growing.</p>
+            <h3 id="home-grow-network-unlock-title">Start your first session to unlock the full Grow experience.</h3>
+            <p>Community Grow, insights, source discovery, Seed Vault, and advanced analytics unlock after your first saved grow session.</p>
           </div>
         </div>
         <div class="home-grow-network-unlock-banner-actions">
@@ -76455,7 +76612,7 @@ document.addEventListener("click", (event) => {
         closeMobileNavigation();
       }
       showNavigationLockToast({
-        title: navLockState.mode === "community-grow" ? "Community Grow" : "Grow Network",
+        title: getNavigationLockTitle(navLockState.mode),
         message: navLockState.message,
         ctaLabel: navLockState.ctaLabel,
         ctaHref: navLockState.ctaHref,
@@ -76482,6 +76639,19 @@ document.addEventListener("click", (event) => {
     : null;
   if (communityInsightsLink instanceof HTMLAnchorElement) {
     const targetHash = "#gallery/community-insights";
+    const navLockState = getNavigationLockStateForHash(targetHash);
+    if (navLockState.locked) {
+      event.preventDefault();
+      event.stopPropagation();
+      showNavigationLockToast({
+        title: getNavigationLockTitle(navLockState.mode),
+        message: navLockState.message,
+        ctaLabel: navLockState.ctaLabel,
+        ctaHref: navLockState.ctaHref,
+      });
+      return;
+    }
+
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
       event.stopPropagation();
@@ -76499,6 +76669,19 @@ document.addEventListener("click", (event) => {
     : null;
   if (communitySeedAgeInsightsLink instanceof HTMLAnchorElement) {
     const targetHash = "#gallery/community-insights-seed-age";
+    const navLockState = getNavigationLockStateForHash(targetHash);
+    if (navLockState.locked) {
+      event.preventDefault();
+      event.stopPropagation();
+      showNavigationLockToast({
+        title: getNavigationLockTitle(navLockState.mode),
+        message: navLockState.message,
+        ctaLabel: navLockState.ctaLabel,
+        ctaHref: navLockState.ctaHref,
+      });
+      return;
+    }
+
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
       event.stopPropagation();
@@ -76516,6 +76699,19 @@ document.addEventListener("click", (event) => {
     : null;
   if (seedAgeAnalyticsLink instanceof HTMLAnchorElement) {
     const targetHash = "#seed-age-analytics";
+    const navLockState = getNavigationLockStateForHash(targetHash);
+    if (navLockState.locked) {
+      event.preventDefault();
+      event.stopPropagation();
+      showNavigationLockToast({
+        title: getNavigationLockTitle(navLockState.mode),
+        message: navLockState.message,
+        ctaLabel: navLockState.ctaLabel,
+        ctaHref: navLockState.ctaHref,
+      });
+      return;
+    }
+
     if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
       event.preventDefault();
       event.stopPropagation();
