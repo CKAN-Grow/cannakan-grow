@@ -41494,91 +41494,188 @@ function renderHomeLockedPreviewLockIconMarkup() {
   `;
 }
 
-function getHomeLockedEcosystemPreviewCards() {
-  return [
-    {
-      key: "community-grow",
-      title: "Community Grow",
-      iconType: "community",
-      description: "Browse approved grow snapshots and learn from public-safe community results.",
-    },
-    {
-      key: "community-insights",
-      title: "Community Insights",
-      iconType: "leaderboard",
-      description: "See aggregate germination trends, activity patterns, and public-safe grow signals.",
-    },
-    {
-      key: "source-directory",
-      title: "Source Directory",
-      iconType: "sources",
-      description: "Compare source-level public performance signals and future CSTP trust hooks.",
-    },
-    {
-      key: "seed-vault",
-      title: "Seed Vault",
-      iconType: "plant",
-      description: "Track your private seed collection, age, quantity, and session usage history.",
-    },
-    {
-      key: "analytics-dashboard",
-      title: "Analytics Dashboard",
-      iconType: "analytics",
-      description: "Unlock deeper private charts for germination, source, variety, age, and vault intelligence.",
-    },
+function renderHomeLockedPreviewOverlayMarkup() {
+  return `
+    <div class="home-locked-section-overlay" aria-hidden="true">
+      ${renderHomeLockedPreviewLockIconMarkup()}
+      <strong>Start your first session to unlock</strong>
+    </div>
+  `;
+}
+
+function renderHomeLockedSectionPreviewMarkup({
+  key = "",
+  eyebrow = "",
+  title = "",
+  iconType = "analytics",
+  description = "",
+  bodyMarkup = "",
+  modifierClass = "",
+} = {}) {
+  return `
+    <section class="home-locked-ecosystem-section ${escapeHtml(modifierClass)}" data-home-locked-section="${escapeHtml(key)}" aria-labelledby="home-locked-${escapeHtml(key)}-title">
+      <div class="home-locked-ecosystem-section-head">
+        ${renderAppSectionHeaderIcon(iconType, {
+          className: "home-locked-ecosystem-section-icon",
+        })}
+        <div>
+          <p class="eyebrow">${escapeHtml(eyebrow)}</p>
+          <h4 id="home-locked-${escapeHtml(key)}-title">${escapeHtml(title)}</h4>
+          <p>${escapeHtml(description)}</p>
+        </div>
+      </div>
+      <div class="home-locked-section-content" inert aria-hidden="true">
+        ${bodyMarkup}
+      </div>
+      ${renderHomeLockedPreviewOverlayMarkup()}
+    </section>
+  `;
+}
+
+function renderHomeLockedCommunityGrowSectionMarkup() {
+  const placeholderCards = [
+    { title: "Approved snapshot feed", detail: "Public grow results, photos, and safe metadata" },
+    { title: "Grower profile links", detail: "Public profiles when growers choose to share" },
+    { title: "Session detail previews", detail: "Read-only public session summaries" },
   ];
+  return renderHomeLockedSectionPreviewMarkup({
+    key: "community-grow",
+    eyebrow: "Community Grow",
+    title: "Community Grow",
+    iconType: "community",
+    description: "The public grow area opens after your first saved session.",
+    modifierClass: "home-locked-ecosystem-section--community-grow",
+    bodyMarkup: `
+      <div class="home-locked-gallery-preview-grid">
+        ${placeholderCards.map((card) => `
+          <article class="gallery-card gallery-card--compact-preview home-locked-gallery-card">
+            <div class="gallery-card-media gallery-card-media--tile home-locked-gallery-card-media">
+              ${renderAppSectionHeaderIcon("snapshots", {
+                className: "home-locked-gallery-card-icon",
+              })}
+            </div>
+            <div class="gallery-card-body">
+              <p class="eyebrow">Community Snapshot</p>
+              <h4>${escapeHtml(card.title)}</h4>
+              <p class="muted">${escapeHtml(card.detail)}</p>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    `,
+  });
+}
+
+function renderHomeLockedAnalyticsDashboardSectionMarkup() {
+  return renderHomeLockedSectionPreviewMarkup({
+    key: "analytics-dashboard",
+    eyebrow: "Private Analytics",
+    title: "Analytics Dashboard",
+    iconType: "analytics",
+    description: "Your private analytics dashboard unlocks once real session data exists.",
+    modifierClass: "home-locked-ecosystem-section--analytics",
+    bodyMarkup: `
+      <div class="private-analytics-hero-kpi-grid home-locked-analytics-kpi-grid" aria-label="Locked analytics dashboard preview">
+        ${[
+          ["Average Germination", "--", "completed-session rate"],
+          ["Seeds Tested", "0", "eligible private sessions"],
+          ["Best Source", "--", "source performance"],
+          ["Seed Age", "--", "age bucket intelligence"],
+        ].map(([label, value, detail]) => `
+          <article class="private-analytics-hero-kpi-card">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+            <small>${escapeHtml(detail)}</small>
+          </article>
+        `).join("")}
+      </div>
+      <div class="home-locked-analytics-preview-grid">
+        ${["Germination Trends", "Source Performance", "Variety / Genetics", "Seed Age"].map((label, index) => `
+          <article class="private-analytics-chart-card home-locked-chart-card">
+            <div class="private-analytics-chart-heading">
+              <strong>${escapeHtml(label)}</strong>
+              <span>waiting for your first saved grow</span>
+            </div>
+            <div class="home-locked-chart-bars" aria-hidden="true">
+              ${[58, 74, 42, 66, 50].map((height, barIndex) => `<i style="height:${Math.max(8, height - (index * 5) + (barIndex * 2))}%;"></i>`).join("")}
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    `,
+  });
+}
+
+function renderHomeLockedSeedVaultSectionMarkup() {
+  return renderHomeLockedSectionPreviewMarkup({
+    key: "seed-vault",
+    eyebrow: "Private Collection",
+    title: "Seed Vault",
+    iconType: "plant",
+    description: "Track seed variety, source, age, quantity, storage notes, and linked sessions.",
+    modifierClass: "home-locked-ecosystem-section--seed-vault",
+    bodyMarkup: `
+      <div class="home-locked-vault-preview">
+        <div class="home-locked-vault-toolbar">
+          <span>My Seed Vault</span>
+          <span>Add Entry</span>
+        </div>
+        <div class="home-locked-vault-grid">
+          ${[
+            ["Variety / Genetics", "Source", "Qty"],
+            ["Acquired Year", "Seed Type", "Storage"],
+            ["Session Links", "Age Bucket", "Performance"],
+          ].map((items) => `
+            <article class="seed-vault-entry-card home-locked-vault-card">
+              ${items.map((item) => `
+                <div>
+                  <span class="stat-label">${escapeHtml(item)}</span>
+                  <strong>--</strong>
+                </div>
+              `).join("")}
+            </article>
+          `).join("")}
+        </div>
+      </div>
+    `,
+  });
 }
 
 function renderHomeLockedEcosystemPreviewMarkup() {
-  const cards = getHomeLockedEcosystemPreviewCards();
   return `
     <section class="home-locked-ecosystem-preview" aria-labelledby="home-locked-ecosystem-preview-title">
       <div class="home-locked-ecosystem-preview-head">
         <p class="eyebrow">Coming After Your First Session</p>
-        <h3 id="home-locked-ecosystem-preview-title">Explore what your first session unlocks</h3>
-        <p>These areas stay protected until your first saved grow, but the full ecosystem is ready when you are.</p>
+        <h3 id="home-locked-ecosystem-preview-title">Preview the full grow ecosystem</h3>
+        <p>The app stays protected until your first saved grow, but you can still see the systems waiting underneath.</p>
       </div>
-      <div class="home-locked-ecosystem-preview-grid" role="list">
-        ${cards.map((card) => `
-          <button
-            type="button"
-            class="home-locked-ecosystem-card"
-            data-home-locked-preview="${escapeHtml(card.key)}"
-            aria-label="${escapeHtml(`${card.title}. Start your first session to unlock.`)}"
-          >
-            <span class="home-locked-ecosystem-card-glass" aria-hidden="true"></span>
-            <span class="home-locked-ecosystem-card-top">
-              ${renderAppSectionHeaderIcon(card.iconType, {
-                className: "home-locked-ecosystem-card-icon",
-              })}
-              ${renderHomeLockedPreviewLockIconMarkup()}
-            </span>
-            <span class="home-locked-ecosystem-card-copy">
-              <strong>${escapeHtml(card.title)}</strong>
-              <span>${escapeHtml(card.description)}</span>
-            </span>
-          </button>
-        `).join("")}
-      </div>
+      ${renderHomeLockedCommunityGrowSectionMarkup()}
+      ${renderHomeLockedSectionPreviewMarkup({
+        key: "community-insights",
+        eyebrow: "Community Insights",
+        title: "Community Insights",
+        iconType: "leaderboard",
+        description: "Aggregate public-safe grow patterns, source activity, and germination trends.",
+        modifierClass: "home-locked-ecosystem-section--community-insights",
+        bodyMarkup: renderHomeGalleryRankingsTeaser(),
+      })}
+      ${renderHomeLockedSectionPreviewMarkup({
+        key: "source-directory",
+        eyebrow: "Source Directory",
+        title: "Source Directory",
+        iconType: "sources",
+        description: "Public-safe source transparency, performance rollups, and future CSTP hooks.",
+        modifierClass: "home-locked-ecosystem-section--source-directory",
+        bodyMarkup: renderHomeTestedSourcesPreviewSectionMarkup(),
+      })}
+      ${renderHomeLockedAnalyticsDashboardSectionMarkup()}
+      ${renderHomeLockedSeedVaultSectionMarkup()}
     </section>
   `;
 }
 
 function bindHomeLockedEcosystemPreviewCards(scope = app) {
-  if (!scope?.querySelectorAll) {
-    return;
-  }
-
-  scope.querySelectorAll("[data-home-locked-preview]").forEach((card) => {
-    card.addEventListener("click", () => {
-      showNavigationLockToast({
-        title: "Locked Preview",
-        message: "Start your first session to unlock.",
-        ctaLabel: "Start First Session",
-        ctaHref: "#new",
-      });
-    });
-  });
+  return scope;
 }
 
 function renderHomeGrowNetworkUnlockedNoticeMarkup() {

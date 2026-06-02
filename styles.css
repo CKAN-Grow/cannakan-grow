@@ -9975,7 +9975,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-locked-ecosystem-preview {
   display: grid;
-  gap: clamp(16px, 2vw, 22px);
+  gap: clamp(18px, 2.2vw, 26px);
 }
 
 .home-locked-ecosystem-preview-head {
@@ -9999,6 +9999,195 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: rgba(219, 233, 214, 0.76);
   font-size: 0.95rem;
   line-height: 1.55;
+}
+
+.home-locked-ecosystem-section {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: clamp(14px, 1.8vw, 18px);
+  padding: clamp(16px, 2vw, 20px);
+  border: 1px solid rgba(184, 239, 132, 0.13);
+  border-radius: 26px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(5, 10, 7, 0.72);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.048);
+  backdrop-filter: blur(16px) saturate(108%);
+}
+
+.home-locked-ecosystem-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(184, 239, 132, 0.11), transparent 34%),
+    linear-gradient(180deg, rgba(8, 14, 10, 0.08), rgba(8, 14, 10, 0.2));
+  pointer-events: none;
+}
+
+.home-locked-ecosystem-section-head {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 840px;
+}
+
+.home-locked-ecosystem-section-head > div {
+  display: grid;
+  gap: 5px;
+}
+
+.home-locked-ecosystem-section-head h4,
+.home-locked-ecosystem-section-head p {
+  margin: 0;
+}
+
+.home-locked-ecosystem-section-head h4 {
+  color: #f6fbf1;
+  font-size: clamp(1.05rem, 1.6vw, 1.32rem);
+  line-height: 1.16;
+}
+
+.home-locked-ecosystem-section-head p:not(.eyebrow) {
+  color: rgba(220, 234, 214, 0.72);
+  font-size: 0.9rem;
+  line-height: 1.46;
+}
+
+.home-locked-ecosystem-section-icon.cg-icon--plate {
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  opacity: 0.82;
+}
+
+.home-locked-section-content {
+  position: relative;
+  z-index: 1;
+  opacity: 0.54;
+  filter: blur(1.8px) saturate(0.88) brightness(0.96);
+  pointer-events: none;
+  user-select: none;
+}
+
+.home-locked-section-content :is(a, button, input, select, textarea) {
+  pointer-events: none;
+}
+
+.home-locked-section-overlay {
+  position: absolute;
+  inset: clamp(72px, 8vw, 96px) 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 0 0 26px 26px;
+  background:
+    linear-gradient(180deg, rgba(7, 13, 9, 0.26) 0%, rgba(7, 13, 9, 0.46) 100%),
+    radial-gradient(circle at center, rgba(184, 239, 132, 0.09), transparent 44%);
+  color: rgba(246, 255, 238, 0.92);
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(8px) saturate(112%);
+}
+
+.home-locked-section-overlay .home-locked-preview-lock {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  border-color: rgba(184, 239, 132, 0.24);
+  background: rgba(10, 18, 12, 0.68);
+  color: #d7f7b3;
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.24),
+    0 0 28px rgba(148, 209, 89, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.home-locked-section-overlay strong {
+  max-width: 24ch;
+  color: #f6ffe9;
+  font-size: clamp(1rem, 1.4vw, 1.16rem);
+  line-height: 1.25;
+}
+
+.home-locked-gallery-preview-grid,
+.home-locked-analytics-preview-grid,
+.home-locked-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.home-locked-gallery-card {
+  min-height: 250px;
+}
+
+.home-locked-gallery-card-media {
+  display: grid;
+  place-items: center;
+  min-height: 130px;
+}
+
+.home-locked-gallery-card-icon.cg-icon--plate {
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+}
+
+.home-locked-analytics-preview-grid {
+  margin-top: 12px;
+}
+
+.home-locked-chart-bars {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  min-height: 96px;
+  padding-top: 14px;
+}
+
+.home-locked-chart-bars i {
+  flex: 1;
+  min-width: 14px;
+  border-radius: 999px 999px 4px 4px;
+  background: linear-gradient(180deg, rgba(184, 239, 132, 0.74), rgba(78, 135, 53, 0.28));
+  box-shadow: 0 0 14px rgba(148, 209, 89, 0.12);
+}
+
+.home-locked-vault-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.home-locked-vault-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(184, 239, 132, 0.11);
+  border-radius: 16px;
+  background: rgba(7, 13, 9, 0.62);
+  color: rgba(238, 248, 235, 0.82);
+  font-weight: 800;
+}
+
+.home-locked-vault-card {
+  display: grid;
+  gap: 12px;
+  min-height: 150px;
+  padding: 16px;
 }
 
 .home-locked-ecosystem-preview-grid {
