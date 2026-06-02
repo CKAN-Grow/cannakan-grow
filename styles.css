@@ -9973,10 +9973,6 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: clamp(18px, 3vw, 34px);
 }
 
-.home-dashboard-install-row--first-session {
-  margin-top: clamp(8px, 1.4vw, 14px);
-}
-
 .home-locked-ecosystem-preview {
   display: grid;
   gap: clamp(16px, 2vw, 22px);
@@ -10709,8 +10705,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-grow-network-unlock-banner--primary {
-  min-height: clamp(300px, 36vw, 430px);
-  padding: clamp(28px, 4vw, 46px);
+  min-height: 100%;
+  padding: clamp(24px, 3.4vw, 38px);
   border: 1px solid rgba(184, 239, 132, 0.34);
   background:
     linear-gradient(135deg, rgba(184, 239, 132, 0.13) 0%, rgba(91, 168, 74, 0.055) 38%, rgba(9, 14, 11, 0.88) 100%),
@@ -10720,6 +10716,13 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     0 18px 46px rgba(1, 6, 3, 0.38),
     inset 0 1px 0 rgba(255, 255, 255, 0.11),
     inset 0 0 0 1px rgba(184, 239, 132, 0.08);
+}
+
+.home-grow-network-unlock-banner--primary::before {
+  background:
+    radial-gradient(circle at 14% 14%, rgba(207, 255, 148, 0.18) 0%, rgba(207, 255, 148, 0) 38%),
+    radial-gradient(circle at 82% 20%, rgba(184, 239, 132, 0.12) 0%, rgba(184, 239, 132, 0) 44%),
+    radial-gradient(circle at bottom left, rgba(78, 135, 53, 0.1) 0%, rgba(78, 135, 53, 0) 48%);
 }
 
 .home-grow-network-unlock-banner::before {
@@ -10783,11 +10786,11 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-shell {
   min-height: inherit;
-  gap: clamp(22px, 4vw, 42px);
+  gap: clamp(18px, 3vw, 34px);
 }
 
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy {
-  gap: clamp(18px, 2.6vw, 28px);
+  gap: clamp(16px, 2.2vw, 24px);
 }
 
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy > div {
@@ -10803,8 +10806,8 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy h3 {
   max-width: 14ch;
   color: #f8fff1;
-  font-size: clamp(2.05rem, 5vw, 4rem);
-  line-height: 0.98;
+  font-size: clamp(1.95rem, 3.7vw, 3.25rem);
+  line-height: 1;
   text-wrap: balance;
 }
 
@@ -10877,9 +10880,9 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-icon.cg-icon--plate {
-  width: clamp(64px, 8vw, 90px);
-  height: clamp(64px, 8vw, 90px);
-  min-width: clamp(64px, 8vw, 90px);
+  width: clamp(62px, 6.5vw, 82px);
+  height: clamp(62px, 6.5vw, 82px);
+  min-width: clamp(62px, 6.5vw, 82px);
   border-color: rgba(184, 239, 132, 0.32);
   box-shadow:
     0 22px 48px rgba(63, 149, 52, 0.34),
@@ -10894,7 +10897,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-actions .button {
-  min-height: 56px;
+  min-height: 54px;
   padding-inline: clamp(22px, 3vw, 34px);
   border-color: rgba(211, 255, 166, 0.46);
   box-shadow:

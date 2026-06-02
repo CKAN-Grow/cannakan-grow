@@ -41648,12 +41648,12 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
         <div class="home-dashboard-secondary-row-top home-dashboard-secondary-row-top--first-session">
           <div class="home-dashboard-secondary-main-column">
             ${renderHomeAnalyticsUnlockCardMarkup()}
-            <div class="home-dashboard-install-row home-dashboard-install-row--first-session">
-              ${renderHomeInstallInfoCardMarkup()}
-            </div>
-            ${renderHomeLockedEcosystemPreviewMarkup()}
+          </div>
+          <div class="home-dashboard-secondary-side-column">
+            ${renderHomeInstallInfoCardMarkup()}
           </div>
         </div>
+        ${renderHomeLockedEcosystemPreviewMarkup()}
       </div>
     `;
   }
