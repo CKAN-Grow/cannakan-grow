@@ -41437,22 +41437,22 @@ function renderHomeGrowNetworkUnlockBannerMarkup() {
 
 function renderHomeAnalyticsUnlockCardMarkup() {
   return `
-    <section class="card home-grow-network-unlock-banner" aria-labelledby="home-analytics-unlock-title">
+    <section class="card home-grow-network-unlock-banner home-grow-network-unlock-banner--primary" aria-labelledby="home-analytics-unlock-title">
       <div class="home-grow-network-unlock-banner-shell">
         <div class="home-grow-network-unlock-banner-copy">
           ${renderAppSectionHeaderIcon("analytics", {
             className: "home-grow-network-unlock-banner-icon",
           })}
           <div>
-            <p class="eyebrow">Onboarding</p>
+            <p class="eyebrow">Unlock The Full Grow Experience</p>
             <h3 id="home-analytics-unlock-title">Unlock Analytics</h3>
-            <p>Start your first grow session to unlock:</p>
-            <ul class="home-grow-network-unlock-list">
-              <li>Analytics Dashboard</li>
-              <li>Seed Vault</li>
-              <li>Community Insights</li>
-              <li>Source Performance</li>
-              <li>Seed Age Intelligence</li>
+            <p>Start your first grow session to unlock the deeper cultivation tools built around your saved grow data.</p>
+            <ul class="home-grow-network-unlock-list" aria-label="First session unlocks">
+              <li><span aria-hidden="true">✓</span>Community Grow</li>
+              <li><span aria-hidden="true">✓</span>Community Insights</li>
+              <li><span aria-hidden="true">✓</span>Seed Vault</li>
+              <li><span aria-hidden="true">✓</span>Analytics Dashboard</li>
+              <li><span aria-hidden="true">✓</span>Source Directory</li>
             </ul>
           </div>
         </div>
@@ -41527,13 +41527,10 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
   const adminUtilityMarkup = renderHomeAdminUtilityCardMarkup();
   if (firstSessionGateActive) {
     return `
-      <div class="home-dashboard-secondary-row">
-        <div class="home-dashboard-secondary-row-top">
+      <div class="home-dashboard-secondary-row home-dashboard-secondary-row--first-session">
+        <div class="home-dashboard-secondary-row-top home-dashboard-secondary-row-top--first-session">
           <div class="home-dashboard-secondary-main-column">
             ${renderHomeAnalyticsUnlockCardMarkup()}
-          </div>
-          <div class="home-dashboard-secondary-side-column">
-            ${renderHomeInstallInfoCardMarkup()}
           </div>
         </div>
       </div>

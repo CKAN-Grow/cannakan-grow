@@ -9969,6 +9969,10 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: 0;
 }
 
+.home-dashboard-secondary-row--first-session {
+  margin-top: clamp(18px, 3vw, 34px);
+}
+
 .learn-media-card-layout {
   position: relative;
   display: grid;
@@ -10542,6 +10546,20 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   backdrop-filter: blur(16px) saturate(110%);
 }
 
+.home-grow-network-unlock-banner--primary {
+  min-height: clamp(300px, 36vw, 430px);
+  padding: clamp(28px, 4vw, 46px);
+  border: 1px solid rgba(184, 239, 132, 0.34);
+  background:
+    linear-gradient(135deg, rgba(184, 239, 132, 0.13) 0%, rgba(91, 168, 74, 0.055) 38%, rgba(9, 14, 11, 0.88) 100%),
+    linear-gradient(180deg, rgba(25, 40, 26, 0.92) 0%, rgba(9, 15, 12, 0.94) 100%);
+  box-shadow:
+    0 28px 74px rgba(35, 93, 36, 0.28),
+    0 18px 46px rgba(1, 6, 3, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 0 0 1px rgba(184, 239, 132, 0.08);
+}
+
 .home-grow-network-unlock-banner::before {
   content: "";
   position: absolute;
@@ -10601,6 +10619,39 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.34;
 }
 
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-shell {
+  min-height: inherit;
+  gap: clamp(22px, 4vw, 42px);
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy {
+  gap: clamp(18px, 2.6vw, 28px);
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy > div {
+  gap: clamp(10px, 1.8vw, 16px);
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy .eyebrow {
+  color: #d7f7b3;
+  font-size: clamp(0.78rem, 1vw, 0.92rem);
+  letter-spacing: 0.11em;
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy h3 {
+  max-width: 14ch;
+  color: #f8fff1;
+  font-size: clamp(2.05rem, 5vw, 4rem);
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-copy p:not(.eyebrow) {
+  max-width: 60ch;
+  color: rgba(238, 248, 235, 0.82);
+  font-size: clamp(1rem, 1.45vw, 1.14rem);
+}
+
 .home-grow-network-unlock-banner-copy p:not(.eyebrow) {
   max-width: 56ch;
   color: rgba(232, 242, 232, 0.72);
@@ -10631,6 +10682,29 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   line-height: 1.25;
 }
 
+.home-grow-network-unlock-list li span {
+  color: #c8f98e;
+  font-weight: 900;
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-list {
+  gap: 10px;
+  max-width: 70ch;
+  margin-top: 4px;
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-list li {
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 14px;
+  border-color: rgba(184, 239, 132, 0.24);
+  background:
+    linear-gradient(180deg, rgba(184, 239, 132, 0.13), rgba(184, 239, 132, 0.055));
+  color: rgba(246, 255, 238, 0.92);
+  font-size: clamp(0.9rem, 1.1vw, 0.98rem);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
 .home-grow-network-unlock-banner-icon.cg-icon--plate {
   width: 44px;
   height: 44px;
@@ -10640,10 +10714,31 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-icon.cg-icon--plate {
+  width: clamp(64px, 8vw, 90px);
+  height: clamp(64px, 8vw, 90px);
+  min-width: clamp(64px, 8vw, 90px);
+  border-color: rgba(184, 239, 132, 0.32);
+  box-shadow:
+    0 22px 48px rgba(63, 149, 52, 0.34),
+    0 0 48px rgba(184, 239, 132, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
 .home-grow-network-unlock-banner-actions {
   display: flex;
   justify-content: flex-end;
   flex: 0 0 auto;
+}
+
+.home-grow-network-unlock-banner--primary .home-grow-network-unlock-banner-actions .button {
+  min-height: 56px;
+  padding-inline: clamp(22px, 3vw, 34px);
+  border-color: rgba(211, 255, 166, 0.46);
+  box-shadow:
+    0 18px 42px rgba(87, 178, 57, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  font-size: clamp(1rem, 1.2vw, 1.08rem);
 }
 
 .home-grow-network-unlocked-notice {
