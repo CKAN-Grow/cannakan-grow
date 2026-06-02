@@ -9973,6 +9973,168 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   margin-top: clamp(18px, 3vw, 34px);
 }
 
+.home-dashboard-install-row--first-session {
+  margin-top: clamp(8px, 1.4vw, 14px);
+}
+
+.home-locked-ecosystem-preview {
+  display: grid;
+  gap: clamp(16px, 2vw, 22px);
+}
+
+.home-locked-ecosystem-preview-head {
+  display: grid;
+  gap: 7px;
+  max-width: 760px;
+}
+
+.home-locked-ecosystem-preview-head h3,
+.home-locked-ecosystem-preview-head p {
+  margin: 0;
+}
+
+.home-locked-ecosystem-preview-head h3 {
+  color: #f6fbf1;
+  font-size: clamp(1.28rem, 2.2vw, 1.85rem);
+  line-height: 1.12;
+}
+
+.home-locked-ecosystem-preview-head p:not(.eyebrow) {
+  color: rgba(219, 233, 214, 0.76);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.home-locked-ecosystem-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: clamp(12px, 1.8vw, 18px);
+}
+
+.home-locked-ecosystem-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 190px;
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+  width: 100%;
+  padding: clamp(16px, 2.2vw, 22px);
+  border: 1px solid rgba(184, 239, 132, 0.15);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.052), rgba(255, 255, 255, 0.014)),
+    rgba(7, 12, 9, 0.72);
+  color: inherit;
+  text-align: left;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.052);
+  cursor: pointer;
+  opacity: 0.82;
+  filter: saturate(0.88);
+  backdrop-filter: blur(18px) saturate(108%);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease,
+    filter 180ms ease;
+}
+
+.home-locked-ecosystem-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(7, 13, 9, 0.14), rgba(7, 13, 9, 0.34)),
+    linear-gradient(135deg, rgba(184, 239, 132, 0.08), transparent 58%);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+.home-locked-ecosystem-card::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  pointer-events: none;
+}
+
+.home-locked-ecosystem-card:hover,
+.home-locked-ecosystem-card:focus-visible {
+  opacity: 0.96;
+  filter: saturate(1) brightness(1.04);
+  border-color: rgba(184, 239, 132, 0.28);
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.3),
+    0 0 28px rgba(148, 209, 89, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transform: translateY(-2px);
+}
+
+.home-locked-ecosystem-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.home-locked-ecosystem-card-icon.cg-icon--plate {
+  width: 46px;
+  height: 46px;
+  min-width: 46px;
+  opacity: 0.78;
+}
+
+.home-locked-preview-lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: 1px solid rgba(218, 242, 194, 0.16);
+  border-radius: 13px;
+  background: rgba(5, 10, 7, 0.54);
+  color: rgba(219, 244, 196, 0.82);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.055);
+}
+
+.home-locked-preview-lock svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-locked-ecosystem-card-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.home-locked-ecosystem-card-copy strong {
+  color: rgba(248, 255, 240, 0.94);
+  font-size: clamp(1.03rem, 1.45vw, 1.2rem);
+  line-height: 1.16;
+}
+
+.home-locked-ecosystem-card-copy span {
+  color: rgba(218, 233, 213, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .learn-media-card-layout {
   position: relative;
   display: grid;

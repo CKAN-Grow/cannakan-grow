@@ -41482,6 +41482,105 @@ function renderHomeAnalyticsUnlockCardMarkup() {
   `;
 }
 
+function renderHomeLockedPreviewLockIconMarkup() {
+  return `
+    <span class="home-locked-preview-lock" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+        <path d="M7.5 10V8a4.5 4.5 0 0 1 9 0v2"></path>
+        <rect x="5.5" y="10" width="13" height="10" rx="2"></rect>
+        <path d="M12 14v2.5"></path>
+      </svg>
+    </span>
+  `;
+}
+
+function getHomeLockedEcosystemPreviewCards() {
+  return [
+    {
+      key: "community-grow",
+      title: "Community Grow",
+      iconType: "community",
+      description: "Browse approved grow snapshots and learn from public-safe community results.",
+    },
+    {
+      key: "community-insights",
+      title: "Community Insights",
+      iconType: "leaderboard",
+      description: "See aggregate germination trends, activity patterns, and public-safe grow signals.",
+    },
+    {
+      key: "source-directory",
+      title: "Source Directory",
+      iconType: "sources",
+      description: "Compare source-level public performance signals and future CSTP trust hooks.",
+    },
+    {
+      key: "seed-vault",
+      title: "Seed Vault",
+      iconType: "plant",
+      description: "Track your private seed collection, age, quantity, and session usage history.",
+    },
+    {
+      key: "analytics-dashboard",
+      title: "Analytics Dashboard",
+      iconType: "analytics",
+      description: "Unlock deeper private charts for germination, source, variety, age, and vault intelligence.",
+    },
+  ];
+}
+
+function renderHomeLockedEcosystemPreviewMarkup() {
+  const cards = getHomeLockedEcosystemPreviewCards();
+  return `
+    <section class="home-locked-ecosystem-preview" aria-labelledby="home-locked-ecosystem-preview-title">
+      <div class="home-locked-ecosystem-preview-head">
+        <p class="eyebrow">Coming After Your First Session</p>
+        <h3 id="home-locked-ecosystem-preview-title">Explore what your first session unlocks</h3>
+        <p>These areas stay protected until your first saved grow, but the full ecosystem is ready when you are.</p>
+      </div>
+      <div class="home-locked-ecosystem-preview-grid" role="list">
+        ${cards.map((card) => `
+          <button
+            type="button"
+            class="home-locked-ecosystem-card"
+            data-home-locked-preview="${escapeHtml(card.key)}"
+            aria-label="${escapeHtml(`${card.title}. Start your first session to unlock.`)}"
+          >
+            <span class="home-locked-ecosystem-card-glass" aria-hidden="true"></span>
+            <span class="home-locked-ecosystem-card-top">
+              ${renderAppSectionHeaderIcon(card.iconType, {
+                className: "home-locked-ecosystem-card-icon",
+              })}
+              ${renderHomeLockedPreviewLockIconMarkup()}
+            </span>
+            <span class="home-locked-ecosystem-card-copy">
+              <strong>${escapeHtml(card.title)}</strong>
+              <span>${escapeHtml(card.description)}</span>
+            </span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function bindHomeLockedEcosystemPreviewCards(scope = app) {
+  if (!scope?.querySelectorAll) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-home-locked-preview]").forEach((card) => {
+    card.addEventListener("click", () => {
+      showNavigationLockToast({
+        title: "Locked Preview",
+        message: "Start your first session to unlock.",
+        ctaLabel: "Start First Session",
+        ctaHref: "#new",
+      });
+    });
+  });
+}
+
 function renderHomeGrowNetworkUnlockedNoticeMarkup() {
   return `
     <section class="home-grow-network-unlocked-notice" aria-live="polite">
@@ -41549,6 +41648,10 @@ function renderHomeSecondaryInfoRowMarkup(options = {}) {
         <div class="home-dashboard-secondary-row-top home-dashboard-secondary-row-top--first-session">
           <div class="home-dashboard-secondary-main-column">
             ${renderHomeAnalyticsUnlockCardMarkup()}
+            <div class="home-dashboard-install-row home-dashboard-install-row--first-session">
+              ${renderHomeInstallInfoCardMarkup()}
+            </div>
+            ${renderHomeLockedEcosystemPreviewMarkup()}
           </div>
         </div>
       </div>
@@ -59746,6 +59849,7 @@ function renderHome() {
   app.querySelector(".home-dashboard-secondary-row [data-dev-demo-reseed='true']")?.addEventListener("click", () => {
     resetAndReseedDevModeMockData();
   });
+  bindHomeLockedEcosystemPreviewCards(app);
 
   if (showGrowNetworkUnlockNotice) {
     const targetSection = app.querySelector(".home-grow-network-preview-shell");
