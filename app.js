@@ -9512,6 +9512,7 @@ function getCurrentAppPathRoute() {
     profile: "profile",
     analytics: "analytics",
     "community-insights": "community-insights",
+    cstp: "cstp",
     "source-directory": "source-directory",
     sources: "sources",
     sessions: "sessions",
@@ -10597,6 +10598,8 @@ function updateNavState() {
     activeNav = "network";
   } else if (route === "learn") {
     activeNav = "learn";
+  } else if (route === "cstp") {
+    activeNav = "";
   } else if (route === "sources") {
     activeNav = "sources";
   }
@@ -10961,6 +10964,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "community-insights",
       pageLabel: "Community Insights",
       pagePath: isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
+    });
+  }
+  if (route === "cstp") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "cstp",
+      pageKey: "cstp",
+      pageLabel: "CSTP",
+      pagePath: isUsingPathRoute("cstp") ? "/cstp" : "#cstp",
     });
   }
   if (route === "sources") {
@@ -33237,6 +33248,13 @@ const LEARN_PAGE_METADATA = Object.freeze({
   path: "/learn",
   type: "website",
 });
+const CSTP_PAGE_METADATA = Object.freeze({
+  title: "Cannakan® Seed Testing Program (CSTP) | Cannakan® Grow",
+  description: "Controlled, repeatable, transparent Cannakan Seed Testing Program certification under KAN® System conditions.",
+  imagePath: DEFAULT_SHARE_IMAGE_PATH,
+  path: "/cstp",
+  type: "website",
+});
 
 function toAbsolutePublicUrl(path = "/") {
   try {
@@ -33385,6 +33403,9 @@ function getRoutePageMetadata(rawRoute = "") {
   }
   if (route === "learn") {
     return buildLearnPageMetadata();
+  }
+  if (route === "cstp") {
+    return { ...CSTP_PAGE_METADATA };
   }
   return { ...DEFAULT_PAGE_METADATA };
 }
@@ -33668,6 +33689,17 @@ function render() {
       pagePath: pathRoute === "community-insights" && isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
     }));
     void refreshGallerySnapshots("route:community-insights");
+    return;
+  }
+
+  if (route === "cstp") {
+    renderCstpHubPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "cstp",
+      pageKey: "cstp",
+      pageLabel: "CSTP",
+      pagePath: pathRoute === "cstp" && isUsingPathRoute("cstp") ? "/cstp" : "#cstp",
+    }));
     return;
   }
 
@@ -43248,7 +43280,7 @@ function renderHomeCstpOverviewSectionMarkup() {
             <div class="home-cstp-coming-soon" role="note" aria-label="CSTP coming soon status">
               <strong class="home-cstp-coming-soon-title">COMING SOON</strong>
             </div>
-            <a class="button button-secondary home-cstp-overview-button" href="#sources">Learn More About CSTP</a>
+            <a class="button button-secondary home-cstp-overview-button" href="/cstp">Learn More About CSTP</a>
           </div>
         </div>
         <div class="home-cstp-overview-features" role="list" aria-label="CSTP overview">
@@ -43259,6 +43291,248 @@ function renderHomeCstpOverviewSectionMarkup() {
         ${trustItemsMarkup}
       </div>
       <p class="home-cstp-overview-trust-note muted">${escapeHtml(`${CSTP_CERTIFICATION_PHILOSOPHY} ${CSTP_BADGE_DISCLAIMER}`)}</p>
+    </section>
+  `;
+}
+
+function renderCstpHubIconMarkup(iconName = "info", className = "") {
+  return renderAppIconMarkup(iconName, {
+    variant: "plate",
+    className: `cstp-hub-icon ${String(className || "").trim()}`.trim(),
+  });
+}
+
+function renderCstpHubCertificationCardMarkup({
+  title = "",
+  description = "",
+  badgeAsset = "",
+  badgeAlt = "",
+  iconName = "certificationShield",
+  modifier = "",
+} = {}) {
+  const className = ["cstp-hub-cert-card", modifier].filter(Boolean).join(" ");
+  const visualMarkup = badgeAsset
+    ? `
+      <img
+        src="${escapeHtml(badgeAsset)}"
+        alt="${escapeHtml(badgeAlt || title)}"
+        title="${escapeHtml(getCstpTooltipCopy(title))}"
+        class="cstp-hub-cert-badge"
+        loading="lazy"
+        decoding="async"
+      >
+    `
+    : renderCstpHubIconMarkup(iconName, "cstp-hub-cert-icon");
+
+  return `
+    <article class="${escapeHtml(className)}">
+      <div class="cstp-hub-cert-visual">
+        ${visualMarkup}
+      </div>
+      <div class="cstp-hub-cert-copy">
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderCstpHubStandardCardMarkup({ title = "", description = "", iconName = "check" } = {}) {
+  return `
+    <article class="cstp-hub-standard-card">
+      ${renderCstpHubIconMarkup(iconName, "cstp-hub-standard-icon")}
+      <div>
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderCstpHubProcessStepMarkup(label = "", index = 0, total = 0) {
+  const showArrow = index < total - 1;
+  return `
+    <li class="cstp-hub-process-step">
+      <span class="cstp-hub-process-index">${escapeHtml(String(index + 1).padStart(2, "0"))}</span>
+      <strong>${escapeHtml(label)}</strong>
+      ${showArrow ? `<span class="cstp-hub-process-arrow" aria-hidden="true">&rarr;</span>` : ""}
+    </li>
+  `;
+}
+
+function renderCstpHubFaqPlaceholderMarkup(title = "", detail = "") {
+  return `
+    <article class="cstp-hub-faq-item">
+      <div>
+        <span>FAQ Placeholder</span>
+        <h3>${escapeHtml(title)}</h3>
+      </div>
+      <p>${escapeHtml(detail)}</p>
+    </article>
+  `;
+}
+
+function renderCstpHubPage() {
+  const certificationCardsMarkup = [
+    renderCstpHubCertificationCardMarkup({
+      title: "CSTP Gold Certified",
+      description: "Top certification tier for a tested batch validated under controlled CSTP conditions.",
+      badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold,
+      badgeAlt: "CSTP Gold Certified badge",
+      modifier: "is-gold",
+    }),
+    renderCstpHubCertificationCardMarkup({
+      title: "CSTP Silver Certified",
+      description: "Certification for a tested batch that meets CSTP Silver performance criteria.",
+      badgeAsset: SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver,
+      badgeAlt: "CSTP Silver Certified badge",
+      modifier: "is-silver",
+    }),
+    renderCstpHubCertificationCardMarkup({
+      title: "Tested Batch",
+      description: "Batch-specific testing record for seeds evaluated through the CSTP methodology.",
+      iconName: "labFlask",
+      modifier: "is-tested",
+    }),
+  ].join("");
+
+  const standardsMarkup = [
+    {
+      title: "Controlled Conditions",
+      description: "Seeds are evaluated under consistent KAN® System conditions to reduce uncontrolled variation.",
+      iconName: "labFlask",
+    },
+    {
+      title: "Standardized Methodology",
+      description: "Each accepted batch follows the same documented observation and review structure.",
+      iconName: "reportDocument",
+    },
+    {
+      title: "Batch-Specific Results",
+      description: "Certification reflects the tested sample and does not imply guarantees beyond that batch.",
+      iconName: "chart",
+    },
+    {
+      title: "Independent Evaluation",
+      description: "Testing and validation are separated from source marketing so certification remains earned.",
+      iconName: "certificationShield",
+    },
+  ].map(renderCstpHubStandardCardMarkup).join("");
+
+  const processSteps = [
+    "Request Testing",
+    "Seeds Received",
+    "Testing Accepted",
+    "Controlled Testing",
+    "Review & Validation",
+    "Certification Decision",
+    "Public Report",
+  ];
+
+  app.innerHTML = `
+    <section class="cstp-hub-page">
+      <header class="app-hero app-hero--cstp cstp-hub-hero">
+        <div class="app-hero-background" aria-hidden="true"></div>
+        <div class="app-hero-overlay" aria-hidden="true"></div>
+        <div class="app-hero-content cstp-hub-hero-content">
+          <p class="app-hero-eyebrow">CANNAKAN® SEED TESTING</p>
+          <h1 class="app-hero-title">Cannakan® Seed Testing Program (CSTP)</h1>
+          <p class="app-hero-subtitle cstp-hub-hero-subtitle">Controlled. Repeatable. Transparent.</p>
+          <p class="cstp-hub-hero-body">Standardized testing and certification performed under controlled KAN® System conditions.</p>
+        </div>
+        <div class="cstp-hub-hero-proof" aria-label="CSTP certification badges">
+          <img src="${escapeHtml(SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold)}" alt="CSTP Gold Certified badge" class="cstp-hub-hero-badge">
+          <img src="${escapeHtml(SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver)}" alt="CSTP Silver Certified badge" class="cstp-hub-hero-badge">
+        </div>
+      </header>
+
+      <section class="cstp-hub-panel cstp-hub-overview" aria-labelledby="cstp-program-overview-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("labFlask", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">Program Overview</p>
+            <h2 id="cstp-program-overview-title">Why CSTP Exists</h2>
+          </div>
+        </div>
+        <p>${escapeHtml(CSTP_DEFINITION)}</p>
+        <p>CSTP gives seed sources, growers, and the Cannakan ecosystem a dedicated path for controlled, repeatable testing. The goal is to make certification easier to understand while keeping results transparent, batch-specific, and separate from general community observations.</p>
+      </section>
+
+      <section class="cstp-hub-panel" aria-labelledby="cstp-certification-overview-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("certificationShield", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">Certification Overview</p>
+            <h2 id="cstp-certification-overview-title">Certification Signals</h2>
+          </div>
+        </div>
+        <div class="cstp-hub-cert-grid">
+          ${certificationCardsMarkup}
+        </div>
+      </section>
+
+      <section class="cstp-hub-panel" aria-labelledby="cstp-testing-standards-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("reportDocument", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">Testing Standards Overview</p>
+            <h2 id="cstp-testing-standards-title">Testing Standards</h2>
+          </div>
+        </div>
+        <div class="cstp-hub-standard-grid">
+          ${standardsMarkup}
+        </div>
+      </section>
+
+      <section class="cstp-hub-panel" aria-labelledby="cstp-how-testing-works-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("growthTrend", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">How Testing Works</p>
+            <h2 id="cstp-how-testing-works-title">Process Flow</h2>
+          </div>
+        </div>
+        <ol class="cstp-hub-process-list" aria-label="CSTP testing process">
+          ${processSteps.map((step, index) => renderCstpHubProcessStepMarkup(step, index, processSteps.length)).join("")}
+        </ol>
+      </section>
+
+      <section class="cstp-hub-cta-grid" aria-label="CSTP next actions">
+        <article class="cstp-hub-panel cstp-hub-request-card">
+          <div class="cstp-hub-request-copy">
+            <p class="eyebrow">Request Testing</p>
+            <h2>Request CSTP Testing</h2>
+            <p>Formal request intake is planned for a future CSTP workflow. This hub establishes the public destination first.</p>
+          </div>
+          <button type="button" class="button button-secondary cstp-hub-disabled-button" disabled aria-disabled="true">Coming Soon</button>
+        </article>
+
+        <article class="cstp-hub-panel cstp-hub-source-card">
+          <div class="cstp-hub-request-copy">
+            <p class="eyebrow">Source Directory</p>
+            <h2>Browse Seed Sources</h2>
+            <p>Review public source activity and approved community observations in the Source Directory.</p>
+          </div>
+          <a class="button button-secondary" href="/source-directory">Browse Seed Sources</a>
+        </article>
+      </section>
+
+      <section class="cstp-hub-panel cstp-hub-faq" aria-labelledby="cstp-faq-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("info", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">FAQ Placeholder</p>
+            <h2 id="cstp-faq-title">Frequently Asked Questions</h2>
+          </div>
+        </div>
+        <div class="cstp-hub-faq-list">
+          ${[
+            renderCstpHubFaqPlaceholderMarkup("Eligibility", "Future FAQ content will explain who can request CSTP testing and what batch information is required."),
+            renderCstpHubFaqPlaceholderMarkup("Testing Timeline", "Future FAQ content will outline estimated review windows, intake expectations, and acceptance criteria."),
+            renderCstpHubFaqPlaceholderMarkup("Reports & Certification", "Future FAQ content will explain public reports, certification tiers, expiration, and batch-specific limits."),
+          ].join("")}
+        </div>
+      </section>
     </section>
   `;
 }
