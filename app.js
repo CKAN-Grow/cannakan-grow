@@ -26639,9 +26639,16 @@ function renderGalleryLeaderboardSection() {
     </div>
     <div class="gallery-leaderboard-summary community-grow-insights-preview-summary">
       ${renderGalleryInsightsKpiPreview(insightsState)}
-      ${renderGalleryTopMembersSummary(sourceActivityPreviewEntries)}
     </div>
     <div class="gallery-leaderboard-grid community-grow-insights-preview-grid">
+      ${renderGalleryTopMembersSummary(sourceActivityPreviewEntries)}
+      <article class="community-grow-insights-support-card community-grow-insights-support-card--note">
+        <div>
+          <p class="eyebrow">Community Data</p>
+          <h4>Sample size stays visible</h4>
+          <p>Success Rate rows include seeds tested, sessions, and signal strength so small tests stay in context.</p>
+        </div>
+      </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
         ${renderGalleryLeaderboardCardHeadingWithAction("Top Sources", "Success Rate by seed count", "sources", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(sourceLeaderboardPreviewEntries, "source", "Not enough approved public source data yet.")}
@@ -26669,6 +26676,14 @@ function renderGalleryLeaderboardSection() {
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-members">
         ${renderGalleryLeaderboardCardHeading("Contributors", "Participation preview", "members")}
         ${renderGalleryTopMemberRows(memberLeaderboardPreviewEntries, "Not enough approved public member activity yet.")}
+      </article>
+      <article class="community-grow-insights-support-card community-grow-insights-support-card--cta">
+        <div>
+          <p class="eyebrow">Full Dashboard</p>
+          <h4>Open Community Insights</h4>
+          <p>Explore the full analytics dashboard for expanded rankings, trends, and seed-age views.</p>
+        </div>
+        <a class="button button-secondary" href="#community-insights">View full insights</a>
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Success rates are seed-weighted when seed counts are available. Sample size is shown so small tests are not mistaken for broad performance trends.</p>
