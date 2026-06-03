@@ -43349,6 +43349,25 @@ function renderCstpHubStandardCardMarkup({ title = "", description = "", iconNam
   `;
 }
 
+function renderCstpHubSectionNavMarkup() {
+  const navItems = [
+    { label: "Overview", href: "#cstp-program-overview-title" },
+    { label: "Certification Levels", href: "#cstp-certification-overview-title" },
+    { label: "Testing Standards", href: "#cstp-testing-standards-title" },
+    { label: "How Testing Works", href: "#cstp-how-testing-works-title" },
+    { label: "Request Testing", href: "#cstp-request-testing-title" },
+    { label: "FAQ", href: "#cstp-faq-title" },
+  ];
+
+  return `
+    <nav class="cstp-hub-section-nav" aria-label="CSTP page sections">
+      ${navItems.map((item) => `
+        <a href="${escapeHtml(item.href)}">${escapeHtml(item.label)}</a>
+      `).join("")}
+    </nav>
+  `;
+}
+
 function renderCstpHubProcessStepMarkup(label = "", index = 0, total = 0) {
   const showArrow = index < total - 1;
   return `
@@ -43398,23 +43417,46 @@ function renderCstpHubPage() {
 
   const standardsMarkup = [
     {
-      title: "Controlled Conditions",
-      description: "Seeds are evaluated under consistent KAN® System conditions to reduce uncontrolled variation.",
+      title: "Accepted Batch Intake",
+      description: "Testing begins only after the submitted seed batch is received and accepted for CSTP review.",
+      iconName: "labFlask",
+    },
+    {
+      title: "KAN® System Conditions",
+      description: "Accepted batches are evaluated under controlled KAN® System conditions.",
+      iconName: "reportDocument",
+    },
+    {
+      title: "Observed Milestones",
+      description: "Testing records the relevant germination checkpoints and final observed outcomes.",
+      iconName: "chart",
+    },
+    {
+      title: "Validation Review",
+      description: "Results are reviewed before any certification decision or public report is prepared.",
+      iconName: "certificationShield",
+    },
+  ].map(renderCstpHubStandardCardMarkup).join("");
+
+  const trustCardsMarkup = [
+    {
+      title: "Controlled Environment",
+      description: "CSTP testing happens under managed KAN® System conditions instead of uncontrolled field reporting.",
       iconName: "labFlask",
     },
     {
       title: "Standardized Methodology",
-      description: "Each accepted batch follows the same documented observation and review structure.",
+      description: "Every accepted batch follows the same review structure so results can be read consistently.",
       iconName: "reportDocument",
     },
     {
       title: "Batch-Specific Results",
-      description: "Certification reflects the tested sample and does not imply guarantees beyond that batch.",
+      description: "Certification applies to the tested sample and stays limited to that batch.",
       iconName: "chart",
     },
     {
-      title: "Independent Evaluation",
-      description: "Testing and validation are separated from source marketing so certification remains earned.",
+      title: "Certification Earned, Not Purchased",
+      description: CSTP_CERTIFICATION_PHILOSOPHY,
       iconName: "certificationShield",
     },
   ].map(renderCstpHubStandardCardMarkup).join("");
@@ -43436,15 +43478,24 @@ function renderCstpHubPage() {
         <div class="app-hero-overlay" aria-hidden="true"></div>
         <div class="app-hero-content cstp-hub-hero-content">
           <p class="app-hero-eyebrow">CANNAKAN® SEED TESTING</p>
-          <h1 class="app-hero-title">Cannakan® Seed Testing Program (CSTP)</h1>
+          <h1 class="app-hero-title">
+            <span>Cannakan® Seed Testing Program</span>
+            <span>(CSTP)</span>
+          </h1>
           <p class="app-hero-subtitle cstp-hub-hero-subtitle">Controlled. Repeatable. Transparent.</p>
           <p class="cstp-hub-hero-body">Standardized testing and certification performed under controlled KAN® System conditions.</p>
+          <div class="cstp-hub-hero-actions">
+            <button type="button" class="button button-secondary cstp-hub-disabled-button cstp-hub-hero-cta" disabled aria-disabled="true">Request CSTP Testing <span>Coming Soon</span></button>
+            <a class="button button-secondary cstp-hub-hero-cta" href="/source-directory">Browse Seed Sources</a>
+          </div>
         </div>
         <div class="cstp-hub-hero-proof" aria-label="CSTP certification badges">
           <img src="${escapeHtml(SOURCE_PROFILE_CSTP_BADGE_ASSETS.gold)}" alt="CSTP Gold Certified badge" class="cstp-hub-hero-badge">
           <img src="${escapeHtml(SOURCE_PROFILE_CSTP_BADGE_ASSETS.silver)}" alt="CSTP Silver Certified badge" class="cstp-hub-hero-badge">
         </div>
       </header>
+
+      ${renderCstpHubSectionNavMarkup()}
 
       <section class="cstp-hub-panel cstp-hub-overview" aria-labelledby="cstp-program-overview-title">
         <div class="cstp-hub-section-head">
@@ -43484,6 +43535,19 @@ function renderCstpHubPage() {
         </div>
       </section>
 
+      <section class="cstp-hub-panel" aria-labelledby="cstp-trust-title">
+        <div class="cstp-hub-section-head">
+          ${renderCstpHubIconMarkup("certificationShield", "cstp-hub-section-head-icon")}
+          <div>
+            <p class="eyebrow">Why Trust CSTP?</p>
+            <h2 id="cstp-trust-title">Trust Built Into the Method</h2>
+          </div>
+        </div>
+        <div class="cstp-hub-standard-grid">
+          ${trustCardsMarkup}
+        </div>
+      </section>
+
       <section class="cstp-hub-panel" aria-labelledby="cstp-how-testing-works-title">
         <div class="cstp-hub-section-head">
           ${renderCstpHubIconMarkup("growthTrend", "cstp-hub-section-head-icon")}
@@ -43501,7 +43565,7 @@ function renderCstpHubPage() {
         <article class="cstp-hub-panel cstp-hub-request-card">
           <div class="cstp-hub-request-copy">
             <p class="eyebrow">Request Testing</p>
-            <h2>Request CSTP Testing</h2>
+            <h2 id="cstp-request-testing-title">Request CSTP Testing</h2>
             <p>Formal request intake is planned for a future CSTP workflow. This hub establishes the public destination first.</p>
           </div>
           <button type="button" class="button button-secondary cstp-hub-disabled-button" disabled aria-disabled="true">Coming Soon</button>
