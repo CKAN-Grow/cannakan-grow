@@ -24197,9 +24197,16 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
       </div>
       ${publicDetails.mixedSessionContext?.isMixedSession && publicDetails.sourceResults?.length ? `
         <div class="gallery-card-result-breakdown" aria-label="Source result breakdown">
-          ${publicDetails.sourceResults.slice(0, 3).map((group) => `
-            <span>${escapeHtml(group.label)} <strong>${escapeHtml(group.percentageLabel)}</strong></span>
-          `).join("")}
+          ${publicDetails.sourceResults.slice(0, 3).map((group) => {
+            const successStatus = getPartitionSuccessStatus(group.percentage, group.totalGerminated, group.totalSeeds);
+            return `
+              <span class="partition-success-card ${escapeHtml(successStatus.className)}">
+                <span class="partition-success-dot" aria-hidden="true"></span>
+                ${escapeHtml(group.label)}
+                <strong class="partition-success-rate">${escapeHtml(group.percentageLabel)}</strong>
+              </span>
+            `;
+          }).join("")}
         </div>
       ` : ""}
       <div class="gallery-card-feed-meta">
@@ -33477,14 +33484,19 @@ function getSnapshotPartitionResultItems(data = {}) {
     .map((partition) => {
       const sourceLabel = normalizeLeaderboardLabel(partition.source || partition.sourceLabel || "");
       const varietyLabel = normalizeLeaderboardLabel(partition.seedVariety || partition.varietyLabel || partition.variety || "");
+      const germinatedCount = Math.max(0, Number(partition.germinatedCount ?? partition.totalPlanted) || 0);
+      const totalCount = Math.max(0, Number(partition.totalCount ?? partition.totalSeeds) || 0);
+      const percentage = Number.isFinite(Number(partition.percentage)) ? Math.round(Number(partition.percentage)) : null;
+      const status = getPartitionSuccessStatus(percentage, germinatedCount, totalCount);
       return {
         label: String(partition.label || `P${Number(partition.id) || ""}`).trim() || "P?",
         sourceLabel,
         varietyLabel,
         identityLabel: [varietyLabel, sourceLabel].filter(Boolean).join(" / "),
-        germinatedCount: Math.max(0, Number(partition.germinatedCount ?? partition.totalPlanted) || 0),
-        totalCount: Math.max(0, Number(partition.totalCount ?? partition.totalSeeds) || 0),
-        percentageLabel: String(partition.percentageLabel || (Number.isFinite(Number(partition.percentage)) ? `${Math.round(Number(partition.percentage))}%` : "N/A")).trim(),
+        germinatedCount,
+        totalCount,
+        percentageLabel: String(partition.percentageLabel || (percentage !== null ? `${percentage}%` : "N/A")).trim(),
+        successStatus: status,
       };
     });
 }
@@ -33513,22 +33525,31 @@ function drawSnapshotPartitionResultGrid(context, data = {}, layout = {}) {
     const row = Math.floor(index / columnCount);
     const itemX = x + (column * (columnWidth + gap));
     const itemY = y + (row * (rowHeight + gap));
-    context.fillStyle = "rgba(148, 209, 89, 0.10)";
+    const status = item.successStatus || getPartitionSuccessStatus(item.percentageLabel, item.germinatedCount, item.totalCount);
+    const palette = getPartitionSuccessStatusPalette(status);
+    context.fillStyle = palette.glow;
+    drawRoundedRectPath(context, itemX - 1, itemY - 1, columnWidth + 2, rowHeight + 2, roomy ? 11 : 9);
+    context.fill();
+    context.fillStyle = palette.background;
     drawRoundedRectPath(context, itemX, itemY, columnWidth, rowHeight, roomy ? 10 : 8);
     context.fill();
-    context.strokeStyle = "rgba(148, 209, 89, 0.24)";
+    context.strokeStyle = palette.border;
     context.lineWidth = 0.8;
     drawRoundedRectPath(context, itemX, itemY, columnWidth, rowHeight, roomy ? 10 : 8);
     context.stroke();
-    context.fillStyle = "#f4faef";
+    context.beginPath();
+    context.arc(itemX + 12, itemY + (roomy ? 17 : (items.length > 8 ? 12 : 17)), roomy ? 3.8 : 3, 0, Math.PI * 2);
+    context.fillStyle = palette.accent;
+    context.fill();
+    context.fillStyle = palette.text;
     context.font = `800 ${roomy ? 22 : (items.length > 8 ? 14 : 18)}px Arial, sans-serif`;
     const valueText = `${item.label} ${item.germinatedCount}/${item.totalCount} ${item.percentageLabel}`;
     context.fillText(
-      truncateTextToWidth(context, valueText, columnWidth - 18),
-      itemX + 9,
+      truncateTextToWidth(context, valueText, columnWidth - 26),
+      itemX + 18,
       itemY + (roomy ? 27 : (items.length > 8 ? 18 : 26)),
     );
-    context.fillStyle = "#94d159";
+    context.fillStyle = palette.muted;
     context.font = `700 ${roomy ? 18 : (items.length > 8 ? 11.5 : 14)}px Arial, sans-serif`;
     context.fillText(
       truncateTextToWidth(context, item.identityLabel || "Source not shared", columnWidth - 18),
@@ -72834,6 +72855,192 @@ function normalizeSessionResultCount(value = null) {
   return Number.isFinite(normalizedValue) ? Math.max(0, normalizedValue) : 0;
 }
 
+const PARTITION_SUCCESS_STATUS_DEFINITIONS = Object.freeze({
+  strong: Object.freeze({
+    key: "strong",
+    label: "Strong Success",
+    shortLabel: "Strong",
+    range: "90-100%",
+    className: "partition-success--strong",
+    modifier: "strong",
+  }),
+  good: Object.freeze({
+    key: "good",
+    label: "Good Success",
+    shortLabel: "Good",
+    range: "70-89%",
+    className: "partition-success--good",
+    modifier: "good",
+  }),
+  mixed: Object.freeze({
+    key: "mixed",
+    label: "Mixed Result",
+    shortLabel: "Mixed",
+    range: "50-69%",
+    className: "partition-success--mixed",
+    modifier: "mixed",
+  }),
+  poor: Object.freeze({
+    key: "poor",
+    label: "Poor Result",
+    shortLabel: "Poor",
+    range: "1-49%",
+    className: "partition-success--poor",
+    modifier: "poor",
+  }),
+  failed: Object.freeze({
+    key: "failed",
+    label: "Failed",
+    shortLabel: "Failed",
+    range: "0%",
+    className: "partition-success--failed",
+    modifier: "failed",
+  }),
+  none: Object.freeze({
+    key: "none",
+    label: "No Data",
+    shortLabel: "No Data",
+    range: "Missing",
+    className: "partition-success--none",
+    modifier: "none",
+  }),
+});
+
+const PARTITION_SUCCESS_STATUS_ORDER = Object.freeze(["strong", "good", "mixed", "poor", "failed", "none"]);
+
+const PARTITION_SUCCESS_CANVAS_PALETTE = Object.freeze({
+  strong: Object.freeze({
+    accent: "#94d159",
+    text: "#f4faef",
+    muted: "#cdeea9",
+    border: "rgba(148, 209, 89, 0.34)",
+    background: "rgba(148, 209, 89, 0.12)",
+    glow: "rgba(148, 209, 89, 0.12)",
+  }),
+  good: Object.freeze({
+    accent: "#c8d75d",
+    text: "#fbfae7",
+    muted: "#edf1a3",
+    border: "rgba(200, 215, 93, 0.32)",
+    background: "rgba(200, 215, 93, 0.105)",
+    glow: "rgba(200, 215, 93, 0.1)",
+  }),
+  mixed: Object.freeze({
+    accent: "#e4b85e",
+    text: "#fff5de",
+    muted: "#f0cf8a",
+    border: "rgba(228, 184, 94, 0.31)",
+    background: "rgba(228, 184, 94, 0.1)",
+    glow: "rgba(228, 184, 94, 0.09)",
+  }),
+  poor: Object.freeze({
+    accent: "#e98355",
+    text: "#fff0e9",
+    muted: "#f1ad8b",
+    border: "rgba(233, 131, 85, 0.3)",
+    background: "rgba(233, 131, 85, 0.095)",
+    glow: "rgba(233, 131, 85, 0.08)",
+  }),
+  failed: Object.freeze({
+    accent: "#e25f5f",
+    text: "#fff0f0",
+    muted: "#ef9a9a",
+    border: "rgba(226, 95, 95, 0.32)",
+    background: "rgba(226, 95, 95, 0.1)",
+    glow: "rgba(226, 95, 95, 0.08)",
+  }),
+  none: Object.freeze({
+    accent: "#aab3aa",
+    text: "#edf1ed",
+    muted: "#b9c1b9",
+    border: "rgba(185, 193, 185, 0.2)",
+    background: "rgba(185, 193, 185, 0.06)",
+    glow: "rgba(185, 193, 185, 0.04)",
+  }),
+});
+
+function normalizePartitionSuccessRateValue(successRate = null) {
+  if (successRate === null || typeof successRate === "undefined") {
+    return null;
+  }
+  if (typeof successRate === "string") {
+    const normalized = successRate.trim().replace(/%$/, "");
+    if (!normalized || normalized.toUpperCase() === "N/A") {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const numericValue = Number(successRate);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function getPartitionSuccessStatus(successRate = null, germinatedCount = null, totalCount = null) {
+  const hasTotalInput = totalCount !== null && typeof totalCount !== "undefined" && String(totalCount).trim() !== "";
+  const totalValue = Number(totalCount);
+  const germinatedValue = Number(germinatedCount);
+  const hasTotal = Number.isFinite(totalValue) && totalValue > 0;
+  const hasGerminated = Number.isFinite(germinatedValue) && germinatedValue >= 0;
+  if (hasTotalInput && !hasTotal) {
+    return {
+      ...PARTITION_SUCCESS_STATUS_DEFINITIONS.none,
+      percentage: null,
+    };
+  }
+  const rateFromCounts = hasTotal && hasGerminated && germinatedValue <= totalValue
+    ? (germinatedValue / totalValue) * 100
+    : null;
+  const rawRate = rateFromCounts ?? normalizePartitionSuccessRateValue(successRate);
+
+  if (!Number.isFinite(rawRate)) {
+    return {
+      ...PARTITION_SUCCESS_STATUS_DEFINITIONS.none,
+      percentage: null,
+    };
+  }
+
+  const percentage = Math.max(0, Math.min(100, Math.round(rawRate)));
+  let statusKey = "none";
+  if (percentage >= 90) {
+    statusKey = "strong";
+  } else if (percentage >= 70) {
+    statusKey = "good";
+  } else if (percentage >= 50) {
+    statusKey = "mixed";
+  } else if (percentage >= 1) {
+    statusKey = "poor";
+  } else {
+    statusKey = "failed";
+  }
+
+  return {
+    ...PARTITION_SUCCESS_STATUS_DEFINITIONS[statusKey],
+    percentage,
+  };
+}
+
+function getPartitionSuccessStatusPalette(statusOrKey = "none") {
+  const key = typeof statusOrKey === "string" ? statusOrKey : statusOrKey?.key;
+  return PARTITION_SUCCESS_CANVAS_PALETTE[key] || PARTITION_SUCCESS_CANVAS_PALETTE.none;
+}
+
+function renderPartitionSuccessLegendMarkup(options = {}) {
+  const compact = options.compact === true;
+  return `
+    <div class="partition-success-legend${compact ? " partition-success-legend--compact" : ""}" aria-label="Partition success-rate legend">
+      ${PARTITION_SUCCESS_STATUS_ORDER.map((key) => {
+        const status = PARTITION_SUCCESS_STATUS_DEFINITIONS[key];
+        return `
+          <span class="partition-success-legend-item ${escapeHtml(status.className)}">
+            <span class="partition-success-dot" aria-hidden="true"></span>
+            <span>${escapeHtml(status.label)}: ${escapeHtml(status.range)}</span>
+          </span>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function normalizeSessionResultLabel(value = "", fallback = "Not shared") {
   const normalizedValue = normalizeLeaderboardLabel(value || "");
   return normalizedValue || fallback;
@@ -73096,12 +73303,15 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "Not shared") : "Not shared";
           const countLabel = hasSeeds ? `${partition.germinatedCount} / ${partition.totalCount}` : "Not shared";
           const percentageLabel = hasSeeds ? (partition.percentageLabel || "Not shared") : "Not shared";
+          const successStatus = hasSeeds
+            ? getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount)
+            : getPartitionSuccessStatus(null, null, null);
 
           return `
-            <article class="public-session-partition-result${hasSeeds ? "" : " is-empty"}">
+            <article class="public-session-partition-result partition-success-card ${escapeHtml(successStatus.className)}${hasSeeds ? "" : " is-empty"}">
               <div class="public-session-partition-result-topline">
-                <strong>${escapeHtml(partitionLabel)}</strong>
-                <span>${escapeHtml(percentageLabel)}</span>
+                <strong><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partitionLabel)}</strong>
+                <span class="partition-success-rate">${escapeHtml(percentageLabel)}</span>
               </div>
               <p class="public-session-partition-result-variety">${escapeHtml(varietyLabel)}</p>
               <dl>
@@ -73117,11 +73327,16 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
                   <dt>Seed Age</dt>
                   <dd>${escapeHtml(seedAgeLabel)}</dd>
                 </div>
+                <div>
+                  <dt>Status</dt>
+                  <dd><span class="partition-success-badge">${escapeHtml(successStatus.label)}</span></dd>
+                </div>
               </dl>
             </article>
           `;
           }).join("")}
         </div>
+        ${renderPartitionSuccessLegendMarkup({ compact: true })}
       ` : `
         <div class="public-session-partition-results-empty">
           <p>No partition data shared.</p>
@@ -73176,16 +73391,21 @@ function renderSessionResultBreakdownMarkup(sessionOrSummary = null, options = {
       </div>
       <p class="session-result-breakdown-context">${escapeHtml(contextText)}${summary.mixedContext.isMixedSession ? " detected. Weak partitions stay tied to their own source or variety." : ""}</p>
       <div class="session-result-partition-grid">
-        ${countedPartitions.map((partition) => `
-          <article class="session-result-partition-chip">
-            <span>${escapeHtml(partition.label)}</span>
-            <strong>${escapeHtml(partition.percentageLabel)}</strong>
-            <p>${escapeHtml(`${partition.germinatedCount}/${partition.totalCount} germinated`)}</p>
-            <p>${escapeHtml(`${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`)}</p>
-            ${partition.source ? `<p>${escapeHtml(partition.source)}</p>` : ""}
-          </article>
-        `).join("")}
+        ${countedPartitions.map((partition) => {
+          const successStatus = getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount);
+          return `
+            <article class="session-result-partition-chip partition-success-card ${escapeHtml(successStatus.className)}">
+              <span><span class="partition-success-dot" aria-hidden="true"></span>${escapeHtml(partition.label)}</span>
+              <strong class="partition-success-rate">${escapeHtml(partition.percentageLabel)}</strong>
+              <p>${escapeHtml(`${partition.germinatedCount}/${partition.totalCount} germinated`)}</p>
+              <p>${escapeHtml(`${partition.failedCount} not germinated${partition.unaccountedCount ? ` / ${partition.unaccountedCount} unaccounted` : ""}`)}</p>
+              <p><span class="partition-success-badge">${escapeHtml(successStatus.label)}</span></p>
+              ${partition.source ? `<p>${escapeHtml(partition.source)}</p>` : ""}
+            </article>
+          `;
+        }).join("")}
       </div>
+      ${compact ? "" : renderPartitionSuccessLegendMarkup({ compact: true })}
       ${(sourceGroups.length || varietyGroups.length) ? `
         <div class="session-result-group-grid">
           ${sourceGroups.length ? `
