@@ -33046,8 +33046,8 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null, profileA
   const panelX = panelLeft;
   const panelWidth = panelRight - panelLeft;
   const partitionItemCount = getSnapshotPartitionResultItems(data).length;
-  const panelHeight = partitionItemCount > 8 ? 392 : (partitionItemCount > 0 ? 354 : 228);
-  const panelY = frameY + frameHeight - panelHeight - 18;
+  const panelHeight = partitionItemCount > 8 ? 356 : (partitionItemCount > 0 ? 316 : 208);
+  const panelY = frameY + frameHeight - panelHeight - 14;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
   context.shadowBlur = 12;
@@ -33078,21 +33078,23 @@ function drawSnapshotTextLayout(context, size, data, brandLogo = null, profileAv
 
 function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = false, brandLogo = null, profileAvatar = null) {
   const inset = roomy ? 72 : 30;
-  const overlayHeight = roomy ? 404 : height;
+  const partitionItemCount = getSnapshotPartitionResultItems(data).length;
+  const overlayHeight = roomy ? (partitionItemCount > 8 ? 386 : 360) : height;
   const overlayTopY = roomy ? y + 108 : y + height - overlayHeight;
   const overlayBottomY = overlayTopY + overlayHeight;
-  const percentY = overlayTopY + (roomy ? 160 : 132);
-  const rateY = percentY + (roomy ? 52 : 30);
-  const seedsY = rateY + (roomy ? 42 : 27);
+  const percentY = overlayTopY + (roomy ? 144 : 108);
+  const rateY = percentY + (roomy ? 44 : 25);
+  const seedsY = rateY + (roomy ? 36 : 24);
+  const seedAgeY = seedsY + (roomy ? 34 : 23);
   const dividerX = x + (roomy ? width * 0.295 : width * 0.255);
-  const footerDividerY = overlayBottomY - (roomy ? 62 : 48);
-  const footerTextY = overlayBottomY - (roomy ? 27 : 19);
+  const footerDividerY = overlayBottomY - (roomy ? 52 : 40);
+  const footerTextY = overlayBottomY - (roomy ? 22 : 16);
   const metaIconSize = roomy ? 18 : 14;
   const rightRegionX = dividerX + (roomy ? 26 : 22);
   const rightRegionWidth = x + width - inset - rightRegionX;
-  const badgeTopY = overlayTopY + (roomy ? 16 : 14);
+  const badgeTopY = overlayTopY + (roomy ? 14 : 12);
 
-  const percentFontSize = roomy ? 138 : 78;
+  const percentFontSize = roomy ? 126 : 70;
   context.save();
   context.shadowColor = "rgba(148, 209, 89, 0.28)";
   context.shadowBlur = 14;
@@ -33110,11 +33112,21 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.font = roomy ? "500 24px Arial, sans-serif" : "600 17px Arial, sans-serif";
   context.fillText(`${data.totalPlanted} / ${data.totalSeeds} seeds`, x + inset + metaIconSize + 12, seedsY);
 
+  const seedAgeSnapshotLabel = String(data?.seedAgeSnapshotLabel || "").trim();
+  if (seedAgeSnapshotLabel) {
+    drawSeedIcon(context, x + inset, seedAgeY - metaIconSize + 1, metaIconSize, "#94d159");
+    context.fillStyle = "#dce9d2";
+    context.font = roomy ? "600 18px Arial, sans-serif" : "600 15px Arial, sans-serif";
+    const maxSeedAgeWidth = Math.max(96, dividerX - x - inset - metaIconSize - 20);
+    const seedAgeText = truncateTextToWidth(context, seedAgeSnapshotLabel, maxSeedAgeWidth);
+    context.fillText(seedAgeText, x + inset + metaIconSize + 12, seedAgeY);
+  }
+
   context.strokeStyle = "rgba(148, 209, 89, 0.22)";
   context.lineWidth = 0.8;
   context.beginPath();
-  context.moveTo(dividerX, overlayTopY + (roomy ? 24 : 28));
-  context.lineTo(dividerX, overlayBottomY - (roomy ? 80 : 44));
+  context.moveTo(dividerX, overlayTopY + (roomy ? 22 : 22));
+  context.lineTo(dividerX, footerDividerY - (roomy ? 12 : 8));
   context.stroke();
 
   const systemPillText = data.systemLabel;
@@ -33134,20 +33146,11 @@ function drawSnapshotPanelContent(context, x, y, width, height, data, roomy = fa
   context.fillStyle = "#f4faef";
   context.fillText(systemPillText, badgeX + 19, badgeY + (roomy ? 26 : 24));
 
-  const seedAgeSnapshotLabel = String(data?.seedAgeSnapshotLabel || "").trim();
-  if (seedAgeSnapshotLabel) {
-    context.fillStyle = "#dce9d2";
-    context.font = roomy ? "800 32px Arial, sans-serif" : "800 25px Arial, sans-serif";
-    const maxSeedAgeWidth = Math.max(120, rightRegionWidth);
-    const seedAgeText = truncateTextToWidth(context, seedAgeSnapshotLabel, maxSeedAgeWidth);
-    context.fillText(seedAgeText, rightRegionX, badgeY + badgeHeight + (roomy ? 46 : 40));
-  }
-
   const partitionGrid = drawSnapshotPartitionResultGrid(context, data, {
     x: rightRegionX,
-    y: badgeY + badgeHeight + (seedAgeSnapshotLabel ? (roomy ? 78 : 64) : (roomy ? 42 : 34)),
+    y: badgeY + badgeHeight + (roomy ? 30 : 24),
     width: rightRegionWidth,
-    bottomY: footerDividerY - (roomy ? 16 : 10),
+    bottomY: footerDividerY - (roomy ? 12 : 8),
     roomy,
   });
 
