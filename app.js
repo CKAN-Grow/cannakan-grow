@@ -26611,7 +26611,6 @@ function renderGalleryLeaderboardSection() {
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
   const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
-  const sourceActivityPreviewEntries = thisMonthSources.length ? thisMonthSources : allTimeSources;
   const sourceLeaderboardPreviewEntries = thisMonthSources.length ? thisMonthSources : allTimeSources;
   const varietyLeaderboardPreviewEntries = thisMonthVarieties.length ? thisMonthVarieties : allTimeVarieties;
   const memberLeaderboardPreviewEntries = thisMonthMembers.length
@@ -26641,14 +26640,6 @@ function renderGalleryLeaderboardSection() {
       ${renderGalleryInsightsKpiPreview(insightsState)}
     </div>
     <div class="gallery-leaderboard-grid community-grow-insights-preview-grid">
-      ${renderGalleryTopMembersSummary(sourceActivityPreviewEntries)}
-      <article class="community-grow-insights-support-card community-grow-insights-support-card--note">
-        <div>
-          <p class="eyebrow">Community Data</p>
-          <h4>Sample size stays visible</h4>
-          <p>Success Rate rows include seeds tested, sessions, and signal strength so small tests stay in context.</p>
-        </div>
-      </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
         ${renderGalleryLeaderboardCardHeadingWithAction("Top Sources", "Success Rate by seed count", "sources", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(sourceLeaderboardPreviewEntries, "source", "Not enough approved public source data yet.")}
@@ -26679,9 +26670,9 @@ function renderGalleryLeaderboardSection() {
       </article>
       <article class="community-grow-insights-support-card community-grow-insights-support-card--cta">
         <div>
-          <p class="eyebrow">Full Dashboard</p>
-          <h4>Open Community Insights</h4>
-          <p>Explore the full analytics dashboard for expanded rankings, trends, and seed-age views.</p>
+          <p class="eyebrow">Community Data</p>
+          <h4>Sample size stays visible</h4>
+          <p>Success Rate rows include seeds tested, sessions, and signal strength. Open the full dashboard for expanded rankings, trends, and seed-age views.</p>
         </div>
         <a class="button button-secondary" href="#community-insights">View full insights</a>
       </article>

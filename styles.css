@@ -10439,7 +10439,27 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
 }
 
 .community-grow-insights-preview-summary .gallery-insights-kpi-preview {
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
   min-height: 260px;
+  padding: clamp(22px, 2.8vw, 30px);
+}
+
+.community-grow-insights-preview-summary .gallery-insights-kpi-average {
+  align-content: center;
+}
+
+.community-grow-insights-preview-summary .gallery-insights-kpi-average span {
+  max-width: 24ch;
+}
+
+.community-grow-insights-preview-summary .gallery-insights-kpi-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: stretch;
+}
+
+.community-grow-insights-preview-summary .gallery-insights-kpi-stat {
+  min-height: 132px;
+  padding: 16px;
 }
 
 .community-grow-insights-preview .gallery-leaderboard-card {
@@ -15990,6 +16010,14 @@ body.theme-dark .contact-reason-card.is-active {
     grid-template-columns: 1fr !important;
   }
 
+  .community-grow-insights-preview-summary .gallery-insights-kpi-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .community-grow-insights-preview-summary .gallery-insights-kpi-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .gallery-leaderboard-grid {
     grid-template-columns: 1fr;
   }
@@ -16032,6 +16060,10 @@ body.theme-dark .contact-reason-card.is-active {
   }
 
   .gallery-leaderboard-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .community-grow-insights-preview-summary .gallery-insights-kpi-stats {
     grid-template-columns: 1fr;
   }
 
