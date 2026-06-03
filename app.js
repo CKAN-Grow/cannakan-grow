@@ -70252,9 +70252,18 @@ function renderPublicSessionDetail(snapshotId) {
   }
 
   const activeMockScenario = getActiveMockPublicSessionScenario(snapshot);
+  const basePublicDetails = getGallerySnapshotPublicSessionDetails(snapshot);
   const publicDetails = activeMockScenario
-    ? getMockPublicSessionDetails(snapshot, activeMockScenario)
-    : getGallerySnapshotPublicSessionDetails(snapshot);
+    ? {
+        ...basePublicDetails,
+        ...getMockPublicSessionDetails(snapshot, activeMockScenario),
+        resultSummary: basePublicDetails.resultSummary,
+        sourceResults: basePublicDetails.sourceResults,
+        varietyResults: basePublicDetails.varietyResults,
+        partitionResults: basePublicDetails.partitionResults,
+        mixedSessionContext: basePublicDetails.mixedSessionContext,
+      }
+    : basePublicDetails;
   const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
   const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
   const facts = [
@@ -73049,81 +73058,75 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
   const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
     ? sessionOrSummary
     : getSessionResultSummary(sessionOrSummary);
-  if (!summary?.overall?.hasResults) {
-    return "";
-  }
-
   const systemType = String(options.systemType || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
   const maxPartitions = systemType === "TRA" ? 16 : 8;
-  const partitions = (summary.partitions || []).slice(0, maxPartitions);
-  if (!partitions.length) {
-    return "";
-  }
+  const partitions = Array.isArray(summary?.partitions)
+    ? summary.partitions.slice(0, maxPartitions)
+    : [];
+  const hasSharedPartitionData = Boolean(summary?.overall?.hasResults && partitions.some((partition) => partition.hasSeeds));
+  const overallLabel = summary?.overall?.percentageLabel && summary.overall.percentageLabel !== "N/A"
+    ? `${summary.overall.percentageLabel} overall`
+    : "No partition data shared";
 
-  const contextText = summary.mixedContext?.isMixedSession
+  const contextText = summary?.mixedContext?.isMixedSession
     ? [
         summary.mixedContext.hasMultipleSources ? `${summary.mixedContext.sourceCount} sources` : "",
         summary.mixedContext.hasMultipleVarieties ? `${summary.mixedContext.varietyCount} varieties` : "",
       ].filter(Boolean).join(" / ")
-    : "Partition results";
+    : "Seed count and germination result by partition.";
 
   return `
     <section class="public-session-partition-results" aria-label="Public session partition results">
       <div class="public-session-partition-results-head">
         <div>
-          <p class="eyebrow">PARTITION RESULTS</p>
-          <h3>Results below the photo</h3>
-          <p>${escapeHtml(contextText || "Partition results")}${summary.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
+          <p class="eyebrow">Public Session</p>
+          <h3>Partition Results</h3>
+          <p>${escapeHtml(contextText || "Seed count and germination result by partition.")}${summary?.mixedContext?.isMixedSession ? " shown independently for fair source context." : ""}</p>
         </div>
-        <span>${escapeHtml(summary.overall.percentageLabel)} overall</span>
+        <span>${escapeHtml(overallLabel)}</span>
       </div>
-      <div class="public-session-partition-results-grid">
-        ${partitions.map((partition) => {
+      ${hasSharedPartitionData ? `
+        <div class="public-session-partition-results-grid">
+          ${partitions.map((partition, index) => {
           const hasSeeds = Boolean(partition.hasSeeds);
-          const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "N/A") : "N/A";
-          const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "N/A") : "N/A";
-          const typeLabel = hasSeeds ? (partition.seedTypeLabel || getSeedTypeLabel(partition.seedType) || "N/A") : "N/A";
-          const sexLabel = hasSeeds ? (partition.sexLabel || getSeedSexLabel(partition.sex) || "N/A") : "N/A";
-          const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "N/A") : "N/A";
-          const countLabel = hasSeeds ? `${partition.germinatedCount}/${partition.totalCount}` : "N/A";
-          const percentageLabel = hasSeeds ? (partition.percentageLabel || "N/A") : "N/A";
+          const partitionId = Number(partition.id) || index + 1;
+          const partitionLabel = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
+          const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "Not shared") : "Not shared";
+          const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "Not shared") : "Not shared";
+          const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "Not shared") : "Not shared";
+          const countLabel = hasSeeds ? `${partition.germinatedCount} / ${partition.totalCount}` : "Not shared";
+          const percentageLabel = hasSeeds ? (partition.percentageLabel || "Not shared") : "Not shared";
 
           return `
             <article class="public-session-partition-result${hasSeeds ? "" : " is-empty"}">
               <div class="public-session-partition-result-topline">
-                <strong>${escapeHtml(partition.label || "P?")}</strong>
+                <strong>${escapeHtml(partitionLabel)}</strong>
                 <span>${escapeHtml(percentageLabel)}</span>
               </div>
+              <p class="public-session-partition-result-variety">${escapeHtml(varietyLabel)}</p>
               <dl>
                 <div>
-                  <dt>Source</dt>
+                  <dt>Source / Company</dt>
                   <dd>${escapeHtml(sourceLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Seed Variety</dt>
-                  <dd>${escapeHtml(varietyLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Type</dt>
-                  <dd>${escapeHtml(typeLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Sex</dt>
-                  <dd>${escapeHtml(sexLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Seed Age</dt>
-                  <dd>${escapeHtml(seedAgeLabel)}</dd>
                 </div>
                 <div>
                   <dt>Germinated</dt>
                   <dd>${escapeHtml(countLabel)}</dd>
                 </div>
+                <div>
+                  <dt>Seed Age</dt>
+                  <dd>${escapeHtml(seedAgeLabel)}</dd>
+                </div>
               </dl>
             </article>
           `;
-        }).join("")}
-      </div>
+          }).join("")}
+        </div>
+      ` : `
+        <div class="public-session-partition-results-empty">
+          <p>No partition data shared.</p>
+        </div>
+      `}
     </section>
   `;
 }

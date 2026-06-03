@@ -32726,8 +32726,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  gap: 10px;
 }
 
 .public-session-partition-result {
@@ -32742,6 +32742,32 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-result.is-empty {
   opacity: 0.74;
+}
+
+.public-session-partition-result-variety,
+.public-session-partition-results-empty p {
+  margin: 0;
+}
+
+.public-session-partition-result-variety {
+  min-height: 2.4em;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 780;
+  line-height: 1.25;
+}
+
+.public-session-partition-results-empty {
+  padding: 14px;
+  border: 1px solid rgba(24, 34, 24, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.public-session-partition-results-empty p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .public-session-partition-result-topline,
@@ -32898,6 +32924,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .public-session-partition-results-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-partition-result-variety {
+    min-height: 0;
   }
 
   .public-session-partition-result dd {
@@ -42190,6 +42220,7 @@ body.theme-dark .public-session-partition-results {
 
 body.theme-dark .public-session-partition-results-head h3,
 body.theme-dark .public-session-partition-result-topline strong,
+body.theme-dark .public-session-partition-result-variety,
 body.theme-dark .public-session-partition-result dd {
   color: #f6f8f5;
 }
@@ -42200,6 +42231,11 @@ body.theme-dark .public-session-partition-result-topline span {
 }
 
 body.theme-dark .public-session-partition-result {
+  border-color: rgba(148, 209, 89, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .public-session-partition-results-empty {
   border-color: rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
 }
