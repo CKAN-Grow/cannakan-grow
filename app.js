@@ -25255,7 +25255,7 @@ function renderGalleryTopMembersSummary(entries = []) {
       <ol class="gallery-top-members-summary-list">
         ${summaryEntries.map((entry, index) => `
           <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
-            <span class="gallery-top-members-summary-rank" aria-hidden="true">&bull;</span>
+            <span class="gallery-top-members-summary-rank" aria-hidden="true">#${index + 1}</span>
             <span class="gallery-top-members-summary-name">${escapeHtml(entry.name || "Source")}</span>
             <span class="gallery-top-members-summary-metric">
               <span>${escapeHtml(`${entry.snapshotCount || 0} sessions`)}</span>
@@ -27244,11 +27244,11 @@ function buildCommunityInsightsState() {
   };
 }
 
-function renderCommunityInsightsKpiGrid(cards = []) {
+function renderCommunityInsightsKpiGrid(cards = [], options = {}) {
   return `
-    <div class="community-insights-kpi-grid">
-      ${cards.map((card) => `
-        <article class="community-insights-kpi-card">
+    <div class="community-insights-kpi-grid${options.className ? ` ${escapeHtml(options.className)}` : ""}">
+      ${cards.map((card, index) => `
+        <article class="community-insights-kpi-card${index === 0 ? " is-primary" : ""}">
           <span>${escapeHtml(card.label || "")}</span>
           <strong>${escapeHtml(card.value || "")}</strong>
           <small>${escapeHtml(card.detail || "")}</small>
@@ -27261,15 +27261,16 @@ function renderCommunityInsightsKpiGrid(cards = []) {
 function renderCommunityInsightsBarChart(title = "", rows = [], options = {}) {
   const emptyMessage = String(options.emptyMessage || "Not enough approved public data yet.").trim();
   return `
-    <div class="community-insights-chart-card">
+    <div class="community-insights-chart-card${options.className ? ` ${escapeHtml(options.className)}` : ""}">
       <div class="community-insights-chart-heading">
         <strong>${escapeHtml(title)}</strong>
         ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
       </div>
       ${rows.length ? `
         <div class="community-insights-bar-chart">
-          ${rows.map((row) => `
-            <div class="community-insights-bar-row">
+          ${rows.map((row, index) => `
+            <div class="community-insights-bar-row${options.ranked ? " is-ranked" : ""} ${getLeaderboardRankTone(index)}">
+              ${options.ranked ? `<span class="community-insights-rank-badge">#${index + 1}</span>` : ""}
               <div class="community-insights-bar-label">
                 <span>${escapeHtml(row.label || "")}</span>
                 ${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}
@@ -27294,7 +27295,7 @@ function renderCommunityInsightsTrendChart(title = "", rows = [], options = {}) 
   const metricKey = options.metricKey || "averageRate";
   const maxMetric = Math.max(...rows.map((row) => Math.max(0, Number(row[metricKey]) || 0)), options.percent ? 100 : 1);
   return `
-    <div class="community-insights-chart-card">
+    <div class="community-insights-chart-card${options.className ? ` ${escapeHtml(options.className)}` : ""}">
       <div class="community-insights-chart-heading">
         <strong>${escapeHtml(title)}</strong>
         ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
@@ -27331,7 +27332,7 @@ function renderCommunityInsightsTrendChart(title = "", rows = [], options = {}) 
 
 function renderCommunityInsightsSection(title = "", subtitle = "", bodyMarkup = "", options = {}) {
   return `
-    <section class="community-insights-panel${options.wide ? " community-insights-panel--wide" : ""}">
+    <section class="community-insights-panel${options.wide ? " community-insights-panel--wide" : ""}${options.className ? ` ${escapeHtml(options.className)}` : ""}">
       <div class="community-insights-panel-heading">
         <span>${escapeHtml(options.eyebrow || "Community Insights")}</span>
         <h3>${escapeHtml(title)}</h3>
@@ -27342,16 +27343,115 @@ function renderCommunityInsightsSection(title = "", subtitle = "", bodyMarkup = 
   `;
 }
 
+function renderCommunityInsightsHeroOverview(state = {}) {
+  const sourcesTrackedCount = (state.sourceRows || []).filter((row) => row.totalSeeds > 0).length;
+  const varietiesTrackedCount = (state.varietyRows || []).filter((row) => row.totalSeeds > 0).length;
+  const communityAverageValue = state.overview?.communityAverageRate == null
+    ? "Pending"
+    : formatPrivateAnalyticsPercent(state.overview.communityAverageRate);
+  const summaryStats = [
+    { label: "Approved Sessions", value: formatPrivateAnalyticsNumber(state.overview?.totalPublicSessionsRepresented) },
+    { label: "Contributors", value: formatPrivateAnalyticsNumber(state.overview?.activeCommunityContributors) },
+    { label: "Sources", value: formatPrivateAnalyticsNumber(sourcesTrackedCount) },
+    { label: "Varieties", value: formatPrivateAnalyticsNumber(varietiesTrackedCount) },
+  ];
+
+  return `
+    <header class="community-insights-hero community-insights-hero--analytics">
+      <div class="community-insights-hero-topline">
+        <div class="community-insights-hero-copy">
+          <p class="eyebrow">Public Knowledge System</p>
+          <h2>Community Insights</h2>
+          <p>Aggregated Community Grow intelligence from approved public sessions.</p>
+        </div>
+        <div class="community-insights-hero-actions">
+          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+          <a class="button button-secondary" href="/seed-age-analytics">Seed Age Analytics</a>
+        </div>
+      </div>
+      <div class="community-insights-hero-dashboard">
+        <article class="community-insights-average-card" aria-label="Community Germination Average">
+          <span>Community Germination Average</span>
+          <strong>${escapeHtml(communityAverageValue)}</strong>
+          <p>Overall approved public germination performance across the Community Grow ecosystem.</p>
+          <div class="community-insights-average-stat-grid">
+            ${summaryStats.map((stat) => `
+              <div>
+                <strong>${escapeHtml(stat.value)}</strong>
+                <span>${escapeHtml(stat.label)}</span>
+              </div>
+            `).join("")}
+          </div>
+        </article>
+        ${renderCommunityInsightsKpiGrid([
+          { label: "Sources Tracked", value: formatPrivateAnalyticsNumber(sourcesTrackedCount), detail: "public source rollups" },
+          { label: "Varieties Tracked", value: formatPrivateAnalyticsNumber(varietiesTrackedCount), detail: "public genetics rollups" },
+          { label: "Approved Sessions", value: formatPrivateAnalyticsNumber(state.overview?.totalPublicSessionsRepresented), detail: "deduplicated session count" },
+          { label: "Community Contributors", value: formatPrivateAnalyticsNumber(state.overview?.activeCommunityContributors), detail: "profile-safe contributor count" },
+        ], { className: "community-insights-hero-kpis" })}
+      </div>
+    </header>
+  `;
+}
+
+function renderCommunityInsightsSourceActivity(entries = []) {
+  const topEntries = (entries || []).filter((entry) => entry.totalSeeds > 0 || entry.snapshotCount > 0).slice(0, 3);
+  return `
+    <div class="community-insights-source-activity-grid">
+      ${topEntries.length ? topEntries.map((entry, index) => `
+        <article class="community-insights-source-activity-card ${getLeaderboardRankTone(index)}">
+          <span class="community-insights-source-activity-rank">#${index + 1}</span>
+          <div>
+            <h4>${escapeHtml(entry.label || "Source")}</h4>
+            <p>${escapeHtml(`${formatPrivateAnalyticsNumber(entry.snapshotCount)} approved sessions`)}</p>
+          </div>
+          <strong>${escapeHtml(formatPrivateAnalyticsPercent(entry.averageRate))}</strong>
+          <small>${escapeHtml(`${formatPrivateAnalyticsNumber(entry.totalSeeds)} seeds · ${formatPrivateAnalyticsNumber(entry.contributorCount)} contributors`)}</small>
+        </article>
+      `).join("") : `
+        <div class="community-insights-empty">
+          <p>Source activity will appear after more approved public sessions are available.</p>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderCommunityInsightsContributorLeaderboard(entries = []) {
+  const normalizedEntries = entries || [];
+  const fallbackMockEntries = isMockDataEnabled() && normalizedEntries.length < 3
+    ? GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({
+      key: entry.id,
+      name: entry.displayName,
+      snapshotCount: entry.approvedSnapshots,
+      totalLikes: entry.likes,
+      avatarUrl: entry.avatarUrl || "",
+    }))
+    : [];
+  const topEntries = (fallbackMockEntries.length ? fallbackMockEntries : normalizedEntries).slice(0, 5);
+  if (!topEntries.length) {
+    return `
+      <div class="community-insights-empty">
+        <p>Contributor rankings will appear after more approved public activity is available.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <ol class="community-insights-contributor-list">
+      ${topEntries.map((entry, index) => `
+        <li class="community-insights-contributor-row ${getLeaderboardRankTone(index)}">
+          <span class="community-insights-rank-badge">#${index + 1}</span>
+          <span class="community-insights-contributor-name">${renderLeaderboardMemberIdentityMarkup(entry, "leaderboard-member-identity leaderboard-member-identity--compact")}</span>
+          <strong>${escapeHtml(`${entry.snapshotCount || 0} approved`)}</strong>
+        </li>
+      `).join("")}
+    </ol>
+  `;
+}
+
 function renderCommunityInsightsPage() {
   const state = buildCommunityInsightsState();
-  const overviewCards = [
-    { label: "Community Average Germination Rate", value: formatPrivateAnalyticsPercent(state.overview.communityAverageRate), detail: "approved public seed results only" },
-    { label: "Total Public Sessions Represented", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSessionsRepresented), detail: "deduplicated public session ids" },
-    { label: "Total Public Seeds Tested", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSeedsTested), detail: "public-safe aggregate volume" },
-    { label: "Total Public Seeds Germinated", value: formatPrivateAnalyticsNumber(state.overview.totalPublicSeedsGerminated), detail: "public-safe aggregate results" },
-    { label: "Total Approved Community Grow Entries", value: formatPrivateAnalyticsNumber(state.overview.totalApprovedCommunityGrowEntries), detail: "approved public snapshots" },
-    { label: "Active Community Contributors", value: formatPrivateAnalyticsNumber(state.overview.activeCommunityContributors), detail: "anonymous contributor count" },
-  ];
   const sourcePerformanceRows = buildCommunityInsightsChartRows(state.topSources, {
     valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
     detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} public entries`,
@@ -27380,6 +27480,7 @@ function renderCommunityInsightsPage() {
     valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} entries`,
     detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} public seeds`,
   });
+  const contributorLeaderboardEntries = buildGalleryTopMemberEntries(state.approvedSnapshots).slice(0, 5);
   const agePerformanceRows = buildCommunityInsightsChartRows(state.ageRows.filter((row) => row.totalSeeds > 0), {
     valueFormatter: (row) => `${formatPrivateAnalyticsPercent(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds`,
     detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.sessionCount)} public sessions`,
@@ -27401,22 +27502,19 @@ function renderCommunityInsightsPage() {
 
   app.innerHTML = `
     <section class="community-insights-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
-      <header class="community-insights-hero">
-        <div class="community-insights-hero-copy">
-          <p class="eyebrow">Public Knowledge System</p>
-          <h2>Community Insights</h2>
-          <p>Aggregated, anonymized germination intelligence from approved Community Grow entries. No private sessions, profiles, Seed Vault inventory, emails, admin fields, or CSTP-private data are used.</p>
-        </div>
-        <div class="community-insights-hero-actions">
-          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
-          <a class="button button-secondary" href="/seed-age-analytics">Seed Age Analytics</a>
-        </div>
-      </header>
-
-      ${renderCommunityInsightsSection("Community Overview", "Public-safe summary metrics from approved Community Grow data.", renderCommunityInsightsKpiGrid(overviewCards), { wide: true, eyebrow: "Overview" })}
+      ${renderCommunityInsightsHeroOverview(state)}
       ${cstpPublicSectionMarkup}
 
-      ${renderCommunityInsightsSection("Insight Cards", "Descriptive signals from public aggregates only.", `
+      ${renderCommunityInsightsSection("Performance", "", `
+        <div class="community-insights-performance-grid">
+          ${renderCommunityInsightsBarChart("Source Consistency Trend", sourcePerformanceRows, { caption: "avg germination", ranked: true, className: "community-insights-chart-card--feature" })}
+          ${renderCommunityInsightsBarChart("Variety Consistency Trend", varietyPerformanceRows, { caption: "avg germination", ranked: true, className: "community-insights-chart-card--feature" })}
+        </div>
+      `, { wide: true, eyebrow: "Trends", className: "community-insights-panel--performance" })}
+
+      ${renderCommunityInsightsSection("Source Activity", "", renderCommunityInsightsSourceActivity(state.highestParticipationSources), { wide: true, eyebrow: "Sources", className: "community-insights-panel--source-activity" })}
+
+      ${renderCommunityInsightsSection("Key Signals", "", `
         <div class="community-insights-insight-grid">
           ${state.insightCards.map((insight) => `
             <article class="community-insights-insight-card">
@@ -27426,38 +27524,38 @@ function renderCommunityInsightsPage() {
             </article>
           `).join("")}
         </div>
-      `, { wide: true, eyebrow: "Insights" })}
+      `, { wide: true, eyebrow: "Insights", className: "community-insights-panel--signals" })}
 
       <div class="community-insights-grid">
-        ${renderCommunityInsightsSection("Source Intelligence", "Source trends aggregated from approved public snapshot metadata.", `
-          ${renderCommunityInsightsBarChart("Top Performing Sources", sourcePerformanceRows, { caption: "average germination" })}
-          ${renderCommunityInsightsBarChart("Most Tested Sources", sourceTestedRows, { caption: "public seed volume" })}
-          ${renderCommunityInsightsBarChart("Highest Participation Sources", sourceParticipationRows, { caption: "approved entry count" })}
-          ${renderCommunityInsightsBarChart("Source performance distribution", sourcePerformanceRows, { caption: "public-safe comparison" })}
-        `, { eyebrow: "Sources" })}
+        ${renderCommunityInsightsSection("Source Rankings", "", `
+          ${renderCommunityInsightsBarChart("Top Sources", sourcePerformanceRows, { caption: "avg germination", ranked: true, className: "community-insights-chart-card--leaderboard" })}
+          ${renderCommunityInsightsBarChart("Most Tested", sourceTestedRows, { caption: "seed volume", ranked: true })}
+          ${renderCommunityInsightsBarChart("Most Active", sourceParticipationRows, { caption: "approved sessions", ranked: true })}
+        `, { eyebrow: "Sources", className: "community-insights-panel--leaderboard" })}
 
-        ${renderCommunityInsightsSection("Genetics / Variety Intelligence", "Variety trends from public-safe approved entries.", `
-          ${renderCommunityInsightsBarChart("Most Tested Varieties", varietyTestedRows, { caption: "public seed volume" })}
-          ${renderCommunityInsightsBarChart("Best Performing Varieties", varietyPerformanceRows, { caption: "average germination" })}
-          ${renderCommunityInsightsBarChart("Repeat-Tested Varieties", repeatVarietyRows, { caption: "multiple public entries" })}
-          ${renderCommunityInsightsBarChart("Variety participation distribution", repeatVarietyRows, { caption: "approved entry count" })}
-        `, { eyebrow: "Genetics" })}
+        ${renderCommunityInsightsSection("Variety Rankings", "", `
+          ${renderCommunityInsightsBarChart("Most Tested", varietyTestedRows, { caption: "seed volume", ranked: true, className: "community-insights-chart-card--leaderboard" })}
+          ${renderCommunityInsightsBarChart("Best Performers", varietyPerformanceRows, { caption: "avg germination", ranked: true })}
+          ${renderCommunityInsightsBarChart("Repeat Tested", repeatVarietyRows, { caption: "approved sessions", ranked: true })}
+        `, { eyebrow: "Genetics", className: "community-insights-panel--leaderboard" })}
 
-        ${renderCommunityInsightsSection("Seed Age Insights", "Age bucket intelligence from approved public-safe seed age metadata.", `
+        ${renderCommunityInsightsSection("Contributor Rankings", "", renderCommunityInsightsContributorLeaderboard(contributorLeaderboardEntries), { eyebrow: "Contributors", className: "community-insights-panel--leaderboard" })}
+
+        ${renderCommunityInsightsSection("Seed Age", "", `
           ${renderCommunityInsightsBarChart("Germination by Age Bucket", agePerformanceRows, { caption: "average germination" })}
           ${renderCommunityInsightsKpiGrid([
             { label: "Most Tested Age Range", value: state.mostTestedAgeRange?.label || "Not enough age data", detail: state.mostTestedAgeRange ? `${formatPrivateAnalyticsNumber(state.mostTestedAgeRange.totalSeeds)} public seeds` : "Age-labeled snapshots will unlock this." },
             { label: "Best Performing Age Range", value: state.bestAgeRange?.label || "Not enough age data", detail: state.bestAgeRange ? `${formatPrivateAnalyticsPercent(state.bestAgeRange.averageRate)} public average` : "Age-labeled snapshots will unlock this." },
-          ])}
-          ${renderCommunityInsightsBarChart("Community Age Distribution", ageDistributionRows, { caption: "public seed volume" })}
+          ], { className: "community-insights-kpi-grid--compact" })}
+          ${renderCommunityInsightsBarChart("Age Distribution", ageDistributionRows, { caption: "seed volume" })}
         `, { eyebrow: "Seed Age" })}
 
-        ${renderCommunityInsightsSection("Community Trends", "Lightweight public activity trends from approved entries.", `
+        ${renderCommunityInsightsSection("Community Trends", "", `
           <div class="community-insights-trend-grid">
-            ${renderCommunityInsightsTrendChart("Germination performance over time", state.monthRows, { metricKey: "averageRate", percent: true, caption: "monthly public average" })}
-            ${renderCommunityInsightsTrendChart("Session participation trends", state.monthRows, { metricKey: "sessionCount", caption: "public sessions represented" })}
-            ${renderCommunityInsightsTrendChart("Snapshot submission trends", state.monthRows, { metricKey: "snapshotCount", caption: "approved entries" })}
-            ${renderCommunityInsightsTrendChart("Community activity trends", state.monthRows, { metricKey: "contributorCount", caption: "anonymous contributors" })}
+            ${renderCommunityInsightsTrendChart("Germination", state.monthRows, { metricKey: "averageRate", percent: true, caption: "monthly avg", className: "community-insights-chart-card--mini-trend" })}
+            ${renderCommunityInsightsTrendChart("Sessions", state.monthRows, { metricKey: "sessionCount", caption: "approved", className: "community-insights-chart-card--mini-trend" })}
+            ${renderCommunityInsightsTrendChart("Snapshots", state.monthRows, { metricKey: "snapshotCount", caption: "entries", className: "community-insights-chart-card--mini-trend" })}
+            ${renderCommunityInsightsTrendChart("Contributors", state.monthRows, { metricKey: "contributorCount", caption: "public", className: "community-insights-chart-card--mini-trend" })}
           </div>
         `, { wide: true, eyebrow: "Trends" })}
       </div>
