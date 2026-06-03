@@ -7552,34 +7552,34 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   align-items: center;
   justify-content: center;
   width: fit-content;
-  min-height: 24px;
-  padding: 0 9px;
+  min-height: 18px;
+  padding: 1px 7px 2px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 209, 89, 0.16);
-  background: rgba(148, 209, 89, 0.08);
-  color: #dff8c4;
-  font-size: 0.68rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  background: rgba(148, 209, 89, 0.045);
+  color: rgba(214, 241, 188, 0.74);
+  font-size: 0.62rem;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  text-transform: none;
   white-space: nowrap;
 }
 
 .public-analytics-signal-badge.is-early,
 .community-insights-signal-badge.is-early,
 .gallery-leaderboard-signal-badge.is-early {
-  border-color: rgba(110, 209, 223, 0.2);
-  background: rgba(110, 209, 223, 0.09);
-  color: #bdeefa;
+  border-color: rgba(110, 209, 223, 0.12);
+  background: rgba(110, 209, 223, 0.045);
+  color: rgba(190, 235, 244, 0.74);
 }
 
 .public-analytics-signal-badge.is-limited,
 .community-insights-signal-badge.is-limited,
 .gallery-leaderboard-signal-badge.is-limited {
-  border-color: rgba(217, 173, 74, 0.22);
-  background: rgba(217, 173, 74, 0.1);
-  color: #f1d48d;
+  border-color: rgba(217, 173, 74, 0.14);
+  background: rgba(217, 173, 74, 0.05);
+  color: rgba(236, 204, 137, 0.76);
 }
 
 .community-insights-bar-chart {
@@ -7600,7 +7600,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-width: 0;
 }
 
-.community-insights-bar-label span {
+.community-insights-bar-label span:not(.community-insights-signal-badge) {
   overflow: hidden;
   color: #f7faf4;
   font-size: 0.86rem;
@@ -7999,7 +7999,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   color: #f5d0bc;
 }
 
-.community-insights-bar-row.is-ranked:first-child .community-insights-bar-label span {
+.community-insights-bar-row.is-ranked:first-child .community-insights-bar-label span:not(.community-insights-signal-badge) {
   color: #f6ffec;
   font-size: 0.96rem;
 }
@@ -8190,7 +8190,7 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   min-height: 32px;
 }
 
-.gallery-top-members-summary-metric span:last-child {
+.gallery-top-members-summary-metric span:not(.gallery-leaderboard-signal-badge):last-child {
   color: #dff8c4;
   font-size: 1rem;
   font-weight: 850;

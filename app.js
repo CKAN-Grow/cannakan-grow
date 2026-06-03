@@ -25026,12 +25026,12 @@ function getLeaderboardRankTone(index) {
 function getPublicAnalyticsSignalStrength(totalSeeds = 0) {
   const seedCount = Math.max(0, Number(totalSeeds) || 0);
   if (seedCount >= 100) {
-    return { label: "Strong signal", tone: "strong" };
+    return { label: "Strong Signal", tone: "strong" };
   }
   if (seedCount >= 20) {
-    return { label: "Early signal", tone: "early" };
+    return { label: "Early Signal", tone: "early" };
   }
-  return { label: "Limited data", tone: "limited" };
+  return { label: "Limited Data", tone: "limited" };
 }
 
 function formatPublicAnalyticsSuccessRate(value = null) {
