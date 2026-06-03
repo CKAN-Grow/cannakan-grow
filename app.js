@@ -25248,12 +25248,12 @@ function renderGalleryTopMembersSummary(entries = []) {
         <div class="gallery-top-members-summary-copy">
           <p class="eyebrow">Sources</p>
           <h4>Source Activity</h4>
-          <p class="gallery-top-members-summary-note">Approved source activity and germination averages from community sessions this month.</p>
+          <p class="gallery-top-members-summary-note">Top approved source signals.</p>
         </div>
         ${renderGalleryLeaderboardViewAllButton("#source-directory", "View all sources in Source Directory")}
       </div>
       <ol class="gallery-top-members-summary-list">
-        ${summaryEntries.map((entry, index) => `
+        ${summaryEntries.length ? summaryEntries.map((entry, index) => `
           <li class="gallery-top-members-summary-item ${getLeaderboardRankTone(index)}">
             <span class="gallery-top-members-summary-rank" aria-hidden="true">#${index + 1}</span>
             <span class="gallery-top-members-summary-name">${escapeHtml(entry.name || "Source")}</span>
@@ -25262,7 +25262,11 @@ function renderGalleryTopMembersSummary(entries = []) {
               <span>${escapeHtml(`${Math.round(Number(entry.averagePercent) || 0)}% avg`)}</span>
             </span>
           </li>
-        `).join("")}
+        `).join("") : `
+          <li class="gallery-top-members-summary-empty">
+            <p>Source rankings will appear after more approved public entries.</p>
+          </li>
+        `}
       </ol>
     </article>
   `;
@@ -26486,10 +26490,81 @@ function renderGalleryLeaderboardCardHeadingWithAction(title, subtitle, iconType
         ${renderCommunityInsightsIconMarkup(iconType, "gallery-leaderboard-section-icon")}
         <div class="gallery-leaderboard-card-heading-copy">
           <h4>${escapeHtml(title)}</h4>
-          <p class="eyebrow">${escapeHtml(subtitle)}</p>
+          <p class="gallery-leaderboard-card-heading-subtitle">${escapeHtml(subtitle)}</p>
         </div>
       </div>
       ${actionMarkup}
+    </div>
+  `;
+}
+
+function renderGalleryInsightsKpiPreview(state = {}) {
+  const sourcesTrackedCount = (state.sourceRows || []).filter((row) => row.totalSeeds > 0).length;
+  const varietiesTrackedCount = (state.varietyRows || []).filter((row) => row.totalSeeds > 0).length;
+  const communityAverageValue = state.overview?.communityAverageRate == null
+    ? "Pending"
+    : formatPrivateAnalyticsPercent(state.overview.communityAverageRate);
+  const stats = [
+    { label: "Approved Sessions", value: formatPrivateAnalyticsNumber(state.overview?.totalPublicSessionsRepresented) },
+    { label: "Contributors", value: formatPrivateAnalyticsNumber(state.overview?.activeCommunityContributors) },
+    { label: "Sources", value: formatPrivateAnalyticsNumber(sourcesTrackedCount) },
+    { label: "Varieties", value: formatPrivateAnalyticsNumber(varietiesTrackedCount) },
+  ];
+
+  return `
+    <article class="gallery-insights-kpi-preview" aria-label="Community Insights preview metrics">
+      <div class="gallery-insights-kpi-average">
+        <span>Community Germination Average</span>
+        <strong>${escapeHtml(communityAverageValue)}</strong>
+      </div>
+      <div class="gallery-insights-kpi-stats">
+        ${stats.map((stat) => `
+          <div class="gallery-insights-kpi-stat">
+            <strong>${escapeHtml(stat.value)}</strong>
+            <span>${escapeHtml(stat.label)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderGalleryCompactTrendPreview(streakEntry = null, fallbackEntries = [], type = "source", emptyMessage = "More approved entries will build this trend.") {
+  const rows = (fallbackEntries || []).slice(0, 3);
+  if (!streakEntry && !rows.length) {
+    return `
+      <div class="gallery-compact-trend-empty">
+        <p>${escapeHtml(emptyMessage)}</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="gallery-compact-trend-preview">
+      ${streakEntry ? `
+        <div class="gallery-compact-trend-feature ${getLeaderboardRankTone(0)}">
+          ${renderCommunityInsightsIconMarkup(type === "source" ? "sources" : "varieties", "gallery-compact-trend-icon")}
+          <span>
+            <strong>${escapeHtml(streakEntry.name)}</strong>
+            <small>${escapeHtml(`${streakEntry.length} ${streakEntry.length === 1 ? "month" : "months"} · ${streakEntry.averagePercent}% avg`)}</small>
+          </span>
+        </div>
+      ` : ""}
+      ${rows.length ? `
+        <div class="gallery-compact-trend-bars">
+          ${rows.map((entry, index) => {
+            const percent = Math.min(100, Math.max(4, Math.round(Number(entry.averagePercent) || 0)));
+            return `
+              <div class="gallery-compact-trend-bar-row ${getLeaderboardRankTone(index)}">
+                <span class="gallery-compact-rank">#${index + 1}</span>
+                <span class="gallery-compact-trend-name">${escapeHtml(entry.name || (type === "source" ? "Source" : "Variety"))}</span>
+                <span class="gallery-compact-trend-track" aria-hidden="true"><i style="width:${escapeHtml(`${percent}%`)};"></i></span>
+                <strong>${escapeHtml(`${Math.round(Number(entry.averagePercent) || 0)}%`)}</strong>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : ""}
     </div>
   `;
 }
@@ -26521,8 +26596,7 @@ function renderGalleryLongestStreakRow(streakEntry, type = "source", emptyMessag
 function renderGalleryLeaderboardSection() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const monthlySnapshots = getCurrentMonthApprovedGallerySnapshots();
-  const thisMonthTopSeedType = buildGallerySeedTypeHighlightEntry(monthlySnapshots);
-  const allTimeTopSeedType = buildGallerySeedTypeHighlightEntry(approvedSnapshots);
+  const insightsState = buildCommunityInsightsState();
   const thisMonthSources = buildGalleryLeaderboardEntries(monthlySnapshots, "source").slice(0, 3);
   const thisMonthVarieties = buildGalleryLeaderboardEntries(monthlySnapshots, "variety").slice(0, 3);
   const thisMonthMembers = buildGalleryTopMemberEntries(monthlySnapshots).slice(0, 3);
@@ -26530,12 +26604,20 @@ function renderGalleryLeaderboardSection() {
   const allTimeVarieties = buildGalleryLeaderboardEntries(approvedSnapshots, "variety").slice(0, 3);
   const sourceStreak = buildGalleryLongestTopStreak(approvedSnapshots, "source");
   const varietyStreak = buildGalleryLongestTopStreak(approvedSnapshots, "variety");
+  const sourceActivityPreviewEntries = thisMonthSources.length ? thisMonthSources : allTimeSources;
+  const sourceLeaderboardPreviewEntries = thisMonthSources.length ? thisMonthSources : allTimeSources;
+  const varietyLeaderboardPreviewEntries = thisMonthVarieties.length ? thisMonthVarieties : allTimeVarieties;
+  const memberLeaderboardPreviewEntries = thisMonthMembers.length
+    ? thisMonthMembers
+    : buildGalleryTopMemberEntries(approvedSnapshots).slice(0, 3);
+  const sourceTrendPreviewEntries = thisMonthSources.length ? thisMonthSources : allTimeSources;
+  const varietyTrendPreviewEntries = thisMonthVarieties.length ? thisMonthVarieties : allTimeVarieties;
 
   const section = document.createElement("section");
   section.id = "community-insights";
   section.className = "card gallery-section gallery-leaderboard-section";
   section.innerHTML = `
-    <div class="section-heading app-section-header">
+    <div class="section-heading app-section-header gallery-leaderboard-section-head">
       <div class="section-title-with-icon app-section-header-main">
         ${renderAppSectionHeaderIcon("leaderboard")}
         <div>
@@ -26544,39 +26626,41 @@ function renderGalleryLeaderboardSection() {
           <p class="muted">Approved community session data, source activity, seed type trends, and germination performance patterns.</p>
         </div>
       </div>
-      <a class="button button-secondary" href="#community-insights">View full Community Insights</a>
+      <div class="gallery-leaderboard-section-actions">
+        <a class="button button-secondary" href="#community-insights">View full Community Insights</a>
+      </div>
     </div>
     <div class="gallery-leaderboard-summary">
-      ${renderGallerySeedTypeHighlights(thisMonthTopSeedType, allTimeTopSeedType)}
-      ${renderGalleryTopMembersSummary(thisMonthSources)}
+      ${renderGalleryInsightsKpiPreview(insightsState)}
+      ${renderGalleryTopMembersSummary(sourceActivityPreviewEntries)}
     </div>
     <div class="gallery-leaderboard-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Sources", "This month · approved source germination averages", "sources", renderGalleryLeaderboardViewAllButton())}
-        ${renderGalleryLeaderboardRows(thisMonthSources, "source", "Not enough approved public source data this month yet.")}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top Sources", "Source averages", "sources", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardRows(sourceLeaderboardPreviewEntries, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--source-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Source consistency across recorded months", "trends")}
-        ${renderGalleryLongestStreakRow(sourceStreak, "source", "No source consistency trend is available yet.")}
+        ${renderGalleryLeaderboardCardHeading("Source Trend", "Consistency preview", "trends")}
+        ${renderGalleryCompactTrendPreview(sourceStreak, sourceTrendPreviewEntries, "source", "No source consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Performance Trends", "Variety consistency across recorded months", "trends")}
-        ${renderGalleryLongestStreakRow(varietyStreak, "variety", "No variety consistency trend is available yet.")}
+        ${renderGalleryLeaderboardCardHeading("Variety Trend", "Consistency preview", "trends")}
+        ${renderGalleryCompactTrendPreview(varietyStreak, varietyTrendPreviewEntries, "variety", "No variety consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
-        ${renderGalleryLeaderboardCardHeadingWithAction("Varieties", "This month · approved variety germination averages", "varieties", renderGalleryLeaderboardViewAllButton())}
-        ${renderGalleryLeaderboardRows(thisMonthVarieties, "variety", "Not enough approved public seed variety data this month yet.")}
+        ${renderGalleryLeaderboardCardHeadingWithAction("Top Varieties", "Variety averages", "varieties", renderGalleryLeaderboardViewAllButton())}
+        ${renderGalleryLeaderboardRows(varietyLeaderboardPreviewEntries, "variety", "Not enough approved public seed variety data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-members">
-        ${renderGalleryLeaderboardCardHeading("Public Contributors", "This month · profile-safe Community Grow participation", "members")}
-        ${renderGalleryTopMemberRows(thisMonthMembers, "Not enough approved public member activity this month yet.")}
+        ${renderGalleryLeaderboardCardHeading("Contributors", "Participation preview", "members")}
+        ${renderGalleryTopMemberRows(memberLeaderboardPreviewEntries, "Not enough approved public member activity yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
-        ${renderGalleryLeaderboardCardHeading("Sources", "All-time · recorded source germination averages", "sources")}
+        ${renderGalleryLeaderboardCardHeading("All-Time Sources", "Recorded averages", "sources")}
         ${renderGalleryLeaderboardRows(allTimeSources, "source", "Not enough approved public source data yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
-        ${renderGalleryLeaderboardCardHeading("Varieties", "All-time · recorded variety germination averages", "varieties")}
+        ${renderGalleryLeaderboardCardHeading("All-Time Varieties", "Recorded averages", "varieties")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
       </article>
     </div>
