@@ -10428,6 +10428,26 @@ body.theme-dark .file-upload-control:hover .file-upload-button {
   overflow: hidden;
 }
 
+.community-grow-insights-preview-summary,
+.community-grow-insights-preview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 20px;
+}
+
+.community-grow-insights-preview .gallery-leaderboard-card {
+  gap: 16px;
+  padding: 20px;
+}
+
+.community-grow-insights-preview-grid .gallery-leaderboard-card--month-members {
+  grid-column: 1 / -1;
+  align-content: start;
+}
+
+.community-grow-insights-preview-grid .gallery-leaderboard-card--month-members .gallery-leaderboard-list {
+  gap: 6px;
+}
+
 .home-gallery-rankings-card {
   display: grid;
   gap: var(--space-3);
@@ -15920,8 +15940,17 @@ body.theme-dark .contact-reason-card.is-active {
 }
 
 @media (max-width: 900px) {
+  .community-grow-insights-preview-summary,
+  .community-grow-insights-preview-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .gallery-leaderboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .community-grow-insights-preview-grid .gallery-leaderboard-card--month-members {
+    grid-column: auto;
   }
 
   .gallery-leaderboard-section-head {

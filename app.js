@@ -26622,7 +26622,7 @@ function renderGalleryLeaderboardSection() {
 
   const section = document.createElement("section");
   section.id = "community-insights";
-  section.className = "card gallery-section gallery-leaderboard-section";
+  section.className = "card gallery-section gallery-leaderboard-section community-grow-insights-preview";
   section.innerHTML = `
     <div class="section-heading app-section-header gallery-leaderboard-section-head">
       <div class="section-title-with-icon app-section-header-main">
@@ -26637,11 +26637,11 @@ function renderGalleryLeaderboardSection() {
         <a class="button button-secondary" href="#community-insights">View full Community Insights</a>
       </div>
     </div>
-    <div class="gallery-leaderboard-summary">
+    <div class="gallery-leaderboard-summary community-grow-insights-preview-summary">
       ${renderGalleryInsightsKpiPreview(insightsState)}
       ${renderGalleryTopMembersSummary(sourceActivityPreviewEntries)}
     </div>
-    <div class="gallery-leaderboard-grid">
+    <div class="gallery-leaderboard-grid community-grow-insights-preview-grid">
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-sources">
         ${renderGalleryLeaderboardCardHeadingWithAction("Top Sources", "Success Rate by seed count", "sources", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(sourceLeaderboardPreviewEntries, "source", "Not enough approved public source data yet.")}
@@ -26650,17 +26650,13 @@ function renderGalleryLeaderboardSection() {
         ${renderGalleryLeaderboardCardHeading("Source Trend", "Consistency preview", "trends")}
         ${renderGalleryCompactTrendPreview(sourceStreak, sourceTrendPreviewEntries, "source", "No source consistency trend is available yet.")}
       </article>
-      <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
-        ${renderGalleryLeaderboardCardHeading("Variety Trend", "Consistency preview", "trends")}
-        ${renderGalleryCompactTrendPreview(varietyStreak, varietyTrendPreviewEntries, "variety", "No variety consistency trend is available yet.")}
-      </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--month-varieties">
         ${renderGalleryLeaderboardCardHeadingWithAction("Top Varieties", "Success Rate by seed count", "varieties", renderGalleryLeaderboardViewAllButton())}
         ${renderGalleryLeaderboardRows(varietyLeaderboardPreviewEntries, "variety", "Not enough approved public seed variety data yet.")}
       </article>
-      <article class="gallery-leaderboard-card gallery-leaderboard-card--month-members">
-        ${renderGalleryLeaderboardCardHeading("Contributors", "Participation preview", "members")}
-        ${renderGalleryTopMemberRows(memberLeaderboardPreviewEntries, "Not enough approved public member activity yet.")}
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--variety-streak gallery-leaderboard-card--streak">
+        ${renderGalleryLeaderboardCardHeading("Variety Trend", "Consistency preview", "trends")}
+        ${renderGalleryCompactTrendPreview(varietyStreak, varietyTrendPreviewEntries, "variety", "No variety consistency trend is available yet.")}
       </article>
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-sources">
         ${renderGalleryLeaderboardCardHeading("All-Time Sources", "Seed-weighted Success Rate", "sources")}
@@ -26669,6 +26665,10 @@ function renderGalleryLeaderboardSection() {
       <article class="gallery-leaderboard-card gallery-leaderboard-card--all-varieties">
         ${renderGalleryLeaderboardCardHeading("All-Time Varieties", "Seed-weighted Success Rate", "varieties")}
         ${renderGalleryLeaderboardRows(allTimeVarieties, "variety", "Not enough approved public seed variety data yet.")}
+      </article>
+      <article class="gallery-leaderboard-card gallery-leaderboard-card--month-members">
+        ${renderGalleryLeaderboardCardHeading("Contributors", "Participation preview", "members")}
+        ${renderGalleryTopMemberRows(memberLeaderboardPreviewEntries, "Not enough approved public member activity yet.")}
       </article>
     </div>
     <p class="gallery-leaderboard-disclaimer">Success rates are seed-weighted when seed counts are available. Sample size is shown so small tests are not mistaken for broad performance trends.</p>
