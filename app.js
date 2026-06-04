@@ -62017,6 +62017,8 @@ function setMockDataEnabledAndRefresh(enabled) {
 function renderGallery(targetSnapshotId = "") {
   markLearnGettingStartedActionCompleted("explore-community-grow");
   app.replaceChildren(cloneTemplate(templates.gallery));
+  hydrateAppIconSlots(app);
+  normalizeSectionHeaderLayouts(app);
   initializeCustomSelects(app);
   const galleryGrid = document.querySelector("#gallery-grid");
   const gallerySortControl = document.querySelector("#gallery-sort");
