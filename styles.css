@@ -33205,6 +33205,36 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   line-height: 1.35;
 }
 
+.public-session-example-selector {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.1);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.26)),
+    rgba(245, 250, 239, 0.46);
+}
+
+.public-session-panel-heading p:not(.eyebrow) {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.public-session-example-selector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.public-session-example-selector-actions .button {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 1100px) {
   .grow-network-page-heading {
     grid-template-columns: minmax(0, 1fr);
@@ -33277,6 +33307,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .public-session-partition-results-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-example-selector-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .session-sequence-label {
@@ -42617,6 +42652,7 @@ body.theme-dark .session-result-partition-chip.partition-success-card {
 
 body.theme-dark .public-session-summary-card,
 body.theme-dark .public-session-timeline-section,
+body.theme-dark .public-session-example-selector,
 body.theme-dark .public-session-partition-results {
   border-color: rgba(148, 209, 89, 0.14);
   background:
@@ -42675,6 +42711,10 @@ body.theme-dark .public-session-journey-marker {
 
 body.theme-dark .public-session-journey-step p {
   color: rgba(226, 234, 220, 0.82);
+}
+
+body.theme-dark .public-session-panel-heading p:not(.eyebrow) {
+  color: rgba(189, 204, 192, 0.72);
 }
 
 body.theme-dark .public-session-partition-result.partition-success-card {

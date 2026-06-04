@@ -923,7 +923,7 @@ const MOCK_PUBLIC_SESSION_SCENARIOS = Object.freeze([
   },
   {
     key: "difficult-seed-recovery",
-    name: "Archive Seed Recovery",
+    name: "Seed Recovery Example",
     seedVarietyName: "Aurora Archive Lot",
     sourceName: "Aurora Calyx Seedworks",
     seedTypeName: "Other",
@@ -70292,16 +70292,23 @@ function renderPublicSessionDetail(snapshotId) {
   const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
   const mockScenarioSelectorMarkup = activeMockScenario
     ? `
-      <div class="inline-actions" aria-label="Mock public session scenarios">
-        ${MOCK_PUBLIC_SESSION_SCENARIOS.map((scenario) => `
-          <button
-            type="button"
-            class="button ${scenario.key === activeMockScenario.key ? "button-primary" : "button-secondary"}"
-            data-mock-public-session-scenario="${escapeHtml(scenario.key)}"
-            aria-pressed="${scenario.key === activeMockScenario.key ? "true" : "false"}"
-          >${escapeHtml(scenario.name)}</button>
-        `).join("")}
-      </div>
+      <section class="public-session-example-selector" aria-labelledby="public-session-example-selector-title">
+        <div class="public-session-panel-heading">
+          <p class="eyebrow">Example Public Sessions</p>
+          <h3 id="public-session-example-selector-title">Browse Session Examples</h3>
+          <p>Load a different example public session to compare summary, journey, and partition results.</p>
+        </div>
+        <div class="public-session-example-selector-actions" aria-label="Example public sessions">
+          ${MOCK_PUBLIC_SESSION_SCENARIOS.map((scenario) => `
+            <button
+              type="button"
+              class="button ${scenario.key === activeMockScenario.key ? "button-primary" : "button-secondary"}"
+              data-mock-public-session-scenario="${escapeHtml(scenario.key)}"
+              aria-pressed="${scenario.key === activeMockScenario.key ? "true" : "false"}"
+            >${escapeHtml(scenario.name)}</button>
+          `).join("")}
+        </div>
+      </section>
     `
     : "";
 
@@ -70314,11 +70321,9 @@ function renderPublicSessionDetail(snapshotId) {
             <p class="eyebrow">Public Session</p>
             <h2>${escapeHtml(sessionTitle)}</h2>
             <p class="muted">Read-only grow session view</p>
-            ${mockScenarioSelectorMarkup}
           </div>
         </div>
         <div class="inline-actions">
-          <button type="button" class="button button-secondary" data-contact-admin-open="true" data-contact-admin-type="Report content">Report / Contact Admin</button>
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
       </div>
@@ -70333,6 +70338,7 @@ function renderPublicSessionDetail(snapshotId) {
         </div>
       </div>
       ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
+      ${mockScenarioSelectorMarkup}
     </section>
   `;
 
