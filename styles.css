@@ -32841,8 +32841,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .public-session-partition-results-head .eyebrow,
 .public-session-partition-results-head h3,
 .public-session-partition-results-head p,
-.public-session-partition-result dl,
-.public-session-partition-result dd {
+.public-session-partition-result p {
   margin: 0;
 }
 
@@ -32870,15 +32869,16 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .public-session-partition-result {
   min-width: 0;
   display: grid;
-  gap: 9px;
-  padding: 10px;
+  grid-template-rows: auto auto auto auto auto;
+  gap: 6px;
+  padding: 10px 11px;
   border: 1px solid rgba(24, 34, 24, 0.08);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.5);
@@ -32895,16 +32895,33 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 .public-session-partition-result-variety,
+.public-session-partition-result-count,
+.public-session-partition-result-meta,
 .public-session-partition-results-empty p {
   margin: 0;
 }
 
 .public-session-partition-result-variety {
-  min-height: 2.4em;
   color: var(--ink);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 780;
   line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.public-session-partition-result-count {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 760;
+  line-height: 1.25;
+}
+
+.public-session-partition-result-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 680;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .public-session-partition-results-empty {
@@ -32920,8 +32937,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   line-height: 1.45;
 }
 
-.public-session-partition-result-topline,
-.public-session-partition-result dl > div {
+.public-session-partition-result-topline {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -32942,28 +32958,30 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   font-weight: 850;
 }
 
-.public-session-partition-result dl {
-  display: grid;
+.public-session-partition-result .partition-success-badge {
+  justify-self: start;
+  margin-top: 1px;
+  font-size: 0.62rem;
+  opacity: 0.88;
+}
+
+.public-session-partition-results .partition-success-legend {
   gap: 5px;
+  opacity: 0.78;
 }
 
-.public-session-partition-result dt {
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.public-session-partition-results .partition-success-legend-item {
+  padding: 3px 6px;
+  border-color: color-mix(in srgb, var(--partition-success-border) 68%, transparent);
+  background: color-mix(in srgb, var(--partition-success-accent-soft) 72%, transparent);
+  font-size: 0.62rem;
+  font-weight: 650;
 }
 
-.public-session-partition-result dd {
-  min-width: 0;
-  max-width: 62%;
-  color: var(--ink);
-  font-size: 0.76rem;
-  font-weight: 720;
-  line-height: 1.25;
-  text-align: right;
-  overflow-wrap: anywhere;
+.public-session-partition-results .partition-success-legend-item .partition-success-dot {
+  width: 0.36rem;
+  height: 0.36rem;
+  box-shadow: 0 0 0 2px var(--partition-success-accent-soft);
 }
 
 .public-session-details {
@@ -33060,6 +33078,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 }
 
 @media (max-width: 720px) {
+  .public-session-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .public-session-partition-results {
     padding: 12px;
     border-radius: 16px;
@@ -33077,14 +33099,6 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
   .public-session-partition-results-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .public-session-partition-result-variety {
-    min-height: 0;
-  }
-
-  .public-session-partition-result dd {
-    max-width: 58%;
   }
 
   .session-sequence-label {
@@ -42437,8 +42451,12 @@ body.theme-dark .public-session-partition-results {
 body.theme-dark .public-session-partition-results-head h3,
 body.theme-dark .public-session-partition-result-topline strong,
 body.theme-dark .public-session-partition-result-variety,
-body.theme-dark .public-session-partition-result dd {
+body.theme-dark .public-session-partition-result-count {
   color: #f6f8f5;
+}
+
+body.theme-dark .public-session-partition-result-meta {
+  color: rgba(189, 204, 192, 0.72);
 }
 
 body.theme-dark .public-session-partition-results-head > span,

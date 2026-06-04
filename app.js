@@ -73304,11 +73304,14 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "Not shared") : "Not shared";
           const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "Not shared") : "Not shared";
           const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "Not shared") : "Not shared";
-          const countLabel = hasSeeds ? `${partition.germinatedCount} / ${partition.totalCount}` : "Not shared";
+          const countLabel = hasSeeds ? `${partition.germinatedCount} / ${partition.totalCount} seeds` : "Not shared";
           const percentageLabel = hasSeeds ? (partition.percentageLabel || "Not shared") : "Not shared";
           const successStatus = hasSeeds
             ? getPartitionSuccessStatus(partition.percentage, partition.germinatedCount, partition.totalCount)
             : getPartitionSuccessStatus(null, null, null);
+          const secondaryMeta = [sourceLabel, seedAgeLabel]
+            .filter((value) => value && value !== "Not shared")
+            .join(" · ") || "No source or seed age shared";
 
           return `
             <article class="public-session-partition-result partition-success-card ${escapeHtml(successStatus.className)}${hasSeeds ? "" : " is-empty"}">
@@ -73317,24 +73320,9 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
                 <span class="partition-success-rate">${escapeHtml(percentageLabel)}</span>
               </div>
               <p class="public-session-partition-result-variety">${escapeHtml(varietyLabel)}</p>
-              <dl>
-                <div>
-                  <dt>Source / Company</dt>
-                  <dd>${escapeHtml(sourceLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Germinated</dt>
-                  <dd>${escapeHtml(countLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Seed Age</dt>
-                  <dd>${escapeHtml(seedAgeLabel)}</dd>
-                </div>
-                <div>
-                  <dt>Status</dt>
-                  <dd><span class="partition-success-badge">${escapeHtml(successStatus.label)}</span></dd>
-                </div>
-              </dl>
+              <p class="public-session-partition-result-count">${escapeHtml(countLabel)}</p>
+              <p class="public-session-partition-result-meta">${escapeHtml(secondaryMeta)}</p>
+              <span class="partition-success-badge">${escapeHtml(successStatus.label)}</span>
             </article>
           `;
           }).join("")}
