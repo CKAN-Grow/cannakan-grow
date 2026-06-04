@@ -4836,13 +4836,13 @@ function getSessionSeedAgeMetadata(session = null) {
   if (trackingEnabled) {
     if (mode === "same" && sessionSeedAgeYears !== null) {
       summaryKey = "same";
-      summaryLabel = `Same age: ${formatSeedAgeYearsLabel(sessionSeedAgeYears)}`;
+      summaryLabel = `Age: ${formatSeedAgeYearsLabel(sessionSeedAgeYears)}`;
     } else if (mode === "mixed") {
       summaryKey = "mixed";
-      summaryLabel = "Mixed ages";
+      summaryLabel = "Age: Mixed";
     } else {
       summaryKey = "unknown";
-      summaryLabel = "Age unknown";
+      summaryLabel = "Age: Unknown";
     }
   }
 
@@ -4860,9 +4860,9 @@ function buildSeedAgeDisplayLabel(source = null, options = {}) {
   const metadata = source && typeof source === "object" && Object.prototype.hasOwnProperty.call(source, "summaryKey")
     ? source
     : getSessionSeedAgeMetadata(source);
-  const samePrefix = String(options.samePrefix || "Same age").trim() || "Same age";
-  const mixedLabel = String(options.mixedLabel || "Mixed ages").trim() || "Mixed ages";
-  const unknownLabel = String(options.unknownLabel || "Age unknown").trim() || "Age unknown";
+  const samePrefix = String(options.samePrefix || "Age").trim() || "Age";
+  const mixedLabel = String(options.mixedLabel || "Age: Mixed").trim() || "Age: Mixed";
+  const unknownLabel = String(options.unknownLabel || "Age: Unknown").trim() || "Age: Unknown";
   const disabledLabel = Object.prototype.hasOwnProperty.call(options, "disabledLabel")
     ? String(options.disabledLabel || "").trim()
     : DEFAULT_UNTRACKED_SEED_AGE_LABEL;
@@ -18937,9 +18937,9 @@ function buildCommunityActivityFeedEntry(activity) {
     seedAgeMode: metadata.seedAgeMode,
     sessionSeedAgeYears: metadata.sessionSeedAgeYears,
   }, {
-    samePrefix: "Same age",
-    mixedLabel: "Mixed ages",
-    unknownLabel: "Unknown",
+    samePrefix: "Age",
+    mixedLabel: "Age: Mixed",
+    unknownLabel: "Age: Unknown",
     disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
 
@@ -19170,9 +19170,9 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
     sessionSeedAgeYears: normalizedSnapshot.sessionSeedAgeYears ?? sessionContext?.sessionSeedAgeYears,
   });
   const communitySeedAgeLabel = buildSeedAgeDisplayLabel(seedAgeMetadata, {
-    samePrefix: "Same age",
-    mixedLabel: "Mixed ages",
-    unknownLabel: "Unknown",
+    samePrefix: "Age",
+    mixedLabel: "Age: Mixed",
+    unknownLabel: "Age: Unknown",
     disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
   const metadata = {
@@ -30023,9 +30023,9 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
     seedTypeLabel: metadata.seedTypeName || "Not shared",
     sexLabel: sexValue ? capitalize(sexValue) : "Not shared",
     seedAgeLabel: buildSeedAgeDisplayLabel(seedAgeMetadata, {
-      samePrefix: "Same age",
-      mixedLabel: "Mixed ages",
-      unknownLabel: "Unknown",
+      samePrefix: "Age",
+      mixedLabel: "Age: Mixed",
+      unknownLabel: "Age: Unknown",
       disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     }),
     seedAgeSummaryKey: seedAgeMetadata.summaryKey === "disabled" ? "unknown" : seedAgeMetadata.summaryKey,
@@ -53262,9 +53262,9 @@ function getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentit
       ? "unknown"
       : getSessionSeedAgeMetadata(matchingSession).summaryKey,
     seedAgeSummaryLabel: buildSeedAgeDisplayLabel(matchingSession, {
-      samePrefix: "Same age",
-      mixedLabel: "Mixed ages",
-      unknownLabel: "Unknown",
+      samePrefix: "Age",
+      mixedLabel: "Age: Mixed",
+      unknownLabel: "Age: Unknown",
       disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     }),
   };
@@ -55280,9 +55280,9 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
   const assignedSessionDisplayId = assignedSession?.id || record?.assignedSessionId || "";
   const seedAgeSummaryLabel = assignedSession
     ? buildSeedAgeDisplayLabel(assignedSession, {
-      samePrefix: "Same age",
-      mixedLabel: "Mixed ages",
-      unknownLabel: "Unknown",
+      samePrefix: "Age",
+      mixedLabel: "Age: Mixed",
+      unknownLabel: "Age: Unknown",
       disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
     })
     : "Not connected";
@@ -58231,9 +58231,9 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
     {
       label: "Seed Age",
       value: buildSeedAgeDisplayLabel(session, {
-        samePrefix: "Same age",
-        mixedLabel: "Mixed ages",
-        unknownLabel: "Unknown",
+        samePrefix: "Age",
+        mixedLabel: "Age: Mixed",
+        unknownLabel: "Age: Unknown",
         disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
       }),
     },
@@ -58733,10 +58733,10 @@ function renderAdminCstpReportPage(recordId = "") {
   const suggestedQualification = getSuggestedAdminCstpQualificationResult(reportSession);
   const canPublish = canPublishAdminCstpCertification(reportSession);
   const reportSeedAgeLabel = buildSeedAgeDisplayLabel(reportSession, {
-    samePrefix: "Same age",
-    mixedLabel: "Mixed ages",
-      unknownLabel: "Unknown",
-      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+    samePrefix: "Age",
+    mixedLabel: "Age: Mixed",
+    unknownLabel: "Age: Unknown",
+    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
   });
   const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
     ? "CSTP Certification Published"
@@ -73105,8 +73105,8 @@ function getSessionResultSummary(session = null) {
       seedAgeMode: "same",
       sessionSeedAgeYears: seedAgeYears,
     }, {
-      samePrefix: "",
-      unknownLabel: "",
+      samePrefix: "Age",
+      unknownLabel: "Age: Unknown",
       disabledLabel: "",
     });
 
