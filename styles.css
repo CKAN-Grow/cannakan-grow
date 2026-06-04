@@ -32820,11 +32820,11 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-results {
   display: grid;
-  gap: 12px;
-  margin-top: 14px;
-  padding: 14px;
+  gap: 14px;
+  margin-top: 4px;
+  padding: 18px;
   border: 1px solid rgba(148, 209, 89, 0.14);
-  border-radius: 18px;
+  border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.36)),
     rgba(245, 250, 239, 0.68);
@@ -32847,7 +32847,8 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-partition-results-head h3 {
   color: var(--ink);
-  font-size: 1rem;
+  font-size: 1.16rem;
+  line-height: 1.15;
 }
 
 .public-session-partition-results-head p {
@@ -32870,7 +32871,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 .public-session-partition-results-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .public-session-partition-result {
@@ -32986,12 +32987,12 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-details {
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .public-session-timeline-section {
   margin-top: 0;
-  padding: 18px;
+  padding: 16px;
 }
 
 .public-session-timeline-empty {
@@ -33021,6 +33022,79 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   line-height: 1.5;
 }
 
+.public-session-summary-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.34)),
+    rgba(245, 250, 239, 0.62);
+  box-shadow: 0 12px 24px rgba(24, 34, 24, 0.07);
+}
+
+.public-session-panel-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.public-session-panel-heading .eyebrow,
+.public-session-panel-heading h3 {
+  margin: 0;
+}
+
+.public-session-panel-heading h3 {
+  color: var(--ink);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.public-session-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.public-session-summary-item {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(24, 34, 24, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.public-session-summary-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.public-session-summary-item strong {
+  display: block;
+  color: var(--ink);
+  font-size: 0.92rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.public-session-summary-item.is-featured {
+  border-color: rgba(148, 209, 89, 0.24);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.14), rgba(255, 255, 255, 0.36)),
+    rgba(255, 255, 255, 0.48);
+}
+
+.public-session-summary-item.is-featured strong {
+  color: var(--accent-dark);
+  font-size: 1.12rem;
+}
+
 .public-session-meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -33029,6 +33103,106 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-meta-card {
   min-height: 100px;
+}
+
+.public-session-journey {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding-left: 2px;
+}
+
+.public-session-journey::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  bottom: 16px;
+  left: 10px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(127, 184, 255, 0.42), rgba(217, 122, 74, 0.38), rgba(148, 209, 89, 0.38), rgba(138, 103, 72, 0.4));
+}
+
+.public-session-journey-step {
+  --journey-accent: rgba(148, 209, 89, 0.7);
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.public-session-journey-step--started {
+  --journey-accent: rgba(189, 204, 192, 0.72);
+}
+
+.public-session-journey-step--soaking {
+  --journey-accent: #7fb8ff;
+}
+
+.public-session-journey-step--germination {
+  --journey-accent: #d97a4a;
+}
+
+.public-session-journey-step--green {
+  --journey-accent: #94d159;
+}
+
+.public-session-journey-step--completed {
+  --journey-accent: #8a6748;
+}
+
+.public-session-journey-marker {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  border: 1px solid color-mix(in srgb, var(--journey-accent) 72%, transparent);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.54);
+}
+
+.public-session-journey-step.is-complete .public-session-journey-marker {
+  background: var(--journey-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--journey-accent) 18%, transparent);
+}
+
+.public-session-journey-step > div {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(24, 34, 24, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.public-session-journey-step strong,
+.public-session-journey-step p,
+.public-session-journey-step > div > span {
+  display: block;
+  margin: 0;
+}
+
+.public-session-journey-step strong {
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.public-session-journey-step p {
+  margin-top: 3px;
+  color: rgba(88, 101, 88, 0.9);
+  font-size: 0.78rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.public-session-journey-step > div > span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 @media (max-width: 1100px) {
@@ -33079,6 +33253,10 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 @media (max-width: 720px) {
   .public-session-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-summary-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -42437,6 +42615,8 @@ body.theme-dark .session-result-partition-chip.partition-success-card {
     rgba(255, 255, 255, 0.03);
 }
 
+body.theme-dark .public-session-summary-card,
+body.theme-dark .public-session-timeline-section,
 body.theme-dark .public-session-partition-results {
   border-color: rgba(148, 209, 89, 0.14);
   background:
@@ -42448,25 +42628,53 @@ body.theme-dark .public-session-partition-results {
     0 12px 24px rgba(0, 0, 0, 0.16);
 }
 
+body.theme-dark .public-session-panel-heading h3,
 body.theme-dark .public-session-partition-results-head h3,
+body.theme-dark .public-session-summary-item strong,
+body.theme-dark .public-session-journey-step strong,
 body.theme-dark .public-session-partition-result-topline strong,
 body.theme-dark .public-session-partition-result-variety,
 body.theme-dark .public-session-partition-result-count {
   color: #f6f8f5;
 }
 
+body.theme-dark .public-session-summary-item span,
+body.theme-dark .public-session-journey-step > div > span,
 body.theme-dark .public-session-partition-result-meta {
   color: rgba(189, 204, 192, 0.72);
 }
 
 body.theme-dark .public-session-partition-results-head > span,
+body.theme-dark .public-session-summary-item.is-featured strong,
 body.theme-dark .public-session-partition-result-topline span {
   color: #94d159;
 }
 
+body.theme-dark .public-session-summary-item,
+body.theme-dark .public-session-journey-step > div,
 body.theme-dark .public-session-partition-result {
   border-color: rgba(148, 209, 89, 0.12);
   background: rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .public-session-summary-item.is-featured {
+  border-color: rgba(148, 209, 89, 0.22);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.1), rgba(255, 255, 255, 0.018)),
+    rgba(255, 255, 255, 0.03);
+}
+
+body.theme-dark .public-session-journey::before {
+  background: linear-gradient(180deg, rgba(127, 184, 255, 0.34), rgba(217, 122, 74, 0.32), rgba(148, 209, 89, 0.34), rgba(138, 103, 72, 0.36));
+}
+
+body.theme-dark .public-session-journey-marker {
+  background: rgba(19, 24, 20, 0.94);
+  box-shadow: 0 0 0 4px rgba(10, 15, 12, 0.68);
+}
+
+body.theme-dark .public-session-journey-step p {
+  color: rgba(226, 234, 220, 0.82);
 }
 
 body.theme-dark .public-session-partition-result.partition-success-card {

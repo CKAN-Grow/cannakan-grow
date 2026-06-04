@@ -70290,18 +70290,6 @@ function renderPublicSessionDetail(snapshotId) {
     : basePublicDetails;
   const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
   const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
-  const facts = [
-    { label: "System", value: publicDetails.systemLabel },
-    { label: "Source", value: publicDetails.sourceLabel },
-    { label: "Seed Variety", value: publicDetails.seedVarietyLabel },
-    { label: "Type", value: publicDetails.seedTypeLabel },
-    { label: "Sex", value: publicDetails.sexLabel },
-    { label: "Seed Age", value: publicDetails.seedAgeLabel },
-    { label: "Seed Count", value: publicDetails.seedCountLabel },
-    { label: "Germinated", value: publicDetails.germinatedLabel },
-    { label: "Germination Rate", value: publicDetails.germinationRateLabel },
-    { label: "Session Date", value: publicDetails.sessionDateLabel },
-  ];
   const mockScenarioSelectorMarkup = activeMockScenario
     ? `
       <div class="inline-actions" aria-label="Mock public session scenarios">
@@ -70338,25 +70326,13 @@ function renderPublicSessionDetail(snapshotId) {
       <div class="public-session-layout">
         <div class="public-session-media">
           ${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}
-          ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
         </div>
         <div class="public-session-details">
-          <div class="public-session-readonly-note">
-            <strong>Read-only</strong>
-            <p>Public viewers can explore shared grow results here without editing sessions, notes, images, or gallery settings.</p>
-          </div>
-          <div class="public-session-meta-grid">
-            ${facts.map((fact) => `
-              <article class="meta-card public-session-meta-card">
-                <strong>${escapeHtml(fact.label)}</strong>
-                <p>${escapeHtml(fact.value)}</p>
-              </article>
-            `).join("")}
-          </div>
-          ${!activeMockScenario && publicDetails.resultSummary ? renderSessionResultBreakdownMarkup(publicDetails.resultSummary, { compact: true, maxPartitions: 16, maxGroups: 4 }) : ""}
+          ${renderPublicSessionSummaryMarkup(snapshot, publicDetails)}
           ${renderPublicSessionTimelineSection(snapshot)}
         </div>
       </div>
+      ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
     </section>
   `;
 
@@ -76534,6 +76510,63 @@ function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
   return formatElapsedMinutesShorthand(totalMinutes);
 }
 
+function getPublicSessionSummaryRows(snapshot = null, publicDetails = {}) {
+  const summary = publicDetails?.resultSummary || null;
+  const countedPartitions = Array.isArray(summary?.partitions)
+    ? summary.partitions.filter((partition) => partition.hasSeeds)
+    : [];
+  const lifecycleState = buildPublicSessionLifecycleState(snapshot);
+  const sessionDuration = lifecycleState?.startedAt && lifecycleState?.completedAt
+    ? formatPublicTimelineElapsedDuration(lifecycleState.startedAt, lifecycleState.completedAt)
+    : "";
+  const mixedContext = publicDetails?.mixedSessionContext || summary?.mixedContext || {};
+  const rows = [
+    { label: "System", value: publicDetails.systemLabel || formatSnapshotSystemLabel(snapshot?.systemType || "KAN") },
+    { label: "Total Seed Count", value: publicDetails.seedCountLabel || "Not shared" },
+    { label: "Total Germinated", value: publicDetails.germinatedLabel || "Not shared" },
+    { label: "Success Rate", value: publicDetails.germinationRateLabel || "Not shared", featured: true },
+    { label: "Session Duration", value: sessionDuration || "Not shared" },
+    { label: "Published Date", value: getGallerySnapshotSubmittedDateTimeLabel(snapshot) || publicDetails.sessionDateLabel || "Not shared" },
+    { label: "Partition Count", value: countedPartitions.length ? String(countedPartitions.length) : "Not shared" },
+  ];
+
+  if (mixedContext.sourceCount || summary?.sourceGroups?.length) {
+    rows.push({ label: "Sources Represented", value: String(mixedContext.sourceCount || summary.sourceGroups.length) });
+  }
+  if (mixedContext.varietyCount || summary?.varietyGroups?.length) {
+    rows.push({ label: "Varieties Represented", value: String(mixedContext.varietyCount || summary.varietyGroups.length) });
+  }
+
+  return rows;
+}
+
+function renderPublicSessionSummaryMarkup(snapshot = null, publicDetails = {}) {
+  const rows = getPublicSessionSummaryRows(snapshot, publicDetails);
+  return `
+    <section class="public-session-summary-card" aria-labelledby="public-session-summary-title">
+      <div class="public-session-panel-heading">
+        <p class="eyebrow">Session Summary</p>
+        <h3 id="public-session-summary-title">How This Session Performed</h3>
+      </div>
+      <div class="public-session-summary-grid">
+        ${rows.map((row) => `
+          <article class="public-session-summary-item${row.featured ? " is-featured" : ""}">
+            <span>${escapeHtml(row.label)}</span>
+            <strong>${escapeHtml(row.value)}</strong>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function formatPublicJourneyTimestamp(value = null, fallback = "Not shared") {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+    return fallback;
+  }
+  return getGallerySnapshotSubmittedDateTimeLabel({ publishedAt: value.toISOString(), createdAt: value.toISOString() });
+}
+
 function renderPublicSessionLifecycleTimelineMarkup(state) {
   const soakingDuration = formatPublicTimelineElapsedDuration(state.startedAt, state.germinationStartedAt);
   const germinationDuration = formatPublicTimelineElapsedDuration(state.germinationStartedAt, state.firstPlantedAt);
@@ -76541,46 +76574,54 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
 
   const events = [
     {
-      label: "SOAKING",
-      displayLabel: soakingDuration || "Duration unavailable",
+      label: "Started",
+      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : (state.startedDisplayLabel || "Not shared"),
+      durationLabel: "Session opened",
+      tone: "started",
+      complete: Boolean(state.startedAt || state.startedDisplayLabel),
+    },
+    {
+      label: "Soaking",
+      timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : "Not shared",
+      durationLabel: soakingDuration ? `${soakingDuration} until germination` : "Duration unavailable",
       tone: "soaking",
       complete: Boolean(state.startedAt && state.germinationStartedAt),
     },
     {
-      label: "GERMINATION",
-      displayLabel: state.germinationStartedAt
-        ? (germinationDuration || "Duration unavailable")
-        : "Not started",
+      label: "Germination",
+      timeLabel: formatPublicJourneyTimestamp(state.germinationStartedAt),
+      durationLabel: germinationDuration ? `${germinationDuration} to first germinated` : "Duration unavailable",
       tone: "germination",
       complete: Boolean(state.germinationStartedAt),
     },
     {
-      label: "FIRST GERMINATED",
-      displayLabel: soakingDuration && germinationDuration
-        ? `${soakingDuration} + ${germinationDuration}`
-        : "Duration unavailable",
+      label: "First Germinated",
+      timeLabel: formatPublicJourneyTimestamp(state.firstPlantedAt),
+      durationLabel: state.germinationStartedAt && state.firstPlantedAt
+        ? "First successful seed recorded"
+        : "Not shared",
       tone: "green",
       complete: Boolean(state.firstPlantedAt),
     },
     {
-      label: "COMPLETED",
-      displayLabel: completedDuration || "Duration unavailable",
+      label: "Completed",
+      timeLabel: formatPublicJourneyTimestamp(state.completedAt),
+      durationLabel: completedDuration ? `${completedDuration} total` : "Duration unavailable",
       tone: "completed",
       complete: Boolean(state.completedAt),
     },
   ];
 
   return `
-    <div class="lifecycle-bar">
+    <div class="public-session-journey">
       ${events.map((event) => `
-        <span class="lifecycle-segment lifecycle-${event.tone} ${event.complete ? "is-complete" : ""}"></span>
-      `).join("")}
-    </div>
-    <div class="lifecycle-events">
-      ${events.map((event) => `
-        <article class="lifecycle-event lifecycle-event-${event.tone} ${event.complete ? "is-complete" : ""}">
-          <strong>${event.label}</strong>
-          <p>${escapeHtml(event.displayLabel)}</p>
+        <article class="public-session-journey-step public-session-journey-step--${escapeHtml(event.tone)} ${event.complete ? "is-complete" : ""}">
+          <span class="public-session-journey-marker" aria-hidden="true"></span>
+          <div>
+            <strong>${escapeHtml(event.label)}</strong>
+            <p>${escapeHtml(event.timeLabel)}</p>
+            <span>${escapeHtml(event.durationLabel)}</span>
+          </div>
         </article>
       `).join("")}
     </div>
@@ -76694,13 +76735,13 @@ function renderPublicSessionTimelineSection(snapshot) {
   return `
     <section class="session-lifecycle-section public-session-timeline-section" aria-labelledby="public-session-progress-title">
       <div class="progress-chart-heading">
-        <p class="eyebrow">Timeline</p>
+        <p class="eyebrow">Session Journey</p>
         <h4 id="public-session-progress-title" class="section-title-with-icon">
           <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
             <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
             <path d="M5 6v12"></path>
           </svg>
-          <span>Session Progress</span>
+          <span>Start to Finish</span>
         </h4>
       </div>
       <div class="session-lifecycle-summary">
