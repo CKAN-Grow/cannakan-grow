@@ -70257,7 +70257,7 @@ function renderPublicSessionDetail(snapshotId) {
   if (!snapshot) {
     app.innerHTML = `
       <section class="card public-session-card">
-        <div class="section-heading app-section-header">
+        <div class="section-heading app-section-header public-session-header">
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("public-session")}
             <div>
@@ -70266,7 +70266,7 @@ function renderPublicSessionDetail(snapshotId) {
               <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
             </div>
           </div>
-          <div class="inline-actions">
+          <div class="inline-actions public-session-header-actions">
             <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
           </div>
         </div>
@@ -70314,7 +70314,7 @@ function renderPublicSessionDetail(snapshotId) {
 
   app.innerHTML = `
     <section class="card public-session-card">
-      <div class="section-heading app-section-header">
+      <div class="section-heading app-section-header public-session-header">
         <div class="section-title-with-icon app-section-header-main">
           ${renderAppSectionHeaderIcon("public-session")}
           <div>
@@ -70323,7 +70323,7 @@ function renderPublicSessionDetail(snapshotId) {
             <p class="muted">Read-only grow session view</p>
           </div>
         </div>
-        <div class="inline-actions">
+        <div class="inline-actions public-session-header-actions">
           <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
         </div>
       </div>

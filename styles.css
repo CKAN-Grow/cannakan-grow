@@ -28265,6 +28265,36 @@ textarea::placeholder {
   gap: 22px;
 }
 
+.public-session-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  margin-bottom: 0;
+}
+
+.public-session-header > .app-section-header-main {
+  width: auto;
+  flex-basis: auto;
+}
+
+.public-session-header-actions {
+  align-self: flex-start;
+  justify-content: flex-end;
+  justify-self: end;
+  padding-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .public-session-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-header-actions {
+    justify-self: start;
+    padding-top: 0;
+  }
+}
+
 .public-member-profile-page {
   display: grid;
   gap: 22px;
