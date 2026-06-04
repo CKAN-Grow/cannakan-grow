@@ -24036,6 +24036,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     alwaysShowPublicSessionAction = false,
     showFollowAction = true,
     compactPreview = false,
+    openPublicSessionDirectly = false,
   } = options;
   const isOwner = isGallerySnapshotOwner(snapshot);
   const snapshotStatus = getGallerySnapshotDisplayStatus(snapshot);
@@ -24113,8 +24114,15 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     const compactProfileMarkup = member.profileRoute
       ? `<a class="gallery-tile-profile-link gallery-card-profile-link" href="${escapeHtml(member.profileRoute)}" aria-label="${escapeHtml(`View ${member.displayName}'s public profile`)}">${escapeHtml(member.displayName)}</a>`
       : `<span>${escapeHtml(member.displayName)}</span>`;
+    const compactActionAttribute = openPublicSessionDirectly
+      ? `data-gallery-public-session="${escapeHtml(snapshot.id)}"`
+      : `data-gallery-preview="${escapeHtml(snapshot.id)}"`;
+    const compactActionLabel = openPublicSessionDirectly
+      ? `View public session for ${varietyLabel}`
+      : `View snapshot for ${varietyLabel}`;
+    const compactActionText = openPublicSessionDirectly ? "View Session" : "View Snapshot";
     return `
-      <div class="gallery-card-media gallery-card-media--tile" data-gallery-preview="${escapeHtml(snapshot.id)}" role="button" tabindex="0" aria-label="${escapeHtml(`View snapshot for ${varietyLabel}`)}">
+      <div class="gallery-card-media gallery-card-media--tile" ${compactActionAttribute} role="button" tabindex="0" aria-label="${escapeHtml(compactActionLabel)}">
         ${hasGallerySnapshotImage(snapshot)
           ? `<img src="${escapeHtml(snapshot.imageUrl)}" alt="${escapeHtml(varietyLabel)}" class="gallery-card-image">`
           : `
@@ -24152,7 +24160,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
             </div>
           </div>
           <div class="gallery-tile-hover-hint" aria-hidden="true">
-            <span class="gallery-card-media-overlay-pill">View Snapshot</span>
+            <span class="gallery-card-media-overlay-pill">${escapeHtml(compactActionText)}</span>
           </div>
         </div>
       </div>
@@ -24284,6 +24292,25 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
       if (snapshotId) {
         openGallerySnapshotOverview(snapshotId);
       }
+    });
+  });
+
+  scope.querySelectorAll("[data-gallery-public-session]").forEach((button) => {
+    const openPublicSession = () => {
+      const snapshotId = button.dataset.galleryPublicSession || "";
+      if (snapshotId) {
+        window.location.hash = `#sessions/public/${encodeURIComponent(snapshotId)}`;
+      }
+    };
+
+    button.addEventListener("click", openPublicSession);
+    button.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+
+      event.preventDefault();
+      openPublicSession();
     });
   });
 
@@ -62340,6 +62367,7 @@ function renderGallery(targetSnapshotId = "") {
       card.tabIndex = -1;
       card.innerHTML = renderGallerySnapshotCardMarkup(snapshot, {
         compactPreview: true,
+        openPublicSessionDirectly: true,
       });
       if (targetSnapshotId && snapshot.id === targetSnapshotId) {
         card.classList.add("is-targeted");
