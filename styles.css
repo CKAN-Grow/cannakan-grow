@@ -16192,6 +16192,15 @@ body.theme-dark .contact-reason-card.is-active {
     grid-template-columns: 1fr;
   }
 
+  .public-session-media .gallery-card-media,
+  .public-session-media .gallery-card-media--details-only {
+    min-height: 0;
+  }
+
+  .public-session-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
   .gallery-leaderboard-summary {
     grid-template-columns: 1fr;
   }
@@ -32807,15 +32816,23 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  gap: 18px;
   align-items: start;
 }
 
 .public-session-media .gallery-card-media,
 .public-session-media .gallery-card-media--details-only {
-  min-height: 340px;
+  aspect-ratio: 16 / 10;
+  height: auto;
+  max-height: 440px;
+  min-height: 300px;
   border-radius: 22px;
+}
+
+.public-session-journey-column {
+  min-width: 0;
+  display: grid;
 }
 
 .public-session-partition-results {
@@ -33052,7 +33069,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-summary-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -33287,7 +33304,7 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
   }
 
   .public-session-summary-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .public-session-partition-results {
@@ -33323,6 +33340,17 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
     right: auto;
     left: 0;
     min-width: 184px;
+  }
+}
+
+@media (max-width: 640px) {
+  .public-session-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-session-media .gallery-card-media,
+  .public-session-media .gallery-card-media--details-only {
+    min-height: 0;
   }
 }
 

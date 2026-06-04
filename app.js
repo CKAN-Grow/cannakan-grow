@@ -70328,12 +70328,12 @@ function renderPublicSessionDetail(snapshotId) {
         </div>
       </div>
       ${sharedProfileMarkup ? `<div class="public-session-profile">${sharedProfileMarkup}</div>` : ""}
+      ${renderPublicSessionSummaryMarkup(snapshot, publicDetails)}
       <div class="public-session-layout">
         <div class="public-session-media">
           ${renderGallerySnapshotMediaMarkup(snapshot, getGallerySnapshotFeedDetails(snapshot))}
         </div>
-        <div class="public-session-details">
-          ${renderPublicSessionSummaryMarkup(snapshot, publicDetails)}
+        <div class="public-session-journey-column">
           ${renderPublicSessionTimelineSection(snapshot)}
         </div>
       </div>
