@@ -76743,10 +76743,7 @@ function renderPublicSessionTimelineSection(snapshot) {
       <div class="progress-chart-heading">
         <p class="eyebrow">Session Journey</p>
         <h4 id="public-session-progress-title" class="section-title-with-icon">
-          <svg class="section-title-icon" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-            <path d="M5 12h3l2.2-4 3.6 8 2.2-4H19"></path>
-            <path d="M5 6v12"></path>
-          </svg>
+          ${renderAppSectionHeaderIcon("activity")}
           <span>Start to Finish</span>
         </h4>
       </div>
