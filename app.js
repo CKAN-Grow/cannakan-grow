@@ -8662,8 +8662,119 @@ function getMockGallerySourcePalette(sourceName) {
   return { background: "#182422", accent: "#94d159", text: "#f5ffec" };
 }
 
+// Keep generated canvas snapshots and mock/demo SVG snapshots aligned. Public
+// session and gallery views display the stored snapshot.imageUrl, so demo assets
+// need this same geometry instead of relying only on the canvas export path.
+const SNAPSHOT_IMAGE_OVERLAY_LAYOUT = Object.freeze({
+  panelHeightDense: 304,
+  panelHeightStandard: 268,
+  panelHeightEmpty: 184,
+  panelBottomGap: 12,
+});
+
+function getSnapshotImageOverlayPanelHeight(partitionItemCount = 0) {
+  const count = Math.max(0, Number(partitionItemCount) || 0);
+  if (count > 8) {
+    return SNAPSHOT_IMAGE_OVERLAY_LAYOUT.panelHeightDense;
+  }
+  if (count > 0) {
+    return SNAPSHOT_IMAGE_OVERLAY_LAYOUT.panelHeightStandard;
+  }
+  return SNAPSHOT_IMAGE_OVERLAY_LAYOUT.panelHeightEmpty;
+}
+
+function escapeMockGallerySvgText(value = "") {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getMockSnapshotPartitionTone(percentage = null, totalCount = 0) {
+  const percent = Number(percentage);
+  if (!(Number(totalCount) > 0) || !Number.isFinite(percent)) {
+    return { accent: "#aab3aa", background: "rgba(170,179,170,0.16)", border: "rgba(170,179,170,0.32)", text: "#dce6dc" };
+  }
+  if (percent >= 90) {
+    return { accent: "#94d159", background: "rgba(148,209,89,0.18)", border: "rgba(148,209,89,0.46)", text: "#f2ffe8" };
+  }
+  if (percent >= 70) {
+    return { accent: "#c8d75d", background: "rgba(200,215,93,0.16)", border: "rgba(200,215,93,0.42)", text: "#fbffd8" };
+  }
+  if (percent >= 50) {
+    return { accent: "#e4b85e", background: "rgba(228,184,94,0.16)", border: "rgba(228,184,94,0.42)", text: "#fff4d8" };
+  }
+  if (percent > 0) {
+    return { accent: "#e98355", background: "rgba(233,131,85,0.16)", border: "rgba(233,131,85,0.42)", text: "#ffe3d8" };
+  }
+  return { accent: "#e25f5f", background: "rgba(226,95,95,0.16)", border: "rgba(226,95,95,0.42)", text: "#ffe0e0" };
+}
+
 function buildMockGalleryImageDataUri(record) {
   const palette = getMockGallerySourcePalette(record.source);
+  const partitions = Array.isArray(record.partitions) ? record.partitions : [];
+  const systemType = String(record.systemType || "KAN").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+  const maxPartitions = systemType === "TRA" ? 16 : 8;
+  const partitionItems = partitions.slice(0, maxPartitions).map((partition, index) => {
+    const totalCount = Math.max(0, Number(partition.seedCount ?? partition.totalCount ?? 0) || 0);
+    const germinatedCount = Math.max(0, Number(partition.plantedCount ?? partition.germinatedCount ?? 0) || 0);
+    const percentage = totalCount > 0 ? Math.round((germinatedCount / totalCount) * 100) : null;
+    const tone = getMockSnapshotPartitionTone(percentage, totalCount);
+    return {
+      label: `P${Number(partition.id) || index + 1}`,
+      source: String(partition.source || record.source || "").trim(),
+      variety: String(partition.seedVariety || record.seedVariety || "").trim(),
+      totalCount,
+      germinatedCount,
+      percentageLabel: percentage === null ? "N/A" : `${percentage}%`,
+      tone,
+    };
+  });
+  const overlayScale = 900 / 1080;
+  const panelHeight = Math.round(getSnapshotImageOverlayPanelHeight(partitionItems.length) * overlayScale);
+  const panelX = 92;
+  const panelWidth = 1016;
+  const panelY = 826 - panelHeight - 10;
+  const panelBottom = panelY + panelHeight;
+  const dividerX = 292;
+  const rightX = 322;
+  const rightWidth = 754;
+  const footerY = panelBottom - 18;
+  const footerDividerY = panelBottom - 38;
+  const percentY = panelY + 62;
+  const rateLabelY = percentY + 28;
+  const seedCountY = rateLabelY + 24;
+  const seedAgeY = seedCountY + 22;
+  const seedAgeMetadata = getSessionSeedAgeMetadata({
+    seedAgeTrackingEnabled: true,
+    seedAgeMode: "mixed",
+    partitions,
+  });
+  const seedAgeLabel = buildSeedAgeSnapshotLabel(seedAgeMetadata)
+    .replace("Mixed seed ages", "Seed age: Mixed")
+    .replace("Seed age: Age unknown", "Seed age: Unknown");
+  const systemLabel = formatSnapshotSystemLabel(systemType);
+  const date = String(record.submittedAt || "").slice(0, 10) || "Demo date";
+  const columnCount = 4;
+  const gridGap = partitionItems.length > 8 ? 6 : 8;
+  const rowHeight = partitionItems.length > 8 ? 31 : 48;
+  const columnWidth = (rightWidth - (gridGap * (columnCount - 1))) / columnCount;
+  const gridY = panelY + 50;
+  const partitionMarkup = partitionItems.map((partition, index) => {
+    const column = index % columnCount;
+    const row = Math.floor(index / columnCount);
+    const itemX = rightX + (column * (columnWidth + gridGap));
+    const itemY = gridY + (row * (rowHeight + gridGap));
+    const title = `${partition.label} ${partition.germinatedCount}/${partition.totalCount} ${partition.percentageLabel}`;
+    const identity = [partition.variety, partition.source].filter(Boolean).join(" / ") || "Source not shared";
+    return `
+      <rect x="${itemX.toFixed(1)}" y="${itemY.toFixed(1)}" width="${columnWidth.toFixed(1)}" height="${rowHeight}" rx="9" fill="${partition.tone.background}" stroke="${partition.tone.border}" stroke-width="1" />
+      <circle cx="${(itemX + 12).toFixed(1)}" cy="${(itemY + (partitionItems.length > 8 ? 11 : 15)).toFixed(1)}" r="3" fill="${partition.tone.accent}" />
+      <text x="${(itemX + 20).toFixed(1)}" y="${(itemY + (partitionItems.length > 8 ? 17 : 23)).toFixed(1)}" fill="${partition.tone.text}" font-size="${partitionItems.length > 8 ? 13 : 16}" font-family="Arial, sans-serif" font-weight="800">${escapeMockGallerySvgText(title)}</text>
+      <text x="${(itemX + 10).toFixed(1)}" y="${(itemY + (partitionItems.length > 8 ? 30 : 42)).toFixed(1)}" fill="#dce9d2" opacity="0.82" font-size="${partitionItems.length > 8 ? 10 : 12}" font-family="Arial, sans-serif" font-weight="700">${escapeMockGallerySvgText(identity.slice(0, partitionItems.length > 8 ? 20 : 24))}</text>
+    `;
+  }).join("");
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Dev mock Community Grow preview">
       <defs>
@@ -8677,12 +8788,21 @@ function buildMockGalleryImageDataUri(record) {
       <circle cx="250" cy="680" r="220" fill="${palette.accent}" opacity="0.12" />
       <rect x="74" y="74" width="1052" height="752" rx="34" fill="none" stroke="${palette.accent}" stroke-width="4" opacity="0.35" />
       <text x="96" y="152" fill="${palette.accent}" font-size="36" font-family="Arial, sans-serif" font-weight="700">DEV MOCK COMMUNITY GROW DATA</text>
-      <text x="96" y="260" fill="${palette.text}" font-size="74" font-family="Arial, sans-serif" font-weight="700">${record.seedVariety}</text>
-      <text x="96" y="330" fill="${palette.text}" font-size="38" font-family="Arial, sans-serif">${record.source}</text>
-      <text x="96" y="448" fill="${palette.text}" font-size="118" font-family="Arial, sans-serif" font-weight="700">${record.germinationRate}%</text>
-      <text x="96" y="508" fill="${palette.accent}" font-size="34" font-family="Arial, sans-serif">GERMINATION RATE</text>
-      <text x="96" y="648" fill="${palette.text}" font-size="34" font-family="Arial, sans-serif">${record.germinatedCount} of ${record.seedCount} germinated</text>
-      <text x="96" y="708" fill="${palette.text}" font-size="30" font-family="Arial, sans-serif">Likes ${record.likes}   Submitted ${record.submittedAt.slice(0, 10)}</text>
+      <text x="96" y="242" fill="${palette.text}" font-size="64" font-family="Arial, sans-serif" font-weight="700">${escapeMockGallerySvgText(record.seedVariety)}</text>
+      <text x="96" y="306" fill="${palette.text}" opacity="0.86" font-size="34" font-family="Arial, sans-serif">${escapeMockGallerySvgText(record.source)}</text>
+      <rect x="${panelX}" y="${panelY}" width="${panelWidth}" height="${panelHeight}" rx="30" fill="rgba(0,0,0,0.58)" />
+      <text x="${panelX + 28}" y="${percentY}" fill="#94d159" font-size="62" font-family="Arial, sans-serif" font-weight="800">${record.germinationRate}%</text>
+      <text x="${panelX + 30}" y="${rateLabelY}" fill="#ffffff" font-size="17" font-family="Arial, sans-serif" font-weight="700">Germination Rate</text>
+      <text x="${panelX + 30}" y="${seedCountY}" fill="#dce9d2" font-size="15" font-family="Arial, sans-serif" font-weight="700">${record.germinatedCount} / ${record.seedCount} seeds</text>
+      <text x="${panelX + 30}" y="${seedAgeY}" fill="#dce9d2" font-size="13" font-family="Arial, sans-serif" font-weight="700">${escapeMockGallerySvgText(seedAgeLabel)}</text>
+      <line x1="${dividerX}" y1="${panelY + 18}" x2="${dividerX}" y2="${footerDividerY - 6}" stroke="rgba(148,209,89,0.24)" stroke-width="1" />
+      <rect x="${rightX + rightWidth - 78}" y="${panelY + 10}" width="78" height="30" rx="15" fill="rgba(148,209,89,0.12)" stroke="rgba(148,209,89,0.55)" />
+      <text x="${rightX + rightWidth - 56}" y="${panelY + 30}" fill="#f4faef" font-size="14" font-family="Arial, sans-serif" font-weight="800">${escapeMockGallerySvgText(systemLabel)}</text>
+      ${partitionMarkup}
+      <line x1="${panelX + 26}" y1="${footerDividerY}" x2="${panelX + panelWidth - 26}" y2="${footerDividerY}" stroke="rgba(148,209,89,0.26)" stroke-width="1" />
+      <text x="${panelX + 28}" y="${footerY}" fill="#eef7e6" font-size="15" font-family="Arial, sans-serif" font-weight="700">${escapeMockGallerySvgText(record.title || "Demo snapshot")}</text>
+      <text x="${panelX + 292}" y="${footerY}" fill="#94d159" font-size="15" font-family="Arial, sans-serif" font-weight="700">• ${escapeMockGallerySvgText(date)}</text>
+      <text x="${panelX + panelWidth - 150}" y="${footerY}" fill="#dce9d2" font-size="18" font-family="Arial, sans-serif" font-weight="800">Don | Cannakan</text>
     </svg>
   `.trim();
 
@@ -33073,8 +33193,8 @@ function drawSnapshotImageFooter(context, size, data, brandLogo = null, profileA
   const panelX = panelLeft;
   const panelWidth = panelRight - panelLeft;
   const partitionItemCount = getSnapshotPartitionResultItems(data).length;
-  const panelHeight = partitionItemCount > 8 ? 304 : (partitionItemCount > 0 ? 268 : 184);
-  const panelY = frameY + frameHeight - panelHeight - 12;
+  const panelHeight = getSnapshotImageOverlayPanelHeight(partitionItemCount);
+  const panelY = frameY + frameHeight - panelHeight - SNAPSHOT_IMAGE_OVERLAY_LAYOUT.panelBottomGap;
   context.save();
   context.shadowColor = "rgba(0, 0, 0, 0.14)";
   context.shadowBlur = 12;
