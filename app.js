@@ -5409,8 +5409,48 @@ function loadStoredSeedVaultEntries(userId = appState.user?.id || "") {
   }
 }
 
+function isSeedVaultEntriesColumnMissingError(error) {
+  return isSupabaseColumnMissingError(error, SEED_VAULT_ENTRIES_TABLE, [
+    "seed_variety",
+    "seed_name",
+    "seed_type",
+    "sex",
+    "seed_sex",
+    "seed_age_years",
+    "seed_count",
+    "quantity",
+    "remaining_count",
+    "year_acquired",
+    "storage_location",
+    "storage_notes",
+    "visibility",
+    "acquired_at",
+    "archived_at",
+    "is_deleted",
+    "deleted_at",
+  ]);
+}
+
 function isSeedVaultEntriesTableMissingError(error) {
-  return isSupabaseTableMissingError(error, SEED_VAULT_ENTRIES_TABLE);
+  return !isSeedVaultEntriesColumnMissingError(error)
+    && isSupabaseTableMissingError(error, SEED_VAULT_ENTRIES_TABLE);
+}
+
+function isSeedVaultEntriesSchemaError(error) {
+  return isSeedVaultEntriesTableMissingError(error) || isSeedVaultEntriesColumnMissingError(error);
+}
+
+function getSeedVaultSupabaseErrorMessage(error = null, action = "save") {
+  const rawMessage = String(error?.message || error?.details || error?.hint || "").trim();
+  const code = String(error?.code || "").trim();
+  const prefix = action === "delete"
+    ? "My Seed Vault entry could not be deleted from your account"
+    : action === "load"
+      ? "My Seed Vault entries could not be loaded from your account"
+      : "My Seed Vault entry could not be saved to your account";
+  return rawMessage
+    ? `${prefix}: ${rawMessage}${code ? ` (${code})` : ""}`
+    : `${prefix}. Please try again.`;
 }
 
 function getSeedVaultBackendUnavailableMessage() {
@@ -5420,6 +5460,15 @@ function getSeedVaultBackendUnavailableMessage() {
 function handleSeedVaultEntriesSchemaMissing(error = null) {
   appState.seedVaultTableUnavailable = false;
   appState.seedVaultError = getSeedVaultBackendUnavailableMessage();
+  console.error("[My Seed Vault] Supabase schema error.", {
+    table: SEED_VAULT_ENTRIES_TABLE,
+    code: error?.code || "",
+    message: error?.message || "",
+    details: error?.details || "",
+    hint: error?.hint || "",
+    status: getSupabaseErrorStatusCode(error),
+    error,
+  });
   logRuntimeIssueOnce(
     "warn",
     "seed-vault-entries-schema-missing",
@@ -5485,12 +5534,20 @@ async function syncSeedVaultEntriesToBackend(entries = [], userId = appState.use
     .select("*");
 
   if (error) {
-    if (isSeedVaultEntriesTableMissingError(error)) {
+    if (isSeedVaultEntriesSchemaError(error)) {
       handleSeedVaultEntriesSchemaMissing(error);
-      throw error;
     }
-    console.warn("[My Seed Vault] Backend sync skipped; local entries remain available.", error);
-    return [];
+    console.error("[My Seed Vault] Backend sync failed.", {
+      action: "sync",
+      table: SEED_VAULT_ENTRIES_TABLE,
+      rowsAttempted: rows.length,
+      code: error?.code || "",
+      message: error?.message || "",
+      details: error?.details || "",
+      hint: error?.hint || "",
+      error,
+    });
+    throw error;
   }
 
   return sortSeedVaultEntries(data || []);
@@ -5522,14 +5579,21 @@ async function ensureSeedVaultEntriesForUser(user = appState.user) {
     }
     return saveSeedVaultEntries(mergedEntries, userId);
   } catch (error) {
-    const isMissingSeedVaultTable = isSeedVaultEntriesTableMissingError(error);
+    const isMissingSeedVaultSchema = isSeedVaultEntriesSchemaError(error);
     const fallbackEntries = saveSeedVaultEntries(localEntries, userId);
-    if (isMissingSeedVaultTable) {
+    if (isMissingSeedVaultSchema) {
       handleSeedVaultEntriesSchemaMissing(error);
     } else {
-      appState.seedVaultError = "";
+      appState.seedVaultError = getSeedVaultSupabaseErrorMessage(error, "load");
     }
-    console.warn("[My Seed Vault] Failed to load account entries.", error);
+    console.error("[My Seed Vault] Failed to load account entries.", {
+      userId,
+      code: error?.code || "",
+      message: error?.message || "",
+      details: error?.details || "",
+      hint: error?.hint || "",
+      error,
+    });
     return fallbackEntries;
   }
 }
@@ -5549,20 +5613,12 @@ async function persistSeedVaultEntry(entry = {}) {
     ...currentEntries.filter((candidate) => candidate.id !== normalizedEntry.id),
     normalizedEntry,
   ]);
-  let localSaveFailed = false;
-  try {
+
+  if (!appState.supabase || !normalizedEntry.userId || appState.seedVaultTableUnavailable) {
     saveSeedVaultEntries(nextEntries, normalizedEntry.userId, {
       notifyOnFailure: true,
       throwOnFailure: true,
     });
-  } catch (error) {
-    localSaveFailed = true;
-  }
-
-  if (!appState.supabase || !normalizedEntry.userId || appState.seedVaultTableUnavailable) {
-    if (localSaveFailed) {
-      throw new Error(appState.seedVaultError || "My Seed Vault could not be saved. Please try again.");
-    }
     return normalizedEntry;
   }
 
@@ -5573,21 +5629,30 @@ async function persistSeedVaultEntry(entry = {}) {
 
   const { data, error } = await appState.supabase
     .from(SEED_VAULT_ENTRIES_TABLE)
-    .upsert(row)
+    .upsert(row, { onConflict: "id" })
     .select("*")
     .single();
 
   if (error) {
-    if (isSeedVaultEntriesTableMissingError(error)) {
+    if (isSeedVaultEntriesSchemaError(error)) {
       handleSeedVaultEntriesSchemaMissing(error);
-      throw new Error(appState.seedVaultError || getSeedVaultBackendUnavailableMessage());
     }
-    appState.seedVaultError = "";
-    console.warn("[My Seed Vault] Backend save failed.", error);
-    if (localSaveFailed) {
-      throw new Error("My Seed Vault could not be saved. Please try again.");
-    }
-    return normalizedEntry;
+    const message = getSeedVaultSupabaseErrorMessage(error, "save");
+    appState.seedVaultError = message;
+    console.error("[My Seed Vault] Backend save failed.", {
+      action: "upsert",
+      table: SEED_VAULT_ENTRIES_TABLE,
+      entryId: normalizedEntry.id,
+      userId: normalizedEntry.userId,
+      row,
+      code: error?.code || "",
+      message: error?.message || "",
+      details: error?.details || "",
+      hint: error?.hint || "",
+      status: getSupabaseErrorStatusCode(error),
+      error,
+    });
+    throw new Error(message);
   }
 
   const savedEntry = normalizeSeedVaultEntry(data);
@@ -66155,6 +66220,15 @@ async function saveSeedVaultEntryForm(form, options = {}) {
     refreshSeedVaultViewAfterMutation();
     return true;
   } catch (error) {
+    console.error("[My Seed Vault] Entry form save failed.", {
+      entryId: payload?.id || "",
+      userId: payload?.userId || "",
+      code: error?.code || "",
+      message: error?.message || "",
+      details: error?.details || "",
+      hint: error?.hint || "",
+      error,
+    });
     setFeedbackMessage(message, error.message || "Could not add this Vault Entry.", "error");
     return false;
   } finally {
@@ -66331,11 +66405,24 @@ async function updateSeedVaultEntryFlag(entryId = "", updates = {}) {
   if (!entry) {
     return;
   }
-  await persistSeedVaultEntry({
-    ...entry,
-    ...updates,
-  });
-  refreshSeedVaultViewAfterMutation();
+  try {
+    await persistSeedVaultEntry({
+      ...entry,
+      ...updates,
+    });
+    refreshSeedVaultViewAfterMutation();
+  } catch (error) {
+    console.error("[My Seed Vault] Entry flag update failed.", {
+      entryId: normalizedEntryId,
+      updates,
+      code: error?.code || "",
+      message: error?.message || "",
+      details: error?.details || "",
+      hint: error?.hint || "",
+      error,
+    });
+    showSeedVaultSaveFailureToast(error.message || "My Seed Vault could not be updated. Please try again.");
+  }
 }
 
 async function deleteSeedVaultEntry(entryId = "") {
@@ -66351,8 +66438,6 @@ async function deleteSeedVaultEntry(entryId = "") {
   }
 
   getSeedVaultExpandedEntryIds().delete(normalizedEntryId);
-  const nextEntries = (appState.seedVaultEntries || []).filter((candidate) => candidate.id !== normalizedEntryId);
-  saveSeedVaultEntries(nextEntries, entry.userId || appState.user?.id || "", { notifyOnFailure: true });
 
   if (appState.supabase && entry.userId && !appState.seedVaultTableUnavailable) {
     const { error } = await appState.supabase
@@ -66362,14 +66447,30 @@ async function deleteSeedVaultEntry(entryId = "") {
       .eq("user_id", entry.userId);
 
     if (error) {
-      if (isSeedVaultEntriesTableMissingError(error)) {
+      if (isSeedVaultEntriesSchemaError(error)) {
         handleSeedVaultEntriesSchemaMissing(error);
-      } else {
-        console.warn("[My Seed Vault] Backend delete failed.", error);
       }
+      const message = getSeedVaultSupabaseErrorMessage(error, "delete");
+      appState.seedVaultError = message;
+      console.error("[My Seed Vault] Backend delete failed.", {
+        action: "delete",
+        table: SEED_VAULT_ENTRIES_TABLE,
+        entryId: normalizedEntryId,
+        userId: entry.userId,
+        code: error?.code || "",
+        message: error?.message || "",
+        details: error?.details || "",
+        hint: error?.hint || "",
+        status: getSupabaseErrorStatusCode(error),
+        error,
+      });
+      showSeedVaultSaveFailureToast(message);
+      return;
     }
   }
 
+  const nextEntries = (appState.seedVaultEntries || []).filter((candidate) => candidate.id !== normalizedEntryId);
+  saveSeedVaultEntries(nextEntries, entry.userId || appState.user?.id || "", { notifyOnFailure: true });
   refreshSeedVaultViewAfterMutation();
 }
 

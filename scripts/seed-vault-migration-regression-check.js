@@ -30,6 +30,13 @@ const privacyInventoryMigrationPath = path.join(
   "20260601102000_seed_vault_privacy_inventory_foundation.sql",
 );
 const privacyInventorySql = fs.readFileSync(privacyInventoryMigrationPath, "utf8");
+const persistenceRepairMigrationPath = path.join(
+  repoRoot,
+  "supabase",
+  "migrations",
+  "20260605120000_repair_seed_vault_persistence_contract.sql",
+);
+const persistenceRepairSql = fs.readFileSync(persistenceRepairMigrationPath, "utf8");
 
 for (const needle of [
   "create table if not exists public.seed_vault_entries",
@@ -147,6 +154,45 @@ for (const needle of [
 
 if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(privacyInventorySql)) {
   throw new Error("Seed Vault privacy/inventory migration must stay additive and non-destructive.");
+}
+
+for (const needle of [
+  "create table if not exists public.seed_vault_entries",
+  "add column if not exists seed_variety text",
+  "add column if not exists seed_name text",
+  "add column if not exists seed_type text",
+  "add column if not exists sex text",
+  "add column if not exists seed_sex text",
+  "add column if not exists seed_age_years numeric",
+  "add column if not exists seed_count integer",
+  "add column if not exists quantity integer",
+  "add column if not exists remaining_count integer",
+  "add column if not exists year_acquired integer",
+  "add column if not exists acquired_at date",
+  "add column if not exists storage_location text",
+  "add column if not exists storage_notes text",
+  "add column if not exists visibility text not null default 'private'",
+  "add column if not exists is_archived boolean default false",
+  "add column if not exists archived_at timestamptz",
+  "add column if not exists is_deleted boolean not null default false",
+  "add column if not exists deleted_at timestamptz",
+  "seed_vault_entries_visibility_check",
+  "create trigger seed_vault_entries_set_updated_at",
+  "alter table public.seed_vault_entries enable row level security",
+  "using (auth.uid() = user_id)",
+  "with check (auth.uid() = user_id)",
+  "revoke all on public.seed_vault_entries from anon",
+  "grant usage on schema public to authenticated",
+  "grant select, insert, update, delete on public.seed_vault_entries to authenticated",
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!persistenceRepairSql.includes(needle)) {
+    throw new Error(`Missing Seed Vault persistence repair migration safeguard: ${needle}`);
+  }
+}
+
+if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(persistenceRepairSql)) {
+  throw new Error("Seed Vault persistence repair migration must stay additive and non-destructive.");
 }
 
 console.log("Seed Vault migration regression check passed.");

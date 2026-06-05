@@ -18,8 +18,13 @@ for (const needle of [
   "const mergedEntries = mergeSeedVaultEntryCollections(backendEntries, localEntries);",
   "return saveSeedVaultEntries(mergedEntries, userId);",
   "throwOnFailure: true",
-  "localSaveFailed",
-  "showSeedVaultSaveFailureToast(appState.seedVaultError);",
+  ".upsert(row, { onConflict: \"id\" })",
+  "function isSeedVaultEntriesColumnMissingError(error)",
+  "function isSeedVaultEntriesSchemaError(error)",
+  "function getSeedVaultSupabaseErrorMessage(error = null, action = \"save\")",
+  "console.error(\"[My Seed Vault] Backend save failed.\"",
+  "console.error(\"[My Seed Vault] Backend delete failed.\"",
+  "showSeedVaultSaveFailureToast(error.message || \"My Seed Vault could not be updated. Please try again.\");",
   "My Seed Vault could not be saved. Please try again.",
   "function handleSeedVaultEntriesSchemaMissing(error = null)",
   "My Seed Vault table is missing from Supabase REST schema cache. Apply the latest seed_vault_entries migration.",
@@ -33,6 +38,7 @@ for (const forbidden of [
   "My Seed Vault account sync is waiting on the latest Supabase migration",
   "Using browser storage for now",
   "seed-vault-sync-note",
+  "Backend sync skipped; local entries remain available",
 ]) {
   if (appSource.includes(forbidden)) {
     throw new Error(`Seed Vault should not show technical persistence details: ${forbidden}`);
