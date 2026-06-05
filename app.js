@@ -1554,6 +1554,7 @@ const appState = {
   communityGrowReturnContext: null,
   theme: "dark",
   sessionHistoryExpanded: false,
+  sessionHistoryExpandedUserSet: false,
   sessionHistorySort: "date",
   sessionHistoryFilter: "all",
   sessionHistoryVisibleCount: 6,
@@ -70197,6 +70198,7 @@ function renderSessionsList() {
   const hasSessionHistory = historySessions.length > 0;
   if (String(appState.sessionDashboardScrollTarget || "").trim() === "session-history") {
     appState.sessionHistoryExpanded = true;
+    appState.sessionHistoryExpandedUserSet = true;
   }
   const activeSessionsSection = document.querySelector("#active-sessions-section");
   const seedVaultSection = document.querySelector("#seed-vault-section");
@@ -70268,18 +70270,19 @@ function renderSessionsList() {
     }, { total: 0, active: 0, completed: 0, attention: 0 });
     const filteredSessions = filterMySessionsHistorySessions(historySource, appState.sessionHistoryFilter || "all");
     const sortedSessions = sortSessionHistorySessions(filteredSessions, appState.sessionHistorySort);
+    const isSessionHistoryExpanded = getSessionHistoryExpandedState();
     historySection.innerHTML = renderMySessionsHistoryPanelMarkup(sortedSessions, {
       filterValue: appState.sessionHistoryFilter || "all",
       sortValue: appState.sessionHistorySort || "date",
       visibleCount: appState.sessionHistoryVisibleCount || 6,
       hasAnySessions: historySessions.length > 0,
       focusSessionId: appState.sessionHistoryFocusSessionId || "",
-      expanded: appState.sessionHistoryExpanded === true,
+      expanded: isSessionHistoryExpanded,
       summaryCounts,
     });
     applySupplyStatusToSessionEntryButtons(historySection);
     const focusSessionId = String(appState.sessionHistoryFocusSessionId || "").trim();
-    if (focusSessionId && appState.sessionHistoryExpanded === true) {
+    if (focusSessionId && isSessionHistoryExpanded) {
       const highlightedRow = historySection.querySelector(`[data-session-history-row="${CSS.escape(focusSessionId)}"]`);
       if (highlightedRow instanceof Element) {
         scrollElementIntoViewAfterLayout(highlightedRow, {
@@ -70457,7 +70460,8 @@ function renderSessionsList() {
       const toggleButton = target.closest("[data-session-history-toggle='true']");
       if (toggleButton) {
         event.preventDefault();
-        appState.sessionHistoryExpanded = appState.sessionHistoryExpanded !== true;
+        appState.sessionHistoryExpanded = !getSessionHistoryExpandedState();
+        appState.sessionHistoryExpandedUserSet = true;
         renderHistorySessions();
         return;
       }
@@ -73936,6 +73940,22 @@ function openSessionHistoryForSession(sessionId = "") {
     sessionIndex >= 0 ? sessionIndex + 1 : 6,
   );
   window.location.hash = "#sessions";
+}
+
+function isDesktopSessionHistoryDefaultExpanded() {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(min-width: 861px)").matches;
+}
+
+function getSessionHistoryExpandedState() {
+  if (appState.sessionHistoryExpanded === true) {
+    return true;
+  }
+  if (appState.sessionHistoryExpandedUserSet === true) {
+    return false;
+  }
+  return isDesktopSessionHistoryDefaultExpanded();
 }
 
 function buildPartitionDetailRow(partition, sessionStatus = "") {
