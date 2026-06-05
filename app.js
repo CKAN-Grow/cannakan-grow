@@ -1552,6 +1552,7 @@ const appState = {
   galleryCertificationFilter: "all",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
   communityGrowReturnContext: null,
+  communityInsightsDrilldownSystemFilter: "all",
   theme: "dark",
   sessionHistoryExpanded: false,
   sessionHistoryExpandedUserSet: false,
@@ -9628,12 +9629,14 @@ function getCurrentAppPathRoute() {
   if (pathRoute === "learn/path" || pathRoute.startsWith("learn/path/")) {
     return pathRoute;
   }
+  if (pathRoute === "community-insights" || pathRoute.startsWith("community-insights/")) {
+    return pathRoute;
+  }
   return ({
     "": "",
     learn: "learn",
     profile: "profile",
     analytics: "analytics",
-    "community-insights": "community-insights",
     cstp: "cstp",
     "source-directory": "source-directory",
     sources: "sources",
@@ -11081,11 +11084,20 @@ function getCurrentSiteAnalyticsPageContext() {
     });
   }
   if (route === "community-insights") {
+    const drilldownLabel = id === "sources"
+      ? "Community Insights Sources"
+      : id === "varieties"
+        ? "Community Insights Varieties"
+        : id === "contributors"
+          ? "Community Insights Contributors"
+          : "Community Insights";
     return buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
-      pageKey: "community-insights",
-      pageLabel: "Community Insights",
-      pagePath: isUsingPathRoute("community-insights") ? "/community-insights" : "#community-insights",
+      pageKey: id ? `community-insights-${id}` : "community-insights",
+      pageLabel: drilldownLabel,
+      pagePath: id && isUsingPathRoute(`community-insights/${id}`)
+        ? `/community-insights/${id}`
+        : (isUsingPathRoute("community-insights") ? "/community-insights" : (id ? `#community-insights/${id}` : "#community-insights")),
     });
   }
   if (route === "cstp") {
@@ -27330,43 +27342,75 @@ function createCommunityInsightsRollup(label = "") {
     sessionIds: new Set(),
     contributorIds: new Set(),
     latestAt: "",
+    systems: {},
   };
+}
+
+function getCommunityInsightsSystemKey(value = "") {
+  return String(value || "").trim().toUpperCase() === "TRA" ? "TRA" : "KAN";
+}
+
+function addCommunityInsightsRollupCounters(target = {}, sample = {}) {
+  target.totalSeeds = Math.max(0, Number(target.totalSeeds) || 0) + Math.max(0, Number(sample.totalSeeds) || 0);
+  target.totalGerminated = Math.max(0, Number(target.totalGerminated) || 0) + Math.max(0, Number(sample.totalGerminated) || 0);
+  if (!(target.snapshotIds instanceof Set)) {
+    target.snapshotIds = new Set();
+  }
+  if (!(target.sessionIds instanceof Set)) {
+    target.sessionIds = new Set();
+  }
+  if (!(target.contributorIds instanceof Set)) {
+    target.contributorIds = new Set();
+  }
+  if (sample.snapshotId) {
+    target.snapshotIds.add(String(sample.snapshotId));
+  }
+  if (sample.sessionId) {
+    target.sessionIds.add(String(sample.sessionId));
+  }
+  if (sample.contributorId) {
+    target.contributorIds.add(String(sample.contributorId));
+  }
+  if (sample.publishedAt && (!target.latestAt || Date.parse(sample.publishedAt) > Date.parse(target.latestAt))) {
+    target.latestAt = sample.publishedAt;
+  }
+  return target;
 }
 
 function addCommunityInsightsRollupSample(rollup, sample = {}) {
   if (!rollup) {
     return rollup;
   }
-  rollup.totalSeeds += Math.max(0, Number(sample.totalSeeds) || 0);
-  rollup.totalGerminated += Math.max(0, Number(sample.totalGerminated) || 0);
-  if (sample.snapshotId) {
-    rollup.snapshotIds.add(String(sample.snapshotId));
-  }
-  if (sample.sessionId) {
-    rollup.sessionIds.add(String(sample.sessionId));
-  }
-  if (sample.contributorId) {
-    rollup.contributorIds.add(String(sample.contributorId));
-  }
-  if (sample.publishedAt && (!rollup.latestAt || Date.parse(sample.publishedAt) > Date.parse(rollup.latestAt))) {
-    rollup.latestAt = sample.publishedAt;
-  }
+  addCommunityInsightsRollupCounters(rollup, sample);
+  const systemKey = getCommunityInsightsSystemKey(sample.systemType || "");
+  rollup.systems[systemKey] = addCommunityInsightsRollupCounters(rollup.systems[systemKey] || {}, sample);
   return rollup;
 }
 
-function finalizeCommunityInsightsRollup(rollup = {}) {
-  const totalSeeds = Math.max(0, Number(rollup.totalSeeds) || 0);
-  const totalGerminated = Math.max(0, Number(rollup.totalGerminated) || 0);
+function finalizeCommunityInsightsRollupCounters(counters = {}) {
+  const totalSeeds = Math.max(0, Number(counters.totalSeeds) || 0);
+  const totalGerminated = Math.max(0, Number(counters.totalGerminated) || 0);
   return {
-    label: rollup.label || "Not shared",
-    key: rollup.key || "",
     totalSeeds,
     totalGerminated,
     averageRate: totalSeeds > 0 ? Math.round((totalGerminated / totalSeeds) * 1000) / 10 : null,
-    snapshotCount: rollup.snapshotIds?.size || 0,
-    sessionCount: rollup.sessionIds?.size || 0,
-    contributorCount: rollup.contributorIds?.size || 0,
-    latestAt: rollup.latestAt || "",
+    snapshotCount: counters.snapshotIds?.size || 0,
+    sessionCount: counters.sessionIds?.size || 0,
+    contributorCount: counters.contributorIds?.size || 0,
+    latestAt: counters.latestAt || "",
+  };
+}
+
+function finalizeCommunityInsightsRollup(rollup = {}) {
+  const finalized = finalizeCommunityInsightsRollupCounters(rollup);
+  return {
+    label: rollup.label || "Not shared",
+    key: rollup.key || "",
+    ...finalized,
+    systems: Object.fromEntries(["KAN", "TRA"].map((systemKey) => [
+      systemKey,
+      finalizeCommunityInsightsRollupCounters(rollup.systems?.[systemKey] || {}),
+    ])),
   };
 }
 
@@ -27395,6 +27439,65 @@ function buildCommunityInsightsChartRows(rows = [], options = {}) {
   });
 }
 
+function getCommunityInsightsViewAllActionMarkup(href = "", label = "View All") {
+  const safeHref = String(href || "").trim();
+  if (!safeHref) {
+    return "";
+  }
+  return `<a class="community-insights-view-all-link" href="${escapeHtml(safeHref)}">${escapeHtml(label)}</a>`;
+}
+
+function getCommunityInsightsSystemFilter() {
+  const normalizedFilter = String(appState.communityInsightsDrilldownSystemFilter || "all").trim().toLowerCase();
+  return ["kan", "tra"].includes(normalizedFilter) ? normalizedFilter.toUpperCase() : "all";
+}
+
+function getCommunityInsightsSystemFilteredRows(rows = [], systemFilter = getCommunityInsightsSystemFilter()) {
+  if (systemFilter !== "KAN" && systemFilter !== "TRA") {
+    return rows || [];
+  }
+  return (rows || []).map((row) => {
+    const systemSummary = row?.systems?.[systemFilter] || {};
+    return {
+      ...row,
+      totalSeeds: Math.max(0, Number(systemSummary.totalSeeds) || 0),
+      totalGerminated: Math.max(0, Number(systemSummary.totalGerminated) || 0),
+      averageRate: systemSummary.averageRate ?? null,
+      snapshotCount: Math.max(0, Number(systemSummary.snapshotCount) || 0),
+      sessionCount: Math.max(0, Number(systemSummary.sessionCount) || 0),
+      contributorCount: Math.max(0, Number(systemSummary.contributorCount) || 0),
+      latestAt: systemSummary.latestAt || "",
+    };
+  }).filter((row) => row.totalSeeds > 0 || row.snapshotCount > 0 || row.sessionCount > 0);
+}
+
+function getCommunityInsightsSystemFilteredSnapshots(snapshots = [], systemFilter = getCommunityInsightsSystemFilter()) {
+  if (systemFilter !== "KAN" && systemFilter !== "TRA") {
+    return snapshots || [];
+  }
+  return (snapshots || []).filter((snapshot) => getCommunityInsightsSystemKey(snapshot?.systemType || snapshot?.system_type || "KAN") === systemFilter);
+}
+
+function renderCommunityInsightsSystemFilterMarkup(activeFilter = getCommunityInsightsSystemFilter()) {
+  const filters = [
+    { key: "all", label: "All Systems" },
+    { key: "KAN", label: "KAN" },
+    { key: "TRA", label: "TRA" },
+  ];
+  return `
+    <div class="community-insights-system-filter" role="group" aria-label="Community Insights system filter">
+      ${filters.map((filter) => `
+        <button
+          type="button"
+          class="community-insights-system-filter-button${filter.key === activeFilter ? " is-active" : ""}"
+          data-community-insights-system-filter="${escapeHtml(filter.key)}"
+          aria-pressed="${filter.key === activeFilter ? "true" : "false"}"
+        >${escapeHtml(filter.label)}</button>
+      `).join("")}
+    </div>
+  `;
+}
+
 function buildCommunityInsightsState() {
   const approvedSnapshots = getApprovedPublicGallerySnapshots();
   const sourceRollups = new Map();
@@ -27419,6 +27522,7 @@ function buildCommunityInsightsState() {
     const monthKey = publishedDate ? getLeaderboardMonthKey(publishedDate) : "unknown";
     const monthLabel = publishedDate ? getCommunityInsightsMonthLabel(publishedDate) : "Unknown";
     const partitions = getCommunityInsightsSafeSnapshotPartitions(snapshot);
+    const systemType = getCommunityInsightsSystemKey(snapshot?.systemType || snapshot?.system_type || "KAN");
     if (sessionId) {
       sessionIds.add(sessionId);
     }
@@ -27455,6 +27559,7 @@ function buildCommunityInsightsState() {
         sessionId,
         contributorId,
         publishedAt,
+        systemType,
         totalSeeds: partition.totalSeeds,
         totalGerminated: partition.totalGerminated,
       };
@@ -27601,8 +27706,11 @@ function renderCommunityInsightsBarChart(title = "", rows = [], options = {}) {
   return `
     <div class="community-insights-chart-card${options.className ? ` ${escapeHtml(options.className)}` : ""}">
       <div class="community-insights-chart-heading">
-        <strong>${escapeHtml(title)}</strong>
-        ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          ${options.caption ? `<span>${escapeHtml(options.caption)}</span>` : ""}
+        </div>
+        ${getCommunityInsightsViewAllActionMarkup(options.actionHref || "", options.actionLabel || "View All")}
       </div>
       ${rows.length ? `
         <div class="community-insights-bar-chart">
@@ -27677,9 +27785,12 @@ function renderCommunityInsightsSection(title = "", subtitle = "", bodyMarkup = 
   return `
     <section class="community-insights-panel${options.wide ? " community-insights-panel--wide" : ""}${options.className ? ` ${escapeHtml(options.className)}` : ""}">
       <div class="community-insights-panel-heading">
-        <span>${escapeHtml(options.eyebrow || "Community Insights")}</span>
-        <h3>${escapeHtml(title)}</h3>
-        ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+        <div>
+          <span>${escapeHtml(options.eyebrow || "Community Insights")}</span>
+          <h3>${escapeHtml(title)}</h3>
+          ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ""}
+        </div>
+        ${getCommunityInsightsViewAllActionMarkup(options.actionHref || "", options.actionLabel || "View All")}
       </div>
       ${bodyMarkup}
     </section>
@@ -27737,8 +27848,9 @@ function renderCommunityInsightsHeroOverview(state = {}) {
   `;
 }
 
-function renderCommunityInsightsSourceActivity(entries = []) {
-  const topEntries = (entries || []).filter((entry) => entry.totalSeeds > 0 || entry.snapshotCount > 0).slice(0, 3);
+function renderCommunityInsightsSourceActivity(entries = [], options = {}) {
+  const limit = Math.max(1, Number(options.limit) || 6);
+  const topEntries = (entries || []).filter((entry) => entry.totalSeeds > 0 || entry.snapshotCount > 0).slice(0, limit);
   return `
     <div class="community-insights-source-activity-grid">
       ${topEntries.length ? topEntries.map((entry, index) => `
@@ -27760,7 +27872,7 @@ function renderCommunityInsightsSourceActivity(entries = []) {
   `;
 }
 
-function renderCommunityInsightsContributorLeaderboard(entries = []) {
+function renderCommunityInsightsContributorLeaderboard(entries = [], options = {}) {
   const normalizedEntries = entries || [];
   const fallbackMockEntries = isMockDataEnabled() && normalizedEntries.length < 3
     ? GALLERY_TOP_MEMBERS_MOCK_ENTRIES.map((entry) => ({
@@ -27771,7 +27883,8 @@ function renderCommunityInsightsContributorLeaderboard(entries = []) {
       avatarUrl: entry.avatarUrl || "",
     }))
     : [];
-  const topEntries = (fallbackMockEntries.length ? fallbackMockEntries : normalizedEntries).slice(0, 5);
+  const limit = Math.max(1, Number(options.limit) || 6);
+  const topEntries = (fallbackMockEntries.length ? fallbackMockEntries : normalizedEntries).slice(0, limit);
   if (!topEntries.length) {
     return `
       <div class="community-insights-empty">
@@ -27823,7 +27936,7 @@ function renderCommunityInsightsPage() {
     valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} Sessions`,
     detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds tested · ${formatPublicAnalyticsSuccessRate(row.averageRate)}`,
   });
-  const contributorLeaderboardEntries = buildGalleryTopMemberEntries(state.approvedSnapshots).slice(0, 5);
+  const contributorLeaderboardEntries = buildGalleryTopMemberEntries(state.approvedSnapshots);
   const agePerformanceRows = buildCommunityInsightsChartRows(state.ageRows.filter((row) => row.totalSeeds > 0), {
     valueFormatter: (row) => formatPublicAnalyticsSuccessRate(row.averageRate),
     detailFormatter: (row) => formatPublicAnalyticsSampleSummary(row, { includeZeroSeeds: true, includeZeroSessions: true }),
@@ -27851,12 +27964,12 @@ function renderCommunityInsightsPage() {
 
       ${renderCommunityInsightsSection("Performance", "", `
         <div class="community-insights-performance-grid">
-          ${renderCommunityInsightsBarChart("Source Success Trend", sourcePerformanceRows, { caption: "seed-weighted", ranked: true, className: "community-insights-chart-card--feature" })}
-          ${renderCommunityInsightsBarChart("Variety Success Trend", varietyPerformanceRows, { caption: "seed-weighted", ranked: true, className: "community-insights-chart-card--feature" })}
+          ${renderCommunityInsightsBarChart("Source Success Trend", sourcePerformanceRows, { caption: "seed-weighted", ranked: true, className: "community-insights-chart-card--feature", actionHref: "/community-insights/sources" })}
+          ${renderCommunityInsightsBarChart("Variety Success Trend", varietyPerformanceRows, { caption: "seed-weighted", ranked: true, className: "community-insights-chart-card--feature", actionHref: "/community-insights/varieties" })}
         </div>
       `, { wide: true, eyebrow: "Trends", className: "community-insights-panel--performance" })}
 
-      ${renderCommunityInsightsSection("Source Activity", "", renderCommunityInsightsSourceActivity(state.highestParticipationSources), { wide: true, eyebrow: "Sources", className: "community-insights-panel--source-activity" })}
+      ${renderCommunityInsightsSection("Source Activity", "", renderCommunityInsightsSourceActivity(state.highestParticipationSources), { wide: true, eyebrow: "Sources", className: "community-insights-panel--source-activity", actionHref: "/community-insights/sources" })}
 
       ${renderCommunityInsightsSection("Key Signals", "", `
         <div class="community-insights-insight-grid">
@@ -27872,27 +27985,27 @@ function renderCommunityInsightsPage() {
 
       <div class="community-insights-grid">
         ${renderCommunityInsightsSection("Source Rankings", "", `
-          ${renderCommunityInsightsBarChart("Top Sources", sourcePerformanceRows, { caption: "Success Rate", ranked: true, className: "community-insights-chart-card--leaderboard" })}
-          ${renderCommunityInsightsBarChart("Most Tested", sourceTestedRows, { caption: "seed volume", ranked: true })}
-          ${renderCommunityInsightsBarChart("Most Active", sourceParticipationRows, { caption: "approved sessions", ranked: true })}
+          ${renderCommunityInsightsBarChart("Top Sources", sourcePerformanceRows, { caption: "Success Rate", ranked: true, className: "community-insights-chart-card--leaderboard", actionHref: "/community-insights/sources" })}
+          ${renderCommunityInsightsBarChart("Most Tested Sources", sourceTestedRows, { caption: "seed volume", ranked: true, actionHref: "/community-insights/sources" })}
+          ${renderCommunityInsightsBarChart("Most Active Sources", sourceParticipationRows, { caption: "approved sessions", ranked: true, actionHref: "/community-insights/sources" })}
         `, { eyebrow: "Sources", className: "community-insights-panel--leaderboard" })}
 
         ${renderCommunityInsightsSection("Variety Rankings", "", `
-          ${renderCommunityInsightsBarChart("Most Tested", varietyTestedRows, { caption: "seed volume", ranked: true, className: "community-insights-chart-card--leaderboard" })}
-          ${renderCommunityInsightsBarChart("Top Success Rates", varietyPerformanceRows, { caption: "seed-weighted", ranked: true })}
-          ${renderCommunityInsightsBarChart("Repeat Tested", repeatVarietyRows, { caption: "approved sessions", ranked: true })}
+          ${renderCommunityInsightsBarChart("Most Tested Varieties", varietyTestedRows, { caption: "seed volume", ranked: true, className: "community-insights-chart-card--leaderboard", actionHref: "/community-insights/varieties" })}
+          ${renderCommunityInsightsBarChart("Top Success Rate Varieties", varietyPerformanceRows, { caption: "seed-weighted", ranked: true, actionHref: "/community-insights/varieties" })}
+          ${renderCommunityInsightsBarChart("Repeat Tested Varieties", repeatVarietyRows, { caption: "approved sessions", ranked: true, actionHref: "/community-insights/varieties" })}
         `, { eyebrow: "Genetics", className: "community-insights-panel--leaderboard" })}
 
-        ${renderCommunityInsightsSection("Contributor Rankings", "", renderCommunityInsightsContributorLeaderboard(contributorLeaderboardEntries), { eyebrow: "Contributors", className: "community-insights-panel--leaderboard" })}
+        ${renderCommunityInsightsSection("Contributor Rankings", "", renderCommunityInsightsContributorLeaderboard(contributorLeaderboardEntries), { eyebrow: "Contributors", className: "community-insights-panel--leaderboard", actionHref: "/community-insights/contributors" })}
 
         ${renderCommunityInsightsSection("Seed Age", "", `
-          ${renderCommunityInsightsBarChart("Success Rate by Age Bucket", agePerformanceRows, { caption: "seed-weighted" })}
+          ${renderCommunityInsightsBarChart("Success Rate by Age Bucket", agePerformanceRows, { caption: "seed-weighted", actionHref: "/seed-age-analytics" })}
           ${renderCommunityInsightsKpiGrid([
             { label: "Most Tested Age Range", value: state.mostTestedAgeRange?.label || "Not enough age data", detail: state.mostTestedAgeRange ? `${formatPrivateAnalyticsNumber(state.mostTestedAgeRange.totalSeeds)} seeds tested` : "Age-labeled snapshots will unlock this." },
             { label: "Top Success Age Range", value: state.bestAgeRange?.label || "Not enough age data", detail: state.bestAgeRange ? `${formatPublicAnalyticsSuccessRate(state.bestAgeRange.averageRate)} · ${formatPrivateAnalyticsNumber(state.bestAgeRange.totalSeeds)} seeds tested` : "Age-labeled snapshots will unlock this." },
           ], { className: "community-insights-kpi-grid--compact" })}
-          ${renderCommunityInsightsBarChart("Age Distribution", ageDistributionRows, { caption: "seed volume" })}
-        `, { eyebrow: "Seed Age" })}
+          ${renderCommunityInsightsBarChart("Age Distribution", ageDistributionRows, { caption: "seed volume", actionHref: "/seed-age-analytics" })}
+        `, { eyebrow: "Seed Age", actionHref: "/seed-age-analytics" })}
 
         ${renderCommunityInsightsSection("Community Trends", "", `
           <div class="community-insights-trend-grid">
@@ -27905,6 +28018,141 @@ function renderCommunityInsightsPage() {
       </div>
     </section>
   `;
+}
+
+function sortCommunityInsightsRowsByRate(rows = []) {
+  return [...(rows || [])].filter((row) => row.totalSeeds > 0).sort((left, right) => (
+    (right.averageRate ?? -1) - (left.averageRate ?? -1)
+    || right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  ));
+}
+
+function sortCommunityInsightsRowsBySeeds(rows = []) {
+  return [...(rows || [])].filter((row) => row.totalSeeds > 0).sort((left, right) => (
+    right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  ));
+}
+
+function sortCommunityInsightsRowsByActivity(rows = []) {
+  return [...(rows || [])].filter((row) => row.totalSeeds > 0 || row.snapshotCount > 0).sort((left, right) => (
+    right.snapshotCount - left.snapshotCount
+    || right.totalSeeds - left.totalSeeds
+    || left.label.localeCompare(right.label)
+  ));
+}
+
+function renderCommunityInsightsDrilldownPage(kind = "sources") {
+  const normalizedKind = ["sources", "varieties", "contributors"].includes(String(kind || "").trim())
+    ? String(kind || "").trim()
+    : "sources";
+  const state = buildCommunityInsightsState();
+  const systemFilter = getCommunityInsightsSystemFilter();
+  const filteredSourceRows = getCommunityInsightsSystemFilteredRows(state.sourceRows, systemFilter);
+  const filteredVarietyRows = getCommunityInsightsSystemFilteredRows(state.varietyRows, systemFilter);
+  const filteredSnapshots = getCommunityInsightsSystemFilteredSnapshots(state.approvedSnapshots, systemFilter);
+  const sourcePerformanceRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsByRate(filteredSourceRows), {
+    limit: filteredSourceRows.length || 1,
+    valueFormatter: (row) => formatPublicAnalyticsSuccessRate(row.averageRate),
+    detailFormatter: (row) => formatPublicAnalyticsSampleSummary(row, { includeZeroSeeds: true, includeZeroSessions: true }),
+  });
+  const sourceTestedRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsBySeeds(filteredSourceRows), {
+    limit: filteredSourceRows.length || 1,
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} Seeds Tested`,
+    detailFormatter: (row) => `${formatPublicAnalyticsSuccessRate(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.sessionCount || row.snapshotCount)} sessions`,
+  });
+  const sourceActivityRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsByActivity(filteredSourceRows), {
+    limit: filteredSourceRows.length || 1,
+    metricKey: "snapshotCount",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} Sessions`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds tested · ${formatPublicAnalyticsSuccessRate(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.contributorCount)} contributors`,
+  });
+  const varietyPerformanceRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsByRate(filteredVarietyRows), {
+    limit: filteredVarietyRows.length || 1,
+    valueFormatter: (row) => formatPublicAnalyticsSuccessRate(row.averageRate),
+    detailFormatter: (row) => formatPublicAnalyticsSampleSummary(row, { includeZeroSeeds: true, includeZeroSessions: true }),
+  });
+  const varietyTestedRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsBySeeds(filteredVarietyRows), {
+    limit: filteredVarietyRows.length || 1,
+    metricKey: "totalSeeds",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} Seeds Tested`,
+    detailFormatter: (row) => `${formatPublicAnalyticsSuccessRate(row.averageRate)} · ${formatPrivateAnalyticsNumber(row.sessionCount || row.snapshotCount)} sessions`,
+  });
+  const repeatVarietyRows = buildCommunityInsightsChartRows(sortCommunityInsightsRowsByActivity(filteredVarietyRows.filter((row) => row.snapshotCount > 1)), {
+    limit: filteredVarietyRows.length || 1,
+    metricKey: "snapshotCount",
+    valueFormatter: (row) => `${formatPrivateAnalyticsNumber(row.snapshotCount)} Sessions`,
+    detailFormatter: (row) => `${formatPrivateAnalyticsNumber(row.totalSeeds)} seeds tested · ${formatPublicAnalyticsSuccessRate(row.averageRate)}`,
+  });
+  const contributorLeaderboardEntries = buildGalleryTopMemberEntries(filteredSnapshots);
+  const pageConfig = {
+    sources: {
+      eyebrow: "Source Rankings",
+      title: "Source Drill-Down",
+      subtitle: "Full public source rankings from approved Community Grow sessions.",
+      body: `
+        <div class="community-insights-drilldown-grid">
+          ${renderCommunityInsightsBarChart("Top Sources", sourcePerformanceRows, { caption: "Success Rate", ranked: true, className: "community-insights-chart-card--leaderboard" })}
+          ${renderCommunityInsightsBarChart("Most Tested Sources", sourceTestedRows, { caption: "seed volume", ranked: true })}
+          ${renderCommunityInsightsBarChart("Most Active Sources", sourceActivityRows, { caption: "approved sessions", ranked: true })}
+        </div>
+      `,
+    },
+    varieties: {
+      eyebrow: "Variety Rankings",
+      title: "Variety Drill-Down",
+      subtitle: "Full public variety rankings from approved Community Grow sessions.",
+      body: `
+        <div class="community-insights-drilldown-grid">
+          ${renderCommunityInsightsBarChart("Most Tested Varieties", varietyTestedRows, { caption: "seed volume", ranked: true, className: "community-insights-chart-card--leaderboard" })}
+          ${renderCommunityInsightsBarChart("Top Success Rate Varieties", varietyPerformanceRows, { caption: "seed-weighted", ranked: true })}
+          ${renderCommunityInsightsBarChart("Repeat Tested Varieties", repeatVarietyRows, { caption: "approved sessions", ranked: true })}
+        </div>
+      `,
+    },
+    contributors: {
+      eyebrow: "Contributor Rankings",
+      title: "Contributor Drill-Down",
+      subtitle: "Full public contributor rankings from approved Community Grow activity.",
+      body: renderCommunityInsightsSection(
+        "Contributor Rankings",
+        "",
+        renderCommunityInsightsContributorLeaderboard(contributorLeaderboardEntries, { limit: Math.max(contributorLeaderboardEntries.length, 1) }),
+        { eyebrow: "Contributors", className: "community-insights-panel--leaderboard" },
+      ),
+    },
+  }[normalizedKind];
+
+  app.innerHTML = `
+    <section class="community-insights-page community-insights-drilldown-page" data-privacy-boundary="${escapeHtml(state.privacyBoundary)}">
+      <header class="community-insights-hero community-insights-hero--analytics community-insights-drilldown-hero">
+        <div class="community-insights-hero-topline">
+          <div class="community-insights-hero-copy">
+            <p class="eyebrow">${escapeHtml(pageConfig.eyebrow)}</p>
+            <h2>${escapeHtml(pageConfig.title)}</h2>
+            <p>${escapeHtml(pageConfig.subtitle)}</p>
+          </div>
+          <div class="community-insights-hero-actions">
+            <a class="button button-secondary" href="#community-insights">Back to Community Insights</a>
+          </div>
+        </div>
+        ${renderCommunityInsightsSystemFilterMarkup(systemFilter)}
+      </header>
+      <p class="community-insights-credibility-note">Success rates are seed-weighted when seed counts are available. System filters use available public KAN/TRA snapshot metadata.</p>
+      ${pageConfig.body}
+    </section>
+  `;
+
+  app.querySelectorAll("[data-community-insights-system-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      appState.communityInsightsDrilldownSystemFilter = button.getAttribute("data-community-insights-system-filter") || "all";
+      renderCommunityInsightsDrilldownPage(normalizedKind);
+      hydrateAppIconSlots(app);
+      normalizeSectionHeaderLayouts(app);
+    });
+  });
 }
 
 function formatSeedAgePercentMetric(value = null) {
@@ -34203,6 +34451,24 @@ function render() {
   }
 
   if (route === "community-insights") {
+    if (["sources", "varieties", "contributors"].includes(id || "")) {
+      renderCommunityInsightsDrilldownPage(id);
+      finalizeRender(buildSiteAnalyticsPageContext({
+        pageGroup: "gallery",
+        pageKey: `community-insights-${id}`,
+        pageLabel: id === "sources"
+          ? "Community Insights Sources"
+          : id === "varieties"
+            ? "Community Insights Varieties"
+            : "Community Insights Contributors",
+        pagePath: pathRoute === `community-insights/${id}` && isUsingPathRoute(`community-insights/${id}`)
+          ? `/community-insights/${id}`
+          : `#community-insights/${id}`,
+      }));
+      void refreshGallerySnapshots(`route:community-insights:${id}`);
+      return;
+    }
+
     renderCommunityInsightsPage();
     finalizeRender(buildSiteAnalyticsPageContext({
       pageGroup: "gallery",
@@ -78148,6 +78414,41 @@ document.addEventListener("click", (event) => {
     event.stopPropagation();
     navigateToHashRoute(targetHash);
     return;
+  }
+
+  const communityInsightsDrilldownLink = event.target instanceof Element
+    ? event.target.closest('a[href^="/community-insights/"]')
+    : null;
+  if (communityInsightsDrilldownLink instanceof HTMLAnchorElement) {
+    const drilldownKind = String(communityInsightsDrilldownLink.getAttribute("href") || "")
+      .replace(/^\/community-insights\/?/, "")
+      .split(/[?#]/)[0];
+    if (["sources", "varieties", "contributors"].includes(drilldownKind)) {
+      const targetHash = `#community-insights/${drilldownKind}`;
+      const navLockState = getNavigationLockStateForHash(targetHash);
+      if (navLockState.locked) {
+        event.preventDefault();
+        event.stopPropagation();
+        showNavigationLockToast({
+          title: getNavigationLockTitle(navLockState.mode),
+          message: navLockState.message,
+          ctaLabel: navLockState.ctaLabel,
+          ctaHref: navLockState.ctaHref,
+        });
+        return;
+      }
+
+      if (shouldBlockNavigationForUnsavedChanges(targetHash)) {
+        event.preventDefault();
+        event.stopPropagation();
+        promptForUnsavedChangesNavigation(targetHash);
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      navigateToHashRoute(targetHash);
+      return;
+    }
   }
 
   const seedAgeAnalyticsLink = event.target instanceof Element
