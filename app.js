@@ -157,7 +157,8 @@ const DEV_QA_BYPASS_USER_ID = "local-dev-qa-user";
 const DEV_QA_BYPASS_USER_EMAIL = "dev-qa@localhost";
 const DEV_QA_BYPASS_USERNAME = "Dev QA Grower";
 const DEFAULT_UNTRACKED_SEED_AGE_YEARS = 0.5;
-const DEFAULT_UNTRACKED_SEED_AGE_LABEL = "0-1 year";
+const DEFAULT_UNTRACKED_SEED_AGE_SHORT_LABEL = "0–1 yr";
+const DEFAULT_SEED_AGE_DISPLAY_LABEL = `Age: ${DEFAULT_UNTRACKED_SEED_AGE_SHORT_LABEL}`;
 const TRACK_SEED_AGE_HELPER_TEXT = "By default, seeds are considered 0-1 year old. Enable this when seed age matters, especially for older, rare, stored, or mixed-age seeds.";
 const SEED_AGE_MIN_YEARS = 1;
 const SEED_AGE_MAX_YEARS = 99;
@@ -4832,7 +4833,7 @@ function getSessionSeedAgeMetadata(session = null) {
     .filter((value) => value !== null);
 
   let summaryKey = "disabled";
-  let summaryLabel = DEFAULT_UNTRACKED_SEED_AGE_LABEL;
+  let summaryLabel = DEFAULT_SEED_AGE_DISPLAY_LABEL;
 
   if (trackingEnabled) {
     if (mode === "same" && sessionSeedAgeYears !== null) {
@@ -4843,7 +4844,7 @@ function getSessionSeedAgeMetadata(session = null) {
       summaryLabel = "Age: Mixed";
     } else {
       summaryKey = "unknown";
-      summaryLabel = "Age: Unknown";
+      summaryLabel = DEFAULT_SEED_AGE_DISPLAY_LABEL;
     }
   }
 
@@ -4863,10 +4864,10 @@ function buildSeedAgeDisplayLabel(source = null, options = {}) {
     : getSessionSeedAgeMetadata(source);
   const samePrefix = String(options.samePrefix || "Age").trim() || "Age";
   const mixedLabel = String(options.mixedLabel || "Age: Mixed").trim() || "Age: Mixed";
-  const unknownLabel = String(options.unknownLabel || "Age: Unknown").trim() || "Age: Unknown";
+  const unknownLabel = String(options.unknownLabel || DEFAULT_SEED_AGE_DISPLAY_LABEL).trim() || DEFAULT_SEED_AGE_DISPLAY_LABEL;
   const disabledLabel = Object.prototype.hasOwnProperty.call(options, "disabledLabel")
     ? String(options.disabledLabel || "").trim()
-    : DEFAULT_UNTRACKED_SEED_AGE_LABEL;
+    : DEFAULT_SEED_AGE_DISPLAY_LABEL;
 
   if (metadata.summaryKey === "same" && metadata.sessionSeedAgeYears !== null) {
     return `${samePrefix}: ${formatSeedAgeYearsLabel(metadata.sessionSeedAgeYears)}`;
@@ -4892,9 +4893,9 @@ function buildSeedAgeSnapshotLabel(source = null) {
     return "Mixed seed ages";
   }
   if (metadata.summaryKey === "unknown") {
-    return "Seed age: Age unknown";
+    return `Seed age: ${DEFAULT_UNTRACKED_SEED_AGE_SHORT_LABEL}`;
   }
-  return `Seed age: ${DEFAULT_UNTRACKED_SEED_AGE_LABEL}`;
+  return `Seed age: ${DEFAULT_UNTRACKED_SEED_AGE_SHORT_LABEL}`;
 }
 
 function getFilterPaperSupplyDisplayState() {
@@ -8753,8 +8754,7 @@ function buildMockGalleryImageDataUri(record) {
     partitions,
   });
   const seedAgeLabel = buildSeedAgeSnapshotLabel(seedAgeMetadata)
-    .replace("Mixed seed ages", "Seed age: Mixed")
-    .replace("Seed age: Age unknown", "Seed age: Unknown");
+    .replace("Mixed seed ages", "Seed age: Mixed");
   const systemLabel = formatSnapshotSystemLabel(systemType);
   const date = String(record.submittedAt || "").slice(0, 10) || "Demo date";
   const columnCount = 4;
@@ -19060,8 +19060,8 @@ function buildCommunityActivityFeedEntry(activity) {
   }, {
     samePrefix: "Age",
     mixedLabel: "Age: Mixed",
-    unknownLabel: "Age: Unknown",
-    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+    unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+    disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
   });
 
   return {
@@ -19293,8 +19293,8 @@ function buildCommunityActivityPayloads(snapshot, sessionContext = null) {
   const communitySeedAgeLabel = buildSeedAgeDisplayLabel(seedAgeMetadata, {
     samePrefix: "Age",
     mixedLabel: "Age: Mixed",
-    unknownLabel: "Age: Unknown",
-    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+    unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+    disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
   });
   const metadata = {
     activityTypeLabel: "",
@@ -30288,8 +30288,8 @@ function getGallerySnapshotPublicSessionDetails(snapshot) {
     seedAgeLabel: buildSeedAgeDisplayLabel(seedAgeMetadata, {
       samePrefix: "Age",
       mixedLabel: "Age: Mixed",
-      unknownLabel: "Age: Unknown",
-      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+      unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+      disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
     }),
     seedAgeSummaryKey: seedAgeMetadata.summaryKey === "disabled" ? "unknown" : seedAgeMetadata.summaryKey,
     seedAgeTrackingEnabled: seedAgeMetadata.trackingEnabled,
@@ -30327,7 +30327,7 @@ function getMockPublicSessionDetails(snapshot, scenario) {
     seedVarietyLabel: scenario.seedVarietyName,
     seedTypeLabel: getSeedTypeLabel(scenario.seedTypeName) || scenario.seedTypeName,
     sexLabel: scenario.sexLabel,
-    seedAgeLabel: String(scenario.seedAgeLabel || "").trim() || "Unknown",
+    seedAgeLabel: String(scenario.seedAgeLabel || "").trim() || DEFAULT_SEED_AGE_DISPLAY_LABEL,
     seedAgeSummaryKey: "unknown",
     seedCountLabel: String(scenario.totalSeeds),
     germinatedLabel: String(scenario.totalPlanted),
@@ -53556,8 +53556,8 @@ function getLatestPublishedAdminCstpCertificationForSourceIdentity(sourceIdentit
     seedAgeSummaryLabel: buildSeedAgeDisplayLabel(matchingSession, {
       samePrefix: "Age",
       mixedLabel: "Age: Mixed",
-      unknownLabel: "Age: Unknown",
-      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+      unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+      disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
     }),
   };
 }
@@ -55574,8 +55574,8 @@ function renderAdminCstpAssignedSessionSectionMarkup(record = null) {
     ? buildSeedAgeDisplayLabel(assignedSession, {
       samePrefix: "Age",
       mixedLabel: "Age: Mixed",
-      unknownLabel: "Age: Unknown",
-      disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+      unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+      disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
     })
     : "Not connected";
   return `
@@ -58525,8 +58525,8 @@ function renderAdminCstpTestSessionPage(sessionId = "", options = {}) {
       value: buildSeedAgeDisplayLabel(session, {
         samePrefix: "Age",
         mixedLabel: "Age: Mixed",
-        unknownLabel: "Age: Unknown",
-        disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+        unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+        disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
       }),
     },
     { label: "CSTP Session ID", value: session.id },
@@ -59027,8 +59027,8 @@ function renderAdminCstpReportPage(recordId = "") {
   const reportSeedAgeLabel = buildSeedAgeDisplayLabel(reportSession, {
     samePrefix: "Age",
     mixedLabel: "Age: Mixed",
-    unknownLabel: "Age: Unknown",
-    disabledLabel: DEFAULT_UNTRACKED_SEED_AGE_LABEL,
+    unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
+    disabledLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
   });
   const publishButtonLabel = reportSession?.publishedAt || reportSession?.certificationPublished
     ? "CSTP Certification Published"
@@ -73413,7 +73413,7 @@ function getSessionResultSummary(session = null) {
       sessionSeedAgeYears: seedAgeYears,
     }, {
       samePrefix: "Age",
-      unknownLabel: "Age: Unknown",
+      unknownLabel: DEFAULT_SEED_AGE_DISPLAY_LABEL,
       disabledLabel: "",
     });
 
@@ -73555,19 +73555,20 @@ function autoCompleteSessionWhenResultsAccounted(session = null, referenceDate =
 
 function getPublicSessionPartitionAgeLabel(partition = null, hasSeeds = true) {
   if (!hasSeeds) {
-    return "Age: Unknown";
+    return DEFAULT_SEED_AGE_DISPLAY_LABEL;
   }
 
   const rawLabel = String(partition?.seedAgeLabel || partition?.seed_age_label || "").trim();
   if (rawLabel && rawLabel !== "Not shared") {
     if (/^age\s*:/i.test(rawLabel)) {
-      return `Age:${rawLabel.split(":").slice(1).join(":")}`.replace(/^Age:\s*/, "Age: ");
+      const normalizedRawAgeLabel = `Age:${rawLabel.split(":").slice(1).join(":")}`.replace(/^Age:\s*/, "Age: ");
+      return /unknown/i.test(normalizedRawAgeLabel) ? DEFAULT_SEED_AGE_DISPLAY_LABEL : normalizedRawAgeLabel;
     }
     if (/mixed/i.test(rawLabel)) {
       return "Age: Mixed";
     }
     if (/unknown/i.test(rawLabel)) {
-      return "Age: Unknown";
+      return DEFAULT_SEED_AGE_DISPLAY_LABEL;
     }
     return `Age: ${rawLabel}`;
   }
@@ -73577,7 +73578,7 @@ function getPublicSessionPartitionAgeLabel(partition = null, hasSeeds = true) {
     return `Age: ${formatSeedAgeYearsLabel(seedAgeYears)}`;
   }
 
-  return "Age: Unknown";
+  return DEFAULT_SEED_AGE_DISPLAY_LABEL;
 }
 
 function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, options = {}) {
@@ -73627,7 +73628,7 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
             : getPartitionSuccessStatus(null, null, null);
           const secondaryMeta = [sourceLabel, seedAgeLabel]
             .filter((value) => value && value !== "Not shared")
-            .join(" · ") || "Age: Unknown";
+            .join(" · ") || DEFAULT_SEED_AGE_DISPLAY_LABEL;
 
           return `
             <article class="public-session-partition-result partition-success-card ${escapeHtml(successStatus.className)}${hasSeeds ? "" : " is-empty"}">
