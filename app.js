@@ -26278,7 +26278,7 @@ function renderAppNotificationCenter() {
   syncDueSnoozedAppNotifications();
   if (appNotificationTriggerIcon && !appNotificationTriggerIcon.innerHTML.trim()) {
     appNotificationTriggerIcon.innerHTML = renderAppIconMarkup("notificationBell", {
-      variant: "plate",
+      variant: "plain",
       className: "app-notification-trigger-icon-art",
     });
   }
@@ -30920,10 +30920,9 @@ function updateAuthStatus() {
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
-      <span class="account-menu-display-name" title="${escapeHtml(getProfileDisplayName())}">${escapeHtml(getProfileDisplayName())}</span>
       <button
         id="account-menu-trigger"
-        class="button button-secondary account-menu-trigger account-menu-trigger--avatar"
+        class="account-menu-trigger account-menu-trigger--avatar"
         type="button"
         aria-label="Open profile menu"
         aria-haspopup="menu"
