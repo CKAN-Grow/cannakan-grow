@@ -900,7 +900,7 @@ body.theme-dark .app-footer-link-button:focus-visible {
   display: flex;
   align-items: center;
   flex: 1 1 auto;
-  gap: 12px;
+  gap: clamp(8px, 0.9vw, 12px);
   flex-wrap: nowrap;
   min-width: 0;
 }
@@ -1244,6 +1244,15 @@ body.mobile-nav-open {
   background: rgba(148, 209, 89, 0.08);
   transform: translateY(-1px);
   outline: none;
+}
+
+.mobile-nav-link.is-active {
+  color: #d7ff9d;
+  border-color: rgba(148, 209, 89, 0.44);
+  background: rgba(148, 209, 89, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(148, 209, 89, 0.1),
+    0 0 0 1px rgba(148, 209, 89, 0.06);
 }
 
 .mobile-nav-link.is-locked {

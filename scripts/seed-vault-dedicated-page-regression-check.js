@@ -11,6 +11,10 @@ const sessionsTemplateStart = indexSource.indexOf('<template id="sessions-templa
 const sessionsTemplateEnd = indexSource.indexOf('<template id="session-detail-template">');
 assert(sessionsTemplateStart > -1 && sessionsTemplateEnd > sessionsTemplateStart, "Expected sessions template markup.");
 const sessionsTemplate = indexSource.slice(sessionsTemplateStart, sessionsTemplateEnd);
+const topbarNavStart = indexSource.indexOf('<nav class="topbar-nav" aria-label="Primary">');
+const topbarNavEnd = indexSource.indexOf("</nav>", topbarNavStart);
+assert(topbarNavStart > -1 && topbarNavEnd > topbarNavStart, "Expected topbar navigation markup.");
+const topbarNav = indexSource.slice(topbarNavStart, topbarNavEnd);
 
 assert(
   sessionsTemplate.includes('<section id="seed-vault-shortcut-section"></section>'),
@@ -19,6 +23,10 @@ assert(
 assert(
   !sessionsTemplate.includes('<section id="seed-vault-section"></section>'),
   "My Sessions should not embed the full My Seed Vault manager.",
+);
+assert(
+  /href="#sessions"[\s\S]*href="#seed-vault"[\s\S]*href="#learn"/.test(topbarNav),
+  "Top navigation should include Vault between Sessions and Learn.",
 );
 
 [
@@ -39,6 +47,9 @@ assert(
   'dropdown?.querySelector("#account-seed-vault-link")?.addEventListener("click"',
   'navigateToSeedVaultRoute();',
   'refreshSeedVaultViewAfterMutation();',
+  '<a class="mobile-nav-link" href="#seed-vault" data-mobile-nav-link="true">Vault</a>',
+  'const vaultRoutes = new Set(["seed-vault"]);',
+  'activeNav = "seed-vault";',
 ].forEach((needle) => {
   assert(appSource.includes(needle), `Expected dedicated Seed Vault route behavior: ${needle}`);
 });
@@ -49,6 +60,7 @@ assert(
   ".seed-vault-shortcut-card",
   ".seed-vault-shortcut-main",
   ".seed-vault-shortcut-button",
+  ".mobile-nav-link.is-active",
 ].forEach((needle) => {
   assert(stylesSource.includes(needle), `Expected dedicated Seed Vault/shortcut styling: ${needle}`);
 });

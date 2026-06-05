@@ -3623,6 +3623,7 @@ function syncMobileNavigationMenu() {
     <nav class="mobile-nav-links" aria-label="Mobile primary navigation">
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
       <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
+      <a class="mobile-nav-link" href="#seed-vault" data-mobile-nav-link="true">Vault</a>
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
       <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community</a>
       <a class="mobile-nav-link" href="#source-directory" data-mobile-nav-link="true">Sources</a>
@@ -10769,7 +10770,7 @@ function bindContactAdminButtons(scope = document) {
 }
 
 function updateNavState() {
-  const navLinks = document.querySelectorAll(".topbar-nav a");
+  const navLinks = document.querySelectorAll(".topbar-nav a, .mobile-nav-link[data-mobile-nav-link='true']");
   syncAdminNavigationVisibility();
   syncGrowNetworkNavigationVisibility();
   if (!navLinks.length) {
@@ -10779,7 +10780,8 @@ function updateNavState() {
   const rawRoute = getCurrentAppRawRoute();
   const [route, id] = rawRoute.split("/");
   const homeRoutes = new Set(["home", "", "disclaimer", "terms", "privacy", "contact"]);
-  const sessionRoutes = new Set(["sessions", "new", "active-sessions", "analytics", "seed-vault"]);
+  const sessionRoutes = new Set(["sessions", "new", "active-sessions", "analytics"]);
+  const vaultRoutes = new Set(["seed-vault"]);
   const communityRoutes = new Set(["gallery", "community-insights", "seed-age-analytics", "public-session", "members"]);
   const sourceRoutes = new Set(["sources", "source-directory", "tested-sources"]);
   const networkRoutes = new Set(["network"]);
@@ -10797,6 +10799,8 @@ function updateNavState() {
     activeNav = "network";
   } else if (learnRoutes.has(route)) {
     activeNav = "learn";
+  } else if (vaultRoutes.has(route)) {
+    activeNav = "seed-vault";
   } else if (route === "cstp") {
     activeNav = "";
   } else if (sourceRoutes.has(route)) {
