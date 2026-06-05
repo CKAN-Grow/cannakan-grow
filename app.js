@@ -23267,7 +23267,7 @@ async function publishSnapshotToGallery(session, snapshotData, blob, options = {
       existingSnapshotId: existing.id,
       existingStatus: existing.status,
     });
-    throw new Error(EXISTING_GALLERY_SNAPSHOT_MESSAGE);
+    throw new Error(EXISTING_GALLERY_SNAPSHOT_TITLE);
   }
 
   let imageHash = "";
@@ -31476,7 +31476,7 @@ function initializeSnapshotSection(scope, options) {
         if (socialInput) {
           socialInput.checked = true;
         }
-        setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_MESSAGE, false, "warning");
+        setSnapshotMessage(state, getExistingGallerySnapshotMessage(input.value), false, "warning");
       }
       rememberSnapshotDestinationPreference(getSnapshotDestination(state));
       syncSnapshotGalleryControls(state);
@@ -31588,9 +31588,32 @@ function setSnapshotDestinationValue(state, destination = "social-gallery") {
   return "";
 }
 
-const EXISTING_GALLERY_SNAPSHOT_MESSAGE = "Only one submission per session.";
-const EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE = "This session has already been submitted to Community Grow.";
+const EXISTING_GALLERY_SNAPSHOT_TITLE = "Snapshot already shared to Community Grow.";
+const EXISTING_GALLERY_SNAPSHOT_SUPPORT_TEXT = "Only one Community Grow submission is allowed per session. You can still download this snapshot or share it socially.";
+const EXISTING_GALLERY_SNAPSHOT_SOCIAL_SUGGESTION = "Use Social only to create a shareable image without submitting another Community Grow entry.";
 const DUPLICATE_GALLERY_SNAPSHOT_IMAGE_MESSAGE = "This snapshot image is already being used in Community Grow.";
+
+function getExistingGallerySnapshotMessage(destination = "") {
+  const lines = [
+    EXISTING_GALLERY_SNAPSHOT_TITLE,
+    EXISTING_GALLERY_SNAPSHOT_SUPPORT_TEXT,
+  ];
+  if (doesSnapshotDestinationIncludeGallery(destination)) {
+    lines.push(EXISTING_GALLERY_SNAPSHOT_SOCIAL_SUGGESTION);
+  }
+  return lines.join("\n");
+}
+
+function isExistingGallerySnapshotError(error) {
+  const message = String(error?.message || error || "").trim().toLowerCase();
+  return Boolean(message && (
+    message === EXISTING_GALLERY_SNAPSHOT_TITLE.toLowerCase()
+    || message.includes("only one community grow submission")
+    || message.includes("only one submission per session")
+    || message.includes("already shared to community grow")
+    || message.includes("already been submitted to community grow")
+  ));
+}
 
 function syncSnapshotShareActionAvailability(state) {
   if (!state?.shareButton) {
@@ -31983,7 +32006,7 @@ function syncSnapshotGalleryControls(state) {
     } else if (currentStatus === "approved" && publishedEntry?.userId === appState.user?.id) {
       state.galleryNote.textContent = "This snapshot is published. To make changes, contact support or remove it.";
     } else if (hasConfirmedSubmission) {
-      state.galleryNote.textContent = EXISTING_GALLERY_SNAPSHOT_MESSAGE;
+      state.galleryNote.textContent = getExistingGallerySnapshotMessage(destination);
     } else if (!canPublish && destination !== "social") {
       state.galleryNote.textContent = "Save this session before submitting anything to Community Grow. Private notes stay private.";
     } else if (destination === "social") {
@@ -32041,7 +32064,7 @@ async function maybePublishSnapshotFromState(state, result) {
       snapshotState: getSnapshotStateForSection(state),
     });
     syncSnapshotGalleryControls(state);
-    setSnapshotMessage(state, EXISTING_GALLERY_SNAPSHOT_SOCIAL_ONLY_MESSAGE, false, "warning");
+    setSnapshotMessage(state, getExistingGallerySnapshotMessage(destination), false, "warning");
     return { published: null, blocked: true };
   }
 
@@ -32070,6 +32093,11 @@ async function maybePublishSnapshotFromState(state, result) {
       snapshotData,
       error,
     });
+    if (isExistingGallerySnapshotError(error)) {
+      syncSnapshotGalleryControls(state);
+      setSnapshotMessage(state, getExistingGallerySnapshotMessage(destination), false, "warning");
+      return { published: null, blocked: true };
+    }
     setSnapshotMessage(state, error.message || "Could not publish this snapshot to Community Grow.", true);
     return { published: null, blocked: true };
   }
