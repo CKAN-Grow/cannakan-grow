@@ -24377,6 +24377,12 @@ async function handleGallerySnapshotOwnerAction(snapshotId, ownerAction = "") {
   await deleteGallerySnapshot(snapshotId);
 }
 
+function restoreGalleryInteractionScrollPosition(scrollX = window.scrollX, scrollY = window.scrollY) {
+  window.requestAnimationFrame(() => {
+    window.scrollTo(scrollX, scrollY);
+  });
+}
+
 function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], rerender = () => {}) {
   if (!scope) {
     return;
@@ -24442,11 +24448,16 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
 
   scope.querySelectorAll("[data-gallery-like]").forEach((button) => {
     button.addEventListener("click", async (event) => {
+      event.preventDefault();
       event.stopPropagation();
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
       try {
         await toggleGallerySnapshotLike(button.dataset.galleryLike || "");
         rerender();
+        restoreGalleryInteractionScrollPosition(scrollX, scrollY);
       } catch (error) {
+        restoreGalleryInteractionScrollPosition(scrollX, scrollY);
         window.alert(error.message || "Could not update your like right now.");
       }
     });
