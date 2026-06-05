@@ -1856,7 +1856,7 @@ function syncGrowNetworkNavigationVisibility() {
     link.classList.toggle("has-unseen-notifications", shouldShowNetworkNav && hasUnseenNotifications);
     if (shouldShowNetworkNav && hasUnseenNotifications) {
       link.setAttribute("data-unseen-notifications", "true");
-      link.setAttribute("aria-label", `Grow Network (${unseenNotificationCount} unseen notification${unseenNotificationCount === 1 ? "" : "s"})`);
+      link.setAttribute("aria-label", `Network (${unseenNotificationCount} unseen notification${unseenNotificationCount === 1 ? "" : "s"})`);
       if (badge instanceof HTMLSpanElement) {
         badge.textContent = badgeLabel;
       }
@@ -3620,11 +3620,11 @@ function syncMobileNavigationMenu() {
   mobileNavContent.innerHTML = `
     <nav class="mobile-nav-links" aria-label="Mobile primary navigation">
       <a class="mobile-nav-link" href="#home" data-mobile-nav-link="true">Home</a>
-      <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">My Sessions</a>
+      <a class="mobile-nav-link" href="#sessions" data-mobile-nav-link="true">Sessions</a>
       <a class="mobile-nav-link" href="#learn" data-mobile-nav-link="true">Learn</a>
-      <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community Grow</a>
-      <a class="mobile-nav-link" href="#source-directory" data-mobile-nav-link="true">Source Directory</a>
-      ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Grow Network${growNetworkBadge}</a>` : ""}
+      <a class="mobile-nav-link" href="#gallery" data-mobile-nav-link="true">Community</a>
+      <a class="mobile-nav-link" href="#source-directory" data-mobile-nav-link="true">Sources</a>
+      ${isSignedIn ? `<a class="mobile-nav-link" href="#network" data-mobile-nav-link="true" data-network-nav>Network${growNetworkBadge}</a>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-profile-link="true">Profile</button>` : ""}
       ${isSignedIn ? `<button type="button" class="mobile-nav-link mobile-nav-link-button is-danger" data-mobile-sign-out="true">Sign Out</button>` : `<button type="button" class="mobile-nav-link mobile-nav-link-button" data-mobile-sign-in="true">Sign In</button>`}
     </nav>
