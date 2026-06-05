@@ -37,7 +37,6 @@ for (const needle of [
   "${renderSeedTypeSelectOptions(normalizedEntry?.seedType || \"\")}",
   "${renderSeedSexSelectOptions(normalizedEntry?.seedSex || \"\")}",
   "name=\"storageNotes\"",
-  "name=\"visibility\"",
   "initializePartitionIdentityAutocompletes(form);",
   "seed_variety: normalizedEntry.seedVariety || normalizedEntry.seedName",
   "seed_sex: normalizedEntry.seedSex || null",
@@ -90,6 +89,9 @@ for (const forbidden of [
   'name="seedAgeYears" type="number"',
   "data-seed-vault-age-estimate",
   "seed-vault-seed-age-estimate",
+  "name=\"visibility\"",
+  "<span>Visibility</span>",
+  "Public-safe metadata",
   "Seed name / variety",
   "Seed type/category",
 ]) {

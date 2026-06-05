@@ -63,11 +63,19 @@ for (const needle of [
   "Largest Age Group",
   "Unknown Age Inventory",
   "Most Tested Age Group",
-  "Private Vault Intelligence",
-  "Source, quantity, age, and linked-session performance stay owner-only.",
-  "Public-safe metadata",
+  "Vault Intelligence",
+  "Source, quantity, age, and linked-session performance for your inventory.",
 ]) {
   requireNeedle(appSource, needle);
+}
+
+for (const forbiddenNeedle of [
+  "Private Vault Intelligence",
+  "Public-safe metadata",
+]) {
+  if (appSource.includes(forbiddenNeedle)) {
+    throw new Error(`Seed Vault analytics UI should not show visibility language: ${forbiddenNeedle}`);
+  }
 }
 
 for (const needle of [

@@ -169,7 +169,6 @@ const SEED_VAULT_YEAR_ACQUIRED_MIN = 1980;
 const SEED_VAULT_OPTIONAL_REST_COLUMNS = Object.freeze([
   "acquired_at",
   "storage_notes",
-  "visibility",
   "archived_at",
   "is_deleted",
   "deleted_at",
@@ -5264,7 +5263,6 @@ function normalizeSeedVaultEntry(entry = {}) {
   const yearAcquiredValue = Number(entry.yearAcquired ?? entry.year_acquired);
   const yearAcquired = normalizeSeedVaultYearAcquired(yearAcquiredValue);
   const seedAgeYears = getCalculatedSeedVaultAgeYears(yearAcquired);
-  const visibilityValue = String(entry.visibility || entry.visibility_setting || "private").trim().toLowerCase();
   const createdAt = String(entry.createdAt || entry.created_at || "").trim() || new Date().toISOString();
   const updatedAt = String(entry.updatedAt || entry.updated_at || "").trim() || createdAt;
 
@@ -5289,7 +5287,7 @@ function normalizeSeedVaultEntry(entry = {}) {
     storageLocation: String(entry.storageLocation || entry.storage_location || "").trim(),
     storageNotes: String(entry.storageNotes || entry.storage_notes || "").trim(),
     notes: String(entry.notes || "").trim(),
-    visibility: visibilityValue === "public" ? "public" : "private",
+    visibility: "private",
     isFavorite: Boolean(entry.isFavorite ?? entry.is_favorite),
     isArchived: Boolean(entry.isArchived ?? entry.is_archived),
     archivedAt: String(entry.archivedAt || entry.archived_at || "").trim(),
@@ -5330,7 +5328,6 @@ function mapSeedVaultEntryToRow(entry = {}) {
     storage_location: normalizedEntry.storageLocation || null,
     storage_notes: normalizedEntry.storageNotes || null,
     notes: normalizedEntry.notes || null,
-    visibility: normalizedEntry.visibility || "private",
     is_favorite: normalizedEntry.isFavorite,
     is_archived: normalizedEntry.isArchived,
     archived_at: normalizedEntry.archivedAt || null,
@@ -5434,7 +5431,6 @@ function isSeedVaultEntriesColumnMissingError(error) {
     "acquired_at",
     "storage_location",
     "storage_notes",
-    "visibility",
     "archived_at",
     "is_deleted",
     "deleted_at",
@@ -64515,10 +64511,10 @@ function renderSeedVaultRollupMarkup(analytics = null) {
   }
 
   return `
-    <section class="seed-vault-intelligence-panel" aria-label="Seed Vault private intelligence">
+    <section class="seed-vault-intelligence-panel" aria-label="Seed Vault intelligence">
       <div class="seed-vault-intelligence-copy">
-        <span>Private Vault Intelligence</span>
-        <strong>Source, quantity, age, and linked-session performance stay owner-only.</strong>
+        <span>Vault Intelligence</span>
+        <strong>Source, quantity, age, and linked-session performance for your inventory.</strong>
       </div>
       <div class="seed-vault-rollup-grid">
         ${sourceRows.length ? `
@@ -64649,7 +64645,6 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
         <div class="seed-vault-detail-grid">
           ${renderSeedVaultFieldMarkup("Storage location", normalizedEntry.storageLocation)}
           ${renderSeedVaultFieldMarkup("Storage notes", normalizedEntry.storageNotes)}
-          ${renderSeedVaultFieldMarkup("Visibility", normalizedEntry.visibility === "public" ? "Public-safe metadata" : "Private")}
           <div class="seed-vault-notes">
             <span>Notes</span>
             <p>${escapeHtml(normalizedEntry.notes || "No notes yet.")}</p>
@@ -65606,7 +65601,7 @@ function renderPrivateAnalyticsDashboardPage() {
     { label: "Avg germination", value: formatPrivateAnalyticsPercent(ownerAnalytics.averageGerminationRate), detail: "completed session seeds" },
     { label: "Seeds tested", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsTested), detail: "eligible completed grows" },
     { label: "Germinated", value: formatPrivateAnalyticsNumber(ownerAnalytics.totalSeedsGerminated), detail: "recorded successes" },
-    { label: "Vault inventory", value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalSeedsOwned), detail: "private active seeds" },
+    { label: "Vault inventory", value: formatPrivateAnalyticsNumber(vaultAnalytics.overview.totalSeedsOwned), detail: "active inventory seeds" },
     { label: "Community Grow", value: formatPrivateAnalyticsNumber(communitySummary.analytics.totalPublicSnapshots), detail: "approved public snapshots" },
   ];
   const bestSession = state.bestSession;
@@ -65819,10 +65814,10 @@ function renderPrivateAnalyticsDashboardPage() {
               value: oldestSuccessful ? `${formatSeedAgeYearsLabel(oldestSuccessful.ageYears)} · ${formatPrivateAnalyticsPercent(oldestSuccessful.rate)}` : "No linked result",
               detail: oldestSuccessful ? [oldestSuccessful.source, oldestSuccessful.variety].filter(Boolean).join(" · ") || "Linked Vault Entry" : "Complete a linked session with known age.",
             },
-            { label: "Unknown age inventory", value: `${formatPrivateAnalyticsNumber(vaultAnalytics.overview.unknownAgeCount)} entries`, detail: "private Vault entries without known age" },
+            { label: "Unknown age inventory", value: `${formatPrivateAnalyticsNumber(vaultAnalytics.overview.unknownAgeCount)} entries`, detail: "Vault entries without known age" },
           ])}
           ${renderPrivateAnalyticsMiniBarChart("Age bucket distribution", ageInventoryChartRows, {
-            caption: "private Vault inventory",
+            caption: "Vault inventory",
             emptyMessage: "Add age data to Vault entries to see distribution.",
           })}
           ${renderPrivateAnalyticsMiniBarChart("Germination by age bucket", agePerformanceChartRows, {
@@ -66004,7 +65999,6 @@ function getSeedVaultEntryFormSignature(form) {
     yearAcquired: String(formData.get("yearAcquired") || "").trim(),
     storageLocation: String(formData.get("storageLocation") || "").trim(),
     storageNotes: String(formData.get("storageNotes") || "").trim(),
-    visibility: String(formData.get("visibility") || "private").trim(),
     notes: String(formData.get("notes") || "").trim(),
     isFavorite: formData.get("isFavorite") === "on",
   });
@@ -66226,7 +66220,6 @@ function getSeedVaultEntryFormPayload(form) {
     storageLocation: String(formData.get("storageLocation") || "").trim(),
     storageNotes: String(formData.get("storageNotes") || "").trim(),
     notes: String(formData.get("notes") || "").trim(),
-    visibility: String(formData.get("visibility") || "private").trim(),
     isFavorite: formData.get("isFavorite") === "on",
     isArchived: Boolean(existingEntry.isArchived),
     archivedAt: existingEntry.archivedAt || "",
@@ -66393,13 +66386,6 @@ function openSeedVaultEntryModal(entry = null) {
         <label>
           <span>Storage notes</span>
           <textarea name="storageNotes" maxlength="400" rows="3" autocomplete="off" placeholder="Temperature, container, desiccant, or pack condition">${escapeHtml(normalizedEntry?.storageNotes || "")}</textarea>
-        </label>
-        <label>
-          <span>Visibility</span>
-          <select name="visibility" autocomplete="off">
-            <option value="private"${normalizedEntry?.visibility !== "public" ? " selected" : ""}>Private</option>
-            <option value="public"${normalizedEntry?.visibility === "public" ? " selected" : ""}>Public-safe metadata</option>
-          </select>
         </label>
         <label>
           <span>Notes</span>
@@ -66765,7 +66751,6 @@ function buildSeedVaultEntrySessionSnapshot(entry = {}) {
     quantity: normalizedEntry.quantity,
     yearAcquired: normalizedEntry.yearAcquired,
     acquiredAt: normalizedEntry.acquiredAt,
-    visibility: normalizedEntry.visibility || "private",
   };
 }
 
