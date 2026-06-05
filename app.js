@@ -30073,6 +30073,11 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
       const isPublicSessionRoute = hashRoute.startsWith("#sessions/public/");
       const isPublicMemberRoute = hashRoute.startsWith("#members/");
       const isGrowNetworkRoute = hashRoute.startsWith("#network");
+      const publicSessionNeedsLoadingRerender = Boolean(
+        isPublicSessionRoute
+        && targetSnapshotId
+        && document.querySelector("[data-public-session-loading='true']")
+      );
       if (isGalleryRoute && previousSignature !== nextSignature) {
         logGrowGalleryDebug("refreshGallerySnapshots:rerender", {
           reason,
@@ -30081,7 +30086,10 @@ async function refreshGallerySnapshots(reason = "unspecified", targetSnapshotId 
         renderGallery(targetSnapshotId);
       } else if (isModerationRoute && previousSignature !== nextSignature) {
         render();
-      } else if ((isPublicSessionRoute || isPublicMemberRoute || isGrowNetworkRoute) && previousSignature !== nextSignature) {
+      } else if (
+        ((isPublicSessionRoute || isPublicMemberRoute || isGrowNetworkRoute) && previousSignature !== nextSignature)
+        || publicSessionNeedsLoadingRerender
+      ) {
         render();
       }
 
@@ -30102,8 +30110,21 @@ function getGallerySnapshotSession(snapshot) {
   return getSessions().find((session) => session.id === snapshot.sessionId) || null;
 }
 
+function normalizePublicSessionSnapshotRouteId(snapshotId = "") {
+  const rawId = String(snapshotId || "").trim();
+  if (!rawId) {
+    return "";
+  }
+
+  try {
+    return decodeURIComponent(rawId).trim();
+  } catch {
+    return rawId;
+  }
+}
+
 function getApprovedPublicGallerySnapshotById(snapshotId) {
-  const normalizedId = String(snapshotId || "").trim();
+  const normalizedId = normalizePublicSessionSnapshotRouteId(snapshotId);
   if (!normalizedId) {
     return null;
   }
@@ -30111,6 +30132,19 @@ function getApprovedPublicGallerySnapshotById(snapshotId) {
   return getGallerySnapshotsForDisplay().find((snapshot) => (
     snapshot?.id === normalizedId
     && isGallerySnapshotAnalyticsEligible(snapshot)
+  )) || null;
+}
+
+function getViewablePublicSessionSnapshotById(snapshotId) {
+  const normalizedId = normalizePublicSessionSnapshotRouteId(snapshotId);
+  if (!normalizedId) {
+    return null;
+  }
+
+  const isAdminView = isAdminUser();
+  return getGallerySnapshotsForDisplay().find((snapshot) => (
+    String(snapshot?.id || "").trim() === normalizedId
+    && canCurrentViewerSeeGallerySnapshot(snapshot, { isAdminView })
   )) || null;
 }
 
@@ -70430,19 +70464,20 @@ function renderActiveSessionsPage() {
 }
 
 function renderPublicSessionDetail(snapshotId) {
-  const snapshot = getApprovedPublicGallerySnapshotById(snapshotId);
-  const isLoadingSnapshot = Boolean(appState.galleryRefreshPromise) || (!isMockDataEnabled() && !appState.gallerySnapshots.length);
+  const snapshot = getViewablePublicSessionSnapshotById(snapshotId);
+  const isLoadingSnapshot = Boolean(appState.galleryRefreshPromise)
+    || Boolean(appState.supabase && !isMockDataEnabled() && !appState.gallerySnapshotsLoaded);
 
   if (!snapshot) {
     app.innerHTML = `
-      <section class="card public-session-card">
+      <section class="card public-session-card"${isLoadingSnapshot ? ' data-public-session-loading="true"' : ""}>
         <div class="section-heading app-section-header public-session-header">
           <div class="section-title-with-icon app-section-header-main">
             ${renderAppSectionHeaderIcon("public-session")}
             <div>
               <p class="eyebrow">Public Session</p>
               <h2>Grow session view</h2>
-              <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public grow session is unavailable."}</p>
+              <p class="muted">${isLoadingSnapshot ? "Loading public grow session..." : "This public session could not be found."}</p>
             </div>
           </div>
           <div class="inline-actions public-session-header-actions">
