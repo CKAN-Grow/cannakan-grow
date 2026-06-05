@@ -13,11 +13,10 @@ for (const needle of [
   "return normalizeSeedAgeYears(rawValue) !== null;",
   'name="sessionSeedAgeYears" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}"',
   'name="seedAgeYears-${index}" class="partition-input" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}"',
-  'name="seedAgeYears" type="number" min="${SEED_AGE_MIN_YEARS}" max="${SEED_AGE_MAX_YEARS}" step="${SEED_AGE_STEP_YEARS}"',
   "if (!isValidSeedAgeYearsInput(rawValue))",
   "const seedAgeValid = !seedAgeInput || isValidSeedAgeYearsInput(seedAgeValue, { allowBlank: true });",
   "Use 0.5 year increments starting at 1 year, or leave blank.",
-  "Seed age must start at 1 year and use 0.5 year increments.",
+  "Enter seed age in 0.5 year increments starting at 1 year, or switch to mixed ages by partition.",
 ]) {
   if (!appSource.includes(needle)) {
     throw new Error(`Missing Seed Age 0.5-step behavior: ${needle}`);
@@ -26,6 +25,10 @@ for (const needle of [
 
 if (appSource.includes('step="0.1"')) {
   throw new Error('Seed Age inputs should not use step="0.1".');
+}
+
+if (appSource.includes('name="seedAgeYears" type="number"')) {
+  throw new Error("Seed Vault should not expose a manual Seed Age number input.");
 }
 
 const isHalfYearStep = (value) => {

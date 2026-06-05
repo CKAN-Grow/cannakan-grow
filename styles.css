@@ -44476,14 +44476,8 @@ body.theme-dark #session-analytics-section {
     rgba(12, 17, 14, 0.9);
 }
 
-.seed-vault-year-estimate {
-  min-height: 1rem;
-  color: rgba(181, 232, 111, 0.78);
-  font-size: 0.74rem;
-  line-height: 1.25;
-}
-
-.seed-vault-seed-age-estimate {
+.seed-vault-year-estimate,
+.seed-vault-calculated-age {
   min-height: 1rem;
   color: rgba(181, 232, 111, 0.88);
   font-size: 0.76rem;
@@ -44491,7 +44485,7 @@ body.theme-dark #session-analytics-section {
   line-height: 1.25;
 }
 
-.seed-vault-seed-age-estimate:empty,
+.seed-vault-calculated-age:empty,
 .seed-vault-year-estimate:empty {
   display: none;
 }

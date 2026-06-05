@@ -37,6 +37,13 @@ const persistenceRepairMigrationPath = path.join(
   "20260605120000_repair_seed_vault_persistence_contract.sql",
 );
 const persistenceRepairSql = fs.readFileSync(persistenceRepairMigrationPath, "utf8");
+const yearAcquiredAgeMigrationPath = path.join(
+  repoRoot,
+  "supabase",
+  "migrations",
+  "20260605123000_seed_vault_year_acquired_age_source_of_truth.sql",
+);
+const yearAcquiredAgeSql = fs.readFileSync(yearAcquiredAgeMigrationPath, "utf8");
 
 for (const needle of [
   "create table if not exists public.seed_vault_entries",
@@ -193,6 +200,30 @@ for (const needle of [
 
 if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(persistenceRepairSql)) {
   throw new Error("Seed Vault persistence repair migration must stay additive and non-destructive.");
+}
+
+for (const needle of [
+  "create or replace function public.calculate_seed_vault_age_years",
+  "when year_acquired_value < 1980 then null",
+  "greatest(1, date_part('year', timezone('utc', now()))::integer - year_acquired_value)::numeric",
+  "create or replace function public.set_seed_vault_entries_calculated_age()",
+  "new.seed_age_years = public.calculate_seed_vault_age_years(new.year_acquired);",
+  "update public.seed_vault_entries",
+  "seed_age_years is distinct from public.calculate_seed_vault_age_years(year_acquired)",
+  "drop trigger if exists seed_vault_entries_calculated_age",
+  "create trigger seed_vault_entries_calculated_age",
+  "before insert or update of year_acquired, seed_age_years",
+  "execute function public.set_seed_vault_entries_calculated_age();",
+  "clients should not treat this as user-editable",
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!yearAcquiredAgeSql.includes(needle)) {
+    throw new Error(`Missing Seed Vault year-acquired age migration safeguard: ${needle}`);
+  }
+}
+
+if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(yearAcquiredAgeSql)) {
+  throw new Error("Seed Vault year-acquired age migration must stay additive and non-destructive.");
 }
 
 console.log("Seed Vault migration regression check passed.");

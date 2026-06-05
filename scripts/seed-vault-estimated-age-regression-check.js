@@ -12,25 +12,44 @@ function requireNeedle(source, needle, label = needle) {
 }
 
 for (const needle of [
+  "function getCalculatedSeedVaultAgeYears(yearAcquiredValue = \"\")",
+  "function normalizeSeedVaultYearAcquired(yearAcquiredValue = \"\")",
   "function getEstimatedSeedVaultAgeYears(yearAcquiredValue = \"\")",
-  "return Math.max(SEED_AGE_MIN_YEARS, currentYear - Math.floor(year));",
+  "return Math.max(SEED_AGE_MIN_YEARS, currentYear - year);",
+  "return getCalculatedSeedVaultAgeYears(yearAcquiredValue);",
+  "function getSeedVaultCalculatedAgeHelperText(yearAcquiredValue = \"\")",
   "function getSeedVaultEstimatedAgeHelperText(yearAcquiredValue = \"\")",
-  "return getSeedVaultEstimatedAgeHelperText(yearValue);",
-  "return `${formatSeedAgeYearsLabel(estimatedSeedAgeYears)} estimated`;",
-  "seedAgeYears: seedAgeYearsValue ? normalizeSeedAgeYears(seedAgeYearsValue) : null",
-  "data-seed-vault-age-estimate",
-  "const helperText = String(seedAgeInput?.value || \"\").trim()",
-  "seedAgeInput?.addEventListener(\"input\", syncSeedVaultAgeEstimate);",
+  "return getSeedVaultCalculatedAgeHelperText(yearAcquiredValue);",
+  "return getSeedVaultCalculatedAgeHelperText(yearValue);",
+  "const seedAgeYears = getCalculatedSeedVaultAgeYears(yearAcquired);",
+  "seedAgeYears,",
+  "data-seed-vault-age-display",
+  "const helperText = getSeedVaultCalculatedAgeHelperText(yearAcquiredSelect?.value || \"\");",
+  "yearAcquiredSelect?.addEventListener(\"change\", syncSeedVaultAgeEstimate);",
+  "return getCalculatedSeedVaultAgeYears(normalizedEntry.yearAcquired);",
+  "return getCalculatedSeedVaultAgeYears(normalizedEntry?.yearAcquired);",
 ]) {
   requireNeedle(appSource, needle);
 }
 
 for (const needle of [
-  ".seed-vault-seed-age-estimate",
-  ".seed-vault-seed-age-estimate:empty",
+  ".seed-vault-calculated-age",
+  ".seed-vault-calculated-age:empty",
   ".seed-vault-year-estimate:empty",
 ]) {
   requireNeedle(stylesSource, needle);
+}
+
+for (const forbidden of [
+  "seedAgeYearsValue",
+  'name="seedAgeYears" type="number"',
+  "data-seed-vault-age-estimate",
+  "seed-vault-seed-age-estimate",
+  "seedAgeInput?.addEventListener(\"input\", syncSeedVaultAgeEstimate);",
+]) {
+  if (appSource.includes(forbidden) || stylesSource.includes(forbidden)) {
+    throw new Error(`Seed Vault should not retain manual Seed Age behavior: ${forbidden}`);
+  }
 }
 
 console.log("Seed Vault estimated age regression check passed.");
