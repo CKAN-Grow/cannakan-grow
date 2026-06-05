@@ -76837,7 +76837,7 @@ function mountSharedSessionCommandCenter(host, options = {}) {
   return renderSessionCommandCenter;
 }
 
-function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
+function formatPublicTimelineElapsedDuration(startedAt, endedAt, options = {}) {
   if (!(startedAt instanceof Date) || Number.isNaN(startedAt.getTime())) {
     return "";
   }
@@ -76847,7 +76847,17 @@ function formatPublicTimelineElapsedDuration(startedAt, endedAt) {
   }
 
   const totalMinutes = Math.max(0, Math.floor((endedAt.getTime() - startedAt.getTime()) / 60000));
+  if (options.includeDays === false) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
   return formatElapsedMinutesShorthand(totalMinutes);
+}
+
+function formatPublicTimelineDurationDetail(label, startedAt, endedAt, options = {}) {
+  const durationLabel = formatPublicTimelineElapsedDuration(startedAt, endedAt, options);
+  return durationLabel ? `${label}: ${durationLabel}` : "Duration unavailable";
 }
 
 function getPublicSessionSummaryRows(snapshot = null, publicDetails = {}) {
@@ -76908,9 +76918,7 @@ function formatPublicJourneyTimestamp(value = null, fallback = "Not shared") {
 }
 
 function renderPublicSessionLifecycleTimelineMarkup(state) {
-  const soakingDuration = formatPublicTimelineElapsedDuration(state.startedAt, state.germinationStartedAt);
-  const germinationDuration = formatPublicTimelineElapsedDuration(state.germinationStartedAt, state.firstPlantedAt);
-  const completedDuration = formatPublicTimelineElapsedDuration(state.startedAt, state.completedAt);
+  const germinationDurationEndAt = state.firstPlantedAt || state.completedAt;
 
   const events = [
     {
@@ -76923,22 +76931,22 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
     {
       label: "Soaking",
       timeLabel: state.startedAt ? formatPublicJourneyTimestamp(state.startedAt) : "Not shared",
-      durationLabel: soakingDuration ? `${soakingDuration} until germination` : "Duration unavailable",
+      durationLabel: formatPublicTimelineDurationDetail("Stage duration", state.startedAt, state.germinationStartedAt, { includeDays: false }),
       tone: "soaking",
       complete: Boolean(state.startedAt && state.germinationStartedAt),
     },
     {
       label: "Germination",
       timeLabel: formatPublicJourneyTimestamp(state.germinationStartedAt),
-      durationLabel: germinationDuration ? `${germinationDuration} to first germinated` : "Duration unavailable",
+      durationLabel: formatPublicTimelineDurationDetail("Stage duration", state.germinationStartedAt, germinationDurationEndAt, { includeDays: false }),
       tone: "germination",
       complete: Boolean(state.germinationStartedAt),
     },
     {
       label: "First Germinated",
       timeLabel: formatPublicJourneyTimestamp(state.firstPlantedAt),
-      durationLabel: state.germinationStartedAt && state.firstPlantedAt
-        ? "First successful seed recorded"
+      durationLabel: state.firstPlantedAt
+        ? formatPublicTimelineDurationDetail("Time from start", state.startedAt, state.firstPlantedAt, { includeDays: false })
         : "Not shared",
       tone: "green",
       complete: Boolean(state.firstPlantedAt),
@@ -76946,7 +76954,7 @@ function renderPublicSessionLifecycleTimelineMarkup(state) {
     {
       label: "Completed",
       timeLabel: formatPublicJourneyTimestamp(state.completedAt),
-      durationLabel: completedDuration ? `${completedDuration} total` : "Duration unavailable",
+      durationLabel: formatPublicTimelineDurationDetail("Total duration", state.startedAt, state.completedAt),
       tone: "completed",
       complete: Boolean(state.completedAt),
     },
