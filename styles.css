@@ -28285,6 +28285,10 @@ textarea::placeholder {
   padding-top: 2px;
 }
 
+.public-session-bottom-actions {
+  justify-content: flex-start;
+}
+
 @media (max-width: 640px) {
   .public-session-header {
     grid-template-columns: minmax(0, 1fr);

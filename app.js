@@ -1550,6 +1550,7 @@ const appState = {
   gallerySortOrder: "desc",
   galleryCertificationFilter: "all",
   galleryVisibleSnapshotCount: GALLERY_SNAPSHOT_PAGE_SIZE,
+  communityGrowReturnContext: null,
   theme: "dark",
   sessionHistoryExpanded: false,
   sessionHistorySort: "date",
@@ -24190,7 +24191,7 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     ),
   );
   const publicSessionMarkup = shouldShowPublicSessionAction
-    ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}">View Session</a>`
+    ? `<a class="button button-secondary" href="#sessions/public/${escapeHtml(snapshot.id)}" data-gallery-public-session-link="${escapeHtml(snapshot.id)}">View Session</a>`
     : "";
   const ownerActionMarkup = ownerAction
     ? `<button type="button" class="button button-secondary gallery-card-remove" data-gallery-owner-action="${escapeHtml(ownerAction.mode)}" data-gallery-remove="${escapeHtml(snapshot.id)}">${escapeHtml(ownerAction.label)}</button>`
@@ -24383,6 +24384,66 @@ function restoreGalleryInteractionScrollPosition(scrollX = window.scrollX, scrol
   });
 }
 
+function captureCommunityGrowReturnContext(snapshotId = "") {
+  appState.communityGrowReturnContext = {
+    snapshotId: String(snapshotId || "").trim(),
+    scrollX: window.scrollX,
+    scrollY: window.scrollY,
+    gallerySort: normalizeGallerySort(appState.gallerySort),
+    gallerySortOrder: normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder),
+    galleryCertificationFilter: normalizeGalleryCertificationFilter(appState.galleryCertificationFilter),
+    galleryVisibleSnapshotCount: Math.max(
+      GALLERY_SNAPSHOT_PAGE_SIZE,
+      Number.parseInt(appState.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
+    ),
+    capturedAt: Date.now(),
+  };
+}
+
+function consumeCommunityGrowReturnContext() {
+  const context = appState.communityGrowReturnContext;
+  appState.communityGrowReturnContext = null;
+  return context && typeof context === "object" ? context : null;
+}
+
+function applyCommunityGrowReturnContextState(context = null) {
+  if (!context) {
+    return;
+  }
+
+  appState.gallerySort = normalizeGallerySort(context.gallerySort);
+  appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, context.gallerySortOrder);
+  appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(context.galleryCertificationFilter);
+  appState.galleryVisibleSnapshotCount = Math.max(
+    GALLERY_SNAPSHOT_PAGE_SIZE,
+    Number.parseInt(context.galleryVisibleSnapshotCount, 10) || GALLERY_SNAPSHOT_PAGE_SIZE,
+  );
+}
+
+function restoreCommunityGrowReturnPosition(context = null, targetCard = null) {
+  if (!context) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    const scrollY = Number(context.scrollY);
+    const scrollX = Number(context.scrollX);
+    const maxScrollY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    if (Number.isFinite(scrollY) && scrollY > 0 && maxScrollY >= Math.min(scrollY, 24)) {
+      window.scrollTo(Number.isFinite(scrollX) ? scrollX : 0, Math.min(scrollY, maxScrollY));
+      return;
+    }
+
+    if (targetCard instanceof HTMLElement) {
+      targetCard.scrollIntoView({
+        block: "center",
+        behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
+      });
+      targetCard.focus({ preventScroll: true });
+    }
+  });
+}
+
 function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], rerender = () => {}) {
   if (!scope) {
     return;
@@ -24425,6 +24486,7 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
     const openPublicSession = () => {
       const snapshotId = button.dataset.galleryPublicSession || "";
       if (snapshotId) {
+        captureCommunityGrowReturnContext(snapshotId);
         window.location.hash = `#sessions/public/${encodeURIComponent(snapshotId)}`;
       }
     };
@@ -24437,6 +24499,15 @@ function bindGallerySnapshotCardInteractions(scope, visibleSnapshots = [], reren
 
       event.preventDefault();
       openPublicSession();
+    });
+  });
+
+  scope.querySelectorAll("[data-gallery-public-session-link]").forEach((link) => {
+    link.addEventListener("click", () => {
+      const snapshotId = link.getAttribute("data-gallery-public-session-link") || "";
+      if (snapshotId) {
+        captureCommunityGrowReturnContext(snapshotId);
+      }
     });
   });
 
@@ -62254,6 +62325,11 @@ function renderGallery(targetSnapshotId = "") {
     return;
   }
 
+  const communityGrowReturnContext = consumeCommunityGrowReturnContext();
+  applyCommunityGrowReturnContextState(communityGrowReturnContext);
+  const returnSnapshotId = String(communityGrowReturnContext?.snapshotId || "").trim();
+  const effectiveTargetSnapshotId = targetSnapshotId || returnSnapshotId;
+
   appState.gallerySort = normalizeGallerySort(appState.gallerySort);
   appState.gallerySortOrder = normalizeGallerySortOrder(appState.gallerySort, appState.gallerySortOrder);
   appState.galleryCertificationFilter = normalizeGalleryCertificationFilter(appState.galleryCertificationFilter);
@@ -62493,8 +62569,8 @@ function renderGallery(targetSnapshotId = "") {
         ? []
         : gallerySnapshots.filter((snapshot) => getGallerySnapshotDisplayStatus(snapshot) !== "approved"),
     );
-    const targetApprovedIndex = targetSnapshotId
-      ? approvedSnapshots.findIndex((snapshot) => snapshot.id === targetSnapshotId)
+    const targetApprovedIndex = effectiveTargetSnapshotId
+      ? approvedSnapshots.findIndex((snapshot) => snapshot.id === effectiveTargetSnapshotId)
       : -1;
     if (targetApprovedIndex >= appState.galleryVisibleSnapshotCount) {
       appState.galleryVisibleSnapshotCount = Math.ceil((targetApprovedIndex + 1) / GALLERY_SNAPSHOT_PAGE_SIZE) * GALLERY_SNAPSHOT_PAGE_SIZE;
@@ -62563,14 +62639,16 @@ function renderGallery(targetSnapshotId = "") {
         compactPreview: true,
         openPublicSessionDirectly: true,
       });
-      if (targetSnapshotId && snapshot.id === targetSnapshotId) {
+      if (effectiveTargetSnapshotId && snapshot.id === effectiveTargetSnapshotId) {
         card.classList.add("is-targeted");
         targetCard = card;
       }
       galleryGrid.appendChild(card);
     });
 
-    if (targetCard) {
+    if (communityGrowReturnContext) {
+      restoreCommunityGrowReturnPosition(communityGrowReturnContext, targetCard);
+    } else if (targetCard) {
       targetCard.scrollIntoView({
         block: "center",
         behavior: prefersReducedSnapshotMotion() ? "auto" : "smooth",
@@ -70515,6 +70593,7 @@ function renderPublicSessionDetail(snapshotId) {
     : basePublicDetails;
   const sharedProfileMarkup = renderGallerySharedProfileMarkup(snapshot);
   const sessionTitle = activeMockScenario ? activeMockScenario.name : snapshot.title;
+  const publicSessionBackButtonMarkup = '<a class="button button-secondary" href="#gallery">Back to Community Grow</a>';
   const mockScenarioSelectorMarkup = activeMockScenario
     ? `
       <section class="public-session-example-selector" aria-labelledby="public-session-example-selector-title">
@@ -70549,7 +70628,7 @@ function renderPublicSessionDetail(snapshotId) {
           </div>
         </div>
         <div class="inline-actions public-session-header-actions">
-          <a class="button button-secondary" href="#gallery">Back to Community Grow</a>
+          ${publicSessionBackButtonMarkup}
         </div>
       </div>
       ${sharedProfileMarkup ? `<div class="public-session-profile">${sharedProfileMarkup}</div>` : ""}
@@ -70564,6 +70643,9 @@ function renderPublicSessionDetail(snapshotId) {
       </div>
       ${renderPublicSessionPartitionResultsMarkup(publicDetails.resultSummary, { systemType: snapshot.systemType })}
       ${mockScenarioSelectorMarkup}
+      <div class="inline-actions public-session-bottom-actions">
+        ${publicSessionBackButtonMarkup}
+      </div>
     </section>
   `;
 
