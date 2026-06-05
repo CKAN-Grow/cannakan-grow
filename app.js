@@ -43615,69 +43615,43 @@ function renderSourceDirectoryCstpCardBadgeMarkup(cstpState = {}) {
   `;
 }
 
-function renderHomeTestedSourcePreviewCardMarkup(source = {}) {
-  const cstpPreview = getSourceDirectoryCstpPreview(source);
-  const statusMarkup = cstpPreview
-    ? renderPublishedCstpCertifiedSealMarkup(cstpPreview.filterKey, cstpPreview.publishedAt, {
-      shellClassName: "home-tested-source-cstp-status cstp-certified-seal cstp-certified-seal--compact",
-      imageClassName: "home-tested-source-cstp-badge cstp-certified-seal-image",
-      copyClassName: "cstp-certified-seal-copy",
-      labelClassName: "cstp-certified-seal-label",
-      titleClassName: "cstp-certified-seal-title",
-      noteClassName: "cstp-certified-seal-note",
-      labelText: "CSTP Certified",
-      noteText: getAdminCstpQualificationLabel(cstpPreview.filterKey),
-    })
-    : "";
-
-  return `
-    <article class="card home-tested-source-card">
-      <div class="home-tested-source-card-head">
-        <div class="home-tested-source-card-head-main">
-          ${renderSourceLogoMarkup(source, {
-            className: "home-tested-source-logo",
-            imageClassName: "source-profile-logo-image",
-            placeholderClassName: "source-profile-logo-placeholder",
-            alt: `${source.name} logo`,
-          })}
-          <div class="home-tested-source-card-copy">
-            <h3>${escapeHtml(source.name || "Source")}</h3>
-            <p class="home-tested-source-card-type">${escapeHtml(source.sourceTypeLabel || "Source")}</p>
-          </div>
-        </div>
-        ${statusMarkup ? `
-          <div class="home-tested-source-card-status">
-            ${statusMarkup}
-          </div>
-        ` : ""}
-      </div>
-      <div class="home-tested-source-stats">
-        <article class="home-tested-source-stat">
-          <span class="stat-label">Sessions Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.sessionsLogged || "0")}</strong>
-        </article>
-        <article class="home-tested-source-stat">
-          <span class="stat-label">Varieties Logged</span>
-          <strong>${escapeHtml(source.directoryStats?.varietiesLogged || "0")}</strong>
-        </article>
-        <article class="home-tested-source-stat">
-          <span class="stat-label">Last Logged</span>
-          <strong>${escapeHtml(formatSourceDirectoryLastLoggedDate(source.directoryStats?.lastLoggedAt || ""))}</strong>
-        </article>
-      </div>
-      <div class="home-tested-source-footer">
-        <a class="button button-secondary" href="#sources/${escapeHtml(source.id)}">View Source Profile</a>
-      </div>
-    </article>
-  `;
-}
-
 function renderHomeTestedSourcesPreviewSectionMarkup() {
-  const previewCardsMarkup = getSourceDirectoryMockRecords()
-    .slice(0, 5)
-    .map((source) => renderHomeTestedSourcePreviewCardMarkup(source))
-    .join("");
-  const directoryMetrics = getSourceDirectoryMetrics();
+  const directoryRecords = getSourceDirectoryMockRecords();
+  const teaserRecords = directoryRecords.length
+    ? directoryRecords
+    : testedSourcesMock.map((source) => {
+      const sourceDirectoryStats = source?.id === SOURCE_PROFILE_DEFAULT_MOCK_ID
+        ? SOURCE_PROFILE_DEMO_RECORD.directoryStats
+        : source?.directoryStats;
+      return normalizeTestedSourceMockRecord({
+        ...source,
+        directoryStats: {
+          ...(sourceDirectoryStats || {}),
+          sessionsLogged: parseSourceDirectoryMetricNumber(sourceDirectoryStats?.sessionsLogged)
+            || parseSourceDirectoryMetricNumber(source?.community?.sessions),
+          varietiesLogged: parseSourceDirectoryMetricNumber(sourceDirectoryStats?.varietiesLogged),
+          lastLoggedAt: String(sourceDirectoryStats?.lastLoggedAt || source?.cstp?.testedDate || "").trim(),
+        },
+      });
+    }).filter(Boolean);
+  const directoryMetrics = getSourceDirectoryMetrics(teaserRecords);
+  const sessionsLogged = teaserRecords.reduce((total, source) => (
+    total + parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged)
+  ), 0);
+  const varietiesRecorded = directoryMetrics.totalVarietiesLogged || teaserRecords.reduce((total, source) => (
+    total + parseSourceDirectoryMetricNumber(source?.directoryStats?.varietiesLogged)
+  ), 0);
+  const topSources = teaserRecords.slice(0, 3);
+  const newestSource = [...teaserRecords]
+    .filter((source) => Date.parse(source?.directoryStats?.lastLoggedAt || ""))
+    .sort((left, right) => Date.parse(right?.directoryStats?.lastLoggedAt || "") - Date.parse(left?.directoryStats?.lastLoggedAt || ""))[0] || null;
+  const kpis = [
+    { label: "Sources Tracked", value: directoryMetrics.totalSourcesLogged },
+    { label: "Varieties Recorded", value: varietiesRecorded },
+    { label: "Sessions Logged", value: sessionsLogged },
+  ];
+  const medalLabels = ["#1 Source", "#2 Source", "#3 Source"];
+  const medalSymbols = ["#1", "#2", "#3"];
 
   return `
     <section class="card home-tested-sources-preview-section">
@@ -43687,16 +43661,54 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
           <div>
             <p class="eyebrow">Source Directory</p>
             <h2>Source Directory</h2>
-            <p class="muted">${escapeHtml(SOURCE_DIRECTORY_DESCRIPTION)}</p>
-            <p class="muted">${escapeHtml(getSourceDirectoryCountLine(directoryMetrics.totalSourcesLogged))}</p>
+            <p class="muted">Discover sources and breeders recorded by the Cannakan Grow community.</p>
           </div>
         </div>
+      </div>
+      <div class="home-tested-sources-overview">
+        <div class="home-tested-sources-kpis" aria-label="Source Directory overview">
+          ${kpis.map((kpi) => `
+            <article class="home-tested-source-kpi">
+              <strong>${escapeHtml(Number(kpi.value || 0).toLocaleString())}</strong>
+              <span>${escapeHtml(kpi.label)}</span>
+            </article>
+          `).join("")}
+        </div>
+        <div class="home-tested-sources-rankings">
+          <div class="home-tested-sources-rankings-head">
+            <p class="eyebrow">Top Sources</p>
+            ${newestSource ? `<span>Newest Source Added: ${escapeHtml(newestSource.name || "Source")}</span>` : ""}
+          </div>
+          <div class="home-tested-sources-list" role="list" aria-label="Top Source Directory sources">
+            ${topSources.map((source, index) => {
+              const varietiesLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.varietiesLogged);
+              const sourceSessionsLogged = parseSourceDirectoryMetricNumber(source?.directoryStats?.sessionsLogged);
+              const detailLabel = varietiesLogged > 0
+                ? `${varietiesLogged.toLocaleString()} variet${varietiesLogged === 1 ? "y" : "ies"} recorded`
+                : `${sourceSessionsLogged.toLocaleString()} session${sourceSessionsLogged === 1 ? "" : "s"} logged`;
+
+              return `
+                <article class="home-tested-source-row" role="listitem">
+                  <span class="home-tested-source-rank" aria-label="${escapeHtml(medalLabels[index] || `#${index + 1} Source`)}">${escapeHtml(medalSymbols[index] || String(index + 1))}</span>
+                  ${renderSourceLogoMarkup(source, {
+                    className: "home-tested-source-logo",
+                    imageClassName: "source-profile-logo-image",
+                    placeholderClassName: "source-profile-logo-placeholder",
+                    alt: `${source.name} logo`,
+                  })}
+                  <span class="home-tested-source-row-copy">
+                    <strong>${escapeHtml(source.name || "Source")}</strong>
+                    <small>${escapeHtml(detailLabel)}</small>
+                  </span>
+                </article>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="home-tested-sources-cta">
         <a class="button button-secondary" href="#source-directory">View Source Directory</a>
       </div>
-      <div class="home-tested-sources-preview-row" role="list" aria-label="Source Directory preview">
-        ${previewCardsMarkup}
-      </div>
-      <p class="home-tested-sources-disclaimer muted">${escapeHtml(SOURCE_DIRECTORY_COMMUNITY_NOTE)}</p>
     </section>
   `;
 }
