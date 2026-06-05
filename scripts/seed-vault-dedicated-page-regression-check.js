@@ -36,6 +36,9 @@ assert(
   'function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = () => {})',
   'if (route === "seed-vault") {',
   'renderSeedVaultPage();',
+  '<nav class="seed-vault-page-nav" aria-label="Seed Vault navigation">',
+  'seed-vault-back-button',
+  'href="#sessions">Back to My Sessions</a>',
   'pageLabel: "My Seed Vault"',
   'getCurrentAppPathRoute() === "seed-vault"',
   '"seed-vault": "seed-vault"',
@@ -56,13 +59,20 @@ assert(
 
 [
   ".seed-vault-page",
-  ".seed-vault-page-actions",
+  ".seed-vault-page-nav",
+  ".seed-vault-back-button.button",
   ".seed-vault-shortcut-card",
   ".seed-vault-shortcut-main",
   ".seed-vault-shortcut-button",
   ".mobile-nav-link.is-active",
 ].forEach((needle) => {
   assert(stylesSource.includes(needle), `Expected dedicated Seed Vault/shortcut styling: ${needle}`);
+});
+
+[
+  "seed-vault-page-actions",
+].forEach((forbidden) => {
+  assert(!appSource.includes(forbidden) && !stylesSource.includes(forbidden), `Seed Vault page should not use oversized page action hook: ${forbidden}`);
 });
 
 console.log("Seed Vault dedicated page regression check passed.");

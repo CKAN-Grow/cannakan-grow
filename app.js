@@ -65961,9 +65961,9 @@ function refreshSeedVaultViewAfterMutation() {
 function renderSeedVaultPage() {
   app.innerHTML = `
     <section class="seed-vault-page">
-      <div class="seed-vault-page-actions">
-        <a class="button button-secondary" href="#sessions">Back to My Sessions</a>
-      </div>
+      <nav class="seed-vault-page-nav" aria-label="Seed Vault navigation">
+        <a class="button button-secondary seed-vault-back-button" href="#sessions">Back to My Sessions</a>
+      </nav>
       <section id="seed-vault-section"></section>
     </section>
   `;
