@@ -10711,22 +10711,32 @@ function updateNavState() {
   }
 
   const rawRoute = getCurrentAppRawRoute();
-  const [route] = rawRoute.split("/");
-  let activeNav = "sessions";
-  if (route === "home" || !route || route === "disclaimer" || route === "terms" || route === "privacy" || route === "contact") {
+  const [route, id] = rawRoute.split("/");
+  const homeRoutes = new Set(["home", "", "disclaimer", "terms", "privacy", "contact"]);
+  const sessionRoutes = new Set(["sessions", "new", "active-sessions", "analytics", "seed-vault"]);
+  const communityRoutes = new Set(["gallery", "community-insights", "seed-age-analytics", "public-session", "members"]);
+  const sourceRoutes = new Set(["sources", "source-directory", "tested-sources"]);
+  const networkRoutes = new Set(["network"]);
+  const learnRoutes = new Set(["learn"]);
+  let activeNav = "";
+  if (route === "sessions" && id === "public") {
+    activeNav = "gallery";
+  } else if (homeRoutes.has(route)) {
     activeNav = "home";
   } else if (route === "admin" || route === "community-grow-moderation") {
     activeNav = "admin";
-  } else if (route === "gallery" || route === "seed-age-analytics") {
+  } else if (communityRoutes.has(route)) {
     activeNav = "gallery";
-  } else if (route === "network") {
+  } else if (networkRoutes.has(route)) {
     activeNav = "network";
-  } else if (route === "learn") {
+  } else if (learnRoutes.has(route)) {
     activeNav = "learn";
   } else if (route === "cstp") {
     activeNav = "";
-  } else if (route === "sources") {
+  } else if (sourceRoutes.has(route)) {
     activeNav = "sources";
+  } else if (sessionRoutes.has(route)) {
+    activeNav = "sessions";
   }
 
   navLinks.forEach((link) => {
