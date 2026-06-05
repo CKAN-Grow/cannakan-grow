@@ -43941,6 +43941,7 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
             <p class="muted">Discover sources and breeders recorded by the Cannakan Grow community.</p>
           </div>
         </div>
+        <a class="button button-secondary home-tested-sources-header-cta" href="#source-directory">View Source Directory</a>
       </div>
       <div class="home-tested-sources-overview">
         <div class="home-tested-sources-kpis" aria-label="Source Directory overview">
@@ -43982,9 +43983,6 @@ function renderHomeTestedSourcesPreviewSectionMarkup() {
             }).join("")}
           </div>
         </div>
-      </div>
-      <div class="home-tested-sources-cta">
-        <a class="button button-secondary" href="#source-directory">View Source Directory</a>
       </div>
     </section>
   `;
