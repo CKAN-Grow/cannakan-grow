@@ -32853,11 +32853,18 @@ body.theme-dark .source-profile-verification-card.is-muted .source-profile-detai
 
 .public-session-media .gallery-card-media,
 .public-session-media .gallery-card-media--details-only {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: auto;
   height: auto;
-  max-height: 440px;
-  min-height: 300px;
+  max-height: none;
+  min-height: 0;
   border-radius: 22px;
+}
+
+.public-session-media .gallery-card-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  background: rgba(14, 20, 16, 0.72);
 }
 
 .public-session-journey-column {
