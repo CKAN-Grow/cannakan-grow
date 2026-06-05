@@ -73277,6 +73277,33 @@ function autoCompleteSessionWhenResultsAccounted(session = null, referenceDate =
   return true;
 }
 
+function getPublicSessionPartitionAgeLabel(partition = null, hasSeeds = true) {
+  if (!hasSeeds) {
+    return "Age: Unknown";
+  }
+
+  const rawLabel = String(partition?.seedAgeLabel || partition?.seed_age_label || "").trim();
+  if (rawLabel && rawLabel !== "Not shared") {
+    if (/^age\s*:/i.test(rawLabel)) {
+      return `Age:${rawLabel.split(":").slice(1).join(":")}`.replace(/^Age:\s*/, "Age: ");
+    }
+    if (/mixed/i.test(rawLabel)) {
+      return "Age: Mixed";
+    }
+    if (/unknown/i.test(rawLabel)) {
+      return "Age: Unknown";
+    }
+    return `Age: ${rawLabel}`;
+  }
+
+  const seedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+  if (seedAgeYears !== null) {
+    return `Age: ${formatSeedAgeYearsLabel(seedAgeYears)}`;
+  }
+
+  return "Age: Unknown";
+}
+
 function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, options = {}) {
   const summary = sessionOrSummary?.overall && Array.isArray(sessionOrSummary?.partitions)
     ? sessionOrSummary
@@ -73316,7 +73343,7 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
           const partitionLabel = getNewSessionSeedVaultPartitionLabel(systemType, partitionId);
           const sourceLabel = hasSeeds ? (partition.sourceLabel || partition.source || "Not shared") : "Not shared";
           const varietyLabel = hasSeeds ? (partition.varietyLabel || partition.seedVariety || "Not shared") : "Not shared";
-          const seedAgeLabel = hasSeeds ? (partition.seedAgeLabel || "Not shared") : "Not shared";
+          const seedAgeLabel = getPublicSessionPartitionAgeLabel(partition, hasSeeds);
           const countLabel = hasSeeds ? `${partition.germinatedCount} / ${partition.totalCount} seeds` : "Not shared";
           const percentageLabel = hasSeeds ? (partition.percentageLabel || "Not shared") : "Not shared";
           const successStatus = hasSeeds
@@ -73324,7 +73351,7 @@ function renderPublicSessionPartitionResultsMarkup(sessionOrSummary = null, opti
             : getPartitionSuccessStatus(null, null, null);
           const secondaryMeta = [sourceLabel, seedAgeLabel]
             .filter((value) => value && value !== "Not shared")
-            .join(" · ") || "No source or seed age shared";
+            .join(" · ") || "Age: Unknown";
 
           return `
             <article class="public-session-partition-result partition-success-card ${escapeHtml(successStatus.className)}${hasSeeds ? "" : " is-empty"}">
