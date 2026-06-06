@@ -67256,6 +67256,91 @@ function readPartitionSeedVaultSnapshotFromRow(row) {
   }
 }
 
+function getSeedVaultPartitionAssignmentAgeYears(partition = null) {
+  const snapshot = partition?.seedVaultEntrySnapshot || partition?.seed_vault_entry_snapshot || null;
+  const snapshotAgeYears = snapshot ? getSeedVaultEntrySessionSeedAgeYears(snapshot) : null;
+  if (snapshotAgeYears !== null) {
+    return snapshotAgeYears;
+  }
+  return normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+}
+
+function getSeedVaultAgeAssignmentsForSessionForm(form, override = {}) {
+  if (!(form instanceof HTMLFormElement)) {
+    return [];
+  }
+
+  const overridePartitionId = String(override.partitionId || "").trim();
+  const overrideEntry = override.entry ? normalizeSeedVaultEntry(override.entry) : null;
+  const overrideAgeYears = overrideEntry ? getSeedVaultEntrySessionSeedAgeYears(overrideEntry) : null;
+
+  return getCurrentPartitionValues(form)
+    .map((partition) => {
+      const partitionId = String(partition?.id || "").trim();
+      if (!partitionId) {
+        return null;
+      }
+      if (overridePartitionId && partitionId === overridePartitionId) {
+        return overrideAgeYears === null ? null : { partitionId, seedAgeYears: overrideAgeYears };
+      }
+      if (!String(partition?.seedVaultEntryId || "").trim() && !partition?.seedVaultEntrySnapshot) {
+        return null;
+      }
+      const seedAgeYears = getSeedVaultPartitionAssignmentAgeYears(partition);
+      return seedAgeYears === null ? null : { partitionId, seedAgeYears };
+    })
+    .filter(Boolean);
+}
+
+function syncSeedAgeModeFromVaultAssignments(form, override = {}) {
+  if (!(form instanceof HTMLFormElement)) {
+    return false;
+  }
+
+  const assignments = getSeedVaultAgeAssignmentsForSessionForm(form, override);
+  if (!assignments.length) {
+    return false;
+  }
+
+  const uniqueAgeValues = [...new Set(assignments.map((assignment) => formatSeedAgeInputValue(assignment.seedAgeYears)))];
+  const nextMode = uniqueAgeValues.length > 1 ? "mixed" : "same";
+  const seedAgeTrackingField = form.elements.seedAgeTrackingEnabled;
+  const sameModeInput = form.querySelector('input[name="seedAgeMode"][value="same"]');
+  const mixedModeInput = form.querySelector('input[name="seedAgeMode"][value="mixed"]');
+  const sameAgeInput = form.elements.sessionSeedAgeYears;
+  const nextSessionSeedAgeYears = nextMode === "same" ? normalizeSeedAgeYears(uniqueAgeValues[0]) : null;
+
+  form.__seedAgeDraft = {
+    ...getSeedAgeDraftState(form),
+    mode: nextMode,
+    sessionSeedAgeYears: nextSessionSeedAgeYears,
+  };
+
+  if (seedAgeTrackingField instanceof HTMLInputElement) {
+    seedAgeTrackingField.checked = true;
+  }
+  if (sameModeInput instanceof HTMLInputElement) {
+    sameModeInput.checked = nextMode === "same";
+  }
+  if (mixedModeInput instanceof HTMLInputElement) {
+    mixedModeInput.checked = nextMode === "mixed";
+  }
+  if (sameAgeInput instanceof HTMLInputElement) {
+    sameAgeInput.value = nextMode === "same" ? uniqueAgeValues[0] : "";
+  }
+
+  if (nextMode === "mixed") {
+    const mixedSeedAgeDrafts = getMixedSeedAgeDrafts(form);
+    assignments.forEach((assignment) => {
+      mixedSeedAgeDrafts[String(assignment.partitionId)] = assignment.seedAgeYears;
+    });
+  }
+
+  persistSeedAgeDraftState(form);
+  syncSeedAgeSetupUi(form);
+  return true;
+}
+
 function updateSeedVaultPartitionRemainingCount(section, form, partitionId = "") {
   if (!(section instanceof HTMLElement) || !(form instanceof HTMLFormElement)) {
     return;
@@ -67345,6 +67430,10 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
         }
       }
       clearSeedVaultAssignmentFromPartitionRow(row);
+      const didSyncSeedAgeMode = syncSeedAgeModeFromVaultAssignments(form);
+      if (didSyncSeedAgeMode) {
+        rerenderPartitions();
+      }
       rerenderPicker();
       setFeedbackMessage(
         section.querySelector("[data-seed-vault-session-message]"),
@@ -67401,28 +67490,12 @@ function bindNewSessionSeedVaultPicker(section, form, options = {}) {
       }
     }
 
-    const seedAgeYears = getSeedVaultEntrySessionSeedAgeYears(entry);
-    const seedAgeState = getSeedAgeSettingsFromForm(form);
-    if (seedAgeYears !== null && (!seedAgeState.trackingEnabled || seedAgeState.mode !== "mixed")) {
-      if (form.elements.seedAgeTrackingEnabled instanceof HTMLInputElement) {
-        form.elements.seedAgeTrackingEnabled.checked = true;
-      }
-      const mixedModeInput = form.querySelector('input[name="seedAgeMode"][value="mixed"]');
-      if (mixedModeInput instanceof HTMLInputElement) {
-        mixedModeInput.checked = true;
-      }
-      persistSeedAgeDraftState(form);
-      syncSeedAgeSetupUi(form);
-      rerenderPartitions();
-      rerenderPicker();
-    }
+    applySeedVaultEntryToPartitionRow(initialRow, entry, seedCount);
 
-    const row = getNewSessionSeedVaultPartitionRow(form, partitionId);
-    if (!(row instanceof Element)) {
-      setFeedbackMessage(message, "Selected partition is unavailable for this system.", "error");
-      return;
+    const didSyncSeedAgeMode = syncSeedAgeModeFromVaultAssignments(form);
+    if (didSyncSeedAgeMode) {
+      rerenderPartitions();
     }
-    applySeedVaultEntryToPartitionRow(row, entry, seedCount);
 
     rerenderPicker();
     setFeedbackMessage(
@@ -70442,7 +70515,14 @@ function persistMixedSeedAgeDrafts(form, partitions = []) {
   const nextDrafts = {};
   partitions.forEach((partition, index) => {
     const partitionId = String(partition?.id ?? index + 1);
-    nextDrafts[partitionId] = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+    const hasSeedVaultAssignment = Boolean(
+      String(partition?.seedVaultEntryId || partition?.seed_vault_entry_id || "").trim()
+      || partition?.seedVaultEntrySnapshot
+      || partition?.seed_vault_entry_snapshot,
+    );
+    nextDrafts[partitionId] = hasSeedVaultAssignment
+      ? getSeedVaultPartitionAssignmentAgeYears(partition)
+      : normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
   });
   form.__mixedSeedAgeDrafts = nextDrafts;
   return nextDrafts;

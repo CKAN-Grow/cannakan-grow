@@ -47,6 +47,18 @@ for (const needle of [
   "Apply this Vault Entry and overwrite details in this populated partition?",
   "Clear this partition's Vault Entry assignment and copied fields?",
   "function applySeedVaultEntryToPartitionRow(row, entry = {}, seedCount = 0)",
+  "function getSeedVaultPartitionAssignmentAgeYears(partition = null)",
+  "function getSeedVaultAgeAssignmentsForSessionForm(form, override = {})",
+  "function syncSeedAgeModeFromVaultAssignments(form, override = {})",
+  "const nextMode = uniqueAgeValues.length > 1 ? \"mixed\" : \"same\";",
+  "const nextSessionSeedAgeYears = nextMode === \"same\" ? normalizeSeedAgeYears(uniqueAgeValues[0]) : null;",
+  "form.__seedAgeDraft = {",
+  "sameAgeInput.value = nextMode === \"same\" ? uniqueAgeValues[0] : \"\";",
+  "mixedSeedAgeDrafts[String(assignment.partitionId)] = assignment.seedAgeYears;",
+  "applySeedVaultEntryToPartitionRow(initialRow, entry, seedCount);",
+  "const didSyncSeedAgeMode = syncSeedAgeModeFromVaultAssignments(form);",
+  "const hasSeedVaultAssignment = Boolean(",
+  "? getSeedVaultPartitionAssignmentAgeYears(partition)",
   "function clearSeedVaultAssignmentFromPartitionRow(row)",
   "syncCustomSelect(typeSelect);",
   "syncCustomSelect(sexSelect);",
@@ -81,6 +93,8 @@ for (const retiredNeedle of [
   "data-seed-vault-apply-to-session",
   "data-seed-vault-partition-choice",
   "Seeds per selected partition",
+  "if (seedAgeYears !== null && (!seedAgeState.trackingEnabled || seedAgeState.mode !== \"mixed\"))",
+  "syncSeedAgeModeFromVaultAssignments(form, {\n      partitionId,\n      entry,",
 ]) {
   if (appSource.includes(retiredNeedle)) {
     throw new Error(`Retired one-entry multi-partition Seed Vault flow is still present: ${retiredNeedle}`);
