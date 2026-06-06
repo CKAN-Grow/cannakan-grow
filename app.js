@@ -17002,9 +17002,6 @@ function isPublicProfileHandleCollisionError(error = null) {
 }
 
 function getPublicMemberProfileSaveErrorMessage(error = null, fallbackMessage = "Community profile settings could not be saved right now.") {
-  if (isPublicProfileHandleCollisionError(error)) {
-    return "That profile handle is already taken. Please choose another.";
-  }
   return fallbackMessage;
 }
 
@@ -20525,16 +20522,6 @@ async function upsertCurrentUserPublicMemberProfile(
         error,
         unavailable: true,
       });
-    } else if (isPublicProfileHandleCollisionError(error)) {
-      logPublicMemberProfilesFallback(
-        "public-member-profile-handle-collision",
-        "Community profile handle collision during save.",
-        {
-          reason,
-          memberId: normalizedUserId,
-          error,
-        },
-      );
     } else {
       logPublicMemberProfilesFallback(
         "public-member-profile-settings-write-fallback",
@@ -40740,7 +40727,6 @@ function renderProfilePage() {
   const accountInfoRows = [
     { label: "Email", value: email },
     { label: "Display Name", value: displayName || "Choose a display name in Edit Profile" },
-    { label: "Public Handle", value: currentPublicProfile?.publicHandle ? `@${currentPublicProfile.publicHandle}` : "Not set" },
     { label: "Country", value: currentPublicProfile?.countryCode ? `${getCountryFlagEmoji(currentPublicProfile.countryCode)} ${getCountryName(currentPublicProfile.countryCode)}` : "Not set" },
     { label: "Member Since", value: memberSinceLabel },
     { label: "Profile Visibility", value: profilePageSettings.showProfileInCommunityGrow !== false ? "Public in Community Grow" : "Private" },
@@ -41034,7 +41020,7 @@ function openProfileEditor() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Account</p>
           <h3>Edit Profile</h3>
-          <p class="muted">Update the public-safe name, handle, bio, country, and avatar shown in ${BRAND_APP_NAME}.</p>
+          <p class="muted">Update the public-safe name, country, bio, and avatar shown in ${BRAND_APP_NAME}.</p>
         </div>
         <div id="profile-modal-body"></div>
         <div class="snapshot-modal-actions">
@@ -41060,7 +41046,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = `Update the public-safe name, handle, bio, country, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
+    copy.textContent = `Update the public-safe name, country, bio, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -41218,7 +41204,6 @@ function bindProfileForm(form, options = {}) {
   const notificationPreferences = options.initialNotificationPreferences || appState.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES;
   const existingPublicProfile = appState.publicMemberProfiles[String(appState.user?.id || "").trim()] || null;
   const usernameInput = form.elements.username;
-  const publicHandleInput = form.elements.publicHandle;
   const countryCodeInput = form.elements.countryCode;
   const bioInput = form.elements.bio;
   const avatarInput = form.elements.avatar;
@@ -41256,9 +41241,6 @@ function bindProfileForm(form, options = {}) {
   };
 
   usernameInput.value = profile?.username || "";
-  if (publicHandleInput instanceof HTMLInputElement) {
-    publicHandleInput.value = existingPublicProfile?.publicHandle || "";
-  }
   initProfileCountryCombobox(
     form,
     existingPublicProfile?.countryCode || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
@@ -41359,8 +41341,6 @@ function bindProfileForm(form, options = {}) {
       removeAvatar: state.removeAvatar,
     });
     const username = String(usernameInput.value || "").trim();
-    const rawPublicHandle = String(publicHandleInput?.value || "").trim();
-    const publicHandle = normalizePublicProfileHandle(rawPublicHandle);
     const countryCode = normalizeCountryCode(countryCodeInput?.value || "");
     const bio = normalizePublicProfileTextField(bioInput?.value || "", 280);
 
@@ -41369,12 +41349,6 @@ function bindProfileForm(form, options = {}) {
       usernameInput.reportValidity();
       return;
     }
-    if (rawPublicHandle && !publicHandle) {
-      setProfileFormMessage("Public handle must be 3-32 letters, numbers, underscores, or hyphens.", "error");
-      publicHandleInput?.reportValidity?.();
-      return;
-    }
-
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = "Saving...";
@@ -41499,7 +41473,6 @@ function bindProfileForm(form, options = {}) {
         appState.profilePageSettings = await savePublicMemberProfileSettings({
           notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
           bio,
-          publicHandle,
           countryCode,
         }, {
           requirePersistence: true,
@@ -41518,9 +41491,7 @@ function bindProfileForm(form, options = {}) {
       } catch (error) {
         console.warn("[Cannakan Profile] Public profile/settings save warning", error);
         const publicMessage = getPublicMemberProfileSaveErrorMessage(error, error.message || "Unknown settings error.");
-        warnings.push(isPublicProfileHandleCollisionError(error) || publicMessage.includes("profile handle is already taken")
-          ? publicMessage
-          : `Profile saved, but public profile or notification preferences could not be saved: ${publicMessage}`);
+        warnings.push(`Profile saved, but public profile or notification preferences could not be saved: ${publicMessage}`);
         syncNotificationPreferenceAvailability();
       }
 
@@ -71561,7 +71532,6 @@ function renderPublicMemberProfile(memberId) {
   const bestRateLabel = publicStats.bestGerminationRate === null
     ? ""
     : getProfileAnalyticsRateLabel(publicStats.bestGerminationRate);
-  const publicHandleLabel = profile?.publicHandle ? `@${profile.publicHandle}` : "";
   const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
   const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
   const publicAnalytics = publicStats.publicAnalytics || calculateProfileAnalyticsFromPublicSnapshots(approvedSnapshots);
@@ -71648,7 +71618,7 @@ function renderPublicMemberProfile(memberId) {
         <div class="public-member-profile-copy">
           <p class="eyebrow">Community Member</p>
           <h2>${renderDisplayNameWithCountryFlag(displayName, countryCode, "public-member-profile-name")}</h2>
-            <p class="muted">${escapeHtml(publicHandleLabel || "Public grow profile")}</p>
+            <p class="muted">Public grow profile</p>
             ${trustIndicators.length ? `
               <div class="public-member-profile-trust-row" aria-label="Profile trust indicators">
                 ${trustIndicators.map((indicator) => `<span class="public-member-profile-trust-chip">${escapeHtml(indicator.label)}</span>`).join("")}

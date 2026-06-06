@@ -64,7 +64,12 @@ function requireNeedle(source, needle, label = needle) {
 [
   'Region (optional)',
   'name="locationRegion"',
+  'Public Handle (optional)',
+  'name="publicHandle"',
   "const locationRegionInput = form.elements.locationRegion",
+  "const publicHandleInput = form.elements.publicHandle",
+  "Public Handle\", value:",
+  "Public handle must be",
 ].forEach((retiredNeedle) => {
   if (htmlSource.includes(retiredNeedle) || appSource.includes(retiredNeedle)) {
     throw new Error(`Retired profile Region UI still present: ${retiredNeedle}`);
