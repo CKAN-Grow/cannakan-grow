@@ -37202,6 +37202,25 @@ body.modal-open {
   transform: scale(0.94);
 }
 
+.learn-tutorial-video-error {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 3;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 94, 104, 0.42);
+  background: rgba(36, 8, 10, 0.86);
+  color: #ffd7da;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
 .learn-video-player-slots {
   display: none;
 }

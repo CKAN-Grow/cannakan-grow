@@ -36106,6 +36106,9 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         visibilityStatus: "published",
         audience: "public",
         isPublic: true,
+        featured: true,
+        featuredOrder: 1,
+        featuredLabel: "Start Here",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
@@ -38479,6 +38482,7 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
           ${video.captionsUrl ? `<track kind="captions" src="${escapeHtml(video.captionsUrl)}" srclang="en" label="English">` : ""}
         </video>
         <button type="button" class="learn-tutorial-video-play-button" data-learn-video-play="true" aria-label="Play ${escapeHtml(tutorial.title || "tutorial video")}">▶</button>
+        <p class="learn-tutorial-video-error" data-learn-video-error role="alert" hidden></p>
       </div>
     `;
   }
@@ -38542,6 +38546,7 @@ function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
     videoElement.dataset.learnVideoBound = "true";
     const shell = videoElement.closest("[data-learn-video-player-shell]");
     const playButton = shell?.querySelector?.("[data-learn-video-play='true']");
+    const errorElement = shell?.querySelector?.("[data-learn-video-error]");
     const logPayload = () => getLearnVideoDebugPayload(videoElement, tutorialId);
     console.info("[Learn Video] MP4 player mounted.", logPayload());
 
@@ -38550,21 +38555,36 @@ function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
         shell.classList.toggle("is-playing", isPlaying);
       }
     };
+    const setVideoErrorMessage = (message = "") => {
+      if (!(errorElement instanceof HTMLElement)) {
+        return;
+      }
+      const normalizedMessage = String(message || "").trim();
+      errorElement.textContent = normalizedMessage;
+      errorElement.hidden = !normalizedMessage;
+      if (shell instanceof HTMLElement) {
+        shell.classList.toggle("has-video-error", Boolean(normalizedMessage));
+      }
+    };
     const logVideoError = (eventName = "error") => {
+      const errorDetails = getLearnVideoErrorDetails(videoElement);
+      setVideoErrorMessage(`Video could not be loaded. ${errorDetails.label}`);
       console.error("[Learn Video] MP4 loading/playback error.", {
         event: eventName,
         ...logPayload(),
-        error: getLearnVideoErrorDetails(videoElement),
+        error: errorDetails,
       });
     };
     const requestPlayback = async (source = "play button") => {
       try {
+        setVideoErrorMessage("");
         const playResult = videoElement.play();
         if (playResult && typeof playResult.then === "function") {
           await playResult;
         }
         console.info("[Learn Video] Playback started.", { source, ...logPayload() });
       } catch (error) {
+        setVideoErrorMessage("Video playback could not start. Please try again.");
         console.error("[Learn Video] Browser refused MP4 playback.", {
           source,
           ...logPayload(),
@@ -38577,9 +38597,13 @@ function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
       videoElement.addEventListener(eventName, () => logVideoError(eventName));
     });
     videoElement.addEventListener("loadedmetadata", () => {
+      setVideoErrorMessage("");
       console.info("[Learn Video] MP4 metadata loaded.", logPayload());
     });
-    videoElement.addEventListener("playing", () => setPlayingState(true));
+    videoElement.addEventListener("playing", () => {
+      setVideoErrorMessage("");
+      setPlayingState(true);
+    });
     videoElement.addEventListener("pause", () => setPlayingState(false));
     videoElement.addEventListener("ended", () => setPlayingState(false));
     videoElement.addEventListener("click", () => {
