@@ -35990,7 +35990,8 @@ function openNewSessionNamePrompt(form) {
 
 const LEARN_FILTER_PAPER_TUTORIAL_ID = "loading-seeds-into-kan";
 const LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH = "/assets/learn/images/tutorials/loading-filter-paper.webp";
-const LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH = "/assets/learn/videos/tutorials/loading-filter-paper.mp4";
+const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
+const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
@@ -36050,11 +36051,13 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         relatedFeature: "kan-system",
         userStage: "new_user",
         video: Object.freeze({
-          provider: "mp4",
-          videoProvider: "mp4",
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
           modalPlayerReady: true,
-          mp4Url: LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH,
-          cloudflareStreamId: "",
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
           posterUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
         }),
@@ -36594,6 +36597,7 @@ function getTutorialVideoConfig(tutorial = {}) {
   return {
     videoProvider,
     cloudflareStreamId: String(tutorial.cloudflareStreamId || video.cloudflareStreamId || "").trim(),
+    cloudflareStreamCustomerCode: String(tutorial.cloudflareStreamCustomerCode || video.cloudflareStreamCustomerCode || "").trim(),
     mp4Url: String(tutorial.mp4Url || video.mp4Url || "").trim(),
     embedUrl: String(tutorial.embedUrl || video.embedUrl || "").trim(),
     posterUrl,
@@ -37329,6 +37333,7 @@ function getLearnTutorialCategories() {
         : (Number.isFinite(Number(categoryMap.get(categoryId)?.categoryOrder)) ? Number(categoryMap.get(categoryId)?.categoryOrder) : 999);
       let videoProvider = normalizeTutorialVideoProvider(draft.videoProvider || videoDraft.videoProvider || videoDraft.provider || tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
       let cloudflareStreamId = String(draft.cloudflareStreamId || videoDraft.cloudflareStreamId || tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
+      let cloudflareStreamCustomerCode = String(draft.cloudflareStreamCustomerCode || videoDraft.cloudflareStreamCustomerCode || tutorial.cloudflareStreamCustomerCode || tutorial.video?.cloudflareStreamCustomerCode || "").trim();
       let mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
       let embedUrl = String(draft.embedUrl || videoDraft.embedUrl || tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
       let posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
@@ -37336,11 +37341,12 @@ function getLearnTutorialCategories() {
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
       if (isCanonicalFilterPaperTutorial) {
-        videoProvider = "mp4";
-        cloudflareStreamId = "";
-        mp4Url = LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH;
+        videoProvider = "cloudflare";
+        cloudflareStreamId = LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID;
+        cloudflareStreamCustomerCode = LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE;
+        mp4Url = "";
         embedUrl = "";
-        posterUrl = posterUrl || LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH;
+        posterUrl = LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH;
       }
       const draftFeaturedOrder = Number(draft.featuredOrder);
       const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
@@ -37389,6 +37395,7 @@ function getLearnTutorialCategories() {
         onboardingPriority: Boolean(draft.onboardingPriority ?? tutorial.onboardingPriority),
         videoProvider,
         cloudflareStreamId,
+        cloudflareStreamCustomerCode,
         mp4Url,
         embedUrl,
         posterUrl,
@@ -37402,6 +37409,7 @@ function getLearnTutorialCategories() {
           videoProvider,
           provider: videoProvider,
           cloudflareStreamId,
+          cloudflareStreamCustomerCode,
           mp4Url,
           embedUrl,
           posterUrl,
@@ -38373,19 +38381,143 @@ function renderTutorialVideoPlaceholderMarkup(video = {}, label = "Video Coming 
   `;
 }
 
-function renderCloudflareTutorialPlayerPlaceholder(tutorial = {}, video = getTutorialVideoConfig(tutorial), category = {}) {
-  return renderTutorialVideoPlaceholderMarkup(
-    video,
-    video.cloudflareStreamId ? "Cloudflare Stream Embed Ready" : "Cloudflare Stream ID Needed",
-    tutorial,
-    category,
+function getConfiguredCloudflareStreamCustomerCode() {
+  return String(
+    window.CANNAKAN_SUPABASE_CONFIG?.cloudflareStreamCustomerCode
+    || window.CANNAKAN_SUPABASE_CONFIG?.cloudflare_stream_customer_code
+    || window.CANNAKAN_CLOUDFLARE_STREAM_CUSTOMER_CODE
+    || LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE
+    || "",
+  ).trim();
+}
+
+function normalizeCloudflareStreamCustomerCode(customerCode = "") {
+  return String(customerCode || "")
+    .trim()
+    .replace(/^customer-/i, "")
+    .replace(/\.cloudflarestream\.com$/i, "")
+    .replace(/[^a-z0-9-]/gi, "");
+}
+
+function getCloudflareStreamIframeUrl(videoId = "", customerCode = LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE) {
+  const normalizedVideoId = String(videoId || "").trim().replace(/^\/+|\/+$/g, "");
+  const normalizedCustomerCode = normalizeCloudflareStreamCustomerCode(customerCode);
+  if (!normalizedVideoId || !normalizedCustomerCode) {
+    return "";
+  }
+  return `https://customer-${normalizedCustomerCode}.cloudflarestream.com/${encodeURIComponent(normalizedVideoId)}/iframe`;
+}
+
+function getAbsoluteLearnAssetUrl(url = "") {
+  const normalizedUrl = String(url || "").trim();
+  if (!normalizedUrl) {
+    return "";
+  }
+  try {
+    return new URL(normalizedUrl, window.location.origin).href;
+  } catch (_error) {
+    return normalizedUrl;
+  }
+}
+
+function parseCloudflareStreamReference(reference = "") {
+  const rawReference = String(reference || "").trim();
+  if (!rawReference) {
+    return { streamId: "", customerCode: "", iframeUrl: "" };
+  }
+
+  const iframeSrcMatch = rawReference.match(/\bsrc=(["'])(.*?)\1/i);
+  const candidateReference = iframeSrcMatch ? iframeSrcMatch[2] : rawReference;
+
+  try {
+    const parsedUrl = new URL(candidateReference, window.location.origin);
+    const host = parsedUrl.hostname.toLowerCase();
+    const pathSegments = parsedUrl.pathname.split("/").map((segment) => segment.trim()).filter(Boolean);
+    const customerMatch = host.match(/^customer-([a-z0-9-]+)\.cloudflarestream\.com$/i);
+    const isCloudflarePlayerUrl = Boolean(customerMatch && pathSegments[0]);
+    if (isCloudflarePlayerUrl) {
+      const iframeUrl = new URL(parsedUrl.href);
+      iframeUrl.pathname = `/${encodeURIComponent(pathSegments[0])}/iframe`;
+      return {
+        streamId: pathSegments[0],
+        customerCode: customerMatch[1],
+        iframeUrl: iframeUrl.href,
+      };
+    }
+  } catch (_error) {
+    // Treat non-URL input as a raw Stream UID.
+  }
+
+  return {
+    streamId: rawReference.replace(/^\/+|\/+$/g, ""),
+    customerCode: "",
+    iframeUrl: "",
+  };
+}
+
+function buildCloudflareStreamIframeUrl(video = {}) {
+  const parsedReference = parseCloudflareStreamReference(video.cloudflareStreamId || video.embedUrl || "");
+  const streamId = String(parsedReference.streamId || "").trim();
+  const customerCode = normalizeCloudflareStreamCustomerCode(
+    parsedReference.customerCode
+    || video.cloudflareStreamCustomerCode
+    || getConfiguredCloudflareStreamCustomerCode(),
   );
+
+  if (!streamId) {
+    return { url: "", reason: "missing-stream-id" };
+  }
+  if (!customerCode) {
+    return { url: "", reason: "missing-customer-code" };
+  }
+
+  const iframeUrl = parsedReference.iframeUrl
+    ? new URL(parsedReference.iframeUrl)
+    : new URL(getCloudflareStreamIframeUrl(streamId, customerCode));
+  const posterUrl = getAbsoluteLearnAssetUrl(video.posterUrl || "");
+  if (posterUrl) {
+    iframeUrl.searchParams.set("poster", posterUrl);
+  }
+  iframeUrl.searchParams.set("preload", "metadata");
+  return { url: iframeUrl.href, reason: "" };
 }
 
 function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
   const video = getTutorialVideoConfig(tutorial);
   if (video.videoProvider === "cloudflare") {
-    return renderCloudflareTutorialPlayerPlaceholder(tutorial, video, category);
+    const player = buildCloudflareStreamIframeUrl(video);
+    if (!player.url && player.reason === "missing-stream-id") {
+      return renderTutorialVideoPlaceholderMarkup(video, "Cloudflare Stream ID Needed", tutorial, category);
+    }
+    if (!player.url) {
+      return renderTutorialVideoPlaceholderMarkup(
+        video,
+        player.reason === "missing-customer-code" ? "Cloudflare Customer Code Needed" : "Cloudflare Stream Embed Needed",
+        tutorial,
+        category,
+      );
+    }
+
+    return `
+      <div
+        class="learn-tutorial-player has-video learn-tutorial-player--cloudflare"
+        data-learn-video-player-shell="true"
+        data-video-provider="cloudflare"
+        data-video-src="${escapeHtml(player.url)}"
+      >
+        ${renderTutorialVideoPlayerMetadataMarkup(video)}
+        <iframe
+          class="learn-tutorial-player-media"
+          data-learn-cloudflare-player="true"
+          src="${escapeHtml(player.url)}"
+          title="${escapeHtml(tutorial.title || "Tutorial video")}"
+          loading="lazy"
+          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          allowfullscreen="true"
+        ></iframe>
+        <p class="learn-tutorial-video-error" data-learn-video-error role="alert" hidden></p>
+      </div>
+    `;
   }
 
   if (video.videoProvider === "mp4") {
@@ -38469,6 +38601,19 @@ function getLearnVideoDebugPayload(videoElement = null, tutorialId = "") {
   };
 }
 
+function getLearnCloudflareVideoDebugPayload(iframeElement = null, tutorialId = "") {
+  const shell = iframeElement?.closest?.("[data-learn-video-player-shell]");
+  const metadata = shell?.querySelector?.(".learn-video-player-slots");
+  return {
+    tutorialId: String(tutorialId || "").trim(),
+    provider: shell instanceof HTMLElement ? shell.dataset.videoProvider || "" : "",
+    shellSrc: shell instanceof HTMLElement ? shell.dataset.videoSrc || "" : "",
+    iframeSrc: iframeElement?.getAttribute?.("src") || "",
+    streamId: metadata instanceof HTMLElement ? metadata.dataset.videoCloudflareStreamId || "" : "",
+    poster: metadata instanceof HTMLElement ? metadata.dataset.videoPosterUrl || "" : "",
+  };
+}
+
 function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
   scope.querySelectorAll("video.learn-tutorial-player-media").forEach((videoElement) => {
     if (!(videoElement instanceof HTMLVideoElement) || videoElement.dataset.learnVideoBound === "true") {
@@ -38549,6 +38694,32 @@ function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
         requestPlayback("overlay play button");
       });
     }
+  });
+
+  scope.querySelectorAll("iframe[data-learn-cloudflare-player='true']").forEach((iframeElement) => {
+    if (!(iframeElement instanceof HTMLIFrameElement) || iframeElement.dataset.learnVideoBound === "true") {
+      return;
+    }
+    iframeElement.dataset.learnVideoBound = "true";
+    const shell = iframeElement.closest("[data-learn-video-player-shell]");
+    const errorElement = shell?.querySelector?.("[data-learn-video-error]");
+    const logPayload = () => getLearnCloudflareVideoDebugPayload(iframeElement, tutorialId);
+    console.info("[Learn Video] Cloudflare Stream player mounted.", logPayload());
+
+    iframeElement.addEventListener("load", () => {
+      if (errorElement instanceof HTMLElement) {
+        errorElement.textContent = "";
+        errorElement.hidden = true;
+      }
+      console.info("[Learn Video] Cloudflare Stream iframe loaded.", logPayload());
+    });
+    iframeElement.addEventListener("error", () => {
+      if (errorElement instanceof HTMLElement) {
+        errorElement.textContent = "Cloudflare Stream video could not be loaded.";
+        errorElement.hidden = false;
+      }
+      console.error("[Learn Video] Cloudflare Stream iframe failed to load.", logPayload());
+    });
   });
 }
 

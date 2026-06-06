@@ -1,4 +1,9 @@
 supabase/cannakan-grow-cron-2026-supa-long-s.txt 
 Videos/
+!public/assets/learn/videos/
+!public/assets/learn/videos/tutorials/
+!public/assets/learn/videos/tutorials/loading-filter-paper.mp4
 playwright-report/
 test-results/
+public/assets/learn/videos/tutorials/*.mp4
+public/assets/learn/videos/tutorials/*.mp4 
