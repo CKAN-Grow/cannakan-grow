@@ -208,13 +208,6 @@ const SEED_AGE_STEP_YEARS = 0.5;
 const SEED_AGE_STEP_EPSILON = 0.000001;
 const SEED_AGE_INPUT_HELPER_TEXT = "Use 0.5 year increments starting at 1 year, or leave blank.";
 const SEED_VAULT_YEAR_ACQUIRED_MIN = 1980;
-const SEED_VAULT_OPTIONAL_REST_COLUMNS = Object.freeze([
-  "acquired_at",
-  "storage_notes",
-  "archived_at",
-  "is_deleted",
-  "deleted_at",
-]);
 const SEED_TYPE_OPTIONS = Object.freeze([
   { id: "auto", label: "Auto", tone: "green-blue" },
   { id: "fast", label: "Fast", tone: "gold-green" },
@@ -5501,66 +5494,21 @@ function isSeedVaultEntriesSchemaError(error) {
   return isSeedVaultEntriesTableMissingError(error) || isSeedVaultEntriesColumnMissingError(error);
 }
 
-function getSeedVaultMissingOptionalRestColumn(error = null) {
-  if (!isSupabaseColumnMissingError(error, SEED_VAULT_ENTRIES_TABLE, SEED_VAULT_OPTIONAL_REST_COLUMNS)) {
-    return "";
-  }
-  const message = getSupabaseErrorSearchText(error);
-  return SEED_VAULT_OPTIONAL_REST_COLUMNS.find((columnName) => message.includes(columnName)) || "";
-}
-
-function omitSeedVaultRestColumns(row = {}, omittedColumns = []) {
-  const omittedColumnSet = new Set((omittedColumns || []).map((columnName) => String(columnName || "").trim()).filter(Boolean));
-  return Object.fromEntries(
-    Object.entries(row || {}).filter(([columnName]) => !omittedColumnSet.has(columnName)),
-  );
-}
-
-async function upsertSeedVaultRowsWithSchemaCompatibility(rowsOrRow, options = {}) {
+async function upsertSeedVaultRows(rowsOrRow, options = {}) {
   const { single = false } = options || {};
   const isBulk = Array.isArray(rowsOrRow);
-  const originalRows = isBulk ? rowsOrRow : [rowsOrRow];
-  const omittedColumns = new Set();
-
-  for (let attempt = 0; attempt <= SEED_VAULT_OPTIONAL_REST_COLUMNS.length; attempt += 1) {
-    const payloadRows = originalRows.map((row) => omitSeedVaultRestColumns(row, [...omittedColumns]));
-    const payload = isBulk ? payloadRows : payloadRows[0];
-    let query = appState.supabase
-      .from(SEED_VAULT_ENTRIES_TABLE)
-      .upsert(payload, { onConflict: "id" })
-      .select("*");
-    if (single) {
-      query = query.single();
-    }
-
-    const { data, error } = await query;
-    if (!error) {
-      return { data, error: null, omittedColumns: [...omittedColumns] };
-    }
-
-    const missingOptionalColumn = getSeedVaultMissingOptionalRestColumn(error);
-    if (!missingOptionalColumn || omittedColumns.has(missingOptionalColumn)) {
-      return { data: null, error, omittedColumns: [...omittedColumns] };
-    }
-
-    omittedColumns.add(missingOptionalColumn);
-    console.warn("[My Seed Vault] Supabase REST schema is missing optional column; retrying without it.", {
-      table: SEED_VAULT_ENTRIES_TABLE,
-      missingColumn: missingOptionalColumn,
-      omittedColumns: [...omittedColumns],
-      code: error?.code || "",
-      message: error?.message || "",
-      details: error?.details || "",
-      hint: error?.hint || "",
-      error,
-    });
+  const payloadRows = isBulk ? rowsOrRow : [rowsOrRow];
+  const payload = isBulk ? payloadRows : payloadRows[0];
+  let query = appState.supabase
+    .from(SEED_VAULT_ENTRIES_TABLE)
+    .upsert(payload, { onConflict: "id" })
+    .select("*");
+  if (single) {
+    query = query.single();
   }
 
-  return {
-    data: null,
-    error: new Error("My Seed Vault entry could not be saved because the Supabase schema cache rejected optional columns."),
-    omittedColumns: [...omittedColumns],
-  };
+  const { data, error } = await query;
+  return { data, error };
 }
 
 function getSeedVaultSupabaseErrorMessage(error = null, action = "save") {
@@ -5651,7 +5599,7 @@ async function syncSeedVaultEntriesToBackend(entries = [], userId = appState.use
     return [];
   }
 
-  const { data, error, omittedColumns } = await upsertSeedVaultRowsWithSchemaCompatibility(rows);
+  const { data, error } = await upsertSeedVaultRows(rows);
 
   if (error) {
     if (isSeedVaultEntriesSchemaError(error)) {
@@ -5669,14 +5617,6 @@ async function syncSeedVaultEntriesToBackend(entries = [], userId = appState.use
     });
     throw error;
   }
-  if (omittedColumns?.length) {
-    console.info("[My Seed Vault] Backend sync saved with optional REST columns omitted.", {
-      table: SEED_VAULT_ENTRIES_TABLE,
-      omittedColumns,
-      rowsAttempted: rows.length,
-    });
-  }
-
   return sortSeedVaultEntries(data || []);
 }
 
@@ -5754,7 +5694,7 @@ async function persistSeedVaultEntry(entry = {}) {
     return normalizedEntry;
   }
 
-  const { data, error, omittedColumns } = await upsertSeedVaultRowsWithSchemaCompatibility(row, { single: true });
+  const { data, error } = await upsertSeedVaultRows(row, { single: true });
 
   if (error) {
     if (isSeedVaultEntriesSchemaError(error)) {
@@ -5777,15 +5717,6 @@ async function persistSeedVaultEntry(entry = {}) {
     });
     throw new Error(message);
   }
-  if (omittedColumns?.length) {
-    console.info("[My Seed Vault] Backend save succeeded with optional REST columns omitted.", {
-      table: SEED_VAULT_ENTRIES_TABLE,
-      entryId: normalizedEntry.id,
-      userId: normalizedEntry.userId,
-      omittedColumns,
-    });
-  }
-
   const savedEntry = normalizeSeedVaultEntry(data);
   if (savedEntry) {
     saveSeedVaultEntries([

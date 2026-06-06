@@ -44,6 +44,13 @@ const yearAcquiredAgeMigrationPath = path.join(
   "20260605123000_seed_vault_year_acquired_age_source_of_truth.sql",
 );
 const yearAcquiredAgeSql = fs.readFileSync(yearAcquiredAgeMigrationPath, "utf8");
+const currentRestContractMigrationPath = path.join(
+  repoRoot,
+  "supabase",
+  "migrations",
+  "20260606123000_seed_vault_entries_current_rest_contract.sql",
+);
+const currentRestContractSql = fs.readFileSync(currentRestContractMigrationPath, "utf8");
 
 for (const needle of [
   "create table if not exists public.seed_vault_entries",
@@ -224,6 +231,36 @@ for (const needle of [
 
 if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(yearAcquiredAgeSql)) {
   throw new Error("Seed Vault year-acquired age migration must stay additive and non-destructive.");
+}
+
+for (const needle of [
+  "Ensure the production Seed Vault table matches the current app REST payload.",
+  "create table if not exists public.seed_vault_entries",
+  "add column if not exists acquired_at date",
+  "add column if not exists storage_notes text",
+  "add column if not exists archived_at timestamptz",
+  "add column if not exists is_deleted boolean not null default false",
+  "add column if not exists deleted_at timestamptz",
+  "add column if not exists is_favorite boolean not null default false",
+  "add column if not exists is_archived boolean not null default false",
+  "add column if not exists year_acquired integer",
+  "add column if not exists seed_age_years numeric",
+  "create trigger seed_vault_entries_set_updated_at",
+  "alter table public.seed_vault_entries enable row level security",
+  "create policy \"Users can view their own seed vault entries\"",
+  "create policy \"Users can insert their own seed vault entries\"",
+  "create policy \"Users can update their own seed vault entries\"",
+  "create policy \"Users can delete their own seed vault entries\"",
+  "grant select, insert, update, delete on public.seed_vault_entries to authenticated",
+  "notify pgrst, 'reload schema'",
+]) {
+  if (!currentRestContractSql.includes(needle)) {
+    throw new Error(`Missing Seed Vault current REST contract migration safeguard: ${needle}`);
+  }
+}
+
+if (/drop\s+table|truncate\s+table|delete\s+from\s+public\.seed_vault_entries/i.test(currentRestContractSql)) {
+  throw new Error("Seed Vault current REST contract migration must stay additive and non-destructive.");
 }
 
 console.log("Seed Vault migration regression check passed.");
