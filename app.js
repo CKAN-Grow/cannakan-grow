@@ -7834,8 +7834,9 @@ function maybeOpenGrowRemindersPrompt(routeHash = appState.currentRouteHash || w
         growRemindersEnabled: notificationsEnabled,
         pushNotificationsEnabled: permissionResult === "granted",
       }, {
-        requirePersistence: false,
+        requirePersistence: true,
         debugContext: "grow-reminders-prompt",
+        verifyAfterSave: true,
       });
       if (permissionResult === "granted") {
         try {
@@ -13214,11 +13215,14 @@ function syncUserNotificationPreferencesCache(userId = "", preferences = {}, opt
   );
 
   appState.notificationPreferences = normalizedPreferences;
-  console.info("[Push Preferences] loaded/synced", {
+  logPushNotificationPersistenceDiagnostics("preference:loaded", {
     userId: normalizedUserId,
-    savedPreferenceValue: preferences?.push_notifications_enabled,
-    cachedPreferenceValue: preferences?.pushNotificationsEnabled,
+    sourcePushNotificationsEnabled: preferences?.push_notifications_enabled,
+    sourceCamelPushNotificationsEnabled: preferences?.pushNotificationsEnabled,
     computedPushNotificationsEnabled: normalizedPreferences.pushNotificationsEnabled,
+    browserPermissionStatus: getGrowRemindersBrowserPermissionState(),
+    activeSubscriptionStatus: getPushSubscriptionSupportState(),
+    persistLocal,
   });
 
   if (persistLocal && normalizedUserId) {
@@ -13233,6 +13237,27 @@ function syncUserNotificationPreferencesCache(userId = "", preferences = {}, opt
   }
 
   return normalizedPreferences;
+}
+
+function logPushNotificationPersistenceDiagnostics(eventName = "state", details = {}, level = "info") {
+  const logger = level === "warn" ? console.warn : (level === "error" ? console.error : console.info);
+  try {
+    logger("[Push Persistence]", {
+      event: eventName,
+      userId: String(details.userId || appState.user?.id || "").trim(),
+      savedPreference: details.savedPreference ?? details.sourcePushNotificationsEnabled ?? details.payloadPushNotificationsEnabled,
+      loadedPreference: details.loadedPreference ?? appState.notificationPreferences?.pushNotificationsEnabled,
+      browserPermissionStatus: details.browserPermissionStatus || getGrowRemindersBrowserPermissionState(),
+      activeSubscriptionStatus: details.activeSubscriptionStatus || getPushSubscriptionSupportState(),
+      currentDeviceRegistered: Boolean(appState.currentPushSubscriptionRecord && !appState.currentPushSubscriptionRecord.disabledAt),
+      currentDevicePushEnabled: appState.currentPushSubscriptionRecord?.pushEnabled,
+      currentDeviceKey: appState.currentPushSubscriptionRecord?.deviceKey || "",
+      currentEndpointPresent: Boolean(appState.currentPushSubscriptionRecord?.endpoint || appState.currentPushEndpoint),
+      ...details,
+    });
+  } catch (error) {
+    console.warn("[Push Persistence] diagnostics logging failed.", error);
+  }
 }
 
 function logUserNotificationPreferencesFallback(error, details = {}) {
@@ -13503,7 +13528,13 @@ async function loadUserPushSubscriptions(user = appState.user) {
   const normalizedUserId = String(user?.id || "").trim();
   const storedRecords = loadStoredUserPushSubscriptions(normalizedUserId);
   if (!appState.supabase || !normalizedUserId || appState.pushSubscriptionsTableUnavailable) {
-    return syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+    const fallbackRecords = syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+    logPushNotificationPersistenceDiagnostics("subscription:load:fallback", {
+      userId: normalizedUserId,
+      activeSubscriptionStatus: getPushSubscriptionSupportState(),
+      loadedSubscriptionCount: fallbackRecords.length,
+    }, "warn");
+    return fallbackRecords;
   }
 
   try {
@@ -13516,7 +13547,14 @@ async function loadUserPushSubscriptions(user = appState.user) {
       throw error;
     }
 
-    return syncUserPushSubscriptionsCache(normalizedUserId, data || []);
+    const syncedRecords = syncUserPushSubscriptionsCache(normalizedUserId, data || []);
+    logPushNotificationPersistenceDiagnostics("subscription:load:database", {
+      userId: normalizedUserId,
+      loadedSubscriptionCount: syncedRecords.length,
+      enabledSubscriptionCount: syncedRecords.filter((record) => record.pushEnabled === true && !record.disabledAt).length,
+      currentDeviceSaved: Boolean(appState.currentPushSubscriptionRecord?.deviceKey),
+    });
+    return syncedRecords;
   } catch (error) {
     if (isUserPushSubscriptionsTableMissingError(error)) {
       markUserPushSubscriptionsTableUnavailable();
@@ -13533,7 +13571,13 @@ async function loadUserPushSubscriptions(user = appState.user) {
         },
       );
     }
-    return syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+    const fallbackRecords = syncUserPushSubscriptionsCache(normalizedUserId, storedRecords, { persistLocal: false });
+    logPushNotificationPersistenceDiagnostics("subscription:load:error", {
+      userId: normalizedUserId,
+      loadedSubscriptionCount: fallbackRecords.length,
+      error: error?.message || "",
+    }, "warn");
+    return fallbackRecords;
   }
 }
 
@@ -13614,6 +13658,10 @@ async function saveUserPushSubscriptionRecord(subscription = null, options = {})
   if (!normalizedUserId) {
     throw new Error("You must be signed in to save push subscription details.");
   }
+  const {
+    requirePersistence = false,
+    debugContext = "",
+  } = options || {};
 
   const payload = buildPushSubscriptionUpsertPayload(subscription, options);
   const fallbackRecord = normalizePushSubscriptionRecord(payload);
@@ -13627,10 +13675,29 @@ async function saveUserPushSubscriptionRecord(subscription = null, options = {})
   };
 
   if (!appState.supabase || appState.pushSubscriptionsTableUnavailable) {
+    logPushNotificationPersistenceDiagnostics("subscription:save:fallback", {
+      userId: normalizedUserId,
+      debugContext,
+      payloadPushEnabled: payload.push_enabled,
+      payloadPermissionState: payload.permission_state,
+      payloadEndpointPresent: Boolean(payload.endpoint),
+      reason: !appState.supabase ? "supabase-unavailable" : "table-unavailable",
+    }, requirePersistence && appState.supabase ? "warn" : "info");
+    if (requirePersistence && appState.supabase) {
+      throw new Error("Push subscription persistence is temporarily unavailable.");
+    }
     return mergeFallbackRecord();
   }
 
   try {
+    logPushNotificationPersistenceDiagnostics("subscription:save:request", {
+      userId: normalizedUserId,
+      debugContext,
+      payloadPushEnabled: payload.push_enabled,
+      payloadPermissionState: payload.permission_state,
+      payloadEndpointPresent: Boolean(payload.endpoint),
+      payloadDeviceKey: payload.device_key,
+    });
     const { data, error } = await appState.supabase
       .from(USER_PUSH_SUBSCRIPTIONS_TABLE)
       .upsert(payload, { onConflict: "user_id,device_key" })
@@ -13647,6 +13714,14 @@ async function saveUserPushSubscriptionRecord(subscription = null, options = {})
       normalizedRecord,
     ];
     syncUserPushSubscriptionsCache(normalizedUserId, nextRecords);
+    logPushNotificationPersistenceDiagnostics("subscription:saved", {
+      userId: normalizedUserId,
+      debugContext,
+      savedPushEnabled: normalizedRecord.pushEnabled,
+      savedPermissionState: normalizedRecord.permissionState,
+      savedEndpointPresent: Boolean(normalizedRecord.endpoint),
+      savedDeviceKey: normalizedRecord.deviceKey,
+    });
     return normalizedRecord;
   } catch (error) {
     if (isUserPushSubscriptionsTableMissingError(error)) {
@@ -13655,6 +13730,16 @@ async function saveUserPushSubscriptionRecord(subscription = null, options = {})
       appState.pushSubscriptionsError = error.message || "Push subscription details could not be saved right now.";
     }
     mergeFallbackRecord();
+    logPushNotificationPersistenceDiagnostics("subscription:save:error", {
+      userId: normalizedUserId,
+      debugContext,
+      payloadPushEnabled: payload.push_enabled,
+      error: error?.message || "",
+      code: error?.code || "",
+    }, "warn");
+    if (requirePersistence) {
+      throw error;
+    }
     return fallbackRecord;
   }
 }
@@ -13691,6 +13776,12 @@ async function ensureCurrentUserPushSubscriptionState(options = {}) {
   if (!subscription) {
     appState.currentPushSubscriptionRecord = getCurrentUserPushSubscriptions(normalizedUserId)
       .find((record) => isCurrentPushSubscriptionRecord(record)) || null;
+    logPushNotificationPersistenceDiagnostics("subscription:current-device:loaded", {
+      userId: normalizedUserId,
+      activeSubscriptionStatus: getPushSubscriptionSupportState(),
+      browserSubscriptionActive: false,
+      currentDeviceSaved: Boolean(appState.currentPushSubscriptionRecord?.deviceKey),
+    });
     return appState.currentPushSubscriptionRecord;
   }
 
@@ -13710,8 +13801,15 @@ async function ensureCurrentUserPushSubscriptionState(options = {}) {
     userId: normalizedUserId,
     pushEnabled: appState.notificationPreferences?.pushNotificationsEnabled === true,
     permissionState: getGrowRemindersBrowserPermissionState(),
+    debugContext: "current-device-state",
   });
   appState.currentPushSubscriptionRecord = savedRecord;
+  logPushNotificationPersistenceDiagnostics("subscription:current-device:synced", {
+    userId: normalizedUserId,
+    activeSubscriptionStatus: getPushSubscriptionSupportState(),
+    browserSubscriptionActive: true,
+    currentDeviceSaved: Boolean(savedRecord?.deviceKey),
+  });
   return savedRecord;
 }
 
@@ -13763,6 +13861,8 @@ async function subscribeCurrentDeviceToPushNotifications() {
       pushEnabled: true,
       permissionState,
       disabledAt: "",
+      requirePersistence: true,
+      debugContext: "enable-push-no-browser-subscription",
     });
     appState.currentPushSubscriptionRecord = savedRecord;
     return savedRecord;
@@ -13772,7 +13872,104 @@ async function subscribeCurrentDeviceToPushNotifications() {
     userId: appState.user.id,
     pushEnabled: true,
     permissionState,
+    requirePersistence: true,
+    debugContext: "enable-push",
   });
+}
+
+async function synchronizePushNotificationPreferenceWithDevice(reason = "unspecified") {
+  const normalizedUserId = String(appState.user?.id || "").trim();
+  if (!normalizedUserId) {
+    return null;
+  }
+
+  const pushPreferenceEnabled = appState.notificationPreferences?.pushNotificationsEnabled === true;
+  const permissionState = getGrowRemindersBrowserPermissionState();
+  const currentRecord = await ensureCurrentUserPushSubscriptionState({ persistRecord: false });
+  const browserSubscription = await getCurrentBrowserPushSubscription({ requireActive: false });
+
+  logPushNotificationPersistenceDiagnostics("preference-device:sync:start", {
+    userId: normalizedUserId,
+    reason,
+    savedPreference: pushPreferenceEnabled,
+    browserPermissionStatus: permissionState,
+    browserSubscriptionActive: Boolean(browserSubscription?.endpoint),
+    currentDeviceSaved: Boolean(currentRecord?.deviceKey),
+    currentDevicePushEnabled: currentRecord?.pushEnabled,
+  });
+
+  if (pushPreferenceEnabled) {
+    if (permissionState !== "granted") {
+      logPushNotificationPersistenceDiagnostics("preference-device:sync:permission-not-granted", {
+        userId: normalizedUserId,
+        reason,
+        savedPreference: true,
+        browserPermissionStatus: permissionState,
+      }, "warn");
+      return currentRecord;
+    }
+
+    try {
+      const savedRecord = await subscribeCurrentDeviceToPushNotifications();
+      appState.currentPushSubscriptionRecord = savedRecord;
+      logPushNotificationPersistenceDiagnostics("preference-device:sync:enabled", {
+        userId: normalizedUserId,
+        reason,
+        savedPreference: true,
+        activeSubscriptionStatus: getPushSubscriptionSupportState(),
+        currentDeviceSaved: Boolean(savedRecord?.deviceKey),
+      });
+      return savedRecord;
+    } catch (error) {
+      logPushNotificationPersistenceDiagnostics("preference-device:sync:enable-failed", {
+        userId: normalizedUserId,
+        reason,
+        savedPreference: true,
+        error: error?.message || "",
+      }, "warn");
+      return currentRecord;
+    }
+  }
+
+  if (currentRecord?.pushEnabled === true && !currentRecord.disabledAt) {
+    try {
+      const savedRecord = await saveUserPushSubscriptionRecord(browserSubscription || currentRecord.subscription || null, {
+        userId: normalizedUserId,
+        endpoint: currentRecord.endpoint || "",
+        deviceKey: currentRecord.deviceKey || getCurrentPushDeviceKey(),
+        p256dhKey: currentRecord.p256dhKey || "",
+        authKey: currentRecord.authKey || "",
+        pushEnabled: false,
+        permissionState,
+        disabledAt: "",
+        debugContext: "preference-device-sync-disabled",
+      });
+      appState.currentPushSubscriptionRecord = savedRecord;
+      logPushNotificationPersistenceDiagnostics("preference-device:sync:disabled", {
+        userId: normalizedUserId,
+        reason,
+        savedPreference: false,
+        currentDeviceSaved: Boolean(savedRecord?.deviceKey),
+        currentDevicePushEnabled: savedRecord?.pushEnabled,
+      });
+      return savedRecord;
+    } catch (error) {
+      logPushNotificationPersistenceDiagnostics("preference-device:sync:disable-failed", {
+        userId: normalizedUserId,
+        reason,
+        savedPreference: false,
+        error: error?.message || "",
+      }, "warn");
+    }
+  }
+
+  logPushNotificationPersistenceDiagnostics("preference-device:sync:complete", {
+    userId: normalizedUserId,
+    reason,
+    savedPreference: false,
+    currentDeviceSaved: Boolean(currentRecord?.deviceKey),
+  });
+  return currentRecord;
 }
 
 async function disableCurrentDevicePushNotifications() {
@@ -15052,7 +15249,7 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
         );
         appState.notificationPreferences = await safelyLoadAppData(
           () => safelyEnsureUserNotificationPreferences(appState.user),
-          getDefaultNotificationPreferences(),
+          loadStoredUserNotificationPreferences(appState.user.id),
           "Failed to initialize notification preferences during auth hydration.",
           "notificationPreferencesError",
         );
@@ -15078,6 +15275,11 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           () => ensureCurrentUserPushSubscriptionState(),
           null,
           "Failed to initialize current device push subscription state during auth hydration.",
+        );
+        await safelyLoadAppData(
+          () => synchronizePushNotificationPreferenceWithDevice(`auth:${reason}`),
+          null,
+          "Failed to synchronize push notification preference with this device during auth hydration.",
         );
         appState.profilePageSettings = await safelyLoadAppData(
           () => ensureCurrentUserPublicMemberProfileSettings(appState.user, {
@@ -15536,6 +15738,11 @@ async function ensureUserNotificationPreferences(user) {
   }
 
   if (existingPreferences) {
+    logPushNotificationPersistenceDiagnostics("preference:load:database-row", {
+      userId: normalizedUserId,
+      loadedPreference: existingPreferences?.push_notifications_enabled,
+      rowUpdatedAt: existingPreferences?.updated_at || "",
+    });
     setUserNotificationPreferencesSchemaMode(existingPreferences);
     setUserNotificationPreferencesAvailableColumns(existingPreferences);
     return syncUserNotificationPreferencesCache(normalizedUserId, {
@@ -15581,6 +15788,11 @@ async function ensureUserNotificationPreferences(user) {
 
     setUserNotificationPreferencesSchemaMode(savedPreferences || writeMode);
     setUserNotificationPreferencesAvailableColumns(savedPreferences || []);
+    logPushNotificationPersistenceDiagnostics("preference:seed:database-row", {
+      userId: normalizedUserId,
+      writeMode,
+      savedPreference: savedPreferences?.push_notifications_enabled ?? preferencePayload?.push_notifications_enabled,
+    });
     return syncUserNotificationPreferencesCache(normalizedUserId, {
       ...storedPreferences,
       ...(savedPreferences || {}),
@@ -22913,6 +23125,12 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         payloadPushNotificationsEnabled: payload.push_notifications_enabled,
         inputPushNotificationsEnabled: preferencesInput?.pushNotificationsEnabled,
       });
+      logPushNotificationPersistenceDiagnostics("preference:save:request", {
+        userId: normalizedUserId,
+        writeMode,
+        payloadPushNotificationsEnabled: payload.push_notifications_enabled,
+        inputPushNotificationsEnabled: preferencesInput?.pushNotificationsEnabled,
+      });
       const response = await writeUserNotificationPreferencesPayload(payload);
       data = response?.data || null;
       error = response?.error || null;
@@ -22923,6 +23141,13 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
         rowPushNotificationsEnabled: data?.push_notifications_enabled,
         error: error?.message || "",
       });
+      logPushNotificationPersistenceDiagnostics(error ? "preference:save:error" : "preference:save:response", {
+        userId: normalizedUserId,
+        writeMode,
+        operation: response?.operation || "",
+        savedPreference: data?.push_notifications_enabled,
+        error: error?.message || "",
+      }, error ? "warn" : "info");
       if (debugContext === "profile-settings") {
         logProfileSettingsDebug("user-notification-preferences:upsert:response", {
           table: USER_NOTIFICATION_PREFERENCES_TABLE,
@@ -22990,16 +23215,38 @@ async function saveUserNotificationPreferences(preferencesInput, options = {}) {
             rowPushNotificationsEnabled: readbackData?.push_notifications_enabled,
             rowCachedPushNotificationsEnabled: readbackData?.pushNotificationsEnabled,
           });
+          logPushNotificationPersistenceDiagnostics("preference:save:readback", {
+            userId: normalizedUserId,
+            writeMode,
+            loadedPreference: readbackData?.push_notifications_enabled,
+            rowCachedPushNotificationsEnabled: readbackData?.pushNotificationsEnabled,
+          });
+          const expectedPushPreference = preferencesInput?.pushNotificationsEnabled;
+          const actualPushPreference = normalizeUserNotificationPreferencesRow(readbackData, fallbackPreferences).pushNotificationsEnabled;
+          if (expectedPushPreference !== undefined && actualPushPreference !== Boolean(expectedPushPreference)) {
+            throwNotificationPreferencesSaveError(
+              "Notification preferences saved, but Supabase returned a different Push Notifications value.",
+              new Error(`Expected pushNotificationsEnabled=${Boolean(expectedPushPreference)} but read back ${actualPushPreference}.`),
+            );
+            return fallbackPreferences;
+          }
           resolvedRow = readbackData;
         }
       }
 
       setUserNotificationPreferencesSchemaMode(resolvedRow || writeMode);
       setUserNotificationPreferencesAvailableColumns(resolvedRow || payload);
-      return syncUserNotificationPreferencesCache(normalizedUserId, {
+      const syncedPreferences = syncUserNotificationPreferencesCache(normalizedUserId, {
         ...fallbackPreferences,
         ...(resolvedRow || {}),
       });
+      logPushNotificationPersistenceDiagnostics("preference:saved", {
+        userId: normalizedUserId,
+        writeMode,
+        savedPreference: syncedPreferences.pushNotificationsEnabled,
+        loadedPreference: syncedPreferences.pushNotificationsEnabled,
+      });
+      return syncedPreferences;
     }
 
     if (isUserNotificationPreferencesSchemaModeError(error)) {
@@ -40593,6 +40840,8 @@ function bindProfilePageForm(form) {
       try {
         if (notificationPreferencesPayload.pushNotificationsEnabled) {
           await subscribeCurrentDeviceToPushNotifications();
+        } else {
+          await synchronizePushNotificationPreferenceWithDevice("profile-settings-save");
         }
       } catch (error) {
         console.warn("[Profile Settings] Push subscription sync failed.", error);
@@ -41469,7 +41718,11 @@ function bindProfileForm(form, options = {}) {
       }
 
       try {
-        appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload);
+        appState.notificationPreferences = await saveUserNotificationPreferences(notificationPreferencePayload, {
+          requirePersistence: true,
+          debugContext: "profile-editor-notification-settings",
+          verifyAfterSave: true,
+        });
         appState.profilePageSettings = await savePublicMemberProfileSettings({
           notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
           bio,
@@ -41498,6 +41751,8 @@ function bindProfileForm(form, options = {}) {
       try {
         if (notificationPreferencePayload.pushNotificationsEnabled) {
           await subscribeCurrentDeviceToPushNotifications();
+        } else {
+          await synchronizePushNotificationPreferenceWithDevice("profile-editor-save");
         }
       } catch (error) {
         console.warn("[Cannakan Profile] Push subscription sync warning", error);
