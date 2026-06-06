@@ -1,7 +1,5 @@
--- Contact/communications inbox for Contact page submissions.
--- Run this file in the Supabase SQL editor if migrations are not automated.
--- It creates the contact_messages table used by the Contact page and Admin Communications Center.
--- The canonical migration lives at supabase/migrations/20260606113000_create_contact_messages.sql.
+-- Create the contact_messages inbox table used by Contact submissions and
+-- the admin-only Communications inbox.
 
 create extension if not exists pgcrypto;
 
@@ -75,7 +73,6 @@ to anon, authenticated
 with check (true);
 
 drop policy if exists "Founder admins can read contact messages" on public.contact_messages;
-drop policy if exists "Admins can read contact messages" on public.contact_messages;
 create policy "Founder admins can read contact messages"
 on public.contact_messages
 for select
@@ -85,7 +82,6 @@ using (
 );
 
 drop policy if exists "Founder admins can update contact messages" on public.contact_messages;
-drop policy if exists "Admins can update contact messages" on public.contact_messages;
 create policy "Founder admins can update contact messages"
 on public.contact_messages
 for update
@@ -98,7 +94,6 @@ with check (
 );
 
 drop policy if exists "Founder admins can delete contact messages" on public.contact_messages;
-drop policy if exists "Admins can delete contact messages" on public.contact_messages;
 create policy "Founder admins can delete contact messages"
 on public.contact_messages
 for delete

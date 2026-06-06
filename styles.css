@@ -37173,6 +37173,35 @@ body.modal-open {
   background: rgba(4, 8, 6, 0.88);
 }
 
+.learn-tutorial-video-play-button {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 24px;
+  border: 1px solid rgba(148, 209, 89, 0.42);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.28), rgba(148, 209, 89, 0.14)),
+    rgba(8, 14, 10, 0.68);
+  color: #dff2cf;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 0 30px rgba(148, 209, 89, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.learn-tutorial-player.is-playing .learn-tutorial-video-play-button {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.94);
+}
+
 .learn-video-player-slots {
   display: none;
 }

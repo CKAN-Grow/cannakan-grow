@@ -11557,11 +11557,6 @@ function markAdminReportsTableUnavailable() {
 
 function markContactMessagesTableUnavailable() {
   appState.contactMessagesTableUnavailable = true;
-  logRuntimeIssueOnce(
-    "warn",
-    "supabase-contact-messages-unavailable",
-    "Contact messages table unavailable. Using fallback storage.",
-  );
 }
 
 function isSiteAnalyticsTableMissingError(error) {
@@ -36062,6 +36057,10 @@ function openNewSessionNamePrompt(form) {
   return true;
 }
 
+const LEARN_FILTER_PAPER_TUTORIAL_ID = "loading-seeds-into-kan";
+const LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH = "/assets/learn/images/tutorials/loading-filter-paper.webp";
+const LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH = "/assets/learn/videos/tutorials/loading-filter-paper.mp4";
+
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
     id: "kan-system",
@@ -36073,7 +36072,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
     tutorials: Object.freeze([
       Object.freeze({
         id: "kan-system-overview",
-        order: 1,
+        order: 2,
         title: "KAN® System Overview",
         duration: "2 min • Beginner",
         description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
@@ -36097,25 +36096,33 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         }),
       }),
       Object.freeze({
-        id: "loading-seeds-into-kan",
-        order: 2,
-        title: "Loading Seeds Into the KAN®",
-        duration: "3 min • Beginner",
-        description: "See how to organize seeds by KAN® partition before starting a tracked grow session.",
-        visibilityStatus: "coming-soon",
+        id: LEARN_FILTER_PAPER_TUTORIAL_ID,
+        order: 1,
+        title: "Installing Filter Paper",
+        duration: "22 sec • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to properly install filter paper into the KAN® system before starting seed soaking and germination.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
         scheduled: false,
         releaseDate: "",
-        comingSoonLabel: "Coming Soon",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+        posterUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
         recommendedFor: Object.freeze(["new_user"]),
         priority: 2,
         relatedFeature: "kan-system",
         userStage: "new_user",
         video: Object.freeze({
-          provider: "placeholder",
+          provider: "mp4",
+          videoProvider: "mp4",
           modalPlayerReady: true,
-          mp4Url: "",
+          mp4Url: LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH,
           cloudflareStreamId: "",
-          poster: "",
+          poster: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+          posterUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
         }),
       }),
       Object.freeze({
@@ -36339,6 +36346,7 @@ const LEARN_TUTORIAL_FUTURE_CATEGORIES = Object.freeze([
 ]);
 
 const LEARN_TUTORIAL_ASSET_BASE_PATH = "/assets/images/tutorials/";
+const LEARN_TUTORIAL_LEARN_ASSET_BASE_PATH = "/assets/learn/images/tutorials/";
 const LEARN_TUTORIAL_PLACEHOLDER_ASSET_PATH = "/assets/images/tutorials/placeholders/";
 const LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH = "/assets/images/learn-share-preview.png";
 const LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS = Object.freeze({
@@ -36348,6 +36356,7 @@ const LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS = Object.freeze({
 });
 const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH,
+  LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
@@ -36356,7 +36365,8 @@ function resolveLearnTutorialThumbnailAssetPath(thumbnailPath = "") {
   if (!normalizedPath) {
     return "";
   }
-  const isLocalTutorialAsset = normalizedPath.startsWith(LEARN_TUTORIAL_ASSET_BASE_PATH);
+  const isLocalTutorialAsset = normalizedPath.startsWith(LEARN_TUTORIAL_ASSET_BASE_PATH)
+    || normalizedPath.startsWith(LEARN_TUTORIAL_LEARN_ASSET_BASE_PATH);
   if (isLocalTutorialAsset && !LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS.includes(normalizedPath)) {
     return LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH;
   }
@@ -36713,7 +36723,14 @@ function normalizeTutorialCategoryId(categoryId = "") {
 function loadAdminTutorialDraftsFromStorage() {
   try {
     const storedValue = JSON.parse(localStorage.getItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY) || "{}");
-    return storedValue && typeof storedValue === "object" && !Array.isArray(storedValue) ? storedValue : {};
+    if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+      return {};
+    }
+    if (Object.prototype.hasOwnProperty.call(storedValue, LEARN_FILTER_PAPER_TUTORIAL_ID)) {
+      delete storedValue[LEARN_FILTER_PAPER_TUTORIAL_ID];
+      localStorage.setItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY, JSON.stringify(storedValue));
+    }
+    return storedValue;
   } catch (error) {
     console.warn("[Tutorial Admin] Failed to read tutorial drafts.", error);
     return {};
@@ -37264,6 +37281,10 @@ function getAdminTutorialDraft(tutorialId = "") {
   return drafts[String(tutorialId || "").trim()] || null;
 }
 
+function isProtectedProductionLearnTutorial(tutorialId = "") {
+  return String(tutorialId || "").trim() === LEARN_FILTER_PAPER_TUTORIAL_ID;
+}
+
 function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
@@ -37271,6 +37292,14 @@ function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
   }
 
   const drafts = loadAdminTutorialDraftsFromStorage();
+  if (isProtectedProductionLearnTutorial(normalizedTutorialId)) {
+    if (drafts[normalizedTutorialId]) {
+      delete drafts[normalizedTutorialId];
+      return saveAdminTutorialDraftsToStorage(drafts);
+    }
+    return { ok: true, error: null, persistence: "production-catalog" };
+  }
+
   drafts[normalizedTutorialId] = {
     ...(drafts[normalizedTutorialId] || {}),
     ...updates,
@@ -37357,20 +37386,28 @@ function getLearnTutorialCategories() {
 
   LEARN_TUTORIAL_CATEGORIES.forEach((category) => {
     category.tutorials.forEach((tutorial, index) => {
-      const draft = draftMap[tutorial.id] || {};
+      const isCanonicalFilterPaperTutorial = isProtectedProductionLearnTutorial(tutorial.id);
+      const draft = isCanonicalFilterPaperTutorial ? {} : (draftMap[tutorial.id] || {});
       const videoDraft = draft.video || {};
       const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
       const categoryOrder = Number.isFinite(Number(draft.categoryOrder))
         ? Number(draft.categoryOrder)
         : (Number.isFinite(Number(categoryMap.get(categoryId)?.categoryOrder)) ? Number(categoryMap.get(categoryId)?.categoryOrder) : 999);
-      const videoProvider = normalizeTutorialVideoProvider(draft.videoProvider || videoDraft.videoProvider || videoDraft.provider || tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
-      const cloudflareStreamId = String(draft.cloudflareStreamId || videoDraft.cloudflareStreamId || tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
-      const mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
-      const embedUrl = String(draft.embedUrl || videoDraft.embedUrl || tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
-      const posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
+      let videoProvider = normalizeTutorialVideoProvider(draft.videoProvider || videoDraft.videoProvider || videoDraft.provider || tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
+      let cloudflareStreamId = String(draft.cloudflareStreamId || videoDraft.cloudflareStreamId || tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
+      let mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
+      let embedUrl = String(draft.embedUrl || videoDraft.embedUrl || tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
+      let posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
       const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
+      if (isCanonicalFilterPaperTutorial) {
+        videoProvider = "mp4";
+        cloudflareStreamId = "";
+        mp4Url = LEARN_FILTER_PAPER_TUTORIAL_VIDEO_PATH;
+        embedUrl = "";
+        posterUrl = posterUrl || LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH;
+      }
       const draftFeaturedOrder = Number(draft.featuredOrder);
       const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
       const featuredOrder = Number.isFinite(draftFeaturedOrder) && draftFeaturedOrder > 0
@@ -37391,18 +37428,18 @@ function getLearnTutorialCategories() {
         visibilityNote: String(draft.visibilityNote ?? tutorial.visibilityNote ?? "").trim(),
         duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
         difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
-        status: getTutorialVisibilityStatus({
+        status: isCanonicalFilterPaperTutorial ? "published" : getTutorialVisibilityStatus({
           status: draft.status || draft.visibilityStatus || tutorial.status || tutorial.visibilityStatus || "coming-soon",
           scheduled: draft.scheduled ?? tutorial.scheduled,
         }),
-        visibilityStatus: getTutorialVisibilityStatus({
+        visibilityStatus: isCanonicalFilterPaperTutorial ? "published" : getTutorialVisibilityStatus({
           status: draft.visibilityStatus || draft.status || tutorial.visibilityStatus || tutorial.status || "coming-soon",
           scheduled: draft.scheduled ?? tutorial.scheduled,
         }),
-        scheduled: Boolean(draft.scheduled ?? tutorial.scheduled),
-        releaseDate: String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
-        comingSoonLabel: String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
-        thumbnailUrl: String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
+        scheduled: isCanonicalFilterPaperTutorial ? false : Boolean(draft.scheduled ?? tutorial.scheduled),
+        releaseDate: isCanonicalFilterPaperTutorial ? "" : String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
+        comingSoonLabel: isCanonicalFilterPaperTutorial ? "" : String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
+        thumbnailUrl: isCanonicalFilterPaperTutorial ? LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH : String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
@@ -38423,12 +38460,25 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
     }
 
     return `
-      <div class="learn-tutorial-player has-video" data-learn-video-player-shell="true" data-video-provider="mp4">
+      <div
+        class="learn-tutorial-player has-video"
+        data-learn-video-player-shell="true"
+        data-video-provider="mp4"
+        data-video-src="${escapeHtml(video.mp4Url)}"
+      >
         ${renderTutorialVideoPlayerMetadataMarkup(video)}
-        <video class="learn-tutorial-player-media" controls preload="metadata" ${video.posterUrl ? `poster="${escapeHtml(video.posterUrl)}"` : ""}>
+        <video
+          class="learn-tutorial-player-media"
+          controls
+          playsinline
+          preload="metadata"
+          src="${escapeHtml(video.mp4Url)}"
+          ${video.posterUrl ? `poster="${escapeHtml(video.posterUrl)}"` : ""}
+        >
           <source src="${escapeHtml(video.mp4Url)}" type="video/mp4">
           ${video.captionsUrl ? `<track kind="captions" src="${escapeHtml(video.captionsUrl)}" srclang="en" label="English">` : ""}
         </video>
+        <button type="button" class="learn-tutorial-video-play-button" data-learn-video-play="true" aria-label="Play ${escapeHtml(tutorial.title || "tutorial video")}">▶</button>
       </div>
     `;
   }
@@ -38447,6 +38497,104 @@ function renderTutorialVideoPlayerMarkup(tutorial = {}, category = {}) {
   }
 
   return renderTutorialVideoPlaceholderMarkup(video, "Video Coming Soon", tutorial, category);
+}
+
+function getLearnVideoErrorDetails(videoElement = null) {
+  const mediaError = videoElement?.error || null;
+  const code = Number(mediaError?.code) || 0;
+  const labels = {
+    1: "MEDIA_ERR_ABORTED",
+    2: "MEDIA_ERR_NETWORK",
+    3: "MEDIA_ERR_DECODE",
+    4: "MEDIA_ERR_SRC_NOT_SUPPORTED",
+  };
+  return {
+    code,
+    label: labels[code] || "UNKNOWN_MEDIA_ERROR",
+    message: mediaError?.message || "",
+    networkState: videoElement?.networkState,
+    readyState: videoElement?.readyState,
+  };
+}
+
+function getLearnVideoDebugPayload(videoElement = null, tutorialId = "") {
+  const shell = videoElement?.closest?.("[data-learn-video-player-shell]");
+  const source = videoElement?.querySelector?.("source");
+  return {
+    tutorialId: String(tutorialId || "").trim(),
+    provider: shell instanceof HTMLElement ? shell.dataset.videoProvider || "" : "",
+    shellSrc: shell instanceof HTMLElement ? shell.dataset.videoSrc || shell.dataset.videoMp4Url || "" : "",
+    videoSrc: videoElement?.getAttribute?.("src") || "",
+    currentSrc: videoElement?.currentSrc || "",
+    sourceSrc: source?.getAttribute?.("src") || "",
+    poster: videoElement?.getAttribute?.("poster") || "",
+    paused: Boolean(videoElement?.paused),
+    currentTime: Number(videoElement?.currentTime || 0),
+    duration: Number.isFinite(Number(videoElement?.duration)) ? Number(videoElement.duration) : null,
+  };
+}
+
+function bindLearnTutorialVideoPlayers(scope = document, tutorialId = "") {
+  scope.querySelectorAll("video.learn-tutorial-player-media").forEach((videoElement) => {
+    if (!(videoElement instanceof HTMLVideoElement) || videoElement.dataset.learnVideoBound === "true") {
+      return;
+    }
+    videoElement.dataset.learnVideoBound = "true";
+    const shell = videoElement.closest("[data-learn-video-player-shell]");
+    const playButton = shell?.querySelector?.("[data-learn-video-play='true']");
+    const logPayload = () => getLearnVideoDebugPayload(videoElement, tutorialId);
+    console.info("[Learn Video] MP4 player mounted.", logPayload());
+
+    const setPlayingState = (isPlaying = false) => {
+      if (shell instanceof HTMLElement) {
+        shell.classList.toggle("is-playing", isPlaying);
+      }
+    };
+    const logVideoError = (eventName = "error") => {
+      console.error("[Learn Video] MP4 loading/playback error.", {
+        event: eventName,
+        ...logPayload(),
+        error: getLearnVideoErrorDetails(videoElement),
+      });
+    };
+    const requestPlayback = async (source = "play button") => {
+      try {
+        const playResult = videoElement.play();
+        if (playResult && typeof playResult.then === "function") {
+          await playResult;
+        }
+        console.info("[Learn Video] Playback started.", { source, ...logPayload() });
+      } catch (error) {
+        console.error("[Learn Video] Browser refused MP4 playback.", {
+          source,
+          ...logPayload(),
+          error: error?.message || String(error || ""),
+        });
+      }
+    };
+
+    ["error", "stalled", "abort"].forEach((eventName) => {
+      videoElement.addEventListener(eventName, () => logVideoError(eventName));
+    });
+    videoElement.addEventListener("loadedmetadata", () => {
+      console.info("[Learn Video] MP4 metadata loaded.", logPayload());
+    });
+    videoElement.addEventListener("playing", () => setPlayingState(true));
+    videoElement.addEventListener("pause", () => setPlayingState(false));
+    videoElement.addEventListener("ended", () => setPlayingState(false));
+    videoElement.addEventListener("click", () => {
+      if (videoElement.paused) {
+        requestPlayback("video click");
+      }
+    });
+    if (playButton instanceof HTMLButtonElement) {
+      playButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        requestPlayback("overlay play button");
+      });
+    }
+  });
 }
 
 function renderLearnTutorialTranscriptMarkup(tutorial = {}) {
@@ -38757,6 +38905,7 @@ function renderLearnTutorialDetailPage(tutorialId = "") {
 
 function bindLearnTutorialDetailPage(scope = document, tutorial = null) {
   bindLearnShareControls(scope);
+  bindLearnTutorialVideoPlayers(scope, tutorial?.id || "");
   scope.querySelector("[data-learn-detail-sign-in='true']")?.addEventListener("click", () => {
     openAuthModal({ dismissHash: "#learn", initialMode: "login" });
   });
@@ -39935,6 +40084,7 @@ function openLearnTutorialModal(tutorialId = "", options = {}) {
       });
       bindLearnTutorialProgressActions(content, tutorial.id);
       bindLearnTutorialFeedbackActions(content, tutorial.id);
+      bindLearnTutorialVideoPlayers(content, tutorial.id);
       refreshTutorialProgressUi(tutorial.id);
       refreshLearnTutorialFeedbackUi(tutorial.id);
     }
@@ -52049,16 +52199,18 @@ async function submitContactCommunication(payload = {}) {
     subject: String(payload.subject || "").trim() || null,
     message: String(payload.message || "").trim(),
     routed_to: String(payload.routedTo || "growsupport@cannakan.com").trim(),
-    status: "New",
+    status: "new",
     internal_notes: null,
     submitted_at: submittedAt,
   };
 
-  const { data, error } = await appState.supabase
+  let insertRequest = appState.supabase
     .from(CONTACT_MESSAGES_TABLE)
-    .insert(supabaseRecord)
-    .select("*")
-    .single();
+    .insert(supabaseRecord);
+  if (isAdminUser()) {
+    insertRequest = insertRequest.select("*").single();
+  }
+  const { data, error } = await insertRequest;
 
   if (error) {
     if (isContactMessagesTableMissingError(error)) {
