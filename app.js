@@ -1614,6 +1614,7 @@ const appState = {
   sessionDetailPendingNotificationAction: null,
   adminSeedAgeAnalyticsFilter: ADMIN_SEED_AGE_ANALYTICS_DEFAULT_FILTER,
   adminTutorialCollectionEditingId: "",
+  adminTutorialActionSaving: null,
   leaderboardAuditFilters: { ...LEADERBOARD_AUDIT_DEFAULT_FILTERS },
   leaderboardAuditExpandedId: "",
   leaderboardAuditInsightsExpanded: false,
@@ -36710,8 +36711,10 @@ function loadAdminTutorialDraftsFromStorage() {
 function saveAdminTutorialDraftsToStorage(drafts = {}) {
   try {
     localStorage.setItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY, JSON.stringify(drafts || {}));
+    return { ok: true, error: null };
   } catch (error) {
     console.warn("[Tutorial Admin] Failed to save tutorial drafts.", error);
+    return { ok: false, error };
   }
 }
 
@@ -36728,8 +36731,10 @@ function loadAdminTutorialCollectionDraftsFromStorage() {
 function saveAdminTutorialCollectionDraftsToStorage(drafts = {}) {
   try {
     localStorage.setItem(ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY, JSON.stringify(drafts || {}));
+    return { ok: true, error: null };
   } catch (error) {
     console.warn("[Tutorial Admin] Failed to save collection drafts.", error);
+    return { ok: false, error };
   }
 }
 
@@ -37250,7 +37255,7 @@ function getAdminTutorialDraft(tutorialId = "") {
 function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
-    return;
+    return { ok: false, error: new Error("Tutorial ID is missing.") };
   }
 
   const drafts = loadAdminTutorialDraftsFromStorage();
@@ -37261,7 +37266,7 @@ function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
     updatedAt: new Date().toISOString(),
     persistence: "local",
   };
-  saveAdminTutorialDraftsToStorage(drafts);
+  return saveAdminTutorialDraftsToStorage(drafts);
 }
 
 function resetAdminTutorialDraft(tutorialId = "") {
@@ -37283,7 +37288,7 @@ function getAdminTutorialCollectionDraft(collectionId = "") {
 function saveAdminTutorialCollectionDraft(collectionId = "", updates = {}) {
   const normalizedCollectionId = String(collectionId || "").trim();
   if (!normalizedCollectionId) {
-    return;
+    return { ok: false, error: new Error("Learning path ID is missing.") };
   }
 
   const drafts = loadAdminTutorialCollectionDraftsFromStorage();
@@ -37294,7 +37299,7 @@ function saveAdminTutorialCollectionDraft(collectionId = "", updates = {}) {
     updatedAt: new Date().toISOString(),
     persistence: "local",
   };
-  saveAdminTutorialCollectionDraftsToStorage(drafts);
+  return saveAdminTutorialCollectionDraftsToStorage(drafts);
 }
 
 function createAdminTutorialCollectionDraft() {
@@ -60476,6 +60481,73 @@ function renderAdminTutorialVideoProviderOptions(selectedProvider = "none") {
   )).join("");
 }
 
+function getAdminTutorialSaveActionLabel(status = "") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  if (normalizedStatus === "published") {
+    return "Publish";
+  }
+  if (normalizedStatus === "coming-soon") {
+    return "Mark Coming Soon";
+  }
+  return "Save Draft";
+}
+
+function getAdminTutorialSavingActionLabel(status = "") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  if (normalizedStatus === "published") {
+    return "Publishing...";
+  }
+  if (normalizedStatus === "coming-soon") {
+    return "Saving...";
+  }
+  return "Saving...";
+}
+
+function getAdminTutorialSuccessMessage(status = "") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  if (normalizedStatus === "published") {
+    return "Tutorial published successfully. Published to local preview.";
+  }
+  if (normalizedStatus === "coming-soon") {
+    return "Tutorial marked Coming Soon. Saved to local preview.";
+  }
+  return "Tutorial draft saved. Saved to local preview.";
+}
+
+function getAdminTutorialErrorMessage(error = null, status = "") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  const fallback = normalizedStatus === "published"
+    ? "Tutorial could not be published."
+    : "Tutorial could not be saved.";
+  const reason = String(error?.message || error || "").trim();
+  return reason ? `${fallback} ${reason}` : fallback;
+}
+
+function showAdminTutorialActionToast(status = "", message = "", options = {}) {
+  showNavigationLockToast({
+    title: options.error ? "Tutorial action failed" : "Tutorial Management",
+    message: message || (options.error
+      ? getAdminTutorialErrorMessage(null, status)
+      : getAdminTutorialSuccessMessage(status)),
+  });
+}
+
+function renderAdminTutorialSaveButtonMarkup(status = "draft", className = "button button-secondary", tutorialId = "") {
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  const savingAction = appState.adminTutorialActionSaving || null;
+  const isSavingThisTutorial = savingAction?.tutorialId === tutorialId;
+  const isSavingThisAction = isSavingThisTutorial && savingAction?.status === normalizedStatus;
+  return `
+    <button
+      type="submit"
+      class="${escapeHtml(className)}"
+      data-admin-tutorial-save-status="${escapeHtml(normalizedStatus)}"
+      ${isSavingThisTutorial ? "disabled" : ""}
+      aria-busy="${isSavingThisAction ? "true" : "false"}"
+    >${escapeHtml(isSavingThisAction ? getAdminTutorialSavingActionLabel(normalizedStatus) : getAdminTutorialSaveActionLabel(normalizedStatus))}</button>
+  `;
+}
+
 function renderAdminTutorialRelatedOptions(selectedTutorialIds = [], currentTutorialId = "") {
   const selectedSet = new Set(normalizeLearnTutorialTextList(selectedTutorialIds));
   const normalizedCurrentTutorialId = String(currentTutorialId || "").trim();
@@ -60718,9 +60790,9 @@ function renderAdminTutorialEditorMarkup(tutorial = null) {
           </div>
         </div>
         <div class="admin-source-form-actions admin-tutorial-editor-actions">
-          <button type="submit" class="button button-secondary" data-admin-tutorial-save-status="draft">Save Draft</button>
-          <button type="submit" class="button button-secondary" data-admin-tutorial-save-status="coming-soon">Mark Coming Soon</button>
-          <button type="submit" class="button button-primary" data-admin-tutorial-save-status="published">Publish</button>
+          ${renderAdminTutorialSaveButtonMarkup("draft", "button button-secondary", tutorial.id)}
+          ${renderAdminTutorialSaveButtonMarkup("coming-soon", "button button-secondary", tutorial.id)}
+          ${renderAdminTutorialSaveButtonMarkup("published", "button button-primary", tutorial.id)}
           <button type="button" class="button button-secondary" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}" data-admin-tutorial-preview-form="true">Preview</button>
           <button type="button" class="button button-secondary" data-admin-tutorial-reset="${escapeHtml(tutorial.id)}">Reset Local Draft</button>
         </div>
@@ -61059,10 +61131,11 @@ function refreshAdminTutorialManagementSection() {
 function saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId = "", selectedCollectionIds = []) {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
-    return;
+    return { ok: false, error: new Error("Tutorial ID is missing.") };
   }
 
   const selectedSet = new Set(normalizeLearnTutorialTextList(selectedCollectionIds));
+  const failures = [];
   getLearnTutorialCollections().forEach((collection) => {
     const currentTutorialIds = normalizeLearnTutorialTextList(collection.tutorialIds);
     const currentSet = new Set(currentTutorialIds);
@@ -61075,19 +61148,29 @@ function saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId = "", sele
     const nextTutorialIds = shouldBeAssigned
       ? [...currentTutorialIds, normalizedTutorialId]
       : currentTutorialIds.filter((collectionTutorialId) => collectionTutorialId !== normalizedTutorialId);
-    saveAdminTutorialCollectionDraft(collection.id, {
+    const saveResult = saveAdminTutorialCollectionDraft(collection.id, {
       tutorialIds: nextTutorialIds,
       custom: Boolean(collection.custom),
     });
+    if (saveResult?.ok === false) {
+      failures.push(saveResult.error || new Error(`Learning path "${collection.title || collection.id}" could not be saved.`));
+    }
   });
+  if (failures.length) {
+    return { ok: false, error: failures[0] };
+  }
+  return { ok: true, error: null };
 }
 
 function saveAdminTutorialFormDraft(form, statusOverride = "") {
   if (!(form instanceof HTMLFormElement)) {
-    return "";
+    throw new Error("Tutorial form is unavailable.");
   }
 
   const tutorialId = form.dataset.adminTutorialForm || "";
+  if (!tutorialId) {
+    throw new Error("Tutorial ID is missing.");
+  }
   const formData = new FormData(form);
   const relatedTutorialIds = formData.getAll("relatedTutorialIds").map((value) => String(value || "").trim()).filter(Boolean);
   const collectionIds = formData.getAll("collectionIds").map((value) => String(value || "").trim()).filter(Boolean);
@@ -61097,7 +61180,7 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
     status: statusOverride || formData.get("visibilityStatus"),
     scheduled: formData.get("scheduled") === "on",
   });
-  saveAdminTutorialDraft(tutorialId, {
+  const tutorialSaveResult = saveAdminTutorialDraft(tutorialId, {
     title: String(formData.get("title") || "").trim(),
     description: String(formData.get("description") || "").trim(),
     categoryId: normalizeTutorialCategoryId(formData.get("categoryId")),
@@ -61141,8 +61224,90 @@ function saveAdminTutorialFormDraft(form, statusOverride = "") {
       poster: String(formData.get("posterUrl") || "").trim(),
     },
   });
-  saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId, collectionIds);
+  if (tutorialSaveResult?.ok === false) {
+    throw tutorialSaveResult.error || new Error("Tutorial draft could not be saved.");
+  }
+  const collectionSaveResult = saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId, collectionIds);
+  if (collectionSaveResult?.ok === false) {
+    throw collectionSaveResult.error || new Error("Learning path assignments could not be saved.");
+  }
   return tutorialId;
+}
+
+function setAdminTutorialFormBusyState(form, status = "", isSaving = false) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  const normalizedStatus = normalizeTutorialPublishStatus(status || "draft");
+  form.dataset.adminTutorialSaving = isSaving ? normalizedStatus : "";
+  form.querySelectorAll("[data-admin-tutorial-save-status]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    const buttonStatus = normalizeTutorialPublishStatus(button.dataset.adminTutorialSaveStatus || "draft");
+    const isActiveButton = buttonStatus === normalizedStatus;
+    button.disabled = isSaving;
+    button.setAttribute("aria-busy", isSaving && isActiveButton ? "true" : "false");
+    button.textContent = isSaving && isActiveButton
+      ? getAdminTutorialSavingActionLabel(buttonStatus)
+      : getAdminTutorialSaveActionLabel(buttonStatus);
+  });
+}
+
+function waitForAdminTutorialActionPaint() {
+  return new Promise((resolve) => {
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    window.setTimeout(resolve, 0);
+  });
+}
+
+async function handleAdminTutorialFormSubmit(form, statusOverride = "") {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  if (appState.adminTutorialActionSaving) {
+    return;
+  }
+
+  const tutorialId = String(form.dataset.adminTutorialForm || "").trim();
+  const normalizedStatus = normalizeTutorialPublishStatus(statusOverride || form.elements.visibilityStatus?.value || "draft");
+  appState.adminTutorialActionSaving = {
+    tutorialId,
+    status: normalizedStatus,
+    startedAt: new Date().toISOString(),
+  };
+  setAdminTutorialFormBusyState(form, normalizedStatus, true);
+
+  try {
+    await waitForAdminTutorialActionPaint();
+    const savedTutorialId = saveAdminTutorialFormDraft(form, normalizedStatus);
+    appState.adminTutorialEditingId = savedTutorialId;
+    appState.adminTutorialActionSaving = null;
+    refreshAdminTutorialManagementSection();
+    const successMessage = getAdminTutorialSuccessMessage(normalizedStatus);
+    console.log("[Tutorial Admin] Tutorial action succeeded.", {
+      tutorialId: savedTutorialId,
+      status: normalizedStatus,
+      persistence: "local",
+      message: successMessage,
+    });
+    showAdminTutorialActionToast(normalizedStatus, successMessage);
+  } catch (error) {
+    appState.adminTutorialActionSaving = null;
+    setAdminTutorialFormBusyState(form, normalizedStatus, false);
+    const errorMessage = getAdminTutorialErrorMessage(error, normalizedStatus);
+    console.error("[Tutorial Admin] Tutorial action failed.", {
+      tutorialId,
+      status: normalizedStatus,
+      persistence: "local",
+      error,
+      message: errorMessage,
+    });
+    showAdminTutorialActionToast(normalizedStatus, errorMessage, { error: true });
+  }
 }
 
 function saveAdminTutorialCollectionFormDraft(form) {
@@ -61275,9 +61440,7 @@ function bindAdminTutorialManagementSection(scope = app) {
       const statusOverride = event.submitter instanceof HTMLElement
         ? event.submitter.dataset.adminTutorialSaveStatus || ""
         : "";
-      const tutorialId = saveAdminTutorialFormDraft(form, statusOverride);
-      appState.adminTutorialEditingId = tutorialId;
-      refreshAdminTutorialManagementSection();
+      void handleAdminTutorialFormSubmit(form, statusOverride);
     });
   });
 }
