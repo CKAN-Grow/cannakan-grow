@@ -5,12 +5,17 @@ const {
   supabaseRest,
 } = require("./execution");
 const { CstpAuthorizationError } = require("./errors");
+const {
+  canUseLocalDemoAdminAccess,
+  getAdminAccessLevel,
+  getConfiguredAdminEmailAllowlist,
+  isFounderAdminUser,
+} = require("../../admin-access");
 
 const ADMIN_USERS_TABLE = "admin_users";
-const TRUSTED_EMAIL_ALLOWLIST_ENV_KEYS = Object.freeze([
-  "CSTP_ADMIN_EMAIL_ALLOWLIST",
-  "CANNAKAN_ADMIN_EMAIL_ALLOWLIST",
-]);
+const LOCAL_DEMO_ADMIN_ACCESS_TOKEN = "local-dev-qa-bypass";
+const LOCAL_DEMO_ADMIN_USER_ID = "00000000-0000-4000-8000-000000000001";
+const LOCAL_DEMO_ADMIN_EMAIL = "dev-qa@localhost";
 
 /*
  * Internal CSTP admin authorization boundary.
@@ -60,6 +65,20 @@ async function validateCstpAdminAuthorization(input = {}) {
     });
   }
 
+  if (
+    accessToken === LOCAL_DEMO_ADMIN_ACCESS_TOKEN
+    && canUseLocalDemoAdminAccess(input)
+  ) {
+    return buildCstpAuthorizationSuccess(
+      normalizeCstpAdminActor({
+        userId: LOCAL_DEMO_ADMIN_USER_ID,
+        email: LOCAL_DEMO_ADMIN_EMAIL,
+        authorizationSource: "local_demo_auth_enabled",
+        adminAccessLevel: "local-demo",
+      }),
+    );
+  }
+
   const config = resolveAuthorizationConfig(input);
   if (!config.ok) {
     return buildCstpAuthorizationFailure({
@@ -98,6 +117,17 @@ async function validateCstpAdminAuthorization(input = {}) {
     });
   }
 
+  const adminAccess = getAdminAccessLevel(normalizedUser, input);
+  if (adminAccess.isAdmin) {
+    return buildCstpAuthorizationSuccess(
+      normalizeCstpAdminActor({
+        ...normalizedUser,
+        authorizationSource: adminAccess.reason,
+        adminAccessLevel: adminAccess.level,
+      }),
+    );
+  }
+
   let adminMembership = null;
   try {
     adminMembership = await checkCstpAdminMembership(normalizedUser.userId, {
@@ -120,18 +150,6 @@ async function validateCstpAdminAuthorization(input = {}) {
         ...normalizedUser,
         authorizationSource: "admin_users",
         adminMembershipId: adminMembership.record?.id || "",
-      }),
-    );
-  }
-
-  if (
-    input.allowTrustedEmailAllowlist === true &&
-    isTrustedAdminEmail(normalizedUser.email, input)
-  ) {
-    return buildCstpAuthorizationSuccess(
-      normalizeCstpAdminActor({
-        ...normalizedUser,
-        authorizationSource: "trusted_email_allowlist",
       }),
     );
   }
@@ -229,6 +247,7 @@ function normalizeCstpAdminActor(actor = {}) {
     userId,
     email: normalizeEmail(actor.email),
     authorizationSource: String(actor.authorizationSource || "").trim(),
+    adminAccessLevel: String(actor.adminAccessLevel || "").trim(),
     adminMembershipId: String(actor.adminMembershipId || "").trim(),
     internalOnly: true,
   });
@@ -301,30 +320,11 @@ function resolveFetchImplementation(options = {}) {
 }
 
 function getTrustedAdminEmailAllowlist(options = {}) {
-  const env = options.env || process.env;
-  const explicitAllowlist = options.trustedAdminEmailAllowlist;
-  const rawAllowlist =
-    explicitAllowlist !== undefined
-      ? Array.isArray(explicitAllowlist)
-        ? explicitAllowlist.join(",")
-        : String(explicitAllowlist || "")
-      : TRUSTED_EMAIL_ALLOWLIST_ENV_KEYS.map((key) => env?.[key] || "")
-          .filter(Boolean)
-          .join(",");
-
-  return rawAllowlist
-    .split(",")
-    .map(normalizeEmail)
-    .filter(Boolean);
+  return getConfiguredAdminEmailAllowlist(options);
 }
 
 function isTrustedAdminEmail(email, options = {}) {
-  const normalizedEmail = normalizeEmail(email);
-  if (!normalizedEmail) {
-    return false;
-  }
-
-  return getTrustedAdminEmailAllowlist(options).includes(normalizedEmail);
+  return isFounderAdminUser({ email }, options);
 }
 
 function normalizeEmail(email) {

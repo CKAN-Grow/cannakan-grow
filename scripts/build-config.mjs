@@ -7,6 +7,9 @@ const pushPublicKey = process.env.VAPID_PUBLIC_KEY
   || process.env.CANNAKAN_PUSH_PUBLIC_KEY
   || process.env.CANNAKAN_PUSH_VAPID_PUBLIC_KEY
   || "";
+const localDemoAuthEnabled = String(process.env.VITE_ENABLE_LOCAL_DEMO_AUTH || "")
+  .trim()
+  .toLowerCase() === "true";
 const isVercelBuild = process.env.VERCEL === "1";
 
 if ((!url || !anonKey) && isVercelBuild) {
@@ -32,6 +35,7 @@ const configContents = `window.CANNAKAN_SUPABASE_CONFIG = {
   url: ${JSON.stringify(url)},
   anonKey: ${JSON.stringify(anonKey)},
   pushPublicKey: ${JSON.stringify(pushPublicKey)},
+  localDemoAuthEnabled: ${JSON.stringify(localDemoAuthEnabled)},
 };
 `;
 

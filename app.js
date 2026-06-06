@@ -1663,10 +1663,8 @@ const templates = {
   detail: document.querySelector("#session-detail-template"),
 };
 
-const ADMIN_EMAILS = new Set([
-  "don@cannakan.com",
-  "mo@cannakan.com",
-]);
+const FOUNDER_ADMIN_EMAILS = Object.freeze(["don@cannakan.com"]);
+const ADMIN_EMAILS = new Set(FOUNDER_ADMIN_EMAILS);
 const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE TEST SESSION";
 const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
 const FOUNDER_EMERGENCY_TEST_SESSION_SEQUENCE_NUMBERS = Object.freeze([1, 2, 3, 4, 5]);
@@ -1676,23 +1674,53 @@ const SESSION_SAVE_BUTTON_SAVED_LABEL = "Session Saved.";
 const NEW_SESSION_SAVE_BUTTON_SAVED_MIN_MS = 1200;
 const SESSION_SAVE_BUTTON_SAVED_RESET_MS = 2200;
 const SESSION_RESULTS_INCOMPLETE_COMPLETION_MESSAGE = "Finish your results before completing this session. Your counted seeds must match the total seeds started.";
-// Admin email fallback is only a temporary frontend convenience until a dedicated Supabase role field is enforced.
-// Database access should be protected with Supabase RLS policies.
-
-function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
-  if (isLocalDevQaBypassActive()) {
-    return true;
-  }
-  const normalizedEmail = getNormalizedUserEmail(userOrEmail);
-  return ADMIN_EMAILS.has(normalizedEmail);
-}
-
 function getNormalizedUserEmail(user = appState.user) {
   return String(
     typeof user === "string"
       ? user
       : (user?.email || "")
   ).trim().toLowerCase();
+}
+
+function getAdminAccessLevel(userOrEmail = appState.user, options = {}) {
+  const normalizedEmail = getNormalizedUserEmail(userOrEmail);
+  if (normalizedEmail && ADMIN_EMAILS.has(normalizedEmail)) {
+    return {
+      isAdmin: true,
+      level: "founder",
+      reason: "verified_founder_email",
+      email: normalizedEmail,
+    };
+  }
+
+  if (options.allowLocalDemoAdmin === true && isLocalDevQaBypassActive()) {
+    return {
+      isAdmin: true,
+      level: "local-demo",
+      reason: "local_demo_auth_enabled",
+      email: normalizedEmail,
+    };
+  }
+
+  return {
+    isAdmin: false,
+    level: "none",
+    reason: normalizedEmail ? "email_not_authorized" : "missing_email",
+    email: normalizedEmail,
+  };
+}
+
+function isFounderAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
+  return getAdminAccessLevel(userOrEmail).isAdmin;
+}
+
+function isAdminUser(userOrEmail = appState.currentUserEmail || appState.user) {
+  return getAdminAccessLevel(userOrEmail, { allowLocalDemoAdmin: true }).isAdmin;
+}
+
+function canLogAdminAccessDebug() {
+  return isLocalDevelopmentHost()
+    || window.CANNAKAN_SUPABASE_CONFIG?.localDemoAuthEnabled === true;
 }
 
 function getAuthSessionHydrationKey(session) {
@@ -1711,20 +1739,7 @@ function resolveSupabaseBackedUserRole(session = appState.authSession, profile =
     return "user";
   }
 
-  const sessionRole = normalizeUserRole(
-    session.user?.app_metadata?.role
-    || session.user?.user_metadata?.role
-  );
-  if (sessionRole === "admin") {
-    return "admin";
-  }
-
-  const profileRole = normalizeUserRole(profile?.role);
-  if (profileRole === "admin") {
-    return "admin";
-  }
-
-  return isAdminUser(session.user) ? "admin" : "user";
+  return getAdminAccessLevel(session.user).isAdmin ? "admin" : "user";
 }
 
 function hasResolvedAdminAccess() {
@@ -1741,6 +1756,7 @@ function canManuallyEditGrowSessionTimestamps() {
 function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile) {
   const sessionEmail = String(session?.user?.email || "").trim();
   const normalizedEmail = getNormalizedUserEmail(session?.user || null);
+  const adminAccess = getAdminAccessLevel(session?.user || null);
   const resolvedRole = session ? resolveSupabaseBackedUserRole(session, profile) : "user";
   const isAdmin = resolvedRole === "admin";
 
@@ -1751,19 +1767,14 @@ function applyResolvedAuthState(session, reason = "auth-change", profile = appSt
   appState.isAdmin = isAdmin;
   syncAppNotificationsUserState(appState.user?.id || "");
 
-  console.log("[Cannakan App Init] session email", {
-    reason,
-    sessionEmail,
-  });
-  console.log("[Cannakan App Init] normalized email", {
-    reason,
-    normalizedEmail,
-  });
-  console.log("[Cannakan App Init] isAdmin result", {
-    reason,
-    isAdminResult: isAdmin,
-    userRole: resolvedRole,
-  });
+  if (canLogAdminAccessDebug()) {
+    console.log("[Cannakan Admin Access] resolved", {
+      reason,
+      currentUserEmail: normalizedEmail || sessionEmail,
+      adminAccess: isAdmin,
+      accessReason: adminAccess.reason,
+    });
+  }
 }
 
 function markAuthReady(reason = "auth-change") {
@@ -1882,12 +1893,13 @@ function syncAdminNavigationVisibility() {
       link.setAttribute("aria-hidden", "true");
     }
   });
-  console.log("[Cannakan Admin Nav] Navigation visibility evaluated", {
-    currentEmail: appState.user?.email || "",
-    normalizedEmail: currentUserEmail,
-    isAdminResult: shouldShowAdminNav,
-    adminNavRendered: shouldShowAdminNav,
-  });
+  if (canLogAdminAccessDebug()) {
+    console.log("[Cannakan Admin Access] nav visibility", {
+      currentUserEmail,
+      adminAccess: shouldShowAdminNav,
+      accessReason: getAdminAccessLevel(appState.user).reason,
+    });
+  }
 }
 
 function syncGrowNetworkNavigationVisibility() {
@@ -5824,7 +5836,9 @@ function isLocalDevelopmentHost() {
 }
 
 function isLocalDevQaBypassEnabled() {
-  return isLocalDevelopmentHost() && readBooleanLocalStorageFlag(DEV_QA_BYPASS_STORAGE_KEY);
+  return isLocalDevelopmentHost()
+    && window.CANNAKAN_SUPABASE_CONFIG?.localDemoAuthEnabled === true
+    && readBooleanLocalStorageFlag(DEV_QA_BYPASS_STORAGE_KEY);
 }
 
 function setLocalDevQaBypassEnabled(enabled = false) {
@@ -5836,7 +5850,10 @@ function setLocalDevQaBypassEnabled(enabled = false) {
 }
 
 function isLocalDevQaBypassActive() {
-  return isLocalDevelopmentHost() && !isSupabaseConfigured() && isLocalDevQaBypassEnabled();
+  return isLocalDevelopmentHost()
+    && !isSupabaseConfigured()
+    && window.CANNAKAN_SUPABASE_CONFIG?.localDemoAuthEnabled === true
+    && isLocalDevQaBypassEnabled();
 }
 
 function canRenderAuthenticatedAppShell() {
@@ -31476,18 +31493,13 @@ function updateAuthStatus() {
   closeAuthModal();
   const currentUserEmail = appState.currentUserEmail || getNormalizedUserEmail(appState.user);
   const shouldRenderAdminDropdownItem = hasResolvedAdminAccess() || appState.isAdmin;
-  const isDonCannakanAdminEmail = currentUserEmail === "don@cannakan.com";
-  console.log("[Cannakan Admin Nav] Account menu render", {
-    currentEmail: appState.user?.email || "",
-    normalizedEmail: currentUserEmail,
-    isAdmin: appState.isAdmin,
-    userRole: appState.userRole,
-    isAdminResult: hasResolvedAdminAccess(),
-    shouldRenderAdminDropdownItem,
-    isDonCannakanAdminEmail,
-    donCannakanAdminConditionConfirmed: isDonCannakanAdminEmail ? shouldRenderAdminDropdownItem : null,
-    adminDropdownItemRendered: shouldRenderAdminDropdownItem,
-  });
+  if (canLogAdminAccessDebug()) {
+    console.log("[Cannakan Admin Access] account menu", {
+      currentUserEmail,
+      adminAccess: shouldRenderAdminDropdownItem,
+      accessReason: getAdminAccessLevel(appState.user).reason,
+    });
+  }
 
   authStatus.innerHTML = `
     <div class="account-menu-root" data-account-menu-root>
@@ -54765,6 +54777,24 @@ function buildAdminCstpRequestDetailUrl(requestId = "") {
   return `${ADMIN_CSTP_REQUEST_DETAIL_API_PATH}?requestId=${encodeURIComponent(String(requestId || "").trim())}`;
 }
 
+function getAdminCstpApiErrorMessage(response = null, payload = {}, fallback = "Could not complete this CSTP admin action.") {
+  const statusCode = Number(response?.status || payload?.httpStatus || 0);
+  const errorObject = payload?.error && typeof payload.error === "object" ? payload.error : null;
+  const code = String(errorObject?.code || payload?.code || payload?.status || "").trim();
+  const message = String(
+    errorObject?.message
+    || payload?.message
+    || (typeof payload?.error === "string" ? payload.error : "")
+    || ""
+  ).trim();
+
+  if (statusCode === 401 || statusCode === 403 || code.startsWith("CSTP_ADMIN_AUTH") || code === "CSTP_ADMIN_FORBIDDEN") {
+    return "Admin Access Required. Sign in with the verified founder/admin account to use CSTP Lab tools.";
+  }
+
+  return message || payload?.status || fallback;
+}
+
 async function loadAdminCstpRequestQueue(options = {}) {
   if (!isAdminUser()) {
     return [];
@@ -54784,8 +54814,7 @@ async function loadAdminCstpRequestQueue(options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `Request queue returned ${response.status}.`;
-    throw new Error(detail);
+    throw new Error(getAdminCstpApiErrorMessage(response, payload, `Request queue returned ${response.status}.`));
   }
 
   appState.adminCstpRequestQueueFilter = {
@@ -54829,8 +54858,7 @@ async function loadAdminCstpRequestDetail(requestId = "") {
     throw error;
   }
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `Request detail returned ${response.status}.`;
-    throw new Error(detail);
+    throw new Error(getAdminCstpApiErrorMessage(response, payload, `Request detail returned ${response.status}.`));
   }
 
   return normalizeAdminCstpRequestQueueRecord(payload.request);
@@ -54966,7 +54994,7 @@ async function updateAdminCstpRequestStatus(requestId = "", currentStatus = "", 
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `Request status update returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Request status update returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55042,7 +55070,7 @@ async function createAdminCstpTestFromRequest(record = null) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP test creation returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP test creation returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55172,7 +55200,7 @@ async function loadAdminCstpTestsList(options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP tests list returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP tests list returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55263,7 +55291,7 @@ async function loadAdminCstpTestDetail(testId = "") {
     throw error;
   }
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP test detail returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP test detail returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55350,7 +55378,7 @@ async function updateAdminCstpTestStatus(testId = "", currentStatus = "", nextSt
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP test status update returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP test status update returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55438,7 +55466,7 @@ async function loadAdminCstpSessionLinks(testId = "") {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link list returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP session-link list returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55507,7 +55535,7 @@ async function createAdminCstpSessionLink(input = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link creation returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP session-link creation returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -55544,7 +55572,7 @@ async function archiveAdminCstpSessionLink(link = null) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error || payload?.message || payload?.status || `CSTP session-link archive returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `CSTP session-link archive returned ${response.status}.`);
     throw new Error(detail);
   }
 
@@ -58101,7 +58129,7 @@ async function prepareAdminCstpImmutableReportWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Prepare Report returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Prepare Report returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -58137,7 +58165,7 @@ async function generateAdminCstpImmutableReportWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Generate Report returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Generate Report returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -58171,7 +58199,7 @@ async function regenerateAdminCstpImmutableReportWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Regenerate Report returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Regenerate Report returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -58205,7 +58233,7 @@ async function supersedeAdminCstpImmutableReportWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Supersede Report returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Supersede Report returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -58238,7 +58266,7 @@ async function inspectAdminCstpImmutableReportLineageWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Inspect Lineage returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Inspect Lineage returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
@@ -58271,7 +58299,7 @@ async function inspectAdminCstpImmutableReportValidationWorkflow() {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.ok !== true) {
-    const detail = payload?.error?.message || payload?.error || payload?.message || payload?.status || `Inspect Validation returned ${response.status}.`;
+    const detail = getAdminCstpApiErrorMessage(response, payload, `Inspect Validation returned ${response.status}.`);
     const error = new Error(detail);
     error.payload = payload;
     throw error;
