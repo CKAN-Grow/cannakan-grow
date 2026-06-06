@@ -232,9 +232,11 @@
           <span>Public Handle (optional)</span>
           <input type="text" name="publicHandle" placeholder="grower-name" maxlength="32" pattern="[A-Za-z0-9_-]{3,32}">
         </label>
-        <label>
-          <span>Region (optional)</span>
-          <input type="text" name="locationRegion" placeholder="Pacific Northwest" maxlength="80">
+        <label class="profile-country-field">
+          <span>Country (optional)</span>
+          <input type="text" name="countrySearch" placeholder="Search countries" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" data-country-search>
+          <input type="hidden" name="countryCode" data-country-code>
+          <div class="profile-country-dropdown" role="listbox" data-country-options hidden></div>
         </label>
         <label>
           <span>Bio (optional)</span>

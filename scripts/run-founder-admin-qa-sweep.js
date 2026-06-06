@@ -20,6 +20,7 @@ const qaCommands = [
   ["Snapshot", nodeBin, ["scripts/public-session-partition-results-regression-check.js"]],
   ["Community Grow", nodeBin, ["scripts/community-grow-schema-warning-regression-check.js"]],
   ["Community Grow", nodeBin, ["scripts/community-grow-note-sharing-regression-check.js"]],
+  ["Community Grow", nodeBin, ["scripts/community-grow-country-flags-regression-check.js"]],
   ["Leaderboard", nodeBin, ["scripts/home-gallery-rankings-teaser-regression-check.js"]],
   ["Notifications", nodeBin, ["scripts/notification-reminder-orchestration-regression-check.js"]],
   ["Founder QA", nodeBin, ["scripts/founder-admin-qa-framework-regression-check.js"]],

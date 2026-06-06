@@ -29,6 +29,8 @@ const requireNeedle = (needle, label) => {
   "leaderboard-member-identity-link",
   "const compactProfileMarkup = member.profileRoute",
   "gallery-tile-profile-link gallery-card-profile-link",
+  "renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, \"gallery-card-profile-name\")",
+  "renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, \"gallery-tile-profile-name\")",
   "scope.querySelectorAll(\".gallery-card-profile-link\")",
   "event.stopPropagation();",
   "function getPublicMemberProfileTrustHint(profile = null)",
@@ -73,6 +75,7 @@ if (!leaderboardBody) {
   "const wrapperTag = profileRoute ? \"a\" : \"span\";",
   "View ${displayName}'s public profile",
   "Community Member",
+  "renderDisplayNameWithCountryFlag(displayName, entry?.countryCode || \"\", \"leaderboard-member-name\")",
 ].forEach((needle) => {
   if (!leaderboardBody[0].includes(needle)) {
     throw new Error(`Leaderboard profile integration missing safe link behavior: ${needle}`);

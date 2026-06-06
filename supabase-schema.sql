@@ -280,6 +280,7 @@ create table if not exists public.public_member_profiles (
   bio text default '',
   public_handle text,
   location_region text default '',
+  country_code text,
   profile_visibility text not null default 'public',
   joined_at timestamptz not null default timezone('utc', now()),
   notify_community_activity boolean not null default true,
@@ -701,6 +702,9 @@ alter table public.public_member_profiles
   add column if not exists location_region text default '';
 
 alter table public.public_member_profiles
+  add column if not exists country_code text;
+
+alter table public.public_member_profiles
   add column if not exists profile_visibility text not null default 'public';
 
 alter table public.public_member_profiles
@@ -724,6 +728,32 @@ alter table public.public_member_profiles
 alter table public.public_member_profiles
   add column if not exists updated_at timestamptz not null default timezone('utc', now());
 
+update public.public_member_profiles
+set country_code = case
+    when country_code is not null and btrim(country_code) ~* '^[a-z]{2}$' then upper(btrim(country_code))
+    when btrim(coalesce(location_region, '')) ~* '^[a-z]{2}$' then upper(btrim(location_region))
+    when lower(btrim(coalesce(location_region, ''))) in ('america', 'usa', 'u.s.a.', 'u.s.', 'us', 'united states', 'united states of america') then 'US'
+    when lower(btrim(coalesce(location_region, ''))) in ('canada', 'ca') then 'CA'
+    when lower(btrim(coalesce(location_region, ''))) in ('germany', 'deutschland', 'de') then 'DE'
+    when lower(btrim(coalesce(location_region, ''))) in ('austria', 'osterreich', 'at') then 'AT'
+    when lower(btrim(coalesce(location_region, ''))) in ('united kingdom', 'uk', 'great britain', 'england', 'scotland', 'wales', 'gb') then 'GB'
+    when lower(btrim(coalesce(location_region, ''))) in ('ireland', 'ie') then 'IE'
+    when lower(btrim(coalesce(location_region, ''))) in ('france', 'fr') then 'FR'
+    when lower(btrim(coalesce(location_region, ''))) in ('spain', 'es') then 'ES'
+    when lower(btrim(coalesce(location_region, ''))) in ('italy', 'it') then 'IT'
+    when lower(btrim(coalesce(location_region, ''))) in ('netherlands', 'holland', 'nl') then 'NL'
+    when lower(btrim(coalesce(location_region, ''))) in ('belgium', 'be') then 'BE'
+    when lower(btrim(coalesce(location_region, ''))) in ('switzerland', 'ch') then 'CH'
+    when lower(btrim(coalesce(location_region, ''))) in ('australia', 'au') then 'AU'
+    when lower(btrim(coalesce(location_region, ''))) in ('new zealand', 'nz') then 'NZ'
+    when lower(btrim(coalesce(location_region, ''))) in ('mexico', 'mx') then 'MX'
+    when lower(btrim(coalesce(location_region, ''))) in ('brazil', 'br') then 'BR'
+    else null
+  end,
+  updated_at = timezone('utc', now())
+where country_code is null
+  and nullif(btrim(coalesce(location_region, '')), '') is not null;
+
 do $$
 begin
   if not exists (
@@ -735,6 +765,21 @@ begin
     alter table public.public_member_profiles
       add constraint public_member_profiles_visibility_check
       check (profile_visibility in ('public', 'private'));
+  end if;
+end
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'public_member_profiles_country_code_check'
+      and conrelid = 'public.public_member_profiles'::regclass
+  ) then
+    alter table public.public_member_profiles
+      add constraint public_member_profiles_country_code_check
+      check (country_code is null or country_code ~ '^[A-Z]{2}$');
   end if;
 end
 $$;
@@ -1001,6 +1046,7 @@ select
   bio,
   public_handle,
   location_region,
+  country_code,
   profile_visibility,
   joined_at,
   show_profile_in_community_grow,
@@ -1138,6 +1184,7 @@ returns table (
   member_id uuid,
   display_name text,
   avatar_url text,
+  country_code text,
   joined_at timestamptz,
   relationship_type text,
   created_at timestamptz
@@ -1151,6 +1198,7 @@ as $$
       public_member_profiles.id,
       public_member_profiles.display_name,
       public_member_profiles.avatar_url,
+      public_member_profiles.country_code,
       public_member_profiles.joined_at
     from public.public_member_profiles
     inner join public.profiles
@@ -1163,7 +1211,7 @@ as $$
   ),
   normalized_relationship as (
     select case
-      when lower(coalesce(relationship_type, '')) = 'following' then 'following'
+      when lower(coalesce($2, '')) = 'following' then 'following'
       else 'followers'
     end as relationship_type
   ),
@@ -1189,6 +1237,7 @@ as $$
     requested_members.member_id,
     visible_public_member_profiles.display_name,
     visible_public_member_profiles.avatar_url,
+    visible_public_member_profiles.country_code,
     visible_public_member_profiles.joined_at,
     requested_members.relationship_type,
     requested_members.created_at
@@ -1831,6 +1880,7 @@ begin
 
   new.bio = coalesce(new.bio, '');
   new.location_region = coalesce(new.location_region, '');
+  new.country_code = nullif(upper(btrim(coalesce(new.country_code, ''))), '');
   new.public_handle = nullif(lower(regexp_replace(regexp_replace(coalesce(new.public_handle, ''), '^@+', ''), '[^a-zA-Z0-9_-]+', '-', 'g')), '');
   new.profile_visibility = case
     when coalesce(new.show_profile_in_community_grow, true) = false then 'private'

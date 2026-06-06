@@ -65,7 +65,49 @@ const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
 const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const SAFE_PUBLIC_MEMBER_PROFILES_VIEW = "safe_public_member_profiles";
-const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
+const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,country_code,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
+const ISO_COUNTRY_CODES = Object.freeze([
+  "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
+  "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR",
+  "IO", "BN", "BG", "BF", "BI", "CV", "KH", "CM", "CA", "KY", "CF", "TD", "CL", "CN", "CX", "CC",
+  "CO", "KM", "CG", "CD", "CK", "CR", "CI", "HR", "CU", "CW", "CY", "CZ", "DK", "DJ", "DM", "DO",
+  "EC", "EG", "SV", "GQ", "ER", "EE", "SZ", "ET", "FK", "FO", "FJ", "FI", "FR", "GF", "PF", "TF",
+  "GA", "GM", "GE", "DE", "GH", "GI", "GR", "GL", "GD", "GP", "GU", "GT", "GG", "GN", "GW", "GY",
+  "HT", "HM", "VA", "HN", "HK", "HU", "IS", "IN", "ID", "IR", "IQ", "IE", "IM", "IL", "IT", "JM",
+  "JP", "JE", "JO", "KZ", "KE", "KI", "KP", "KR", "KW", "KG", "LA", "LV", "LB", "LS", "LR", "LY",
+  "LI", "LT", "LU", "MO", "MG", "MW", "MY", "MV", "ML", "MT", "MH", "MQ", "MR", "MU", "YT", "MX",
+  "FM", "MD", "MC", "MN", "ME", "MS", "MA", "MZ", "MM", "NA", "NR", "NP", "NL", "NC", "NZ", "NI",
+  "NE", "NG", "NU", "NF", "MK", "MP", "NO", "OM", "PK", "PW", "PS", "PA", "PG", "PY", "PE", "PH",
+  "PN", "PL", "PT", "PR", "QA", "RE", "RO", "RU", "RW", "BL", "SH", "KN", "LC", "MF", "PM", "VC",
+  "WS", "SM", "ST", "SA", "SN", "RS", "SC", "SL", "SG", "SX", "SK", "SI", "SB", "SO", "ZA", "GS",
+  "SS", "ES", "LK", "SD", "SR", "SJ", "SE", "CH", "SY", "TW", "TJ", "TZ", "TH", "TL", "TG", "TK",
+  "TO", "TT", "TN", "TR", "TM", "TC", "TV", "UG", "UA", "AE", "GB", "US", "UM", "UY", "UZ", "VU",
+  "VE", "VN", "VG", "VI", "WF", "EH", "YE", "ZM", "ZW",
+]);
+const COUNTRY_NAME_OVERRIDES = Object.freeze({
+  BO: "Bolivia",
+  BQ: "Caribbean Netherlands",
+  CD: "Congo - Kinshasa",
+  CG: "Congo - Brazzaville",
+  CI: "Cote d'Ivoire",
+  CZ: "Czechia",
+  FK: "Falkland Islands",
+  FM: "Micronesia",
+  GB: "United Kingdom",
+  IR: "Iran",
+  KR: "South Korea",
+  LA: "Laos",
+  MD: "Moldova",
+  MK: "North Macedonia",
+  PS: "Palestine",
+  RU: "Russia",
+  SY: "Syria",
+  TZ: "Tanzania",
+  US: "United States",
+  VA: "Vatican City",
+  VE: "Venezuela",
+  VN: "Vietnam",
+});
 const DEFAULT_ANNOUNCEMENT_BUTTON_TEXT = "Learn More";
 const MESSAGE_BOARD_DISPLAY_MODE_STORAGE_KEY = "cannakanGrowAnnouncementDisplayMode";
 const FALLBACK_JOKES_STORAGE_KEY = "cannakanGrowFallbackJokes";
@@ -392,14 +434,14 @@ const GALLERY_TOP_MEMBERS_MOCK_ENTRIES = Object.freeze([
   },
 ]);
 const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
-  { id: "mock-seedsman-lab", displayName: "Seedsman Lab", averageGermination: 99, approvedSnapshots: 42, likes: 1488, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 284, followingCount: 72, isFollowing: true },
-  { id: "mock-kan-demo-lead", displayName: "KAN Demo Lead", averageGermination: 98, approvedSnapshots: 31, likes: 986, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 221, followingCount: 68, isFollowing: true },
-  { id: "mock-vault-curator", displayName: "Vault Curator", averageGermination: 96, approvedSnapshots: 22, likes: 704, favoriteSeedType: "Auto", favoriteSource: "Verdant Vault Seeds", followerCount: 176, followingCount: 44, isFollowing: true },
-  { id: "mock-lumen-leaf", displayName: "Lumen Leaf", averageGermination: 95, approvedSnapshots: 19, likes: 588, favoriteSeedType: "Fast", favoriteSource: "Lumen Leaf Genetics", followerCount: 151, followingCount: 39, isFollowing: true },
-  { id: "mock-northstar-runner", displayName: "Northstar Runner", averageGermination: 94, approvedSnapshots: 17, likes: 512, favoriteSeedType: "Photoperiod", favoriteSource: "Northstar Germplasm", followerCount: 142, followingCount: 34, isFollowing: true },
-  { id: "mock-summit-scout", displayName: "Summit Scout", averageGermination: 93, approvedSnapshots: 15, likes: 426, favoriteSeedType: "Auto", favoriteSource: "Summit Sprout Collective", followerCount: 118, followingCount: 31, isFollowing: true },
-  { id: "mock-aurora-calyx", displayName: "Aurora Calyx", averageGermination: 92, approvedSnapshots: 14, likes: 389, favoriteSeedType: "Other", favoriteSource: "Aurora Calyx Seedworks", followerCount: 103, followingCount: 28, isFollowing: true },
-  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", averageGermination: 88, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Other", favoriteSource: "Archive Vault Lot", followerCount: 86, followingCount: 28, isFollowing: false },
+  { id: "mock-seedsman-lab", displayName: "Seedsman Lab", countryCode: "GB", averageGermination: 99, approvedSnapshots: 42, likes: 1488, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 284, followingCount: 72, isFollowing: true },
+  { id: "mock-kan-demo-lead", displayName: "KAN Demo Lead", countryCode: "US", averageGermination: 98, approvedSnapshots: 31, likes: 986, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 221, followingCount: 68, isFollowing: true },
+  { id: "mock-vault-curator", displayName: "Vault Curator", countryCode: "CA", averageGermination: 96, approvedSnapshots: 22, likes: 704, favoriteSeedType: "Auto", favoriteSource: "Verdant Vault Seeds", followerCount: 176, followingCount: 44, isFollowing: true },
+  { id: "mock-lumen-leaf", displayName: "Lumen Leaf", countryCode: "DE", averageGermination: 95, approvedSnapshots: 19, likes: 588, favoriteSeedType: "Fast", favoriteSource: "Lumen Leaf Genetics", followerCount: 151, followingCount: 39, isFollowing: true },
+  { id: "mock-northstar-runner", displayName: "Northstar Runner", countryCode: "AT", averageGermination: 94, approvedSnapshots: 17, likes: 512, favoriteSeedType: "Photoperiod", favoriteSource: "Northstar Germplasm", followerCount: 142, followingCount: 34, isFollowing: true },
+  { id: "mock-summit-scout", displayName: "Summit Scout", countryCode: "NZ", averageGermination: 93, approvedSnapshots: 15, likes: 426, favoriteSeedType: "Auto", favoriteSource: "Summit Sprout Collective", followerCount: 118, followingCount: 31, isFollowing: true },
+  { id: "mock-aurora-calyx", displayName: "Aurora Calyx", countryCode: "NL", averageGermination: 92, approvedSnapshots: 14, likes: 389, favoriteSeedType: "Other", favoriteSource: "Aurora Calyx Seedworks", followerCount: 103, followingCount: 28, isFollowing: true },
+  { id: "mock-old-seed-rescue", displayName: "Old Seed Rescue", countryCode: "AU", averageGermination: 88, approvedSnapshots: 11, likes: 290, favoriteSeedType: "Other", favoriteSource: "Archive Vault Lot", followerCount: 86, followingCount: 28, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
@@ -16735,6 +16777,125 @@ function normalizePublicProfileTextField(value = "", maxLength = 240) {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
+function normalizeCountryCode(value = "") {
+  const normalizedCode = String(value || "").trim().toUpperCase();
+  return ISO_COUNTRY_CODES.includes(normalizedCode) ? normalizedCode : "";
+}
+
+function getCountryDisplayNames() {
+  if (!getCountryDisplayNames.cache) {
+    let displayNames = null;
+    try {
+      displayNames = typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function"
+        ? new Intl.DisplayNames(["en"], { type: "region" })
+        : null;
+    } catch (error) {
+      displayNames = null;
+    }
+
+    getCountryDisplayNames.cache = ISO_COUNTRY_CODES
+      .map((code) => ({
+        code,
+        name: COUNTRY_NAME_OVERRIDES[code] || displayNames?.of(code) || code,
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+  return getCountryDisplayNames.cache;
+}
+
+function getCountryName(countryCode = "") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return "";
+  }
+  return getCountryDisplayNames().find((country) => country.code === normalizedCode)?.name || normalizedCode;
+}
+
+function getCountryFlagEmoji(countryCode = "") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return "";
+  }
+  return [...normalizedCode]
+    .map((letter) => String.fromCodePoint(0x1F1E6 + letter.charCodeAt(0) - 65))
+    .join("");
+}
+
+function formatCountryOptionLabel(countryCode = "") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return "";
+  }
+  return `${getCountryFlagEmoji(normalizedCode)} ${getCountryName(normalizedCode)}`;
+}
+
+function renderCountryFlagMarkup(countryCode = "", className = "country-flag") {
+  const normalizedCode = normalizeCountryCode(countryCode);
+  if (!normalizedCode) {
+    return "";
+  }
+  return `<span class="${escapeHtml(className)}" title="${escapeHtml(getCountryName(normalizedCode))}" aria-label="${escapeHtml(getCountryName(normalizedCode))}" data-country-code="${escapeHtml(normalizedCode)}">${escapeHtml(getCountryFlagEmoji(normalizedCode))}</span>`;
+}
+
+function renderDisplayNameWithCountryFlag(displayName = "", countryCode = "", className = "profile-identity-name") {
+  const flagMarkup = renderCountryFlagMarkup(countryCode, `${className}-flag country-flag`);
+  return `<span class="${escapeHtml(className)}">${flagMarkup}${escapeHtml(displayName)}</span>`;
+}
+
+function inferCountryCodeFromLegacyRegion(value = "") {
+  const normalizedValue = String(value || "").trim();
+  const directCode = normalizeCountryCode(normalizedValue);
+  if (directCode) {
+    return directCode;
+  }
+  const normalizedKey = normalizedValue
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!normalizedKey) {
+    return "";
+  }
+  const aliases = {
+    america: "US",
+    usa: "US",
+    "u s a": "US",
+    "u s": "US",
+    "united states": "US",
+    "united states of america": "US",
+    canada: "CA",
+    germany: "DE",
+    deutschland: "DE",
+    austria: "AT",
+    osterreich: "AT",
+    "united kingdom": "GB",
+    uk: "GB",
+    england: "GB",
+    scotland: "GB",
+    wales: "GB",
+    ireland: "IE",
+    france: "FR",
+    spain: "ES",
+    italy: "IT",
+    netherlands: "NL",
+    holland: "NL",
+    belgium: "BE",
+    switzerland: "CH",
+    australia: "AU",
+    "new zealand": "NZ",
+    mexico: "MX",
+    brazil: "BR",
+  };
+  if (aliases[normalizedKey]) {
+    return aliases[normalizedKey];
+  }
+  const country = getCountryDisplayNames().find((entry) => (
+    entry.name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() === normalizedKey
+  ));
+  return country?.code || "";
+}
+
 function getSafePublicProfileFlagValue(row = {}, keys = []) {
   const source = row && typeof row === "object" ? row : {};
   return (keys || []).some((key) => (
@@ -16754,6 +16915,8 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     normalizedSettings.showProfileInCommunityGrow,
   );
   const publicHandle = normalizePublicProfileHandle(row.public_handle || row.publicHandle || row.handle || "");
+  const countryCode = normalizeCountryCode(row.country_code || row.countryCode || "")
+    || inferCountryCodeFromLegacyRegion(row.location_region || row.locationRegion || row.region || "");
   return {
     id: String(row.id || "").trim(),
     displayName: getDisplayName(
@@ -16768,6 +16931,7 @@ function normalizePublicMemberProfileRow(row, fallbackSettings = DEFAULT_PROFILE
     bio: normalizePublicProfileTextField(row.bio || "", 280),
     publicHandle,
     locationRegion: normalizePublicProfileTextField(row.location_region || row.locationRegion || row.region || "", 80),
+    countryCode,
     profileVisibility,
     isPublicVisible: profileVisibility === "public" && normalizedSettings.showProfileInCommunityGrow !== false,
     joinedAt: row.joined_at || row.created_at || "",
@@ -16792,12 +16956,14 @@ function isPublicMemberProfilesViewUnavailableError(error) {
       "bio",
       "public_handle",
       "location_region",
+      "country_code",
       "profile_visibility",
     ])
     || isSupabaseColumnMissingError(error, SAFE_PUBLIC_MEMBER_PROFILES_VIEW, [
       "bio",
       "public_handle",
       "location_region",
+      "country_code",
       "profile_visibility",
     ])
     || getSupabaseErrorStatusCode(error) === 404;
@@ -17453,6 +17619,7 @@ function buildDerivedPublicMemberProfile(memberId = "", snapshots = getApprovedP
     bio: "",
     publicHandle: "",
     locationRegion: "",
+    countryCode: "",
     profileVisibility: "public",
     isPublicVisible: true,
     hasCustomPublicProfile: false,
@@ -17487,6 +17654,8 @@ function buildCurrentUserPublicMemberProfileFallback(
     bio: normalizePublicProfileTextField(existingPublicProfile?.bio || "", 280),
     publicHandle: normalizePublicProfileHandle(existingPublicProfile?.publicHandle || ""),
     locationRegion: normalizePublicProfileTextField(existingPublicProfile?.locationRegion || "", 80),
+    countryCode: normalizeCountryCode(existingPublicProfile?.countryCode || existingPublicProfile?.country_code || "")
+      || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
     profileVisibility: normalizePublicProfileVisibility(existingPublicProfile?.profileVisibility || "", normalizedSettings.showProfileInCommunityGrow),
     isPublicVisible: normalizedSettings.showProfileInCommunityGrow !== false,
     hasCustomPublicProfile: true,
@@ -17518,6 +17687,8 @@ function mergePublicMemberProfileRecord(primaryProfile = null, fallbackProfile =
     bio: normalizePublicProfileTextField(primaryProfile?.bio || fallbackProfile?.bio || "", 280),
     publicHandle: normalizePublicProfileHandle(primaryProfile?.publicHandle || fallbackProfile?.publicHandle || ""),
     locationRegion: normalizePublicProfileTextField(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || "", 80),
+    countryCode: normalizeCountryCode(primaryProfile?.countryCode || primaryProfile?.country_code || fallbackProfile?.countryCode || fallbackProfile?.country_code || "")
+      || inferCountryCodeFromLegacyRegion(primaryProfile?.locationRegion || fallbackProfile?.locationRegion || ""),
     profileVisibility: normalizePublicProfileVisibility(
       primaryProfile?.profileVisibility || fallbackProfile?.profileVisibility || "",
       resolvedSettings.showProfileInCommunityGrow,
@@ -17787,6 +17958,7 @@ function normalizePublicMemberFollowListRow(row) {
       { fallbackLabel: "User" },
     ),
     avatarUrl: resolveAvatarImageUrl(row?.avatar_url || row?.avatarUrl || "", row?.avatar_path || row?.avatarPath || ""),
+    countryCode: normalizeCountryCode(row?.country_code || row?.countryCode || ""),
     joinedAt: row?.joined_at || row?.joinedAt || "",
     createdAt: row?.created_at || row?.createdAt || "",
     relationshipType: String(row?.relationship_type || row?.relationshipType || "").trim() === "following"
@@ -17886,6 +18058,7 @@ function syncMockGrowNetworkCaches() {
       id: profile.id,
       displayName: profile.displayName,
       avatarUrl: profile.avatarUrl || buildMockGalleryProfileAvatarDataUri(profile.displayName, profile.favoriteSource || profile.favoriteSeedType || "Grow Network", index),
+      countryCode: normalizeCountryCode(profile.countryCode || ""),
       joinedAt: "2026-01-01T12:00:00.000Z",
     };
     appState.publicMemberFollowSummaries[profile.id] = {
@@ -17940,6 +18113,7 @@ function buildMockGrowNetworkActivityEntries() {
         memberId: activity.memberId,
         displayName: profile?.displayName || activity.memberId,
         avatarUrl: profile?.avatarUrl || "",
+        countryCode: profile?.countryCode || "",
         profileRoute: getPublicMemberProfileRoute(activity.memberId),
         sessionRoute: activity.sessionRoute || "#gallery",
         sessionDateLabel: "",
@@ -18461,7 +18635,7 @@ function renderPublicMemberConnectionRowsMarkup(profileMemberId = "", listType =
                 ${renderPublicMemberAvatarMarkup(row.displayName, row.avatarUrl, "public-member-profile-connection-avatar")}
               </span>
               <span class="public-member-profile-connection-copy">
-                <strong>${escapeHtml(row.displayName)}</strong>
+                <strong>${renderDisplayNameWithCountryFlag(row.displayName, row.countryCode, "public-member-profile-connection-name")}</strong>
                 <span>${escapeHtml(rowMetaLabel)}</span>
               </span>
             </a>
@@ -18872,6 +19046,7 @@ async function loadPublicMemberFollowLists(memberId = "", options = {}) {
             { fallbackLabel: "User" },
           ),
           avatarUrl: row.avatarUrl || existingProfile.avatarUrl || "",
+          countryCode: row.countryCode || existingProfile.countryCode || "",
           joinedAt: row.joinedAt || existingProfile.joinedAt || "",
         };
       });
@@ -19243,6 +19418,7 @@ function buildCommunityActivityFeedEntry(activity) {
     memberId: normalizedActivity.userId,
     displayName,
     avatarUrl,
+    countryCode: profile?.countryCode || "",
     profileRoute: getPublicMemberProfileRoute(normalizedActivity.userId),
     sessionRoute: normalizedActivity.snapshotId ? `#sessions/public/${normalizedActivity.snapshotId}` : "#gallery",
     sessionDateLabel: metadata.sessionDateLabel || "",
@@ -19752,6 +19928,7 @@ async function loadGrowNetworkActivity(reason = "unspecified") {
       ...activity,
       displayName: profile?.displayName || activity.displayName,
       avatarUrl: profile?.avatarUrl || activity.avatarUrl,
+      countryCode: profile?.countryCode || activity.countryCode || "",
     };
   });
   return appState.growNetworkActivity;
@@ -20220,6 +20397,14 @@ function buildPublicMemberProfileUpsertPayload(
     ?? "",
     80,
   );
+  const countryCode = normalizeCountryCode(
+    settingsInput?.countryCode
+    ?? settingsInput?.country_code
+    ?? profileInput?.countryCode
+    ?? existingProfile?.countryCode
+    ?? existingProfile?.country_code
+    ?? "",
+  );
   const profileVisibility = normalizePublicProfileVisibility(
     settingsInput?.profileVisibility
     ?? settingsInput?.profile_visibility
@@ -20236,6 +20421,7 @@ function buildPublicMemberProfileUpsertPayload(
     bio,
     public_handle: publicHandle || null,
     location_region: locationRegion,
+    country_code: countryCode || null,
     profile_visibility: profileVisibility,
     notify_community_activity: normalizedSettings.notifyCommunityActivity === true,
     show_profile_in_community_grow: normalizedSettings.showProfileInCommunityGrow !== false,
@@ -24192,6 +24378,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
     return "";
   }
   const profileName = String(member.displayName || "").trim();
+  const countryCode = member.countryCode || "";
   const safeProfileImageUrl = getSafeAvatarImageUrl(member.avatarUrl);
   const avatarMarkup = renderPublicMemberAvatarMarkup(
     profileName || "Shared grower profile",
@@ -24212,7 +24399,7 @@ function renderGallerySharedProfileMarkup(snapshot) {
   return `
     <${wrapperTag} ${wrapperAttributes}>
       ${avatarMarkup}
-      ${profileName ? `<span class="gallery-card-profile-name">${escapeHtml(profileName)}</span>` : ""}
+      ${profileName ? renderDisplayNameWithCountryFlag(profileName, countryCode, "gallery-card-profile-name") : ""}
     </${wrapperTag}>
   `;
 }
@@ -24241,6 +24428,7 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
       ? getDisplayName({ id: memberId, displayName: privateViewerProfile.displayName || "" }, { fallbackLabel })
       : fallbackLabel);
   const fallbackAvatarUrl = publicProfile?.avatarUrl || privateViewerProfile?.avatarUrl || "";
+  const countryCode = publicProfile?.countryCode || privateViewerProfile?.countryCode || "";
   const profileHint = publicProfile
     ? getProfileCommunityCardHint(publicProfile, getGallerySnapshotsForDisplay())
     : (canShowPrivateViewerContext ? "Private profile" : "");
@@ -24249,6 +24437,7 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
     memberId,
     displayName,
     avatarUrl: getSafeAvatarImageUrl(fallbackAvatarUrl),
+    countryCode,
     profileRoute: publicProfile && memberId ? getPublicMemberProfileRoute(publicProfile) : "",
     profileHint,
     canShowIdentity: Boolean(publicProfile || privateViewerProfile),
@@ -24270,7 +24459,7 @@ function renderGallerySnapshotMemberMarkup(snapshot) {
     <${wrapperTag} ${wrapperAttributes}>
       ${avatarMarkup}
       <span class="gallery-card-profile-copy">
-        <span class="gallery-card-profile-name">${escapeHtml(member.displayName)}</span>
+        ${renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, "gallery-card-profile-name")}
         <span class="gallery-card-profile-meta">${escapeHtml(member.profileHint ? `${submittedLabel} · ${member.profileHint}` : submittedLabel)}</span>
       </span>
     </${wrapperTag}>
@@ -24400,8 +24589,8 @@ function renderGallerySnapshotCardMarkup(snapshot, options = {}) {
     const systemBadgeLabel = formatSnapshotSystemLabel(snapshot.systemType || "KAN");
     const submittedLabel = getGallerySnapshotSubmittedDateLabel(snapshot);
     const compactProfileMarkup = member.profileRoute
-      ? `<a class="gallery-tile-profile-link gallery-card-profile-link" href="${escapeHtml(member.profileRoute)}" aria-label="${escapeHtml(`View ${member.displayName}'s public profile`)}">${escapeHtml(member.displayName)}</a>`
-      : `<span>${escapeHtml(member.displayName)}</span>`;
+      ? `<a class="gallery-tile-profile-link gallery-card-profile-link" href="${escapeHtml(member.profileRoute)}" aria-label="${escapeHtml(`View ${member.displayName}'s public profile`)}">${renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, "gallery-tile-profile-name")}</a>`
+      : renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, "gallery-tile-profile-name");
     const compactActionAttribute = openPublicSessionDirectly
       ? `data-gallery-public-session="${escapeHtml(snapshot.id)}"`
       : `data-gallery-preview="${escapeHtml(snapshot.id)}"`;
@@ -25541,6 +25730,7 @@ function buildGalleryTopMemberEntries(snapshots = []) {
       avatarUrl: "",
       profileRoute: member.canLinkProfile ? member.profileRoute : "",
       profileHint: member.canLinkProfile ? member.profileHint : "",
+      countryCode: member.canLinkProfile ? member.countryCode : "",
       trustHint: member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "",
       isFallbackIdentity: !member.canLinkProfile,
       snapshotCount: 0,
@@ -25555,6 +25745,7 @@ function buildGalleryTopMemberEntries(snapshots = []) {
     existingEntry.avatarUrl = existingEntry.avatarUrl || getGallerySnapshotMemberAvatarUrl(snapshot);
     existingEntry.profileRoute = existingEntry.profileRoute || (member.canLinkProfile ? member.profileRoute : "");
     existingEntry.profileHint = existingEntry.profileHint || (member.canLinkProfile ? member.profileHint : "");
+    existingEntry.countryCode = existingEntry.countryCode || (member.canLinkProfile ? member.countryCode : "");
     existingEntry.trustHint = existingEntry.trustHint || (member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "");
     existingEntry.snapshotCount += 1;
     existingEntry.totalLikes += Math.max(0, Number(snapshot?.likeCount) || 0);
@@ -25568,6 +25759,7 @@ function buildGalleryTopMemberEntries(snapshots = []) {
     .map((entry) => ({
       ...entry,
       avatarUrl: entry.avatarUrl || (isMockDataEnabled() ? findMockGalleryTopMemberEntry(entry)?.avatarUrl || "" : ""),
+      countryCode: entry.countryCode || (isMockDataEnabled() ? findMockGalleryTopMemberEntry(entry)?.countryCode || "" : ""),
       averageGermination: entry.snapshotCount
         ? Math.round(entry.totalSuccessPercent / entry.snapshotCount)
         : (isMockDataEnabled() ? findMockGalleryTopMemberEntry(entry)?.averageGermination || 0 : 0),
@@ -25599,7 +25791,7 @@ function renderLeaderboardMemberIdentityMarkup(entry = {}, className = "leaderbo
     <${wrapperTag} ${wrapperAttributes}>
       ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "leaderboard-member-avatar")}
       <span class="leaderboard-member-copy">
-        <span class="leaderboard-member-name">${escapeHtml(displayName)}</span>
+        ${renderDisplayNameWithCountryFlag(displayName, entry?.countryCode || "", "leaderboard-member-name")}
         ${trustHint ? `<span class="leaderboard-member-hint">${escapeHtml(trustHint)}</span>` : ""}
       </span>
     </${wrapperTag}>
@@ -40549,7 +40741,7 @@ function renderProfilePage() {
     { label: "Email", value: email },
     { label: "Display Name", value: displayName || "Choose a display name in Edit Profile" },
     { label: "Public Handle", value: currentPublicProfile?.publicHandle ? `@${currentPublicProfile.publicHandle}` : "Not set" },
-    { label: "Region", value: currentPublicProfile?.locationRegion || "Not set" },
+    { label: "Country", value: currentPublicProfile?.countryCode ? `${getCountryFlagEmoji(currentPublicProfile.countryCode)} ${getCountryName(currentPublicProfile.countryCode)}` : "Not set" },
     { label: "Member Since", value: memberSinceLabel },
     { label: "Profile Visibility", value: profilePageSettings.showProfileInCommunityGrow !== false ? "Public in Community Grow" : "Private" },
   ];
@@ -40842,7 +41034,7 @@ function openProfileEditor() {
         <div class="snapshot-modal-copy">
           <p class="eyebrow">Account</p>
           <h3>Edit Profile</h3>
-          <p class="muted">Update the public-safe name, handle, bio, region, and avatar shown in ${BRAND_APP_NAME}.</p>
+          <p class="muted">Update the public-safe name, handle, bio, country, and avatar shown in ${BRAND_APP_NAME}.</p>
         </div>
         <div id="profile-modal-body"></div>
         <div class="snapshot-modal-actions">
@@ -40868,7 +41060,7 @@ function openProfileEditor() {
     title.textContent = "Edit your profile";
   }
   if (copy) {
-    copy.textContent = `Update the public-safe name, handle, bio, region, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
+    copy.textContent = `Update the public-safe name, handle, bio, country, avatar, and notification preferences used in ${BRAND_APP_NAME}.`;
   }
   if (eyebrow) {
     eyebrow.textContent = "Profile";
@@ -40899,6 +41091,124 @@ function openProfileEditor() {
   modal.showModal();
 }
 
+function renderCountryComboboxOptions(filterValue = "") {
+  const normalizedFilter = String(filterValue || "").trim().toLowerCase();
+  const countries = getCountryDisplayNames()
+    .filter((country) => {
+      if (!normalizedFilter) {
+        return true;
+      }
+      return country.code.toLowerCase().includes(normalizedFilter)
+        || country.name.toLowerCase().includes(normalizedFilter)
+        || formatCountryOptionLabel(country.code).toLowerCase().includes(normalizedFilter);
+    })
+    .slice(0, 80);
+
+  if (!countries.length) {
+    return '<div class="profile-country-option is-empty" role="option" aria-disabled="true">No countries found</div>';
+  }
+
+  return countries.map((country) => `
+    <button
+      type="button"
+      class="profile-country-option"
+      role="option"
+      data-country-option="${escapeHtml(country.code)}"
+      aria-label="${escapeHtml(`${country.name}, ${country.code}`)}"
+    >
+      <span class="profile-country-option-flag" aria-hidden="true">${escapeHtml(getCountryFlagEmoji(country.code))}</span>
+      <span class="profile-country-option-name">${escapeHtml(country.name)}</span>
+      <span class="profile-country-option-code">${escapeHtml(country.code)}</span>
+    </button>
+  `).join("");
+}
+
+function initProfileCountryCombobox(form, selectedCountryCode = "") {
+  const searchInput = form?.elements?.countrySearch;
+  const countryCodeInput = form?.elements?.countryCode;
+  const dropdown = form?.querySelector("[data-country-options]");
+  if (!(searchInput instanceof HTMLInputElement) || !(countryCodeInput instanceof HTMLInputElement) || !(dropdown instanceof HTMLElement)) {
+    return;
+  }
+
+  const setSelectedCountry = (countryCode = "") => {
+    const normalizedCode = normalizeCountryCode(countryCode);
+    countryCodeInput.value = normalizedCode;
+    searchInput.value = normalizedCode ? formatCountryOptionLabel(normalizedCode) : "";
+  };
+  const closeDropdown = () => {
+    dropdown.hidden = true;
+    searchInput.setAttribute("aria-expanded", "false");
+  };
+  const openDropdown = () => {
+    dropdown.innerHTML = renderCountryComboboxOptions(searchInput.value);
+    dropdown.hidden = false;
+    searchInput.setAttribute("aria-expanded", "true");
+  };
+  const syncTypedCountry = () => {
+    const rawValue = String(searchInput.value || "").trim();
+    if (!rawValue) {
+      countryCodeInput.value = "";
+      return;
+    }
+    const directCode = normalizeCountryCode(rawValue);
+    const matchedCountry = directCode
+      ? { code: directCode }
+      : getCountryDisplayNames().find((country) => (
+        formatCountryOptionLabel(country.code).toLowerCase() === rawValue.toLowerCase()
+        || country.name.toLowerCase() === rawValue.toLowerCase()
+      ));
+    countryCodeInput.value = matchedCountry ? matchedCountry.code : "";
+  };
+
+  setSelectedCountry(selectedCountryCode);
+  dropdown.innerHTML = renderCountryComboboxOptions("");
+
+  searchInput.addEventListener("focus", openDropdown);
+  searchInput.addEventListener("input", () => {
+    syncTypedCountry();
+    openDropdown();
+  });
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeDropdown();
+      return;
+    }
+    if (event.key !== "Enter") {
+      return;
+    }
+    const firstOption = dropdown.querySelector("[data-country-option]");
+    if (firstOption instanceof HTMLElement && !dropdown.hidden) {
+      event.preventDefault();
+      setSelectedCountry(firstOption.dataset.countryOption || "");
+      closeDropdown();
+    }
+  });
+  dropdown.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+  });
+  dropdown.addEventListener("click", (event) => {
+    const option = event.target instanceof Element
+      ? event.target.closest("[data-country-option]")
+      : null;
+    if (!(option instanceof HTMLElement)) {
+      return;
+    }
+    setSelectedCountry(option.dataset.countryOption || "");
+    closeDropdown();
+  });
+  searchInput.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      if (!countryCodeInput.value) {
+        searchInput.value = "";
+      } else {
+        setSelectedCountry(countryCodeInput.value);
+      }
+      closeDropdown();
+    }, 120);
+  });
+}
+
 function bindProfileForm(form, options = {}) {
   if (!form) {
     return;
@@ -40909,7 +41219,7 @@ function bindProfileForm(form, options = {}) {
   const existingPublicProfile = appState.publicMemberProfiles[String(appState.user?.id || "").trim()] || null;
   const usernameInput = form.elements.username;
   const publicHandleInput = form.elements.publicHandle;
-  const locationRegionInput = form.elements.locationRegion;
+  const countryCodeInput = form.elements.countryCode;
   const bioInput = form.elements.bio;
   const avatarInput = form.elements.avatar;
   const message = form.querySelector("#profile-message");
@@ -40949,9 +41259,10 @@ function bindProfileForm(form, options = {}) {
   if (publicHandleInput instanceof HTMLInputElement) {
     publicHandleInput.value = existingPublicProfile?.publicHandle || "";
   }
-  if (locationRegionInput instanceof HTMLInputElement) {
-    locationRegionInput.value = existingPublicProfile?.locationRegion || "";
-  }
+  initProfileCountryCombobox(
+    form,
+    existingPublicProfile?.countryCode || inferCountryCodeFromLegacyRegion(existingPublicProfile?.locationRegion || ""),
+  );
   if (bioInput instanceof HTMLTextAreaElement) {
     bioInput.value = existingPublicProfile?.bio || "";
   }
@@ -41050,7 +41361,7 @@ function bindProfileForm(form, options = {}) {
     const username = String(usernameInput.value || "").trim();
     const rawPublicHandle = String(publicHandleInput?.value || "").trim();
     const publicHandle = normalizePublicProfileHandle(rawPublicHandle);
-    const locationRegion = normalizePublicProfileTextField(locationRegionInput?.value || "", 80);
+    const countryCode = normalizeCountryCode(countryCodeInput?.value || "");
     const bio = normalizePublicProfileTextField(bioInput?.value || "", 280);
 
     if (!username) {
@@ -41189,7 +41500,7 @@ function bindProfileForm(form, options = {}) {
           notifyCommunityActivity: notificationPreferencePayload.notifyCommunityActivity,
           bio,
           publicHandle,
-          locationRegion,
+          countryCode,
         }, {
           requirePersistence: true,
           debugContext: "profile-editor-notification-settings",
@@ -71241,6 +71552,8 @@ function renderPublicMemberProfile(memberId) {
     { fallbackLabel: "Community grower" },
   );
   const avatarUrl = canShowPublicProfileData ? profile?.avatarUrl || "" : "";
+  const countryCode = canShowPublicProfileData ? normalizeCountryCode(profile?.countryCode || "") : "";
+  const countryLabel = countryCode ? `${getCountryFlagEmoji(countryCode)} ${getCountryName(countryCode)}` : "";
   const joinedLabel = formatPublicMemberJoinedDateLabel(profile?.joinedAt || "");
   const roundedAverageRate = publicStats.averageGerminationRate === null
     ? ""
@@ -71249,7 +71562,6 @@ function renderPublicMemberProfile(memberId) {
     ? ""
     : getProfileAnalyticsRateLabel(publicStats.bestGerminationRate);
   const publicHandleLabel = profile?.publicHandle ? `@${profile.publicHandle}` : "";
-  const locationRegionLabel = canShowPublicProfileData ? profile?.locationRegion || "" : "";
   const profileBio = canShowPublicProfileData ? profile?.bio || "" : "";
   const showPublicStats = isOwnProfile || profile?.showGrowStatsPublicly !== false;
   const publicAnalytics = publicStats.publicAnalytics || calculateProfileAnalyticsFromPublicSnapshots(approvedSnapshots);
@@ -71330,19 +71642,19 @@ function renderPublicMemberProfile(memberId) {
     <section class="card public-member-profile-page">
       <div class="public-member-profile-header">
         <div class="public-member-profile-identity">
-          <div class="public-member-profile-avatar-shell">
+        <div class="public-member-profile-avatar-shell">
             ${renderPublicMemberAvatarMarkup(displayName, avatarUrl)}
           </div>
         <div class="public-member-profile-copy">
           <p class="eyebrow">Community Member</p>
-          <h2>${escapeHtml(displayName)}</h2>
+          <h2>${renderDisplayNameWithCountryFlag(displayName, countryCode, "public-member-profile-name")}</h2>
             <p class="muted">${escapeHtml(publicHandleLabel || "Public grow profile")}</p>
             ${trustIndicators.length ? `
               <div class="public-member-profile-trust-row" aria-label="Profile trust indicators">
                 ${trustIndicators.map((indicator) => `<span class="public-member-profile-trust-chip">${escapeHtml(indicator.label)}</span>`).join("")}
               </div>
             ` : ""}
-            ${locationRegionLabel ? `<p class="public-member-profile-region">${escapeHtml(locationRegionLabel)}</p>` : ""}
+            ${countryLabel ? `<p class="public-member-profile-country">${escapeHtml(countryLabel)}</p>` : ""}
             ${joinedLabel ? `<p class="public-member-profile-joined">Joined ${escapeHtml(joinedLabel)}</p>` : ""}
             ${profileBio ? `<p class="public-member-profile-bio">${escapeHtml(profileBio)}</p>` : ""}
             ${isOwnProfile && profile?.isPublicVisible === false ? `<p class="public-member-profile-owner-note">Your profile is private. Other viewers see a community grower fallback.</p>` : ""}
@@ -71809,7 +72121,7 @@ function renderGrowNetworkPage() {
                   )}
                 </span>
                 <div class="grow-network-member-copy">
-                  <strong>${escapeHtml(member.displayName)}</strong>
+                  <strong>${renderDisplayNameWithCountryFlag(member.displayName, member.countryCode, "grow-network-member-name")}</strong>
                   ${renderMemberMetaMarkup(member)}
                 </div>
               </a>
@@ -71850,6 +72162,7 @@ function renderGrowNetworkPage() {
             { fallbackLabel: "User" },
           );
           const avatarUrl = profile?.avatarUrl || "";
+          const countryCode = profile?.countryCode || "";
           const followSummary = appState.publicMemberFollowSummaries[memberId] || null;
           const publicSnapshotCount = getApprovedPublicSnapshotsForMember(memberId).length;
           const publicSnapshotLabel = isLoadingNetworkActivity
@@ -71864,7 +72177,7 @@ function renderGrowNetworkPage() {
                   ${renderPublicMemberAvatarMarkup(displayName, avatarUrl, "grow-network-member-avatar")}
                 </span>
                 <div class="grow-network-member-copy">
-                  <strong>${escapeHtml(displayName)}</strong>
+                  <strong>${renderDisplayNameWithCountryFlag(displayName, countryCode, "grow-network-member-name")}</strong>
                   <span class="grow-network-member-caption">${escapeHtml(publicSnapshotLabel)}</span>
                   <div class="grow-network-member-stats">
                     <span class="grow-network-member-stat-chip">${escapeHtml(`${publicSnapshotCount.toLocaleString()} approved`)}</span>
@@ -71937,7 +72250,7 @@ function renderGrowNetworkPage() {
                   ${renderPublicMemberAvatarMarkup(activity.displayName, activity.avatarUrl, "grow-network-feed-avatar")}
                 </span>
                 <div class="grow-network-feed-member-copy">
-                  <strong>${escapeHtml(activity.displayName)}</strong>
+                  <strong>${renderDisplayNameWithCountryFlag(activity.displayName, activity.countryCode, "grow-network-feed-member-name")}</strong>
                   <span>${escapeHtml(activity.typeLabel)}</span>
                 </div>
               </a>
