@@ -41336,8 +41336,7 @@ function renderCountryComboboxOptions(filterValue = "") {
       return country.code.toLowerCase().includes(normalizedFilter)
         || country.name.toLowerCase().includes(normalizedFilter)
         || formatCountryOptionLabel(country.code).toLowerCase().includes(normalizedFilter);
-    })
-    .slice(0, 80);
+    });
 
   if (!countries.length) {
     return '<div class="profile-country-option is-empty" role="option" aria-disabled="true">No countries found</div>';

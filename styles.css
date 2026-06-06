@@ -24279,6 +24279,8 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   display: grid;
   max-height: 240px;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 6px;
   border: 1px solid rgba(148, 209, 89, 0.24);
   border-radius: 12px;

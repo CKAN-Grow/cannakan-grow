@@ -43,12 +43,28 @@ function requireNeedle(source, needle, label = needle) {
 ].forEach((needle) => requireNeedle(appSource, needle));
 
 [
+  '"US"',
+  '"GB"',
+  '"DE"',
+  '"AT"',
+  '"ZW"',
+].forEach((countryCode) => {
+  requireNeedle(appSource, countryCode, `scrollable country option code ${countryCode}`);
+});
+
+[
   ".profile-country-dropdown",
   ".profile-country-option",
+  "overscroll-behavior: contain",
+  "-webkit-overflow-scrolling: touch",
   ".country-flag",
   ".gallery-card-profile-name .country-flag",
   ".public-member-profile-country",
 ].forEach((needle) => requireNeedle(stylesSource, needle));
+
+if (/renderCountryComboboxOptions[\s\S]*?\.slice\s*\(\s*0\s*,\s*80\s*\)/.test(appSource)) {
+  throw new Error("Country selector must not slice the default country list; all countries need to be scrollable.");
+}
 
 [
   "add column if not exists country_code text",
