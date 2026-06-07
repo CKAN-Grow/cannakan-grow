@@ -35997,19 +35997,24 @@ const LEARN_ADDING_SEEDS_TUTORIAL_ID = "adding-seeds";
 const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-seeds.webp";
 const LEARN_FILLING_WITH_WATER_TUTORIAL_ID = "filling-with-water";
 const LEARN_FILLING_WITH_WATER_POSTER_PATH = "/assets/learn/images/tutorials/filling-with-water-soaking.webp";
+const LEARN_HEAT_PAD_CONTROLLER_SETUP_TUTORIAL_ID = "heat-pad-controller-setup";
 const LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH = "/assets/learn/images/tutorials/heat-pad-controller-setup.webp";
 const LEARN_CHECKING_CONDENSATION_TUTORIAL_ID = "checking-condensation-under-lid";
 const LEARN_CHECKING_CONDENSATION_POSTER_PATH = "/assets/learn/images/tutorials/checking-condensation-under-lid.webp";
 const LEARN_STARTING_GERMINATION_TUTORIAL_ID = "starting-germination-stage";
 const LEARN_STARTING_GERMINATION_POSTER_PATH = "/assets/learn/images/tutorials/starting-germination-stage.webp";
+const LEARN_REVIEWING_GERMINATION_RESULTS_TUTORIAL_ID = "reviewing-germination-results";
+const LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH = "/assets/learn/images/tutorials/reviewing-germination-results.webp";
 const LEARN_KAN_SYSTEM_CATEGORY_ID = "kan-system";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
 const LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID = "3e0de3f6cace865c1f570988887d3369";
 const LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID = "1b7484b7cebe3205c642843ae5b9a816";
+const LEARN_HEAT_PAD_CONTROLLER_SETUP_CLOUDFLARE_VIDEO_ID = "2d81bdd5d4e43aac6743751397ed7a8b";
 const LEARN_CHECKING_CONDENSATION_CLOUDFLARE_VIDEO_ID = "7ac361bf82eea9c03566549ffd65c379";
 const LEARN_STARTING_GERMINATION_CLOUDFLARE_VIDEO_ID = "eff3559d34ff856fe5d2439838f9a134";
+const LEARN_REVIEWING_GERMINATION_RESULTS_CLOUDFLARE_VIDEO_ID = "c45947d4cca33b6dba190ad337870283";
 const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
   Object.freeze({
     keys: Object.freeze(["filling-out-partition-chart", "filling out partition chart"]),
@@ -36037,7 +36042,7 @@ const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
   }),
   Object.freeze({
     keys: Object.freeze([
-      "heat-pad-controller-setup",
+      LEARN_HEAT_PAD_CONTROLLER_SETUP_TUTORIAL_ID,
       "heat pad controller setup",
       "heat pad and controller setup",
       "heat pad & controller setup",
@@ -36066,6 +36071,16 @@ const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
     featuredOrder: 7,
     categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
   }),
+  Object.freeze({
+    keys: Object.freeze([
+      LEARN_REVIEWING_GERMINATION_RESULTS_TUTORIAL_ID,
+      "reviewing germination results",
+      "reviewing the germination results",
+    ]),
+    order: 8,
+    featuredOrder: 8,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
 ]);
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
@@ -36090,12 +36105,14 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         isPublic: true,
         featured: true,
         featuredOrder: 1,
-        featuredLabel: "Start Here",
+        featuredLabel: "START HERE",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
         thumbnailUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        posterImageUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
         posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/filling-partition-chart",
         recommendedFor: Object.freeze(["new_user", "active_session"]),
         priority: 1,
         relatedFeature: "sessions",
@@ -36109,6 +36126,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           cloudflareStreamId: LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID,
           cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+          posterImageUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
           posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
         }),
       }),
@@ -36125,12 +36143,14 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         isPublic: true,
         featured: true,
         featuredOrder: 2,
-        featuredLabel: "Core Setup",
+        featuredLabel: "CORE SETUP",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
         thumbnailUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+        posterImageUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
         posterUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/loading-filter-paper",
         recommendedFor: Object.freeze(["new_user"]),
         priority: 2,
         relatedFeature: "kan-system",
@@ -36144,6 +36164,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           cloudflareStreamId: LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID,
           cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+          posterImageUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
           posterUrl: LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
         }),
       }),
@@ -36160,12 +36181,14 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         isPublic: true,
         featured: true,
         featuredOrder: 3,
-        featuredLabel: "Seed Setup",
+        featuredLabel: "SEED SETUP",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
         thumbnailUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        posterImageUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
         posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/adding-seeds",
         recommendedFor: Object.freeze(["new_user", "active_session"]),
         priority: 3,
         relatedFeature: "sessions",
@@ -36179,6 +36202,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           cloudflareStreamId: LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID,
           cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_ADDING_SEEDS_POSTER_PATH,
+          posterImageUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
           posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
         }),
       }),
@@ -36195,12 +36219,14 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         isPublic: true,
         featured: true,
         featuredOrder: 4,
-        featuredLabel: "Soaking Setup",
+        featuredLabel: "ESSENTIAL",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
         thumbnailUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        posterImageUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
         posterUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/filling-with-water",
         recommendedFor: Object.freeze(["new_user", "active_session"]),
         priority: 4,
         relatedFeature: "kan-system",
@@ -36214,7 +36240,46 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           cloudflareStreamId: LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID,
           cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+          posterImageUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
           posterUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        }),
+      }),
+      Object.freeze({
+        id: LEARN_HEAT_PAD_CONTROLLER_SETUP_TUTORIAL_ID,
+        order: 5,
+        title: "Heat Pad & Controller Setup",
+        duration: "16 sec • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to place the KAN® system on the heat pad and set up the controller for stable germination conditions.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        featured: true,
+        featuredOrder: 5,
+        featuredLabel: "ESSENTIAL",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+        posterImageUrl: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+        posterUrl: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/heat-pad-controller-setup",
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 5,
+        relatedFeature: "kan-system",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_HEAT_PAD_CONTROLLER_SETUP_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+          posterImageUrl: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+          posterUrl: LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
         }),
       }),
       Object.freeze({
@@ -36237,6 +36302,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         thumbnailUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
         posterImageUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
         posterUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/checking-condensation-under-lid",
         recommendedFor: Object.freeze(["new_user", "active_session"]),
         priority: 6,
         relatedFeature: "kan-system",
@@ -36299,8 +36365,52 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         }),
       }),
       Object.freeze({
+        id: LEARN_REVIEWING_GERMINATION_RESULTS_TUTORIAL_ID,
+        order: 8,
+        title: "Reviewing Germination Results",
+        duration: "21 sec • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to check seed progress, review germination results, and determine the next steps for successful seedlings.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        featured: true,
+        featuredOrder: 8,
+        featuredLabel: "ESSENTIAL",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+        posterImageUrl: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+        posterUrl: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+        qrLabel: "Results Review QR",
+        qrDescription: "Learn how to evaluate seed progress and germination results before planting.",
+        qrCampaignTag: "packaging-insert",
+        qrDestinationUrl: "https://grow.cannakan.com/learn/tutorial/reviewing-germination-results",
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 8,
+        relatedFeature: "kan-system",
+        userStage: "active_session",
+        onboardingPriority: false,
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_REVIEWING_GERMINATION_RESULTS_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+          posterImageUrl: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+          posterUrl: LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
+          transcriptUrl: "",
+          captionsUrl: "",
+        }),
+      }),
+      Object.freeze({
         id: "kan-system-overview",
-        order: 5,
+        order: 9,
         title: "KAN® System Overview",
         duration: "2 min • Beginner",
         description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
@@ -36322,7 +36432,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "soaking-vs-germinating",
-        order: 6,
+        order: 10,
         title: "Understanding Soaking vs Germinating",
         duration: "2 min • Beginner",
         description: "Learn what changes between soaking, germinating, and visible germination progress.",
@@ -36336,7 +36446,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "filter-paper-setup",
-        order: 7,
+        order: 11,
         title: "Filter Paper Setup",
         duration: "2 min • Beginner",
         description: "Prepare filter paper consistently so each KAN® partition starts clean and readable.",
@@ -36350,10 +36460,11 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "reading-germination-results",
-        order: 8,
+        order: 12,
         title: "Reading Germination Results",
         duration: "3 min • Beginner",
         description: "Review partition outcomes, final counts, and what to record when germination completes.",
+        hiddenOnLearn: true,
         video: Object.freeze({
           provider: "placeholder",
           modalPlayerReady: true,
@@ -36552,6 +36663,7 @@ const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
   LEARN_CHECKING_CONDENSATION_POSTER_PATH,
   LEARN_STARTING_GERMINATION_POSTER_PATH,
+  LEARN_REVIEWING_GERMINATION_RESULTS_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
@@ -36591,7 +36703,16 @@ const LEARN_TUTORIAL_COLLECTIONS = Object.freeze([
     subtitle: "Device setup and reading results",
     description: "Learn the practical KAN® workflow from seed loading through filter paper setup and final germination results.",
     posterUrl: "",
-    tutorialIds: Object.freeze(["loading-seeds-into-kan", "soaking-vs-germinating", "filter-paper-setup", "reading-germination-results"]),
+    tutorialIds: Object.freeze([
+      LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID,
+      LEARN_FILTER_PAPER_TUTORIAL_ID,
+      LEARN_ADDING_SEEDS_TUTORIAL_ID,
+      LEARN_FILLING_WITH_WATER_TUTORIAL_ID,
+      LEARN_HEAT_PAD_CONTROLLER_SETUP_TUTORIAL_ID,
+      LEARN_CHECKING_CONDENSATION_TUTORIAL_ID,
+      LEARN_STARTING_GERMINATION_TUTORIAL_ID,
+      LEARN_REVIEWING_GERMINATION_RESULTS_TUTORIAL_ID,
+    ]),
     featured: true,
     visibilityStatus: "coming-soon",
     scheduled: false,
@@ -37518,8 +37639,10 @@ function getProtectedProductionLearnTutorialIds() {
     LEARN_FILTER_PAPER_TUTORIAL_ID,
     LEARN_ADDING_SEEDS_TUTORIAL_ID,
     LEARN_FILLING_WITH_WATER_TUTORIAL_ID,
+    LEARN_HEAT_PAD_CONTROLLER_SETUP_TUTORIAL_ID,
     LEARN_CHECKING_CONDENSATION_TUTORIAL_ID,
     LEARN_STARTING_GERMINATION_TUTORIAL_ID,
+    LEARN_REVIEWING_GERMINATION_RESULTS_TUTORIAL_ID,
   ];
 }
 
