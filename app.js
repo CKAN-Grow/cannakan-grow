@@ -35997,11 +35997,60 @@ const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-se
 const LEARN_FILLING_WITH_WATER_TUTORIAL_ID = "filling-with-water";
 const LEARN_FILLING_WITH_WATER_POSTER_PATH = "/assets/learn/images/tutorials/filling-with-water-soaking.webp";
 const LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH = "/assets/learn/images/tutorials/heat-pad-controller-setup.webp";
+const LEARN_CHECKING_CONDENSATION_POSTER_PATH = "/assets/learn/images/tutorials/checking-condensation-under-lid.webp";
+const LEARN_KAN_SYSTEM_CATEGORY_ID = "kan-system";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
 const LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID = "3e0de3f6cace865c1f570988887d3369";
 const LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID = "1b7484b7cebe3205c642843ae5b9a816";
+const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
+  Object.freeze({
+    keys: Object.freeze(["filling-out-partition-chart", "filling out partition chart"]),
+    order: 1,
+    featuredOrder: 1,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+  Object.freeze({
+    keys: Object.freeze([LEARN_FILTER_PAPER_TUTORIAL_ID, "installing-filter-paper", "installing filter paper"]),
+    order: 2,
+    featuredOrder: 2,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+  Object.freeze({
+    keys: Object.freeze(["adding-seeds", "adding seeds"]),
+    order: 3,
+    featuredOrder: 3,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+  Object.freeze({
+    keys: Object.freeze(["filling-with-water", "filling with water"]),
+    order: 4,
+    featuredOrder: 4,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+  Object.freeze({
+    keys: Object.freeze([
+      "heat-pad-controller-setup",
+      "heat pad controller setup",
+      "heat pad and controller setup",
+      "heat pad & controller setup",
+    ]),
+    order: 5,
+    featuredOrder: 5,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+  Object.freeze({
+    keys: Object.freeze([
+      "checking-condensation-under-lid",
+      "checking condensation under lid",
+      "checking condensation under the lid",
+    ]),
+    order: 6,
+    featuredOrder: 6,
+    categoryId: LEARN_KAN_SYSTEM_CATEGORY_ID,
+  }),
+]);
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
@@ -36404,6 +36453,7 @@ const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_ADDING_SEEDS_POSTER_PATH,
   LEARN_FILLING_WITH_WATER_POSTER_PATH,
   LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
+  LEARN_CHECKING_CONDENSATION_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
@@ -37437,6 +37487,47 @@ function createAdminTutorialCollectionDraft() {
   return collectionId;
 }
 
+function normalizeLearnTutorialOrderKey(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/®/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getCanonicalLearnTutorialOrderConfig(tutorial = {}, draft = {}) {
+  const candidates = [
+    tutorial.id,
+    draft.id,
+    draft.title,
+    tutorial.title,
+  ].map(normalizeLearnTutorialOrderKey).filter(Boolean);
+  if (!candidates.length) {
+    return null;
+  }
+  return LEARN_FEATURED_TUTORIAL_ORDER.find((config) => (
+    config.keys.some((key) => candidates.includes(normalizeLearnTutorialOrderKey(key)))
+  )) || null;
+}
+
+function getLearnTutorialSortOrder(tutorial = {}) {
+  const sortOrder = getLearnPositiveOrderValue(tutorial._sortOrder);
+  return sortOrder ?? getLearnPositiveOrderValue(tutorial.order);
+}
+
+function compareLearnTutorialOrder(left = {}, right = {}) {
+  const leftOrder = getLearnTutorialSortOrder(left);
+  const rightOrder = getLearnTutorialSortOrder(right);
+  if (leftOrder !== null || rightOrder !== null) {
+    const orderDelta = (leftOrder ?? Number.POSITIVE_INFINITY) - (rightOrder ?? Number.POSITIVE_INFINITY);
+    if (orderDelta !== 0) {
+      return orderDelta;
+    }
+  }
+  return String(left.title || "").localeCompare(String(right.title || ""));
+}
+
 function getLearnTutorialCategories() {
   const draftMap = loadAdminTutorialDraftsFromStorage();
   const categoryDefinitions = [...LEARN_TUTORIAL_CATEGORIES, ...LEARN_TUTORIAL_FUTURE_CATEGORIES];
@@ -37452,7 +37543,10 @@ function getLearnTutorialCategories() {
       const isProtectedProductionTutorial = isProtectedProductionLearnTutorial(tutorial.id);
       const draft = isProtectedProductionTutorial ? {} : (draftMap[tutorial.id] || {});
       const videoDraft = draft.video || {};
-      const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
+      const canonicalOrderConfig = getCanonicalLearnTutorialOrderConfig(tutorial, draft);
+      const categoryId = categoryMap.has(canonicalOrderConfig?.categoryId)
+        ? canonicalOrderConfig.categoryId
+        : (categoryMap.has(draft.categoryId) ? draft.categoryId : category.id);
       const categoryOrder = Number.isFinite(Number(draft.categoryOrder))
         ? Number(draft.categoryOrder)
         : (Number.isFinite(Number(categoryMap.get(categoryId)?.categoryOrder)) ? Number(categoryMap.get(categoryId)?.categoryOrder) : 999);
@@ -37475,9 +37569,19 @@ function getLearnTutorialCategories() {
       }
       const draftFeaturedOrder = Number(draft.featuredOrder);
       const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
-      const featuredOrder = Number.isFinite(draftFeaturedOrder) && draftFeaturedOrder > 0
-        ? draftFeaturedOrder
-        : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : "");
+      const featuredOrder = Number.isFinite(Number(canonicalOrderConfig?.featuredOrder)) && Number(canonicalOrderConfig.featuredOrder) > 0
+        ? Number(canonicalOrderConfig.featuredOrder)
+        : (Number.isFinite(draftFeaturedOrder) && draftFeaturedOrder > 0
+          ? draftFeaturedOrder
+          : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : ""));
+      const draftOrder = Number(draft.order);
+      const tutorialOrder = Number(tutorial.order);
+      const canonicalOrder = Number(canonicalOrderConfig?.order);
+      const order = Number.isFinite(canonicalOrder) && canonicalOrder > 0
+        ? canonicalOrder
+        : (Number.isFinite(draftOrder) && draftOrder > 0
+          ? draftOrder
+          : (Number.isFinite(tutorialOrder) && tutorialOrder > 0 ? tutorialOrder : index + 1));
       const featuredLabel = String(draft.featuredLabel ?? tutorial.featuredLabel ?? "").trim();
       const audience = normalizeLearnAudience(draft.audience ?? tutorial.audience ?? "public");
       const isPublic = draft.isPublic ?? tutorial.isPublic ?? audience === "public";
@@ -37505,8 +37609,8 @@ function getLearnTutorialCategories() {
         releaseDate: isProtectedProductionTutorial ? "" : String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
         comingSoonLabel: isProtectedProductionTutorial ? "" : String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
         thumbnailUrl: isProtectedProductionTutorial ? String(tutorial.thumbnailUrl || posterUrl || "").trim() : String(draft.thumbnailUrl || draft.posterImageUrl || tutorial.thumbnailUrl || tutorial.posterImageUrl || "").trim(),
-        order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
-        featured: Boolean(draft.featured ?? tutorial.featured),
+        order,
+        featured: Boolean(canonicalOrderConfig ? true : (draft.featured ?? tutorial.featured)),
         featuredOrder,
         featuredLabel,
         qrLabel: String(draft.qrLabel ?? tutorial.qrLabel ?? "").trim(),
@@ -37544,7 +37648,7 @@ function getLearnTutorialCategories() {
           transcriptUrl,
           transcriptText,
         },
-        _sortOrder: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
+        _sortOrder: order,
       };
       categoryMap.get(categoryId)?.tutorials.push(mergedTutorial);
     });
@@ -37561,9 +37665,13 @@ function getLearnTutorialCategories() {
     .map((category) => ({
       ...category,
       tutorials: category.tutorials.sort((left, right) => (
-        ((Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999))
-        || ((Number(left._sortOrder) || 999) - (Number(right._sortOrder) || 999))
-        || String(left.title || "").localeCompare(String(right.title || ""))
+        category.id === LEARN_KAN_SYSTEM_CATEGORY_ID
+          ? compareLearnTutorialOrder(left, right)
+          : (
+            ((Number(left.categoryOrder) || 999) - (Number(right.categoryOrder) || 999))
+            || ((Number(left._sortOrder) || 999) - (Number(right._sortOrder) || 999))
+            || String(left.title || "").localeCompare(String(right.title || ""))
+          )
       )).map(({ _sortOrder, ...tutorial }) => tutorial),
     }));
 }
@@ -38066,6 +38174,10 @@ function getFeaturedLearnTutorials(categories = getLearnTutorialCategories()) {
         if (displayOrderDelta !== 0) {
           return displayOrderDelta;
         }
+      }
+      const titleDelta = String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
+      if (titleDelta !== 0) {
+        return titleDelta;
       }
       return left.featuredIndex - right.featuredIndex;
     })
