@@ -10734,6 +10734,7 @@ function getCurrentAppPathRoute() {
   }
   return ({
     "": "",
+    download: "download",
     learn: "learn",
     profile: "profile",
     analytics: "analytics",
@@ -12178,6 +12179,14 @@ function getCurrentSiteAnalyticsPageContext() {
       pageKey: "admin",
       pageLabel: "Admin",
       pagePath: "#admin",
+    });
+  }
+  if (route === "download") {
+    return buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "download",
+      pageLabel: "Download",
+      pagePath: "/download",
     });
   }
   if (route === "gallery") {
@@ -35651,6 +35660,13 @@ const DEFAULT_PAGE_METADATA = Object.freeze({
   imagePath: DEFAULT_SHARE_IMAGE_PATH,
   path: "/",
 });
+const DOWNLOAD_PAGE_METADATA = Object.freeze({
+  title: "Install Cannakan® Grow",
+  description: "Track your KAN sessions, review tutorials, save seed vault entries, and explore community results.",
+  imagePath: DEFAULT_SHARE_IMAGE_PATH,
+  path: "/download",
+  type: "website",
+});
 const LEARN_PAGE_METADATA = Object.freeze({
   title: "Learn Cannakan® Grow | KAN® System Tutorials & App Guides",
   description: "Watch Cannakan® Grow tutorials, KAN® System setup guides, app walkthroughs, snapshot help, and Community Grow onboarding.",
@@ -35812,6 +35828,9 @@ function buildLearnPageMetadata(options = {}) {
 
 function getRoutePageMetadata(rawRoute = "") {
   const [route, id, subroute] = String(rawRoute || "home").replace(/^#/, "").split("/");
+  if (route === "download") {
+    return { ...DOWNLOAD_PAGE_METADATA };
+  }
   if (route === "learn" && id === "tutorial" && subroute) {
     const tutorialEntry = getLearnTutorialById(decodeURIComponent(subroute));
     if (tutorialEntry && canCurrentUserViewLearnItem(tutorialEntry.tutorial)) {
@@ -35855,6 +35874,108 @@ function applyPageMetadata(metadata = DEFAULT_PAGE_METADATA) {
   setDocumentMetaAttribute("name", "twitter:description", description);
   setDocumentMetaAttribute("name", "twitter:image", imageUrl);
   setCanonicalUrl(metadata.path || DEFAULT_PAGE_METADATA.path);
+}
+
+function getDownloadPageQrImageUrl() {
+  const targetUrl = "https://grow.cannakan.com/download";
+  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(targetUrl)}`;
+}
+
+function renderDownloadPageFeatureMarkup({ iconName = "check", title = "", description = "" } = {}) {
+  return `
+    <article class="download-feature-card">
+      ${renderAppIconMarkup(iconName, {
+        variant: "plate",
+        className: "download-feature-icon",
+      })}
+      <div>
+        <h3>${escapeHtml(title)}</h3>
+        <p>${escapeHtml(description)}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderDownloadInstallStepsMarkup(title = "", steps = []) {
+  return `
+    <article class="download-steps-card">
+      <h3>${escapeHtml(title)}</h3>
+      <ol>
+        ${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+      </ol>
+    </article>
+  `;
+}
+
+function renderDownloadPage() {
+  const installFeedback = String(appState.installPromptFeedbackMessage || "").trim();
+  app.innerHTML = `
+    <section class="download-page">
+      <header class="download-hero">
+        <div class="download-hero-copy">
+          <p class="eyebrow">Cannakan Grow App</p>
+          <h1>Install Cannakan Grow</h1>
+          <p>Track your KAN sessions, review tutorials, save seed vault entries, and explore community results.</p>
+          <div class="download-hero-actions">
+            <a class="button button-primary" href="/">Open App</a>
+            <button type="button" class="button button-secondary" data-download-install-app="true">Install App</button>
+          </div>
+          <p class="download-app-url">grow.cannakan.com</p>
+          ${installFeedback ? `<p class="download-install-feedback" aria-live="polite">${escapeHtml(installFeedback)}</p>` : ""}
+        </div>
+        <aside class="download-qr-panel" aria-label="Scan QR code to open Cannakan Grow">
+          <div class="download-qr-frame">
+            <img
+              src="${escapeHtml(getDownloadPageQrImageUrl())}"
+              alt="QR code for grow.cannakan.com/download"
+              loading="eager"
+              referrerpolicy="no-referrer"
+            >
+          </div>
+          <strong>Scan to install</strong>
+          <span>grow.cannakan.com/download</span>
+        </aside>
+      </header>
+
+      <section class="download-feature-grid" aria-label="Cannakan Grow highlights">
+        ${renderDownloadPageFeatureMarkup({
+          iconName: "activeSessionWaveform",
+          title: "Track KAN sessions",
+          description: "Keep soaking, germination, planting, and completion details together.",
+        })}
+        ${renderDownloadPageFeatureMarkup({
+          iconName: "seedVault",
+          title: "Save Seed Vault entries",
+          description: "Carry source, variety, count, age, and inventory notes into session starts.",
+        })}
+        ${renderDownloadPageFeatureMarkup({
+          iconName: "communityGroup",
+          title: "Explore community results",
+          description: "Review public snapshots, source signals, tutorials, and shared outcomes.",
+        })}
+      </section>
+
+      <section class="download-steps-grid" aria-label="Install steps">
+        ${renderDownloadInstallStepsMarkup("iPhone", [
+          "Tap the Share icon",
+          "Scroll down",
+          "Add to Home Screen",
+        ])}
+        ${renderDownloadInstallStepsMarkup("Android", [
+          "Tap Install App",
+          "Tap Install",
+          "Open the app",
+        ])}
+      </section>
+    </section>
+  `;
+  bindDownloadPage();
+}
+
+function bindDownloadPage() {
+  app.querySelector("[data-download-install-app='true']")?.addEventListener("click", async () => {
+    await promptInstallGrowApp();
+  });
 }
 
 function buildSnapshotFileName(data) {
@@ -36030,6 +36151,17 @@ function render() {
       pageKey: id ? `learn-${id}` : "learn",
       pageLabel: "Learn",
       pagePath: rawRoute ? `#${rawRoute}` : "#learn",
+    }));
+    return;
+  }
+
+  if (route === "download") {
+    renderDownloadPage();
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "other",
+      pageKey: "download",
+      pageLabel: "Download",
+      pagePath: "/download",
     }));
     return;
   }

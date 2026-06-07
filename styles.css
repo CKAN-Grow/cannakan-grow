@@ -2044,6 +2044,302 @@ body.theme-dark .install-app-banner-ios-tip {
   --app-hero-art: url("/src/assets/images/source-directory-bg.png?v=20260506");
 }
 
+.download-page {
+  display: grid;
+  gap: clamp(16px, 2.4vw, 24px);
+  padding: clamp(12px, 2vw, 22px);
+}
+
+.download-hero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: center;
+  gap: clamp(20px, 4vw, 44px);
+  min-height: clamp(430px, 48vw, 560px);
+  padding: clamp(22px, 5vw, 54px);
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    radial-gradient(circle at 84% 22%, rgba(148, 209, 89, 0.18), transparent 34%),
+    radial-gradient(circle at 16% 88%, rgba(83, 156, 91, 0.14), transparent 38%),
+    linear-gradient(135deg, rgba(14, 20, 16, 0.98), rgba(7, 11, 9, 0.96));
+  box-shadow:
+    0 22px 48px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.download-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(110deg, rgba(0, 0, 0, 0.7), transparent 72%);
+  pointer-events: none;
+}
+
+.download-hero-copy,
+.download-qr-panel {
+  position: relative;
+  z-index: 1;
+}
+
+.download-hero-copy {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.download-hero-copy .eyebrow,
+.download-hero-copy h1,
+.download-hero-copy p {
+  margin: 0;
+}
+
+.download-hero-copy h1 {
+  color: #f7faf4;
+  font-size: 4.8rem;
+  line-height: 0.98;
+}
+
+.download-hero-copy > p:not(.eyebrow):not(.download-app-url):not(.download-install-feedback) {
+  max-width: 590px;
+  color: rgba(232, 240, 228, 0.82);
+  font-size: 1.18rem;
+  line-height: 1.5;
+}
+
+.download-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.download-app-url {
+  width: fit-content;
+  padding: 7px 12px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.08);
+  color: rgba(222, 246, 199, 0.9);
+  font-size: 0.9rem;
+  font-weight: 780;
+}
+
+.download-install-feedback {
+  max-width: 560px;
+  color: rgba(220, 230, 220, 0.76);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.download-qr-panel {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: clamp(16px, 2.6vw, 24px);
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)),
+    rgba(6, 11, 8, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 42px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px);
+}
+
+.download-qr-frame {
+  display: grid;
+  place-items: center;
+  width: min(100%, 280px);
+  aspect-ratio: 1;
+  padding: 12px;
+  border-radius: 18px;
+  background: #f7faf4;
+}
+
+.download-qr-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.download-qr-panel strong {
+  color: #f7faf4;
+  font-size: 1.12rem;
+  line-height: 1.2;
+}
+
+.download-qr-panel span {
+  color: rgba(222, 246, 199, 0.82);
+  font-size: 0.88rem;
+  font-weight: 720;
+  text-align: center;
+}
+
+.download-feature-grid,
+.download-steps-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.download-feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.download-steps-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.download-feature-card,
+.download-steps-card {
+  border: 1px solid rgba(148, 209, 89, 0.11);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(9, 15, 12, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.download-feature-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 18px;
+}
+
+.download-feature-icon {
+  width: 42px;
+  height: 42px;
+}
+
+.download-feature-card h3,
+.download-feature-card p,
+.download-steps-card h3 {
+  margin: 0;
+}
+
+.download-feature-card h3,
+.download-steps-card h3 {
+  color: #f7faf4;
+  font-size: 1.02rem;
+  line-height: 1.2;
+}
+
+.download-feature-card p {
+  margin-top: 5px;
+  color: rgba(215, 224, 216, 0.74);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.download-steps-card {
+  display: grid;
+  gap: 14px;
+  padding: clamp(18px, 2.4vw, 24px);
+}
+
+.download-steps-card ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: download-step;
+}
+
+.download-steps-card li {
+  counter-increment: download-step;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  color: rgba(232, 240, 228, 0.84);
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.download-steps-card li::before {
+  content: counter(download-step);
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 209, 89, 0.18);
+  background: rgba(148, 209, 89, 0.1);
+  color: #dff8c4;
+  font-size: 0.86rem;
+  font-weight: 860;
+}
+
+@media (max-width: 920px) {
+  .download-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .download-hero-copy h1 {
+    font-size: 3.55rem;
+  }
+
+  .download-qr-panel {
+    justify-self: start;
+    width: min(100%, 360px);
+  }
+
+  .download-feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .download-page {
+    padding: 8px;
+  }
+
+  .download-hero {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .download-hero-copy {
+    gap: 14px;
+  }
+
+  .download-hero-copy h1 {
+    font-size: 2.62rem;
+  }
+
+  .download-hero-copy > p:not(.eyebrow):not(.download-app-url):not(.download-install-feedback) {
+    font-size: 1rem;
+  }
+
+  .download-hero-actions,
+  .download-hero-actions .button {
+    width: 100%;
+  }
+
+  .download-qr-panel {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .download-steps-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .download-feature-card {
+    padding: 16px;
+  }
+}
+
 body.theme-dark .app-hero {
   border-color: rgba(148, 209, 89, 0.16);
   background: linear-gradient(180deg, rgba(16, 21, 17, 0.98) 0%, rgba(10, 14, 11, 0.98) 100%);
