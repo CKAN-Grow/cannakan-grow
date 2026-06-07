@@ -35996,6 +35996,7 @@ const LEARN_ADDING_SEEDS_TUTORIAL_ID = "adding-seeds";
 const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-seeds.webp";
 const LEARN_FILLING_WITH_WATER_TUTORIAL_ID = "filling-with-water";
 const LEARN_FILLING_WITH_WATER_POSTER_PATH = "/assets/learn/images/tutorials/filling-with-water-soaking.webp";
+const LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH = "/assets/learn/images/tutorials/heat-pad-controller-setup.webp";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
@@ -36402,6 +36403,7 @@ const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
   LEARN_ADDING_SEEDS_POSTER_PATH,
   LEARN_FILLING_WITH_WATER_POSTER_PATH,
+  LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
@@ -36701,7 +36703,7 @@ function getTutorialVideoProviderLabel(provider = "none") {
 function getTutorialVideoConfig(tutorial = {}) {
   const video = tutorial.video || {};
   const videoProvider = normalizeTutorialVideoProvider(tutorial.videoProvider || video.videoProvider || video.provider || "none");
-  const posterUrl = String(tutorial.posterUrl || video.posterUrl || video.poster || tutorial.thumbnailUrl || "").trim();
+  const posterUrl = String(tutorial.posterUrl || tutorial.posterImageUrl || video.posterUrl || video.posterImageUrl || video.poster || tutorial.thumbnailUrl || "").trim();
   return {
     videoProvider,
     cloudflareStreamId: String(tutorial.cloudflareStreamId || video.cloudflareStreamId || "").trim(),
@@ -37459,7 +37461,7 @@ function getLearnTutorialCategories() {
       let cloudflareStreamCustomerCode = String(draft.cloudflareStreamCustomerCode || videoDraft.cloudflareStreamCustomerCode || tutorial.cloudflareStreamCustomerCode || tutorial.video?.cloudflareStreamCustomerCode || "").trim();
       let mp4Url = String(draft.mp4Url || videoDraft.mp4Url || tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
       let embedUrl = String(draft.embedUrl || videoDraft.embedUrl || tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
-      let posterUrl = String(draft.posterUrl || videoDraft.posterUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
+      let posterUrl = String(draft.posterUrl || draft.posterImageUrl || videoDraft.posterUrl || videoDraft.posterImageUrl || videoDraft.poster || draft.thumbnailUrl || tutorial.posterUrl || tutorial.posterImageUrl || tutorial.video?.posterUrl || tutorial.video?.posterImageUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
       const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
@@ -37469,7 +37471,7 @@ function getLearnTutorialCategories() {
         cloudflareStreamCustomerCode = String(tutorial.cloudflareStreamCustomerCode || tutorial.video?.cloudflareStreamCustomerCode || "").trim();
         mp4Url = String(tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
         embedUrl = String(tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
-        posterUrl = String(tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
+        posterUrl = String(tutorial.posterUrl || tutorial.posterImageUrl || tutorial.video?.posterUrl || tutorial.video?.posterImageUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
       }
       const draftFeaturedOrder = Number(draft.featuredOrder);
       const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
@@ -37502,7 +37504,7 @@ function getLearnTutorialCategories() {
         scheduled: isProtectedProductionTutorial ? false : Boolean(draft.scheduled ?? tutorial.scheduled),
         releaseDate: isProtectedProductionTutorial ? "" : String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
         comingSoonLabel: isProtectedProductionTutorial ? "" : String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
-        thumbnailUrl: isProtectedProductionTutorial ? String(tutorial.thumbnailUrl || posterUrl || "").trim() : String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
+        thumbnailUrl: isProtectedProductionTutorial ? String(tutorial.thumbnailUrl || posterUrl || "").trim() : String(draft.thumbnailUrl || draft.posterImageUrl || tutorial.thumbnailUrl || tutorial.posterImageUrl || "").trim(),
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
@@ -37536,6 +37538,7 @@ function getLearnTutorialCategories() {
           mp4Url,
           embedUrl,
           posterUrl,
+          posterImageUrl: posterUrl,
           poster: posterUrl,
           captionsUrl,
           transcriptUrl,
