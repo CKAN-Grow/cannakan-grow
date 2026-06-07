@@ -12,6 +12,26 @@ const FILTER_PAPER_DEDUCTION_REGISTRY_STORAGE_KEY = "cannakanGrowFilterPaperDedu
 const MOCK_DATA_ACTIVE_NOTICE = "Mock Data Active - Testing Only";
 const GALLERY_MOCK_USER_ID = "dev-mock-gallery";
 const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/real/seedsman-logo.png";
+const DEMO_SNAPSHOT_IMAGE_URLS = Object.freeze([
+  "/assets/demo/snapshots/5678.jpg",
+  "/assets/demo/snapshots/7890.jpg",
+  "/assets/demo/snapshots/IMG_0086.jpg",
+  "/assets/demo/snapshots/IMG_0327.jpg",
+  "/assets/demo/snapshots/IMG_5254.jpg",
+  "/assets/demo/snapshots/IMG_5587.jpg",
+  "/assets/demo/snapshots/IMG_5590.jpg",
+  "/assets/demo/snapshots/IMG_E5598.JPG",
+  "/assets/demo/snapshots/IMG_E6131.JPG",
+  "/assets/demo/snapshots/KAN%20A.jpg",
+  "/assets/demo/snapshots/KAN%20B.jpg",
+  "/assets/demo/snapshots/KAN%20C.jpg",
+  "/assets/demo/snapshots/pic1.jpg",
+  "/assets/demo/snapshots/pic2.jpg",
+  "/assets/demo/snapshots/pic3.jpg",
+  "/assets/demo/snapshots/pic4.jpg",
+  "/assets/demo/snapshots/pic5.jpg",
+  "/assets/demo/snapshots/Screenshot%202025-12-31%20001856.jpg",
+]);
 const DEV_DEMO_SOURCE_LOGOS = Object.freeze({
   seedsman: SEEDSMAN_DEMO_LOGO_URL,
 });
@@ -8361,7 +8381,10 @@ function ensureSampleSessions() {
   const existingSessions = getSessions();
   const sampleSessions = buildSampleSessions();
   const sampleIds = new Set(sampleSessions.map((session) => session.id));
-  const nonSampleSessions = existingSessions.filter((session) => !sampleIds.has(session.id));
+  const nonSampleSessions = existingSessions.filter((session) => (
+    !sampleIds.has(session.id)
+    && !isDevModeOnlyMockRecord(session)
+  ));
   saveSessions([...sampleSessions, ...nonSampleSessions]);
 
   localStorage.setItem(SAMPLE_SEED_KEY, SAMPLE_SEED_VERSION);
@@ -9722,6 +9745,166 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
         { repeat: 4, seedVariety: "G Donutz Auto archive", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 3, seedAgeYears: 7 },
       ],
     },
+    {
+      title: "Seedsman Gorilla Runtz second check",
+      source: "Seedsman",
+      seedVariety: "Seedsman Gorilla Runtz",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 3,
+      day: 26,
+      hour: 10,
+      note: "Repeat Seedsman run confirms the same strong tail timing after a cooler soak.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Seedsman Gorilla Runtz", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "Seedsman Banana Jealousy", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Seedsman Alaskan Purple archive observation",
+      source: "Seedsman",
+      seedVariety: "Seedsman Alaskan Purple archive",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 3,
+      day: 22,
+      hour: 15,
+      note: "Seven-year archive lot took longer but still produced enough tails for a useful demo comparison.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Alaskan Purple archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "L.A. Peyote Kush archive", source: "Seedsman", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5 },
+      ],
+    },
+    {
+      title: "Poppin Fire Grape Frost Bomb tray replay",
+      source: "Poppin Fire",
+      seedVariety: "Grape Frost Bomb",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 3,
+      day: 18,
+      hour: 11,
+      note: "Poppin Fire replay stayed strong with one slower corner partition.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "Grape Frost Bomb", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "Grape Frost Bomb", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 2 },
+      ],
+    },
+    {
+      title: "Poppin Fire Ice Cream Cake fresh comparison",
+      source: "Poppin Fire",
+      seedVariety: "Ice Cream Cake",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 3,
+      day: 15,
+      hour: 16,
+      note: "Fresh Ice Cream Cake lot showed balanced moisture and fast emergence.",
+      partitionSpecs: [
+        { repeat: 7, seedVariety: "Ice Cream Cake", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+        { repeat: 1, seedVariety: "Ice Cream Cake", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Poppin Fire Frosted Grape Pie age check",
+      source: "Poppin Fire",
+      seedVariety: "Frosted Grape Pie",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "A",
+      monthOffset: 3,
+      day: 12,
+      hour: 9,
+      note: "Three-year Poppin Fire archive run gives the analytics panel a realistic mid-age partner example.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "Frosted Grape Pie", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 5, seedAgeYears: 3 },
+        { repeat: 3, seedVariety: "Frosted Grape Pie", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 3 },
+      ],
+    },
+    {
+      title: "Poppin Fire Blue Frost archive check",
+      source: "Poppin Fire",
+      seedVariety: "Blue Frost archive",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "D",
+      monthOffset: 3,
+      day: 9,
+      hour: 14,
+      note: "Five-year Poppin Fire archive lot germinated more slowly but stayed within a believable range.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Blue Frost archive", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 5 },
+        { repeat: 4, seedVariety: "Blue Frost archive", source: "Poppin Fire", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 5 },
+      ],
+    },
+    {
+      title: "Good Genetix Permanent G Auto second tray",
+      source: "Good Genetix",
+      seedVariety: "Permanent G Auto",
+      seedType: "auto",
+      systemType: "TRA",
+      unitId: "1",
+      monthOffset: 3,
+      day: 7,
+      hour: 8,
+      note: "Second Good Genetix auto tray keeps the source visible in session history without overtaking Poppin Fire.",
+      partitionSpecs: [
+        { repeat: 14, seedVariety: "Permanent G Auto", source: "Good Genetix", seedType: "auto", seedCount: 2, germinatedCount: 2, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "Permanent G Auto", source: "Good Genetix", seedType: "auto", seedCount: 2, germinatedCount: 1, seedAgeYears: 1 },
+      ],
+    },
+    {
+      title: "Good Genetix G Breath Auto fresh check",
+      source: "Good Genetix",
+      seedVariety: "G Breath Auto",
+      seedType: "auto",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 3,
+      day: 5,
+      hour: 17,
+      note: "Fresh G Breath Auto pack had quick tails and clean partition notes.",
+      partitionSpecs: [
+        { repeat: 6, seedVariety: "G Breath Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 5, seedAgeYears: 1 },
+        { repeat: 2, seedVariety: "G Breath Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 4, seedAgeYears: 2 },
+      ],
+    },
+    {
+      title: "Good Genetix G Donutz Auto mid-age tray",
+      source: "Good Genetix",
+      seedVariety: "G Donutz Auto",
+      seedType: "auto",
+      systemType: "KAN",
+      unitId: "C",
+      monthOffset: 3,
+      day: 3,
+      hour: 12,
+      note: "Three-year G Donutz Auto run rounds out the Good Genetix age spread.",
+      partitionSpecs: [
+        { repeat: 5, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 5, seedAgeYears: 3 },
+        { repeat: 3, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 4, seedAgeYears: 3 },
+      ],
+    },
+    {
+      title: "Summit Seed Co. limited second pass",
+      source: "Summit Seed Co.",
+      seedVariety: "Summit Snowcap",
+      seedType: "photoperiod",
+      systemType: "KAN",
+      unitId: "B",
+      monthOffset: 3,
+      day: 1,
+      hour: 10,
+      note: "A small second filler-source run keeps Summit visible but appropriately limited.",
+      partitionSpecs: [
+        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 4, seedAgeYears: 2 },
+        { repeat: 4, seedVariety: "Summit Snowcap", source: "Summit Seed Co.", seedType: "photoperiod", seedCount: 5, germinatedCount: 3, seedAgeYears: 3 },
+      ],
+    },
   ];
 
   return snapshotConfigs.map((config, index) => {
@@ -9776,17 +9959,61 @@ function buildMockGalleryTimeline(record, index = 0) {
   };
 }
 
+function getDemoSnapshotImageUrlForIndex(index = 0) {
+  if (!DEMO_SNAPSHOT_IMAGE_URLS.length) {
+    return "";
+  }
+  const normalizedIndex = Math.abs(Number(index) || 0) % DEMO_SNAPSHOT_IMAGE_URLS.length;
+  return DEMO_SNAPSHOT_IMAGE_URLS[normalizedIndex] || "";
+}
+
+function getMockGallerySessionIdForRecord(record = {}, index = 0) {
+  const source = normalizeSourceNameForMatching(record.source || "");
+  const variety = normalizeSourceNameForMatching(record.seedVariety || "");
+  if (source === "seedsman") {
+    if (variety.includes("archive") || variety.includes("peyote") || variety.includes("alaskan")) {
+      return "demo-berlin-seedsman-archive-apr-14-2026";
+    }
+    if (variety.includes("gorilla-jealousy")) {
+      return "demo-berlin-seedsman-gorilla-jealousy-apr-10-2026";
+    }
+    if (variety.includes("lemon") || variety.includes("badazz") || variety.includes("bruce") || variety.includes("white-og")) {
+      return "demo-berlin-seedsman-auto-mixed-may-08-2026";
+    }
+    if (variety.includes("wedding") || variety.includes("blueberry") || variety.includes("gelato")) {
+      return "demo-berlin-seedsman-wedding-cake-may-12-2026";
+    }
+    return "demo-berlin-seedsman-banana-jealousy-may-18-2026";
+  }
+  if (source === "poppin-fire") {
+    if (variety.includes("ice-cream") || variety.includes("blue-frost") || variety.includes("frosted")) {
+      return "demo-berlin-poppin-fire-ice-cream-cake-apr-30-2026";
+    }
+    return "demo-berlin-poppin-fire-double-blueberry-muffin-may-04-2026";
+  }
+  if (source === "good-genetix") {
+    if (variety.includes("donutz") || variety.includes("archive")) {
+      return "demo-berlin-good-genetix-g-donutz-apr-22-2026";
+    }
+    return "demo-berlin-good-genetix-permanent-g-auto-apr-27-2026";
+  }
+  return "demo-berlin-filler-source-comparison-apr-18-2026";
+}
+
 function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords()) {
   return records.map((record, index) => {
     const systemType = String(record.systemType || (index % 2 === 0 ? "KAN" : "TRA")).trim().toUpperCase() || "KAN";
     const unitId = record.unitId || (systemType === "KAN"
       ? String.fromCharCode(65 + (index % 4))
       : String((index % 4) + 1));
-    const usesDetailsOnlyCard = index % 9 === 0;
     const sharedProfile = getMockGallerySharedProfile(index, record);
     const timeline = buildMockGalleryTimeline(record, index);
+    const sessionId = String(record.sessionId || getMockGallerySessionIdForRecord(record, index)).trim()
+      || `mock-gallery-session-${String(index + 1).padStart(2, "0")}`;
+    const imageUrl = String(record.imageUrl || getDemoSnapshotImageUrlForIndex(index)).trim()
+      || buildMockGalleryImageDataUri(record);
     const resultSummary = getSessionResultSummary({
-      id: `mock-gallery-session-${String(index + 1).padStart(2, "0")}`,
+      id: sessionId,
       systemType,
       seedAgeTrackingEnabled: true,
       seedAgeMode: "mixed",
@@ -9796,10 +10023,10 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
       userId: GALLERY_MOCK_USER_ID,
-      sessionId: "",
+      sessionId,
       title: record.title || `DEV MOCK - ${record.seedVariety} - ${record.source}`,
-      imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
-      imagePath: "",
+      imageUrl,
+      imagePath: imageUrl,
       sessionDate: timeline.sessionDate,
       sessionTime: timeline.sessionTime,
       systemType,
@@ -9867,16 +10094,16 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
     const unitId = systemType === "KAN"
       ? String.fromCharCode(65 + ((index + 1) % 4))
       : String(((index + 1) % 4) + 1);
-    const usesDetailsOnlyCard = index === 1 || index === 4;
     const sharedProfile = getMockGallerySharedProfile(index, record);
+    const imageUrl = getDemoSnapshotImageUrlForIndex(index + MOCK_GALLERY_SNAPSHOTS.length);
 
     return {
       id: `mock-gallery-review-${String(index + 1).padStart(2, "0")}`,
       userId: `${GALLERY_MOCK_USER_ID}-review`,
       sessionId: `mock-gallery-review-session-${String(index + 1).padStart(2, "0")}`,
       title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
-      imageUrl: usesDetailsOnlyCard ? "" : buildMockGalleryImageDataUri(record),
-      imagePath: "",
+      imageUrl: imageUrl || buildMockGalleryImageDataUri(record),
+      imagePath: imageUrl,
       sessionDate: record.submittedAt.slice(0, 10),
       systemType,
       unitId,
