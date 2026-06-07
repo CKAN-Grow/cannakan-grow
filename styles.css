@@ -2046,19 +2046,63 @@ body.theme-dark .install-app-banner-ios-tip {
 
 .download-page {
   display: grid;
-  gap: clamp(16px, 2.4vw, 24px);
-  padding: clamp(12px, 2vw, 22px);
+  gap: 18px;
+  padding: 18px 0 24px;
+}
+
+body.download-route .topbar,
+body.download-route .app-footer,
+body.download-route #install-grow-app-banner,
+body.download-route #mock-data-banner {
+  display: none !important;
+}
+
+body.download-route .app-shell {
+  width: min(1180px, calc(100% - 24px));
+  padding: 14px 0 24px;
+}
+
+body.download-route .app-shell::before {
+  display: none;
+}
+
+.download-brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 56px;
+  padding: 8px 2px;
+}
+
+.download-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.download-brand-mark img {
+  display: block;
+  width: min(220px, 58vw);
+  height: auto;
+  object-fit: contain;
+}
+
+.download-brand-header > span {
+  color: rgba(222, 246, 199, 0.82);
+  font-size: 0.88rem;
+  font-weight: 780;
 }
 
 .download-hero {
   position: relative;
   overflow: hidden;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
   align-items: center;
-  gap: clamp(20px, 4vw, 44px);
-  min-height: clamp(430px, 48vw, 560px);
-  padding: clamp(22px, 5vw, 54px);
+  gap: 44px;
+  min-height: 520px;
+  padding: 48px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   background:
     radial-gradient(circle at 84% 22%, rgba(148, 209, 89, 0.18), transparent 34%),
@@ -2112,6 +2156,24 @@ body.theme-dark .install-app-banner-ios-tip {
   line-height: 1.5;
 }
 
+.download-support-copy,
+.download-device-support {
+  max-width: 560px;
+  color: rgba(222, 246, 199, 0.86) !important;
+  font-size: 0.98rem !important;
+  font-weight: 760;
+  line-height: 1.45 !important;
+}
+
+.download-device-support {
+  width: fit-content;
+  padding: 7px 12px;
+  border: 1px solid rgba(148, 209, 89, 0.16);
+  border-radius: 999px;
+  background: rgba(148, 209, 89, 0.08);
+  color: rgba(232, 240, 228, 0.84) !important;
+}
+
 .download-hero-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2141,8 +2203,8 @@ body.theme-dark .install-app-banner-ios-tip {
 .download-qr-panel {
   display: grid;
   justify-items: center;
-  gap: 12px;
-  padding: clamp(16px, 2.6vw, 24px);
+  gap: 14px;
+  padding: 22px;
   border: 1px solid rgba(148, 209, 89, 0.18);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015)),
@@ -2156,11 +2218,12 @@ body.theme-dark .install-app-banner-ios-tip {
 .download-qr-frame {
   display: grid;
   place-items: center;
-  width: min(100%, 280px);
+  width: min(100%, 340px);
   aspect-ratio: 1;
-  padding: 12px;
-  border-radius: 18px;
-  background: #f7faf4;
+  padding: 0;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
 }
 
 .download-qr-frame img {
@@ -2168,6 +2231,7 @@ body.theme-dark .install-app-banner-ios-tip {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  image-rendering: auto;
 }
 
 .download-qr-panel strong {
@@ -2184,7 +2248,8 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .download-feature-grid,
-.download-steps-grid {
+.download-steps-grid,
+.download-tradeshow-callout {
   display: grid;
   gap: 14px;
 }
@@ -2198,12 +2263,44 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 .download-feature-card,
-.download-steps-card {
+.download-steps-card,
+.download-tradeshow-callout,
+.download-footer {
   border: 1px solid rgba(148, 209, 89, 0.11);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
     rgba(9, 15, 12, 0.82);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.download-tradeshow-callout {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+}
+
+.download-tradeshow-callout h2,
+.download-tradeshow-callout p {
+  margin: 0;
+}
+
+.download-tradeshow-callout > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.download-tradeshow-callout h2 {
+  color: #f7faf4;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.download-tradeshow-callout p:not(.eyebrow) {
+  max-width: 780px;
+  color: rgba(215, 224, 216, 0.78);
+  line-height: 1.5;
 }
 
 .download-feature-card {
@@ -2242,7 +2339,7 @@ body.theme-dark .install-app-banner-ios-tip {
 .download-steps-card {
   display: grid;
   gap: 14px;
-  padding: clamp(18px, 2.4vw, 24px);
+  padding: 22px;
 }
 
 .download-steps-card ol {
@@ -2279,10 +2376,45 @@ body.theme-dark .install-app-banner-ios-tip {
   font-weight: 860;
 }
 
+.download-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.download-footer > div,
+.download-footer nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.download-footer strong {
+  color: #f7faf4;
+}
+
+.download-footer span,
+.download-footer a {
+  color: rgba(215, 224, 216, 0.72);
+  font-size: 0.9rem;
+  font-weight: 720;
+}
+
+.download-footer a:hover,
+.download-footer a:focus-visible {
+  color: #dff8c4;
+  outline: none;
+}
+
 @media (max-width: 920px) {
   .download-hero {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;
+    gap: 28px;
+    padding: 34px;
   }
 
   .download-hero-copy h1 {
@@ -2291,7 +2423,7 @@ body.theme-dark .install-app-banner-ios-tip {
 
   .download-qr-panel {
     justify-self: start;
-    width: min(100%, 360px);
+    width: min(100%, 390px);
   }
 
   .download-feature-grid {
@@ -2300,8 +2432,20 @@ body.theme-dark .install-app-banner-ios-tip {
 }
 
 @media (max-width: 640px) {
+  body.download-route .app-shell {
+    width: min(100% - 16px, 1180px);
+    padding-top: 8px;
+  }
+
   .download-page {
-    padding: 8px;
+    padding: 0 0 18px;
+    gap: 12px;
+  }
+
+  .download-brand-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .download-hero {
@@ -2331,8 +2475,28 @@ body.theme-dark .install-app-banner-ios-tip {
     width: 100%;
   }
 
+  .download-qr-frame {
+    width: min(100%, 320px);
+  }
+
   .download-steps-grid {
     grid-template-columns: 1fr;
+  }
+
+  .download-tradeshow-callout {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .download-tradeshow-callout .button {
+    width: 100%;
+  }
+
+  .download-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px;
   }
 
   .download-feature-card {

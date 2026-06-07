@@ -2711,6 +2711,10 @@ function syncInstallPromptBanner() {
   const mode = getInstallPromptMode();
   appState.installPromptMode = mode;
   const existingBanner = appShell.querySelector("#install-grow-app-banner");
+  if (isDownloadRouteActive()) {
+    existingBanner?.remove();
+    return;
+  }
   const activeRoute = normalizeNavigationHash(window.location.hash || "#home");
   if (activeRoute === "#home" || activeRoute === "") {
     existingBanner?.remove();
@@ -11231,6 +11235,11 @@ function getCurrentAppRawRoute() {
   }
 
   return pathRoute || "home";
+}
+
+function isDownloadRouteActive() {
+  const [route] = String(getCurrentAppRawRoute() || "").trim().replace(/^#/, "").split("/");
+  return route === "download";
 }
 
 function isCommunityGrowModerationRawRoute(rawRoute = getCurrentAppRawRoute()) {
@@ -35662,7 +35671,7 @@ const DEFAULT_PAGE_METADATA = Object.freeze({
 });
 const DOWNLOAD_PAGE_METADATA = Object.freeze({
   title: "Install Cannakan® Grow",
-  description: "Track your KAN sessions, review tutorials, save seed vault entries, and explore community results.",
+  description: "Track KAN sessions, save Seed Vault entries, review tutorials, and explore community results.",
   imagePath: DEFAULT_SHARE_IMAGE_PATH,
   path: "/download",
   type: "website",
@@ -35877,8 +35886,7 @@ function applyPageMetadata(metadata = DEFAULT_PAGE_METADATA) {
 }
 
 function getDownloadPageQrImageUrl() {
-  const targetUrl = "https://grow.cannakan.com/download";
-  return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=12&data=${encodeURIComponent(targetUrl)}`;
+  return "/assets/app/app%20qr%20codes/Download%20Grow%20App.svg";
 }
 
 function renderDownloadPageFeatureMarkup({ iconName = "check", title = "", description = "" } = {}) {
@@ -35911,16 +35919,24 @@ function renderDownloadPage() {
   const installFeedback = String(appState.installPromptFeedbackMessage || "").trim();
   app.innerHTML = `
     <section class="download-page">
+      <header class="download-brand-header" aria-label="Cannakan Grow">
+        <a class="download-brand-mark" href="/" aria-label="Open Cannakan Grow">
+          <img src="/src/assets/Cannakan_GROW_darkmode.png" alt="Cannakan Grow">
+        </a>
+        <span>grow.cannakan.com</span>
+      </header>
+
       <header class="download-hero">
         <div class="download-hero-copy">
-          <p class="eyebrow">Cannakan Grow App</p>
+          <p class="eyebrow">CANNAKAN GROW APP</p>
           <h1>Install Cannakan Grow</h1>
-          <p>Track your KAN sessions, review tutorials, save seed vault entries, and explore community results.</p>
+          <p>Track KAN sessions, save Seed Vault entries, review tutorials, and explore community results.</p>
+          <p class="download-support-copy">No app store required. Install directly from your browser.</p>
+          <p class="download-device-support">Works on iPhone, Android, tablet, and desktop.</p>
           <div class="download-hero-actions">
             <a class="button button-primary" href="/">Open App</a>
             <button type="button" class="button button-secondary" data-download-install-app="true">Install App</button>
           </div>
-          <p class="download-app-url">grow.cannakan.com</p>
           ${installFeedback ? `<p class="download-install-feedback" aria-live="polite">${escapeHtml(installFeedback)}</p>` : ""}
         </div>
         <aside class="download-qr-panel" aria-label="Scan QR code to open Cannakan Grow">
@@ -35932,41 +35948,61 @@ function renderDownloadPage() {
               referrerpolicy="no-referrer"
             >
           </div>
-          <strong>Scan to install</strong>
+          <strong>Scan to Install</strong>
           <span>grow.cannakan.com/download</span>
         </aside>
       </header>
 
+      <section class="download-tradeshow-callout">
+        <div>
+          <p class="eyebrow">Fast Setup</p>
+          <h2>Start Tracking in Minutes</h2>
+          <p>Create a free account, install Cannakan Grow, and begin tracking your seed sessions, vault inventory, and community results.</p>
+        </div>
+        <a class="button button-primary" href="/">Open App</a>
+      </section>
+
       <section class="download-feature-grid" aria-label="Cannakan Grow highlights">
         ${renderDownloadPageFeatureMarkup({
           iconName: "activeSessionWaveform",
-          title: "Track KAN sessions",
+          title: "Track KAN Sessions",
           description: "Keep soaking, germination, planting, and completion details together.",
         })}
         ${renderDownloadPageFeatureMarkup({
           iconName: "seedVault",
-          title: "Save Seed Vault entries",
+          title: "Save Seed Vault Entries",
           description: "Carry source, variety, count, age, and inventory notes into session starts.",
         })}
         ${renderDownloadPageFeatureMarkup({
           iconName: "communityGroup",
-          title: "Explore community results",
+          title: "Explore Community Results",
           description: "Review public snapshots, source signals, tutorials, and shared outcomes.",
         })}
       </section>
 
       <section class="download-steps-grid" aria-label="Install steps">
         ${renderDownloadInstallStepsMarkup("iPhone", [
-          "Tap the Share icon",
-          "Scroll down",
-          "Add to Home Screen",
+          "Open in Safari",
+          "Tap Share",
+          "Tap Add to Home Screen",
         ])}
         ${renderDownloadInstallStepsMarkup("Android", [
+          "Open in Chrome",
           "Tap Install App",
-          "Tap Install",
-          "Open the app",
+          "Open Cannakan Grow",
         ])}
       </section>
+
+      <footer class="download-footer">
+        <div>
+          <strong>Cannakan Grow</strong>
+          <span>grow.cannakan.com</span>
+        </div>
+        <nav aria-label="Download page footer">
+          <a href="#privacy">Privacy Policy</a>
+          <a href="#terms">Terms of Service</a>
+        </nav>
+      </footer>
     </section>
   `;
   bindDownloadPage();
@@ -36036,15 +36072,16 @@ function render() {
   clearSessionTimerInterval();
   stopHomeAnnouncementFallbackRotation();
   closeMobileNavigation();
+  const pathRoute = getCurrentAppPathRoute();
+  const rawRoute = getCurrentAppRawRoute();
+  const routeParts = rawRoute.split("/");
+  const [route, id, subroute] = routeParts;
+  document.body.classList.toggle("download-route", route === "download");
   updateAuthStatus();
   syncInstallPromptBanner();
   syncMockDataBanner();
   updateNavState();
   appState.currentRouteHash = normalizeNavigationHash(window.location.hash || "#home");
-  const pathRoute = getCurrentAppPathRoute();
-  const rawRoute = getCurrentAppRawRoute();
-  const routeParts = rawRoute.split("/");
-  const [route, id, subroute] = routeParts;
   const isEditableSessionRoute = route === "new" || (route === "sessions" && id && id !== "public");
   if (!isEditableSessionRoute) {
     clearUnsavedChangesContext();
@@ -64144,6 +64181,10 @@ function syncMockDataBanner() {
   }
 
   const existingBanner = app.querySelector("#mock-data-banner");
+  if (isDownloadRouteActive()) {
+    existingBanner?.remove();
+    return;
+  }
   if (!isMockDataEnabled()) {
     existingBanner?.remove();
     return;
