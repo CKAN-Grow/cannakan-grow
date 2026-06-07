@@ -35992,9 +35992,12 @@ const LEARN_FILTER_PAPER_TUTORIAL_ID = "loading-seeds-into-kan";
 const LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH = "/assets/learn/images/tutorials/loading-filter-paper.webp";
 const LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID = "filling-out-partition-chart";
 const LEARN_FILLING_PARTITION_CHART_POSTER_PATH = "/assets/learn/images/tutorials/filling-partition-chart.webp";
+const LEARN_ADDING_SEEDS_TUTORIAL_ID = "adding-seeds";
+const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-seeds.webp";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
+const LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID = "3e0de3f6cace865c1f570988887d3369";
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
@@ -36175,6 +36178,38 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         }),
       }),
       Object.freeze({
+        id: LEARN_ADDING_SEEDS_TUTORIAL_ID,
+        order: 1.6,
+        title: "Adding Seeds",
+        duration: "1 min • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to add seeds to a grow session so partition tracking starts with clean, accurate seed details.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 2,
+        relatedFeature: "sessions",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_ADDING_SEEDS_POSTER_PATH,
+          posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        }),
+      }),
+      Object.freeze({
         id: "understanding-the-timeline",
         order: 2,
         title: "Understanding the Timeline",
@@ -36330,6 +36365,7 @@ const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH,
   LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
   LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+  LEARN_ADDING_SEEDS_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
