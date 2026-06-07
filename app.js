@@ -35994,10 +35994,13 @@ const LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID = "filling-out-partition-chart";
 const LEARN_FILLING_PARTITION_CHART_POSTER_PATH = "/assets/learn/images/tutorials/filling-partition-chart.webp";
 const LEARN_ADDING_SEEDS_TUTORIAL_ID = "adding-seeds";
 const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-seeds.webp";
+const LEARN_FILLING_WITH_WATER_TUTORIAL_ID = "filling-with-water";
+const LEARN_FILLING_WITH_WATER_POSTER_PATH = "/assets/learn/images/tutorials/filling-with-water-soaking.webp";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
 const LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID = "3e0de3f6cace865c1f570988887d3369";
+const LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID = "1b7484b7cebe3205c642843ae5b9a816";
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
@@ -36009,33 +36012,43 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
     icon: "certificationShield",
     tutorials: Object.freeze([
       Object.freeze({
-        id: "kan-system-overview",
-        order: 2,
-        title: "KAN® System Overview",
-        duration: "2 min • Beginner",
-        description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
+        id: LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID,
+        order: 1,
+        title: "Filling Out Partition Chart",
+        duration: "44 sec • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to fill out the partition chart so seed counts, partition labels, and germination results stay accurate throughout a session.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
         featured: true,
         featuredOrder: 1,
         featuredLabel: "Start Here",
-        visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
-        comingSoonLabel: "Coming Soon",
-        recommendedFor: Object.freeze(["new_user"]),
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
         priority: 1,
-        relatedFeature: "kan-system",
-        userStage: "new_user",
+        relatedFeature: "sessions",
+        userStage: "active_session",
         video: Object.freeze({
-          provider: "placeholder",
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
           modalPlayerReady: true,
           mp4Url: "",
-          cloudflareStreamId: "",
-          poster: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+          posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
         }),
       }),
       Object.freeze({
         id: LEARN_FILTER_PAPER_TUTORIAL_ID,
-        order: 1,
+        order: 2,
         title: "Installing Filter Paper",
         duration: "22 sec • Beginner",
         difficulty: "Beginner",
@@ -36045,8 +36058,8 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         audience: "public",
         isPublic: true,
         featured: true,
-        featuredOrder: 1,
-        featuredLabel: "Start Here",
+        featuredOrder: 2,
+        featuredLabel: "Core Setup",
         scheduled: false,
         releaseDate: "",
         comingSoonLabel: "",
@@ -36069,8 +36082,100 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         }),
       }),
       Object.freeze({
-        id: "soaking-vs-germinating",
+        id: LEARN_ADDING_SEEDS_TUTORIAL_ID,
         order: 3,
+        title: "Adding Seeds",
+        duration: "1 min • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to add seeds to a grow session so partition tracking starts with clean, accurate seed details.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        featured: true,
+        featuredOrder: 3,
+        featuredLabel: "Seed Setup",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 3,
+        relatedFeature: "sessions",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_ADDING_SEEDS_POSTER_PATH,
+          posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
+        }),
+      }),
+      Object.freeze({
+        id: LEARN_FILLING_WITH_WATER_TUTORIAL_ID,
+        order: 4,
+        title: "Filling with Water",
+        duration: "1 min • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to fill the KAN® system with water for soaking while keeping the setup clean and consistent.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        featured: true,
+        featuredOrder: 4,
+        featuredLabel: "Soaking Setup",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        posterUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 4,
+        relatedFeature: "kan-system",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+          posterUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        }),
+      }),
+      Object.freeze({
+        id: "kan-system-overview",
+        order: 5,
+        title: "KAN® System Overview",
+        duration: "2 min • Beginner",
+        description: "A concise orientation to the KAN® System workflow and how it pairs with session tracking.",
+        visibilityStatus: "coming-soon",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "Coming Soon",
+        recommendedFor: Object.freeze(["new_user"]),
+        priority: 1,
+        relatedFeature: "kan-system",
+        userStage: "new_user",
+        video: Object.freeze({
+          provider: "placeholder",
+          modalPlayerReady: true,
+          mp4Url: "",
+          cloudflareStreamId: "",
+          poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: "soaking-vs-germinating",
+        order: 6,
         title: "Understanding Soaking vs Germinating",
         duration: "2 min • Beginner",
         description: "Learn what changes between soaking, germinating, and visible germination progress.",
@@ -36084,7 +36189,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "filter-paper-setup",
-        order: 4,
+        order: 7,
         title: "Filter Paper Setup",
         duration: "2 min • Beginner",
         description: "Prepare filter paper consistently so each KAN® partition starts clean and readable.",
@@ -36098,7 +36203,7 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
       }),
       Object.freeze({
         id: "reading-germination-results",
-        order: 5,
+        order: 8,
         title: "Reading Germination Results",
         duration: "3 min • Beginner",
         description: "Review partition outcomes, final counts, and what to record when germination completes.",
@@ -36126,9 +36231,6 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Creating Your First Session",
         duration: "2 min • Beginner",
         description: "Create a grow session, name it clearly, and set up the first partition rows.",
-        featured: true,
-        featuredOrder: 2,
-        featuredLabel: "First Session",
         visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
@@ -36143,70 +36245,6 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           mp4Url: "",
           cloudflareStreamId: "",
           poster: "",
-        }),
-      }),
-      Object.freeze({
-        id: LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID,
-        order: 1.5,
-        title: "Filling Out Partition Chart",
-        duration: "44 sec • Beginner",
-        difficulty: "Beginner",
-        description: "Learn how to fill out the partition chart so seed counts, partition labels, and germination results stay accurate throughout a session.",
-        status: "published",
-        visibilityStatus: "published",
-        audience: "public",
-        isPublic: true,
-        scheduled: false,
-        releaseDate: "",
-        comingSoonLabel: "",
-        thumbnailUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
-        posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
-        recommendedFor: Object.freeze(["new_user", "active_session"]),
-        priority: 2,
-        relatedFeature: "sessions",
-        userStage: "active_session",
-        video: Object.freeze({
-          provider: "cloudflare",
-          videoProvider: "cloudflare",
-          modalPlayerReady: true,
-          mp4Url: "",
-          embedUrl: "",
-          cloudflareStreamId: LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID,
-          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
-          poster: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
-          posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
-        }),
-      }),
-      Object.freeze({
-        id: LEARN_ADDING_SEEDS_TUTORIAL_ID,
-        order: 1.6,
-        title: "Adding Seeds",
-        duration: "1 min • Beginner",
-        difficulty: "Beginner",
-        description: "Learn how to add seeds to a grow session so partition tracking starts with clean, accurate seed details.",
-        status: "published",
-        visibilityStatus: "published",
-        audience: "public",
-        isPublic: true,
-        scheduled: false,
-        releaseDate: "",
-        comingSoonLabel: "",
-        thumbnailUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
-        posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
-        recommendedFor: Object.freeze(["new_user", "active_session"]),
-        priority: 2,
-        relatedFeature: "sessions",
-        userStage: "active_session",
-        video: Object.freeze({
-          provider: "cloudflare",
-          videoProvider: "cloudflare",
-          modalPlayerReady: true,
-          mp4Url: "",
-          embedUrl: "",
-          cloudflareStreamId: LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID,
-          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
-          poster: LEARN_ADDING_SEEDS_POSTER_PATH,
-          posterUrl: LEARN_ADDING_SEEDS_POSTER_PATH,
         }),
       }),
       Object.freeze({
@@ -36251,9 +36289,6 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
         title: "Generating Grow Snapshots",
         duration: "3 min • Beginner",
         description: "Turn session progress into a polished snapshot for sharing or Community Grow.",
-        featured: true,
-        featuredOrder: 3,
-        featuredLabel: "Share Ready",
         visibilityStatus: "coming-soon",
         scheduled: false,
         releaseDate: "",
@@ -36366,6 +36401,7 @@ const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
   LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
   LEARN_ADDING_SEEDS_POSTER_PATH,
+  LEARN_FILLING_WITH_WATER_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
@@ -36736,8 +36772,14 @@ function loadAdminTutorialDraftsFromStorage() {
     if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
       return {};
     }
-    if (Object.prototype.hasOwnProperty.call(storedValue, LEARN_FILTER_PAPER_TUTORIAL_ID)) {
-      delete storedValue[LEARN_FILTER_PAPER_TUTORIAL_ID];
+    const protectedTutorialIds = getProtectedProductionLearnTutorialIds();
+    const hasProtectedDrafts = protectedTutorialIds.some((tutorialId) => (
+      Object.prototype.hasOwnProperty.call(storedValue, tutorialId)
+    ));
+    if (hasProtectedDrafts) {
+      protectedTutorialIds.forEach((tutorialId) => {
+        delete storedValue[tutorialId];
+      });
       localStorage.setItem(ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY, JSON.stringify(storedValue));
     }
     return storedValue;
@@ -37291,8 +37333,17 @@ function getAdminTutorialDraft(tutorialId = "") {
   return drafts[String(tutorialId || "").trim()] || null;
 }
 
+function getProtectedProductionLearnTutorialIds() {
+  return [
+    LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID,
+    LEARN_FILTER_PAPER_TUTORIAL_ID,
+    LEARN_ADDING_SEEDS_TUTORIAL_ID,
+    LEARN_FILLING_WITH_WATER_TUTORIAL_ID,
+  ];
+}
+
 function isProtectedProductionLearnTutorial(tutorialId = "") {
-  return String(tutorialId || "").trim() === LEARN_FILTER_PAPER_TUTORIAL_ID;
+  return getProtectedProductionLearnTutorialIds().includes(String(tutorialId || "").trim());
 }
 
 function saveAdminTutorialDraft(tutorialId = "", updates = {}) {
@@ -37396,8 +37447,8 @@ function getLearnTutorialCategories() {
 
   LEARN_TUTORIAL_CATEGORIES.forEach((category) => {
     category.tutorials.forEach((tutorial, index) => {
-      const isCanonicalFilterPaperTutorial = isProtectedProductionLearnTutorial(tutorial.id);
-      const draft = isCanonicalFilterPaperTutorial ? {} : (draftMap[tutorial.id] || {});
+      const isProtectedProductionTutorial = isProtectedProductionLearnTutorial(tutorial.id);
+      const draft = isProtectedProductionTutorial ? {} : (draftMap[tutorial.id] || {});
       const videoDraft = draft.video || {};
       const categoryId = categoryMap.has(draft.categoryId) ? draft.categoryId : category.id;
       const categoryOrder = Number.isFinite(Number(draft.categoryOrder))
@@ -37412,19 +37463,19 @@ function getLearnTutorialCategories() {
       const captionsUrl = String(draft.captionsUrl || videoDraft.captionsUrl || tutorial.captionsUrl || tutorial.video?.captionsUrl || "").trim();
       const transcriptUrl = String(draft.transcriptUrl || videoDraft.transcriptUrl || tutorial.transcriptUrl || tutorial.video?.transcriptUrl || "").trim();
       const transcriptText = String(draft.transcriptText || videoDraft.transcriptText || tutorial.transcriptText || tutorial.video?.transcriptText || "").trim();
-      if (isCanonicalFilterPaperTutorial) {
-        videoProvider = "cloudflare";
-        cloudflareStreamId = LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID;
-        cloudflareStreamCustomerCode = LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE;
-        mp4Url = "";
-        embedUrl = "";
-        posterUrl = LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH;
+      if (isProtectedProductionTutorial) {
+        videoProvider = normalizeTutorialVideoProvider(tutorial.videoProvider || tutorial.video?.videoProvider || tutorial.video?.provider || "none");
+        cloudflareStreamId = String(tutorial.cloudflareStreamId || tutorial.video?.cloudflareStreamId || "").trim();
+        cloudflareStreamCustomerCode = String(tutorial.cloudflareStreamCustomerCode || tutorial.video?.cloudflareStreamCustomerCode || "").trim();
+        mp4Url = String(tutorial.mp4Url || tutorial.video?.mp4Url || "").trim();
+        embedUrl = String(tutorial.embedUrl || tutorial.video?.embedUrl || "").trim();
+        posterUrl = String(tutorial.posterUrl || tutorial.video?.posterUrl || tutorial.video?.poster || tutorial.thumbnailUrl || "").trim();
       }
       const draftFeaturedOrder = Number(draft.featuredOrder);
       const tutorialFeaturedOrder = Number(tutorial.featuredOrder);
       const featuredOrder = Number.isFinite(draftFeaturedOrder) && draftFeaturedOrder > 0
         ? draftFeaturedOrder
-        : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : index + 1);
+        : (Number.isFinite(tutorialFeaturedOrder) && tutorialFeaturedOrder > 0 ? tutorialFeaturedOrder : "");
       const featuredLabel = String(draft.featuredLabel ?? tutorial.featuredLabel ?? "").trim();
       const audience = normalizeLearnAudience(draft.audience ?? tutorial.audience ?? "public");
       const isPublic = draft.isPublic ?? tutorial.isPublic ?? audience === "public";
@@ -37440,18 +37491,18 @@ function getLearnTutorialCategories() {
         visibilityNote: String(draft.visibilityNote ?? tutorial.visibilityNote ?? "").trim(),
         duration: String(draft.duration || tutorial.duration || "").trim() || tutorial.duration,
         difficulty: String(draft.difficulty || tutorial.difficulty || getLearnTutorialDifficultyLabel(tutorial)).trim(),
-        status: isCanonicalFilterPaperTutorial ? "published" : getTutorialVisibilityStatus({
+        status: isProtectedProductionTutorial ? "published" : getTutorialVisibilityStatus({
           status: draft.status || draft.visibilityStatus || tutorial.status || tutorial.visibilityStatus || "coming-soon",
           scheduled: draft.scheduled ?? tutorial.scheduled,
         }),
-        visibilityStatus: isCanonicalFilterPaperTutorial ? "published" : getTutorialVisibilityStatus({
+        visibilityStatus: isProtectedProductionTutorial ? "published" : getTutorialVisibilityStatus({
           status: draft.visibilityStatus || draft.status || tutorial.visibilityStatus || tutorial.status || "coming-soon",
           scheduled: draft.scheduled ?? tutorial.scheduled,
         }),
-        scheduled: isCanonicalFilterPaperTutorial ? false : Boolean(draft.scheduled ?? tutorial.scheduled),
-        releaseDate: isCanonicalFilterPaperTutorial ? "" : String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
-        comingSoonLabel: isCanonicalFilterPaperTutorial ? "" : String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
-        thumbnailUrl: isCanonicalFilterPaperTutorial ? LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH : String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
+        scheduled: isProtectedProductionTutorial ? false : Boolean(draft.scheduled ?? tutorial.scheduled),
+        releaseDate: isProtectedProductionTutorial ? "" : String(draft.releaseDate ?? tutorial.releaseDate ?? "").trim(),
+        comingSoonLabel: isProtectedProductionTutorial ? "" : String(draft.comingSoonLabel ?? tutorial.comingSoonLabel ?? "").trim(),
+        thumbnailUrl: isProtectedProductionTutorial ? String(tutorial.thumbnailUrl || posterUrl || "").trim() : String(draft.thumbnailUrl || tutorial.thumbnailUrl || "").trim(),
         order: Number.isFinite(Number(draft.order)) ? Number(draft.order) : (Number.isFinite(Number(tutorial.order)) ? Number(tutorial.order) : index + 1),
         featured: Boolean(draft.featured ?? tutorial.featured),
         featuredOrder,
@@ -37985,22 +38036,37 @@ function renderLearnTutorialSearchControlsMarkup() {
   `;
 }
 
+function getLearnPositiveOrderValue(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : null;
+}
+
 function getFeaturedLearnTutorials(categories = getLearnTutorialCategories()) {
   return categories
     .flatMap((category) => category.tutorials
       .filter((tutorial) => tutorial.featured && shouldShowTutorialOnPublicLearn(tutorial))
       .map((tutorial) => ({ category, tutorial })))
+    .map((entry, index) => ({ ...entry, featuredIndex: index }))
     .sort((left, right) => {
-      const orderDelta = (Number(left.tutorial.featuredOrder) || 999) - (Number(right.tutorial.featuredOrder) || 999);
-      if (orderDelta !== 0) {
-        return orderDelta;
+      const leftFeaturedOrder = getLearnPositiveOrderValue(left.tutorial.featuredOrder);
+      const rightFeaturedOrder = getLearnPositiveOrderValue(right.tutorial.featuredOrder);
+      if (leftFeaturedOrder !== null || rightFeaturedOrder !== null) {
+        const orderDelta = (leftFeaturedOrder ?? Number.POSITIVE_INFINITY) - (rightFeaturedOrder ?? Number.POSITIVE_INFINITY);
+        if (orderDelta !== 0) {
+          return orderDelta;
+        }
       }
-      const displayOrderDelta = (Number(left.tutorial.order) || 999) - (Number(right.tutorial.order) || 999);
-      if (displayOrderDelta !== 0) {
-        return displayOrderDelta;
+      const leftDisplayOrder = getLearnPositiveOrderValue(left.tutorial.order);
+      const rightDisplayOrder = getLearnPositiveOrderValue(right.tutorial.order);
+      if (leftDisplayOrder !== null || rightDisplayOrder !== null) {
+        const displayOrderDelta = (leftDisplayOrder ?? Number.POSITIVE_INFINITY) - (rightDisplayOrder ?? Number.POSITIVE_INFINITY);
+        if (displayOrderDelta !== 0) {
+          return displayOrderDelta;
+        }
       }
-      return String(left.tutorial.title || "").localeCompare(String(right.tutorial.title || ""));
-    });
+      return left.featuredIndex - right.featuredIndex;
+    })
+    .map(({ featuredIndex, ...entry }) => entry);
 }
 
 function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategories()) {
