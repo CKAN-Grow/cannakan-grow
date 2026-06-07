@@ -35997,6 +35997,7 @@ const LEARN_ADDING_SEEDS_POSTER_PATH = "/assets/learn/images/tutorials/adding-se
 const LEARN_FILLING_WITH_WATER_TUTORIAL_ID = "filling-with-water";
 const LEARN_FILLING_WITH_WATER_POSTER_PATH = "/assets/learn/images/tutorials/filling-with-water-soaking.webp";
 const LEARN_HEAT_PAD_CONTROLLER_SETUP_POSTER_PATH = "/assets/learn/images/tutorials/heat-pad-controller-setup.webp";
+const LEARN_CHECKING_CONDENSATION_TUTORIAL_ID = "checking-condensation-under-lid";
 const LEARN_CHECKING_CONDENSATION_POSTER_PATH = "/assets/learn/images/tutorials/checking-condensation-under-lid.webp";
 const LEARN_KAN_SYSTEM_CATEGORY_ID = "kan-system";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
@@ -36004,6 +36005,7 @@ const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203
 const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
 const LEARN_ADDING_SEEDS_CLOUDFLARE_VIDEO_ID = "3e0de3f6cace865c1f570988887d3369";
 const LEARN_FILLING_WITH_WATER_CLOUDFLARE_VIDEO_ID = "1b7484b7cebe3205c642843ae5b9a816";
+const LEARN_CHECKING_CONDENSATION_CLOUDFLARE_VIDEO_ID = "7ac361bf82eea9c03566549ffd65c379";
 const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
   Object.freeze({
     keys: Object.freeze(["filling-out-partition-chart", "filling out partition chart"]),
@@ -36042,7 +36044,7 @@ const LEARN_FEATURED_TUTORIAL_ORDER = Object.freeze([
   }),
   Object.freeze({
     keys: Object.freeze([
-      "checking-condensation-under-lid",
+      LEARN_CHECKING_CONDENSATION_TUTORIAL_ID,
       "checking condensation under lid",
       "checking condensation under the lid",
     ]),
@@ -36199,6 +36201,43 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
           poster: LEARN_FILLING_WITH_WATER_POSTER_PATH,
           posterUrl: LEARN_FILLING_WITH_WATER_POSTER_PATH,
+        }),
+      }),
+      Object.freeze({
+        id: LEARN_CHECKING_CONDENSATION_TUTORIAL_ID,
+        order: 6,
+        title: "Checking Condensation Under the Lid",
+        duration: "1 min • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to inspect condensation levels during the soak and germination stages and what those moisture patterns indicate inside the KAN® system.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        featured: true,
+        featuredOrder: 6,
+        featuredLabel: "ESSENTIAL",
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+        posterImageUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+        posterUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 6,
+        relatedFeature: "kan-system",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_CHECKING_CONDENSATION_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+          posterImageUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
+          posterUrl: LEARN_CHECKING_CONDENSATION_POSTER_PATH,
         }),
       }),
       Object.freeze({
@@ -37391,6 +37430,7 @@ function getProtectedProductionLearnTutorialIds() {
     LEARN_FILTER_PAPER_TUTORIAL_ID,
     LEARN_ADDING_SEEDS_TUTORIAL_ID,
     LEARN_FILLING_WITH_WATER_TUTORIAL_ID,
+    LEARN_CHECKING_CONDENSATION_TUTORIAL_ID,
   ];
 }
 
