@@ -8473,10 +8473,10 @@ function buildSampleSessions() {
       completedAt: "2026-05-14T09:18:00",
       sessionNotes: "Polished demo completion: fresh Seedsman Wedding Cake pack, clean partition labels, and a 100% KAN result for Source Directory and leaderboard previews.",
       partitionSeeds: [
-        ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 10, 1],
-        ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 10, 1],
-        ["Blueberry Muffin", "Seedsman", "photoperiod", "feminized", 8, 8, 2],
-        ["Gelato OG", "Seedsman", "photoperiod", "feminized", 8, 8, 2],
+        ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 9, 1],
+        ["Wedding Cake", "Seedsman", "photoperiod", "feminized", 10, 9, 1],
+        ["Blueberry Muffin", "Seedsman", "photoperiod", "feminized", 8, 7, 2],
+        ["Gelato OG", "Seedsman", "photoperiod", "feminized", 8, 7, 2],
       ],
     }),
     createSampleSession({
@@ -8492,9 +8492,9 @@ function buildSampleSessions() {
       completedAt: "2026-05-10T08:40:00",
       sessionNotes: "TRA demo with mixed Seedsman inventory. Fresh autos are pushing even tails while the older archive comparison is intentionally slower.",
       partitionSeeds: [
-        ["Lemon Auto", "Seedsman", "auto", "feminized", 12, 12, 1],
+        ["Lemon Auto", "Seedsman", "auto", "feminized", 12, 11, 1],
         ["Badazz OG Cheese", "Seedsman", "photoperiod", "feminized", 12, 11, 3],
-        ["Bruce Banger", "Seedsman", "photoperiod", "feminized", 12, 12, 2],
+        ["Bruce Banger", "Seedsman", "photoperiod", "feminized", 12, 11, 2],
         ["White OG", "Seedsman", "photoperiod", "feminized", 10, 8, 5],
       ],
     }),
@@ -8602,7 +8602,7 @@ function buildSampleSessions() {
       sessionNotes: "Older Seedsman lot used to show 5-year and 7-year seed-age behavior while keeping Seedsman at the top of analytics.",
       partitionSeeds: [
         ["L.A. Peyote Kush", "Seedsman", "photoperiod", "feminized", 12, 10, 5],
-        ["Alaskan Purple", "Seedsman", "photoperiod", "feminized", 12, 9, 7],
+        ["Alaskan Purple", "Seedsman", "photoperiod", "feminized", 12, 11, 7],
         ["Gorilla Jealousy F1 2024 pack", "Seedsman", "photoperiod", "feminized", 12, 12, 2],
       ],
     }),
@@ -8726,24 +8726,46 @@ function buildMaryJaneDemoFillerVarieties(sourceName = "") {
 
 function getMaryJaneDemoGerminatedCount(sourceName = "", seedCount = 10, seedAgeYears = 1, sessionIndex = 0, partitionIndex = 0) {
   const normalizedSource = String(sourceName || "").trim().toLowerCase();
+  const patternIndex = (Math.max(0, Number(sessionIndex) || 0) * 2) + Math.max(0, Number(partitionIndex) || 0);
   let misses = 0;
   if (normalizedSource === "seedsman") {
-    misses = (sessionIndex + partitionIndex) % 6 === 0 ? 1 : 0;
+    misses = patternIndex % 4 === 0 ? 1 : 0;
   } else if (normalizedSource === "poppin fire") {
-    misses = (sessionIndex + partitionIndex) % 5 === 0 ? 1 : ((sessionIndex + partitionIndex) % 17 === 0 ? 2 : 0);
+    misses = patternIndex % 4 === 0 ? 0 : 1;
   } else if (normalizedSource === "good genetix") {
-    misses = (sessionIndex + partitionIndex) % 4 === 0 ? 1 : ((sessionIndex + partitionIndex) % 13 === 0 ? 2 : 0);
+    misses = 1;
   } else {
-    misses = (sessionIndex + partitionIndex) % 5 === 0 ? 1 : 0;
-  }
-
-  if (Number(seedAgeYears) >= 7 && (sessionIndex + partitionIndex) % 3 === 0) {
-    misses += 1;
-  } else if (Number(seedAgeYears) >= 5 && (sessionIndex + partitionIndex) % 5 === 0) {
-    misses += 1;
+    misses = patternIndex % 5 === 0 ? 1 : 0;
   }
 
   return Math.max(0, Math.min(seedCount, seedCount - misses));
+}
+
+function getMaryJanePartnerMinimumRate(sourceName = "") {
+  const normalizedSource = String(sourceName || "").trim().toLowerCase();
+  if (normalizedSource === "seedsman") {
+    return 0.94;
+  }
+  if (normalizedSource === "poppin fire") {
+    return 0.92;
+  }
+  if (normalizedSource === "good genetix") {
+    return 0.91;
+  }
+  return 0;
+}
+
+function enforceMaryJanePartnerMinimumGerminatedCount(sourceName = "", seedCount = 0, germinatedCount = 0) {
+  const normalizedSeedCount = Math.max(0, Number(seedCount) || 0);
+  const normalizedGerminatedCount = Math.max(0, Number(germinatedCount) || 0);
+  const minimumRate = getMaryJanePartnerMinimumRate(sourceName);
+  if (normalizedSeedCount <= 0 || minimumRate <= 0) {
+    return Math.min(normalizedSeedCount, normalizedGerminatedCount);
+  }
+  return Math.min(
+    normalizedSeedCount,
+    Math.max(normalizedGerminatedCount, Math.ceil(normalizedSeedCount * minimumRate)),
+  );
 }
 
 function formatMaryJaneDemoDateLabel(date) {
@@ -8783,8 +8805,8 @@ function buildMaryJaneBerlinGeneratedSampleSessions(existingSessions = []) {
       const systemType = generatedIndex % 5 === 0 ? "TRA" : "KAN";
       const sourceKey = normalizedSourceNameForDemo(sourceName);
       const seedCount = sourceKey === "seedsman"
-        ? 8
-        : (sourceKey === "poppin fire" || sourceKey === "good genetix" ? 7 : 6);
+        ? 10
+        : (sourceKey === "poppin fire" || sourceKey === "good genetix" ? 12 : 3);
       const partitionSeeds = Array.from({ length: 3 }, (_, partitionIndex) => {
         const variety = sourceName === "Seedsman" && partitionIndex === 0
           ? "Banana Jealousy"
@@ -8948,7 +8970,7 @@ function createSampleSession(config) {
       seedType: partition[2],
       feminized: partition[3],
       seedCount: partition[4],
-      plantedCount: String(partition[5]),
+      plantedCount: String(Math.max(0, Math.min(Number(partition[4]) || 0, Number(partition[5]) || 0))),
       seedAgeYears: normalizeSeedAgeYears(partition[6]),
     })),
   };
@@ -9785,6 +9807,12 @@ function buildMockGalleryPartitionRecords(partitionSpecs = []) {
     const repeat = Math.max(1, Number(spec.repeat) || 1);
     return Array.from({ length: repeat }, () => {
       partitionIndex += 1;
+      const seedCount = Math.max(0, Number(spec.seedCount) || 0);
+      const germinatedCount = enforceMaryJanePartnerMinimumGerminatedCount(
+        spec.source || "",
+        seedCount,
+        Math.max(0, Number(spec.germinatedCount) || 0),
+      );
       return {
         id: partitionIndex,
         seedVariety: spec.seedVariety || "",
@@ -9792,8 +9820,8 @@ function buildMockGalleryPartitionRecords(partitionSpecs = []) {
         breeder: spec.source || "",
         seedType: normalizeSeedTypeId(spec.seedType || "") || "photoperiod",
         feminized: spec.feminized || "feminized",
-        seedCount: Math.max(0, Number(spec.seedCount) || 0),
-        plantedCount: String(Math.max(0, Number(spec.germinatedCount) || 0)),
+        seedCount,
+        plantedCount: String(germinatedCount),
         seedAgeYears: normalizeSeedAgeYears(spec.seedAgeYears),
       };
     });
