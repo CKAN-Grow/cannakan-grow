@@ -599,6 +599,8 @@ const SOURCE_PROFILE_DEMO_RECORD = Object.freeze({
   name: "Seedsman",
   type: "Breeder / Seed Source",
   sourceTypeLabel: "Breeder / Seed Source",
+  countryCode: "ES",
+  country_code: "ES",
   logoUrl: SEEDSMAN_DEMO_LOGO_URL,
   websiteUrl: "https://www.seedsman.com",
   establishedLabel: "Established 2002",
@@ -676,6 +678,11 @@ const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
+const DEMO_SOURCE_COUNTRY_CODES = Object.freeze({
+  seedsman: "ES",
+  "poppin fire": "CO",
+  "good genetix": "ES",
+});
 const MARY_JANE_DEMO_FILLER_SOURCE_NAMES = Object.freeze([
   "Summit Seed Co.",
   "Evergreen Genetics",
@@ -704,6 +711,8 @@ const testedSourcesMock = Object.freeze([
     id: "seedsman",
     name: "Seedsman",
     type: "Seed Marketplace",
+    countryCode: "ES",
+    country_code: "ES",
     logo: SEEDSMAN_DEMO_LOGO_URL,
     logoUrl: SEEDSMAN_DEMO_LOGO_URL,
     website: "https://www.seedsman.com",
@@ -736,6 +745,8 @@ const testedSourcesMock = Object.freeze([
     id: "poppin-fire",
     name: "Poppin Fire",
     type: "Breeder",
+    countryCode: "CO",
+    country_code: "CO",
     logo: "",
     logoUrl: "",
     website: "",
@@ -768,6 +779,8 @@ const testedSourcesMock = Object.freeze([
     id: "good-genetix",
     name: "Good Genetix",
     type: "Breeder",
+    countryCode: "ES",
+    country_code: "ES",
     logo: "",
     logoUrl: "",
     website: "",
@@ -17939,6 +17952,40 @@ function formatCountryOptionLabel(countryCode = "") {
   return `${getCountryFlagEmoji(normalizedCode)} ${getCountryName(normalizedCode)}`;
 }
 
+function getDemoSourceCountryCode(value = "") {
+  const normalizedSourceKey = normalizeSourceNameForMatching(value);
+  return DEMO_SOURCE_COUNTRY_CODES[normalizedSourceKey] || "";
+}
+
+function getSourceCountryCode(source = {}) {
+  const directCode = normalizeCountryCode(source?.countryCode || source?.country_code || "");
+  if (directCode) {
+    return directCode;
+  }
+  return getDemoSourceCountryCode(source?.name || source?.label || source?.id || "");
+}
+
+function renderSourceCountryMarkup(source = {}, className = "source-country-badge") {
+  const countryCode = getSourceCountryCode(source);
+  if (!countryCode) {
+    return "";
+  }
+  const countryName = getCountryName(countryCode);
+  return `
+    <span class="${escapeHtml(className)}" title="${escapeHtml(countryName)}">
+      ${renderCountryFlagMarkup(countryCode, `${className}-flag country-flag`)}
+      <span>${escapeHtml(countryName)}</span>
+    </span>
+  `;
+}
+
+function renderSourceNameWithCountryFlagMarkup(name = "", countryCode = "", className = "source-name-with-country") {
+  const label = String(name || "Source").trim() || "Source";
+  const normalizedCountryCode = normalizeCountryCode(countryCode) || getDemoSourceCountryCode(label);
+  const flagMarkup = renderCountryFlagMarkup(normalizedCountryCode, `${className}-flag country-flag`);
+  return `<span class="${escapeHtml(className)}">${flagMarkup}<span>${escapeHtml(label)}</span></span>`;
+}
+
 function renderCountryFlagMarkup(countryCode = "", className = "country-flag") {
   const normalizedCode = normalizeCountryCode(countryCode);
   if (!normalizedCode) {
@@ -28907,9 +28954,12 @@ function finalizeCommunityInsightsRollupCounters(counters = {}) {
 
 function finalizeCommunityInsightsRollup(rollup = {}) {
   const finalized = finalizeCommunityInsightsRollupCounters(rollup);
+  const countryCode = getSourceCountryCode(rollup);
   return {
     label: rollup.label || "Not shared",
     key: rollup.key || "",
+    countryCode,
+    country_code: countryCode,
     ...finalized,
     systems: Object.fromEntries(["KAN", "TRA"].map((systemKey) => [
       systemKey,
@@ -28925,6 +28975,8 @@ function buildCommunityInsightsChartRows(rows = [], options = {}) {
     const metric = Math.max(0, Number(row[metricKey]) || 0);
     return {
       label: row.label,
+      countryCode: row.countryCode || row.country_code || "",
+      country_code: row.country_code || row.countryCode || "",
       fillWidth: metricKey === "averageRate"
         ? `${Math.min(100, Math.round(metric))}%`
         : `${maxMetric > 0 ? Math.round((metric / maxMetric) * 100) : 0}%`,
@@ -29327,7 +29379,7 @@ function renderCommunityInsightsBarChart(title = "", rows = [], options = {}) {
             <div class="community-insights-bar-row${options.ranked ? " is-ranked" : ""} ${getLeaderboardRankTone(index)}">
               ${options.ranked ? `<span class="community-insights-rank-badge">#${index + 1}</span>` : ""}
               <div class="community-insights-bar-label">
-                <span>${escapeHtml(row.label || "")}</span>
+                <span>${renderSourceNameWithCountryFlagMarkup(row.label || "", row.countryCode || row.country_code || "", "community-insights-source-label")}</span>
                 ${row.detail ? `<small>${escapeHtml(row.detail)}</small>` : ""}
                 ${row.totalSeeds > 0 ? renderPublicAnalyticsSignalBadge(row.totalSeeds, "community-insights-signal-badge") : ""}
               </div>
@@ -29466,7 +29518,7 @@ function renderCommunityInsightsSourceActivity(entries = [], options = {}) {
         <article class="community-insights-source-activity-card ${getLeaderboardRankTone(index)}">
           <span class="community-insights-source-activity-rank">#${index + 1}</span>
           <div>
-            <h4>${escapeHtml(entry.label || "Source")}</h4>
+            <h4>${renderSourceNameWithCountryFlagMarkup(entry.label || "Source", entry.countryCode || entry.country_code || "", "community-insights-source-activity-name")}</h4>
             <p>${escapeHtml(formatPublicAnalyticsSampleSummary(entry, { includeZeroSeeds: true, includeZeroSessions: true }))}</p>
           </div>
           <strong>${escapeHtml(formatPublicAnalyticsSuccessRate(entry.averageRate))}</strong>
@@ -45717,10 +45769,15 @@ function normalizeTestedSourceMockRecord(source = {}) {
   const cstp = source?.cstp || {};
   const trackRecord = source?.trackRecord || {};
   const directoryStats = source?.directoryStats || {};
+  const countryCode = getSourceCountryCode(source);
   return {
     ...source,
     isMock: true,
     is_mock: true,
+    countryCode,
+    country_code: countryCode,
+    countryName: getCountryName(countryCode),
+    countryLabel: formatCountryOptionLabel(countryCode),
     sourceTypeLabel: String(source?.sourceTypeLabel || source?.type || "Source").trim() || "Source",
     logoUrl: String(source?.logoUrl || source?.logo || "").trim(),
     community: {
@@ -47284,7 +47341,7 @@ function renderSourceDirectoryListRowsMarkup(records = [], page = 1, pageSize = 
   return pageRecords.map((source, index) => `
     <article class="source-directory-list-row">
       <span class="source-directory-list-rank">${offset + index + 1}.</span>
-      <span class="source-directory-list-name">${escapeHtml(source.name || "Source / Breeder")}</span>
+      <span class="source-directory-list-name">${renderSourceNameWithCountryFlagMarkup(source.name || "Source / Breeder", source.countryCode || source.country_code || "", "source-directory-list-source-name")}</span>
       <span class="source-directory-list-leader" aria-hidden="true"></span>
       <strong class="source-directory-list-rate">${escapeHtml(getSourceDirectoryReportedRateLabel(source))}</strong>
     </article>
@@ -47347,6 +47404,8 @@ function getFilteredAndSortedSourceDirectoryRecords({
         source.name,
         source.sourceTypeLabel,
         source.establishedLabel,
+        source.countryName,
+        source.countryLabel,
         source?.directoryStats?.lastLoggedAt || "",
         cstpState?.labelText || "",
         cstpState?.qualificationLabel || "",
@@ -47401,8 +47460,9 @@ function renderSourceDirectoryCardMarkup(source = {}) {
           alt: `${source.name} logo`,
         })}
         <div class="source-directory-card-copy">
-          <h3>${escapeHtml(source.name)}</h3>
+          <h3>${renderSourceNameWithCountryFlagMarkup(source.name, source.countryCode || source.country_code || "", "source-directory-source-name")}</h3>
           <p class="source-directory-card-type">${escapeHtml(source.sourceTypeLabel || "Source / Breeder")}</p>
+          ${renderSourceCountryMarkup(source, "source-directory-card-country source-country-badge")}
         </div>
       </div>
       <div class="source-directory-rate-block">
@@ -47754,7 +47814,13 @@ function filterAndSortSourceDirectoryPublicRecords(records = [], options = {}) {
   const query = String(options.query || "").trim().toLowerCase();
   const sort = normalizeSourceDirectoryPublicSort(options.sort);
   return (records || [])
-    .filter((record) => !query || String(record.label || "").toLowerCase().includes(query))
+    .filter((record) => !query || [
+      record.label,
+      record.countryName,
+      record.countryLabel,
+      record.countryCode,
+      record.country_code,
+    ].some((value) => String(value || "").toLowerCase().includes(query)))
     .sort((left, right) => {
       if (sort === "seeds-tested") {
         return right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
@@ -47792,7 +47858,8 @@ function renderSourceDirectoryPublicCard(record = {}) {
       <div class="source-directory-public-card-head">
         <div>
           <span>Public Source</span>
-          <h3>${escapeHtml(record.label || "Source")}</h3>
+          <h3>${renderSourceNameWithCountryFlagMarkup(record.label || "Source", record.countryCode || record.country_code || "", "source-directory-public-source-name")}</h3>
+          ${renderSourceCountryMarkup(record, "source-directory-public-country source-country-badge")}
         </div>
         <strong>${escapeHtml(formatPrivateAnalyticsPercent(record.averageRate))}</strong>
       </div>
@@ -47957,7 +48024,8 @@ function renderSourceDirectoryPublicDetailPage(sourceKey = "") {
       <header class="source-directory-public-hero">
         <div>
           <p class="eyebrow">Source Detail</p>
-          <h2>${escapeHtml(detail.label)}</h2>
+          <h2>${renderSourceNameWithCountryFlagMarkup(detail.label, detail.countryCode || detail.country_code || "", "source-directory-public-detail-source-name")}</h2>
+          ${renderSourceCountryMarkup(detail, "source-directory-public-detail-country source-country-badge")}
           <p>Public-safe source detail from approved Community Grow submissions. No private sessions, Seed Vault inventory, private profiles, emails, admin fields, owner analytics, or CSTP-private data are used.</p>
         </div>
         <div class="source-directory-public-hero-actions">
@@ -48235,8 +48303,9 @@ function renderSourceProfilePage(sourceId = "") {
               alt: `${sourceProfile.name} logo`,
             })}
             <div class="source-profile-identity-copy">
-              <h3>${escapeHtml(sourceProfile.name)}</h3>
+              <h3>${renderSourceNameWithCountryFlagMarkup(sourceProfile.name, sourceProfile.countryCode || sourceProfile.country_code || "", "source-profile-source-name")}</h3>
               <p class="source-profile-identity-type">${escapeHtml(sourceTypeLabel)}</p>
+              ${renderSourceCountryMarkup(sourceProfile, "source-profile-country source-country-badge")}
               ${sourceProfile.establishedLabel ? `<span class="source-profile-established-badge">${escapeHtml(sourceProfile.establishedLabel)}</span>` : ""}
             </div>
           </div>

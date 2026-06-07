@@ -24372,6 +24372,35 @@ body.theme-dark .session-delete-founder-cleanup [data-session-founder-cleanup-wa
   opacity: 0.9;
 }
 
+.source-directory-source-name,
+.source-directory-list-source-name,
+.source-profile-source-name,
+.source-directory-public-source-name,
+.source-directory-public-detail-source-name,
+.community-insights-source-label,
+.community-insights-source-activity-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.source-country-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  width: fit-content;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 760;
+  line-height: 1.2;
+}
+
+.source-country-badge .country-flag {
+  opacity: 0.92;
+}
+
 .local-dev-qa-setup-helper {
   margin-top: 18px;
   display: grid;
@@ -28932,6 +28961,23 @@ textarea::placeholder {
   color: #f7faf4;
   font-size: 1.28rem;
   line-height: 1.12;
+}
+
+.source-directory-public-card-head .source-directory-public-source-name,
+.source-directory-public-card-head .source-directory-public-source-name span,
+.source-directory-public-card-head .source-country-badge,
+.source-directory-public-card-head .source-country-badge span,
+.source-directory-public-detail-source-name,
+.source-directory-public-detail-source-name span,
+.source-directory-public-detail-country,
+.source-directory-public-detail-country span {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.source-directory-public-card-head .source-country-badge,
+.source-directory-public-detail-country {
+  color: rgba(215, 224, 216, 0.78);
 }
 
 .source-directory-public-card-head strong {
