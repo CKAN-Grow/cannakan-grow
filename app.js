@@ -466,6 +466,16 @@ const DEMO_GALLERY_CONTRIBUTOR_PROFILES = Object.freeze([
   { id: "mock-lisbon-lightbench", displayName: "Lisbon Lightbench", countryCode: "PT", averageGermination: 90, approvedSnapshots: 2, likes: 61, favoriteSeedType: "Photoperiod", favoriteSource: "Poppin Fire", followerCount: 31, followingCount: 7, isFollowing: false },
   { id: "mock-copenhagen-cotyledon", displayName: "Copenhagen Cotyledon", countryCode: "DK", averageGermination: 89, approvedSnapshots: 2, likes: 57, favoriteSeedType: "Auto", favoriteSource: "Good Genetix", followerCount: 29, followingCount: 7, isFollowing: false },
   { id: "mock-madrid-moisture", displayName: "Madrid Moisture Check", countryCode: "ES", averageGermination: 88, approvedSnapshots: 2, likes: 52, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 28, followingCount: 6, isFollowing: false },
+  { id: "mock-paris-root-index", displayName: "Paris Root Index", countryCode: "FR", averageGermination: 91, approvedSnapshots: 2, likes: 66, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 33, followingCount: 8, isFollowing: true },
+  { id: "mock-milan-kan-table", displayName: "Milan KAN Table", countryCode: "IT", averageGermination: 90, approvedSnapshots: 2, likes: 58, favoriteSeedType: "Photoperiod", favoriteSource: "Poppin Fire", followerCount: 30, followingCount: 7, isFollowing: false },
+  { id: "mock-oslo-seed-notes", displayName: "Oslo Seed Notes", countryCode: "NO", averageGermination: 89, approvedSnapshots: 2, likes: 49, favoriteSeedType: "Auto", favoriteSource: "Good Genetix", followerCount: 26, followingCount: 6, isFollowing: false },
+  { id: "mock-dublin-vault", displayName: "Dublin Vault Shelf", countryCode: "IE", averageGermination: 88, approvedSnapshots: 1, likes: 43, favoriteSeedType: "Photoperiod", favoriteSource: "North Valley Seeds", followerCount: 24, followingCount: 5, isFollowing: false },
+  { id: "mock-helsinki-humidity", displayName: "Helsinki Humidity Map", countryCode: "FI", averageGermination: 87, approvedSnapshots: 1, likes: 40, favoriteSeedType: "Photoperiod", favoriteSource: "Alpine Seed Works", followerCount: 22, followingCount: 5, isFollowing: false },
+  { id: "mock-warsaw-waterline", displayName: "Warsaw Waterline", countryCode: "PL", averageGermination: 88, approvedSnapshots: 1, likes: 39, favoriteSeedType: "Photoperiod", favoriteSource: "Riverbend Genetics", followerCount: 21, followingCount: 5, isFollowing: false },
+  { id: "mock-brussels-bench", displayName: "Brussels Bench", countryCode: "BE", averageGermination: 87, approvedSnapshots: 1, likes: 36, favoriteSeedType: "Photoperiod", favoriteSource: "Stonebridge Seeds", followerCount: 20, followingCount: 4, isFollowing: false },
+  { id: "mock-stockholm-sprout", displayName: "Stockholm Sprout Log", countryCode: "SE", averageGermination: 88, approvedSnapshots: 1, likes: 34, favoriteSeedType: "Photoperiod", favoriteSource: "Harborlight Genetics", followerCount: 19, followingCount: 4, isFollowing: false },
+  { id: "mock-athens-archive", displayName: "Athens Archive Tray", countryCode: "GR", averageGermination: 86, approvedSnapshots: 1, likes: 31, favoriteSeedType: "Photoperiod", favoriteSource: "Greenhouse Archive", followerCount: 18, followingCount: 4, isFollowing: false },
+  { id: "mock-ljubljana-lab", displayName: "Ljubljana Lab Notes", countryCode: "SI", averageGermination: 87, approvedSnapshots: 1, likes: 29, favoriteSeedType: "Photoperiod", favoriteSource: "Nova Seed Lab", followerCount: 17, followingCount: 4, isFollowing: false },
 ]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
@@ -576,6 +586,7 @@ const GROW_NETWORK_MOCK_ACTIVITIES = Object.freeze([
     occurredAt: "2026-04-29T18:47:00.000Z",
     sessionRoute: "#members/mock-atlas-breeding",
   },
+  ...buildMaryJaneDemoGrowNetworkActivities(),
 ]);
 const SOURCE_PROFILE_DEFAULT_MOCK_ID = "seedsman";
 const SOURCE_PROFILE_CSTP_BADGE_ASSETS = Object.freeze({
@@ -665,6 +676,29 @@ const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
+const MARY_JANE_DEMO_FILLER_SOURCE_NAMES = Object.freeze([
+  "Summit Seed Co.",
+  "Evergreen Genetics",
+  "Atlas Breeding Labs",
+  "North Valley Seeds",
+  "Alpine Seed Works",
+  "Riverbend Genetics",
+  "Stonebridge Seeds",
+  "Harborlight Genetics",
+  "Greenhouse Archive",
+  "Nova Seed Lab",
+  "Prairie Seed Works",
+  "Blue Ridge Genetics",
+  "Timberline Seed Co.",
+  "Redwood Seed House",
+  "Horizon Genetics",
+  "Valley Forge Seeds",
+  "Silverleaf Seed Lab",
+  "Meadowbrook Genetics",
+  "TerraForm Seeds",
+  "Orchard Hill Genetics",
+  "Cypress Seed Collective",
+]);
 const testedSourcesMock = Object.freeze([
   Object.freeze({
     id: "seedsman",
@@ -858,6 +892,7 @@ const testedSourcesMock = Object.freeze([
       lastTest: "Not tested",
     }),
   }),
+  ...buildMaryJaneDemoFillerSourceMockRecords(),
 ]);
 const GROW_NETWORK_MOCK_NOTIFICATIONS = Object.freeze([
   {
@@ -8460,7 +8495,7 @@ function buildSampleSessions() {
         ["Lemon Auto", "Seedsman", "auto", "feminized", 12, 12, 1],
         ["Badazz OG Cheese", "Seedsman", "photoperiod", "feminized", 12, 11, 3],
         ["Bruce Banger", "Seedsman", "photoperiod", "feminized", 12, 12, 2],
-        ["White OG archive comparison", "Seedsman", "photoperiod", "feminized", 10, 8, 5],
+        ["White OG", "Seedsman", "photoperiod", "feminized", 10, 8, 5],
       ],
     }),
     createSampleSession({
@@ -8566,8 +8601,8 @@ function buildSampleSessions() {
       completedAt: "2026-04-16T11:20:00",
       sessionNotes: "Older Seedsman lot used to show 5-year and 7-year seed-age behavior while keeping Seedsman at the top of analytics.",
       partitionSeeds: [
-        ["L.A. Peyote Kush 2021 pack", "Seedsman", "photoperiod", "feminized", 12, 10, 5],
-        ["Alaskan Purple 2019 pack", "Seedsman", "photoperiod", "feminized", 12, 9, 7],
+        ["L.A. Peyote Kush", "Seedsman", "photoperiod", "feminized", 12, 10, 5],
+        ["Alaskan Purple", "Seedsman", "photoperiod", "feminized", 12, 9, 7],
         ["Gorilla Jealousy F1 2024 pack", "Seedsman", "photoperiod", "feminized", 12, 12, 2],
       ],
     }),
@@ -8598,12 +8633,10 @@ function buildSampleSessions() {
 }
 
 const MARY_JANE_DEMO_SOURCE_SESSION_TARGETS = Object.freeze({
-  Seedsman: 84,
-  "Poppin Fire": 42,
-  "Good Genetix": 30,
-  "Summit Seed Co.": 10,
-  "Evergreen Genetics": 10,
-  "Atlas Breeding Labs": 10,
+  Seedsman: 90,
+  "Poppin Fire": 55,
+  "Good Genetix": 40,
+  ...Object.fromEntries(MARY_JANE_DEMO_FILLER_SOURCE_NAMES.map((sourceName) => [sourceName, 3])),
 });
 
 const MARY_JANE_DEMO_SOURCE_VARIETIES = Object.freeze({
@@ -8642,10 +8675,13 @@ const MARY_JANE_DEMO_SOURCE_VARIETIES = Object.freeze({
     "G Breath Auto",
     "G Donutz Auto",
     "Permanent G Auto Berlin Lot",
+    "G Breath Auto Berlin Lot",
+    "G Donutz Auto Archive",
   ]),
-  "Summit Seed Co.": Object.freeze(["Summit Snowcap", "Summit Ridge Kush", "Summit Lemon Peak"]),
-  "Evergreen Genetics": Object.freeze(["Evergreen Pineapple", "Evergreen Diesel Auto", "Evergreen Valley Kush"]),
-  "Atlas Breeding Labs": Object.freeze(["Atlas Apex", "Atlas Cloudline", "Atlas Northern Ridge"]),
+  ...Object.fromEntries(MARY_JANE_DEMO_FILLER_SOURCE_NAMES.map((sourceName) => [
+    sourceName,
+    Object.freeze(buildMaryJaneDemoFillerVarieties(sourceName)),
+  ])),
 });
 
 function countDemoSessionsBySource(sessions = []) {
@@ -8675,6 +8711,19 @@ function getMaryJaneDemoSeedType(variety = "") {
   return "photoperiod";
 }
 
+function buildMaryJaneDemoFillerVarieties(sourceName = "") {
+  const words = String(sourceName || "Demo Source")
+    .replace(/\b(seed|seeds|genetics|labs?|works|co\.?|company|collective|house|archive)\b/gi, "")
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+  const prefix = words.slice(0, 2).join(" ") || "Demo";
+  return [
+    `${prefix} Trial Lot`,
+    `${prefix} Archive Mix`,
+  ];
+}
+
 function getMaryJaneDemoGerminatedCount(sourceName = "", seedCount = 10, seedAgeYears = 1, sessionIndex = 0, partitionIndex = 0) {
   const normalizedSource = String(sourceName || "").trim().toLowerCase();
   let misses = 0;
@@ -8685,12 +8734,12 @@ function getMaryJaneDemoGerminatedCount(sourceName = "", seedCount = 10, seedAge
   } else if (normalizedSource === "good genetix") {
     misses = (sessionIndex + partitionIndex) % 4 === 0 ? 1 : ((sessionIndex + partitionIndex) % 13 === 0 ? 2 : 0);
   } else {
-    misses = (sessionIndex + partitionIndex) % 3 === 0 ? 2 : 1;
+    misses = (sessionIndex + partitionIndex) % 5 === 0 ? 1 : 0;
   }
 
-  if (Number(seedAgeYears) >= 7 && (sessionIndex + partitionIndex) % 2 === 0) {
+  if (Number(seedAgeYears) >= 7 && (sessionIndex + partitionIndex) % 3 === 0) {
     misses += 1;
-  } else if (Number(seedAgeYears) >= 5 && (sessionIndex + partitionIndex) % 4 === 0) {
+  } else if (Number(seedAgeYears) >= 5 && (sessionIndex + partitionIndex) % 5 === 0) {
     misses += 1;
   }
 
@@ -8725,16 +8774,21 @@ function buildMaryJaneBerlinGeneratedSampleSessions(existingSessions = []) {
     const neededCount = Math.max(0, Number(targetCount) - currentCount);
     const varieties = MARY_JANE_DEMO_SOURCE_VARIETIES[sourceName] || [];
     for (let sourceSessionIndex = 0; sourceSessionIndex < neededCount; sourceSessionIndex += 1) {
-      const sessionDate = new Date(Date.UTC(2026, 3, 8, 7, 0, 0));
-      sessionDate.setUTCDate(sessionDate.getUTCDate() - generatedIndex);
+      const sessionDate = new Date(Date.UTC(2026, 5, 1, 7, 0, 0));
+      sessionDate.setUTCDate(sessionDate.getUTCDate() - (generatedIndex % 90));
       const date = sessionDate.toISOString().slice(0, 10);
       const hour = String(7 + (generatedIndex % 11)).padStart(2, "0");
       const minute = String((sourceSessionIndex * 7) % 60).padStart(2, "0");
       const dateLabel = formatMaryJaneDemoDateLabel(sessionDate);
       const systemType = generatedIndex % 5 === 0 ? "TRA" : "KAN";
-      const seedCount = normalizedSourceNameForDemo(sourceName) === "seedsman" ? 12 : (generatedIndex % 3 === 0 ? 10 : 8);
+      const sourceKey = normalizedSourceNameForDemo(sourceName);
+      const seedCount = sourceKey === "seedsman"
+        ? 8
+        : (sourceKey === "poppin fire" || sourceKey === "good genetix" ? 7 : 6);
       const partitionSeeds = Array.from({ length: 3 }, (_, partitionIndex) => {
-        const variety = varieties[(sourceSessionIndex + partitionIndex) % varieties.length] || `${sourceName} Demo Variety`;
+        const variety = sourceName === "Seedsman" && partitionIndex === 0
+          ? "Banana Jealousy"
+          : (varieties[(sourceSessionIndex + partitionIndex) % varieties.length] || `${sourceName} Demo Variety`);
         const seedAgeYears = seedAgeCycle[(sourceSessionIndex + partitionIndex + generatedIndex) % seedAgeCycle.length];
         const germinatedCount = getMaryJaneDemoGerminatedCount(sourceName, seedCount, seedAgeYears, sourceSessionIndex, partitionIndex);
         return [
@@ -8773,6 +8827,87 @@ function buildMaryJaneBerlinGeneratedSampleSessions(existingSessions = []) {
 
 function normalizedSourceNameForDemo(sourceName = "") {
   return String(sourceName || "").trim().toLowerCase();
+}
+
+function buildMaryJaneDemoFillerSourceMockRecords() {
+  const explicitlyConfiguredSources = new Set([
+    "Summit Seed Co.",
+    "Evergreen Genetics",
+    "Atlas Breeding Labs",
+  ].map((sourceName) => normalizeSourceNameForMatching(sourceName)));
+  return MARY_JANE_DEMO_FILLER_SOURCE_NAMES
+    .filter((sourceName) => !explicitlyConfiguredSources.has(normalizeSourceNameForMatching(sourceName)))
+    .map((sourceName, index) => Object.freeze({
+      id: slugifyMaryJaneDemoValue(sourceName),
+      name: sourceName,
+      type: index % 3 === 0 ? "Seed Company" : (index % 3 === 1 ? "Breeder" : "Breeding Lab"),
+      logo: "",
+      logoUrl: "",
+      website: "",
+      websiteUrl: "",
+      establishedLabel: "Demo source",
+      community: Object.freeze({
+        avgRate: Math.max(82, 90 - (index % 7)),
+        sessions: 3,
+        rank: 7 + index,
+        seedsTracked: 54,
+      }),
+      cstp: Object.freeze({
+        status: "not-tested",
+        testedDate: "",
+        validUntil: "",
+        sampleSize: 0,
+        avgTime: "",
+        resultPercent: 0,
+        expiringSoon: false,
+      }),
+      trackRecord: Object.freeze({
+        totalCerts: 0,
+        gold: 0,
+        silver: 0,
+        qualificationRate: 0,
+        lastTest: "Not tested",
+      }),
+    }));
+}
+
+function buildMaryJaneDemoGrowNetworkActivities() {
+  return DEMO_GALLERY_CONTRIBUTOR_PROFILES
+    .slice(8, 30)
+    .map((profile, index) => {
+      const sourceLabel = profile.favoriteSource || "Community Grow";
+      const rate = Math.max(82, Math.min(97, Number(profile.averageGermination) || 88));
+      const occurredAt = new Date(Date.UTC(2026, 4, 1, 10, 0, 0));
+      occurredAt.setUTCDate(occurredAt.getUTCDate() - Math.floor(index / 3));
+      occurredAt.setUTCHours(10 + (index % 8), (index * 11) % 60, 0, 0);
+      const isShare = index % 3 === 0;
+      const isFollow = index % 3 === 1;
+      return {
+        id: `mock-activity-${profile.id.replace(/^mock-/, "")}-${isShare ? "share" : (isFollow ? "follow" : "snapshot")}`,
+        memberId: profile.id,
+        activityType: isShare ? "shared-session" : (isFollow ? "follow" : "approved-snapshot"),
+        typeLabel: isShare
+          ? "Public session shared"
+          : (isFollow ? "Grow Network follow" : "New approved Community Grow snapshot"),
+        typeMeta: isShare
+          ? "Public session now visible"
+          : (isFollow ? "Community connection" : "Approved in Community Grow"),
+        title: isShare
+          ? `${profile.displayName} shared a ${sourceLabel} demo session`
+          : (isFollow
+            ? `${profile.displayName} followed Seedsman Lab`
+            : `${profile.displayName} posted a ${sourceLabel} snapshot`),
+        summary: isShare
+          ? `Completed ${sourceLabel} KAN run added to the Mary Jane Berlin demo activity feed.`
+          : (isFollow
+            ? `Following Seedsman Lab for benchmark source performance and public session examples.`
+            : `Published a clean ${sourceLabel} result with realistic notes, likes, and timing.`),
+        germinationRateLabel: `${rate}%`,
+        sourceLabel,
+        occurredAt: occurredAt.toISOString(),
+        sessionRoute: isFollow ? "#members/mock-seedsman-lab" : "#gallery",
+      };
+    });
 }
 
 function createSampleSession(config) {
@@ -8829,7 +8964,7 @@ function removeSampleSessions() {
 function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPASS_USER_ID) {
   const ownerId = String(userId || DEV_QA_BYPASS_USER_ID).trim();
   const now = "2026-05-21T12:00:00.000Z";
-  return [
+  const curatedEntries = [
     {
       id: "demo-vault-seedsman-banana-jealousy-2026",
       userId: ownerId,
@@ -9130,6 +9265,11 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
       isFavorite: false,
       isArchived: false,
     },
+  ];
+
+  return [
+    ...curatedEntries,
+    ...buildMaryJaneDemoSeedVaultExpansionEntries(ownerId, curatedEntries),
   ].map((entry) => normalizeSeedVaultEntry({
     ...entry,
     isMock: true,
@@ -9142,6 +9282,83 @@ function buildDevModeSeedVaultEntries(userId = appState.user?.id || DEV_QA_BYPAS
     createdAt: now,
     updatedAt: now,
   })).filter(Boolean);
+}
+
+const MARY_JANE_DEMO_VAULT_SOURCE_TARGETS = Object.freeze({
+  Seedsman: 34,
+  "Poppin Fire": 20,
+  "Good Genetix": 14,
+  ...Object.fromEntries(MARY_JANE_DEMO_FILLER_SOURCE_NAMES.map((sourceName) => [sourceName, 1])),
+});
+
+function buildMaryJaneDemoSeedVaultExpansionEntries(ownerId = "", existingEntries = []) {
+  const sourceCounts = new Map();
+  const existingIds = new Set();
+  (existingEntries || []).forEach((entry) => {
+    const sourceName = String(entry?.source || "").trim();
+    if (sourceName) {
+      sourceCounts.set(sourceName, (sourceCounts.get(sourceName) || 0) + 1);
+    }
+    if (entry?.id) {
+      existingIds.add(String(entry.id));
+    }
+  });
+
+  const ageSchedule = [
+    { yearAcquired: 2026, seedAgeYears: 1 },
+    { yearAcquired: 2025, seedAgeYears: 1 },
+    { yearAcquired: 2024, seedAgeYears: 2 },
+    { yearAcquired: 2023, seedAgeYears: 3 },
+    { yearAcquired: 2021, seedAgeYears: 5 },
+    { yearAcquired: 2019, seedAgeYears: 7 },
+  ];
+  const expansionEntries = [];
+
+  Object.entries(MARY_JANE_DEMO_VAULT_SOURCE_TARGETS).forEach(([sourceName, targetCount]) => {
+    const varieties = MARY_JANE_DEMO_SOURCE_VARIETIES[sourceName] || buildMaryJaneDemoFillerVarieties(sourceName);
+    let currentCount = Math.max(0, Number(sourceCounts.get(sourceName)) || 0);
+    let index = 0;
+    while (currentCount < Number(targetCount)) {
+      const variety = varieties[index % varieties.length] || `${sourceName} Demo Pack`;
+      const age = ageSchedule[(index + currentCount) % ageSchedule.length];
+      const seedType = getMaryJaneDemoSeedType(variety);
+      const quantityBase = sourceName === "Seedsman"
+        ? 18
+        : (sourceName === "Poppin Fire" ? 14 : (sourceName === "Good Genetix" ? 12 : 6));
+      const id = `demo-vault-${slugifyMaryJaneDemoValue(sourceName)}-${slugifyMaryJaneDemoValue(variety)}-${age.yearAcquired}-${String(index + 1).padStart(2, "0")}`;
+      index += 1;
+      if (existingIds.has(id)) {
+        continue;
+      }
+      existingIds.add(id);
+      expansionEntries.push({
+        id,
+        userId: ownerId,
+        seedVariety: variety,
+        seedType,
+        seedSex: "feminized",
+        source: sourceName,
+        quantity: Math.max(3, quantityBase - (index % 5)),
+        yearAcquired: age.yearAcquired,
+        seedAgeYears: age.seedAgeYears,
+        storageLocation: sourceName === "Seedsman"
+          ? `Demo vault / Seedsman shelf ${1 + (index % 4)}`
+          : (sourceName === "Poppin Fire"
+            ? `Demo vault / Poppin Fire shelf ${1 + (index % 3)}`
+            : (sourceName === "Good Genetix"
+              ? `Demo vault / Good Genetix shelf ${1 + (index % 3)}`
+              : "Demo vault / Limited source drawer")),
+        notes: sourceName === "Seedsman"
+          ? "Expanded Seedsman demo inventory for Mary Jane Berlin session starts and vault analytics."
+          : `${sourceName} demo inventory for source coverage, seed age analytics, and session prefill tests.`,
+        isFavorite: sourceName === "Seedsman" ? index % 5 === 0 : (sourceName === "Poppin Fire" ? index % 7 === 0 : index % 9 === 0),
+        isArchived: false,
+      });
+      currentCount += 1;
+    }
+  });
+
+  return expansionEntries;
 }
 
 function buildDevModeAppNotifications() {
@@ -9660,7 +9877,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       note: "Seedsman control partitions stayed perfect while the older comparison source lagged.",
       partitionSpecs: [
         { repeat: 6, seedVariety: "Seedsman Banana Jealousy", source: "Seedsman", seedType: "photoperiod", seedCount: 6, germinatedCount: 6, seedAgeYears: 1 },
-        { repeat: 2, seedVariety: "G Donutz Auto archive", source: "Good Genetix", seedType: "auto", seedCount: 6, germinatedCount: 3, seedAgeYears: 7 },
+        { repeat: 2, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 6, germinatedCount: 3, seedAgeYears: 7 },
       ],
     },
     {
@@ -9921,7 +10138,7 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
     {
       title: "Good Genetix March archive recovery",
       source: "Good Genetix",
-      seedVariety: "G Donutz Auto archive",
+      seedVariety: "G Donutz Auto",
       seedType: "auto",
       systemType: "KAN",
       unitId: "D",
@@ -9930,8 +10147,8 @@ function buildMockGallerySnapshotSeedRecords(now = new Date()) {
       hour: 9,
       note: "Older archive rescue keeps the seed-age story grounded.",
       partitionSpecs: [
-        { repeat: 4, seedVariety: "G Donutz Auto archive", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
-        { repeat: 4, seedVariety: "G Donutz Auto archive", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 3, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 4, seedAgeYears: 7 },
+        { repeat: 4, seedVariety: "G Donutz Auto", source: "Good Genetix", seedType: "auto", seedCount: 5, germinatedCount: 3, seedAgeYears: 7 },
       ],
     },
     {
@@ -10157,39 +10374,16 @@ function getDemoSnapshotImageUrlForIndex(index = 0) {
 }
 
 function getMockGallerySessionIdForRecord(record = {}, index = 0) {
-  const source = normalizeSourceNameForMatching(record.source || "");
-  const variety = normalizeSourceNameForMatching(record.seedVariety || "");
-  if (source === "seedsman") {
-    if (variety.includes("archive") || variety.includes("peyote") || variety.includes("alaskan")) {
-      return "demo-berlin-seedsman-archive-apr-14-2026";
-    }
-    if (variety.includes("gorilla-jealousy")) {
-      return "demo-berlin-seedsman-gorilla-jealousy-apr-10-2026";
-    }
-    if (variety.includes("lemon") || variety.includes("badazz") || variety.includes("bruce") || variety.includes("white-og")) {
-      return "demo-berlin-seedsman-auto-mixed-may-08-2026";
-    }
-    if (variety.includes("wedding") || variety.includes("blueberry") || variety.includes("gelato")) {
-      return "demo-berlin-seedsman-wedding-cake-may-12-2026";
-    }
-    return "demo-berlin-seedsman-banana-jealousy-may-18-2026";
-  }
-  if (source === "poppin-fire") {
-    if (variety.includes("ice-cream") || variety.includes("blue-frost") || variety.includes("frosted")) {
-      return "demo-berlin-poppin-fire-ice-cream-cake-apr-30-2026";
-    }
-    return "demo-berlin-poppin-fire-double-blueberry-muffin-may-04-2026";
-  }
-  if (source === "good-genetix") {
-    if (variety.includes("donutz") || variety.includes("archive")) {
-      return "demo-berlin-good-genetix-g-donutz-apr-22-2026";
-    }
-    return "demo-berlin-good-genetix-permanent-g-auto-apr-27-2026";
-  }
-  return "demo-berlin-filler-source-comparison-apr-18-2026";
+  const sourceName = String(record.source || "").trim();
+  const sourceSlug = slugifyMaryJaneDemoValue(sourceName);
+  const sessionNumber = Math.max(1, Number(index) || 1);
+  return sourceSlug
+    ? `demo-berlin-${sourceSlug}-${String(sessionNumber).padStart(2, "0")}`
+    : `mock-gallery-session-${String(sessionNumber).padStart(2, "0")}`;
 }
 
 function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords()) {
+  const sourceOccurrenceCounts = new Map();
   return records.map((record, index) => {
     const systemType = String(record.systemType || (index % 2 === 0 ? "KAN" : "TRA")).trim().toUpperCase() || "KAN";
     const unitId = record.unitId || (systemType === "KAN"
@@ -10197,7 +10391,10 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       : String((index % 4) + 1));
     const sharedProfile = getMockGallerySharedProfile(index, record);
     const timeline = buildMockGalleryTimeline(record, index);
-    const sessionId = String(record.sessionId || getMockGallerySessionIdForRecord(record, index)).trim()
+    const sourceKey = normalizeSourceNameForMatching(record.source || "");
+    const sourceOccurrence = (sourceOccurrenceCounts.get(sourceKey) || 0) + 1;
+    sourceOccurrenceCounts.set(sourceKey, sourceOccurrence);
+    const sessionId = String(record.sessionId || getMockGallerySessionIdForRecord(record, sourceOccurrence)).trim()
       || `mock-gallery-session-${String(index + 1).padStart(2, "0")}`;
     const imageUrl = String(record.imageUrl || getDemoSnapshotImageUrlForIndex(index)).trim()
       || buildMockGalleryImageDataUri(record);
@@ -10233,7 +10430,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       profileImageUrl: sharedProfile.profileImageUrl,
       countryCode: sharedProfile.countryCode || "",
       status: "approved",
-      published: record.approved,
+      published: record.approved !== false,
       includeNotes: true,
       publicGrowNote: record.note || "",
       includePublicGrowNote: Boolean(record.note),
@@ -28915,8 +29112,12 @@ function buildCommunityInsightsState() {
 
         resultSummary.partitions.forEach((partitionResult) => {
           const partition = partitionResult.rawPartition || {};
-          const totalSeeds = Math.max(0, Number(partitionResult.totalSeeds) || 0);
-          const totalGerminated = Math.min(totalSeeds, Math.max(0, Number(partitionResult.totalGerminated) || 0));
+          const totalSeeds = Math.max(0, Number(partitionResult.totalSeeds ?? partitionResult.totalCount) || 0);
+          const totalGerminated = Math.min(totalSeeds, Math.max(0, Number(
+            partitionResult.totalGerminated
+            ?? partitionResult.germinatedCount
+            ?? partitionResult.totalPlanted
+          ) || 0));
           const source = getCommunityInsightsSafeText(partitionResult.source || "");
           const variety = getCommunityInsightsSafeText(partitionResult.seedVariety || "");
           const seedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
@@ -45822,7 +46023,9 @@ function getSourceProfileRecord(sourceId = "") {
   const normalizedId = String(sourceId || "").trim().toLowerCase();
   const mockDataEnabled = isMockDataEnabled();
   if (mockDataEnabled) {
-    return getSourceProfileMockRecord(normalizedId);
+    return getSourceDirectoryPreviewMockRecord(normalizedId)
+      || getSampleSourceProfileRecord(normalizedId)
+      || getSourceProfileMockRecord(normalizedId);
   }
   return buildRealSourceProfileRecord(normalizedId)
     || getSourceDirectoryPreviewMockRecord(normalizedId)
