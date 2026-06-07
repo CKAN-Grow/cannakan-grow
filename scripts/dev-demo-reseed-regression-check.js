@@ -39,7 +39,7 @@ function getFunctionBody(source, functionName) {
 }
 
 for (const needle of [
-  'const DEV_DEMO_DATA_VERSION = "seedsman-showcase-v2";',
+  'const DEV_DEMO_DATA_VERSION = "mary-jane-berlin-demo-v1";',
   'const SEEDSMAN_DEMO_LOGO_URL = "/assets/images/sources/real/seedsman-logo.png";',
   "const DEV_DEMO_SOURCE_LOGOS = Object.freeze({",
   "function resetAndReseedDevModeMockData(options = {})",
@@ -76,11 +76,6 @@ for (const needle of [
 
 for (const logoPath of [
   "public/assets/images/sources/real/seedsman-logo.png",
-  "public/assets/images/sources/mock/lumen-leaf-genetics.svg",
-  "public/assets/images/sources/mock/verdant-vault-seeds.svg",
-  "public/assets/images/sources/mock/northstar-germplasm.svg",
-  "public/assets/images/sources/mock/summit-sprout-collective.svg",
-  "public/assets/images/sources/mock/aurora-calyx-seedworks.svg",
 ]) {
   const absolutePath = path.join(repoRoot, logoPath);
   if (!fs.existsSync(absolutePath)) {
@@ -106,13 +101,25 @@ for (const forbidden of [
 
 for (const sourceName of [
   "Seedsman",
+  "Poppin Fire",
+  "Good Genetix",
+  "Summit Seed Co.",
+  "Evergreen Genetics",
+  "Atlas Breeding Labs",
+]) {
+  requireNeedle(appSource, sourceName, `mock source ${sourceName}`);
+}
+
+for (const forbiddenSourceName of [
   "Lumen Leaf Genetics",
   "Verdant Vault Seeds",
   "Northstar Germplasm",
   "Summit Sprout Collective",
   "Aurora Calyx Seedworks",
 ]) {
-  requireNeedle(appSource, sourceName, `mock source ${sourceName}`);
+  if (appSource.includes(forbiddenSourceName)) {
+    throw new Error(`Old demo source should not remain in Berlin demo data: ${forbiddenSourceName}`);
+  }
 }
 
 const mockGallerySeedBody = getFunctionBody(appSource, "buildMockGallerySnapshotSeedRecords");
@@ -123,11 +130,19 @@ if (configuredSnapshotCount < 12 || configuredSnapshotCount > 25) {
 if ((mockGallerySeedBody.match(/source:\s*"Seedsman"/g) || []).length < 8) {
   throw new Error("Seedsman should have prominent Dev Mode Community Grow coverage.");
 }
+if ((mockGallerySeedBody.match(/source:\s*"Poppin Fire"/g) || []).length < 4) {
+  throw new Error("Poppin Fire should have the second-largest Dev Mode Community Grow coverage.");
+}
+if ((mockGallerySeedBody.match(/source:\s*"Good Genetix"/g) || []).length < 3) {
+  throw new Error("Good Genetix should have the third-largest Dev Mode Community Grow coverage.");
+}
 if ((mockGallerySeedBody.match(/monthOffset:\s*0/g) || []).length < 8) {
   throw new Error("Community Insights needs enough current-month Dev Mode snapshots.");
 }
 for (const requiredNeedle of [
-  "Mixed KAN comparison with Seedsman control",
+  "Seedsman Banana Jealousy",
+  "Poppin Fire Double Blueberry Muffin",
+  "Good Genetix Permanent G Auto",
   "repeat: 16",
   "germinatedCount: 6",
   "germinatedCount: 3",
