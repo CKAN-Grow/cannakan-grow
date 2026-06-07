@@ -452,6 +452,21 @@ const GROW_NETWORK_MOCK_PROFILES = Object.freeze([
   { id: "mock-atlas-breeding", displayName: "Atlas Breeding Labs", countryCode: "NL", averageGermination: 90, approvedSnapshots: 6, likes: 176, favoriteSeedType: "Photoperiod", favoriteSource: "Atlas Breeding Labs", followerCount: 69, followingCount: 19, isFollowing: true },
   { id: "mock-archive-age-lab", displayName: "Archive Age Lab", countryCode: "AU", averageGermination: 88, approvedSnapshots: 8, likes: 241, favoriteSeedType: "Other", favoriteSource: "Seedsman", followerCount: 91, followingCount: 28, isFollowing: false },
 ]);
+const DEMO_GALLERY_CONTRIBUTOR_PROFILES = Object.freeze([
+  ...GROW_NETWORK_MOCK_PROFILES,
+  { id: "mock-berlin-sprout-lab", displayName: "Berlin Sprout Lab", countryCode: "DE", averageGermination: 94, approvedSnapshots: 5, likes: 162, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 63, followingCount: 18, isFollowing: true },
+  { id: "mock-kan-hall-a", displayName: "KAN Hall A", countryCode: "DE", averageGermination: 93, approvedSnapshots: 4, likes: 138, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 58, followingCount: 14, isFollowing: true },
+  { id: "mock-root-room", displayName: "Root Room Berlin", countryCode: "DE", averageGermination: 92, approvedSnapshots: 4, likes: 121, favoriteSeedType: "Auto", favoriteSource: "Seedsman", followerCount: 52, followingCount: 15, isFollowing: true },
+  { id: "mock-vienna-auto-bench", displayName: "Vienna Auto Bench", countryCode: "AT", averageGermination: 91, approvedSnapshots: 3, likes: 97, favoriteSeedType: "Auto", favoriteSource: "Good Genetix", followerCount: 46, followingCount: 12, isFollowing: true },
+  { id: "mock-hamburg-humidity", displayName: "Hamburg Humidity Lab", countryCode: "DE", averageGermination: 90, approvedSnapshots: 3, likes: 88, favoriteSeedType: "Photoperiod", favoriteSource: "Poppin Fire", followerCount: 42, followingCount: 11, isFollowing: false },
+  { id: "mock-amsterdam-tray", displayName: "Amsterdam Tray Notes", countryCode: "NL", averageGermination: 89, approvedSnapshots: 3, likes: 82, favoriteSeedType: "Photoperiod", favoriteSource: "Atlas Breeding Labs", followerCount: 39, followingCount: 10, isFollowing: false },
+  { id: "mock-toronto-vault", displayName: "Toronto Vault Run", countryCode: "CA", averageGermination: 90, approvedSnapshots: 3, likes: 79, favoriteSeedType: "Auto", favoriteSource: "Evergreen Genetics", followerCount: 37, followingCount: 9, isFollowing: false },
+  { id: "mock-zurich-summit", displayName: "Zurich Summit Tray", countryCode: "CH", averageGermination: 88, approvedSnapshots: 2, likes: 64, favoriteSeedType: "Photoperiod", favoriteSource: "Summit Seed Co.", followerCount: 34, followingCount: 8, isFollowing: false },
+  { id: "mock-prague-partitions", displayName: "Prague Partitions", countryCode: "CZ", averageGermination: 91, approvedSnapshots: 3, likes: 73, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 36, followingCount: 9, isFollowing: true },
+  { id: "mock-lisbon-lightbench", displayName: "Lisbon Lightbench", countryCode: "PT", averageGermination: 90, approvedSnapshots: 2, likes: 61, favoriteSeedType: "Photoperiod", favoriteSource: "Poppin Fire", followerCount: 31, followingCount: 7, isFollowing: false },
+  { id: "mock-copenhagen-cotyledon", displayName: "Copenhagen Cotyledon", countryCode: "DK", averageGermination: 89, approvedSnapshots: 2, likes: 57, favoriteSeedType: "Auto", favoriteSource: "Good Genetix", followerCount: 29, followingCount: 7, isFollowing: false },
+  { id: "mock-madrid-moisture", displayName: "Madrid Moisture Check", countryCode: "ES", averageGermination: 88, approvedSnapshots: 2, likes: 52, favoriteSeedType: "Photoperiod", favoriteSource: "Seedsman", followerCount: 28, followingCount: 6, isFollowing: false },
+]);
 const GROW_NETWORK_TEST_NOTIFICATION_EMAIL = "don@cannakan.com";
 const GROW_NETWORK_NOTIFICATION_GROUP_WINDOW_MS = 10 * 60 * 1000;
 const GROW_NETWORK_NOTIFICATION_MAX_STACKED_AVATARS = 3;
@@ -646,7 +661,7 @@ const SOURCE_DIRECTORY_LIST_FILTER_OPTIONS = Object.freeze([
 ]);
 const SOURCE_DIRECTORY_DEFAULT_FILTER = "all";
 const SOURCE_DIRECTORY_DEFAULT_SORT = "most-logged";
-const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "germination-rate";
+const SOURCE_DIRECTORY_LIST_DEFAULT_SORT = "total-sessions";
 const SOURCE_DIRECTORY_LIST_DEFAULT_ORDER = "highest-to-lowest";
 const SOURCE_DIRECTORY_LIST_DEFAULT_FILTER = "all-sources";
 const SOURCE_DIRECTORY_LIST_PAGE_SIZE = 10;
@@ -8391,7 +8406,7 @@ function ensureSampleSessions() {
 }
 
 function buildSampleSessions() {
-  return [
+  const curatedSessions = [
     createSampleSession({
       id: "demo-berlin-seedsman-banana-jealousy-may-18-2026",
       date: "2026-05-18",
@@ -8436,9 +8451,10 @@ function buildSampleSessions() {
       systemType: "TRA",
       unitId: "1",
       sessionName: "Seedsman auto and archive TRA verification - May 8, 2026",
-      sessionStatus: "germinating",
+      sessionStatus: "completed",
       germinationStartedAt: "2026-05-08T20:05:00",
       firstPlantedAt: "2026-05-09T08:30:00",
+      completedAt: "2026-05-10T08:40:00",
       sessionNotes: "TRA demo with mixed Seedsman inventory. Fresh autos are pushing even tails while the older archive comparison is intentionally slower.",
       partitionSeeds: [
         ["Lemon Auto", "Seedsman", "auto", "feminized", 12, 12, 1],
@@ -8574,6 +8590,189 @@ function buildSampleSessions() {
       ],
     }),
   ];
+
+  return [
+    ...curatedSessions,
+    ...buildMaryJaneBerlinGeneratedSampleSessions(curatedSessions),
+  ];
+}
+
+const MARY_JANE_DEMO_SOURCE_SESSION_TARGETS = Object.freeze({
+  Seedsman: 84,
+  "Poppin Fire": 42,
+  "Good Genetix": 30,
+  "Summit Seed Co.": 10,
+  "Evergreen Genetics": 10,
+  "Atlas Breeding Labs": 10,
+});
+
+const MARY_JANE_DEMO_SOURCE_VARIETIES = Object.freeze({
+  Seedsman: Object.freeze([
+    "Banana Jealousy",
+    "Gorilla Runtz",
+    "Wedding Cake",
+    "Blueberry Muffin",
+    "Gelato OG",
+    "Gorilla Jealousy F1",
+    "L.A. Peyote Kush",
+    "Alaskan Purple",
+    "Bruce Banger",
+    "White OG",
+    "Lemon Auto",
+    "Badazz OG Cheese",
+    "Lemoncello Haze",
+    "Peyote Wi-Fi CBD 2:1",
+    "Peyote Forum",
+    "Tangerine Snow F1 Fast",
+    "Badazz Cookies OG",
+    "Chem Cookies Auto",
+  ]),
+  "Poppin Fire": Object.freeze([
+    "Double Blueberry Muffin",
+    "Grape Frost Bomb",
+    "Ice Cream Cake",
+    "YoloMelon",
+    "Gorilla Mega Stank",
+    "Watermelon Emoji S1",
+    "Blue Frost Cake",
+    "Fireberry Runtz",
+  ]),
+  "Good Genetix": Object.freeze([
+    "Permanent G Auto",
+    "G Breath Auto",
+    "G Donutz Auto",
+    "Permanent G Auto Berlin Lot",
+  ]),
+  "Summit Seed Co.": Object.freeze(["Summit Snowcap", "Summit Ridge Kush", "Summit Lemon Peak"]),
+  "Evergreen Genetics": Object.freeze(["Evergreen Pineapple", "Evergreen Diesel Auto", "Evergreen Valley Kush"]),
+  "Atlas Breeding Labs": Object.freeze(["Atlas Apex", "Atlas Cloudline", "Atlas Northern Ridge"]),
+});
+
+function countDemoSessionsBySource(sessions = []) {
+  const counts = new Map();
+  (sessions || []).forEach((session) => {
+    if (!isGrowSessionAnalyticsEligible(session, { includeMock: true })) {
+      return;
+    }
+    getSessionResultSummary(session).sourceGroups.forEach((sourceGroup) => {
+      if (!sourceGroup?.label) {
+        return;
+      }
+      counts.set(sourceGroup.label, (counts.get(sourceGroup.label) || 0) + 1);
+    });
+  });
+  return counts;
+}
+
+function getMaryJaneDemoSeedType(variety = "") {
+  const normalizedVariety = String(variety || "").toLowerCase();
+  if (/\bauto\b/.test(normalizedVariety)) {
+    return "auto";
+  }
+  if (/\bfast\b/.test(normalizedVariety)) {
+    return "fast";
+  }
+  return "photoperiod";
+}
+
+function getMaryJaneDemoGerminatedCount(sourceName = "", seedCount = 10, seedAgeYears = 1, sessionIndex = 0, partitionIndex = 0) {
+  const normalizedSource = String(sourceName || "").trim().toLowerCase();
+  let misses = 0;
+  if (normalizedSource === "seedsman") {
+    misses = (sessionIndex + partitionIndex) % 6 === 0 ? 1 : 0;
+  } else if (normalizedSource === "poppin fire") {
+    misses = (sessionIndex + partitionIndex) % 5 === 0 ? 1 : ((sessionIndex + partitionIndex) % 17 === 0 ? 2 : 0);
+  } else if (normalizedSource === "good genetix") {
+    misses = (sessionIndex + partitionIndex) % 4 === 0 ? 1 : ((sessionIndex + partitionIndex) % 13 === 0 ? 2 : 0);
+  } else {
+    misses = (sessionIndex + partitionIndex) % 3 === 0 ? 2 : 1;
+  }
+
+  if (Number(seedAgeYears) >= 7 && (sessionIndex + partitionIndex) % 2 === 0) {
+    misses += 1;
+  } else if (Number(seedAgeYears) >= 5 && (sessionIndex + partitionIndex) % 4 === 0) {
+    misses += 1;
+  }
+
+  return Math.max(0, Math.min(seedCount, seedCount - misses));
+}
+
+function formatMaryJaneDemoDateLabel(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function slugifyMaryJaneDemoValue(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function buildMaryJaneBerlinGeneratedSampleSessions(existingSessions = []) {
+  const existingCounts = countDemoSessionsBySource(existingSessions);
+  const seedAgeCycle = [1, 2, 3, 5, 7];
+  const generatedSessions = [];
+  let generatedIndex = 0;
+
+  Object.entries(MARY_JANE_DEMO_SOURCE_SESSION_TARGETS).forEach(([sourceName, targetCount]) => {
+    const currentCount = Math.max(0, Number(existingCounts.get(sourceName)) || 0);
+    const neededCount = Math.max(0, Number(targetCount) - currentCount);
+    const varieties = MARY_JANE_DEMO_SOURCE_VARIETIES[sourceName] || [];
+    for (let sourceSessionIndex = 0; sourceSessionIndex < neededCount; sourceSessionIndex += 1) {
+      const sessionDate = new Date(Date.UTC(2026, 3, 8, 7, 0, 0));
+      sessionDate.setUTCDate(sessionDate.getUTCDate() - generatedIndex);
+      const date = sessionDate.toISOString().slice(0, 10);
+      const hour = String(7 + (generatedIndex % 11)).padStart(2, "0");
+      const minute = String((sourceSessionIndex * 7) % 60).padStart(2, "0");
+      const dateLabel = formatMaryJaneDemoDateLabel(sessionDate);
+      const systemType = generatedIndex % 5 === 0 ? "TRA" : "KAN";
+      const seedCount = normalizedSourceNameForDemo(sourceName) === "seedsman" ? 12 : (generatedIndex % 3 === 0 ? 10 : 8);
+      const partitionSeeds = Array.from({ length: 3 }, (_, partitionIndex) => {
+        const variety = varieties[(sourceSessionIndex + partitionIndex) % varieties.length] || `${sourceName} Demo Variety`;
+        const seedAgeYears = seedAgeCycle[(sourceSessionIndex + partitionIndex + generatedIndex) % seedAgeCycle.length];
+        const germinatedCount = getMaryJaneDemoGerminatedCount(sourceName, seedCount, seedAgeYears, sourceSessionIndex, partitionIndex);
+        return [
+          variety,
+          sourceName,
+          getMaryJaneDemoSeedType(variety),
+          "feminized",
+          seedCount,
+          germinatedCount,
+          seedAgeYears,
+        ];
+      });
+
+      generatedSessions.push(createSampleSession({
+        id: `demo-berlin-${slugifyMaryJaneDemoValue(sourceName)}-${String(sourceSessionIndex + 1).padStart(2, "0")}`,
+        date,
+        time: `${hour}:${minute}`,
+        systemType,
+        unitId: systemType === "KAN"
+          ? String.fromCharCode(65 + (generatedIndex % 4))
+          : String((generatedIndex % 4) + 1),
+        sessionName: `${sourceName} Berlin demo session ${String(sourceSessionIndex + 1).padStart(2, "0")} - ${dateLabel}`,
+        sessionStatus: "completed",
+        germinationStartedAt: `${date}T20:${minute}:00`,
+        firstPlantedAt: new Date(Date.UTC(sessionDate.getUTCFullYear(), sessionDate.getUTCMonth(), sessionDate.getUTCDate() + 1, 14, Number(minute), 0)).toISOString().slice(0, 19),
+        completedAt: new Date(Date.UTC(sessionDate.getUTCFullYear(), sessionDate.getUTCMonth(), sessionDate.getUTCDate() + 2, 8 + (generatedIndex % 4), Number(minute), 0)).toISOString().slice(0, 19),
+        sessionNotes: `${sourceName} Mary Jane Berlin demo record with completed timing, realistic seed age mix, and partner-weighted analytics for visible Community Grow views.`,
+        partitionSeeds,
+      }));
+      generatedIndex += 1;
+    }
+  });
+
+  return generatedSessions;
+}
+
+function normalizedSourceNameForDemo(sourceName = "") {
+  return String(sourceName || "").trim().toLowerCase();
 }
 
 function createSampleSession(config) {
@@ -8592,8 +8791,8 @@ function createSampleSession(config) {
     germinationStartedAt: config.germinationStartedAt || "",
     firstPlantedAt: config.firstPlantedAt || "",
     completedAt: config.completedAt || "",
-    seedAgeTrackingEnabled: Boolean(config.seedAgeTrackingEnabled),
-    seedAgeMode: normalizeSeedAgeMode(config.seedAgeMode || ""),
+    seedAgeTrackingEnabled: config.seedAgeTrackingEnabled === false ? false : true,
+    seedAgeMode: normalizeSeedAgeMode(config.seedAgeMode || "mixed"),
     sessionSeedAgeYears: normalizeSeedAgeYears(config.sessionSeedAgeYears),
     createdAt: `${config.date}T${config.time}:00`,
     updatedAt: config.updatedAt || `${config.date}T${config.time}:00`,
@@ -9328,48 +9527,38 @@ function buildMockGalleryProfileAvatarDataUri(profileName, sourceName, index = 0
 }
 
 function getMockGallerySharedProfile(index, record) {
-  const mockProfiles = [
-    "Avery Moss",
-    "Jordan Vale",
-    "Riley Stone",
-    "Harper Lane",
-    "Kai Rivers",
-    "Sage Bennett",
-    "Morgan Frost",
-    "Parker Quinn",
-  ];
-  const profileName = mockProfiles[index % mockProfiles.length];
-  const profileImageUrl = buildMockGalleryProfileAvatarDataUri(profileName, record?.source, index);
-  const scenario = index % 4;
-
-  if (scenario === 0) {
+  const sourceKey = normalizeSourceNameForMatching(record?.source || "");
+  const sourceProfiles = DEMO_GALLERY_CONTRIBUTOR_PROFILES.filter((profile) => (
+    normalizeSourceNameForMatching(profile.favoriteSource || "") === sourceKey
+  ));
+  const primaryProfile = sourceKey === "seedsman"
+    ? DEMO_GALLERY_CONTRIBUTOR_PROFILES.find((profile) => profile.id === "mock-seedsman-lab")
+    : (sourceKey === "poppin fire"
+      ? DEMO_GALLERY_CONTRIBUTOR_PROFILES.find((profile) => profile.id === "mock-poppin-fire")
+      : (sourceKey === "good genetix"
+        ? DEMO_GALLERY_CONTRIBUTOR_PROFILES.find((profile) => profile.id === "mock-good-genetix")
+        : null));
+  const profile = primaryProfile && index % 3 === 0
+    ? primaryProfile
+    : (sourceProfiles[index % Math.max(1, sourceProfiles.length)] || DEMO_GALLERY_CONTRIBUTOR_PROFILES[index % DEMO_GALLERY_CONTRIBUTOR_PROFILES.length]);
+  if (!profile) {
+    const fallbackName = "Community Demo Grower";
     return {
+      userId: GALLERY_MOCK_USER_ID,
       includeProfileInGallery: true,
-      profileName,
-      profileImageUrl,
+      profileName: fallbackName,
+      profileImageUrl: buildMockGalleryProfileAvatarDataUri(fallbackName, record?.source, index),
+      countryCode: "",
     };
   }
 
-  if (scenario === 1) {
-    return {
-      includeProfileInGallery: true,
-      profileName,
-      profileImageUrl: "",
-    };
-  }
-
-  if (scenario === 2) {
-    return {
-      includeProfileInGallery: true,
-      profileName: "",
-      profileImageUrl,
-    };
-  }
-
+  const profileName = profile.displayName || "Community Demo Grower";
   return {
-    includeProfileInGallery: false,
-    profileName: "",
-    profileImageUrl: "",
+    userId: profile.id,
+    includeProfileInGallery: true,
+    profileName,
+    profileImageUrl: profile.avatarUrl || buildMockGalleryProfileAvatarDataUri(profileName, record?.source || profile.favoriteSource, index),
+    countryCode: normalizeCountryCode(profile.countryCode || ""),
   };
 }
 
@@ -10022,7 +10211,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
 
     return {
       id: `mock-gallery-${String(index + 1).padStart(2, "0")}`,
-      userId: GALLERY_MOCK_USER_ID,
+      userId: sharedProfile.userId || GALLERY_MOCK_USER_ID,
       sessionId,
       title: record.title || `DEV MOCK - ${record.seedVariety} - ${record.source}`,
       imageUrl,
@@ -10042,6 +10231,7 @@ function buildMockGallerySnapshots(records = buildMockGallerySnapshotSeedRecords
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
       profileName: sharedProfile.profileName,
       profileImageUrl: sharedProfile.profileImageUrl,
+      countryCode: sharedProfile.countryCode || "",
       status: "approved",
       published: record.approved,
       includeNotes: true,
@@ -10099,7 +10289,7 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
 
     return {
       id: `mock-gallery-review-${String(index + 1).padStart(2, "0")}`,
-      userId: `${GALLERY_MOCK_USER_ID}-review`,
+      userId: sharedProfile.userId ? `${sharedProfile.userId}-review` : `${GALLERY_MOCK_USER_ID}-review`,
       sessionId: `mock-gallery-review-session-${String(index + 1).padStart(2, "0")}`,
       title: `DEV MOCK - ${record.seedVariety} - ${record.source}`,
       imageUrl: imageUrl || buildMockGalleryImageDataUri(record),
@@ -10118,6 +10308,7 @@ function buildMockPendingGalleryReviewSnapshots(now = new Date()) {
       includeProfileInGallery: sharedProfile.includeProfileInGallery,
       profileName: sharedProfile.profileName,
       profileImageUrl: sharedProfile.profileImageUrl,
+      countryCode: sharedProfile.countryCode || "",
       status: "pending_review",
       published: false,
       includeNotes: false,
@@ -18731,7 +18922,7 @@ function setGrowNetworkActiveTab(tab = "") {
 }
 
 function getMockGrowNetworkProfiles() {
-  return GROW_NETWORK_MOCK_PROFILES.map((profile) => {
+  return DEMO_GALLERY_CONTRIBUTOR_PROFILES.map((profile) => {
     const hasOverride = Object.prototype.hasOwnProperty.call(appState.mockGrowNetworkFollowStates, profile.id);
     return {
       ...profile,
@@ -25138,13 +25329,22 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
   const fallbackLabel = snapshot?.includeProfileInGallery === false || canShowPrivateViewerContext
     ? "Private Grower"
     : "Community Member";
+  const sharedProfileName = snapshot?.includeProfileInGallery !== false
+    ? String(snapshot?.profileName || "").trim()
+    : "";
+  const sharedProfileAvatarUrl = snapshot?.includeProfileInGallery !== false
+    ? String(snapshot?.profileImageUrl || "").trim()
+    : "";
+  const sharedProfileCountryCode = snapshot?.includeProfileInGallery !== false
+    ? normalizeCountryCode(snapshot?.countryCode || snapshot?.country_code || "")
+    : "";
   const displayName = publicProfile
     ? getDisplayName({ id: memberId, displayName: publicProfile.displayName || "" }, { fallbackLabel })
     : (privateViewerProfile
       ? getDisplayName({ id: memberId, displayName: privateViewerProfile.displayName || "" }, { fallbackLabel })
-      : fallbackLabel);
-  const fallbackAvatarUrl = publicProfile?.avatarUrl || privateViewerProfile?.avatarUrl || "";
-  const countryCode = publicProfile?.countryCode || privateViewerProfile?.countryCode || "";
+      : (sharedProfileName || fallbackLabel));
+  const fallbackAvatarUrl = publicProfile?.avatarUrl || privateViewerProfile?.avatarUrl || sharedProfileAvatarUrl || "";
+  const countryCode = publicProfile?.countryCode || privateViewerProfile?.countryCode || sharedProfileCountryCode || "";
   const profileHint = publicProfile
     ? getProfileCommunityCardHint(publicProfile, getGallerySnapshotsForDisplay())
     : (canShowPrivateViewerContext ? "Private profile" : "");
@@ -25156,7 +25356,7 @@ function getGallerySnapshotCardMemberProfile(snapshot) {
     countryCode,
     profileRoute: publicProfile && memberId ? getPublicMemberProfileRoute(publicProfile) : "",
     profileHint,
-    canShowIdentity: Boolean(publicProfile || privateViewerProfile),
+    canShowIdentity: Boolean(publicProfile || privateViewerProfile || sharedProfileName || sharedProfileAvatarUrl),
     canLinkProfile: Boolean(publicProfile),
     isFallbackIdentity: !publicProfile,
   };
@@ -26176,13 +26376,26 @@ function buildGalleryLeaderboardEntries(snapshots, type = "source") {
         : 0,
       fastestCompletedDurationLabel: formatDurationMsShort(entry.fastestCompletedDurationMs),
     }))
-    .sort((left, right) => comparePerformanceByRateSpeedAndRecency(left, right, {
-      getRate: (entry) => entry.averagePercent,
-      getDurationMs: (entry) => entry.fastestCompletedDurationMs,
-      getSortTime: (entry) => new Date(entry.latestPublishedAt || 0).getTime(),
-      getFallbackLabel: (entry) => entry.name,
-      sortDirection: "desc",
-    }));
+    .sort((left, right) => {
+      if (isMockDataEnabled()) {
+        const seedDelta = Math.max(0, Number(right?.totalSeeds) || 0) - Math.max(0, Number(left?.totalSeeds) || 0);
+        if (seedDelta !== 0) {
+          return seedDelta;
+        }
+        const snapshotDelta = Math.max(0, Number(right?.snapshotCount) || 0) - Math.max(0, Number(left?.snapshotCount) || 0);
+        if (snapshotDelta !== 0) {
+          return snapshotDelta;
+        }
+      }
+
+      return comparePerformanceByRateSpeedAndRecency(left, right, {
+        getRate: (entry) => entry.averagePercent,
+        getDurationMs: (entry) => entry.fastestCompletedDurationMs,
+        getSortTime: (entry) => new Date(entry.latestPublishedAt || 0).getTime(),
+        getFallbackLabel: (entry) => entry.name,
+        sortDirection: "desc",
+      });
+    });
 }
 
 function getApprovedPublicGallerySnapshots() {
@@ -26405,8 +26618,12 @@ function renderGalleryLeaderboardRows(entries = [], type = "source", emptyMessag
 
 function getGallerySnapshotMemberKey(snapshot = {}) {
   const member = getGallerySnapshotCardMemberProfile(snapshot);
-  if (member.canLinkProfile && member.memberId) {
+  if (member.memberId) {
     return `profile:${member.memberId}`;
+  }
+  const sharedProfileName = String(snapshot?.profileName || "").trim();
+  if (sharedProfileName && snapshot?.includeProfileInGallery !== false) {
+    return `profile-name:${normalizeLeaderboardKey(sharedProfileName)}`;
   }
   return "community-member";
 }
@@ -26417,7 +26634,7 @@ function getGallerySnapshotMemberLabel(snapshot = {}) {
 
 function getGallerySnapshotMemberAvatarUrl(snapshot = {}) {
   const member = getGallerySnapshotCardMemberProfile(snapshot);
-  return member.canLinkProfile ? String(member.avatarUrl || "").trim() : "";
+  return String(member.avatarUrl || "").trim();
 }
 
 function findMockGalleryTopMemberEntry(entry = {}) {
@@ -26441,12 +26658,12 @@ function buildGalleryTopMemberEntries(snapshots = []) {
 
     const existingEntry = entriesByMemberKey.get(memberKey) || {
       key: memberKey,
-      memberId: member.canLinkProfile ? member.memberId : "",
+      memberId: member.memberId || "",
       name: member.displayName || getGallerySnapshotMemberLabel(snapshot),
       avatarUrl: "",
-      profileRoute: member.canLinkProfile ? member.profileRoute : "",
-      profileHint: member.canLinkProfile ? member.profileHint : "",
-      countryCode: member.canLinkProfile ? member.countryCode : "",
+      profileRoute: member.profileRoute || "",
+      profileHint: member.profileHint || "",
+      countryCode: member.countryCode || "",
       trustHint: member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "",
       isFallbackIdentity: !member.canLinkProfile,
       snapshotCount: 0,
@@ -26459,9 +26676,9 @@ function buildGalleryTopMemberEntries(snapshots = []) {
       ? (member.displayName || getGallerySnapshotMemberLabel(snapshot))
       : existingEntry.name;
     existingEntry.avatarUrl = existingEntry.avatarUrl || getGallerySnapshotMemberAvatarUrl(snapshot);
-    existingEntry.profileRoute = existingEntry.profileRoute || (member.canLinkProfile ? member.profileRoute : "");
-    existingEntry.profileHint = existingEntry.profileHint || (member.canLinkProfile ? member.profileHint : "");
-    existingEntry.countryCode = existingEntry.countryCode || (member.canLinkProfile ? member.countryCode : "");
+    existingEntry.profileRoute = existingEntry.profileRoute || member.profileRoute || "";
+    existingEntry.profileHint = existingEntry.profileHint || member.profileHint || "";
+    existingEntry.countryCode = existingEntry.countryCode || member.countryCode || "";
     existingEntry.trustHint = existingEntry.trustHint || (member.canLinkProfile ? getPublicMemberProfileTrustHint(getPublicMemberProfile(member.memberId)) : "");
     existingEntry.snapshotCount += 1;
     existingEntry.totalLikes += Math.max(0, Number(snapshot?.likeCount) || 0);
@@ -28653,6 +28870,105 @@ function buildCommunityInsightsState() {
     monthRollups.set(monthKey, monthRollup);
   });
 
+  if (isMockDataEnabled()) {
+    const approvedSnapshotSessionIds = new Set(
+      approvedSnapshots.map((snapshot) => String(snapshot?.sessionId || "").trim()).filter(Boolean),
+    );
+    const demoContributorIds = DEMO_GALLERY_CONTRIBUTOR_PROFILES.map((profile) => profile.id).filter(Boolean);
+    (Array.isArray(getSessions()) ? getSessions() : [])
+      .filter((session) => isGrowSessionAnalyticsEligible(session, { includeMock: true }))
+      .forEach((session, index) => {
+        const sessionId = String(session?.id || "").trim();
+        if (!sessionId || approvedSnapshotSessionIds.has(sessionId)) {
+          return;
+        }
+
+        const contributorId = demoContributorIds[index % Math.max(1, demoContributorIds.length)] || "";
+        const completedDate = parseCompletedAtValue(session?.completedAt || session?.completed_at || "")
+          || getSourceDirectorySessionLoggedAt(session)
+          || new Date();
+        const publishedAt = completedDate.toISOString();
+        const monthKey = getLeaderboardMonthKey(completedDate);
+        const monthLabel = getCommunityInsightsMonthLabel(completedDate);
+        const systemType = getCommunityInsightsSystemKey(session?.systemType || session?.system_type || "KAN");
+        const resultSummary = getSessionResultSummary(session);
+
+        sessionIds.add(sessionId);
+        if (contributorId) {
+          contributorIds.add(contributorId);
+        }
+
+        const monthRollup = monthRollups.get(monthKey) || {
+          key: monthKey,
+          label: monthLabel,
+          sortTime: completedDate.getTime() || 0,
+          snapshotCount: 0,
+          sessionIds: new Set(),
+          contributorIds: new Set(),
+          totalSeeds: 0,
+          totalGerminated: 0,
+        };
+        monthRollup.sessionIds.add(sessionId);
+        if (contributorId) {
+          monthRollup.contributorIds.add(contributorId);
+        }
+
+        resultSummary.partitions.forEach((partitionResult) => {
+          const partition = partitionResult.rawPartition || {};
+          const totalSeeds = Math.max(0, Number(partitionResult.totalSeeds) || 0);
+          const totalGerminated = Math.min(totalSeeds, Math.max(0, Number(partitionResult.totalGerminated) || 0));
+          const source = getCommunityInsightsSafeText(partitionResult.source || "");
+          const variety = getCommunityInsightsSafeText(partitionResult.seedVariety || "");
+          const seedAgeYears = normalizeSeedAgeYears(partition?.seedAgeYears ?? partition?.seed_age_years);
+          const sourceKey = partitionResult.sourceKey || normalizeSourceNameForMatching(source);
+          const varietyKey = partitionResult.varietyKey || normalizeSeedVarietyNameForMatching(variety);
+          const sample = {
+            snapshotId: "",
+            sessionId,
+            contributorId,
+            publishedAt,
+            systemType,
+            totalSeeds,
+            totalGerminated,
+          };
+
+          if (totalSeeds <= 0) {
+            return;
+          }
+
+          totalSeedsTested += totalSeeds;
+          totalSeedsGerminated += totalGerminated;
+          monthRollup.totalSeeds += totalSeeds;
+          monthRollup.totalGerminated += totalGerminated;
+
+          if (sourceKey) {
+            const sourceRollup = sourceRollups.get(sourceKey) || createCommunityInsightsRollup(source);
+            sourceRollup.key = sourceKey;
+            addCommunityInsightsRollupSample(sourceRollup, sample);
+            sourceRollups.set(sourceKey, sourceRollup);
+          }
+
+          if (varietyKey) {
+            const varietyRollup = varietyRollups.get(varietyKey) || createCommunityInsightsRollup(variety);
+            varietyRollup.key = varietyKey;
+            addCommunityInsightsRollupSample(varietyRollup, sample);
+            varietyRollups.set(varietyKey, varietyRollup);
+          }
+
+          const ageKey = getSeedAgeBucketKey(seedAgeYears);
+          const ageRollup = ageRollups.get(ageKey) || {
+            ...createCommunityInsightsRollup(getSeedAgeBucketLabel(ageKey)),
+            key: ageKey,
+            label: getSeedAgeBucketLabel(ageKey),
+          };
+          addCommunityInsightsRollupSample(ageRollup, sample);
+          ageRollups.set(ageKey, ageRollup);
+        });
+
+        monthRollups.set(monthKey, monthRollup);
+      });
+  }
+
   const sourceRows = [...sourceRollups.values()].map(finalizeCommunityInsightsRollup);
   const varietyRows = [...varietyRollups.values()].map(finalizeCommunityInsightsRollup);
   const ageRows = [...ageRollups.values()].map((rollup) => ({
@@ -28676,11 +28992,13 @@ function buildCommunityInsightsState() {
   );
   const sortBySeeds = (left, right) => right.totalSeeds - left.totalSeeds || left.label.localeCompare(right.label);
   const sortBySnapshots = (left, right) => right.snapshotCount - left.snapshotCount || left.label.localeCompare(right.label);
+  const sourcePerformanceSort = isMockDataEnabled() ? sortBySeeds : sortByRate;
+  const varietyPerformanceSort = isMockDataEnabled() ? sortBySeeds : sortByRate;
   const communityAverageRate = totalSeedsTested > 0 ? Math.round((totalSeedsGerminated / totalSeedsTested) * 1000) / 10 : null;
   const cstpPublicStatistics = buildCommunityInsightsCstpPublicHooks(approvedSnapshots);
   const bestAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
   const mostTestedAgeRange = [...ageRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds)[0] || null;
-  const bestSource = [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortByRate)[0] || null;
+  const bestSource = [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sourcePerformanceSort)[0] || null;
   const mostTestedVariety = [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds)[0] || null;
   const fastestGrowingMonth = monthRows.length > 1
     ? [...monthRows].slice(1).map((row, index) => ({
@@ -28704,10 +29022,10 @@ function buildCommunityInsightsState() {
     varietyRows,
     ageRows,
     monthRows,
-    topSources: [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
+    topSources: [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sourcePerformanceSort),
     mostTestedSources: [...sourceRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
     highestParticipationSources: [...sourceRows].sort(sortBySnapshots),
-    topVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortByRate),
+    topVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(varietyPerformanceSort),
     mostTestedVarieties: [...varietyRows].filter((row) => row.totalSeeds > 0).sort(sortBySeeds),
     repeatTestedVarieties: [...varietyRows].filter((row) => row.snapshotCount > 1).sort(sortBySnapshots),
     bestAgeRange,
@@ -31423,7 +31741,7 @@ function isGallerySnapshotAnalyticsEligible(snapshot = null) {
   }
 
   const linkedSession = getGallerySnapshotSession(snapshot);
-  return linkedSession ? isGrowSessionAnalyticsEligible(linkedSession) : true;
+  return linkedSession ? isGrowSessionAnalyticsEligible(linkedSession, { includeMock: isMockDataEnabled() }) : true;
 }
 
 function getGallerySnapshotDebugSignature(snapshots) {
@@ -45234,7 +45552,7 @@ function buildSourceDirectorySessionAggregate() {
   const breederKeys = new Set();
   const varietyKeys = new Set();
   const sessions = (Array.isArray(getSessions()) ? getSessions() : [])
-    .filter((session) => isGrowSessionAnalyticsEligible(session));
+    .filter((session) => isGrowSessionAnalyticsEligible(session, { includeMock: isMockDataEnabled() }));
 
   sessions.forEach((session) => {
     const resultSummary = getSessionResultSummary(session);
