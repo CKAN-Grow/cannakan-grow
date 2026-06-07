@@ -35990,8 +35990,11 @@ function openNewSessionNamePrompt(form) {
 
 const LEARN_FILTER_PAPER_TUTORIAL_ID = "loading-seeds-into-kan";
 const LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH = "/assets/learn/images/tutorials/loading-filter-paper.webp";
+const LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID = "filling-out-partition-chart";
+const LEARN_FILLING_PARTITION_CHART_POSTER_PATH = "/assets/learn/images/tutorials/filling-partition-chart.webp";
 const LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE = "ueq5hubybdm3zg9p";
 const LEARN_FILTER_PAPER_CLOUDFLARE_VIDEO_ID = "5cddf63731987eb2fc654c3d10a47203";
+const LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID = "62c5b0e2ac103569e6b9057636e4792c";
 
 const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
   Object.freeze({
@@ -36137,6 +36140,38 @@ const LEARN_TUTORIAL_CATEGORIES = Object.freeze([
           mp4Url: "",
           cloudflareStreamId: "",
           poster: "",
+        }),
+      }),
+      Object.freeze({
+        id: LEARN_FILLING_PARTITION_CHART_TUTORIAL_ID,
+        order: 1.5,
+        title: "Filling Out Partition Chart",
+        duration: "44 sec • Beginner",
+        difficulty: "Beginner",
+        description: "Learn how to fill out the partition chart so seed counts, partition labels, and germination results stay accurate throughout a session.",
+        status: "published",
+        visibilityStatus: "published",
+        audience: "public",
+        isPublic: true,
+        scheduled: false,
+        releaseDate: "",
+        comingSoonLabel: "",
+        thumbnailUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+        recommendedFor: Object.freeze(["new_user", "active_session"]),
+        priority: 2,
+        relatedFeature: "sessions",
+        userStage: "active_session",
+        video: Object.freeze({
+          provider: "cloudflare",
+          videoProvider: "cloudflare",
+          modalPlayerReady: true,
+          mp4Url: "",
+          embedUrl: "",
+          cloudflareStreamId: LEARN_FILLING_PARTITION_CHART_CLOUDFLARE_VIDEO_ID,
+          cloudflareStreamCustomerCode: LEARN_CLOUDFLARE_STREAM_CUSTOMER_CODE,
+          poster: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
+          posterUrl: LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
         }),
       }),
       Object.freeze({
@@ -36294,6 +36329,7 @@ const LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS = Object.freeze({
 const LEARN_TUTORIAL_SAFE_LOCAL_THUMBNAILS = Object.freeze([
   LEARN_TUTORIAL_FALLBACK_THUMBNAIL_PATH,
   LEARN_FILTER_PAPER_TUTORIAL_POSTER_PATH,
+  LEARN_FILLING_PARTITION_CHART_POSTER_PATH,
   ...Object.values(LEARN_TUTORIAL_PLACEHOLDER_THUMBNAILS),
 ]);
 
