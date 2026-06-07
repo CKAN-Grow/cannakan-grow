@@ -129,6 +129,7 @@ const ADMIN_VISITOR_ANALYTICS_OPEN_STORAGE_KEY = "cannakanAdminVisitorAnalyticsO
 const ADMIN_TUTORIAL_MANAGEMENT_OPEN_STORAGE_KEY = "cannakanAdminTutorialManagementOpen";
 const COMMUNITY_GROW_ADMIN_REVIEW_OPEN_STORAGE_KEY = "cannakanCommunityGrowAdminReviewOpen";
 const ADMIN_TUTORIAL_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialDrafts";
+const ADMIN_TUTORIAL_DELETED_IDS_STORAGE_KEY = "cannakanAdminTutorialDeletedIds";
 const ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY = "cannakanAdminTutorialCollectionDrafts";
 const TUTORIAL_PROGRESS_STORAGE_KEY = "cannakanTutorialProgress";
 const TUTORIAL_ANALYTICS_STORAGE_KEY = "cannakanTutorialAnalyticsEvents";
@@ -36948,6 +36949,35 @@ function saveAdminTutorialDraftsToStorage(drafts = {}) {
   }
 }
 
+function loadAdminDeletedTutorialIdsFromStorage() {
+  try {
+    const storedValue = JSON.parse(localStorage.getItem(ADMIN_TUTORIAL_DELETED_IDS_STORAGE_KEY) || "[]");
+    if (!Array.isArray(storedValue)) {
+      return new Set();
+    }
+    return new Set(storedValue.map((tutorialId) => String(tutorialId || "").trim()).filter(Boolean));
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to read deleted tutorial ids.", error);
+    return new Set();
+  }
+}
+
+function saveAdminDeletedTutorialIdsToStorage(deletedTutorialIds = new Set()) {
+  try {
+    const normalizedIds = [...deletedTutorialIds].map((tutorialId) => String(tutorialId || "").trim()).filter(Boolean);
+    localStorage.setItem(ADMIN_TUTORIAL_DELETED_IDS_STORAGE_KEY, JSON.stringify(normalizedIds));
+    return { ok: true, error: null };
+  } catch (error) {
+    console.warn("[Tutorial Admin] Failed to save deleted tutorial ids.", error);
+    return { ok: false, error };
+  }
+}
+
+function isAdminTutorialDeleted(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  return normalizedTutorialId ? loadAdminDeletedTutorialIdsFromStorage().has(normalizedTutorialId) : false;
+}
+
 function loadAdminTutorialCollectionDraftsFromStorage() {
   try {
     const storedValue = JSON.parse(localStorage.getItem(ADMIN_TUTORIAL_COLLECTION_DRAFTS_STORAGE_KEY) || "{}");
@@ -37533,6 +37563,56 @@ function resetAdminTutorialDraft(tutorialId = "") {
   saveAdminTutorialDraftsToStorage(drafts);
 }
 
+function deleteAdminTutorialRecord(tutorialId = "") {
+  const normalizedTutorialId = String(tutorialId || "").trim();
+  if (!normalizedTutorialId) {
+    return { ok: false, error: new Error("Tutorial ID is missing.") };
+  }
+
+  const deletedTutorialIds = loadAdminDeletedTutorialIdsFromStorage();
+  deletedTutorialIds.add(normalizedTutorialId);
+  const deleteResult = saveAdminDeletedTutorialIdsToStorage(deletedTutorialIds);
+  if (deleteResult?.ok === false) {
+    return deleteResult;
+  }
+
+  const drafts = loadAdminTutorialDraftsFromStorage();
+  if (Object.prototype.hasOwnProperty.call(drafts, normalizedTutorialId)) {
+    delete drafts[normalizedTutorialId];
+    const draftSaveResult = saveAdminTutorialDraftsToStorage(drafts);
+    if (draftSaveResult?.ok === false) {
+      return draftSaveResult;
+    }
+  }
+
+  const collectionDrafts = loadAdminTutorialCollectionDraftsFromStorage();
+  let collectionsChanged = false;
+  Object.entries(collectionDrafts).forEach(([collectionId, collectionDraft]) => {
+    const currentTutorialIds = normalizeLearnTutorialTextList(collectionDraft?.tutorialIds || []);
+    const nextTutorialIds = currentTutorialIds.filter((collectionTutorialId) => collectionTutorialId !== normalizedTutorialId);
+    if (nextTutorialIds.length !== currentTutorialIds.length) {
+      collectionDrafts[collectionId] = {
+        ...(collectionDraft || {}),
+        tutorialIds: nextTutorialIds,
+        updatedAt: new Date().toISOString(),
+        persistence: "local",
+      };
+      collectionsChanged = true;
+    }
+  });
+  if (collectionsChanged) {
+    const collectionSaveResult = saveAdminTutorialCollectionDraftsToStorage(collectionDrafts);
+    if (collectionSaveResult?.ok === false) {
+      return collectionSaveResult;
+    }
+  }
+
+  if (appState.adminTutorialEditingId === normalizedTutorialId) {
+    appState.adminTutorialEditingId = "";
+  }
+  return { ok: true, error: null };
+}
+
 function getAdminTutorialCollectionDraft(collectionId = "") {
   const drafts = loadAdminTutorialCollectionDraftsFromStorage();
   return drafts[String(collectionId || "").trim()] || null;
@@ -37629,6 +37709,7 @@ function compareLearnTutorialOrder(left = {}, right = {}) {
 
 function getLearnTutorialCategories() {
   const draftMap = loadAdminTutorialDraftsFromStorage();
+  const deletedTutorialIds = loadAdminDeletedTutorialIdsFromStorage();
   const categoryDefinitions = [...LEARN_TUTORIAL_CATEGORIES, ...LEARN_TUTORIAL_FUTURE_CATEGORIES];
   const categoryShells = categoryDefinitions.map((category) => ({
     ...category,
@@ -37639,6 +37720,9 @@ function getLearnTutorialCategories() {
 
   LEARN_TUTORIAL_CATEGORIES.forEach((category) => {
     category.tutorials.forEach((tutorial, index) => {
+      if (deletedTutorialIds.has(String(tutorial.id || "").trim())) {
+        return;
+      }
       const isProtectedProductionTutorial = isProtectedProductionLearnTutorial(tutorial.id);
       const draft = isProtectedProductionTutorial ? {} : (draftMap[tutorial.id] || {});
       const videoDraft = draft.video || {};
@@ -37819,6 +37903,10 @@ function isLearnItemPublicShareAvailable(item = {}) {
 
 function getLearnTutorialCollections() {
   const draftMap = loadAdminTutorialCollectionDraftsFromStorage();
+  const deletedTutorialIds = loadAdminDeletedTutorialIdsFromStorage();
+  const filterDeletedTutorialIds = (tutorialIds = []) => (
+    normalizeLearnTutorialTextList(tutorialIds).filter((tutorialId) => !deletedTutorialIds.has(tutorialId))
+  );
   const staticCollections = LEARN_TUTORIAL_COLLECTIONS.map((collection, index) => {
     const draft = draftMap[collection.id] || {};
     const audience = normalizeLearnAudience(draft.audience ?? collection.audience ?? "public");
@@ -37831,7 +37919,7 @@ function getLearnTutorialCollections() {
       subtitle: String(draft.subtitle ?? collection.subtitle ?? "").trim(),
       description: String(draft.description ?? collection.description ?? "").trim(),
       posterUrl: String(draft.posterUrl ?? collection.posterUrl ?? "").trim(),
-      tutorialIds: normalizeLearnTutorialTextList(draft.tutorialIds || collection.tutorialIds),
+      tutorialIds: filterDeletedTutorialIds(draft.tutorialIds || collection.tutorialIds),
       featured: Boolean(draft.featured ?? collection.featured),
       visibilityStatus: getTutorialVisibilityStatus({
         status: draft.visibilityStatus || draft.status || collection.visibilityStatus || collection.status || "coming-soon",
@@ -37867,7 +37955,7 @@ function getLearnTutorialCollections() {
       subtitle: String(collection.subtitle || "").trim(),
       description: String(collection.description || "").trim(),
       posterUrl: String(collection.posterUrl || "").trim(),
-      tutorialIds: normalizeLearnTutorialTextList(collection.tutorialIds),
+      tutorialIds: filterDeletedTutorialIds(collection.tutorialIds),
       featured: Boolean(collection.featured),
       visibilityStatus: getTutorialVisibilityStatus({
         status: collection.visibilityStatus || collection.status || "coming-soon",
@@ -61284,6 +61372,7 @@ function renderAdminTutorialCardMarkup(tutorial = {}) {
         </div>
         <button type="button" class="button button-secondary admin-tutorial-preview-button" data-admin-tutorial-preview="${escapeHtml(tutorial.id)}">Preview</button>
         <button type="button" class="button button-secondary admin-tutorial-edit-button" data-admin-tutorial-edit="${escapeHtml(tutorial.id)}">Edit</button>
+        <button type="button" class="button button-secondary admin-tutorial-delete-button" data-admin-tutorial-delete="${escapeHtml(tutorial.id)}">Delete</button>
       </div>
     </article>
   `;
@@ -61786,6 +61875,13 @@ function refreshAdminTutorialManagementSection() {
   normalizeSectionHeaderLayouts(content);
 }
 
+function refreshMountedLearnTutorialData() {
+  refreshLearningPathsSection();
+  refreshLearnContinueWatchingSection();
+  refreshLearnRecommendedTutorialsSection();
+  applyLearnTutorialFilters(document);
+}
+
 function saveAdminTutorialCollectionAssignmentsForTutorial(tutorialId = "", selectedCollectionIds = []) {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
@@ -62063,6 +62159,30 @@ function bindAdminTutorialManagementSection(scope = app) {
       if (moved) {
         refreshAdminTutorialManagementSection();
       }
+    });
+  });
+
+  scope.querySelectorAll("[data-admin-tutorial-delete]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+    button.addEventListener("click", () => {
+      const tutorialId = button.dataset.adminTutorialDelete || "";
+      if (!tutorialId) {
+        return;
+      }
+      const confirmed = window.confirm("Delete this tutorial from Learn? This will not delete Cloudflare video files or image assets.");
+      if (!confirmed) {
+        return;
+      }
+      const deleteResult = deleteAdminTutorialRecord(tutorialId);
+      if (deleteResult?.ok === false) {
+        showAdminTutorialActionToast("draft", getAdminTutorialErrorMessage(deleteResult.error, "draft"), { error: true });
+        return;
+      }
+      refreshAdminTutorialManagementSection();
+      refreshMountedLearnTutorialData();
+      showAdminTutorialActionToast("draft", "Tutorial deleted from Learn. Cloudflare videos and image assets were not deleted.");
     });
   });
 
