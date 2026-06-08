@@ -15,6 +15,8 @@ const CONFIG = Object.freeze({
 async function main() {
   assert.equal(isFounderAdminUser({ email: "don@cannakan.com" }), true);
   assert.equal(isFounderAdminUser({ email: "DON@CANNAKAN.COM" }), true);
+  assert.equal(isFounderAdminUser({ email: "growsupport@cannakan.com" }), true);
+  assert.equal(isFounderAdminUser({ email: "GROWSUPPORT@CANNAKAN.COM" }), true);
   assert.equal(isFounderAdminUser({ email: "user@example.com" }), false);
   assert.deepEqual(
     getAdminAccessLevel({ email: "don@cannakan.com" }),
@@ -23,6 +25,15 @@ async function main() {
       level: "founder",
       reason: "verified_founder_email",
       email: "don@cannakan.com",
+    },
+  );
+  assert.deepEqual(
+    getAdminAccessLevel({ email: "growsupport@cannakan.com" }),
+    {
+      isAdmin: true,
+      level: "founder",
+      reason: "verified_founder_email",
+      email: "growsupport@cannakan.com",
     },
   );
 
@@ -50,6 +61,32 @@ async function main() {
   assert.equal(founderAuthorization.actor.email, "don@cannakan.com");
   assert.equal(founderAuthorization.actor.authorizationSource, "verified_founder_email");
   assert.equal(adminUsersWasQueried, false);
+
+  let supportAdminUsersWasQueried = false;
+  const supportAuthorization = await validateCstpAdminAuthorization({
+    accessToken: "support-token",
+    config: CONFIG,
+    fetchImpl: async (url) => {
+      const textUrl = String(url);
+      if (textUrl.includes("/auth/v1/user")) {
+        return createFetchResponse(200, {
+          id: "33333333-3333-4333-8333-333333333333",
+          email: "growsupport@cannakan.com",
+        });
+      }
+      if (textUrl.includes("/rest/v1/admin_users")) {
+        supportAdminUsersWasQueried = true;
+        return createFetchResponse(404, { message: "admin_users does not exist" });
+      }
+      throw new Error(`Unexpected fetch: ${textUrl}`);
+    },
+  });
+
+  assert.equal(supportAuthorization.ok, true);
+  assert.equal(supportAuthorization.actor.email, "growsupport@cannakan.com");
+  assert.equal(supportAuthorization.actor.authorizationSource, "verified_founder_email");
+  assert.equal(supportAuthorization.actor.adminAccessLevel, "founder");
+  assert.equal(supportAdminUsersWasQueried, false);
 
   const normalUserAuthorization = await validateCstpAdminAuthorization({
     accessToken: "user-token",

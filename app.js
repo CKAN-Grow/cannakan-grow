@@ -1735,7 +1735,10 @@ const templates = {
   detail: document.querySelector("#session-detail-template"),
 };
 
-const FOUNDER_ADMIN_EMAILS = Object.freeze(["don@cannakan.com"]);
+const FOUNDER_ADMIN_EMAILS = Object.freeze([
+  "don@cannakan.com",
+  "growsupport@cannakan.com",
+]);
 const ADMIN_EMAILS = new Set(FOUNDER_ADMIN_EMAILS);
 const FOUNDER_TEST_SESSION_CLEANUP_CONFIRMATION = "DELETE TEST SESSION";
 const FOUNDER_TEST_SESSION_CLEANUP_CUTOFF = "2026-05-20T04:00:00.000Z";
@@ -38381,7 +38384,13 @@ function loadAdminDeletedTutorialIdsFromStorage() {
     if (!Array.isArray(storedValue)) {
       return new Set();
     }
-    return new Set(storedValue.map((tutorialId) => String(tutorialId || "").trim()).filter(Boolean));
+    const protectedTutorialIds = new Set(getProtectedProductionLearnTutorialIds());
+    const normalizedIds = storedValue.map((tutorialId) => String(tutorialId || "").trim()).filter(Boolean);
+    const visibleDeletedIds = normalizedIds.filter((tutorialId) => !protectedTutorialIds.has(tutorialId));
+    if (visibleDeletedIds.length !== normalizedIds.length) {
+      localStorage.setItem(ADMIN_TUTORIAL_DELETED_IDS_STORAGE_KEY, JSON.stringify(visibleDeletedIds));
+    }
+    return new Set(visibleDeletedIds);
   } catch (error) {
     console.warn("[Tutorial Admin] Failed to read deleted tutorial ids.", error);
     return new Set();
@@ -38995,6 +39004,9 @@ function deleteAdminTutorialRecord(tutorialId = "") {
   const normalizedTutorialId = String(tutorialId || "").trim();
   if (!normalizedTutorialId) {
     return { ok: false, error: new Error("Tutorial ID is missing.") };
+  }
+  if (isProtectedProductionLearnTutorial(normalizedTutorialId)) {
+    return { ok: false, error: new Error("Production tutorial records cannot be deleted from local Tutorial Management.") };
   }
 
   const deletedTutorialIds = loadAdminDeletedTutorialIdsFromStorage();
@@ -39804,6 +39816,7 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
   if (!featuredTutorials.length) {
     return "";
   }
+  const featuredTutorialCount = featuredTutorials.length;
 
   return `
     <section class="card learn-featured-tutorials" data-learn-featured-section aria-labelledby="learn-featured-tutorials-title">
@@ -39813,7 +39826,7 @@ function renderFeaturedLearnTutorialsMarkup(categories = getLearnTutorialCategor
           <h2 id="learn-featured-tutorials-title">Featured Tutorials</h2>
           <p class="muted">Start with the core KAN® System and Grow App workflows.</p>
         </div>
-        <span class="learn-featured-tutorials-count">${escapeHtml(featuredTutorials.length.toLocaleString())} featured</span>
+        <span class="learn-featured-tutorials-count" data-learn-featured-count="${escapeHtml(String(featuredTutorialCount))}">${escapeHtml(featuredTutorialCount.toLocaleString())} FEATURED</span>
       </div>
       <div class="learn-featured-tutorial-grid">
         ${featuredTutorials.map(({ tutorial, category }) => renderLearnTutorialCardMarkup(tutorial, category, { featured: true })).join("")}

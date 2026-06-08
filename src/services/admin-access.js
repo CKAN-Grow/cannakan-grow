@@ -1,6 +1,9 @@
 "use strict";
 
-const FOUNDER_ADMIN_EMAILS = Object.freeze(["don@cannakan.com"]);
+const FOUNDER_ADMIN_EMAILS = Object.freeze([
+  "don@cannakan.com",
+  "growsupport@cannakan.com",
+]);
 const TRUSTED_ADMIN_EMAIL_ALLOWLIST_ENV_KEYS = Object.freeze([
   "CSTP_ADMIN_EMAIL_ALLOWLIST",
   "CANNAKAN_ADMIN_EMAIL_ALLOWLIST",
