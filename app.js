@@ -55791,6 +55791,7 @@ function renderAdminCstpPartitionEditor(detail = null, session = null) {
   });
   ensureSourceCatalogDatalist();
   initializeCustomSelects(detail.partitions);
+  initializeSourceDirectoryAutocompletes(detail.partitions);
   bindPartitionRowVisualState(detail.partitions);
   applyAdminCstpPartitionEditingMode(detail);
   applyPartitionSeedAgeLayout(detail.chartShell, detail.chartHeader, detail.partitions, seedAgeMetadata.mode);
@@ -76613,6 +76614,7 @@ function renderSessionDetail(sessionId) {
       });
       ensureSourceCatalogDatalist();
       initializeCustomSelects(partitions);
+      initializeSourceDirectoryAutocompletes(partitions);
     }
 
     bindPartitionRowVisualState(partitions);

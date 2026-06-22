@@ -41462,6 +41462,11 @@ body.theme-dark .time-format-button:not(.is-active):not([aria-pressed="true"]) {
   overflow: hidden;
 }
 
+.chart-shell:has(.partition-identity-suggestions:not([hidden])),
+.chart-shell:focus-within {
+  overflow: visible;
+}
+
 .system-layout-label {
   width: 100%;
   margin: 0;
@@ -41634,10 +41639,15 @@ body.theme-dark .chart-header span:not(:last-child)::after {
 }
 
 .partition-row {
+  position: relative;
   padding: 14px 22px 14px 16px;
   border-bottom: 1px solid var(--line);
   background: var(--partition-row-bg-odd, rgba(252, 254, 251, 0.92));
   transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.partition-row:focus-within {
+  z-index: 6;
 }
 
 .partition-row:nth-child(even) {
