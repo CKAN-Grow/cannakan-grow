@@ -75,6 +75,8 @@ const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
 const SOURCE_DIRECTORY_TABLE = "source_directory";
+const FOUNDERS_TABLE = "founders";
+const ADMIN_USERS_TABLE = "admin_users";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
 const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed-vault-start";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
@@ -1597,6 +1599,11 @@ const appState = {
   membersLoaded: false,
   membersError: "",
   membersRefreshPromise: null,
+  activeFounderEmails: [],
+  activeFounderEmailsLoaded: false,
+  activeFounderEmailsUnavailable: false,
+  currentUserAdminMembership: false,
+  currentUserFounderMembership: false,
   memberAdminFilters: {
     query: "",
     role: "all",
@@ -1744,6 +1751,7 @@ const templates = {
 
 const FOUNDER_ADMIN_EMAILS = Object.freeze([
   "don@cannakan.com",
+  "mo@cannakan.com",
   "growsupport@cannakan.com",
 ]);
 const ADMIN_EMAILS = new Set(FOUNDER_ADMIN_EMAILS);
@@ -1764,13 +1772,40 @@ function getNormalizedUserEmail(user = appState.user) {
   ).trim().toLowerCase();
 }
 
+function isCurrentUserIdentity(userOrEmail = appState.user) {
+  const normalizedEmail = getNormalizedUserEmail(userOrEmail);
+  const candidateId = typeof userOrEmail === "string" ? "" : String(userOrEmail?.id || "").trim();
+  return Boolean(
+    (candidateId && candidateId === appState.user?.id)
+    || (normalizedEmail && normalizedEmail === appState.currentUserEmail)
+  );
+}
+
 function getAdminAccessLevel(userOrEmail = appState.user, options = {}) {
   const normalizedEmail = getNormalizedUserEmail(userOrEmail);
-  if (normalizedEmail && ADMIN_EMAILS.has(normalizedEmail)) {
+  const activeFounderEmails = appState.activeFounderEmailsLoaded
+    ? new Set(appState.activeFounderEmails)
+    : ADMIN_EMAILS;
+  const isKnownFounder = normalizedEmail && activeFounderEmails.has(normalizedEmail);
+  const hasFounderAccess = options.hasFounderAccess === true
+    || (isCurrentUserIdentity(userOrEmail) && appState.currentUserFounderMembership);
+  const hasSupabaseAdminAccess = options.hasSupabaseAdminAccess === true
+    || (isCurrentUserIdentity(userOrEmail) && appState.currentUserAdminMembership);
+
+  if (isKnownFounder || hasFounderAccess) {
     return {
       isAdmin: true,
       level: "founder",
       reason: "verified_founder_email",
+      email: normalizedEmail,
+    };
+  }
+
+  if (hasSupabaseAdminAccess) {
+    return {
+      isAdmin: true,
+      level: "admin",
+      reason: "admin_users_membership",
       email: normalizedEmail,
     };
   }
@@ -1816,12 +1851,12 @@ function normalizeUserRole(role) {
   return String(role || "").trim().toLowerCase() === "admin" ? "admin" : "user";
 }
 
-function resolveSupabaseBackedUserRole(session = appState.authSession, profile = appState.profile) {
+function resolveSupabaseBackedUserRole(session = appState.authSession, profile = appState.profile, options = {}) {
   if (!session?.user) {
     return "user";
   }
 
-  return getAdminAccessLevel(session.user).isAdmin ? "admin" : "user";
+  return getAdminAccessLevel(session.user, options).isAdmin ? "admin" : "user";
 }
 
 function hasResolvedAdminAccess() {
@@ -1835,11 +1870,11 @@ function canManuallyEditGrowSessionTimestamps() {
   return hasResolvedAdminAccess() || isAdminUser();
 }
 
-function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile) {
+function applyResolvedAuthState(session, reason = "auth-change", profile = appState.profile, options = {}) {
   const sessionEmail = String(session?.user?.email || "").trim();
   const normalizedEmail = getNormalizedUserEmail(session?.user || null);
-  const adminAccess = getAdminAccessLevel(session?.user || null);
-  const resolvedRole = session ? resolveSupabaseBackedUserRole(session, profile) : "user";
+  const adminAccess = getAdminAccessLevel(session?.user || null, options);
+  const resolvedRole = session ? resolveSupabaseBackedUserRole(session, profile, options) : "user";
   const isAdmin = resolvedRole === "admin";
 
   appState.authSession = session || null;
@@ -2123,6 +2158,11 @@ function resetSessionScopedAppState() {
   appState.membersLoaded = false;
   appState.membersError = "";
   appState.membersRefreshPromise = null;
+  appState.activeFounderEmails = [];
+  appState.activeFounderEmailsLoaded = false;
+  appState.activeFounderEmailsUnavailable = false;
+  appState.currentUserAdminMembership = false;
+  appState.currentUserFounderMembership = false;
   appState.founderCleanupRpcUnavailable = false;
   appState.founderCleanupRpcWarning = "";
   appState.founderCleanupRpcDiagnosticsChecked = false;
@@ -16452,7 +16492,15 @@ async function handleAuthSession(session, options = { shouldRender: true }) {
           "Failed to initialize profile settings during auth hydration.",
         );
         appState.profilePageSettingsUserId = String(appState.user.id || "").trim();
-        applyResolvedAuthState(session, `${reason}:profile`, appState.profile);
+        const adminMembership = await safelyLoadAppData(
+          () => resolveCurrentUserSupabaseAdminAccess(appState.user, `${reason}:admin-membership`),
+          { isAdmin: false, isFounder: false },
+          "Failed to verify admin membership during auth hydration.",
+        );
+        applyResolvedAuthState(session, `${reason}:profile`, appState.profile, {
+          hasSupabaseAdminAccess: adminMembership?.isAdmin === true,
+          hasFounderAccess: adminMembership?.isFounder === true,
+        });
         updateAuthStatus();
         if (appState.profile?.accountStatus === "disabled" && !appState.isAdmin) {
           appState.authNotice = `This ${BRAND_APP_NAME} account has been disabled. Contact an administrator for help.`;
@@ -17191,6 +17239,89 @@ function getMemberRole(email = "") {
   return isAdminUser(email) ? "admin" : "member";
 }
 
+function normalizeFounderRow(row = {}) {
+  const email = String(row?.email || "").trim().toLowerCase();
+  if (!email) {
+    return null;
+  }
+
+  return {
+    email,
+    role: String(row?.role || "founder").trim().toLowerCase() || "founder",
+    active: row?.active !== false,
+  };
+}
+
+function getActiveFounderEmailSet(founderRows = []) {
+  const emails = new Set();
+  (founderRows || []).forEach((row) => {
+    const founder = normalizeFounderRow(row);
+    if (founder?.active) {
+      emails.add(founder.email);
+    }
+  });
+  return emails;
+}
+
+async function loadActiveFounderEmails(reason = "unspecified") {
+  if (!appState.supabase || appState.activeFounderEmailsUnavailable) {
+    return new Set(appState.activeFounderEmailsLoaded ? appState.activeFounderEmails : FOUNDER_ADMIN_EMAILS);
+  }
+
+  const { data, error } = await appState.supabase
+    .from(FOUNDERS_TABLE)
+    .select("email,role,active")
+    .eq("active", true);
+
+  if (error) {
+    if (isSupabaseTableMissingError(error, FOUNDERS_TABLE)) {
+      appState.activeFounderEmailsUnavailable = true;
+    }
+    console.warn("Founder directory unavailable; using built-in founder fallback.", { reason, error });
+    return new Set(appState.activeFounderEmailsLoaded ? appState.activeFounderEmails : FOUNDER_ADMIN_EMAILS);
+  }
+
+  const founderEmails = [...getActiveFounderEmailSet(data || [])];
+  appState.activeFounderEmails = founderEmails;
+  appState.activeFounderEmailsLoaded = true;
+  appState.activeFounderEmailsUnavailable = false;
+  return new Set(founderEmails);
+}
+
+async function resolveCurrentUserSupabaseAdminAccess(user = appState.user, reason = "auth") {
+  const userId = String(user?.id || "").trim();
+  const normalizedEmail = getNormalizedUserEmail(user);
+  appState.currentUserAdminMembership = false;
+  appState.currentUserFounderMembership = false;
+
+  if (!appState.supabase || !userId) {
+    return { isAdmin: false, isFounder: false };
+  }
+
+  const founderEmails = await loadActiveFounderEmails(`${reason}:founders`);
+  const isFounder = Boolean(normalizedEmail && founderEmails.has(normalizedEmail));
+  if (isFounder) {
+    appState.currentUserFounderMembership = true;
+    appState.currentUserAdminMembership = true;
+    return { isAdmin: true, isFounder: true };
+  }
+
+  const { data, error } = await appState.supabase
+    .from(ADMIN_USERS_TABLE)
+    .select("user_id,email")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Could not verify admin membership.", { reason, error });
+    return { isAdmin: false, isFounder: false };
+  }
+
+  const isAdmin = Boolean(data?.user_id);
+  appState.currentUserAdminMembership = isAdmin;
+  return { isAdmin, isFounder: false };
+}
+
 function formatMemberDateLabel(value) {
   const parsedDate = parseCompletedAtValue(value);
   return parsedDate ? formatTimingDateTime(parsedDate) : "Not available";
@@ -17218,9 +17349,23 @@ function getActiveMemberCutoffDate() {
   return new Date(Date.now() - (ACTIVE_MEMBER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
 }
 
-function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) {
+function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = [], adminUserRows = [], founderRows = []) {
   const sessionCountByUserId = new Map();
   const galleryCountByUserId = new Map();
+  const adminUserIds = new Set();
+  const adminUserEmails = new Set();
+  const founderEmails = getActiveFounderEmailSet(founderRows);
+
+  (adminUserRows || []).forEach((row) => {
+    const userId = String(row?.user_id || "").trim();
+    const email = String(row?.email || "").trim().toLowerCase();
+    if (userId) {
+      adminUserIds.add(userId);
+    }
+    if (email) {
+      adminUserEmails.add(email);
+    }
+  });
 
   (sessionRows || []).forEach((row) => {
     if (
@@ -17254,30 +17399,40 @@ function mapAdminMembers(profileRows = [], sessionRows = [], snapshotRows = []) 
   return (profileRows || [])
     .map(normalizeProfileRow)
     .filter((profile) => profile && profile.deletionStatus !== "deleted")
-    .map((profile) => ({
-      id: profile.id,
-      profileName: getDisplayName(
-        {
-          id: profile.id,
-          username: profile.username || "",
-        },
-        { fallbackLabel: "User" },
-      ),
-      email: profile.email || "",
-      role: getMemberRole(profile.email),
-      joinedAt: profile.createdAt || "",
-      lastActiveAt: profile.lastActiveAt || "",
-      sessionCount: sessionCountByUserId.get(profile.id) || 0,
-      gallerySubmissionCount: galleryCountByUserId.get(profile.id) || 0,
-      accountStatus: profile.accountStatus || "active",
-      avatarUrl: profile.avatarUrl || "",
-      avatarPath: profile.avatarPath || "",
-      deletionStatus: profile.deletionStatus || "",
-      deletionRequestedAt: profile.deletionRequestedAt || "",
-      deletionScheduledFor: profile.deletionScheduledFor || "",
-      createdAt: profile.createdAt || "",
-      updatedAt: profile.updatedAt || "",
-    }))
+    .map((profile) => {
+      const isFounder = Boolean(profile.email && founderEmails.has(profile.email));
+      const isAdmin = isFounder
+        || adminUserIds.has(profile.id)
+        || (profile.email && adminUserEmails.has(profile.email))
+        || getMemberRole(profile.email) === "admin";
+
+      return {
+        id: profile.id,
+        profileName: getDisplayName(
+          {
+            id: profile.id,
+            username: profile.username || "",
+          },
+          { fallbackLabel: "User" },
+        ),
+        email: profile.email || "",
+        role: isAdmin ? "admin" : "member",
+        isFounder,
+        founderRole: isFounder ? "founder" : "",
+        joinedAt: profile.createdAt || "",
+        lastActiveAt: profile.lastActiveAt || "",
+        sessionCount: sessionCountByUserId.get(profile.id) || 0,
+        gallerySubmissionCount: galleryCountByUserId.get(profile.id) || 0,
+        accountStatus: profile.accountStatus || "active",
+        avatarUrl: profile.avatarUrl || "",
+        avatarPath: profile.avatarPath || "",
+        deletionStatus: profile.deletionStatus || "",
+        deletionRequestedAt: profile.deletionRequestedAt || "",
+        deletionScheduledFor: profile.deletionScheduledFor || "",
+        createdAt: profile.createdAt || "",
+        updatedAt: profile.updatedAt || "",
+      };
+    })
     .sort((left, right) => new Date(right.joinedAt || 0).getTime() - new Date(left.joinedAt || 0).getTime());
 }
 
@@ -17286,7 +17441,7 @@ async function loadAdminMembers(reason = "unspecified") {
     return [];
   }
 
-  let [profilesResponse, sessionsResponse, snapshotsResponse] = await Promise.all([
+  let [profilesResponse, sessionsResponse, snapshotsResponse, adminUsersResponse, foundersResponse] = await Promise.all([
     appState.supabase
       .from("profiles")
       .select("*")
@@ -17297,6 +17452,13 @@ async function loadAdminMembers(reason = "unspecified") {
     appState.supabase
       .from("grow_gallery_snapshots")
       .select("id,user_id,created_at,published_at,status,is_mock"),
+    appState.supabase
+      .from(ADMIN_USERS_TABLE)
+      .select("user_id,email"),
+    appState.supabase
+      .from(FOUNDERS_TABLE)
+      .select("email,role,active")
+      .eq("active", true),
   ]);
 
   if (profilesResponse.error) {
@@ -17338,8 +17500,36 @@ async function loadAdminMembers(reason = "unspecified") {
     return [];
   }
 
+  if (adminUsersResponse.error) {
+    console.error("Failed to load admin member roles", { reason, error: adminUsersResponse.error });
+    appState.membersError = adminUsersResponse.error.message || "Could not load member admin roles.";
+    return [];
+  }
+
+  if (foundersResponse.error) {
+    if (isSupabaseTableMissingError(foundersResponse.error, FOUNDERS_TABLE)) {
+      appState.activeFounderEmailsUnavailable = true;
+    } else {
+      console.error("Failed to load founder roles", { reason, error: foundersResponse.error });
+    }
+    foundersResponse = {
+      data: FOUNDER_ADMIN_EMAILS.map((email) => ({ email, role: "founder", active: true })),
+      error: null,
+    };
+  } else {
+    appState.activeFounderEmails = [...getActiveFounderEmailSet(foundersResponse.data || [])];
+    appState.activeFounderEmailsLoaded = true;
+    appState.activeFounderEmailsUnavailable = false;
+  }
+
   appState.membersError = "";
-  return mapAdminMembers(profilesResponse.data || [], sessionsResponse.data || [], snapshotsResponse.data || []);
+  return mapAdminMembers(
+    profilesResponse.data || [],
+    sessionsResponse.data || [],
+    snapshotsResponse.data || [],
+    adminUsersResponse.data || [],
+    foundersResponse.data || [],
+  );
 }
 
 async function refreshAdminMembers(options = {}) {
@@ -17841,6 +18031,7 @@ function getFilteredAdminMembers() {
       member.profileName,
       member.email,
       member.role,
+      member.isFounder ? "founder" : "",
     ].some((value) => String(value || "").toLowerCase().includes(query));
   });
 }
@@ -17893,6 +18084,46 @@ async function updateMemberAccountStatus(member, nextStatus = "disabled") {
       : entry
   ));
   return updatedProfile;
+}
+
+async function updateMemberAdminAccess(member, shouldBeAdmin = true) {
+  if (!appState.supabase || !isAdminUser()) {
+    throw new Error("You must be an admin to manage member roles.");
+  }
+
+  if (!member?.id) {
+    throw new Error("Member not found.");
+  }
+
+  if (member.isFounder && !shouldBeAdmin) {
+    throw new Error("Founder accounts cannot be demoted.");
+  }
+
+  const { data, error } = await appState.supabase.rpc("set_member_admin_access", {
+    target_user_id: member.id,
+    should_be_admin: shouldBeAdmin === true,
+  });
+
+  if (error) {
+    throw new Error(error.message || "Could not update member role.");
+  }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  const nextRole = result?.is_admin === false ? "member" : "admin";
+  const isFounder = result?.is_founder === true || member.isFounder === true;
+  appState.members = appState.members.map((entry) => (
+    entry.id === member.id
+      ? {
+        ...entry,
+        role: isFounder ? "admin" : nextRole,
+        isFounder,
+        founderRole: isFounder ? "founder" : "",
+        email: String(result?.email || entry.email || "").trim().toLowerCase(),
+      }
+      : entry
+  ));
+
+  return result;
 }
 
 async function deleteMemberAccount(member) {
@@ -50656,6 +50887,23 @@ function renderMemberRolePillMarkup(role = "member") {
   return `<span class="admin-member-role-pill is-${escapeHtml(normalizedRole)}">${escapeHtml(capitalize(normalizedRole))}</span>`;
 }
 
+function renderMemberFounderBadgeMarkup(member = {}) {
+  if (!member?.isFounder) {
+    return "";
+  }
+
+  return `<span class="admin-member-role-pill is-founder">Founder</span>`;
+}
+
+function renderMemberRoleBadgesMarkup(member = {}) {
+  return `
+    <span class="admin-member-role-badges">
+      ${renderMemberRolePillMarkup(member.role)}
+      ${renderMemberFounderBadgeMarkup(member)}
+    </span>
+  `;
+}
+
 function renderMemberStatusPillMarkup(status = "active") {
   const normalizedStatus = status === "disabled" ? "disabled" : "active";
   return `<span class="admin-member-status-pill is-${escapeHtml(normalizedStatus)}">${escapeHtml(capitalize(normalizedStatus))}</span>`;
@@ -50696,11 +50944,14 @@ function renderAdminMembersFiltersMarkup() {
 function renderAdminMemberRowMarkup(member) {
   const isSelf = isCurrentAdminMember(member);
   const actionLabel = member.accountStatus === "disabled" ? "Enable" : "Disable";
+  const nextAdminState = member.role === "admin" ? "false" : "true";
+  const roleActionLabel = member.role === "admin" ? "Demote" : "Promote";
+  const roleActionDisabled = member.isFounder && member.role === "admin";
   return `
     <tr>
       <td>${escapeHtml(member.profileName)}</td>
       <td>${escapeHtml(member.email || "Not available")}</td>
-      <td>${renderMemberRolePillMarkup(member.role)}</td>
+      <td>${renderMemberRoleBadgesMarkup(member)}</td>
       <td>${escapeHtml(formatMemberDateLabel(member.joinedAt))}</td>
       <td>${escapeHtml(formatMemberDateLabel(member.lastActiveAt))}</td>
       <td>${escapeHtml(String(member.sessionCount || 0))}</td>
@@ -50709,6 +50960,7 @@ function renderAdminMemberRowMarkup(member) {
       <td>
         <div class="admin-member-actions">
           <button type="button" class="button button-secondary" data-member-view="${escapeHtml(member.id)}">View</button>
+          <button type="button" class="button button-secondary" data-member-toggle-admin="${escapeHtml(member.id)}" data-member-next-admin="${escapeHtml(nextAdminState)}" ${roleActionDisabled ? "disabled" : ""}>${escapeHtml(roleActionLabel)}</button>
           <button type="button" class="button button-secondary" data-member-toggle-status="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
           <button type="button" class="button button-secondary gallery-admin-reject" data-member-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete</button>
         </div>
@@ -50866,6 +51118,9 @@ function openAdminMemberDetails(memberId) {
   const content = modal.querySelector(".admin-member-details-content");
   const isSelf = isCurrentAdminMember(member);
   const actionLabel = member.accountStatus === "disabled" ? "Enable Account" : "Disable Account";
+  const nextAdminState = member.role === "admin" ? false : true;
+  const roleActionLabel = member.role === "admin" ? "Demote to Member" : "Promote to Admin";
+  const roleActionDisabled = member.isFounder && member.role === "admin";
 
   if (!content) {
     return;
@@ -50879,7 +51134,7 @@ function openAdminMemberDetails(memberId) {
         <p class="muted">${escapeHtml(member.email || "No email available")}</p>
       </div>
       <div class="admin-member-details-badges">
-        ${renderMemberRolePillMarkup(member.role)}
+        ${renderMemberRoleBadgesMarkup(member)}
         ${renderMemberStatusPillMarkup(member.accountStatus)}
       </div>
     </div>
@@ -50912,13 +51167,27 @@ function openAdminMemberDetails(memberId) {
     </div>
     <div class="snapshot-modal-actions admin-member-details-actions">
       <div class="admin-member-details-destructive-actions">
+        <button type="button" class="button button-secondary" data-member-detail-admin="${escapeHtml(member.id)}" data-member-next-admin="${escapeHtml(String(nextAdminState))}" ${roleActionDisabled ? "disabled" : ""}>${escapeHtml(roleActionLabel)}</button>
         <button type="button" class="button button-secondary" data-member-detail-toggle="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>${escapeHtml(actionLabel)}</button>
         <button type="button" class="button button-secondary gallery-admin-reject" data-member-detail-delete="${escapeHtml(member.id)}" ${isSelf ? "disabled" : ""}>Delete Member</button>
       </div>
       <button type="button" class="button button-secondary admin-member-details-safe-close" data-member-detail-close>Close</button>
     </div>
     ${isSelf ? '<p class="muted admin-member-self-note">You cannot disable or delete your own admin account from this panel.</p>' : ""}
+    ${member.isFounder ? '<p class="muted admin-member-self-note">Founder accounts always keep admin access and cannot be demoted.</p>' : ""}
   `;
+
+  content.querySelector("[data-member-detail-admin]")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    try {
+      await updateMemberAdminAccess(member, button?.dataset.memberNextAdmin === "true");
+      await refreshAdminMembers({ force: true, reason: "admin:member-role" });
+      safeRender();
+      modal.close();
+    } catch (error) {
+      alert(error.message || "Could not update member role.");
+    }
+  }, { once: true });
 
   content.querySelector("[data-member-detail-toggle]")?.addEventListener("click", async () => {
     try {
@@ -50980,6 +51249,23 @@ function bindAdminMembersSection() {
           safeRender();
         } catch (error) {
           alert(error.message || "Could not update account status.");
+        }
+      });
+    });
+
+    membersTable?.querySelectorAll("[data-member-toggle-admin]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const member = getAdminMemberById(button.dataset.memberToggleAdmin || "");
+        if (!member) {
+          return;
+        }
+
+        try {
+          await updateMemberAdminAccess(member, button.dataset.memberNextAdmin === "true");
+          await refreshAdminMembers({ force: true, reason: "admin:member-role" });
+          safeRender();
+        } catch (error) {
+          alert(error.message || "Could not update member role.");
         }
       });
     });
@@ -69605,8 +69891,7 @@ function openSeedVaultEntryModal(entry = null) {
     }
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     bindSeedVaultEntryModalGuards(overlay, form);
-    initializeSourceDirectoryAutocompletes(form);
-    initializePartitionIdentityAutocompletes(form);
+    initializeSessionSourceAndVarietyAutocompletes(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       await saveSeedVaultEntryForm(form);
@@ -72734,6 +73019,67 @@ function buildSourceDirectoryInputMatch(displayValue = "", options = {}) {
   };
 }
 
+function getSourceDirectorySelectedCandidateFromInput(input, fallbackValue = "") {
+  if (!(input instanceof HTMLInputElement) || input.dataset.matchStatus !== "selected") {
+    return null;
+  }
+
+  const sourceValue = String(fallbackValue || input.value || "").trim();
+  return {
+    canonicalId: input.dataset.canonicalId || "",
+    canonicalName: input.dataset.canonicalLabel || sourceValue,
+    label: input.dataset.canonicalLabel || sourceValue,
+  };
+}
+
+function getSourceDirectoryMatchFromInput(input, fallbackValue = "") {
+  const sourceValue = String(fallbackValue || input?.value || "").trim();
+  return {
+    sourceValue,
+    sourceMatch: buildSourceDirectoryInputMatch(sourceValue, {
+      selectedCandidate: getSourceDirectorySelectedCandidateFromInput(input, sourceValue),
+    }),
+  };
+}
+
+function buildPartitionSourceDirectoryFields(row, fallbackValue = "") {
+  const sourceInput = row?.querySelector?.('input[name^="source-"]');
+  const { sourceValue, sourceMatch } = getSourceDirectoryMatchFromInput(sourceInput, fallbackValue);
+  return {
+    source: sourceValue,
+    sourceCanonicalName: sourceMatch.canonicalName,
+    sourceCanonicalId: sourceMatch.canonicalId,
+    sourceNormalizedName: sourceMatch.normalizedKey,
+    sourceMatchStatus: sourceMatch.matchStatus,
+    sourceMatchConfidence: sourceMatch.matchConfidence,
+    sourceReviewCandidateId: sourceMatch.reviewCandidateId,
+    sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+  };
+}
+
+function hydrateSourceDirectoryInput(input, partition = {}) {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const sourceValue = formatPartitionSource(partition);
+  const match = buildSourceDirectoryInputMatch(sourceValue, {
+    selectedCandidate: partition?.sourceCanonicalId || partition?.source_canonical_id ? {
+      canonicalId: partition?.sourceCanonicalId || partition?.source_canonical_id,
+      canonicalName: partition?.sourceCanonicalName || partition?.source_canonical_name || sourceValue,
+      label: partition?.sourceCanonicalName || partition?.source_canonical_name || sourceValue,
+    } : null,
+  });
+  input.value = sourceValue;
+  input.dataset.canonicalId = partition?.sourceCanonicalId || partition?.source_canonical_id || match.canonicalId;
+  input.dataset.canonicalLabel = partition?.sourceCanonicalName || partition?.source_canonical_name || match.canonicalName || input.value;
+  input.dataset.normalizedKey = partition?.sourceNormalizedName || partition?.source_normalized_name || match.normalizedKey;
+  input.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.sourceMatchStatus || partition?.source_match_status || match.matchStatus);
+  input.dataset.matchConfidence = String(Number(partition?.sourceMatchConfidence ?? partition?.source_match_confidence ?? match.matchConfidence) || 0);
+  input.dataset.reviewCandidateId = partition?.sourceReviewCandidateId || partition?.source_review_candidate_id || match.reviewCandidateId || "";
+  input.dataset.reviewCandidateName = partition?.sourceReviewCandidateName || partition?.source_review_candidate_name || match.reviewCandidateName || "";
+}
+
 function getPartitionIdentitySuggestions(kind = "", query = "") {
   const config = getPartitionIdentityKindConfig(kind);
   const normalizedQuery = config.normalize(query);
@@ -73071,6 +73417,11 @@ function initializePartitionIdentityAutocompletes(scope) {
   });
 }
 
+function initializeSessionSourceAndVarietyAutocompletes(scope) {
+  initializeSourceDirectoryAutocompletes(scope);
+  initializePartitionIdentityAutocompletes(scope);
+}
+
 function renderPartitionRows(form, systemType, sessionStatus) {
   const partitionFields = form.querySelector("#partition-fields");
   const formMessage = form.querySelector("#form-message");
@@ -73121,8 +73472,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   form.__partitionDraftValues = partitions.map((partition) => ({ ...partition }));
 
   initializeCustomSelects(partitionFields);
-  initializeSourceDirectoryAutocompletes(partitionFields);
-  initializePartitionIdentityAutocompletes(partitionFields);
+  initializeSessionSourceAndVarietyAutocompletes(partitionFields);
   bindPartitionRowVisualState(partitionFields);
   attachPartitionValidation(form, formMessage);
   applySessionStatusLayout(
@@ -73793,21 +74143,7 @@ function hydratePartitionRow(row, partition) {
   const sourceInput = row.querySelector('input[name^="source-"]');
   const varietyInput = row.querySelector('input[name^="seedVariety-"]');
   if (sourceInput instanceof HTMLInputElement) {
-    const match = buildSourceDirectoryInputMatch(formatPartitionSource(partition), {
-      selectedCandidate: partition?.sourceCanonicalId || partition?.source_canonical_id ? {
-        canonicalId: partition?.sourceCanonicalId || partition?.source_canonical_id,
-        canonicalName: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
-        label: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
-      } : null,
-    });
-    sourceInput.value = formatPartitionSource(partition);
-    sourceInput.dataset.canonicalId = partition?.sourceCanonicalId || partition?.source_canonical_id || match.canonicalId;
-    sourceInput.dataset.canonicalLabel = partition?.sourceCanonicalName || partition?.source_canonical_name || match.canonicalName || sourceInput.value;
-    sourceInput.dataset.normalizedKey = partition?.sourceNormalizedName || partition?.source_normalized_name || match.normalizedKey;
-    sourceInput.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.sourceMatchStatus || partition?.source_match_status || match.matchStatus);
-    sourceInput.dataset.matchConfidence = String(Number(partition?.sourceMatchConfidence ?? partition?.source_match_confidence ?? match.matchConfidence) || 0);
-    sourceInput.dataset.reviewCandidateId = partition?.sourceReviewCandidateId || partition?.source_review_candidate_id || match.reviewCandidateId || "";
-    sourceInput.dataset.reviewCandidateName = partition?.sourceReviewCandidateName || partition?.source_review_candidate_name || match.reviewCandidateName || "";
+    hydrateSourceDirectoryInput(sourceInput, partition);
   }
   if (varietyInput instanceof HTMLInputElement) {
     const match = buildPartitionIdentityMatch("seedVariety", formatPartitionSeedVariety(partition), {
@@ -73857,13 +74193,7 @@ function getCurrentPartitionValues(form) {
     const varietyInput = row.querySelector('input[name^="seedVariety-"]');
     const sourceValue = sourceInput?.value.trim() || "";
     const varietyValue = varietyInput?.value.trim() || "";
-    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
-      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
-        canonicalId: sourceInput.dataset.canonicalId || "",
-        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
-        label: sourceInput.dataset.canonicalLabel || sourceValue,
-      } : null,
-    });
+    const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
     const varietyMatch = buildPartitionIdentityMatch("seedVariety", varietyValue, {
       selectedCandidate: varietyInput?.dataset.matchStatus === "selected" ? {
         canonicalId: varietyInput.dataset.canonicalId || "",
@@ -73875,14 +74205,7 @@ function getCurrentPartitionValues(form) {
 
     return {
       id: Number(row.dataset.partitionId) || index + 1,
-      source: sourceValue,
-      sourceCanonicalName: sourceMatch.canonicalName,
-      sourceCanonicalId: sourceMatch.canonicalId,
-      sourceNormalizedName: sourceMatch.normalizedKey,
-      sourceMatchStatus: sourceMatch.matchStatus,
-      sourceMatchConfidence: sourceMatch.matchConfidence,
-      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
-      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+      ...sourceFields,
       seedVariety: varietyValue,
       seedVarietyCanonicalName: varietyMatch.canonicalName,
       seedVarietyCanonicalId: varietyMatch.canonicalId,
@@ -81074,25 +81397,11 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
     : getSessionSeedAgeMetadata(session);
   session.partitions = [...container.querySelectorAll(".partition-row")].map((row, index) => {
     const existingPartition = session.partitions?.[index] || {};
-    const sourceInput = row.querySelector('input[name^="source-"]');
     const sourceValue = getPartitionRowFieldValue(row, "source").trim();
-    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
-      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
-        canonicalId: sourceInput.dataset.canonicalId || "",
-        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
-        label: sourceInput.dataset.canonicalLabel || sourceValue,
-      } : null,
-    });
+    const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
     return {
       id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
-      source: sourceValue,
-      sourceCanonicalName: sourceMatch.canonicalName,
-      sourceCanonicalId: sourceMatch.canonicalId,
-      sourceNormalizedName: sourceMatch.normalizedKey,
-      sourceMatchStatus: sourceMatch.matchStatus,
-      sourceMatchConfidence: sourceMatch.matchConfidence,
-      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
-      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+      ...sourceFields,
       seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
       breeder: existingPartition.breeder || "",
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
@@ -81532,25 +81841,11 @@ function buildPartitionDraftValuesFromContainer(container) {
   }
 
   return [...container.querySelectorAll(".partition-row")].map((row, index) => {
-    const sourceInput = row.querySelector('input[name^="source-"]');
     const sourceValue = getPartitionRowFieldValue(row, "source").trim();
-    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
-      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
-        canonicalId: sourceInput.dataset.canonicalId || "",
-        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
-        label: sourceInput.dataset.canonicalLabel || sourceValue,
-      } : null,
-    });
+    const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
     return {
       id: Number(row.dataset.partitionId) || index + 1,
-      source: sourceValue,
-      sourceCanonicalName: sourceMatch.canonicalName,
-      sourceCanonicalId: sourceMatch.canonicalId,
-      sourceNormalizedName: sourceMatch.normalizedKey,
-      sourceMatchStatus: sourceMatch.matchStatus,
-      sourceMatchConfidence: sourceMatch.matchConfidence,
-      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
-      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+      ...sourceFields,
       seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
       feminized: getPartitionRowFieldValue(row, "feminized").trim(),
