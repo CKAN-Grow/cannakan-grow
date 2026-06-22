@@ -74,6 +74,7 @@ const COMMUNITY_ACTIVITY_TABLE = "community_activity";
 const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
+const SOURCE_DIRECTORY_TABLE = "source_directory";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
 const NEW_SESSION_SEED_VAULT_START_STORAGE_KEY = "cannakan-grow-new-session-seed-vault-start";
 const USER_PUSH_SUBSCRIPTIONS_TABLE = "user_push_subscriptions";
@@ -347,6 +348,8 @@ const loggedRuntimeIssueKeys = new Set();
 const SOURCE_CATALOG_DATALIST_ID = "source-catalog-options";
 const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
 const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;
+const SOURCE_DIRECTORY_AUTOCOMPLETE_LIMIT = 10;
+const SOURCE_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
 const PARTITION_IDENTITY_TYPO_SUGGESTION_MIN_CHARS = 4;
 const PARTITION_IDENTITY_MATCH_STATUSES = Object.freeze(["selected", "auto_matched", "needs_review", "new"]);
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -1454,6 +1457,10 @@ const appState = {
   seedVaultSourceFilter: "all",
   seedVaultTypeFilter: "all",
   seedVaultSexFilter: "all",
+  sourceDirectoryEntries: [],
+  sourceDirectoryLoaded: false,
+  sourceDirectoryRefreshPromise: null,
+  sourceDirectoryUnavailable: false,
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
@@ -2072,6 +2079,10 @@ function resetSessionScopedAppState() {
   appState.seedVaultSourceFilter = "all";
   appState.seedVaultTypeFilter = "all";
   appState.seedVaultSexFilter = "all";
+  appState.sourceDirectoryEntries = [];
+  appState.sourceDirectoryLoaded = false;
+  appState.sourceDirectoryRefreshPromise = null;
+  appState.sourceDirectoryUnavailable = false;
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -5548,6 +5559,226 @@ function loadStoredSeedVaultEntries(userId = appState.user?.id || "") {
     console.warn("[My Seed Vault] Failed to read local entries.", error);
     return [];
   }
+}
+
+function normalizeSourceDirectoryText(value = "") {
+  return normalizeIdentityPunctuation(value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function mapSourceDirectoryRow(row = {}) {
+  const name = String(row?.name || "").trim();
+  if (!name) {
+    return null;
+  }
+
+  const aliases = Array.isArray(row.aliases)
+    ? row.aliases.map((alias) => String(alias || "").trim()).filter(Boolean)
+    : [];
+
+  return {
+    id: String(row.id || "").trim(),
+    name,
+    normalizedName: String(row.normalized_name || normalizeSourceDirectoryText(name)).trim(),
+    aliases,
+    sourceType: String(row.source_type || "other").trim() || "other",
+    country: String(row.country || "").trim(),
+    verified: Boolean(row.verified),
+    active: row.active !== false,
+    usageCount: Math.max(0, Number(row.usage_count) || 0),
+  };
+}
+
+function isSourceDirectoryTableMissingError(error) {
+  return isSupabaseTableMissingError(error, SOURCE_DIRECTORY_TABLE);
+}
+
+function markSourceDirectoryUnavailable(error = null) {
+  appState.sourceDirectoryUnavailable = true;
+  appState.sourceDirectoryEntries = [];
+  appState.sourceDirectoryLoaded = true;
+  logRuntimeIssueOnce(
+    "warn",
+    "source-directory-unavailable",
+    "Source Directory autocomplete unavailable. Custom source text remains enabled.",
+    error || undefined,
+  );
+}
+
+async function loadSourceDirectoryEntries() {
+  if (!appState.supabase || appState.sourceDirectoryUnavailable) {
+    appState.sourceDirectoryLoaded = true;
+    return appState.sourceDirectoryEntries || [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(SOURCE_DIRECTORY_TABLE)
+    .select("id,name,normalized_name,aliases,source_type,country,verified,active,usage_count")
+    .eq("active", true)
+    .order("name", { ascending: true });
+
+  if (error) {
+    if (isSourceDirectoryTableMissingError(error)) {
+      markSourceDirectoryUnavailable(error);
+      return [];
+    }
+    logRuntimeIssueOnce("warn", "source-directory-load-failed", "Could not load Source Directory autocomplete entries.", error);
+    return appState.sourceDirectoryEntries || [];
+  }
+
+  appState.sourceDirectoryEntries = (data || [])
+    .map(mapSourceDirectoryRow)
+    .filter((entry) => entry && entry.active)
+    .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+  appState.sourceDirectoryLoaded = true;
+  return appState.sourceDirectoryEntries;
+}
+
+async function refreshSourceDirectoryEntries(options = {}) {
+  const { force = false } = options || {};
+
+  if (!force && appState.sourceDirectoryLoaded) {
+    return appState.sourceDirectoryEntries || [];
+  }
+
+  if (!force && appState.sourceDirectoryRefreshPromise) {
+    return appState.sourceDirectoryRefreshPromise;
+  }
+
+  appState.sourceDirectoryRefreshPromise = loadSourceDirectoryEntries();
+  try {
+    return await appState.sourceDirectoryRefreshPromise;
+  } finally {
+    appState.sourceDirectoryRefreshPromise = null;
+  }
+}
+
+function getSourceDirectoryEntrySearchValues(entry = {}) {
+  return [
+    entry.name,
+    ...(Array.isArray(entry.aliases) ? entry.aliases : []),
+  ]
+    .map((value) => ({
+      label: String(value || "").trim(),
+      normalized: normalizeSourceDirectoryText(value),
+    }))
+    .filter((value) => value.label && value.normalized);
+}
+
+function getSourceDirectorySuggestionReason(suggestion = {}) {
+  const parts = [];
+  if (suggestion.verified) {
+    parts.push("Verified");
+  }
+  if (suggestion.country) {
+    parts.push(suggestion.country);
+  }
+  if (suggestion.matchedAlias && suggestion.matchedAlias !== suggestion.name) {
+    parts.push(`Alias: ${suggestion.matchedAlias}`);
+  }
+  return parts.join(" · ") || "Source Directory";
+}
+
+function getSourceDirectorySuggestions(query = "") {
+  const normalizedQuery = normalizeSourceDirectoryText(query);
+  if (normalizedQuery.length < SOURCE_DIRECTORY_AUTOCOMPLETE_MIN_CHARS) {
+    return [];
+  }
+
+  return (appState.sourceDirectoryEntries || [])
+    .map((entry) => {
+      const values = getSourceDirectoryEntrySearchValues(entry);
+      let bestMatch = null;
+      values.forEach((value) => {
+        let rank = 99;
+        if (value.normalized.startsWith(normalizedQuery)) {
+          rank = 0;
+        } else if (value.normalized.includes(normalizedQuery)) {
+          rank = 1;
+        }
+        if (rank >= 99) {
+          return;
+        }
+        if (!bestMatch || rank < bestMatch.rank || (rank === bestMatch.rank && value.label.length < bestMatch.label.length)) {
+          bestMatch = { rank, label: value.label };
+        }
+      });
+      if (!bestMatch) {
+        return null;
+      }
+      return {
+        ...entry,
+        rank: bestMatch.rank,
+        matchedAlias: bestMatch.label !== entry.name ? bestMatch.label : "",
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => (
+      left.rank - right.rank
+      || Number(right.verified) - Number(left.verified)
+      || right.usageCount - left.usageCount
+      || left.name.localeCompare(right.name, "en", { sensitivity: "base" })
+    ))
+    .slice(0, SOURCE_DIRECTORY_AUTOCOMPLETE_LIMIT)
+    .map((suggestion) => ({
+      ...suggestion,
+      reason: getSourceDirectorySuggestionReason(suggestion),
+    }));
+}
+
+async function recordSourceDirectoryUsage(sourceName = "") {
+  const cleanedName = String(sourceName || "").trim().replace(/\s+/g, " ");
+  if (!cleanedName || !appState.supabase || appState.sourceDirectoryUnavailable) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase.rpc("record_source_directory_usage", {
+    source_name: cleanedName,
+  });
+
+  if (error) {
+    if (isSourceDirectoryTableMissingError(error)) {
+      markSourceDirectoryUnavailable(error);
+      return null;
+    }
+    logRuntimeIssueOnce("warn", "source-directory-usage-record-failed", "Could not record Source Directory usage.", error);
+    return null;
+  }
+
+  const updatedEntry = mapSourceDirectoryRow(data);
+  if (updatedEntry) {
+    const normalizedName = normalizeSourceDirectoryText(updatedEntry.name);
+    appState.sourceDirectoryEntries = [
+      ...(appState.sourceDirectoryEntries || []).filter((entry) => normalizeSourceDirectoryText(entry.name) !== normalizedName),
+      updatedEntry,
+    ].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+    appState.sourceDirectoryLoaded = true;
+  }
+  return updatedEntry;
+}
+
+async function recordSourceDirectoryUsages(sourceNames = []) {
+  const uniqueNames = [...new Map((sourceNames || [])
+    .map((sourceName) => String(sourceName || "").trim().replace(/\s+/g, " "))
+    .filter(Boolean)
+    .map((sourceName) => [normalizeSourceDirectoryText(sourceName), sourceName])).values()];
+
+  if (!uniqueNames.length) {
+    return [];
+  }
+
+  const results = await Promise.allSettled(uniqueNames.map((sourceName) => recordSourceDirectoryUsage(sourceName)));
+  return results
+    .filter((result) => result.status === "fulfilled" && result.value)
+    .map((result) => result.value);
+}
+
+function getSourceNamesFromSession(session = {}) {
+  return normalizeSessionPartitions(session?.partitions || [])
+    .map((partition) => formatPartitionSource(partition).trim())
+    .filter(Boolean);
 }
 
 function isSeedVaultEntriesColumnMissingError(error) {
@@ -69214,6 +69445,7 @@ async function saveSeedVaultEntryForm(form, options = {}) {
 
   try {
     await persistSeedVaultEntry(payload);
+    void recordSourceDirectoryUsages([payload.source]);
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     setFeedbackMessage(message, "");
     if (options.closeOnSuccess !== false) {
@@ -69285,10 +69517,10 @@ function openSeedVaultEntryModal(entry = null) {
         <p>Track owner-only seed inventory that can safely prefill future grow sessions.</p>
       </div>
       <form class="seed-vault-entry-form" data-seed-vault-entry-form>
-        <label class="partition-identity-field" data-identity-autocomplete="source">
+        <label class="partition-identity-field" data-source-directory-autocomplete="true">
           <span>Source</span>
-          <input name="source" type="text" maxlength="120" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.source || "")}">
-          <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
+          <input name="source" type="text" maxlength="120" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.source || "")}">
+          <div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div>
         </label>
         <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
           <span>Seed Variety</span>
@@ -69373,6 +69605,7 @@ function openSeedVaultEntryModal(entry = null) {
     }
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     bindSeedVaultEntryModalGuards(overlay, form);
+    initializeSourceDirectoryAutocompletes(form);
     initializePartitionIdentityAutocompletes(form);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -71982,6 +72215,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       }
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
+      void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
       try {
         await applySeedVaultSessionQuantityUsage(partitionEntries);
       } catch (seedVaultError) {
@@ -72055,10 +72289,10 @@ function buildPartitionFormCard(partition, index, options = {}) {
   row.tabIndex = -1;
   row.innerHTML = `
     <div class="partition-number partition-btn" aria-label="Partition ${partition.id}">${partition.id}</div>
-    <label class="partition-identity-field" data-identity-autocomplete="source">
+    <label class="partition-identity-field" data-source-directory-autocomplete="true">
       <span class="mobile-field-label">Source</span>
-        <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-session-identity-input="source" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source" aria-autocomplete="list">
-        <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
+        <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source" aria-autocomplete="list">
+        <div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div>
     </label>
     <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
       <span class="mobile-field-label">Seed Variety</span>
@@ -72427,6 +72661,79 @@ function buildPartitionIdentityMatch(kind = "", displayValue = "", options = {})
   };
 }
 
+function getExactSourceDirectoryEntry(value = "") {
+  const normalizedValue = normalizeSourceDirectoryText(value);
+  if (!normalizedValue) {
+    return null;
+  }
+
+  return (appState.sourceDirectoryEntries || []).find((entry) => (
+    getSourceDirectoryEntrySearchValues(entry).some((candidate) => candidate.normalized === normalizedValue)
+  )) || null;
+}
+
+function buildSourceDirectoryInputMatch(displayValue = "", options = {}) {
+  const displayName = String(displayValue || "").trim();
+  const normalizedKey = normalizeSourceDirectoryText(displayName);
+  const selectedCandidate = options.selectedCandidate && typeof options.selectedCandidate === "object"
+    ? options.selectedCandidate
+    : null;
+
+  if (!displayName || !normalizedKey) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: "",
+      canonicalName: displayName,
+      matchStatus: "new",
+      matchConfidence: 0,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  if (
+    selectedCandidate?.canonicalId
+    && normalizeSourceDirectoryText(selectedCandidate.canonicalName || selectedCandidate.label || "") === normalizedKey
+  ) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: selectedCandidate.canonicalId,
+      canonicalName: selectedCandidate.canonicalName || selectedCandidate.label || displayName,
+      matchStatus: "selected",
+      matchConfidence: 1,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  const exactEntry = getExactSourceDirectoryEntry(displayName);
+  if (exactEntry) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: exactEntry.id || getPartitionIdentityCanonicalId("source", normalizedKey),
+      canonicalName: exactEntry.name || displayName,
+      matchStatus: "auto_matched",
+      matchConfidence: 1,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  return {
+    displayName,
+    normalizedKey,
+    canonicalId: "",
+    canonicalName: displayName,
+    matchStatus: "new",
+    matchConfidence: 0,
+    reviewCandidateId: "",
+    reviewCandidateName: "",
+  };
+}
+
 function getPartitionIdentitySuggestions(kind = "", query = "") {
   const config = getPartitionIdentityKindConfig(kind);
   const normalizedQuery = config.normalize(query);
@@ -72493,6 +72800,167 @@ function applyPartitionIdentitySuggestion(input, suggestion) {
   input.dispatchEvent(new Event("change", { bubbles: true }));
   delete input.dataset.applyingIdentitySuggestion;
   closePartitionIdentitySuggestions(input.closest("[data-identity-autocomplete]"));
+}
+
+function closeSourceDirectorySuggestions(field) {
+  const suggestions = field?.querySelector?.("[data-source-directory-suggestions]");
+  if (suggestions instanceof HTMLElement) {
+    suggestions.hidden = true;
+    suggestions.innerHTML = "";
+  }
+  field?.removeAttribute?.("data-source-directory-active-index");
+}
+
+function applySourceDirectorySuggestion(input, suggestion) {
+  if (!(input instanceof HTMLInputElement) || !suggestion?.name) {
+    return;
+  }
+
+  input.dataset.applyingSourceDirectorySuggestion = "true";
+  input.value = suggestion.name;
+  input.dataset.canonicalId = suggestion.id || "";
+  input.dataset.canonicalLabel = suggestion.name;
+  input.dataset.normalizedKey = normalizeSourceDirectoryText(suggestion.name);
+  input.dataset.matchStatus = "selected";
+  input.dataset.matchConfidence = "1";
+  input.dataset.reviewCandidateId = "";
+  input.dataset.reviewCandidateName = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  delete input.dataset.applyingSourceDirectorySuggestion;
+  closeSourceDirectorySuggestions(input.closest("[data-source-directory-autocomplete]"));
+}
+
+function syncSourceDirectoryInputMatch(input) {
+  if (!(input instanceof HTMLInputElement) || input.dataset.applyingSourceDirectorySuggestion === "true") {
+    return;
+  }
+
+  const match = buildSourceDirectoryInputMatch(input.value);
+  input.dataset.canonicalId = match.canonicalId;
+  input.dataset.canonicalLabel = match.canonicalName;
+  input.dataset.normalizedKey = match.normalizedKey;
+  input.dataset.matchStatus = match.matchStatus;
+  input.dataset.matchConfidence = String(match.matchConfidence);
+  input.dataset.reviewCandidateId = match.reviewCandidateId;
+  input.dataset.reviewCandidateName = match.reviewCandidateName;
+}
+
+function renderSourceDirectorySuggestions(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  const input = field.querySelector("[data-source-directory-input]");
+  const panel = field.querySelector("[data-source-directory-suggestions]");
+  if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement) || input.disabled || input.readOnly) {
+    closeSourceDirectorySuggestions(field);
+    return;
+  }
+
+  const suggestions = getSourceDirectorySuggestions(input.value);
+  if (!suggestions.length) {
+    closeSourceDirectorySuggestions(field);
+    return;
+  }
+
+  const activeIndex = Math.min(
+    Math.max(0, Number(field.dataset.sourceDirectoryActiveIndex) || 0),
+    suggestions.length - 1,
+  );
+  field.dataset.sourceDirectoryActiveIndex = String(activeIndex);
+  panel.innerHTML = suggestions.map((suggestion, index) => `
+    <button type="button" class="partition-identity-suggestion source-directory-autocomplete-suggestion${index === activeIndex ? " is-active" : ""}" data-source-directory-suggestion-index="${index}" data-source-directory-id="${escapeHtml(suggestion.id)}">
+      <span>${escapeHtml(suggestion.name)}</span>
+      <small>${escapeHtml(suggestion.reason)}</small>
+    </button>
+  `).join("");
+  panel.hidden = false;
+}
+
+function requestSourceDirectorySuggestionsRender(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  renderSourceDirectorySuggestions(field);
+  if (!appState.sourceDirectoryLoaded && !appState.sourceDirectoryUnavailable) {
+    void refreshSourceDirectoryEntries().then(() => {
+      if (field.isConnected) {
+        const input = field.querySelector("[data-source-directory-input]");
+        if (input instanceof HTMLInputElement) {
+          syncSourceDirectoryInputMatch(input);
+        }
+        renderSourceDirectorySuggestions(field);
+      }
+    });
+  }
+}
+
+function initializeSourceDirectoryAutocompletes(scope) {
+  if (!(scope instanceof Element)) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-source-directory-autocomplete]").forEach((field) => {
+    if (!(field instanceof HTMLElement) || field.dataset.sourceDirectoryAutocompleteBound === "true") {
+      return;
+    }
+
+    const input = field.querySelector("[data-source-directory-input]");
+    const panel = field.querySelector("[data-source-directory-suggestions]");
+    if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement)) {
+      return;
+    }
+
+    input.addEventListener("input", () => {
+      syncSourceDirectoryInputMatch(input);
+      field.dataset.sourceDirectoryActiveIndex = "0";
+      requestSourceDirectorySuggestionsRender(field);
+    });
+    input.addEventListener("focus", () => requestSourceDirectorySuggestionsRender(field));
+    input.addEventListener("blur", () => {
+      window.setTimeout(() => closeSourceDirectorySuggestions(field), 120);
+    });
+    input.addEventListener("keydown", (event) => {
+      const suggestions = getSourceDirectorySuggestions(input.value);
+      if (!suggestions.length) {
+        return;
+      }
+
+      const currentIndex = Math.min(Math.max(0, Number(field.dataset.sourceDirectoryActiveIndex) || 0), suggestions.length - 1);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        field.dataset.sourceDirectoryActiveIndex = String(Math.min(currentIndex + 1, suggestions.length - 1));
+        renderSourceDirectorySuggestions(field);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        field.dataset.sourceDirectoryActiveIndex = String(Math.max(currentIndex - 1, 0));
+        renderSourceDirectorySuggestions(field);
+      } else if (event.key === "Enter" && !panel.hidden) {
+        event.preventDefault();
+        applySourceDirectorySuggestion(input, suggestions[currentIndex]);
+      } else if (event.key === "Escape") {
+        closeSourceDirectorySuggestions(field);
+      }
+    });
+    panel.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    panel.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-source-directory-suggestion-index]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const suggestions = getSourceDirectorySuggestions(input.value);
+      const suggestion = suggestions[Number(button.dataset.sourceDirectorySuggestionIndex) || 0];
+      applySourceDirectorySuggestion(input, suggestion);
+    });
+    syncSourceDirectoryInputMatch(input);
+    field.dataset.sourceDirectoryAutocompleteBound = "true";
+  });
 }
 
 function renderPartitionIdentitySuggestions(field) {
@@ -72653,6 +73121,7 @@ function renderPartitionRows(form, systemType, sessionStatus) {
   form.__partitionDraftValues = partitions.map((partition) => ({ ...partition }));
 
   initializeCustomSelects(partitionFields);
+  initializeSourceDirectoryAutocompletes(partitionFields);
   initializePartitionIdentityAutocompletes(partitionFields);
   bindPartitionRowVisualState(partitionFields);
   attachPartitionValidation(form, formMessage);
@@ -73324,11 +73793,10 @@ function hydratePartitionRow(row, partition) {
   const sourceInput = row.querySelector('input[name^="source-"]');
   const varietyInput = row.querySelector('input[name^="seedVariety-"]');
   if (sourceInput instanceof HTMLInputElement) {
-    const match = buildPartitionIdentityMatch("source", formatPartitionSource(partition), {
+    const match = buildSourceDirectoryInputMatch(formatPartitionSource(partition), {
       selectedCandidate: partition?.sourceCanonicalId || partition?.source_canonical_id ? {
         canonicalId: partition?.sourceCanonicalId || partition?.source_canonical_id,
         canonicalName: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
-        normalizedKey: partition?.sourceNormalizedName || partition?.source_normalized_name || normalizeSourceNameForMatching(formatPartitionSource(partition)),
         label: partition?.sourceCanonicalName || partition?.source_canonical_name || formatPartitionSource(partition),
       } : null,
     });
@@ -73389,11 +73857,10 @@ function getCurrentPartitionValues(form) {
     const varietyInput = row.querySelector('input[name^="seedVariety-"]');
     const sourceValue = sourceInput?.value.trim() || "";
     const varietyValue = varietyInput?.value.trim() || "";
-    const sourceMatch = buildPartitionIdentityMatch("source", sourceValue, {
+    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
       selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
         canonicalId: sourceInput.dataset.canonicalId || "",
         canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
-        normalizedKey: sourceInput.dataset.normalizedKey || normalizeSourceNameForMatching(sourceValue),
         label: sourceInput.dataset.canonicalLabel || sourceValue,
       } : null,
     });
@@ -80607,9 +81074,25 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
     : getSessionSeedAgeMetadata(session);
   session.partitions = [...container.querySelectorAll(".partition-row")].map((row, index) => {
     const existingPartition = session.partitions?.[index] || {};
+    const sourceInput = row.querySelector('input[name^="source-"]');
+    const sourceValue = getPartitionRowFieldValue(row, "source").trim();
+    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
+      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
+        canonicalId: sourceInput.dataset.canonicalId || "",
+        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
+        label: sourceInput.dataset.canonicalLabel || sourceValue,
+      } : null,
+    });
     return {
       id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
-      source: getPartitionRowFieldValue(row, "source").trim(),
+      source: sourceValue,
+      sourceCanonicalName: sourceMatch.canonicalName,
+      sourceCanonicalId: sourceMatch.canonicalId,
+      sourceNormalizedName: sourceMatch.normalizedKey,
+      sourceMatchStatus: sourceMatch.matchStatus,
+      sourceMatchConfidence: sourceMatch.matchConfidence,
+      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
+      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
       seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
       breeder: existingPartition.breeder || "",
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
@@ -80774,6 +81257,7 @@ async function saveSessionUpdate(session) {
     autoCompleteSessionWhenResultsAccounted(session);
     session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
+    void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
     processSessionNotificationTriggers(savedSession, {
       previousSession,
       existingSessions: getSessions(),
@@ -81047,18 +81531,36 @@ function buildPartitionDraftValuesFromContainer(container) {
     }));
   }
 
-  return [...container.querySelectorAll(".partition-row")].map((row, index) => ({
-    id: Number(row.dataset.partitionId) || index + 1,
-    source: getPartitionRowFieldValue(row, "source").trim(),
-    seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
-    seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
-    feminized: getPartitionRowFieldValue(row, "feminized").trim(),
-    seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
-    seedAgeYears: getPartitionRowFieldValue(row, "seedAgeYears").trim(),
-    plantedCount: getPartitionRowFieldValue(row, "plantedCount").trim(),
-    seedVaultEntryId: String(row.dataset.seedVaultEntryId || "").trim(),
-    seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
-  }));
+  return [...container.querySelectorAll(".partition-row")].map((row, index) => {
+    const sourceInput = row.querySelector('input[name^="source-"]');
+    const sourceValue = getPartitionRowFieldValue(row, "source").trim();
+    const sourceMatch = buildSourceDirectoryInputMatch(sourceValue, {
+      selectedCandidate: sourceInput?.dataset.matchStatus === "selected" ? {
+        canonicalId: sourceInput.dataset.canonicalId || "",
+        canonicalName: sourceInput.dataset.canonicalLabel || sourceValue,
+        label: sourceInput.dataset.canonicalLabel || sourceValue,
+      } : null,
+    });
+    return {
+      id: Number(row.dataset.partitionId) || index + 1,
+      source: sourceValue,
+      sourceCanonicalName: sourceMatch.canonicalName,
+      sourceCanonicalId: sourceMatch.canonicalId,
+      sourceNormalizedName: sourceMatch.normalizedKey,
+      sourceMatchStatus: sourceMatch.matchStatus,
+      sourceMatchConfidence: sourceMatch.matchConfidence,
+      sourceReviewCandidateId: sourceMatch.reviewCandidateId,
+      sourceReviewCandidateName: sourceMatch.reviewCandidateName,
+      seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
+      seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
+      feminized: getPartitionRowFieldValue(row, "feminized").trim(),
+      seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
+      seedAgeYears: getPartitionRowFieldValue(row, "seedAgeYears").trim(),
+      plantedCount: getPartitionRowFieldValue(row, "plantedCount").trim(),
+      seedVaultEntryId: String(row.dataset.seedVaultEntryId || "").trim(),
+      seedVaultEntrySnapshot: readPartitionSeedVaultSnapshotFromRow(row),
+    };
+  });
 }
 
 function buildNewSessionDraftSignature(form) {
