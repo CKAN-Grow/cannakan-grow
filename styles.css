@@ -44405,10 +44405,37 @@ body.theme-dark #session-analytics-section {
   line-height: 1.45;
 }
 
-.seed-vault-add-button.button {
+.seed-vault-add-button.button,
+.seed-vault-share-button.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   min-height: 42px;
   white-space: nowrap;
 }
+
+.seed-vault-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  color: currentColor;
+  line-height: 0;
+}
+
+.seed-vault-button-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.seed-vault-add-button.button .seed-vault-button-icon {
+  margin-left: -1px;
+}
+
 .seed-vault-header-actions {
   display: flex;
   align-items: center;
@@ -44416,11 +44443,6 @@ body.theme-dark #session-analytics-section {
   gap: 10px;
   flex-wrap: wrap;
   margin-left: auto;
-}
-
-.seed-vault-share-button.button {
-  min-height: 42px;
-  white-space: nowrap;
 }
 
 .seed-vault-page-nav--tabs {

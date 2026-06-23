@@ -68113,6 +68113,26 @@ function renderMySessionsInlineIconMarkup(iconName, className = "") {
   const classes = [className].filter(Boolean).join(" ");
 
   switch (iconName) {
+    case "plus":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.7" opacity="0.35"></circle>
+            <path d="M12 7.8v8.4M7.8 12h8.4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
+    case "share":
+      return `
+        <span class="${classes}" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+            <circle cx="7.4" cy="12" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            <circle cx="16.6" cy="7" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            <circle cx="16.6" cy="17" r="2.4" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+            <path d="m9.6 10.8 4.8-2.6M9.6 13.2l4.8 2.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"></path>
+          </svg>
+        </span>
+      `;
     case "check":
       return `
         <span class="${classes}" aria-hidden="true">
@@ -69475,7 +69495,7 @@ function renderSeedVaultShareCardMarkup(settings = appState.seedVaultShareSettin
         <p>${escapeHtml(getSeedVaultShareVisibilityDescription(visibility))} ${escapeHtml(fieldSummary)}</p>
         ${shareUrl ? `<small>${escapeHtml(shareUrl)}</small>` : ""}
       </div>
-      <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">Share Vault</button>
+      <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">${renderMySessionsInlineIconMarkup("share", "seed-vault-button-icon")}<span>Share Vault</span></button>
     </section>
   `;
 }
@@ -69510,7 +69530,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
           </div>
         </div>
         <div class="seed-vault-header-actions">
-          <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
+          <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">${renderMySessionsInlineIconMarkup("plus", "seed-vault-button-icon")}<span>Add Seeds</span></button>
         </div>
       </div>
       ${renderSeedVaultShareCardMarkup()}
