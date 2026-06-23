@@ -84,6 +84,10 @@ const SOURCE_DIRECTORY_COMMUNITY_COLUMNS = Object.freeze([
   "needs_admin_review",
   "review_status",
 ]);
+const VARIETY_DIRECTORY_TABLE = "variety_directory";
+const VARIETY_DIRECTORY_BASE_SELECT = "id,name,normalized_name,aliases,source_id,source_name,variety_type,verified,active,usage_count,distinct_user_count,first_used_at,last_used_at,needs_admin_review";
+const VARIETY_DIRECTORY_AUTOCOMPLETE_LIMIT = 10;
+const VARIETY_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
 const FOUNDERS_TABLE = "founders";
 const ADMIN_USERS_TABLE = "admin_users";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
@@ -1497,6 +1501,10 @@ const appState = {
   sourceDirectoryReviewError: "",
   sourceDirectoryReviewRefreshPromise: null,
   sourceDirectoryReviewMessage: "",
+  varietyDirectoryEntries: [],
+  varietyDirectoryLoaded: false,
+  varietyDirectoryRefreshPromise: null,
+  varietyDirectoryUnavailable: false,
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
@@ -2159,6 +2167,10 @@ function resetSessionScopedAppState() {
   appState.sourceDirectoryReviewError = "";
   appState.sourceDirectoryReviewRefreshPromise = null;
   appState.sourceDirectoryReviewMessage = "";
+  appState.varietyDirectoryEntries = [];
+  appState.varietyDirectoryLoaded = false;
+  appState.varietyDirectoryRefreshPromise = null;
+  appState.varietyDirectoryUnavailable = false;
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -5898,6 +5910,199 @@ async function recordSourceDirectoryUsages(sourceNames = []) {
     .map((result) => result.value);
 }
 
+function normalizeVarietyDirectoryText(value = "") {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function mapVarietyDirectoryRow(row = {}) {
+  if (!row) {
+    return null;
+  }
+  const name = String(row.name || "").trim();
+  if (!name) {
+    return null;
+  }
+  return {
+    id: String(row.id || "").trim(),
+    name,
+    normalizedName: String(row.normalized_name || normalizeVarietyDirectoryText(name)).trim(),
+    aliases: Array.isArray(row.aliases) ? row.aliases.map((alias) => String(alias || "").trim()).filter(Boolean) : [],
+    sourceId: String(row.source_id || "").trim(),
+    sourceName: String(row.source_name || "").trim(),
+    varietyType: String(row.variety_type || "unknown").trim() || "unknown",
+    verified: row.verified === true,
+    active: row.active !== false,
+    usageCount: Number(row.usage_count) || 0,
+    distinctUserCount: Number(row.distinct_user_count) || 0,
+    firstUsedAt: row.first_used_at || "",
+    lastUsedAt: row.last_used_at || "",
+    needsAdminReview: row.needs_admin_review === true,
+  };
+}
+
+function getVarietyDirectoryAutocompleteEntries() {
+  return Array.isArray(appState.varietyDirectoryEntries) ? appState.varietyDirectoryEntries : [];
+}
+
+function isVarietyDirectoryTableMissingError(error) {
+  return isSupabaseTableMissingError(error, VARIETY_DIRECTORY_TABLE);
+}
+
+function markVarietyDirectoryUnavailable(error = null) {
+  appState.varietyDirectoryUnavailable = true;
+  appState.varietyDirectoryEntries = [];
+  appState.varietyDirectoryLoaded = false;
+  logRuntimeIssueOnce(
+    "warn",
+    "variety-directory-unavailable",
+    "Variety Directory is unavailable; custom variety entry remains enabled.",
+    error || { table: VARIETY_DIRECTORY_TABLE },
+  );
+}
+
+async function loadVarietyDirectoryEntries(reason = "unspecified") {
+  if (!appState.supabase || appState.varietyDirectoryUnavailable) {
+    return getVarietyDirectoryAutocompleteEntries();
+  }
+
+  const { data, error } = await appState.supabase
+    .from(VARIETY_DIRECTORY_TABLE)
+    .select(VARIETY_DIRECTORY_BASE_SELECT)
+    .eq("active", true)
+    .order("name", { ascending: true })
+    .limit(2000);
+
+  if (error) {
+    if (isVarietyDirectoryTableMissingError(error)) {
+      markVarietyDirectoryUnavailable(error);
+      return [];
+    }
+    logRuntimeIssueOnce("warn", "variety-directory-load-failed", "Could not load Variety Directory autocomplete entries.", error);
+    return getVarietyDirectoryAutocompleteEntries();
+  }
+
+  const entries = (data || [])
+    .map(mapVarietyDirectoryRow)
+    .filter((entry) => entry && entry.active)
+    .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+  appState.varietyDirectoryEntries = entries;
+  appState.varietyDirectoryLoaded = true;
+  return entries;
+}
+
+async function refreshVarietyDirectoryEntries(options = {}) {
+  if (!options.force && appState.varietyDirectoryLoaded && !appState.varietyDirectoryRefreshPromise) {
+    return getVarietyDirectoryAutocompleteEntries();
+  }
+  if (!options.force && appState.varietyDirectoryRefreshPromise) {
+    return appState.varietyDirectoryRefreshPromise;
+  }
+
+  const refreshPromise = loadVarietyDirectoryEntries(options.reason || "refresh");
+  appState.varietyDirectoryRefreshPromise = refreshPromise;
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.varietyDirectoryRefreshPromise = null;
+  }
+}
+
+function getVarietyDirectoryEntrySearchValues(entry = {}) {
+  const values = [entry.name, entry.normalizedName, ...(Array.isArray(entry.aliases) ? entry.aliases : [])]
+    .map(normalizeVarietyDirectoryText)
+    .filter(Boolean);
+  return [...new Set(values)];
+}
+
+function getVarietyDirectorySuggestionReason(entry = {}) {
+  if (entry.verified) {
+    return entry.sourceName ? `Verified variety from ${entry.sourceName}` : "Verified variety";
+  }
+  if (Number(entry.distinctUserCount) >= 3) {
+    return "Community variety";
+  }
+  return "Your saved variety";
+}
+
+function getVarietyDirectorySuggestions(query = "") {
+  const normalizedQuery = normalizeVarietyDirectoryText(query);
+  if (normalizedQuery.length < VARIETY_DIRECTORY_AUTOCOMPLETE_MIN_CHARS) {
+    return [];
+  }
+
+  return getVarietyDirectoryAutocompleteEntries()
+    .map((entry) => {
+      const searchValues = getVarietyDirectoryEntrySearchValues(entry);
+      const hasExactPrefixMatch = searchValues.some((value) => value.startsWith(normalizedQuery));
+      const hasMatch = hasExactPrefixMatch || searchValues.some((value) => value.includes(normalizedQuery));
+      return hasMatch ? {
+        ...entry,
+        hasExactPrefixMatch,
+        reason: getVarietyDirectorySuggestionReason(entry),
+      } : null;
+    })
+    .filter(Boolean)
+    .sort((left, right) => (
+      Number(right.hasExactPrefixMatch) - Number(left.hasExactPrefixMatch)
+      || Number(right.verified) - Number(left.verified)
+      || (Number(right.usageCount) || 0) - (Number(left.usageCount) || 0)
+      || left.name.localeCompare(right.name, "en", { sensitivity: "base" })
+    ))
+    .slice(0, VARIETY_DIRECTORY_AUTOCOMPLETE_LIMIT);
+}
+
+async function recordVarietyDirectoryUsage(varietyName = "", sourceName = "") {
+  const cleanedName = String(varietyName || "").trim().replace(/\s+/g, " ");
+  const cleanedSourceName = String(sourceName || "").trim().replace(/\s+/g, " ");
+  if (!cleanedName || !appState.supabase || appState.varietyDirectoryUnavailable) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase.rpc("record_variety_directory_usage", {
+    variety_name: cleanedName,
+    source_name: cleanedSourceName || null,
+  });
+
+  if (error) {
+    if (isVarietyDirectoryTableMissingError(error)) {
+      markVarietyDirectoryUnavailable(error);
+      return null;
+    }
+    logRuntimeIssueOnce("warn", "variety-directory-usage-record-failed", "Could not record Variety Directory usage.", error);
+    return null;
+  }
+
+  const updatedEntry = mapVarietyDirectoryRow(data);
+  if (updatedEntry) {
+    const normalizedName = normalizeVarietyDirectoryText(updatedEntry.name);
+    appState.varietyDirectoryEntries = [
+      ...(appState.varietyDirectoryEntries || []).filter((entry) => normalizeVarietyDirectoryText(entry.name) !== normalizedName),
+      updatedEntry,
+    ].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+    appState.varietyDirectoryLoaded = true;
+  }
+  return updatedEntry;
+}
+
+async function recordVarietyDirectoryUsages(records = []) {
+  const uniqueRecords = [...new Map((records || [])
+    .map((record) => ({
+      varietyName: String(record?.varietyName || record?.name || "").trim().replace(/\s+/g, " "),
+      sourceName: String(record?.sourceName || "").trim().replace(/\s+/g, " "),
+    }))
+    .filter((record) => record.varietyName)
+    .map((record) => [normalizeVarietyDirectoryText(record.varietyName), record])).values()];
+
+  if (!uniqueRecords.length) {
+    return [];
+  }
+
+  const results = await Promise.allSettled(uniqueRecords.map((record) => recordVarietyDirectoryUsage(record.varietyName, record.sourceName)));
+  return results
+    .filter((result) => result.status === "fulfilled" && result.value)
+    .map((result) => result.value);
+}
+
 async function loadSourceDirectoryReviewRows(reason = "unspecified") {
   if (!appState.supabase || !isAdminUser() || appState.sourceDirectoryUnavailable) {
     return [];
@@ -6181,6 +6386,15 @@ function getSourceNamesFromSession(session = {}) {
   return normalizeSessionPartitions(session?.partitions || [])
     .map((partition) => formatPartitionSource(partition).trim())
     .filter(Boolean);
+}
+
+function getVarietyDirectoryUsageRecordsFromSession(session = {}) {
+  return normalizeSessionPartitions(session?.partitions || [])
+    .map((partition) => ({
+      varietyName: formatPartitionSeedVariety(partition).trim(),
+      sourceName: formatPartitionSource(partition).trim(),
+    }))
+    .filter((record) => record.varietyName);
 }
 
 function isSeedVaultEntriesColumnMissingError(error) {
@@ -70223,6 +70437,10 @@ async function saveSeedVaultEntryForm(form, options = {}) {
   try {
     await persistSeedVaultEntry(payload);
     void recordSourceDirectoryUsages([payload.source]);
+    void recordVarietyDirectoryUsages([{
+      varietyName: payload.seedName,
+      sourceName: payload.source,
+    }]);
     form.dataset.seedVaultBaselineSignature = getSeedVaultEntryFormSignature(form);
     setFeedbackMessage(message, "");
     if (options.closeOnSuccess !== false) {
@@ -70299,10 +70517,10 @@ function openSeedVaultEntryModal(entry = null) {
           <input name="source" type="text" maxlength="120" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.source || "")}">
           <div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div>
         </label>
-        <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
+        <label class="partition-identity-field" data-variety-directory-autocomplete="true">
           <span>Seed Variety</span>
-          <input name="seedVariety" type="text" maxlength="120" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.seedName || "")}" required>
-          <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
+          <input name="seedVariety" type="text" maxlength="120" autocomplete="off" data-variety-directory-input="true" placeholder="Blue Dream" aria-autocomplete="list" value="${escapeHtml(normalizedEntry?.seedName || "")}" required>
+          <div class="partition-identity-suggestions" data-variety-directory-suggestions hidden></div>
         </label>
         <div class="seed-vault-form-grid">
           <label>
@@ -71101,6 +71319,22 @@ function setPartitionIdentityInputFromVault(input, kind = "", value = "") {
   input.dataset.reviewCandidateName = match.reviewCandidateName;
 }
 
+function setVarietyDirectoryInputFromVault(input, value = "") {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+  const normalizedValue = String(value || "").trim();
+  const match = buildVarietyDirectoryInputMatch(normalizedValue);
+  input.value = normalizedValue;
+  input.dataset.canonicalId = match.canonicalId;
+  input.dataset.canonicalLabel = match.canonicalName || normalizedValue;
+  input.dataset.normalizedKey = match.normalizedKey;
+  input.dataset.matchStatus = match.matchStatus;
+  input.dataset.matchConfidence = String(match.matchConfidence);
+  input.dataset.reviewCandidateId = match.reviewCandidateId;
+  input.dataset.reviewCandidateName = match.reviewCandidateName;
+}
+
 function clearPartitionIdentityInput(input) {
   if (!(input instanceof HTMLInputElement)) {
     return;
@@ -71126,7 +71360,7 @@ function applySeedVaultEntryToPartitionRow(row, entry = {}, seedCount = 0) {
   }
 
   setPartitionIdentityInputFromVault(row.querySelector('input[name^="source-"]'), "source", normalizedEntry.source);
-  setPartitionIdentityInputFromVault(row.querySelector('input[name^="seedVariety-"]'), "seedVariety", normalizedEntry.seedName);
+  setVarietyDirectoryInputFromVault(row.querySelector('input[name^="seedVariety-"]'), normalizedEntry.seedName);
 
   const typeSelect = row.querySelector('select[name^="seedType-"]');
   if (typeSelect instanceof HTMLSelectElement) {
@@ -72895,10 +73129,14 @@ function renderSessionForm(initialSystemType = "KAN") {
     const partitionRows = [...form.querySelectorAll(".partition-row")];
     const partitionEntries = createPartitionsForSystem(formData.get("systemType")).map((partition, index) => {
       const row = partitionRows[index];
+      const varietyFields = buildPartitionVarietyDirectoryFields(
+        row,
+        String(formData.get(`seedVariety-${index}`) || "").trim(),
+      );
       return {
         id: partition.id,
         source: String(formData.get(`source-${index}`) || "").trim(),
-        seedVariety: String(formData.get(`seedVariety-${index}`) || "").trim(),
+        ...varietyFields,
         breeder: "",
         seedType: normalizeSeedTypeId(formData.get(`seedType-${index}`)),
         feminized: formData.get(`feminized-${index}`),
@@ -72992,6 +73230,7 @@ function renderSessionForm(initialSystemType = "KAN") {
       session.sessionImages = await uploadPendingSessionImages(form, session.id, imageSection);
       const savedSession = await createCloudSession(session);
       void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
+      void recordVarietyDirectoryUsages(getVarietyDirectoryUsageRecordsFromSession(savedSession || session));
       try {
         await applySeedVaultSessionQuantityUsage(partitionEntries);
       } catch (seedVaultError) {
@@ -73070,10 +73309,10 @@ function buildPartitionFormCard(partition, index, options = {}) {
         <input type="text" name="source-${index}" class="partition-input" autocomplete="off" data-source-directory-input="true" placeholder="Seedsman (optional)" aria-label="Partition ${partition.id} source" aria-autocomplete="list">
         <div class="partition-identity-suggestions" data-source-directory-suggestions hidden></div>
     </label>
-    <label class="partition-identity-field" data-identity-autocomplete="seedVariety">
+    <label class="partition-identity-field" data-variety-directory-autocomplete="true">
       <span class="mobile-field-label">Seed Variety</span>
-        <input type="text" name="seedVariety-${index}" class="partition-input" autocomplete="off" data-session-identity-input="seedVariety" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety" aria-autocomplete="list">
-        <div class="partition-identity-suggestions" data-identity-suggestions hidden></div>
+        <input type="text" name="seedVariety-${index}" class="partition-input" autocomplete="off" data-variety-directory-input="true" placeholder="Blue Dream" aria-label="Partition ${partition.id} seed variety" aria-autocomplete="list">
+        <div class="partition-identity-suggestions" data-variety-directory-suggestions hidden></div>
       <span class="field-warning" aria-live="polite">Please enter seed variety</span>
     </label>
     <label>
@@ -73571,6 +73810,136 @@ function hydrateSourceDirectoryInput(input, partition = {}) {
   input.dataset.reviewCandidateName = partition?.sourceReviewCandidateName || partition?.source_review_candidate_name || match.reviewCandidateName || "";
 }
 
+function getExactVarietyDirectoryEntry(name = "") {
+  const normalizedName = normalizeVarietyDirectoryText(name);
+  if (!normalizedName) {
+    return null;
+  }
+  return getVarietyDirectoryAutocompleteEntries().find((entry) => (
+    normalizeVarietyDirectoryText(entry.name) === normalizedName
+    || normalizeVarietyDirectoryText(entry.normalizedName) === normalizedName
+    || (Array.isArray(entry.aliases) && entry.aliases.some((alias) => normalizeVarietyDirectoryText(alias) === normalizedName))
+  )) || null;
+}
+
+function buildVarietyDirectoryInputMatch(value = "", options = {}) {
+  const displayName = String(value || "").trim().replace(/\s+/g, " ");
+  const normalizedKey = normalizeVarietyDirectoryText(displayName);
+  const selectedCandidate = options.selectedCandidate || null;
+
+  if (!displayName) {
+    return {
+      displayName: "",
+      normalizedKey: "",
+      canonicalId: "",
+      canonicalName: "",
+      matchStatus: "",
+      matchConfidence: 0,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  if (selectedCandidate?.canonicalId || selectedCandidate?.canonicalName) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: selectedCandidate.canonicalId || "",
+      canonicalName: selectedCandidate.canonicalName || selectedCandidate.label || displayName,
+      matchStatus: "selected",
+      matchConfidence: 1,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  const exactEntry = getExactVarietyDirectoryEntry(displayName);
+  if (exactEntry) {
+    return {
+      displayName,
+      normalizedKey,
+      canonicalId: exactEntry.id || getPartitionIdentityCanonicalId("seedVariety", normalizedKey),
+      canonicalName: exactEntry.name || displayName,
+      matchStatus: "auto_matched",
+      matchConfidence: 1,
+      reviewCandidateId: "",
+      reviewCandidateName: "",
+    };
+  }
+
+  return {
+    displayName,
+    normalizedKey,
+    canonicalId: "",
+    canonicalName: displayName,
+    matchStatus: "new",
+    matchConfidence: 0,
+    reviewCandidateId: "",
+    reviewCandidateName: "",
+  };
+}
+
+function getVarietyDirectorySelectedCandidateFromInput(input, fallbackValue = "") {
+  if (!(input instanceof HTMLInputElement) || input.dataset.matchStatus !== "selected") {
+    return null;
+  }
+
+  const varietyValue = String(fallbackValue || input.value || "").trim();
+  return {
+    canonicalId: input.dataset.canonicalId || "",
+    canonicalName: input.dataset.canonicalLabel || varietyValue,
+    label: input.dataset.canonicalLabel || varietyValue,
+  };
+}
+
+function getVarietyDirectoryMatchFromInput(input, fallbackValue = "") {
+  const varietyValue = String(fallbackValue || input?.value || "").trim();
+  return {
+    varietyValue,
+    varietyMatch: buildVarietyDirectoryInputMatch(varietyValue, {
+      selectedCandidate: getVarietyDirectorySelectedCandidateFromInput(input, varietyValue),
+    }),
+  };
+}
+
+function buildPartitionVarietyDirectoryFields(row, fallbackValue = "") {
+  const varietyInput = row?.querySelector?.('input[name^="seedVariety-"]');
+  const { varietyValue, varietyMatch } = getVarietyDirectoryMatchFromInput(varietyInput, fallbackValue);
+  return {
+    seedVariety: varietyValue,
+    seedVarietyCanonicalName: varietyMatch.canonicalName,
+    seedVarietyCanonicalId: varietyMatch.canonicalId,
+    seedVarietyNormalizedName: varietyMatch.normalizedKey,
+    seedVarietyMatchStatus: varietyMatch.matchStatus,
+    seedVarietyMatchConfidence: varietyMatch.matchConfidence,
+    seedVarietyReviewCandidateId: varietyMatch.reviewCandidateId,
+    seedVarietyReviewCandidateName: varietyMatch.reviewCandidateName,
+  };
+}
+
+function hydrateVarietyDirectoryInput(input, partition = {}) {
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const varietyValue = formatPartitionSeedVariety(partition);
+  const match = buildVarietyDirectoryInputMatch(varietyValue, {
+    selectedCandidate: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id ? {
+      canonicalId: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id,
+      canonicalName: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || varietyValue,
+      label: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || varietyValue,
+    } : null,
+  });
+  input.value = varietyValue;
+  input.dataset.canonicalId = partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id || match.canonicalId;
+  input.dataset.canonicalLabel = partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || match.canonicalName || input.value;
+  input.dataset.normalizedKey = partition?.seedVarietyNormalizedName || partition?.seed_variety_normalized_name || match.normalizedKey;
+  input.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.seedVarietyMatchStatus || partition?.seed_variety_match_status || match.matchStatus);
+  input.dataset.matchConfidence = String(Number(partition?.seedVarietyMatchConfidence ?? partition?.seed_variety_match_confidence ?? match.matchConfidence) || 0);
+  input.dataset.reviewCandidateId = partition?.seedVarietyReviewCandidateId || partition?.seed_variety_review_candidate_id || match.reviewCandidateId || "";
+  input.dataset.reviewCandidateName = partition?.seedVarietyReviewCandidateName || partition?.seed_variety_review_candidate_name || match.reviewCandidateName || "";
+}
+
 function getPartitionIdentitySuggestions(kind = "", query = "") {
   const config = getPartitionIdentityKindConfig(kind);
   const normalizedQuery = config.normalize(query);
@@ -73814,6 +74183,167 @@ function initializeSourceDirectoryAutocompletes(scope) {
   });
 }
 
+function closeVarietyDirectorySuggestions(field) {
+  const suggestions = field?.querySelector?.("[data-variety-directory-suggestions]");
+  if (suggestions instanceof HTMLElement) {
+    suggestions.hidden = true;
+    suggestions.innerHTML = "";
+  }
+  field?.removeAttribute?.("data-variety-directory-active-index");
+}
+
+function applyVarietyDirectorySuggestion(input, suggestion) {
+  if (!(input instanceof HTMLInputElement) || !suggestion?.name) {
+    return;
+  }
+
+  input.dataset.applyingVarietyDirectorySuggestion = "true";
+  input.value = suggestion.name;
+  input.dataset.canonicalId = suggestion.id || "";
+  input.dataset.canonicalLabel = suggestion.name;
+  input.dataset.normalizedKey = normalizeVarietyDirectoryText(suggestion.name);
+  input.dataset.matchStatus = "selected";
+  input.dataset.matchConfidence = "1";
+  input.dataset.reviewCandidateId = "";
+  input.dataset.reviewCandidateName = "";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  delete input.dataset.applyingVarietyDirectorySuggestion;
+  closeVarietyDirectorySuggestions(input.closest("[data-variety-directory-autocomplete]"));
+}
+
+function syncVarietyDirectoryInputMatch(input) {
+  if (!(input instanceof HTMLInputElement) || input.dataset.applyingVarietyDirectorySuggestion === "true") {
+    return;
+  }
+
+  const match = buildVarietyDirectoryInputMatch(input.value);
+  input.dataset.canonicalId = match.canonicalId;
+  input.dataset.canonicalLabel = match.canonicalName;
+  input.dataset.normalizedKey = match.normalizedKey;
+  input.dataset.matchStatus = match.matchStatus;
+  input.dataset.matchConfidence = String(match.matchConfidence);
+  input.dataset.reviewCandidateId = match.reviewCandidateId;
+  input.dataset.reviewCandidateName = match.reviewCandidateName;
+}
+
+function renderVarietyDirectorySuggestions(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  const input = field.querySelector("[data-variety-directory-input]");
+  const panel = field.querySelector("[data-variety-directory-suggestions]");
+  if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement) || input.disabled || input.readOnly) {
+    closeVarietyDirectorySuggestions(field);
+    return;
+  }
+
+  const suggestions = getVarietyDirectorySuggestions(input.value);
+  if (!suggestions.length) {
+    closeVarietyDirectorySuggestions(field);
+    return;
+  }
+
+  const activeIndex = Math.min(
+    Math.max(0, Number(field.dataset.varietyDirectoryActiveIndex) || 0),
+    suggestions.length - 1,
+  );
+  field.dataset.varietyDirectoryActiveIndex = String(activeIndex);
+  panel.innerHTML = suggestions.map((suggestion, index) => `
+    <button type="button" class="partition-identity-suggestion variety-directory-autocomplete-suggestion${index === activeIndex ? " is-active" : ""}" data-variety-directory-suggestion-index="${index}" data-variety-directory-id="${escapeHtml(suggestion.id)}">
+      <span>${escapeHtml(suggestion.name)}</span>
+      <small>${escapeHtml(suggestion.reason)}</small>
+    </button>
+  `).join("");
+  panel.hidden = false;
+}
+
+function requestVarietyDirectorySuggestionsRender(field) {
+  if (!(field instanceof HTMLElement)) {
+    return;
+  }
+
+  renderVarietyDirectorySuggestions(field);
+  if (!appState.varietyDirectoryLoaded && !appState.varietyDirectoryUnavailable) {
+    void refreshVarietyDirectoryEntries().then(() => {
+      if (field.isConnected) {
+        const input = field.querySelector("[data-variety-directory-input]");
+        if (input instanceof HTMLInputElement) {
+          syncVarietyDirectoryInputMatch(input);
+        }
+        renderVarietyDirectorySuggestions(field);
+      }
+    });
+  }
+}
+
+function initializeVarietyDirectoryAutocompletes(scope) {
+  if (!(scope instanceof Element)) {
+    return;
+  }
+
+  scope.querySelectorAll("[data-variety-directory-autocomplete]").forEach((field) => {
+    if (!(field instanceof HTMLElement) || field.dataset.varietyDirectoryAutocompleteBound === "true") {
+      return;
+    }
+
+    const input = field.querySelector("[data-variety-directory-input]");
+    const panel = field.querySelector("[data-variety-directory-suggestions]");
+    if (!(input instanceof HTMLInputElement) || !(panel instanceof HTMLElement)) {
+      return;
+    }
+
+    input.addEventListener("input", () => {
+      syncVarietyDirectoryInputMatch(input);
+      field.dataset.varietyDirectoryActiveIndex = "0";
+      requestVarietyDirectorySuggestionsRender(field);
+    });
+    input.addEventListener("focus", () => requestVarietyDirectorySuggestionsRender(field));
+    input.addEventListener("blur", () => {
+      window.setTimeout(() => closeVarietyDirectorySuggestions(field), 120);
+    });
+    input.addEventListener("keydown", (event) => {
+      const suggestions = getVarietyDirectorySuggestions(input.value);
+      if (!suggestions.length) {
+        return;
+      }
+
+      const currentIndex = Math.min(Math.max(0, Number(field.dataset.varietyDirectoryActiveIndex) || 0), suggestions.length - 1);
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        field.dataset.varietyDirectoryActiveIndex = String(Math.min(currentIndex + 1, suggestions.length - 1));
+        renderVarietyDirectorySuggestions(field);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        field.dataset.varietyDirectoryActiveIndex = String(Math.max(currentIndex - 1, 0));
+        renderVarietyDirectorySuggestions(field);
+      } else if (event.key === "Enter" && !panel.hidden) {
+        event.preventDefault();
+        applyVarietyDirectorySuggestion(input, suggestions[currentIndex]);
+      } else if (event.key === "Escape") {
+        closeVarietyDirectorySuggestions(field);
+      }
+    });
+    panel.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+    });
+    panel.addEventListener("click", (event) => {
+      const button = event.target instanceof Element
+        ? event.target.closest("[data-variety-directory-suggestion-index]")
+        : null;
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+      const suggestions = getVarietyDirectorySuggestions(input.value);
+      const suggestion = suggestions[Number(button.dataset.varietyDirectorySuggestionIndex) || 0];
+      applyVarietyDirectorySuggestion(input, suggestion);
+    });
+    syncVarietyDirectoryInputMatch(input);
+    field.dataset.varietyDirectoryAutocompleteBound = "true";
+  });
+}
+
 function renderPartitionIdentitySuggestions(field) {
   if (!(field instanceof HTMLElement)) {
     return;
@@ -73924,6 +74454,7 @@ function initializePartitionIdentityAutocompletes(scope) {
 
 function initializeSessionSourceAndVarietyAutocompletes(scope) {
   initializeSourceDirectoryAutocompletes(scope);
+  initializeVarietyDirectoryAutocompletes(scope);
   initializePartitionIdentityAutocompletes(scope);
 }
 
@@ -74651,22 +75182,7 @@ function hydratePartitionRow(row, partition) {
     hydrateSourceDirectoryInput(sourceInput, partition);
   }
   if (varietyInput instanceof HTMLInputElement) {
-    const match = buildPartitionIdentityMatch("seedVariety", formatPartitionSeedVariety(partition), {
-      selectedCandidate: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id ? {
-        canonicalId: partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id,
-        canonicalName: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || formatPartitionSeedVariety(partition),
-        normalizedKey: partition?.seedVarietyNormalizedName || partition?.seed_variety_normalized_name || normalizeSeedVarietyNameForMatching(formatPartitionSeedVariety(partition)),
-        label: partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || formatPartitionSeedVariety(partition),
-      } : null,
-    });
-    varietyInput.value = formatPartitionSeedVariety(partition);
-    varietyInput.dataset.canonicalId = partition?.seedVarietyCanonicalId || partition?.seed_variety_canonical_id || match.canonicalId;
-    varietyInput.dataset.canonicalLabel = partition?.seedVarietyCanonicalName || partition?.seed_variety_canonical_name || match.canonicalName || varietyInput.value;
-    varietyInput.dataset.normalizedKey = partition?.seedVarietyNormalizedName || partition?.seed_variety_normalized_name || match.normalizedKey;
-    varietyInput.dataset.matchStatus = normalizePartitionIdentityMatchStatus(partition?.seedVarietyMatchStatus || partition?.seed_variety_match_status || match.matchStatus);
-    varietyInput.dataset.matchConfidence = String(Number(partition?.seedVarietyMatchConfidence ?? partition?.seed_variety_match_confidence ?? match.matchConfidence) || 0);
-    varietyInput.dataset.reviewCandidateId = partition?.seedVarietyReviewCandidateId || partition?.seed_variety_review_candidate_id || match.reviewCandidateId || "";
-    varietyInput.dataset.reviewCandidateName = partition?.seedVarietyReviewCandidateName || partition?.seed_variety_review_candidate_name || match.reviewCandidateName || "";
+    hydrateVarietyDirectoryInput(varietyInput, partition);
   }
   row.querySelector('select[name^="seedType-"]').value = normalizeSeedTypeId(partition.seedType || "");
   row.querySelector('select[name^="feminized-"]').value = partition.feminized || "";
@@ -74699,26 +75215,12 @@ function getCurrentPartitionValues(form) {
     const sourceValue = sourceInput?.value.trim() || "";
     const varietyValue = varietyInput?.value.trim() || "";
     const sourceFields = buildPartitionSourceDirectoryFields(row, sourceValue);
-    const varietyMatch = buildPartitionIdentityMatch("seedVariety", varietyValue, {
-      selectedCandidate: varietyInput?.dataset.matchStatus === "selected" ? {
-        canonicalId: varietyInput.dataset.canonicalId || "",
-        canonicalName: varietyInput.dataset.canonicalLabel || varietyValue,
-        normalizedKey: varietyInput.dataset.normalizedKey || normalizeSeedVarietyNameForMatching(varietyValue),
-        label: varietyInput.dataset.canonicalLabel || varietyValue,
-      } : null,
-    });
+    const varietyFields = buildPartitionVarietyDirectoryFields(row, varietyValue);
 
     return {
       id: Number(row.dataset.partitionId) || index + 1,
       ...sourceFields,
-      seedVariety: varietyValue,
-      seedVarietyCanonicalName: varietyMatch.canonicalName,
-      seedVarietyCanonicalId: varietyMatch.canonicalId,
-      seedVarietyNormalizedName: varietyMatch.normalizedKey,
-      seedVarietyMatchStatus: varietyMatch.matchStatus,
-      seedVarietyMatchConfidence: varietyMatch.matchConfidence,
-      seedVarietyReviewCandidateId: varietyMatch.reviewCandidateId,
-      seedVarietyReviewCandidateName: varietyMatch.reviewCandidateName,
+      ...varietyFields,
       breeder: "",
       seedType: normalizeSeedTypeId(row.querySelector('select[name^="seedType-"]')?.value || ""),
       feminized: row.querySelector('select[name^="feminized-"]')?.value || "",
@@ -81908,7 +82410,7 @@ function syncSessionPartitionsFromContainer(session, container, options = {}) {
     return {
       id: Number(row.dataset.partitionId) || existingPartition.id || index + 1,
       ...sourceFields,
-      seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
+      ...buildPartitionVarietyDirectoryFields(row, getPartitionRowFieldValue(row, "seedVariety").trim()),
       breeder: existingPartition.breeder || "",
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
       feminized: getPartitionRowFieldValue(row, "feminized").trim(),
@@ -82073,6 +82575,7 @@ async function saveSessionUpdate(session) {
     session.unitId = normalizeUnitIdValue(session.unitId);
     const savedSession = await updateCloudSession(session);
     void recordSourceDirectoryUsages(getSourceNamesFromSession(savedSession || session));
+    void recordVarietyDirectoryUsages(getVarietyDirectoryUsageRecordsFromSession(savedSession || session));
     processSessionNotificationTriggers(savedSession, {
       previousSession,
       existingSessions: getSessions(),
@@ -82352,7 +82855,7 @@ function buildPartitionDraftValuesFromContainer(container) {
     return {
       id: Number(row.dataset.partitionId) || index + 1,
       ...sourceFields,
-      seedVariety: getPartitionRowFieldValue(row, "seedVariety").trim(),
+      ...buildPartitionVarietyDirectoryFields(row, getPartitionRowFieldValue(row, "seedVariety").trim()),
       seedType: normalizeSeedTypeId(getPartitionRowFieldValue(row, "seedType")),
       feminized: getPartitionRowFieldValue(row, "feminized").trim(),
       seedCount: getPartitionRowFieldValue(row, "seedCount").trim(),
