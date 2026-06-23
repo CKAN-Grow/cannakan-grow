@@ -70823,6 +70823,10 @@ function syncSeedVaultShareModalLink(form) {
   if (copyButton instanceof HTMLButtonElement) {
     copyButton.disabled = settings.visibility === "private";
   }
+  const publicShareSummary = form.querySelector("[data-seed-vault-public-share-summary]");
+  if (publicShareSummary instanceof HTMLElement) {
+    publicShareSummary.textContent = `${getSeedVaultShareVisibilityLabel(settings.visibility)} · ${settings.visibility === "private" ? "Hidden unless shared directly" : "Link access is enabled"}`;
+  }
 }
 
 function getSeedVaultUserSharePermissionsFromRow(row) {
@@ -70849,11 +70853,14 @@ function renderSeedVaultUserSharePermissionToggles(share = {}, options = {}) {
   const { compact = false } = options || {};
   const normalizedShare = normalizeSeedVaultUserShare(share || {});
   return `
-    <div class="seed-vault-user-share-permissions${compact ? " seed-vault-user-share-permissions--compact" : ""}">
-      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewQuantities"${normalizedShare.canViewQuantities ? " checked" : ""}> <span>View Quantities</span></label>
-      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageLocations"${normalizedShare.canViewStorageLocations ? " checked" : ""}> <span>View Storage Locations</span></label>
-      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageNotes"${normalizedShare.canViewStorageNotes ? " checked" : ""}> <span>View Storage Notes</span></label>
-      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewNotes"${normalizedShare.canViewNotes ? " checked" : ""}> <span>View Notes</span></label>
+    <div class="seed-vault-user-share-permission-group${compact ? " seed-vault-user-share-permission-group--compact" : ""}" aria-label="Direct share permissions">
+      <span class="seed-vault-user-share-permission-title">Allowed to view</span>
+      <div class="seed-vault-user-share-permissions">
+        <label class="seed-vault-permission-toggle"><input type="checkbox" data-seed-vault-user-share-permission="canViewQuantities"${normalizedShare.canViewQuantities ? " checked" : ""}> <span>Quantities</span></label>
+        <label class="seed-vault-permission-toggle"><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageLocations"${normalizedShare.canViewStorageLocations ? " checked" : ""}> <span>Storage locations</span></label>
+        <label class="seed-vault-permission-toggle"><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageNotes"${normalizedShare.canViewStorageNotes ? " checked" : ""}> <span>Storage notes</span></label>
+        <label class="seed-vault-permission-toggle"><input type="checkbox" data-seed-vault-user-share-permission="canViewNotes"${normalizedShare.canViewNotes ? " checked" : ""}> <span>Notes</span></label>
+      </div>
     </div>
   `;
 }
@@ -70874,13 +70881,16 @@ function renderSeedVaultUserShareSearchResultsMarkup(results = []) {
   return results.map((result) => {
     const share = normalizeSeedVaultUserShare({ ...result });
     return `
-      <article class="seed-vault-user-share-row" data-seed-vault-user-share-candidate="${escapeHtml(share.userId)}">
+      <article class="seed-vault-user-share-row seed-vault-user-share-row--candidate" data-seed-vault-user-share-candidate="${escapeHtml(share.userId)}">
         <div class="seed-vault-user-share-person">
           <strong>${escapeHtml(share.displayName)}</strong>
           <span>${escapeHtml(getSeedVaultUserShareHandleLabel(share))}</span>
+          <small>Private direct share</small>
         </div>
         ${renderSeedVaultUserSharePermissionToggles(share, { compact: true })}
-        <button type="button" class="button button-secondary" data-seed-vault-user-share-add="${escapeHtml(share.userId)}">Share</button>
+        <div class="seed-vault-user-share-actions">
+          <button type="button" class="button button-primary" data-seed-vault-user-share-add="${escapeHtml(share.userId)}">Share</button>
+        </div>
       </article>
     `;
   }).join("");
@@ -70907,7 +70917,7 @@ function renderSeedVaultUserSharesMarkup(shares = []) {
         </div>
         ${renderSeedVaultUserSharePermissionToggles(share)}
         <div class="seed-vault-user-share-actions">
-          <button type="button" class="button button-secondary" data-seed-vault-user-share-update="${escapeHtml(share.userId)}">Update</button>
+          <button type="button" class="button button-secondary" data-seed-vault-user-share-update="${escapeHtml(share.userId)}">Save permissions</button>
           <button type="button" class="button button-danger" data-seed-vault-user-share-remove="${escapeHtml(share.userId)}">Remove</button>
         </div>
       </article>
@@ -70946,39 +70956,17 @@ async function openSeedVaultShareModal(options = {}) {
         <p>Create a safe read-only view of your Seed Vault. Private fields stay hidden unless you choose to show them.</p>
       </div>
       <form class="seed-vault-share-form" data-seed-vault-share-form data-public-slug="${escapeHtml(settings.publicSlug || "")}">
-        <fieldset class="seed-vault-share-visibility-options">
-          <legend>Visibility</legend>
-          ${SEED_VAULT_SHARE_VISIBILITIES.map((visibility) => `
-            <label class="seed-vault-share-option${settings.visibility === visibility ? " is-selected" : ""}">
-              <input type="radio" name="visibility" value="${escapeHtml(visibility)}"${settings.visibility === visibility ? " checked" : ""}>
-              <span>
-                <strong>${escapeHtml(getSeedVaultShareVisibilityLabel(visibility))}</strong>
-                <small>${escapeHtml(getSeedVaultShareVisibilityDescription(visibility))}</small>
-              </span>
-            </label>
-          `).join("")}
-        </fieldset>
-        <label class="seed-vault-share-link-field">
-          <span>Share link</span>
-          <input type="text" data-seed-vault-share-link readonly value="${escapeHtml(settings.visibility === "private" ? "" : getSeedVaultShareUrl(settings.publicSlug))}" placeholder="Choose Public or Share by Link to create a share link">
-        </label>
-        <div class="seed-vault-share-toggle-grid" aria-label="Shared Seed Vault visible fields">
-          <label><input type="checkbox" name="showQuantity"${settings.showQuantity ? " checked" : ""}> <span>Quantity remaining</span></label>
-          <label><input type="checkbox" name="showStorageLocation"${settings.showStorageLocation ? " checked" : ""}> <span>Storage location</span></label>
-          <label><input type="checkbox" name="showStorageNotes"${settings.showStorageNotes ? " checked" : ""}> <span>Storage notes</span></label>
-          <label><input type="checkbox" name="showPrivateNotes"${settings.showPrivateNotes ? " checked" : ""}> <span>Notes</span></label>
-        </div>
-        <section class="seed-vault-user-share-section" aria-labelledby="seed-vault-user-share-title">
+        <section class="seed-vault-user-share-section seed-vault-user-share-section--primary" aria-labelledby="seed-vault-user-share-title">
           <div class="seed-vault-user-share-heading">
             <div>
-              <p class="eyebrow">SHARE WITH GROW USERS</p>
+              <p class="eyebrow">PRIMARY SHARING</p>
               <h4 id="seed-vault-user-share-title">Share with Grow Users</h4>
-              <p>Direct shares stay separate from Public and Share by Link settings.</p>
+              <p>Invite a Grow user directly and choose exactly which Vault details they can view.</p>
             </div>
           </div>
           <label class="seed-vault-share-link-field seed-vault-user-share-search-field">
             <span>Find Grow user</span>
-            <input type="search" data-seed-vault-user-share-search autocomplete="off" placeholder="Search display name or username">
+            <input type="search" data-seed-vault-user-share-search autocomplete="off" placeholder="Search display name, username, or email">
           </label>
           <div class="seed-vault-user-share-results" data-seed-vault-user-share-results aria-live="polite">
             ${renderSeedVaultUserShareSearchResultsMarkup([])}
@@ -70987,9 +70975,44 @@ async function openSeedVaultShareModal(options = {}) {
             ${renderSeedVaultUserSharesMarkup(appState.seedVaultUserShares || [])}
           </div>
         </section>
+        <details class="seed-vault-public-share-section">
+          <summary>
+            <span>
+              <strong>Public Sharing</strong>
+              <small data-seed-vault-public-share-summary>${escapeHtml(getSeedVaultShareVisibilityLabel(settings.visibility))} · ${settings.visibility === "private" ? "Hidden unless shared directly" : "Link access is enabled"}</small>
+            </span>
+          </summary>
+          <div class="seed-vault-public-share-body">
+            <fieldset class="seed-vault-share-visibility-options">
+              <legend>Public access</legend>
+              ${SEED_VAULT_SHARE_VISIBILITIES.map((visibility) => `
+                <label class="seed-vault-share-option${settings.visibility === visibility ? " is-selected" : ""}">
+                  <input type="radio" name="visibility" value="${escapeHtml(visibility)}"${settings.visibility === visibility ? " checked" : ""}>
+                  <span>
+                    <strong>${escapeHtml(getSeedVaultShareVisibilityLabel(visibility))}</strong>
+                    <small>${escapeHtml(getSeedVaultShareVisibilityDescription(visibility))}</small>
+                  </span>
+                </label>
+              `).join("")}
+            </fieldset>
+            <label class="seed-vault-share-link-field">
+              <span>Share link</span>
+              <input type="text" data-seed-vault-share-link readonly value="${escapeHtml(settings.visibility === "private" ? "" : getSeedVaultShareUrl(settings.publicSlug))}" placeholder="Choose Public or Share by Link to create a share link">
+            </label>
+            <div class="seed-vault-share-permission-group" aria-label="Public shared Vault visible fields">
+              <span class="seed-vault-share-permission-title">Public viewers can see</span>
+              <div class="seed-vault-share-toggle-grid">
+                <label class="seed-vault-permission-toggle"><input type="checkbox" name="showQuantity"${settings.showQuantity ? " checked" : ""}> <span>Quantity remaining</span></label>
+                <label class="seed-vault-permission-toggle"><input type="checkbox" name="showStorageLocation"${settings.showStorageLocation ? " checked" : ""}> <span>Storage location</span></label>
+                <label class="seed-vault-permission-toggle"><input type="checkbox" name="showStorageNotes"${settings.showStorageNotes ? " checked" : ""}> <span>Storage notes</span></label>
+                <label class="seed-vault-permission-toggle"><input type="checkbox" name="showPrivateNotes"${settings.showPrivateNotes ? " checked" : ""}> <span>Notes</span></label>
+              </div>
+            </div>
+            <button type="button" class="button button-secondary seed-vault-share-copy-button" data-seed-vault-share-copy="true">Copy share link</button>
+          </div>
+        </details>
         <p class="seed-vault-share-message form-message" data-seed-vault-share-message role="status" aria-live="polite"></p>
         <div class="seed-vault-form-actions">
-          <button type="button" class="button button-secondary" data-seed-vault-share-copy="true">Copy share link</button>
           <button type="submit" class="button button-primary">Save sharing settings</button>
           <button type="button" class="button button-secondary" data-seed-vault-share-close="true">Cancel</button>
         </div>
@@ -71134,7 +71157,7 @@ async function openSeedVaultShareModal(options = {}) {
   if (form instanceof HTMLFormElement) {
     syncSeedVaultShareModalLink(form);
   }
-  overlay.querySelector("input[name='visibility']:checked")?.focus();
+  overlay.querySelector("[data-seed-vault-user-share-search]")?.focus();
 }
 
 function formatSharedSeedVaultEntryAge(entry = {}) {

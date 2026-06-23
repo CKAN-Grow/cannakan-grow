@@ -44519,12 +44519,80 @@ body.theme-dark #session-analytics-section {
 }
 
 .seed-vault-share-modal {
-  width: min(100%, 760px);
+  width: min(100%, 800px);
 }
 
 .seed-vault-share-form {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+}
+
+.seed-vault-public-share-section {
+  display: grid;
+  min-width: 0;
+  border: 1px solid rgba(127, 184, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(8, 13, 11, 0.5);
+  overflow: hidden;
+}
+
+.seed-vault-public-share-section summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px 14px;
+  color: #f5f8f3;
+  cursor: pointer;
+  list-style: none;
+}
+
+.seed-vault-public-share-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.seed-vault-public-share-section summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(181, 232, 111, 0.22);
+  border-radius: 999px;
+  color: rgba(181, 232, 111, 0.92);
+  font-weight: 900;
+}
+
+.seed-vault-public-share-section[open] summary::after {
+  content: "-";
+}
+
+.seed-vault-public-share-section summary span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-vault-public-share-section summary strong,
+.seed-vault-share-permission-title,
+.seed-vault-user-share-permission-title {
+  color: #f5f8f3;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.seed-vault-public-share-section summary small {
+  color: rgba(205, 214, 207, 0.68);
+  font-size: 0.76rem;
+  line-height: 1.32;
+}
+
+.seed-vault-public-share-body {
+  display: grid;
+  gap: 13px;
+  padding: 0 14px 14px;
 }
 
 .seed-vault-share-visibility-options {
@@ -44544,7 +44612,7 @@ body.theme-dark #session-analytics-section {
   min-width: 0;
   padding: 12px;
   border: 1px solid rgba(148, 209, 89, 0.13);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(12, 17, 14, 0.72);
   cursor: pointer;
 }
@@ -44587,29 +44655,60 @@ body.theme-dark #session-analytics-section {
   min-width: 0;
   min-height: 44px;
   padding: 0 12px;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid rgba(127, 184, 255, 0.16);
   background: rgba(12, 17, 14, 0.9);
   color: #f2f7ef;
 }
 
-.seed-vault-share-toggle-grid {
+.seed-vault-share-permission-group,
+.seed-vault-user-share-permission-group {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 
-.seed-vault-share-toggle-grid label {
+.seed-vault-share-toggle-grid,
+.seed-vault-user-share-permissions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.seed-vault-permission-toggle {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 10px;
-  border: 1px solid rgba(148, 209, 89, 0.12);
-  border-radius: 12px;
-  background: rgba(12, 17, 14, 0.68);
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 209, 89, 0.14);
+  border-radius: 999px;
+  background: rgba(12, 17, 14, 0.76);
   color: rgba(242, 247, 239, 0.9);
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.1;
+  cursor: pointer;
+}
+
+.seed-vault-permission-toggle input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: #b5e86f;
+}
+
+.seed-vault-permission-toggle:has(input:checked) {
+  border-color: rgba(181, 232, 111, 0.5);
+  background: rgba(148, 209, 89, 0.14);
+  color: #f7fbf3;
+}
+
+.seed-vault-share-copy-button {
+  justify-self: start;
 }
 
 .seed-vault-share-message[data-tone="success"] {
@@ -44731,14 +44830,19 @@ body.theme-dark #session-analytics-section {
 
 .seed-vault-user-share-section {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  padding: 12px;
-  border: 1px solid rgba(127, 184, 255, 0.13);
+  padding: 14px;
+  border: 1px solid rgba(181, 232, 111, 0.18);
   border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(127, 184, 255, 0.045), rgba(255, 255, 255, 0.008)),
-    rgba(8, 13, 11, 0.55);
+    linear-gradient(180deg, rgba(148, 209, 89, 0.07), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 11, 0.62);
+}
+
+.seed-vault-user-share-section--primary {
+  border-color: rgba(181, 232, 111, 0.26);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
 }
 
 .seed-vault-user-share-heading {
@@ -44751,12 +44855,12 @@ body.theme-dark #session-analytics-section {
 .seed-vault-user-share-heading h4 {
   margin: 0;
   color: #f5f8f3;
-  font-size: 1rem;
+  font-size: 1.08rem;
 }
 
 .seed-vault-user-share-heading p:not(.eyebrow) {
   margin: 4px 0 0;
-  color: rgba(205, 214, 207, 0.74);
+  color: rgba(205, 214, 207, 0.76);
   line-height: 1.42;
 }
 
@@ -44764,21 +44868,25 @@ body.theme-dark #session-analytics-section {
 .seed-vault-user-share-list,
 .seed-vault-shared-with-me-list {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
 }
 
 .seed-vault-user-share-row,
 .seed-vault-shared-with-me-card {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr) auto;
-  gap: 10px;
+  grid-template-columns: minmax(150px, 0.78fr) minmax(240px, 1.32fr) auto;
+  gap: 12px;
   align-items: center;
   min-width: 0;
-  padding: 11px;
+  padding: 12px;
   border: 1px solid rgba(148, 209, 89, 0.12);
   border-radius: 13px;
   background: rgba(12, 17, 14, 0.72);
+}
+
+.seed-vault-user-share-row--candidate {
+  border-color: rgba(127, 184, 255, 0.16);
 }
 
 .seed-vault-user-share-row--active,
@@ -44796,10 +44904,8 @@ body.theme-dark #session-analytics-section {
 .seed-vault-user-share-person strong,
 .seed-vault-shared-with-me-card strong {
   min-width: 0;
-  overflow: hidden;
   color: #f5f8f3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .seed-vault-user-share-person span,
@@ -44818,30 +44924,6 @@ body.theme-dark #session-analytics-section {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.seed-vault-user-share-permissions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  min-width: 0;
-}
-
-.seed-vault-user-share-permissions label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: rgba(242, 247, 239, 0.86);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.seed-vault-user-share-permissions span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .seed-vault-user-share-actions {
@@ -47473,7 +47555,6 @@ body.theme-dark #session-analytics-section {
   }
 
   .seed-vault-share-card,
-  .seed-vault-share-toggle-grid,
   .seed-vault-user-share-row,
   .seed-vault-shared-with-me-card {
     grid-template-columns: 1fr;
