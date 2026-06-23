@@ -18551,6 +18551,33 @@ body.theme-dark .contact-reason-card.is-active {
   margin-top: 4px;
 }
 
+.admin-source-directory-loaded-report {
+  margin-top: 14px;
+}
+
+.admin-source-directory-loaded-names {
+  margin-top: 14px;
+  color: var(--muted);
+}
+
+.admin-source-directory-loaded-names summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.admin-source-directory-loaded-names ol {
+  columns: 2;
+  margin: 10px 0 0;
+  padding-left: 22px;
+}
+
+@media (max-width: 640px) {
+  .admin-source-directory-loaded-names ol {
+    columns: 1;
+  }
+}
+
 .admin-source-review-filter-row {
   display: flex;
   flex-wrap: wrap;

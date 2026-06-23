@@ -6000,6 +6000,31 @@ function getSourceDirectoryDiagnosticsRowMarkup(label = "", value = "", tone = "
   `;
 }
 
+function buildSourceDirectoryLoadedClientReport() {
+  const loadedEntries = (Array.isArray(appState.sourceDirectoryEntries) ? appState.sourceDirectoryEntries : [])
+    .filter((entry) => entry?.active)
+    .sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || ""), "en", { sensitivity: "base" }));
+  const hasSource = (sourceName) => {
+    const normalizedSourceName = normalizeSourceDirectoryText(sourceName);
+    return loadedEntries.some((entry) => normalizeSourceDirectoryText(entry?.name || "") === normalizedSourceName);
+  };
+
+  return {
+    activeLoadedCount: loadedEntries.length,
+    loadedFrom: appState.sourceDirectoryLoadedFromFallback ? "Fallback" : (appState.sourceDirectoryLoaded ? "Supabase" : "Not loaded"),
+    firstNames: loadedEntries.slice(0, 50).map((entry) => entry.name),
+    expectedSources: {
+      "Tiki Madman": hasSource("Tiki Madman"),
+      Beleaf: hasSource("Beleaf"),
+      "Raw Genetics": hasSource("Raw Genetics"),
+      "Clearwater Genetics": hasSource("Clearwater Genetics"),
+      "Lit Farms": hasSource("Lit Farms"),
+      "Kid Frost": hasSource("Kid Frost"),
+    },
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 function renderSourceDirectoryDiagnosticsMarkup() {
   if (!isAdminUser()) {
     return "";
@@ -6011,6 +6036,19 @@ function renderSourceDirectoryDiagnosticsMarkup() {
   const rowCount = Number.isFinite(diagnostics.rowCount) ? diagnostics.rowCount.toLocaleString() : "Pending";
   const inputEventCount = Number(diagnostics.inputEventCount || 0);
   const dropdownVisible = Number(diagnostics.visibleDropdownCount || 0) > 0;
+  const clientReport = diagnostics.clientLoadedReport || buildSourceDirectoryLoadedClientReport();
+  const clientExpectedSources = clientReport.expectedSources || {};
+  const expectedRowsMarkup = Object.entries(clientExpectedSources)
+    .map(([name, exists]) => getSourceDirectoryDiagnosticsRowMarkup(
+      name,
+      exists ? "Found" : "Missing",
+      exists ? "success" : "warning",
+      "Exact name match in loaded client data",
+    ))
+    .join("");
+  const firstNamesMarkup = (clientReport.firstNames || [])
+    .map((name) => `<li>${escapeHtml(name)}</li>`)
+    .join("");
 
   return `
     <section class="profile-notification-permission profile-push-diagnostics-panel admin-source-directory-diagnostics is-info">
@@ -6031,8 +6069,20 @@ function renderSourceDirectoryDiagnosticsMarkup() {
         ${getSourceDirectoryDiagnosticsRowMarkup("Bound source fields", String(Number(diagnostics.boundFieldCount || 0)), Number(diagnostics.boundFieldCount || 0) > 0 ? "success" : "warning", `${Number(diagnostics.sourceFieldCount || 0)} source autocomplete wrappers found`)}
         ${getSourceDirectoryDiagnosticsRowMarkup("Dropdown visible", dropdownVisible ? "Visible" : "Not visible", dropdownVisible ? "success" : "info", `${Number(diagnostics.dropdownCount || 0)} dropdown elements in DOM`)}
       </div>
+      <div class="profile-push-diagnostics-grid admin-source-directory-loaded-report">
+        ${getSourceDirectoryDiagnosticsRowMarkup("Client loaded active rows", Number(clientReport.activeLoadedCount || 0).toLocaleString(), Number(clientReport.activeLoadedCount || 0) > SOURCE_DIRECTORY_FALLBACK_ROWS.length ? "success" : "warning", "Current in-memory source_directory entries used by autocomplete")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Client source data", clientReport.loadedFrom || "Unknown", clientReport.loadedFrom === "Supabase" ? "success" : "warning", appState.sourceDirectoryLoaded ? "Current autocomplete data source" : "Autocomplete has not loaded source data yet")}
+        ${expectedRowsMarkup}
+      </div>
+      <details class="admin-source-directory-loaded-names">
+        <summary>First 50 loaded source names alphabetically</summary>
+        <ol>
+          ${firstNamesMarkup || "<li>No loaded source names</li>"}
+        </ol>
+      </details>
       <div class="profile-push-delivery-actions profile-push-diagnostics-actions">
         <button type="button" class="button button-secondary" data-source-directory-diagnostics-refresh="true">Refresh Source Diagnostics</button>
+        <button type="button" class="button button-primary" data-source-directory-loaded-report="true">Run Loaded Source Report</button>
       </div>
     </section>
   `;
@@ -6041,6 +6091,10 @@ function renderSourceDirectoryDiagnosticsMarkup() {
 async function refreshSourceDirectoryDiagnostics(options = {}) {
   if (!isAdminUser()) {
     return null;
+  }
+
+  if (options.refreshLoadedSources) {
+    await refreshSourceDirectoryEntries({ force: true });
   }
 
   const previousDiagnostics = appState.sourceDirectoryDiagnostics || {};
@@ -6098,6 +6152,7 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
   diagnostics.visibleDropdownCount = [...scope.querySelectorAll("[data-source-directory-suggestions]")]
     .filter((panel) => panel instanceof HTMLElement && !panel.hidden && panel.offsetParent !== null)
     .length;
+  diagnostics.clientLoadedReport = buildSourceDirectoryLoadedClientReport();
 
   appState.sourceDirectoryDiagnostics = diagnostics;
   return diagnostics;
@@ -6106,6 +6161,14 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
 function bindSourceDirectoryDiagnosticsSection(scope = app) {
   scope.querySelector("[data-source-directory-diagnostics-refresh='true']")?.addEventListener("click", async () => {
     await refreshSourceDirectoryDiagnostics({ scope: document });
+    const container = app.querySelector("[data-source-directory-diagnostics-state]");
+    if (container) {
+      container.innerHTML = renderSourceDirectoryDiagnosticsMarkup();
+      bindSourceDirectoryDiagnosticsSection(app);
+    }
+  });
+  scope.querySelector("[data-source-directory-loaded-report='true']")?.addEventListener("click", async () => {
+    await refreshSourceDirectoryDiagnostics({ scope: document, refreshLoadedSources: true });
     const container = app.querySelector("[data-source-directory-diagnostics-state]");
     if (container) {
       container.innerHTML = renderSourceDirectoryDiagnosticsMarkup();
