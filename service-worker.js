@@ -1,4 +1,4 @@
-const CACHE_NAME = "cannakan-grow-shell-v20";
+const CACHE_NAME = "cannakan-grow-shell-v21";
 const APP_SHELL_ASSETS = [
   "/",
   "/index.html",

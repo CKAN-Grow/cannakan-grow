@@ -1488,6 +1488,7 @@ const appState = {
   seedVaultSexFilter: "all",
   sourceDirectoryEntries: [],
   sourceDirectoryLoaded: false,
+  sourceDirectoryLoadedFromFallback: false,
   sourceDirectoryRefreshPromise: null,
   sourceDirectoryUnavailable: false,
   sourceDirectoryDiagnostics: null,
@@ -2149,6 +2150,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultSexFilter = "all";
   appState.sourceDirectoryEntries = [];
   appState.sourceDirectoryLoaded = false;
+  appState.sourceDirectoryLoadedFromFallback = false;
   appState.sourceDirectoryRefreshPromise = null;
   appState.sourceDirectoryUnavailable = false;
   appState.sourceDirectoryDiagnostics = null;
@@ -5700,6 +5702,7 @@ function markSourceDirectoryUnavailable(error = null) {
   appState.sourceDirectoryUnavailable = true;
   appState.sourceDirectoryEntries = [];
   appState.sourceDirectoryLoaded = true;
+  appState.sourceDirectoryLoadedFromFallback = true;
   logRuntimeIssueOnce(
     "warn",
     "source-directory-unavailable",
@@ -5712,6 +5715,7 @@ async function loadSourceDirectoryEntries() {
   if (!appState.supabase || appState.sourceDirectoryUnavailable) {
     appState.sourceDirectoryEntries = getFallbackSourceDirectoryEntries();
     appState.sourceDirectoryLoaded = true;
+    appState.sourceDirectoryLoadedFromFallback = true;
     return appState.sourceDirectoryEntries || [];
   }
 
@@ -5744,13 +5748,21 @@ async function loadSourceDirectoryEntries() {
     .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
   appState.sourceDirectoryEntries = entries.length ? entries : getFallbackSourceDirectoryEntries();
   appState.sourceDirectoryLoaded = true;
+  appState.sourceDirectoryLoadedFromFallback = !entries.length;
   return appState.sourceDirectoryEntries;
 }
 
 async function refreshSourceDirectoryEntries(options = {}) {
   const { force = false } = options || {};
 
-  if (!force && appState.sourceDirectoryLoaded) {
+  const canRetryFallbackLoad = Boolean(
+    appState.sourceDirectoryLoaded
+    && appState.sourceDirectoryLoadedFromFallback
+    && appState.supabase
+    && !appState.sourceDirectoryUnavailable,
+  );
+
+  if (!force && appState.sourceDirectoryLoaded && !canRetryFallbackLoad) {
     return appState.sourceDirectoryEntries || [];
   }
 
@@ -73646,7 +73658,15 @@ function requestSourceDirectorySuggestionsRender(field) {
   }
 
   renderSourceDirectorySuggestions(field);
-  if (!appState.sourceDirectoryLoaded && !appState.sourceDirectoryUnavailable) {
+  const shouldRefreshSourceDirectory = (
+    !appState.sourceDirectoryLoaded
+    || (
+      appState.sourceDirectoryLoadedFromFallback
+      && appState.supabase
+      && !appState.sourceDirectoryUnavailable
+    )
+  );
+  if (shouldRefreshSourceDirectory && !appState.sourceDirectoryUnavailable) {
     void refreshSourceDirectoryEntries().then(() => {
       if (field.isConnected) {
         const input = field.querySelector("[data-source-directory-input]");
