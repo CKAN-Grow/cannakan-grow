@@ -1502,6 +1502,7 @@ const appState = {
   seedVaultUserSharesLoaded: false,
   seedVaultUserSharesError: "",
   seedVaultUserShareSearchResults: [],
+  seedVaultUserShareSearchUnavailable: false,
   seedVaultSharedWithMe: [],
   seedVaultSharedWithMeLoaded: false,
   seedVaultSharedWithMeError: "",
@@ -2183,6 +2184,7 @@ function resetSessionScopedAppState() {
   appState.seedVaultUserSharesLoaded = false;
   appState.seedVaultUserSharesError = "";
   appState.seedVaultUserShareSearchResults = [];
+  appState.seedVaultUserShareSearchUnavailable = false;
   appState.seedVaultSharedWithMe = [];
   appState.seedVaultSharedWithMeLoaded = false;
   appState.seedVaultSharedWithMeError = "";
@@ -5899,17 +5901,38 @@ function getSeedVaultUserSharePermissionSummary(share = {}) {
   return permissions.length ? permissions.join(" · ") : "No access";
 }
 
+function isSeedVaultShareUserSearchRpcMissingError(error = null) {
+  const message = getSupabaseErrorSearchText(error);
+  const code = String(error?.code || "").trim().toUpperCase();
+  return Boolean(
+    code === "PGRST202"
+    || code === "PGRST204"
+    || (
+      message.includes("schema cache")
+      && message.includes("search_seed_vault_share_users")
+    )
+    || (
+      message.includes("could not find")
+      && message.includes("search_seed_vault_share_users")
+    )
+  );
+}
 async function searchSeedVaultShareUsers(query = "") {
   const normalizedQuery = String(query || "").trim();
-  if (!appState.supabase || normalizedQuery.length < 2) {
+  if (!appState.supabase || normalizedQuery.length < 2 || appState.seedVaultUserShareSearchUnavailable) {
     appState.seedVaultUserShareSearchResults = [];
     return [];
   }
 
   const { data, error } = await appState.supabase.rpc("search_seed_vault_share_users", { search_query: normalizedQuery });
   if (error) {
-    logRuntimeIssueOnce("warn", "seed-vault-user-share-search-failed", "Could not search Grow users for Seed Vault sharing.", error);
     appState.seedVaultUserShareSearchResults = [];
+    if (isSeedVaultShareUserSearchRpcMissingError(error)) {
+      appState.seedVaultUserShareSearchUnavailable = true;
+      logRuntimeIssueOnce("warn", "seed-vault-user-share-search-rpc-missing", "Seed Vault Grow user search RPC is unavailable. Apply the latest migrations and reload the Supabase schema cache.", error);
+      return [];
+    }
+    logRuntimeIssueOnce("warn", "seed-vault-user-share-search-failed", "Could not search Grow users for Seed Vault sharing.", error);
     throw error;
   }
 
@@ -70810,8 +70833,16 @@ function renderSeedVaultUserSharePermissionToggles(share = {}, options = {}) {
 }
 
 function renderSeedVaultUserShareSearchResultsMarkup(results = []) {
+  if (appState.seedVaultUserShareSearchUnavailable) {
+    return `
+      <div class="seed-vault-user-share-empty">
+        <strong>Grow user search unavailable</strong>
+        <p>Apply the latest migrations and reload the Supabase schema cache, then try again.</p>
+      </div>
+    `;
+  }
   if (!results.length) {
-    return `<p class="seed-vault-user-share-empty">Search by display name or username to add a Grow user.</p>`;
+    return `<p class="seed-vault-user-share-empty">Search by display name, username, or exact email to add a Grow user.</p>`;
   }
 
   return results.map((result) => {
