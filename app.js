@@ -1481,6 +1481,7 @@ const appState = {
   sourceDirectoryLoaded: false,
   sourceDirectoryRefreshPromise: null,
   sourceDirectoryUnavailable: false,
+  sourceDirectoryDiagnostics: null,
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
@@ -2136,6 +2137,7 @@ function resetSessionScopedAppState() {
   appState.sourceDirectoryLoaded = false;
   appState.sourceDirectoryRefreshPromise = null;
   appState.sourceDirectoryUnavailable = false;
+  appState.sourceDirectoryDiagnostics = null;
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -73298,6 +73300,12 @@ function initializeSourceDirectoryAutocompletes(scope) {
     }
 
     input.addEventListener("input", () => {
+      appState.sourceDirectoryDiagnostics = {
+        ...(appState.sourceDirectoryDiagnostics || {}),
+        lastInputAt: new Date().toISOString(),
+        lastInputValue: input.value || "",
+        inputEventCount: Number(appState.sourceDirectoryDiagnostics?.inputEventCount || 0) + 1,
+      };
       syncSourceDirectoryInputMatch(input);
       field.dataset.sourceDirectoryActiveIndex = "0";
       requestSourceDirectorySuggestionsRender(field);
