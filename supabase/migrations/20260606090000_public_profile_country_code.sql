@@ -80,7 +80,9 @@ begin
 end;
 $$;
 
-create or replace view public.safe_public_member_profiles as
+drop view if exists public.safe_public_member_profiles;
+
+create view public.safe_public_member_profiles as
 select
   id,
   user_id,
@@ -107,6 +109,12 @@ where coalesce(show_profile_in_community_grow, true) = true
       and coalesce(profiles.account_status, 'active') = 'active'
       and coalesce(profiles.deletion_status, '') <> 'deleted'
   );
+
+comment on view public.safe_public_member_profiles is
+  'Public-safe profile lookup surface. Exposes approved profile identity fields only for visible active public profiles.';
+
+revoke all on table public.safe_public_member_profiles from public;
+grant select on table public.safe_public_member_profiles to anon, authenticated;
 
 comment on column public.public_member_profiles.country_code is
   'Optional ISO 3166-1 alpha-2 country code used to render public Community Grow country flags.';
