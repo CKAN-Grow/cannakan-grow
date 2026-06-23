@@ -6213,18 +6213,54 @@ function buildSourceDirectoryLoadedClientReport() {
     const normalizedSourceName = normalizeSourceDirectoryText(sourceName);
     return loadedEntries.some((entry) => normalizeSourceDirectoryText(entry?.name || "") === normalizedSourceName);
   };
+  const aliasResolvesTo = (aliasName) => {
+    const normalizedAliasName = normalizeSourceDirectoryText(aliasName);
+    const match = loadedEntries.find((entry) => getSourceDirectoryEntrySearchValues(entry).some((value) => value.normalized === normalizedAliasName));
+    return match?.name || "";
+  };
 
   return {
     activeLoadedCount: loadedEntries.length,
     loadedFrom: appState.sourceDirectoryLoadedFromFallback ? "Fallback" : (appState.sourceDirectoryLoaded ? "Supabase" : "Not loaded"),
     firstNames: loadedEntries.slice(0, 50).map((entry) => entry.name),
     expectedSources: {
+      "Epic Gardening": hasSource("Epic Gardening"),
+      "Baker Creek Heirloom Seeds": hasSource("Baker Creek Heirloom Seeds"),
+      "Rare Seeds alias": Boolean(aliasResolvesTo("Rare Seeds")),
+      MIgardener: hasSource("MIgardener"),
       "Tiki Madman": hasSource("Tiki Madman"),
       Beleaf: hasSource("Beleaf"),
       "Raw Genetics": hasSource("Raw Genetics"),
       "Clearwater Genetics": hasSource("Clearwater Genetics"),
       "Lit Farms": hasSource("Lit Farms"),
       "Kid Frost": hasSource("Kid Frost"),
+    },
+    aliasMatches: {
+      "Rare Seeds": aliasResolvesTo("Rare Seeds"),
+    },
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+function buildVarietyDirectoryLoadedClientReport() {
+  const loadedEntries = (Array.isArray(appState.varietyDirectoryEntries) ? appState.varietyDirectoryEntries : [])
+    .filter((entry) => entry?.active)
+    .sort((left, right) => String(left?.name || "").localeCompare(String(right?.name || ""), "en", { sensitivity: "base" }));
+  const hasVariety = (varietyName) => {
+    const normalizedVarietyName = normalizeVarietyDirectoryText(varietyName);
+    return loadedEntries.some((entry) => getVarietyDirectoryEntrySearchValues(entry).some((value) => value === normalizedVarietyName));
+  };
+
+  return {
+    activeLoadedCount: loadedEntries.length,
+    loadedFrom: appState.varietyDirectoryUnavailable ? "Unavailable" : (appState.varietyDirectoryLoaded ? "Supabase" : "Not loaded"),
+    firstNames: loadedEntries.slice(0, 50).map((entry) => entry.name),
+    expectedVarieties: {
+      "Blue Dream": hasVariety("Blue Dream"),
+      "Permanent Marker": hasVariety("Permanent Marker"),
+      "Grandpa's Cookies": hasVariety("Grandpa's Cookies"),
+      "Cherokee Purple": hasVariety("Cherokee Purple Tomato") || hasVariety("Cherokee Purple"),
+      "Butterfly Pea": hasVariety("Butterfly Pea"),
     },
     checkedAt: new Date().toISOString(),
   };
@@ -6242,18 +6278,32 @@ function renderSourceDirectoryDiagnosticsMarkup() {
   const inputEventCount = Number(diagnostics.inputEventCount || 0);
   const dropdownVisible = Number(diagnostics.visibleDropdownCount || 0) > 0;
   const clientReport = diagnostics.clientLoadedReport || buildSourceDirectoryLoadedClientReport();
+  const varietyClientReport = diagnostics.varietyClientLoadedReport || buildVarietyDirectoryLoadedClientReport();
   const clientExpectedSources = clientReport.expectedSources || {};
+  const clientExpectedVarieties = varietyClientReport.expectedVarieties || {};
   const expectedRowsMarkup = Object.entries(clientExpectedSources)
     .map(([name, exists]) => getSourceDirectoryDiagnosticsRowMarkup(
       name,
       exists ? "Found" : "Missing",
       exists ? "success" : "warning",
-      "Exact name match in loaded client data",
+      name === "Rare Seeds alias" ? `Alias resolves to: ${clientReport.aliasMatches?.["Rare Seeds"] || "No match"}` : "Source or alias match in loaded client data",
+    ))
+    .join("");
+  const expectedVarietyRowsMarkup = Object.entries(clientExpectedVarieties)
+    .map(([name, exists]) => getSourceDirectoryDiagnosticsRowMarkup(
+      name,
+      exists ? "Found" : "Missing",
+      exists ? "success" : "warning",
+      "Variety or alias match in loaded client data",
     ))
     .join("");
   const firstNamesMarkup = (clientReport.firstNames || [])
     .map((name) => `<li>${escapeHtml(name)}</li>`)
     .join("");
+  const firstVarietyNamesMarkup = (varietyClientReport.firstNames || [])
+    .map((name) => `<li>${escapeHtml(name)}</li>`)
+    .join("");
+  const varietyRowCount = Number.isFinite(diagnostics.varietyRowCount) ? diagnostics.varietyRowCount.toLocaleString() : "Pending";
 
   return `
     <section class="profile-notification-permission profile-push-diagnostics-panel admin-source-directory-diagnostics is-info">
@@ -6270,6 +6320,14 @@ function renderSourceDirectoryDiagnosticsMarkup() {
         ${getSourceDirectoryDiagnosticsRowMarkup("Authenticated select", status(diagnostics.selectWorks), tone(diagnostics.selectWorks), diagnostics.selectError || "Active rows selectable")}
         ${getSourceDirectoryDiagnosticsRowMarkup("Query pop", status(diagnostics.popMatch), tone(diagnostics.popMatch), diagnostics.popResult || "Expected Poppin Fire")}
         ${getSourceDirectoryDiagnosticsRowMarkup("Query wiz", status(diagnostics.wizMatch), tone(diagnostics.wizMatch), diagnostics.wizResult || "Expected Wizard Trees Genetics")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("variety_directory table", status(diagnostics.varietyTableExists), tone(diagnostics.varietyTableExists), diagnostics.varietyTableError || "Table read/count check")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Active variety row count", varietyRowCount, Number(diagnostics.varietyRowCount || 0) > 0 ? "success" : "warning", "Authenticated count through RLS")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Variety authenticated select", status(diagnostics.varietySelectWorks), tone(diagnostics.varietySelectWorks), diagnostics.varietySelectError || "Active variety rows selectable")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Production Blue Dream", status(diagnostics.varietyChecks?.blueDream), tone(diagnostics.varietyChecks?.blueDream), "Active production row or alias")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Production Permanent Marker", status(diagnostics.varietyChecks?.permanentMarker), tone(diagnostics.varietyChecks?.permanentMarker), "Active production row or alias")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Production Grandpa's Cookies", status(diagnostics.varietyChecks?.grandpasCookies), tone(diagnostics.varietyChecks?.grandpasCookies), "Active production row or alias")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Production Cherokee Purple", status(diagnostics.varietyChecks?.cherokeePurple), tone(diagnostics.varietyChecks?.cherokeePurple), "Active production row or alias")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Production Butterfly Pea", status(diagnostics.varietyChecks?.butterflyPea), tone(diagnostics.varietyChecks?.butterflyPea), "Active production row or alias")}
         ${getSourceDirectoryDiagnosticsRowMarkup("Input events", inputEventCount ? String(inputEventCount) : "None yet", inputEventCount ? "success" : "info", diagnostics.lastInputValue ? `Last value: ${diagnostics.lastInputValue}` : "Type in a source field, then refresh diagnostics")}
         ${getSourceDirectoryDiagnosticsRowMarkup("Bound source fields", String(Number(diagnostics.boundFieldCount || 0)), Number(diagnostics.boundFieldCount || 0) > 0 ? "success" : "warning", `${Number(diagnostics.sourceFieldCount || 0)} source autocomplete wrappers found`)}
         ${getSourceDirectoryDiagnosticsRowMarkup("Dropdown visible", dropdownVisible ? "Visible" : "Not visible", dropdownVisible ? "success" : "info", `${Number(diagnostics.dropdownCount || 0)} dropdown elements in DOM`)}
@@ -6277,12 +6335,21 @@ function renderSourceDirectoryDiagnosticsMarkup() {
       <div class="profile-push-diagnostics-grid admin-source-directory-loaded-report">
         ${getSourceDirectoryDiagnosticsRowMarkup("Client loaded active rows", Number(clientReport.activeLoadedCount || 0).toLocaleString(), Number(clientReport.activeLoadedCount || 0) > SOURCE_DIRECTORY_FALLBACK_ROWS.length ? "success" : "warning", "Current in-memory source_directory entries used by autocomplete")}
         ${getSourceDirectoryDiagnosticsRowMarkup("Client source data", clientReport.loadedFrom || "Unknown", clientReport.loadedFrom === "Supabase" ? "success" : "warning", appState.sourceDirectoryLoaded ? "Current autocomplete data source" : "Autocomplete has not loaded source data yet")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Client loaded active varieties", Number(varietyClientReport.activeLoadedCount || 0).toLocaleString(), Number(varietyClientReport.activeLoadedCount || 0) > 0 ? "success" : "warning", "Current in-memory variety_directory entries used by autocomplete")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Client variety data", varietyClientReport.loadedFrom || "Unknown", varietyClientReport.loadedFrom === "Supabase" ? "success" : "warning", appState.varietyDirectoryLoaded ? "Current autocomplete data source" : "Autocomplete has not loaded variety data yet")}
         ${expectedRowsMarkup}
+        ${expectedVarietyRowsMarkup}
       </div>
       <details class="admin-source-directory-loaded-names">
         <summary>First 50 loaded source names alphabetically</summary>
         <ol>
           ${firstNamesMarkup || "<li>No loaded source names</li>"}
+        </ol>
+      </details>
+      <details class="admin-source-directory-loaded-names">
+        <summary>First 50 loaded variety names alphabetically</summary>
+        <ol>
+          ${firstVarietyNamesMarkup || "<li>No loaded variety names</li>"}
         </ol>
       </details>
       <div class="profile-push-delivery-actions profile-push-diagnostics-actions">
@@ -6300,6 +6367,7 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
 
   if (options.refreshLoadedSources) {
     await refreshSourceDirectoryEntries({ force: true });
+    await refreshVarietyDirectoryEntries({ force: true });
   }
 
   const previousDiagnostics = appState.sourceDirectoryDiagnostics || {};
@@ -6313,8 +6381,14 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
     popResult: "",
     wizMatch: null,
     wizResult: "",
+    varietyTableExists: null,
+    varietyRowCount: null,
+    varietySelectWorks: null,
+    varietyChecks: {},
     tableError: "",
     selectError: "",
+    varietyTableError: "",
+    varietySelectError: "",
     lastCheckedAt: new Date().toISOString(),
   };
 
@@ -6348,6 +6422,37 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
       diagnostics.popMatch = normalizeSourceDirectoryText(popEntry?.name || "").includes("poppin fire");
       diagnostics.wizMatch = normalizeSourceDirectoryText(wizEntry?.name || "").includes("wizard trees");
     }
+
+    const varietyCountResponse = await appState.supabase
+      .from(VARIETY_DIRECTORY_TABLE)
+      .select("id", { count: "exact", head: true })
+      .eq("active", true);
+    diagnostics.varietyTableExists = !varietyCountResponse.error;
+    diagnostics.varietyRowCount = Number.isFinite(varietyCountResponse.count) ? varietyCountResponse.count : null;
+    diagnostics.varietyTableError = varietyCountResponse.error?.message || "";
+
+    const varietySelectResponse = await appState.supabase
+      .from(VARIETY_DIRECTORY_TABLE)
+      .select(VARIETY_DIRECTORY_BASE_SELECT)
+      .eq("active", true)
+      .limit(1000);
+    diagnostics.varietySelectWorks = !varietySelectResponse.error;
+    diagnostics.varietySelectError = varietySelectResponse.error?.message || "";
+
+    if (!varietySelectResponse.error) {
+      const varieties = (varietySelectResponse.data || []).map(mapVarietyDirectoryRow).filter(Boolean);
+      const hasVariety = (name) => {
+        const normalizedName = normalizeVarietyDirectoryText(name);
+        return varieties.some((entry) => getVarietyDirectoryEntrySearchValues(entry).some((value) => value === normalizedName));
+      };
+      diagnostics.varietyChecks = {
+        blueDream: hasVariety("Blue Dream"),
+        permanentMarker: hasVariety("Permanent Marker"),
+        grandpasCookies: hasVariety("Grandpa's Cookies"),
+        cherokeePurple: hasVariety("Cherokee Purple Tomato") || hasVariety("Cherokee Purple"),
+        butterflyPea: hasVariety("Butterfly Pea"),
+      };
+    }
   }
 
   const scope = options.scope instanceof Element ? options.scope : document;
@@ -6358,6 +6463,7 @@ async function refreshSourceDirectoryDiagnostics(options = {}) {
     .filter((panel) => panel instanceof HTMLElement && !panel.hidden && panel.offsetParent !== null)
     .length;
   diagnostics.clientLoadedReport = buildSourceDirectoryLoadedClientReport();
+  diagnostics.varietyClientLoadedReport = buildVarietyDirectoryLoadedClientReport();
 
   appState.sourceDirectoryDiagnostics = diagnostics;
   return diagnostics;
