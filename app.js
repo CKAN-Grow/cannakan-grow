@@ -5797,6 +5797,7 @@ async function loadSeedVaultShareSettings(options = {}) {
     const settings = normalizeSeedVaultShareSettings(data || { userId: appState.user.id });
     appState.seedVaultShareSettings = settings;
     appState.seedVaultShareSettingsLoaded = true;
+    appState.seedVaultShareSettingsUnavailable = false;
     appState.seedVaultShareSettingsError = "";
     return settings;
   })();
@@ -5828,13 +5829,22 @@ async function saveSeedVaultShareSettings(nextSettings = {}) {
   });
 
   if (error) {
-    appState.seedVaultShareSettingsError = error.message || "Seed Vault sharing settings could not be saved.";
-    throw error;
+    const settingsRpcMissing = isSeedVaultShareSettingsRpcMissingError(error);
+    const friendlyMessage = settingsRpcMissing
+      ? "Seed Vault sharing settings are temporarily unavailable. Apply the latest sharing migrations and reload the Supabase schema cache, then try again."
+      : error.message || "Seed Vault sharing settings could not be saved.";
+    appState.seedVaultShareSettingsUnavailable = settingsRpcMissing;
+    appState.seedVaultShareSettingsError = friendlyMessage;
+    if (settingsRpcMissing) {
+      logRuntimeIssueOnce("warn", "seed-vault-share-settings-rpc-missing", "Seed Vault sharing settings RPC is unavailable. Apply the latest migrations and reload the Supabase schema cache.", error);
+    }
+    throw new Error(friendlyMessage);
   }
 
   const savedSettings = normalizeSeedVaultShareSettings(data || {});
   appState.seedVaultShareSettings = savedSettings;
   appState.seedVaultShareSettingsLoaded = true;
+  appState.seedVaultShareSettingsUnavailable = false;
   appState.seedVaultShareSettingsError = "";
   return savedSettings;
 }
@@ -5899,6 +5909,23 @@ function getSeedVaultUserSharePermissionSummary(share = {}) {
     share.canViewNotes ? "Notes" : "",
   ].filter(Boolean);
   return permissions.length ? permissions.join(" · ") : "No access";
+}
+
+function isSeedVaultShareSettingsRpcMissingError(error = null) {
+  const message = getSupabaseErrorSearchText(error);
+  const code = String(error?.code || "").trim().toUpperCase();
+  return Boolean(
+    code === "PGRST202"
+    || code === "PGRST204"
+    || (
+      message.includes("schema cache")
+      && message.includes("update_seed_vault_share_settings")
+    )
+    || (
+      message.includes("could not find")
+      && message.includes("update_seed_vault_share_settings")
+    )
+  );
 }
 
 function isSeedVaultShareUserSearchRpcMissingError(error = null) {
