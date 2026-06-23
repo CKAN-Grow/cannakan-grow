@@ -75,6 +75,15 @@ const USER_NOTIFICATION_PREFERENCES_TABLE = "user_notification_preferences";
 const USER_FILTER_PAPER_SUPPLY_SETTINGS_TABLE = "user_filter_paper_supply_settings";
 const SEED_VAULT_ENTRIES_TABLE = "seed_vault_entries";
 const SOURCE_DIRECTORY_TABLE = "source_directory";
+const SOURCE_DIRECTORY_BASE_SELECT = "id,name,normalized_name,aliases,source_type,country,verified,active,usage_count";
+const SOURCE_DIRECTORY_COMMUNITY_SELECT = `${SOURCE_DIRECTORY_BASE_SELECT},distinct_user_count,first_used_at,last_used_at,needs_admin_review,review_status`;
+const SOURCE_DIRECTORY_COMMUNITY_COLUMNS = Object.freeze([
+  "distinct_user_count",
+  "first_used_at",
+  "last_used_at",
+  "needs_admin_review",
+  "review_status",
+]);
 const FOUNDERS_TABLE = "founders";
 const ADMIN_USERS_TABLE = "admin_users";
 const SEED_VAULT_STORAGE_KEY = "cannakanGrowSeedVaultEntries";
@@ -1482,6 +1491,11 @@ const appState = {
   sourceDirectoryRefreshPromise: null,
   sourceDirectoryUnavailable: false,
   sourceDirectoryDiagnostics: null,
+  sourceDirectoryReviewRows: [],
+  sourceDirectoryReviewLoaded: false,
+  sourceDirectoryReviewError: "",
+  sourceDirectoryReviewRefreshPromise: null,
+  sourceDirectoryReviewMessage: "",
   newSessionSeedVaultExpanded: false,
   newSessionSeedVaultActivePartitionId: 1,
   newSessionSeedVaultStarterEntryId: "",
@@ -2138,6 +2152,11 @@ function resetSessionScopedAppState() {
   appState.sourceDirectoryRefreshPromise = null;
   appState.sourceDirectoryUnavailable = false;
   appState.sourceDirectoryDiagnostics = null;
+  appState.sourceDirectoryReviewRows = [];
+  appState.sourceDirectoryReviewLoaded = false;
+  appState.sourceDirectoryReviewError = "";
+  appState.sourceDirectoryReviewRefreshPromise = null;
+  appState.sourceDirectoryReviewMessage = "";
   appState.sourcesLoaded = false;
   appState.sourcesError = "";
   appState.sourcesRefreshPromise = null;
@@ -5648,6 +5667,11 @@ function mapSourceDirectoryRow(row = {}) {
     verified: Boolean(row.verified),
     active: row.active !== false,
     usageCount: Math.max(0, Number(row.usage_count) || 0),
+    distinctUserCount: Math.max(0, Number(row.distinct_user_count) || 0),
+    firstUsedAt: String(row.first_used_at || "").trim(),
+    lastUsedAt: String(row.last_used_at || "").trim(),
+    needsAdminReview: Boolean(row.needs_admin_review),
+    reviewStatus: String(row.review_status || "none").trim() || "none",
   };
 }
 
@@ -5691,11 +5715,19 @@ async function loadSourceDirectoryEntries() {
     return appState.sourceDirectoryEntries || [];
   }
 
-  const { data, error } = await appState.supabase
+  let { data, error } = await appState.supabase
     .from(SOURCE_DIRECTORY_TABLE)
-    .select("id,name,normalized_name,aliases,source_type,country,verified,active,usage_count")
+    .select(SOURCE_DIRECTORY_COMMUNITY_SELECT)
     .eq("active", true)
     .order("name", { ascending: true });
+
+  if (error && isSupabaseColumnMissingError(error, SOURCE_DIRECTORY_TABLE, SOURCE_DIRECTORY_COMMUNITY_COLUMNS)) {
+    ({ data, error } = await appState.supabase
+      .from(SOURCE_DIRECTORY_TABLE)
+      .select(SOURCE_DIRECTORY_BASE_SELECT)
+      .eq("active", true)
+      .order("name", { ascending: true }));
+  }
 
   if (error) {
     if (isSourceDirectoryTableMissingError(error)) {
@@ -5852,6 +5884,222 @@ async function recordSourceDirectoryUsages(sourceNames = []) {
   return results
     .filter((result) => result.status === "fulfilled" && result.value)
     .map((result) => result.value);
+}
+
+async function loadSourceDirectoryReviewRows(reason = "unspecified") {
+  if (!appState.supabase || !isAdminUser() || appState.sourceDirectoryUnavailable) {
+    return [];
+  }
+
+  const { data, error } = await appState.supabase
+    .from(SOURCE_DIRECTORY_TABLE)
+    .select(SOURCE_DIRECTORY_COMMUNITY_SELECT)
+    .eq("active", true)
+    .eq("source_type", "community")
+    .eq("verified", false)
+    .gte("distinct_user_count", 5)
+    .order("distinct_user_count", { ascending: false })
+    .order("usage_count", { ascending: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    if (isSourceDirectoryTableMissingError(error)) {
+      markSourceDirectoryUnavailable(error);
+      return [];
+    }
+    if (isSupabaseColumnMissingError(error, SOURCE_DIRECTORY_TABLE, SOURCE_DIRECTORY_COMMUNITY_COLUMNS)) {
+      appState.sourceDirectoryReviewError = "Community source review is pending the latest database migration.";
+      return [];
+    }
+    console.error("Failed to load Source Directory review rows", { reason, error });
+    appState.sourceDirectoryReviewError = error.message || "Could not load community source review rows.";
+    return [];
+  }
+
+  appState.sourceDirectoryReviewError = "";
+  return (data || [])
+    .map(mapSourceDirectoryRow)
+    .filter((entry) => entry && entry.active && !entry.verified && entry.sourceType === "community");
+}
+
+async function refreshSourceDirectoryReviewRows(options = {}) {
+  const { force = false, reason = "refresh" } = options || {};
+
+  if (!force && appState.sourceDirectoryReviewLoaded && !appState.sourceDirectoryReviewRefreshPromise) {
+    return appState.sourceDirectoryReviewRows || [];
+  }
+
+  if (!force && appState.sourceDirectoryReviewRefreshPromise) {
+    return appState.sourceDirectoryReviewRefreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const rows = await loadSourceDirectoryReviewRows(reason);
+    appState.sourceDirectoryReviewRows = rows;
+    appState.sourceDirectoryReviewLoaded = true;
+    return rows;
+  })();
+
+  appState.sourceDirectoryReviewRefreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    appState.sourceDirectoryReviewRefreshPromise = null;
+  }
+}
+
+async function reviewSourceDirectoryCommunitySource(sourceId = "", promote = true) {
+  const cleanedSourceId = String(sourceId || "").trim();
+  if (!cleanedSourceId || !appState.supabase || !isAdminUser()) {
+    return null;
+  }
+
+  const { data, error } = await appState.supabase.rpc("review_source_directory_community_source", {
+    target_source_id: cleanedSourceId,
+    promote: Boolean(promote),
+  });
+
+  if (error) {
+    throw new Error(error.message || "Could not update community source review.");
+  }
+
+  const updatedEntry = mapSourceDirectoryRow(data);
+  if (updatedEntry) {
+    const normalizedName = normalizeSourceDirectoryText(updatedEntry.name);
+    appState.sourceDirectoryEntries = [
+      ...(appState.sourceDirectoryEntries || []).filter((entry) => normalizeSourceDirectoryText(entry.name) !== normalizedName),
+      updatedEntry,
+    ].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+    appState.sourceDirectoryLoaded = true;
+  }
+  return updatedEntry;
+}
+
+function getSourceDirectoryDiagnosticsRowMarkup(label = "", value = "", tone = "info", helper = "") {
+  return `
+    <div class="profile-push-diagnostics-row">
+      <div class="profile-push-diagnostics-copy">
+        <strong>${escapeHtml(label)}</strong>
+        <span>${escapeHtml(helper || "")}</span>
+      </div>
+      <span class="admin-source-directory-diagnostics-pill is-${escapeHtml(tone)}">${escapeHtml(value || "Unknown")}</span>
+    </div>
+  `;
+}
+
+function renderSourceDirectoryDiagnosticsMarkup() {
+  if (!isAdminUser()) {
+    return "";
+  }
+
+  const diagnostics = appState.sourceDirectoryDiagnostics || {};
+  const status = (value) => value === true ? "Pass" : (value === false ? "Fail" : "Pending");
+  const tone = (value) => value === true ? "success" : (value === false ? "warning" : "info");
+  const rowCount = Number.isFinite(diagnostics.rowCount) ? diagnostics.rowCount.toLocaleString() : "Pending";
+  const inputEventCount = Number(diagnostics.inputEventCount || 0);
+  const dropdownVisible = Number(diagnostics.visibleDropdownCount || 0) > 0;
+
+  return `
+    <section class="profile-notification-permission profile-push-diagnostics-panel admin-source-directory-diagnostics is-info">
+      <div class="profile-notification-heading">
+        <div>
+          <strong>Source Autocomplete Diagnostics</strong>
+          <span>Admin-only live checks for Source Directory autocomplete.</span>
+        </div>
+      </div>
+      <div class="profile-push-diagnostics-grid">
+        ${getSourceDirectoryDiagnosticsRowMarkup("Supabase client", status(diagnostics.supabaseConfigured), tone(diagnostics.supabaseConfigured), "Runtime client configured")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("source_directory table", status(diagnostics.tableExists), tone(diagnostics.tableExists), diagnostics.tableError || "Table read/count check")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Active row count", rowCount, Number(diagnostics.rowCount || 0) > 0 ? "success" : "warning", "Authenticated count through RLS")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Authenticated select", status(diagnostics.selectWorks), tone(diagnostics.selectWorks), diagnostics.selectError || "Active rows selectable")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Query pop", status(diagnostics.popMatch), tone(diagnostics.popMatch), diagnostics.popResult || "Expected Poppin Fire")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Query wiz", status(diagnostics.wizMatch), tone(diagnostics.wizMatch), diagnostics.wizResult || "Expected Wizard Trees Genetics")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Input events", inputEventCount ? String(inputEventCount) : "None yet", inputEventCount ? "success" : "info", diagnostics.lastInputValue ? `Last value: ${diagnostics.lastInputValue}` : "Type in a source field, then refresh diagnostics")}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Bound source fields", String(Number(diagnostics.boundFieldCount || 0)), Number(diagnostics.boundFieldCount || 0) > 0 ? "success" : "warning", `${Number(diagnostics.sourceFieldCount || 0)} source autocomplete wrappers found`)}
+        ${getSourceDirectoryDiagnosticsRowMarkup("Dropdown visible", dropdownVisible ? "Visible" : "Not visible", dropdownVisible ? "success" : "info", `${Number(diagnostics.dropdownCount || 0)} dropdown elements in DOM`)}
+      </div>
+      <div class="profile-push-delivery-actions profile-push-diagnostics-actions">
+        <button type="button" class="button button-secondary" data-source-directory-diagnostics-refresh="true">Refresh Source Diagnostics</button>
+      </div>
+    </section>
+  `;
+}
+
+async function refreshSourceDirectoryDiagnostics(options = {}) {
+  if (!isAdminUser()) {
+    return null;
+  }
+
+  const previousDiagnostics = appState.sourceDirectoryDiagnostics || {};
+  const diagnostics = {
+    ...previousDiagnostics,
+    supabaseConfigured: Boolean(appState.supabase),
+    tableExists: null,
+    rowCount: null,
+    selectWorks: null,
+    popMatch: null,
+    popResult: "",
+    wizMatch: null,
+    wizResult: "",
+    tableError: "",
+    selectError: "",
+    lastCheckedAt: new Date().toISOString(),
+  };
+
+  if (appState.supabase) {
+    const countResponse = await appState.supabase
+      .from(SOURCE_DIRECTORY_TABLE)
+      .select("id", { count: "exact", head: true })
+      .eq("active", true);
+    diagnostics.tableExists = !countResponse.error;
+    diagnostics.rowCount = Number.isFinite(countResponse.count) ? countResponse.count : null;
+    diagnostics.tableError = countResponse.error?.message || "";
+
+    const selectResponse = await appState.supabase
+      .from(SOURCE_DIRECTORY_TABLE)
+      .select("id,name,normalized_name,aliases,source_type,country,verified,active,usage_count")
+      .eq("active", true)
+      .limit(1000);
+    diagnostics.selectWorks = !selectResponse.error;
+    diagnostics.selectError = selectResponse.error?.message || "";
+
+    if (!selectResponse.error) {
+      const entries = (selectResponse.data || []).map(mapSourceDirectoryRow).filter(Boolean);
+      const findMatch = (query) => {
+        const normalizedQuery = normalizeSourceDirectoryText(query);
+        return entries.find((entry) => getSourceDirectoryEntrySearchValues(entry).some((value) => value.normalized.startsWith(normalizedQuery))) || null;
+      };
+      const popEntry = findMatch("pop");
+      const wizEntry = findMatch("wiz");
+      diagnostics.popResult = popEntry?.name || "";
+      diagnostics.wizResult = wizEntry?.name || "";
+      diagnostics.popMatch = normalizeSourceDirectoryText(popEntry?.name || "").includes("poppin fire");
+      diagnostics.wizMatch = normalizeSourceDirectoryText(wizEntry?.name || "").includes("wizard trees");
+    }
+  }
+
+  const scope = options.scope instanceof Element ? options.scope : document;
+  diagnostics.sourceFieldCount = scope.querySelectorAll("[data-source-directory-autocomplete]").length;
+  diagnostics.boundFieldCount = scope.querySelectorAll("[data-source-directory-autocomplete][data-source-directory-autocomplete-bound='true']").length;
+  diagnostics.dropdownCount = scope.querySelectorAll("[data-source-directory-suggestions]").length;
+  diagnostics.visibleDropdownCount = [...scope.querySelectorAll("[data-source-directory-suggestions]")]
+    .filter((panel) => panel instanceof HTMLElement && !panel.hidden && panel.offsetParent !== null)
+    .length;
+
+  appState.sourceDirectoryDiagnostics = diagnostics;
+  return diagnostics;
+}
+
+function bindSourceDirectoryDiagnosticsSection(scope = app) {
+  scope.querySelector("[data-source-directory-diagnostics-refresh='true']")?.addEventListener("click", async () => {
+    await refreshSourceDirectoryDiagnostics({ scope: document });
+    const container = app.querySelector("[data-source-directory-diagnostics-state]");
+    if (container) {
+      container.innerHTML = renderSourceDirectoryDiagnosticsMarkup();
+      bindSourceDirectoryDiagnosticsSection(app);
+    }
+  });
 }
 
 function getSourceNamesFromSession(session = {}) {
@@ -50776,8 +51024,80 @@ function renderAdminSourceReviewEditorMarkup() {
   `;
 }
 
+function renderSourceDirectoryCommunityReviewMarkup() {
+  const rows = Array.isArray(appState.sourceDirectoryReviewRows) ? appState.sourceDirectoryReviewRows : [];
+  const isLoading = Boolean(appState.supabase && !appState.sourceDirectoryReviewLoaded && appState.sourceDirectoryReviewRefreshPromise);
+
+  if (isLoading) {
+    return `
+      <div class="admin-sources-empty">
+        <p>Loading community source review...</p>
+      </div>
+    `;
+  }
+
+  if (appState.sourceDirectoryReviewError) {
+    return `
+      <div class="admin-sources-empty">
+        <p>${escapeHtml(appState.sourceDirectoryReviewError)}</p>
+      </div>
+    `;
+  }
+
+  if (!rows.length) {
+    return `
+      <div class="admin-sources-empty">
+        <p>No community sources are waiting for promotion review.</p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="leaderboard-audit-table-shell admin-source-directory-review-table-shell">
+      <table class="leaderboard-audit-table admin-source-directory-review-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Usage</th>
+            <th>Aliases</th>
+            <th>Last Used</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>
+                <strong>${escapeHtml(row.name)}</strong>
+                <span class="muted">${escapeHtml(row.country || "Country not set")}</span>
+              </td>
+              <td>
+                <span>${escapeHtml(`${row.distinctUserCount.toLocaleString()} distinct users`)}</span>
+                <span class="muted">${escapeHtml(`${row.usageCount.toLocaleString()} total uses`)}</span>
+              </td>
+              <td>${escapeHtml((row.aliases || []).join(", ") || "None")}</td>
+              <td>${escapeHtml(formatTimingDateTime(parseCompletedAtValue(row.lastUsedAt)) || row.lastUsedAt || "Not available")}</td>
+              <td>${renderAdminSourceReviewStatusPillMarkup(row.reviewStatus === "pending" ? "pending" : "needs-correction")}</td>
+              <td>
+                <div class="admin-source-review-card-actions">
+                  <button type="button" class="button button-primary" data-source-directory-promote="${escapeHtml(row.id)}">Promote</button>
+                  <button type="button" class="button button-secondary" data-source-directory-dismiss="${escapeHtml(row.id)}">Dismiss</button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderAdminSourceReviewSectionMarkup() {
   const filteredEntries = getFilteredAdminSourceReviewEntries();
+  const communityReviewCount = Array.isArray(appState.sourceDirectoryReviewRows)
+    ? appState.sourceDirectoryReviewRows.length
+    : 0;
   return renderAdminCollapsibleSectionMarkup({
     eyebrow: "Source Review",
     title: "Source Review",
@@ -50787,6 +51107,14 @@ function renderAdminSourceReviewSectionMarkup() {
     contentId: "admin-source-review-section-content",
     defaultOpen: false,
     bodyMarkup: `
+      <div class="admin-source-directory-review-block">
+        <div class="admin-sources-list-head">
+          <strong>Community Source Promotion</strong>
+          <span class="muted">${escapeHtml(`${communityReviewCount} waiting`)}</span>
+        </div>
+        <p class="snapshot-message ${appState.sourceDirectoryReviewMessage ? "is-success" : ""}">${escapeHtml(appState.sourceDirectoryReviewMessage || "")}</p>
+        ${renderSourceDirectoryCommunityReviewMarkup()}
+      </div>
       ${renderAdminSourceReviewFiltersMarkup()}
       <div class="admin-sources-layout admin-source-review-layout">
         <div class="admin-sources-list-shell">
@@ -50841,6 +51169,34 @@ function bindAdminSourceReviewSection() {
       appState.sourceReviewEditingKey = String(button.dataset.adminSourceReviewOpen || "").trim();
       appState.sourceReviewMessage = "";
       safeRender();
+    });
+  });
+
+  app.querySelectorAll("[data-source-directory-promote], [data-source-directory-dismiss]").forEach((button) => {
+    if (button.dataset.sourceDirectoryReviewBound === "true") {
+      return;
+    }
+    button.dataset.sourceDirectoryReviewBound = "true";
+    button.addEventListener("click", async () => {
+      const sourceId = String(button.dataset.sourceDirectoryPromote || button.dataset.sourceDirectoryDismiss || "").trim();
+      const promote = Boolean(button.dataset.sourceDirectoryPromote);
+      if (!sourceId) {
+        return;
+      }
+      button.disabled = true;
+      try {
+        const updatedEntry = await reviewSourceDirectoryCommunitySource(sourceId, promote);
+        appState.sourceDirectoryReviewMessage = updatedEntry
+          ? `${promote ? "Promoted" : "Dismissed"} ${updatedEntry.name}.`
+          : "Community source review updated.";
+        await refreshSourceDirectoryReviewRows({ force: true, reason: "admin-source-directory-review-action" });
+        safeRender();
+      } catch (error) {
+        appState.sourceDirectoryReviewMessage = error.message || "Could not update community source review.";
+        safeRender();
+      } finally {
+        button.disabled = false;
+      }
     });
   });
 
@@ -64492,6 +64848,15 @@ function renderAdminPage() {
     });
   }
 
+  if (isAdminUser() && !appState.sourceDirectoryReviewLoaded && !appState.sourceDirectoryReviewRefreshPromise && appState.supabase) {
+    void refreshSourceDirectoryReviewRows({ force: true, reason: "route:admin-source-review" }).then(() => {
+      const currentHash = window.location.hash || "#home";
+      if (!currentHash || isAdminDashboardHashRoute(currentHash)) {
+        safeRender();
+      }
+    });
+  }
+
   if (isAdminUser() && (!appState.siteVisitorAnalyticsLoaded || appState.siteVisitorAnalyticsLoadedFilter !== appState.siteVisitorAnalyticsFilter) && !appState.siteVisitorAnalyticsRefreshPromise && appState.supabase) {
     void refreshSiteVisitorAnalytics({ force: true, reason: "route:admin-site-visitor-analytics" }).then(() => {
       const currentHash = window.location.hash || "#home";
@@ -64580,6 +64945,16 @@ function renderAdminPage() {
       ? `<p class="muted admin-system-tools-note">Use <strong>Shift + D</strong> or the Admin Overview toggle to switch mock data on and off without affecting real records.</p>`
       : "";
     renderFounderSessionCleanupAdminSection(systemToolsContainer);
+    systemToolsContainer.insertAdjacentHTML("beforeend", `<div data-source-directory-diagnostics-state="true">${renderSourceDirectoryDiagnosticsMarkup()}</div>`);
+    if (!appState.sourceDirectoryDiagnostics) {
+      void refreshSourceDirectoryDiagnostics({ scope: document }).then(() => {
+        const container = app.querySelector("[data-source-directory-diagnostics-state]");
+        if (container) {
+          container.innerHTML = renderSourceDirectoryDiagnosticsMarkup();
+          bindSourceDirectoryDiagnosticsSection(app);
+        }
+      });
+    }
   }
 
   const sourceList = app.querySelector("#admin-sources-list");
@@ -64619,6 +64994,7 @@ function renderAdminPage() {
   bindAdminAnnouncementsSection();
   bindAdminTutorialManagementSection();
   bindFounderAdminQaSweepSection(app);
+  bindSourceDirectoryDiagnosticsSection(app);
   bindSiteVisitorAnalyticsSection();
   bindMessageBoardImageFallbacks(app);
   app.querySelector('[data-open-community-grow-moderation="true"]')?.addEventListener("click", () => {
