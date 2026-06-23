@@ -352,6 +352,24 @@ const PARTITION_IDENTITY_AUTOCOMPLETE_LIMIT = 6;
 const PARTITION_IDENTITY_AUTOCOMPLETE_MIN_CHARS = 2;
 const SOURCE_DIRECTORY_AUTOCOMPLETE_LIMIT = 10;
 const SOURCE_DIRECTORY_AUTOCOMPLETE_MIN_CHARS = 2;
+const SOURCE_DIRECTORY_FALLBACK_ROWS = Object.freeze([
+  { name: "Poppin Fire Genetics", aliases: ["Poppin Fire", "Poppin Fire Seeds"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Good Genetix", aliases: ["Good Genetics"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Wizard Trees Genetics", aliases: ["Wizard Trees"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Private Breeder", aliases: [], source_type: "fallback", country: "", verified: false, usage_count: 0 },
+  { name: "Friend / Trade", aliases: ["Friend Trade", "Trade"], source_type: "fallback", country: "", verified: false, usage_count: 0 },
+  { name: "Self Produced", aliases: ["Self-Produced", "Home Produced", "Own Seeds"], source_type: "fallback", country: "", verified: false, usage_count: 0 },
+  { name: "Unknown Source", aliases: ["Unknown"], source_type: "fallback", country: "", verified: false, usage_count: 0 },
+  { name: "Other", aliases: ["Other Source"], source_type: "fallback", country: "", verified: false, usage_count: 0 },
+  { name: "North Atlantic Seed Co.", aliases: ["North Atlantic Seed Company", "NASC"], source_type: "marketplace", country: "US", verified: true, usage_count: 0 },
+  { name: "Multiverse Beans", aliases: ["Multiverse", "MVB"], source_type: "marketplace", country: "US", verified: true, usage_count: 0 },
+  { name: "Seedsman", aliases: ["Seedsman Seeds"], source_type: "marketplace", country: "UK", verified: true, usage_count: 0 },
+  { name: "Mephisto Genetics", aliases: ["Mephisto"], source_type: "autoflower_breeder", country: "ES", verified: true, usage_count: 0 },
+  { name: "Night Owl Seeds", aliases: ["Night Owl"], source_type: "autoflower_breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Humboldt Seed Company", aliases: ["HSC", "Humboldt Seed Co"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Ethos Genetics", aliases: ["Ethos"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+  { name: "Exotic Genetix", aliases: ["Exotic Genetics"], source_type: "breeder", country: "US", verified: true, usage_count: 0 },
+]);
 const PARTITION_IDENTITY_TYPO_SUGGESTION_MIN_CHARS = 4;
 const PARTITION_IDENTITY_MATCH_STATUSES = Object.freeze(["selected", "auto_matched", "needs_review", "new"]);
 const NEW_SESSION_NOTES_DRAFT_KEY = "cannakan-grow-new-session-notes-draft";
@@ -5631,6 +5649,23 @@ function mapSourceDirectoryRow(row = {}) {
   };
 }
 
+function getFallbackSourceDirectoryEntries() {
+  return SOURCE_DIRECTORY_FALLBACK_ROWS
+    .map((row, index) => mapSourceDirectoryRow({
+      id: `fallback-source-${index + 1}`,
+      active: true,
+      ...row,
+    }))
+    .filter(Boolean);
+}
+
+function getSourceDirectoryAutocompleteEntries() {
+  const entries = Array.isArray(appState.sourceDirectoryEntries)
+    ? appState.sourceDirectoryEntries.filter((entry) => entry?.active)
+    : [];
+  return entries.length ? entries : getFallbackSourceDirectoryEntries();
+}
+
 function isSourceDirectoryTableMissingError(error) {
   return isSupabaseTableMissingError(error, SOURCE_DIRECTORY_TABLE);
 }
@@ -5649,6 +5684,7 @@ function markSourceDirectoryUnavailable(error = null) {
 
 async function loadSourceDirectoryEntries() {
   if (!appState.supabase || appState.sourceDirectoryUnavailable) {
+    appState.sourceDirectoryEntries = getFallbackSourceDirectoryEntries();
     appState.sourceDirectoryLoaded = true;
     return appState.sourceDirectoryEntries || [];
   }
@@ -5668,10 +5704,11 @@ async function loadSourceDirectoryEntries() {
     return appState.sourceDirectoryEntries || [];
   }
 
-  appState.sourceDirectoryEntries = (data || [])
+  const entries = (data || [])
     .map(mapSourceDirectoryRow)
     .filter((entry) => entry && entry.active)
     .sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }));
+  appState.sourceDirectoryEntries = entries.length ? entries : getFallbackSourceDirectoryEntries();
   appState.sourceDirectoryLoaded = true;
   return appState.sourceDirectoryEntries;
 }
@@ -5727,7 +5764,7 @@ function getSourceDirectorySuggestions(query = "") {
     return [];
   }
 
-  return (appState.sourceDirectoryEntries || [])
+  return getSourceDirectoryAutocompleteEntries()
     .map((entry) => {
       const values = getSourceDirectoryEntrySearchValues(entry);
       let bestMatch = null;
@@ -72953,7 +72990,7 @@ function getExactSourceDirectoryEntry(value = "") {
     return null;
   }
 
-  return (appState.sourceDirectoryEntries || []).find((entry) => (
+  return getSourceDirectoryAutocompleteEntries().find((entry) => (
     getSourceDirectoryEntrySearchValues(entry).some((candidate) => candidate.normalized === normalizedValue)
   )) || null;
 }

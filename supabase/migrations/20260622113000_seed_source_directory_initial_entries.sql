@@ -15,6 +15,8 @@ values
   ('Self Produced', array['Self-Produced', 'Home Produced', 'Own Seeds']::text[], 'fallback', null, false, true),
   ('Unknown Source', array['Unknown']::text[], 'fallback', null, false, true),
   ('Other', array['Other Source']::text[], 'fallback', null, false, true),
+  ('Poppin Fire Genetics', array['Poppin Fire', 'Poppin Fire Seeds']::text[], 'breeder', 'US', true, true),
+  ('Good Genetix', array['Good Genetics']::text[], 'breeder', 'US', true, true),
   ('Wizard Trees Genetics', array['Wizard Trees', 'Wizard Trees Genetics']::text[], 'breeder', 'US', true, true),
   ('Archive Seed Bank', array['Archive Seeds', 'Archive']::text[], 'breeder', 'US', true, true),
   ('Compound Genetics', array['Compound']::text[], 'breeder', 'US', true, true),
