@@ -97,6 +97,8 @@ const PUSH_NOTIFICATION_DELIVERIES_TABLE = "push_notification_deliveries";
 const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const SAFE_PUBLIC_MEMBER_PROFILES_VIEW = "safe_public_member_profiles";
 const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,country_code,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
+const SEED_VAULT_SHARE_SETTINGS_TABLE = "seed_vault_share_settings";
+const SEED_VAULT_SHARE_VISIBILITIES = Object.freeze(["private", "public", "link"]);
 const ISO_COUNTRY_CODES = Object.freeze([
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
   "BS", "BH", "BD", "BB", "BY", "BE", "BZ", "BJ", "BM", "BT", "BO", "BQ", "BA", "BW", "BV", "BR",
@@ -1490,6 +1492,11 @@ const appState = {
   seedVaultSourceFilter: "all",
   seedVaultTypeFilter: "all",
   seedVaultSexFilter: "all",
+  seedVaultShareSettings: null,
+  seedVaultShareSettingsLoaded: false,
+  seedVaultShareSettingsError: "",
+  seedVaultShareSettingsUnavailable: false,
+  seedVaultShareSettingsRefreshPromise: null,
   sourceDirectoryEntries: [],
   sourceDirectoryLoaded: false,
   sourceDirectoryLoadedFromFallback: false,
@@ -2156,6 +2163,11 @@ function resetSessionScopedAppState() {
   appState.seedVaultSourceFilter = "all";
   appState.seedVaultTypeFilter = "all";
   appState.seedVaultSexFilter = "all";
+  appState.seedVaultShareSettings = null;
+  appState.seedVaultShareSettingsLoaded = false;
+  appState.seedVaultShareSettingsError = "";
+  appState.seedVaultShareSettingsUnavailable = false;
+  appState.seedVaultShareSettingsRefreshPromise = null;
   appState.sourceDirectoryEntries = [];
   appState.sourceDirectoryLoaded = false;
   appState.sourceDirectoryLoadedFromFallback = false;
@@ -5654,6 +5666,201 @@ function loadStoredSeedVaultEntries(userId = appState.user?.id || "") {
   }
 }
 
+function getDefaultSeedVaultShareSettings(overrides = {}) {
+  return {
+    userId: String(overrides.userId || overrides.user_id || appState.user?.id || "").trim(),
+    visibility: normalizeSeedVaultShareVisibility(overrides.visibility),
+    publicSlug: normalizeSeedVaultShareSlug(overrides.publicSlug || overrides.public_slug || ""),
+    showQuantity: Boolean(overrides.showQuantity ?? overrides.show_quantity),
+    showStorageLocation: Boolean(overrides.showStorageLocation ?? overrides.show_storage_location),
+    showStorageNotes: Boolean(overrides.showStorageNotes ?? overrides.show_storage_notes),
+    showPrivateNotes: Boolean(overrides.showPrivateNotes ?? overrides.show_private_notes),
+    createdAt: String(overrides.createdAt || overrides.created_at || "").trim(),
+    updatedAt: String(overrides.updatedAt || overrides.updated_at || "").trim(),
+  };
+}
+
+function normalizeSeedVaultShareVisibility(value = "private") {
+  const normalized = String(value || "private").trim().toLowerCase();
+  return SEED_VAULT_SHARE_VISIBILITIES.includes(normalized) ? normalized : "private";
+}
+
+function normalizeSeedVaultShareSlug(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+function generateSeedVaultShareSlug() {
+  const randomPart = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID().replace(/-/g, "").slice(0, 12)
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.slice(0, 12);
+  return normalizeSeedVaultShareSlug(`vault-${randomPart}`);
+}
+
+function getSeedVaultShareUrl(slug = "") {
+  const normalizedSlug = normalizeSeedVaultShareSlug(slug);
+  if (!normalizedSlug || typeof window === "undefined" || !window.location) {
+    return "";
+  }
+  return `${window.location.origin}${window.location.pathname}#vault/${encodeURIComponent(normalizedSlug)}`;
+}
+
+function normalizeSeedVaultShareSettings(row = {}) {
+  return getDefaultSeedVaultShareSettings(row || {});
+}
+
+function getSeedVaultShareVisibilityLabel(visibility = "private") {
+  switch (normalizeSeedVaultShareVisibility(visibility)) {
+    case "public":
+      return "Public";
+    case "link":
+      return "Share by Link";
+    default:
+      return "Private";
+  }
+}
+
+function getSeedVaultShareVisibilityDescription(visibility = "private") {
+  switch (normalizeSeedVaultShareVisibility(visibility)) {
+    case "public":
+      return "Accessible from the share link and ready for future discovery surfaces.";
+    case "link":
+      return "Anyone with the share link can view the read-only public Vault.";
+    default:
+      return "Only you can view your Seed Vault.";
+  }
+}
+
+async function loadSeedVaultShareSettings(options = {}) {
+  const { force = false } = options || {};
+  if (!appState.user?.id) {
+    const fallback = getDefaultSeedVaultShareSettings();
+    appState.seedVaultShareSettings = fallback;
+    appState.seedVaultShareSettingsLoaded = true;
+    return fallback;
+  }
+
+  if (!appState.supabase || appState.seedVaultShareSettingsUnavailable) {
+    const fallback = getDefaultSeedVaultShareSettings({ userId: appState.user.id });
+    appState.seedVaultShareSettings = fallback;
+    appState.seedVaultShareSettingsLoaded = true;
+    return fallback;
+  }
+
+  if (!force && appState.seedVaultShareSettingsLoaded && appState.seedVaultShareSettings) {
+    return appState.seedVaultShareSettings;
+  }
+
+  if (!force && appState.seedVaultShareSettingsRefreshPromise) {
+    return appState.seedVaultShareSettingsRefreshPromise;
+  }
+
+  appState.seedVaultShareSettingsRefreshPromise = (async () => {
+    const { data, error } = await appState.supabase.rpc("get_or_create_seed_vault_share_settings");
+    if (error) {
+      appState.seedVaultShareSettingsUnavailable = true;
+      appState.seedVaultShareSettingsError = error.message || "Seed Vault sharing settings are unavailable.";
+      logRuntimeIssueOnce("warn", "seed-vault-share-settings-load-failed", "Seed Vault sharing settings could not be loaded.", error);
+      const fallback = getDefaultSeedVaultShareSettings({ userId: appState.user.id });
+      appState.seedVaultShareSettings = fallback;
+      appState.seedVaultShareSettingsLoaded = true;
+      return fallback;
+    }
+
+    const settings = normalizeSeedVaultShareSettings(data || { userId: appState.user.id });
+    appState.seedVaultShareSettings = settings;
+    appState.seedVaultShareSettingsLoaded = true;
+    appState.seedVaultShareSettingsError = "";
+    return settings;
+  })();
+
+  try {
+    return await appState.seedVaultShareSettingsRefreshPromise;
+  } finally {
+    appState.seedVaultShareSettingsRefreshPromise = null;
+  }
+}
+
+async function saveSeedVaultShareSettings(nextSettings = {}) {
+  if (!appState.user?.id || !appState.supabase) {
+    throw new Error("Sign in to update Seed Vault sharing.");
+  }
+
+  const visibility = normalizeSeedVaultShareVisibility(nextSettings.visibility);
+  const publicSlug = visibility === "private"
+    ? normalizeSeedVaultShareSlug(nextSettings.publicSlug || appState.seedVaultShareSettings?.publicSlug || "")
+    : normalizeSeedVaultShareSlug(nextSettings.publicSlug || appState.seedVaultShareSettings?.publicSlug || generateSeedVaultShareSlug());
+
+  const { data, error } = await appState.supabase.rpc("update_seed_vault_share_settings", {
+    next_visibility: visibility,
+    next_public_slug: publicSlug || null,
+    next_show_quantity: Boolean(nextSettings.showQuantity),
+    next_show_storage_location: Boolean(nextSettings.showStorageLocation),
+    next_show_storage_notes: Boolean(nextSettings.showStorageNotes),
+    next_show_private_notes: Boolean(nextSettings.showPrivateNotes),
+  });
+
+  if (error) {
+    appState.seedVaultShareSettingsError = error.message || "Seed Vault sharing settings could not be saved.";
+    throw error;
+  }
+
+  const savedSettings = normalizeSeedVaultShareSettings(data || {});
+  appState.seedVaultShareSettings = savedSettings;
+  appState.seedVaultShareSettingsLoaded = true;
+  appState.seedVaultShareSettingsError = "";
+  return savedSettings;
+}
+
+async function loadSharedSeedVault(slug = "") {
+  const normalizedSlug = normalizeSeedVaultShareSlug(slug);
+  if (!appState.supabase || !normalizedSlug) {
+    return { found: false, entries: [] };
+  }
+
+  const { data, error } = await appState.supabase.rpc("get_shared_seed_vault", { vault_slug: normalizedSlug });
+  if (error) {
+    logRuntimeIssueOnce("warn", "shared-seed-vault-load-failed", "Shared Seed Vault could not be loaded.", error);
+    return { found: false, entries: [], error: error.message || "Shared Seed Vault could not be loaded." };
+  }
+
+  return data && typeof data === "object" ? data : { found: false, entries: [] };
+}
+
+async function copySeedVaultShareLink(slug = "") {
+  const shareUrl = getSeedVaultShareUrl(slug);
+  if (!shareUrl) {
+    return false;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl);
+      return true;
+    }
+  } catch (error) {
+    console.warn("Could not copy Seed Vault share link.", error);
+  }
+
+  const helper = document.createElement("textarea");
+  helper.value = shareUrl;
+  helper.setAttribute("readonly", "true");
+  helper.style.position = "fixed";
+  helper.style.left = "-9999px";
+  document.body.appendChild(helper);
+  helper.select();
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch (error) {
+    copied = false;
+  }
+  helper.remove();
+  return copied;
+}
 function normalizeSourceDirectoryText(value = "") {
   return normalizeIdentityPunctuation(value)
     .toLowerCase()
@@ -37690,6 +37897,17 @@ function render() {
     return;
   }
 
+  if (route === "vault" && id) {
+    renderSharedSeedVaultPage(decodeURIComponent(id));
+    finalizeRender(buildSiteAnalyticsPageContext({
+      pageGroup: "sessions",
+      pageKey: "shared-seed-vault",
+      pageLabel: "Shared Seed Vault",
+      pagePath: `#vault/${id}`,
+    }));
+    return;
+  }
+
   if (route === "sources") {
     if (!id) {
       renderSourcesLandingPage();
@@ -68936,6 +69154,31 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   `;
 }
 
+function renderSeedVaultShareCardMarkup(settings = appState.seedVaultShareSettings) {
+  const normalizedSettings = normalizeSeedVaultShareSettings(settings || {});
+  const visibility = normalizeSeedVaultShareVisibility(normalizedSettings.visibility);
+  const visibilityLabel = getSeedVaultShareVisibilityLabel(visibility);
+  const shareUrl = visibility === "private" ? "" : getSeedVaultShareUrl(normalizedSettings.publicSlug);
+  const shareFields = [
+    normalizedSettings.showQuantity ? "quantity" : "",
+    normalizedSettings.showStorageLocation ? "storage location" : "",
+    normalizedSettings.showStorageNotes ? "storage notes" : "",
+    normalizedSettings.showPrivateNotes ? "notes" : "",
+  ].filter(Boolean);
+  const fieldSummary = shareFields.length ? `Showing ${shareFields.join(", ")}.` : "Only public seed details are shown.";
+
+  return `
+    <section class="seed-vault-share-card" aria-label="Seed Vault sharing settings">
+      <div class="seed-vault-share-card-copy">
+        <span>Shared Seed Vault</span>
+        <strong>${escapeHtml(visibilityLabel)}</strong>
+        <p>${escapeHtml(getSeedVaultShareVisibilityDescription(visibility))} ${escapeHtml(fieldSummary)}</p>
+        ${shareUrl ? `<small>${escapeHtml(shareUrl)}</small>` : ""}
+      </div>
+      <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">Share Vault</button>
+    </section>
+  `;
+}
 function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
   const analytics = buildSeedVaultAnalytics(entries, getSessions());
   const allEntries = analytics.entries || [];
@@ -68966,8 +69209,12 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
             <p>Track seed age, source, quantity, notes, and session history.</p>
           </div>
         </div>
-        <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
+        <div class="seed-vault-header-actions">
+          <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">Share Vault</button>
+          <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
+        </div>
       </div>
+      ${renderSeedVaultShareCardMarkup()}
       ${renderSeedVaultMetricCardsMarkup(analytics)}
       ${renderSeedVaultAgeInsightCardsMarkup(analytics)}
       ${renderSeedVaultRollupMarkup(analytics)}
@@ -69099,6 +69346,13 @@ function bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection = (
   seedVaultSection.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof Element)) {
+      return;
+    }
+
+    const shareButton = target.closest("[data-seed-vault-share='true']");
+    if (shareButton) {
+      event.preventDefault();
+      await openSeedVaultShareModal({ onSaved: renderSeedVaultSection });
       return;
     }
 
@@ -70227,6 +70481,308 @@ function refreshSeedVaultViewAfterMutation() {
   }
 }
 
+function closeSeedVaultShareModal() {
+  const overlay = document.querySelector("#seed-vault-share-modal-overlay");
+  if (!overlay) {
+    return;
+  }
+  overlay.remove();
+  document.body.classList.remove("modal-open");
+}
+
+function getSeedVaultShareModalFormSettings(form) {
+  const formData = new FormData(form);
+  const visibility = normalizeSeedVaultShareVisibility(formData.get("visibility"));
+  const existingSlug = normalizeSeedVaultShareSlug(form.dataset.publicSlug || appState.seedVaultShareSettings?.publicSlug || "");
+  return {
+    visibility,
+    publicSlug: visibility === "private" ? existingSlug : (existingSlug || generateSeedVaultShareSlug()),
+    showQuantity: formData.get("showQuantity") === "on",
+    showStorageLocation: formData.get("showStorageLocation") === "on",
+    showStorageNotes: formData.get("showStorageNotes") === "on",
+    showPrivateNotes: formData.get("showPrivateNotes") === "on",
+  };
+}
+
+function syncSeedVaultShareModalLink(form) {
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+  const settings = getSeedVaultShareModalFormSettings(form);
+  if (settings.visibility !== "private" && !settings.publicSlug) {
+    settings.publicSlug = generateSeedVaultShareSlug();
+    form.dataset.publicSlug = settings.publicSlug;
+  }
+  const linkField = form.querySelector("[data-seed-vault-share-link]");
+  const copyButton = form.querySelector("[data-seed-vault-share-copy]");
+  const shareUrl = settings.visibility === "private" ? "" : getSeedVaultShareUrl(settings.publicSlug);
+  if (linkField instanceof HTMLInputElement) {
+    linkField.value = shareUrl;
+    linkField.placeholder = settings.visibility === "private" ? "Choose Public or Share by Link to create a share link" : "Share link will appear here";
+  }
+  if (copyButton instanceof HTMLButtonElement) {
+    copyButton.disabled = settings.visibility === "private";
+  }
+}
+
+async function openSeedVaultShareModal(options = {}) {
+  const { onSaved = () => {} } = options || {};
+  let settings = await loadSeedVaultShareSettings({ force: true });
+  settings = normalizeSeedVaultShareSettings(settings || {});
+  const overlay = document.createElement("div");
+  overlay.id = "seed-vault-share-modal-overlay";
+  overlay.className = "seed-vault-entry-modal-overlay seed-vault-share-modal-overlay";
+  overlay.innerHTML = `
+    <div class="seed-vault-entry-modal seed-vault-share-modal" role="dialog" aria-modal="true" aria-labelledby="seed-vault-share-modal-title">
+      <button type="button" class="seed-vault-modal-close modal-close" data-seed-vault-share-close="true" aria-label="Close">×</button>
+      <div class="seed-vault-modal-copy">
+        <p class="eyebrow">SHARED SEED VAULT</p>
+        <h3 id="seed-vault-share-modal-title">Share Vault</h3>
+        <p>Create a safe read-only view of your Seed Vault. Private fields stay hidden unless you choose to show them.</p>
+      </div>
+      <form class="seed-vault-share-form" data-seed-vault-share-form data-public-slug="${escapeHtml(settings.publicSlug || "")}">
+        <fieldset class="seed-vault-share-visibility-options">
+          <legend>Visibility</legend>
+          ${SEED_VAULT_SHARE_VISIBILITIES.map((visibility) => `
+            <label class="seed-vault-share-option${settings.visibility === visibility ? " is-selected" : ""}">
+              <input type="radio" name="visibility" value="${escapeHtml(visibility)}"${settings.visibility === visibility ? " checked" : ""}>
+              <span>
+                <strong>${escapeHtml(getSeedVaultShareVisibilityLabel(visibility))}</strong>
+                <small>${escapeHtml(getSeedVaultShareVisibilityDescription(visibility))}</small>
+              </span>
+            </label>
+          `).join("")}
+        </fieldset>
+        <label class="seed-vault-share-link-field">
+          <span>Share link</span>
+          <input type="text" data-seed-vault-share-link readonly value="${escapeHtml(settings.visibility === "private" ? "" : getSeedVaultShareUrl(settings.publicSlug))}" placeholder="Choose Public or Share by Link to create a share link">
+        </label>
+        <div class="seed-vault-share-toggle-grid" aria-label="Shared Seed Vault visible fields">
+          <label><input type="checkbox" name="showQuantity"${settings.showQuantity ? " checked" : ""}> <span>Quantity remaining</span></label>
+          <label><input type="checkbox" name="showStorageLocation"${settings.showStorageLocation ? " checked" : ""}> <span>Storage location</span></label>
+          <label><input type="checkbox" name="showStorageNotes"${settings.showStorageNotes ? " checked" : ""}> <span>Storage notes</span></label>
+          <label><input type="checkbox" name="showPrivateNotes"${settings.showPrivateNotes ? " checked" : ""}> <span>Notes</span></label>
+        </div>
+        <p class="seed-vault-share-message form-message" data-seed-vault-share-message role="status" aria-live="polite"></p>
+        <div class="seed-vault-form-actions">
+          <button type="button" class="button button-secondary" data-seed-vault-share-copy="true">Copy share link</button>
+          <button type="submit" class="button button-primary">Save sharing settings</button>
+          <button type="button" class="button button-secondary" data-seed-vault-share-close="true">Cancel</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  const form = overlay.querySelector("[data-seed-vault-share-form]");
+  const message = overlay.querySelector("[data-seed-vault-share-message]");
+  const setMessage = (value = "", tone = "") => {
+    if (message) {
+      message.textContent = value;
+      message.dataset.tone = tone;
+    }
+  };
+  const persistSettings = async () => {
+    if (!(form instanceof HTMLFormElement)) {
+      return settings;
+    }
+    const nextSettings = getSeedVaultShareModalFormSettings(form);
+    const saved = await saveSeedVaultShareSettings(nextSettings);
+    form.dataset.publicSlug = saved.publicSlug || "";
+    syncSeedVaultShareModalLink(form);
+    onSaved();
+    return saved;
+  };
+
+  overlay.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target === overlay || (target instanceof Element && target.closest("[data-seed-vault-share-close='true']"))) {
+      event.preventDefault();
+      closeSeedVaultShareModal();
+    }
+  });
+
+  form?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement && target.name === "visibility") {
+      form.querySelectorAll(".seed-vault-share-option").forEach((option) => {
+        option.classList.toggle("is-selected", option.contains(target) && target.checked);
+      });
+    }
+    syncSeedVaultShareModalLink(form);
+  });
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setMessage("Saving sharing settings...");
+    try {
+      settings = await persistSettings();
+      setMessage("Sharing settings saved.", "success");
+      if (typeof showNavigationLockToast === "function") {
+        showNavigationLockToast({ title: "Shared Seed Vault", message: "Sharing settings saved." });
+      }
+      window.setTimeout(closeSeedVaultShareModal, 250);
+    } catch (error) {
+      setMessage(error?.message || "Sharing settings could not be saved.", "error");
+    }
+  });
+
+  form?.querySelector("[data-seed-vault-share-copy]")?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    const nextSettings = getSeedVaultShareModalFormSettings(form);
+    if (nextSettings.visibility === "private") {
+      setMessage("Choose Public or Share by Link before copying.", "error");
+      return;
+    }
+    setMessage("Saving and copying link...");
+    try {
+      settings = await persistSettings();
+      const copied = await copySeedVaultShareLink(settings.publicSlug);
+      setMessage(copied ? "Share link copied." : "Share link saved. Copy it from the field above.", copied ? "success" : "");
+      if (copied && typeof showNavigationLockToast === "function") {
+        showNavigationLockToast({ title: "Shared Seed Vault", message: "Share link copied." });
+      }
+    } catch (error) {
+      setMessage(error?.message || "Share link could not be copied.", "error");
+    }
+  });
+
+  document.body.appendChild(overlay);
+  document.body.classList.add("modal-open");
+  if (form instanceof HTMLFormElement) {
+    syncSeedVaultShareModalLink(form);
+  }
+  overlay.querySelector("input[name='visibility']:checked")?.focus();
+}
+
+function formatSharedSeedVaultEntryAge(entry = {}) {
+  const year = Number(entry.year_acquired || entry.yearAcquired || 0);
+  const age = Number(entry.seed_age_years ?? entry.seedAgeYears);
+  if (Number.isFinite(year) && year > 0 && Number.isFinite(age) && age >= 0) {
+    return `${year} · ${formatSeedAgeYearsLabel(age)}`;
+  }
+  if (Number.isFinite(year) && year > 0) {
+    return String(year);
+  }
+  if (Number.isFinite(age) && age >= 0) {
+    return formatSeedAgeYearsLabel(age);
+  }
+  return "Unknown age";
+}
+
+function renderSharedSeedVaultEntryMarkup(entry = {}, settings = {}) {
+  const seedType = String(entry.seed_type || entry.seedType || "").trim();
+  const seedSex = String(entry.seed_sex || entry.seedSex || "").trim();
+  const details = [
+    { label: "Type", value: getSeedTypeLabel(seedType) || seedType || "Unknown type" },
+    { label: "Sex", value: getSeedSexLabel(seedSex) || seedSex || "Unknown sex" },
+    { label: "Year / age", value: formatSharedSeedVaultEntryAge(entry) },
+  ];
+  if (settings.show_quantity && entry.quantity_remaining !== undefined && entry.quantity_remaining !== null) {
+    details.push({ label: "Quantity", value: String(Math.max(0, Number(entry.quantity_remaining) || 0)) });
+  }
+  if (settings.show_storage_location && entry.storage_location) {
+    details.push({ label: "Storage", value: String(entry.storage_location || "") });
+  }
+  if (settings.show_storage_notes && entry.storage_notes) {
+    details.push({ label: "Storage notes", value: String(entry.storage_notes || "") });
+  }
+  if (settings.show_private_notes && entry.notes) {
+    details.push({ label: "Notes", value: String(entry.notes || "") });
+  }
+
+  return `
+    <article class="shared-seed-vault-card">
+      <div class="shared-seed-vault-card-head">
+        <span>${escapeHtml(String(entry.source || "Unknown Source"))}</span>
+        <h3>${escapeHtml(String(entry.variety || entry.seed_variety || "Unknown Variety"))}</h3>
+      </div>
+      <dl class="shared-seed-vault-detail-list">
+        ${details.map((detail) => `
+          <div>
+            <dt>${escapeHtml(detail.label)}</dt>
+            <dd>${escapeHtml(detail.value)}</dd>
+          </div>
+        `).join("")}
+      </dl>
+    </article>
+  `;
+}
+
+function renderSharedSeedVaultPayload(slug = "", payload = {}) {
+  const entries = Array.isArray(payload.entries) ? payload.entries : [];
+  const settings = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+  const ownerName = String(payload.owner_display_name || "CannaKAN Grower").trim() || "CannaKAN Grower";
+  const totalVisibleEntries = Math.max(0, Number(payload.total_visible_entries ?? entries.length) || 0);
+
+  app.innerHTML = `
+    <section class="shared-seed-vault-page">
+      <nav class="seed-vault-page-nav" aria-label="Shared Seed Vault navigation">
+        <a class="button button-secondary seed-vault-back-button" href="#home">Back to CannaKAN Grow</a>
+      </nav>
+      <header class="shared-seed-vault-hero">
+        <p class="eyebrow">SHARED SEED VAULT</p>
+        <h1>${escapeHtml(ownerName)}'s Seed Vault</h1>
+        <p>Read-only collection view. Private owner details and internal records stay hidden.</p>
+        <strong>${escapeHtml(String(totalVisibleEntries))} visible entr${totalVisibleEntries === 1 ? "y" : "ies"}</strong>
+      </header>
+      ${entries.length ? `
+        <section class="shared-seed-vault-grid" aria-label="Shared Seed Vault entries">
+          ${entries.map((entry) => renderSharedSeedVaultEntryMarkup(entry, settings)).join("")}
+        </section>
+      ` : `
+        <section class="shared-seed-vault-empty">
+          <h2>No visible Vault entries</h2>
+          <p>This shared Vault is available, but there are no visible entries right now.</p>
+        </section>
+      `}
+    </section>
+  `;
+  hydrateAppIconSlots(app);
+}
+
+function renderSharedSeedVaultUnavailable(slug = "", message = "This shared Seed Vault is private or unavailable.") {
+  app.innerHTML = `
+    <section class="shared-seed-vault-page">
+      <nav class="seed-vault-page-nav" aria-label="Shared Seed Vault navigation">
+        <a class="button button-secondary seed-vault-back-button" href="#home">Back to CannaKAN Grow</a>
+      </nav>
+      <section class="shared-seed-vault-empty">
+        <p class="eyebrow">SHARED SEED VAULT</p>
+        <h1>Vault not available</h1>
+        <p>${escapeHtml(message)}</p>
+      </section>
+    </section>
+  `;
+}
+
+function renderSharedSeedVaultPage(slug = "") {
+  const normalizedSlug = normalizeSeedVaultShareSlug(slug);
+  app.innerHTML = `
+    <section class="shared-seed-vault-page">
+      <nav class="seed-vault-page-nav" aria-label="Shared Seed Vault navigation">
+        <a class="button button-secondary seed-vault-back-button" href="#home">Back to CannaKAN Grow</a>
+      </nav>
+      <section class="shared-seed-vault-empty">
+        <p class="eyebrow">SHARED SEED VAULT</p>
+        <h1>Loading shared Vault</h1>
+        <p>Opening the read-only Seed Vault view...</p>
+      </section>
+    </section>
+  `;
+
+  void (async () => {
+    const payload = await loadSharedSeedVault(normalizedSlug);
+    const currentRoute = String(window.location.hash || appState.currentRouteHash || "").replace(/^#/, "");
+    if (!currentRoute.startsWith(`vault/${normalizedSlug}`)) {
+      return;
+    }
+    if (!payload?.found) {
+      renderSharedSeedVaultUnavailable(normalizedSlug, payload?.error || "This shared Seed Vault is private, missing, or no longer shared.");
+      return;
+    }
+    renderSharedSeedVaultPayload(normalizedSlug, payload);
+  })();
+}
 function renderSeedVaultPage() {
   app.innerHTML = `
     <section class="seed-vault-page">
@@ -70241,6 +70797,7 @@ function renderSeedVaultPage() {
   const renderSeedVaultSection = () => renderSeedVaultPanelIntoSection(seedVaultSection);
   renderSeedVaultSection();
   bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection);
+  void loadSeedVaultShareSettings().then(renderSeedVaultSection).catch(() => {});
 }
 
 function closeSeedVaultEntryModal() {

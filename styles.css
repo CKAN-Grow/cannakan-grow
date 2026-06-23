@@ -44409,6 +44409,279 @@ body.theme-dark #session-analytics-section {
   min-height: 42px;
   white-space: nowrap;
 }
+.seed-vault-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.seed-vault-share-button.button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.seed-vault-share-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(127, 184, 255, 0.14);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(127, 184, 255, 0.055), rgba(255, 255, 255, 0.01)),
+    rgba(8, 13, 11, 0.56);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.seed-vault-share-card-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.seed-vault-share-card-copy span,
+.seed-vault-share-form legend,
+.seed-vault-share-link-field > span {
+  color: rgba(199, 208, 201, 0.68);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-share-card-copy strong {
+  color: #f6faf4;
+  font-size: 0.98rem;
+}
+
+.seed-vault-share-card-copy p,
+.seed-vault-share-card-copy small {
+  margin: 0;
+  color: rgba(205, 214, 207, 0.74);
+  line-height: 1.42;
+}
+
+.seed-vault-share-card-copy small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-share-modal {
+  width: min(100%, 760px);
+}
+
+.seed-vault-share-form {
+  display: grid;
+  gap: 14px;
+}
+
+.seed-vault-share-visibility-options {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.seed-vault-share-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(148, 209, 89, 0.13);
+  border-radius: 14px;
+  background: rgba(12, 17, 14, 0.72);
+  cursor: pointer;
+}
+
+.seed-vault-share-option.is-selected {
+  border-color: rgba(181, 232, 111, 0.46);
+  background:
+    linear-gradient(180deg, rgba(148, 209, 89, 0.13), rgba(255, 255, 255, 0.02)),
+    rgba(12, 17, 14, 0.82);
+}
+
+.seed-vault-share-option input {
+  margin-top: 3px;
+}
+
+.seed-vault-share-option span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-vault-share-option strong {
+  color: #f5f8f3;
+  font-size: 0.92rem;
+}
+
+.seed-vault-share-option small {
+  color: rgba(205, 214, 207, 0.72);
+  line-height: 1.35;
+}
+
+.seed-vault-share-link-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.seed-vault-share-link-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(127, 184, 255, 0.16);
+  background: rgba(12, 17, 14, 0.9);
+  color: #f2f7ef;
+}
+
+.seed-vault-share-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.seed-vault-share-toggle-grid label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 12px;
+  background: rgba(12, 17, 14, 0.68);
+  color: rgba(242, 247, 239, 0.9);
+  font-weight: 700;
+}
+
+.seed-vault-share-message[data-tone="success"] {
+  color: rgba(181, 232, 111, 0.92);
+}
+
+.seed-vault-share-message[data-tone="error"] {
+  color: rgba(255, 150, 150, 0.94);
+}
+
+.shared-seed-vault-page {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 28px);
+}
+
+.shared-seed-vault-hero,
+.shared-seed-vault-empty {
+  display: grid;
+  gap: 10px;
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(127, 184, 255, 0.15);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top right, rgba(127, 184, 255, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(17, 24, 20, 0.96), rgba(9, 14, 12, 0.98));
+}
+
+.shared-seed-vault-hero h1,
+.shared-seed-vault-empty h1,
+.shared-seed-vault-empty h2 {
+  margin: 0;
+  color: #f5f8f3;
+  font-size: clamp(1.6rem, 4vw, 2.55rem);
+  line-height: 1.08;
+}
+
+.shared-seed-vault-hero p,
+.shared-seed-vault-empty p {
+  margin: 0;
+  max-width: 680px;
+  color: rgba(205, 214, 207, 0.76);
+  line-height: 1.48;
+}
+
+.shared-seed-vault-hero strong {
+  color: rgba(181, 232, 111, 0.95);
+  font-size: 0.94rem;
+}
+
+.shared-seed-vault-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px;
+}
+
+.shared-seed-vault-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(148, 209, 89, 0.13);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 11, 0.72);
+}
+
+.shared-seed-vault-card-head {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.shared-seed-vault-card-head span {
+  color: rgba(199, 208, 201, 0.66);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shared-seed-vault-card-head h3 {
+  margin: 0;
+  color: #f6faf4;
+  font-size: 1.05rem;
+  line-height: 1.22;
+}
+
+.shared-seed-vault-detail-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.shared-seed-vault-detail-list div {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.54fr) minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.shared-seed-vault-detail-list dt {
+  color: rgba(199, 208, 201, 0.62);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.shared-seed-vault-detail-list dd {
+  min-width: 0;
+  margin: 0;
+  color: rgba(242, 247, 239, 0.9);
+  overflow-wrap: anywhere;
+}
 
 .seed-vault-metric-grid {
   display: grid;
@@ -46950,8 +47223,21 @@ body.theme-dark #session-analytics-section {
     grid-template-columns: 1fr;
   }
 
-  .seed-vault-add-button.button {
+  .seed-vault-header-actions,
+  .seed-vault-share-card,
+  .seed-vault-share-toggle-grid {
+    grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .seed-vault-header-actions {
+    align-items: stretch;
+  }
+
+  .seed-vault-add-button.button,
+  .seed-vault-share-button.button {
+    width: 100%;
+    justify-content: center;
   }
 
   .session-history-toolbar {
@@ -47064,6 +47350,15 @@ body.theme-dark #session-analytics-section {
 
   .new-session-seed-vault-panel {
     padding: 12px;
+  }
+
+  .shared-seed-vault-page {
+    padding: 12px;
+  }
+
+  .shared-seed-vault-detail-list div {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 
   .new-session-seed-vault-assignment-trigger {
