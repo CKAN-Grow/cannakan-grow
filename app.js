@@ -69483,7 +69483,6 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
           </div>
         </div>
         <div class="seed-vault-header-actions">
-          <button type="button" class="button button-secondary seed-vault-share-button" data-seed-vault-share="true">Share Vault</button>
           <button type="button" class="button button-primary seed-vault-add-button" data-seed-vault-add="true">Add Seeds</button>
         </div>
       </div>
@@ -71366,8 +71365,8 @@ function renderSeedVaultPage() {
       <nav class="seed-vault-page-nav seed-vault-page-nav--tabs" aria-label="Seed Vault navigation">
         <a class="button button-secondary seed-vault-back-button" href="#sessions">Back to My Sessions</a>
         <div class="seed-vault-page-tabs" role="tablist" aria-label="Seed Vault views">
-          <button type="button" class="button ${activeView === "mine" ? "button-primary" : "button-secondary"}" data-seed-vault-page-view="mine" aria-selected="${activeView === "mine" ? "true" : "false"}">My Vault</button>
-          <button type="button" class="button ${activeView === "shared" ? "button-primary" : "button-secondary"}" data-seed-vault-page-view="shared" aria-selected="${activeView === "shared" ? "true" : "false"}">Shared With Me</button>
+          <button type="button" class="seed-vault-page-tab${activeView === "mine" ? " is-active" : ""}" data-seed-vault-page-view="mine" aria-selected="${activeView === "mine" ? "true" : "false"}">My Vault</button>
+          <button type="button" class="seed-vault-page-tab${activeView === "shared" ? " is-active" : ""}" data-seed-vault-page-view="shared" aria-selected="${activeView === "shared" ? "true" : "false"}">Shared With Me</button>
         </div>
       </nav>
       <section id="seed-vault-section"></section>
