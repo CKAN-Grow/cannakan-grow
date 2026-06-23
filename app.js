@@ -98,6 +98,7 @@ const PUBLIC_MEMBER_PROFILES_TABLE = "public_member_profiles";
 const SAFE_PUBLIC_MEMBER_PROFILES_VIEW = "safe_public_member_profiles";
 const PUBLIC_MEMBER_PROFILE_SAFE_SELECT = "id,user_id,display_name,avatar_url,bio,public_handle,location_region,country_code,profile_visibility,joined_at,show_profile_in_community_grow,show_grow_stats_publicly,created_at,updated_at";
 const SEED_VAULT_SHARE_SETTINGS_TABLE = "seed_vault_share_settings";
+const SEED_VAULT_SHARE_USERS_TABLE = "seed_vault_share_users";
 const SEED_VAULT_SHARE_VISIBILITIES = Object.freeze(["private", "public", "link"]);
 const ISO_COUNTRY_CODES = Object.freeze([
   "AF", "AX", "AL", "DZ", "AS", "AD", "AO", "AI", "AQ", "AG", "AR", "AM", "AW", "AU", "AT", "AZ",
@@ -1497,6 +1498,16 @@ const appState = {
   seedVaultShareSettingsError: "",
   seedVaultShareSettingsUnavailable: false,
   seedVaultShareSettingsRefreshPromise: null,
+  seedVaultUserShares: [],
+  seedVaultUserSharesLoaded: false,
+  seedVaultUserSharesError: "",
+  seedVaultUserShareSearchResults: [],
+  seedVaultSharedWithMe: [],
+  seedVaultSharedWithMeLoaded: false,
+  seedVaultSharedWithMeError: "",
+  seedVaultActiveView: "mine",
+  seedVaultActiveSharedOwnerId: "",
+  seedVaultActiveSharedPayload: null,
   sourceDirectoryEntries: [],
   sourceDirectoryLoaded: false,
   sourceDirectoryLoadedFromFallback: false,
@@ -2168,6 +2179,16 @@ function resetSessionScopedAppState() {
   appState.seedVaultShareSettingsError = "";
   appState.seedVaultShareSettingsUnavailable = false;
   appState.seedVaultShareSettingsRefreshPromise = null;
+  appState.seedVaultUserShares = [];
+  appState.seedVaultUserSharesLoaded = false;
+  appState.seedVaultUserSharesError = "";
+  appState.seedVaultUserShareSearchResults = [];
+  appState.seedVaultSharedWithMe = [];
+  appState.seedVaultSharedWithMeLoaded = false;
+  appState.seedVaultSharedWithMeError = "";
+  appState.seedVaultActiveView = "mine";
+  appState.seedVaultActiveSharedOwnerId = "";
+  appState.seedVaultActiveSharedPayload = null;
   appState.sourceDirectoryEntries = [];
   appState.sourceDirectoryLoaded = false;
   appState.sourceDirectoryLoadedFromFallback = false;
@@ -5831,6 +5852,190 @@ async function loadSharedSeedVault(slug = "") {
   return data && typeof data === "object" ? data : { found: false, entries: [] };
 }
 
+function normalizeSeedVaultUserShare(row = {}) {
+  const sharedWithUserId = String(row.shared_with_user_id || row.sharedWithUserId || row.user_id || row.userId || "").trim();
+  const ownerUserId = String(row.owner_user_id || row.ownerUserId || "").trim();
+  return {
+    id: String(row.id || "").trim(),
+    ownerUserId,
+    sharedWithUserId,
+    userId: sharedWithUserId,
+    displayName: String(row.display_name || row.displayName || row.owner_display_name || row.ownerDisplayName || "").trim() || "Grow User",
+    publicHandle: normalizePublicProfileHandle(row.public_handle || row.publicHandle || row.owner_public_handle || row.ownerPublicHandle || ""),
+    avatarUrl: String(row.avatar_url || row.avatarUrl || "").trim(),
+    countryCode: String(row.country_code || row.countryCode || "").trim().toUpperCase(),
+    canViewVault: true,
+    canViewQuantities: Boolean(row.can_view_quantity ?? row.canViewQuantity ?? row.can_view_quantities ?? row.canViewQuantities),
+    canViewStorageLocations: Boolean(row.can_view_storage_location ?? row.canViewStorageLocation ?? row.can_view_storage_locations ?? row.canViewStorageLocations),
+    canViewStorageNotes: Boolean(row.can_view_storage_notes ?? row.canViewStorageNotes),
+    canViewNotes: Boolean(row.can_view_notes ?? row.canViewNotes),
+    visibleEntryCount: Math.max(0, Number(row.visible_entry_count ?? row.visibleEntryCount) || 0),
+    lastUpdatedAt: String(row.last_updated_at || row.lastUpdatedAt || row.updated_at || row.updatedAt || "").trim(),
+    active: row.active !== false,
+    updatedAt: String(row.updated_at || row.updatedAt || "").trim(),
+  };
+}
+
+function getSeedVaultUserShareHandleLabel(share = {}) {
+  const handle = normalizePublicProfileHandle(share.publicHandle || share.public_handle || "");
+  return handle ? `@${handle}` : "Grow user";
+}
+
+function formatSeedVaultSharedWithMeUpdatedLabel(value = "") {
+  const timestamp = Date.parse(String(value || ""));
+  if (!Number.isFinite(timestamp)) {
+    return "Last updated unavailable";
+  }
+  return `Last updated ${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(timestamp))}`;
+}
+function getSeedVaultUserSharePermissionSummary(share = {}) {
+  const permissions = [
+    "Vault",
+    share.canViewQuantities ? "Quantities" : "",
+    share.canViewStorageLocations ? "Storage locations" : "",
+    share.canViewStorageNotes ? "Storage notes" : "",
+    share.canViewNotes ? "Notes" : "",
+  ].filter(Boolean);
+  return permissions.length ? permissions.join(" · ") : "No access";
+}
+
+async function searchSeedVaultShareUsers(query = "") {
+  const normalizedQuery = String(query || "").trim();
+  if (!appState.supabase || normalizedQuery.length < 2) {
+    appState.seedVaultUserShareSearchResults = [];
+    return [];
+  }
+
+  const { data, error } = await appState.supabase.rpc("search_seed_vault_share_users", { search_query: normalizedQuery });
+  if (error) {
+    logRuntimeIssueOnce("warn", "seed-vault-user-share-search-failed", "Could not search Grow users for Seed Vault sharing.", error);
+    appState.seedVaultUserShareSearchResults = [];
+    throw error;
+  }
+
+  const existingSharedUserIds = new Set((appState.seedVaultUserShares || []).map((share) => share.sharedWithUserId || share.userId));
+  const results = (Array.isArray(data) ? data : [])
+    .map(normalizeSeedVaultUserShare)
+    .filter((share) => share.userId && !existingSharedUserIds.has(share.userId));
+  appState.seedVaultUserShareSearchResults = results;
+  return results;
+}
+
+async function loadSeedVaultUserShares(options = {}) {
+  const { force = false } = options || {};
+  if (!appState.supabase || !appState.user?.id) {
+    appState.seedVaultUserShares = [];
+    appState.seedVaultUserSharesLoaded = true;
+    return [];
+  }
+  if (!force && appState.seedVaultUserSharesLoaded) {
+    return appState.seedVaultUserShares || [];
+  }
+
+  const { data, error } = await appState.supabase.rpc("get_seed_vault_user_shares");
+  if (error) {
+    appState.seedVaultUserSharesError = error.message || "Could not load direct Seed Vault shares.";
+    logRuntimeIssueOnce("warn", "seed-vault-user-shares-load-failed", "Could not load direct Seed Vault shares.", error);
+    return appState.seedVaultUserShares || [];
+  }
+
+  const shares = (Array.isArray(data) ? data : [])
+    .map(normalizeSeedVaultUserShare)
+    .filter((share) => share.userId && share.active);
+  appState.seedVaultUserShares = shares;
+  appState.seedVaultUserSharesLoaded = true;
+  appState.seedVaultUserSharesError = "";
+  return shares;
+}
+
+async function saveSeedVaultUserShare(userId = "", permissions = {}) {
+  const targetUserId = String(userId || "").trim();
+  if (!appState.supabase || !targetUserId) {
+    throw new Error("Choose a Grow user to share with.");
+  }
+
+  const { data, error } = await appState.supabase.rpc("upsert_seed_vault_user_share", {
+    target_user_id: targetUserId,
+    next_can_view_quantity: Boolean(permissions.canViewQuantities),
+    next_can_view_storage_location: Boolean(permissions.canViewStorageLocations),
+    next_can_view_storage_notes: Boolean(permissions.canViewStorageNotes),
+    next_can_view_notes: Boolean(permissions.canViewNotes),
+  });
+  if (error) {
+    throw error;
+  }
+
+  const savedShare = normalizeSeedVaultUserShare(data || {});
+  const existingShares = (appState.seedVaultUserShares || []).filter((share) => share.userId !== savedShare.userId);
+  appState.seedVaultUserShares = [...existingShares, savedShare].sort((left, right) => left.displayName.localeCompare(right.displayName, "en", { sensitivity: "base" }));
+  appState.seedVaultUserSharesLoaded = true;
+  appState.seedVaultUserShareSearchResults = (appState.seedVaultUserShareSearchResults || []).filter((share) => share.userId !== savedShare.userId);
+  return savedShare;
+}
+
+async function removeSeedVaultUserShare(userId = "") {
+  const targetUserId = String(userId || "").trim();
+  if (!appState.supabase || !targetUserId) {
+    throw new Error("Choose a Grow user to remove.");
+  }
+
+  const { error } = await appState.supabase.rpc("remove_seed_vault_user_share", { target_user_id: targetUserId });
+  if (error) {
+    throw error;
+  }
+
+  appState.seedVaultUserShares = (appState.seedVaultUserShares || []).filter((share) => share.userId !== targetUserId);
+  return true;
+}
+
+async function loadSeedVaultsSharedWithMe(options = {}) {
+  const { force = false } = options || {};
+  if (!appState.supabase || !appState.user?.id) {
+    appState.seedVaultSharedWithMe = [];
+    appState.seedVaultSharedWithMeLoaded = true;
+    return [];
+  }
+  if (!force && appState.seedVaultSharedWithMeLoaded) {
+    return appState.seedVaultSharedWithMe || [];
+  }
+
+  const { data, error } = await appState.supabase.rpc("get_seed_vaults_shared_with_me");
+  if (error) {
+    appState.seedVaultSharedWithMeError = error.message || "Could not load Vaults shared with you.";
+    logRuntimeIssueOnce("warn", "seed-vault-shared-with-me-load-failed", "Could not load Seed Vaults shared with me.", error);
+    return appState.seedVaultSharedWithMe || [];
+  }
+
+  const shares = (Array.isArray(data) ? data : [])
+    .map((row) => normalizeSeedVaultUserShare({
+      ...row,
+      user_id: row.owner_user_id,
+      display_name: row.owner_display_name,
+      public_handle: row.owner_public_handle,
+      visible_entry_count: row.visible_entry_count,
+      last_updated_at: row.last_updated_at,
+    }))
+    .map((share) => ({ ...share, ownerUserId: share.userId }));
+  appState.seedVaultSharedWithMe = shares;
+  appState.seedVaultSharedWithMeLoaded = true;
+  appState.seedVaultSharedWithMeError = "";
+  return shares;
+}
+
+async function loadDirectSharedSeedVault(ownerUserId = "") {
+  const normalizedOwnerId = String(ownerUserId || "").trim();
+  if (!appState.supabase || !normalizedOwnerId) {
+    return { found: false, entries: [] };
+  }
+
+  const { data, error } = await appState.supabase.rpc("get_direct_shared_seed_vault", { owner_user_id: normalizedOwnerId });
+  if (error) {
+    logRuntimeIssueOnce("warn", "direct-shared-seed-vault-load-failed", "Shared Seed Vault could not be loaded.", error);
+    return { found: false, entries: [], error: error.message || "Shared Seed Vault could not be loaded." };
+  }
+
+  return data && typeof data === "object" ? data : { found: false, entries: [] };
+}
 async function copySeedVaultShareLink(slug = "") {
   const shareUrl = getSeedVaultShareUrl(slug);
   if (!shareUrl) {
@@ -69154,6 +69359,51 @@ function renderSeedVaultEntryCardMarkup(entry = {}, options = {}) {
   `;
 }
 
+function renderSeedVaultSharedWithMeSummaryMarkup(shares = appState.seedVaultSharedWithMe || []) {
+  const normalizedShares = (Array.isArray(shares) ? shares : []).map(normalizeSeedVaultUserShare).filter((share) => share.ownerUserId);
+  if (!appState.seedVaultSharedWithMeLoaded && !normalizedShares.length) {
+    return `
+      <section class="seed-vault-shared-with-me-summary" aria-label="Shared With Me">
+        <div class="seed-vault-shared-with-me-summary-head">
+          <div>
+            <span>Shared With Me</span>
+            <strong>Loading shared Vaults</strong>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  if (!normalizedShares.length) {
+    return `
+      <section class="seed-vault-shared-with-me-summary" aria-label="Shared With Me">
+        <div class="seed-vault-shared-with-me-summary-head">
+          <div>
+            <span>Shared With Me</span>
+            <strong>No shared Vaults yet</strong>
+            <p>Vaults directly shared with your Grow account will appear here.</p>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="seed-vault-shared-with-me-summary" aria-label="Shared With Me">
+      <div class="seed-vault-shared-with-me-summary-head">
+        <div>
+          <span>Shared With Me</span>
+          <strong>${escapeHtml(String(normalizedShares.length))} shared Vault${normalizedShares.length === 1 ? "" : "s"}</strong>
+          <p>Read-only Vaults shared directly with your Grow account.</p>
+        </div>
+        <button type="button" class="button button-secondary" data-seed-vault-page-view="shared">View All</button>
+      </div>
+      <div class="seed-vault-shared-with-me-list seed-vault-shared-with-me-list--summary">
+        ${normalizedShares.slice(0, 3).map((share) => renderSeedVaultSharedWithMeCardMarkup(share)).join("")}
+      </div>
+    </section>
+  `;
+}
 function renderSeedVaultShareCardMarkup(settings = appState.seedVaultShareSettings) {
   const normalizedSettings = normalizeSeedVaultShareSettings(settings || {});
   const visibility = normalizeSeedVaultShareVisibility(normalizedSettings.visibility);
@@ -69215,6 +69465,7 @@ function renderMySeedVaultPanelMarkup(entries = [], options = {}) {
         </div>
       </div>
       ${renderSeedVaultShareCardMarkup()}
+      ${renderSeedVaultSharedWithMeSummaryMarkup()}
       ${renderSeedVaultMetricCardsMarkup(analytics)}
       ${renderSeedVaultAgeInsightCardsMarkup(analytics)}
       ${renderSeedVaultRollupMarkup(analytics)}
@@ -70525,10 +70776,107 @@ function syncSeedVaultShareModalLink(form) {
   }
 }
 
+function getSeedVaultUserSharePermissionsFromRow(row) {
+  if (!(row instanceof Element)) {
+    return {
+      canViewVault: true,
+      canViewQuantities: false,
+      canViewStorageLocations: false,
+      canViewStorageNotes: false,
+      canViewNotes: false,
+    };
+  }
+  const getChecked = (permission) => Boolean(row.querySelector(`[data-seed-vault-user-share-permission="${permission}"]`)?.checked);
+  return {
+    canViewVault: true,
+    canViewQuantities: getChecked("canViewQuantities"),
+    canViewStorageLocations: getChecked("canViewStorageLocations"),
+    canViewStorageNotes: getChecked("canViewStorageNotes"),
+    canViewNotes: getChecked("canViewNotes"),
+  };
+}
+
+function renderSeedVaultUserSharePermissionToggles(share = {}, options = {}) {
+  const { compact = false } = options || {};
+  const normalizedShare = normalizeSeedVaultUserShare(share || {});
+  return `
+    <div class="seed-vault-user-share-permissions${compact ? " seed-vault-user-share-permissions--compact" : ""}">
+      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewQuantities"${normalizedShare.canViewQuantities ? " checked" : ""}> <span>View Quantities</span></label>
+      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageLocations"${normalizedShare.canViewStorageLocations ? " checked" : ""}> <span>View Storage Locations</span></label>
+      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewStorageNotes"${normalizedShare.canViewStorageNotes ? " checked" : ""}> <span>View Storage Notes</span></label>
+      <label><input type="checkbox" data-seed-vault-user-share-permission="canViewNotes"${normalizedShare.canViewNotes ? " checked" : ""}> <span>View Notes</span></label>
+    </div>
+  `;
+}
+
+function renderSeedVaultUserShareSearchResultsMarkup(results = []) {
+  if (!results.length) {
+    return `<p class="seed-vault-user-share-empty">Search by display name or username to add a Grow user.</p>`;
+  }
+
+  return results.map((result) => {
+    const share = normalizeSeedVaultUserShare({ ...result });
+    return `
+      <article class="seed-vault-user-share-row" data-seed-vault-user-share-candidate="${escapeHtml(share.userId)}">
+        <div class="seed-vault-user-share-person">
+          <strong>${escapeHtml(share.displayName)}</strong>
+          <span>${escapeHtml(getSeedVaultUserShareHandleLabel(share))}</span>
+        </div>
+        ${renderSeedVaultUserSharePermissionToggles(share, { compact: true })}
+        <button type="button" class="button button-secondary" data-seed-vault-user-share-add="${escapeHtml(share.userId)}">Share</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderSeedVaultUserSharesMarkup(shares = []) {
+  if (!shares.length) {
+    return `
+      <div class="seed-vault-user-share-empty">
+        <strong>No direct shares yet</strong>
+        <p>Search for a Grow user above to share a private read-only Vault view with them.</p>
+      </div>
+    `;
+  }
+
+  return shares.map((shareInput) => {
+    const share = normalizeSeedVaultUserShare(shareInput);
+    return `
+      <article class="seed-vault-user-share-row seed-vault-user-share-row--active" data-seed-vault-user-share-row="${escapeHtml(share.userId)}">
+        <div class="seed-vault-user-share-person">
+          <strong>${escapeHtml(share.displayName)}</strong>
+          <span>${escapeHtml(getSeedVaultUserShareHandleLabel(share))}</span>
+          <small>${escapeHtml(getSeedVaultUserSharePermissionSummary(share))}</small>
+        </div>
+        ${renderSeedVaultUserSharePermissionToggles(share)}
+        <div class="seed-vault-user-share-actions">
+          <button type="button" class="button button-secondary" data-seed-vault-user-share-update="${escapeHtml(share.userId)}">Update</button>
+          <button type="button" class="button button-danger" data-seed-vault-user-share-remove="${escapeHtml(share.userId)}">Remove</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderSeedVaultUserShareSection(overlay) {
+  if (!(overlay instanceof Element)) {
+    return;
+  }
+  const resultsContainer = overlay.querySelector("[data-seed-vault-user-share-results]");
+  const sharesContainer = overlay.querySelector("[data-seed-vault-user-share-list]");
+  if (resultsContainer) {
+    resultsContainer.innerHTML = renderSeedVaultUserShareSearchResultsMarkup(appState.seedVaultUserShareSearchResults || []);
+  }
+  if (sharesContainer) {
+    sharesContainer.innerHTML = renderSeedVaultUserSharesMarkup(appState.seedVaultUserShares || []);
+  }
+}
 async function openSeedVaultShareModal(options = {}) {
   const { onSaved = () => {} } = options || {};
   let settings = await loadSeedVaultShareSettings({ force: true });
   settings = normalizeSeedVaultShareSettings(settings || {});
+  await loadSeedVaultUserShares({ force: true }).catch(() => []);
+  appState.seedVaultUserShareSearchResults = [];
   const overlay = document.createElement("div");
   overlay.id = "seed-vault-share-modal-overlay";
   overlay.className = "seed-vault-entry-modal-overlay seed-vault-share-modal-overlay";
@@ -70563,6 +70911,25 @@ async function openSeedVaultShareModal(options = {}) {
           <label><input type="checkbox" name="showStorageNotes"${settings.showStorageNotes ? " checked" : ""}> <span>Storage notes</span></label>
           <label><input type="checkbox" name="showPrivateNotes"${settings.showPrivateNotes ? " checked" : ""}> <span>Notes</span></label>
         </div>
+        <section class="seed-vault-user-share-section" aria-labelledby="seed-vault-user-share-title">
+          <div class="seed-vault-user-share-heading">
+            <div>
+              <p class="eyebrow">SHARE WITH GROW USERS</p>
+              <h4 id="seed-vault-user-share-title">Share with Grow Users</h4>
+              <p>Direct shares stay separate from Public and Share by Link settings.</p>
+            </div>
+          </div>
+          <label class="seed-vault-share-link-field seed-vault-user-share-search-field">
+            <span>Find Grow user</span>
+            <input type="search" data-seed-vault-user-share-search autocomplete="off" placeholder="Search display name or username">
+          </label>
+          <div class="seed-vault-user-share-results" data-seed-vault-user-share-results aria-live="polite">
+            ${renderSeedVaultUserShareSearchResultsMarkup([])}
+          </div>
+          <div class="seed-vault-user-share-list" data-seed-vault-user-share-list>
+            ${renderSeedVaultUserSharesMarkup(appState.seedVaultUserShares || [])}
+          </div>
+        </section>
         <p class="seed-vault-share-message form-message" data-seed-vault-share-message role="status" aria-live="polite"></p>
         <div class="seed-vault-form-actions">
           <button type="button" class="button button-secondary" data-seed-vault-share-copy="true">Copy share link</button>
@@ -70623,6 +70990,65 @@ async function openSeedVaultShareModal(options = {}) {
       window.setTimeout(closeSeedVaultShareModal, 250);
     } catch (error) {
       setMessage(error?.message || "Sharing settings could not be saved.", "error");
+    }
+  });
+
+  let userShareSearchTimer = 0;
+  form?.querySelector("[data-seed-vault-user-share-search]")?.addEventListener("input", (event) => {
+    const searchInput = event.target;
+    if (!(searchInput instanceof HTMLInputElement)) {
+      return;
+    }
+    if (userShareSearchTimer) {
+      window.clearTimeout(userShareSearchTimer);
+    }
+    const query = searchInput.value || "";
+    userShareSearchTimer = window.setTimeout(async () => {
+      if (query.trim().length < 2) {
+        appState.seedVaultUserShareSearchResults = [];
+        renderSeedVaultUserShareSection(overlay);
+        return;
+      }
+      try {
+        await searchSeedVaultShareUsers(query);
+        renderSeedVaultUserShareSection(overlay);
+      } catch (error) {
+        setMessage(error?.message || "Grow user search failed.", "error");
+      }
+    }, 220);
+  });
+
+  form?.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const addButton = target.closest("[data-seed-vault-user-share-add]");
+    const updateButton = target.closest("[data-seed-vault-user-share-update]");
+    const removeButton = target.closest("[data-seed-vault-user-share-remove]");
+    if (!addButton && !updateButton && !removeButton) {
+      return;
+    }
+
+    event.preventDefault();
+    const button = addButton || updateButton || removeButton;
+    const userId = String(button.getAttribute(addButton ? "data-seed-vault-user-share-add" : updateButton ? "data-seed-vault-user-share-update" : "data-seed-vault-user-share-remove") || "").trim();
+    try {
+      if (removeButton) {
+        setMessage("Removing direct share...");
+        await removeSeedVaultUserShare(userId);
+        setMessage("Direct share removed.", "success");
+      } else {
+        const row = button.closest("[data-seed-vault-user-share-candidate], [data-seed-vault-user-share-row]");
+        const permissions = getSeedVaultUserSharePermissionsFromRow(row);
+        setMessage(addButton ? "Sharing Vault..." : "Updating direct share...");
+        await saveSeedVaultUserShare(userId, permissions);
+        setMessage(addButton ? "Vault shared with Grow user." : "Direct share updated.", "success");
+      }
+      renderSeedVaultUserShareSection(overlay);
+    } catch (error) {
+      setMessage(error?.message || "Direct share could not be saved.", "error");
     }
   });
 
@@ -70783,21 +71209,204 @@ function renderSharedSeedVaultPage(slug = "") {
     renderSharedSeedVaultPayload(normalizedSlug, payload);
   })();
 }
+function renderSeedVaultSharedWithMeCardMarkup(shareInput = {}) {
+  const share = normalizeSeedVaultUserShare(shareInput);
+  const visibleEntryCount = Math.max(0, Number(share.visibleEntryCount) || 0);
+  return `
+    <article class="seed-vault-shared-with-me-card${appState.seedVaultActiveSharedOwnerId === share.ownerUserId ? " is-active" : ""}">
+      <div>
+        <span>Shared Vault</span>
+        <strong>${escapeHtml(share.displayName)}</strong>
+        <small>${escapeHtml(`${visibleEntryCount} visible entr${visibleEntryCount === 1 ? "y" : "ies"}`)}</small>
+        <p>${escapeHtml(formatSeedVaultSharedWithMeUpdatedLabel(share.lastUpdatedAt))}</p>
+      </div>
+      <button type="button" class="button button-secondary" data-seed-vault-open-shared-owner="${escapeHtml(share.ownerUserId)}">Open Vault</button>
+    </article>
+  `;
+}
+function renderSeedVaultSharedWithMeListMarkup(shares = []) {
+  if (!shares.length) {
+    return `
+      <section class="shared-seed-vault-empty seed-vault-shared-with-me-empty">
+        <p class="eyebrow">SHARED WITH ME</p>
+        <h2>No shared Vaults yet</h2>
+        <p>When another Grow user shares their Seed Vault directly with you, it will appear here.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="seed-vault-shared-with-me-list" aria-label="Seed Vaults shared with me">
+      ${shares.map((shareInput) => renderSeedVaultSharedWithMeCardMarkup(shareInput)).join("")}
+    </section>
+  `;
+}
+
+function renderSeedVaultSharedWithMePayloadMarkup(payload = null) {
+  if (!payload) {
+    return "";
+  }
+  if (!payload.found) {
+    return `
+      <section class="shared-seed-vault-empty">
+        <h2>Shared Vault unavailable</h2>
+        <p>${escapeHtml(payload.error || "This Vault is no longer shared with you.")}</p>
+      </section>
+    `;
+  }
+
+  const entries = Array.isArray(payload.entries) ? payload.entries : [];
+  const settings = payload.settings && typeof payload.settings === "object" ? payload.settings : {};
+  const ownerName = String(payload.owner_display_name || "CannaKAN Grower").trim() || "CannaKAN Grower";
+  const totalVisibleEntries = Math.max(0, Number(payload.total_visible_entries ?? entries.length) || 0);
+  return `
+    <section class="seed-vault-shared-with-me-open-vault">
+      <header class="shared-seed-vault-hero">
+        <p class="eyebrow">READ-ONLY SHARED VAULT</p>
+        <h1>${escapeHtml(ownerName)}'s Seed Vault</h1>
+        <p>Direct private share. You can only see the fields this Grow user granted.</p>
+        <strong>${escapeHtml(String(totalVisibleEntries))} visible entr${totalVisibleEntries === 1 ? "y" : "ies"}</strong>
+      </header>
+      ${entries.length ? `
+        <section class="shared-seed-vault-grid" aria-label="Direct shared Seed Vault entries">
+          ${entries.map((entry) => renderSharedSeedVaultEntryMarkup(entry, settings)).join("")}
+        </section>
+      ` : `
+        <section class="shared-seed-vault-empty">
+          <h2>No visible Vault entries</h2>
+          <p>This Vault is shared with you, but there are no visible entries right now.</p>
+        </section>
+      `}
+    </section>
+  `;
+}
+
+function renderSeedVaultSharedWithMePanelIntoSection(seedVaultSection) {
+  if (!(seedVaultSection instanceof HTMLElement)) {
+    return;
+  }
+  const shares = appState.seedVaultSharedWithMe || [];
+  const isLoaded = Boolean(appState.seedVaultSharedWithMeLoaded);
+  seedVaultSection.innerHTML = `
+    <section class="sessions-glass-panel seed-vault-panel seed-vault-shared-with-me-panel" aria-labelledby="seed-vault-shared-with-me-title">
+      <div class="seed-vault-header">
+        <div class="section-title-with-icon app-section-header-main seed-vault-header-main">
+          <span class="section-title-icon seed-vault-header-icon" data-app-icon="seedVault" data-icon-variant="plate" aria-hidden="true"></span>
+          <div class="seed-vault-header-copy">
+            <p class="eyebrow">SHARED WITH ME</p>
+            <h3 id="seed-vault-shared-with-me-title">Seed Vaults shared with you</h3>
+            <p>Read-only Vaults other Grow users shared directly with your account.</p>
+          </div>
+        </div>
+      </div>
+      ${isLoaded ? renderSeedVaultSharedWithMeListMarkup(shares) : `
+        <section class="shared-seed-vault-empty seed-vault-shared-with-me-empty">
+          <p class="eyebrow">SHARED WITH ME</p>
+          <h2>Loading shared Vaults</h2>
+          <p>Checking for direct Seed Vault shares...</p>
+        </section>
+      `}
+      ${renderSeedVaultSharedWithMePayloadMarkup(appState.seedVaultActiveSharedPayload)}
+    </section>
+  `;
+  hydrateAppIconSlots(seedVaultSection);
+  normalizeSectionHeaderLayouts(seedVaultSection);
+}
+
+async function openDirectSharedSeedVault(ownerUserId = "", renderSeedVaultSection = () => {}) {
+  const normalizedOwnerId = String(ownerUserId || "").trim();
+  if (!normalizedOwnerId) {
+    return;
+  }
+  appState.seedVaultActiveSharedOwnerId = normalizedOwnerId;
+  appState.seedVaultActiveSharedPayload = null;
+  renderSeedVaultSection();
+  const payload = await loadDirectSharedSeedVault(normalizedOwnerId);
+  if (appState.seedVaultActiveView !== "shared" || appState.seedVaultActiveSharedOwnerId !== normalizedOwnerId) {
+    return;
+  }
+  appState.seedVaultActiveSharedPayload = payload;
+  renderSeedVaultSection();
+}
 function renderSeedVaultPage() {
+  const activeView = appState.seedVaultActiveView === "shared" ? "shared" : "mine";
   app.innerHTML = `
     <section class="seed-vault-page">
-      <nav class="seed-vault-page-nav" aria-label="Seed Vault navigation">
+      <nav class="seed-vault-page-nav seed-vault-page-nav--tabs" aria-label="Seed Vault navigation">
         <a class="button button-secondary seed-vault-back-button" href="#sessions">Back to My Sessions</a>
+        <div class="seed-vault-page-tabs" role="tablist" aria-label="Seed Vault views">
+          <button type="button" class="button ${activeView === "mine" ? "button-primary" : "button-secondary"}" data-seed-vault-page-view="mine" aria-selected="${activeView === "mine" ? "true" : "false"}">My Vault</button>
+          <button type="button" class="button ${activeView === "shared" ? "button-primary" : "button-secondary"}" data-seed-vault-page-view="shared" aria-selected="${activeView === "shared" ? "true" : "false"}">Shared With Me</button>
+        </div>
       </nav>
       <section id="seed-vault-section"></section>
     </section>
   `;
 
   const seedVaultSection = document.querySelector("#seed-vault-section");
-  const renderSeedVaultSection = () => renderSeedVaultPanelIntoSection(seedVaultSection);
+  const renderSeedVaultSection = () => {
+    if (appState.seedVaultActiveView === "shared") {
+      renderSeedVaultSharedWithMePanelIntoSection(seedVaultSection);
+      return;
+    }
+    renderSeedVaultPanelIntoSection(seedVaultSection);
+  };
+
   renderSeedVaultSection();
   bindSeedVaultPanelControls(seedVaultSection, renderSeedVaultSection);
-  void loadSeedVaultShareSettings().then(renderSeedVaultSection).catch(() => {});
+
+  app.querySelectorAll("[data-seed-vault-page-view]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      const nextView = button.getAttribute("data-seed-vault-page-view") === "shared" ? "shared" : "mine";
+      appState.seedVaultActiveView = nextView;
+      if (nextView !== "shared") {
+        appState.seedVaultActiveSharedOwnerId = "";
+        appState.seedVaultActiveSharedPayload = null;
+      }
+      renderSeedVaultPage();
+    });
+  });
+
+  seedVaultSection?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const pageViewButton = target.closest("[data-seed-vault-page-view]");
+    if (pageViewButton) {
+      event.preventDefault();
+      appState.seedVaultActiveView = pageViewButton.getAttribute("data-seed-vault-page-view") === "shared" ? "shared" : "mine";
+      renderSeedVaultPage();
+      return;
+    }
+
+    const openButton = target.closest("[data-seed-vault-open-shared-owner]");
+    if (!openButton) {
+      return;
+    }
+    event.preventDefault();
+    appState.seedVaultActiveView = "shared";
+    const ownerUserId = String(openButton.getAttribute("data-seed-vault-open-shared-owner") || "").trim();
+    void openDirectSharedSeedVault(ownerUserId, renderSeedVaultSection);
+  });
+
+  if (appState.seedVaultActiveView === "shared") {
+    void loadSeedVaultsSharedWithMe({ force: true }).then((shares) => {
+      const hasActiveOwner = shares.some((share) => share.ownerUserId === appState.seedVaultActiveSharedOwnerId);
+      if (!hasActiveOwner) {
+        appState.seedVaultActiveSharedOwnerId = "";
+        appState.seedVaultActiveSharedPayload = null;
+      }
+      renderSeedVaultSection();
+    }).catch(() => renderSeedVaultSection());
+    return;
+  }
+
+  void Promise.all([
+    loadSeedVaultShareSettings(),
+    loadSeedVaultsSharedWithMe(),
+  ]).then(renderSeedVaultSection).catch(() => renderSeedVaultSection());
 }
 
 function closeSeedVaultEntryModal() {

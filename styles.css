@@ -44682,6 +44682,223 @@ body.theme-dark #session-analytics-section {
   color: rgba(242, 247, 239, 0.9);
   overflow-wrap: anywhere;
 }
+.seed-vault-page-nav--tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.seed-vault-page-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seed-vault-user-share-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(127, 184, 255, 0.13);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(127, 184, 255, 0.045), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 11, 0.55);
+}
+
+.seed-vault-user-share-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.seed-vault-user-share-heading h4 {
+  margin: 0;
+  color: #f5f8f3;
+  font-size: 1rem;
+}
+
+.seed-vault-user-share-heading p:not(.eyebrow) {
+  margin: 4px 0 0;
+  color: rgba(205, 214, 207, 0.74);
+  line-height: 1.42;
+}
+
+.seed-vault-user-share-results,
+.seed-vault-user-share-list,
+.seed-vault-shared-with-me-list {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.seed-vault-user-share-row,
+.seed-vault-shared-with-me-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(0, 1.2fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid rgba(148, 209, 89, 0.12);
+  border-radius: 13px;
+  background: rgba(12, 17, 14, 0.72);
+}
+
+.seed-vault-user-share-row--active,
+.seed-vault-shared-with-me-card.is-active {
+  border-color: rgba(181, 232, 111, 0.34);
+}
+
+.seed-vault-user-share-person,
+.seed-vault-shared-with-me-card > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.seed-vault-user-share-person strong,
+.seed-vault-shared-with-me-card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f5f8f3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-user-share-person span,
+.seed-vault-user-share-person small,
+.seed-vault-shared-with-me-card span,
+.seed-vault-shared-with-me-card small,
+.seed-vault-shared-with-me-card p {
+  margin: 0;
+  color: rgba(205, 214, 207, 0.68);
+  font-size: 0.75rem;
+  line-height: 1.32;
+}
+
+.seed-vault-shared-with-me-card span {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-user-share-permissions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.seed-vault-user-share-permissions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: rgba(242, 247, 239, 0.86);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.seed-vault-user-share-permissions span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seed-vault-user-share-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seed-vault-user-share-empty {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 10px;
+  border: 1px dashed rgba(127, 184, 255, 0.16);
+  border-radius: 12px;
+  color: rgba(205, 214, 207, 0.72);
+}
+
+.seed-vault-user-share-empty strong {
+  color: #f5f8f3;
+}
+
+.seed-vault-user-share-empty p {
+  margin: 0;
+}
+
+.seed-vault-shared-with-me-summary {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(127, 184, 255, 0.13);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(127, 184, 255, 0.045), rgba(255, 255, 255, 0.008)),
+    rgba(8, 13, 11, 0.54);
+}
+
+.seed-vault-shared-with-me-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.seed-vault-shared-with-me-summary-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.seed-vault-shared-with-me-summary-head span {
+  color: rgba(199, 208, 201, 0.68);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.seed-vault-shared-with-me-summary-head strong {
+  color: #f6faf4;
+  font-size: 0.98rem;
+}
+
+.seed-vault-shared-with-me-summary-head p {
+  margin: 0;
+  color: rgba(205, 214, 207, 0.74);
+  line-height: 1.42;
+}
+
+.seed-vault-shared-with-me-list--summary {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.seed-vault-shared-with-me-panel {
+  gap: 14px;
+}
+
+.seed-vault-shared-with-me-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.seed-vault-shared-with-me-open-vault {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
 
 .seed-vault-metric-grid {
   display: grid;
@@ -47225,19 +47442,37 @@ body.theme-dark #session-analytics-section {
 
   .seed-vault-header-actions,
   .seed-vault-share-card,
-  .seed-vault-share-toggle-grid {
+  .seed-vault-share-toggle-grid,
+  .seed-vault-user-share-row,
+  .seed-vault-shared-with-me-card {
     grid-template-columns: 1fr;
     width: 100%;
   }
 
-  .seed-vault-header-actions {
+  .seed-vault-header-actions,
+  .seed-vault-page-nav--tabs,
+  .seed-vault-page-tabs {
     align-items: stretch;
+    flex-direction: column;
   }
 
   .seed-vault-add-button.button,
-  .seed-vault-share-button.button {
+  .seed-vault-share-button.button,
+  .seed-vault-page-tabs .button,
+  .seed-vault-user-share-actions .button,
+  .seed-vault-shared-with-me-card .button,
+  .seed-vault-shared-with-me-summary-head .button {
     width: 100%;
     justify-content: center;
+  }
+
+  .seed-vault-shared-with-me-summary-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .seed-vault-user-share-permissions {
+    grid-template-columns: 1fr;
   }
 
   .session-history-toolbar {
